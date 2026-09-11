@@ -622,14 +622,12 @@ constexpr uint32_t kSpirvOpExtension    = 10u;
 constexpr uint32_t kSpirvOpExtInstImport= 11u;
 constexpr uint32_t kSpirvOpMemoryModel  = 14u;
 constexpr uint32_t kSpirvOpCapability   = 17u;
-constexpr uint32_t kSpirvV14            = 0x00010400u;
-constexpr uint32_t kSpirvV15            = 0x00010500u;
 
-// Capabilities that are core in the version the translator emits but need an
-// OpExtension declaration once the header says 1.4.
-constexpr uint32_t kCapVulkanMemoryModel            = 5345u;
-constexpr uint32_t kCapVulkanMemoryModelDeviceScope = 5346u;
-constexpr uint32_t kCapDemoteToHelperInvocation     = 5379u;
+// Capabilities that are core in the version the translator emits but not in
+// the versions we lower to.
+constexpr uint32_t kCapVulkanMemoryModel            = 5345u;  // core from 1.5
+constexpr uint32_t kCapVulkanMemoryModelDeviceScope = 5346u;  // core from 1.5
+constexpr uint32_t kCapDemoteToHelperInvocation     = 5379u;  // core from 1.6
 
 std::vector<uint32_t> encodeOpExtension(const char* name) {
     const size_t len = strlen(name) + 1;                 // incl. NUL
@@ -660,16 +658,14 @@ bool hasOpExtension(const std::vector<uint32_t>& w, const char* name) {
 
 bool downgradeSpirv(std::vector<uint32_t>& w, uint32_t targetVersion) {
     if (w.size() < kSpirvHeaderWords || w[0] != kSpirvMagic) return false;
-    if (targetVersion < kSpirvV14) return false;
+    if (targetVersion < kSpirv14) return false;
     if (w[1] <= targetVersion) return true;             // already low enough
 
-    w[1] = targetVersion;
-    if (targetVersion >= kSpirvV15) return true;        // 1.5 has everything we emit as core
-
-    // Walk the preamble: note which extension-gated capabilities are declared
-    // and where the capability block ends (OpExtension must follow every
+    // Walk the preamble first and only touch the module once it is known to
+    // be lowerable: note which extension-gated capabilities are declared and
+    // where the capability block ends (OpExtension must follow every
     // OpCapability and precede OpExtInstImport / OpMemoryModel).
-    bool needMemoryModel = false, needDemote = false;
+    bool needMemoryModel = false;
     size_t insertAt = kSpirvHeaderWords;
     size_t off = kSpirvHeaderWords;
     while (off < w.size()) {
@@ -679,7 +675,10 @@ bool downgradeSpirv(std::vector<uint32_t>& w, uint32_t targetVersion) {
         if (opcode == kSpirvOpCapability && length >= 2) {
             const uint32_t cap = w[off + 1];
             if (cap == kCapVulkanMemoryModel || cap == kCapVulkanMemoryModelDeviceScope) needMemoryModel = true;
-            if (cap == kCapDemoteToHelperInvocation) needDemote = true;
+            // Core only in 1.6, and VK_EXT_shader_demote_to_helper_invocation
+            // is never enabled on the compat path: refuse rather than hand the
+            // driver a module that is not legal at the lowered version.
+            if (cap == kCapDemoteToHelperInvocation) return false;
             insertAt = off + length;
         } else if (opcode == kSpirvOpExtension) {
             insertAt = off + length;
@@ -690,16 +689,13 @@ bool downgradeSpirv(std::vector<uint32_t>& w, uint32_t targetVersion) {
         off += length;
     }
 
-    std::vector<uint32_t> extra;
-    if (needMemoryModel && !hasOpExtension(w, "SPV_KHR_vulkan_memory_model")) {
+    // 1.5 has the memory model as core; only 1.4 needs it declared.
+    if (targetVersion < kSpirv15 && needMemoryModel
+        && !hasOpExtension(w, "SPV_KHR_vulkan_memory_model")) {
         const auto e = encodeOpExtension("SPV_KHR_vulkan_memory_model");
-        extra.insert(extra.end(), e.begin(), e.end());
+        w.insert(w.begin() + (std::ptrdiff_t)insertAt, e.begin(), e.end());
     }
-    if (needDemote && !hasOpExtension(w, "SPV_EXT_demote_to_helper_invocation")) {
-        const auto e = encodeOpExtension("SPV_EXT_demote_to_helper_invocation");
-        extra.insert(extra.end(), e.begin(), e.end());
-    }
-    if (!extra.empty()) w.insert(w.begin() + (std::ptrdiff_t)insertAt, extra.begin(), extra.end());
+    w[1] = targetVersion;
     return true;
 }
 

@@ -607,12 +607,16 @@ public class Container {
     // --- LSFG Native experimental knobs (default to today's behaviour; only surfaced and
     // honoured while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED is on) ---
 
-    // Capture resolution the frame-gen chain runs at: "panel" (default, today's behaviour),
-    // "game" (this container's screen height) or "WxH" from the screen-size list / custom.
-    // The HEIGHT is what is used; the width follows the phone screen's aspect so nothing is
-    // stretched. See fgCaptureHeightFor.
+    // Capture resolution the frame-gen chain runs at. Stored as "panel" (default, today's
+    // behaviour), "game" (the height the game really renders at this session: per-game screen
+    // size override and render scale included, resolved by the renderer) or a bare pixel height
+    // ("720"). Both the container editor and the in-game drawer write that one form; the legacy
+    // "WxH" form is still read. Only the HEIGHT matters: the width follows the phone screen's
+    // aspect so nothing is stretched. See fgCaptureHeightFor.
     public static final String FG_CAPTURE_PANEL = "panel";
     public static final String FG_CAPTURE_GAME  = "game";
+    /** fgCaptureHeightFor's answer for "game": the renderer substitutes the X screen's height. */
+    public static final int FG_CAPTURE_HEIGHT_GAME = -1;
 
     public String getFgCaptureResolution() {
         String v = getExtra("fgCaptureResolution", FG_CAPTURE_PANEL);
@@ -623,10 +627,14 @@ public class Container {
         putExtra("fgCaptureResolution", value == null || value.isEmpty() ? FG_CAPTURE_PANEL : value);
     }
 
-    /** Resolve a capture-resolution value to a pixel height; 0 = panel resolution. */
-    public static int fgCaptureHeightFor(String value, int gameHeight) {
+    /**
+     * Resolve a capture-resolution value to what the renderer takes: 0 = panel resolution,
+     * {@link #FG_CAPTURE_HEIGHT_GAME} = the game's own height, otherwise a pixel height.
+     * Accepts "720", "1280x720" and "1280x720 (16:9)".
+     */
+    public static int fgCaptureHeightFor(String value) {
         if (value == null || value.isEmpty() || FG_CAPTURE_PANEL.equals(value)) return 0;
-        if (FG_CAPTURE_GAME.equals(value)) return Math.max(0, gameHeight);
+        if (FG_CAPTURE_GAME.equals(value)) return FG_CAPTURE_HEIGHT_GAME;
         try {
             String s = value.trim();
             int x = s.indexOf('x');

@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "lsfg_common.hpp"
+#include "lsfg_dll.h"      // kSpirv16
 #include "lsfg_governor.h"
 #include "lsfg_pacer.hpp"
 
@@ -57,7 +58,7 @@ public:
     // is the highest SPIR-V version the device accepts (lsfg_probe.h); the
     // cached 1.6 modules are lowered to it when it is below that.
     bool init(VkDevice device, VkPhysicalDevice physicalDevice, const std::string& cachePath,
-              uint32_t spirvTarget = 0x00010600u);
+              uint32_t spirvTarget = kSpirv16);
 
     bool valid() const { return shaders_ != nullptr && !unavailable_; }
     bool unavailable() const { return unavailable_; }

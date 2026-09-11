@@ -964,15 +964,16 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         return null;
     }
 
-    /** Flow scale (0.25-1.0) and the panel's real refresh rate. */
+    /** Flow scale (0.25-1.0) and the panel's real refresh rate; the capture height is left as is. */
     public void setFrameGenTuning(float flowScale, float refreshHz) {
-        setFrameGenTuning(flowScale, refreshHz, 0);
+        setFrameGenTuning(flowScale, refreshHz, pendingFgCaptureHeight);
     }
 
     /**
-     * As above, plus the experimental {@code captureHeight} (0 = panel): the height the
-     * frame-gen chain runs at, the width following the screen's aspect, with the result
-     * blitted up to the panel.
+     * As above, plus the experimental {@code captureHeight}: the height the frame-gen chain
+     * runs at, the width following the screen's aspect, with the result blitted up to the
+     * panel. 0 = panel; {@link Container#FG_CAPTURE_HEIGHT_GAME} = the game's own height
+     * (the renderer resolves it from the X screen it was created with).
      */
     public void setFrameGenTuning(float flowScale, float refreshHz, int captureHeight) {
         pendingFgFlowScale = flowScale;

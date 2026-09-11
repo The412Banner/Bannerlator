@@ -54,10 +54,6 @@ namespace dxvk {
     DxbcOptions   options;
     DxbcTessInfo* tess;
     DxbcXfbInfo*  xfb;
-    // Bannerlator: SPIR-V version to emit (spvVersion(major, minor)); 0 keeps
-    // DXVK's native 1.6. Below 1.5 the compiler also declares
-    // SPV_KHR_vulkan_memory_model, which the memory model needs there.
-    uint32_t      spirvVersion = 0;
   };
 
 }

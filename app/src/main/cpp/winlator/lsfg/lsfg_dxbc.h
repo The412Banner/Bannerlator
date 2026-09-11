@@ -32,11 +32,8 @@ namespace lsfg {
 // into a dense 0..n range in encounter order. Returns false (leaving outWords
 // empty) on any malformed input — DXVK's compiler throws, and everything is
 // caught here.
-// `spirvVersion` is the SPIR-V version word to emit (0 = DXVK's native 1.6).
-// The on-device cache is always built at 1.6; lowering for a Vulkan 1.1/1.2
-// device happens at load time (lsfg_dll.h downgradeSpirv), so this parameter
-// exists for tooling and tests rather than the normal path.
-bool translateDxbc(const uint8_t* bytecode, uint32_t size, std::vector<uint32_t>& outWords,
-                   uint32_t spirvVersion = 0);
+// Emits DXVK's native SPIR-V 1.6; lowering for a Vulkan 1.1/1.2 device happens
+// at load time (lsfg_dll.h downgradeSpirv).
+bool translateDxbc(const uint8_t* bytecode, uint32_t size, std::vector<uint32_t>& outWords);
 
 } // namespace lsfg

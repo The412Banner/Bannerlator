@@ -108,7 +108,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import com.winlator.star.BuildConfig
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.perf.PerfGpuTurbo
@@ -1576,6 +1575,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
         // persists it and pushes it to the renderer with the multiplier/flow.
         if (engine == "lsfg-native" && com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
             val capture by state.fgCaptureResolution.collectAsState()
+            val panelHeight by state.fgPanelHeight.collectAsState()
             Spacer(Modifier.height(10.dp))
             Text(
                 "Experimental",
@@ -1590,7 +1590,7 @@ private fun FrameGenSection(state: XServerDrawerState) {
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
             )
-            FgCaptureChips(capture) { newValue ->
+            FgCaptureChips(capture, panelHeight) { newValue ->
                 state.setFgCaptureResolution(newValue)
                 applyFg()
             }
@@ -1806,25 +1806,27 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
 /**
  * Experimental capture-resolution picker: Panel, Game, then every distinct height from the
  * container Screen Size list (R.array.screen_size_entries), as scrollable chips. Stored value is
- * "panel" / "game" / the bare height ("720"); Container.fgCaptureHeightFor understands all three
- * (and the "WxH" form the container settings write).
+ * "panel" / "game" / the bare height ("720"), the same form the container editor writes.
+ * Heights the renderer would clamp anyway (below a quarter of the panel, or at/above it) are left
+ * out, so a highlighted chip is always the height really in effect.
  */
 @Composable
-private fun FgCaptureChips(selected: String, onSelect: (String) -> Unit) {
+private fun FgCaptureChips(selected: String, panelHeight: Int, onSelect: (String) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     val context = androidx.compose.ui.platform.LocalContext.current
-    val heights = remember {
+    val heights = remember(panelHeight) {
+        val minH = maxOf(16, panelHeight / 4)
         context.resources.getStringArray(R.array.screen_size_entries)
             .filterNot { it.equals("custom", ignoreCase = true) }
-            .map { Container.fgCaptureHeightFor(it.substringBefore(" "), 0) }
-            .filter { it > 0 }
+            .map { Container.fgCaptureHeightFor(it.substringBefore(" ")) }
+            .filter { it > 0 && (panelHeight <= 0 || (it >= minH && it < panelHeight)) }
             .distinct()
             .sorted()
     }
     val options = listOf(Container.FG_CAPTURE_PANEL to "Panel", Container.FG_CAPTURE_GAME to "Game") +
         heights.map { it.toString() to "${it}p" }
-    val selectedHeight = Container.fgCaptureHeightFor(selected, -1)
+    val selectedHeight = Container.fgCaptureHeightFor(selected)
     Row(
         modifier = Modifier
             .fillMaxWidth()

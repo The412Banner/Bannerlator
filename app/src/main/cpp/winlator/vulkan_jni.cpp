@@ -415,8 +415,9 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
         JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz,
         jint captureHeight) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz,
-                                captureHeight > 0 ? (uint32_t)captureHeight : 0u);
+    // captureHeight: 0 = panel, -1 = the game's own height (resolved natively
+    // from the X screen), otherwise a pixel height.
+    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz, (int32_t)captureHeight);
 }
 
 // Which native engine generates (0 = LSFG, 1 = win-fg) and win-fg's own knobs.

@@ -45,8 +45,10 @@ The stock driver's `vkjson` shows it carries everything the chain needs despite 
 
 ## 2. Experiment 1 — Capture resolution
 
-**Setting:** container `fgCaptureResolution` = `panel` (default) | `game` | `WxH` (the Screen Size
-list, plus Custom). Live in the in-game drawer as chips: Panel / Game / 360p … 1080p.
+**Setting:** container `fgCaptureResolution` = `panel` (default) | `game` | a bare height (`720`,
+picked from the Screen Size list or a Custom height). Live in the in-game drawer as chips: Panel /
+Game / the heights inside the renderer's clamp. Both UIs store the same form (only the height is
+ever used); the legacy `WxH` form is still read.
 
 **Idea.** Run the whole chain — history copy, mipmaps, flow, `generate` — on a composite ring
 smaller than the panel and blit the result up on the way out. Pixel count drives the cost:
@@ -55,26 +57,34 @@ smaller than the panel and blit the result up on the way out. Pixel count drives
 **Aspect rule.** The swapchain is the whole screen (≈2.22:1) while the list is 16:9 / 4:3, so the
 pick sets the capture **height**; the width follows the swapchain's aspect
 (`compositeExtentFor`: `W = round(H × swW / swH)`, even-aligned, H clamped to
-`[swH/4, swH]`). Nothing is stretched.
+`[swH/4, swH]`). Nothing is stretched. `game` is resolved in the renderer, not in Java: it uses
+`containerHeight`, the X screen the game really renders to (per-game screen-size override, TV
+resolution and render scale already applied when `nativeInit` received it).
 
 **What changed.**
 - `ensureCompositeTargets(ringW, ringH, want)` takes the computed extent; `Engine::prepare` and
   `generateInto` follow it (the chain rebuilds through `needsRebuild` when the extent changes — no
   swapchain recreate needed). `effectiveFlowScale` then sees a closer ratio, so the flow-scale
   preset takes effect.
-- `recordCmdBuf`: with a downsized ring the direct path draws with
-  `renderArea/viewport/scissor = ring extent`. Window quads are placed in NDC, so a same-aspect
-  smaller target needs no new maths; the #413 clip rect is scaled. The spatial upscalers
-  (`recordUpscalePasses`) step aside in that mode — the final blit is the upscale (linear).
+- `renderExtent()`: the composite ring while it is smaller than the swapchain, else the
+  swapchain. `planUpscaleFrame` and `recordUpscalePasses` size everything by it — the fit rect,
+  the fx1/fx2/mid intermediates and every effect's `resolution` push constant — so the post
+  effects (CAS, HDR, FXAA, Toon, Color, NTSC, CRT, Deband), the scaling modes and the
+  render-scale downscale all run into the ring, and their intermediates shrink with it. The
+  direct (no-effects) path draws with `renderArea/viewport/scissor = ring extent`; window quads
+  are placed in NDC, so a same-aspect smaller target needs no new maths, and the #413 clip rect
+  is scaled.
 - `recordCompositeToSwapchainTransfer`: `vkCmdCopyImage` when extents match (today's path, byte
-  for byte), `vkCmdBlitImage` linear otherwise, for both the real frame
-  (`copyCompositeToSwapchain`) and generated frames (`recordFrameGenGeneration`).
-  `vkCmdBlitImage` added to the dispatch table. The cursor is still drawn per present at full
-  resolution after the blit.
-- Win-FG Native keeps passing capture height 0, so its ring stays at panel resolution.
+  for byte), `vkCmdBlitImage` otherwise, for both the real frame (`copyCompositeToSwapchain`)
+  and generated frames (`recordFrameGenGeneration`). The filter is LINEAR when the swapchain
+  format reports `SAMPLED_IMAGE_FILTER_LINEAR` (probed once in `createSwapchain`,
+  `lsfg::probeLinearBlit`), NEAREST otherwise. `vkCmdBlitImage` added to the dispatch table.
+  The cursor is still drawn per present at full resolution after the blit.
+- Win-FG Native passes capture height 0 explicitly, so its ring stays at panel resolution; the
+  2-arg `setFrameGenTuning` leaves the pending capture height alone.
 
-**Trade-off.** Softer image below panel resolution, and SGSR/NIS/CAS are bypassed while a
-downsized ring is armed (v1). A per-present upscale pass is the v2 if the softness matters.
+**Trade-off.** Softer image below panel resolution: a spatial upscaler's output is blitted up
+once more on the way to the panel, and the effect chain runs at the ring's size.
 
 **Measured** (Turnip v26, Dead Space 2 capped at 30, 2×, switching live six times):
 
@@ -105,23 +115,29 @@ happens at load time.
 - `createLogicalDevice`: on the extension path the three extensions are enabled and the memory
   model is requested through the KHR struct (a 1.1 driver does not know `Vulkan12Features`). The
   retry-without-features fallback restores the pre-LSFG extension list.
-- `lsfg::downgradeSpirv(words, target)`: rewrites the header version and, below 1.5, inserts
-  `OpExtension "SPV_KHR_vulkan_memory_model"` (and `SPV_EXT_demote_to_helper_invocation` if that
-  capability is present) after the capability block. `LsfgShaders` applies it to every cached
-  module above the device's target; `Engine::init` receives the target from the probe.
-- `dxbc_compiler.cpp`: the emitted version comes from `DxbcModuleInfo::spirvVersion` (0 = 1.6) and
-  the compiler declares the memory-model extension itself below 1.5 — for tooling; the on-device
-  cache still builds at 1.6.
+- `lsfg::downgradeSpirv(words, target)`: walks the preamble first and only then rewrites the
+  header version; below 1.5 it inserts `OpExtension "SPV_KHR_vulkan_memory_model"` after the
+  capability block. A module declaring `DemoteToHelperInvocation` (core only in 1.6, extension
+  never enabled on this path; DXVK emits it for pixel-shader discard only) is refused untouched.
+  `LsfgShaders` applies it to the DXBC-translated cache only — a precompiled vendor SPIR-V
+  variant above the target is refused rather than relabelled — and `Engine::init` receives the
+  target from the probe. The vendored DXVK is unmodified.
 - The flag reaches the renderer before `vkCreateDevice`: `VulkanRenderer.setLsfgVk11Compat` →
   `nativeInit(..., lsfgVk11Compat)` → constructor argument, set next to the Renderer Driver in
   `XServerDisplayActivity`.
+- The setting is applied only in sessions that run LSFG Native (per-game engine override
+  included), so a container whose engine is Off or Win-FG gets the same device as before; the
+  switch is shown whatever the container's engine, since a shortcut may override it.
 - 3.1.0's "can't run on this Renderer Driver" notice names the compat setting next to Turnip when
-  the reason is the Vulkan version and the setting is off.
+  the reason is the Vulkan version and the setting is off. `frameGenProblem()` also reports a
+  start failure when the engine came up but its chain build failed (`Engine::unavailable()`), so
+  a driver that rejects a lowered module at `vkCreateComputePipelines` rather than
+  `vkCreateShaderModule` still gets the notice and frame gen goes back to Off.
 - Win-FG Native is unaffected: its gate only checks the swapchain format, and its embedded shaders
   are SPIR-V 1.3.
 
 **Risk.** A module using an Int64/Float64 capability fails `vkCreateShaderModule` on this driver;
-the shader set then reports unusable and frame gen stays off — logged, never a crash.
+the shader set then reports unusable, the notice shows and frame gen goes to Off — never a crash.
 
 **Measured** (stock driver, compat on, same game, cap 30, 2×):
 

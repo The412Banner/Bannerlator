@@ -30,14 +30,11 @@
 #include <cstdint>
 #include <vector>
 
+#include "lsfg_dll.h"   // kSpirv14/15/16
+
 struct VkTable;
 
 namespace lsfg {
-
-// SPIR-V version words the engine may hand to vkCreateShaderModule.
-constexpr uint32_t kSpirv14 = 0x00010400u;
-constexpr uint32_t kSpirv15 = 0x00010500u;
-constexpr uint32_t kSpirv16 = 0x00010600u;
 
 // Which of the three required features the physical device OFFERS. Queried
 // before vkCreateDevice; what we actually enable is recorded in Caps below.
@@ -55,7 +52,8 @@ struct FeatureSupport {
     // enable those extensions at device creation (see extensionNames) and the
     // modules are downgraded to `spirvTarget` at load.
     bool     extensionPath   = false;
-    bool     hasSpirv14      = false;   // VK_KHR_spirv_1_4 (+ VK_KHR_shader_float_controls)
+    bool     hasSpirv14        = false; // VK_KHR_spirv_1_4
+    bool     hasFloatControls  = false; // VK_KHR_shader_float_controls (spirv_1_4 depends on it)
     bool     hasMemoryModelExt = false; // VK_KHR_vulkan_memory_model
     uint32_t spirvTarget     = kSpirv16;
 
@@ -71,6 +69,10 @@ struct Caps {
     FeatureSupport features;
     bool featuresEnabled   = false;  // the chain was passed to vkCreateDevice
     bool storageOnSwapchainFormat = false;
+    // The swapchain format blits with VK_FILTER_LINEAR (needs
+    // SAMPLED_IMAGE_FILTER_LINEAR on the source). Not a gate: without it the
+    // capture-resolution upscale falls back to NEAREST.
+    bool linearBlitOnSwapchainFormat = false;
     VkFormat probedFormat  = VK_FORMAT_UNDEFINED;
     char reason[160]       = "not probed";
 
@@ -99,6 +101,9 @@ std::vector<const char*> extensionNames(const FeatureSupport& f);
 // Probe VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT on the live swapchain format.
 // `generate` writes into an image of this format via a compute dispatch.
 bool probeStorageFormat(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt);
+
+// Whether the format may be the source of a VK_FILTER_LINEAR blit.
+bool probeLinearBlit(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt);
 
 // Fill caps.reason with the FIRST gate that failed (or "supported").
 void explain(Caps& caps);

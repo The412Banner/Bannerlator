@@ -2161,6 +2161,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // with the flag off the seed is always panel, whatever the container stored).
         XServerDrawerState.INSTANCE.setFgCaptureResolution(
             com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED ? container.getFgCaptureResolution() : Container.FG_CAPTURE_PANEL);
+        // The panel height in landscape, so the drawer's capture chips can leave out heights the
+        // renderer would clamp anyway (it never runs the chain below a quarter of the panel or
+        // above it).
+        {
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+            XServerDrawerState.INSTANCE.setFgPanelHeight(Math.min(dm.widthPixels, dm.heightPixels));
+        }
         XServerDrawerState.INSTANCE.setFpsLimiterEnabled(fpsLimOn);
         XServerDrawerState.INSTANCE.setFpsLimit(resolvedFpsLimiterValue());
         XServerDrawerState.INSTANCE.setMatchRefreshRate(resolvedMatchRefreshRate());
@@ -3096,17 +3104,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /**
      * The experimental tuning that rides along with flow scale: the capture height
-     * (0 = panel). It comes from the drawer state, which is seeded from the container and
-     * only ever non-default while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED is on.
+     * (0 = panel, -1 = the game's own height, which the renderer resolves from the X screen it
+     * was created with - shortcut screen-size override and render scale included). It comes
+     * from the drawer state, which is seeded from the container and only ever non-default
+     * while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED is on.
      */
     private void pushNativeFgTuning(com.winlator.star.renderer.vulkan.VulkanRenderer vkr,
                                     float flowScale) {
         XServerDrawerState s = XServerDrawerState.INSTANCE;
         int captureHeight = 0;
-        if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
-            int gameH = Container.fgCaptureHeightFor(container != null ? container.getScreenSize() : null, 0);
-            captureHeight = Container.fgCaptureHeightFor(s.getFgCaptureResolution().getValue(), gameH);
-        }
+        if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED)
+            captureHeight = Container.fgCaptureHeightFor(s.getFgCaptureResolution().getValue());
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz(), captureHeight);
     }
 
@@ -3268,7 +3276,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // chips were being tried. Pinned here rather than only hiding the UI, so a
         // container or shortcut still carrying an older value cannot reinstate it.
         vkr.setWinFgTuning(model, WINFG_PERF_PRESET);
-        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz());
+        // Capture height 0: Win-FG shares the composite ring with LSFG Native but has no
+        // capture-resolution control, so it always runs at panel resolution.
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz(), 0);
         vkr.setFrameGenArmed(multiplier >= 2, multiplier);
         // Identical follow-through to LSFG Native: fifo while multiplying, the
         // limiter/VRR locks, and the base->shown readout.
@@ -7247,9 +7257,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 (com.winlator.star.renderer.vulkan.VulkanRenderer) renderer;
             // Experimental (FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED): let the LSFG probe accept
             // a Vulkan 1.1/1.2 compositor driver via extensions. Must precede nativeInit like the
-            // driver info below.
+            // driver info below. Only for a session that will run LSFG Native (per-game engine
+            // override included): the switch changes device creation, so a container whose
+            // engine is Off or Win-FG must get the same device as before.
             vkRenderer.setLsfgVk11Compat(
-                com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED && container.isLsfgVk11Compat());
+                com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED
+                    && container.isLsfgVk11Compat()
+                    && "lsfg-native".equals(resolvedFrameGenEngine()));
             // Compositor (present-layer) Vulkan driver. "system"/empty => leave driverPath null so
             // nativeInit falls back to the system libvulkan (the safe default). An installed Turnip =>
             // point the compositor at it. Vulkan-renderer only (SurfaceFlinger/OpenGL composite through

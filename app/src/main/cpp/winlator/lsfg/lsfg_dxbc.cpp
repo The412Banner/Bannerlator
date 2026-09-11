@@ -27,16 +27,14 @@ struct BindingSlot {
 
 } // namespace
 
-bool translateDxbc(const uint8_t* bytecode, uint32_t size, std::vector<uint32_t>& outWords,
-                   uint32_t spirvVersion) {
+bool translateDxbc(const uint8_t* bytecode, uint32_t size, std::vector<uint32_t>& outWords) {
     outWords.clear();
     if (!bytecode || size < 4) return false;
 
     try {
         dxvk::DxbcReader reader(reinterpret_cast<const char*>(bytecode), size);
         dxvk::DxbcModule module(reader);
-        dxvk::DxbcModuleInfo info{};
-        info.spirvVersion = spirvVersion;
+        const dxvk::DxbcModuleInfo info{};
         auto code = module.compile(info, "CS");
 
         // Collect the descriptor decorations in the order the Binding

@@ -1302,11 +1302,11 @@
     <string name="frame_generation_lsfg_native_unsupported">LSFG Native is unavailable on this device: %1$s</string>
     <string name="fg_experimental_header">Experimental (LSFG Native)</string>
     <string name="fg_capture_resolution">Capture resolution</string>
-    <string name="fg_capture_resolution_hint">Height the frame-generation chain runs at; the width follows your screen\'s aspect. Lower = much cheaper on the GPU, softer image. Panel = full screen resolution (default). Game = this container\'s screen height.</string>
+    <string name="fg_capture_resolution_hint">Height the frame-generation chain runs at; the width follows your screen\'s aspect. Lower = much cheaper on the GPU, softer image. Panel = full screen resolution (default). Game = the height the game really renders at (per-game screen size and render scale included). Never below a quarter of the screen. Post effects, upscalers and render scale keep working at the chosen size.</string>
     <string name="fg_capture_panel">Panel (default)</string>
     <string name="fg_capture_game">Game resolution</string>
     <string name="lsfg_vk11_compat">LSFG on Vulkan 1.1 drivers (compat)</string>
-    <string name="lsfg_vk11_compat_hint">Lets LSFG Native run on the compositor\'s stock driver when it only reports Vulkan 1.1 but offers the needed extensions (many Adreno phones). Applied at launch. If the shaders fail to load, the log says why and frame gen stays off.</string>
+    <string name="lsfg_vk11_compat_hint">Lets LSFG Native run on the compositor\'s stock driver when it only reports Vulkan 1.1 but offers the needed extensions (many Adreno phones). Applied when a game that runs LSFG Native launches, per-game engine overrides included. If the shaders fail to load, the game says so and frame gen goes back to Off.</string>
     <string name="frame_generation_lsfg_native_preparing">Preparing frame-generation shaders from your Lossless.dll…</string>
     <string name="fg_performance_mode">Performance mode</string>
     <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>

@@ -175,9 +175,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var lsfgAutoEnable by mutableStateOf(true)
     // LSFG Native experimental knobs (only shown while FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED). The capture
     // selection is a UI label: "panel", "game", "custom" or one of screenSizeEntries; it is turned
-    // into the stored "panel" / "game" / "WxH" value by resolvedFgCaptureResolution().
+    // into the stored "panel" / "game" / bare-height value by resolvedFgCaptureResolution(). Only
+    // the height is ever used (the width follows the panel), so Custom is a single height field
+    // and the stored form is the same one the in-game drawer chips write.
     var fgCaptureSelection by mutableStateOf(Container.FG_CAPTURE_PANEL)
-    var fgCaptureCustomWidth by mutableStateOf("")
     var fgCaptureCustomHeight by mutableStateOf("")
     var lsfgVk11Compat by mutableStateOf(false)
 
@@ -185,30 +186,34 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         fgCaptureSelection == Container.FG_CAPTURE_PANEL -> Container.FG_CAPTURE_PANEL
         fgCaptureSelection == Container.FG_CAPTURE_GAME  -> Container.FG_CAPTURE_GAME
         fgCaptureSelection.equals("custom", ignoreCase = true) -> {
-            val w = fgCaptureCustomWidth.trim().toIntOrNull()
             val h = fgCaptureCustomHeight.trim().toIntOrNull()
-            if (w != null && h != null && w > 0 && h > 0) "${w}x${h}" else Container.FG_CAPTURE_PANEL
+            if (h != null && h > 0) h.toString() else Container.FG_CAPTURE_PANEL
         }
-        else -> StringUtils.parseIdentifier(fgCaptureSelection)   // "1280x720 (16:9)" -> "1280x720"
+        else -> {   // "1280x720 (16:9)" -> 720
+            val h = Container.fgCaptureHeightFor(StringUtils.parseIdentifier(fgCaptureSelection))
+            if (h > 0) h.toString() else Container.FG_CAPTURE_PANEL
+        }
     }
 
+    /** A stored value ("720", legacy "1280x720", "panel", "game") back to the picker. */
     private fun seedFgCaptureSelection(stored: String?) {
         val v = stored ?: Container.FG_CAPTURE_PANEL
-        fgCaptureCustomWidth = ""; fgCaptureCustomHeight = ""
+        fgCaptureCustomHeight = ""
         fgCaptureSelection = when {
             v == Container.FG_CAPTURE_PANEL || v.isEmpty() -> Container.FG_CAPTURE_PANEL
             v == Container.FG_CAPTURE_GAME -> Container.FG_CAPTURE_GAME
             else -> {
-                val h = Container.fgCaptureHeightFor(v, 0)
-                val match = screenSizeEntries.firstOrNull {
-                    !it.equals("custom", ignoreCase = true) && Container.fgCaptureHeightFor(StringUtils.parseIdentifier(it), 0) == h
-                        && StringUtils.parseIdentifier(it) == v
-                }
-                if (match != null) match else {
-                    val parts = v.split("x")
-                    fgCaptureCustomWidth  = parts.getOrElse(0) { "" }
-                    fgCaptureCustomHeight = parts.getOrElse(1) { "" }
-                    screenSizeEntries.firstOrNull { it.equals("custom", ignoreCase = true) } ?: "Custom"
+                val h = Container.fgCaptureHeightFor(v)
+                if (h <= 0) Container.FG_CAPTURE_PANEL else {
+                    // The list is matched by height alone: that is all the stored value means.
+                    val match = screenSizeEntries.firstOrNull {
+                        !it.equals("custom", ignoreCase = true)
+                            && Container.fgCaptureHeightFor(StringUtils.parseIdentifier(it)) == h
+                    }
+                    if (match != null) match else {
+                        fgCaptureCustomHeight = h.toString()
+                        screenSizeEntries.firstOrNull { it.equals("custom", ignoreCase = true) } ?: "Custom"
+                    }
                 }
             }
         }
@@ -981,8 +986,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setFrameGenModel(frameGenModel)
             c.setLsfgPerformanceMode(lsfgPerformanceMode)
             c.setLsfgAutoEnable(lsfgAutoEnable)
-            c.setFgCaptureResolution(resolvedFgCaptureResolution())
-            c.setLsfgVk11Compat(lsfgVk11Compat)
+            if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+                c.setFgCaptureResolution(resolvedFgCaptureResolution())
+                c.setLsfgVk11Compat(lsfgVk11Compat)
+            }
             c.setFpsLimiterEnabled(fpsLimiterEnabled)
             c.setMatchRefreshRate(matchRefreshRate)
             c.setManualRefreshRate(manualRefreshRate)
@@ -1050,8 +1057,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                     created.setFrameGenModel(frameGenModel)
                     created.setLsfgPerformanceMode(lsfgPerformanceMode)
                     created.setLsfgAutoEnable(lsfgAutoEnable)
-                    created.setFgCaptureResolution(resolvedFgCaptureResolution())
-                    created.setLsfgVk11Compat(lsfgVk11Compat)
+                    if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+                        created.setFgCaptureResolution(resolvedFgCaptureResolution())
+                        created.setLsfgVk11Compat(lsfgVk11Compat)
+                    }
                     created.setVibrationMode(vibrationMode)
                     created.setVibrationIntensity(vibrationIntensity)
                     // Player Slots + On-screen mode: a NEW container is SEEDED from the app-drawer global
@@ -1212,8 +1221,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             template.setFrameGenModel(frameGenModel)
             template.setLsfgPerformanceMode(lsfgPerformanceMode)
             template.setLsfgAutoEnable(lsfgAutoEnable)
-            template.setFgCaptureResolution(resolvedFgCaptureResolution())
-            template.setLsfgVk11Compat(lsfgVk11Compat)
+            if (com.winlator.star.FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED) {
+                template.setFgCaptureResolution(resolvedFgCaptureResolution())
+                template.setLsfgVk11Compat(lsfgVk11Compat)
+            }
             template.setVibrationMode(vibrationMode)
             template.setVibrationIntensity(vibrationIntensity)
             template.setControllerSlotOverrides(controllerSlotOverridesJson)

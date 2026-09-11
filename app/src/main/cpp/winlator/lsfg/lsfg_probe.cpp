@@ -39,10 +39,10 @@ FeatureSupport queryFeatures(const VkTable& vk, VkPhysicalDevice pd,
         // chain loadable as SPIR-V 1.4, don't touch the device further:
         // device creation stays exactly as it is today.
         if (!allowVk11) return fs;
-        fs.hasSpirv14 = hasExtension(deviceExtensions, VK_KHR_SPIRV_1_4_EXTENSION_NAME)
-                     && hasExtension(deviceExtensions, VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+        fs.hasSpirv14 = hasExtension(deviceExtensions, VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+        fs.hasFloatControls = hasExtension(deviceExtensions, VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
         fs.hasMemoryModelExt = hasExtension(deviceExtensions, VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME);
-        if (!fs.hasSpirv14 || !fs.hasMemoryModelExt) {
+        if (!fs.hasSpirv14 || !fs.hasFloatControls || !fs.hasMemoryModelExt) {
             // Report what was looked at so explain() can name the gap.
             fs.queried = true;
             return fs;
@@ -93,6 +93,14 @@ std::vector<const char*> extensionNames(const FeatureSupport& f) {
     return out;
 }
 
+bool probeLinearBlit(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt) {
+    if (pd == VK_NULL_HANDLE || fmt == VK_FORMAT_UNDEFINED
+        || !vk.GetPhysicalDeviceFormatProperties) return false;
+    VkFormatProperties fp{};
+    vk.GetPhysicalDeviceFormatProperties(pd, fmt, &fp);
+    return (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
+}
+
 bool probeStorageFormat(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt) {
     if (pd == VK_NULL_HANDLE || fmt == VK_FORMAT_UNDEFINED
         || !vk.GetPhysicalDeviceFormatProperties) return false;
@@ -124,9 +132,9 @@ void explain(Caps& caps) {
             : "vkGetPhysicalDeviceFeatures2 unavailable";
     } else if (!f.apiAtLeast13 && !f.extensionPath) {
         if (f.deviceApiVersion < VK_API_VERSION_1_2) {
-            why = !f.hasSpirv14
-                ? "Vulkan 1.1 driver lacks VK_KHR_spirv_1_4"
-                : "Vulkan 1.1 driver lacks VK_KHR_vulkan_memory_model";
+            why = !f.hasSpirv14       ? "Vulkan 1.1 driver lacks VK_KHR_spirv_1_4"
+                : !f.hasFloatControls ? "Vulkan 1.1 driver lacks VK_KHR_shader_float_controls"
+                :                       "Vulkan 1.1 driver lacks VK_KHR_vulkan_memory_model";
         } else {
             why = "device Vulkan version below 1.3 (SPIR-V 1.6 will not load)";
         }

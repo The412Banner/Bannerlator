@@ -3,11 +3,11 @@ name: Release notes check (dry run)
 # Assembles a release description exactly as release.yml would (scripts/release_notes.py)
 # and shows it in the job summary. Builds nothing and publishes nothing: use it on the
 # branch that will be released to see the page before cutting. Pushing a branch named
-# test/release-notes-<number> runs it too (for trying it out before it is on main).
+# notes-check/<number> runs it too (for trying it out before it is on main).
 
 on:
   push:
-    branches: ['test/release-notes-*']
+    branches: ['notes-check/*']
   workflow_dispatch:
     inputs:
       release_number:
@@ -41,7 +41,7 @@ jobs:
         NUMBER: ${{ inputs.release_number }}
         PRE: ${{ inputs.make_prerelease }}
       run: |
-        [ -z "$NUMBER" ] && NUMBER="${GITHUB_REF_NAME#test/release-notes-}"
+        [ -z "$NUMBER" ] && NUMBER="${GITHUB_REF_NAME#notes-check/}"
         echo "release number: $NUMBER"
         echo "NOTES_NUMBER=$NUMBER" >> "$GITHUB_ENV"
         ARGS=("$NUMBER")

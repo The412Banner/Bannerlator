@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: Games tab XMB view built, CI in flight** (`feat/games-xmb-view` off main `cebde01e`)
+> - New 4th Games-tab layout, **XMB** (PS3 cross media bar): the view button now cycles List → Grid → Compact → XMB. Games run left/right along a bar with the focused one enlarged at the cross; the column under it is that game's ⋮ menu with **Play** on top and **Remove** moved to the bottom. Top bar, sort, select mode and the + button are unchanged.
+> - Portrait and landscape are the same code: every size comes from the screen box, so rotating just re-measures. Touch: swipe (with fling), tap a cover to focus it, tap the focused cover to launch, swipe or tap the options. Controller: D-pad/stick left-right = games, up-down = options, A = select, B = back to Play, L1/R1 = jump 5; Up on Play hands focus to the top bar. A/B hints only show when a controller is connected.
+> - The info pane reuses the list card's store badges, spec chips and Game Details (genres, year, metacritic, description) plus playtime. Background: an accent-tinted animated wave plus the focused cover, blurred (Android 12+).
+> - Files: new `ui/screens/ShortcutsXmbView.kt`; `ShortcutsViewModel.kt` (enum gains `XMB`, appended so saved view prefs stay valid); `ShortcutsScreen.kt` (view-button icon, XMB branch, the options list reusing the existing handlers). No versionCode change. Status: compile pending in CI; not device-proven.
+
 ## 2026-09-11 — 🍾 **Layers v7 pre-release: the Wine XP desktop in all seven layers** ([`build-bionic-layers-20260911-xp`](https://github.com/The412Banner/proton-wine/releases/tag/build-bionic-layers-20260911-xp))
 > - Every Proton / GE-Proton layer (GE 11.0-6 / 11.0-5 / 11.0-3 / 10.0-34, Proton 11.0-1 / 11.0-2 / 10.0-4, plus the 11.0-2 x86_64 build) is its v6 build plus the Wine XP desktop, as versionCode 7. The Wine 10 layers needed a small port. All eight packages were checked for the version stamp, unchanged layer names and the XP pieces compiled in, then published server-side from their CI runs (byte-identical to the checked files).
 > - A brand-new container comes up in the full XP desktop in Blue (XP title bars now on by default); device-proven on GE 11.0-6 with a container created in the app.

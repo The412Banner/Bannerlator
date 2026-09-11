@@ -78,6 +78,7 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CloudDownload
@@ -996,19 +997,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
             }
-            // One button cycling list → grid → compact grid. The icon shows what you get NEXT,
+            // One button cycling list → grid → compact grid → XMB. The icon shows what you get NEXT,
             // matching how the two-state version behaved.
             IconButton(onClick = { vm.cycleViewMode() }) {
                 Icon(
                     imageVector = when (viewMode) {
                         ShortcutViewMode.LIST -> Icons.Filled.GridView
                         ShortcutViewMode.GRID -> Icons.Filled.Apps
-                        ShortcutViewMode.GRID_COMPACT -> Icons.Filled.ViewList
+                        ShortcutViewMode.GRID_COMPACT -> Icons.Filled.ViewCarousel
+                        ShortcutViewMode.XMB -> Icons.Filled.ViewList
                     },
                     contentDescription = when (viewMode) {
                         ShortcutViewMode.LIST -> "Grid view"
                         ShortcutViewMode.GRID -> "Compact grid view"
-                        ShortcutViewMode.GRID_COMPACT -> "List view"
+                        ShortcutViewMode.GRID_COMPACT -> "XMB view"
+                        ShortcutViewMode.XMB -> "List view"
                     },
                     tint = androidx.compose.ui.graphics.Color.White,
                 )
@@ -1052,6 +1055,33 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // XMB options column = a card's ⋮ menu with the same handlers and the same conditional
+    // entries, reordered for a D-pad: common actions first, Remove last. (Play/Select is added
+    // on top by the XMB view itself.)
+    val xmbActionsFor: (Shortcut) -> List<XmbAction> = { shortcut ->
+        buildList {
+            add(XmbAction("Settings", Icons.Filled.Settings, "Container, graphics, controls") { settingsShortcut = shortcut })
+            add(XmbAction("Game Details", Icons.Filled.Edit, "Genres, year, description") { gameDetailsShortcut = shortcut })
+            if (isSteamOriginShortcut(shortcut)) {
+                add(XmbAction("Cloud Saves", Icons.Filled.CloudSync, "Steam Cloud sync") { launchSaveManager(context, steamAppIdOf(shortcut)) })
+            }
+            if (isCustomShortcut(shortcut)) {
+                add(XmbAction("Back up saves", Icons.Filled.Archive) { startSaveBackup(shortcut) })
+                add(XmbAction("Restore saves", Icons.Filled.Unarchive) { startSaveRestore(shortcut) })
+            }
+            add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for this game") { communityConfigsFor(shortcut) })
+            add(XmbAction("Scrape cover", Icons.Filled.Search) { scrapeCoverFor(shortcut) })
+            add(XmbAction("View logs", Icons.Filled.Description) { logsShortcut = shortcut })
+            add(XmbAction("Clone to container", Icons.Filled.ContentCopy) { cloneTarget = shortcut })
+            add(XmbAction("Copy to Drive C…", Icons.Filled.DriveFileMove) { copyToDriveCTarget = shortcut })
+            add(XmbAction("Change executable…", Icons.Filled.SwapHoriz) { changeExeTarget = shortcut })
+            add(XmbAction("Add to home screen", Icons.Filled.AddToHomeScreen) { addToHomeScreen(context, shortcut) })
+            add(XmbAction("Export", Icons.Filled.Upload) { exportShortcut(context, shortcut) })
+            add(XmbAction("Properties", Icons.Filled.Info) { propertiesShortcut = shortcut })
+            add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true) { confirmRemove = shortcut })
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (shortcuts.isEmpty()) {
@@ -1062,7 +1092,33 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 )
             } else {
                 AnimatedContent(targetState = viewMode, label = "layout") { mode ->
-                    if (mode != ShortcutViewMode.LIST) {
+                    if (mode == ShortcutViewMode.XMB) {
+                        ShortcutsXmbView(
+                            shortcuts = shortcuts,
+                            selectionMode = selectionMode,
+                            selectedPaths = selectedPaths,
+                            onToggleSelect = { selectedPaths = selectedPaths.toggle(it.file.path) },
+                            onExitSelection = { selectionMode = false; selectedPaths = emptySet() },
+                            onPlay = { requestLaunch(it) },
+                            actionsFor = xmbActionsFor,
+                            storeBadges = { shortcut ->
+                                ShortcutBadgeOverlay(
+                                    showSteam = remember(shortcut) { isSteamOriginShortcut(shortcut) },
+                                    showEa = remember(shortcut) { EaSupport.isTagged(shortcut) },
+                                    showEpic = remember(shortcut) { shortcut.getExtra("storeSource") == "epic" },
+                                    showEos = rememberEosBadge(shortcut),
+                                    showGog = remember(shortcut) { isGogShortcut(shortcut) },
+                                    showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
+                                    showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
+                                )
+                            },
+                            sdBadge = { shortcut ->
+                                if (remember(shortcut) { WinePath.isOnRemovableStorage(shortcut.container, shortcut.path) }) {
+                                    SdCardBadge(Modifier.padding(start = 6.dp))
+                                }
+                            },
+                        )
+                    } else if (mode != ShortcutViewMode.LIST) {
                         // Compact keeps a CONSTANT tile size across orientation: derive the column
                         // count from the shortest screen edge so portrait resolves to exactly 4 and
                         // landscape flows to more columns of the SAME width (was Fixed(4) → tiles

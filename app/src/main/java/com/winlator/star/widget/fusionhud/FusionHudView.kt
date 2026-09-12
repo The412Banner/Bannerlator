@@ -618,15 +618,7 @@ class FusionHudView(
         left += Span("fps", colDim, if (generating) bigUnitPx * 0.8f else bigUnitPx)
 
         val stack = ArrayList<List<Span>>()
-        run {
-            val l = ArrayList<Span>()
-            if (showGpuModel && gpuModel.isNotBlank()) l += Span(gpuModel, colDim, stkPx)
-            if (displayServer.isNotBlank()) {
-                if (l.isNotEmpty()) l += Span(" · ", colDim, stkPx)
-                l += Span(displayServer, colDisp, stkPx)
-            }
-            if (l.isNotEmpty()) stack.add(l)
-        }
+        if (showGpuModel && gpuModel.isNotBlank()) stack.add(listOf(Span(gpuModel, colDim, stkPx)))
         run {
             val l = ArrayList<Span>()
             if (showGPU) { l += Span("GPU ${s.gpuPercent ?: "—"}%", colGpu, stkPx) }
@@ -655,10 +647,13 @@ class FusionHudView(
             if (showPower && s.battery.watts > 0f) { if (any) l += Span(" · ", colDim, stkPx); l += Span("${fmt1(s.battery.watts)}W", colDim, stkPx) }
             if (any) stack.add(l)
         }
-        // Latency (+ optional VRAM) drops to the bottom of the stack, under the battery row.
+        // Latency (+ the display server, + optional VRAM) drops to the bottom of the stack, under the
+        // battery row. The display server sits here, not on the GPU-model line: that line is the
+        // pill's widest and ran into the capsule's rounded edge.
         run {
             val l = ArrayList<Span>()
             l += Span("${fmt1(1000f / max(fpsNow, 1f))}ms", colDim, stkPx)
+            if (displayServer.isNotBlank()) { l += Span(" · ", colDim, stkPx); l += Span(displayServer, colDisp, stkPx) }
             if (showVram && s.vramText() != null) { l += Span(" · ", colDim, stkPx); l += Span("${s.vramText()} vram", colDim, stkPx) }
             stack.add(l)
         }

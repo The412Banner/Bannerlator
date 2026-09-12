@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — 🧭 **CHECKPOINT: cutting 3.1.1 stable** (`release/3.1.1`)
+> - User go ("let's cut a 3.1.1 release from main then"). Release = main as of `2d17c427` (app == `dbc67819`, main build run 34706013493 green on all 3 flavors) + README + `docs/releases/3.1.1.md`, then versionCode 84 → 85, versionName 3.1.0 → 3.1.1, dispatched through release.yml (house-layout body, change list since 3.1.0).
+> - Notes: XMB view (tested on the Pocket FIT; the r5 follow-up fixes untested), LSFG Native capture resolution + Vulkan 1.1 compat from clintOnSky (#512, experimental, off by default; tested on his Adreno 710 only), LSFG Native single shader build on arm (untested on device), L1/R1 in the per-game settings pop-up, Steam Controller USB cable tested (TAR). Local `release_notes.py 3.1.1` check: layout OK, 6 changes since 3.1.0.
+
 ## 2026-09-12 — ✅🎞️ **MERGED to main: LSFG Native builds its chain once when frame gen arms** (`fix/lsfg-native-arm-single-build`, `--no-ff`)
 > - User go ("merge it to main and build artifacts only from it"), merged before a device test. App code identical to the CI-green r1 (`8f480cd3`, run 34705008903); the branch only added PROGRESS_LOG entries on top. No versionCode change.
 > - Main now carries PR #512 + this fix; build-artifacts dispatched on main (not a release): run 34706013493, label `main-lsfg-arm-once`, headSha verified == merge `dbc67819`. ✅ CI-green, all 3 flavors. Staged `/sdcard/Download/Bannerlator-main-lsfg-arm-once-pubg.apk` sha `b14da8ba…`. Not device-proven yet.

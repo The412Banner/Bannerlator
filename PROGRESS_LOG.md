@@ -2,7 +2,7 @@
 
 ## 2026-09-12 — ✅🎞️ **MERGED to main: LSFG Native builds its chain once when frame gen arms** (`fix/lsfg-native-arm-single-build`, `--no-ff`)
 > - User go ("merge it to main and build artifacts only from it"), merged before a device test. App code identical to the CI-green r1 (`8f480cd3`, run 34705008903); the branch only added PROGRESS_LOG entries on top. No versionCode change.
-> - Main now carries PR #512 + this fix; build-artifacts dispatched on main (not a release): run 34706013493, label `main-lsfg-arm-once`, headSha verified == merge `dbc67819`. CI running.
+> - Main now carries PR #512 + this fix; build-artifacts dispatched on main (not a release): run 34706013493, label `main-lsfg-arm-once`, headSha verified == merge `dbc67819`. ✅ CI-green, all 3 flavors. Staged `/sdcard/Download/Bannerlator-main-lsfg-arm-once-pubg.apk` sha `b14da8ba…`. Not device-proven yet.
 
 ## 2026-09-12 — 🧭 **CHECKPOINT: LSFG Native builds its chain once when frame gen arms (fix in CI)** (`fix/lsfg-native-arm-single-build`)
 > - Bug (found by clintOnSky on #512, verified on main): the LSFG branch of `renderFrame` applied the user's config only if the engine already existed, and ran before `ensureLsfgEngine()` created it. A fresh engine was built at the default flow scale (1.00), then rebuilt one frame later at the user's scale. Each build recompiles all 25 pipelines: ~2.4 s on our Adreno 750 / Turnip, ~4 s on a stock driver, with the game frozen meanwhile. With a capture resolution below the panel it hit on nearly every arm.

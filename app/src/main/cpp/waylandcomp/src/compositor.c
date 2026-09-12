@@ -40,6 +40,16 @@
 #define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
 #define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
 
+/* At most ~10 lines a second for chatty events (window moves), so a drag can't flood logcat. */
+static int log_budget(void) {
+    static struct timespec window;
+    static int used;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (now.tv_sec != window.tv_sec) { window = now; used = 0; }
+    return used++ < 10;
+}
+
 #ifndef BTN_LEFT
 #define BTN_LEFT 0x110  /* linux/input-event-codes.h */
 #endif
@@ -103,6 +113,7 @@ static uint32_t *g_zorder;                  /* last reported Windows stacking or
 static size_t g_zorder_count;
 static struct wl_event_source *g_render_idle, *g_frame_timer;
 static int g_scene_w, g_scene_h;            /* size of the last drawn scene */
+static int g_desktop_w, g_desktop_h;        /* last size the desktop had content at */
 
 static void schedule_render(void);
 
@@ -191,8 +202,11 @@ static void apply_zorder(void) {
 }
 
 static void map_toplevel(struct surface *s) {
+    int w, h;
     if (s->mapped) return;
     s->mapped = 1;
+    surface_size(s, &w, &h);
+    WLOGI("window %#x mapped %dx%d at %d,%d%s", s->hwnd, w, h, s->x, s->y, s->placed ? "" : " (not placed yet)");
     wl_list_insert(g_toplevels.prev, &s->toplevel_link); /* new windows start on top */
     apply_zorder();
 }
@@ -200,6 +214,7 @@ static void map_toplevel(struct surface *s) {
 static void unmap_toplevel(struct surface *s) {
     if (!s->mapped) return;
     s->mapped = 0;
+    WLOGI("window %#x unmapped", s->hwnd);
     wl_list_remove(&s->toplevel_link);
     wl_list_init(&s->toplevel_link);
 }
@@ -730,7 +745,8 @@ static void desktop_set_window(struct wl_client *c, struct wl_resource *r, struc
                                uint32_t hwnd, int32_t x, int32_t y) {
     struct surface *s = wl_resource_get_user_data(surface);
     if (!s) return;
-    if (!s->placed) WLOGI("window %#x placed at %d,%d", hwnd, x, y);
+    if (!s->placed || ((s->x != x || s->y != y) && log_budget()))
+        WLOGI("window %#x at %d,%d", hwnd, x, y);
     s->hwnd = hwnd;
     s->x = x;
     s->y = y;
@@ -920,7 +936,13 @@ static void scene_size(int *w, int *h) {
     struct surface *s;
     long long best = 0;
 
-    if (g_desktop && g_desktop->has_content) { surface_size(g_desktop, w, h); return; }
+    if (g_desktop && g_desktop->has_content) {
+        surface_size(g_desktop, w, h);
+        g_desktop_w = *w;
+        g_desktop_h = *h;
+        return;
+    }
+    if (g_desktop && g_desktop_w > 0) { *w = g_desktop_w; *h = g_desktop_h; return; }
     *w = *h = 0;
     wl_list_for_each(s, &g_toplevels, toplevel_link) {
         int sw, sh;
@@ -1118,7 +1140,7 @@ static void deliver_pointer(const struct input_msg *m) {
     x = (double)m->p2 * w / INPUT_SPACE_W;
     y = (double)m->p3 * h / INPUT_SPACE_H;
 
-    if (g_desktop && g_desktop->has_content) {
+    if (g_desktop) {
         target = g_desktop;
     } else {
         target = g_grab ? g_grab : toplevel_at(x, y);
@@ -1148,7 +1170,7 @@ static void deliver_pointer(const struct input_msg *m) {
 }
 
 static void deliver_key(const struct input_msg *m) {
-    struct surface *target = (g_desktop && g_desktop->has_content) ? g_desktop : g_key_target;
+    struct surface *target = g_desktop ? g_desktop : g_key_target;
     if (!target) {
         struct surface *s;
         wl_list_for_each_reverse(s, &g_toplevels, toplevel_link) { target = s; break; }

@@ -22,6 +22,8 @@ extern void banner_wayland_send_scene_input(int type, int a, int b);
 static JavaVM *g_jvm;
 static jclass g_compositor_cls;      /* global ref */
 static jmethodID g_on_first_frame;   /* static void onFirstFramePresented() */
+static jmethodID g_on_game_surface;  /* static void onGameSurface(String, String) */
+static jmethodID g_on_game_frame;    /* static void onGameFrame() */
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
@@ -33,6 +35,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
             g_compositor_cls = (*env)->NewGlobalRef(env, c);
             g_on_first_frame = (*env)->GetStaticMethodID(env, g_compositor_cls,
                                                          "onFirstFramePresented", "()V");
+            g_on_game_surface = (*env)->GetStaticMethodID(env, g_compositor_cls, "onGameSurface",
+                                                          "(Ljava/lang/String;Ljava/lang/String;)V");
+            g_on_game_frame = (*env)->GetStaticMethodID(env, g_compositor_cls, "onGameFrame", "()V");
         }
     }
     return JNI_VERSION_1_6;
@@ -55,11 +60,49 @@ void banner_on_first_frame(void) {
     __android_log_print(ANDROID_LOG_INFO, TAG, "first client frame presented -> notified app");
 }
 
+/* The compositor thread stays attached once it first calls into Java: the HUD gets an upcall
+ * for every game frame. */
+static __thread JNIEnv *t_env;
+static __thread int t_attached;
+
+static JNIEnv *thread_env(void) {
+    if (t_env) return t_env;
+    if (!g_jvm) return NULL;
+    JNIEnv *env = NULL;
+    if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK) return NULL;
+        t_attached = 1;
+    }
+    return t_env = env;
+}
+
+/* A window started presenting GPU frames (window = its description), or NULL when it closed. */
+void banner_on_game_surface(const char *window, const char *gpu) {
+    JNIEnv *env;
+    if (!g_compositor_cls || !g_on_game_surface || !(env = thread_env())) return;
+    jstring jw = window ? (*env)->NewStringUTF(env, window) : NULL;
+    jstring jg = gpu ? (*env)->NewStringUTF(env, gpu) : NULL;
+    (*env)->CallStaticVoidMethod(env, g_compositor_cls, g_on_game_surface, jw, jg);
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+    if (jw) (*env)->DeleteLocalRef(env, jw);
+    if (jg) (*env)->DeleteLocalRef(env, jg);
+}
+
+/* One GPU frame from that window. */
+void banner_on_game_frame(void) {
+    JNIEnv *env;
+    if (!g_compositor_cls || !g_on_game_frame || !(env = thread_env())) return;
+    (*env)->CallStaticVoidMethod(env, g_compositor_cls, g_on_game_frame);
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+}
+
 static void *comp_thread(void *arg) {
     (void)arg;
     __android_log_print(ANDROID_LOG_INFO, TAG, "compositor thread starting");
     banner_wayland_run();
     __android_log_print(ANDROID_LOG_INFO, TAG, "compositor thread exited");
+    if (t_attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+    t_env = NULL; t_attached = 0;
     return NULL;
 }
 

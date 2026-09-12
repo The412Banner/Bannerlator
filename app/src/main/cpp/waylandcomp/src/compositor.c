@@ -412,6 +412,12 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
     g_stat_shm++;
 }
 
+/* The window the app's performance HUD follows: the latest one to start presenting GPU frames
+ * (X11 binds the HUD to the _MESA_DRV window and counts X presents instead). JNI upcalls. */
+static struct surface *g_hud_surface;
+extern void banner_on_game_surface(const char *window, const char *gpu); /* window NULL = gone */
+extern void banner_on_game_frame(void);
+
 static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_resource *buffer) {
     if (s->dmabuf != buffer) {
         drop_dmabuf(s, 1);
@@ -445,7 +451,12 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
         else
             banner_log("error", "could not import GPU frames from %s (%dx%d, modifier %#llx)",
                        name, b->width, b->height, (unsigned long long)b->modifier);
+        if (b->img) {
+            g_hud_surface = s;
+            banner_on_game_surface(name, vkp_gpu_name());
+        }
     }
+    if (s == g_hud_surface && b->img) banner_on_game_frame();
 }
 
 /* ------------------------------------------------------------------ wl_surface */
@@ -580,6 +591,7 @@ static void surface_resource_destroy(struct wl_resource *r) {
     if (g_grab == s) g_grab = NULL;
     if (g_key_target == s) g_key_target = NULL;
     if (g_desktop == s) { g_desktop = NULL; banner_log("desktop", "the desktop closed"); }
+    if (g_hud_surface == s) { g_hud_surface = NULL; banner_on_game_surface(NULL, NULL); }
 
     unmap_toplevel(s);
     detach_from_parent(s);

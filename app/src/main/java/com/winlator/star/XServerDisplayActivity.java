@@ -339,6 +339,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // restores each process exactly (revert philosophy). Populated on toggle ON, cleared on OFF.
     private final java.util.HashMap<Integer, Integer> bigCoreAffinitySnapshot = new java.util.HashMap<>();
     private int frameRatingWindowId = -1;
+    // Wayland mode has no X window to bind the HUD to; the compositor's game window stands in.
+    private static final int WAYLAND_HUD_WINDOW_ID = Integer.MAX_VALUE;
     // Master HUD on/off, parsed from the fps config's `hudEnabled` key (default on). When false, every
     // overlay style stays GONE even while a game window is bound to frameRatingWindowId — the drawer's
     // "Show HUD" master toggle drives this live via onFpsConfigApply.
@@ -6595,6 +6597,54 @@ public class XServerDisplayActivity extends AppCompatActivity {
             new android.os.Handler(getMainLooper()).postDelayed(
                     preloaderDialog::closeOnUiThread, LAUNCH_OVERLAY_GRACE_MS);
         }));
+        // Performance HUD: X11 shows it when a window gets _MESA_DRV and counts X presents. Here the
+        // compositor reports the window presenting GPU frames, then each of its frames.
+        com.winlator.star.wayland.WaylandCompositor.setGameListener(new com.winlator.star.wayland.WaylandCompositor.GameListener() {
+            @Override public void onGameSurface(String window, String gpuName) {
+                if (window == null) {
+                    frameRatingWindowId = -1;
+                    fpsCounter.reset();
+                    runOnUiThread(() -> {
+                        if (frameRating != null) { frameRating.setVisibility(View.GONE); frameRating.reset(); }
+                        if (frameRatingHorizontal != null) { frameRatingHorizontal.setVisibility(View.GONE); frameRatingHorizontal.reset(); }
+                        if (perfHud != null) perfHud.setVisibility(View.GONE);
+                        if (gameNativeHud != null) gameNativeHud.setVisibility(View.GONE);
+                        if (fusionHud != null) fusionHud.setVisibility(View.GONE);
+                    });
+                    return;
+                }
+                Log.d("XServerDisplayActivity", "wayland: HUD follows " + window);
+                frameRatingWindowId = WAYLAND_HUD_WINDOW_ID;
+                if (gpuName != null && !gpuName.isEmpty())
+                    hudGpuName = com.winlator.star.core.GPUInformation.extractModelName(gpuName);
+                runOnUiThread(() -> {
+                    if (hudGpuName != null) {
+                        if (frameRating != null) frameRating.setGpuName(hudGpuName);
+                        if (perfHud != null) perfHud.setGpuModel(hudGpuName);
+                        if (gameNativeHud != null) gameNativeHud.setGpuModel(hudGpuName);
+                        if (fusionHud != null) fusionHud.setGpuModel(hudGpuName);
+                    }
+                    // Respect the master toggle, like the _MESA_DRV binding does.
+                    if (!hudCounterEnabled) return;
+                    if (perfHud != null) perfHud.setVisibility(View.VISIBLE);
+                    if (gameNativeHud != null) gameNativeHud.setVisibility(View.VISIBLE);
+                    if (fusionHud != null) fusionHud.setVisibility(View.VISIBLE);
+                    if (fpsHudHorizontal) {
+                        if (frameRatingHorizontal != null) frameRatingHorizontal.setVisibility(View.VISIBLE);
+                    } else {
+                        if (frameRating != null) frameRating.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+            @Override public void onGameFrame() {
+                if (frameRatingWindowId == -1 || !hudCounterEnabled) return;
+                fpsCounter.tick();
+                if (frameRating != null) frameRating.update();
+                if (frameRatingHorizontal != null) frameRatingHorizontal.update();
+                if (perfHud != null) perfHud.update();
+            }
+        });
+
         // On-screen controls, a mouse and keys mapped to controller buttons all inject into the X
         // server, which has no client in wayland mode: hand that input to the compositor too.
         if (xServer != null) xServer.setInputSink(new com.winlator.star.xserver.XServer.InputSink() {
@@ -7786,14 +7836,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         inputControlsView.setVisualStyle(VisualStyle.GAMEHUB);
 
-        // Wayland mode: touch must reach the compositor SurfaceView (-> wl_pointer), but touchpadView
-        // (X11 mouse emulation) + inputControlsView were just added ON TOP of it and were eating every
-        // touch. Bring the wayland surface to the front so its onTouchListener receives events; the
-        // DrawerLayout still handles the left-edge swipe to open the in-game drawer.
-        if (waylandMode && waylandSurfaceView != null) {
-            waylandSurfaceView.bringToFront();
-            if (waylandCursorView != null) waylandCursorView.bringToFront(); // pointer above the surface
-        }
+        // Wayland mode: touchpadView and inputControlsView stay above the compositor surface, exactly
+        // like on X11. Their input goes to the X server, whose input sink forwards it to the compositor,
+        // so touch gets the full X11 gesture set (tap, hold-drag, two-finger right click, scroll) and
+        // the on-screen controls and HUD stay visible (a SurfaceView brought to the front punches
+        // through the views below it). Only the overlay pointer goes on top.
+        if (waylandMode && waylandCursorView != null) waylandCursorView.bringToFront();
 
         startTouchscreenTimeout();
 

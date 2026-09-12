@@ -33,6 +33,34 @@ public final class WaylandCompositor {
         if (r != null) r.run();
     }
 
+    /** The in-game performance HUD's feed in wayland mode (X11 binds the HUD to the window
+     *  carrying _MESA_DRV and counts X presents; there is no X server here). */
+    public interface GameListener {
+        /** A window started presenting GPU frames ({@code window} describes it; {@code gpuName} is the
+         *  compositor's GPU), or {@code window == null} when that window closed. Compositor thread. */
+        void onGameSurface(String window, String gpuName);
+        /** One GPU frame from that window. Compositor thread — keep it cheap. */
+        void onGameFrame();
+    }
+
+    private static volatile GameListener gameListener;
+
+    public static void setGameListener(GameListener l) { gameListener = l; }
+
+    /** Invoked from native (banner_on_game_surface). */
+    @SuppressWarnings("unused")
+    static void onGameSurface(String window, String gpuName) {
+        GameListener l = gameListener;
+        if (l != null) l.onGameSurface(window, gpuName);
+    }
+
+    /** Invoked from native (banner_on_game_frame) for every frame of the HUD's window. */
+    @SuppressWarnings("unused")
+    static void onGameFrame() {
+        GameListener l = gameListener;
+        if (l != null) l.onGameFrame();
+    }
+
     /** Start the compositor headless (no output window) — bring-up tests only. */
     public static native void nativeStart(String xdgRuntimeDir);
 

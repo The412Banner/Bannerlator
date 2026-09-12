@@ -43,6 +43,9 @@ struct vkp_draw {
     int dx, dy, dw, dh;
 };
 
+// The GPU the renderer runs on ("Adreno (TM) 750"), empty before the device is up.
+const char *vkp_gpu_name(void);
+
 // 0 if the renderer can create images (device up), -1 otherwise.
 int vkp_ready(void);
 

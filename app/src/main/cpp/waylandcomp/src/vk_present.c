@@ -53,6 +53,9 @@ static pthread_mutex_t g_swap_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Implemented in waylandcomp_jni.c — notifies Java (dismiss launch overlay). */
 extern void banner_on_first_frame(void);
 
+static char g_gpu_name[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+const char *vkp_gpu_name(void) { return g_gpu_name; }
+
 /* DRM fourccs name the channels of a little-endian 32-bit word: XRGB8888 is B,G,R,X in memory
  * (= VK B8G8R8A8) and XBGR8888 is R,G,B,X (= VK R8G8B8A8). Turnip's Wayland WSI sends XB24 for
  * R8G8B8A8 swapchains, so reading everything as BGRA swaps red and blue. */
@@ -149,6 +152,7 @@ static int dev_init(void) {
     {
         VkPhysicalDeviceProperties props;
         g_vk.GetPhysicalDeviceProperties(g_pd, &props);
+        snprintf(g_gpu_name, sizeof(g_gpu_name), "%s", props.deviceName);
         banner_log("gpu", "compositor renders on %s with %s", props.deviceName,
                    g_library_name ? g_library_name : "the system Vulkan driver");
         if (g_driver_path) banner_log("gpu", "driver folder %s", g_driver_path);

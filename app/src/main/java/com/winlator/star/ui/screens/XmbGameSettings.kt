@@ -544,7 +544,8 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
     var searching by mutableStateOf(false)
     fun details(): GameDetails = GameDetails.from(s)
     fun write(d: GameDetails) { runCatching { d.writeTo(s) }; xmb.saved(); xmb.refresh() }
-    return XmbMenu("Game Details", Icons.Filled.Edit) {
+    // Opens on the name, not on "Unlink from Steam" (a stray A must not unlink).
+    return XmbMenu("Game Details", Icons.Filled.Edit, initialKey = "name") {
         val d = details()
         val rows = mutableListOf<XmbRow>()
         d.steamAppId?.takeIf { it > 0 }?.let { id ->
@@ -606,7 +607,8 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
 
 // ── Properties ──────────────────────────────────────────────────────────────────────────────────────
 
-internal fun xmbPropertiesMenu(xmb: XmbScope, s: Shortcut): XmbMenu = XmbMenu("Properties", Icons.Filled.Info) {
+// Opens on the play count, not on "Reset properties".
+internal fun xmbPropertiesMenu(xmb: XmbScope, s: Shortcut): XmbMenu = XmbMenu("Properties", Icons.Filled.Info, initialKey = "plays") {
     val prefs = xmb.context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
     val tKey = "${s.name}_playtime"
     val cKey = "${s.name}_play_count"

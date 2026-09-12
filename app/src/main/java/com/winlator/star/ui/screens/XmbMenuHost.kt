@@ -64,10 +64,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,7 +96,8 @@ internal class XmbNavState {
     val stack = mutableStateListOf<XmbMenu>()
     var picker by mutableStateOf<XmbPicker?>(null)
     var editingKey by mutableStateOf<String?>(null)
-    var editText by mutableStateOf("")
+    /** The text being typed, cursor starting at the END (so Backspace edits what's there). */
+    var editValue by mutableStateOf(TextFieldValue(""))
     /** Bumped after every change so rows that read plain values (extras) rebuild. */
     var revision by mutableIntStateOf(0)
     var savedAt by mutableLongStateOf(0L)
@@ -222,7 +225,7 @@ private fun XmbNavState.activate(row: XmbRow?, xmb: XmbScope) {
         is XmbRow.Link -> push(row.open())
         is XmbRow.Choice -> picker = XmbPicker(row, row.options.indexOf(row.selected).coerceAtLeast(0))
         is XmbRow.Toggle, is XmbRow.Slider -> adjust(row, 1, xmb)
-        is XmbRow.Text -> { editText = row.value; editingKey = row.key }
+        is XmbRow.Text -> { editValue = TextFieldValue(row.value, TextRange(row.value.length)); editingKey = row.key }
         is XmbRow.Action -> { row.onClick(); bump() }
         is XmbRow.External -> row.onOpen()
         is XmbRow.Header, is XmbRow.Info -> {}
@@ -235,7 +238,7 @@ internal fun XmbNavState.commitEdit(xmb: XmbScope) {
     editingKey = null
     refocus()
     if (row != null) {
-        val v = editText.trim()
+        val v = editValue.text.trim()
         if (v != row.value) row.onCommit(v)
         bump()
     }
@@ -357,7 +360,9 @@ internal fun XmbNestedLayer(
             }
             val flash = nav.savedAt
             var showSaved by remember { mutableStateOf(false) }
-            LaunchedEffect(flash) { if (flash > 0L) { showSaved = true; kotlinx.coroutines.delay(1200); showSaved = false } }
+            LaunchedEffect(flash) {
+                if (flash > 0L && System.currentTimeMillis() - flash < 1500L) { showSaved = true; kotlinx.coroutines.delay(1200); showSaved = false }
+            }
             val sa by animateFloatAsState(if (showSaved) 1f else 0f, tween(250), label = "xmbSaved")
             Text("✓ Saved", color = Color(0xFF3DDC84), fontSize = 11.sp, modifier = Modifier.graphicsLayer { alpha = sa })
         }
@@ -559,8 +564,8 @@ private fun XmbEditField(row: XmbRow.Text, nav: XmbNavState, xmb: XmbScope, acce
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) { runCatching { fr.requestFocus() }; keyboard?.show() }
     BasicTextField(
-        value = nav.editText,
-        onValueChange = { nav.editText = it },
+        value = nav.editValue,
+        onValueChange = { nav.editValue = it },
         singleLine = true,
         textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
         cursorBrush = SolidColor(accent),

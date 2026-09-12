@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🏁 **RELEASED 3.1.1 (Latest, versionCode 85)** — [release page](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.1)
+> - Cut commit `91b320ef` ("release: 3.1.1 (versionCode 85)") on top of the docs merge; tag 3.1.1 → `91b320ef` (verified, == the built commit). release.yml run 34716667257: notes, 3 builds, release — all green. Published 2026-09-12 20:29 UTC.
+> - Page: house layout from `docs/releases/3.1.1.md` + 6-item change list since 3.1.0, collapsed Proton 9 + Credits, no TODOs. `update.json` (latest): versionCode 85, versionName 3.1.1, the update-summary line, 3 APK mappings.
+> - What shipped: XMB view for the Games tab; LSFG Native capture resolution + Vulkan 1.1 compat (clintOnSky, #512, experimental, off by default); LSFG Native single shader build on arm; L1/R1 in the per-game settings pop-up; Steam Controller USB cable tested (TAR); LSFG guide section on LSFG Native vs lsfg-vk. README updated (What's New 3.1.1, features, clintOnSky credit).
+> - Staged `/sdcard/Download/Bannerlator-3.1.1-pubg.apk` sha `c5d219c1…` (manifest `com.tencent.ig` vc 85 / 3.1.1).
+> - Still untested on a device: the XMB r5 fixes, #512 on the Pocket FIT, the single-build fix.
+
 ## 2026-09-12 — 🧭 **CHECKPOINT: cutting 3.1.1 stable** (`release/3.1.1`)
 > - User go ("let's cut a 3.1.1 release from main then"). Release = main as of `2d17c427` (app == `dbc67819`, main build run 34706013493 green on all 3 flavors) + README + `docs/releases/3.1.1.md`, then versionCode 84 → 85, versionName 3.1.0 → 3.1.1, dispatched through release.yml (house-layout body, change list since 3.1.0).
 > - Notes: XMB view (tested on the Pocket FIT; the r5 follow-up fixes untested), LSFG Native capture resolution + Vulkan 1.1 compat from clintOnSky (#512, experimental, off by default; tested on his Adreno 710 only), LSFG Native single shader build on arm (untested on device), L1/R1 in the per-game settings pop-up, Steam Controller USB cable tested (TAR). Local `release_notes.py 3.1.1` check: layout OK, 6 changes since 3.1.0.

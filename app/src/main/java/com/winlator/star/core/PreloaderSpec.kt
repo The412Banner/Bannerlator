@@ -14,4 +14,5 @@ data class PreloaderSpec(
     val driverLabel: String = "",     // e.g. "Mesa Turnip v26.3.0-20260715-r2"
     val vkd3dVersion: String = "",    // e.g. "3.0.1-0"
     val backendLabel: String = "",    // FEXCore / Box64
+    val eosEnabled: Boolean = false,  // Epic Online Services auth injection active for this launch
 )

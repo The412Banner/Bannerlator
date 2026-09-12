@@ -59,6 +59,17 @@ public class StringUtils {
         return String.format(Locale.ENGLISH, "%.2f", bytes / Math.pow(1024, digitGroups))+suffix;
     }
 
+    /** Compact human duration for progress/ETA readouts: "2h 5m", "1m 58s", "45s". */
+    public static String humanDuration(long ms) {
+        long totalSec = ms / 1000;
+        long h = totalSec / 3600;
+        long m = (totalSec % 3600) / 60;
+        long s = totalSec % 60;
+        if (h > 0) return h + "h " + m + "m";
+        if (m > 0) return m + "m " + s + "s";
+        return s + "s";
+    }
+
     public static String fromANSIString(byte[] bytes) {
         return fromANSIString(bytes, null);
     }

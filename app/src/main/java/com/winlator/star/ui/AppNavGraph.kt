@@ -13,19 +13,22 @@ import androidx.navigation.navArgument
 
 import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.AppearanceScreen
+import com.winlator.star.ui.screens.ShortcutsScreen
 import com.winlator.star.ui.screens.ContainerDetailScreen
 import com.winlator.star.ui.screens.ContainersScreen
+import com.winlator.star.ui.screens.contents.ContentsHubScreen
 import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.FragmentScreen
 import com.winlator.star.ui.screens.SavesScreen
 import com.winlator.star.ui.screens.InputControlsScreen
+import com.winlator.star.ui.screens.GamesWallScreen
 import com.winlator.star.ui.screens.SettingsScreen
-import com.winlator.star.ui.screens.ShortcutsScreen
+import com.winlator.star.ui.screens.WrapperManagerScreen
+import com.winlator.star.store.SaveManagerScreen
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    selectedInputProfileId: Int,
     startRoute: String = Screen.Games.route,
     modifier: Modifier = Modifier,
 ) {
@@ -64,7 +67,19 @@ fun AppNavGraph(
         }
 
         composable(Screen.Games.route) {
+            // The main library is the phone-grid ShortcutsScreen again. The landscape couch "games wall"
+            // (GamesWallScreen) is opt-in behind enable_big_picture_mode and renders on the BigPicture route.
             ShortcutsScreen()
+        }
+
+        composable(Screen.Contents.route) {
+            ContentsHubScreen()
+        }
+
+        composable(Screen.BigPicture.route) {
+            // Big Picture couch mode now renders the games wall. The old BigPictureScreen composable is
+            // retired (no longer routed); GamesWallScreen still reuses its loadCover/launchShortcut helpers.
+            GamesWallScreen(navController = navController)
         }
 
         composable(Screen.InputControls.route) {
@@ -73,6 +88,10 @@ fun AppNavGraph(
 
         composable(Screen.AdrenoTools.route) {
             AdrenoToolsScreen()
+        }
+
+        composable(Screen.Wrappers.route) {
+            WrapperManagerScreen()
         }
 
         composable(Screen.FileManager.route) {
@@ -97,6 +116,10 @@ fun AppNavGraph(
 
         composable(Screen.Saves.route) {
             SavesScreen()
+        }
+
+        composable(Screen.SaveManager.route) {
+            SaveManagerScreen()
         }
     }
 }

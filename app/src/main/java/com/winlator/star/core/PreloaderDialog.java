@@ -32,6 +32,11 @@ public class PreloaderDialog {
         PreloaderState.show(text, icon, coverArt, spec);
     }
 
+    // Game launch with the component spec + accumulated game details (right-side launch panel).
+    public synchronized void show(String text, Bitmap icon, Bitmap coverArt, PreloaderSpec spec, PreloaderDetails details) {
+        PreloaderState.show(text, icon, coverArt, spec, details);
+    }
+
     public void showOnUiThread(final int textResId) {
         activity.runOnUiThread(() -> show(textResId));
     }
@@ -63,6 +68,12 @@ public class PreloaderDialog {
     public void failOnUiThread(final String stage, final String what, final String detail,
                                final String logDir, final boolean loggingEnabled) {
         activity.runOnUiThread(() -> fail(stage, what, detail, logDir, loggingEnabled));
+    }
+
+    // Failure card with extra action buttons (rendered before Close / Open log folder).
+    public synchronized void fail(String stage, String what, String detail, String logDir,
+                                  boolean loggingEnabled, java.util.List<FailureAction> actions) {
+        PreloaderState.fail(stage, what, detail, logDir, loggingEnabled, actions);
     }
 
     public synchronized void close() {

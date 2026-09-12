@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>io.github.joshuatam</groupId>
+  <artifactId>javasteam-depotdownloader</artifactId>
+  <versioning>
+    <lastUpdated>20260804191712</lastUpdated>
+    <snapshot>
+      <timestamp>20260801.180149</timestamp>
+      <buildNumber>1</buildNumber>
+    </snapshot>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>module</extension>
+        <value>1.8.0.1-26-20260801.180149-1</value>
+        <updated>20260801180149</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <classifier>sources</classifier>
+        <extension>jar</extension>
+        <value>1.8.0.1-26-20260801.180149-1</value>
+        <updated>20260801180149</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>jar</extension>
+        <value>1.8.0.1-26-20260801.180149-1</value>
+        <updated>20260801180149</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>1.8.0.1-26-20260801.180149-1</value>
+        <updated>20260801180149</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+  <version>1.8.0.1-26-SNAPSHOT</version>
+</metadata>

@@ -72,6 +72,11 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Honour the user's App-orientation preference (Appearance -> AUTO / PORTRAIT / LANDSCAPE).
+        // The whole Steam section previously ignored it: these activities pinned themselves in the
+        // manifest and never asked. Applied before any content so the first frame is already in the
+        // requested orientation. The game's XServerDisplayActivity is deliberately NOT touched.
+        com.winlator.star.core.AppOrientation.apply(this)
         setContent {
             WinlatorTheme {
                 SteamLoginScreen(
@@ -118,6 +123,14 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         connectWaitListener = null
         super.onDestroy()
         SteamAuthManager.getInstance().cancelAuth()
+        // SteamMainActivity starts the foreground service BEFORE the sign-in check (the sign-in
+        // flow needs the CM channel — it waits on the "Connected" event), so leaving this screen
+        // without a session used to strand an ongoing Steam notification with nothing in the app
+        // able to stop it. Tear it down on the way out unless a download owns the session.
+        val signedIn = try { SteamPrefs.isLoggedIn } catch (t: Throwable) { false }
+        if (isFinishing && !isChangingConfigurations && !signedIn) {
+            SteamForegroundService.stopIfIdle(applicationContext)
+        }
     }
 
     private fun onLoginClicked() {
@@ -198,7 +211,12 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         statusText = "Signed in!"
         isStatusError = false
         isLoading = false
-        startActivity(Intent(this, SteamGamesActivity::class.java))
+        // Back to the store-first host (singleTop + CLEAR_TOP reuses the instance that launched
+        // us, so its onNewIntent/onResume picks up the fresh login without a second copy).
+        startActivity(
+            Intent(this, SteamMainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
         finish()
     }
 

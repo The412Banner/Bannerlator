@@ -37,6 +37,7 @@ internal val ChipDxvkColor = Color(0xFF5BD6A6)
 internal val ChipVkd3dColor = Color(0xFFC08CFF)
 internal val ChipFgColor = Color(0xFFFF6FAE)
 internal val ChipCpuColor = Color(0xFFFF8A5C)
+internal val ChipEosColor = Color(0xFF1A73E8) // Epic Online Services blue (matches the library EOS badge)
 
 // Parse a dxwrapperConfig string ("version=2.4,vkd3dVersion=2.8,...") into (DXVK, VKD3D) versions.
 internal fun parseDxwrapperConfig(cfg: String): Pair<String, String> {
@@ -55,10 +56,12 @@ internal fun rendererLabelOf(renderer: String): String = when (renderer.lowercas
     else -> ""
 }
 
-// Map a frame-gen engine id (bionic/lsfg/off) to a display label, or "" if off/unknown.
+// Map a frame-gen engine id (bionic/lsfg/lsfg-native/off) to a display label,
+// or "" if off/unknown.
 internal fun frameGenLabelOf(engine: String): String = when (engine) {
-    "bionic" -> "Bionic-FG"
+    "bionic" -> "Win-FG Native"
     "lsfg" -> "LSFG-VK"
+    "lsfg-native" -> "LSFG Native"
     else -> ""
 }
 
@@ -73,8 +76,9 @@ internal fun SpecChipRows(
     driverLabel: String,
     vkd3dVersion: String,
     backendLabel: String,
+    eosEnabled: Boolean = false,
 ) {
-    val hasPrimary = rendererLabel.isNotEmpty() || dxvkVersion.isNotEmpty() || frameGenLabel.isNotEmpty()
+    val hasPrimary = rendererLabel.isNotEmpty() || dxvkVersion.isNotEmpty() || frameGenLabel.isNotEmpty() || eosEnabled
     if (hasPrimary) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -87,6 +91,8 @@ internal fun SpecChipRows(
             if (rendererLabel.isNotEmpty()) CompChip(rendererLabel, MaterialTheme.colorScheme.primary)
             if (dxvkVersion.isNotEmpty()) CompChip("DXVK $dxvkVersion", MaterialTheme.colorScheme.primary)
             if (frameGenLabel.isNotEmpty()) CompChip(frameGenLabel, ChipFgColor)
+            // EOS auth-injection active for this Epic launch — its own blue identity chip.
+            if (eosEnabled) CompChip("EOS", ChipEosColor)
         }
     }
     val secondary = buildList {

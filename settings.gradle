@@ -16,6 +16,26 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // topjohnwu libsu (root shell for the power-user perf toggles) is jitpack-only.
+        maven { url 'https://jitpack.io' }
+        // JavaSteam depot-downloader fork (io.github.joshuatam) — GameNative's disk-spooling engine
+        // that fixes the large-game download OOM (#408). VENDORED in-repo (see vendor/maven/README.md)
+        // so the build never depends on Sonatype's snapshot server, which may purge old snapshots.
+        // Scoped to io.github.joshuatam only; the fork's transitive deps (ktor/okhttp/protobuf/…) still
+        // resolve from mavenCentral. To update: mirror the new snapshot dir here + bump app/build.gradle.
+        maven {
+            url = uri("${rootDir}/vendor/maven")
+            content { includeGroup 'io.github.joshuatam' }
+        }
+        // SDL3 official Android release AAR (Steam Controller support). SDL ships it only as a GitHub
+        // release asset, so it is VENDORED unmodified (see vendor/maven/README.md); exclusive so the
+        // group is never looked up on a remote repository.
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("${rootDir}/vendor/maven") }
+            }
+            filter { includeGroup 'org.libsdl.android' }
+        }
     }
 }
 

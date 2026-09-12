@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-13T05-50-55-ffe524",
+  "created": "2026-08-13T05:50:55.663Z",
+  "ip_hash": "Jb4NSgGPj/",
+  "fields": {
+    "reporter_name": "Rayhan",
+    "device_model": "Iqoo Z10x",
+    "soc": "Dimensity 7300",
+    "gpu": "Mali-G615 MC2",
+    "android": "Origin OS 5 - Android 15",
+    "ram": "8GB",
+    "app_version": "2.9.9",
+    "install_source": "GitHub release",
+    "game_name": "Pro Evolution Soccer - 2017",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "PES2017.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1 Sarek",
+    "proton": "Proton 11.0 Arm64ec",
+    "box64": "Performance (FSO)",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "The issue is pretty straightforward, The Border lines of football field shows black lines, and its consistent, like I used different Proton version, Different wrapper, Graphics settinfs, different Bcn settings, its the same. Everything else looks and runs fine.",
+    "tried": "Changing Wrappers, Perfomance Settings, Container settings, DXVK settings, etc."
+  },
+  "logs": [
+    {
+      "name": "IMG_20260813_113520.jpg"
+    }
+  ]
+}

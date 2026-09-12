@@ -49,8 +49,13 @@ object ComponentExecInstaller {
     private val SUPPORTED_ACTIONS = LOCAL_ACTIONS + EXEC_ACTIONS
 
     // Keys inside an install_exe `environment` object that describe the file, not env vars.
+    // `local_file`  — an already-staged installer on the Android side (GOG redists): copy it into the
+    //                 container instead of downloading (see launchInstaller).
+    // `component_marker` — an idempotency marker (e.g. "GOG:MSVC2017_x64") recorded per-step so a
+    //                 multi-installer plan records each piece, not just the umbrella component name.
     private val INSTALL_FILE_KEYS = setOf(
-        "file_name", "url", "mirror", "rename", "file_checksum", "file_size", "arguments", "for"
+        "file_name", "url", "mirror", "rename", "file_checksum", "file_size", "arguments", "for",
+        "local_file", "component_marker"
     )
 
     sealed class Result {
@@ -99,6 +104,15 @@ object ComponentExecInstaller {
         }
 
     fun clearPlan(context: Context) = prefs(context).edit().remove(PREF_PLAN).apply()
+
+    /** Record a completed install into the shared per-container store the UI reads (component_installs,
+     *  key "c<id>"). Called at Result.Done so session/resume installs are finally tracked. */
+    private fun recordInstalled(context: Context, containerId: Int, name: String) {
+        val p = context.getSharedPreferences("component_installs", Context.MODE_PRIVATE)
+        val key = "c$containerId"
+        val cur = p.getStringSet(key, emptySet()) ?: emptySet()
+        if (name !in cur) p.edit().putStringSet(key, cur + name).apply()
+    }
 
     private fun savePlan(context: Context, containerId: Int, name: String, steps: List<ComponentStep>, cursor: Int) {
         val arr = JSONArray()
@@ -163,6 +177,12 @@ object ComponentExecInstaller {
                         // Persist the cursor PAST this step (optimistic) before we leave for the session,
                         // so resume continues after it once the app restarts.
                         savePlan(context, container.id, name, steps, i + 1)
+                        // Optimistically record this step's own idempotency marker (e.g. a GOG redist's
+                        // "GOG:<depId>"), matching the fire-and-forget model: the session that runs the
+                        // installer restarts the app, so we can't confirm afterwards from here. Lets a
+                        // multi-redist plan mark each redist installed, not just the umbrella component.
+                        val marker = installFields(step).first.optString("component_marker")
+                        if (marker.isNotEmpty()) recordInstalled(context, container.id, marker)
                         launchInstaller(context, container, name, step, onProgress)
                         return Result.Launched
                     }
@@ -176,6 +196,10 @@ object ComponentExecInstaller {
             // Reached the end with no further installer — done. Drop the staged installer exes.
             File(root, ".wine/drive_c/windows/temp/bannerlator_components").deleteRecursively()
             clearPlan(context)
+            // Record the install at the SOURCE so it sticks even though completion happens after the
+            // container session restarts the app (the resume path lands here too). Same store/key the
+            // ComponentsSheet + recommendation chips read, so installed-state is finally accurate.
+            recordInstalled(context, container.id, name)
             onProgress(1f)
             return Result.Done
         } catch (e: Exception) {
@@ -189,6 +213,17 @@ object ComponentExecInstaller {
 
     // ---- install_exe / install_msi --------------------------------------------------------------
 
+    /** Install-argument tokens that suppress the installer UI — dropped so the wizard is visible on
+     *  the container desktop (functional flags like /norestart or TRANSFORMS=… are kept). */
+    private val SILENT_ARGS = setOf(
+        "/q", "/qn", "/qb", "/quiet", "/silent", "/s", "/passive", "/verysilent",
+        "-q", "-qn", "-quiet", "-silent", "-s", "-passive",
+    )
+
+    /** Remove silent/quiet flags from an installer's argument string. */
+    private fun visibleArgs(args: String): String =
+        args.split(Regex("""\s+""")).filter { it.isNotBlank() && it.lowercase() !in SILENT_ARGS }.joinToString(" ")
+
     /** Resolve an install step's file fields from either the top level or a nested `environment` object. */
     private fun installFields(step: ComponentStep): Pair<JSONObject, JSONObject?> {
         val env = step.obj.optJSONObject("environment")
@@ -201,24 +236,42 @@ object ComponentExecInstaller {
         context: Context, container: Container, name: String, step: ComponentStep, onProgress: (Float) -> Unit,
     ) {
         val (fields, env) = installFields(step)
-        val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
-        if (!url.startsWith("http")) throw IllegalStateException("$name: installer has no download URL")
-        val rawName = fields.optString("rename").ifEmpty {
-            fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') }
-        }
-        val safe = rawName.replace(Regex("""[\\/:*?"<>|]"""), "_").ifEmpty { "installer.exe" }
 
-        // Stage the installer inside the container's drive_c so it's reachable from Wine.
+        // A GOG redist (or any caller) can hand us an installer already assembled on the Android side
+        // via `local_file`; then we skip the network download entirely and just copy it into the
+        // container's drive_c. Otherwise fall back to the mirror/url download (system components).
+        val localFile = fields.optString("local_file")
         val destDir = File(container.rootDir, ".wine/drive_c/windows/temp/bannerlator_components").apply { mkdirs() }
-        val installer = File(destDir, safe)
-        if (!Downloader.downloadFile(url, installer) { f -> onProgress(f) })
-            throw IllegalStateException("$name: download failed ($safe)")
+        val installer: File
+        if (localFile.isNotEmpty()) {
+            val src = File(localFile)
+            if (!src.isFile) throw IllegalStateException("$name: pre-staged installer missing ($localFile)")
+            val rawName = fields.optString("rename").ifEmpty { fields.optString("file_name").ifEmpty { src.name } }
+            val safe = rawName.replace(Regex("""[\\/:*?"<>|]"""), "_").ifEmpty { "installer.exe" }
+            installer = File(destDir, safe)
+            src.copyTo(installer, overwrite = true)
+            onProgress(1f)
+        } else {
+            val url = fields.optString("mirror").ifEmpty { fields.optString("url") }
+            if (!url.startsWith("http")) throw IllegalStateException("$name: installer has no download URL")
+            val rawName = fields.optString("rename").ifEmpty {
+                fields.optString("file_name").ifEmpty { url.substringBefore('?').substringAfterLast('/') }
+            }
+            val safe = rawName.replace(Regex("""[\\/:*?"<>|]"""), "_").ifEmpty { "installer.exe" }
+            installer = File(destDir, safe)
+            if (!Downloader.downloadFile(url, installer) { f -> onProgress(f) })
+                throw IllegalStateException("$name: download failed ($safe)")
+        }
+        val safe = installer.name
 
         // Wine runs an .exe directly and associates .msi with msiexec, so handing either to
-        // `wine <path>` works; we pass the manifest's arguments through unchanged.
+        // `wine <path>` works. The container session already opens a Wine desktop
+        // (XServerDisplayActivity: `wine explorer /desktop=shell,…`), so instead of running the
+        // installer SILENTLY (which draws nothing → the user just sees a black desktop), we strip
+        // the silent flags so the installer's own wizard is visible and clickable on that desktop.
         val winPath = WinePath.resolveWindowsPath(container, installer.absolutePath)
         val execTarget = WinePath.escapeForExec(winPath)
-        val execArgs = fields.optString("arguments").trim()
+        val execArgs = visibleArgs(fields.optString("arguments").trim())
 
         // Env vars = whatever's in the environment object that isn't a file field (e.g. WINEDLLOVERRIDES).
         val envPairs = StringBuilder()

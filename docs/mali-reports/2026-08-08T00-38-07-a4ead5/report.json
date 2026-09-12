@@ -1,0 +1,41 @@
+{
+  "id": "2026-08-08T00-38-07-a4ead5",
+  "created": "2026-08-08T00:38:07.202Z",
+  "ip_hash": "2RrLCzNxaD",
+  "fields": {
+    "reporter_name": "split",
+    "device_model": "vivo x200s",
+    "soc": "MediaTek Dimensity 9400+",
+    "gpu": "Mali-G925-Immortalis MC12",
+    "android": "originOS 6/Android 16",
+    "ram": "16G",
+    "app_version": "2.9",
+    "install_source": "",
+    "game_name": "Forza Horizon 4",
+    "steam_appid": "",
+    "store": "",
+    "exe": "ForzaHorizon4.exe",
+    "symptom": "图形故障(损坏、闪烁、缺少纹理)",
+    "when": "仅在特定区域/场景中",
+    "graphics_driver": "System",
+    "dx_wrapper": "",
+    "dxvk": "Above 2.0, vkd3d 3.0以上",
+    "proton": "Proton-10.0-4-arm64ec-3",
+    "box64": "Performance/Balancing",
+    "resolution": "1280×720",
+    "framegen": "no",
+    "repro": "1. Launch the game. \n2. The game begins loading.\n3. After the game window appears, the copyright notice fails to display. \n4. The opening‑screen dashboard is shown; with frame‑synchronization enabled, the visuals run smoothly, but when it’s disabled, the frame rate stutters. 5. Upon successfully reaching the main menu, the video playback stutters. Prior to this, when preparing to enter the game, the audio responds first, followed by the graphics rendering; once the visuals are rendered, the audio also starts stuttering in sync with the video. \n6. Click “Start Game” (set to the lowest graphics settings). \n7. The game displays a message: “Optimizing your PC.” The loading‑screen background image does not appear and instead shows colored streaks. During the loading process, between 4% and 10%, an error may occur at any point within that range. The primary error message is: “Assertion failed. vkCreateShaderModule.”",
+    "tried": "Thanks to the developers for their help.\nI have tried all the methods you mentioned, but the problem has not changed. Maybe my debugging has reached the current compatibility bottleneck.Thank you for your reply!"
+  },
+  "logs": [
+    {
+      "name": "wine_debug.log"
+    },
+    {
+      "name": "vkd3d-proton.log"
+    },
+    {
+      "name": "ForzaHorizon4_dxgi.log"
+    }
+  ]
+}

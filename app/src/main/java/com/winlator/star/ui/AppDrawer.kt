@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,14 +55,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
 import com.winlator.star.communityconfigs.AccountManager
+import com.winlator.star.core.StorageRoots
+import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.theme.LocalAccentDim
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private fun iconFor(screen: Screen): Int = when (screen) {
     Screen.Containers    -> R.drawable.icon_menu_container
     Screen.Games         -> R.drawable.icon_games
+    Screen.Contents      -> R.drawable.icon_menu_contents
     Screen.InputControls -> R.drawable.icon_gamepad
     Screen.AdrenoTools   -> R.drawable.icon_menu_gpu
     Screen.Saves         -> R.drawable.icon_save
+    Screen.SaveManager   -> R.drawable.icon_save
     Screen.FileManager   -> R.drawable.icon_menu_file_manager
     Screen.Settings      -> R.drawable.icon_settings
     Screen.Appearance    -> R.drawable.icon_palette
@@ -106,16 +113,22 @@ fun AppDrawerContent(
         DrawerItem(Screen.Games,         currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.FileManager,   currentRoute, onNavigate)
+        DrawerItem(Screen.SaveManager,   currentRoute, onNavigate)
 
         DrawerSectionHeader("System", showDivider = true)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
-        DrawerItem(Screen.Appearance,    currentRoute, onNavigate, showNew = true)
+        DrawerItem(Screen.Appearance,    currentRoute, onNavigate)
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
-        DrawerItem(Screen.AdrenoTools,   currentRoute, onNavigate)
+        DrawerItem(Screen.Contents,      currentRoute, onNavigate)
 
-        DrawerSectionHeader("Stores", note = "· unchanged", showDivider = true)
-        Screen.storeItems.forEach { screen ->
-            DrawerStoreItem(screen, onLaunchStore)
+        // Hideable from Appearance — the whole section, header included, so turning it off
+        // leaves no orphaned divider behind.
+        val showStores by AppThemeState.showStores.collectAsState()
+        if (showStores) {
+            DrawerSectionHeader("Stores", note = "· unchanged", showDivider = true)
+            Screen.storeItems.forEach { screen ->
+                DrawerStoreItem(screen, onLaunchStore)
+            }
         }
 
         HorizontalDivider(
@@ -134,7 +147,6 @@ fun AppDrawerContent(
             onClick = { showHelp = true },
         )
 
-        Spacer(Modifier.height(8.dp))
         StorageWidget()
         Spacer(Modifier.height(12.dp))
     }
@@ -184,6 +196,10 @@ private fun DrawerAccountHeader(account: AccountManager.Account?, onMyAccount: (
                 )
             }
         }
+        // Steam connection status next to the account name (self-gates to signed-in users; tap when
+        // offline to retry). Its own click consumes the tap, so it won't trigger the header's onMyAccount.
+        Spacer(Modifier.width(8.dp))
+        com.winlator.star.store.SteamConnectionPill()
     }
     HorizontalDivider(
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
@@ -223,8 +239,12 @@ private fun DrawerSectionHeader(title: String, note: String? = null, showDivider
 
 @Composable
 private fun StorageWidget() {
+    val context = LocalContext.current
     var usedBytes by remember { mutableStateOf(0L) }
     var totalBytes by remember { mutableStateOf(0L) }
+    // Removable volumes found at open, as (label, used, total). Empty on a device with no card,
+    // which is the normal case — the row simply does not appear.
+    var removable by remember { mutableStateOf<List<Triple<String, Long, Long>>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         try {
@@ -235,8 +255,54 @@ private fun StorageWidget() {
             usedBytes = total - available
             totalBytes = total
         } catch (_: Exception) {}
+
+        // Ask StorageRoots rather than listing /storage here. A card can be mounted and healthy
+        // yet missing from this process's mount view, which is exactly what made earlier SD
+        // detection unreliable; StorageRoots already reconciles StorageManager, the app-specific
+        // dirs and the filesystem listing.
+        // Off the main thread: this crosses Binder to StorageManager and lists directories, and
+        // it runs while the drawer is opening.
+        removable = withContext(Dispatchers.IO) {
+            try {
+                StorageRoots.list(context)
+                    .filter { it.removable }
+                    .mapNotNull { root ->
+                        try {
+                            val stat = StatFs(root.dir.path)
+                            val total = stat.totalBytes
+                            // A volume we cannot stat reports zero. A card reading "0 B / 0 B" is
+                            // worse than no card at all, so drop it instead.
+                            if (total <= 0L) null
+                            else Triple(root.label, total - stat.availableBytes, total)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
     }
 
+    val showInternal by AppThemeState.showInternalStorage.collectAsState()
+    val showSd by AppThemeState.showSdStorage.collectAsState()
+    val sdCards = if (showSd) removable else emptyList()
+    val anyShown = (showInternal && totalBytes > 0) || sdCards.isNotEmpty()
+
+    // Leading spacer lives here rather than at the call site, so turning both cards off leaves no
+    // dead gap at the bottom of the drawer.
+    if (anyShown) Spacer(Modifier.height(8.dp))
+    if (showInternal) {
+        StorageCard("Internal Storage", usedBytes, totalBytes)
+    }
+    sdCards.forEachIndexed { index, (label, used, total) ->
+        if (showInternal || index > 0) Spacer(Modifier.height(4.dp))
+        StorageCard(label, used, total)
+    }
+}
+
+@Composable
+private fun StorageCard(label: String, usedBytes: Long, totalBytes: Long) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -253,7 +319,7 @@ private fun StorageWidget() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Storage",
+                    text = label,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,

@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-29T06-26-16-23041b",
+  "created": "2026-07-29T06:26:16.052Z",
+  "ip_hash": "yyWOT/FlzH",
+  "fields": {
+    "reporter_name": "Unknown",
+    "device_model": "Infinix hot 30i",
+    "soc": "Mediatek",
+    "gpu": "G37",
+    "android": "12",
+    "ram": "",
+    "app_version": "2.9.1",
+    "install_source": "GitHub release",
+    "game_name": "Eruo simulator",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Other",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "WineD3D",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "Please add virgl",
+    "tried": "Virgl recruitment"
+  },
+  "logs": []
+}

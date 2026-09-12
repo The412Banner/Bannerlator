@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-31T12-36-00-7e5f08",
+  "created": "2026-08-31T12:36:00.655Z",
+  "ip_hash": "Sf4B0l6fks",
+  "fields": {
+    "reporter_name": "Air",
+    "device_model": "Samsung a24",
+    "soc": "",
+    "gpu": "Mali G57 mc2",
+    "android": "Android 16",
+    "ram": "8gb",
+    "app_version": "3.0.1",
+    "install_source": "GitHub release",
+    "game_name": "Pes 2017",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Pes2017.exe",
+    "symptom": "Runs but very low FPS",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.7.2",
+    "proton": "Proton 11.1",
+    "box64": "Performa/performa",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "1.open game\n2.run ganme \n3. 2 ...3 minuts force close",
+    "tried": ""
+  },
+  "logs": []
+}

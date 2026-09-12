@@ -5,8 +5,12 @@ import android.util.Log
 import com.winlator.star.store.download.DownloadEntry
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadState
+import com.winlator.star.store.download.MediaImage
+import com.winlator.star.store.download.MediaVideo
 import com.winlator.star.store.download.Store
+import com.winlator.star.store.download.StoreMedia
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -81,6 +85,67 @@ object AmazonLibrarySync {
             }
             null
         }.getOrNull()
+    }
+
+    // ── Media (screenshots + trailers) ─────────────────────────────────────────────────────
+    // Amazon has no media endpoint: everything comes with GetEntitlements and lives in the
+    // library cache, so the Media tab is offline and costs no request — but a cache written
+    // before these keys existed has no media until the library re-syncs.
+
+    private const val KEY_SHOTS = "screenshots"
+    private const val KEY_VIDEOS = "videos"
+    private const val KEY_TRAILER_IMG = "trailerImageUrl"
+
+    /** Writes the media lists of [g] into a cache row; shared by every `amazon_library_cache` writer. */
+    fun putMedia(j: JSONObject, g: AmazonGame) {
+        j.put(KEY_SHOTS, JSONArray(g.screenshots))
+        j.put(KEY_VIDEOS, JSONArray(g.videos))
+        j.put(KEY_TRAILER_IMG, g.trailerImageUrl)
+    }
+
+    /** Reads the media lists of a cache row into [g]; missing keys leave them empty. */
+    fun readMedia(j: JSONObject, g: AmazonGame) {
+        g.screenshots = stringList(j.optJSONArray(KEY_SHOTS))
+        g.videos = stringList(j.optJSONArray(KEY_VIDEOS))
+        g.trailerImageUrl = j.optString(KEY_TRAILER_IMG, "")
+    }
+
+    private fun stringList(arr: JSONArray?): MutableList<String> {
+        val out = ArrayList<String>()
+        if (arr != null) for (i in 0 until arr.length()) arr.optString(i, "").takeIf { it.isNotBlank() }?.let { out.add(it) }
+        return out
+    }
+
+    /**
+     * The cached media of one game as the shared [StoreMedia], or null when the cache has none
+     * for it (never synced, or synced before media was recorded). Videos are direct mp4s; the
+     * poster is Amazon's trailer image, else the first screenshot. Never throws.
+     */
+    fun cachedMedia(ctx: Context, productId: String): StoreMedia? {
+        if (productId.isEmpty()) return null
+        return runCatching {
+            val json = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(CACHE_KEY, null) ?: return null
+            val arr = JSONArray(json)
+            for (i in 0 until arr.length()) {
+                val j = arr.optJSONObject(i) ?: continue
+                if (j.optString("productId", "") != productId) continue
+                return mediaOf(j)
+            }
+            null
+        }.getOrNull()
+    }
+
+    /** Pure mapping of one cache row to [StoreMedia] (null when it has no media). */
+    fun mediaOf(j: JSONObject): StoreMedia? {
+        val g = AmazonGame()
+        readMedia(j, g)
+        val shots = g.screenshots.take(24).map { MediaImage(thumb = it, full = it) }
+        val poster = g.trailerImageUrl.ifBlank { null } ?: shots.firstOrNull()?.thumb
+        val videos = g.videos.mapIndexed { i, url ->
+            MediaVideo.Direct(url = url, poster = poster, title = if (g.videos.size == 1) "Trailer" else "Trailer ${i + 1}")
+        }
+        return StoreMedia(shots, videos).takeIf { !it.isEmpty }
     }
 
     private val seeded = AtomicBoolean(false)

@@ -21,9 +21,15 @@ permissions:
   issues: write
   contents: read
 
+# One group per issue AND per event: an issue created WITH a label (the form
+# template, or `gh issue create --label`) fires `opened` and `labeled` a second
+# apart. With a single per-issue group + cancel-in-progress, the `labeled` run
+# cancelled the real `opened` run and was then itself skipped by the job `if`,
+# so the issue never got an answer. Keying the group on the action/label keeps
+# the two apart; queueing (not cancelling) covers any remaining overlap.
 concurrency:
-  group: ama-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  group: ama-${{ github.event.issue.number }}-${{ github.event.action }}-${{ github.event.label.name }}
+  cancel-in-progress: false
 
 jobs:
   answer:
@@ -117,6 +123,20 @@ jobs:
         # ask in the title with an empty body).
         QUESTION=$(printf 'Title: %s\n\n%s' "$TITLE" "$QUESTION")
         QUESTION=$(printf '%s' "$QUESTION" | head -c 4000)
+        # Tell the bot which release is current so it can ask reporters on older
+        # builds to update first (read from the checked-out build.gradle, trusted).
+        VER=$(grep -m1 'versionName' app/build.gradle | sed -E 's/.*"([^"]+)".*/\1/')
+        # The checkout is the development branch, usually AHEAD of that release.
+        # Fetch just the release tag's tree and list app files changed since, so
+        # the bot can tell "on main" apart from "in the release you can install".
+        CHANGED=""
+        if [ -n "$VER" ] && git fetch -q --depth=1 origin "refs/tags/$VER:refs/tags/$VER" 2>/dev/null; then
+          CHANGED=$(git diff --name-only "refs/tags/$VER" HEAD -- app/src rust 2>/dev/null | head -80)
+          if [ -z "$CHANGED" ]; then CHANGED="(none — the code matches the release)"; fi
+        else
+          CHANGED="(unknown — could not compare against the release tag)"
+        fi
+        QUESTION=$(printf 'Context: the current Bannerlator release users can install is %s. The code you are reading is the development branch, which may be newer than that release. App files changed since the %s release (these changes are NOT in any release yet):\n%s\n\nIssue from a user:\n%s' "${VER:-unknown}" "${VER:-unknown}" "$CHANGED" "$QUESTION")
         {
           echo "q<<__Q_EOF__"
           printf '%s\n' "$QUESTION"
@@ -174,6 +194,21 @@ jobs:
           | [ $t[] | select(.part.messageID == $mid) | .part.text ]
           | join("")
         ' 2>/dev/null || true)
+
+        # The agent is told to print a single `<<<ANSWER>>>` line and put the
+        # whole reply after it. Keep only what follows the LAST marker so any
+        # reasoning the model narrated before it ("Let me write the answer",
+        # "I now have everything I need") never reaches the issue. If the model
+        # forgot the marker, fall back to dropping leading narration lines.
+        if printf '%s' "$ANSWER" | grep -q '<<<ANSWER>>>'; then
+          ANSWER=$(printf '%s\n' "$ANSWER" | awk '/<<<ANSWER>>>/{buf=""; next} {buf=buf $0 "\n"} END{printf "%s", buf}')
+        else
+          ANSWER=$(printf '%s\n' "$ANSWER" | awk '
+            BEGIN{skip=1}
+            skip && ($0 ~ /^[[:space:]]*$/ || $0 ~ /^(I now have|I have (all|everything)|Let me |Now I |Now that I|Based on (my|the) |Key facts|The key facts|Here.s (my|the) )/) {next}
+            {skip=0; print}')
+        fi
+        ANSWER=$(printf '%s' "$ANSWER" | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}')
 
         if [ -z "$ANSWER" ] || [ "$ANSWER" = "null" ]; then
           ANSWER="⚠️ No answer generated. The AI may have timed out or hit an error."

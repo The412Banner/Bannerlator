@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-05T11-01-56-77ad96",
+  "created": "2026-08-05T11:01:56.661Z",
+  "ip_hash": "FWYLlD/RPC",
+  "fields": {
+    "reporter_name": "kLow",
+    "device_model": "Redmi Turbo 5 max",
+    "soc": "Dimensity 9500s",
+    "gpu": "Mali-G925-Immortalis-MC12",
+    "android": "Android 16",
+    "ram": "12",
+    "app_version": "2.9.5",
+    "install_source": "GitHub release",
+    "game_name": "Hellblade Senua's Sacrifice",
+    "steam_appid": "414340",
+    "store": "Other",
+    "exe": "HellbladeGame.exe",
+    "symptom": "Freezes / hangs",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.7.2",
+    "proton": "Proton-10.0-arm64ec-0",
+    "box64": "Compatibility/ Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "1. Open Game\n2. Tap continue game\n3. Game froze after booting up",
+    "tried": "I already switch to any possible graphics driver, dxvk, i even ran dx12 version with it but it still froze in that cutscene."
+  },
+  "logs": [
+    {
+      "name": "wine_debug.log"
+    }
+  ]
+}

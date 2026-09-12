@@ -8,11 +8,15 @@ public abstract class DefaultVersion {
     public static final String FEXCORE = "2508";
     public static final String WRAPPER = "System";
     public static final String WRAPPER_ADRENO = "turnip-sdk36";
-    // Direct Vulkan ICD turnip (Mesa Turnip 26.1.0, ICD format). Loaded as a plain system
-    // Vulkan ICD (VK_ICD_FILENAMES -> freedreno_icd.aarch64.json) WITHOUT the adrenotools /
-    // linkernsbypass linker-namespace hook, so it works on Android < 11 (e.g. SD845/Adreno 630
-    // on Android 10). Asset: graphics_driver/turnip-26.1.0.tzst (Mesa, MIT; from Winlator v11.1).
-    public static final String WRAPPER_TURNIP_ICD = "turnip-26.1.0";
+    /**
+     * REMOVED driver id, kept ONLY so saved containers/shortcuts can be recognised and migrated.
+     *
+     * Was the direct Vulkan ICD turnip (Mesa Turnip 26.1.0) — loaded as a plain system Vulkan ICD
+     * without the adrenotools / linkernsbypass hook, which made it the only turnip that worked on
+     * Android &lt; 11 (#18, SD845/Adreno 630 on Android 10). The bundled asset and its selection
+     * entry are gone; anything still pointing at it falls back to {@link #WRAPPER} at launch.
+     */
+    public static final String REMOVED_TURNIP_ICD = "turnip-26.1.0";
 
     private static String dxvkDefault = null;
 

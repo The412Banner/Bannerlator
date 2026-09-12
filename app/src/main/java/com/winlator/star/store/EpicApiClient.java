@@ -162,13 +162,19 @@ public class EpicApiClient {
                 }
             }
 
-            // CanRunOffline from customAttributes
+            // CanRunOffline + CloudSaveFolder from customAttributes
             JSONObject attrs = item.optJSONObject("customAttributes");
             if (attrs != null) {
                 JSONObject offlineAttr = attrs.optJSONObject("CanRunOffline");
                 if (offlineAttr != null) {
                     game.canRunOffline = !"false".equalsIgnoreCase(offlineAttr.optString("value", "true"));
                 }
+                // CloudSaveFolder = the Windows-platform save-folder token string Epic ships for
+                // cloud-save-enabled titles (e.g. "{userdir}/My Games/<Game>/Saves"). Its presence
+                // (non-empty value) is our cloudSaveEnabled signal. Persisted per-game so the Save
+                // Manager's Epic tab can resolve it to a real prefix dir without another catalog call.
+                game.cloudSaveFolder = parseCloudSaveFolder(attrs);
+                game.cloudSaveEnabled = !game.cloudSaveFolder.isEmpty();
             }
 
             // Release date
@@ -248,6 +254,48 @@ public class EpicApiClient {
             return total;
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    /**
+     * Pull the raw CloudSaveFolder token string out of a catalog item's customAttributes, or "" if
+     * the title isn't cloud-save enabled. The Windows-platform key is preferred; a bare
+     * `CloudSaveFolder` is the common shape.
+     */
+    private static String parseCloudSaveFolder(JSONObject customAttributes) {
+        String[] keys = { "CloudSaveFolder", "CloudSaveFolder_Windows" };
+        for (String k : keys) {
+            JSONObject attr = customAttributes.optJSONObject(k);
+            if (attr == null) continue;
+            String value = attr.optString("value", "");
+            if (value != null && !value.isEmpty()) return value;
+        }
+        return "";
+    }
+
+    /**
+     * On-demand fetch of just the CloudSaveFolder token string for a game (namespace + catalogItemId),
+     * for the Save Manager Epic tab when the store list was never enriched this install. Returns "" if
+     * unavailable / not cloud-save enabled. Network call — off the main thread.
+     */
+    public static String getCloudSaveFolder(String accessToken, String namespace, String catalogItemId) {
+        if (namespace == null || namespace.isEmpty() || catalogItemId == null || catalogItemId.isEmpty()) return "";
+        try {
+            String url = CATALOG_BASE + "/" + namespace
+                    + "/bulk/items?id=" + catalogItemId
+                    + "&includeMainGameDetails=true&country=US";
+            String resp = getWithLegendaryUA(url, accessToken);
+            if (resp == null) return "";
+            JSONObject root = new JSONObject(resp);
+            JSONObject item = root.optJSONObject(catalogItemId);
+            if (item == null && root.length() > 0) item = root.optJSONObject(root.keys().next());
+            if (item == null) return "";
+            JSONObject attrs = item.optJSONObject("customAttributes");
+            if (attrs == null) return "";
+            return parseCloudSaveFolder(attrs);
+        } catch (Exception e) {
+            Log.e(TAG, "getCloudSaveFolder failed", e);
+            return "";
         }
     }
 

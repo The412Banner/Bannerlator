@@ -1,0 +1,1 @@
+- 22:20 — ⭐ **Titanfall 2 BOOTS** on the `-arm64ec-5` layers (user report). ⚠️ cause NOT established: the layer fixes and EA Desktop being present in the container changed together — no A/B done. Added to the 3.0.8 notes/README/live release body with that caveat stated. ⏭️ optional A/B: same container on a `-4` layer, or a container without EA Desktop.

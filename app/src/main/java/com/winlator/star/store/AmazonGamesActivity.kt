@@ -10,6 +10,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -357,7 +360,7 @@ class AmazonGamesActivity : ComponentActivity() {
     private fun onInstallOrLaunch(game: AmazonGame) {
         val exe = prefs!!.getString("amazon_exe_${game.productId}", null)
         if (exe != null) {
-            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl)
+            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl, "amazon", true)
             return
         }
         installConfirmGame = game
@@ -366,7 +369,7 @@ class AmazonGamesActivity : ComponentActivity() {
     private fun launchAdd(game: AmazonGame) {
         val exe = prefs!!.getString("amazon_exe_${game.productId}", null)
         if (exe != null) {
-            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl)
+            StarLaunchBridge.addToLauncher(this, game.title, exe, game.artUrl, "amazon", true)
         }
     }
 
@@ -652,6 +655,7 @@ class AmazonGamesActivity : ComponentActivity() {
                 j.put("versionId", g.versionId)
                 j.put("downloadSize", g.downloadSize)
                 j.put("installSize", g.installSize)
+                AmazonLibrarySync.putMedia(j, g)
                 arr.put(j)
             }
             prefs!!.edit().putString(CACHE_KEY, arr.toString()).apply()
@@ -681,6 +685,7 @@ class AmazonGamesActivity : ComponentActivity() {
                 g.versionId = j.optString("versionId", "")
                 g.downloadSize = j.optLong("downloadSize", 0L)
                 g.installSize = j.optLong("installSize", 0L)
+                AmazonLibrarySync.readMedia(j, g)
                 games.add(g)
             }
             return games
@@ -1450,7 +1455,11 @@ private fun ExePickerDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select game executable") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 candidates.forEach { path ->
                     val f = File(path)
                     val parent = f.parentFile

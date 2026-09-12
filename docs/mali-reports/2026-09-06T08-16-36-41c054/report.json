@@ -1,0 +1,35 @@
+{
+  "id": "2026-09-06T08-16-36-41c054",
+  "created": "2026-09-06T08:16:36.608Z",
+  "ip_hash": "A9x3p8HTLl",
+  "fields": {
+    "reporter_name": "Knight",
+    "device_model": "Redmi 13c",
+    "soc": "Helllio g85",
+    "gpu": "Mali. G52",
+    "android": "Android 15",
+    "ram": "4",
+    "app_version": "3.0.6",
+    "install_source": "GitHub release",
+    "game_name": "NFS mw 2005",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11",
+    "proton": "Proton 10",
+    "box64": "Performance",
+    "resolution": "800×600",
+    "framegen": "No",
+    "repro": "1",
+    "tried": "Switched dxvk I have tried everything"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-09-06-11-10-27-729_com.ludashi.benchmark.jpg"
+    }
+  ]
+}

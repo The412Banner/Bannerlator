@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-07T14-41-10-021a5c",
+  "created": "2026-08-07T14:41:10.621Z",
+  "ip_hash": "vrb6LSGugA",
+  "fields": {
+    "reporter_name": "Wawa",
+    "device_model": "17t pro",
+    "soc": "Dimensity 9509",
+    "gpu": "Mali g1 ultra",
+    "android": "16",
+    "ram": "12",
+    "app_version": "2.9.6",
+    "install_source": "GitHub release",
+    "game_name": "Dishonored",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Dishonored exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1",
+    "proton": "Proton 10",
+    "box64": "Performane",
+    "resolution": "1290*720",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

@@ -1,0 +1,93 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme
+WINEPREFIX: /data/user/0/com.ludashi.benchmark/files/imagefs/home/xuser/.wine
+Container ID: 1
+Shortcut file: /data/user/0/com.ludashi.benchmark/files/imagefs/home/xuser-1/.wine/drive_c/users/xuser/Desktop/HellbladeGame.desktop
+Shortcut path (resolved): D:\1DM\Compressed\Hellblade\Hellblade Senuas Sacrifice\HellbladeGame.exe
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=1.7.2-0,framerate=0,async=0,asyncCache=0,vkd3dVersion=None,vkd3dLevel=12_1,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,dxvkConfigFile=
+vkd3dVersion (parsed): None
+dxvk version (parsed): 1.7.2-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-1.7.2-0;vkd3d-None;none
+expected full string: dxvk-1.7.2-0;vkd3d-None;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:hid:pdo_pnp_dispatch Failed to start device 0000000000913390, status 0xc0000005
+0070:fixme:hid:bus_create_hid_device failed to create device error 0xc0000035
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00b4:fixme:fsync:do_fsync futexes not supported on this platform.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.23] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+_r_debug not found in ld.so
+00c8:fixme:fsync:do_fsync futexes not supported on this platform.
+00c8:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+00c8:fixme:virtual:NtQueryVirtualMemory (0xffffffffffffffff,0x21ccd0,info_class=1002,0x21cce0,16,0x0) Unknown information class
+00b4:err:ole:start_rpcss Failed to start RpcSs service
+00c8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccb8,0x00000008) stub
+00b4:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+_r_debug not found in ld.so
+00dc:fixme:fsync:do_fsync futexes not supported on this platform.
+00dc:err:environ:init_peb starting L"D:\\1DM\\Compressed\\Hellblade\\Hellblade Senuas Sacrifice\\HellbladeGame.exe" in experimental ARM64EC mode
+00dc:fixme:virtual:NtQueryVirtualMemory (0xffffffffffffffff,0xb9ccd0,info_class=1002,0xb9cce0,16,0x0) Unknown information class
+00dc:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0xb9ccb8,0x00000008) stub
+_r_debug not found in ld.so
+00e4:fixme:fsync:do_fsync futexes not supported on this platform.
+00e4:err:environ:init_peb starting L"D:\\1DM\\Compressed\\Hellblade\\Hellblade Senuas Sacrifice\\HellbladeGame\\Binaries\\Win64\\HellbladeGame-Win64-Shipping.exe" in experimental ARM64EC mode
+00e4:fixme:virtual:NtQueryVirtualMemory (0xffffffffffffffff,0xb9ccd0,info_class=1002,0xb9cce0,16,0x0) Unknown information class
+00e4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0xb9ccb8,0x00000008) stub
+00e4:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+00e4:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+00e4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00e4:fixme:nls:get_dummy_preferred_ui_language (0x8 0x409 0000000000B9E074 0000000000000000 0000000000B9E070) returning a dummy value (current locale)
+00e4:fixme:nls:get_dummy_preferred_ui_language (0x8 0x409 0000000000B9E074 00000000058E5B40 0000000000B9E070) returning a dummy value (current locale)
+00e4:fixme:gameux:GameExplorerImpl_VerifyAccess (0000000007312180, L"D:\\1DM\\Compressed\\Hellblade\\Hellblade Senuas Sacrifice\\HellbladeGame\\Binaries\\Win64\\HellbladeGame-Win64-Shipping.exe", 0000000000B9DE68)
+00e4:fixme:win:DisableProcessWindowsGhosting : stub
+00e4:fixme:msctf:InputProcessorProfileMgr_GetActiveProfile (0000000007328830)->({34745c63-b2f0-4784-8b67-5e12c8701a31} 0000000000B9E450)
+00e4:fixme:system:NtUserSystemParametersInfo Unimplemented action: 59 (SPI_SETSTICKYKEYS)
+00e4:fixme:system:NtUserSystemParametersInfo Unimplemented action: 53 (SPI_SETTOGGLEKEYS)
+00e4:fixme:system:NtUserSystemParametersInfo Unimplemented action: 51 (SPI_SETFILTERKEYS)
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: Setting max staging cache size to 128 MB
+[info]: Setting queue throttle limit to 24
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: Setting max staging cache size to 128 MB
+[info]: Setting queue throttle limit to 24
+00e4:fixme:vulkan:NtGdiDdDDIQueryAdapterInfo desc 0xb9e7f0, type 48 semi-stub
+00e4:fixme:vulkan:NtGdiDdDDIQueryAdapterInfo desc 0xb9e7f0, type 48 stub
+00e4:fixme:vulkan:NtGdiDdDDIQueryAdapterInfo desc 0xb9e7f0, type 48 semi-stub
+00e4:fixme:vulkan:NtGdiDdDDIQueryAdapterInfo desc 0xb9e7f0, type 48 stub
+00e4:fixme:vcruntime:__telemetry_main_invoke_trigger (0000004FF4A10000)
+00e4:fixme:vcruntime:__telemetry_main_invoke_trigger (0000004FF4850000)
+00e4:fixme:vcruntime:__telemetry_main_invoke_trigger (0000004FF4830000)
+0244:err:service:device_notify_proc failed to open RPC handle, error 1722
+[39326.295417] (mali-event-hand) BASE: basep_event_dump_error <unknown>
+==>[WARN] Received a GROUP_ERROR_TILER_HEAP_OOM error on group(0)
+[39330.178427] (mali-event-hand) BASE: basep_event_dump_error <unknown>
+==>[WARN] Received a GROUP_ERROR_TILER_HEAP_OOM error on group(0)
+[39330.815461] (mali-event-hand) BASE: basep_event_dump_error <unknown>
+==>[WARN] Received a GROUP_ERROR_TILER_HEAP_OOM error on group(0)
+00dc:fixme:kernelbase:AppPolicyGetProcessTerminationMethod FFFFFFFFFFFFFFFA, 0000000000B9FEE0
+00b4:err:ole:start_rpcss Failed to start RpcSs service

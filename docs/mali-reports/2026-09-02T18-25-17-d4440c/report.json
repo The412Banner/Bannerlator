@@ -1,0 +1,35 @@
+{
+  "id": "2026-09-02T18-25-17-d4440c",
+  "created": "2026-09-02T18:25:17.983Z",
+  "ip_hash": "q1DtUjAJc/",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "S21 fe",
+    "soc": "Exynos 2100",
+    "gpu": "Mali-G78 mp14",
+    "android": "Android 16/ OneUI 8.0",
+    "ram": "8 GB",
+    "app_version": "3.0.3",
+    "install_source": "GitHub release",
+    "game_name": "Need for speed most wanted 2012",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "NFS13.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.12 sarek",
+    "proton": "Proton 10.0.4",
+    "box64": "Performance and compatibility",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "1. Open the game\n2. The game and container will crash plus the phone's navigation gestures and bluetooth",
+    "tried": "Changing DXVK versions, changing to proton 9, switching the wrapper, switching to wined3d, turning off bcn emulation (makes the game just crash normally) and turning bcn emu to partial (the game actually launches but many menu elements and textures are missing, most noticable being the streets), turning bcn transcoding off, and switching to box64. Same issue happens with \"NFS Hot Persuit\" and some other games. Winlator mali is the only emulator I've found that does not experience this issue."
+  },
+  "logs": [
+    {
+      "name": "Need_for_Speed_Most_Wanted-2026-09-01_08-42-10.zip"
+    }
+  ]
+}

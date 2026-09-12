@@ -11,6 +11,7 @@
         <item>1024x768 (4:3)</item>
         <item>1280x720 (16:9)</item>
         <item>1280x800 (16:10)</item>
+        <item>1280x960 (4:3)</item>
         <item>1280x1024 (5:4)</item>
         <item>1366x768 (16:9)</item>
         <item>1440x900 (16:10)</item>
@@ -24,16 +25,17 @@
         <item>Wrapper-legacy</item>
         <item>Wrapper-gamenative</item>
         <item>Wrapper + bcn_layer</item>
+        <item>Wrapper + compat + bcn</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
         <item>v819</item>
         <item>turnip-sdk36</item>
-        <item>turnip-26.1.0</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
+        <item>DirectAudio (Experimental)</item>
     </string-array>
     <string-array name="binding_type_entries">
         <item>Keyboard</item>
@@ -47,6 +49,7 @@
     </string-array>
     <string-array name="ddrawrapper_entries">
         <item>CnC-DDraw</item>
+        <item>D7VK</item>
         <item>Dd7To9</item>
         <item>Dgvoodoo</item>
         <item>None</item>
@@ -58,9 +61,10 @@
         <item>2.7.1.1-sdk36-arm64ec</item>
         <item>2.3.1-arm64ec-gplasync</item>
     </string-array>
-    <string-array name="vegas_version_entries">
-        <item>2.7.3</item>
-    </string-array>
+    <!-- No longer seeded: the vegas version dropdown lists installed builds only
+         (loadVegasVersionList). Static entries here used to surface as ghost
+         selections for never-installed builds. -->
+    <string-array name="vegas_version_entries" />
     <string-array name="vegas_config_source_entries">
         <item>None</item>
         <item>/storage/emulated/0/dxvk.conf</item>
@@ -176,6 +180,7 @@
         <item>Normal (Load all services)</item>
         <item>Essential (Load only essential services)</item>
         <item>Aggressive (Stop services on startup)</item>
+        <item>Custom (Pick services individually)</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>None</item>
@@ -336,9 +341,11 @@
         <item>FEXCore</item>
         <item>Box64</item>
     </string-array>
-    <string-array name="wine_entries">
-        <item>proton-9.0-arm64ec</item>
-    </string-array>
+    <!-- Intentionally EMPTY: no Wine/Proton ships in the APK any more (the bundled
+         proton-9.0-arm64ec was ~106 MB of assets and was broken at launch). Users install a
+         Proton from the in-app catalog on first run. installWineFromAssets() iterates this
+         array, so an empty list makes it a no-op. -->
+    <string-array name="wine_entries" />
     <string-array name="vkbasalt_sharpness_entries">
         <item>None</item>
         <item>CAS</item>

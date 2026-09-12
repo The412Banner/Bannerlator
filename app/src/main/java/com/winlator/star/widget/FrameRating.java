@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Canvas;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.AttributeSet;
@@ -40,8 +41,20 @@ public class FrameRating extends FrameLayout implements Runnable {
     /** Shared authoritative FPS source; set by the host so every overlay shows the identical number. */
     public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
 
+    // Frames per second actually reaching the panel, when something downstream
+    // of the game is adding frames. The counter above is ticked once per GUEST
+    // frame, so with native LSFG generating 3 frames for every 1 the game draws
+    // it reports 30 while the display is showing 118 - the HUD undersold the
+    // feature to the point of looking broken. 0 means "nothing is adding
+    // frames", and the HUD behaves exactly as it always has.
+    private float presentedFps = 0f;
+    public void setPresentedFps(float fps) { this.presentedFps = fps; }
+
     // Device-complete metric readers (GPU load / CPU temp) live in the single shared collector.
     private final HudMetrics metrics;
+    private HudMetrics.TempDisplay tempDisplay = HudMetrics.TempDisplay.from(null);
+    private int defaultCpuTempColor = 0xFFFFFFFF;
+    private int defaultBatteryTempColor = 0xFFFFFFFF;
 
     private final TextView tvFPS;
     private final TextView tvRenderer;
@@ -78,6 +91,11 @@ public class FrameRating extends FrameLayout implements Runnable {
     private java.util.function.BiConsumer<Float, Float> onMovedListener = null;
     public void setOnMovedListener(java.util.function.BiConsumer<Float, Float> l) { this.onMovedListener = l; }
 
+    // Shared lock / tap / drag behaviour (long-press toggles the position lock).
+    private HudLockController lockController;
+    private java.util.function.Consumer<Boolean> onLockChangedListener = null;
+    public void setOnLockChangedListener(java.util.function.Consumer<Boolean> l) { this.onLockChangedListener = l; }
+
     public FrameRating(Context context, HashMap<String, ?> graphicsDriverConfig) {
         this(context, graphicsDriverConfig, null);
     }
@@ -103,6 +121,11 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvBatteryTemp = findViewById(R.id.TVBatteryTemp);
         tvBatteryVoltage = findViewById(R.id.TVBatteryVoltage);
         tvLatency = findViewById(R.id.TVLatency);
+        // Captured once so a temperature row can be restored when danger bands are switched off.
+        // Safe to snapshot here: nothing else in this overlay recolours these views (only FPS is
+        // dynamically coloured, and that's a different TextView).
+        defaultCpuTempColor = tvCPUTemp != null ? tvCPUTemp.getCurrentTextColor() : 0xFFFFFFFF;
+        defaultBatteryTempColor = tvBatteryTemp != null ? tvBatteryTemp.getCurrentTextColor() : 0xFFFFFFFF;
 
         rowFPS = findViewById(R.id.RowFPS);
         rowRAM = findViewById(R.id.RowRAM);
@@ -115,38 +138,23 @@ public class FrameRating extends FrameLayout implements Runnable {
         rowLatency = findViewById(R.id.RowLatency);
 
         this.totalRAM = getTotalRAM();
+
+        lockController = new HudLockController(context, this, new HudLockController.Callbacks() {
+            @Override public void onTap() { if (onTapListener != null) onTapListener.run(); }
+            @Override public void onMoved(float x, float y) { if (onMovedListener != null) onMovedListener.accept(x, y); }
+            @Override public void onLockChanged(boolean locked) { if (onLockChangedListener != null) onLockChangedListener.accept(locked); }
+        });
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                lastX = event.getRawX();
-                lastY = event.getRawY();
-                offsetX = getX();
-                offsetY = getY();
-                downTime = event.getEventTime();
-                moved = false;
-                return true;
-            case MotionEvent.ACTION_MOVE:
-                float dx = event.getRawX() - lastX;
-                float dy = event.getRawY() - lastY;
-                int slop = ViewConfiguration.get(context).getScaledTouchSlop();
-                if (Math.abs(dx) > slop || Math.abs(dy) > slop) moved = true;
-                setX(offsetX + dx);
-                setY(offsetY + dy);
-                return true;
-            case MotionEvent.ACTION_UP:
-                if (!moved
-                        && (event.getEventTime() - downTime) <= ViewConfiguration.getLongPressTimeout()
-                        && onTapListener != null) {
-                    onTapListener.run();
-                } else if (moved && onMovedListener != null) {
-                    onMovedListener.accept(getX(), getY());
-                }
-                return true;
-        }
-        return super.onTouchEvent(event);
+        return lockController.onTouchEvent(event);
+    }
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        if (lockController != null) lockController.drawBadge(canvas);
     }
 
     public void applyConfig(String configString) {
@@ -161,6 +169,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (rowGPULoad != null) rowGPULoad.setVisibility(config.get("showGPULoad", "0").equals("1") ? VISIBLE : GONE);
         if (rowBatteryTemp != null) rowBatteryTemp.setVisibility(config.get("showBatteryTemp", "0").equals("1") ? VISIBLE : GONE);
         if (rowBatteryVoltage != null) rowBatteryVoltage.setVisibility(config.get("showBatteryVoltage", "0").equals("1") ? VISIBLE : GONE);
+        tempDisplay = HudMetrics.TempDisplay.from(config);
+        if (lockController != null) lockController.setLocked(config.get("hudLocked", "0").equals("1"));
 
         int rendererVis = config.get("showRenderer", "0").equals("1") ? VISIBLE : GONE;
         if (rowRenderer != null) rowRenderer.setVisibility(rendererVis);
@@ -267,21 +277,40 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     @Override
     public void run() {
-        float displayFps = lastFPS;
+        // Show what the panel is getting; keep the game's own rate alongside it
+        // rather than replacing it, because both numbers are worth seeing and
+        // the gap between them IS the frame generation.
+        // Either direction. Up means frames are being ADDED (LSFG Native).
+        // Down means frames are being LOST between the guest and the panel,
+        // which is exactly the failure win-fg can hit and which a single
+        // number hides completely.
+        final boolean generating = presentedFps > 0f
+            && Math.abs(presentedFps - lastFPS) > Math.max(1.0f, lastFPS * 0.10f);
+        float displayFps = generating ? presentedFps : lastFPS;
         if (tvFPS != null) {
-            tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", displayFps));
-            tvFPS.setTextColor(lastFPS > 30 ? 0xFF4CAF50 :
-                               lastFPS > 20 ? 0xFFFFEB3B : 0xFFF44336);
+            tvFPS.setText(generating
+                ? String.format(Locale.ENGLISH, "%.0f\u2192%.0f", lastFPS, presentedFps)
+                : String.format(Locale.ENGLISH, "%.1f", displayFps));
+            tvFPS.setTextColor(displayFps > 30 ? 0xFF4CAF50 :
+                               displayFps > 20 ? 0xFFFFEB3B : 0xFFF44336);
         }
         if (tvLatency != null) {
             float latencyMs = 1000.0f / Math.max(displayFps, 1.0f);
             tvLatency.setText(String.format(Locale.ENGLISH, "%.1fms", latencyMs));
         }
         if (tvRAM != null) tvRAM.setText(getAvailableRAM() + " Used / " + totalRAM);
-        if (tvCPUTemp != null) tvCPUTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", cpuTemp));
+        applyTemp(tvCPUTemp, cpuTemp, HudMetrics.TempSensor.CPU, defaultCpuTempColor);
         if (tvGPULoad != null) tvGPULoad.setText(gpuLoad + "%");
 
-        if (tvBatteryTemp != null) tvBatteryTemp.setText(String.format(Locale.ENGLISH, "%.1f°C", batteryTemp));
+        applyTemp(tvBatteryTemp, batteryTemp, HudMetrics.TempSensor.BATTERY, defaultBatteryTempColor);
         if (tvBatteryVoltage != null) tvBatteryVoltage.setText(String.format(Locale.ENGLISH, "%.2fW", batteryWattage));
+    }
+
+    /** Writes a temperature in the user's unit and colours the row by danger band. */
+    private void applyTemp(TextView tv, float celsius, HudMetrics.TempSensor sensor, int defaultColor) {
+        if (tv == null) return;
+        HudMetrics.Thresholds t = metrics.resolveThresholds(sensor, tempDisplay);
+        tv.setText(HudMetrics.formatTemp(celsius, tempDisplay, true));
+        tv.setTextColor(HudMetrics.tempColor(celsius, t, tempDisplay, defaultColor));
     }
 }

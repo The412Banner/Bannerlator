@@ -1,0 +1,650 @@
+package com.winlator.star.store
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+
+/**
+ * Update-on-launch for the RealSteam (SteamLite / VAC) launch path.
+ *
+ * ── Why ──────────────────────────────────────────────────────────────────────
+ * Our lightweight SteamLite agent logs into real Steam and `LaunchApp`s the game, but — unlike the
+ * genuine Steam client — it does NOT run Steam's pre-launch content update. So a game whose installed
+ * files are an OLDER build than the current public build launches stale. Latest-only online titles
+ * (device-observed: Brawlhalla 291550 → "INCORRECT VERSION — Restart Steam to get the latest version")
+ * then block multiplayer. [ensureCurrentBuild] closes that gap: before a RealSteam launch it makes sure
+ * the game is on the current public build, running the existing depot downloader (delta-only, in place)
+ * when it isn't.
+ *
+ * ── Staleness detection ──────────────────────────────────────────────────────
+ * There is no per-install build column in [SteamDatabase] (`markInstalled` records only is_installed /
+ * install_dir / size_bytes, and `depot_manifests` is re-upserted from PICS on every library sync so it
+ * tracks the LIVE target, not what's on disk). So we record the build we installed ourselves in a small
+ * marker file ([BUILD_MARKER_REL]) inside the game's install dir — written both here after a successful
+ * update AND by [SteamDepotDownloader] on every completed install (so normal store installs also stamp
+ * their build and get the cheap compare going forward).
+ *
+ *   live build  = the selected branch's `buildid` in the `steam_branches` table (parsed from PICS at
+ *                 library-sync / add time). Accessor: [SteamRepository.getBranches] → BranchRow.buildId.
+ *   installed    = the branch|buildId recorded in the marker (absent for pre-feature installs → 0).
+ *
+ * Fast path (NO network): recorded build == live build AND the game is installed on disk → done(CURRENT)
+ * with ~no delay. Otherwise (behind, or install/live build unknown) we run a delta update pass. A
+ * pre-feature install with no marker (the device Brawlhalla case) has installedBuild==0, so it runs the
+ * delta pass once, self-heals, and stamps the marker — every later launch is then the fast no-op.
+ *
+ * ── Robustness ───────────────────────────────────────────────────────────────
+ * We never hard-block a launch. If the live build can't be determined (no branch data) or Steam is
+ * offline / the session can't be restored, we return [Result.OFFLINE_UNKNOWN] and let the caller offer
+ * "launch anyway (stale)" vs. abort. A cheap session check up front keeps an offline launch snappy
+ * instead of hanging behind the depot downloader's ~60s session-recovery retries.
+ *
+ * Only the RealSteam path uses this — Goldberg and Raw launches are untouched.
+ *
+ * ── Manual entry points (SteamLite roadmap #3) ───────────────────────────────
+ * Update/verify are no longer run automatically before a launch. The launch-method popup drives them
+ * as explicit user actions instead: [checkForUpdate] (cheap, non-downloading) feeds the popup's update
+ * indicator; [updateNow] runs the delta update (an alias for [ensureCurrentBuild]); and [verifyFiles]
+ * runs a real "verify integrity of game files" — it clears the resume state and re-validates EVERY
+ * on-disk file against the live manifest regardless of the build compare.
+ */
+object SteamGameUpdater {
+
+    private const val TAG = "SteamGameUpdater"
+
+    /** Records `<branch>|<buildId>` of the copy on disk, inside the game's install dir. */
+    private const val BUILD_MARKER_REL = ".bannerlator_build"
+
+    /** How long to wait for a token re-logon when the session isn't live before the update pass. */
+    private const val SESSION_WAIT_MS = 10_000L
+
+    /** How long to wait for the pre-download PICS product-info refresh (live manifest/branch resolve). */
+    private const val PICS_REFRESH_MS = 15_000L
+
+    /** Bound on the Rust engine's fresh single-app PICS read inside [checkForUpdate] (the launch
+     *  pre-flight waits at most 10 s for the whole probe). */
+    private const val CHECK_REFRESH_MS = 8_000L
+
+    /** The Rust engine's per-install download journal (see [BlDepotInstaller]), sibling of
+     *  [DEPOT_CONFIG_DIR]; cleared alongside it before a verify when that engine is selected. */
+    private const val BL_JOURNAL_DIR = BlDepotInstaller.JOURNAL_DIR
+
+    /** JavaSteam DepotDownloader's on-disk resume state dir (installed-manifest ids + staging), under
+     *  the game's install dir. Cleared before a corrupt-install verify so the engine re-validates every
+     *  file against the live manifest instead of trusting a stale "already at this manifest" record. */
+    private const val DEPOT_CONFIG_DIR = ".DepotDownloader"
+
+    /** Terminal outcome of an [ensureCurrentBuild] check. */
+    enum class Result {
+        /** Already on the live build (or nothing to check) — launch immediately. */
+        CURRENT,
+        /** Was behind/incomplete; the delta update finished — launch. */
+        UPDATED,
+        /** Couldn't verify the latest build (no branch data / Steam offline) — caller should offer
+         *  "launch anyway (may be stale)" rather than hard-blocking. */
+        OFFLINE_UNKNOWN,
+        /** The update pass failed (see message) — caller should offer "launch anyway" or abort. */
+        FAILED,
+        /** The user cancelled the check/update — stay put, do not launch. */
+        CANCELLED,
+    }
+
+    /** State of a NON-downloading [checkForUpdate] probe — drives the launch popup's update indicator. */
+    enum class State {
+        /** Recorded install build matches the live branch build and the files are on disk. */
+        UP_TO_DATE,
+        /** Behind the live build (or install build unknown) — an Update pass would fetch the delta. */
+        UPDATE_AVAILABLE,
+        /** Live build not resolvable (no synced branch data / offline) — can't say either way. */
+        UNKNOWN,
+        /** The game's files aren't on disk. */
+        NOT_INSTALLED,
+    }
+
+    /**
+     * Result of a cheap [checkForUpdate] probe. [installedBuild]/[liveBuild] are the compared build ids
+     * (0 = unknown) so the caller can show "build <installed> → <live>". No network is performed.
+     */
+    data class UpdateStatus(val state: State, val installedBuild: Long, val liveBuild: Long)
+
+    /** Progress on the main thread. [fraction] < 0 = indeterminate ("checking"); 0..1 while updating. */
+    fun interface ProgressCallback {
+        fun onProgress(fraction: Float, label: String)
+    }
+
+    /** Terminal result on the main thread. */
+    fun interface DoneCallback {
+        fun onDone(result: Result, message: String)
+    }
+
+    /**
+     * Cancels an in-flight check/update. Safe to call any time and from any thread; a cancel that lands
+     * before the download starts is honoured at the next checkpoint, and one that lands after is
+     * propagated to the running [SteamDepotDownloader.DownloadControl].
+     */
+    class UpdateHandle internal constructor() {
+        private val cancelled = AtomicBoolean(false)
+        internal val controlRef = AtomicReference<SteamDepotDownloader.DownloadControl?>(null)
+        val isCancelled: Boolean get() = cancelled.get()
+        fun cancel() {
+            if (cancelled.compareAndSet(false, true)) {
+                controlRef.get()?.let { try { it.cancel.run() } catch (_: Throwable) {} }
+            }
+        }
+    }
+
+    /**
+     * Ensure [appId] is on the current build for its selected branch before a RealSteam launch.
+     * Runs entirely off the main thread; [progress]/[done] are posted back to the main thread.
+     * Returns immediately with an [UpdateHandle] for cancellation.
+     */
+    fun ensureCurrentBuild(
+        context: Context,
+        appId: Int,
+        progress: ProgressCallback,
+        done: DoneCallback,
+    ): UpdateHandle {
+        val appCtx = context.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        val handle = UpdateHandle()
+        val postProgress: (Float, String) -> Unit = { f, l -> main.post { progress.onProgress(f, l) } }
+        val postDone: (Result, String) -> Unit = { r, m -> main.post { done.onDone(r, m) } }
+
+        Thread({
+            try {
+                runCheck(appCtx, appId, handle, postProgress, postDone)
+            } catch (t: Throwable) {
+                Log.w(TAG, "ensureCurrentBuild($appId) failed", t)
+                postDone(Result.FAILED, t.message ?: "Update check failed")
+            }
+        }, "steam-update-$appId").start()
+
+        return handle
+    }
+
+    /**
+     * User-triggered "Update" (the manual button on the launch popup). Same machinery as the old
+     * update-on-launch gate: checks the recorded vs live build and runs an in-place delta update when
+     * behind (self-healing a corrupt install). A no-op ([Result.CURRENT]) when already current.
+     */
+    fun updateNow(
+        context: Context,
+        appId: Int,
+        progress: ProgressCallback,
+        done: DoneCallback,
+    ): UpdateHandle = ensureCurrentBuild(context, appId, progress, done)
+
+    /**
+     * User-triggered "Verify integrity of game files" (the manual button on the launch popup). Unlike
+     * [updateNow] this ALWAYS clears the depot resume state and runs a full re-validate pass regardless
+     * of the build compare — the engine re-resolves the live manifests from the CM and re-checks EVERY
+     * on-disk file, re-fetching anything missing or corrupt while keeping the good files. Needs a live
+     * session (→ [Result.OFFLINE_UNKNOWN] when offline); a clean run ends in [Result.UPDATED].
+     */
+    fun verifyFiles(
+        context: Context,
+        appId: Int,
+        progress: ProgressCallback,
+        done: DoneCallback,
+    ): UpdateHandle {
+        val appCtx = context.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        val handle = UpdateHandle()
+        val postProgress: (Float, String) -> Unit = { f, l -> main.post { progress.onProgress(f, l) } }
+        val postDone: (Result, String) -> Unit = { r, m -> main.post { done.onDone(r, m) } }
+
+        Thread({
+            try {
+                runVerify(appCtx, appId, handle, postProgress, postDone)
+            } catch (t: Throwable) {
+                Log.w(TAG, "verifyFiles($appId) failed", t)
+                postDone(Result.FAILED, t.message ?: "Verify failed")
+            }
+        }, "steam-verify-$appId").start()
+
+        return handle
+    }
+
+    /**
+     * Cheap, NON-downloading update probe for the launch popup's indicator. Resolves the same signals as
+     * [runCheck] (selected branch → live build from the already-synced `steam_branches`; recorded install
+     * build; files-on-disk) but never touches the network — it deliberately does NOT force a PICS refresh
+     * so the indicator stays snappy. It's a hint; [updateNow]/[verifyFiles] do the authoritative refresh.
+     * Runs off the main thread; [onResult] is posted back to the main thread.
+     */
+    fun checkForUpdate(
+        context: Context,
+        appId: Int,
+        onResult: (UpdateStatus) -> Unit,
+    ): UpdateHandle {
+        val appCtx = context.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        val handle = UpdateHandle()
+        val post: (UpdateStatus) -> Unit = { s -> main.post { onResult(s) } }
+
+        Thread({
+            try {
+                post(computeStatus(appCtx, appId))
+            } catch (t: Throwable) {
+                Log.w(TAG, "checkForUpdate($appId) failed", t)
+                post(UpdateStatus(State.UNKNOWN, 0L, 0L))
+            }
+        }, "steam-check-$appId").start()
+
+        return handle
+    }
+
+    // -------------------------------------------------------------------------
+    // Decision logic (worker thread)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resolve the [UpdateStatus] for [checkForUpdate] (see its doc). JavaSteam: no network, the synced
+     * `steam_branches` build is the hint. Rust engine (Phase 2-B): a FRESH single-app PICS refresh
+     * runs first — bounded to [CHECK_REFRESH_MS] so the pre-flight's "Game files" row never waits on
+     * it — so the compared live build is the one Steam reports right now, not the last library sync.
+     */
+    private fun computeStatus(ctx: Context, appId: Int): UpdateStatus {
+        // Not a resolvable Steam appId (custom import etc.) — nothing to check.
+        if (appId <= 0) return UpdateStatus(State.UP_TO_DATE, 0L, 0L)
+
+        val repo = SteamRepository.getInstance()
+        val db = repo.database
+        if (repo.isRustEngine && repo.isSessionLoggedOn) {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var refreshed: Boolean? = null
+            Thread({
+                try { refreshed = repo.refreshAppProductInfo(appId, CHECK_REFRESH_MS) }
+                catch (t: Throwable) { Log.w(TAG, "app $appId fresh check refresh failed: ${t.message}") }
+                finally { latch.countDown() }
+            }, "steam-check-refresh-$appId").apply { isDaemon = true }.start()
+            val landed = latch.await(CHECK_REFRESH_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Log.i(TAG, "app $appId fresh PICS refresh for the update check → " +
+                    (if (landed) refreshed.toString() else "timed out (comparing the synced build)"))
+        }
+        val row = try { db.getGame(appId) } catch (_: Throwable) { null }
+            ?: return UpdateStatus(State.UP_TO_DATE, 0L, 0L)   // not in DB — can't compare, treat as clean
+
+        val branch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        val liveBuild = liveBuildId(repo, appId, branch)
+        val installDir = installDirOf(ctx, row)
+        val installedBuild = readInstalledBuild(installDir, branch)
+        val filesPresent = installDir.isDirectory && (installDir.listFiles()?.isNotEmpty() == true)
+        val installed = row.isInstalled && filesPresent
+
+        return when {
+            !filesPresent -> UpdateStatus(State.NOT_INSTALLED, installedBuild, liveBuild)
+            liveBuild <= 0L -> UpdateStatus(State.UNKNOWN, installedBuild, liveBuild)
+            installedBuild > 0L && installedBuild == liveBuild && installed ->
+                UpdateStatus(State.UP_TO_DATE, installedBuild, liveBuild)
+            else -> UpdateStatus(State.UPDATE_AVAILABLE, installedBuild, liveBuild)
+        }
+    }
+
+    /**
+     * "Verify integrity" worker (off-main-thread body of [verifyFiles]). Resolves row/branch/installDir
+     * like [runCheck], requires the game to be installed and a live Steam session, then runs a full
+     * re-validate pass ([runPass] with `verifyFirst = true`, which clears the resume state up front so
+     * every file is re-checked against the freshly-resolved live manifest).
+     */
+    private fun runVerify(
+        ctx: Context,
+        appId: Int,
+        handle: UpdateHandle,
+        postProgress: (Float, String) -> Unit,
+        postDone: (Result, String) -> Unit,
+    ) {
+        if (appId <= 0) { postDone(Result.FAILED, "Not a Steam game — nothing to verify"); return }
+
+        postProgress(-1f, "Preparing to verify…")
+
+        val repo = SteamRepository.getInstance()
+        val db = repo.database
+        val row = try { db.getGame(appId) } catch (_: Throwable) { null }
+        if (row == null) {
+            postDone(Result.FAILED, "This game isn't in the Steam library yet — can't verify its files.")
+            return
+        }
+
+        val branch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        val installDir = installDirOf(ctx, row)
+        val filesPresent = installDir.isDirectory && (installDir.listFiles()?.isNotEmpty() == true)
+        if (!filesPresent) {
+            postDone(Result.FAILED, "${row.name} isn't installed — there are no files to verify.")
+            return
+        }
+
+        // A verify re-resolves live manifests from the CM, so it needs a live session. Check cheaply first
+        // so an offline verify fails fast instead of hanging behind the downloader's recovery retries.
+        postProgress(-1f, "Connecting to Steam…")
+        val online = repo.isLoggedIn || repo.ensureLoggedIn(SESSION_WAIT_MS)
+        if (!online) {
+            postDone(Result.OFFLINE_UNKNOWN, "Steam is offline — can't verify ${row.name}'s files right now.")
+            return
+        }
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
+
+        Log.i(TAG, "app $appId verify-integrity: full re-validate ($branch)")
+        runPass(ctx, appId, row.name, branch, installDir, handle, verifyFirst = true, postProgress, postDone)
+    }
+
+    private fun runCheck(
+        ctx: Context,
+        appId: Int,
+        handle: UpdateHandle,
+        postProgress: (Float, String) -> Unit,
+        postDone: (Result, String) -> Unit,
+    ) {
+        // Not a resolvable Steam appId (custom import etc.) — nothing to check, let it launch.
+        if (appId <= 0) { postDone(Result.CURRENT, ""); return }
+
+        postProgress(-1f, "Checking for updates…")
+
+        val repo = SteamRepository.getInstance()
+        val db = repo.database
+        val row = try { db.getGame(appId) } catch (_: Throwable) { null }
+        if (row == null) {
+            // We don't have this game in the DB — can't verify a build. Launch as-is.
+            Log.i(TAG, "app $appId not in DB — skipping update check")
+            postDone(Result.CURRENT, ""); return
+        }
+
+        val branch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        val liveBuild = liveBuildId(repo, appId, branch)
+        val installDir = installDirOf(ctx, row)
+        val installedBuild = readInstalledBuild(installDir, branch)
+        val filesPresent = installDir.isDirectory && (installDir.listFiles()?.isNotEmpty() == true)
+
+        // Fast no-op (no network): recorded build matches the live build and the files are on disk.
+        if (liveBuild > 0L && installedBuild > 0L && installedBuild == liveBuild &&
+            row.isInstalled && filesPresent) {
+            Log.i(TAG, "app $appId already on live build $liveBuild ($branch) — no update needed")
+            postDone(Result.CURRENT, "Already up to date"); return
+        }
+
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
+
+        // Can't determine the live build (branch data never synced). Don't run stale silently, but don't
+        // hard-block — hand it back so the UI can offer launch-anyway.
+        if (liveBuild <= 0L) {
+            Log.i(TAG, "app $appId live build unknown (no branch data) — can't verify")
+            postDone(Result.OFFLINE_UNKNOWN,
+                "Couldn't check for the latest version (no Steam data for this game yet)."); return
+        }
+
+        // We know the live build and are NOT confirmed current → a delta update is required. That needs a
+        // live session; check cheaply first so an offline launch fails fast instead of hanging on the
+        // downloader's session-recovery retries behind the modal.
+        postProgress(-1f, "Connecting to Steam…")
+        val online = repo.isLoggedIn || repo.ensureLoggedIn(SESSION_WAIT_MS)
+        if (!online) {
+            Log.i(TAG, "app $appId behind/incomplete but Steam offline — deferring to user")
+            postDone(Result.OFFLINE_UNKNOWN,
+                "Steam is offline — couldn't update ${row.name} to the latest version."); return
+        }
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
+
+        Log.i(TAG, "app $appId updating: installedBuild=$installedBuild → liveBuild=$liveBuild ($branch)")
+        runPass(ctx, appId, row.name, branch, installDir, handle, verifyFirst = false, postProgress, postDone)
+    }
+
+    /**
+     * Run [SteamDepotDownloader.installApp] as an in-place update/verify to the current build, listening
+     * on the [SteamRepository] event stream for its terminal event. Shared by both the delta-update path
+     * ([runCheck], `verifyFirst = false`) and the manual verify-integrity path ([runVerify],
+     * `verifyFirst = true`, which clears the resume state up front so the first pass re-validates
+     * everything and the labels/terminal message read "Verifying"/"Files verified").
+     *
+     * Two things make this a real update rather than a no-op against stale state:
+     *  1. FRESH PRODUCT INFO — before downloading we force a single-app PICS refresh
+     *     ([SteamRepository.refreshAppProductInfo]) so the DB's live manifest ids + branch build id are
+     *     current (mirrors GameNative's `isUpdateOrVerify`). `installApp` itself also re-resolves the
+     *     branch's manifests from the CM, so it pulls only the changed/missing chunks against the
+     *     existing install dir.
+     *  2. CORRUPT-INSTALL VERIFY — a previously-interrupted download can leave the game's files empty
+     *     while the engine's on-disk resume state ([DEPOT_CONFIG_DIR]/depot.config) already records the
+     *     depot at the live manifest. Its manifest-diff then sees "no changed files", fetches 0 bytes,
+     *     and the completion guard correctly rejects the still-broken install ("incomplete … emptyFiles").
+     *     A plain retry keeps trusting that state. On that specific failure we clear the resume state
+     *     ONCE and re-run: with no recorded installed-manifest the engine re-validates EVERY on-disk
+     *     file against the live manifest and re-downloads the empty/mismatched content (keeping the good
+     *     files). This is the least-destructive re-fetch; the false-complete guard is left intact.
+     */
+    private fun runPass(
+        ctx: Context,
+        appId: Int,
+        gameName: String,
+        branch: String,
+        installDir: File,
+        handle: UpdateHandle,
+        verifyFirst: Boolean,
+        postProgress: (Float, String) -> Unit,
+        postDone: (Result, String) -> Unit,
+    ) {
+        val repo = SteamRepository.getInstance()
+        val finished = AtomicBoolean(false)
+        // True once we've triggered the one-shot corrupt-install verify (clear resume state + re-run),
+        // so a second failure surfaces to the user instead of looping.
+        val verifyStarted = AtomicBoolean(false)
+        val listenerRef = AtomicReference<SteamRepository.SteamEventListener?>(null)
+
+        // (1) Resolve the LIVE manifest ids + current branch build id before downloading. Best-effort:
+        // on failure the depot downloader still resolves live manifests from the CM itself — this also
+        // refreshes the DB (depot_manifests / steam_branches) that the completion guard + build-id marker
+        // read, so the stamped build after a successful update is the real current one. Runs on this
+        // update worker thread (never the pump), before any download owns the CM connection.
+        postProgress(-1f, "Checking latest version…")
+        try {
+            val refreshed = repo.refreshAppProductInfo(appId, PICS_REFRESH_MS)
+            Log.i(TAG, "app $appId product-info refresh before update → $refreshed")
+        } catch (t: Throwable) {
+            Log.w(TAG, "app $appId product-info refresh failed: ${t.message}")
+        }
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
+
+        postProgress(0f, if (verifyFirst) "Verifying $gameName…" else "Updating $gameName…")
+
+        val listener = SteamRepository.SteamEventListener { event ->
+            try {
+                if (event.startsWith("DownloadProgress:")) {
+                    val parts = event.split(":")
+                    if (parts.getOrNull(1)?.toIntOrNull() == appId) {
+                        val iDone = parts.getOrNull(2)?.toLongOrNull() ?: 0L
+                        val iTotal = parts.getOrNull(3)?.toLongOrNull() ?: 1L
+                        val frac = if (iTotal > 0L) (iDone.toDouble() / iTotal).toFloat().coerceIn(0f, 1f) else 0f
+                        val verb = if (verifyFirst || verifyStarted.get()) "Verifying" else "Updating"
+                        postProgress(frac, "$verb $gameName… ${(frac * 100).toInt()}%")
+                    }
+                } else if (event.startsWith("DownloadComplete:")) {
+                    if (event.substringAfter("DownloadComplete:").toIntOrNull() == appId &&
+                        finished.compareAndSet(false, true)) {
+                        listenerRef.get()?.let { repo.removeListener(it) }
+                        recordInstalledBuild(ctx, appId, installDir, branch)  // stamp the now-current build
+                        postDone(Result.UPDATED, if (verifyFirst) "Files verified" else "Updated to the latest version")
+                    }
+                } else if (event.startsWith("DownloadFailed:")) {
+                    val parts = event.split(":")
+                    if (parts.getOrNull(1)?.toIntOrNull() == appId) {
+                        val reason = parts.drop(2).joinToString(":").ifBlank { "Update failed" }
+                        // Corrupt/incomplete install → clear the engine's resume state and re-run as a
+                        // full verify (once). See the method doc. Keep the listener attached so the
+                        // verify pass's terminal event is handled; do NOT set `finished`.
+                        if (!handle.isCancelled && !verifyStarted.get() &&
+                            isCorruptIncomplete(reason, installDir) &&
+                            verifyStarted.compareAndSet(false, true)) {
+                            Log.i(TAG, "app $appId update incomplete ($reason) — clearing resume state and verifying")
+                            clearDepotResumeState(installDir)
+                            postProgress(0f, "Verifying $gameName…")
+                            if (!startInstallPass(ctx, appId, handle, verify = true) &&
+                                finished.compareAndSet(false, true)) {
+                                listenerRef.get()?.let { repo.removeListener(it) }
+                                postDone(Result.FAILED, "Couldn't start the verify pass")
+                            }
+                        } else if (finished.compareAndSet(false, true)) {
+                            listenerRef.get()?.let { repo.removeListener(it) }
+                            postDone(Result.FAILED, reason)
+                        }
+                    }
+                } else if (event.startsWith("DownloadCancelled:")) {
+                    if (event.substringAfter("DownloadCancelled:").toIntOrNull() == appId &&
+                        finished.compareAndSet(false, true)) {
+                        listenerRef.get()?.let { repo.removeListener(it) }
+                        postDone(Result.CANCELLED, "Update cancelled")
+                    }
+                }
+            } catch (_: Throwable) { /* one bad event line must never kill the listener */ }
+        }
+        listenerRef.set(listener)
+        repo.addListener(listener)
+
+        // Honour a cancel that arrived during the session-check / refresh window before we start.
+        if (handle.isCancelled) {
+            if (finished.compareAndSet(false, true)) {
+                repo.removeListener(listener); postDone(Result.CANCELLED, "Cancelled")
+            }
+            return
+        }
+
+        // First pass. A user verify clears the resume state UP FRONT so this very pass re-validates every
+        // on-disk file against the freshly-resolved live manifest (a true "verify integrity"); a normal
+        // update is a delta and only clears on a corrupt-incomplete failure (below). installApp re-resolves
+        // the live manifests from the CM either way.
+        if (verifyFirst) clearDepotResumeState(installDir)
+        if (!startInstallPass(ctx, appId, handle, verify = verifyFirst) &&
+            finished.compareAndSet(false, true)) {
+            repo.removeListener(listener)
+            postDone(Result.FAILED, if (verifyFirst) "Couldn't start the verify" else "Couldn't start the update")
+        }
+    }
+
+    /**
+     * Launch one [SteamDepotDownloader.installApp] pass and wire its cancel/pause control to [handle].
+     * Returns false only if starting the download threw. [verify] is for logging only — the resume
+     * state is cleared by the caller before a verify pass. The shared event [listener] (registered in
+     * [runPass]) handles the pass's terminal event, so this deliberately does not add its own.
+     */
+    private fun startInstallPass(ctx: Context, appId: Int, handle: UpdateHandle, verify: Boolean): Boolean {
+        return try {
+            // `verify` reaches the Rust-engine path only (its fresh/verify mode); JavaSteam ignores it.
+            val control = SteamDepotDownloader.installApp(appId, ctx, DownloadSpeedConfig.DEFAULT_TIER, false,
+                null, verify)
+            handle.controlRef.set(control)
+            // A cancel racing the installApp call: propagate to the freshly-created download.
+            if (handle.isCancelled) { try { control.cancel.run() } catch (_: Throwable) {} }
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "app $appId ${if (verify) "verify" else "update"} pass failed to start: ${t.message}")
+            false
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Corrupt-install detection + resume-state reset
+    // -------------------------------------------------------------------------
+
+    /**
+     * True when a download failure looks like a corrupt/incomplete install a full verify can fix: the
+     * completion guard's "incomplete" message, or zero-length files still on disk (the fingerprint of
+     * missing depot content the engine skipped because its resume state claimed the depot was complete).
+     * The message check catches the reported case cheaply; the on-disk walk is the fallback.
+     */
+    private fun isCorruptIncomplete(reason: String, installDir: File): Boolean {
+        if (reason.contains("incomplete", ignoreCase = true)) return true
+        return hasZeroByteFile(installDir)
+    }
+
+    /**
+     * Delete the JavaSteam DepotDownloader resume state ([DEPOT_CONFIG_DIR], under [installDir]) so the
+     * next pass records NO installed manifest and re-validates every file against the freshly-resolved
+     * live manifest — re-downloading empty/mismatched content while keeping the good files. The engine
+     * recreates the dir at the start of the pass. Best-effort; the game's own files are untouched.
+     */
+    private fun clearDepotResumeState(installDir: File) {
+        try {
+            val cfg = File(installDir, DEPOT_CONFIG_DIR)
+            if (cfg.exists()) {
+                val ok = cfg.deleteRecursively()
+                Log.i(TAG, "cleared depot resume state at ${cfg.absolutePath} (ok=$ok)")
+            }
+            // Rust engine: its verify pass (`fresh = true`) already forgets the journal for the depots
+            // it re-validates; clearing the journal too keeps a stale record for a dropped depot from
+            // surviving a verify. Only when that engine is selected — never touched otherwise.
+            if (SteamRepository.getInstance().isRustEngine) {
+                val j = File(installDir, BL_JOURNAL_DIR)
+                if (j.exists()) {
+                    val ok = j.deleteRecursively()
+                    Log.i(TAG, "cleared Rust-engine download journal at ${j.absolutePath} (ok=$ok)")
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "clearDepotResumeState($installDir) failed: ${t.message}")
+        }
+    }
+
+    /** True if any regular file under [root] is zero-length — the fingerprint of a skipped/truncated
+     *  depot (a pre-allocated but never-filled file); mirrors the downloader's own emptyFiles check. */
+    private fun hasZeroByteFile(root: File): Boolean =
+        try { root.walkTopDown().any { it.isFile && it.length() == 0L } } catch (_: Throwable) { false }
+
+    // -------------------------------------------------------------------------
+    // Build-id marker + live-build accessor
+    // -------------------------------------------------------------------------
+
+    /**
+     * Live build id of [appId]'s [branch] from the `steam_branches` table (public-branch fallback).
+     * 0 = unknown (no branch data parsed yet). This is the exact accessor the update check compares
+     * against: [SteamRepository.getBranches] → the matching [SteamDatabase.BranchRow.buildId].
+     */
+    private fun liveBuildId(repo: SteamRepository, appId: Int, branch: String): Long {
+        return try {
+            val branches = repo.getBranches(appId)
+            branches.firstOrNull { it.branchName == branch }?.buildId
+                ?: branches.firstOrNull { it.branchName == "public" }?.buildId
+                ?: 0L
+        } catch (_: Throwable) { 0L }
+    }
+
+    /** Read the recorded install build for [branch], or 0 if absent / for a different branch. */
+    private fun readInstalledBuild(installDir: File, branch: String): Long {
+        return try {
+            val f = File(installDir, BUILD_MARKER_REL)
+            if (!f.isFile) return 0L
+            val txt = f.readText().trim()
+            val sep = txt.indexOf('|')
+            if (sep <= 0) return 0L
+            if (txt.substring(0, sep) != branch) return 0L   // stamped on another branch → not comparable
+            txt.substring(sep + 1).trim().toLongOrNull() ?: 0L
+        } catch (_: Throwable) { 0L }
+    }
+
+    /**
+     * Stamp the install dir with the branch's current live build. Called after any completed install
+     * (here after an update pass, and from [SteamDepotDownloader] after a normal install) so the cheap
+     * build-id compare works on the next launch. Best-effort; a failure just means the next launch
+     * re-verifies. No-op when the live build is unknown (nothing meaningful to record).
+     */
+    @JvmStatic
+    fun recordInstalledBuild(context: Context, appId: Int, installDir: File, branch: String) {
+        try {
+            val build = liveBuildId(SteamRepository.getInstance(), appId, branch)
+            if (build <= 0L) return
+            if (!installDir.isDirectory) return
+            File(installDir, BUILD_MARKER_REL).writeText("$branch|$build")
+            Log.i(TAG, "recorded installed build $build ($branch) for app $appId")
+        } catch (t: Throwable) {
+            Log.w(TAG, "recordInstalledBuild($appId) failed: ${t.message}")
+        }
+    }
+
+    /** Resolve the on-disk install dir: the stored install_dir when set, else the default derived path. */
+    private fun installDirOf(ctx: Context, row: SteamDatabase.GameRow): File {
+        val stored = row.installDir
+        if (!stored.isNullOrBlank()) return File(stored)
+        val safe = row.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
+        return File(File(ctx.filesDir, "imagefs/steam_games"), safe)
+    }
+}

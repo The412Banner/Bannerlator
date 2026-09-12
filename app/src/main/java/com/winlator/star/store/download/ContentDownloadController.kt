@@ -8,6 +8,9 @@ import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
 import com.winlator.star.core.TarCompressorUtils
 import com.winlator.star.util.ImportEtaTracker
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +18,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
 /**
@@ -58,6 +63,16 @@ data class ContentDownloadState(
     val phase: ContentDownloadPhase = ContentDownloadPhase.DOWNLOADING,
     val fraction: Float = 0f,
     val error: String? = null,
+    // A user-requested cancel is modelled as a terminal ERROR with this flag set (rather than a new
+    // ContentDownloadPhase value, which would break the exhaustive `when`s over the enum). The popup
+    // styles it neutrally ("Cancelled") instead of the alarming failure red.
+    val cancelled: Boolean = false,
+    // True for catalog items (download THEN install → two-pass overlay bar); false for local-file
+    // installs (install only → single pass). Drives the popup's progress bar rendering.
+    val hasDownload: Boolean = false,
+    // Contents hub "Save archive only": the archive is downloaded and filed in My Files, nothing is
+    // installed. The popup/row relabel DONE as "Saved" (never "Installed") and INSTALLING as "Saving".
+    val saveOnly: Boolean = false,
 ) {
     val terminal: Boolean get() = phase == ContentDownloadPhase.DONE || phase == ContentDownloadPhase.ERROR
 }
@@ -72,6 +87,9 @@ object ContentDownloadRegistry {
     private val _states = MutableStateFlow<Map<String, ContentDownloadState>>(emptyMap())
     val states: StateFlow<Map<String, ContentDownloadState>> = _states.asStateFlow()
 
+    // Running download+install coroutines, keyed like [states], so a Cancel button can reach the job.
+    private val jobs = ConcurrentHashMap<String, Job>()
+
     fun get(key: String): ContentDownloadState? = _states.value[key]
 
     fun put(state: ContentDownloadState) = _states.update { it + (state.key to state) }
@@ -81,6 +99,23 @@ object ContentDownloadRegistry {
         _states.update { m -> m[key]?.let { m + (key to transform(it)) } ?: m }
 
     fun remove(key: String) = _states.update { it - key }
+
+    /** Track the coroutine driving [key] so [requestCancel] can cancel it. */
+    fun attachJob(key: String, job: Job) { jobs[key] = job }
+
+    /** Drop the job handle once its coroutine has unwound (called from each launcher's finally). */
+    fun clearJob(key: String) { jobs.remove(key) }
+
+    /**
+     * Best-effort cancel: cancel the running job AND flip the state to a cancelled terminal so the UI
+     * updates immediately. Cancellation is best-effort — a blocking native `extraContentFile` chunk may
+     * finish before the coroutine unwinds — but the launcher's finally still deletes temp files and
+     * closes the FGS bracket. No-op if the key isn't tracked.
+     */
+    fun requestCancel(key: String) {
+        jobs.remove(key)?.cancel()
+        update(key) { it.copy(phase = ContentDownloadPhase.ERROR, error = "Cancelled", cancelled = true) }
+    }
 }
 
 private const val TAG = "ContentDownload"
@@ -110,6 +145,7 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
             desc = profile.desc,
             phase = ContentDownloadPhase.DOWNLOADING,
             fraction = 0f,
+            hasDownload = true,
         )
     )
     // Bring up the shared FGS (keeps the process alive past the sheet/Activity) and post the
@@ -117,7 +153,7 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
     DownloadForegroundService.start(ctx)
     DownloadForegroundService.setProgress(key, "$title — Downloading 0%")
 
-    DownloadScope.io.launch {
+    val job = DownloadScope.io.launch {
         try {
             // ── Download phase ────────────────────────────────────────────────
             val uri = com.winlator.star.ui.screens.downloadToCache(ctx, profile) { frac ->
@@ -156,6 +192,10 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
                 if (installed) it.copy(phase = ContentDownloadPhase.DONE, fraction = 1f)
                 else it.copy(phase = ContentDownloadPhase.ERROR, error = "Install failed.")
             }
+        } catch (c: CancellationException) {
+            // A user Cancel: requestCancel already set the cancelled-terminal state — keep it and let
+            // the finally close the bracket. Never swallow a CancellationException.
+            throw c
         } catch (e: Exception) {
             Log.w(TAG, "Component download/install failed for $key", e)
             ContentDownloadRegistry.update(key) {
@@ -165,14 +205,20 @@ fun startContentDownload(appContext: Context, profile: ContentProfile) {
             // Drop the shade line (FGS self-stops when no downloads remain) for success,
             // failure OR cancellation — the bracket must always close.
             DownloadForegroundService.finish(key)
-            // Leave a terminal registry entry briefly so an open sheet can render DONE/ERROR,
-            // then clear it so the registry doesn't leak when the sheet is closed.
-            val terminal = ContentDownloadRegistry.get(key)?.phase
-            val linger = if (terminal == ContentDownloadPhase.ERROR) 60_000L else 2_000L
-            delay(linger)
-            if (ContentDownloadRegistry.get(key)?.terminal == true) ContentDownloadRegistry.remove(key)
+            ContentDownloadRegistry.clearJob(key)
+            // Leave a terminal registry entry briefly so an open sheet can render DONE/ERROR (a
+            // cancelled or done entry lingers ~2s; a real failure lingers long enough to be read),
+            // then clear it so the registry doesn't leak. NonCancellable so the linger still runs even
+            // when we're here BECAUSE the job was cancelled (a plain delay would abort instantly).
+            val st = ContentDownloadRegistry.get(key)
+            val linger = if (st?.phase == ContentDownloadPhase.ERROR && !st.cancelled) 60_000L else 2_000L
+            withContext(NonCancellable) {
+                delay(linger)
+                if (ContentDownloadRegistry.get(key)?.terminal == true) ContentDownloadRegistry.remove(key)
+            }
         }
     }
+    ContentDownloadRegistry.attachJob(key, job)
 }
 
 /**

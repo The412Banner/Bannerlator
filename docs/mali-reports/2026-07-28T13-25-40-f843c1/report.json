@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-28T13-25-40-f843c1",
+  "created": "2026-07-28T13:25:40.245Z",
+  "ip_hash": "M56xcZgzWT",
+  "fields": {
+    "reporter_name": "Tharusha",
+    "device_model": "POCO X7 pro",
+    "soc": "Dimensity 8400 Ultra",
+    "gpu": "Mali G720 MC7",
+    "android": "Android 16",
+    "ram": "12",
+    "app_version": "2.8",
+    "install_source": "GitHub release",
+    "game_name": "COJ Gunslinger, Darkness 2, Shadow warrior 1 and 2, literally every game",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "CoJGunslinger.exe",
+    "symptom": "Black screen (no image)",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.7.2",
+    "proton": "Proton10-Arm64ec",
+    "box64": "Performance (TSO)",
+    "resolution": "1600×720",
+    "framegen": "No",
+    "repro": "1.Used same settings I used in Winlator forks that worked perfectly on that emulators.\n2.tap and opened(game is opening but random)\n3. Pre rendered cutscenes working with wrong colors(sometimes it has lot of glitches)\n4.its totally black screen or white screen after cutscenes end.\n5. I can here the game audio and I can do some actions.overlay and DXVK HUD also shows very good fps than other emulators.",
+    "tried": "I changed wrappers, wrapper settings,\nUsed several DXVK versions."
+  },
+  "logs": []
+}

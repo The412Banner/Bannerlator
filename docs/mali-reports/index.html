@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bannerlator · Mali Game Report</title>
+<style>
+:root{
+  --bg:#08090C; --bg-2:#0E1015; --panel:#14161D; --panel-2:#191C25;
+  --line:#242833; --line-2:#2E3340;
+  --ink:#EEF0F5; --muted:#9BA1AF; --faint:#6B7180;
+  --violet:#7C5CFF; --violet-2:#A98BFF; --pink:#FF4FA3; --cyan:#36D1DC;
+  --ok:#3DD68C; --ok-bg:#10221A; --warn:#FFB02E; --warn-bg:#241B08; --err:#FF5D70; --err-bg:#2A1418;
+  --font:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:var(--font);line-height:1.55;letter-spacing:-.01em;
+  background:radial-gradient(1200px 600px at 80% -10%,#171a24,transparent),var(--bg)}
+.wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 12px/1 var(--mono);
+  letter-spacing:.2em;text-transform:uppercase;color:var(--violet-2)}
+.hex{width:15px;height:17px;background:linear-gradient(150deg,var(--violet-2),var(--pink));
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+h1{font-size:1.9rem;margin:14px 0 6px}
+h1 .accent{background:linear-gradient(100deg,var(--violet-2),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:64ch;color:var(--muted);font-size:16px;margin:0}
+.notice{margin:20px 0;padding:14px 16px;border:1px solid #4a3a12;background:var(--warn-bg);
+  border-radius:12px;color:#f4d79a;font-size:14px}
+.notice b{color:var(--warn)}
+fieldset{border:1px solid var(--line);border-radius:14px;padding:18px 18px 6px;margin:22px 0;background:var(--panel)}
+legend{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);padding:0 8px}
+.req legend::after{content:" · required";color:var(--faint);font-weight:400}
+label{display:block;margin:0 0 14px}
+label .lab{display:block;font-size:13.5px;color:var(--muted);margin-bottom:5px}
+label .hint{color:var(--faint);font-weight:400}
+input,select,textarea{width:100%;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;
+  color:var(--ink);font:inherit;font-size:15px;padding:10px 12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px #7c5cff33}
+textarea{min-height:80px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.filebox{border:1.5px dashed var(--line-2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);background:var(--bg-2)}
+.filebox input{padding:8px}
+.actions{display:flex;gap:12px;align-items:center;margin-top:8px}
+button{font:600 15px var(--font);border:0;border-radius:12px;padding:13px 22px;cursor:pointer;
+  background:linear-gradient(100deg,var(--violet),var(--pink));color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.msg{margin-top:16px;padding:14px 16px;border-radius:12px;display:none;font-size:14.5px}
+.msg.ok{display:block;background:var(--ok-bg);border:1px solid #1c4433;color:#9be9c4}
+.msg.err{display:block;background:var(--err-bg);border:1px solid #4a2028;color:#ffb3bd}
+.msg a{color:var(--cyan)}
+details{margin:10px 0 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:0 16px}
+summary{cursor:pointer;padding:14px 0;font-weight:600;color:var(--violet-2)}
+details ol{margin:0 0 14px;padding-left:20px;color:var(--muted);font-size:14.5px;line-height:1.7}
+code{font-family:var(--mono);background:#8882;padding:1px 6px;border-radius:5px;font-size:.9em}
+.foot{margin-top:34px;color:var(--faint);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><span class="hex"></span>Bannerlator</span>
+  <h1>Mali <span class="accent">game report</span></h1>
+  <p class="lede">Games misbehaving on a Mali GPU? Fill this out so we can actually help. A complete report gets fixed far faster than "it doesn't work."</p>
+  <p style="margin:10px 0 0"><a href="reports.html" style="color:var(--cyan);text-decoration:none;font-weight:600;font-size:14.5px">📋 Browse all reports &amp; dev answers →</a></p>
+
+  <div class="notice"><b>Please read:</b> this report and any logs you attach are submitted to a <b>public</b> repository and will be visible to anyone. Don't include passwords, personal files, or anything private. Logs may contain your device model and installed games.</div>
+
+  <details>
+    <summary>How to grab a log first (do this before submitting)</summary>
+    <ol>
+      <li>Open Bannerlator → <b>Settings</b>.</li>
+      <li>In the <b>Logs</b> section turn on <b>Enable Wine Debug</b> and <b>Enable Box64 Logs</b>.</li>
+      <li>Set the log location dropdown to <b>Download</b> (saves to <code>/sdcard/Download/bannerlator</code>).</li>
+      <li>Apply, then launch the game and reproduce the problem.</li>
+      <li>Come back here and attach the log file(s) from that folder below.</li>
+    </ol>
+  </details>
+
+  <form id="f" autocomplete="off">
+    <!-- honeypot: hidden from humans, bots fill it -->
+    <div class="hp"><label>Website<input name="website" tabindex="-1"></label></div>
+
+    <fieldset><legend>About you <span style="color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0"> — optional</span></legend>
+      <label><span class="lab">What should we call you? <span class="hint">(shown to the developers so they can address you when they reply in the discussion)</span></span><input name="reporter_name" maxlength="40" placeholder="e.g. Alex"></label>
+    </fieldset>
+
+    <fieldset class="req"><legend>Your device</legend>
+      <div class="grid">
+        <label><span class="lab">Phone / tablet model</span><input name="device_model" placeholder="Samsung Galaxy S23 FE" required></label>
+        <label><span class="lab">Chipset / SoC</span><input name="soc" placeholder="Exynos 2200 / Dimensity 9200"></label>
+        <label><span class="lab">GPU (Mali variant)</span><input name="gpu" placeholder="Mali-G710 MC10" required></label>
+        <label><span class="lab">Android version</span><input name="android" placeholder="Android 14 / One UI 6.1"></label>
+        <label><span class="lab">RAM</span><input name="ram" placeholder="8 GB"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="req"><legend>Bannerlator</legend>
+      <div class="grid">
+        <label><span class="lab">App version <span class="hint">(Settings → About)</span></span><input name="app_version" placeholder="2.8.2" required></label>
+        <label><span class="lab">Installed from</span>
+          <select name="install_source"><option value="">—</option><option>GitHub release</option><option>In-app updater</option><option>Sideload</option></select></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="req"><legend>The game</legend>
+      <div class="grid">
+        <label><span class="lab">Game name</span><input name="game_name" placeholder="Hades" required></label>
+        <label><span class="lab">Steam AppID <span class="hint">(if known)</span></span><input name="steam_appid" placeholder="1145360"></label>
+        <label><span class="lab">Store / source</span>
+          <select name="store"><option value="">—</option><option>Steam</option><option>GOG</option><option>Other</option></select></label>
+        <label><span class="lab">Launched .exe</span><input name="exe" placeholder="Hades.exe"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="req"><legend>What happens</legend>
+      <label><span class="lab">Symptom</span>
+        <select name="symptom" required>
+          <option value="">Choose one…</option>
+          <option>Black screen (no image)</option>
+          <option>Crashes / closes to home</option>
+          <option>Freezes / hangs</option>
+          <option>Graphical glitches (corruption, flicker, missing textures)</option>
+          <option>Runs but very low FPS</option>
+          <option>Other</option>
+        </select></label>
+      <label><span class="lab">When does it happen?</span>
+        <select name="when">
+          <option value="">Choose one…</option>
+          <option>Never launches at all</option>
+          <option>Fails at the publisher/loading logo</option>
+          <option>Crashes in the main menu</option>
+          <option>Crashes after a while in-game</option>
+          <option>Only in a specific area/scene</option>
+        </select></label>
+    </fieldset>
+
+    <fieldset><legend>Container settings <span style="color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0"> — the #1 thing we need for Mali</span></legend>
+      <div class="grid">
+        <label><span class="lab">Graphics driver <span class="hint">(Mali usually can't use Turnip)</span></span><input name="graphics_driver" placeholder="System / Turnip / other"></label>
+        <label><span class="lab">DX wrapper</span>
+          <select name="dx_wrapper"><option value="">—</option><option>DXVK</option><option>VKD3D</option><option>WineD3D</option></select></label>
+        <label><span class="lab">DXVK version</span><input name="dxvk" placeholder="2.4.1"></label>
+        <label><span class="lab">Proton / Wine layer</span><input name="proton" placeholder="Proton 11.0-1"></label>
+        <label><span class="lab">Box64 / FEX preset</span><input name="box64" placeholder="Performance / Compatibility"></label>
+        <label><span class="lab">Screen resolution</span><input name="resolution" placeholder="1280×720"></label>
+        <label><span class="lab">Frame gen on?</span><input name="framegen" placeholder="No / FSR3 model 3"></label>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Details</legend>
+      <label><span class="lab">Reproduction steps <span class="hint">— from a cold start, what do you tap/do?</span></span><textarea name="repro" placeholder="1. Open game&#10;2. Tap New Game&#10;3. Black screen after logo"></textarea></label>
+      <label><span class="lab">What you already tried</span><textarea name="tried" placeholder="Switched driver to System, lowered resolution — no change"></textarea></label>
+    </fieldset>
+
+    <fieldset><legend>Logs &amp; screenshots</legend>
+      <div class="filebox">
+        <p style="margin:0 0 10px">Attach your log file(s) and/or a screenshot. Up to 6 files, 3&nbsp;MB each.</p>
+        <input type="file" id="files" multiple accept=".txt,.log,.zip,.png,.jpg,.jpeg,image/*,text/*">
+        <p id="filelist" style="margin:10px 0 0;color:var(--faint);font-size:13px"></p>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" id="submit">Submit report</button>
+      <span id="spin" style="color:var(--muted);display:none">Submitting…</span>
+    </div>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <p class="foot">Bannerlator · Mali diagnostics · your report helps us support more devices.</p>
+</div>
+
+<script>
+const WORKER = "https://bannerlator-mali-reports.the412banner.workers.dev";
+const MAX_FILES = 6, MAX_BYTES = 3*1024*1024;
+const form = document.getElementById("f");
+const msg = document.getElementById("msg");
+const spin = document.getElementById("spin");
+const submitBtn = document.getElementById("submit");
+const filesInput = document.getElementById("files");
+const filelist = document.getElementById("filelist");
+
+filesInput.addEventListener("change", () => {
+  const fs = [...filesInput.files];
+  if (fs.length > MAX_FILES) { filelist.textContent = `Too many files — max ${MAX_FILES}.`; return; }
+  const bad = fs.find(f => f.size > MAX_BYTES);
+  if (bad) { filelist.textContent = `"${bad.name}" is too big — max 3 MB each.`; return; }
+  filelist.textContent = fs.length ? fs.map(f => f.name + " (" + Math.ceil(f.size/1024) + " KB)").join(", ") : "";
+});
+
+function fileToB64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(",")[1] || "");
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  msg.className = "msg"; msg.textContent = "";
+  const data = new FormData(form);
+  const fields = {}; for (const [k,v] of data.entries()) if (k!=="website") fields[k]=v.trim ? v.trim() : v;
+
+  const fs = [...filesInput.files].slice(0, MAX_FILES);
+  if (fs.some(f => f.size > MAX_BYTES)) { showErr("A file is over the 3 MB limit."); return; }
+
+  submitBtn.disabled = true; spin.style.display = "inline";
+  try {
+    const logs = [];
+    for (const f of fs) logs.push({ name: f.name, content: await fileToB64(f) });
+    const res = await fetch(WORKER + "/submit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields, logs, website: data.get("website") || "" }),
+    });
+    const out = await res.json();
+    if (!res.ok || !out.ok) throw new Error(out.detail || out.error || "Submission failed");
+    const opLink = out.url + (out.token ? ("?k=" + encodeURIComponent(out.token)) : "");
+    if (out.token) { try { localStorage.setItem("mali_op_" + out.id, out.token); } catch(e){} }
+    msg.className = "msg ok";
+    msg.innerHTML = `✅ Thanks! Your report was submitted. Reference ID <code>${out.id}</code>.`
+      + `<br><b>Your report link</b> — bookmark it. Replying from it (or from this device) marks you as the original poster so we know it's really you:<br><a href="${opLink}" target="_blank" rel="noopener">${opLink}</a>`
+      + `<br>Or browse everyone's reports and dev answers: <a href="reports.html" target="_blank" rel="noopener">all reports →</a>`;
+    form.reset(); filelist.textContent = "";
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  } catch (err) {
+    showErr(err.message || "Something went wrong. Please try again.");
+  } finally {
+    submitBtn.disabled = false; spin.style.display = "none";
+  }
+});
+function showErr(t){ msg.className="msg err"; msg.textContent = "⚠️ " + t; }
+</script>
+</body>
+</html>

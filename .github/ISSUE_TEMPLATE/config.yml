@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🐛 Report a Mali GPU game issue
+    url: https://the412banner.github.io/Bannerlator/mali-reports/
+    about: On a Mali GPU (Exynos / Dimensity / Kirin / Helio)? File a structured report with your logs here — the developers answer in a public discussion thread on your report.
+  - name: 📋 Browse Mali reports & dev answers
+    url: https://the412banner.github.io/Bannerlator/mali-reports/reports.html
+    about: See what's already been reported, answered, and fixed for Mali devices before filing.

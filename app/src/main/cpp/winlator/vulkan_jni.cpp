@@ -196,6 +196,16 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeScanoutSetDst(
     if (r) r->scanoutSetDst(x, y, w, h);
 }
 
+// #413: compositor clip rect (surface px) used as the swapchain scissor in recordCmdBuf so FILL/STRETCH
+// overflow is cropped to the game's half. A full-surface (or w<=0) rect disables the clip.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetClipRegion(
+    JNIEnv*, jobject, jlong handle, jint x, jint y, jint w, jint h)
+{
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setClipRegion(x, y, w, h);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetScanoutWindow(
     JNIEnv* env, jobject, jlong handle, jobject gameSurface, jobject cursorSurface)
@@ -239,6 +249,7 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFilterMode(JNIEnv
 
 // Scaling mode enum (see VulkanRendererContext::upscalerMode):
 //   0=none 1=linear 2=nearest 3=sgsr 4=fsr(fill) 5=fsr_fit(letterbox)
+//   6=sharpen 7=nis 8=sgsr_quality
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetUpscaler(JNIEnv*, jobject, jlong handle, jint mode) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
@@ -308,11 +319,12 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetNtsc(JNIEnv*, job
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->setNtsc(enabled == JNI_TRUE);
 }
-// Color grade: brightness/contrast as the raw -100..100 sliders, gamma 0.5..3.0.
+// Color grade: brightness/contrast as the raw -100..100 sliders, gamma 0.5..3.0,
+// saturation as the raw 0..200 percent slider (100 = neutral).
 extern "C" JNIEXPORT void JNICALL
-Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetColorGrade(JNIEnv*, jobject, jlong handle, jfloat brightness, jfloat contrast, jfloat gamma) {
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetColorGrade(JNIEnv*, jobject, jlong handle, jfloat brightness, jfloat contrast, jfloat gamma, jfloat saturation) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
-    if (r) r->setColorGrade((float)brightness, (float)contrast, (float)gamma);
+    if (r) r->setColorGrade((float)brightness, (float)contrast, (float)gamma, (float)saturation);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -348,4 +360,85 @@ Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeReattachSurface(JNIE
         r->destroyScanout();
     }
     return (jboolean)ok;
+}
+
+// ---------------------------------------------------------------------------
+// Native LSFG frame generation — capability verdict.
+//
+// Answers "can this device run the compositor-side LSFG chain at all", settled
+// at device + swapchain creation. Returns null when the renderer is gone, so
+// the caller treats an absent renderer as "unknown" rather than "unsupported".
+// ---------------------------------------------------------------------------
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgSupported(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return (jboolean)(r && r->lsfgCaps().supported());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeLsfgCapsReason(JNIEnv* env, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return nullptr;
+    return env->NewStringUTF(r->lsfgCaps().reason);
+}
+
+// Why native frame gen cannot run: -1 unknown yet, 0 fine, 1 driver lacks what the
+// selected engine needs, 2 the engine failed to start. See frameGenProblem().
+extern "C" JNIEXPORT jint JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenProblem(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jint)r->frameGenProblem() : (jint)-1;
+}
+
+// --- Native LSFG frame generation: arming and tuning ------------------------
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenArmed(
+        JNIEnv*, jobject, jlong handle, jboolean armed, jint multiplier) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenArmed(armed == JNI_TRUE, (int)multiplier);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetLsfgCachePath(
+        JNIEnv* env, jobject, jlong handle, jstring path) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    if (!path) { r->setLsfgCachePath(nullptr); return; }
+    const char* chars = env->GetStringUTFChars(path, nullptr);
+    r->setLsfgCachePath(chars);
+    if (chars) env->ReleaseStringUTFChars(path, chars);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenTuning(
+        JNIEnv*, jobject, jlong handle, jfloat flowScale, jfloat refreshHz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenTuning((float)flowScale, (float)refreshHz);
+}
+
+// Which native engine generates (0 = LSFG, 1 = win-fg) and win-fg's own knobs.
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetFrameGenEngine(
+        JNIEnv*, jobject, jlong handle, jint kind) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenEngine((int)kind);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeSetWinFgTuning(
+        JNIEnv*, jobject, jlong handle, jint model, jint perfPreset) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setWinFgTuning((int)model, (int)perfPreset);
+}
+
+// Live frame-gen telemetry: {accepted, planned, sourceFps, presentedFps, thermal, chainMsPerGen}
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_winlator_star_renderer_vulkan_VulkanRenderer_nativeFrameGenStats(
+        JNIEnv* env, jobject, jlong handle) {
+    float stats[6] = {0.f, 0.f, 0.f, 0.f, -1.f, -1.f};
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->frameGenStats(stats);
+    jfloatArray arr = env->NewFloatArray(6);
+    if (arr) env->SetFloatArrayRegion(arr, 0, 6, stats);
+    return arr;
 }

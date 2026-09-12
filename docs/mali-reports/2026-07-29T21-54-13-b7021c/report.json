@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-29T21-54-13-b7021c",
+  "created": "2026-07-29T21:54:13.878Z",
+  "ip_hash": "yom9jMRrf/",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Techno pop 9",
+    "soc": "Unisoc t600",
+    "gpu": "Mali g710",
+    "android": "Android 14",
+    "ram": "4gb",
+    "app_version": "2.9.0",
+    "install_source": "GitHub release",
+    "game_name": "All",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "Can you please go back to the old graphic driver system because i can't play any games i can't change dxvk from 2.4 to 1.10 with all graphic driver please do something",
+    "tried": "Everything"
+  },
+  "logs": []
+}

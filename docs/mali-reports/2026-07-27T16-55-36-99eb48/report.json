@@ -1,0 +1,34 @@
+{
+  "id": "2026-07-27T16-55-36-99eb48",
+  "created": "2026-07-27T16:55:36.294Z",
+  "ip_hash": "rTOuf/gWN9",
+  "fields": {
+    "device_model": "Poco X6 Pro / Redmi K70E",
+    "soc": "Dimensity 8300 ultra",
+    "gpu": "Mali G615 Mc-6",
+    "android": "Android 16",
+    "ram": "12gb /8gb",
+    "app_version": "2.8.2",
+    "install_source": "GitHub release",
+    "game_name": "Grand Theft Auto V",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "PlayGTAV.exe",
+    "symptom": "Other",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "Wrapper-gamenative or wrapper",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.6.2 gplasync",
+    "proton": "Proton 11.0-1",
+    "box64": "Performance",
+    "resolution": "1280X720",
+    "framegen": "No",
+    "repro": "",
+    "tried": "Tried every possible setting to fix it , not works .\nIts driver side issue , it doesn't crash in gamehub emulator. (Memory leak issue I guess)"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260727-111224_Winlator_Mali.png"
+    }
+  ]
+}

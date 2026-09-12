@@ -1,0 +1,30 @@
+{
+  "id": "2026-07-27T18-56-17-e60fb6",
+  "created": "2026-07-27T18:56:17.126Z",
+  "ip_hash": "xHs09X+gkB",
+  "fields": {
+    "device_model": "Poco X6 pro",
+    "soc": "Demencity 8300 Ultra",
+    "gpu": "Mali-G615 MC 6",
+    "android": "HyperOS 3.0.8.0",
+    "ram": "12",
+    "app_version": "2.6",
+    "install_source": "GitHub release",
+    "game_name": "God of War",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "",
+    "symptom": "Runs but very low FPS",
+    "when": "Fails at the publisher/loading logo",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.12.0",
+    "proton": "Proton 11.0-1",
+    "box64": "Performance",
+    "resolution": "1280×720",
+    "framegen": "FSR",
+    "repro": "1.open Bannerlator \n2.tap to games\n3.tap God of War 2018 Lite\n4.5 min later game not start",
+    "tried": "Swithee DXVK Wrapper and conf"
+  },
+  "logs": []
+}

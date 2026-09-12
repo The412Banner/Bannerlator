@@ -1,0 +1,35 @@
+{
+  "id": "2026-07-28T16-49-33-1e5fd5",
+  "created": "2026-07-28T16:49:33.271Z",
+  "ip_hash": "7XYTJX7J1I",
+  "fields": {
+    "reporter_name": "Omar",
+    "device_model": "Xiaomi 14t",
+    "soc": "Demensity 8300ULRA",
+    "gpu": "Mali g615 mc6",
+    "android": "Android 16",
+    "ram": "12",
+    "app_version": "2.8.2",
+    "install_source": "إصدار GitHub",
+    "game_name": "Forza horizon 4",
+    "steam_appid": "",
+    "store": "بخار",
+    "exe": "Forza horizon 4exe",
+    "symptom": "شاشة سوداء (بدون صورة)",
+    "when": "فشل عند ظهور شعار الناشر/التحميل",
+    "graphics_driver": "",
+    "dx_wrapper": "VKD3D",
+    "dxvk": "2.4.1",
+    "proton": "Proton 10",
+    "box64": "0.3.7",
+    "resolution": "1280.720",
+    "framegen": "No",
+    "repro": "Subject: Bug Report: Forza Horizon 4 crash on Mali GPU (VKD3D Buffer Creation & DXGI SwapChain Error)\n\nHi,\n​I’m reporting a reproducible crash when launching Forza Horizon 4 on a device with a Mali-G615 GPU. Based on the extracted logs, the crash seems to occur during the Vulkan buffer creation and DXGI swapchain initialization under VKD3D.\n​Here are the key log excerpts and technical details:\nVulkan Buffer Failure (VK_ERROR_OUT_OF_DEVICE_MEMORY / Allocation Failure):\n\n[error]: Failed to create buffer, res -1000072003\n\nUnimplemented DXGI SwapChain:\n\nerr: DxgiFactory::CreateSwapChainForComposition: Not implemented\n\nExecution Environment:\nRunning in experimental ARM64EC mode.\n\nIssue Breakdown:\n​VKD3D / Mali Compatibility: Forza Horizon 4 relies heavily on Direct3D 12 features via VKD3D. The Mali driver fails when allocating specific Vulkan buffers (res -1000072003), likely due to missing extensions or memory allocation limits specific to Mali's architecture compared to Adreno/Turnip.\n​DXGI Composition: The call CreateSwapChainForComposition is currently unhandled or failing to initialize properly with the current DX Wrapper configuration.\n​Device Info:\n​GPU: Mali-G615 MC6\n​OS: Android 16\n​Game: Forza Horizon 4 (DX12)\n​Hope this log breakdown helps in debugging or tuning the VKD3D/Mali wrapper configurations in future builds! Let me know if you need any additional log dumps or tests.\n​Best regards,\nOmar",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-07-28-16-48-10-264_com.winlator.banner.jpg"
+    }
+  ]
+}

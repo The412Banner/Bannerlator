@@ -1,0 +1,52 @@
+04ac:info:vkd3d_instance_apply_application_workarounds: Program name: "ForzaWebHelper.exe" (hash: 08f3e3358a134251)
+04ac:info:vkd3d_instance_deduce_config_flags_from_environment: shader_cache is used, global_pipeline_cache is enforced.
+04ac:info:vkd3d_config_flags_init_once: VKD3D_CONFIG=''.
+04ac:info:vkd3d_get_vk_version: vkd3d-proton - applicationVersion: 3.0.0.
+04ac:info:vkd3d_instance_init: vkd3d-proton - build: 21a49c975df83a7.
+04ac:info:vkd3d_init_device_caps: Not all relevant pipeline stages are supported by EXT_dgc. Skipping EXT.
+04ac:info:vkd3d_memory_info_decide_hvv_usage: Topology: UMA-like topology.
+04ac:info:vkd3d_memory_info_upload_hvv_memory_properties: Topology: HVV usage is allowed, using DEVICE_LOCAL | HOST_COHERENT for UPLOAD.
+04ac:info:vkd3d_bindless_state_get_bindless_flags: Device does not support VK_EXT_mutable_descriptor_type (or VALVE).
+04ac:fixme:d3d12_device_caps_init_feature_options1: TotalLaneCount = 512, may be inaccurate.
+04ac:info:vkd3d_pipeline_library_init_disk_cache: Remapping VKD3D_SHADER_CACHE to: vkd3d-proton.cache.
+04ac:info:vkd3d_pipeline_library_init_disk_cache: Attempting to load disk cache from: vkd3d-proton.cache.
+0504:info:vkd3d_pipeline_library_disk_thread_main: Performing async setup of stream archive ...
+0504:info:vkd3d_pipeline_library_disk_cache_merge: No write cache exists. No need to merge any disk caches.
+0504:info:vkd3d_pipeline_library_disk_cache_initial_setup: Merging pipeline libraries took 25.540 ms.
+0504:info:vkd3d_pipeline_library_disk_cache_initial_setup: Mapping read-only cache took 3.994 ms.
+0504:info:d3d12_pipeline_library_read_blob_stream_format: Device teardown request received, stopping parse early.
+0504:info:vkd3d_pipeline_library_disk_cache_initial_setup: Parsing stream archive took 1.294 ms.
+0504:info:vkd3d_pipeline_library_disk_thread_main: Done performing async setup of stream archive.
+04ac:info:vkd3d_get_vk_version: vkd3d-proton - applicationVersion: 3.0.0.
+04ac:info:vkd3d_instance_init: vkd3d-proton - build: 21a49c975df83a7.
+04ac:info:vkd3d_init_device_caps: Not all relevant pipeline stages are supported by EXT_dgc. Skipping EXT.
+04ac:info:vkd3d_memory_info_decide_hvv_usage: Topology: UMA-like topology.
+04ac:info:vkd3d_memory_info_upload_hvv_memory_properties: Topology: HVV usage is allowed, using DEVICE_LOCAL | HOST_COHERENT for UPLOAD.
+04ac:info:vkd3d_bindless_state_get_bindless_flags: Device does not support VK_EXT_mutable_descriptor_type (or VALVE).
+04ac:fixme:d3d12_device_caps_init_feature_options1: TotalLaneCount = 512, may be inaccurate.
+04ac:info:vkd3d_pipeline_library_init_disk_cache: Remapping VKD3D_SHADER_CACHE to: vkd3d-proton.cache.
+04ac:info:vkd3d_pipeline_library_init_disk_cache: Attempting to load disk cache from: vkd3d-proton.cache.
+050c:info:vkd3d_pipeline_library_disk_thread_main: Performing async setup of stream archive ...
+050c:info:vkd3d_pipeline_library_disk_cache_merge: No write cache exists. No need to merge any disk caches.
+050c:info:vkd3d_pipeline_library_disk_cache_initial_setup: Merging pipeline libraries took 20.382 ms.
+050c:info:vkd3d_pipeline_library_disk_cache_initial_setup: Mapping read-only cache took 2.978 ms.
+050c:info:d3d12_pipeline_library_read_blob_stream_format: Device teardown request received, stopping parse early.
+050c:info:vkd3d_pipel02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 567). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 3). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 4). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 6). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 8). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 2). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 3). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 10). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Flushing disk cache (wakeup counter since last flush = 38). It seems like application has stopped creating new PSOs for the time being.
+02c4:info:vkd3d_pipeline_library_disk_thread_main: Pipeline cache marked dirty. Flush is scheduled.

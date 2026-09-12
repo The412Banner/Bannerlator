@@ -1,0 +1,60 @@
+name: Release notes check (dry run)
+
+# Assembles a release description exactly as release.yml would (scripts/release_notes.py)
+# and shows it in the job summary. Builds nothing and publishes nothing: use it on the
+# branch that will be released to see the page before cutting. Pushing a branch named
+# notes-check/<number> runs it too (for trying it out before it is on main).
+
+on:
+  push:
+    branches: ['notes-check/*']
+  workflow_dispatch:
+    inputs:
+      release_number:
+        description: 'Release number (docs/releases/<number>.md)'
+        required: true
+        default: '3.1.0'
+      make_prerelease:
+        description: 'Pre-release?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  notes:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Clone repository (full history + tags, for the change list)
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: Assemble the release description
+      env:
+        NUMBER: ${{ inputs.release_number }}
+        PRE: ${{ inputs.make_prerelease }}
+      run: |
+        [ -z "$NUMBER" ] && NUMBER="${GITHUB_REF_NAME#notes-check/}"
+        echo "release number: $NUMBER"
+        echo "NOTES_NUMBER=$NUMBER" >> "$GITHUB_ENV"
+        ARGS=("$NUMBER")
+        [ "$PRE" = "true" ] && ARGS+=(--prerelease)
+        python3 scripts/release_notes.py "${ARGS[@]}"
+        { echo "### In-app update line"; echo; cat short-notes.txt; echo;
+          echo "### Release description"; echo; cat release-body.md; } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload it
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-notes-${{ env.NOTES_NUMBER }}
+        path: |
+          release-body.md
+          short-notes.txt
+        retention-days: 7

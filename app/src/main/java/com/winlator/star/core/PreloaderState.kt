@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 /** Which face of the launch overlay is currently showing. */
 enum class Phase { SETUP, GUEST, FAILED }
 
+/** One extra button on the failure card (e.g. "Retry", "Launch with Goldberg"). */
+data class FailureAction(val label: String, val primary: Boolean, val run: Runnable)
+
 /** Populated only when [Phase.FAILED] — drives the failure card. */
 data class Failure(
     val stage: String,
@@ -14,6 +17,8 @@ data class Failure(
     val detail: String?,
     val logDir: String?,
     val loggingEnabled: Boolean,
+    /** Optional extra actions rendered before the standard Close / Open-log buttons. */
+    val actions: List<FailureAction> = emptyList(),
 )
 
 /**
@@ -24,6 +29,7 @@ data class PreloaderUi(
     val icon: Bitmap? = null,          // small shortcut icon (fallback art / corner)
     val coverArt: Bitmap? = null,      // full-bleed hero background when available
     val spec: PreloaderSpec? = null,   // card-mirrored component spec shown under the title
+    val details: PreloaderDetails? = null, // accumulated game details, shown on the right-side panel
     val stepIndex: Int = 0,            // 0 = none yet; 1..stepTotal for the determinate bar
     val stepTotal: Int = 4,
     val stepLabel: String = "",
@@ -62,6 +68,12 @@ object PreloaderState {
             spec = spec, cancellable = true)
     }
 
+    /** Begin a game launch with the component spec + accumulated game details (right-side panel). */
+    @JvmStatic fun show(title: String?, icon: Bitmap?, coverArt: Bitmap?, spec: PreloaderSpec?, details: PreloaderDetails?) {
+        _ui.value = PreloaderUi(title = title ?: "", icon = icon, coverArt = coverArt,
+            spec = spec, details = details, cancellable = true)
+    }
+
     /** Begin a launch with only a shortcut icon (no cover art). */
     @JvmStatic fun show(title: String?, icon: Bitmap?) {
         _ui.value = PreloaderUi(title = title ?: "", icon = icon, cancellable = true)
@@ -95,10 +107,33 @@ object PreloaderState {
 
     /** Surface a launch failure card instead of dismissing. */
     @JvmStatic fun fail(stage: String, what: String, detail: String?, logDir: String?, loggingEnabled: Boolean) {
+        fail(stage, what, detail, logDir, loggingEnabled, emptyList())
+    }
+
+    /** Failure card with extra action buttons (SteamLite: Retry / Launch with Goldberg). */
+    @JvmStatic fun fail(stage: String, what: String, detail: String?, logDir: String?, loggingEnabled: Boolean,
+                        actions: List<FailureAction>) {
         val cur = _ui.value ?: PreloaderUi(title = "")
-        _ui.value = cur.copy(phase = Phase.FAILED, failure = Failure(stage, what, detail, logDir, loggingEnabled))
+        _ui.value = cur.copy(phase = Phase.FAILED, failure = Failure(stage, what, detail, logDir, loggingEnabled, actions))
     }
 
     @JvmStatic fun hide() { _ui.value = null }
+
+    /**
+     * Failure-card Close. Runs the owning activity's callback (finish) if one is still registered,
+     * then clears the shared state. The state is app-wide and the same overlay is composed in
+     * MainActivity too, so a card left in FAILED after the game activity finished (or was swiped
+     * away, which never runs its callbacks) kept showing on the Games screen with an inert Close —
+     * the only way out was killing the app. Clearing here fixes both paths.
+     */
+    @JvmStatic fun close() {
+        onClose?.run()
+        hide()
+    }
+
+    /** Clear a lingering failure card only (used from the game activity's teardown). */
+    @JvmStatic fun hideIfFailed() {
+        if (_ui.value?.phase == Phase.FAILED) _ui.value = null
+    }
     @JvmStatic fun isVisible(): Boolean = _ui.value != null
 }

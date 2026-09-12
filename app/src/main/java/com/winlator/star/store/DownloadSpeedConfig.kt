@@ -21,9 +21,8 @@ package com.winlator.star.store
  * `maxDownloads = (cores * download).coerceAtLeast(1)`
  * `maxDecompress = (cores * decompress).coerceAtLeast(1)`
  *
- * [maxFileWrites] is NOT user-exposed (GameNative omits it and relies on the engine default).
- * Our positional 9-arg constructor requires the argument, so we tie it to [maxDecompress] to keep
- * the peak count of simultaneously-live large buffers bounded (~maxDecompress + maxFileWrites).
+ * The joshuatam fork engine disk-spools chunks and has no separate file-write stage, so
+ * `maxFileWrites` is gone — these two caps are now purely throughput knobs, not heap bounds.
  */
 class DownloadSpeedConfig(private val tier: Int) {
 
@@ -60,9 +59,29 @@ class DownloadSpeedConfig(private val tier: Int) {
         get() = (cpuCores * ratios.decompress).toInt().coerceAtLeast(1)
 
     /**
-     * File-write stage concurrency. Tied to [maxDecompress] so peak live large buffers stay
-     * bounded. GameNative doesn't expose this; our positional ctor requires it, so we derive it.
+     * B2b async-fetch adaptive-window **ceiling** = the max number of concurrent in-flight chunk
+     * requests the tier permits. The Rust engine bootstraps far below this and ramps toward it ONLY
+     * while measured throughput keeps rising and errors/timeouts stay low, clamped to
+     * distinct-CDN-hosts × per-host-cap; a weak/thin connection naturally settles well below it and
+     * never floods. Unlike [maxDownloads] (which was an OS-thread count, so it scaled with CPU cores
+     * and was capped at 32), this is a per-tier network-parallelism ceiling independent of cores:
+     * async requests are cheap, so a fast link can hold many more in flight than there are cores.
+     *
+     *   Slow    = 6    (deliberately gentle for weak connections)
+     *   Medium  = 16
+     *   Fast    = 32   (default)
+     *   Blazing = 96
+     *
+     * The engine still hard-bounds RAW in-flight memory with its byte budget regardless of this
+     * ceiling, so a high tier costs concurrency, not unbounded heap.
      */
-    val maxFileWrites: Int
-        get() = maxDecompress
+    val maxNetworkWindow: Int
+        get() = when (tier) {
+            TIER_SLOW -> 6
+            TIER_MEDIUM -> 16
+            TIER_FAST -> 32
+            TIER_BLAZING -> 96
+            // Unknown/corrupt value → app default (Fast), matching the ratio fallback above.
+            else -> 32
+        }
 }

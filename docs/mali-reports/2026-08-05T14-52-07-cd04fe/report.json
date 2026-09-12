@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-05T14-52-07-cd04fe",
+  "created": "2026-08-05T14:52:07.264Z",
+  "ip_hash": "S12/kSfb4y",
+  "fields": {
+    "reporter_name": "Alex",
+    "device_model": "Motorola Moto G72",
+    "soc": "MediaTek Heilo G99",
+    "gpu": "Mali-G57 MC2",
+    "android": "Android 13",
+    "ram": "8 GB",
+    "app_version": "2.9.4",
+    "install_source": "GitHub release",
+    "game_name": "Factorio",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Factorio.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "Wrapper-original",
+    "dx_wrapper": "WineD3D",
+    "dxvk": "N/A",
+    "proton": "Wine-10.0-X86_64-1, also tested with proton-9.0",
+    "box64": "Compatibility",
+    "resolution": "800x600",
+    "framegen": "No",
+    "repro": "1. Start container\n2. Click on factorio.exe\n3. Game crashes, \"Failed to initialize graphics device to create swap chain\"",
+    "tried": "Lowered resolution, tried to open the game with --force-opengl, --gfx-safe-mode. Also tried it on Winlator and Winlator Ludashi with no success.\nHowever, Factorio 0.16.51 works correctly, while 0.17+ versions crash. This indicates the issue appeared after Factorio switched from Allegro to SDzl2/OpenGL in version 0.17"
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260805-173656.png"
+    }
+  ]
+}

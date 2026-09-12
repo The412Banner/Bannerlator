@@ -58,7 +58,8 @@ SOFTWARE.
 | Component | Author | License | Used for |
 |---|---|---|---|
 | [GameNative](https://github.com/utkarshdalal/GameNative) | **utkarshdalal** | **GPL-3.0** ✔ | Proton bionic translation; the `AHardwareBuffer` present path (GPUImage buffer locking + EGLImage sampling, DRI3 direct-scanout, Present FLIP/COPY branches, Native-Rendering scanout); the standalone **FPS limiter** (present-pacing `IdleNotify` throttle); Steam **session-hardening** patterns; the `DownloadSpeedConfig` cores×ratio model |
-| [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) | **PancakeTAS** | **GPL-3.0** ✔ | Vulkan frame-generation engine (second, user-selectable FG option) |
+| [lsfg-vk](https://github.com/PancakeTAS/lsfg-vk) → [GameNative/lsfg-vk-android](https://github.com/GameNative/lsfg-vk-android) | **PancakeTAS** (upstream); Android port by **FrankBarretta** / **GameNative** | **GPL-3.0** ✔ | Vulkan frame-generation engine (second, user-selectable FG option). The bundled `liblsfg-vk.so` is the compiled layer from the GameNative Android fork, tag **v1.0.4-android** — a GPL-3.0 branch of PancakeTAS lsfg-vk (adds the Adreno gen8 mipmaps-replacement compute shader that fixes frame-gen producing no frames on Turnip a8xx) |
+| [WinNative](https://github.com/WinNative-Emu/WinNative) — `wn-steam-client` Rust crate + `wnsteam` Kotlin facades | **WinNative-Emu** contributors | **GPL-3.0-or-later** ✔ | The native Steam CM engine `libblsteam.so` (`app/src/main/cpp/bl-steam-client/`, crate `bl-steam-client`) and the `com.winlator.star.store.blsteam` facades are a rebranded derivative of WinNative's `wnsteam` engine (upstream `a2020b7`). Provenance + the GPL §5 statement of changes: `app/src/main/cpp/bl-steam-client/NOTICE.md` |
 | [gbe_fork](https://github.com/Detanup01/gbe_fork) / [Goldberg Steam Emu](https://mr_goldberg.gitlab.io/goldberg_emulator/) | **Detanup01** / **Mr_Goldberg** | **LGPL-3.0** ✔ | The **Goldberg auto-patch** (Regular / Experimental / ColdClient tiers) for offline/emulated play |
 | [Pluvia](https://github.com/oxters168/Pluvia) | **oxters168** | **GPL-3.0** ✔ | Referenced (alongside GameNative) for Steam login/session patterns |
 
@@ -68,20 +69,20 @@ SOFTWARE.
 
 | Component | Author | License | Used for |
 |---|---|---|---|
-| [lsfg-vk-android](https://github.com/FrankBarretta/lsfg-vk-android) | **FrankBarretta** | **MIT** ✔ | Android/bionic port of lsfg-vk (AHardwareBuffer path + pipeline-barrier shim) |
 | [bcn_layer](https://github.com/leegao/bcn_layer) + ASTC/ETC compute encoders | **leegao** | **MIT** ✔ | BCn texture-decompression Vulkan layer (Mali GPU compatibility) + real-time transcoders |
 | [JavaSteam](https://github.com/Longi94/JavaSteam) + `javasteam-depotdownloader` | **Longi94** / **joshuatam** | **MIT** ✔ | Steam connection-manager client and the depot-download engine behind the Steam store |
 | [vkBasalt](https://github.com/DadSchoorse/vkBasalt) | **DadSchoorse** | **Zlib** ✔ | The Vulkan post-processing layer (embeds the ReShade FX compiler) behind the **ReShade** feature; patched here for live on-device toggle/slider control |
-| [bionic-fg](https://github.com/xXJSONDeruloXx/bionic-fg) | **xXJSONDeruloXx** | *no standard `LICENSE` file* ² | The bionic Vulkan frame-generation layer (default FG engine); in-tree as a submodule **with the author's permission** |
+| **win-fg** (Bannerlator's own frame-gen layer) | **Bannerlator** | clean-room; **MIT** deps only | The default FG engine. Written from the ground up: optical-flow front end adapts **AMD FidelityFX FSR3** (MIT — see §4), synthesis written from first principles. Bundles **no proprietary code or weights** |
 | [Box64](https://github.com/ptitSeb/box64) (+ [Pipetto fix branch](https://github.com/Pipetto-crypto/box64)) | **ptitSeb** / Pipetto-crypto | MIT *(per upstream)* | x86_64 → ARM64 translation |
 | FEXCore | FEX-Emu | MIT *(per upstream)* | x86/x64 translation (alternate) |
 | Wine / Proton | WineHQ / Valve | LGPL-2.1+ *(per upstream)* | The Windows runtime |
 | Mesa / Turnip ([Banners-Turnip](https://github.com/The412Banner/Banners-Turnip)) | Mesa / jacojayy (Timeline-Semaphore patches) | MIT *(per upstream)* | Adreno Vulkan driver |
 | DXVK / [VEGAS DXVK](https://github.com/isygold/vegas-releases) | doitsujin / **isygold** | Zlib *(per upstream)* | D3D9/10/11 → Vulkan (VEGAS = Adreno-tuned DXVK fork) |
 | VKD3D-Proton | Valve / Wine | LGPL-2.1 *(per upstream)* | D3D12 → Vulkan |
+| DXVK `dxbc` compiler (vendored subset, `app/src/main/cpp/thirdparty/dxbc`) | doitsujin | Zlib *(per upstream)* | DXBC → SPIR-V translation of the user's own Lossless Scaling shaders for **LSFG Native** — nothing proprietary is bundled |
+| Eden emulator — native LSFG present path (PR #4263, camillelavey) | Eden Team | GPL-3.0 *(per upstream)* | **LSFG Native**: PE-resource shader map, ALPHA/BETA/GAMMA/DELTA chain decomposition and pacer, ported into the compositor (WinNative's implementation used as design reference, no code) |
 | [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) | Khronos | Apache-2.0 *(per upstream)* | XR support |
-
-² *No SPDX-detectable `LICENSE` in the upstream repo as of 2026-07-07; included per the author's explicit permission. If/when the author publishes a license, record it here.*
+| [SDL3](https://github.com/libsdl-org/SDL) 3.4.16 (official Android release AAR, unmodified, `vendor/maven/org/libsdl/android/SDL3`) | **Sam Lantinga** and SDL contributors | **Zlib** ✔ | Optional **Steam Controller** support: SDL's HIDAPI Steam drivers read the 2015 / 2026 Steam Controller over Bluetooth LE or USB (only those drivers are enabled) |
 
 ---
 
@@ -90,7 +91,7 @@ SOFTWARE.
 | Component | Author(s) | License |
 |---|---|---|
 | ReShade `.fx` effects (bundled + catalog) | **crosire** ([reshade-shaders](https://github.com/crosire/reshade-shaders)), **prod80**, **luluco250** ([FXShaders](https://github.com/luluco250/FXShaders)), **fubax** | **MIT / CC0**, each under its own per-file header *(per upstream)* |
-| AMD FidelityFX **FSR** & **CAS** | AMD | MIT *(per upstream)* |
+| AMD FidelityFX **FSR**, **CAS** & **FSR3 optical flow** *(the last adapted into win-fg's motion estimation)* | AMD | MIT *(per upstream)* |
 | NVIDIA **Image Scaling (NIS)** | NVIDIA | MIT *(per upstream)* |
 | Qualcomm **Snapdragon GSR (SGSR)** | Qualcomm | BSD-3-Clause *(per upstream)* |
 

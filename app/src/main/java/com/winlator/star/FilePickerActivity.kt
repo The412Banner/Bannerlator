@@ -24,6 +24,8 @@ import java.io.File
  *  - {@code extensions}       String[] of allowed lowercase extensions (no dot). Absent/empty = all.
  *  - {@code initialDirectory} start path. Absent falls back to the remembered dir, then Download.
  *  - {@code pickerTitle}      optional header title.
+ *  - {@code containerDriveC}  optional abs path of the chosen container's C: drive; when present the
+ *                             picker offers a "Drive C:" location (browse/pick a game living on C:).
  * Result: {@code selectedFile} (absolute path) on RESULT_OK.
  */
 class FilePickerActivity : ComponentActivity() {
@@ -38,6 +40,9 @@ class FilePickerActivity : ComponentActivity() {
         val initialDir = intent.getStringExtra(EXTRA_INITIAL_DIRECTORY)?.let { File(it) }
         val title = intent.getStringExtra(EXTRA_PICKER_TITLE)
         val pickDir = intent.getBooleanExtra(EXTRA_PICK_DIRECTORY, false)
+        // Optional: the chosen container's C: drive, so the picker can offer a "Drive C:" location
+        // (add-a-game-from-C: flow). Absent for every other picker → C: option stays hidden.
+        val driveCPath = intent.getStringExtra(EXTRA_CONTAINER_DRIVE_C)?.let { File(it) }
 
         setContent {
             WinlatorTheme {
@@ -48,6 +53,7 @@ class FilePickerActivity : ComponentActivity() {
                         pickExtensions = extensions,
                         initialDir = initialDir,
                         pickerTitle = title,
+                        driveCPath = driveCPath,
                         onPick = { file ->
                             setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_SELECTED_FILE, file.absolutePath))
                             finish()
@@ -63,6 +69,7 @@ class FilePickerActivity : ComponentActivity() {
         const val EXTRA_INITIAL_DIRECTORY = "initialDirectory"
         const val EXTRA_PICKER_TITLE = "pickerTitle"
         const val EXTRA_PICK_DIRECTORY = "pickDirectory"
+        const val EXTRA_CONTAINER_DRIVE_C = "containerDriveC"
         const val EXTRA_SELECTED_FILE = "selectedFile"
     }
 }

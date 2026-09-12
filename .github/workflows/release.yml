@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release_notes:
-        description: 'Release notes (optional)'
+        description: 'Short in-app update line (optional; otherwise taken from docs/releases/<number>.md)'
         required: false
         default: ''
       release_tag:
@@ -36,15 +36,49 @@ permissions:
   contents: write
 
 jobs:
+  # Phase 0 — the release description, checked BEFORE the ~20 min build so a bad notes
+  # file fails in seconds. Every release page uses the house layout: the full notes from
+  # docs/releases/<number>.md (required for a stable cut, layout checked) plus the complete
+  # list of work merged since the previous stable. See scripts/release_notes.py.
+  notes:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Clone repository (full history + tags, for the change list)
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: Assemble the release description
+      env:
+        FALLBACK_NOTES: ${{ inputs.release_notes }}
+        RELEASE_TITLE: ${{ inputs.release_title }}
+      run: |
+        ARGS=("${{ inputs.release_number }}" --title "$RELEASE_TITLE" --fallback "$FALLBACK_NOTES")
+        [ "${{ inputs.make_prerelease }}" = "true" ] && ARGS+=(--prerelease)
+        python3 scripts/release_notes.py "${ARGS[@]}"
+        { echo "### In-app update line"; echo; cat short-notes.txt; echo;
+          echo "### Release description"; echo; cat release-body.md; } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Keep it for the publish job
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-notes
+        path: |
+          release-body.md
+          short-notes.txt
+        retention-days: 7
+
   # Phase 1 — build all 3 flavors in parallel (reusable matrix build).
   build:
+    needs: notes
     uses: ./.github/workflows/_build.yml
     with:
       release_number: ${{ inputs.release_number }}
 
   # Phase 2 — collect the built APKs and publish the release + update.json.
   release:
-    needs: build
+    needs: [notes, build]
     runs-on: ubuntu-22.04
     steps:
     - name: Clone repository
@@ -62,6 +96,12 @@ jobs:
     - name: List downloaded APKs
       run: ls -la dist/
 
+    - name: Download the release description
+      uses: actions/download-artifact@v4
+      with:
+        name: release-notes
+        path: notes
+
     - name: Get version info
       run: |
         echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
@@ -72,15 +112,14 @@ jobs:
       # Drives the in-app updater (UpdateManager). The app fetches this from
       # releases/latest/download/update.json; because make_latest=true +
       # prerelease=false below, only stable cuts ever change it.
-      # release_notes/title arrive via env (NOT inline ${{ }}) so backticks / $ /
-      # newlines in the notes can't trigger shell command-substitution (exit 127).
+      # The short line comes from the notes job (update-summary comment, the release_notes
+      # input, or the notes' lead paragraph), read from a file so no quoting can break it.
       env:
-        RELEASE_NOTES: ${{ inputs.release_notes }}
         RELEASE_TITLE: ${{ inputs.release_title }}
       run: |
         VERSION_CODE=$(grep versionCode app/build.gradle | head -1 | grep -oE '[0-9]+' | head -1)
         N="${{ inputs.release_number }}"
-        NOTES="$RELEASE_NOTES"
+        NOTES="$(cat notes/short-notes.txt)"
         [ -z "$NOTES" ] && NOTES="$RELEASE_TITLE"
         jq -n \
           --argjson vc "$VERSION_CODE" \
@@ -94,35 +133,15 @@ jobs:
           > update.json
         echo "Generated update.json:"; cat update.json
 
-    - name: Generate changelog table
-      run: |
-        {
-          echo "## Changelog"
-          echo ""
-          echo "| Commit | Title |"
-          echo "|--------|--------|"
-          git log -n 10 --pretty=format:"| \`%h\` | %s |"
-        } > changelog.md
-
-        {
-          echo "CHANGELOG<<__CHANGELOG_EOF__"
-          cat changelog.md
-          echo ""
-          echo "__CHANGELOG_EOF__"
-        } >> "$GITHUB_ENV"
-
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ inputs.release_tag }}
         name: ${{ inputs.release_title }}
-        body: |
-          <img src="https://github.com/The412Banner/Bannerlator/blob/main/logo.jpg" width="1500" height="500" alt="Bannerlator" />
-          </p>
-
-          ${{ env.CHANGELOG }}
-
-          ${{ inputs.release_notes }}
+        # Body = the assembled house-layout description (docs/releases/<number>.md +
+        # the change list since the previous stable). It already opens with the centered
+        # logo + badges: do NOT prepend a second logo or a raw `git log` table here.
+        body_path: notes/release-body.md
         files: |
           dist/Bannerlator-${{ inputs.release_number }}-standard.apk
           dist/Bannerlator-${{ inputs.release_number }}-ludashi.apk

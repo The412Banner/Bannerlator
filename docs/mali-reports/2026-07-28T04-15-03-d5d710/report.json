@@ -1,0 +1,35 @@
+{
+  "id": "2026-07-28T04-15-03-d5d710",
+  "created": "2026-07-28T04:15:03.307Z",
+  "ip_hash": "3ewFrTQ2DJ",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Realme gt neo 3",
+    "soc": "Dimensty 8100",
+    "gpu": "mali g610",
+    "android": "Android 14",
+    "ram": "8",
+    "app_version": "2.9",
+    "install_source": "GitHub release",
+    "game_name": "Naruto Storm 4 evolution",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "nsun4e.exe",
+    "symptom": "Black screen (no image)",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.12.0 sarek",
+    "proton": "proton 9.4",
+    "box64": "stabilty",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "Screenshot_2026-07-28-11-10-06-09_a0b0d0b5d43383e387863816414c311f.jpg"
+    }
+  ]
+}

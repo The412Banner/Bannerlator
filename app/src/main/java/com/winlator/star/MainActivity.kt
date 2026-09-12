@@ -15,6 +15,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.Image
@@ -48,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -59,6 +63,8 @@ import androidx.compose.runtime.setValue
 import com.winlator.star.core.UpdateManager
 import androidx.compose.runtime.rememberCoroutineScope
 import com.winlator.star.ui.LocalTopBarActions
+import com.winlator.star.ui.LocalTopBarOverlayInset
+import com.winlator.star.ui.LocalTopBarTransparent
 import com.winlator.star.ui.topBarActionsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -71,6 +77,7 @@ import com.winlator.star.BuildConfig
 import com.winlator.star.core.ImageUtils
 import com.winlator.star.core.PreloaderDialog
 import com.winlator.star.core.WineThemeManager
+import com.winlator.star.core.WinFgDiag
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.store.AmazonMainActivity
 import com.winlator.star.store.EpicMainActivity
@@ -94,7 +101,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE: Byte = 1
         const val OPEN_FILE_REQUEST_CODE: Byte = 2
-        const val EDIT_INPUT_CONTROLS_REQUEST_CODE: Byte = 3
         const val OPEN_DIRECTORY_REQUEST_CODE: Byte = 4
         const val OPEN_IMAGE_REQUEST_CODE: Byte = 5
 
@@ -113,9 +119,6 @@ class MainActivity : AppCompatActivity() {
         ViewModelProvider(this)[SplashViewModel::class.java]
     }
 
-    private var selectedProfileId: Int = 0
-    private var editInputControls: Boolean = false
-
     // Holds the OS cold-start splash on screen only until the Compose UI is about to draw its first
     // frame. Not held for the imagefs install — that has its own in-app SplashScreen surface.
     @Volatile
@@ -127,6 +130,29 @@ class MainActivity : AppCompatActivity() {
     // Route requested via EXTRA_OPEN_SCREEN on a relaunch (onNewIntent); consumed
     // by AppShell, which navigates to it and clears it.
     private val pendingRoute = mutableStateOf<String?>(null)
+
+    // ---- Settings-side Controller Test (Input Controls screen) input fork ----
+    // While the at-rest controller-test dialog is open in TEST mode a game controller's key/axis events
+    // are forked into controllerTestController — a throwaway snapshot that only drives the visualizer —
+    // and CONSUMED at the dispatch chokepoints so gamepad presses can't navigate the Compose UI. The
+    // gate is read DIRECTLY from ControllerTestBus.active (a @Volatile set SYNCHRONOUSLY when the dialog
+    // shows, via a SideEffect — not a late LaunchedEffect/callback), AND'd with !controllerTestPaused so
+    // a background can't leave it latched. This is the fix for the "doesn't react + leaks until rotate"
+    // bug: the very first press after opening is already gated on the immediate value.
+    @Volatile private var controllerTestPaused = false
+    private val controllerTestController = com.winlator.star.inputcontrols.ExternalController()
+    private var controllerTestGuideDown = false
+    private var lastControllerTestAxisLogMs = 0L
+
+    private fun settingsTestArmed(): Boolean =
+        com.winlator.star.ui.controllertest.ControllerTestBus.active && !controllerTestPaused
+    private var controllerTestLastDeviceId = -1
+
+    // Steam Controller support in the at-rest test dialog: SDL runs only while the dialog is open (and
+    // the setting is on), feeding the same snapshot as an Android pad. A Steam Controller has no Android
+    // gamepad device, so without this the test never sees it.
+    private var settingsSteamBackend: com.winlator.star.inputcontrols.SteamControllerBackend? = null
+    private var settingsSteamPads = 0
 
     private val openImageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -150,55 +176,65 @@ class MainActivity : AppCompatActivity() {
 
         PACKAGE_NAME = applicationContext.packageName
         AppThemeState.init(this)
+        // Apply the user's App-orientation preference to THIS app-UI activity only (the game's
+        // XServerDisplayActivity manages its own orientation and is unaffected).
+        com.winlator.star.core.AppOrientation.apply(this)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-
-        if (prefs.getBoolean("enable_big_picture_mode", false)) {
-            startActivity(Intent(this, BigPictureActivity::class.java))
-        }
 
         val winlatorDir = File(SettingsFragment.DEFAULT_WINLATOR_PATH)
         if (!winlatorDir.exists()) winlatorDir.mkdirs()
 
         containerManager = ContainerManager(this)
 
-        editInputControls = intent.getBooleanExtra("edit_input_controls", false)
-        selectedProfileId = intent.getIntExtra("selected_profile_id", 0)
+        val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
+        val startRoute = validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
+            ?: menuItemIdToRoute(selectedMenuItemId)
+            ?: when {
+                prefs.getBoolean("enable_big_picture_mode", false) -> Screen.BigPicture.route
+                prefs.getString("default_landing_screen", "games") == "containers" -> Screen.Containers.route
+                else -> Screen.Games.route
+            }
 
-        val startRoute = when {
-            editInputControls -> Screen.InputControls.route
-            else -> {
-                val selectedMenuItemId = intent.getIntExtra("selected_menu_item_id", 0)
-                validRouteOrNull(intent.getStringExtra(EXTRA_OPEN_SCREEN))
-                    ?: menuItemIdToRoute(selectedMenuItemId)
-                    // User-chosen default landing screen (Settings). Only applies when nothing else
-                    // dictated the route (no deep-link / menu nav / edit-controls). Defaults to
-                    // "games" = the Game Shortcuts page, i.e. the historical default.
-                    ?: if (prefs.getString("default_landing_screen", "games") == "containers")
-                        Screen.Containers.route else Screen.Games.route
+        val willInstall = splashViewModel.installIfNeeded(this)
+        if (!willInstall) {
+            // Already installed — request permissions immediately
+            requestAppPermissions()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                showAllFilesDialog.value = true
+            }
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
             }
         }
-
-        if (!editInputControls) {
-            val willInstall = splashViewModel.installIfNeeded(this)
-            if (!willInstall) {
-                // Already installed — request permissions immediately
-                requestAppPermissions()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                    showAllFilesDialog.value = true
-                }
-                if (Build.VERSION.SDK_INT >= 33 &&
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED
-                ) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
-                }
-            }
-            // If willInstall == true: permissions are requested after user taps Proceed
-        }
+        // If willInstall == true: permissions are requested after user taps Proceed
 
         // First-run/install decision is made; let the OS splash hand off to the Compose UI.
         contentReady = true
+
+        // Settings-side Controller Test: the Input Controls screen's test dialog arms/disarms the input
+        // fork through this bus (so this Activity consumes gamepad events instead of navigating the UI),
+        // and asks us to natively rumble the live pad for "Identify".
+        // The gate itself is ControllerTestBus.active (read directly in dispatch). This callback only
+        // clears the throwaway controller's stale state when the dialog opens, and drops the snapshot
+        // when it closes.
+        com.winlator.star.ui.controllertest.ControllerTestBus.onActiveChanged =
+            com.winlator.star.ui.controllertest.ControllerTestBus.ActiveCallback { active ->
+                if (active) {
+                    controllerTestController.state.reset()
+                    controllerTestController.remappedState.reset()
+                    controllerTestGuideDown = false
+                    startSettingsSteamController()
+                } else {
+                    stopSettingsSteamController()
+                    com.winlator.star.ui.controllertest.ControllerTestBus.setSnapshot(null)
+                }
+            }
+        com.winlator.star.ui.controllertest.ControllerTestBus.onIdentify =
+            Runnable { settingsControllerIdentify() }
 
         setContent {
             WinlatorTheme {
@@ -211,8 +247,6 @@ class MainActivity : AppCompatActivity() {
                         startRoute = startRoute,
                         pendingRoute = pendingRoute.value,
                         onPendingRouteConsumed = { pendingRoute.value = null },
-                        editInputControls = editInputControls,
-                        selectedInputProfileId = selectedProfileId,
                         showAllFilesDialog = showAllFilesDialog.value,
                         showAboutDialog = showAboutDialog.value,
                         onDismissAllFilesDialog = { showAllFilesDialog.value = false },
@@ -228,7 +262,11 @@ class MainActivity : AppCompatActivity() {
                     )
 
                     // Resume a mid-flight component installer (Phase 3b) after the app restarts.
-                    com.winlator.star.ui.screens.ComponentInstallResume()
+                    // On completion/discard it routes back to Games (via pendingRoute, same one-shot
+                    // channel the store deep-link uses) so the user isn't stranded on the resume dialog.
+                    com.winlator.star.ui.screens.ComponentInstallResume(
+                        onNavigateToGames = { pendingRoute.value = Screen.Games.route },
+                    )
 
                     if (isInstalling) {
                         SplashScreen(
@@ -313,6 +351,214 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        // Kill any armed win-fg diagnostic-log capture (logcat subprocess) so it can't outlive the app.
+        // The game (XServerDisplayActivity) shares this process, so a mid-play capture survives until here.
+        WinFgDiag.stopDiagLog(this)
+        stopSettingsSteamController()
+        super.onDestroy()
+    }
+
+    private fun startSettingsSteamController() {
+        if (settingsSteamBackend != null) return
+        if (!com.winlator.star.ui.components.GlobalControllerPrefs.isSteamControllerEnabled(this)) return
+        val backend = com.winlator.star.inputcontrols.SteamControllerBackend(
+            this, com.winlator.star.inputcontrols.SteamControllerBackend.TRACKPAD_MOUSE_OFF,
+            com.winlator.star.ui.components.GlobalControllerPrefs.getSteamPaddleBindings(this),
+            object : com.winlator.star.inputcontrols.SteamControllerBackend.Listener {
+                override fun onSteamPadConnected(pad: com.winlator.star.inputcontrols.ExternalController) {
+                    settingsSteamPads++
+                }
+
+                override fun onSteamPadDisconnected(pad: com.winlator.star.inputcontrols.ExternalController) {
+                    settingsSteamPads = (settingsSteamPads - 1).coerceAtLeast(0)
+                }
+
+                override fun onSteamPadState(
+                    pad: com.winlator.star.inputcontrols.ExternalController,
+                    guideDown: Boolean,
+                    quickAccessDown: Boolean,
+                    pressedKeyCodes: IntArray,
+                ) {
+                    if (!settingsTestArmed()) return
+                    controllerTestController.state.copy(pad.state)
+                    controllerTestGuideDown = guideDown
+                    controllerTestLastDeviceId = pad.deviceId
+                    val st = controllerTestController.state
+                    com.winlator.star.ui.controllertest.ControllerTestBus.setSnapshot(
+                        com.winlator.star.ui.controllertest.ControllerTestSnapshot(
+                            st.buttons.toInt() and 0xFFFF,
+                            st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
+                            st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
+                            st.triggerL, st.triggerR,
+                            guideDown,
+                            pad.deviceId,
+                            pad.name ?: "Steam Controller",
+                            com.winlator.star.ui.controllertest.PadArt.STEAM.ordinal,
+                            -1,
+                            true,
+                            quickAccessDown
+                        )
+                    )
+                }
+
+                override fun onSteamPadBinding(binding: com.winlator.star.inputcontrols.Binding, down: Boolean) {}
+                override fun onSteamPadMouseMove(dx: Int, dy: Int) {}
+                override fun onSteamPadMouseButton(secondary: Boolean, down: Boolean) {}
+            }
+        )
+        if (backend.start()) settingsSteamBackend = backend
+    }
+
+    private fun stopSettingsSteamController() {
+        val backend = settingsSteamBackend ?: return
+        settingsSteamBackend = null
+        settingsSteamPads = 0
+        backend.stop()
+    }
+
+    /** While SDL owns a Steam Controller in the test dialog, whatever Android still reports for it (its
+     *  keyboard/mouse mode) is the same pad: consume it so it can't navigate the UI or feed the fork. */
+    private fun isSettingsSteamShadowEvent(device: android.view.InputDevice?): Boolean =
+        settingsSteamBackend != null && settingsSteamPads > 0 &&
+            device?.vendorId == com.winlator.star.inputcontrols.SteamControllerBackend.VALVE_VENDOR_ID
+
+    override fun onPause() {
+        super.onPause()
+        // Pause (not clear) the fork across a background; the bus flag stays set by the open dialog so
+        // onResume re-arms without needing the dialog to recompose.
+        controllerTestPaused = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        controllerTestPaused = true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        controllerTestPaused = false
+    }
+
+    // ---- Settings-side Controller Test input fork ----
+    // Gate = ControllerTestBus.active (armed SYNCHRONOUSLY by the dialog's SideEffect) AND not paused.
+    // When CLOSED both overrides just call super. When OPEN in TEST mode, a game-controller event drives
+    // ONLY the throwaway visualizer snapshot and is CONSUMED so it can't navigate the app UI.
+
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (isSettingsSteamShadowEvent(event.device)) return true
+        if (settingsTestArmed() && isControllerTestMotionEvent(event)) {
+            controllerTestFeedMotionEvent(event)
+            return true
+        }
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (isSettingsSteamShadowEvent(event.device)) return true
+        if (settingsTestArmed() &&
+            com.winlator.star.inputcontrols.ExternalController.isGameController(event.device)) {
+            controllerTestFeedKeyEvent(event)
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun isControllerTestMotionEvent(event: android.view.MotionEvent): Boolean {
+        val src = event.source
+        val joystickish =
+            (src and android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK ||
+            (src and android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD
+        return joystickish && com.winlator.star.inputcontrols.ExternalController.isGameController(event.device)
+    }
+
+    private fun controllerTestFeedMotionEvent(event: android.view.MotionEvent) {
+        if (com.winlator.star.inputcontrols.ExternalController.isJoystickDevice(event)) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastControllerTestAxisLogMs > 1000L) {
+                lastControllerTestAxisLogMs = now
+                android.util.Log.d(
+                    "ControllerTest",
+                    "settings axis dispatch reached src=" + event.source + " dev=" + event.deviceId
+                )
+            }
+        }
+        controllerTestController.updateStateFromMotionEvent(event)
+        controllerTestPublishSnapshot(event.device)
+    }
+
+    private fun controllerTestFeedKeyEvent(event: android.view.KeyEvent) {
+        if (event.repeatCount == 0) controllerTestController.updateStateFromKeyEvent(event)
+        val kc = event.keyCode
+        if (kc == android.view.KeyEvent.KEYCODE_BUTTON_MODE || kc == android.view.KeyEvent.KEYCODE_HOME) {
+            controllerTestGuideDown = event.action == android.view.KeyEvent.ACTION_DOWN
+        }
+        controllerTestPublishSnapshot(event.device)
+    }
+
+    private fun controllerTestPublishSnapshot(device: android.view.InputDevice?) {
+        val st = controllerTestController.state
+        var battery = -1
+        if (device != null && Build.VERSION.SDK_INT >= 29) {
+            try {
+                val bs = device.batteryState
+                if (bs != null && bs.isPresent) {
+                    val cap = bs.capacity
+                    if (cap >= 0f) battery = Math.round(cap * 100f)
+                }
+            } catch (_: Throwable) { }
+        }
+        var hasVibrator = false
+        if (device != null) {
+            val vib = device.vibrator
+            hasVibrator = vib != null && vib.hasVibrator()
+        }
+        controllerTestLastDeviceId = device?.id ?: -1
+        com.winlator.star.ui.controllertest.ControllerTestBus.setSnapshot(
+            com.winlator.star.ui.controllertest.ControllerTestSnapshot(
+                st.buttons.toInt() and 0xFFFF,
+                st.dpad[0], st.dpad[1], st.dpad[2], st.dpad[3],
+                st.thumbLX, st.thumbLY, st.thumbRX, st.thumbRY,
+                st.triggerL, st.triggerR,
+                controllerTestGuideDown,
+                device?.id ?: -1,
+                device?.name ?: "",
+                com.winlator.star.ui.controllertest.classifyPadArt(device).ordinal,
+                battery,
+                hasVibrator
+            )
+        )
+    }
+
+    /** Native "Identify" — rumble the last pad the visualizer saw, via VibratorManager (independent
+     *  motors, API 31+) or the single vibrator otherwise. No game / WinHandler here. */
+    private fun settingsControllerIdentify() {
+        val id = controllerTestLastDeviceId
+        // Steam Controller (SDL, synthetic deviceId): rumble through SDL.
+        if (id <= com.winlator.star.inputcontrols.SteamControllerBackend.DEVICE_ID_BASE) {
+            settingsSteamBackend?.rumble(id, 48000, 32000, 420)
+            return
+        }
+        if (id < 0) return
+        val device = android.view.InputDevice.getDevice(id) ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                val vm = device.vibratorManager
+                val ids = vm?.vibratorIds
+                if (vm != null && ids != null && ids.isNotEmpty()) {
+                    val combo = android.os.CombinedVibration.startParallel()
+                    for (vid in ids) combo.addVibrator(vid, android.os.VibrationEffect.createOneShot(420L, 200))
+                    vm.vibrate(combo.combine())
+                    return
+                }
+            }
+            val v = device.vibrator
+            if (v != null && v.hasVibrator()) {
+                v.vibrate(android.os.VibrationEffect.createOneShot(420L, 200))
+            }
+        } catch (_: Throwable) { }
+    }
+
     /** Only accepts known drawer routes so a bad extra can't crash navigation. */
     private fun validRouteOrNull(route: String?): String? =
         route?.takeIf { r -> Screen.drawerItems.any { it.route == r } }
@@ -333,8 +579,6 @@ private fun AppShell(
     startRoute: String,
     pendingRoute: String?,
     onPendingRouteConsumed: () -> Unit,
-    editInputControls: Boolean,
-    selectedInputProfileId: Int,
     showAllFilesDialog: Boolean,
     showAboutDialog: Boolean,
     onDismissAllFilesDialog: () -> Unit,
@@ -348,9 +592,18 @@ private fun AppShell(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val topBarActionsState = remember { topBarActionsState() }
+    val topBarTransparentState = remember { mutableStateOf(false) }
 
     val backstackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backstackEntry?.destination?.route ?: startRoute
+
+    // Big Picture is a full-bleed couch/TV launcher: no top bar, no drawer gestures, no scaffold
+    // content padding (it draws its own immersive layout).
+    // Big Picture now renders the landscape "games wall", which draws its OWN rail header + nav rail +
+    // footer, so it gets the chrome-free full-bleed treatment. The Games route is the normal phone-grid
+    // library again (top bar + drawer), so it is NOT full-bleed.
+    val isBigPicture = currentRoute == Screen.BigPicture.route
+    val isFullBleed = isBigPicture
 
     // In-app update banner: only when a newer stable exists, notify is on, and
     // this version wasn't skipped.
@@ -395,15 +648,26 @@ private fun AppShell(
     val screenTitle = when {
         currentRoute.startsWith("container_detail") -> {
             val id = backstackEntry?.arguments?.getInt("id") ?: -1
-            if (id > 0) context.getString(R.string.edit_container) else context.getString(R.string.new_container)
+            when {
+                id == com.winlator.star.ui.screens.ContainerDetailViewModel.EDIT_DEFAULTS_ID ->
+                    context.getString(R.string.new_container_defaults)
+                id > 0 -> context.getString(R.string.edit_container)
+                else -> context.getString(R.string.new_container)
+            }
         }
         else -> Screen.drawerItems.firstOrNull { it.route == currentRoute }?.label ?: "Winlator"
     }
 
-    CompositionLocalProvider(LocalTopBarActions provides topBarActionsState) {
+    // The Games tab's XMB view asks for a see-through top bar; the screen is then laid out under the
+    // bar so its backdrop runs to the top. Games route only, and not while the update banner shows
+    // (it sits between the bar and the screen).
+    val barOverlay = currentRoute == Screen.Games.route && topBarTransparentState.value &&
+        !isFullBleed && !(bannerUpdate != null && !bannerDismissed)
+
+    CompositionLocalProvider(LocalTopBarActions provides topBarActionsState, LocalTopBarTransparent provides topBarTransparentState) {
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = !editInputControls && !currentRoute.startsWith("container_detail"),
+        gesturesEnabled = !currentRoute.startsWith("container_detail") && !isFullBleed,
         drawerContent = {
             AppDrawerContent(
                 currentRoute = currentRoute,
@@ -440,28 +704,44 @@ private fun AppShell(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                AppTopBar(
-                    title = screenTitle,
-                    showBack = editInputControls,
-                    // Signed-in + has a picture → the ☰ becomes their avatar (still opens the drawer).
-                    // Versioned URL so a live picture change refreshes the swap in lockstep with the drawer.
-                    avatarUrl = account?.displayAvatarUrl,
-                    onNavClick = {
-                        if (editInputControls) {
-                            navController.popBackStack()
-                        } else {
+                if (!isFullBleed) {
+                    AppTopBar(
+                        title = screenTitle,
+                        showBack = false,
+                        // Signed-in + has a picture → the ☰ becomes their avatar (still opens the drawer).
+                        // Versioned URL so a live picture change refreshes the swap in lockstep with the drawer.
+                        avatarUrl = account?.displayAvatarUrl,
+                        onNavClick = {
                             scope.launch {
                                 if (drawerState.isOpen) drawerState.close() else drawerState.open()
                             }
-                        }
-                    },
-                    actions = topBarActionsState.value,
-                )
+                        },
+                        // Steam connection status pill, right after the "Games" title (Games screen only).
+                        // Self-gates to signed-in users; tap when offline to retry. See SteamConnectionPill.
+                        titleTrailing = if (currentRoute == Screen.Games.route) {
+                            { com.winlator.star.store.SteamConnectionPill() }
+                        } else null,
+                        transparent = barOverlay,
+                        actions = topBarActionsState.value,
+                    )
+                }
             },
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) {
+            val layoutDir = LocalLayoutDirection.current
+            val contentPadding = when {
+                isFullBleed -> PaddingValues(0.dp)
+                // Drawn under the see-through bar: every inset except the top.
+                barOverlay -> PaddingValues(
+                    start = innerPadding.calculateStartPadding(layoutDir),
+                    end = innerPadding.calculateEndPadding(layoutDir),
+                    bottom = innerPadding.calculateBottomPadding(),
+                )
+                else -> innerPadding
+            }
+            CompositionLocalProvider(LocalTopBarOverlayInset provides if (barOverlay) innerPadding.calculateTopPadding() else 0.dp) {
+            Column(modifier = Modifier.padding(contentPadding)) {
                 val upd = bannerUpdate
-                if (upd != null && !bannerDismissed && !editInputControls) {
+                if (upd != null && !bannerDismissed && !isFullBleed) {
                     UpdateBanner(
                         versionName = upd.versionName,
                         onUpdate = {
@@ -475,11 +755,17 @@ private fun AppShell(
                 }
                 AppNavGraph(
                     navController = navController,
-                    selectedInputProfileId = selectedInputProfileId,
                     startRoute = startRoute,
                     modifier = Modifier.weight(1f),
                 )
+                // App-wide minimized progress pill for a running archive unpack. Renders nothing when
+                // idle; sits below the nav content so it floats over every screen. Hidden in Big
+                // Picture (fullscreen) mode.
+                if (!isFullBleed) {
+                    com.winlator.star.ui.UnpackProgressPill()
+                }
             }
+            } // end LocalTopBarOverlayInset
         }
     }
     } // end CompositionLocalProvider

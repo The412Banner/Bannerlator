@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-10T22-33-57-72de83",
+  "created": "2026-08-10T22:33:57.214Z",
+  "ip_hash": "7kwir7lI/a",
+  "fields": {
+    "reporter_name": "Dr. Waleed Arain",
+    "device_model": "Motorola Edge Plus 2020",
+    "soc": "Snapdragon 865",
+    "gpu": "Adreno 650",
+    "android": "Android 12",
+    "ram": "12gb",
+    "app_version": "2.9.9",
+    "install_source": "In-app updater",
+    "game_name": "A plague Tale: Innocence",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "APlagueTaleInnocence_x64.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Fails at the publisher/loading logo",
+    "graphics_driver": "Latest Banner's Turnip",
+    "dx_wrapper": "DXVK",
+    "dxvk": "3.0-1 Gplasync Arm64ec",
+    "proton": "Proton 11.0-1",
+    "box64": "Performance (TSO)",
+    "resolution": "960x544",
+    "framegen": "No",
+    "repro": "1.Open the Game from .exe file\n2. First time the Game Runs and obviously make files in User directory like Save slot and Configuration file like in this Game ENGINESETTINGS file.\n3. Then every time try to launch the game it Crashes back to desktop after Logo without any error popup.",
+    "tried": "Tried Everything, from resolution lowering to dxvk version change, fps limiter on then off, presets change, renderer change"
+  },
+  "logs": [
+    {
+      "name": "wine_debug.log"
+    }
+  ]
+}

@@ -33,4 +33,6 @@ public class EpicGame {
     public boolean isDLC                 = false;
     public String  baseGameCatalogItemId = "";  // catalog ID of the base game (set when isDLC=true)
     public String  releaseDate           = "";  // ISO date from catalog viewableDate / effectiveDate
+    public boolean cloudSaveEnabled      = false; // catalog customAttributes.CloudSaveFolder present
+    public String  cloudSaveFolder       = "";  // raw CloudSaveFolder token string (e.g. "{userdir}/My Games/…")
 }

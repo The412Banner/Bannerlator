@@ -1,0 +1,35 @@
+{
+  "id": "2026-09-02T18-48-54-ad33bb",
+  "created": "2026-09-02T18:48:54.545Z",
+  "ip_hash": "q1DtUjAJc/",
+  "fields": {
+    "reporter_name": "Ali",
+    "device_model": "Samsung S21 fe",
+    "soc": "Exynos 2100",
+    "gpu": "Mali-G78 mp14",
+    "android": "Android16/ OneUI 8.0",
+    "ram": "8 GB",
+    "app_version": "3.0.3",
+    "install_source": "GitHub release",
+    "game_name": "Don't starve",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "Dontstarve.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.13 sarek",
+    "proton": "Proton 10.0.4",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "1. Open game\n2. Load into a world\n3. You will see that every single texture looks really low resolution and the game keeps thinking you have a controller even when on M&K and while registering keyboard inputs",
+    "tried": "Switching the DXVK version, switching translation params, switching resolutions (1080p made it almost normal, with some text and items still looking rough), switching wrappers, changing BCn emulation configs to auto, partial or none (some resulted in crashes), turning off BCn transcoding, changing in game settings."
+  },
+  "logs": [
+    {
+      "name": "Don_t_Starve-2026-09-02_22-04-55.zip"
+    }
+  ]
+}

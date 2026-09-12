@@ -15,6 +15,10 @@
     <string name="no_items_to_display">No items to display</string>
     <string name="new_container">New Container</string>
     <string name="edit_container">Edit Container</string>
+    <string name="new_container_defaults">New Container Defaults</string>
+    <string name="new_container_defaults_saved">New-container defaults saved</string>
+    <string name="new_container_defaults_save_failed">Could not save defaults</string>
+    <string name="reset_to_app_defaults">Reset to app defaults</string>
     <string name="creating_container">Creating Container…</string>
     <string name="removing_container">Removing Container…</string>
     <string name="duplicating_container">Duplicating Container…</string>
@@ -23,10 +27,16 @@
     <string name="starting_up">Starting up…</string>
     <string name="unable_to_install_system_files">Unable to install system files</string>
     <string name="keyboard">Keyboard</string>
+    <string name="mouse">Mouse</string>
+    <string name="binding_filter_all">All</string>
+    <string name="binding_filter_keyboard">Keyboard</string>
+    <string name="binding_filter_mouse">Mouse</string>
+    <string name="binding_filter_gamepad">Gamepad</string>
     <string name="toggle_fullscreen">Toggle Fullscreen</string>
     <string name="exit">Exit</string>
     <string name="no_control_element_selected">No control element selected</string>
     <string name="scale">Scale</string>
+    <string name="dead_zone">Dead Zone</string>
     <string name="shape">Shape</string>
     <string name="type">Type</string>
     <string name="binding">Binding</string>
@@ -34,18 +44,108 @@
     <string name="binding_right">Binding Right</string>
     <string name="binding_down">Binding Down</string>
     <string name="binding_left">Binding Left</string>
+    <string name="detection_area">Detection Area</string>
+    <string name="area_width">Area Width</string>
+    <string name="area_height">Area Height</string>
+    <string name="stick_radius">Stick Radius</string>
+    <string name="mouse_sensitivity">Mouse Sensitivity</string>
+    <string name="area_appearance">Area Appearance</string>
+    <string name="independent_area_appearance">Use independent color and opacity</string>
+    <string name="area_color">Area Color</string>
+    <string name="area_opacity">Area Opacity</string>
+    <string name="grid_rows">Rows</string>
+    <string name="grid_cols">Columns</string>
     <string name="overlay_opacity">Overlay Opacity</string>
-    <string name="controls_follow_app_theme">Follow app theme</string>
+    <string name="editing_in_game">Editing in game</string>
+    <string name="save_and_close">Save and close</string>
+    <string name="control_type_android_keyboard">Android Keyboard</string>
+    <string name="change_control_type">Change control type?</string>
+    <string name="change_control_type_warning">Changing type resets bindings, combos, text, icon, and type-specific settings.</string>
+    <string name="confirm_change">Change</string>
     <string name="controls_accent_color">Controls accent color</string>
     <string name="profile">Profile</string>
-    <string name="select_profile">Select Profile</string>
-    <string name="profile_name">Profile Name</string>
     <string name="name">Name</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="untitled">Untitled</string>
     <string name="no_profile_selected">No profile selected</string>
     <string name="no_profile_found">No profile found</string>
+    <string name="select_control_type">Select Control Type</string>
+    <string name="control_type_button">Button</string>
+    <string name="control_type_d_pad">D-Pad</string>
+    <string name="control_type_range_button">Range Button</string>
+    <string name="control_type_stick">Stick</string>
+    <string name="control_type_trackpad">Trackpad</string>
+    <string name="control_type_dynamic_stick">Dynamic Stick</string>
+    <string name="control_type_mouse_area">Mouse Area</string>
+    <string name="control_type_button_grid">Button Grid</string>
+    <string name="control_type_expandable_button">Expandable Button</string>
+    <string name="expandable_button_settings">Expandable button</string>
+    <string name="expandable_layout">Layout</string>
+    <string name="expandable_layout_radial">Radial</string>
+    <string name="expandable_layout_list">List</string>
+    <string name="expandable_direction">List direction</string>
+    <string name="child_button_count">Child buttons</string>
+    <string name="child_button_label">Button %1$d</string>
+    <string name="direction_up">Up</string>
+    <string name="direction_right">Right</string>
+    <string name="direction_down">Down</string>
+    <string name="direction_left">Left</string>
+    <string name="control_shape_circle">Circle</string>
+    <string name="control_shape_rectangle">Rectangle</string>
+    <string name="control_shape_rounded_rectangle">Rounded rectangle</string>
+    <string name="control_shape_square">Square</string>
+    <string name="control_range_a_z">A to Z</string>
+    <string name="control_range_0_9">0 to 9</string>
+    <string name="control_range_f1_f12">F1 to F12</string>
+    <string name="control_range_numpad_0_9">Numpad 0 to 9</string>
+    <string name="set_background_image">Set Background Image</string>
+    <string name="select_background_image">Select background image</string>
+    <string name="select_icon_image">Select icon image</string>
+    <string name="clear_background">Clear background</string>
+    <string name="browse_files">Browse files</string>
+    <string name="pick_via_system">Pick via system…</string>
+    <string name="background_image_set">Background image set</string>
+    <string name="background_cleared">Background cleared</string>
+    <string name="unable_to_load_image">Unable to load image</string>
+    <string name="opacity_percent">Opacity: %1$d%%</string>
+    <string name="binding_setup_title">Binding — %1$s</string>
+    <string name="binding_text_value">Character or number</string>
+    <string name="binding_selector">Action selector</string>
+    <string name="set_binding">Set</string>
+    <string name="add_to_combo">Add to combo</string>
+    <string name="combo_bindings">Combo Bindings</string>
+    <string name="mouse_binding_priority">Prioritize mouse binding</string>
+    <string name="mouse_binding_priority_description">Disable the matching touchscreen click while this control is visible.</string>
+    <string name="binding_grid_cell_label">R%1$dC%2$d</string>
+    <string name="binding_slot_label">Binding %1$d</string>
+    <string name="fill_qwerty">Fill: QWERTY</string>
+    <string name="fill_function_keys">Fill: F1–F12</string>
+    <string name="fill_numpad">Fill: NumPad</string>
+    <string name="hold_key">Hold Key (pressed while active)</string>
+    <string name="button_grid">Button Grid</string>
+    <string name="cell_shape">Cell Shape</string>
+    <string name="grid_spacing">Button spacing</string>
+    <string name="grid_multitouch">Multitouch</string>
+    <string name="custom_icons">Custom Icons</string>
+    <string name="tint_custom_icon">Tint custom icon with accent</string>
+    <string name="use_custom_icon_as_button">Use custom icon as button</string>
+    <string name="icon_content_description">Icon %1$d</string>
+    <string name="long_press_custom_icon_to_delete">Long-press an unused custom icon to delete it.</string>
+    <string name="delete_custom_icon">Delete custom icon</string>
+    <string name="delete_custom_icon_confirmation">Custom icons are shared across control profiles. Delete this unused icon?</string>
+    <string name="custom_icon_not_deleted">Custom icon not deleted</string>
+    <string name="unable_to_check_custom_icon_usage">Unable to verify whether this icon is in use. No changes were made.</string>
+    <string name="unable_to_delete_custom_icon">The icon could not be deleted. It may have been used or removed elsewhere.</string>
+    <plurals name="custom_icon_in_use">
+        <item quantity="one">This icon is used by %1$d control. Reassign it before deleting the icon.</item>
+        <item quantity="other">This icon is used by %1$d controls. Reassign them before deleting the icon.</item>
+    </plurals>
+    <plurals name="custom_icon_profiles_in_use">
+        <item quantity="one">Used in %1$d profile:</item>
+        <item quantity="other">Used in %1$d profiles:</item>
+    </plurals>
+    <string name="clear">Clear</string>
     <string name="no_items_to_display_saves">Register a save file directory from one of your containers to get started!</string>
     <string name="do_you_want_to_remove_this_profile">Do you want to remove this profile?</string>
     <string name="do_you_want_to_duplicate_this_profile">Do you want to duplicate this profile?</string>
@@ -57,11 +157,16 @@
     <string name="do_you_want_to_remove_this_wine_version">Do you want to remove this wine version?</string>
     <string name="do_you_want_to_remove_this_preset">Do you want to remove this preset?</string>
     <string name="do_you_want_to_end_this_process">Do you want to end this process?</string>
-    <string name="controls_editor">Controls Editor</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="container">Container</string>
     <string name="screen_size">Screen Size</string>
+    <string name="help_screen_size"><![CDATA[
+        <b>Screen Size</b><br /><br />
+        The resolution the game runs at. Lower is faster but less sharp; higher is sharper but heavier. The picture is then scaled to fit your screen, and the Scaling mode in the game side menu (for example SGSR HQ) decides how.<br /><br />
+        New containers start at a size that matches your screen shape — 1280x720 on 16:9 and wider screens, 1280x800 on 16:10 and 1280x960 on 4:3 — so the picture can fill the screen.<br /><br />
+        <b>Examples:</b> a heavy game stutters → try 960x544 or 854x480 with SGSR HQ. A light game on a 1080p screen → 1920x1080 for full sharpness. A 4:3 handheld → 1280x960.
+    ]]></string>
     <string name="new_environment_variable">New Environment Variable</string>
     <string name="environment_variables">Environment Variables</string>
     <string name="value">Value</string>
@@ -70,8 +175,22 @@
     <string name="cursor_speed">Cursor Speed</string>
     <string name="relative_mouse_movement">Relative Mouse Movement</string>
     <string name="toggle_switch">Toggle Switch</string>
+    <string name="input_controls_editor_swipeable">Swipeable</string>
+    <string name="swipe_tab">Swipe</string>
+    <string name="swipe_buttons">Buttons</string>
+    <string name="swipe_dpad">D-pad</string>
+    <string name="swipe_sticks">Sticks</string>
     <string name="profile_exported_to">Profile exported to</string>
     <string name="unable_to_import_profile">Unable to import profile</string>
+    <string name="import_control_profile">Import ICP / ICpx</string>
+    <string name="export_control_profile_icpx">Export ICpx</string>
+    <string name="export_control_profile_icp_legacy">Export legacy ICP</string>
+    <string name="export_control_profile_icp_tooltip">Legacy ICP is best effort. New commands, groups, combos, and custom icons may be ignored or lost in older apps.</string>
+    <string name="select_control_profile">Select ICP or ICpx profile</string>
+    <plurals name="profiles_not_imported">
+        <item quantity="one">%1$d profile could not be imported</item>
+        <item quantity="other">%1$d profiles could not be imported</item>
+    </plurals>
     <string name="wine_configuration">Wine Configuration</string>
     <string name="registry_keys">Registry Keys</string>
     <string name="csmt">CSMT (Command Stream Multi-Thread)</string>
@@ -83,8 +202,6 @@
     <string name="none">None</string>
     <string name="custom_text">Custom Text</string>
     <string name="icon">Icon</string>
-    <string name="import_profile">Import Profile</string>
-    <string name="export_profile">Export Profile</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="touchpad_help_mouse_left_click_title">Mouse Left-Click</string>
     <string name="touchpad_help_mouse_left_click_description">Short tap with one finger</string>
@@ -97,13 +214,11 @@
     <string name="duplicate">Duplicate</string>
     <string name="about">About</string>
     <string name="credits_and_third_party_apps">Credits and Third-party apps</string>
-    <string name="external_controllers">External Controllers</string>
     <string name="graphics_driver">Graphics Driver</string>
     <string name="audio_driver">Audio Driver</string>
     <string name="loading">Loading…</string>
     <string name="press_any_button_on_your_controller">Press any button on your controller</string>
     <string name="bindings">bindings</string>
-    <string name="show_touchscreen_controls">Show Touchscreen Controls</string>
     <string name="dxwrapper">DX Wrapper</string>
     <string name="mouse_warp_override">Mouse Warp Override</string>
     <string name="direct3d">Direct3D</string>
@@ -129,6 +244,7 @@
     <string name="arch">Arch</string>
     <string name="version">Version</string>
     <string name="dxvk_version">DXVK Version</string>
+    <string name="vegas_config_loglevel_envvar_note">⚠ Log level (DXVK_LOG_LEVEL) must be set as a container environment variable — VEGAS ignores the config-file key as present in file (dxvk.logLevel / DXVK_LOG_LEVEL).</string>
     <string name="vkd3d_version">VKD3D Version</string>
     <string name="unable_to_install_wine">Unable to install Wine</string>
     <string name="unable_to_remove_this_wine_version">Unable to remove this wine version</string>
@@ -180,6 +296,188 @@
     <string name="performance_tso">Performance (TSO)</string>
     <string name="performance_mali">Performance (Mali)</string>
     <string name="extreme">Extreme</string>
+    <!-- Second Box64 Extreme tier: the community 32-variable build. Kept separate from "extreme"
+         above so anyone already running Extreme keeps that exact tuning. -->
+    <string name="extreme_2">Extreme-2</string>
+    <!-- FEXCore-only preset labels. The "-wn"/"-gn" suffixes mark which upstream the values were
+         derived from (WinNative / GameNative) so the two Extreme tiers stay tellable apart; the
+         plain "extreme" string above belongs to the Box64 preset and must not be reused here. -->
+    <string name="fex_extreme_wn">Extreme-wn</string>
+    <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
+    <string name="fex_extreme_gn">Extreme-gn</string>
+
+    <!-- Help for the Box64 variables added alongside the 19 -> 32 expansion. Wording follows
+         WinNative, which has shipped these knobs longest. Without these the "?" button had
+         nothing to show and silently did nothing. -->
+    <string name="box64_env_var_help__dynarec"><![CDATA[
+        Dynamic recompiler — the heart of Box64. It translates the game x86 code into ARM code once,
+        then reuses the translation.<br /><br />
+        <b>0</b> : Interpret every instruction one at a time. Correct, but many times slower and not
+        realistically playable. Debugging only.<br />
+        <b>1</b> : Translate and cache. This is what makes games run at usable speed. (default)
+        <br /><br /><b>When to change:</b> Never turn this off for playing. It exists for diagnosing a suspected translation bug: if a game misbehaves on 1 but is correct on 0, the fault is in the recompiler rather than the game.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_sep"><![CDATA[
+        Secondary entry points for CALL/RET. Lets Box64 jump into the middle of a block it already
+        translated instead of building a near-identical copy.<br /><br />
+        <b>0</b> : One entry point per block. More duplicate blocks, more memory.<br />
+        <b>1</b> : Add secondary entry points. Fewer duplicates, slightly faster. (default)<br />
+        <b>2</b> : More aggressive still.<br /><br />
+        Only has an effect when DYNAREC_CALLRET is on.
+        <br /><br /><b>When to change:</b> Leave it at the default. Worth lowering only if you are already turning CALLRET off for a packed or DRM-protected executable, since the two work together.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_noarch"><![CDATA[
+        How much bookkeeping Box64 keeps for each translated block. That bookkeeping is what lets it
+        notice when code or memory changes and re-translate correctly.<br /><br />
+        <b>0</b> : Keep everything. Safest. (default)<br />
+        <b>1</b> : Trim some. Less memory.<br />
+        <b>2</b> : Trim aggressively. Least memory, most likely to misbehave.<br /><br />
+        <b>When to change:</b> raise it only if you are short on RAM — it trades correctness for memory. Set it back to 0 first if a game starts crashing after previously running fine on the same preset.]]></string>
+    <string name="box64_env_var_help__dynarec_volatile_metadata"><![CDATA[
+        64-bit Windows programs can carry volatile metadata: the compiler marking exactly which memory
+        accesses must not be reordered. Box64 can read it and enforce strict ordering only where the
+        game genuinely needs it, instead of everywhere.<br /><br />
+        <b>0</b> : Ignore it.<br />
+        <b>1</b> : Use it. Usually faster than blanket STRONGMEM while staying correct. (default)<br /><br />
+        Only applies to 64-bit Windows games built with the metadata present.
+        <br /><br /><b>When to change:</b> Leave it on — it costs nothing and simply has no effect on games built without the metadata. Turning it off is only useful to check whether it is masking a different ordering problem.
+        ]]></string>
+    <string name="box64_env_var_help__dynacache"><![CDATA[
+        Whether translated blocks are kept on disk between runs so the next launch starts warm.<br /><br />
+        <b>0</b> : Off. Translate fresh every launch. (default)<br />
+        <b>1</b> / <b>2</b> : Increasing levels of caching. Faster startup and fewer first-time
+        stutters, at the cost of disk space.<br /><br />
+        Clear the container cache after a game update if you see odd behaviour.
+        <br /><br /><b>When to change:</b> Turn it on if a game takes a long time to warm up every session, or stutters in the same places on every launch. Clear the container cache after a game update, since a stale cache can produce odd behaviour.
+        ]]></string>
+    <string name="box64_env_var_help__aes"><![CDATA[
+        AES-NI, the hardware encryption instructions. Games, DRM and anti-cheat use them heavily.<br /><br />
+        <b>0</b> : Tell the game the CPU has no AES. Anything using it falls back to slow software
+        encryption, or picks a different code path.<br />
+        <b>1</b> : Advertise AES and map it onto the ARM equivalents, so it runs at near-native
+        speed. (default)<br /><br />
+        Turn it off only if a game misdetects the CPU and refuses to start.
+        <br /><br /><b>When to change:</b> Leave it on — it maps to real ARM instructions, so it is close to free. Turn it off only if a game misdetects the CPU and refuses to start.
+        ]]></string>
+    <string name="box64_env_var_help__pclmulqdq"><![CDATA[
+        Carry-less multiply — a specialised instruction used by encryption and checksum code, often
+        alongside AES.<br /><br />
+        <b>0</b> : Hide it. Callers fall back to slower software routines.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)
+        <br /><br /><b>When to change:</b> Leave it on. It only matters for games doing heavy encryption or checksum work, where hiding it makes loading and verification noticeably slower.
+        ]]></string>
+    <string name="box64_env_var_help__shaext"><![CDATA[
+        SHA extensions — hardware SHA-1 and SHA-256 hashing, used for file verification, save
+        integrity checks and DRM.<br /><br />
+        <b>0</b> : Hide it. Hashing falls back to software and gets slower.<br />
+        <b>1</b> : Advertise it and map it to the ARM equivalent. (default)
+        <br /><br /><b>When to change:</b> Leave it on. Hiding it slows down any game that verifies its own files at startup, since every hash falls back to software.
+        ]]></string>
+    <string name="box64_env_var_help__sse42"><![CDATA[
+        SSE4.2 — string and text processing instructions plus hardware CRC32.<br /><br />
+        <b>0</b> : Hide it. Some modern games check for SSE4.2 at startup and refuse to run without
+        it.<br />
+        <b>1</b> : Advertise it. (default)<br /><br />
+        Leave this on unless a game specifically misbehaves with it.
+        <br /><br /><b>When to change:</b> Leave it on. Several modern games test for SSE4.2 during startup and exit immediately without it, usually with an unhelpful error or no message at all.
+        ]]></string>
+    <string name="box64_env_var_help__sse_flushto0"><![CDATA[
+        How denormals — extremely small floating-point numbers — are handled in SSE maths.<br /><br />
+        <b>0</b> : Full IEEE behaviour with exception flags tracked. Correct, but slow whenever a
+        game produces denormals. (default)<br />
+        <b>1</b> : Flush denormals straight to zero, which is what most game engines ask for anyway.
+        Faster, and can very slightly change physics or audio results.
+        <br /><br /><b>When to change:</b> Set it to 1 for a speed gain in games with heavy physics or audio processing, which generate denormals constantly. Set it back to 0 if physics or sound behave subtly differently from how they should.
+        ]]></string>
+    <string name="box64_env_var_help__x87_no80bits"><![CDATA[
+        x87 is the old floating-point unit. It works in 80-bit extended precision, which ARM has no
+        equivalent for, so Box64 has to emulate it.<br /><br />
+        <b>0</b> : Emulate full 80-bit precision. Accurate but slow.<br />
+        <b>1</b> : Use ordinary 64-bit doubles instead. Much faster, and what the fast presets pick.<br /><br />
+        Older games doing precise maths — physics, simulation, flight models — can drift or behave
+        oddly on 1.
+        <br /><br /><b>When to change:</b> Leave at 1 for modern games, which barely touch x87. Set it to 0 for older simulation-style games — flight sims, racing physics, strategy titles with large numbers — where accumulated precision loss shows up as drift over a long session.
+        ]]></string>
+    <string name="box64_env_var_help__cputype"><![CDATA[
+        Which CPU vendor Box64 reports to the game.<br /><br />
+        <b>0</b> : Intel (default)<br />
+        <b>1</b> : AMD<br /><br />
+        Some games, DRM and anti-cheat take different code paths depending on the vendor, and a few
+        refuse to run on one of them. Only worth changing if a specific title needs it.
+        <br /><br /><b>When to change:</b> Only change it for a specific title that needs it. Some games and anti-cheat take a different code path per vendor, and a few refuse to run on one of them outright.
+        ]]></string>
+    <string name="box64_env_var_help__unity"><![CDATA[
+        Marks the process as a Unity game so Box64 applies Unity-specific workarounds, mostly around
+        its Mono and IL2CPP runtimes and how they handle threads.<br /><br />
+        <b>0</b> : Off (default)<br />
+        <b>1</b> : On<br /><br />
+        Worth trying if a Unity game crashes at startup or hangs on a loading screen.
+        <br /><br /><b>When to change:</b> Turn it on if a Unity game crashes at startup or hangs on a loading screen. It is a no-op for everything else, so it is safe to leave on for a container dedicated to Unity titles.
+        ]]></string>
+
+    <!-- FEXCore variables that had no help text: two added with the Extreme presets, plus
+         MAXINST and SMCCHECKS which were never covered. -->
+    <string name="fexcore_env_var_help__maxinst"><![CDATA[
+        The largest number of guest instructions FEX will pack into a single translated block.<br /><br />
+        Bigger blocks run faster, because FEX can optimise across more of the game code at once and
+        jumps between blocks cost time. They also take longer to compile and use more memory, so a
+        very large value can cause hitching the first time new code runs.<br /><br />
+        <b>5000</b> is the default and suits almost everything. Lower it only if you are chasing
+        memory use or startup stutter.
+        <br /><br /><b>When to change:</b> Leave it at 5000. Lower it if you are chasing memory use, or if a game hitches badly the first time it reaches new code and you would rather have smaller, quicker compiles.
+        ]]></string>
+    <string name="fexcore_env_var_help__smcchecks"><![CDATA[
+        How hard FEX watches for self-modifying code — a program writing or rewriting its own
+        instructions while running. FEX has to notice, or it keeps running a stale translation of
+        code that has since changed.<br /><br />
+        <b>none</b> : No checking. Fastest, and what the Extreme presets use. Breaks anything that
+        generates code at runtime: Java and .NET runtimes, some launchers, and most DRM.<br />
+        <b>mtrack</b> : Track writes to memory pages holding translated code. The balanced default.<br />
+        <b>full</b> : Check thoroughly. Slowest and safest — what the Denuvo preset uses.<br /><br />
+        If a game runs on Performance but not on an Extreme preset, this is the first thing to
+        change back.
+        <br /><br /><b>When to change:</b> If a game runs on Performance but not on an Extreme preset, this is the first thing to change back. Set it to full for a Denuvo-protected title, which will not start otherwise.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cacheincreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache grows.<br /><br />
+        The L1 cache holds recently used translated blocks. When it fills, FEX either grows it or
+        starts discarding blocks it will likely need again. This number is how much pressure it
+        takes before growing: <b>lower grows sooner</b>, spending memory to avoid re-translating.<br /><br />
+        Default <b>250</b>. Only has any effect when DYNAMICL1CACHE is on.
+        <br /><br /><b>When to change:</b> Lower it if you see stutter in busy scenes and have memory to spare. Raise it on a memory-tight device. It does nothing at all unless DYNAMICL1CACHE is on.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cachedecreasecountheuristic"><![CDATA[
+        How eagerly the dynamic L1 block cache shrinks back down.<br /><br />
+        After a busy stretch — a level load, a big area transition — the cache may be far larger than
+        the game now needs. This number is how long it waits before handing memory back:
+        <b>higher holds memory longer</b>, which avoids shrinking and regrowing repeatedly.<br /><br />
+        Default <b>50</b>. Only has any effect when DYNAMICL1CACHE is on.
+        <br /><br /><b>When to change:</b> Raise it if you get a hitch shortly after a level load, which usually means the cache shrank and then had to grow straight back. Lower it to hand memory back sooner. It does nothing at all unless DYNAMICL1CACHE is on.
+        ]]></string>
+
+    <!-- Per-preset help, shown by the "?" beside the preset name in the preset editor.
+         Key = <prefix>_preset_help__<preset id lowercased>. Kept brief: what it does, then the
+         specific risk where there is one. -->
+    <string name="box64_preset_help__stability"><![CDATA[<b>Stability</b> — maximum correctness. Full CPU flag emulation, no fast maths, full 80-bit x87 precision and no block merging. The slowest option: reach for it when a game crashes on everything else.]]></string>
+    <string name="box64_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — the same conservative maths as Stability with a little more freedom for the translator. A good fallback when a game misbehaves on Intermediate.]]></string>
+    <string name="box64_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Faster NaN handling and light block merging, while keeping safe CPU flags and full x87 precision. Start here.]]></string>
+    <string name="box64_preset_help__performance"><![CDATA[<b>Performance</b> — noticeably faster: relaxed flags, fast rounding, 64-bit x87 and aggressive block merging.<br><br>Small risk of maths or precision glitches in games sensitive to rounding.]]></string>
+    <string name="box64_preset_help__performance_mali"><![CDATA[<b>Performance (Mali)</b> — Performance retuned for Mali GPUs: CPU flag emulation off but exact rounding kept, which suits Mali drivers better. No benefit on Adreno.]]></string>
+    <string name="box64_preset_help__extreme"><![CDATA[<b>Extreme</b> — Performance plus deeper instruction look-ahead, call/return optimisation and AVX disabled. Faster again.<br><br>Wider blast radius: a game sensitive to timing or maths is more likely to misbehave than on Performance.]]></string>
+    <string name="box64_preset_help__extreme_2"><![CDATA[<b>Extreme-2</b> — the community 32-variable tuning. Everything Extreme does, pushed further: faster rounding, double the look-ahead, native CPU flags, and the AES, SSE4.2, SHA and PCLMULQDQ instruction sets exposed to the game.<br><br><b>Risk:</b> it also weakens memory barriers, which can corrupt multi-threaded state. That shows up as random instability rather than a clean crash — drop back to Extreme if a game turns flaky.]]></string>
+    <string name="box64_preset_help__unity"><![CDATA[<b>Unity</b> — Performance retuned for Unity games, with the stronger memory ordering most Unity titles need to stay stable.]]></string>
+    <string name="box64_preset_help__unity_mono_bleeding_edge"><![CDATA[<b>Unity Mono Bleeding Edge</b> — for newer Unity builds on the bleeding-edge Mono runtime. Disables the block merging that upsets its just-in-time compiler.]]></string>
+    <string name="box64_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — conservative settings for Denuvo-protected games, which detect and dislike aggressive translation. Slower by design; use it only for titles that need it.]]></string>
+
+    <string name="fexcore_preset_help__stability"><![CDATA[<b>Stability</b> — every memory-ordering emulation enabled plus full x87 precision. The slowest and most correct option; use it when nothing else runs.]]></string>
+    <string name="fexcore_preset_help__compatibility"><![CDATA[<b>Compatibility</b> — full memory-ordering emulation, same as Stability. Broad correctness at the cost of speed.]]></string>
+    <string name="fexcore_preset_help__intermediate"><![CDATA[<b>Intermediate</b> — the balanced default. Keeps the main and half-barrier ordering, drops the heavier vector and memcpy ordering, and allows reduced x87 precision.]]></string>
+    <string name="fexcore_preset_help__performance"><![CDATA[<b>Performance</b> — all memory-ordering emulation off. Clearly faster.<br><br><b>Risk:</b> games that rely on strict store ordering can crash, hang or corrupt saves. If that happens, use Performance (TSO).]]></string>
+    <string name="fexcore_preset_help__performance_tso"><![CDATA[<b>Performance (TSO)</b> — Performance with the main store-ordering emulation switched back on, while the heavier vector, half-barrier and memcpy ordering stay off. The best general compromise, and the safest fast option.]]></string>
+    <string name="fexcore_preset_help__extreme"><![CDATA[<b>Extreme-wn</b> — from WinNative. Performance plus five JIT and cache knobs: self-modifying-code checks off, the L2 block cache off, and a dynamically sized L1 cache.<br><br><b>Risk:</b> with code checks off, anything that writes its own code while running — Java or .NET runtimes, some launchers and DRM — can misbehave. Memory ordering is also off, so this is the most aggressive tier available.]]></string>
+    <string name="fexcore_preset_help__extreme_tso"><![CDATA[<b>Extreme (TSO)-wn</b> — the same tuning as Extreme-wn but with store ordering kept on, so it suits far more games. This is the one to try first if you want more speed than Performance (TSO).<br><br><b>Risk:</b> self-modifying-code checks are off, which can break Java or .NET runtimes, some launchers and DRM. Fall back to Extreme-gn if that bites.]]></string>
+    <string name="fexcore_preset_help__extreme_gn"><![CDATA[<b>Extreme-gn</b> — from GameNative, and much gentler than the name suggests. Performance plus timer scaling and volatile-metadata hints only, leaving code checks and the block caches at their defaults.<br><br>The safer Extreme: try this when a game will not run on the two WinNative tiers.]]></string>
+    <string name="fexcore_preset_help__denuvo"><![CDATA[<b>Denuvo</b> — for Denuvo-protected games. Memory ordering off for speed, but full self-modifying-code checking and a hidden hypervisor bit, both of which Denuvo needs to start.]]></string>
     <string name="unity">Unity</string>
     <string name="unity_mono_bleeding_edge">Unity Mono Bleeding Edge</string>
     <string name="denuvo">Denuvo</string>
@@ -192,84 +490,518 @@
         <i><b>VKD3D</b></i> is a translation layer for Direct3D 12 API to Vulkan.<br /><br />
         <i><b>CNC DDraw</b></i> is an implementation of DirectDraw for better compatibility with classic games.
     ]]></string>
+    <string name="help_anisotropic_filtering"><![CDATA[
+        <b>Anisotropic filtering</b><br /><br />
+        Keeps textures sharp when you see them at an angle — the road ahead of a car, floors, walls running into the distance. Without it they turn blurry a short way ahead.<br /><br />
+        <b>Game default</b> leaves it to the game. <b>2x to 16x</b> forces it on; higher stays sharp further away. It costs little on most devices; if you lose FPS, try 4x or 8x.<br /><br />
+        <b>Example:</b> the track in a racing game looks smeared just ahead of the car → 16x.<br /><br />
+        DirectX 9–11 games only (DXVK / VEGAS). Applies the next time the game starts.
+    ]]></string>
+    <string name="help_texture_sharpness"><![CDATA[
+        <b>Texture sharpness</b><br /><br />
+        Makes the game use its more detailed textures. Most useful when the game runs below your screen resolution with an upscaler on, where textures otherwise look softer than the rest of the picture.<br /><br />
+        <b>Game default</b> changes nothing. <b>Auto</b> picks the right amount for the Scaling mode the game starts with (set in the game side menu: SGSR, SGSR HQ, FSR or NIS) — about -0.58 for 720p on a 1080p screen — and does nothing without one. <b>Sharper / Sharpest</b> use a fixed amount; a bigger number is sharper.<br /><br />
+        <b>Example:</b> a game at 720p with SGSR HQ on a 1080p screen → Auto.<br /><br />
+        Too sharp makes fine detail (gravel, fences, grass) shimmer while moving — step back if you see that. DirectX 9–11 games only. Applies the next time the game starts.
+    ]]></string>
+    <string name="help_wine_version"><![CDATA[
+        <b>Wine version</b><br /><br />
+        The compatibility layer that runs the Windows game — it translates Windows into Android without a real Windows install. <i><b>Proton</b></i> is a gaming-tuned build of Wine. Newer builds fix more games; leave it on the default unless a game needs a specific one.
+    ]]></string>
+    <string name="help_graphics_driver"><![CDATA[
+        <b>Graphics driver (wrapper)</b><br /><br />
+        The Vulkan driver the container uses to talk to your GPU. Different wrappers suit different GPUs — <i><b>Adreno</b></i> (Snapdragon) has the best support; <i><b>Mali</b></i> phones may need a specific wrapper to handle compressed textures. Stick with the default unless you\'re troubleshooting.
+    ]]></string>
+    <string name="help_renderer"><![CDATA[
+        <b>Renderer</b><br /><br />
+        How the game\'s image is delivered to your screen. <i><b>Vulkan</b></i> is the default and best for most games. <i><b>OpenGL</b></i> is a fallback for older games; <i><b>SurfaceFlinger</b></i> is experimental and can misbehave on some devices.
+    ]]></string>
+    <string name="renderer_present_mode_help_content"><![CDATA[
+        <b>Present Mode</b> controls how finished frames are handed to your screen — a trade-off between tearing, input lag and battery.<br /><br />
+        <b>FIFO (default):</b> \'Vsync on.\' Every frame waits its turn and is shown on the next refresh — smooth, tear-free and the most power-efficient. Downside: it makes the game wait for the display, which can hold back frame generation.<br /><br />
+        <b>Mailbox:</b> \'Fast vsync.\' The screen always grabs the newest frame and never makes the game wait — tear-free like FIFO but lower lag. Best for frame generation, since its extra generated frames actually reach the screen. Costs a little more battery (it may render frames it discards).<br /><br />
+        <b>Immediate:</b> \'Vsync off.\' Frames appear the instant they\'re ready — lowest lag, but you may see tearing. Rarely worth it on a high-refresh screen.<br /><br />
+        <b>Tip:</b> Bannerlator automatically switches to Mailbox while frame generation is multiplying, then back to your setting when it\'s off.
+    ]]></string>
+    <string name="renderer_present_mode_fg_note">LSFG Native and Win-FG Native switch this to FIFO while they\'re generating, then restore your choice — they send the real and made-up frames together and need FIFO to show them one per refresh.</string>
+
+    <!-- Download-speed picker — general "?" plus per-tier plain-language help -->
+    <string name="help_download_speed"><![CDATA[
+        <b>Download speed</b><br /><br />
+        Download speed sets how many pieces of the game download at once. Higher = faster, up to the limit of your internet connection and Steam\'s servers — it doesn\'t cap your speed. Lower settings use fewer connections to stay gentle on your device and network. Downloads run one at a time; extra games wait in the queue.
+    ]]></string>
+    <string name="help_download_speed_slow"><![CDATA[
+        <b>Slow</b><br /><br />
+        Fewest pieces at once. Lightest on your device and bandwidth, slowest overall. Good for downloading in the background while you play or use your phone.
+    ]]></string>
+    <string name="help_download_speed_medium"><![CDATA[
+        <b>Medium</b><br /><br />
+        A moderate number at once — a balance between speed and staying light.
+    ]]></string>
+    <string name="help_download_speed_fast"><![CDATA[
+        <b>Fast (default)</b><br /><br />
+        Lots of pieces at once for strong speed on most connections. Recommended.
+    ]]></string>
+    <string name="help_download_speed_blazing"><![CDATA[
+        <b>Blazing</b><br /><br />
+        The most pieces at once — fastest, uses the most bandwidth and device resources. Best for big games on a fast connection.
+    ]]></string>
+
+    <!-- Turnip / Wrapper Driver Configuration — per-option plain-language help -->
+    <string name="help_turnip_gmem"><![CDATA[
+        <b>GMEM (tiled rendering)</b><br /><br />
+        How the GPU draws each frame. GMEM (tiled) rendering splits the screen into small tiles and draws them in ultra-fast on-chip memory — the efficient, mobile-native way.<br /><br />
+        <b>Auto</b> turns it on only for Adreno 710/720/722 (which need it to avoid glitches); <b>Force On</b> applies it to any GPU; <b>Force Off</b> never does. Leave on Auto unless a game misbehaves. Its opposite is \'sysmem\'.
+    ]]></string>
+    <string name="help_turnip_sysmem"><![CDATA[
+        <b>sysmem</b><br /><br />
+        Forces the GPU to draw straight to main memory instead of the fast on-chip tile memory — the opposite of GMEM. It\'s the most compatible option (and the default), but uses more memory bandwidth. Use it if forcing GMEM makes a game glitch.
+    ]]></string>
+    <string name="help_sync_every_frame"><![CDATA[
+        <b>Sync Every Frame</b><br /><br />
+        Makes the GPU fully finish and show each frame before starting the next (synchronous presentation). Turn it <b>ON</b> to fix tearing, flicker, or glitchy on-screen frames; leave it <b>OFF</b> for best performance, since it can cost some fps by stopping the CPU and GPU from working ahead of each other.
+    ]]></string>
+    <string name="help_turnip_concurrent_binning"><![CDATA[
+        <b>forcecb / nocb (concurrent binning)</b><br /><br />
+        Binning is the step where the GPU sorts what belongs in each on-screen tile. \'forcecb\' forces it to run alongside rendering (can help performance); \'nocb\' turns it off (can fix glitches on some games). Expert options — only touch them if a specific game needs it.
+    ]]></string>
+    <string name="help_turnip_deck_emu"><![CDATA[
+        <b>deck_emu</b><br /><br />
+        Makes the GPU report itself to the game as a Steam Deck, which can unlock better graphics settings or code paths in some games. Only works on Bannerlator\'s own (Banners-Turnip) drivers — ignored on stock Turnip.
+    ]]></string>
+    <string name="help_disable_present_wait"><![CDATA[
+        <b>Disable KHR_present_wait</b><br /><br />
+        Some GPU drivers implement Vulkan\'s \'present wait\' feature — which lets a game wait until a frame has actually appeared on screen — incorrectly, causing stalls or hangs. Turn this <b>ON</b> to make the driver stop using it, as a compatibility fallback. Leave it <b>OFF</b> unless a game freezes or won\'t display.
+    ]]></string>
+    <string name="help_oneui_hyperos_fix"><![CDATA[
+        <b>One UI / HyperOS Fix</b><br /><br />
+        A compatibility workaround for some Samsung (One UI) and Xiaomi (HyperOS) phones, whose GPU drivers need an extra texture-compression hint to render correctly. Turn it <b>ON</b> only if games show corruption or crash on those devices; leave it <b>OFF</b> otherwise.
+    ]]></string>
+    <string name="help_bcn_emulation_type"><![CDATA[
+        <b>BCn Emulation Type</b><br /><br />
+        Chooses HOW compressed game textures (BCn / DXT) are unpacked on GPUs that can\'t read them natively — Mali and other non-Adreno chips. <b>Compute</b> uses a GPU compute-shader layer (usually faster); <b>software</b> uses the wrapper\'s built-in decoder. No effect on Adreno, which reads BCn textures natively. Switch options if textures look wrong or a game runs slowly.
+    ]]></string>
+    <string name="help_bcn_emulation_cache"><![CDATA[
+        <b>BCn Emulation Cache</b><br /><br />
+        When a GPU has to emulate compressed (BCn) textures, this keeps the already-decoded textures in a cache so they don\'t have to be unpacked again — reducing stutter and CPU/GPU work, at the cost of a little extra memory. No effect on Adreno (native BCn).
+    ]]></string>
+    <string name="help_bcn_transcode_astc"><![CDATA[
+        <b>Transcode to ASTC</b><br /><br />
+        Instead of fully decompressing emulated BCn textures, this repacks them into ASTC — a compressed texture format that Mali and other mobile GPUs support in hardware. Can save memory and improve performance on those GPUs. Only honored by BCn-capable drivers; no effect on Adreno (native BCn).
+    ]]></string>
+
+    <!-- Graphics driver dialog (top section) + graphics/perf/compat fields — plain-language help -->
+    <string name="help_vulkan_version"><![CDATA[
+        <b>Vulkan Version</b><br /><br />
+        The Vulkan version the graphics driver reports to the DirectX translator (DXVK / VKD3D). A higher number can unlock newer features some games ask for. It\'s automatically capped to what your driver actually supports, so picking a version above your driver\'s does nothing. Leave it at the default unless a game specifically needs a higher Vulkan level.
+    ]]></string>
+    <string name="help_graphics_driver_version"><![CDATA[
+        <b>Graphics Driver Version</b><br /><br />
+        Which build of the GPU driver (Turnip / the Vulkan wrapper) to use for this game. Newer builds often fix bugs or add speed, but a specific game can run better on an older one. If a game glitches or won\'t start, try a different version here. Manage and import more drivers with the cloud button.
+    ]]></string>
+    <string name="help_show_incompatible_drivers"><![CDATA[
+        <b>Show incompatible drivers</b><br /><br />
+        Also lists driver versions that Bannerlator thinks won\'t work with your phone\'s GPU. They\'re hidden by default to keep you from picking one that fails. Turn this on only if you want to experiment — an incompatible driver may crash or show a black screen.
+    ]]></string>
+    <string name="help_gpu_name"><![CDATA[
+        <b>GPU Name (spoofing)</b><br /><br />
+        Makes games see a different graphics card than your real one. Some games unlock better graphics options, or simply run, when they recognise a specific GPU. Leave it on \'Device\' to report your real GPU; pick a name to spoof it. Ignored when the DX wrapper is set to WineD3D.
+    ]]></string>
+    <string name="help_max_device_memory"><![CDATA[
+        <b>Max Device Memory</b><br /><br />
+        Caps how much video memory (VRAM) the driver tells games it has. \'Default\' lets the driver report its own amount. Setting a specific limit can stop a game from trying to use more memory than your phone has — a fix for out-of-memory crashes or stutter in a few titles. Leave on Default unless a game misbehaves.
+    ]]></string>
+    <string name="help_wrapper_present_modes"><![CDATA[
+        <b>Present Modes</b><br /><br />
+        How finished frames are handed to the screen.<br /><br />
+        <b>mailbox</b> — low latency, always shows the newest frame (triple-buffered); the smooth default.<br />
+        <b>fifo</b> — classic V-Sync: frames wait for the display, no tearing but can feel less responsive.<br />
+        <b>immediate</b> — sends frames the instant they\'re ready: lowest latency but can tear.<br /><br />
+        Leave on mailbox unless you\'re chasing lower latency or fixing tearing.
+    ]]></string>
+    <string name="help_resource_type"><![CDATA[
+        <b>Memory Resource Type</b><br /><br />
+        How the driver shares image memory between the game and the display. <b>auto</b> lets it choose the best method for your device and is right for almost everyone. The other options (dmabuf / AHB / opaque) are fallbacks — only switch if a game shows corrupted graphics or won\'t display on your specific phone.
+    ]]></string>
+    <string name="help_bcn_emulation"><![CDATA[
+        <b>BCn Emulation</b><br /><br />
+        Whether to emulate the compressed (BCn / DXT) textures that PC games use, for GPUs that can\'t read them natively — Mali and other non-Adreno chips. <b>auto</b> turns it on only where it\'s needed; <b>full</b> forces it; <b>partial</b> does a subset; <b>none</b> disables it. Has no effect on Adreno, which reads BCn textures in hardware. Leave on auto unless textures look wrong.
+    ]]></string>
+    <string name="help_available_extensions"><![CDATA[
+        <b>Available Extensions</b><br /><br />
+        Opens the list of optional Vulkan features (extensions) the driver offers, and lets you blacklist individual ones. This is an expert tool — turning an extension off can work around a driver bug that makes a specific game crash or render wrong. Leave everything enabled unless you\'re following a known fix.
+    ]]></string>
+    <string name="help_renderer_colors"><![CDATA[
+        <b>Colors (BGRA / RGBA)</b><br /><br />
+        The order of the red and blue colour channels in the game\'s image. <b>BGRA</b> (the default) is correct for almost every game. Switch to <b>RGBA</b> only if a game\'s colours look swapped — blue where red should be. RGBA routes through the compositor, so it can\'t be combined with Native rendering.
+    ]]></string>
+    <string name="help_renderer_native"><![CDATA[
+        <b>Native Renderer</b><br /><br />
+        Sends the game\'s image straight to the screen instead of through Bannerlator\'s compositor. This lowers latency and can improve performance, but disables features that need the compositor — colour swapping (RGBA) and the present-mode control. Turn it off if a game shows the wrong colours or won\'t display correctly.
+    ]]></string>
+    <string name="help_renderer_native_backend"><![CDATA[
+        <b>Native backend</b><br /><br />
+        <b>Auto</b> and <b>SurfaceFlinger</b> use the hardened SurfaceFlinger renderer (acquire-fence wait, colour correction, and safer teardown). <b>Vulkan direct-scanout</b> is the leaner legacy path (lower overhead, with an FPS-cap refresh-rate vote) for devices where it works better. Falls back automatically below Android 10.
+    ]]></string>
+    <string name="help_renderer_sf_compat"><![CDATA[
+        <b>Correct SurfaceFlinger colours</b><br /><br />
+        On the SurfaceFlinger renderer, a game\'s red and blue channels can come out swapped. This fixes that (BGRA→RGBA). Leave it <b>ON</b> — turn it off only if a game\'s colours already look correct without it, or look wrong with it on.
+    ]]></string>
+    <string name="help_renderer_driver"><![CDATA[
+        <b>Renderer Driver</b><br /><br />
+        Which Vulkan driver the on-screen <b>compositor</b> runs on — the layer that takes your game\'s finished frame and puts it on screen. This is <b>not</b> where your game renders; that\'s the top-level <b>Graphics Driver</b>.<br /><br />
+        <b>System</b> (default) uses Android\'s own Vulkan driver — the safe, always-compatible choice. Picking an installed <b>Turnip</b> points the compositor at that build instead. It mostly affects present/compatibility behaviour, not your game\'s FPS (the compositor isn\'t where rendering happens).<br /><br />
+        Leave it on <b>System</b> unless you know you need otherwise: a Turnip compositor can black-screen on builds whose window-system support doesn\'t match your device. Vulkan renderer only — has no effect on SurfaceFlinger or OpenGL.
+    ]]></string>
+    <string name="help_scaling_mode"><![CDATA[
+        <b>Scaling mode</b><br /><br />
+        How the game picture is stretched to fill your screen. The upscalers matter most when a game runs below your screen resolution (for example 1280x720 on a 1080p screen), which is the usual way to get more FPS.<br /><br />
+        <b>None / Linear / Nearest</b> — plain stretching. Linear is smooth; Nearest keeps hard pixel edges.<br />
+        <b>SGSR</b> — Snapdragon upscaler. Rebuilds edges so a lower resolution looks sharper. Very light.<br />
+        <b>SGSR HQ</b> — SGSR with cleaner diagonal and curved edges, for about the same cost.<br />
+        <b>FSR / FSR (Fit)</b> — AMD upscaler, a little heavier. FSR fills the whole screen (may stretch); FSR (Fit) keeps the shape and adds black bars.<br />
+        <b>NIS</b> — NVIDIA upscaler, similar to FSR.<br />
+        <b>Sharpen</b> — no upscaling, only sharpens. Works at any resolution.<br /><br />
+        <b>Examples:</b> a heavy game at 720p on a 1080p screen → SGSR HQ. A pixel-art or retro game → Nearest. A game already at your screen resolution → None, or Sharpen for extra crispness.<br /><br />
+        <b>Sharpness</b> sets how strong the sharpening is. Your choice is remembered for this game.
+    ]]></string>
+    <string name="help_fps_limiter"><![CDATA[
+        <b>FPS Limiter</b><br /><br />
+        Loads the frame-rate limiter for this game. Turning it on just enables the feature — you set the actual cap (10–200 fps) live from the in-game FPS menu. Capping fps can cut heat and battery use, and smooth out an unstable frame rate. (While LSFG Native or Win-FG Native is running, the limiter is switched on automatically — frame generation needs a steady cap — so you only need this on its own for a cap without frame generation.)
+    ]]></string>
+    <string name="help_frame_generation"><![CDATA[
+        <b>Frame Generation</b><br /><br />
+        Adds made-up frames between the ones your game draws, so motion looks smoother. It can\'t make the game respond faster, and it adds a little input delay. Two engines:<br /><br />
+        <b>Win-FG Native</b> — built in, nothing to buy or import. Always 2×.<br />
+        <b>LSFG Native</b> — Lossless Scaling\'s frame generation. Needs your own Lossless.dll, imported at the bottom of Settings. 2×, 3× or 4×.<br /><br />
+        Both need the Vulkan renderer. LSFG Native also needs a <b>Renderer Driver</b> with Vulkan 1.3 — on older Adreno GPUs, pick a Turnip driver there. If something is missing, the game\'s side menu says what and how to fix it.<br /><br />
+        <b>Getting it right:</b> in the game\'s side menu, set <b>Max FPS</b> to a number the game can always hold, then pick a multiplier so Max FPS × multiplier fits your screen\'s refresh rate (for example 48 × 3 = 144 Hz). Going over causes stutter and lag; the side menu warns you and offers a fix. <b>Auto (match FPS)</b> turns on while frame generation runs, fitting the screen to your numbers — turn it off there if you prefer.<br /><br />
+        Frame generation starts Off each launch; turn it on from the side menu. It\'s still new: if a game looks worse with it, leave it off for that game.
+    ]]></string>
+    <string name="help_audio_driver"><![CDATA[
+        <b>Audio Driver</b><br /><br />
+        How the game\'s sound reaches Android. <b>PulseAudio</b> is the default — a capable sound server that works for most games and voice features. <b>ALSA</b> is a lighter, low-overhead alternative. <b>DirectAudio (Experimental)</b> sends sound straight to Android with no server in between (lowest latency), but it\'s new — see its warning. Switch drivers if a game has no sound or crackles.
+    ]]></string>
+    <string name="directaudio_experimental_warning"><![CDATA[
+        <b>DirectAudio is experimental</b><br /><br />
+        It sends the game\'s sound straight to Android\'s audio system with <b>no PulseAudio or ALSA server</b> in between — the lowest-latency path, and it mixes all the game\'s sounds itself.<br /><br />
+        Because it\'s new, some games may have audio quirks — occasional skips, or a preset that doesn\'t stick. The <b>Auto</b> preset is the smoothest.<br /><br />
+        If you hit audio problems, switch back to <b>PulseAudio</b> or <b>ALSA</b>.
+    ]]></string>
+    <string name="help_fexcore_preset"><![CDATA[
+        <b>FEXCore Preset</b><br /><br />
+        FEXCore runs x86 games on your ARM phone. This preset trades accuracy for speed by tuning how faithfully it emulates the PC\'s memory ordering (TSO). <b>Stability / Compatibility</b> keep it fully accurate (safest, a little slower); <b>Performance</b> relaxes it for more fps (can break some games); the in-between and <b>Denuvo</b> presets are middle grounds for specific titles. Start on the default and move toward Performance only if a game runs but is slow.
+    ]]></string>
+    <string name="help_fexcore_version"><![CDATA[
+        <b>FEXCore Version</b><br /><br />
+        Which build of the FEXCore x86-to-ARM translator to use for this game. Newer builds usually run more games and run them faster, but a specific title can prefer an older one. If a game crashes or won\'t start under FEXCore, try a different version. Import more with the download button.
+    ]]></string>
+    <string name="help_startup_selection"><![CDATA[
+        <b>Startup Selection</b><br /><br />
+        How many Windows background services Wine starts before your game. <b>Normal</b> loads them all (most compatible); <b>Essential</b> loads only the important ones; <b>Aggressive</b> stops extras to save memory and start faster. <b>Custom</b> lets you pick services one by one. If a game fails to launch, move back toward Normal.
+    ]]></string>
+    <string name="help_gyro_mode"><![CDATA[
+        <b>Gyro Mode</b><br /><br />
+        How tilting the phone moves the aim. <b>Rate</b> — tilt SPEED aims, and it recentres when you hold still (like a mouse). <b>Tilt to Aim</b> — the ANGLE you hold aims, so a held tilt keeps aiming. Rate suits most shooters; Tilt to Aim suits fine, held adjustments. (Tilt to Aim can\'t drive the Mouse target.)
+    ]]></string>
+    <string name="help_gyro_activator"><![CDATA[
+        <b>Gyro Activator</b><br /><br />
+        Which controller button switches gyro aiming on, so the phone isn\'t always steering. Pick a button you can hold while aiming (for example L2), or choose <b>Always On</b> to leave gyro active the whole time.
+    ]]></string>
+    <string name="help_gyro_activation_mode"><![CDATA[
+        <b>Gyro Activation Mode</b><br /><br />
+        How the activator button behaves. <b>Hold</b> — gyro aims only while you hold the button. <b>Toggle</b> — one press turns gyro on, another turns it off. Hold suits quick aim bursts; Toggle suits leaving it on hands-free.
+    ]]></string>
+    <string name="help_gyro_sensitivity"><![CDATA[
+        <b>Gyro Sensitivity</b><br /><br />
+        How far the aim moves for a given tilt. Higher values turn faster from a small movement; lower values give steadier, finer aim. Tune it to taste — start in the middle and adjust until aiming feels natural.
+    ]]></string>
+    <string name="help_gyro_target"><![CDATA[
+        <b>Gyro Target</b><br /><br />
+        What the phone\'s tilt actually controls. <b>Right stick</b> (the usual choice) aims like the right analog stick; <b>Left stick</b> moves like the left stick; <b>Mouse</b> drives the pointer for mouse-aim games. The Mouse target always uses Rate mode.
+    ]]></string>
+
     <string name="box64_env_var_help__dynarec_safeflags"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
         <b>1</b> : Most RET will need flags, most CALLS will not<br />
         <b>2</b> : All CALL/RET will need flags (slower)
-    ]]></string>
-    <string name="box64_env_var_help__dynarec_fastnan">Generation of -NAN like on x86</string>
-    <string name="box64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
-    <string name="box64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
+        <br /><br /><b>When to change:</b> Lower it for speed in call-heavy games. Raise it to 2 if a game crashes shortly after launch or behaves erratically — missing flags around calls corrupt the decisions a program makes right after returning from a function.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_fastnan"><![CDATA[
+        NaN handling. x86 produces a negative NaN in some floating-point cases where ARM produces a
+        positive one, and matching x86 exactly costs extra instructions on every such operation.<br /><br />
+        <b>0</b> : Reproduce the x86 NaN sign exactly. Slower, bit-accurate.<br />
+        <b>1</b> : Let the ARM chip produce its natural NaN. Faster. (default)<br /><br />
+        <b>When to change:</b> leave on 1. Drop to 0 if a game shows stretched or invisible models,
+        geometry shooting off to infinity, or physics exploding — classic signs of a NaN sign
+        difference propagating through maths.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_fastround"><![CDATA[
+        Rounding mode. x86 lets a program pick a rounding mode and expects it honoured on every
+        floating-point operation; reproducing that on ARM costs work each time.<br /><br />
+        <b>0</b> : Emulate x86 rounding precisely, all modes. Slowest and most accurate.<br />
+        <b>1</b> : Fast rounding covering the common cases. (default)<br />
+        <b>2</b> : Fastest, least faithful. Used by Extreme-2.<br /><br />
+        <b>When to change:</b> raise it for speed. Drop to 0 if you see jittering geometry, drifting
+        physics, or crackling audio — anything where small numeric errors accumulate.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_x87double"><![CDATA[
+        Which native type Box64 uses to stand in for x87 floating point. x87 works in 80-bit
+        extended precision that ARM has no equivalent for, so something narrower has to be
+        substituted.<br /><br />
+        <b>0</b> : Use the narrowest type that fits. Fastest, least precise.<br />
+        <b>1</b> : Use double precision throughout. Slower, closer to the original. (default on the
+        safe presets)<br />
+        <b>2</b> : Highest precision available. Slowest.<br /><br />
+        <b>When to change:</b> older games doing serious maths — flight simulators, racing physics,
+        strategy games with large numbers — can drift or desync at 0. Raise it if a game behaves
+        subtly wrong rather than crashing outright.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_bigblock"><![CDATA[
         Dynarec building BigBlock<br /><br />
         <b>0</b> : Don\'t try to build block as big as possible<br />
         <b>1</b> : Build Dynarec block as big as possible<br />
         <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
         <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
-    ]]></string>
+        <br /><br /><b>When to change:</b> Higher values give faster sustained frame rates because more of the game loop is optimised together. Lower them if you get a hitch the first time you enter each new area, or if a game generates code as it runs and trips over blocks that span too much memory.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_strongmem"><![CDATA[
         Simulation of Strong Memory model<br /><br />
         <b>0</b> : Don\'t try anything special<br />
         <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
-    ]]></string>
-    <string name="box64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
-    <string name="box64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
-    <string name="box64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+        <br /><br /><b>When to change:</b> Raise it when a multithreaded game crashes at random, corrupts saves, or desyncs in multiplayer — symptoms of writes landing out of order. Lower it for speed once you know a game is happy without it. Unity games generally need at least 1.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_forward"><![CDATA[
+        How far ahead Box64 will follow a forward jump when deciding how much code to translate into
+        one block.<br /><br />
+        <b>0</b> : Stop at the first forward jump. Smallest blocks.<br />
+        <b>128</b> / <b>256</b> : Modest look-ahead.<br />
+        <b>512</b> : Balanced. (default)<br />
+        <b>1024</b> : Maximum look-ahead. Biggest, fastest blocks. Used by Extreme-2.<br /><br />
+        <b>When to change:</b> raise it for more speed in tight game loops. Lower it if you get
+        hitching the first time you enter a new area, since bigger blocks take longer to compile the
+        moment they are first needed.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_callret"><![CDATA[
+        Optimisation of CALL and RET. Normally every function return is an indirect jump Box64 has
+        to look up; this option keeps a proper return-address stack instead.<br /><br />
+        <b>0</b> : Generic handling. Slower, but tolerates programs that play games with return
+        addresses.<br />
+        <b>1</b> : Optimised. Noticeably faster in call-heavy code. (default on most presets)<br /><br />
+        <b>When to change:</b> turn it off for packed, obfuscated or DRM-protected executables that
+        deliberately manipulate the call stack. Crashes deep in unfamiliar code shortly after launch
+        are the usual symptom.
+        ]]></string>
+    <string name="box64_env_var_help__dynarec_wait"><![CDATA[
+        What a thread does when it needs a block another thread is still compiling.<br /><br />
+        <b>0</b> : Do not wait — interpret the code in the meantime. No stalls, but that stretch runs
+        slowly.<br />
+        <b>1</b> : Wait for the compiled block. Better sustained speed, at the cost of a brief pause.
+        (default)<br /><br />
+        <b>When to change:</b> set 0 if you get short freezes during loading screens or when first
+        entering an area, especially on a device with fewer cores.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_weakbarrier"><![CDATA[
         Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
         <b>0</b> : Use regular safe barriers<br />
         <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+        <b>2</b> : Use weak barriers, additionally disable last write barriers
+        <br /><br /><b>When to change:</b> A way to keep most of the speed while still emulating strong memory. If a game needs STRONGMEM but the cost is too high, try 1 here first. Drop back to 0 if instability returns — weak barriers fail as random corruption rather than a clean crash.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_aligned_atomics"><![CDATA[
         Generate aligned atomics only (only available on Arm64 for now).<br /><br />
         <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.
+        <br /><br /><b>When to change:</b> Leave at 0. Set 1 only for a game you know keeps its atomic data aligned, and be ready to revert: the failure mode is a hard SIGBUS crash the moment a misaligned locked operation is executed.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
+        Deferred flags. x86 updates its condition flags on almost every arithmetic instruction, and
+        the vast majority are never read. Deferring means only working them out when something
+        actually asks.<br /><br />
+        <b>0</b> : Compute flags eagerly, every time. Slower, maximally faithful.<br />
+        <b>1</b> : Defer until read. Considerably faster. (default)<br /><br />
+        <b>When to change:</b> almost never — leave it on. Turn it off only when hunting a bug where
+        a game takes visibly wrong decisions: enemies not reacting, doors not opening, checks that
+        should pass and do not.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_dirty"><![CDATA[
         Allow continue running a block that is unprotected and potentially dirty.<br /><br />
         <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
         <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).
+        <br /><br /><b>When to change:</b> Raise it to speed up loading in games that write data next to their own code. Set it back to 0 if you get unexplained crashes during loading screens or shortly after a level starts.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
+        Whether Box64 uses the ARM chip own condition flags directly instead of keeping emulated x86
+        flags in memory.<br /><br />
+        <b>0</b> : Emulate x86 flags separately. Safe, slower.<br />
+        <b>1</b> : Use native ARM flags where the meaning maps exactly. Faster. (used by Extreme-2)<br /><br />
+        <b>When to change:</b> it is one of the bigger speed levers, so try it on. Set it back to 0
+        if a game starts behaving illogically — comparisons going the wrong way, AI acting oddly —
+        rather than crashing.
+        ]]></string>
     <string name="box64_env_var_help__dynarec_pause"><![CDATA[
         Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
         <b>0</b> : Ignore x86 PAUSE instruction.<br />
         <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
         <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
         <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
-    ]]></string>
+        <br /><br /><b>When to change:</b> Matters for games that spin-wait between threads. If a game pegs the CPU and runs hot while doing very little, try 1 or 3 — a proper yield lets the other thread actually make progress instead of both fighting for the core.
+        ]]></string>
     <string name="box64_env_var_help__avx"><![CDATA[
         AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
         <b>0</b> : Disable AVX extension<br />
         <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
         <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
-    ]]></string>
-    <string name="box64_env_var_help__maxcpu">Maximum number of CPUs presented to programs by Box64</string>
-    <string name="box64_env_var_help__unityplayer">Detect UnityPlayer.dll and apply strongmem settings</string>
-    <string name="box64_env_var_help__mmap32">Force every memory allocation in 32bit address spaces</string>
-    <string name="fexcore_env_var_help__tsoenabled">Enables TSO IR ops (required for multithreaded apps).</string>
-    <string name="fexcore_env_var_help__vectortsoenabled">Makes vector load/stores atomic when TSO is enabled.</string>
-    <string name="fexcore_env_var_help__halfbarriertsoenabled">Uses half-barrier atomics for unaligned loads/stores under TSO.</string>
-    <string name="fexcore_env_var_help__memcpysettsoenabled">Makes REP MOVS / REP STOS atomic under TSO.</string>
-    <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
-    <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
-    <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
+        <br /><br /><b>When to change:</b> Raise it for modern games that check for AVX or AVX2 and refuse to start without them. Lower it to 0 if a game detects AVX, takes that code path, and then renders incorrectly or crashes — emulated AVX is not always a perfect match.
+        ]]></string>
+    <string name="box64_env_var_help__maxcpu"><![CDATA[
+        How many CPU cores Box64 tells the game it has.<br /><br />
+        <b>0</b> : Report the real count. (default)<br />
+        <b>4</b> / <b>8</b> / <b>16</b> / <b>32</b> / <b>64</b> : Cap the reported count.<br /><br />
+        <b>When to change:</b> some games create a worker thread per core and fall apart on a
+        many-core phone — stuttering, thread starvation, or a crash at startup. Capping to 4 or 8
+        often fixes it. A few older titles also break outright above 32.
+        ]]></string>
+    <string name="box64_env_var_help__unityplayer"><![CDATA[
+        Detects UnityPlayer.dll and automatically applies the stronger memory ordering Unity games
+        need, without slowing everything else down.<br /><br />
+        <b>0</b> : Off. Unity games need STRONGMEM set manually instead.<br />
+        <b>1</b> : On. Auto-applied when a Unity game is detected. (default)<br /><br />
+        <b>When to change:</b> leave it on — it costs nothing for non-Unity games. Turn it off only
+        if you are setting memory ordering by hand and want no surprises.
+        ]]></string>
+    <string name="box64_env_var_help__mmap32"><![CDATA[
+        Forces memory allocations into the low 32-bit address range, so every pointer fits in 32
+        bits.<br /><br />
+        <b>0</b> : Allocate anywhere in the 64-bit space.<br />
+        <b>1</b> : Force the low 32-bit space. (default)<br /><br />
+        <b>When to change:</b> needed by 32-bit games, and by 64-bit games that carelessly store
+        pointers in 32-bit fields. Turn it off for a large 64-bit game that runs out of memory,
+        since the low space is only 4 GB no matter how much RAM the device has.
+        ]]></string>
+    <string name="fexcore_env_var_help__tsoenabled"><![CDATA[
+        Total Store Ordering. x86 guarantees that memory writes become visible to other threads in
+        the order they were made; ARM makes no such promise. FEX can enforce it, at a cost.<br /><br />
+        <b>0</b> : Off. Clearly faster.<br />
+        <b>1</b> : On. Correct for multithreaded games. (default)<br /><br />
+        <b>When to change:</b> this is the single most important correctness knob. Games that need it
+        and do not get it crash at random, hang, corrupt saves or desync in multiplayer — rarely in
+        the same place twice. Turn it off only for simple or single-threaded games.
+        ]]></string>
+    <string name="fexcore_env_var_help__vectortsoenabled"><![CDATA[
+        Extends store ordering to vector (SIMD) loads and stores, making them atomic as well.<br /><br />
+        <b>0</b> : Off. (default on the Performance and Extreme presets)<br />
+        <b>1</b> : On. Slower — vector memory traffic is heavy in most games.<br /><br />
+        <b>When to change:</b> rarely needed. Only games doing multithreaded SIMD work on shared
+        buffers require it. Worth trying if Stability fixes a crash and you are narrowing down which
+        knob was responsible.
+        ]]></string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled"><![CDATA[
+        Uses cheaper half-barriers for unaligned loads and stores when store ordering is on, instead
+        of full barriers.<br /><br />
+        <b>0</b> : Full barriers. Strongest guarantee, slowest.<br />
+        <b>1</b> : Half-barriers. Faster, marginally weaker.<br /><br />
+        <b>When to change:</b> a useful middle ground between Performance and Stability. If a game
+        needs ordering but full barriers cost too much, try turning this on before giving up on
+        speed.
+        ]]></string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled"><![CDATA[
+        Makes the bulk memory instructions REP MOVS and REP STOS — block copy and block fill —
+        atomic under store ordering.<br /><br />
+        <b>0</b> : Off. Faster, and bulk copies are among the hottest operations in a game engine.
+        (default on the fast presets)<br />
+        <b>1</b> : On. Slower but correct when threads share the buffers being copied.<br /><br />
+        <b>When to change:</b> turn it on if a game corrupts textures, audio or save data under load
+        while looking otherwise stable — a sign of one thread reading a buffer another is still
+        copying.
+        ]]></string>
+    <string name="fexcore_env_var_help__multiblock"><![CDATA[
+        Whether FEX compiles several connected blocks of code together instead of one at a time.<br /><br />
+        <b>0</b> : One block at a time. Quick to compile, slower code.<br />
+        <b>1</b> : Compile across blocks, so FEX can optimise the whole path. Faster code, longer
+        compiles. (default)<br /><br />
+        <b>When to change:</b> leave it on for sustained frame rate. Turn it off if first-visit
+        stutter — a hitch the first time you enter each new area, then smooth afterwards — bothers
+        you more than average speed does.
+        ]]></string>
+    <string name="fexcore_env_var_help__hostfeatures"><![CDATA[
+        Forces CPU features on or off rather than letting FEX detect them.<br /><br />
+        <b>off</b> : Detect automatically. (default)<br />
+        <b>enableavx</b> / <b>disableavx</b> : Force AVX on or off in what the game is told.<br />
+        <b>enablesve</b> / <b>disablesve</b> : Force the ARM Scalable Vector Extension on or off in
+        what FEX uses internally.<br /><br />
+        <b>When to change:</b> enableavx for a game that refuses to start claiming it needs AVX;
+        disableavx if a game detects it, takes an AVX code path and then misbehaves. The SVE options
+        are for testing on chips that actually have it.
+        ]]></string>
+    <string name="fexcore_env_var_help__smalltscscale"><![CDATA[
+        Scales the CPU timestamp counter, which is what games read to measure elapsed time. Phone
+        counters often tick at a very different rate to the desktop CPUs a game expects.<br /><br />
+        <b>0</b> : Pass the counter through unscaled.<br />
+        <b>1</b> : Scale it to something the game will interpret sensibly. (default)<br /><br />
+        <b>When to change:</b> this is the knob for a game running in slow motion or fast-forward,
+        animations playing at the wrong speed, or timers counting wrongly while the frame rate
+        itself looks fine.
+        ]]></string>
     <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
-    <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
-    <string name="fexcore_env_var_help__monohacks">Special SMC + JIT block hacks for Mono detection.</string>
-    <string name="fexcore_env_var_help__hidehypervisorbit">Hides CPUID hypervisor bit (useful for apps that crash with it).</string>
-    <string name="fexcore_env_var_help__disablel2cache">Disables FEXCore JIT L2 cache lookup, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__dynamicl1cache">Switches FEXCore JIT L1 cache to be dynamically sized, saving memory but introducing stutters.</string>
-    <string name="fexcore_env_var_help__x87reducedprecision">Emulates X87 floating point using 64-bit precision. This reduces emulation accuracy and may result in rendering bugs.</string>
+    <string name="fexcore_env_var_help__volatilemetadata"><![CDATA[
+        64-bit Windows programs can carry volatile metadata: the compiler marking exactly which
+        memory accesses must not be reordered. FEX can read it and apply store ordering only where
+        the game genuinely needs it, rather than everywhere.<br /><br />
+        <b>0</b> : Ignore it.<br />
+        <b>1</b> : Use it when present. (default)<br /><br />
+        <b>When to change:</b> leave it on — it is close to free accuracy. It simply has no effect on
+        games built without the metadata.
+        ]]></string>
+    <string name="fexcore_env_var_help__monohacks"><![CDATA[
+        Workarounds for Mono, the .NET runtime Unity games are built on. Mono generates code while
+        running, which needs special handling around self-modifying-code detection and JIT
+        blocks.<br /><br />
+        <b>0</b> : Off.<br />
+        <b>1</b> : On. Detects Mono and applies the workarounds. (default)<br /><br />
+        <b>When to change:</b> leave it on; it only engages for games that need it. Turn it off only
+        to test whether it is implicated in a Unity game misbehaving.
+        ]]></string>
+    <string name="fexcore_env_var_help__hidehypervisorbit"><![CDATA[
+        CPUID includes a bit saying whether the code is running under a hypervisor. Emulation looks
+        like a hypervisor, so it is normally set.<br /><br />
+        <b>0</b> : Report it honestly.<br />
+        <b>1</b> : Hide it, so the game believes it is on bare metal. (default on the Denuvo
+        preset)<br /><br />
+        <b>When to change:</b> turn it on for a game or anti-cheat that refuses to launch, or exits
+        immediately, because it thinks it is being run in a virtual machine.
+        ]]></string>
+    <string name="fexcore_env_var_help__disablel2cache"><![CDATA[
+        FEX keeps translated code in two cache levels. This disables the second, larger one.<br /><br />
+        <b>0</b> : Keep the L2 cache. Smoother, uses more memory. (default)<br />
+        <b>1</b> : Disable it. Less memory, but code has to be re-translated more often, which shows
+        up as stutter. (used by the Extreme-wn presets)<br /><br />
+        <b>When to change:</b> turn it on when memory is tight on a large game. Turn it back off if
+        you get recurring hitches in areas you have already visited.
+        ]]></string>
+    <string name="fexcore_env_var_help__dynamicl1cache"><![CDATA[
+        Makes the first-level translated-code cache grow and shrink with demand instead of staying a
+        fixed size.<br /><br />
+        <b>0</b> : Fixed size. Predictable, uses its memory whether or not it needs it. (default)<br />
+        <b>1</b> : Dynamic. Less memory when idle, occasional stutter as it resizes. (used by the
+        Extreme-wn presets, together with the two heuristic counters below)<br /><br />
+        <b>When to change:</b> on for memory-constrained devices or very large games; off if you
+        would rather have consistent frame pacing than free memory.
+        ]]></string>
+    <string name="fexcore_env_var_help__x87reducedprecision"><![CDATA[
+        x87 is the old floating-point unit, working in 80-bit extended precision that ARM has no
+        equivalent for.<br /><br />
+        <b>0</b> : Emulate the full 80-bit precision. Accurate and slow.<br />
+        <b>1</b> : Use ordinary 64-bit doubles instead. Much faster. (default on every preset above
+        Compatibility)<br /><br />
+        <b>When to change:</b> set it back to 0 if an older game shows rendering bugs, geometry
+        cracks, or physics that slowly drifts wrong over a long session. Modern games rarely use x87
+        at all, so this costs them nothing either way.
+        ]]></string>
     <string name="columns">Columns</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="desktop">Desktop</string>
@@ -295,6 +1027,60 @@
     <string name="game_controller">Game Controller</string>
     <string name="vibration">Vibration</string>
     <string name="vibration_slot">Slot %1$d</string>
+    <string name="vibration_mode_label">Rumble Target</string>
+    <string name="vibration_mode_off">Off</string>
+    <string name="vibration_mode_controller">Controller</string>
+    <string name="vibration_mode_device">Device</string>
+    <string name="vibration_mode_both">Both</string>
+    <string name="vibration_intensity_label">Rumble Intensity</string>
+
+    <string name="gyro">Gyro (Motion Aim)</string>
+    <string name="gyro_enabled">Enable Motion Aim</string>
+    <string name="gyro_mode_label">Motion Mode</string>
+    <string name="gyro_mode_rate">Rate</string>
+    <string name="gyro_mode_orientation">Tilt to Aim</string>
+    <string name="gyro_target_label">Motion Target</string>
+    <string name="gyro_target_right_stick">Right Stick</string>
+    <string name="gyro_target_left_stick">Left Stick</string>
+    <string name="gyro_target_mouse">Mouse</string>
+    <string name="gyro_activator_label">Activator Button</string>
+    <!-- The button itself no longer says "Hold": whether it's held or tapped is the activation
+         mode below, so baking "Hold" into the button name would contradict Toggle. -->
+    <string name="gyro_activator_l1">L1</string>
+    <string name="gyro_activator_l2">L2</string>
+    <string name="gyro_activator_r1">R1</string>
+    <string name="gyro_activator_r3">R3</string>
+    <string name="gyro_activator_always">Always On</string>
+    <string name="gyro_activation_mode_label">Activation</string>
+    <string name="gyro_activation_hold">Hold</string>
+    <string name="gyro_activation_toggle">Toggle</string>
+    <string name="gyro_sensitivity_label">Sensitivity</string>
+    <string name="gyro_deadzone_label">Deadzone</string>
+    <string name="gyro_smoothing_label">Smoothing</string>
+    <string name="gyro_invert_x">Invert X</string>
+    <string name="gyro_invert_y">Invert Y</string>
+
+    <!-- In-game drawer (Controls tab) gyro section. Separate from the editor strings above because
+         the drawer is a cramped overlay: short chip-sized labels, no "Enable Motion Aim" sentences. -->
+    <string name="gyro_drawer_title">Gyro</string>
+    <string name="gyro_drawer_enabled">Enabled</string>
+    <string name="gyro_drawer_mode">Motion mode</string>
+    <string name="gyro_drawer_mode_rate">Rate</string>
+    <string name="gyro_drawer_mode_orientation">Tilt to aim</string>
+    <string name="gyro_drawer_orientation_hint">The stick follows the angle you hold the device at, so a held tilt keeps aiming.</string>
+    <string name="gyro_drawer_orientation_unsupported">Not available — this device has no rotation-vector sensor.</string>
+    <string name="gyro_drawer_orientation_mouse_hint">Not available with the Mouse target — pick a stick first.</string>
+    <string name="gyro_drawer_recenter">Recenter</string>
+    <string name="gyro_drawer_recenter_hint">Makes the pose you are holding now the centre.</string>
+    <string name="gyro_drawer_mouse_unavailable_hint">Mouse is not available in Tilt to aim — a held tilt would run the pointer off screen.</string>
+    <string name="gyro_drawer_apply_to">Apply gyro to</string>
+    <string name="gyro_drawer_target_right_stick">Right stick</string>
+    <string name="gyro_drawer_target_left_stick">Left stick</string>
+    <string name="gyro_drawer_target_mouse">Mouse</string>
+    <string name="gyro_drawer_mouse_hint">Moves the pointer instead of a stick — use for the desktop and mouse-look games.</string>
+    <string name="gyro_drawer_activation">Activation</string>
+    <string name="gyro_drawer_activator_always">Always</string>
+    <string name="gyro_drawer_toggle_hint">Tap the button to turn the gyro on, tap again to turn it off.</string>
 
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Based On</string>
@@ -304,6 +1090,13 @@
     <string name="filter">Filter</string>
     <string name="all">All</string>
     <string name="group">Group</string>
+    <string name="groups">Groups</string>
+    <string name="group_label">Group</string>
+    <string name="create_new_group">Create New Group</string>
+    <string name="create">Create</string>
+    <string name="group_visibility">Group Visibility</string>
+    <string name="group_element_count">%1$d elements</string>
+    <string name="no_groups">No groups</string>
     <string name="new_group">New Group</string>
     <string name="import_group">Import Group</string>
     <string name="new_file">New File</string>
@@ -424,7 +1217,6 @@
     ]]></string>
     <string name="help_exclusive_xinput">Certain games like Rayman Origins and Need for Speed: Most Wanted 2005 when using DInput require this to be disabled.</string>
     <string name="enable_xinput_and_dinput_same_time">Some games may support both APIs. Enabling both XInput and DInput simultaneously in such games may cause control issues, as seen in titles like The Binding of Isaac and the Resident Evil series.</string>
-    <string name="warning_gamepad_mouse_mix">Warning: Mixing gamepad and mouse bindings on the same controller may cause unexpected behavior in games. It is recommended to use only gamepad bindings or only mouse/keyboard bindings.</string>
     <string name="startup_normal">Normal (Load all services)</string>
     <string name="startup_essential">Essential (Load only essential services)</string>
     <string name="startup_aggressive">Aggressive (Stop services on startup)</string>
@@ -462,8 +1254,6 @@
     <string name="pip_mode">PiP Mode</string>
     <string name="configure">Configure</string>
     <string name="enable_sendinput_mode">Use Windows SendInput Mode</string>
-    <string name="enable_touchscreen_timeout">Touchscreen Timeout (Requires Restart)</string>
-    <string name="enable_touchscreen_haptics">Enable Touchscreen Haptic Feedback</string>
     <string name="help_steamgrid">SteamGrid API Key</string>
     <string name="disable_xinput_for_shortcut">Disable Xinput (For Exclusive M/KB Control)</string>
     <string name="num_controllers">Number of Controllers</string>
@@ -481,14 +1271,40 @@
     <string name="fullscreen_mode_stretch_short">Stretch</string>
     <string name="fullscreen_mode_fill_short">Fill</string>
     <string name="fullscreen_mode_integer_short">Integer</string>
+    <!-- Screen alignment (#413): vertical placement of the letterbox bar on square-ish/foldable displays -->
+    <string name="screen_alignment">Screen Alignment</string>
+    <string name="screen_alignment_center">Center</string>
+    <string name="screen_alignment_top">Top</string>
+    <string name="screen_alignment_bottom">Bottom</string>
+    <string name="screen_alignment_center_short">Center</string>
+    <string name="screen_alignment_top_short">Top</string>
+    <string name="screen_alignment_bottom_short">Bottom</string>
+    <string name="screen_alignment_disabled_hint">No effect in Stretch or Fill (no letterbox bars to move).</string>
     <string name="frame_generation">Frame Generation (AI)</string>
     <string name="frame_generation_off">Off</string>
-    <string name="frame_generation_bionic">bionic-fg</string>
+    <string name="frame_generation_bionic">Win-FG Native (built in)</string>
     <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
+    <string name="frame_generation_lsfg_native">LSFG Native (Lossless Scaling)</string>
     <string name="frame_generation_multiplier">Multiplier</string>
     <string name="frame_generation_lsfg_needs_dll">lsfg-vk is unavailable — import a Lossless.dll at the bottom of Settings to enable it.</string>
+    <string name="frame_generation_requires_vulkan">Frame generation requires the Vulkan renderer.</string>
+    <string name="present_mode_fg_locked">Mailbox is required while frame generation is on.</string>
     <string name="frame_generation_ingame_hint">Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
+    <string name="frame_generation_model">Interpolation model</string>
+    <string name="frame_generation_model_default">Optical flow</string>
+    <string name="frame_generation_model_traced">Optical flow</string>
+    <string name="frame_generation_model_v2">Optical flow</string>
+    <string name="frame_generation_model_fsr3">Optical flow</string>
+    <string name="frame_generation_model_fsr3_v2">Optical flow · bidirectional</string>
+    <string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
+    <string name="frame_generation_lsfg_native_hint">Runs the Lossless Scaling shaders inside Bannerlator itself instead of inside the game, so the extra frames reach the screen directly. Needs your imported Lossless.dll, the Vulkan renderer, and a Renderer Driver with Vulkan 1.3 (on older Adreno GPUs, pick a Turnip driver under Renderer Driver). Smoother motion; adds about one frame of input delay, as all frame interpolation does.</string>
+    <string name="frame_generation_lsfg_native_unsupported">LSFG Native is unavailable on this device: %1$s</string>
+    <string name="frame_generation_lsfg_native_preparing">Preparing frame-generation shaders from your Lossless.dll…</string>
+    <string name="fg_performance_mode">Performance mode</string>
+    <string name="fg_performance_mode_hint">Lower quality for higher FPS — helps on low-end devices. Also toggleable live from the in-game side menu.</string>
+    <string name="lsfg_auto_enable">Auto-enable at launch</string>
+    <string name="lsfg_auto_enable_hint">Starts frame generation live at your saved multiplier from launch, instead of off. Leave off to load the layer but enable it per session from the in-game side menu.</string>
     <string name="fps_limiter">FPS Limiter</string>
     <string name="fps_limiter_ingame_hint">Loads the limiter; set the cap (10–200) live from the in-game FPS menu.</string>
     <string name="match_refresh_rate">Match refresh rate to FPS</string>
@@ -497,6 +1313,13 @@
     <string name="auto_match_fps">Auto (match FPS)</string>
     <string name="manual_refresh_rate">Manual refresh rate</string>
     <string name="manual_refresh_rate_hint">When Auto is off, lock the display panel to a chosen rate (independent of the FPS cap). Off = panel runs free.</string>
+    <string name="max_game_refresh_rate_unlimited">Unlimited</string>
+    <string name="in_game_refresh_rate">In-game refresh rate</string>
+    <string name="in_game_refresh_locked">Locked (60)</string>
+    <string name="in_game_refresh_rate_hint">Highest rate the game may pick in its own display menu. Locked keeps games at 60 Hz; a rate or Unlimited unlocks them (needs a Proton layer with refresh-rate support). Most games only read this at startup.</string>
+    <string name="refresh_unlock_needs_compatible_layer">In-game refresh unlock needs a Proton layer with refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build.</string>
+    <string name="refresh_unlock_layer_incompatible_hint">The selected Proton for this container has no refresh-rate support — install the Refreshed Proton 10.0-4 / 11.0-1 build for this to take effect.</string>
+    <string name="use_container_default">Use container default</string>
     <string name="export_container">Export Container</string>
     <string name="exporting_container">Exporting Container...</string>
     <string name="importing_container">Importing Container...</string>
@@ -647,6 +1470,18 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="pref_summary_requiresTrackpadAndNative">Requires "Touchscreen input mode" to be "Trackpad" and "Display resolution mode" to be not "native"</string>
     <string name="fexcore_config">FEXCore</string>
     <string name="fexcore_preset">FEXCore Preset</string>
+    <!-- Preset action row shown under the preset pickers in Container and game-shortcut settings.
+         Labels sit under the icons there (unlike App Settings, which is icon-only), so they must
+         stay very short - six of them share one row on a phone. -->
+    <string name="preset_action_add">Add</string>
+    <string name="preset_action_edit">Edit</string>
+    <string name="preset_action_duplicate">Copy</string>
+    <string name="preset_action_delete">Delete</string>
+    <string name="preset_action_export">Export</string>
+    <string name="preset_action_import">Import</string>
+    <!-- Marks a preset that carries its own values for this container or game rather than following
+         the shared one. Shown on the closed field and beside the name in the open dropdown. -->
+    <string name="preset_customised_badge">\u270E CUSTOM</string>
     <string name="adrenotools_gpu_drivers">Adrenotools GPU Drivers</string>
     <string name="install_drivers">Install Drivers</string>
     <string name="install_drivers_message">You will now be prompted to pick a driver. These must be the same ones used in other emulators like Yuzu, Dolphin, Citra, etc.</string>
@@ -678,6 +1513,10 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="bcn_layer_image_view_hint">On: storage image (default). Off: staging buffer.</string>
     <string name="bcn_layer_debug_log">BCn debug log</string>
     <string name="bcn_layer_debug_log_hint">Logs the BCn layer to the Wine debug log (enable Settings &#8250; Logs &#8250; Wine Debug to capture it).</string>
+    <string name="bcn_compat_sparse">Emulate sparse binding (DX12)</string>
+    <string name="bcn_compat_sparse_hint">For D3D12 games that use tiled/sparse resources. Leave off unless a DX12 title needs it.</string>
+    <string name="compat_use_gamenative">Use GameNative engine (DX12)</string>
+    <string name="compat_use_gamenative_hint">Required for DX12 games. Runs this driver on the GameNative wrapper (Vulkan 1.3 + built-in BCn) instead of the leegao layers. Off = BCn textures only (default). Valhall Mali (r32p1+) only.</string>
     <string name="opengl_version">OpenGL Version</string>
     <string name="disableVertexArrayBGRA">Disable "Vertex array BGRA"</string>
     <string name="disableKHRdebug">Disable "KHR debug"</string>
@@ -690,6 +1529,10 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="vkbasalt_sharpness_denoise">Sharpeness Denoise</string>
     <string name="vulkan_settings">Vulkan Settings</string>
     <string name="renderer_native">Native Renderer</string>
+    <string name="renderer_native_backend">Native backend</string>
+    <string name="renderer_native_backend_auto">Auto (recommended)</string>
+    <string name="renderer_native_backend_asr">SurfaceFlinger</string>
+    <string name="renderer_native_backend_flip">Vulkan direct-scanout</string>
     <string name="renderer_present_mode">Present Mode</string>
     <string name="renderer_driver_id">Renderer Driver</string>
     <string name="renderer_filter_mode">Filter Mode</string>
@@ -705,6 +1548,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="renderer_driver_system">System</string>
     <string name="renderer_driver_turnip">Turnip</string>
     <string name="shutdown">Shutting down…</string>
+    <string name="saving_on_exit">Backing up your saves…</string>
+    <string name="downloading_on_launch">Syncing cloud saves…</string>
     <string name="disable_mouse">Toggle Mouse</string>
     <string name="custom_icon">Custom Icon</string>
     <string name="select_png_jpg_jpeg_ico">Select PNG/JPG/JPEG/ICO</string>
@@ -712,6 +1557,17 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="active_windows">Active Windows</string>
     <string name="contact_us">Help and Support</string>
     <string name="graphics_driver_show_incompatible">Show incompatible drivers</string>
+
+    <!-- Emulator account id carried in save backups (see EmuAccountIdentity) -->
+    <string name="emu_id_conflict_title">This backup uses a different %1$s account</string>
+    <string name="emu_id_conflict_body">Cracked games name their save folder after the account number they run under, and refuse a save made under a different one. The saves you just restored will only load under the account stored in the backup.</string>
+    <string name="emu_id_conflict_from_backup">In this backup</string>
+    <string name="emu_id_conflict_in_container">In this container now</string>
+    <string name="emu_id_conflict_account">%1$s: %2$s</string>
+    <string name="emu_id_conflict_account_with_folder">%1$s: %2$s (save folder %3$s)</string>
+    <string name="emu_id_conflict_warning">The account is shared by every emulated game in this container. Switching it makes the restored saves load, but any other cracked game here that saved under the current account will stop finding its saves.</string>
+    <string name="emu_id_conflict_apply">Use backup\'s account</string>
+    <string name="emu_id_conflict_keep">Keep current</string>
 
     <!-- Per-game save backup -->
     <string name="save_flow_caution_title">Not foolproof yet — verify before you wipe anything</string>
@@ -740,10 +1596,839 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="save_backup_format_winlator">Winlator-native .zip</string>
     <string name="save_backup_format_winlator_sub">Sibling Winlator / WinNative builds</string>
     <string name="save_backup_next">Next</string>
+
+    <!-- Wrapper Version Manager (Step 1, issue #132) -->
+    <string name="wrapper_manager_title">Manage Wrappers</string>
+    <string name="wrapper_manager_header">Replace a bundled graphics wrapper with a newer file; updates are stored on-device and used instead of the built-in one.</string>
+    <string name="wrapper_update">Update</string>
+    <string name="wrapper_update_from_file">From file</string>
+    <string name="wrapper_update_from_catalog">From catalog</string>
+    <string name="wrapper_reset">Reset</string>
+    <string name="wrapper_reset_all">Reset all</string>
+    <string name="wrapper_reset_all_confirm_title">Reset all wrappers?</string>
+    <string name="wrapper_reset_all_confirm_message">Remove every wrapper update and go back to the built-in versions?</string>
+    <string name="wrapper_select_title">Select wrapper .tzst</string>
+    <string name="wrapper_bundled">Bundled</string>
+    <string name="wrapper_updated_label">Updated</string>
+    <string name="wrapper_updated_toast">Wrapper updated</string>
+    <string name="wrapper_reset_toast">Reverted to the built-in wrapper</string>
+    <string name="wrapper_invalid_toast">That file isn\'t a valid wrapper (.tzst)</string>
+    <string name="wrapper_manager_open">Manage wrappers</string>
+    <string name="wrapper_manager_close">Close</string>
+    <!-- Step 2: free-form imported wrappers -->
+    <string name="wrapper_imported_label">Imported</string>
+    <string name="wrapper_import_title">Import wrapper…</string>
+    <string name="wrapper_import_subtitle">Add your own wrapper (.tzst). It appears in the Graphics Driver menu.</string>
+    <string name="wrapper_import_name_title">Name this wrapper</string>
+    <string name="wrapper_import_name_message">This name shows up in the Graphics Driver menu.</string>
+    <string name="wrapper_import_name_empty_toast">Enter a name for the wrapper</string>
+    <string name="wrapper_import_reserved_toast">That name is reserved for a built-in wrapper — pick another</string>
+    <string name="wrapper_imported_toast">Wrapper imported</string>
+    <string name="wrapper_delete">Delete</string>
+    <string name="wrapper_delete_confirm_title">Delete this wrapper?</string>
+    <string name="wrapper_delete_confirm_message">Remove this imported wrapper. Any container or game using it goes back to the default wrapper.</string>
+    <!-- #132: per-card overflow menu + per-wrapper Edit settings -->
+    <string name="wrapper_more_actions">More actions</string>
+    <string name="wrapper_details">Details</string>
+    <string name="wrapper_edit_settings">Edit settings</string>
+    <string name="wrapper_edit_settings_title">Edit detected settings</string>
+    <string name="wrapper_edit_settings_message">Choose which detected settings appear in this wrapper\'s Graphics Driver options. Unchecked settings are hidden.</string>
+    <string name="wrapper_edit_settings_empty">No detected settings to configure.</string>
+    <!-- #132: a catalog-installed wrapper has a newer version available in the catalog -->
+    <string name="wrapper_update_available">Update available</string>
+    <!-- #132: shown on a wrapper card while its in-place catalog update downloads (%1$d = percent) -->
+    <string name="wrapper_updating_progress">Updating… %1$d%%</string>
+    <!-- #132: persistent "Installed" state for catalog entries + "From catalog" provenance chip -->
+    <string name="wrapper_installed">Installed</string>
+    <string name="wrapper_from_catalog">From catalog</string>
+
+    <!-- Step 5 (#132): curated, downloadable wrapper catalog -->
+    <string name="wrapper_catalog_title">Download wrappers…</string>
+    <string name="wrapper_catalog_subtitle">Browse curated wrappers from other projects and download them straight into the manager.</string>
+    <string name="wrapper_catalog_dialog_title">Wrapper Catalog</string>
+    <string name="wrapper_catalog_empty">No wrappers available yet.</string>
+    <string name="wrapper_catalog_offline">Offline — connect to browse and download the catalog.</string>
+    <string name="wrapper_catalog_offline_cache">Offline — showing a cached list. Connect to download.</string>
+    <string name="wrapper_catalog_needs_connection">Needs a connection to download</string>
+    <string name="wrapper_catalog_download">Download</string>
+    <string name="wrapper_catalog_downloading">Downloading</string>
+    <string name="wrapper_catalog_installing">Installing</string>
+    <string name="wrapper_catalog_download_ok">%1$s added</string>
+    <string name="wrapper_catalog_download_failed">Couldn\'t download %1$s</string>
+    <string name="wrapper_catalog_close">Done</string>
+    <string name="no_wine_version_installed">No Wine version installed — download a Proton from the in-app catalog first (Containers → download icon).</string>
+    <string name="help_player_slots"><![CDATA[
+        <b>Player Slots</b><br /><br />
+        Decides which XInput <b>player</b> each controller becomes in the game. <b>Player 1</b> is slot 0, Player 2 is slot 1, and so on.<br /><br />
+        <b>Auto</b> — the controller takes the next free player in the order pads connect (the normal behaviour).<br />
+        <b>Player 1–4</b> — pins that controller to that exact player, every launch.<br />
+        <b>Ignore</b> — that controller never takes a player slot.<br /><br />
+        <b>Shared / combined control</b> — assign TWO (or more) devices to the SAME player and they BOTH drive that player at once (for example the on-screen controls plus a physical pad). Their inputs are combined, not fought over.<br /><br />
+        <b>On-screen controls</b> — the touch pad can be pinned to any player too. A physical pad connected BEFORE launch takes priority in the connect order. The On-screen priority setting decides what happens when a pad connects mid-game: <b>Keep</b> leaves the touch pad where it is, <b>Yield</b> hands Player 1 to the pad and moves the touch pad up, <b>Share</b> makes the pad share the touch pad\'s player.<br /><br />
+        <b>Reset Input</b> (in-game side menu) rebuilds the controller connection without restarting the game.<br /><br />
+        Changes made here (out of game) apply on the game\'s <b>next launch</b>; the in-game side menu changes players live. The app-drawer Input Controls copy of this sets the default for <b>newly-created</b> containers.
+    ]]></string>
+    <!-- ── Audio settings: per-preset and per-row "?" help ────────────────────────────────────
+         Latency figures are TOTALS (driver buffer + Android's fixed ~21 ms mixer/HAL cost), because
+         the total is what a player hears; a bare buffer number is not comparable to it. -->
+    <string name="help_audio_preset_auto"><![CDATA[
+        <b>Auto / Smart</b> — the recommended setting.<br /><br />
+        Starts at a low delay and only adds more if it actually hears crackling. On DirectAudio that is a
+        576-frame buffer, about <b>33 ms total</b>.<br /><br />
+        The safety net is the point: a fixed low buffer crackles the moment a heavy scene stalls the GPU,
+        while this one grows just enough to stop that and no further.<br /><br />
+        Pick this unless you have a reason not to.
+    ]]></string>
+    <string name="help_audio_preset_low"><![CDATA[
+        <b>Low latency</b> — the floor.<br /><br />
+        One hardware burst: about <b>25 ms total</b> on DirectAudio, which is as low as anything on Android
+        goes. Adaptive stays on, so a title that cannot hold it grows a step rather than crackling all
+        session.<br /><br />
+        Measured across three games, one held this comfortably and two needed a step up. Nothing breaks
+        either way — but if you hear anything, Auto is the setting to return to.
+    ]]></string>
+    <string name="help_audio_preset_balanced"><![CDATA[
+        <b>Balanced</b> — a calmer buffer that still adapts.<br /><br />
+        About <b>47 ms total</b> on DirectAudio (1248 frames). Noticeably later than Auto, and noticeably
+        safer on a device that struggles.<br /><br />
+        Worth trying if Auto crackles during loading screens or busy scenes.
+    ]]></string>
+    <string name="help_audio_preset_stable"><![CDATA[
+        <b>Stable</b> — biggest safety margin, most delay.<br /><br />
+        About <b>83 ms total</b> on DirectAudio (3000 frames). Sound lags visibly behind the picture in
+        fast games, which is the trade you are making.<br /><br />
+        For weak devices, very demanding games, or anything that crackles on every other setting.
+    ]]></string>
+    <string name="help_audio_preset_custom"><![CDATA[
+        <b>Custom</b> — unlocks the fine-tune rows below.<br /><br />
+        Every other preset fills those rows in for you and greys them out; they still <i>show</i> what the
+        preset applies, so you can read them before switching.<br /><br />
+        Only choose this if you want to set the buffer yourself. The "?" on each row explains what it does.
+    ]]></string>
+    <string name="help_audio_perf_mode"><![CDATA[
+        <b>Output mode</b> — which Android audio path is requested.<br /><br />
+        <b>Low latency</b> asks for the fast path with a high-priority audio thread. On this emulator that
+        is the tested choice: under box64/FEX a normal-priority thread gets preempted by the game and the
+        sound turns choppy.<br /><br />
+        <b>None</b> is the ordinary path — steadier on paper, choppier here for that reason.<br /><br />
+        <b>Power saving</b> favours battery over delay.<br /><br />
+        DirectAudio forces <b>Low latency</b> for every named preset regardless of this row; it only takes
+        effect on Custom.
+    ]]></string>
+    <string name="help_audio_adaptive"><![CDATA[
+        <b>Adaptive buffer</b> — grow only when something actually goes wrong.<br /><br />
+        The buffer starts small. Each time the audio underruns, a little is added, so it settles at the
+        lowest delay <i>this</i> game can hold on <i>your</i> device rather than a number someone guessed.<br /><br />
+        Turning it off pins the buffer. If the game then cannot keep up, <b>it crackles until you relaunch</b>
+        — nothing recovers on its own.<br /><br />
+        Every preset now leaves this on, so switching it off is a deliberate choice you make here, on Custom.
+        Do that only when you are testing a fixed size and want no interference.
+    ]]></string>
+    <string name="help_audio_direct_buffer"><![CDATA[
+        <b>Audio buffer</b> — how much sound DirectAudio keeps ready, in milliseconds.<br /><br />
+        Smaller is tighter but more fragile; larger rides out stutters at the cost of delay.<br /><br />
+        The row shows the <b>total</b>, because Android adds a fixed <b>21 ms</b> of its own that no
+        application can avoid. A 12 ms buffer is 33 ms total. The lowest possible is one hardware burst —
+        4 ms of buffer, <b>25 ms total</b>, the floor for any app on this device.<br /><br />
+        With adaptive on, this is a starting point <i>and</i> the level the buffer returns to once things
+        are calm again — it never drops below what you set here.
+    ]]></string>
+    <string name="help_audio_guest_buffer"><![CDATA[
+        <b>Guest buffer</b> — how much sound Windows hands to PulseAudio at a time.<br /><br />
+        This is the guest side of the delay, separate from the sink buffer below. It is fixed when the game
+        connects, so a change takes effect on the <b>next launch</b>.<br /><br />
+        Lower means tighter sync and more work per second; higher is steadier.
+    ]]></string>
+    <string name="help_audio_buffer_frames"><![CDATA[
+        <b>Initial buffer</b> — the starting size, in audio frames rather than milliseconds.<br /><br />
+        48 frames is 1 ms, so 576 frames is a 12 ms buffer (33 ms total). <b>auto</b> lets the engine
+        choose.<br /><br />
+        This is the advanced form of the millisecond row above. If you set both, <b>frames win</b> — clear
+        it back to auto to go by milliseconds again.
+    ]]></string>
+    <string name="help_audio_max_buffer_frames"><![CDATA[
+        <b>Max buffer</b> — how far adaptive growth is allowed to go.<br /><br />
+        A ceiling, not a target: the buffer only reaches it if the game repeatedly underruns. It stops a bad
+        patch from inflating the delay without limit.<br /><br />
+        <b>device max</b> uses the driver default (100 ms). Setting it too low means a struggling game runs
+        out of room and keeps crackling.
+    ]]></string>
+    <string name="help_audio_latency_unused"><![CDATA[
+        <b>Not used by ALSA.</b><br /><br />
+        This row sets the guest-side buffer, which only PulseAudio has. ALSA reaches Android through the
+        app\'s own sound server, and that takes its sizing from the <b>Initial buffer</b> and <b>Max
+        buffer</b> rows below instead.<br /><br />
+        Change those to adjust ALSA\'s delay. This slider is greyed out here because nothing reads it.
+    ]]></string>
+
+    <!--
+        Versioned win-fg training-capture consent terms.
+        WinFgCapture.CONSENT_VERSION ("winfg-capture-consent-v1") maps to THIS exact wording. When the
+        terms change, add a new string (…_v2) AND bump the constant together, so any embedded
+        consent_version always resolves to known terms. Keep it plain text (rendered in a Compose
+        Text) — no HTML markup.
+    -->
+    <string name="winfg_capture_consent_title">Contribute frame-gen training capture</string>
+    <string name="winfg_capture_consent_v1">Turning this on records raw in-game frames while you play, to help train an open, clean frame-generation model. Please read this before enabling.\n\nWHAT IS CAPTURED\n• Only the game\'s raw rendered frames, straight from the game, while you play.\n\nWHAT IS NOT CAPTURED\n• NO personal information of any kind.\n• NO account, login, name, or email.\n• NO Android system data.\n• NO audio.\n• NO full-screen or system video — nothing outside the game\'s rendered image, and no HUD or overlay.\n\nANONYMOUS BY DESIGN\n• Each capture file carries a small consent record that is anonymous: only a random anonymous ID, the terms version, a timestamp, and the app version (and optionally your device model, for dataset-diversity stats only). It cannot identify you.\n\nWHERE IT IS SAVED\n• Files are written to the Download/win-fg folder on this device, for you to share with us.\n\nGOOD TO KNOW\n• Recording lowers your FPS while it runs.\n• You can turn this off at any time from Settings.\n\nBy ticking \"I understand\" below you agree that the captured game frames may be used to train the model, and you confirm this is willingly created and shared.</string>
+
+    <!-- Per-variable help for the environment-variables editor, looked up by name as
+         env_var_help__<name lowercased>. A variable with no entry here simply shows no "?"
+         button. Format matches the preset help: what it is, what each value does, and a
+         labelled "When to change" scenario. -->
+    <string name="env_var_help__banner_audio_direct_decay"><![CDATA[
+        Whether the driver shrinks its buffer back down after a quiet spell, recovering latency it took to
+survive a rough patch.<br /><br />
+<b>0</b> : Stay at the grown size.<br />
+<b>1</b> : Shrink back when things settle.<br /><br />
+<b>When to change:</b> leave it on — it is what stops one bad moment costing you latency for the
+whole session. Turn it off if audio repeatedly grows and shrinks in a way you can hear.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_maxbackoff"><![CDATA[
+        A ceiling on how far the driver backs off after repeated dropouts.<br /><br />
+<b>When to change:</b> raise it for a device that struggles persistently, so the driver is allowed
+to settle somewhere genuinely safe. Lower it to keep latency bounded.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_punish_ms"><![CDATA[
+        How long the driver holds off shrinking after a dropout.<br /><br />
+<b>When to change:</b> raise it if the buffer shrinks too eagerly and dropouts return. This is the
+brake on the decay behaviour.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_decay_quiet_ms"><![CDATA[
+        How long the audio path must run cleanly before the driver considers shrinking the buffer.<br /><br />
+<b>When to change:</b> raise it to make shrinking more cautious, which suits a device that has
+occasional bursts of load. Lower it to recover latency sooner after a rough patch.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_exclusive"><![CDATA[
+        Asks Android for exclusive access to the audio device, bypassing the normal mixer.<br /><br />
+<b>0</b> : Shared.<br />
+<b>1</b> : Exclusive — lower latency where the device allows it.<br /><br />
+<b>When to change:</b> turn it on to chase the lowest audio delay. Not every device grants it, and
+where it is granted other apps may be unable to play sound at the same time.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_log"><![CDATA[
+        Logging for the DirectAudio driver.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> turn it on when reporting an audio problem, so the buffer sizes and dropout
+counts are recorded. Turn it back off afterwards.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_maxms"><![CDATA[
+        The largest buffer the adaptive path may grow to, in milliseconds.<br /><br />
+<b>When to change:</b> DirectAudio grows its buffer when it detects dropouts. This caps how far.
+Raise it for a device that keeps crackling under load; lower it to keep latency bounded even if that
+means occasional dropouts.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_minperiod_ms"><![CDATA[
+        A floor on the wake-up interval, so the driver cannot spin too fast.<br /><br />
+<b>When to change:</b> raise it if audio is costing noticeable CPU or battery. Too high and the
+driver cannot refill the buffer in time.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_ms"><![CDATA[
+        Target audio buffer size in milliseconds for our DirectAudio driver.<br /><br />
+Smaller means less delay between action and sound, and more risk of crackling. Larger is safer.<br /><br />
+<b>When to change:</b> the audio settings dialog sets this for you from a preset — only touch it in
+Custom mode. Raise it if audio crackles, lower it if sound lags the action. Values above about
+62.5 ms leave the range we have tested as safe.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_period_ms"><![CDATA[
+        How often the audio driver wakes to hand over more samples.<br /><br />
+<b>When to change:</b> shorter periods mean tighter timing and more CPU wake-ups. Leave it alone
+unless you are tuning against a specific dropout pattern.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_stall_ms"><![CDATA[
+        How long the audio path must be silent before the watchdog treats it as stalled.<br /><br />
+<b>When to change:</b> lower it to recover from stalls faster, at the risk of restarting audio
+during a legitimately quiet passage. Raise it if you hear audio restarting when nothing was
+wrong.
+        ]]></string>
+    <string name="env_var_help__banner_audio_direct_watchdog"><![CDATA[
+        Watches for the audio path stalling and restarts it.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> leave it on. Without it, an audio stall is permanent for that session —
+sound simply stops and does not come back.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_only_2p"><![CDATA[
+        Forces every block to use two partitions rather than choosing per block.<br /><br />
+<b>0</b> : Choose per block.<br />
+<b>1</b> : Always two.<br /><br />
+<b>When to change:</b> mostly a quality experiment. It costs time on blocks that gain nothing from
+it, so it is usually worse value than BCN_ASTC_TRY_2P alone.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_try_2p"><![CDATA[
+        Lets the ASTC encoder try two-partition blocks, which represent detailed areas better.<br /><br />
+<b>0</b> : Single partition only. Faster.<br />
+<b>1</b> : Try two. Higher quality, slower.<br /><br />
+<b>When to change:</b> turn it on if transcoded textures look blocky. Expect longer loading.
+        ]]></string>
+    <string name="env_var_help__bcn_astc_use_large_steps"><![CDATA[
+        Makes the ASTC encoder search in coarser steps.<br /><br />
+<b>0</b> : Fine search. Slower, better quality.<br />
+<b>1</b> : Coarse search. Faster, lower quality.<br /><br />
+<b>When to change:</b> from the Fcharan fork of the BCn layer. Turn it on when loading times matter
+more than texture quality.
+        ]]></string>
+    <string name="env_var_help__bcn_compute_auto"><![CDATA[
+        Lets the compute layer decide for itself whether transcoding is needed.<br /><br />
+<b>0</b> : Follow the explicit settings.<br />
+<b>1</b> : Auto-detect.<br /><br />
+<b>When to change:</b> auto is the sensible default. Turn it off when you want to force a specific
+target format regardless of what the layer would choose.
+        ]]></string>
+    <string name="env_var_help__bcn_compute_image_view"><![CDATA[
+        Uses the storage-image path for compute transcoding rather than the buffer path.<br /><br />
+<b>0</b> : Buffer path.<br />
+<b>1</b> : Storage image path.<br /><br />
+<b>When to change:</b> an alternative implementation — try the other setting if textures come out
+corrupted or the layer crashes.
+        ]]></string>
+    <string name="env_var_help__bcn_layer_log_level"><![CDATA[
+        How much the BCn layer logs, for example <b>info</b> or <b>error</b>.<br /><br />
+<b>When to change:</b> raise it while diagnosing texture problems, then set it back. Texture
+transcoding happens constantly, so verbose logging here is expensive.
+        ]]></string>
+    <string name="env_var_help__bcn_max_staging_cache_mb"><![CDATA[
+        Memory budget for textures waiting to be transcoded, in megabytes.<br /><br />
+<b>When to change:</b> raise it if loading is slow and the device has memory to spare — more
+staging room means fewer stalls. Lower it if a game runs out of memory during loading.
+        ]]></string>
+    <string name="env_var_help__bcn_profile_transfers"><![CDATA[
+        Logs timing for every texture transfer the layer handles.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> diagnosis only — for working out whether transcoding is what is making
+loading slow. It is noisy and costs performance itself.
+        ]]></string>
+    <string name="env_var_help__bcn_queue_throttle_limit"><![CDATA[
+        How many transcode jobs may be queued at once.<br /><br />
+<b>When to change:</b> lower it if transcoding starves the game of GPU time and the frame rate dips
+during loading. Raise it to prioritise getting textures ready sooner.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_astc"><![CDATA[
+        Target ASTC when re-encoding BCn textures. ASTC is the format Mali GPUs handle best.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> the usual choice on Mali. Needs the compute layer enabled. Higher quality
+than ETC but slower to produce.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_etc1"><![CDATA[
+        Target ETC1, the oldest and most widely supported compressed format.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> a last resort. ETC1 has no alpha channel, so transparency suffers — use ETC2
+or ASTC where possible.
+        ]]></string>
+    <string name="env_var_help__bcn_transcode_to_etc2"><![CDATA[
+        Target ETC2 instead of ASTC. ETC2 is supported on essentially every Android GPU.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> when ASTC is unavailable or too slow. Quality is lower than ASTC,
+particularly on textures with sharp detail or alpha.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_null_descriptors"><![CDATA[
+        Emulates null descriptors, letting shaders reference resources that are not bound.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> a DX12 requirement on the compat layer. Without it, games that leave slots
+unbound crash on the first draw call that touches one.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_push_descriptors"><![CDATA[
+        Emulates push descriptors, a fast way of handing shader parameters to the GPU.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> leave it on for DX12 titles on the compat layer — several use push
+descriptors and will not start without it.
+        ]]></string>
+    <string name="env_var_help__compat_emulate_sparse_binding"><![CDATA[
+        Emulates sparse binding — the ability to build a large resource from scattered pieces of memory —
+which Mali does not support.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Emulate.<br /><br />
+<b>When to change:</b> needed by games using tiled or streaming resources, which otherwise fail at
+startup. Emulation costs memory and speed, so leave it off for games that do not need it.
+        ]]></string>
+    <string name="env_var_help__compat_force_masking"><![CDATA[
+        Forces the compat layer to apply write masking rather than relying on the driver.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Force.<br /><br />
+<b>When to change:</b> a rendering-correctness workaround. Try it when colours or transparency come
+out wrong on Mali in a way no other setting explains.
+        ]]></string>
+    <string name="env_var_help__dxvk_async"><![CDATA[
+        Compiles shader pipelines in the background instead of stopping the game to wait.<br /><br />
+<b>0</b> : Off. Correct but stuttery on first encounter with new effects.<br />
+<b>1</b> : On. Far smoother, at the cost of objects briefly rendering wrong or not at all while
+their shader compiles.<br /><br />
+<b>When to change:</b> turn it on for stutter-prone games. Only works on DXVK builds with async
+support — ours are gplasync builds, which have it.
+        ]]></string>
+    <string name="env_var_help__dxvk_config"><![CDATA[
+        DXVK settings written inline, as <b>key=value</b> pairs separated by semicolons.<br /><br />
+<b>When to change:</b> for one-off tweaks without maintaining a file — for example
+<b>d3d11.maxFeatureLevel=11_0</b> to force an older feature level for a game that misdetects.
+DXVK_CONFIG_FILE is easier for anything longer.
+        ]]></string>
+    <string name="env_var_help__dxvk_config_file"><![CDATA[
+        Path to a dxvk.conf file holding DXVK settings.<br /><br />
+<b>When to change:</b> when you have a set of tweaks to reuse, or a per-game config someone else
+published. The path is inside the container, so it is usually somewhere under the game folder or
+the Windows drive.
+        ]]></string>
+    <string name="env_var_help__dxvk_disable_timeline_semaphores"><![CDATA[
+        Makes DXVK avoid Vulkan timeline semaphores and use the older synchronisation path.<br /><br />
+<b>0</b> : Use them. (default)<br />
+<b>1</b> : Avoid them.<br /><br />
+<b>When to change:</b> a compatibility fallback for drivers whose timeline semaphore support is
+buggy — the symptom is a hang or a GPU crash rather than anything visual.
+        ]]></string>
+    <string name="env_var_help__dxvk_filter_device_name"><![CDATA[
+        Restricts DXVK to a GPU whose name contains this text.<br /><br />
+<b>When to change:</b> only useful on a device exposing more than one Vulkan GPU, where DXVK
+chooses the wrong one. Leave it blank otherwise — a name that matches nothing leaves the game with
+no GPU at all.
+        ]]></string>
+    <string name="env_var_help__dxvk_frame_rate"><![CDATA[
+        Caps the frame rate inside DXVK itself.<br /><br />
+<b>0</b> : No cap.<br />
+Any other number: that many frames per second.<br /><br />
+<b>When to change:</b> capping to 30 or 60 on a phone often gives smoother, cooler, longer-lasting
+play than letting a game run flat out. Also useful for games whose physics or timers misbehave at
+very high frame rates.
+        ]]></string>
+    <string name="env_var_help__dxvk_gplasynccache"><![CDATA[
+        Caches the results of async pipeline compilation between runs.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> pairs with DXVK_ASYNC — turning both on means the brief visual glitches
+while shaders compile happen once rather than every session.
+        ]]></string>
+    <string name="env_var_help__dxvk_hud"><![CDATA[
+        DXVK’s on-screen overlay. Pick any combination of items.<br /><br />
+<b>fps</b> frame rate · <b>frametimes</b> a frame-time graph · <b>gpuload</b> GPU utilisation ·
+<b>memory</b> video memory · <b>devinfo</b> GPU name and driver · <b>drawcalls</b>,
+<b>pipelines</b>, <b>compiler</b> workload detail · <b>scale=</b> and <b>opacity=</b> control
+appearance.<br /><br />
+<b>When to change:</b> add <b>fps</b> plus <b>gpuload</b> when you want to know whether a game is
+limited by the GPU or something else. <b>compiler</b> is useful when diagnosing stutter, since it
+shows shader compilation happening. Turn it all off for normal play — the overlay itself costs a
+little.
+        ]]></string>
+    <string name="env_var_help__dxvk_log_level"><![CDATA[
+        How much DXVK writes to its log file.<br /><br />
+<b>none</b> · <b>error</b> · <b>warn</b> · <b>info</b> · <b>debug</b>, in increasing detail.<br /><br />
+<b>When to change:</b> raise it to <b>info</b> or <b>debug</b> when diagnosing a graphics problem —
+the log records the GPU, driver, extensions and DXVK version, which is usually the first thing worth
+checking. Put it back afterwards; debug logging is slow.
+        ]]></string>
+    <string name="env_var_help__dxvk_state_cache"><![CDATA[
+        Whether DXVK saves compiled shader pipelines to disk so later runs start warm.<br /><br />
+<b>0</b> : Off, recompile every run.<br />
+<b>1</b> : On. (default)<br /><br />
+<b>When to change:</b> leave it on — the first playthrough of an area stutters while shaders
+compile, and the cache is what stops that happening again. Turn it off only if a corrupt cache is
+causing crashes, then delete the cache file.
+        ]]></string>
+    <string name="env_var_help__enable_bcn_compute"><![CDATA[
+        Switches on the standalone BCn compute layer, which ships separately from the driver wrapper.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> this is the important one on Mali with the Original wrapper, which has no
+BCn support of its own — the compute layer is then the only way compressed textures work at all.
+Pair it with WRAPPER_EMULATE_BCN=0 so the work is not done twice. Unnecessary on Adreno.
+        ]]></string>
+    <string name="env_var_help__enable_dxvk_mali_compat_layer"><![CDATA[
+        Enables the compatibility layer that fills in D3D features Mali GPUs lack.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> Mali devices only, and required for many DX11 and DX12 games there. It does
+nothing on Adreno.
+        ]]></string>
+    <string name="env_var_help__fex_diskcache"><![CDATA[
+        Whether FEX saves the x86 code it has translated to disk so later runs start warm. Translation
+normally happens fresh every launch and is thrown away when the game closes.<br /><br />
+<b>0</b> : Off, translate everything again each run. (default)<br />
+<b>1</b> : On, reuse what was translated before.<br /><br />
+<b>When to change:</b> turn it on for a game that stutters as new areas load, or one with a long
+first-time load. The gain shows on the second and later launches, once the cache has something in
+it. Needs FEXCore 2609 or newer; older builds ignore the variable.<br /><br />
+<b>Risk:</b> upstream has not added any cleanup yet, so the cache has no size limit and never drops
+old entries — it only grows, and grows fastest on games that generate their own code as they run. It
+may also miss that a game has been updated and keep stale entries. The cache lives in the container
+AppData folder; delete it if space runs short or a game misbehaves after an update.
+        ]]></string>
+    <string name="env_var_help__fd_dev_features"><![CDATA[
+        Overrides device feature flags in the freedreno/Turnip driver.<br /><br />
+<b>enable_tp_ubwc_flag_hint=1</b> and <b>storage_8bit=1</b> switch on capabilities the driver
+otherwise leaves off.<br /><br />
+<b>When to change:</b> only when a specific guide for a specific game tells you to. These change
+what the driver claims to support, and getting it wrong produces corruption rather than a clean
+error.
+        ]]></string>
+    <string name="env_var_help__gallium_hud"><![CDATA[
+        A performance overlay drawn by Mesa’s Gallium drivers, separate from the DXVK one.<br /><br />
+<b>simple</b> · <b>fps</b> · <b>frametime</b>.<br /><br />
+<b>When to change:</b> only useful for OpenGL games, since DXVK titles will not show it. For
+D3D games use DXVK_HUD instead.
+        ]]></string>
+    <string name="env_var_help__ir3_shader_debug"><![CDATA[
+        Flags for the Adreno shader compiler inside Mesa.<br /><br />
+<b>nouboopt</b>, <b>nopreamble</b>, <b>noearlypreamble</b> each disable a compiler optimisation.<br /><br />
+<b>When to change:</b> only to work around a shader compiler bug producing corrupted graphics in a
+specific game. Each one costs performance.
+        ]]></string>
+    <string name="env_var_help__mesa_extension_max_year"><![CDATA[
+        Hides any OpenGL extension introduced after the given year.<br /><br />
+<b>When to change:</b> for old games that walk the extension list and break on anything they do not
+recognise. Setting something like 2005 makes the driver look like hardware of that era.
+        ]]></string>
+    <string name="env_var_help__mesa_gl_version_override"><![CDATA[
+        Forces the OpenGL version string reported to the game, for example <b>4.6</b> or <b>3.3COMPAT</b>.<br /><br />
+<b>When to change:</b> for an OpenGL game that refuses to start because it thinks the driver is too
+old. Claiming a version the driver cannot actually deliver usually ends in a crash instead, so it is
+a gamble either way.
+        ]]></string>
+    <string name="env_var_help__mesa_glthread"><![CDATA[
+        Runs OpenGL command submission on its own thread.<br /><br />
+<b>false</b> : Off.<br />
+<b>true</b> : On — can help when the game’s main thread is the bottleneck.<br /><br />
+<b>When to change:</b> worth trying for OpenGL games that are CPU-limited. It can also cause
+stutter or crashes in games that use GL from several threads themselves.
+        ]]></string>
+    <string name="env_var_help__mesa_no_error"><![CDATA[
+        Skips OpenGL error checking for a small speed gain.<br /><br />
+<b>0</b> : Normal checking. (default)<br />
+<b>1</b> : Skip it.<br /><br />
+<b>When to change:</b> rarely worth it. A game that generates errors will misbehave unpredictably
+rather than fail cleanly, which makes any other problem much harder to diagnose.
+        ]]></string>
+    <string name="env_var_help__mesa_shader_cache_disable"><![CDATA[
+        Turns off Mesa’s on-disk shader cache.<br /><br />
+<b>false</b> : Cache enabled. (default)<br />
+<b>true</b> : Disabled — recompile every run.<br /><br />
+<b>When to change:</b> essentially never, except to test whether a corrupt cache is causing crashes
+or artefacts. Leaving it disabled means permanent first-run stutter.
+        ]]></string>
+    <string name="env_var_help__mesa_vk_wsi_present_mode"><![CDATA[
+        How finished frames are handed to the display.<br /><br />
+<b>fifo</b> : Wait for the display. No tearing, capped to the refresh rate. Most power-efficient.<br />
+<b>mailbox</b> : Keep the newest frame ready, discard older ones. Smooth and tear-free, uses more
+power.<br />
+<b>immediate</b> : Show frames as soon as they are done. Lowest lag, can tear.<br />
+<b>relaxed</b> : Like fifo but allows tearing when the game falls behind.<br /><br />
+<b>When to change:</b> frame generation needs <b>mailbox</b> or <b>immediate</b> — it does nothing
+on fifo. Otherwise fifo is the sane default, and immediate is for chasing minimum input lag.
+        ]]></string>
+    <string name="env_var_help__pulse_latency_msec"><![CDATA[
+        How much audio PulseAudio buffers ahead, in milliseconds.<br /><br />
+Lower means more responsive sound and a higher risk of crackling. Higher means safer but more
+delayed audio.<br /><br />
+<b>When to change:</b> raise it (60-120) if audio crackles or drops out under load. Lower it
+(20-40) if sound noticeably lags the action. Only applies to the PulseAudio backend.
+        ]]></string>
+    <string name="env_var_help__tu_debug"><![CDATA[
+        Debug and behaviour flags for Turnip, the open-source Vulkan driver for Adreno GPUs.<br /><br />
+Most are diagnostic (<b>startup</b>, <b>perf</b>, <b>nir</b>), while others disable optimisations
+(<b>noubwc</b>, <b>nolrz</b>, <b>sysmem</b>, <b>forcebin</b>).<br /><br />
+<b>When to change:</b> the disable flags are compatibility workarounds — <b>nolrz</b> and
+<b>noubwc</b> in particular fix rendering glitches on some games at a cost in speed. The diagnostic
+flags belong in a bug report, not in normal play.
+        ]]></string>
+    <string name="env_var_help__vkd3d_config"><![CDATA[
+        VKD3D behaviour flags, several allowed at once.<br /><br />
+<b>When to change:</b> these are targeted workarounds — most are for specific bugs in specific
+games. Leave it empty unless a per-game guide tells you otherwise.
+        ]]></string>
+    <string name="env_var_help__vkd3d_debug"><![CDATA[
+        How much VKD3D writes to its log.<br /><br />
+<b>none</b> · <b>err</b> · <b>fixme</b> · <b>warn</b> · <b>trace</b>, in increasing detail.<br /><br />
+<b>When to change:</b> raise it when a D3D12 game misbehaves. <b>trace</b> is enormous and slow —
+use it only briefly.
+        ]]></string>
+    <string name="env_var_help__vkd3d_feature_level"><![CDATA[
+        The highest D3D12 feature level VKD3D reports.<br /><br />
+<b>12_2</b> down to <b>11_0</b>.<br /><br />
+<b>When to change:</b> lower it for a game that asks for features the GPU lacks and crashes rather
+than falling back. Raise it only if a game refuses to start claiming the hardware is too old.
+        ]]></string>
+    <string name="env_var_help__vkd3d_shader_model"><![CDATA[
+        The highest D3D12 shader model VKD3D reports to the game.<br /><br />
+<b>6_6</b> down to <b>5_1</b>, newest first.<br /><br />
+<b>When to change:</b> lower it when a game requests shaders your driver cannot actually compile —
+the symptom is a crash or black rendering shortly after loading. Lowering it makes the game pick a
+simpler path.
+        ]]></string>
+    <string name="env_var_help__vkd3d_swapchain_latency_frames"><![CDATA[
+        How many frames VKD3D lets the game queue ahead of the display.<br /><br />
+Lower means less input lag but more chance of the GPU idling. Higher means smoother pacing and more
+lag.<br /><br />
+<b>When to change:</b> lower it (1 or 2) if a D3D12 game feels laggy to control. Raise it if the
+frame rate is uneven despite the GPU having headroom.
+        ]]></string>
+    <string name="env_var_help__wine_disable_fullscreen_hack"><![CDATA[
+        Wine normally intercepts a game’s fullscreen resolution change and fakes it, so the desktop stays
+at its real resolution.<br /><br />
+<b>0</b> : Keep the hack. (default)<br />
+<b>1</b> : Disable it and let the game change the mode for real.<br /><br />
+<b>When to change:</b> disable it if a game’s fullscreen is stretched, offset, or shows the wrong
+part of the screen.
+        ]]></string>
+    <string name="env_var_help__wine_do_not_create_dxgi_device_manager"><![CDATA[
+        Stops Wine creating the DXGI device manager that hardware video decoding hangs off.<br /><br />
+<b>0</b> : Normal behaviour.<br />
+<b>1</b> : Skip it.<br /><br />
+<b>When to change:</b> a workaround for games that crash or hang on startup while setting up video
+playback — typically at an intro movie or a cutscene.
+        ]]></string>
+    <string name="env_var_help__wine_fast_yield"><![CDATA[
+        Our own fast-yield gate. Some games spin a worker thread that repeatedly asks the system to let
+something else run; on a phone that ends up pegging one core at 100% regardless of your frame
+cap.<br /><br />
+<b>0</b> : Normal yield behaviour. (default)<br />
+<b>1</b> : Make the yield a no-op so the thread stops burning the core.<br /><br />
+<b>When to change:</b> turn it on for a game where one core sits at 100% and the device runs hot
+while the frame rate is capped and fine. Tester-measured on Cyberpunk: prime core 100% down to
+roughly 0-3%, power ~5.3W down to ~3.9W, frame rate unchanged.<br /><br />
+<b>Risk:</b> a no-op yield can starve the thread that was waiting to run, which hangs some games.
+It also needs a layer built with the gate — Proton 10.0-2 and newer have it; older layers ignore
+the variable entirely.
+        ]]></string>
+    <string name="env_var_help__wine_fullscreen_fsr"><![CDATA[
+        AMD FidelityFX Super Resolution upscaling for fullscreen games. Renders at a lower internal
+resolution and upscales, which can be a large speed win.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> turn it on when a game runs slowly at native resolution. It only applies to
+games running genuinely fullscreen at a lower-than-native resolution — a game already at native
+resolution has nothing to upscale.
+        ]]></string>
+    <string name="env_var_help__wine_fullscreen_fsr_strength"><![CDATA[
+        How aggressively FSR sharpens the upscaled image. Lower is sharper.<br /><br />
+Typical range <b>0</b> to <b>5</b>; <b>2</b> is a common middle ground.<br /><br />
+<b>When to change:</b> only meaningful with WINE_FULLSCREEN_FSR on. Lower it if the image looks
+soft, raise it if sharpening makes edges look harsh or noisy.
+        ]]></string>
+    <string name="env_var_help__wine_gst_no_gl"><![CDATA[
+        Stops GStreamer, which decodes in-game video, from using the GPU.<br /><br />
+<b>0</b> : Allow GPU decoding.<br />
+<b>1</b> : Force CPU decoding.<br /><br />
+<b>When to change:</b> set it to 1 if cutscenes crash, freeze the game, or show corrupted video.
+CPU decoding is slower but far more reliable under emulation.
+        ]]></string>
+    <string name="env_var_help__wine_new_mediasource"><![CDATA[
+        Selects Wine’s newer media pipeline for in-game video.<br /><br />
+<b>0</b> : Old pipeline.<br />
+<b>1</b> : New pipeline.<br /><br />
+<b>When to change:</b> try the other setting when cutscenes are black, silent, stuttering or hang
+the game. Which one works varies by title.
+        ]]></string>
+    <string name="env_var_help__wine_x11forceglx"><![CDATA[
+        Forces the X11 driver down the GLX path rather than its newer default.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Force GLX.<br /><br />
+<b>When to change:</b> a compatibility fallback for OpenGL games that render black or fail to
+create a context.
+        ]]></string>
+    <string name="env_var_help__winedebug"><![CDATA[
+        Wine’s logging channels. Controls what goes into wine_debug.log.<br /><br />
+<b>-all</b> : Silence everything. Fastest.<br />
+<b>fixme-all</b> : Hide the noisy fixme messages, keep errors.<br />
+<b>+seh</b> : Exception detail — useful for crashes.<br />
+<b>+relay</b> : Every API call. Enormous and very slow.<br />
+<b>warn+all</b> : Everything at warning level and above.<br /><br />
+<b>When to change:</b> leave it alone unless you are diagnosing something. Custom values like
+"+loaddll,+seh" are kept as typed. Logging costs real performance, and a hang with logging on can
+write hundreds of megabytes.
+        ]]></string>
+    <string name="env_var_help__winedlloverrides"><![CDATA[
+        Tells Wine whether to use its own version of a DLL or one shipped with the game.<br /><br />
+Format is <b>name=b</b> for Wine’s builtin, <b>name=n</b> for the game’s native file, or
+<b>name=n,b</b> to prefer native and fall back. Several are separated by semicolons.<br /><br />
+<b>When to change:</b> the usual case is a game shipping its own copy of a library that works
+better than Wine’s, or the reverse. The editor detects DLLs in the game folder and offers a toggle
+per file, which is easier than typing this by hand.
+        ]]></string>
+    <string name="env_var_help__wineesync"><![CDATA[
+        Eventfd-based thread synchronisation. Windows programs wait on each other constantly; esync makes
+those waits far cheaper than Wine’s default server round-trip.<br /><br />
+<b>0</b> : Off, use the normal Wine server path.<br />
+<b>1</b> : On. Often a large frame-rate gain in threaded games.<br /><br />
+<b>When to change:</b> on by default in most of our layers and usually worth having. Turn it off if
+a game deadlocks or hangs on a loading screen — esync is known to deadlock some titles.
+        ]]></string>
+    <string name="env_var_help__winefsync"><![CDATA[
+        Futex-based synchronisation. Same purpose as esync but using a newer kernel mechanism, generally
+faster where the kernel supports it.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> needs kernel support that many Android devices lack, and it is silently
+ignored where unavailable. If enabling it changes nothing, your kernel does not have it — esync is
+the fallback.
+        ]]></string>
+    <string name="env_var_help__winevmemmaxsize"><![CDATA[
+        Caps the video memory Wine reports to the game, in megabytes.<br /><br />
+<b>When to change:</b> some games misbehave when told the GPU has an unusual amount of memory —
+allocating far too much and running out, or refusing to start. Setting a sane figure such as 2048
+or 4096 can fix that. Leave it unset unless a game has a memory-related problem.
+        ]]></string>
+    <string name="env_var_help__wrapper_bcn_astc"><![CDATA[
+        Re-encodes BCn textures to ASTC, which Mali GPUs do read natively. Part of the wrapper’s integrated
+path.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> for Mali devices running games with compressed textures, when using a
+wrapper that carries the integrated path. This path is ASTC only — ETC needs the standalone
+layer.
+        ]]></string>
+    <string name="env_var_help__wrapper_bcn_gpu"><![CDATA[
+        Does the BCn decode work on the GPU rather than the CPU.<br /><br />
+<b>0</b> : CPU.<br />
+<b>1</b> : GPU.<br /><br />
+<b>When to change:</b> GPU decode is usually much faster and cuts loading times, but uses GPU time
+the game also wants. Switch back to CPU if enabling it costs frame rate.
+        ]]></string>
+    <string name="env_var_help__wrapper_device_id"><![CDATA[
+        Reports a different Vulkan device ID to the game.<br /><br />
+<b>When to change:</b> paired with the vendor ID for games that identify the GPU by number and take
+a hardware-specific path. Rarely needed.
+        ]]></string>
+    <string name="env_var_help__wrapper_device_name"><![CDATA[
+        Reports a different GPU name to the game.<br /><br />
+<b>When to change:</b> for games that check the GPU name and refuse to run, or enable a broken
+vendor-specific path. Purely cosmetic to the driver — it changes only what the game is told.
+        ]]></string>
+    <string name="env_var_help__wrapper_diag"><![CDATA[
+        Turns on the wrapper’s own diagnostic logging.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> for diagnosing driver-level problems, and worth turning off afterwards —
+logging on the graphics path costs performance.
+        ]]></string>
+    <string name="env_var_help__wrapper_disable_placed"><![CDATA[
+        Disables placed memory allocations in the wrapper.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Disabled.<br /><br />
+<b>When to change:</b> a compatibility toggle for drivers that mishandle this allocation style.
+Try it for memory-related crashes that no other setting fixes.
+        ]]></string>
+    <string name="env_var_help__wrapper_disable_present_wait"><![CDATA[
+        Stops the wrapper using the present-wait extension for frame pacing.<br /><br />
+<b>0</b> : Use it.<br />
+<b>1</b> : Disable it.<br /><br />
+<b>When to change:</b> a fallback for drivers whose present-wait is broken. The symptom is the game
+hanging at the point it tries to show its first frame.
+        ]]></string>
+    <string name="env_var_help__wrapper_driver_id"><![CDATA[
+        Overrides the driver identity string the wrapper reports.<br /><br />
+<b>When to change:</b> some games and layers take a different code path per driver vendor. Changing
+this can dodge a driver-specific workaround that is doing more harm than good on our stack.
+        ]]></string>
+    <string name="env_var_help__wrapper_emulate_bcn"><![CDATA[
+        BCn texture emulation inside the driver wrapper. Desktop games ship BC/DXT compressed textures that
+Mali GPUs cannot read natively.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : Basic.<br />
+<b>2</b> : Full.<br />
+<b>3</b> : Auto. (default)<br /><br />
+<b>When to change:</b> only the leegao and GameNative wrappers implement this — the Winlator base
+and Bionic wrappers ignore it. On Adreno it is unnecessary, since those GPUs read BCn natively. Set
+it to 0 if you are using the standalone compute layer instead, to avoid transcoding twice.
+        ]]></string>
+    <string name="env_var_help__wrapper_extension_blacklist"><![CDATA[
+        A comma-separated list of Vulkan extensions to hide from the game.<br /><br />
+<b>When to change:</b> when a game uses an extension the driver reports but does not implement well
+— the result is usually corruption or a GPU hang. Hiding it forces the game down a working path.
+        ]]></string>
+    <string name="env_var_help__wrapper_max_image_count"><![CDATA[
+        Caps how many images the swapchain may hold.<br /><br />
+Fewer images means less lag and less memory; more means smoother pacing.<br /><br />
+<b>When to change:</b> setting 2 or 3 can reduce input lag. Too few can make the frame rate uneven,
+since the GPU waits for an image to become free.
+        ]]></string>
+    <string name="env_var_help__wrapper_no_bcn_thread"><![CDATA[
+        Transcodes textures on the thread that needs them instead of on a background worker.<br /><br />
+<b>0</b> : Background thread. (default)<br />
+<b>1</b> : Inline.<br /><br />
+<b>When to change:</b> a debugging and stability fallback. Inline transcoding stalls the game while
+it happens, so expect longer loading pauses.
+        ]]></string>
+    <string name="env_var_help__wrapper_no_patch_opconstcomp"><![CDATA[
+        Stops the wrapper rewriting a particular SPIR-V shader construct before handing it to the driver.<br /><br />
+<b>0</b> : Patch as usual. (default)<br />
+<b>1</b> : Leave shaders alone.<br /><br />
+<b>When to change:</b> the patch exists to work around driver bugs; disabling it is worth trying if
+shaders fail to compile or render incorrectly on a driver that does not need the workaround.
+        ]]></string>
+    <string name="env_var_help__wrapper_reduce_depth_format"><![CDATA[
+        Uses a simpler depth buffer format than the game asked for.<br /><br />
+<b>0</b> : Honour the request.<br />
+<b>1</b> : Reduce it.<br /><br />
+<b>When to change:</b> compatibility for GPUs that struggle with certain depth formats. Symptoms
+are z-fighting, missing geometry, or shadows rendering wrong.
+        ]]></string>
+    <string name="env_var_help__wrapper_resource_type"><![CDATA[
+        Overrides how the wrapper classifies graphics resources.<br /><br />
+<b>When to change:</b> an advanced compatibility knob — leave it blank unless a per-game guide
+specifies a value.
+        ]]></string>
+    <string name="env_var_help__wrapper_safe_create_device"><![CDATA[
+        Creates the Vulkan device more conservatively, requesting fewer optional features at once.<br /><br />
+<b>0</b> : Normal.<br />
+<b>1</b> : Safe path.<br /><br />
+<b>When to change:</b> try it when a game crashes immediately at startup, before anything renders —
+that pattern often means device creation failed.
+        ]]></string>
+    <string name="env_var_help__wrapper_use_bcn_cache"><![CDATA[
+        Caches transcoded textures so the work happens once rather than every time a texture loads.<br /><br />
+<b>0</b> : Off.<br />
+<b>1</b> : On.<br /><br />
+<b>When to change:</b> worth having on if you have the storage — it noticeably cuts repeat loading
+times. Turn it off if space is tight.
+        ]]></string>
+    <string name="env_var_help__wrapper_vendor_id"><![CDATA[
+        Reports a different GPU vendor ID to the game.<br /><br />
+<b>When to change:</b> for games that enable vendor-specific rendering paths. Claiming a vendor
+whose extensions the driver lacks usually makes things worse, so change it only on advice.
+        ]]></string>
+    <string name="env_var_help__wrapper_vk_version"><![CDATA[
+        The Vulkan version the wrapper reports to the game, for example <b>1.4</b>.<br /><br />
+<b>When to change:</b> for a game or translation layer that refuses to run against the version the
+driver actually reports. Claiming a version the driver cannot deliver moves the failure later rather
+than fixing it.
+        ]]></string>
+    <string name="env_var_help__wrapper_vmem_max_size"><![CDATA[
+        Caps the video memory the wrapper reports, in megabytes. <b>0</b> leaves it unset.<br /><br />
+<b>When to change:</b> for games that allocate based on reported memory and then run out, or that
+refuse to start when the figure looks wrong. A round number like 2048 or 4096 is a reasonable
+starting point.
+        ]]></string>
+    <string name="env_var_help__zink_debug"><![CDATA[
+        Debug flags for the Zink OpenGL-on-Vulkan layer.<br /><br />
+<b>validation</b> enables the Vulkan validation layers; <b>sync</b> forces synchronous submission;
+<b>nir</b>, <b>spirv</b> and <b>tgsi</b> dump shader stages.<br /><br />
+<b>When to change:</b> diagnosis only. <b>sync</b> is occasionally useful to establish whether a
+crash is a synchronisation problem, but everything here is slow.
+        ]]></string>
+    <string name="env_var_help__zink_descriptors"><![CDATA[
+        How Zink — which runs OpenGL on top of Vulkan — manages descriptors.<br /><br />
+<b>auto</b> : Let Zink decide. (default)<br />
+<b>lazy</b> : Simplest and often fastest.<br />
+<b>cached</b> : Reuse descriptor sets.<br />
+<b>notemplates</b> : Avoid update templates, a compatibility fallback.<br /><br />
+<b>When to change:</b> only applies to OpenGL games running through Zink. <b>lazy</b> is worth
+trying for speed, <b>notemplates</b> if you get driver crashes.
+        ]]></string>
+
+    <!-- GOG sign-in screen -->
+    <string name="gog_login_title">Sign in to GOG</string>
+    <string name="gog_login_provider_title">Sign in with your provider</string>
+    <string name="gog_login_finishing">Finishing sign-in…</string>
+    <string name="gog_login_reload">Reload</string>
+    <string name="gog_login_close">Close</string>
+    <string name="gog_login_retry">Try again</string>
+    <string name="gog_login_error_network">Could not load the GOG sign-in page.\n\n%1$s</string>
+    <string name="gog_login_error_http">The GOG sign-in page returned an error (HTTP %1$d).</string>
+    <string name="gog_login_error_ssl">The sign-in page failed its security check and was not loaded.</string>
+    <string name="gog_login_error_verification">Login verification failed, please try again</string>
+    <string name="gog_login_error_generic">Login error, please try again</string>
+    <string name="gog_login_error_idp_blocked">This sign-in provider refused to load inside the app.\n\nSign in with your GOG email and password instead. If your GOG account has no password yet, set one at gog.com in your phone\'s browser first.</string>
 </resources>
-
-
-
-
-
-

@@ -1,0 +1,50 @@
+innoextract engine bundled as libinnoextract.so (+ dependency libraries)
+========================================================================
+
+Purpose
+-------
+libinnoextract.so is the engine for STANDARD InnoSetup / GOG installers (setup_*.exe).
+7-Zip only sees these as a Windows PE and cannot decompress the Inno-packed game data;
+innoextract reads the Inno archive format directly. Device-verified: extracts a real GOG
+installer (Stronghold Crusader HD, Inno 5.6.2) — 4095 files / 868 MB — from inside the
+app's exec sandbox.
+
+Product & licence
+-----------------
+innoextract 1.9 (https://github.com/dscharrer/innoextract) — zlib licence.
+
+Files (app/src/main/jniLibs/arm64-v8a/), all arm64-v8a, Android/bionic, NDK r29:
+  libinnoextract.so            innoextract 1.9 executable (renamed from `innoextract`)
+  libboost_iostreams.so        Boost 1.x   — Boost Software License 1.0
+  libboost_filesystem.so       Boost
+  libboost_program_options.so  Boost
+  libboost_regex.so            Boost
+  libboost_random.so           Boost
+  libboost_atomic.so           Boost
+  libboost_container.so        Boost
+  liblzma.so                   xz-utils liblzma — public domain
+  libz.so                      zlib — zlib licence
+  libbz2.so                    bzip2 — BSD-style licence
+  libiconv.so                  GNU libiconv — LGPL
+  libc++_shared.so             LLVM libc++ (shared with lib7zz.so) — Apache-2.0 WITH LLVM-exception
+
+Provenance & Android-seccomp requirement
+-----------------------------------------
+These are BIONIC (Android) builds from the Termux aarch64 packages, produced by the same
+NDK r29 clang toolchain used elsewhere in this app. A bionic build is REQUIRED: a
+generic-Linux innoextract inherits the app's seccomp-bpf filter and SIGSYS-dies (exit 159,
+the same lesson as the 7-Zip binary). Bionic builds integrate with Android's seccomp — the
+same reason Termux (itself an app) runs them.
+
+Packaging fix-ups (so Android can load them from the native-lib dir)
+-------------------------------------------------------------------
+Android only packages/loads native libs named `lib*.so` (no versioned suffixes). Three
+dependencies had versioned SONAMEs, fixed with patchelf:
+  liblzma.so.5   -> liblzma.so
+  libz.so.1      -> libz.so
+  libbz2.so.1.0  -> libbz2.so
+For each: `patchelf --set-soname <new>` on the library, and `patchelf --replace-needed
+<old> <new>` on every consumer (libinnoextract.so, libboost_iostreams.so). Termux RUNPATHs
+were removed; at runtime the binary is exec'd from applicationInfo.nativeLibraryDir with
+LD_LIBRARY_PATH set to that dir so the loader finds the bundled libraries. No code was
+modified — only ELF metadata (SONAME/NEEDED/RUNPATH).

@@ -28,6 +28,11 @@ public class AmazonGame {
     public long   installSize    = 0L;
     public boolean isDLC         = false;
     public String parentProductId = "";  // set when isDLC=true
+    // Media for the detail page's "Media" tab (productDetail.details.screenshots[] / videos[] /
+    // trailerImageUrl). Empty until the library is re-synced after this field was added.
+    public java.util.List<String> screenshots = new java.util.ArrayList<>();
+    public java.util.List<String> videos      = new java.util.ArrayList<>();   // direct mp4 URLs
+    public String trailerImageUrl = "";  // poster for the first trailer when Amazon ships one
 
     public AmazonGame() {}
 

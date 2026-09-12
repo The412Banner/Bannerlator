@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-24T10-23-22-c4a658",
+  "created": "2026-08-24T10:23:22.827Z",
+  "ip_hash": "+8BJHp234q",
+  "fields": {
+    "reporter_name": "Tirtogalih",
+    "device_model": "Infinix Note 50x 5G",
+    "soc": "Dimesity 7300 Ultimate",
+    "gpu": "Mali-G615 MC2",
+    "android": "16",
+    "ram": "8",
+    "app_version": "3.0.0",
+    "install_source": "GitHub release",
+    "game_name": "Need for Speed Underground 2",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "SPEED2.EXE",
+    "symptom": "Black screen (no image)",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1-sarek",
+    "proton": "Proton 9.0 arm64ec",
+    "box64": "Performance (TSO)",
+    "resolution": "1600x720",
+    "framegen": "No",
+    "repro": "1. Open Game\n2. Running but Audio Only",
+    "tried": "I've tried changing wrappers but the problem remains the same"
+  },
+  "logs": [
+    {
+      "name": "SPEED2_d3d9.7z"
+    }
+  ]
+}

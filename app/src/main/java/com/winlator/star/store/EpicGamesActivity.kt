@@ -143,9 +143,26 @@ class EpicGamesActivity : ComponentActivity() {
                     onGameClick = { game -> openDetailScreen(game) },
                     onInstallGame = { game -> showInstallConfirmDialog(game) },
                     onCancelDownload = { appName ->
-                        cancelRunnables[appName]?.run()
-                        cancelRunnables.remove(appName)
-                        downloadStates[appName] = GameDownloadState()
+                        // Same keep/delete dialog as the detail page + Download Manager (synced via
+                        // EpicCancelPolicy) — the running download coroutine acts on the choice.
+                        AlertDialog.Builder(this@EpicGamesActivity)
+                            .setTitle("Cancel download?")
+                            .setMessage("Keep the partial download so you can resume later, or delete " +
+                                    "all downloaded files for this game?")
+                            .setPositiveButton("Keep files") { _, _ ->
+                                EpicCancelPolicy.setDeleteOnCancel(appName, false)
+                                cancelRunnables[appName]?.run()
+                                cancelRunnables.remove(appName)
+                                downloadStates[appName] = GameDownloadState()
+                            }
+                            .setNegativeButton("Delete files") { _, _ ->
+                                EpicCancelPolicy.setDeleteOnCancel(appName, true)
+                                cancelRunnables[appName]?.run()
+                                cancelRunnables.remove(appName)
+                                downloadStates[appName] = GameDownloadState()
+                            }
+                            .setNeutralButton("Keep downloading", null)
+                            .show()
                     },
                     onAddToLauncher = { game ->
                         val exe = prefs!!.getString("epic_exe_${game.appName}", null)
@@ -153,6 +170,7 @@ class EpicGamesActivity : ComponentActivity() {
                             StarLaunchBridge.addToLauncher(
                                 this@EpicGamesActivity, game.title, exe,
                                 if (game.artCover.isNotEmpty()) game.artCover else game.artSquare,
+                                StarLaunchBridge.EpicMeta(game.appName, game.namespace, game.catalogItemId),
                             )
                         }
                     },
@@ -245,7 +263,9 @@ class EpicGamesActivity : ComponentActivity() {
                 dlcEd.putString("epic_dlcs_$key", value.toString())
             }
             dlcEd.apply()
-            val displayGames = if (mainGames.isEmpty()) rawGames else mainGames
+            val displayGames = (if (mainGames.isEmpty()) rawGames else mainGames)
+                .distinctBy { it.appName }
+                .toMutableList()
 
             displayGames.sortWith { a, b -> a.title.compareTo(b.title, ignoreCase = true) }
 
@@ -310,7 +330,7 @@ class EpicGamesActivity : ComponentActivity() {
     private fun showInstallConfirmDialog(game: EpicGame) {
         var freeBytes = -1L
         try {
-            val base = File(File(filesDir, "epic_games"), "_check")
+            val base = File(File(filesDir, "imagefs/epic_games"), "_check")
             val parent = base.parentFile
             parent?.mkdirs()
             val sf = android.os.StatFs((parent ?: cacheDir).absolutePath)
@@ -375,8 +395,9 @@ class EpicGamesActivity : ComponentActivity() {
         val appName = game.appName
         downloadStates[appName] = GameDownloadState(isActive = true, showProgress = true)
 
-        // WEAK CANCEL (Epic-only): install() has no cancel checker, so this flag only takes effect
-        // AFTER install() returns (the finished download is then discarded). Best-effort.
+        // CANCEL: install() polls this flag across manifest/verify/chunk/assemble, so cancel stops
+        // the download promptly. Keep/delete of the partial is decided via EpicCancelPolicy below.
+        EpicCancelPolicy.clear(appName)   // fresh download → keep-on-cancel until a dialog says otherwise
         val cancelled = AtomicBoolean(false)
         cancelRunnables[appName] = Runnable { cancelled.set(true) }
 
@@ -426,11 +447,16 @@ class EpicGamesActivity : ComponentActivity() {
                 val installDir = File(File(filesDir, "imagefs/epic_games"), sanitized)
                 prefs!!.edit().putString("epic_dir_${game.appName}", installDir.absolutePath).apply()
 
+                // Feature #2 — download required(base) + the container language's files only.
+                val installTags = EpicInstallTags.tagsForCurrentContainer(appCtx)
+
                 val ok = EpicDownloadManager.install(
                     appCtx,
                     manifestJson,
                     token,
                     installDir.absolutePath,
+                    installTags,
+                    cancelled,
                 ) { msg, pct ->
                     if (!cancelled.get()) {
                         StoreDownloadHooks.tick(Store.EPIC, appName, pct)
@@ -440,6 +466,12 @@ class EpicGamesActivity : ComponentActivity() {
                 }
 
                 if (cancelled.get()) {
+                    // Delete the partial if the user chose "Delete files" on any Cancel dialog.
+                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
+                        try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}
+                        // Clear the install record so the list/detail recompute to "not installed".
+                        EpicInstallState.purge(applicationContext, appName)
+                    }
                     StoreDownloadHooks.markCancelled(Store.EPIC, appName)
                     withContext(Dispatchers.Main) {
                         cancelRunnables.remove(appName)
@@ -479,6 +511,8 @@ class EpicGamesActivity : ComponentActivity() {
                 // mirrors the Amazon/GOG fix (a dialog on a stopped Activity wedged the card at 100%).
                 val path = exeFiles[0].absolutePath
                 prefs!!.edit().putString("epic_exe_${game.appName}", path).apply()
+                // Detect EOS SDK presence so the library can show an "EOS" badge.
+                EpicEosDetector.scanAsync(appCtx, game.appName, installDir, null)
                 StoreDownloadHooks.markInstalled(
                     store = Store.EPIC,
                     id = appName,
@@ -521,9 +555,23 @@ class EpicGamesActivity : ComponentActivity() {
                 j.put("installPath", g.installPath)
                 j.put("installSize", g.installSize)
                 j.put("canRunOffline", g.canRunOffline)
+                j.put("cloudSaveEnabled", g.cloudSaveEnabled)
+                j.put("cloudSaveFolder", g.cloudSaveFolder)
                 arr.put(j)
             }
-            prefs!!.edit().putString(CACHE_KEY, arr.toString()).apply()
+            val ed = prefs!!.edit().putString(CACHE_KEY, arr.toString())
+            // Persist each game's CloudSaveFolder token string per-appName so the Save Manager's Epic
+            // tab (EpicCloudSavePaths.resolveSaveDirectory) can resolve it without another catalog call.
+            for (g in games) {
+                if (g.appName.isEmpty()) continue
+                // Mark that we've fetched this game's cloud-save metadata at least once — lets the Save
+                // Manager tell "no cloud-save support" (checked, empty folder) apart from "not refreshed
+                // yet" (never checked).
+                ed.putBoolean("epic_cloud_checked_${g.appName}", true)
+                if (g.cloudSaveFolder.isNotEmpty()) ed.putString("epic_save_folder_${g.appName}", g.cloudSaveFolder)
+                else ed.remove("epic_save_folder_${g.appName}")
+            }
+            ed.apply()
         } catch (e: Exception) { Log.e(TAG, "saveCachedGames failed", e) }
     }
 
@@ -549,9 +597,11 @@ class EpicGamesActivity : ComponentActivity() {
                 val cachedSize = j.optLong("installSize", 0L)
                 g.installSize = if (cachedSize > 1_099_511_627_776L) 0L else cachedSize
                 g.canRunOffline = j.optBoolean("canRunOffline", true)
+                g.cloudSaveEnabled = j.optBoolean("cloudSaveEnabled", false)
+                g.cloudSaveFolder = j.optString("cloudSaveFolder", "")
                 list.add(g)
             }
-            list
+            list.distinctBy { it.appName }
         } catch (e: Exception) { Log.e(TAG, "loadCachedGames failed", e); null }
     }
 
@@ -697,7 +747,8 @@ private fun EpicGamesScreen(
                 }
                 "grid" -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(5),
+                        // 4 cols: the compact square tiles were cramped at 5 on a portrait phone.
+                        columns = GridCells.Fixed(4),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -729,7 +780,8 @@ private fun EpicGamesScreen(
                 }
                 "poster" -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(5),
+                        // 3 cols: the tall portrait cover-art tiles were far too narrow at 5.
+                        columns = GridCells.Fixed(3),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -773,6 +825,52 @@ private fun EmptyState(query: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 32.dp).fillMaxWidth(),
     )
+}
+
+/**
+ * Small blue "EOS" pill shown on installed games detected as using Epic Online Services.
+ * Identification only — see EpicLaunchArgs for the actual auth injection.
+ */
+@Composable
+internal fun EosBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF1A73E8))
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+    ) {
+        Text("EOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    }
+}
+
+/**
+ * Small dark-grey "EPIC" pill marking a game whose store source is the Epic Games Store.
+ * Deliberately neutral/grey so it stays visually distinct from the blue EOS pill when the
+ * two sit side by side (an Epic game that also uses EOS shows both).
+ */
+@Composable
+internal fun EpicBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF2A2A2A))
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+    ) {
+        Text("EPIC", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    }
+}
+
+/**
+ * EPIC + EOS pills clustered for the top-left corner of a game's cover art. Caller aligns/insets
+ * this (Alignment.TopStart, ~4dp). The pill backgrounds carry their own contrast over artwork.
+ */
+@Composable
+internal fun StoreBadgeOverlay(showEpic: Boolean, showEos: Boolean, modifier: Modifier = Modifier) {
+    if (!showEpic && !showEos) return
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (showEpic) EpicBadge()
+        if (showEos) EosBadge()
+    }
 }
 
 @Composable
@@ -832,6 +930,14 @@ private fun GameListCard(
                         if (downloadState.installed) {
                             Text(" \u2713", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50)) // semantic installed-green
                         }
+                        // Badges next to the name (thumbnail too small to overlay). Whole library is
+                        // Epic \u2192 EPIC unconditional; EOS only when detected on an installed game.
+                        Spacer(Modifier.width(6.dp))
+                        StoreBadgeOverlay(
+                            showEpic = true,
+                            showEos = downloadState.installed &&
+                                EpicEosDetector.isEosCached(LocalContext.current, game.appName),
+                        )
                     }
                     if (game.developer.isNotEmpty()) {
                         Text(
@@ -949,6 +1055,14 @@ private fun GameGridTile(
                         contentScale = ContentScale.Crop,
                     )
                 }
+                // Store badges overlaid top-left on the cover. EPIC unconditional (whole library
+                // is Epic); EOS only when detected on an installed game.
+                StoreBadgeOverlay(
+                    showEpic = true,
+                    showEos = downloadState.installed &&
+                        EpicEosDetector.isEosCached(LocalContext.current, game.appName),
+                    modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+                )
             }
             Row(
                 modifier = Modifier

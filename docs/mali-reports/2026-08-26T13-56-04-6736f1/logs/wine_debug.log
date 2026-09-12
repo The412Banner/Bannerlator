@@ -1,0 +1,864 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme,+d3d,+dxgi,+vulkan,+opengl,+asmshader,+bitblt,+bitmap,+d3d11,+d3d8,+d3d9,+d3d_shader,+d3dcompiler,+d3dx
+WINEPREFIX: /data/user/0/com.winlator.banner/files/imagefs/home/xuser/.wine
+Container ID: 5
+Shortcut: null (launching Wine File Manager)
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=1.7.2-0,framerate=0,async=0,asyncCache=0,vkd3dVersion=None,vkd3dLevel=12_1,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,d7vkVersion=Bundled (default),dxvkConfigFile=
+vkd3dVersion (parsed): None
+dxvk version (parsed): 1.7.2-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-1.7.2-0;vkd3d-None;none
+expected full string: dxvk-1.7.2-0;vkd3d-None;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: shm initialized, fd=3 size=4096 pagesize=4096
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+006c:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+0084:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x1090039
+0084:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003b
+0084:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+0084:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003c
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0084:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0084:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003d
+0084:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+0084:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003f
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0084:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0084:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+006c:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+0084:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+002c:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0094:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+_r_debug not found in ld.so
+0084:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+009c:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+009c:trace:vulkan:vulkan_init_once Host instance extensions:
+009c:warn:vulkan:vulkan_init_once Extension "VK_KHR_android_surface" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_device_group_creation
+009c:warn:vulkan:vulkan_init_once Extension "VK_KHR_display" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_external_fence_capabilities
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_external_memory_capabilities
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_external_semaphore_capabilities
+009c:warn:vulkan:vulkan_init_once Extension "VK_KHR_get_display_properties2" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_get_physical_device_properties2
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_get_surface_capabilities2
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_surface
+009c:warn:vulkan:vulkan_init_once Extension "VK_KHR_surface_protected_capabilities" is not supported.
+009c:warn:vulkan:vulkan_init_once Extension "VK_KHR_xcb_surface" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_xlib_surface
+009c:warn:vulkan:vulkan_init_once Extension "VK_EXT_acquire_drm_display" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_EXT_debug_report
+009c:warn:vulkan:vulkan_init_once Extension "VK_EXT_direct_mode_display" is not supported.
+009c:warn:vulkan:vulkan_init_once Extension "VK_EXT_display_surface_counter" is not supported.
+009c:trace:vulkan:vulkan_init_once   - VK_EXT_headless_surface
+009c:trace:vulkan:vulkan_init_once   - VK_EXT_surface_maintenance1
+009c:trace:vulkan:vulkan_init_once   - VK_EXT_swapchain_colorspace
+009c:trace:vulkan:vulkan_init_once   - VK_EXT_debug_utils
+009c:trace:vulkan:vulkan_init_once   - VK_KHR_portability_enumeration
+009c:warn:vulkan:vulkan_init_once Extension "VK_LUNARG_direct_driver_loading" is not supported.
+009c:trace:vulkan:convert_instance_create_info Enabling 3 host instance extensions
+009c:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_memory_capabilities"
+009c:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_semaphore_capabilities"
+009c:trace:vulkan:convert_instance_create_info   - "VK_KHR_get_physical_device_properties2"
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugReportCallbackEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugUtilsMessengerEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateHeadlessSurfaceEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMacOSSurfaceMVK not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMetalSurfaceEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWaylandSurfaceKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWin32SurfaceKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateXlibSurfaceKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDebugReportMessageEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugReportCallbackEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugUtilsMessengerEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroySurfaceKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceGroupsKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkSubmitDebugUtilsMessageEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceDescriptorSizeEXT not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalFencePropertiesKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalTensorPropertiesARM not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDevicePresentRectanglesKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilities2KHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilitiesKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormats2KHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormatsKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfacePresentModesKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceSupportKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWaylandPresentationSupportKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWin32PresentationSupportKHR not found.
+009c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceXlibPresentationSupportKHR not found.
+009c:trace:vulkan:init_physical_device Host physical device extensions:
+009c:trace:vulkan:init_physical_device   - VK_KHR_8bit_storage
+009c:trace:vulkan:init_physical_device   - VK_KHR_16bit_storage
+009c:trace:vulkan:init_physical_device   - VK_KHR_bind_memory2
+009c:trace:vulkan:init_physical_device   - VK_KHR_buffer_device_address
+009c:trace:vulkan:init_physical_device   - VK_KHR_copy_commands2
+009c:trace:vulkan:init_physical_device   - VK_KHR_create_renderpass2
+009c:trace:vulkan:init_physical_device   - VK_KHR_dedicated_allocation
+009c:trace:vulkan:init_physical_device   - VK_KHR_depth_stencil_resolve
+009c:trace:vulkan:init_physical_device   - VK_KHR_descriptor_update_template
+009c:trace:vulkan:init_physical_device   - VK_KHR_device_group
+009c:trace:vulkan:init_physical_device   - VK_KHR_driver_properties
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_fence
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_fence_fd
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_memory
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_memory_fd
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore
+009c:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore_fd
+009c:trace:vulkan:init_physical_device   - VK_KHR_get_memory_requirements2
+009c:trace:vulkan:init_physical_device   - VK_KHR_image_format_list
+009c:trace:vulkan:init_physical_device   - VK_KHR_imageless_framebuffer
+009c:trace:vulkan:init_physical_device   - VK_KHR_incremental_present
+009c:trace:vulkan:init_physical_device   - VK_KHR_maintenance1
+009c:trace:vulkan:init_physical_device   - VK_KHR_maintenance2
+009c:trace:vulkan:init_physical_device   - VK_KHR_maintenance3
+009c:trace:vulkan:init_physical_device   - VK_KHR_map_memory2
+009c:trace:vulkan:init_physical_device   - VK_KHR_multiview
+009c:trace:vulkan:init_physical_device   - VK_KHR_present_id
+009c:trace:vulkan:init_physical_device   - VK_KHR_present_wait
+009c:trace:vulkan:init_physical_device   - VK_KHR_relaxed_block_layout
+009c:trace:vulkan:init_physical_device   - VK_KHR_sampler_mirror_clamp_to_edge
+009c:trace:vulkan:init_physical_device   - VK_KHR_sampler_ycbcr_conversion
+009c:trace:vulkan:init_physical_device   - VK_KHR_separate_depth_stencil_layouts
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_draw_parameters
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_float16_int8
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_float_controls
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_integer_dot_product
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_non_semantic_info
+009c:trace:vulkan:init_physical_device   - VK_KHR_shader_subgroup_extended_types
+009c:trace:vulkan:init_physical_device   - VK_KHR_spirv_1_4
+009c:trace:vulkan:init_physical_device   - VK_KHR_storage_buffer_storage_class
+009c:trace:vulkan:init_physical_device   - VK_KHR_swapchain
+009c:trace:vulkan:init_physical_device   - VK_KHR_swapchain_mutable_format
+009c:trace:vulkan:init_physical_device   - VK_KHR_timeline_semaphore
+009c:trace:vulkan:init_physical_device   - VK_KHR_uniform_buffer_standard_layout
+009c:trace:vulkan:init_physical_device   - VK_KHR_variable_pointers
+009c:trace:vulkan:init_physical_device   - VK_KHR_vertex_attribute_divisor
+009c:trace:vulkan:init_physical_device   - VK_KHR_vulkan_memory_model
+009c:trace:vulkan:init_physical_device   - VK_KHR_zero_initialize_workgroup_memory
+009c:trace:vulkan:init_physical_device   - VK_EXT_4444_formats
+009c:trace:vulkan:init_physical_device   - VK_EXT_astc_decode_mode
+009c:trace:vulkan:init_physical_device   - VK_EXT_custom_border_color
+009c:trace:vulkan:init_physical_device   - VK_EXT_descriptor_indexing
+009c:warn:vulkan:init_physical_device Extension "VK_EXT_device_memory_report" is not supported.
+009c:warn:vulkan:init_physical_device Extension "VK_EXT_display_control" is not supported.
+009c:trace:vulkan:init_physical_device   - VK_EXT_external_memory_dma_buf
+009c:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map
+009c:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map2
+009c:trace:vulkan:init_physical_device   - VK_EXT_global_priority
+009c:trace:vulkan:init_physical_device   - VK_EXT_host_query_reset
+009c:trace:vulkan:init_physical_device   - VK_EXT_image_drm_format_modifier
+009c:trace:vulkan:init_physical_device   - VK_EXT_image_robustness
+009c:trace:vulkan:init_physical_device   - VK_EXT_index_type_uint8
+009c:trace:vulkan:init_physical_device   - VK_EXT_inline_uniform_block
+009c:trace:vulkan:init_physical_device   - VK_EXT_line_rasterization
+009c:trace:vulkan:init_physical_device   - VK_EXT_map_memory_placed
+009c:trace:vulkan:init_physical_device   - VK_EXT_pipeline_creation_cache_control
+009c:trace:vulkan:init_physical_device   - VK_EXT_primitive_topology_list_restart
+009c:trace:vulkan:init_physical_device   - VK_EXT_provoking_vertex
+009c:trace:vulkan:init_physical_device   - VK_EXT_queue_family_foreign
+009c:trace:vulkan:init_physical_device   - VK_EXT_rgba10x6_formats
+009c:trace:vulkan:init_physical_device   - VK_EXT_scalar_block_layout
+009c:trace:vulkan:init_physical_device   - VK_EXT_separate_stencil_usage
+009c:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_ballot
+009c:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_vote
+009c:trace:vulkan:init_physical_device   - VK_EXT_subgroup_size_control
+009c:trace:vulkan:init_physical_device   - VK_EXT_swapchain_maintenance1
+009c:trace:vulkan:init_physical_device   - VK_EXT_texel_buffer_alignment
+009c:trace:vulkan:init_physical_device   - VK_EXT_texture_compression_astc_hdr
+009c:trace:vulkan:init_physical_device   - VK_EXT_transform_feedback
+009c:trace:vulkan:init_physical_device   - VK_EXT_vertex_attribute_divisor
+009c:warn:vulkan:init_physical_device Extension "VK_ANDROID_external_memory_android_hardware_buffer" is not supported.
+009c:trace:vulkan:win32u_vkCreateInstance Created instance 0xb40000705fe19800, host_instance 0xb40000705fe1b000.
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0084:fixme:xinput:pdo_pnp code 0xc, not implemented!
+[info]: create_bcn_compute_pipelines took 872 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Wrapper(Mali-G78)) doesn't support base Zink requirements: feats.features.logicOp feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+libc++abi: terminating
+009c:err:seh:call_seh_handlers invalid frame 1000ff7f0 (0000000000022000-0000000000120000)
+009c:err:seh:NtRaiseException Exception frame is not in stack limits => unable to dispatch exception.
+0094:trace:vulkan:vulkan_init_once Host instance extensions:
+0094:warn:vulkan:vulkan_init_once Extension "VK_KHR_android_surface" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_device_group_creation
+0094:warn:vulkan:vulkan_init_once Extension "VK_KHR_display" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_external_fence_capabilities
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_external_memory_capabilities
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_external_semaphore_capabilities
+0094:warn:vulkan:vulkan_init_once Extension "VK_KHR_get_display_properties2" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_get_physical_device_properties2
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_get_surface_capabilities2
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_surface
+0094:warn:vulkan:vulkan_init_once Extension "VK_KHR_surface_protected_capabilities" is not supported.
+0094:warn:vulkan:vulkan_init_once Extension "VK_KHR_xcb_surface" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_xlib_surface
+0094:warn:vulkan:vulkan_init_once Extension "VK_EXT_acquire_drm_display" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_EXT_debug_report
+0094:warn:vulkan:vulkan_init_once Extension "VK_EXT_direct_mode_display" is not supported.
+0094:warn:vulkan:vulkan_init_once Extension "VK_EXT_display_surface_counter" is not supported.
+0094:trace:vulkan:vulkan_init_once   - VK_EXT_headless_surface
+0094:trace:vulkan:vulkan_init_once   - VK_EXT_surface_maintenance1
+0094:trace:vulkan:vulkan_init_once   - VK_EXT_swapchain_colorspace
+0094:trace:vulkan:vulkan_init_once   - VK_EXT_debug_utils
+0094:trace:vulkan:vulkan_init_once   - VK_KHR_portability_enumeration
+0094:warn:vulkan:vulkan_init_once Extension "VK_LUNARG_direct_driver_loading" is not supported.
+0094:trace:vulkan:convert_instance_create_info Enabling 3 host instance extensions
+0094:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_memory_capabilities"
+0094:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_semaphore_capabilities"
+0094:trace:vulkan:convert_instance_create_info   - "VK_KHR_get_physical_device_properties2"
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugReportCallbackEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugUtilsMessengerEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateHeadlessSurfaceEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMacOSSurfaceMVK not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMetalSurfaceEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWaylandSurfaceKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWin32SurfaceKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateXlibSurfaceKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkDebugReportMessageEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugReportCallbackEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugUtilsMessengerEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroySurfaceKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceGroupsKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkSubmitDebugUtilsMessageEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceDescriptorSizeEXT not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalFencePropertiesKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalTensorPropertiesARM not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDevicePresentRectanglesKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilities2KHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilitiesKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormats2KHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormatsKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfacePresentModesKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceSupportKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWaylandPresentationSupportKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWin32PresentationSupportKHR not found.
+0094:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceXlibPresentationSupportKHR not found.
+0094:trace:vulkan:init_physical_device Host physical device extensions:
+0094:trace:vulkan:init_physical_device   - VK_KHR_8bit_storage
+0094:trace:vulkan:init_physical_device   - VK_KHR_16bit_storage
+0094:trace:vulkan:init_physical_device   - VK_KHR_bind_memory2
+0094:trace:vulkan:init_physical_device   - VK_KHR_buffer_device_address
+0094:trace:vulkan:init_physical_device   - VK_KHR_copy_commands2
+0094:trace:vulkan:init_physical_device   - VK_KHR_create_renderpass2
+0094:trace:vulkan:init_physical_device   - VK_KHR_dedicated_allocation
+0094:trace:vulkan:init_physical_device   - VK_KHR_depth_stencil_resolve
+0094:trace:vulkan:init_physical_device   - VK_KHR_descriptor_update_template
+0094:trace:vulkan:init_physical_device   - VK_KHR_device_group
+0094:trace:vulkan:init_physical_device   - VK_KHR_driver_properties
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_fence
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_fence_fd
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_memory
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_memory_fd
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore
+0094:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore_fd
+0094:trace:vulkan:init_physical_device   - VK_KHR_get_memory_requirements2
+0094:trace:vulkan:init_physical_device   - VK_KHR_image_format_list
+0094:trace:vulkan:init_physical_device   - VK_KHR_imageless_framebuffer
+0094:trace:vulkan:init_physical_device   - VK_KHR_incremental_present
+0094:trace:vulkan:init_physical_device   - VK_KHR_maintenance1
+0094:trace:vulkan:init_physical_device   - VK_KHR_maintenance2
+0094:trace:vulkan:init_physical_device   - VK_KHR_maintenance3
+0094:trace:vulkan:init_physical_device   - VK_KHR_map_memory2
+0094:trace:vulkan:init_physical_device   - VK_KHR_multiview
+0094:trace:vulkan:init_physical_device   - VK_KHR_present_id
+0094:trace:vulkan:init_physical_device   - VK_KHR_present_wait
+0094:trace:vulkan:init_physical_device   - VK_KHR_relaxed_block_layout
+0094:trace:vulkan:init_physical_device   - VK_KHR_sampler_mirror_clamp_to_edge
+0094:trace:vulkan:init_physical_device   - VK_KHR_sampler_ycbcr_conversion
+0094:trace:vulkan:init_physical_device   - VK_KHR_separate_depth_stencil_layouts
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_draw_parameters
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_float16_int8
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_float_controls
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_integer_dot_product
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_non_semantic_info
+0094:trace:vulkan:init_physical_device   - VK_KHR_shader_subgroup_extended_types
+0094:trace:vulkan:init_physical_device   - VK_KHR_spirv_1_4
+0094:trace:vulkan:init_physical_device   - VK_KHR_storage_buffer_storage_class
+0094:trace:vulkan:init_physical_device   - VK_KHR_swapchain
+0094:trace:vulkan:init_physical_device   - VK_KHR_swapchain_mutable_format
+0094:trace:vulkan:init_physical_device   - VK_KHR_timeline_semaphore
+0094:trace:vulkan:init_physical_device   - VK_KHR_uniform_buffer_standard_layout
+0094:trace:vulkan:init_physical_device   - VK_KHR_variable_pointers
+0094:trace:vulkan:init_physical_device   - VK_KHR_vertex_attribute_divisor
+0094:trace:vulkan:init_physical_device   - VK_KHR_vulkan_memory_model
+0094:trace:vulkan:init_physical_device   - VK_KHR_zero_initialize_workgroup_memory
+0094:trace:vulkan:init_physical_device   - VK_EXT_4444_formats
+0094:trace:vulkan:init_physical_device   - VK_EXT_astc_decode_mode
+0094:trace:vulkan:init_physical_device   - VK_EXT_custom_border_color
+0094:trace:vulkan:init_physical_device   - VK_EXT_descriptor_indexing
+0094:warn:vulkan:init_physical_device Extension "VK_EXT_device_memory_report" is not supported.
+0094:warn:vulkan:init_physical_device Extension "VK_EXT_display_control" is not supported.
+0094:trace:vulkan:init_physical_device   - VK_EXT_external_memory_dma_buf
+0094:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map
+0094:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map2
+0094:trace:vulkan:init_physical_device   - VK_EXT_global_priority
+0094:trace:vulkan:init_physical_device   - VK_EXT_host_query_reset
+0094:trace:vulkan:init_physical_device   - VK_EXT_image_drm_format_modifier
+0094:trace:vulkan:init_physical_device   - VK_EXT_image_robustness
+0094:trace:vulkan:init_physical_device   - VK_EXT_index_type_uint8
+0094:trace:vulkan:init_physical_device   - VK_EXT_inline_uniform_block
+0094:trace:vulkan:init_physical_device   - VK_EXT_line_rasterization
+0094:trace:vulkan:init_physical_device   - VK_EXT_map_memory_placed
+0094:trace:vulkan:init_physical_device   - VK_EXT_pipeline_creation_cache_control
+0094:trace:vulkan:init_physical_device   - VK_EXT_primitive_topology_list_restart
+0094:trace:vulkan:init_physical_device   - VK_EXT_provoking_vertex
+0094:trace:vulkan:init_physical_device   - VK_EXT_queue_family_foreign
+0094:trace:vulkan:init_physical_device   - VK_EXT_rgba10x6_formats
+0094:trace:vulkan:init_physical_device   - VK_EXT_scalar_block_layout
+0094:trace:vulkan:init_physical_device   - VK_EXT_separate_stencil_usage
+0094:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_ballot
+0094:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_vote
+0094:trace:vulkan:init_physical_device   - VK_EXT_subgroup_size_control
+0094:trace:vulkan:init_physical_device   - VK_EXT_swapchain_maintenance1
+0094:trace:vulkan:init_physical_device   - VK_EXT_texel_buffer_alignment
+0094:trace:vulkan:init_physical_device   - VK_EXT_texture_compression_astc_hdr
+0094:trace:vulkan:init_physical_device   - VK_EXT_transform_feedback
+0094:trace:vulkan:init_physical_device   - VK_EXT_vertex_attribute_divisor
+0094:warn:vulkan:init_physical_device Extension "VK_ANDROID_external_memory_android_hardware_buffer" is not supported.
+0094:trace:vulkan:win32u_vkCreateInstance Created instance 0xb4000073ea619800, host_instance 0xb4000073ea61b000.
+0094:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x1090039
+0094:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003b
+0094:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+0094:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003c
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003d
+0094:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+0094:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003f
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0094:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+0094:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+_r_debug not found in ld.so
+00c8:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+00c8:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x1090039
+00c8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003b
+00c8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+00c8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003c
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003d
+00c8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+00c8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003f
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00c8:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+00c8:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c8:err:setupapi:SetupDefaultQueueCallbackW copy error 1812 L"@C:\\windows\\system32\\drivers\\wineusb.sys,-1" -> L"C:\\windows\\inf\\wineusb.inf"
+00c8:trace:bitmap:NtGdiSetBitmapBits (0x40090040, 16, 0x6ffd023358) 8x8 1 bpp fetched height: 8
+00c8:trace:bitmap:NtGdiCreateBitmap 8x8, bpp 1 planes 1: returning 0x40090040
+_r_debug not found in ld.so
+00d0:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+00d0:trace:bitmap:NtGdiSetBitmapBits (0x1090038, 16, 0x6ffb894648) 8x8 1 bpp fetched height: 8
+00d0:trace:bitmap:NtGdiCreateBitmap 8x8, bpp 1 planes 1: returning 0x1090038
+00d0:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x109003b
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003d
+00d0:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003e
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003f
+00d0:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090041
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x1090044
+00d0:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d0:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090045
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d0:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+00d0:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+00c8:trace:vulkan:DllMain 0000006FFA370000, 1, 0000000000000000
+00c8:trace:vulkan:DllRegisterServer 
+_r_debug not found in ld.so
+00d8:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+00d8:trace:bitmap:NtGdiSetBitmapBits (0x1090038, 16, 0x6ffd023358) 8x8 1 bpp fetched height: 8
+00d8:trace:bitmap:NtGdiCreateBitmap 8x8, bpp 1 planes 1: returning 0x1090038
+00d8:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x109003b
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003d
+00d8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003e
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003f
+00d8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090041
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x1090044
+00d8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+00d8:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090045
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateBitmap 16x16, bpp 1 planes 1: returning 0x2090046
+00d8:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,16,16)
+00d8:trace:bitmap:NtGdiCreateBitmap 16x16, bpp 32 planes 1: returning 0x1090048
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+00d8:trace:bitmap:NtGdiCreateDIBSection format (16,-16), planes 1, bpp 32, BI_RGB, size 1024 RGB
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+00d8:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+00c8:trace:vulkan:DllMain 0000006FFA370000, 0, 0000000000000000
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+0100:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+0114:err:nsi:poll_events bind failed, errno 13.
+_r_debug not found in ld.so
+011c:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+011c:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x1090039
+011c:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003b
+011c:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+011c:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003c
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003d
+011c:trace:bitmap:NtGdiCreateCompatibleBitmap (0x1010038,32,32)
+011c:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003f
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+011c:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+011c:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+011c:trace:bitmap:NtGdiSetBitmapBits (0x40090040, 16, 0x7a9f938e) 8x8 1 bpp fetched height: 8
+011c:trace:bitmap:NtGdiCreateBitmap 8x8, bpp 1 planes 1: returning 0x40090040
+011c:trace:vulkan:DllMain 79C10000, 1, 00000000
+011c:trace:vulkan:DllRegisterServer 
+_r_debug not found in ld.so
+0128:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+0128:trace:bitmap:NtGdiSetBitmapBits (0x1090038, 16, 0x7a9f938e) 8x8 1 bpp fetched height: 8
+0128:trace:bitmap:NtGdiCreateBitmap 8x8, bpp 1 planes 1: returning 0x1090038
+0128:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x109003b
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x109003d
+0128:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x109003e
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x209003f
+0128:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090041
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 1 planes 1: returning 0x1090044
+0128:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,32,32)
+0128:trace:bitmap:NtGdiCreateBitmap 32x32, bpp 32 planes 1: returning 0x1090045
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateDIBSection format (32,-32), planes 1, bpp 32, BI_RGB, size 4096 RGB
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 32 32 <- 0 0 32 32 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateBitmap 16x16, bpp 1 planes 1: returning 0x2090046
+0128:trace:bitmap:NtGdiCreateCompatibleBitmap (0x101003a,16,16)
+0128:trace:bitmap:NtGdiCreateBitmap 16x16, bpp 32 planes 1: returning 0x1090048
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+0128:trace:bitmap:NtGdiCreateDIBSection format (16,-16), planes 1, bpp 32, BI_RGB, size 1024 RGB
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+0128:trace:bitmap:nulldrv_StretchDIBits 0 0 16 16 <- 0 0 16 16 rop 00cc0020
+011c:trace:vulkan:DllMain 79C10000, 0, 00000000
+_r_debug not found in ld.so
+wine: failed to start L"C:\\windows\\sysarm32\\rundll32.exe": c0000135
+0024:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+_r_debug not found in ld.so
+013c:trace:bitmap:NtGdiCreateBitmap 1x1, bpp 1 planes 1: returning 0x1090034
+013c:trace:bitmap:NtGdiCreateBitmap 1024x768, bpp 32 planes 1: returning 0x1090039
+013c:trace:vulkan:vulkan_init_once Host instance extensions:
+013c:warn:vulkan:vulkan_init_once Extension "VK_KHR_android_surface" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_device_group_creation
+013c:warn:vulkan:vulkan_init_once Extension "VK_KHR_display" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_external_fence_capabilities
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_external_memory_capabilities
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_external_semaphore_capabilities
+013c:warn:vulkan:vulkan_init_once Extension "VK_KHR_get_display_properties2" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_get_physical_device_properties2
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_get_surface_capabilities2
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_surface
+013c:warn:vulkan:vulkan_init_once Extension "VK_KHR_surface_protected_capabilities" is not supported.
+013c:warn:vulkan:vulkan_init_once Extension "VK_KHR_xcb_surface" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_xlib_surface
+013c:warn:vulkan:vulkan_init_once Extension "VK_EXT_acquire_drm_display" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_EXT_debug_report
+013c:warn:vulkan:vulkan_init_once Extension "VK_EXT_direct_mode_display" is not supported.
+013c:warn:vulkan:vulkan_init_once Extension "VK_EXT_display_surface_counter" is not supported.
+013c:trace:vulkan:vulkan_init_once   - VK_EXT_headless_surface
+013c:trace:vulkan:vulkan_init_once   - VK_EXT_surface_maintenance1
+013c:trace:vulkan:vulkan_init_once   - VK_EXT_swapchain_colorspace
+013c:trace:vulkan:vulkan_init_once   - VK_EXT_debug_utils
+013c:trace:vulkan:vulkan_init_once   - VK_KHR_portability_enumeration
+013c:warn:vulkan:vulkan_init_once Extension "VK_LUNARG_direct_driver_loading" is not supported.
+013c:trace:vulkan:convert_instance_create_info Enabling 3 host instance extensions
+013c:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_memory_capabilities"
+013c:trace:vulkan:convert_instance_create_info   - "VK_KHR_external_semaphore_capabilities"
+013c:trace:vulkan:convert_instance_create_info   - "VK_KHR_get_physical_device_properties2"
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugReportCallbackEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateDebugUtilsMessengerEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateHeadlessSurfaceEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMacOSSurfaceMVK not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateMetalSurfaceEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWaylandSurfaceKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateWin32SurfaceKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkCreateXlibSurfaceKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDebugReportMessageEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugReportCallbackEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroyDebugUtilsMessengerEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkDestroySurfaceKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceGroupsKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkSubmitDebugUtilsMessageEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceDescriptorSizeEXT not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalFencePropertiesKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceExternalTensorPropertiesARM not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDevicePresentRectanglesKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilities2KHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceCapabilitiesKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormats2KHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceFormatsKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfacePresentModesKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceSurfaceSupportKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWaylandPresentationSupportKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceWin32PresentationSupportKHR not found.
+013c:trace:vulkan:win32u_vkCreateInstance Instance proc vkGetPhysicalDeviceXlibPresentationSupportKHR not found.
+013c:trace:vulkan:init_physical_device Host physical device extensions:
+013c:trace:vulkan:init_physical_device   - VK_KHR_8bit_storage
+013c:trace:vulkan:init_physical_device   - VK_KHR_16bit_storage
+013c:trace:vulkan:init_physical_device   - VK_KHR_bind_memory2
+013c:trace:vulkan:init_physical_device   - VK_KHR_buffer_device_address
+013c:trace:vulkan:init_physical_device   - VK_KHR_copy_commands2
+013c:trace:vulkan:init_physical_device   - VK_KHR_create_renderpass2
+013c:trace:vulkan:init_physical_device   - VK_KHR_dedicated_allocation
+013c:trace:vulkan:init_physical_device   - VK_KHR_depth_stencil_resolve
+013c:trace:vulkan:init_physical_device   - VK_KHR_descriptor_update_template
+013c:trace:vulkan:init_physical_device   - VK_KHR_device_group
+013c:trace:vulkan:init_physical_device   - VK_KHR_driver_properties
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_fence
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_fence_fd
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_memory
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_memory_fd
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore
+013c:trace:vulkan:init_physical_device   - VK_KHR_external_semaphore_fd
+013c:trace:vulkan:init_physical_device   - VK_KHR_get_memory_requirements2
+013c:trace:vulkan:init_physical_device   - VK_KHR_image_format_list
+013c:trace:vulkan:init_physical_device   - VK_KHR_imageless_framebuffer
+013c:trace:vulkan:init_physical_device   - VK_KHR_incremental_present
+013c:trace:vulkan:init_physical_device   - VK_KHR_maintenance1
+013c:trace:vulkan:init_physical_device   - VK_KHR_maintenance2
+013c:trace:vulkan:init_physical_device   - VK_KHR_maintenance3
+013c:trace:vulkan:init_physical_device   - VK_KHR_map_memory2
+013c:trace:vulkan:init_physical_device   - VK_KHR_multiview
+013c:trace:vulkan:init_physical_device   - VK_KHR_present_id
+013c:trace:vulkan:init_physical_device   - VK_KHR_present_wait
+013c:trace:vulkan:init_physical_device   - VK_KHR_relaxed_block_layout
+013c:trace:vulkan:init_physical_device   - VK_KHR_sampler_mirror_clamp_to_edge
+013c:trace:vulkan:init_physical_device   - VK_KHR_sampler_ycbcr_conversion
+013c:trace:vulkan:init_physical_device   - VK_KHR_separate_depth_stencil_layouts
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_draw_parameters
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_float16_int8
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_float_controls
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_integer_dot_product
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_non_semantic_info
+013c:trace:vulkan:init_physical_device   - VK_KHR_shader_subgroup_extended_types
+013c:trace:vulkan:init_physical_device   - VK_KHR_spirv_1_4
+013c:trace:vulkan:init_physical_device   - VK_KHR_storage_buffer_storage_class
+013c:trace:vulkan:init_physical_device   - VK_KHR_swapchain
+013c:trace:vulkan:init_physical_device   - VK_KHR_swapchain_mutable_format
+013c:trace:vulkan:init_physical_device   - VK_KHR_timeline_semaphore
+013c:trace:vulkan:init_physical_device   - VK_KHR_uniform_buffer_standard_layout
+013c:trace:vulkan:init_physical_device   - VK_KHR_variable_pointers
+013c:trace:vulkan:init_physical_device   - VK_KHR_vertex_attribute_divisor
+013c:trace:vulkan:init_physical_device   - VK_KHR_vulkan_memory_model
+013c:trace:vulkan:init_physical_device   - VK_KHR_zero_initialize_workgroup_memory
+013c:trace:vulkan:init_physical_device   - VK_EXT_4444_formats
+013c:trace:vulkan:init_physical_device   - VK_EXT_astc_decode_mode
+013c:trace:vulkan:init_physical_device   - VK_EXT_custom_border_color
+013c:trace:vulkan:init_physical_device   - VK_EXT_descriptor_indexing
+013c:warn:vulkan:init_physical_device Extension "VK_EXT_device_memory_report" is not supported.
+013c:warn:vulkan:init_physical_device Extension "VK_EXT_display_control" is not supported.
+013c:trace:vulkan:init_physical_device   - VK_EXT_external_memory_dma_buf
+013c:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map
+013c:trace:vulkan:init_physical_device   - VK_EXT_fragment_density_map2
+013c:trace:vulkan:init_physical_device   - VK_EXT_global_priority
+013c:trace:vulkan:init_physical_device   - VK_EXT_host_query_reset
+013c:trace:vulkan:init_physical_device   - VK_EXT_image_drm_format_modifier
+013c:trace:vulkan:init_physical_device   - VK_EXT_image_robustness
+013c:trace:vulkan:init_physical_device   - VK_EXT_index_type_uint8
+013c:trace:vulkan:init_physical_device   - VK_EXT_inline_uniform_block
+013c:trace:vulkan:init_physical_device   - VK_EXT_line_rasterization
+013c:trace:vulkan:init_physical_device   - VK_EXT_map_memory_placed
+013c:trace:vulkan:init_physical_device   - VK_EXT_pipeline_creation_cache_control
+013c:trace:vulkan:init_physical_device   - VK_EXT_primitive_topology_list_restart
+013c:trace:vulkan:init_physical_device   - VK_EXT_provoking_vertex
+013c:trace:vulkan:init_physical_device   - VK_EXT_queue_family_foreign
+013c:trace:vulkan:init_physical_device   - VK_EXT_rgba10x6_formats
+013c:trace:vulkan:init_physical_device   - VK_EXT_scalar_block_layout
+013c:trace:vulkan:init_physical_device   - VK_EXT_separate_stencil_usage
+013c:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_ballot
+013c:trace:vulkan:init_physical_device   - VK_EXT_shader_subgroup_vote
+013c:trace:vulkan:init_physical_device   - VK_EXT_subgroup_size_control
+013c:trace:vulkan:init_physical_device   - VK_EXT_swapchain_maintenance1
+013c:trace:vulkan:init_physical_device   - VK_EXT_texel_buffer_alignment
+013c:trace:vulkan:init_physical_device   - VK_EXT_texture_compression_astc_hdr
+013c:trace:vulkan:init_physical_device   - VK_EXT_transform_feedback
+013c:trace:vulkan:init_physical_device   - VK_EXT_vertex_attribute_divisor
+013c:warn:vulkan:init_physical_device Extension "VK_ANDROID_external_memory_android_hardware_buffer" is not supported.
+013c:trace:vulkan:win32u_vkCreateInstance Created instance 0xb400007f4b819800, host_instance 0xb400007f4b81b000.
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: create_bcn_compute_pipelines took 872 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Wrapper(Mali-G78)) doesn't support base Zink requirements: feats.features.logicOp feats.features.fillModeNonSolid feats.features.shaderClipDistance 

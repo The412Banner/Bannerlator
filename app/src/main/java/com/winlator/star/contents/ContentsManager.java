@@ -30,6 +30,8 @@ public class ContentsManager {
             "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
             "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
+    // d7vk ships a native ddraw.dll (proxies unimplemented 2D calls to the renamed builtin ddraw_.dll).
+    public static final String[] D7VK_TRUST_FILES = {"${system32}/ddraw.dll", "${syswow64}/ddraw.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${bindir}/box64"};
     public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
     // The two DLLs (system32) plus, for unixlib FEXCore builds, the native .so in the shared
@@ -82,6 +84,11 @@ public class ContentsManager {
 
     private ArrayList<ContentProfile> remoteProfiles;
 
+    // Last successfully parsed catalog (process-lifetime). Lets a caller that only needs a
+    // best-effort look at the catalog (container layer-update scan) reuse whatever an earlier
+    // fetch already parsed instead of hitting the network again.
+    private static volatile ArrayList<ContentProfile> cachedRemoteProfiles;
+
     public ContentsManager(Context context) {
         this.context = context;
         this.preferences = context.getSharedPreferences("contents_manager_prefs", Context.MODE_PRIVATE);
@@ -110,15 +117,29 @@ public class ContentsManager {
                     remoteProfile.type = ContentProfile.ContentType.getTypeByName(object.getString("type"));
                     remoteProfile.verName = object.getString("verName");
                     remoteProfile.verCode = object.getInt("verCode");
+                    String versionName = object.optString("versionName", "");
+                    remoteProfile.versionName = versionName.isEmpty() ? null : versionName;
                     remoteProfiles.add(remoteProfile);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
+            cachedRemoteProfiles = new ArrayList<>(remoteProfiles);
         } catch (JSONException e) {
             e.printStackTrace();
         }
         syncContents();
+    }
+
+    /** Uses an already-parsed catalog (see {@link #getCachedRemoteProfiles()}) instead of JSON. */
+    public void setRemoteProfiles(List<ContentProfile> profiles) {
+        remoteProfiles = new ArrayList<>(profiles);
+        syncContents();
+    }
+
+    /** The catalog rows of the most recent {@link #setRemoteProfiles(String)} in this process, or null. */
+    public static List<ContentProfile> getCachedRemoteProfiles() {
+        return cachedRemoteProfiles;
     }
 
     public void syncContents() {
@@ -358,6 +379,7 @@ public class ContentsManager {
 
                 String[] paths = switch (type) {
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
+                    case CONTENT_TYPE_D7VK -> D7VK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
                     case CONTENT_TYPE_WOWBOX64 -> WOWBOX64_TRUST_FILES;
@@ -381,21 +403,34 @@ public class ContentsManager {
     }
 
     public void removeContent(ContentProfile profile) {
-        if (profilesMap.get(profile.type).contains(profile)) {
-            // A unixlib FEXCore drops a native .so into the SHARED aarch64-unix slot; deleting only
-            // the per-version install dir would leave that .so behind (and Proton's loader would keep
-            // loading it). Strip any .so this profile applied to the shared slot. The launch-time
-            // reconcile re-materializes the correct .so for whatever version a game next selects.
-            if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_FEXCORE && profile.fileList != null) {
-                for (ContentProfile.ContentFile contentFile : profile.fileList) {
-                    if (contentFile.target != null && contentFile.target.endsWith(".so"))
-                        new File(getPathFromTemplate(contentFile.target)).delete();
-                }
-            }
-            FileUtils.delete(getInstallDir(context, profile));
-            profilesMap.get(profile.type).remove(profile);
-            syncContents();
+        if (profile == null || profile.type == null) return;
+        // Callers (e.g. the Contents hub) may construct a FRESH ContentsManager per action and hand us
+        // a profile that was loaded by a DIFFERENT instance. That means profilesMap can be null here
+        // (constructor doesn't populate it — only syncContents() does), and ContentProfile has no
+        // equals() so object-identity contains()/remove() won't match across instances. So: populate
+        // the map if needed, and match by entry name (type+verName+verCode) instead of identity.
+        if (profilesMap == null) syncContents();
+        List<ContentProfile> list = profilesMap.get(profile.type);
+        if (list == null) return;
+        ContentProfile match = null;
+        String want = getEntryName(profile);
+        for (ContentProfile p : list) {
+            if (getEntryName(p).equals(want)) { match = p; break; }
         }
+        if (match == null) return;
+        // A unixlib FEXCore drops a native .so into the SHARED aarch64-unix slot; deleting only
+        // the per-version install dir would leave that .so behind (and Proton's loader would keep
+        // loading it). Strip any .so this profile applied to the shared slot. The launch-time
+        // reconcile re-materializes the correct .so for whatever version a game next selects.
+        if (match.type == ContentProfile.ContentType.CONTENT_TYPE_FEXCORE && match.fileList != null) {
+            for (ContentProfile.ContentFile contentFile : match.fileList) {
+                if (contentFile.target != null && contentFile.target.endsWith(".so"))
+                    new File(getPathFromTemplate(contentFile.target)).delete();
+            }
+        }
+        FileUtils.delete(getInstallDir(context, match));
+        list.remove(match);
+        syncContents();
     }
 
     public static String getEntryName(ContentProfile profile) {

@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.winlator.star.BuildConfig;
 
 /**
  * Amazon Games distribution API client.
@@ -111,7 +114,12 @@ public class AmazonApiClient {
         return new ArrayList<>(seen.values());
     }
 
-    private static AmazonGame parseEntitlement(JSONObject e) {
+    /** Logged at most once per process: the `productDetail.details` key set, to confirm the
+     *  media field names on a real account (debug builds only). */
+    private static final AtomicBoolean DETAIL_KEYS_LOGGED = new AtomicBoolean(false);
+
+    // Package-private so the parser is unit-testable on a fixture.
+    static AmazonGame parseEntitlement(JSONObject e) {
         try {
             JSONObject product  = e.optJSONObject("product");
             if (product == null) return null;
@@ -149,6 +157,8 @@ public class AmazonApiClient {
                         productType = details.optString("productType", "");
                     }
                     if (parentId.isEmpty()) parentId = details.optString("parentProductId", "");
+                    parseMedia(details, game);
+                    logDetailKeysOnce(details);
                 }
             }
 
@@ -165,6 +175,45 @@ public class AmazonApiClient {
         } catch (Exception ex) {
             Log.e(TAG, "parseEntitlement failed", ex);
             return null;
+        }
+    }
+
+    /**
+     * Media for the detail page: `details.screenshots[]`, `details.videos[]` (direct mp4 URLs)
+     * and `details.trailerImageUrl` (the same fields nile reads). Elements are plain URL strings;
+     * objects with a `url` are tolerated. Pure — no logging — so it is host-testable.
+     */
+    static void parseMedia(JSONObject details, AmazonGame game) {
+        game.screenshots = urlList(details.optJSONArray("screenshots"));
+        game.videos      = urlList(details.optJSONArray("videos"));
+        game.trailerImageUrl = details.optString("trailerImageUrl", "");
+    }
+
+    private static List<String> urlList(JSONArray arr) {
+        List<String> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            String url = null;
+            Object v = arr.opt(i);
+            if (v instanceof String) url = (String) v;
+            else if (v instanceof JSONObject) {
+                JSONObject o = (JSONObject) v;
+                url = o.optString("url", o.optString("imageUrl", o.optString("videoUrl", "")));
+            }
+            if (url != null && url.startsWith("http") && !out.contains(url)) out.add(url);
+        }
+        return out;
+    }
+
+    /** One-shot, debug-only dump of the detail keys (field presence varies per title). */
+    private static void logDetailKeysOnce(JSONObject details) {
+        try {
+            if (!BuildConfig.DEBUG || !DETAIL_KEYS_LOGGED.compareAndSet(false, true)) return;
+            StringBuilder sb = new StringBuilder();
+            for (java.util.Iterator<String> it = details.keys(); it.hasNext();) sb.append(it.next()).append(' ');
+            Log.d(TAG, "productDetail.details keys: " + sb.toString().trim());
+        } catch (Throwable ignored) {
+            // Log is a stub on the JVM unit-test host; never let diagnostics break parsing.
         }
     }
 

@@ -1,0 +1,1052 @@
+================================================================================
+BANNERLATOR / WINLATOR-MALI DEBUG LOGS - SP FOOTBALL LIFE 2026 (PES 2021 engine)
+================================================================================
+Device   : Oppo Find X9 Pro (CPH2791IN)
+SoC      : MediaTek Dimensity 9500 (mt6993)
+GPU      : Mali-G1-Ultra MC12
+Android  : ColorOS 16 (Android 16), kernel 6.12.23-android16
+RAM      : 16 GB
+Game     : SP Football Life 2026 (FL_2026.exe / FL 2026 start.exe)
+           .NET Core launcher (mscordaccore.dll), 64-bit x86-64
+
+Log index:
+  1. Winlator-Mali 1.1 (WFM), Wine 10 ARM64EC  - Football Life + Virtua Tennis 4 + NFS MW
+  2. Winlator-Mali 1.1 (WFM), Wine 10 ARM64EC  - Football Life launcher / game / settings
+  3. Bannerlator 2.9.4, Proton 11.0-1 x86-64 (Box64), ESYNC on    - .NET GC heap 0x8007000E
+  4. Bannerlator 2.9.4, Proton 11.0-1 x86-64 (Box64), ESYNC on    - stack overflow + execute page fault
+  5. Bannerlator 2.9.4, Proton 11.0-1 x86-64 (Box64), ESYNC OFF   - stack overflow 0x7fffd77ec6
+  6. Bannerlator 2.9.4, Proton 11.0-1 x86-64 (Box64), ESYNC OFF   - execute page fault + stack overflow
+  7. Bannerlator 2.9.4, ARM64EC + FEXCore unixlibs (proton-11.0-1-arm64ec-unixlibs-sdk35),
+     ESYNC OFF                                                    - native Wine stack overflow
+================================================================================
+
+================ LOG 1 ================
+Winlator-Mali 1.1 (WFM) - Wine 10 ARM64EC - Football Life + Virtua Tennis 4 + NFS MW
+========================================
+_r_debug not found in ld.so
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:hid:pdo_pnp_dispatch Failed to start device 00000000008D3390, status 0xc0000005
+0070:fixme:hid:bus_create_hid_device failed to create device error 0xc0000035
+_r_debug not found in ld.so
+008c:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00b0:fixme:fsync:do_fsync futexes not supported on this platform.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+_r_debug not found in ld.so
+00c4:fixme:fsync:do_fsync futexes not supported on this platform.
+00c4:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+00c4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21ccd0,0x00000004) stub
+00c4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccf8,0x00000008) stub
+00c4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+00b0:err:ole:start_rpcss Failed to start RpcSs service
+00b0:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+_r_debug not found in ld.so
+00d8:fixme:fsync:do_fsync futexes not supported on this platform.
+00d8:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+00d8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21ccd0,0x00000004) stub
+00d8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccf8,0x00000008) stub
+00d8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+_r_debug not found in ld.so
+00e0:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+00e8:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+00f0:fixme:fsync:do_fsync futexes not supported on this platform.
+00f0:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\FL_2026.exe" in experimental ARM64EC mode
+00f0:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11ccd0,0x00000004) stub
+00f0:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x11ccf8,0x00000008) stub
+00f0:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11cd60,0x00000004) stub
+_r_debug not found in ld.so
+00f8:fixme:fsync:do_fsync futexes not supported on this platform.
+00f8:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\FL 2026 start.exe" in experimental ARM64EC mode
+00f8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x19ccd0,0x00000004) stub
+00f8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x19ccf8,0x00000008) stub
+00f8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x19cd60,0x00000004) stub
+_r_debug not found in ld.so
+0100:fixme:fsync:do_fsync futexes not supported on this platform.
+00f8:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F384,0000000000000000): stub
+00f0:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+00f8:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000019F340
+00f8:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F340,0000000000000000): stub
+00f8:fixme:seh:WerRegisterRuntimeExceptionModule (L"F:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00f8:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00f0:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+00f8:err:virtual:virtual_setup_exception stack overflow 1808 bytes addr 0x4fffafff9c stack 0x208f0 (0x20000-0x21000-0x1a0000)
+00f0:err:virtual:virtual_setup_exception stack overflow 1952 bytes addr 0x4fffafff9c stack 0x20860 (0x20000-0x21000-0x120000)
+_r_debug not found in ld.so
+0118:fixme:fsync:do_fsync futexes not supported on this platform.
+0118:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\Launcher.exe" in experimental wow64 mode
+0118:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0118:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0118:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+0118:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+0118:fixme:wbemprox:client_security_SetBlanket 782C7848, 030C0340, 10, 0, (null), 3, 3, 00000000, 0
+0118:fixme:wbemprox:client_security_Release 782C7848
+0118:fixme:wbemprox:enum_class_object_Next timeout not supported
+
+Unhandled Exception:
+System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+  at Launcher.Program.Main () [0x0000b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+[ERROR] FATAL UNHANDLED EXCEPTION: System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+0118:fixme:msvcrt:__clean_type_info_names_internal (78ECCE30) stub
+_r_debug not found in ld.so
+0128:fixme:fsync:do_fsync futexes not supported on this platform.
+0128:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\VT4.exe" in experimental wow64 mode
+0128:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0128:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0128:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+0128:fixme:gameux:GameExplorer2Impl_CheckAccess stub (010F0D08, L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\VT4.dll", 0012FB10)
+_r_debug not found in ld.so
+0130:fixme:fsync:do_fsync futexes not supported on this platform.
+0130:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\Launcher.exe" in experimental wow64 mode
+0130:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0130:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0130:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+0130:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+0130:fixme:wbemprox:client_security_SetBlanket 782C7848, 030C0340, 10, 0, (null), 3, 3, 00000000, 0
+0130:fixme:wbemprox:client_security_Release 782C7848
+0130:fixme:wbemprox:enum_class_object_Next timeout not supported
+
+Unhandled Exception:
+System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+  at Launcher.Program.Main () [0x0000b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+[ERROR] FATAL UNHANDLED EXCEPTION: System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+0130:fixme:msvcrt:__clean_type_info_names_internal (78ECCE30) stub
+_r_debug not found in ld.so
+0140:fixme:fsync:do_fsync futexes not supported on this platform.
+0140:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\_Redist\\dxwebsetup.exe" in experimental wow64 mode
+0140:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0140:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0140:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+_r_debug not found in ld.so
+0148:fixme:fsync:do_fsync futexes not supported on this platform.
+0148:err:environ:init_peb starting L"C:\\users\\xuser\\AppData\\Local\\Temp\\IXP000.TMP\\dxwsetup.exe" in experimental wow64 mode
+0148:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0148:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0148:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+0148:fixme:inseng:InstallEngine_RegisterInstallEngineCallback (00648338)->(00941378)
+0148:fixme:inseng:InstallEngine_RegisterInstallEngineCallback (00648358)->(00941378)
+0148:fixme:inseng:InstallEngine_UnregisterInstallEngineCallback (00648338)
+wine: Unhandled page fault on read access to 1A0A00C8 at address 01008573 (thread 0148), starting debugger...
+_r_debug not found in ld.so
+0150:fixme:fsync:do_fsync futexes not supported on this platform.
+0150:err:environ:init_peb starting L"C:\\windows\\syswow64\\winedbg.exe" in experimental wow64 mode
+0150:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0150:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0150:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+_r_debug not found in ld.so
+0158:fixme:fsync:do_fsync futexes not supported on this platform.
+Unhandled exception: page fault on read access to 0x1a0a00c8 in wow64 32-bit code (0x01008573).
+0150:err:dbghelp_msc:codeview_process_info Unknown CODEVIEW signature 00000000 in module L"user32"
+0150:err:dbghelp_msc:codeview_process_info Unknown CODEVIEW signature 00000000 in module L"uxtheme"
+0150:err:dbghelp_msc:codeview_process_info Unknown CODEVIEW signature 00000000 in module L"comctl32"
+0150:err:dbghelp_msc:codeview_process_info Unknown CODEVIEW signature 00000000 in module L"kernel32"
+0150:err:dbghelp_msc:codeview_process_info Unknown CODEVIEW signature 00000000 in module L"ntdll"
+Register dump:
+ CS:0023 SS:002b DS:002b ES:002b FS:0053 GS:002b
+ EIP:01008573 ESP:0012d1ec EBP:0012d204 EFLAGS:00000202(   - --  I   - - - )
+ EAX:00648358 EBX:0100277c ECX:1a0a009c EDX:00000040
+ ESI:00941378 EDI:010019a4
+Stack dump:
+0x0012d1ec:  00648358 0012f6a0 00941378 00000000
+0x0012d1fc:  010088bc 00941378 0012d908 0100906e
+0x0012d20c:  00000001 00000000 000101b2 01008c1d
+0x0012d21c:  000000c0 0012d238 0012d230 00000008
+0x0012d22c:  0000000e 00000480 0001017a 00000000
+0x0012d23c:  7aba96f0 0012d270 00000000 000101b2
+Backtrace:
+=>0 0x01008573 in dxwsetup (+0x8573) (0x0012d204)
+  1 0x0100906e in dxwsetup (+0x906e) (0x0012d908)
+  2 0x7af7c350 in user32 (+0x4c350) (0x0012d938)
+  3 0x7af7daaf in user32 (+0x4daaf) (0x0012d964)
+  4 0x7af7da2b in user32 (+0x4da2b) (0x0012d98c)
+  5 0x7af4d642 in user32 (+0x1d642) (0x0012d9b0)
+  6 0x7a2928bf in uxtheme (+0x28bf) (0x0012d9f8)
+  7 0x7af4d7bf in user32 (+0x1d7bf) (0x0012da14)
+  8 0x7af7c350 in user32 (+0x4c350) (0x0012da44)
+  9 0x7af7ccb4 in user32 (+0x4ccb4) (0x0012da6c)
+  10 0x7af7cd9b in user32 (+0x4cd9b) (0x0012da98)
+  11 0x7af6b29a in user32 (+0x3b29a) (0x0012dae4)
+  12 0x0100944e in dxwsetup (+0x944e) (0x0012e1f4)
+  13 0x7af7c350 in user32 (+0x4c350) (0x0012e224)
+  14 0x7af7daaf in user32 (+0x4daaf) (0x0012e250)
+  15 0x7af7da2b in user32 (+0x4da2b) (0x0012e278)
+  16 0x7af4d642 in user32 (+0x1d642) (0x0012e29c)
+  17 0x7a2928bf in uxtheme (+0x28bf) (0x0012e2e4)
+  18 0x7af4d7bf in user32 (+0x1d7bf) (0x0012e300)
+  19 0x7af7c350 in user32 (+0x4c350) (0x0012e330)
+  20 0x7af7ccb4 in user32 (+0x4ccb4) (0x0012e358)
+  21 0x7af7d075 in user32 (+0x4d075) (0x0012e7f4)
+  22 0x7af7cddd in user32 (+0x4cddd) (0x0012e81c)
+  23 0x7af6b19c in user32 (+0x3b19c) (0x0012e868)
+  24 0x7af4fd66 in user32 (+0x1fd66) (0x0012eb1c)
+  25 0x7af4e81d in user32 (+0x1e81d) (0x0012eb38)
+  26 0x7ababbcb in comctl32 (+0x5bbcb) (0x0012eb68)
+  27 0x7abac07f in comctl32 (+0x5c07f) (0x0012ebcc)
+  28 0x7abad395 in comctl32 (+0x5d395) (0x0012ebf8)
+  29 0x7abaab72 in comctl32 (+0x5ab72) (0x0012eec0)
+  30 0x7af7c350 in user32 (+0x4c350) (0x0012eef0)
+  31 0x7af7daaf in user32 (+0x4daaf) (0x0012ef1c)
+  32 0x7af7da2b in user32 (+0x4da2b) (0x0012ef44)
+  33 0x7af4d642 in user32 (+0x1d642) (0x0012ef68)
+  34 0x7a2928bf in uxtheme (+0x28bf) (0x0012efb0)
+  35 0x7af4d7bf in user32 (+0x1d7bf) (0x0012efcc)
+  36 0x7af7c350 in user32 (+0x4c350) (0x0012effc)
+  37 0x7af7ccb4 in user32 (+0x4ccb4) (0x0012f024)
+  38 0x7af7d075 in user32 (+0x4d075) (0x0012f4c0)
+  39 0x7af7cddd in user32 (+0x4cddd) (0x0012f4e8)
+  40 0x7af6bb43 in user32 (+0x3bb43) (0x0012f528)
+  41 0x7af6bc07 in user32 (+0x3bc07) (0x0012f58c)
+  42 0x7af5029e in user32 (+0x2029e) (0x0012f5ac)
+  43 0x7abac9b9 in comctl32 (+0x5c9b9) (0x0012f5c8)
+  44 0x7aba8812 in comctl32 (+0x58812) (0x0012f600)
+  45 0x7aba7f0e in comctl32 (+0x57f0e) (0x0012f620)
+  46 0x0100a212 in dxwsetup (+0xa212) (0x0012f9c0)
+  47 0x010083ad in dxwsetup (+0x83ad) (0x0012fe28)
+  48 0x0100c77f in dxwsetup (+0xc77f) (0x0012ff50)
+  49 0x7bce24dc in kernel32 (+0x224dc) (0x0012ff68)
+  50 0x7be2a3fb in ntdll (+0x4a3fb) (0x0012ff7c)
+  51 0x7be2aca4 in ntdll (+0x4aca4) (0x0012ffec)
+0x01008573 dxwsetup+0x8573: calll *0x2c(%ecx)
+Modules:
+Module  Address                 Debug info      Name (28 modules)
+PE       1000000- 107c000       --none--        dxwsetup
+PE-Wine 79660000-796a0000       Deferred        inseng
+PE-Wine 796b0000-796be000       Deferred        msimg32
+PE-Wine 796d0000-796fb000       Deferred        shcore
+PE-Wine 79710000-797b4000       Deferred        shlwapi
+PE-Wine 797d0000-7a27c000       Deferred        shell32
+PE-Wine 7a290000-7a2fb000       COFF            uxtheme
+PE-Wine 7a310000-7a31e000       Deferred        winex11
+PE-Wine 7a330000-7a342000       Deferred        version
+PE-Wine 7a360000-7a3a2000       Deferred        coml2
+PE-Wine 7a3c0000-7a533000       Deferred        rpcrt4
+PE-Wine 7a550000-7a637000       Deferred        combase
+PE-Wine 7a650000-7a87a000       Deferred        ole32
+PE-Wine 7a890000-7aa7e000       Deferred        oleaut32
+PE-Wine 7aa90000-7aadf000       Deferred        oleacc
+PE-Wine 7aaf0000-7ab39000       Deferred        imm32
+PE-Wine 7ab50000-7ae48000       COFF            comctl32
+PE-Wine 7ae60000-7aec2000       Deferred        ws2_32
+PE-Wine 7aee0000-7af1a000       Deferred        win32u
+PE-Wine 7af30000-7b2d2000       COFF            user32
+PE-Wine 7b2f0000-7b463000       Deferred        gdi32
+PE-Wine 7b480000-7b670000       Deferred        msvcrt
+PE-Wine 7b680000-7b8e0000       Deferred        ucrtbase
+PE-Wine 7b8f0000-7b93d000       Deferred        sechost
+PE-Wine 7b950000-7b9ee000       Deferred        advapi32
+PE-Wine 7ba00000-7bcae000       Deferred        kernelbase
+PE-Wine 7bcc0000-7bdc5000       COFF            kernel32
+PE-Wine 7bde0000-7bfe8000       COFF            ntdll
+Threads:
+process  tid      prio    name (all IDs are in hex)
+00000020 start.exe
+	00000024    0     
+00000030 services.exe
+	00000034    0     
+	00000038    0     wine_rpcrt4_server
+	00000044    0     wine_rpcrt4_io
+	00000054    0     wine_rpcrt4_io
+	0000006c    0     wine_rpcrt4_io
+	00000078    0     wine_rpcrt4_io
+	00000098    0     wine_rpcrt4_io
+	000000a8    0     
+	000000cc    0     wine_rpcrt4_io
+0000003c winedevice.exe
+	00000040    0     
+	0000004c    0     
+	00000050    0     wine_sechost_service
+	00000058    0     
+	00000060    0     
+00000064 winedevice.exe
+	00000068    0     
+	00000070    0     
+	00000074    0     wine_sechost_service
+	0000007c    0     
+	00000090    0     
+	00000094    0     
+00000088 plugplay.exe
+	0000008c    0     
+	0000009c    0     
+	000000a0    0     wine_sechost_service
+	000000a4    0     wine_rpcrt4_server
+000000ac explorer.exe
+	000000b0    0     
+	000000b4    0     
+	000000b8    0     wine_explorer_display_settings_restorer
+	000000bc    0     
+	000000c8    0     wine_rpcrt4_server
+000000c0 winhandler.exe
+	000000c4    0     
+	000000d0    0     
+000000d4 wfm.exe
+	000000d8    0     
+0000013c dxwebsetup.exe
+	00000140    0     
+00000144 (D) C:\users\xuser\AppData\Local\Temp\IXP000.TMP\dxwsetup.exe
+	00000148    0 <== 
+	0000015c    0     
+00000154 conhost.exe
+	00000158    0     
+System information:
+    Wine build: wine-10.0
+    Platform: arm64 (guest: i386)
+    Version: Windows 10
+    Host system: Linux
+    Host version: 6.12.23-android16-5-g82efd98459a2-ab14457512-4k
+_r_debug not found in ld.so
+0164:fixme:fsync:do_fsync futexes not supported on this platform.
+0164:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\_Redist\\QuickSFV.EXE" in experimental wow64 mode
+0164:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0164:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0164:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+_r_debug not found in ld.so
+0170:fixme:fsync:do_fsync futexes not supported on this platform.
+0170:err:environ:init_peb starting L"F:\\Games Emulation\\Games\\Virtua Tennis 4\\Launcher.exe" in experimental wow64 mode
+0170:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0170:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0170:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+0170:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+0170:fixme:wbemprox:client_security_SetBlanket 782C7848, 030C0340, 10, 0, (null), 3, 3, 00000000, 0
+0170:fixme:wbemprox:client_security_Release 782C7848
+0170:fixme:wbemprox:enum_class_object_Next timeout not supported
+
+Unhandled Exception:
+System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+  at Launcher.Program.Main () [0x0000b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+[ERROR] FATAL UNHANDLED EXCEPTION: System.NullReferenceException: Object reference not set to an instance of an object
+  at RegistryData.ReadSaveLocationFromRegistry () [0x0001b] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at FileHandler.LoadConfigFile (ConfigFileData& SaveData) [0x00000] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at Launcher.MainForm..ctor () [0x00108] in <cfbe1798ade545708369a9b0f3cf82bf>:0 
+  at (wrapper remoting-invoke-with-check) Launcher.MainForm..ctor()
+0170:fixme:msvcrt:__clean_type_info_names_internal (78ECCE30) stub
+_r_debug not found in ld.so
+0180:fixme:fsync:do_fsync futexes not supported on this platform.
+0180:err:environ:init_peb starting L"F:\\Download\\GameHub\\\654e\2077\6f46\646c\7265\\speed.exe" in experimental wow64 mode
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff480,0x00000004) stub
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x1001ff4a8,0x00000008) stub
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x1001ff4c0,0x00000004) stub
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: Setting max staging cache size to 128 MB
+[info]: Setting queue throttle limit to 24
+0180:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+
+================ LOG 2 ================
+Winlator-Mali 1.1 (WFM) - Wine 10 ARM64EC - Football Life launcher/game/settings
+========================================
+_r_debug not found in ld.so
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:hid:pdo_pnp_dispatch Failed to start device 00000000008D3390, status 0xc0000005
+0070:fixme:hid:bus_create_hid_device failed to create device error 0xc0000035
+_r_debug not found in ld.so
+0090:fixme:fsync:do_fsync futexes not supported on this platform.
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00b4:fixme:fsync:do_fsync futexes not supported on this platform.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+_r_debug not found in ld.so
+00c8:fixme:fsync:do_fsync futexes not supported on this platform.
+00c8:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+00c8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21ccd0,0x00000004) stub
+00c8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccf8,0x00000008) stub
+00c8:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+00b4:err:ole:start_rpcss Failed to start RpcSs service
+00b4:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+_r_debug not found in ld.so
+00dc:fixme:fsync:do_fsync futexes not supported on this platform.
+00dc:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+00dc:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21ccd0,0x00000004) stub
+00dc:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x21ccf8,0x00000008) stub
+00dc:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x21cd60,0x00000004) stub
+_r_debug not found in ld.so
+00e4:fixme:fsync:do_fsync futexes not supported on this platform.
+00e4:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\FL 2026 start.exe" in experimental ARM64EC mode
+00e4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x19ccd0,0x00000004) stub
+00e4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x19ccf8,0x00000008) stub
+00e4:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x19cd60,0x00000004) stub
+_r_debug not found in ld.so
+00ec:fixme:fsync:do_fsync futexes not supported on this platform.
+00e4:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F384,0000000000000000): stub
+00e4:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000019F340
+00e4:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F340,0000000000000000): stub
+00e4:fixme:seh:WerRegisterRuntimeExceptionModule (L"F:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00e4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00e4:err:virtual:virtual_setup_exception stack overflow 1808 bytes addr 0x4fffafff9c stack 0x208f0 (0x20000-0x21000-0x1a0000)
+_r_debug not found in ld.so
+0104:fixme:fsync:do_fsync futexes not supported on this platform.
+0104:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\FL_2026.exe" in experimental ARM64EC mode
+0104:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11ccd0,0x00000004) stub
+0104:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x11ccf8,0x00000008) stub
+0104:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11cd60,0x00000004) stub
+_r_debug not found in ld.so
+010c:fixme:fsync:do_fsync futexes not supported on this platform.
+010c:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\Settings.exe" in experimental ARM64EC mode
+010c:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x41ccd0,0x00000004) stub
+010c:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x41ccf8,0x00000008) stub
+010c:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x41cd60,0x00000004) stub
+010c:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0104:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0104:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+field __ImageBase in <Module> should have RVA data, but hasn't
+field __ImageBase in <Module> should have RVA data, but hasn't
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:wbemprox:wbem_services_CreateInstanceEnum unsupported flags 0x30
+010c:fixme:wbemprox:enum_class_object_Next timeout not supported
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+010c:fixme:dxdiag:vendor_id_to_manufacturer_string Unknown PCI vendor ID 0x13b5.
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: Setting max staging cache size to 128 MB
+[info]: Setting queue throttle limit to 24
+0104:err:virtual:virtual_setup_exception stack overflow 1952 bytes addr 0x4fffafff9c stack 0x20860 (0x20000-0x21000-0x120000)
+_r_debug not found in ld.so
+0120:fixme:fsync:do_fsync futexes not supported on this platform.
+0120:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\Settings.exe" in experimental ARM64EC mode
+0120:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x41ccd0,0x00000004) stub
+0120:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x41ccf8,0x00000008) stub
+0120:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x41cd60,0x00000004) stub
+0120:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Wrapper(Mali-G1-Ultra MC12)) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 4261157248 created
+Mesa: warning: Window 50332350 has no colormap!
+Mesa: warning: Window 50332354 has no colormap!
+MESA: info: threaded context 4265371136 created
+Mesa: warning: MakeCurrent: incompatible visuals for context and drawbuffer
+Mesa: warning: MakeCurrent: incompatible visuals for context and readbuffer
+MESA: info: threaded context 16017984 created
+MESA: info: threaded context 16019136 created
+MESA: info: threaded context 16019264 created
+010c:fixme:d3d:wined3d_guess_card No card selector available for card vendor 0000 (using GL_RENDERER "zink Vulkan 1.3(Wrapper(Mali-G1-Ultra MC12) (ARM_PROPRIETARY))").
+010c:fixme:ddraw:ddraw7_Initialize Ignoring guid {e8800010-0001-0000-0000-000000000000}.
+Mesa: warning: Window 50332361 has no colormap!
+MESA: info: threaded context 448525440 created
+ALSA lib seq.c:1011:(snd_seq_open_noupdate) Unknown SEQ default
+[info]: Enabling storageBuffer8BitAccess
+[info]: Enabling storageBuffer16BitAccess
+[info]: Enabling shaderFloat16 and shaderInt8
+[info]: Setting max staging cache size to 128 MB
+[info]: Setting queue throttle limit to 24
+010c:fixme:wbemprox:wbem_services_CreateInstanceEnum unsupported flags 0x30
+010c:fixme:dxdiag:vendor_id_to_manufacturer_string Unknown PCI vendor ID 0x13b5.
+Mesa: warning: Window 50332380 has no colormap!
+MESA: info: threaded context 4275842880 created
+Mesa: warning: MakeCurrent: incompatible visuals for context and drawbuffer
+Mesa: warning: MakeCurrent: incompatible visuals for context and readbuffer
+MESA: info: threaded context 4263068416 created
+MESA: info: threaded context 4263071040 created
+MESA: info: threaded context 4263069440 created
+010c:fixme:d3d:wined3d_guess_card No card selector available for card vendor 0000 (using GL_RENDERER "zink Vulkan 1.3(Wrapper(Mali-G1-Ultra MC12) (ARM_PROPRIETARY))").
+010c:fixme:ddraw:ddraw7_Initialize Ignoring guid {e8800010-0001-0000-0000-000000000000}.
+Mesa: warning: Window 50332387 has no colormap!
+MESA: info: threaded context 4078021056 created
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:oleacc:find_class_data unhandled window class: L"WindowsForms10.COMBOBOX.app.0.ac1d7846_r9_ad0"
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+010c:fixme:gdiplus:GdipGetLineSpacing ignoring style
+0118:fixme:uiautomation:UiaReturnRawElementProvider UIA-to-MSAA bridge not implemented, no provider map to free.
+
+Unhandled Exception:
+System.Exception: Unexpected number of bits: 0
+  at System.Drawing.Icon.BuildBitmapOnWin32 () [0x00201] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.GetInternalBitmap () [0x0004e] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.ToBitmap () [0x00018] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.get_Handle () [0x00044] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at (wrapper remoting-invoke-with-check) System.Drawing.Icon.get_Handle()
+  at System.Windows.Forms.Form.UpdateWindowIcon (System.Boolean redrawFrame) [0x000a6] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Form.CreateHandle () [0x000f7] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Control.get_Handle () [0x00041] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Control.get_Handle()
+  at System.Windows.Forms.Control.SetVisibleCore (System.Boolean value) [0x00049] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Form.SetVisibleCore (System.Boolean value) [0x000d1] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Control.set_Visible (System.Boolean value) [0x00001] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Control.set_Visible(bool)
+  at System.Windows.Forms.Application+ThreadContext.RunMessageLoopInner (System.Int32 reason, System.Windows.Forms.ApplicationContext context) [0x000cb] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Application+ThreadContext.RunMessageLoop (System.Int32 reason, System.Windows.Forms.ApplicationContext context) [0x0001a] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Application+ThreadContext.RunMessageLoop(int,System.Windows.Forms.ApplicationContext)
+  at System.Windows.Forms.Application.Run (System.Windows.Forms.Form mainForm) [0x0000d] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at Settings.Program.Main () [0x00025] in <6fe256141e7245418716e94e6dfd8d74>:0 
+[ERROR] FATAL UNHANDLED EXCEPTION: System.Exception: Unexpected number of bits: 0
+  at System.Drawing.Icon.BuildBitmapOnWin32 () [0x00201] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.GetInternalBitmap () [0x0004e] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.ToBitmap () [0x00018] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at System.Drawing.Icon.get_Handle () [0x00044] in <cf01cf071e764982a0f6bb8c6f5517e3>:0 
+  at (wrapper remoting-invoke-with-check) System.Drawing.Icon.get_Handle()
+  at System.Windows.Forms.Form.UpdateWindowIcon (System.Boolean redrawFrame) [0x000a6] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Form.CreateHandle () [0x000f7] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Control.get_Handle () [0x00041] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Control.get_Handle()
+  at System.Windows.Forms.Control.SetVisibleCore (System.Boolean value) [0x00049] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Form.SetVisibleCore (System.Boolean value) [0x000d1] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Control.set_Visible (System.Boolean value) [0x00001] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Control.set_Visible(bool)
+  at System.Windows.Forms.Application+ThreadContext.RunMessageLoopInner (System.Int32 reason, System.Windows.Forms.ApplicationContext context) [0x000cb] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at System.Windows.Forms.Application+ThreadContext.RunMessageLoop (System.Int32 reason, System.Windows.Forms.ApplicationContext context) [0x0001a] in <e0259ba767c84223aed6e194cfadaa13>:0 
+  at (wrapper remoting-invoke-with-check) System.Windows.Forms.Application+ThreadContext.RunMessageLoop(int,System.Windows.Forms.ApplicationContext)
+  at System.Windows.Forms.Application.Run (System.Windows.Forms.Form mainForm) [0x0000d] in <e0259ba767c84223aed6e194cfadaa13>:0 
+0174:err:mscoree:expect_no_runtimes Process exited with a Mono runtime loaded.
+libc++abi: terminating
+0174:err:seh:call_seh_handlers invalid frame 1024ff3a0 (0000000009592000-0000000009990000)
+_r_debug not found in ld.so
+0180:fixme:fsync:do_fsync futexes not supported on this platform.
+0180:err:environ:init_peb starting L"F:\\Football Life\\SP Football Life 2026\\FL_2026.exe" in experimental ARM64EC mode
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11ccd0,0x00000004) stub
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d1,0x11ccf8,0x00000008) stub
+0180:fixme:process:NtSetInformationProcess (0xffffffffffffffff,0x000007d0,0x11cd60,0x00000004) stub
+0180:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0180:err:ntlm:ntlm_LsaApInitializePackage no NTLM support, expect problems
+0180:err:virtual:virtual_setup_exception stack overflow 1952 bytes addr 0x4fffafff9c stack 0x20860 (0x20000-0x21000-0x120000)
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+
+================ LOG 3 ================
+Bannerlator 2.9.4 - Proton 11.0-1 x86-64 (Box64) - ESYNC on - FL 2026 start.exe (.NET GC heap crash)
+========================================
+sh: lscpu: inaccessible or not found
+esync: shm initialized, fd=3 size=4096 pagesize=4096
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+002c:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+002c:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0034:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0034:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0040:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0040:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0058:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0058:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0024:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0024:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00b4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.03] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[000.05] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[34688.667898] (explorer.exe) [MEMPROF] Memory instrumentation via debugfs enabled
+[info]: create_bcn_compute_pipelines took 775 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 3059319936 created
+Mesa: warning: Window 4194306 has no colormap!
+00c8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00c8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b4:err:ole:start_rpcss Failed to start RpcSs service
+00b4:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+00dc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00dc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e4:err:mscoree:CLRRuntimeInfo_GetRuntimeHost Wine Mono is not installed
+00ec:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00ec:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00ec:err:mscoree:CLRRuntimeInfo_GetRuntimeHost Wine Mono is not installed
+00f4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00f4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00fc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00fc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00f4:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F354,0000000000000000): stub
+00f4:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F310
+00f4:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F310,0000000000000000): stub
+00f4:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00f4:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00f4:err:virtual:allocate_virtual_memory out of memory for allocation, base 0x0 size 3ffcf59000
+00f4:fixme:advapi:RegisterEventSourceW ((null),L".NET Runtime"): stub
+00f4:fixme:advapi:ReportEventW (00000000CAFE4242,0x0001,0x0000,0x000003ff,0000000000000000,0x0001,0x00000000,000000000029FDA0,0000000000000000): stub
+00f4:err:eventlog:ReportEventW L"Description: A .NET application failed.\n"
+00f4:err:eventlog:ReportEventW L"Application: FL 2026 start.exe\n"
+00f4:err:eventlog:ReportEventW L"Path: E:\\Football Life\\SP Football Life 2026\\FL 2026 start.exe\n"
+00f4:err:eventlog:ReportEventW L"Message: GC heap initialization failed with error 0x8007000E\n"
+00f4:err:eventlog:ReportEventW L"Failed to create CoreCLR, HRESULT: 0x8007000E\n"
+00f4:err:eventlog:ReportEventW L"\n"
+00f4:fixme:advapi:DeregisterEventSource (00000000CAFE4242) stub
+010c:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+010c:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0114:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0114:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+010c:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F354,0000000000000000): stub
+010c:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F310
+010c:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F310,0000000000000000): stub
+010c:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+010c:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+010c:err:virtual:allocate_virtual_memory out of memory for allocation, base 0x0 size 3ffcf29000
+010c:fixme:advapi:RegisterEventSourceW ((null),L".NET Runtime"): stub
+010c:fixme:advapi:ReportEventW (00000000CAFE4242,0x0001,0x0000,0x000003ff,0000000000000000,0x0001,0x00000000,000000000029FDA0,0000000000000000): stub
+010c:err:eventlog:ReportEventW L"Description: A .NET application failed.\n"
+010c:err:eventlog:ReportEventW L"Application: FL 2026 start.exe\n"
+010c:err:eventlog:ReportEventW L"Path: E:\\Football Life\\SP Football Life 2026\\FL 2026 start.exe\n"
+010c:err:eventlog:ReportEventW L"Message: GC heap initialization failed with error 0x8007000E\n"
+010c:err:eventlog:ReportEventW L"Failed to create CoreCLR, HRESULT: 0x8007000E\n"
+010c:err:eventlog:ReportEventW L"\n"
+010c:fixme:advapi:DeregisterEventSource (00000000CAFE4242) stub
+00b4:fixme:shell:ISF_ControlPanel_fnGetDisplayNameOf retrieve display name from control panel app
+00b4:fixme:shell:ISF_ControlPanel_fnGetDisplayNameOf retrieve display name from control panel app
+00b4:fixme:shell:ISF_ControlPanel_fnGetDisplayNameOf retrieve display name from control panel app
+00b4:fixme:shell:ISF_ControlPanel_fnGetDisplayNameOf retrieve display name from control panel app
+00b4:fixme:exec:SHELL_execute flags ignored: 0x00000004
+00b4:fixme:exec:SHELL_execute flags ignored: 0x00004000
+0124:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0124:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0124:fixme:urlmon:InternetBindInfo_GetBindString not supported string type 20
+0124:fixme:file:NtLockFile I/O completion on lock not implemented yet
+0124:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0138:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0138:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0138:fixme:file:NtLockFile I/O completion on lock not implemented yet
+0138:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0140:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0140:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0148:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0148:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0150:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0150:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0138:fixme:msi:internal_ui_handler internal UI not implemented for message 0x0b000000 (UI level = 5)
+0138:fixme:msi:internal_ui_handler internal UI not implemented for message 0x0b000000 (UI level = 5)
+0124:fixme:msi:internal_ui_handler internal UI not implemented for message 0x0b000000 (UI level = 1)
+0124:fixme:msi:internal_ui_handler internal UI not implemented for message 0x0b000000 (UI level = 1)
+0158:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0158:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0158:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0160:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0160:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0160:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+
+================ LOG 4 ================
+Bannerlator 2.9.4 - Proton 11.0-1 x86-64 (Box64) - ESYNC on - stack overflow + .NET execute page fault
+========================================
+sh: lscpu: inaccessible or not found
+esync: shm initialized, fd=3 size=4096 pagesize=4096
+esync: up and running.
+Failed to open /etc/machine-id, error No such file or directory.
+002c:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+002c:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0034:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0034:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0040:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0040:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0058:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0058:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winehid" failed to start: 1056
+0074:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0024:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0024:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+00a4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00a4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.07] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[000.09] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[35842.544682] (explorer.exe) [MEMPROF] Memory instrumentation via debugfs enabled
+[info]: create_bcn_compute_pipelines took 764 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 3093048640 created
+Mesa: warning: Window 4194306 has no colormap!
+00c4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00c4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00a4:err:ole:start_rpcss Failed to start RpcSs service
+00a4:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+00d8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00d8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e0:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e0:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e0:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F354,0000000000000000): stub
+00e0:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F310
+00e0:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F310,0000000000000000): stub
+00e0:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00e0:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00e0:err:virtual:virtual_setup_exception stack overflow 2048 bytes addr 0x6fffd77ec6 stack 0x120800 (0x120000-0x121000-0x2a0000)
+00fc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00fc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00fc:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0104:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0104:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0104:err:mscoree:CLRRuntimeInfo_GetRuntimeHost Wine Mono is not installed
+wine: Unhandled page fault on execute access to 0000000020592135 at address 0000000020592135 (thread 00fc), starting debugger...
+[BOX64] winedbg detected, not launching it!
+0114:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0114:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00fc:err:seh:start_debugger Couldn't start debugger L"winedbg --auto 248 188" (731)
+Read the Wine Developers Guide on how to set up winedbg or another debugger
+0114:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F344,0000000000000000): stub
+0114:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F300
+0114:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F300,0000000000000000): stub
+0114:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+0114:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0114:err:virtual:virtual_setup_exception stack overflow 2112 bytes addr 0x6fffd77ec6 stack 0x1207c0 (0x120000-0x121000-0x2a0000)
+
+================ LOG 5 ================
+Bannerlator 2.9.4 - Proton 11.0-1 x86-64 (Box64) - ESYNC OFF (server-side sync) - stack overflow
+========================================
+sh: lscpu: inaccessible or not found
+wineserver: using server-side synchronization.
+Failed to open /etc/machine-id, error No such file or directory.
+002c:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+002c:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0034:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0034:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0040:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0040:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0058:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0058:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0024:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0024:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00b8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.03] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[000.05] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[36262.505620] (explorer.exe) [MEMPROF] Memory instrumentation via debugfs enabled
+[info]: create_bcn_compute_pipelines took 750 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 2171947392 created
+Mesa: warning: Window 4194306 has no colormap!
+00cc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00cc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b8:err:ole:start_rpcss Failed to start RpcSs service
+00b8:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+00e0:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e0:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e0:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F354,0000000000000000): stub
+00e0:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F310
+00e0:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F310,0000000000000000): stub
+00e0:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00e0:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00e0:err:virtual:virtual_setup_exception stack overflow 2048 bytes addr 0x7fffd77ec6 stack 0x120800 (0x120000-0x121000-0x2a0000)
+
+================ LOG 6 ================
+Bannerlator 2.9.4 - Proton 11.0-1 x86-64 (Box64) - ESYNC OFF - .NET execute page fault + stack overflow
+========================================
+sh: lscpu: inaccessible or not found
+wineserver: using server-side synchronization.
+Failed to open /etc/machine-id, error No such file or directory.
+002c:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+002c:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0034:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0034:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0040:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0040:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0058:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0058:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0074:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0024:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+0024:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00b4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.03] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[000.04] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[37660.320442] (explorer.exe) [MEMPROF] Memory instrumentation via debugfs enabled
+[info]: create_bcn_compute_pipelines took 805 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 3439935488 created
+Mesa: warning: Window 4194306 has no colormap!
+00c8:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00c8:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00b4:err:ole:start_rpcss Failed to start RpcSs service
+00b4:err:explorer:start_tabtip_process Couldn't start tabtip.exe: error 2
+00dc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00dc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e4:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00e4:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+00e4:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+00ec:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00ec:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+wine: Unhandled page fault on execute access to 0000000020592135 at address 0000000020592135 (thread 00e4), starting debugger...
+00fc:err:seh:install_bpf Native libs are being loaded in low addresses, sc_seccomp 0x3f00094b80, syscall 0x600201a0, not installing seccomp.
+00fc:err:seh:install_bpf The known reasons are /proc/sys/vm/legacy_va_layout set to 1 or 'ulimit -s' being 'unlimited'.
+[BOX64] winedbg detected, not launching it!
+00ec:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F354,0000000000000000): stub
+00ec:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000029F310
+00ec:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000029F310,0000000000000000): stub
+00ec:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+00ec:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+00e4:err:seh:start_debugger Couldn't start debugger L"winedbg --auto 224 188" (731)
+Read the Wine Developers Guide on how to set up winedbg or another debugger
+00ec:err:virtual:virtual_setup_exception stack overflow 2048 bytes addr 0x6fffd77ec6 stack 0x120800 (0x120000-0x121000-0x2a0000)
+
+================ LOG 7 ================
+Bannerlator 2.9.4 - ARM64EC container + FEXCore unixlibs (proton-11.0-1-arm64ec-unixlibs-sdk35) - ESYNC OFF
+========================================
+sh: lscpu: inaccessible or not found
+wineserver: using server-side synchronization.
+Failed to open /etc/machine-id, error No such file or directory.
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+006c:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+0080:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+0080:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0080:fixme:xinput:pdo_pnp code 0xc, not implemented!
+[info]: create_bcn_compute_pipelines took 791 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 2356635200 created
+Mesa: warning: Window 4194306 has no colormap!
+libc++abi: terminating
+0098:err:seh:call_seh_handlers invalid frame 1000ff810 (0000000000022000-0000000000120000)
+0098:err:seh:NtRaiseException Exception frame is not in stack limits => unable to dispatch exception.
+0090:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+0090:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+_r_debug not found in ld.so
+00c4:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+00c4:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:register_fake_dll failed to create IRegistrar: 80004002
+00c4:err:setupapi:SetupDefaultQueueCallbackW copy error 1812 L"@C:\\windows\\system32\\drivers\\wineusb.sys,-1" -> L"C:\\windows\\inf\\wineusb.inf"
+_r_debug not found in ld.so
+00cc:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+00cc:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+010c:err:nsi:poll_events bind failed, errno 13.
+_r_debug not found in ld.so
+0114:err:winediag:nodrv_CreateWindow Application tried to create a window, but no driver could be loaded.
+0114:err:winediag:nodrv_CreateWindow L"The explorer process failed to start."
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+wine: failed to start L"C:\\windows\\sysarm32\\rundll32.exe": c0000135
+_r_debug not found in ld.so
+Could not open module param file '/sys/module/mali_kbase/parameters/large_page_conf'
+[000.04] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[000.04] [ERROR] WARNING: this wrapper may not be compatible for non-dxvk game engines, use at your own risks 	 (enumerate_physical_device:218)
+[info]: Adding extension VK_EXT_device_fault
+[info]: Enabling VK_EXT_device_fault features
+[38768.879281] (explorer.exe) [MEMPROF] Memory instrumentation via debugfs enabled
+[info]: create_bcn_compute_pipelines took 812 ms
+WARNING: Some incorrect rendering might occur because the selected Vulkan device (Mali-G1-Ultra MC12) doesn't support base Zink requirements: feats.features.fillModeNonSolid feats.features.shaderClipDistance 
+MESA: info: threaded context 369152384 created
+Mesa: warning: Window 4194311 has no colormap!
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+0188:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0188:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+0188:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+0188:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+0188:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 00000000006EEC18, 000000000011FC08: stub!
+0188:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 00000000006EEC18, 000000000011FBF8: stub!
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000755280, 10002, 000000000157F980: stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000755280, 10002, 000000000157F980: stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"SysListView32"
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000755280, 10002, 000000000157F980: stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+_r_debug not found in ld.so
+_r_debug not found in ld.so
+0218:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F384,0000000000000000): stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0218:fixme:heap:GetNumaHighestNodeNumber semi-stub: 000000000019F340
+0218:fixme:process:GetProcessGroupAffinity (FFFFFFFFFFFFFFFF,000000000019F340,0000000000000000): stub
+0218:fixme:seh:WerRegisterRuntimeExceptionModule (L"E:\\Football Life\\SP Football Life 2026\\mscordaccore.dll", 0000000140000000) stub
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000755280, 10002, 000000000157F980: stub
+0218:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0218:err:virtual:virtual_setup_exception stack overflow 1808 bytes addr 0x6ffff089c8 stack 0x208f0 (0x20000-0x21000-0x1a0000)
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000072AFF0, 10002, 000000000157F980: stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"SysListView32"
+0194:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0194:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000074C9C0, 10002, 000000000157F980: stub
+0194:fixme:oleacc:find_class_data unhandled window class: L"#32768"
+_r_debug not found in ld.so
+0258:err:kerberos:kerberos_LsaApInitializePackage no Kerberos support, expect problems
+0194:fixme:oleacc:find_class_data unhandled window class: L"#32768"
+_r_debug not found in ld.so
+0264:err:mscoree:CLRRuntimeInfo_GetRuntimeHost Wine Mono is not installed
+0258:err:virtual:virtual_setup_exception stack overflow 4128 bytes addr 0x6ffff089c8 stack 0x1ffe0 (0x20000-0x21000-0x120000)

@@ -48,6 +48,11 @@ internal data class HudSnapshot(
     val clock: String,
     val cpuTemp: String?,
     val gpuTemp: String?,
+    // Raw °C alongside the formatted strings: the band colour is computed from the reading, and the
+    // string may already be in °F. Thresholds are always °C.
+    val cpuTempC: Float? = null,
+    val gpuTempC: Float? = null,
+    val batteryTempC: Float? = null,
 )
 
 internal data class HudAppearance(

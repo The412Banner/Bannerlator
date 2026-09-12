@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-13T22-48-32-ea612e",
+  "created": "2026-08-13T22:48:32.894Z",
+  "ip_hash": "2p53AfE5LZ",
+  "fields": {
+    "reporter_name": "Oscar",
+    "device_model": "S24 ultra",
+    "soc": "Snapdragon 8 gen 3",
+    "gpu": "Adreno 750",
+    "android": "Android 15 one ui 7",
+    "ram": "12",
+    "app_version": "2.9.9",
+    "install_source": "Lanzamiento en GitHub",
+    "game_name": "Todos los juegos",
+    "steam_appid": "",
+    "store": "Otro",
+    "exe": "Re2.exe",
+    "symptom": "Otro",
+    "when": "El juego se bloquea después de un rato.",
+    "graphics_driver": "Turnip",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.4.1",
+    "proton": "Proton 9",
+    "box64": "Rendimiento compatibilidad",
+    "resolution": "1280×720",
+    "framegen": "No",
+    "repro": "Abro el juego y al pulsar un botón ya sea del mando físico o de el mando virtual se cierra el juego, si desactivo el mando funciona bien con el teclado y mouse pero al conectar nuevamente el mando si se detecta una pulsacion con el mando se cierra.",
+    "tried": "He cambiado todas las configuraciones posibles solo desactivando el mando y jugando con mouse y teclado funciona"
+  },
+  "logs": [
+    {
+      "name": "Screen_Recording_20260813_164324_Bannerlator_Bionic.mp4"
+    }
+  ]
+}

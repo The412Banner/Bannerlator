@@ -19,10 +19,11 @@ object InAppFilePicker {
 
     // Common allowed-extension sets, shared across import call sites.
     val WCP = arrayOf("wcp", "tzst", "xz", "zst", "zip")           // content packs (proton/dxvk/box64/…)
-    val ICP = arrayOf("icp")                                        // input control profiles
+    val ICP = arrayOf("icp", "icpx")                               // legacy and extended input profiles
     val IMAGES = arrayOf("png", "jpg", "jpeg", "webp", "bmp", "gif") // wallpapers / custom icons
     val DLL = arrayOf("dll")                                        // e.g. Lossless.dll (frame gen)
     val DRIVER = arrayOf("zip", "adpkg")                            // AdrenoTools driver packages
+    val WRAPPER = arrayOf("tzst")                                   // graphics wrapper overrides (issue #132)
     val SAVE = arrayOf("zip", "tzst", "zst", "xz", "tar")           // exported save archives
     val SF2 = arrayOf("sf2")                                        // MIDI sound fonts
     val SHORTCUT = arrayOf("exe", "desktop", "lnk")                 // shortcut import sources
@@ -34,16 +35,22 @@ object InAppFilePicker {
      * @param title      optional header title.
      * @param initialDir optional start directory; when null the picker resumes at the remembered
      *                   last directory, then Download, then storage root.
+     * @param driveCPath optional absolute path of the chosen container's C: drive
+     *                   (`<container>/.wine/drive_c`). When set, the picker surfaces a working
+     *                   "Drive C:" location so the user can browse/pick a game that lives on it;
+     *                   the default landing is unchanged. Null (the common case) = no C: option.
      */
     fun buildIntent(
         context: Context,
         extensions: Array<String> = emptyArray(),
         title: String? = null,
         initialDir: String? = null,
+        driveCPath: String? = null,
     ): Intent = Intent(context, FilePickerActivity::class.java).apply {
         putExtra(FilePickerActivity.EXTRA_EXTENSIONS, extensions)
         title?.let { putExtra(FilePickerActivity.EXTRA_PICKER_TITLE, it) }
         initialDir?.let { putExtra(FilePickerActivity.EXTRA_INITIAL_DIRECTORY, it) }
+        driveCPath?.let { putExtra(FilePickerActivity.EXTRA_CONTAINER_DRIVE_C, it) }
     }
 
     /**
@@ -55,10 +62,12 @@ object InAppFilePicker {
         context: Context,
         title: String? = null,
         initialDir: String? = null,
+        driveCPath: String? = null,
     ): Intent = Intent(context, FilePickerActivity::class.java).apply {
         putExtra(FilePickerActivity.EXTRA_PICK_DIRECTORY, true)
         title?.let { putExtra(FilePickerActivity.EXTRA_PICKER_TITLE, it) }
         initialDir?.let { putExtra(FilePickerActivity.EXTRA_INITIAL_DIRECTORY, it) }
+        driveCPath?.let { putExtra(FilePickerActivity.EXTRA_CONTAINER_DRIVE_C, it) }
     }
 
     /** Extract the picked path from an OK result's data intent, or null. */

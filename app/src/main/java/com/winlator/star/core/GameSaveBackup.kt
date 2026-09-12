@@ -47,8 +47,39 @@ object GameSaveBackup {
      */
     enum class BackupLayout { GAMEHUB, WINLATOR }
 
-    data class RestoreResult(val ok: Boolean, val filesWritten: Int, val error: String?)
+    data class RestoreResult(
+        val ok: Boolean,
+        val filesWritten: Int,
+        val error: String?,
+        /**
+         * Emulator account ids in the backup that DISAGREE with the ones the target prefix is
+         * already using. Held back rather than applied, because the id is prefix-global: silently
+         * repointing it would fix this game's saves and orphan every other emulated game's in the
+         * same container. The caller asks the user, then calls [applyEmuIdentity] or
+         * [discardEmuIdentity] per entry. Empty on the common paths — a matching id, or a rebuilt
+         * prefix with no id at all, is applied during the restore with nothing to ask about.
+         */
+        val emuConflicts: List<EmuIdConflict> = emptyList(),
+    )
+
     data class BackupResult(val ok: Boolean, val path: String?, val fileCount: Int, val error: String?)
+
+    /**
+     * One emulator's identity from a backup, staged on disk and awaiting the user's decision.
+     * [stagedDir] holds the backup's copy of [root]; applying it copies that over the prefix.
+     */
+    data class EmuIdConflict(
+        val label: String,
+        val root: String,
+        val currentId: String,
+        val backupId: String,
+        val stagedDir: String,
+        val containerRootDir: String,
+    ) {
+        /** The save folder [backupId] names, for a message the user can match against their saves. */
+        val backupSaveFolder: String? get() = EmuAccountIdentity.accountFolderId(backupId)
+        val currentSaveFolder: String? get() = EmuAccountIdentity.accountFolderId(currentId)
+    }
 
     // ---------------------------------------------------------------- restore (import)
 
@@ -77,6 +108,15 @@ object GameSaveBackup {
 
     private fun doRestore(context: Context, uri: Uri, container: Container): RestoreResult {
         val driveC = File(container.rootDir, ".wine/drive_c")
+        val profile = File(driveC, "users/${ImageFs.USER}")
+        // Emulator identity is diverted here first instead of straight into the prefix: whether it
+        // may be applied depends on the id, which can arrive in a later entry than the file holding
+        // it, and a conflict must survive the stream so the user can be asked afterwards.
+        val stagingRoot = File(context.cacheDir, "emu-id-restore")
+        // Sweep any previous restore's leftovers first: a new restore supersedes an unanswered
+        // conflict from an old one, and this keeps the cache from accreting stale prefixes.
+        stagingRoot.deleteRecursively()
+        val staging = File(stagingRoot, System.currentTimeMillis().toString())
         // Canonical base for the Zip-Slip guard — resolves ".." lexically and follows symlinks
         // on the existing prefix, so an escaping entry can't slip past it.
         val driveCCanon = driveC.canonicalFile
@@ -94,8 +134,15 @@ object GameSaveBackup {
                     if (rel != null) {
                         val out = File(driveC, rel).canonicalFile
                         if (out.path == driveCCanon.path || out.path.startsWith(basePrefix)) {
+                            // Emulator identity is diverted to staging; save data lands in the prefix.
+                            val identityRel = profileRelative(rel)
+                                ?.takeIf { EmuAccountIdentity.isIdentityPath(it) }
                             if (entry.isDirectory) {
-                                out.mkdirs()
+                                if (identityRel == null) out.mkdirs()
+                            } else if (identityRel != null) {
+                                val staged = File(staging, identityRel)
+                                staged.parentFile?.mkdirs()
+                                Files.copy(zis, staged.toPath(), StandardCopyOption.REPLACE_EXISTING)
                             } else {
                                 out.parentFile?.mkdirs()
                                 Files.copy(zis, out.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -108,7 +155,112 @@ object GameSaveBackup {
                 }
             }
         }
-        return RestoreResult(true, written, null)
+
+        val (applied, conflicts) = resolveEmuIdentity(staging, profile, container)
+        if (conflicts.isEmpty()) staging.deleteRecursively()
+        return RestoreResult(true, written + applied, null, conflicts)
+    }
+
+    /**
+     * Decides what to do with each emulator identity staged out of a backup:
+     *
+     *  - the prefix has no id yet (a fresh or rebuilt prefix — the case that loses saves) → apply it,
+     *    which is the whole point of carrying the id in the backup;
+     *  - the ids match → apply it, a no-op the user need not hear about;
+     *  - they differ → hold it back and report a conflict for the caller to ask about.
+     *
+     * Returns the number of files written and the conflicts left staged.
+     */
+    private fun resolveEmuIdentity(
+        staging: File,
+        profile: File,
+        container: Container,
+    ): Pair<Int, List<EmuIdConflict>> {
+        if (!staging.isDirectory) return 0 to emptyList()
+        var applied = 0
+        val conflicts = mutableListOf<EmuIdConflict>()
+        for (emu in EmuAccountIdentity.EMULATORS) {
+            val stagedDir = File(staging, emu.root)
+            if (!stagedDir.isDirectory) continue
+            val backupId = EmuAccountIdentity.readId(staging, emu) ?: continue
+            val currentId = EmuAccountIdentity.readId(profile, emu)
+            if (currentId == null || currentId == backupId) {
+                applied += applyIdentity(stagedDir, File(profile, emu.root), emu)
+            } else {
+                conflicts += EmuIdConflict(
+                    label = emu.label,
+                    root = emu.root,
+                    currentId = currentId,
+                    backupId = backupId,
+                    stagedDir = stagedDir.absolutePath,
+                    containerRootDir = container.rootDir.absolutePath,
+                )
+            }
+        }
+        return applied to conflicts
+    }
+
+    /**
+     * Applies a held-back emulator identity after the user chose the backup's id. Returns false if
+     * the staged copy is gone (the cache was cleared out from under us), in which case nothing was
+     * written and the prefix keeps the id it had.
+     */
+    fun applyEmuIdentity(conflict: EmuIdConflict): Boolean {
+        val staged = File(conflict.stagedDir)
+        if (!staged.isDirectory) return false
+        val emu = EmuAccountIdentity.emuForRoot(conflict.root) ?: return false
+        val target = File(File(conflict.containerRootDir), ".wine/drive_c/users/${ImageFs.USER}/${conflict.root}")
+        val written = applyIdentity(staged, target, emu)
+        discardEmuIdentity(conflict)
+        return written > 0
+    }
+
+    /**
+     * Writes one emulator's identity from [staged] over [target].
+     *
+     * Copying alone is not enough. These emulators accept the account id under several filenames and
+     * read them in a fixed order, so a stale file the backup doesn't supply but that OUTRANKS what it
+     * does supply would keep winning: the user would be told the account was switched while the game
+     * carried on under the old one. Only those shadowing leftovers are deleted; anything the backup's file
+     * already outranks stays, so lower-priority files and the shared settings living beside them
+     * (language, ip_country in Goldberg's configs.user.ini) survive untouched.
+     */
+    private fun applyIdentity(staged: File, target: File, emu: EmuAccountIdentity.Emu): Int {
+        val supplied = emu.idFiles.indexOfFirst { File(staged, it).isFile }
+        if (supplied > 0) emu.idFiles.take(supplied).forEach { File(target, it).delete() }
+        return copyTree(staged, target)
+    }
+
+    /** Drops a held-back identity's staged copy; the prefix keeps the id it already had. */
+    fun discardEmuIdentity(conflict: EmuIdConflict) {
+        File(conflict.stagedDir).deleteRecursively()
+    }
+
+    /** Copies a staged subtree over [dst], returning the number of files written. */
+    private fun copyTree(src: File, dst: File): Int {
+        var n = 0
+        src.walkTopDown().forEach { f ->
+            val rel = f.relativeTo(src).path
+            val out = if (rel.isEmpty()) dst else File(dst, rel)
+            if (f.isDirectory) {
+                out.mkdirs()
+            } else {
+                out.parentFile?.mkdirs()
+                Files.copy(f.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                n++
+            }
+        }
+        return n
+    }
+
+    /**
+     * A drive_c-relative restore path re-expressed relative to the Wine user profile, or null when
+     * it isn't under this container's profile at all (Public, or a stray non-user entry).
+     */
+    private fun profileRelative(driveCRel: String): String? {
+        val prefix = "users/${ImageFs.USER}/"
+        return if (driveCRel.startsWith(prefix, ignoreCase = true)) driveCRel.substring(prefix.length)
+        else null
     }
 
     /**
@@ -187,6 +339,30 @@ object GameSaveBackup {
         gameName: String?,
         layout: BackupLayout,
     ): BackupResult {
+        val outDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Winlator/Backups/GameSaves"
+        )
+        outDir.mkdirs()
+        val safeName = sanitize((gameName ?: container.name).ifBlank { "container-${container.id}" })
+        val outFile = File(outDir, "${safeName}_${System.currentTimeMillis()}.zip")
+        return backupToFile(container, roots, layout, outFile)
+    }
+
+    /**
+     * Additive: zip a container's saves to a caller-specified [outFile] and return synchronously
+     * (no threading, no result posting). Same walk / layout re-rooting / noise-filtering as the
+     * Downloads-writing [backup]; the ONLY difference is the output location is the caller's, which
+     * lets callers manage their own destination (e.g. a persistent per-game vault). Creates the
+     * parent dir; deletes [outFile] and reports failure when there is nothing to back up. Callers are
+     * responsible for running this off the main thread.
+     */
+    fun backupToFile(
+        container: Container,
+        roots: List<String>?,
+        layout: BackupLayout,
+        outFile: File,
+    ): BackupResult {
         val profile = File(container.rootDir, ".wine/drive_c/users/${ImageFs.USER}")
         if (!profile.isDirectory) {
             return BackupResult(false, null, 0, "No save profile found in this container")
@@ -198,21 +374,23 @@ object GameSaveBackup {
             BackupLayout.WINLATOR -> "drive_c/" to ImageFs.USER
         }
 
-        // Subtrees to walk: the whole profile when unscoped, else each existing scoped root.
-        val scopeDirs: List<File> = if (roots == null) listOf(profile)
-        else roots.map { File(profile, it) }.filter { it.exists() }
+        // Subtrees to walk. Unscoped already covers the whole profile, emulator identity included;
+        // a SCOPED backup must be told about it, or the archive holds saves the game can't read back
+        // after a prefix rebuild rerolls the account id (see [EmuAccountIdentity]).
+        val scopeRoots: List<String>? = roots?.plus(EmuAccountIdentity.BACKUP_ROOTS)
+        val scopeDirs: List<File> = if (scopeRoots == null) listOf(profile)
+        else scopeRoots.map { File(profile, it) }.filter { it.exists() }
 
-        val outDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Winlator/Backups/GameSaves"
-        )
-        outDir.mkdirs()
-        val safeName = sanitize((gameName ?: container.name).ifBlank { "container-${container.id}" })
-        val outFile = File(outDir, "${safeName}_${System.currentTimeMillis()}.zip")
+        outFile.parentFile?.mkdirs()
 
         var count = 0
+        var identityCount = 0
         ZipOutputStream(BufferedOutputStream(FileOutputStream(outFile))).use { zos ->
             val stack = ArrayDeque<File>()
+            // Entry names already written. Scoped roots can nest (a picked root under AppData/Roaming
+            // can contain an identity root, and the picker lets two roots overlap), and a repeated
+            // name makes ZipOutputStream throw "duplicate entry" — a crashed backup, not a bad one.
+            val seen = HashSet<String>()
             scopeDirs.forEach { d ->
                 if (d.isDirectory) d.listFiles()?.forEach { stack.addLast(it) }
                 else if (d.isFile) stack.addLast(d)
@@ -229,18 +407,21 @@ object GameSaveBackup {
                 // Relative path inside the xuser profile, re-rooted per the chosen layout.
                 val rel = f.relativeTo(profile).path.replace(File.separatorChar, '/')
                 val entryName = "${rootPrefix}users/$userSeg/$rel"
+                if (!seen.add(entryName)) continue
                 zos.putNextEntry(ZipEntry(entryName))
                 f.inputStream().use { it.copyTo(zos) }
                 zos.closeEntry()
-                count++
+                if (EmuAccountIdentity.isIdentityPath(rel)) identityCount++ else count++
             }
         }
 
+        // Counted apart from save files on purpose: an account id with no save beside it is not a
+        // backup of anything, so it must not turn "nothing to back up" into a hollow success.
         if (count == 0) {
             outFile.delete()
             return BackupResult(false, null, 0, "No save files to back up")
         }
-        return BackupResult(true, outFile.absolutePath, count, null)
+        return BackupResult(true, outFile.absolutePath, count + identityCount, null)
     }
 
     /** AppData/Local/Temp and crash dumps are pure churn, never save data. */

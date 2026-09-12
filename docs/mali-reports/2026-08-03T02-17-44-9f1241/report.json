@@ -1,0 +1,44 @@
+{
+  "id": "2026-08-03T02-17-44-9f1241",
+  "created": "2026-08-03T02:17:44.411Z",
+  "ip_hash": "L31wt9y7dn",
+  "fields": {
+    "reporter_name": "Serg_str",
+    "device_model": "Tecno pova LJ7",
+    "soc": "Dimensity 7300 Ultimate",
+    "gpu": "Mali-G615 MC2",
+    "android": "Android 15",
+    "ram": "8 gb",
+    "app_version": "2.9.3",
+    "install_source": "GitHub release",
+    "game_name": "Hollow knight",
+    "steam_appid": "367520",
+    "store": "Steam",
+    "exe": "hollow_knight.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.6.2-1-gplasync-arm64ec-0",
+    "proton": "Proton-10.0-4-arm64ec-3",
+    "box64": "Compatibility",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "The absence of sprites is immediately visible when starting the game.",
+    "tried": "I changed the versions of dxvk and proton, but it didn't change anything. Maybe you need a specific version of proton and dxvk for it."
+  },
+  "logs": [
+    {
+      "name": "hollow_knight_d3d11.log"
+    },
+    {
+      "name": "Screenshot_20260803-044429.jpg"
+    },
+    {
+      "name": "Screenshot_20260803-044455.jpg"
+    },
+    {
+      "name": "Screenshot_20260803-044621.jpg"
+    }
+  ]
+}

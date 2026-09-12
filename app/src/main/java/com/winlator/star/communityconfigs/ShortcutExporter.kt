@@ -92,6 +92,33 @@ object ShortcutExporter {
         put(effective, "controlsProfile", shortcut.getExtra("controlsProfile"))
         put(effective, "autoCloseOnExit", shortcut.getExtra("autoCloseOnExit"))
 
+        // Community-config coverage pass (2026-07). Container-level settings resolve EFFECTIVE exactly
+        // as dxwrapperConfig/screenSize above do — shortcut override via orDefault, else the container
+        // getter — because the launch path reads each back as a per-shortcut override (fpsCounterConfig
+        // and vibration were wired to honor the shortcut in this same pass; frameGenModel already did).
+        put(effective, "fpsCounterConfig", orDefault(shortcut, "fpsCounterConfig", container?.getFPSCounterConfig()))
+        put(effective, "frameGenModel", orDefault(shortcut, "frameGenModel", container?.getFrameGenModel()?.toString()))
+        put(effective, "vibrationMode", orDefault(shortcut, "vibrationMode", container?.getVibrationMode()?.toString()))
+        put(effective, "vibrationIntensity", orDefault(shortcut, "vibrationIntensity", container?.getVibrationIntensity()?.toString()))
+        // Motion aim (gyro) per-game keys — effective = shortcut override, else the container getter,
+        // mirroring XServerDisplayActivity's launch resolution. Deadzone/smoothing are deliberately
+        // container/device-scoped (the hand, not the game) and are NOT carried.
+        put(effective, "gyroEnabled", orDefault(shortcut, "gyroEnabled", container?.let { if (it.isGyroEnabled()) "1" else "0" }))
+        put(effective, "gyroTarget", orDefault(shortcut, "gyroTarget", container?.getGyroTarget()?.toString()))
+        put(effective, "gyroActivator", orDefault(shortcut, "gyroActivator", container?.getGyroActivator()?.toString()))
+        put(effective, "gyroActivationMode", orDefault(shortcut, "gyroActivationMode", container?.getGyroActivationMode()?.toString()))
+        put(effective, "gyroMode", orDefault(shortcut, "gyroMode", container?.getGyroMode()?.toString()))
+        put(effective, "gyroSensitivity", orDefault(shortcut, "gyroSensitivity", container?.getGyroSensitivity()?.toString()))
+        put(effective, "gyroInvertX", orDefault(shortcut, "gyroInvertX", container?.let { if (it.isGyroInvertX()) "1" else "0" }))
+        put(effective, "gyroInvertY", orDefault(shortcut, "gyroInvertY", container?.let { if (it.isGyroInvertY()) "1" else "0" }))
+        // In-game refresh cap — effective shortcut-or-container (tri-state unlock resolved to 1/0).
+        put(effective, "maxGameRefreshRate", orDefault(shortcut, "maxGameRefreshRate", container?.getMaxGameRefreshRate()?.toString()))
+        put(effective, "unlockGameRefreshRate", orDefault(shortcut, "unlockGameRefreshRate", container?.let { if (it.isUnlockGameRefreshRate()) "1" else "0" }))
+        // #168 custom startup service set — effective shortcut-or-container (honored only when Custom).
+        put(effective, "startupServices", orDefault(shortcut, "startupServices", container?.getStartupServices()))
+        // Per-game upscaler override — a sticky extra on both shortcut and container (no dedicated getter).
+        put(effective, "scalingMode", orDefault(shortcut, "scalingMode", container?.getExtra("scalingMode")))
+
         val device = Build.MANUFACTURER + " " + Build.MODEL
         val soc = DeviceIdentity.gpu(context) ?: DeviceIdentity.soc()
         // Optional account attribution (Phase 2): stamp the signed-in username/avatar into meta.uploader
@@ -105,6 +132,7 @@ object ShortcutExporter {
             uploadToken = newUploadToken(),
             uploaderName = account?.username,
             uploaderAvatarUrl = account?.avatarUrl,
+            steamAppId = shortcut.getExtra("steamAppId").takeIf { it.isNotBlank() },
         )
 
         val json = ConfigExporter.export(effective, meta)

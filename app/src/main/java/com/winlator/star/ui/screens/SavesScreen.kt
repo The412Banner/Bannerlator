@@ -148,11 +148,16 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
                 ) {
                     Icon(imageVector = Icons.Filled.FolderOpen, contentDescription = "Import save", tint = MaterialTheme.colorScheme.primary)
                 }
-                DropdownMenu(expanded = showImportMenu, onDismissRequest = { showImportMenu = false }) {
+                DropdownMenu(
+                    expanded = showImportMenu,
+                    onDismissRequest = { showImportMenu = false },
+                    modifier = Modifier.outlinedMenuCard(),
+                ) {
                     DropdownMenuItem(text = { Text("Browse files") }, onClick = {
                         showImportMenu = false
                         importInAppLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select save archive"))
                     })
+                    MenuItemDivider()
                     DropdownMenuItem(text = { Text("Pick via system…") }, onClick = {
                         showImportMenu = false
                         importLauncher.launch("*/*")
@@ -276,32 +281,38 @@ private fun SaveItem(
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant)
             }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+                modifier = Modifier.outlinedMenuCard(),
+            ) {
                 DropdownMenuItem(
                     text = { Text("Edit") },
-                    leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                    leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onEdit() },
                 )
+                MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text("Transfer Container") },
-                    leadingIcon = { Icon(Icons.Filled.SwapHoriz, null) },
+                    leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onTransfer() },
                 )
-                Divider(color = DividerColor)
+                MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text("Export") },
-                    leadingIcon = { Icon(Icons.Filled.FileDownload, null) },
+                    leadingIcon = { Icon(Icons.Filled.FileDownload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onExport() },
                 )
+                MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text("Share") },
-                    leadingIcon = { Icon(Icons.Filled.Share, null) },
+                    leadingIcon = { Icon(Icons.Filled.Share, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onShare() },
                 )
-                Divider(color = DividerColor)
+                MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text("Unregister") },
-                    leadingIcon = { Icon(Icons.Filled.Delete, null) },
+                    leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) },
                     onClick = { menuExpanded = false; onUnregister() },
                 )
             }
@@ -358,8 +369,10 @@ private fun NewSaveDialog(
                     ExposedDropdownMenu(
                         expanded = dropdownExpanded,
                         onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.outlinedMenuCard(),
                     ) {
                         containers.forEachIndexed { index, c ->
+                            if (index > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(c.getName()) },
                                 onClick = { selectedIndex = index; dropdownExpanded = false },
@@ -483,8 +496,10 @@ private fun TransferSaveDialog(
                     ExposedDropdownMenu(
                         expanded = dropdownExpanded,
                         onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.outlinedMenuCard(),
                     ) {
                         containers.forEachIndexed { index, c ->
+                            if (index > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(c.getName()) },
                                 onClick = { selectedIndex = index; dropdownExpanded = false },
@@ -540,8 +555,10 @@ private fun ImportContainerSelectDialog(
                     ExposedDropdownMenu(
                         expanded = dropdownExpanded,
                         onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.outlinedMenuCard(),
                     ) {
                         containers.forEachIndexed { index, c ->
+                            if (index > 0) MenuItemDivider()
                             DropdownMenuItem(
                                 text = { Text(c.getName()) },
                                 onClick = { selectedIndex = index; dropdownExpanded = false },

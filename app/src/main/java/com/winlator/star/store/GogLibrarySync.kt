@@ -52,6 +52,9 @@ object GogLibrarySync {
         val developer: String,
         val category: String,
         val generation: Int,
+        // gap #8: additive, defaulted → every existing construction/read is unaffected. Lets the
+        // Save Manager / Download Manager optionally prefer the GOG 2:3 vertical cover when present.
+        val verticalCover: String? = null,
     )
 
     /** `//host/img.jpg` → `https://host/img.jpg`; null/blank → null; already-absolute → unchanged. */
@@ -81,6 +84,7 @@ object GogLibrarySync {
                     developer = j.optString("developer", ""),
                     category = j.optString("category", ""),
                     generation = j.optInt("generation", 0),
+                    verticalCover = normalizeCover(j.optString("verticalCover", "")),
                 )
             }
             null

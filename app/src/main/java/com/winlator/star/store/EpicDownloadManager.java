@@ -17,7 +17,10 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Inflater;
@@ -41,7 +45,14 @@ import java.util.zip.Inflater;
  *   - NO auth tokens on chunk URLs — only on manifest binary download
  *   - Binary manifest magic = 0x44BEC00C; JSON manifest if magic doesn't match
  *
+ * Selective install tags (language filtering), full-file SHA-1 delta/resume and
+ * chunk-level SHA-1 verification are ported from GameNative's
+ * service/epic/EpicDownloadManager.kt + manifest/ManifestUtils.kt, which are in turn
+ * derived from Legendary (Epic launcher CLI). GameNative and Legendary are GPL-3.0;
+ * this ported logic carries that attribution.
+ *
  * Credits: The GameNative Team — https://github.com/utkarshdalal/GameNative
+ *          Legendary — https://github.com/derrod/legendary (GPL-3.0)
  */
 public class EpicDownloadManager {
 
@@ -73,6 +84,7 @@ public class EpicDownloadManager {
     public static class ChunkInfo {
         public int[]  guid = new int[4]; // 4 uint32 in binary read order
         public long   hash;              // uint64 stored as signed long
+        public byte[] sha1;              // 20-byte SHA-1 of the DECOMPRESSED chunk (null for JSON manifests)
         public int    groupNum;          // uint8 subfolder (DECIMAL)
         public int    windowSize;        // uncompressed size
         public long   fileSize;          // compressed download size
@@ -102,8 +114,19 @@ public class EpicDownloadManager {
 
     /** One file from FileManifestList. */
     public static class FileInfo {
-        public String         filename = "";
-        public List<ChunkPart> parts   = new ArrayList<>();
+        public String          filename    = "";
+        public List<ChunkPart> parts       = new ArrayList<>();
+        /** Install-tag names (e.g. "German", "de-DE"). Empty = required/base file (always installed). */
+        public List<String>    installTags = new ArrayList<>();
+        /** 20-byte full-file SHA-1 (null when the manifest doesn't carry it, e.g. JSON manifests). */
+        public byte[]          sha1        = null;
+
+        /** Installed (uncompressed) file size = sum of its chunk-part sizes. */
+        public long fileSize() {
+            long total = 0;
+            for (ChunkPart p : parts) total += (p.size & 0xFFFFFFFFL);
+            return total;
+        }
     }
 
     // ── EpicManifest (parsed result + static parse methods) ───────────────────
@@ -166,10 +189,65 @@ public class EpicDownloadManager {
             String accessToken,
             String installDirPath,
             ProgressCallback progressCallback) {
+        // installTags == null → download EVERYTHING (legacy behavior, used by DLC installs).
+        return install(ctx, manifestApiJson, accessToken, installDirPath, null, progressCallback);
+    }
+
+    /**
+     * Download and install an Epic game, restricted to the given install tags.
+     *
+     * @param installTags Language/optional install tags to include (in addition to required/base
+     *                    files). {@code null} = no filtering (download all files, legacy behavior);
+     *                    empty list = required/base files only. Ported from GameNative's
+     *                    getFilesForSelectedInstallTags — required (untagged) files are ALWAYS
+     *                    included, plus any file carrying at least one of these tags.
+     *
+     * Files already present on disk with a matching size + full-file SHA-1 are skipped, which gives
+     * both resume-of-interrupted-installs and delta-update (only changed files re-download) for free.
+     */
+    public static boolean install(
+            android.content.Context ctx,
+            String manifestApiJson,
+            String accessToken,
+            String installDirPath,
+            List<String> installTags,
+            ProgressCallback progressCallback) {
+        // No cancel flag → best-effort, never-cancelled (legacy / DLC path).
+        return install(ctx, manifestApiJson, accessToken, installDirPath, installTags, null, progressCallback);
+    }
+
+    /**
+     * Cancel-aware install. {@code cancelFlag} is polled inside the parallel chunk pool and the
+     * assemble loop; flipping it to {@code true} stops the download promptly (no new chunk starts,
+     * in-flight chunks are interrupted, partial files stay on disk for a later #3 delta-resume).
+     * {@code null} = never cancel.
+     */
+    /** True if a cancel has been requested. Null flag = never cancel (legacy/DLC path). */
+    private static boolean isCancelled(AtomicBoolean cancelFlag) {
+        return cancelFlag != null && cancelFlag.get();
+    }
+
+    /** Log the cancel point, flush debug, and return false — the common cancel exit. */
+    private static boolean cancelOut(android.content.Context ctx, StringBuilder dbg, String where) {
+        dbg.append("CANCELLED ").append(where).append("\n");
+        writeDebug(ctx, dbg);
+        Log.i(TAG, "Epic install cancelled (" + where + ")");
+        return false;
+    }
+
+    public static boolean install(
+            android.content.Context ctx,
+            String manifestApiJson,
+            String accessToken,
+            String installDirPath,
+            List<String> installTags,
+            AtomicBoolean cancelFlag,
+            ProgressCallback progressCallback) {
         StringBuilder dbg = new StringBuilder();
         dbg.append("=== BH Epic Debug ===\n");
         dbg.append("installDirPath=").append(installDirPath).append("\n");
         try {
+            if (isCancelled(cancelFlag)) return cancelOut(ctx, dbg, "before start");
             progress(progressCallback, "Parsing CDN URLs...", 0);
 
             List<CdnUrl> cdnUrls = parseCdnUrls(manifestApiJson);
@@ -186,6 +264,7 @@ public class EpicDownloadManager {
                 Log.i(TAG, "  CDN: " + c.baseUrl + "  auth: " + (c.authParams.isEmpty() ? "(none)" : "YES"));
             }
 
+            if (isCancelled(cancelFlag)) return cancelOut(ctx, dbg, "after CDN parse");
             progress(progressCallback, "Downloading manifest...", 0);
             byte[] manifestBytes = downloadManifest(manifestApiJson, cdnUrls);
             if (manifestBytes == null) {
@@ -197,6 +276,7 @@ public class EpicDownloadManager {
             dbg.append("manifestBytes=").append(manifestBytes.length).append("\n");
             Log.i(TAG, "Manifest bytes: " + manifestBytes.length);
 
+            if (isCancelled(cancelFlag)) return cancelOut(ctx, dbg, "after manifest download");
             progress(progressCallback, "Parsing manifest...", 0);
             EpicManifest.ParsedManifest manifest = parseManifest(manifestBytes);
             if (manifest == null) {
@@ -218,11 +298,66 @@ public class EpicDownloadManager {
             File chunkCacheDir = new File(installDir, ".chunks");
             chunkCacheDir.mkdirs();
 
+            // Feature #2 — selective install tags: narrow the manifest file list to
+            // required(base) + the container-language files before downloading anything.
+            // installTags == null → no filtering (legacy: every file). Degrades gracefully:
+            // if the manifest carries no tags, resolveInstallFiles returns all files.
+            List<FileInfo> selectedFiles = resolveInstallFiles(manifest, installTags);
+            dbg.append("installTags=").append(installTags == null ? "(all)" : installTags.toString())
+               .append(" selectedFiles=").append(selectedFiles.size())
+               .append("/").append(manifest.files.size()).append("\n");
+            Log.i(TAG, "Selected " + selectedFiles.size() + "/" + manifest.files.size()
+                    + " files for tags " + (installTags == null ? "(all)" : installTags));
+
+            // Feature #3 — delta / resume: skip files already on disk with matching size + SHA-1.
+            // Fresh install → nothing on disk → no hashing cost. Resume/repair → re-hash existing
+            // completed files (streamed, off the main thread) and only fetch the rest.
+            progress(progressCallback, "Verifying existing files…", 0);
+            List<FileInfo> pendingFiles = new ArrayList<>(selectedFiles.size());
+            int alreadyGood = 0;
+            int checked = 0;
+            final int selCount = selectedFiles.size();
+            for (FileInfo f : selectedFiles) {
+                // Cancel: hashing an already-installed game can take minutes — honor cancel here too,
+                // not just in the chunk pool. This is the "Verifying…"/0% phase the UI shows.
+                if (cancelFlag != null && cancelFlag.get()) {
+                    dbg.append("CANCELLED during verify (").append(checked).append("/")
+                       .append(selCount).append(" files hashed)\n");
+                    writeDebug(ctx, dbg);
+                    Log.i(TAG, "Epic install cancelled during verify phase");
+                    return false;
+                }
+                File out = new File(installDir, f.filename.replace("\\", "/"));
+                if (fileExistsWithCorrectHash(out, f.fileSize(), f.sha1)) alreadyGood++;
+                else pendingFiles.add(f);
+                checked++;
+                // Report verify progress every 64 files so the phase is visible and responsive.
+                if ((checked & 63) == 0) {
+                    progress(progressCallback, "Verifying existing files… (" + checked + "/" + selCount + ")", 0);
+                }
+            }
+            dbg.append("delta: ").append(alreadyGood).append(" up-to-date, ")
+               .append(pendingFiles.size()).append(" to download\n");
+            Log.i(TAG, "Delta: " + alreadyGood + " already correct, " + pendingFiles.size() + " to (re)download");
+
+            // Nothing to do (fully-installed re-check, or repair found no damage): success.
+            if (pendingFiles.isEmpty()) {
+                deleteDir(chunkCacheDir);
+                dbg.append("INSTALL COMPLETE (nothing to download): ").append(installDirPath).append("\n");
+                writeDebug(ctx, dbg);
+                progress(progressCallback, "Complete", 100);
+                Log.i(TAG, "Epic install complete (delta no-op): " + installDirPath);
+                return true;
+            }
+
+            // Only the chunks referenced by the pending files need downloading.
+            List<ChunkInfo> neededChunks = uniqueChunksForFiles(manifest, pendingFiles);
+
             // Calculate total download bytes for smooth byte-level progress
             long totalBytes = 0;
-            for (ChunkInfo chunk : manifest.uniqueChunks) totalBytes += Math.max(chunk.fileSize, 1);
+            for (ChunkInfo chunk : neededChunks) totalBytes += Math.max(chunk.fileSize, 1);
             final long fTotalBytes = totalBytes;
-            final int totalChunks  = manifest.uniqueChunks.size();
+            final int totalChunks  = neededChunks.size();
             final AtomicLong completedBytes    = new AtomicLong(0);
             final AtomicInteger completedCount = new AtomicInteger(0);
             final AtomicInteger failCount      = new AtomicInteger(0);
@@ -235,47 +370,106 @@ public class EpicDownloadManager {
             dbg.append("totalDownloadBytes=").append(totalBytes)
                .append(String.format(" (%.1f MB)\n", totalBytes / 1048576.0));
 
-            // Download unique chunks — 8 parallel threads
-            ExecutorService pool = Executors.newFixedThreadPool(8);
-            for (ChunkInfo chunk : manifest.uniqueChunks) {
-                final ChunkInfo fc = chunk;
-                pool.submit(() -> {
-                    File cachedFile = new File(chunkCacheDir, fc.guidStr());
-                    if (!cachedFile.exists()) {
-                        if (!downloadChunkStreaming(fc, manifest.chunkDir, cdnUrls, cachedFile)) {
-                            Log.e(TAG, "Chunk download failed: " + fc.guidStr());
-                            chunkLog.add("FAIL chunk=" + fc.guidStr());
-                            failCount.incrementAndGet();
-                            return;
+            // Engine switch (docs/RUST_EPIC_PARITY.md): the native fetch core replaces ONLY the
+            // pool below — same inputs (needed chunks, CDN list, cache dir), same outputs
+            // (`.chunks/<GUID>` verified cache files), same progress / cancel / failure handling
+            // and the same debug lines. The Java pool is byte-identical and runs when the flag is
+            // OFF or the engine could not start (library missing, plan cross-check failed) —
+            // nothing has been fetched in that case, so falling through is safe.
+            boolean useJavaPool = true;
+            if (com.winlator.star.store.blsteam.BlStoreEngineFlag.isEpicEnabled(ctx)) {
+                RustPoolResult rr = runRustChunkPool(ctx, dbg, manifestBytes, manifest, pendingFiles,
+                        neededChunks, fTotalBytes, installDirPath, cdnUrls, cancelFlag, progressCallback,
+                        completedBytes, completedCount, lastSpeedMs, lastSpeedBytes, currentSpeedBps);
+                if (rr.started) {
+                    useJavaPool = false;
+                    if (rr.cancelled) {
+                        dbg.append("CANCELLED during chunk download ")
+                           .append("(").append(completedCount.get()).append("/").append(totalChunks)
+                           .append(" chunks)\n");
+                        writeDebug(ctx, dbg);
+                        Log.i(TAG, "Epic install cancelled during chunk download");
+                        return false;
+                    }
+                    if (!rr.success) {
+                        // Surfaces through the shared "N chunks failed" exit below, like a Java
+                        // chunk that exhausted every CDN.
+                        chunkLog.add("FAIL engine=rust " + rr.error);
+                        failCount.incrementAndGet();
+                    }
+                } else {
+                    dbg.append("rust engine not started (").append(rr.error)
+                       .append(") -> Java chunk pool\n");
+                    Log.w(TAG, "Rust Epic engine not started (" + rr.error + "), using Java chunk pool");
+                }
+            }
+            if (useJavaPool) {
+                // Download unique chunks — 8 parallel threads
+                ExecutorService pool = Executors.newFixedThreadPool(8);
+                for (ChunkInfo chunk : neededChunks) {
+                    final ChunkInfo fc = chunk;
+                    pool.submit(() -> {
+                        // Cancel: don't start new chunk work once the user has cancelled.
+                        if (cancelFlag != null && cancelFlag.get()) return;
+                        File cachedFile = new File(chunkCacheDir, fc.guidStr());
+                        if (!cachedFile.exists()) {
+                            if (!downloadChunkStreaming(fc, manifest.chunkDir, cdnUrls, cachedFile)) {
+                                Log.e(TAG, "Chunk download failed: " + fc.guidStr());
+                                chunkLog.add("FAIL chunk=" + fc.guidStr());
+                                failCount.incrementAndGet();
+                                return;
+                            }
+                        }
+                        long done = completedBytes.addAndGet(Math.max(fc.fileSize, 1));
+                        int  cnt  = completedCount.incrementAndGet();
+                        int  pct  = (int)(done * 80L / fTotalBytes);
+
+                        long nowMs     = System.currentTimeMillis();
+                        long prevMs    = lastSpeedMs.get();
+                        long timeDelta = nowMs - prevMs;
+                        if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
+                            long prevB  = lastSpeedBytes.getAndSet(done);
+                            long bDelta = done - prevB;
+                            if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
+                        }
+
+                        String mb    = String.format("%.1f / %.1f MB", done / 1048576.0, fTotalBytes / 1048576.0);
+                        String speed = formatSpeed(currentSpeedBps.get());
+                        progress(progressCallback,
+                                "Downloading chunks (" + cnt + "/" + totalChunks + ")  " + mb
+                                + (speed.isEmpty() ? "" : "  " + speed), pct);
+                    });
+                }
+                pool.shutdown();
+                try {
+                    // Poll instead of a single infinite await so a cancel is honored within ~250ms:
+                    // in-flight chunks are interrupted, queued ones never start (closure guard above).
+                    while (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
+                        if (cancelFlag != null && cancelFlag.get()) {
+                            pool.shutdownNow();
+                            pool.awaitTermination(5, TimeUnit.SECONDS);
+                            dbg.append("CANCELLED during chunk download ")
+                               .append("(").append(completedCount.get()).append("/").append(totalChunks)
+                               .append(" chunks)\n");
+                            writeDebug(ctx, dbg);
+                            Log.i(TAG, "Epic install cancelled during chunk download");
+                            return false;
                         }
                     }
-                    long done = completedBytes.addAndGet(Math.max(fc.fileSize, 1));
-                    int  cnt  = completedCount.incrementAndGet();
-                    int  pct  = (int)(done * 80L / fTotalBytes);
-
-                    long nowMs     = System.currentTimeMillis();
-                    long prevMs    = lastSpeedMs.get();
-                    long timeDelta = nowMs - prevMs;
-                    if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
-                        long prevB  = lastSpeedBytes.getAndSet(done);
-                        long bDelta = done - prevB;
-                        if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
-                    }
-
-                    String mb    = String.format("%.1f / %.1f MB", done / 1048576.0, fTotalBytes / 1048576.0);
-                    String speed = formatSpeed(currentSpeedBps.get());
-                    progress(progressCallback,
-                            "Downloading chunks (" + cnt + "/" + totalChunks + ")  " + mb
-                            + (speed.isEmpty() ? "" : "  " + speed), pct);
-                });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    pool.shutdownNow();
+                    dbg.append("ERROR: chunk pool interrupted\n");
+                    writeDebug(ctx, dbg);
+                    return false;
+                }
             }
-            pool.shutdown();
-            try {
-                pool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                dbg.append("ERROR: chunk pool interrupted\n");
+
+            // Cancel could also have landed on the last poll boundary, after the pool drained.
+            if (cancelFlag != null && cancelFlag.get()) {
+                dbg.append("CANCELLED after chunk download\n");
                 writeDebug(ctx, dbg);
+                Log.i(TAG, "Epic install cancelled after chunk download");
                 return false;
             }
 
@@ -290,11 +484,18 @@ public class EpicDownloadManager {
             }
             dbg.append("chunksOK=").append(completedCount.get()).append("\n");
 
-            // Assemble files — show each filename as it is written
-            int totalFiles = manifest.files.size();
+            // Assemble files — only the pending set (already-correct files are left untouched).
+            int totalFiles = pendingFiles.size();
             int doneFiles  = 0;
             dbg.append("assembling ").append(totalFiles).append(" files\n");
-            for (FileInfo file : manifest.files) {
+            for (FileInfo file : pendingFiles) {
+                if (cancelFlag != null && cancelFlag.get()) {
+                    dbg.append("CANCELLED during assembly (").append(doneFiles).append("/")
+                       .append(totalFiles).append(" files)\n");
+                    writeDebug(ctx, dbg);
+                    Log.i(TAG, "Epic install cancelled during assembly");
+                    return false;
+                }
                 String relPath = file.filename.replace("\\", "/");
                 File outFile   = new File(installDir, relPath);
                 File parent    = outFile.getParentFile();
@@ -336,6 +537,125 @@ public class EpicDownloadManager {
             Log.e(TAG, "Epic install failed", e);
             return false;
         }
+    }
+
+    // ── Rust fetch core (engine switch) ───────────────────────────────────────
+
+    /** Outcome of the native chunk pool; {@code started == false} → the Java pool must run. */
+    private static final class RustPoolResult {
+        boolean started;
+        boolean success;
+        boolean cancelled;
+        String  error = "";
+    }
+
+    /**
+     * Run the native chunk pool for {@code pendingFiles}: the engine re-parses the SAME manifest
+     * bytes, rebuilds the SAME needed-chunk list (cross-checked against Java's count + byte total
+     * before any fetch), skips chunks already in the cache, and writes verified chunks with the
+     * same {@code .part} + rename protocol into the same {@code .chunks/<GUID>} names — so the
+     * assembly loop and every resume path below see exactly what the Java pool would have left.
+     * Progress mirrors the pool task's message / pct / speed logic on the SAME counters so the UI
+     * and registry ticks are indistinguishable. Never throws.
+     */
+    private static RustPoolResult runRustChunkPool(
+            android.content.Context ctx,
+            StringBuilder dbg,
+            byte[] manifestBytes,
+            EpicManifest.ParsedManifest manifest,
+            List<FileInfo> pendingFiles,
+            List<ChunkInfo> neededChunks,
+            long totalBytes,
+            String installDirPath,
+            List<CdnUrl> cdnUrls,
+            AtomicBoolean cancelFlag,
+            ProgressCallback progressCallback,
+            AtomicLong completedBytes,
+            AtomicInteger completedCount,
+            AtomicLong lastSpeedMs,
+            AtomicLong lastSpeedBytes,
+            AtomicLong currentSpeedBps) {
+        RustPoolResult r = new RustPoolResult();
+        try {
+            // pendingFiles are FileInfo objects out of manifest.files (identity, no equals()).
+            java.util.IdentityHashMap<FileInfo, Integer> index = new java.util.IdentityHashMap<>();
+            for (int i = 0; i < manifest.files.size(); i++) index.put(manifest.files.get(i), i);
+            int[] pendingIdx = new int[pendingFiles.size()];
+            for (int i = 0; i < pendingFiles.size(); i++) {
+                Integer k = index.get(pendingFiles.get(i));
+                if (k == null) { r.error = "pending file not in manifest"; return r; }
+                pendingIdx[i] = k;
+            }
+            String[] prefixes = new String[cdnUrls.size()];
+            for (int i = 0; i < cdnUrls.size(); i++)
+                prefixes[i] = cdnUrls.get(i).baseUrl + cdnUrls.get(i).cloudDir;
+            String caPath = com.winlator.star.store.blsteam.CaBundleExtractor.INSTANCE.ensureBundle(ctx);
+
+            final int  totalChunks = neededChunks.size();
+            final long fTotalBytes = totalBytes;
+            // Improvements round 1: the native path takes its ceilings from the Steam speed tier
+            // (Fast = window 32, decompress = cores/2) instead of the Java pool's fixed 8; the
+            // adapter splits the window across the distinct CDNs (per_host_cap). The Java
+            // fallback pool below keeps its own fixed counts.
+            DownloadSpeedConfig cfg = StoreDownloadTier.config(ctx);
+            final int rustWorkers = Math.max(1, Math.min(128, cfg.getMaxNetworkWindow()));
+            final int rustProcess = Math.max(2, Math.max(1, Math.min(32, cfg.getMaxDecompress())));
+            com.winlator.star.store.blsteam.BlEpicDownload.Result res =
+                    com.winlator.star.store.blsteam.BlEpicDownload.run(
+                            manifestBytes, installDirPath, prefixes, pendingIdx, totalChunks, totalBytes,
+                            caPath, rustWorkers, rustProcess, cancelFlag,
+                            new com.winlator.star.store.blsteam.BlEpicDownload.Listener() {
+                @Override public void onPlan(int chunksTotal, long bytesTotal, String chunkDir) {
+                    synchronized (dbg) {
+                        dbg.append("[rust] plan chunks=").append(chunksTotal)
+                           .append(" bytes=").append(bytesTotal)
+                           .append(" chunkDir=").append(chunkDir).append("\n");
+                    }
+                }
+
+                @Override public void onProgress(long bytesDone, long bytesTotal, int chunksDone, int chunksTotal) {
+                    // Mirrors the pool task above: same counters, same pct, same 500 ms speed sample,
+                    // same message.
+                    completedBytes.set(bytesDone);
+                    completedCount.set(chunksDone);
+                    long done = bytesDone;
+                    int  cnt  = chunksDone;
+                    int  pct  = (int)(done * 80L / fTotalBytes);
+
+                    long nowMs     = System.currentTimeMillis();
+                    long prevMs    = lastSpeedMs.get();
+                    long timeDelta = nowMs - prevMs;
+                    if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
+                        long prevB  = lastSpeedBytes.getAndSet(done);
+                        long bDelta = done - prevB;
+                        if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
+                    }
+
+                    String mb    = String.format("%.1f / %.1f MB", done / 1048576.0, fTotalBytes / 1048576.0);
+                    String speed = formatSpeed(currentSpeedBps.get());
+                    progress(progressCallback,
+                            "Downloading chunks (" + cnt + "/" + totalChunks + ")  " + mb
+                            + (speed.isEmpty() ? "" : "  " + speed), pct);
+                }
+
+                @Override public void onLog(String line) {
+                    synchronized (dbg) { dbg.append("[rust] ").append(line).append("\n"); }
+                }
+
+                @Override public void onComplete(boolean success, String error, long bytesCredited) {
+                    // Terminal state is read from the facade's Result; nothing to do here.
+                }
+            });
+            r.started   = res.started;
+            r.success   = res.success;
+            r.cancelled = res.cancelled;
+            r.error     = res.error == null ? "" : res.error;
+        } catch (Throwable t) {
+            // Any facade / link failure → Java pool.
+            r.started = false;
+            r.error   = t.getClass().getSimpleName() + ": " + t.getMessage();
+        }
+        return r;
     }
 
     private static void writeDebug(android.content.Context ctx, StringBuilder dbg) {
@@ -555,7 +875,7 @@ public class EpicDownloadManager {
                 c.guid[3] = body.getInt();
             }
             for (ChunkInfo c : chunks) c.hash       = body.getLong();
-            body.position(body.position() + 20 * chunkCount); // skip SHA-1s
+            for (ChunkInfo c : chunks) { c.sha1 = new byte[20]; body.get(c.sha1); } // per-chunk SHA-1
             for (ChunkInfo c : chunks) c.groupNum   = body.get() & 0xFF;
             for (ChunkInfo c : chunks) c.windowSize = body.getInt();
             for (ChunkInfo c : chunks) c.fileSize   = body.getLong();
@@ -576,11 +896,14 @@ public class EpicDownloadManager {
 
             for (FileInfo f : files) f.filename = readFString(body);
             for (int i = 0; i < fileCount; i++) readFString(body);           // symlink targets
-            body.position(body.position() + 20 * fileCount);                  // skip SHA-1s
+            for (FileInfo f : files) { f.sha1 = new byte[20]; body.get(f.sha1); } // per-file SHA-1
             body.position(body.position() + fileCount);                        // skip flags
             for (int i = 0; i < fileCount; i++) {                             // install tags
                 int tagCount = body.getInt();
-                for (int j = 0; j < tagCount; j++) readFString(body);
+                for (int j = 0; j < tagCount; j++) {
+                    String tag = readFString(body);
+                    if (tag != null && !tag.isEmpty()) files.get(i).installTags.add(tag);
+                }
             }
             for (FileInfo f : files) {
                 int partCount = body.getInt();
@@ -681,6 +1004,17 @@ public class EpicDownloadManager {
                 JSONObject fileObj = fileList.getJSONObject(i);
                 FileInfo fi = new FileInfo();
                 fi.filename = fileObj.optString("Filename", "");
+
+                // Optional per-file install tags (older JSON manifests). SHA-1 is left null:
+                // JSON manifests encode hashes in a per-byte "blob" form we don't parse, so
+                // full-file verification simply falls back to re-download for these games.
+                JSONArray installTags = fileObj.optJSONArray("InstallTags");
+                if (installTags != null) {
+                    for (int t = 0; t < installTags.length(); t++) {
+                        String tag = installTags.optString(t, "");
+                        if (!tag.isEmpty()) fi.installTags.add(tag);
+                    }
+                }
 
                 JSONArray chunkParts = fileObj.optJSONArray("FileChunkParts");
                 if (chunkParts != null) {
@@ -840,6 +1174,12 @@ public class EpicDownloadManager {
     private static boolean downloadChunkStreaming(ChunkInfo chunk, String chunkDir,
                                                    List<CdnUrl> cdnUrls, File outFile) {
         String chunkPath = chunk.getPath(chunkDir);
+        // Write to a .part temp and only rename into the final cache name AFTER the SHA-1 check
+        // passes. A cached chunk therefore exists in its final name ONLY if it fully downloaded and
+        // verified — so a cancel/crash mid-write leaves an inert .part (never reused), and resume can
+        // never assemble a truncated chunk. Atomic rename (same dir → same filesystem).
+        File tmp = new File(outFile.getPath() + ".part");
+        tmp.delete(); // clear any stale partial from a prior interrupted attempt
         for (CdnUrl cdn : cdnUrls) {
             String url = cdn.baseUrl + cdn.cloudDir + "/" + chunkPath;
             HttpURLConnection conn = null;
@@ -850,8 +1190,18 @@ public class EpicDownloadManager {
                 conn.setRequestProperty("User-Agent", UA);
                 if (conn.getResponseCode() != 200) { conn.disconnect(); continue; }
 
+                // Verify the DECOMPRESSED chunk against the manifest's per-chunk SHA-1 when present
+                // (binary manifests). null/all-zero → skip verification (JSON manifests). This makes
+                // a corrupt/truncated chunk fail over to the next CDN instead of poisoning the file.
+                MessageDigest sha = null;
+                if (chunk.sha1 != null && chunk.sha1.length == 20) {
+                    boolean allZero = true;
+                    for (byte b : chunk.sha1) if (b != 0) { allZero = false; break; }
+                    if (!allZero) { try { sha = MessageDigest.getInstance("SHA-1"); } catch (Exception ignored) {} }
+                }
+
                 try (InputStream in = conn.getInputStream();
-                     FileOutputStream fos = new FileOutputStream(outFile)) {
+                     FileOutputStream fos = new FileOutputStream(tmp)) {
 
                     // Read first 41 bytes: magic(4)+headerVersion(4)+headerSize(4)+
                     //   compressedSize(4)+GUID(16)+hash(8)+storedAs(1)
@@ -889,11 +1239,11 @@ public class EpicDownloadManager {
                                     inflater.setInput(iobuf, 0, n);
                                 }
                                 int out = inflater.inflate(obuf);
-                                if (out > 0) fos.write(obuf, 0, out);
+                                if (out > 0) { fos.write(obuf, 0, out); if (sha != null) sha.update(obuf, 0, out); }
                             }
                             // drain any remaining output
                             int out;
-                            while ((out = inflater.inflate(obuf)) > 0) fos.write(obuf, 0, out);
+                            while ((out = inflater.inflate(obuf)) > 0) { fos.write(obuf, 0, out); if (sha != null) sha.update(obuf, 0, out); }
                         } finally {
                             inflater.end();
                         }
@@ -905,18 +1255,36 @@ public class EpicDownloadManager {
                             int n = in.read(iobuf, 0, toRead);
                             if (n <= 0) break;
                             fos.write(iobuf, 0, n);
+                            if (sha != null) sha.update(iobuf, 0, n);
                             remaining -= n;
                         }
                     }
+                }
+
+                if (sha != null && !MessageDigest.isEqual(sha.digest(), chunk.sha1)) {
+                    Log.w(TAG, "Chunk SHA-1 mismatch (streaming) for " + chunk.guidStr() + ", trying next CDN");
+                    tmp.delete();
+                    conn.disconnect();
+                    continue;
+                }
+                // Verified → publish atomically. If the rename can't happen, treat as a failure
+                // rather than leaving a bad/again-partial file under the final name.
+                if (!tmp.renameTo(outFile)) {
+                    Log.w(TAG, "Chunk rename failed for " + chunk.guidStr() + ", trying next CDN");
+                    tmp.delete();
+                    conn.disconnect();
+                    continue;
                 }
                 conn.disconnect();
                 return true;
             } catch (Exception e) {
                 Log.w(TAG, "CDN " + cdn.baseUrl + " streaming failed for "
                         + chunk.guidStr() + ": " + e.getMessage());
+                tmp.delete(); // never leave a partial under the .part name for the next CDN attempt
                 if (conn != null) conn.disconnect();
             }
         }
+        tmp.delete();
         Log.e(TAG, "All CDNs failed (streaming) for chunk " + chunk.guidStr());
         return false;
     }
@@ -968,6 +1336,17 @@ public class EpicDownloadManager {
      */
     public static long fetchInstallSizeBytes(String accessToken, String namespace,
                                               String catalogItemId, String appName) {
+        return fetchInstallSizeBytes(accessToken, namespace, catalogItemId, appName, null);
+    }
+
+    /**
+     * Tag-aware install size. When {@code installTags} is non-null the returned size reflects only
+     * the required(base) + selected-language files that will actually be downloaded (Feature #2), so
+     * the detail screen shows the true footprint. {@code null} = full install size (legacy).
+     */
+    public static long fetchInstallSizeBytes(String accessToken, String namespace,
+                                              String catalogItemId, String appName,
+                                              List<String> installTags) {
         try {
             String manifestApiJson = EpicApiClient.getManifestApiJson(
                     accessToken, namespace, catalogItemId, appName);
@@ -976,12 +1355,140 @@ public class EpicDownloadManager {
                     EpicManifest.parseManifestApiJson(manifestApiJson, accessToken);
             if (manifest == null) return -1;
             long total = 0;
-            for (ChunkInfo chunk : manifest.uniqueChunks)
-                total += Math.max(chunk.windowSize, 0);
+            if (installTags == null) {
+                for (ChunkInfo chunk : manifest.uniqueChunks)
+                    total += Math.max(chunk.windowSize, 0);
+            } else {
+                for (FileInfo f : resolveInstallFiles(manifest, installTags))
+                    total += Math.max(f.fileSize(), 0);
+            }
             return total > 0 ? total : -1;
         } catch (Exception e) {
             Log.w(TAG, "fetchInstallSizeBytes Epic: " + e.getClass().getSimpleName());
             return -1;
+        }
+    }
+
+    // ── Install-tag filtering + verify/repair (ported from GameNative ManifestUtils.kt) ──
+
+    /**
+     * Files that make up the required/base install: those with no install tags. If NO file carries
+     * a tag (manifest didn't ship tags, or all empty) every file is "required", so this returns all —
+     * preserving the download-everything fallback. Port of ManifestUtils.getRequiredInstallFiles.
+     */
+    public static List<FileInfo> getRequiredInstallFiles(EpicManifest manifest) {
+        List<FileInfo> required = new ArrayList<>();
+        for (FileInfo f : manifest.files) if (f.installTags.isEmpty()) required.add(f);
+        return required.isEmpty() ? new ArrayList<>(manifest.files) : required;
+    }
+
+    /**
+     * The file set to download for "required + these tags". Port of
+     * ManifestUtils.getFilesForSelectedInstallTags.
+     *   - selectedTags == null → ALL files (no filtering / legacy behavior).
+     *   - selectedTags empty    → required(base) files only.
+     *   - otherwise             → base files + any file carrying at least one selected tag; if that
+     *                             matched nothing (manifest uses tag names we don't recognize) fall
+     *                             back to required-only so a runnable install is always produced.
+     */
+    public static List<FileInfo> resolveInstallFiles(EpicManifest manifest, List<String> selectedTags) {
+        if (selectedTags == null) return new ArrayList<>(manifest.files);
+        if (selectedTags.isEmpty()) return getRequiredInstallFiles(manifest);
+        Set<String> want = new LinkedHashSet<>(selectedTags);
+        List<FileInfo> out = new ArrayList<>();
+        for (FileInfo f : manifest.files) {
+            if (f.installTags.isEmpty()) { out.add(f); continue; }
+            for (String t : f.installTags) { if (want.contains(t)) { out.add(f); break; } }
+        }
+        return out.isEmpty() ? getRequiredInstallFiles(manifest) : out;
+    }
+
+    /** Unique chunks referenced by the given file list. Port of getRequiredChunksForFileList. */
+    public static List<ChunkInfo> uniqueChunksForFiles(EpicManifest manifest, List<FileInfo> files) {
+        Map<String, ChunkInfo> byGuid = new LinkedHashMap<>();
+        for (ChunkInfo c : manifest.uniqueChunks) byGuid.put(c.guidStr(), c);
+        Set<String> seen = new LinkedHashSet<>();
+        List<ChunkInfo> chunks = new ArrayList<>();
+        for (FileInfo f : files) {
+            for (ChunkPart p : f.parts) {
+                String g = p.guidStr();
+                if (seen.add(g)) {
+                    ChunkInfo c = byGuid.get(g);
+                    if (c != null) chunks.add(c);
+                }
+            }
+        }
+        return chunks;
+    }
+
+    /**
+     * True when the file on disk matches the manifest's size and full-file SHA-1, so it can be
+     * skipped on resume / left alone on repair. A null or all-zero manifest hash is treated as
+     * unverifiable → the file is (re)downloaded. Streams the file in 64KB blocks (no full-file
+     * buffer) so a 60GB install won't OOM. Port of GameNative fileExistsWithCorrectHash.
+     */
+    public static boolean fileExistsWithCorrectHash(File outputFile, long expectedSize, byte[] expectedHash) {
+        if (outputFile == null || !outputFile.exists()) return false;
+        if (outputFile.length() != expectedSize) return false;
+        if (expectedHash == null || expectedHash.length != 20) return false;
+        boolean allZero = true;
+        for (byte b : expectedHash) if (b != 0) { allZero = false; break; }
+        if (allZero) return false;
+        try (FileInputStream fis = new FileInputStream(outputFile)) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = fis.read(buf)) != -1) digest.update(buf, 0, n);
+            return MessageDigest.isEqual(digest.digest(), expectedHash);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not verify existing file " + outputFile.getName() + ", will re-download");
+            return false;
+        }
+    }
+
+    /** Result of a verify pass: how many installed files were checked, OK, corrupt, or missing. */
+    public static class VerifyResult {
+        public int checked;
+        public int ok;
+        public int corrupt;   // present but wrong size/SHA-1
+        public int missing;   // not on disk
+        public int unverifiable; // manifest carried no SHA-1 for the file (JSON manifests)
+        public boolean needsRepair() { return corrupt > 0 || missing > 0; }
+    }
+
+    /**
+     * Feature #3 — verify installed files against the latest manifest. Re-hashes every selected file
+     * on disk (streamed, off the main thread) and reports missing/corrupt counts. Does NOT modify
+     * anything; the caller decides whether to repair (which is just {@link #install} again — it
+     * re-downloads exactly the missing/corrupt files via the delta path). Returns null on failure
+     * (fall back = assume no update / no repair, never crash).
+     */
+    public static VerifyResult verifyInstall(
+            String manifestApiJson, String accessToken, String installDirPath,
+            List<String> installTags, ProgressCallback progressCallback) {
+        try {
+            EpicManifest.ParsedManifest manifest =
+                    EpicManifest.parseManifestApiJson(manifestApiJson, accessToken);
+            if (manifest == null) return null;
+            List<FileInfo> files = resolveInstallFiles(manifest, installTags);
+            File installDir = new File(installDirPath);
+            VerifyResult r = new VerifyResult();
+            int i = 0;
+            for (FileInfo f : files) {
+                i++;
+                progress(progressCallback, "Verifying (" + i + "/" + files.size() + ")",
+                        (int) (i * 100L / Math.max(files.size(), 1)));
+                File out = new File(installDir, f.filename.replace("\\", "/"));
+                r.checked++;
+                if (!out.exists()) { r.missing++; continue; }
+                if (f.sha1 == null || f.sha1.length != 20) { r.unverifiable++; r.ok++; continue; }
+                if (fileExistsWithCorrectHash(out, f.fileSize(), f.sha1)) r.ok++;
+                else r.corrupt++;
+            }
+            return r;
+        } catch (Exception e) {
+            Log.w(TAG, "verifyInstall failed: " + e.getClass().getSimpleName());
+            return null;
         }
     }
 

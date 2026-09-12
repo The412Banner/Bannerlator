@@ -212,17 +212,46 @@ void handleKillProcess(const char *payload, int len) {
   free(name);
 }
 
+// SetProcessAffinityMask alone leaves the process-affinity record unreliable under wow64/FEX: the
+// mask doesn't stick, so some existing threads (and any spawned later) stay on all cores. Pin every
+// current thread of the process explicitly so the whole process actually honors the chosen cores.
+void applyAffinityToThreads(DWORD pid, DWORD_PTR mask) {
+  HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+  if (hSnap == INVALID_HANDLE_VALUE)
+    return;
+
+  THREADENTRY32 te32;
+  te32.dwSize = sizeof(THREADENTRY32);
+  if (Thread32First(hSnap, &te32)) {
+    do {
+      if (te32.th32OwnerProcessID == pid) {
+        HANDLE hThread = OpenThread(THREAD_SET_INFORMATION, FALSE, te32.th32ThreadID);
+        if (hThread) {
+          SetThreadAffinityMask(hThread, mask);
+          CloseHandle(hThread);
+        }
+      }
+    } while (Thread32Next(hSnap, &te32));
+  }
+  CloseHandle(hSnap);
+}
+
+void applyAffinityToProcess(DWORD pid, DWORD_PTR mask) {
+  HANDLE hProcess = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid);
+  if (hProcess) {
+    SetProcessAffinityMask(hProcess, mask);
+    CloseHandle(hProcess);
+  }
+  applyAffinityToThreads(pid, mask);
+}
+
 void handleSetAffinity(const char *buffer, int len) {
 
   int pid = *(int *)(buffer + 5);
   int mask = *(int *)(buffer + 9);
 
   if (pid != 0) {
-    HANDLE hProcess = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid);
-    if (hProcess) {
-      SetProcessAffinityMask(hProcess, mask);
-      CloseHandle(hProcess);
-    }
+    applyAffinityToProcess((DWORD)pid, (DWORD_PTR)mask);
   } else {
     int nameLen = (unsigned char)buffer[13];
     char *name = (char *)malloc(nameLen + 1);
@@ -236,12 +265,7 @@ void handleSetAffinity(const char *buffer, int len) {
       if (Process32First(hSnap, &pe32)) {
         do {
           if (_stricmp(pe32.szExeFile, name) == 0) {
-            HANDLE hProcess =
-                OpenProcess(PROCESS_SET_INFORMATION, FALSE, pe32.th32ProcessID);
-            if (hProcess) {
-              SetProcessAffinityMask(hProcess, mask);
-              CloseHandle(hProcess);
-            }
+            applyAffinityToProcess(pe32.th32ProcessID, (DWORD_PTR)mask);
           }
         } while (Process32Next(hSnap, &pe32));
       }

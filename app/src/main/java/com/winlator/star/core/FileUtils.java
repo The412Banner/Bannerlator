@@ -310,6 +310,29 @@ public abstract class FileUtils {
         return f.length();
     }
 
+    /**
+     * Moves {@code srcFile} to {@code dstFile}, relinking instead of copying whenever possible.
+     *
+     * A rename is instant regardless of size, but only works within one filesystem — so moving a
+     * 60 GB game folder inside internal storage costs nothing, while internal → SD still has to
+     * copy every byte. {@code renameTo} returning false IS the signal that we crossed a boundary,
+     * so it doubles as the check; on that path we fall back to copy-then-delete.
+     *
+     * Only attempted when the destination does not already exist: renaming onto an existing
+     * directory does not merge, it fails (or worse, nests), so a conflicting move must go the
+     * copy route where the merge semantics are well defined.
+     */
+    public static boolean moveWithProgress(File srcFile, File dstFile, ProgressCallback progress) {
+        if (srcFile == null || dstFile == null) return false;
+        if (sameFile(srcFile, dstFile)) return true;
+        if (!dstFile.exists() && srcFile.renameTo(dstFile)) {
+            if (progress != null) progress.onProgress(1, 1);
+            return true;
+        }
+        if (!copyWithProgress(srcFile, dstFile, progress)) return false;
+        return delete(srcFile);
+    }
+
     // Like copy(), but reports byte progress (smooth even within one large file). Honors the same
     // self/descendant guards and partial-failure semantics.
     public static boolean copyWithProgress(File srcFile, File dstFile, ProgressCallback progress) {

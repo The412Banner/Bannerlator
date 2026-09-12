@@ -1,10 +1,13 @@
 package com.winlator.star.container;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+
+import androidx.preference.PreferenceManager;
 
 import com.winlator.star.R;
 import com.winlator.star.contents.ContentsManager;
@@ -40,7 +43,60 @@ public class ContainerManager {
         File rootDir = ImageFs.find(context).getRootDir();
         homeDir = new File(rootDir, "home");
         loadContainers();
+        migrateGyroPrefsToContainers();
         isInitialized = true;
+    }
+
+    // One-shot migration of the old GLOBAL gyro prefs onto every container. The gyro settings used to
+    // live in SharedPreferences; they're per-container (and partly per-game) now, so without this a
+    // user who had tuned them would silently get the defaults back. Runs at most once, keyed on
+    // "gyro_migrated_to_container", and removes the old keys afterwards so it can't re-fire.
+    // gyro_bias_* is deliberately NOT touched — the calibration bias is a property of this phone's
+    // IMU and stays global (see GyroCalibrator).
+    private void migrateGyroPrefsToContainers() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        if (prefs.getBoolean("gyro_migrated_to_container", false)) return;
+
+        boolean hasOldKeys = prefs.contains("gyro_enabled") || prefs.contains("gyro_target")
+                || prefs.contains("gyro_activator") || prefs.contains("gyro_sensitivity")
+                || prefs.contains("gyro_deadzone") || prefs.contains("gyro_smoothing")
+                || prefs.contains("gyro_invert_x") || prefs.contains("gyro_invert_y");
+
+        if (hasOldKeys) {
+            boolean enabled = prefs.getBoolean("gyro_enabled", Container.GYRO_ENABLED_DEFAULT);
+            int target = prefs.getInt("gyro_target", Container.GYRO_TARGET_DEFAULT);
+            int activator = prefs.getInt("gyro_activator", Container.GYRO_ACTIVATOR_DEFAULT);
+            float sensitivity = prefs.getFloat("gyro_sensitivity", Container.GYRO_SENSITIVITY_DEFAULT);
+            float deadzone = prefs.getFloat("gyro_deadzone", Container.GYRO_DEADZONE_DEFAULT);
+            float smoothing = prefs.getFloat("gyro_smoothing", Container.GYRO_SMOOTHING_DEFAULT);
+            boolean invertX = prefs.getBoolean("gyro_invert_x", Container.GYRO_INVERT_X_DEFAULT);
+            boolean invertY = prefs.getBoolean("gyro_invert_y", Container.GYRO_INVERT_Y_DEFAULT);
+
+            for (Container container : containers) {
+                container.setGyroEnabled(enabled);
+                container.setGyroTarget(target);
+                container.setGyroActivator(activator);
+                container.setGyroSensitivity(sensitivity);
+                container.setGyroDeadzone(deadzone);
+                container.setGyroSmoothing(smoothing);
+                container.setGyroInvertX(invertX);
+                container.setGyroInvertY(invertY);
+                container.saveData();
+            }
+            Log.i("ContainerManager", "Migrated global gyro settings onto " + containers.size() + " container(s)");
+        }
+
+        prefs.edit()
+            .remove("gyro_enabled")
+            .remove("gyro_target")
+            .remove("gyro_activator")
+            .remove("gyro_sensitivity")
+            .remove("gyro_deadzone")
+            .remove("gyro_smoothing")
+            .remove("gyro_invert_x")
+            .remove("gyro_invert_y")
+            .putBoolean("gyro_migrated_to_container", true)
+            .apply();
     }
 
     // Check if the ContainerManager is fully initialized
@@ -50,6 +106,15 @@ public class ContainerManager {
 
     public ArrayList<Container> getContainers() {
         return containers;
+    }
+
+    // Re-scan the home dir so this instance's in-memory list picks up containers created (or removed)
+    // by a *different* ContainerManager instance since construction. Each screen news up its own
+    // manager, so a container created in the editor is otherwise invisible to a long-lived manager
+    // (e.g. ShortcutsViewModel's) until that ViewModel is reconstructed. Cheap disk walk; call it
+    // before reading getContainers() on a manager that outlives a create/delete elsewhere.
+    public void reloadContainers() {
+        loadContainers();
     }
 
     // Load containers from the home directory
@@ -227,6 +292,11 @@ public class ContainerManager {
         if (FileUtils.delete(container.getRootDir())) containers.remove(container);
     }
 
+    /** Desktop .lnk names written by store clients we install on the game's behalf — not games. */
+    private static final java.util.Set<String> VENDOR_CLIENT_LNK = new java.util.HashSet<>(Arrays.asList(
+            "EA", "EA app", "EA Desktop", "EA app Updater", "App Recovery", "EA Error Reporter", "Origin",
+            "Ubisoft Connect", "Uplay"));
+
     public ArrayList<Shortcut> loadShortcuts() {
         ArrayList<Shortcut> shortcuts = new ArrayList<>();
         for (Container container : containers) {
@@ -238,20 +308,90 @@ public class ContainerManager {
                 for (File file : files) {
                     String fileName = file.getName();
                     if (fileName.endsWith(".lnk")) {
+                        // Store-client installers (EA Desktop, Ubisoft Connect) drop their own desktop
+                        // shortcuts via winemenubuilder; those are not games — never auto-import them.
+                        String base = fileName.substring(0, fileName.length() - 4);
+                        if (VENDOR_CLIENT_LNK.contains(base)) continue;
                         String filePath = file.getPath();
                         File desktopFile = new File(filePath.substring(0, filePath.lastIndexOf(".")) + ".desktop");
                         if (!desktopFile.exists()) {
                             MSLink.createDesktopFile(file, context);
-                            shortcuts.add(new Shortcut(container, desktopFile));
+                            Shortcut shortcut = loadShortcutOrNull(container, desktopFile);
+                            if (shortcut != null) shortcuts.add(shortcut);
                         }
                     }
-                    else if (fileName.endsWith(".desktop")) shortcuts.add(new Shortcut(container, file));
+                    else if (fileName.endsWith(".desktop")) {
+                        // winemenubuilder writes its own .desktop entries (no .lnk sibling here — the
+                        // .lnk lives in C:/users/Public/Desktop) when a store client such as EA Desktop
+                        // installs, and it rewrites them on every client start. Those are launchers,
+                        // not games — keep them out of the Games grid.
+                        if (isVendorClientDesktopEntry(file)) continue;
+                        Shortcut shortcut = loadShortcutOrNull(container, file);
+                        if (shortcut != null) shortcuts.add(shortcut);
+                    }
                 }
             }
         }
 
         shortcuts.sort(Comparator.comparing(a -> a.name));
         return shortcuts;
+    }
+
+    /**
+     * Parses one .desktop entry, or returns null when it cannot be turned into a shortcut. One
+     * unreadable or truncated file (permission denied, missing/empty `Exec=` line, half-written by an
+     * external tool) used to throw out of the constructor and take the whole Games screen down at app
+     * start; a bad entry is now skipped and logged so the remaining shortcuts still load.
+     */
+    private static Shortcut loadShortcutOrNull(Container container, File file) {
+        try {
+            return new Shortcut(container, file);
+        }
+        catch (RuntimeException e) {
+            Log.w("ContainerManager", "Skipping unreadable shortcut " + file.getPath() + ": " + e);
+            return null;
+        }
+    }
+
+    /** Window classes of store-client executables whose winemenubuilder .desktop entries are not games. */
+    private static final java.util.Set<String> VENDOR_CLIENT_WMCLASS = new java.util.HashSet<>(Arrays.asList(
+            "ealauncher.exe", "eadesktop.exe", "eaapp.exe", "eabackgroundservice.exe", "eaapprecovery.exe",
+            "eaerrorreporter.exe", "link2ea.exe", "origin.exe", "originwebhelperservice.exe",
+            "upc.exe", "uplay.exe", "ubisoftconnect.exe", "ubisoftconnectinstaller.exe"));
+
+    /**
+     * True for a Desktop .desktop entry that a store client (EA Desktop / Origin / Ubisoft Connect) dropped
+     * through winemenubuilder rather than one Bannerlator wrote for a game: matched by the vendor launcher
+     * name, by the window class winemenubuilder records, or by an Exec that just re-opens the vendor .lnk.
+     */
+    static boolean isVendorClientDesktopEntry(File desktopFile) {
+        String name = desktopFile.getName();
+        String base = name.substring(0, name.length() - ".desktop".length());
+        if (VENDOR_CLIENT_LNK.contains(base)) return true;
+        String text;
+        try {
+            text = FileUtils.readString(desktopFile);
+        } catch (Exception e) {
+            return false;
+        }
+        if (text == null) return false;
+        if (text.contains("storeSource=") || text.contains("steamAppId=")) return false; // ours
+        for (String line : text.split("\n")) {
+            String l = line.trim();
+            if (l.startsWith("StartupWMClass=")) {
+                if (VENDOR_CLIENT_WMCLASS.contains(l.substring("StartupWMClass=".length()).trim().toLowerCase(java.util.Locale.ROOT))) return true;
+            } else if (l.startsWith("Exec=")) {
+                // .desktop Exec lines escape each backslash ("C:\\\\users\\\\Public\\\\Desktop\\\\EA.lnk"); collapse runs first.
+                String exec = l.toLowerCase(java.util.Locale.ROOT).replaceAll("\\\\+", "\\\\");
+                if (exec.contains("public\\desktop\\ea") || exec.contains("\\electronic arts\\") || exec.contains("\\ea desktop\\")
+                        || exec.contains("\\origin\\origin.exe") || exec.contains("\\ubisoft game launcher\\")) return true;
+            } else if (l.startsWith("Path=")) {
+                String path = l.toLowerCase(java.util.Locale.ROOT);
+                if (path.contains("/electronic arts/ea desktop/") || path.contains("/origin/")
+                        || path.contains("/ubisoft game launcher/")) return true;
+            }
+        }
+        return false;
     }
 
     public int getNextContainerId() {
@@ -264,24 +404,74 @@ public class ContainerManager {
     }
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
-        File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
+        copyLayerDlls(new File(wineInfo.path), wineInfo.isArm64EC(), srcName, dstName, containerDir, false, onExtractFileListener);
+    }
+
+    /**
+     * Copy the PE files of one arch dir of a Wine/Proton layer ({@code <layer>/lib/wine/<srcName>/})
+     * into the prefix ({@code .wine/drive_c/windows/<dstName>/}).
+     *
+     * <p>{@code overwriteBuiltins=false} is the creation rule (extractCommonDlls): a destination that
+     * already exists is left alone. {@code true} is the in-place layer-update rule: a destination is
+     * overwritten only when it is absent or still carries Wine's builtin DOS-stub signature
+     * ({@link #isWineBuiltinPe}) — the same test setupapi's fake-DLL install uses — so native
+     * overrides the layer never owned (DXVK/VKD3D/d7vk d3d*.dll + dxgi.dll, wowbox64/FEXCore DLLs,
+     * game-installed files) are never clobbered. Returns the number of files written.
+     */
+    static int copyLayerDlls(File layerDir, boolean arm64ec, String srcName, String dstName, File containerDir, boolean overwriteBuiltins, OnExtractFileListener onExtractFileListener) {
+        File srcDir = new File(layerDir, "lib/wine/" + srcName);
 
         File[] srcfiles = srcDir.listFiles(file -> file.isFile());
+        if (srcfiles == null) return 0;
 
+        int written = 0;
         for (File file : srcfiles) {
             String dllName = file.getName();
-            if (dllName.equals("iexplore.exe") && wineInfo.isArm64EC() && srcName.equals("aarch64-windows"))
-                file = new File(wineInfo.path + "/lib/wine/" + "i386-windows/iexplore.exe");
+            if (dllName.equals("iexplore.exe") && arm64ec && srcName.equals("aarch64-windows"))
+                file = new File(layerDir, "lib/wine/i386-windows/iexplore.exe");
             if (dllName.equals("tabtip.exe") || dllName.equals("icu.dll"))
                 continue;
             File dstFile = new File(containerDir, ".wine/drive_c/windows/" + dstName + "/" + dllName);
-            if (dstFile.exists()) continue;
+            if (dstFile.exists()) {
+                if (!overwriteBuiltins || !isWineBuiltinPe(dstFile)) continue;
+            }
             if (onExtractFileListener != null ) {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.copy(file, dstFile);
+            if (FileUtils.copy(file, dstFile)) written++;
         }
+        return written;
+    }
+
+    /**
+     * Layer-update refresh of system32 + syswow64 from {@code layerDir} (see {@link #copyLayerDlls}
+     * with {@code overwriteBuiltins=true}). Mirrors the arch split of extractContainerPatternFile:
+     * arm64ec layers feed system32 from {@code aarch64-windows}, everything else from
+     * {@code x86_64-windows}; syswow64 always comes from {@code i386-windows}.
+     */
+    public static int refreshCommonDlls(File layerDir, boolean arm64ec, File containerDir) {
+        int written = copyLayerDlls(layerDir, arm64ec, arm64ec ? "aarch64-windows" : "x86_64-windows", "system32", containerDir, true, null);
+        written += copyLayerDlls(layerDir, arm64ec, "i386-windows", "syswow64", containerDir, true, null);
+        return written;
+    }
+
+    /**
+     * True when {@code file} is a PE whose DOS stub carries winebuild's marker ("Wine builtin DLL" /
+     * "Wine placeholder DLL"), i.e. a copy the layer itself produced rather than a native
+     * replacement. The marker sits right after the DOS header, so the first 256 bytes suffice.
+     */
+    public static boolean isWineBuiltinPe(File file) {
+        byte[] head = new byte[256];
+        int n;
+        try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
+            n = in.read(head);
+        } catch (java.io.IOException e) {
+            return false;
+        }
+        if (n < 64 || head[0] != 'M' || head[1] != 'Z') return false;
+        String stub = new String(head, 0, n, java.nio.charset.StandardCharsets.ISO_8859_1);
+        return stub.contains("Wine builtin DLL") || stub.contains("Wine placeholder DLL");
     }
 
     public boolean extractContainerPatternFile(Container container, String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {

@@ -19,6 +19,10 @@ public interface HostRenderer {
     // isFullscreen() stays == (mode != OFF) so existing upscaler/magnifier gates behave as before.
     void setFullscreenMode(int mode);
     int getFullscreenMode();
+    // Screen alignment (issue #413): Container.ALIGN_CENTER/TOP/BOTTOM — vertical placement of the
+    // letterbox rect. CENTER is the historical behavior; only moves the bar, never the scale.
+    void setScreenAlignment(int alignment);
+    int getScreenAlignment();
     void setScreenOffsetYRelativeToCursor(boolean b);
     boolean isScreenOffsetYRelativeToCursor();
     void setFpsWindowId(int id);

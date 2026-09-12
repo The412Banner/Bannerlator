@@ -1,0 +1,239 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.github.joshuatam",
+    "module": "javasteam",
+    "version": "1.8.0.1-26-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.12"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "javasteam-1.8.0.1-26-SNAPSHOT.jar",
+          "url": "javasteam-1.8.0.1-26-SNAPSHOT.jar",
+          "size": 15992028,
+          "sha512": "74ae2bed9e82c838c231c8d27b3aabb17b65f2b2b0f7edd0bafeb40a83a588a8c2c8d7c9366317635d43de295bb6c5f61b85005336c2b940a8b88d5709dc3220",
+          "sha256": "57d9e5b91f5892171e32177c8c2ea96ce353d15b1d0ab3cc95f8243946bdeb3f",
+          "sha1": "910d2dbfb1e10bc45e09b05189f7d4201ecb2056",
+          "md5": "5bff57d2d881b1e029ffae17b23a0a9e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "3.2.2"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-cio",
+          "version": {
+            "requires": "3.2.2"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-websockets",
+          "version": {
+            "requires": "3.2.2"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "com.squareup.okhttp3",
+          "module": "okhttp",
+          "version": {
+            "requires": "5.1.0"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "com.squareup.okhttp3",
+          "module": "okhttp-coroutines",
+          "version": {
+            "requires": "5.1.0"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.commons",
+          "module": "commons-lang3",
+          "version": {
+            "requires": "3.18.0"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "2.2.0"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        },
+        {
+          "group": "com.google.protobuf",
+          "module": "protobuf-java",
+          "version": {
+            "requires": "4.31.1"
+          },
+          "excludes": [
+            {
+              "group": "junit",
+              "module": "junit"
+            },
+            {
+              "group": "org.junit.vintage",
+              "module": "junit-vintage-engine"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "javasteam-1.8.0.1-26-SNAPSHOT.jar",
+          "url": "javasteam-1.8.0.1-26-SNAPSHOT.jar",
+          "size": 15992028,
+          "sha512": "74ae2bed9e82c838c231c8d27b3aabb17b65f2b2b0f7edd0bafeb40a83a588a8c2c8d7c9366317635d43de295bb6c5f61b85005336c2b940a8b88d5709dc3220",
+          "sha256": "57d9e5b91f5892171e32177c8c2ea96ce353d15b1d0ab3cc95f8243946bdeb3f",
+          "sha1": "910d2dbfb1e10bc45e09b05189f7d4201ecb2056",
+          "md5": "5bff57d2d881b1e029ffae17b23a0a9e"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "javasteam-1.8.0.1-26-SNAPSHOT-sources.jar",
+          "url": "javasteam-1.8.0.1-26-SNAPSHOT-sources.jar",
+          "size": 3968636,
+          "sha512": "3cee5cba1a1e304ae314bc8b14c55c594e7d76ad50c2099af8bb4f12a311cbe6e187a621c1750229b05e1525c9e8b598cd3521ee07d0fae971056913c923d755",
+          "sha256": "c016fd083dd796d79cc94998e893067a643c73e300439bc07e20a8b7b1e173da",
+          "sha1": "d1106e5e89adab1d19339cb1b2b75f2b7455720a",
+          "md5": "e77f40a5403f73f2e488e0c35f58456e"
+        }
+      ]
+    }
+  ]
+}

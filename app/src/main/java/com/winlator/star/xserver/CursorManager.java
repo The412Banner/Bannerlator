@@ -18,7 +18,7 @@ public class CursorManager extends XResourceManager {
 
     public Cursor createCursor(int id, short x, short y, Pixmap sourcePixmap, Pixmap maskPixmap) {
         if (cursors.indexOfKey(id) >= 0) return null;
-        Drawable drawable = drawableManager.createDrawable(0, sourcePixmap.drawable.width, sourcePixmap.drawable.height, sourcePixmap.drawable.visual);
+        Drawable drawable = drawableManager.createDrawable(IDGenerator.generate(), sourcePixmap.drawable.width, sourcePixmap.drawable.height, sourcePixmap.drawable.visual);
         Cursor cursor = new Cursor(id, x, y, drawable, sourcePixmap.drawable, maskPixmap != null ? maskPixmap.drawable : null);
         cursors.put(id, cursor);
         triggerOnCreateResourceListener(cursor);
@@ -26,7 +26,11 @@ public class CursorManager extends XResourceManager {
     }
 
     public void freeCursor(int id) {
-        triggerOnFreeResourceListener(cursors.get(id));
+        Cursor cursor = cursors.get(id);
+        if (cursor != null && cursor.cursorImage != null) {
+            drawableManager.removeDrawable(cursor.cursorImage.id);
+        }
+        triggerOnFreeResourceListener(cursor);
         cursors.remove(id);
     }
 

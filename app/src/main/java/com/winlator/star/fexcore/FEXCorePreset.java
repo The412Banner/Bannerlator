@@ -8,6 +8,9 @@ public class FEXCorePreset {
     public static final String INTERMEDIATE = "INTERMEDIATE";
     public static final String PERFORMANCE = "PERFORMANCE";
     public static final String PERFORMANCE_TSO = "PERFORMANCE_TSO";
+    public static final String EXTREME = "EXTREME";
+    public static final String EXTREME_TSO = "EXTREME_TSO";
+    public static final String EXTREME_GN = "EXTREME_GN";
     public static final String DENUVO = "DENUVO";
     public static final String CUSTOM = "CUSTOM";
     public final String id;

@@ -54,6 +54,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
     private static float mouseSpeed = 1;
     private static final float[] smoothedMouse = new float[2];
     private static XrActivity instance;
+    private static boolean xrInputSuppressed;
 
     @Override
     public synchronized void onPause() {
@@ -117,6 +118,16 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         text.getEditableText().clear();
         text.getEditableText().append(" ");
         text.addTextChangedListener(this);
+    }
+
+    @Override
+    protected void showGuestKeyboard() {
+        isSBS = false;
+        isImmersive = false;
+        resetText();
+        EditText text = findViewById(R.id.XRTextInput);
+        AppUtils.showKeyboard(this);
+        text.requestFocus();
     }
 
     public static XrActivity getInstance() {
@@ -199,6 +210,15 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         ControllerButton secondaryRight = primaryController == 1 ? ControllerButton.L_THUMBSTICK_RIGHT : ControllerButton.R_THUMBSTICK_RIGHT;
         ControllerButton secondaryPress = primaryController == 1 ? ControllerButton.L_THUMBSTICK_PRESS : ControllerButton.R_THUMBSTICK_PRESS;
 
+        if (instance.isInGameControlsEditorOpen()) {
+            if (!xrInputSuppressed) releaseXrGuestInputs();
+            xrInputSuppressed = true;
+            System.arraycopy(axes, 0, lastAxes, 0, axes.length);
+            System.arraycopy(buttons, 0, lastButtons, 0, buttons.length);
+            return;
+        }
+        xrInputSuppressed = false;
+
         try (XLock lock = instance.getXServer().lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
             // Mouse control with hand
             float f = 0.75f;
@@ -257,13 +277,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
             // Show system keyboard
             if (getButtonClicked(buttons, primaryPress)) {
-                instance.runOnUiThread(() -> {
-                    isSBS = false;
-                    isImmersive = false;
-                    instance.resetText();
-                    AppUtils.showKeyboard(instance);
-                    instance.findViewById(R.id.XRTextInput).requestFocus();
-                });
+                instance.runOnUiThread(instance::showGuestKeyboard);
             }
 
             // Store the OpenXR data
@@ -283,6 +297,35 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
             mapKey(secondaryLeft, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_LEFT));
             mapKey(secondaryRight, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_RIGHT));
         }
+    }
+
+    private static void releaseXrGuestInputs() {
+        try (XLock lock = instance.getXServer().lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
+            Pointer pointer = instance.getXServer().pointer;
+            pointer.setButton(Pointer.Button.BUTTON_LEFT, false);
+            pointer.setButton(Pointer.Button.BUTTON_RIGHT, false);
+            pointer.setButton(Pointer.Button.BUTTON_SCROLL_UP, false);
+            pointer.setButton(Pointer.Button.BUTTON_SCROLL_DOWN, false);
+            smoothedMouse[0] = pointer.getClampedX() + 0.5f;
+            smoothedMouse[1] = pointer.getClampedY() + 0.5f;
+
+            Keyboard keyboard = instance.getXServer().keyboard;
+            releaseKey(keyboard, XKeycode.KEY_ESC.id);
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_A));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_B));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_X));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_Y));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_GRIP));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.BUTTON_TRIGGER));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_UP));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_DOWN));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_LEFT));
+            releaseKey(keyboard, instance.container.getControllerMapping(Container.XrControllerMapping.THUMBSTICK_RIGHT));
+        }
+    }
+
+    private static void releaseKey(Keyboard keyboard, byte keycode) {
+        if (keycode != XKeycode.KEY_NONE.id) keyboard.setKeyRelease(keycode);
     }
 
     private static float getAngleDiff(float oldAngle, float newAngle) {

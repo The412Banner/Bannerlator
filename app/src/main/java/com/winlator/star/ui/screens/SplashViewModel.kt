@@ -2,11 +2,14 @@ package com.winlator.star.ui.screens
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.winlator.star.MainActivity
 import com.winlator.star.xenvironment.ImageFs
 import com.winlator.star.xenvironment.ImageFsInstaller
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class SplashViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -28,7 +31,16 @@ class SplashViewModel(app: Application) : AndroidViewModel(app) {
         if (_isInstalling.value) return true   // already running
 
         val imageFs = ImageFs.find(activity)
-        if (imageFs.isValid && imageFs.version >= ImageFsInstaller.LATEST_VERSION) return false
+        if (imageFs.isValid && imageFs.version >= ImageFsInstaller.LATEST_VERSION) {
+            // imagefs is current, so no re-extract — but the frame-gen layers and ffmpeg-8 ship as
+            // APK assets alongside it, and an app update can carry newer builds of them. Without
+            // this they would only ever land on a full re-extract, so a bundled layer update
+            // silently never reached the device. Off the main thread: this can copy several MB.
+            viewModelScope.launch(Dispatchers.IO) {
+                ImageFsInstaller.stageBundledComponents(getApplication(), imageFs)
+            }
+            return false
+        }
 
         _isInstalling.value = true
         _progress.value = 0

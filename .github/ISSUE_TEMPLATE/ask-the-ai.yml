@@ -16,6 +16,11 @@ body:
         A maintainer will review your question and the AI will reply in a
         comment, citing the exact files. For a follow-up, ask in a new issue.
 
+        > 🐛 **On a Mali GPU and a game won't run?** Don't file it here — use the
+        > [Mali GPU report board](https://the412banner.github.io/Bannerlator/mali-reports/)
+        > so we get your logs and can reply in a thread on your report. Or
+        > [browse existing Mali reports](https://the412banner.github.io/Bannerlator/mali-reports/reports.html).
+
   - type: textarea
     id: question
     attributes:

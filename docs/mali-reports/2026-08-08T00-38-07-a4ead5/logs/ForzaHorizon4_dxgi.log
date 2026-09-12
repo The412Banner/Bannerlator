@@ -1,0 +1,29 @@
+warn:  CreateDXGIFactory2: Ignoring flags
+info:  Game: ForzaHorizon4.exe
+info:  DXVK: v2.7.1
+info:  Build: x86_64 clang 21.1.8
+info:  Found config env: dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    vegas.enableUpscaler = Auto
+info:    dxvk.enableStarProfile = Auto
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ff2797cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  Found device: Wrapper(Mali-G925-Immortalis MC12) (Wrapper driver 49.1.0)
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+warn:  DxgiAdapter::QueryInterface: Unknown interface query
+warn:  f0db4c7f-fe5a-42a2-bd62-f2a6cf6fc83e
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+warn:  DXGI: MakeWindowAssociation: Ignoring flags
+warn:  DxgiSwapChain::GetFrameStatistics: Frame statistics may be inaccurate

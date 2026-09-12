@@ -1,0 +1,17 @@
+{
+    "file_format_version": "1.2.0",
+    "layer": {
+        "name": "VK_LAYER_WIN_framegen",
+        "type": "GLOBAL",
+        "library_path": "../../../lib/libwin_fg.so",
+        "api_version": "1.1.0",
+        "implementation_version": "1",
+        "description": "win-fg v0.1 — clean-room frame generation (FSR3 optical flow + own synthesis)",
+        "library_arch": "64",
+        "functions": {
+            "vkNegotiateLoaderLayerInterfaceVersion": "vkNegotiateLoaderLayerInterfaceVersion"
+        },
+        "enable_environment": { "WIN_FG_ENABLE": "1" },
+        "disable_environment": { "WIN_FG_DISABLE": "1" }
+    }
+}

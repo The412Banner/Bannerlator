@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -90,6 +91,15 @@ class GogGamesActivity : ComponentActivity() {
         private const val REQ_GAME_DETAIL = 1001
         private const val SGDB_KEY = "cf89227f12c773bb1117b6b109ae1659"
 
+        // gap #8 (Option A): incremental/throttle bookkeeping on the existing prefs cache.
+        // `gog_library_synced_at` = millis of the last HEAVY (all-owned-ids) sync. A non-forced
+        // open within THROTTLE_MS re-fetches only NEW ids (incremental); a forced refresh or a
+        // stale (>15 min) open re-fetches every owned id. Vertical covers live in a per-id pref
+        // so backfill stays idempotent (never re-hit gamesdb for a game we already covered).
+        private const val LAST_SYNC_KEY = "gog_library_synced_at"
+        private const val THROTTLE_MS = 15L * 60L * 1000L
+        private const val VCOVER_PREFIX = "gog_vcover_"
+
         private fun httpGet(url: String, token: String?): String? {
             return try {
                 val conn = URL(url).openConnection() as HttpURLConnection
@@ -125,6 +135,32 @@ class GogGamesActivity : ComponentActivity() {
                 if (grids == null || grids.length() == 0) return ""
                 grids.getJSONObject(0).optString("url", "")
             } catch (_: Exception) { "" }
+        }
+
+        /**
+         * gap #8 behavior 4: fetch a real GOG 2:3 vertical cover from the UNAUTHENTICATED
+         * gamesdb.gog.com service (no Bearer token — verified live). Two hops:
+         *   1. external_releases/{gogProductId}  → internal gamesdb `game_id`
+         *   2. games/{game_id}                   → `vertical_cover.url_format` template
+         * The template's `{formatter}` (empty = full-res) and `{ext}` (webp) tokens are substituted.
+         * Fail-soft: any miss / non-200 / missing field returns null so the caller falls back to the
+         * existing SGDB→icon cover chain. gamesdb ids are internal & mutable, so we always map via the
+         * stable GOG product id and never cache the intermediate game_id as a key.
+         */
+        private fun fetchVerticalCover(productId: String): String? {
+            return try {
+                val extJson = httpGet(
+                    "https://gamesdb.gog.com/platforms/gog/external_releases/$productId", null,
+                ) ?: return null
+                val gameId = JSONObject(extJson).optString("game_id", "")
+                if (gameId.isEmpty()) return null
+
+                val gameJson = httpGet("https://gamesdb.gog.com/games/$gameId", null) ?: return null
+                val vc = JSONObject(gameJson).optJSONObject("vertical_cover") ?: return null
+                val fmt = vc.optString("url_format", "")
+                if (fmt.isEmpty()) return null
+                fmt.replace("{formatter}", "").replace("{ext}", "webp")
+            } catch (_: Exception) { null }
         }
     }
 
@@ -188,7 +224,9 @@ class GogGamesActivity : ComponentActivity() {
                         expandedGameId = null
                         applyFilter(searchQuery)
                     },
-                    onRefresh = { startSync(true) },
+                    // Refresh button = FORCED full re-sync: bypasses the 15-min throttle and
+                    // re-fetches every owned id (refreshes metadata/covers), not just new ids.
+                    onRefresh = { startSync(showProgress = true, force = true) },
                     onSearchChange = { applyFilter(it) },
                     onGameClick = { game -> onGameClick(game) },
                     onGameLongClick = { game -> openDetailScreen(game) },
@@ -255,17 +293,17 @@ class GogGamesActivity : ComponentActivity() {
 
     // ── Sync ──────────────────────────────────────────────────────────────────
 
-    private fun startSync(showProgress: Boolean) {
+    private fun startSync(showProgress: Boolean, force: Boolean = false) {
         if (isSyncing) return
         isSyncing = true
         if (showProgress) setSync("Loading GOG library\u2026")
         lifecycleScope.launch(Dispatchers.IO) {
-            syncLibrary(showProgress)
+            syncLibrary(showProgress, force)
             withContext(Dispatchers.Main) { isSyncing = false }
         }
     }
 
-    private suspend fun syncLibrary(showProgress: Boolean) {
+    private suspend fun syncLibrary(showProgress: Boolean, force: Boolean) {
         try {
             if (showProgress) withContext(Dispatchers.Main) { setSync("Checking token\u2026") }
 
@@ -306,30 +344,78 @@ class GogGamesActivity : ComponentActivity() {
 
             if (ids.isEmpty()) { withContext(Dispatchers.Main) { setSync("No games found in library") }; return }
 
-            if (showProgress) withContext(Dispatchers.Main) { setSync("Syncing ${ids.size} games\u2026") }
+            // \u2500\u2500 gap #8: incremental diff + 15-min throttle + prune \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+            // `ids` above is the COMPLETE owned-id set \u2014 the diff source.
+            val ownedSet = ids.toHashSet()
+            val cachedList = loadCachedGames() ?: emptyList()
+
+            val lastSync = prefs.getLong(LAST_SYNC_KEY, 0L)
+            val stale = System.currentTimeMillis() - lastSync >= THROTTLE_MS
+            // HEAVY = re-fetch every owned id (refresh metadata/covers). Runs only when forced, on the
+            // first sync (empty cache), or once the 15-min throttle lapses. Otherwise we run the cheap
+            // owned-id diff and fetch ONLY new ids, so newly-purchased games still appear immediately.
+            val heavy = force || cachedList.isEmpty() || stale
+            val cachedIds = cachedList.mapTo(HashSet()) { it.gameId }
+            val idsToFetch = if (heavy) ids else ids.filter { it !in cachedIds }
+
+            // Seed the merged list from cached entries we are NOT re-fetching this pass: keeps them
+            // with no network hit and resilient to transient errors, and prunes revoked games from
+            // the LIST only (install-state prefs stay owned by GogInstallState \u2014 never purged here).
+            // Re-fetched ids are intentionally NOT seeded \u2014 they come purely from fetch results so the
+            // filter (and drop-on-failure) applies to them, clearing any stale/junk cache entry.
+            val fetchSet = idsToFetch.toHashSet()
+            val merged = LinkedHashMap<String, GogGame>()
+            for (g in cachedList) if (g.gameId in ownedSet && g.gameId !in fetchSet) merged[g.gameId] = g
+
+            if (idsToFetch.isEmpty()) {
+                // Throttled with no new purchases: still commit the (possibly pruned) list so revoked
+                // games drop out, but do NOT advance gog_library_synced_at (no heavy pass happened).
+                saveCachedGames(merged.values.toList())
+                withContext(Dispatchers.Main) {
+                    val list = merged.values.toList()
+                    if (list.isEmpty()) setSync("No compatible games found")
+                    else {
+                        allGames = list.sortedBy { it.title.lowercase() }
+                        applyFilter(searchQuery)
+                        scrollVisible = true
+                        val fn = list.size
+                        setSync("$fn game${if (fn == 1) "" else "s"} \u2014 up to date", syncOk = true)
+                    }
+                }
+                return
+            }
+
+            if (showProgress) withContext(Dispatchers.Main) {
+                setSync("Syncing ${idsToFetch.size} game${if (idsToFetch.size == 1) "" else "s"}\u2026")
+            }
 
             val finalToken = token
             val pool = Executors.newFixedThreadPool(5)
-            val futures = ids.map { id ->
+            val futures = idsToFetch.map { id ->
                 pool.submit(java.util.concurrent.Callable<GogGame?> { fetchGame(id, finalToken) })
             }
             pool.shutdown()
 
-            val games = futures.mapNotNull { f ->
-                try { f.get() } catch (_: Exception) { null }
+            for (f in futures) {
+                val g = try { f.get() } catch (_: Exception) { null } ?: continue
+                merged[g.gameId] = g   // merge new / refreshed entries over existing
             }
 
             saveDlcBuffer()
-            saveCachedGames(games)
+            val finalList = merged.values.toList()
+            saveCachedGames(finalList)
+            // Advance the throttle clock only after an actual heavy (all-owned) pass, so the 15-min
+            // window is measured from the last full refresh \u2014 not from a cheap incremental new-id pass.
+            if (heavy) prefs.edit().putLong(LAST_SYNC_KEY, System.currentTimeMillis()).apply()
 
             withContext(Dispatchers.Main) {
-                if (games.isEmpty()) {
+                if (finalList.isEmpty()) {
                     setSync("No compatible games found")
                 } else {
-                    allGames = games.sortedBy { it.title.lowercase() }
+                    allGames = finalList.sortedBy { it.title.lowercase() }
                     applyFilter(searchQuery)
                     scrollVisible = true
-                    val fn = games.size
+                    val fn = finalList.size
                     setSync("$fn game${if (fn == 1) "" else "s"} \u2014 tap a card to install", syncOk = true)
                 }
             }
@@ -347,10 +433,15 @@ class GogGamesActivity : ComponentActivity() {
 
             val prod = JSONObject(productJson)
             if (prod.optBoolean("is_secret", false)) return null
-            if ("dlc" == prod.optString("game_type")) {
+            val gameType = prod.optString("game_type", "")
+            if ("dlc" == gameType) {
                 storeDlcInBuffer(id, prod)
                 return null
             }
+            // gap #8 filter: drop non-game product types (movie / goodie / etc). Only `game` and
+            // `pack` (bundles) are kept; an EMPTY game_type is kept too (some products omit it and
+            // we must not over-filter an owned playable title).
+            if (gameType.isNotEmpty() && gameType != "game" && gameType != "pack") return null
 
             val titleObj = prod.optJSONObject("title")
             var titleStr = titleObj?.optString("*")
@@ -376,14 +467,28 @@ class GogGamesActivity : ComponentActivity() {
             } else ""
 
             var generation = 1
+            var hasWindowsBuild = false
             try {
+                // Build list lives on content-system.gog.com, NOT api.gog.com (which
+                // returns the storefront HTML → parse fails → everything mislabelled gen1).
+                // Requesting generation=2 still returns gen1-only builds, so the true
+                // generation must be read from items[].generation (take the max), not
+                // merely "items exist → gen2".
                 val buildsJson = httpGet(
-                    "https://api.gog.com/products/$id/os/windows/builds?generation=2", token,
+                    "https://content-system.gog.com/products/$id/os/windows/builds?generation=2", token,
                 )
                 if (buildsJson != null) {
                     val bObj = JSONObject(buildsJson)
                     val bitems = bObj.optJSONArray("items")
-                    if (bitems != null && bitems.length() > 0) generation = 2
+                    if (bitems != null && bitems.length() > 0) {
+                        hasWindowsBuild = true
+                        var maxGen = 0
+                        for (bi in 0 until bitems.length()) {
+                            val g = bitems.optJSONObject(bi)?.optInt("generation", 0) ?: 0
+                            if (g > maxGen) maxGen = g
+                        }
+                        if (maxGen > 0) generation = maxGen
+                    }
                 }
             } catch (_: Exception) {}
 
@@ -403,7 +508,36 @@ class GogGamesActivity : ComponentActivity() {
                 if (size > 0) prefs.edit().putLong("gog_size_$id", size).apply()
             }
 
-            return GogGame(id, titleStr, imageUrl, desc, developer, category, generation)
+            // gap #8 filter — prime / size-0 / no-content guard. Drop only products this app can
+            // NEVER install: no content-system Windows build AND no standalone Windows installer.
+            // The installer check protects our standalone-installer classics (runInstaller) — a gen1
+            // title with no build is still installable, so build-absence ALONE must not drop it.
+            val downloads = prod.optJSONObject("downloads")
+            var hasWindowsInstaller = false
+            val installersArr = downloads?.optJSONArray("installers")
+            if (installersArr != null) {
+                for (di in 0 until installersArr.length()) {
+                    if (installersArr.optJSONObject(di)?.optString("os", "") == "windows") {
+                        hasWindowsInstaller = true; break
+                    }
+                }
+            }
+            if (!hasWindowsBuild && !hasWindowsInstaller) return null
+
+            // gap #8 behavior 4 — vertical box-art backfill, lazy + idempotent. Only hit the unauth
+            // gamesdb service when we don't already hold a cover for this id (stored per-id pref).
+            // Once stored it's never re-fetched — even on a heavy all-owned re-sync — so the 2 extra
+            // GETs are paid once per NEW/uncovered game. A gamesdb miss stores nothing and falls back
+            // to the SGDB/icon `imageUrl` chain below (verticalCover stays null).
+            var verticalCover: String? = prefs.getString("$VCOVER_PREFIX$id", null)
+            if (verticalCover.isNullOrEmpty()) {
+                verticalCover = fetchVerticalCover(id)
+                if (!verticalCover.isNullOrEmpty()) {
+                    prefs.edit().putString("$VCOVER_PREFIX$id", verticalCover).apply()
+                }
+            }
+
+            return GogGame(id, titleStr, imageUrl, desc, developer, category, generation, verticalCover)
         } catch (e: Exception) {
             return null
         }
@@ -465,6 +599,7 @@ class GogGamesActivity : ComponentActivity() {
                     o.optString("developer", ""),
                     o.optString("category", ""),
                     o.optInt("generation", 1),
+                    o.optString("verticalCover", "").ifEmpty { null }, // additive; absent → null
                 )
             }
         } catch (_: Exception) { null }
@@ -482,6 +617,9 @@ class GogGamesActivity : ComponentActivity() {
                 o.put("developer", g.developer)
                 o.put("category", g.category)
                 o.put("generation", g.generation)
+                // Additive key — readers that don't know it (cachedDetail/seed pre-#8) ignore it via
+                // optString. A null cover simply omits the key (JSONObject.put drops null values).
+                if (!g.verticalCover.isNullOrEmpty()) o.put("verticalCover", g.verticalCover)
                 arr.put(o)
             }
             prefs.edit().putString(CACHE_KEY, arr.toString()).apply()
@@ -993,9 +1131,12 @@ private fun GameListCard(
             Box(
                 modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surface),
             ) {
-                if (game.imageUrl.isNotEmpty()) {
+                // gap #8: prefer the real GOG 2:3 vertical cover when we have one; otherwise fall
+                // back to the existing SGDB/icon cover (imageUrl). `//host` → `https://host`.
+                val art = game.verticalCover?.takeIf { it.isNotEmpty() } ?: game.imageUrl
+                if (art.isNotEmpty()) {
                     AsyncImage(
-                        model = if (game.imageUrl.startsWith("//")) "https:${game.imageUrl}" else game.imageUrl,
+                        model = if (art.startsWith("//")) "https:$art" else art,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -1170,9 +1311,12 @@ private fun GameGridTile(
                     .height(artHeightDp.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (game.imageUrl.isNotEmpty()) {
+                // gap #8: prefer the real GOG 2:3 vertical cover when we have one; otherwise fall
+                // back to the existing SGDB/icon cover (imageUrl). `//host` → `https://host`.
+                val art = game.verticalCover?.takeIf { it.isNotEmpty() } ?: game.imageUrl
+                if (art.isNotEmpty()) {
                     AsyncImage(
-                        model = if (game.imageUrl.startsWith("//")) "https:${game.imageUrl}" else game.imageUrl,
+                        model = if (art.startsWith("//")) "https:$art" else art,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -1302,7 +1446,11 @@ private fun ExePickerDialogGog(
         onDismissRequest = onDismiss,
         title = { Text("Select game executable") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 candidates.forEach { path ->
                     val f = java.io.File(path)
                     val parent = f.parentFile

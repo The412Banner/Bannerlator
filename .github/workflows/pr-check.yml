@@ -1,0 +1,22 @@
+name: PR check
+
+# Compile every pull request against main with the same reusable build the release artifacts use,
+# so a PR that merges cleanly but does not build (or breaks a flavor) shows a red check instead of
+# only GitHub's "no conflicts" badge. Runs with the read-only PR token: no secrets are passed, so
+# fork PRs work too (the optional Galaxy SDK jar is simply absent). Required by main's branch
+# protection — see docs/RUST_ENGINE_PARITY.md for the release gate.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: ./.github/workflows/_build.yml
+    with:
+      release_number: pr-${{ github.event.pull_request.number }}

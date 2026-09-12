@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-21T06-03-05-1a0791",
+  "created": "2026-08-21T06:03:05.483Z",
+  "ip_hash": "ywqRkGFAlc",
+  "fields": {
+    "reporter_name": "Mohd Ariana Bin Ahmad",
+    "device_model": "Samsung Galaxy A07 5g",
+    "soc": "Dimensity 6300",
+    "gpu": "Mali-G57 MC2",
+    "android": "Android 16 / One UI 8.5",
+    "ram": "8 GB",
+    "app_version": "2.9.9",
+    "install_source": "GitHub release",
+    "game_name": "Grand Theft Auto V",
+    "steam_appid": "",
+    "store": "",
+    "exe": "GTA5.exe",
+    "symptom": "Freezes / hangs",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "3.0.2",
+    "proton": "Proton 11.0",
+    "box64": "Performance",
+    "resolution": "1600x720",
+    "framegen": "FSR3 Model 3",
+    "repro": "1. Hotfixes Open Game\n2. Hotfixes Main Menu\n3. Hotfixes Gameplay Starting Setup",
+    "tried": ""
+  },
+  "logs": []
+}

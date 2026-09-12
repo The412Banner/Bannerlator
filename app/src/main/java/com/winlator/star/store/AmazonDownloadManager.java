@@ -3,6 +3,14 @@ package com.winlator.star.store;
 import android.content.Context;
 import android.util.Log;
 
+import com.winlator.star.store.blsteam.BlAmazonDownload;
+import com.winlator.star.store.blsteam.BlAmazonDownloadListener;
+import com.winlator.star.store.blsteam.BlStoreEngineFlag;
+import com.winlator.star.store.blsteam.CaBundleExtractor;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -42,6 +50,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AmazonDownloadManager {
 
     private static final String TAG                   = "BH_AMAZON";
+    /** Rust engine log tag (`adb logcat -s BL_AMAZON_DL`); first line per run = `engine=…`. */
+    private static final String RUST_TAG              = BlAmazonDownload.TAG;
     private static final int    MAX_PARALLEL          = 8;
     private static final int    MAX_RETRIES           = 3;
     private static final long   PROGRESS_INTERVAL     = 512L * 1024L;  // 512 KB
@@ -147,6 +157,24 @@ public class AmazonDownloadManager {
             java.util.concurrent.ConcurrentLinkedQueue<String> fileLog =
                     new java.util.concurrent.ConcurrentLinkedQueue<>();
 
+            // Engine switch: the Rust adapter (libblsteam.so) replaces ONLY this fetch pool.
+            // Manifest, plan, markers and every post-install step below are shared. The Java
+            // loop in the else branch is untouched. See docs/RUST_AMAZON_PARITY.md.
+            boolean rustEngine = BlStoreEngineFlag.isAmazonEnabled(ctx)
+                    && BlAmazonDownload.isAvailable();
+            dbg.append("engine=").append(rustEngine ? "rust" : "java").append("\n");
+            Log.i(RUST_TAG, "engine=" + (rustEngine ? "rust" : "java")
+                    + " game=" + game.productId + " files=" + files.size());
+            if (rustEngine) {
+                if (!downloadAllRust(ctx, spec.downloadUrl, files, manifest.totalInstallSize,
+                                     installDir, downloaded, lastEmit,
+                                     lastSpeedMs, lastSpeedBytes, currentSpeedBps,
+                                     progress, cancel, dbg)) {
+                    // Same terminal path as the Java loop's "a file failed" branch.
+                    deleteMarker(installDir, IN_PROGRESS_MARKER);
+                    return false;
+                }
+            } else {
             ExecutorService pool = Executors.newFixedThreadPool(MAX_PARALLEL);
             List<Future<Boolean>> futures = new ArrayList<>();
             for (AmazonManifest.ManifestFile file : files) {
@@ -184,6 +212,7 @@ public class AmazonDownloadManager {
                 deleteMarker(installDir, IN_PROGRESS_MARKER);
                 return false;
             }
+            } // end Java engine
 
             // Step 5: Cache manifest and mark installed
             cacheManifest(ctx, game.productId, manifestBytes);
@@ -225,6 +254,140 @@ public class AmazonDownloadManager {
         } catch (Exception e) {
             Log.e(TAG, "writeDebug failed", e);
         }
+    }
+
+    // ── Rust engine (libblsteam.so) — replaces the fetch pool only ────────────
+
+    /**
+     * Serialises the manifest file list for the native adapter: one entry per file with the
+     * EXACT URL the Java loop would open ({@link AmazonApiClient#appendPath}) and the SHA-256
+     * hex ONLY when the Java loop would verify it (hashAlgorithm == 0 with hash bytes), else "".
+     * The native side applies the same size-based resume-skip as {@link #downloadFileWithRetry}.
+     */
+    static String buildRustPlan(List<AmazonManifest.ManifestFile> files, String baseUrl) {
+        JSONArray arr = new JSONArray();
+        try {
+            for (AmazonManifest.ManifestFile file : files) {
+                String hashHex = file.hashHex();
+                JSONObject o = new JSONObject();
+                o.put("relPath", file.unixPath());
+                o.put("url", AmazonApiClient.appendPath(baseUrl, "files/" + hashHex));
+                o.put("size", file.size);
+                o.put("sha256hex",
+                      (file.hashAlgorithm == 0 && file.hashBytes.length > 0) ? hashHex : "");
+                arr.put(o);
+            }
+        } catch (Exception e) {
+            Log.e(RUST_TAG, "buildRustPlan failed", e);
+            return "";
+        }
+        return arr.toString();
+    }
+
+    /**
+     * Runs the fetch pool on the Rust adapter with the SAME progress/cancel handlers and the
+     * same emission gates as the Java loop (512 KB CAS + 500 ms speed sampler), so callers,
+     * the registry and the notification see an identical feed shape.
+     *
+     * @return true = every file present/verified; false = a file failed (after native retries)
+     *         or the download was cancelled — exactly the two outcomes of the Java pool.
+     */
+    private static boolean downloadAllRust(
+            Context ctx,
+            String baseUrl,
+            List<AmazonManifest.ManifestFile> files,
+            long totalSize,
+            File installDir,
+            AtomicLong totalDownloaded,
+            AtomicLong lastEmit,
+            AtomicLong lastSpeedMs,
+            AtomicLong lastSpeedBytes,
+            AtomicLong currentSpeedBps,
+            ProgressCallback progress,
+            CancelChecker cancel,
+            StringBuilder dbg) {
+
+        String plan = buildRustPlan(files, baseUrl);
+        if (plan.isEmpty()) {
+            dbg.append("ERROR: rust plan build failed\n");
+            writeDebug(ctx, dbg);
+            log("A file failed — aborting download");
+            return false;
+        }
+        String caPath;
+        try {
+            caPath = CaBundleExtractor.INSTANCE.ensureBundle(ctx);
+        } catch (Throwable t) {
+            Log.w(RUST_TAG, "CA bundle unavailable, using system roots: " + t);
+            caPath = "";
+        }
+
+        BlAmazonDownloadListener listener = new BlAmazonDownloadListener() {
+            @Override
+            public void onProgress(long bytesDone, long bytesTotal, long filesDone, long filesTotal) {
+                totalDownloaded.set(bytesDone);
+                long dl   = bytesDone;
+                long emit = lastEmit.get();
+                if (progress != null && dl - emit >= PROGRESS_INTERVAL) {
+                    if (lastEmit.compareAndSet(emit, dl)) {
+                        long nowMs     = System.currentTimeMillis();
+                        long prevMs    = lastSpeedMs.get();
+                        long timeDelta = nowMs - prevMs;
+                        if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
+                            long prevB  = lastSpeedBytes.getAndSet(dl);
+                            long bDelta = dl - prevB;
+                            if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
+                        }
+                        progress.onProgress(dl, totalSize, formatSpeed(currentSpeedBps.get()));
+                    }
+                }
+            }
+
+            @Override
+            public void onLog(String line) {
+                Log.i(RUST_TAG, line);
+                synchronized (dbg) {
+                    dbg.append("[rust] ").append(line).append("\n");
+                }
+            }
+
+            @Override
+            public void onComplete(boolean success, String error, long bytesWritten) {
+                Log.i(RUST_TAG, "complete success=" + success + " bytes=" + bytesWritten
+                        + (error.isEmpty() ? "" : " error=" + error));
+            }
+        };
+
+        // Improvements round 1: the Rust path takes its in-flight ceiling from the Steam speed
+        // tier (Fast = 32) instead of Java's MAX_PARALLEL; the adapter gives the whole ceiling
+        // to Amazon's single CDN host. The Java loop below keeps its own 8 threads untouched.
+        DownloadSpeedConfig cfg = StoreDownloadTier.config(ctx);
+        int maxWorkers = Math.max(1, Math.min(128, cfg.getMaxNetworkWindow()));
+        int processWorkers = Math.max(
+                Math.max(1, Runtime.getRuntime().availableProcessors() / 2),
+                Math.max(1, Math.min(32, cfg.getMaxDecompress())));
+        BlAmazonDownload.RunResult result = BlAmazonDownload.runBlocking(
+                plan, installDir.getAbsolutePath(), caPath,
+                maxWorkers, processWorkers,
+                cancel == null ? null : cancel::isCancelled,
+                listener);
+
+        if (result.cancelled) {
+            synchronized (dbg) { dbg.append("CANCELLED (rust engine)\n"); }
+            writeDebug(ctx, dbg);
+            log("Download cancelled");
+            return false;
+        }
+        if (!result.success) {
+            synchronized (dbg) {
+                dbg.append("FAIL: ").append(result.error).append("\n");
+                dbg.append("ERROR: a file failed — aborting\n");
+            }
+            writeDebug(ctx, dbg);
+            log("A file failed — aborting download");
+            return false;
+        }
+        return true;
     }
 
     // ── File download with retry ──────────────────────────────────────────────

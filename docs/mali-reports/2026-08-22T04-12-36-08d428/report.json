@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-22T04-12-36-08d428",
+  "created": "2026-08-22T04:12:36.614Z",
+  "ip_hash": "obyjdRb//V",
+  "fields": {
+    "reporter_name": "Mohd Ariana Bin Ahmad",
+    "device_model": "Samsung Galaxy A07 5g",
+    "soc": "Dimensity 6300",
+    "gpu": "Mali-G57 MC2",
+    "android": "Android 16 One UI 8.5",
+    "ram": "8 GB",
+    "app_version": "3.0.0",
+    "install_source": "GitHub release",
+    "game_name": "Sarah's House",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "SarahsHouse.exe",
+    "symptom": "Other",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "3.0.2",
+    "proton": "Proton 11.0",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "FSR3",
+    "repro": "1. Hotfixes Open Gameplay Setup Player\n2. Hotfixes Main Menu Screen Player\n3. Other Hotfixes And More",
+    "tried": "Slower Resolution, No Changes More Selected, No Adreno And Turnip Driver System, Only Mali System Driver."
+  },
+  "logs": []
+}

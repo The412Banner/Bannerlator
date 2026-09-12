@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-13T12-45-26-770e94",
+  "created": "2026-08-13T12:45:26.336Z",
+  "ip_hash": "33yhFbCXGL",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Redmi Pad 2",
+    "soc": "Helio G100 ultra",
+    "gpu": "Mali G57 MC2",
+    "android": "Android 15 hyperos 2",
+    "ram": "8GB",
+    "app_version": "2.9.9",
+    "install_source": "GitHub release",
+    "game_name": "GTA IV",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "",
+    "symptom": "Runs but very low FPS",
+    "when": "Fails at the publisher/loading logo",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.11.1 sarek",
+    "proton": "Proton 9.0 x86",
+    "box64": "Performance",
+    "resolution": "950x544",
+    "framegen": "No",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

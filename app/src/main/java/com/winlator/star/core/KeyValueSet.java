@@ -86,6 +86,11 @@ public class KeyValueSet implements Iterable<String[]> {
     public Iterator<String[]> iterator() {
         final int[] start = {0};
         final int[] end = {data.indexOf(",")};
+        // A single-item config (no comma) gives indexOf == -1, making hasNext() (start < end)
+        // immediately false so the sole pair was never iterated (get() then returned the
+        // fallback). Guard it exactly as next() already does. An empty string still yields
+        // end == 0 → no iteration, which is correct.
+        if (end[0] == -1) end[0] = data.length();
         final String[] item = new String[2];
         return new Iterator<String[]>() {
             @Override

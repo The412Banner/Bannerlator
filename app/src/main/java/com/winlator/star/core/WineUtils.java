@@ -205,9 +205,41 @@ public abstract class WineUtils {
         }
     }
 
+    // ── Startup services (single source of truth) ──────────────────────────────────────────────
+    // The 23 services the startup-selection feature manages, as "RawName:DefaultStartValue"
+    // (2=auto / 3=manual = ON; the writer flips a service OFF by writing 4 = disabled). The ORDER is
+    // load-bearing: STARTUP_SERVICE_LABELS below is parallel, and both Custom toggle lists (container
+    // + shortcut settings) render this list, so they can never drift from what changeServicesStatus
+    // actually writes.
+    public static final String[] STARTUP_SERVICES = { "BITS:3", "Eventlog:2", "FontCache:3", "FontCache3.0.0.0:3", "HTTP:3", "LanmanServer:3", "MSIServer:3", "NDIS:2", "nsiproxy:3", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "SharedGpuResources:2", "Spooler:3", "StiSvc:3", "TermService:3", "TrkWks:3", "W32Time:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
+    // Friendly names, parallel to STARTUP_SERVICES (same order). The Custom UI shows "Label (RawName)".
+    public static final String[] STARTUP_SERVICE_LABELS = { "Background Intelligent Transfer", "Windows Event Log", "Windows Font Cache", ".NET Font Cache", "HTTP Service", "Server (file sharing)", "Windows Installer", "NDIS network driver", "Network Store Interface", "Plug and Play", "Remote Procedure Call (RPC)", "Smart Card", "Task Scheduler", "Shared GPU Resources", "Print Spooler", "Windows Image Acquisition", "Remote Desktop Services", "Distributed Link Tracking", "Windows Time", "Wine Bus — gamepad/HID", "Wine HID — gamepad/HID", "Windows Management Instrumentation (WMI)", "Windows Update"};
+
+    // Raw service name from a "RawName:DefaultStartValue" entry.
+    public static String startupServiceRawName(String entry) {
+        int i = entry.indexOf(":");
+        return i >= 0 ? entry.substring(0, i) : entry;
+    }
+
+    // Tolerant parse of a Custom-startup enabled CSV into a set of raw service names (trims, drops
+    // blanks) so a hand-edited container JSON or an imported config can't throw here.
+    public static java.util.Set<String> parseStartupServicesCsv(String csv) {
+        java.util.Set<String> set = new java.util.HashSet<>();
+        if (csv == null) return set;
+        for (String s : csv.split(",")) {
+            String t = s.trim();
+            if (!t.isEmpty()) set.add(t);
+        }
+        return set;
+    }
+
     public static void changeServicesStatus(Container container, String startupSelection) {
+        changeServicesStatus(container, startupSelection, null);
+    }
+
+    public static void changeServicesStatus(Container container, String startupSelection, String customEnabledCsv) {
         final String[] services = {"BITS:3", "Eventlog:2", "HTTP:3", "LanmanServer:3", "NDIS:2", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "Spooler:3", "StiSvc:3", "TermService:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
-        final String[] aggressiveServices = { "BITS:3", "Eventlog:2", "FontCache:3", "FontCache3.0.0.0:3", "HTTP:3", "LanmanServer:3", "MSIServer:3", "NDIS:2", "nsiproxy:3", "PlugPlay:2", "RpcSs:3", "scardsvr:3", "Schedule:3", "SharedGpuResources:2", "Spooler:3", "StiSvc:3", "TermService:3", "TrkWks:3", "W32Time:3", "winebus:2", "winehid:2", "Winmgmt:3", "wuauserv:3"};
+        final String[] aggressiveServices = STARTUP_SERVICES;
         File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
 
         byte selection = Container.STARTUP_SELECTION_NORMAL;
@@ -215,6 +247,11 @@ public abstract class WineUtils {
             selection = Byte.parseByte(startupSelection);
         }
         catch (NumberFormatException e) {}
+
+        // Custom: only names present in the enabled CSV keep their ON default; everything else is
+        // disabled. Note winebus/winehid follow the CSV like any other service here (unlike the
+        // presets, which force them on) — the user is warned in the UI.
+        java.util.Set<String> customEnabled = parseStartupServicesCsv(customEnabledCsv);
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
             registryEditor.setCreateKeyIfNotExist(false);
@@ -232,6 +269,10 @@ public abstract class WineUtils {
                     }
                 } else if (selection == Container.STARTUP_SELECTION_AGGRESSIVE) {
                     if (!name.equals("winebus") && !name.equals("winehid")) {
+                        value = 4;
+                    }
+                } else if (selection == Container.STARTUP_SELECTION_CUSTOM) {
+                    if (!customEnabled.contains(name)) {
                         value = 4;
                     }
                 }

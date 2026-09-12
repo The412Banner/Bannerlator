@@ -1,6 +1,7 @@
 package com.winlator.star.store
 
 import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.PowerManager
 import android.util.Log
 import com.winlator.star.BuildConfig
@@ -52,10 +53,59 @@ object SteamDepotDownloader {
     private const val MAX_SESSION_RETRIES = 2
 
     // -------------------------------------------------------------------------
+    // Per-depot completion / auto-resume tuning (Layer 1 + Layer 2)
+    // -------------------------------------------------------------------------
+    /** Auto-resume cap for a genuinely-SHORT selected depot — one that the per-depot manifest verify
+     *  found incomplete even though the engine reported "download complete" (Dead Cells' 588651 stopping
+     *  at ~50%). Distinct from MAX_SESSION_RETRIES (that recovers a lost CM session; this re-fetches
+     *  missing depot chunks). Bounded + backoff + no-progress fail-fast below so it can never loop. */
+    private const val MAX_DEPOT_RESUME_ATTEMPTS = 3
+    /** Backoff before each short-depot auto-resume (ms), indexed by attempt; the last value repeats. */
+    private val DEPOT_RESUME_BACKOFF_MS = longArrayOf(2_000L, 5_000L, 10_000L)
+    /** A short-depot resume that grows the on-disk footprint by less than this made no forward progress
+     *  → the depot is genuinely unavailable (no key / dead CDN, like an unowned DLC depot) → fail fast. */
+    private const val MIN_RESUME_PROGRESS_BYTES = 1_048_576L
+    /** Engine manifest-relative depot completion (sizeDownloaded/completeDownloadSize, from
+     *  onChunkCompleted) at/above which a depot's needed file set is considered fully delivered. */
+    private const val DEPOT_PCT_COMPLETE = 0.999f
+    /** On-disk-footprint vs manifest-true-size threshold (percent) for the verify/re-check and
+     *  overlapping-depot completeness paths (matches the prior guard's 90%). */
+    private const val COMPLETE_PCT = 90L
+
+    /**
+     * Per-depot completion verdict (Layer 2). COMPLETE = validated on disk; SHORT = the account owns
+     * it but its content is incomplete → Layer-1 auto-resume; DENIED = the account is not entitled
+     * (Steam refused the depot key so the engine skipped it) → tolerated/skipped, never blocks the
+     * install. Parity with the Rust engine's `.bl_depot/denied.depots` handling in [BlDepotInstaller].
+     */
+    private enum class DepotVerdict { COMPLETE, SHORT, DENIED }
+
+    /**
+     * Overlapping-depot fix. A few Steam apps ship two+ content depots that carry the SAME file
+     * PATHS but DIFFERENT content — one maintained, one a stale leftover. JavaSteam's DepotDownloader
+     * de-dupes files by path across an app's depots; the first-processed depot wins, so a stale twin
+     * can pre-empt the maintained file and land an OUTDATED copy on disk (the engine then reports
+     * "downloaded 0 files" for the maintained depot, hiding it).
+     *
+     * Map of appId → depotIds to DROP from the download, so only the maintained depot is pulled
+     * (mirrors what GameNative fetches). Verified case:
+     *   993090 Lossless Scaling → drop 993092: its Lossless.dll lags depot 993091 by a build
+     *   (993091 got the +1.99 MiB update in build 19476814 → 7.17 MiB; 993092 still ships the older
+     *   5.18 MiB DLL). Keeping 993092 makes lsfg-vk run an outdated frame-gen DLL. 993091 alone is a
+     *   complete install (315 MB), so dropping the twin loses nothing.
+     */
+    private val STALE_DUPLICATE_DEPOTS: Map<Int, Set<Int>> = mapOf(
+        993090 to setOf(993092),
+    )
+
+    /** The depots to drop for [appId] per [STALE_DUPLICATE_DEPOTS] (shared with the Rust-engine path). */
+    internal fun staleDuplicateDepots(appId: Int): Set<Int> = STALE_DUPLICATE_DEPOTS[appId].orEmpty()
+
+    // -------------------------------------------------------------------------
     // Active download tracking — used by UI to detect stale DL_DOWNLOADING rows
     // -------------------------------------------------------------------------
 
-    private val activeDownloads = java.util.concurrent.ConcurrentHashMap<Int, Unit>()
+    internal val activeDownloads = java.util.concurrent.ConcurrentHashMap<Int, Unit>()
 
     /** True if a download for this appId is currently running in this process. */
     @JvmStatic fun isDownloading(appId: Int): Boolean = activeDownloads.containsKey(appId)
@@ -72,34 +122,76 @@ object SteamDepotDownloader {
     // safety cap so a crash can never pin it forever.
     @Volatile private var wakeLock: PowerManager.WakeLock? = null
 
-    /** Lazily create (once) and acquire the shared partial wakelock. Null/exception-safe: a device
-     *  without POWER_SERVICE (universal in practice) must not break the download. */
+    // A partial wakelock keeps the CPU (and process) alive, but it does NOT stop WiFi power-save from
+    // throttling the bulk CDN transfer to ~0 once the app leaves the foreground: the process stays
+    // ALIVE (State: S), the FGS stays up and the CM session survives (the tiny heartbeat still slips
+    // through), yet download RX + disk writes fall to zero and the download stalls at a fixed %/byte
+    // count (device-confirmed: Hades frozen at 3%/401 MB, never resuming). A high-perf WifiManager
+    // WifiLock keeps the radio out of power-save for the duration of a background download and cures
+    // it. Held in EXACT lockstep with [wakeLock] — same reference-counting, acquired/released at the
+    // same points — so it can never leak or drop while another download still holds it. No manifest
+    // permission is required for a WifiLock (ACCESS_WIFI_STATE is already declared for other reasons).
+    @Volatile private var wifiLock: WifiManager.WifiLock? = null
+
+    /** Lazily create (once) and acquire BOTH the shared partial wakelock and the high-perf WifiLock.
+     *  Each is independently null/exception-safe: a device missing POWER_SERVICE or WIFI_SERVICE (both
+     *  universal in practice) must not break the download, and a failure of one must not skip the other. */
     @Synchronized
-    private fun acquireDownloadWakelock(ctx: Context) {
+    internal fun acquireDownloadWakelock(ctx: Context) {
+        val appCtx = ctx.applicationContext   // application context — never leak an Activity
+        // Partial CPU wakelock — keeps the process/CPU alive (OEM task-killer churn).
         try {
             var wl = wakeLock
             if (wl == null) {
-                val pm = ctx.applicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
-                if (pm == null) { dlog("WAKELOCK: POWER_SERVICE unavailable — continuing without it"); return }
-                wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Bannerlator:steam-download")
-                wl.setReferenceCounted(true)   // multiple concurrent downloads acquire/release safely
-                wakeLock = wl
+                val pm = appCtx.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                if (pm == null) dlog("WAKELOCK: POWER_SERVICE unavailable — continuing without it")
+                else {
+                    wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Bannerlator:steam-download")
+                    wl.setReferenceCounted(true)   // multiple concurrent downloads acquire/release safely
+                    wakeLock = wl
+                }
             }
-            wl.acquire(6L * 60L * 60L * 1000L)   // 6h cap — a crash can't pin the lock forever
-            dlog("WAKELOCK: acquired (partial, held=${wl.isHeld})")
+            wl?.let { it.acquire(6L * 60L * 60L * 1000L); dlog("WAKELOCK: acquired (partial, held=${it.isHeld})") }
+            // 6h cap above — a crash can't pin the lock forever.
         } catch (t: Throwable) {
             dlog("WAKELOCK: acquire failed (${t.message}) — continuing without it")
         }
+        // High-perf WiFi lock — keeps the radio out of power-save so a BACKGROUNDED download's bulk CDN
+        // transfer isn't throttled to ~0. WifiLock.acquire() has no timeout arg; it is released in exact
+        // lockstep with the wakelock on every terminal path, so no cap is needed.
+        try {
+            var wf = wifiLock
+            if (wf == null) {
+                val wm = appCtx.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                if (wm == null) dlog("WIFILOCK: WIFI_SERVICE unavailable — continuing without it")
+                else {
+                    @Suppress("DEPRECATION")   // WIFI_MODE_FULL_HIGH_PERF is deprecated on API 29+ but still honoured; targetSdk is 28
+                    val created = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Bannerlator:steam-download-wifi")
+                    created.setReferenceCounted(true)   // ref-counted in lockstep with the wakelock
+                    wifiLock = created
+                    wf = created
+                }
+            }
+            wf?.let { it.acquire(); dlog("WIFILOCK: acquired (high-perf, held=${it.isHeld})") }
+        } catch (t: Throwable) {
+            dlog("WIFILOCK: acquire failed (${t.message}) — continuing without it")
+        }
     }
 
-    /** Release one acquire of the shared wakelock. Guarded: a reference-counted release throws if the
-     *  count already hit zero, which is benign — we just want it dropped on every terminal path. */
-    private fun releaseDownloadWakelock() {
+    /** Release one acquire of BOTH shared locks. Guarded: a reference-counted release throws if the
+     *  count already hit zero, which is benign — we just want them dropped on every terminal path. */
+    internal fun releaseDownloadWakelock() {
         try {
-            val wl = wakeLock ?: return
-            if (wl.isHeld) { wl.release(); dlog("WAKELOCK: released (held=${wl.isHeld})") }
+            val wl = wakeLock
+            if (wl != null && wl.isHeld) { wl.release(); dlog("WAKELOCK: released (held=${wl.isHeld})") }
         } catch (t: Throwable) {
             dlog("WAKELOCK: release skipped (${t.message})")
+        }
+        try {
+            val wf = wifiLock
+            if (wf != null && wf.isHeld) { wf.release(); dlog("WIFILOCK: released (held=${wf.isHeld})") }
+        } catch (t: Throwable) {
+            dlog("WIFILOCK: release skipped (${t.message})")
         }
     }
 
@@ -110,7 +202,8 @@ object SteamDepotDownloader {
     private var debugLogFile: File? = null
     val debugLogPath: String get() = debugLogFile?.absolutePath ?: "(not initialized)"
 
-    private fun initDebugLog(ctx: Context, truncate: Boolean = true) {
+    internal fun initDebugLog(ctx: Context, truncate: Boolean = true,
+                              engine: String = "JavaSteam DepotDownloader (Ktor CIO)") {
         try {
             val dir = ctx.getExternalFilesDir(null)
             if (dir != null) {
@@ -121,7 +214,7 @@ object SteamDepotDownloader {
                     val hdr = if (truncate) "=== Steam DepotDownloader Debug Log (JavaSteam native) ==="
                               else "=== Retry attempt (session recovery) ==="
                     w.write("$hdr\n")
-                    w.write("Engine: JavaSteam DepotDownloader (Ktor CIO)\n")
+                    w.write("Engine: $engine\n")
                     w.write("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}\n\n")
                 }
                 dlog("Debug log: ${debugLogFile!!.absolutePath}")
@@ -140,11 +233,15 @@ object SteamDepotDownloader {
         if (debugLogFile != null) dlog(msg)
     }
 
-    private fun dlog(msg: String) {
+    private fun dlog(msg: String) = dlog(TAG, msg)
+
+    /** [dlog] under a caller-chosen logcat tag (the Rust-engine path logs as `BL_STEAM_DL`); the
+     *  steam_debug.txt line is identical either way. */
+    internal fun dlog(tag: String, msg: String) {
         // Scrub username/email/token from EVERY line (incl. JavaSteam-bridge + stack traces, which
         // all funnel through here) — these files are shared for support and must never carry secrets.
         val safe = SteamLogRedactor.redact(msg)
-        Log.i(TAG, safe)
+        Log.i(tag, safe)
         debugLogFile ?: return
         try {
             BufferedWriter(FileWriter(debugLogFile!!, true)).use { w ->
@@ -207,17 +304,29 @@ object SteamDepotDownloader {
     /**
      * Start a fresh install. Returns a DownloadControl with cancel + pause Runnables.
      * @param speedTier download-speed tier key (8=Slow / 16=Medium / 24=Fast / 32=Blazing);
-     *   fed to [DownloadSpeedConfig] to derive maxDownloads/maxDecompress/maxFileWrites.
+     *   fed to [DownloadSpeedConfig] to derive maxDownloads/maxDecompress.
      * @param debugLog when true (or in a debug build) writes the verbose steam_debug.txt firehose +
      *   JavaSteam-internal bridge for this download. Off = logcat-only; failures still leave a trace.
+     * @param installRoot when non-null, the `steam_games` base a fresh install lands in instead of the
+     *   internal `imagefs/steam_games` default — used by the "Install to SD card" toggle, which passes
+     *   `<sd>/bannerlator/steam_games` ([SteamSdInstall.SdTarget.steamGamesBase]). Ignored for a resume
+     *   or an update/verify of an already-installed game, which stay in their existing directory.
+     * @param verify "verify integrity" pass: re-validate EVERY on-disk file against the live manifest
+     *   and re-fetch what is missing or corrupt. Consumed by the Rust-engine path only (it selects the
+     *   engine's fresh/verify mode); the JavaSteam engine ignores it — there the caller clears the
+     *   `.DepotDownloader/` resume state up front instead ([SteamGameUpdater.verifyFiles]), exactly as
+     *   before.
      */
+    @JvmOverloads
     fun installApp(
         appId: Int,
         ctx: Context,
         speedTier: Int = DownloadSpeedConfig.DEFAULT_TIER,
         debugLog: Boolean = false,
+        installRoot: String? = null,
+        verify: Boolean = false,
     ): DownloadControl =
-        buildControl(appId, ctx, speedTier, debugLog, isResume = false)
+        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
 
     /**
      * Resume a previously paused install. Keeps the existing DB row (bytes intact).
@@ -231,7 +340,48 @@ object SteamDepotDownloader {
     ): DownloadControl =
         buildControl(appId, ctx, speedTier, debugLog, isResume = true)
 
-    private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean): DownloadControl {
+    private fun buildControl(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean, isResume: Boolean,
+                             installRoot: String? = null, verify: Boolean = false): DownloadControl {
+        // Managed one-at-a-time queue (docs: DownloadQueue). Both engines funnel through the
+        // coordinator BEFORE the Rust-vs-JavaSteam choice, so the one-at-a-time rule governs whichever
+        // engine is active. The coordinator returns a facade DownloadControl synchronously (its
+        // cancel/pause work whether the request is queued or active); when this appId reaches the
+        // front it calls back into startEngine() to launch the real engine. Application context so a
+        // queued request can be held safely until it's its turn.
+        return DownloadQueue.enqueue(
+            DownloadQueue.Request(
+                appId = appId, ctx = ctx.applicationContext, speedTier = speedTier,
+                debugLog = debugLog, isResume = isResume, installRoot = installRoot, verify = verify,
+            ),
+        )
+    }
+
+    /**
+     * Launch the active download on whichever engine is enabled — called by [DownloadQueue] once the
+     * request reaches the front of the queue. Returns the engine's REAL [DownloadControl]; the facade
+     * the caller holds delegates to it. The Rust-vs-JavaSteam choice lives here, BELOW the queue, so
+     * one-at-a-time behaves consistently across both engines.
+     *
+     * Phase 2-A (docs/STEAM_RUST_ENGINE_PLAN.md): with use_rust_steam_engine ON the whole
+     * install/resume/update/verify runs on libblsteam.so's journaled downloader. Same public surface
+     * (this DownloadControl, the DownloadProgress:/DownloadComplete: events, the DownloadRegistry row,
+     * the DB rows, the .bannerlator_build marker). Flag OFF: the JavaSteam path is untouched.
+     */
+    internal fun startEngine(r: DownloadQueue.Request): DownloadControl {
+        return if (SteamRepository.getInstance().isRustEngine) {
+            BlDepotInstaller.start(r.appId, r.ctx, r.speedTier, r.debugLog, r.isResume, r.installRoot, r.verify)
+        } else {
+            startJavaEngine(r.appId, r.ctx, r.speedTier, r.debugLog, r.isResume, r.installRoot)
+        }
+    }
+
+    /**
+     * JavaSteam (deprecated fallback) engine launch — the former `buildControl` body, unchanged.
+     * `verify` is a Rust-engine-only mode (the JavaSteam path clears its `.DepotDownloader/` resume
+     * state up front in [SteamGameUpdater.verifyFiles] instead), so it is not a parameter here.
+     */
+    private fun startJavaEngine(appId: Int, ctx: Context, speedTier: Int, debugLog: Boolean,
+                               isResume: Boolean, installRoot: String?): DownloadControl {
         val cancelled     = AtomicBoolean(false)
         val paused        = AtomicBoolean(false)
         val downloaderRef = AtomicReference<DepotDownloader?>(null)
@@ -256,7 +406,8 @@ object SteamDepotDownloader {
         )
 
         CoroutineScope(Dispatchers.IO).launch {
-            runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog, isResume, control = control)
+            runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog, isResume,
+                    control = control, installRoot = installRoot)
         }
 
         return control
@@ -277,6 +428,17 @@ object SteamDepotDownloader {
         isResume: Boolean = false,
         attempt: Int = 0,
         control: DownloadControl? = null,
+        // Layer 1 short-depot auto-resume state (separate failure domain from `attempt`/session-recovery):
+        //   resumeAttempt   — how many short-depot resumes have already run for this install.
+        //   resumeFloorBytes — on-disk footprint captured at the START of the previous resume, so the
+        //                      tail can require forward progress and fail-fast on a stalled (dead) depot.
+        resumeAttempt: Int = 0,
+        resumeFloorBytes: Long = 0L,
+        // Fresh-install location override for the "Install to SD card" toggle (the `steam_games` base,
+        // e.g. `<sd>/bannerlator/steam_games`). Null = internal default. Only consulted for a genuine
+        // fresh install below; a resume / update-of-installed-game derives its dir from the DB instead,
+        // so the auto-resume recursions (all isResume=true) leave it null.
+        installRoot: String? = null,
     ) {
         // One gate for all verbose diagnostics: on in debug builds, or when the user ticked
         // "Log debug session" for this download. Off ⇒ steam_debug.txt is never created (no 4 MB
@@ -285,7 +447,10 @@ object SteamDepotDownloader {
         val verbose = BuildConfig.DEBUG || debugLog
         activeDownloads[appId] = Unit
         if (verbose) {
-            initDebugLog(ctx, truncate = attempt == 0)
+            // Truncate only on the very first attempt of a fresh install — a session-recovery retry
+            // (attempt>0) OR a short-depot auto-resume (resumeAttempt>0) appends so the failure +
+            // recovery/resume narrative survives in steam_debug.txt instead of being wiped.
+            initDebugLog(ctx, truncate = attempt == 0 && resumeAttempt == 0)
             wireJavaSteamLog()   // surface JavaSteam CM/CDN internals into steam_debug.txt
         }
         dlog("=== Starting install: appId=$appId (verbose=$verbose) ===")
@@ -338,8 +503,32 @@ object SteamDepotDownloader {
 
         // Sanitise game name for directory usage
         val safeName = row.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
-        val installDir = File(File(ctx.filesDir, "imagefs/steam_games"), safeName)
-        dlog("Install dir: ${installDir.absolutePath}")
+        // Where this app's files go. installApp always installs a game to where it ALREADY lives when
+        // it lives somewhere, and only a brand-new install picks a fresh location:
+        //   • a resume returns to the directory the in-progress download already chose (persisted on
+        //     the steam_downloads row at queueDownload time) — so an SD download resumes onto the SD
+        //     card, and a session-recovery / short-depot auto-resume never relocates a half-install.
+        //   • an update/verify or reinstall of an already-installed game stays on its games-row
+        //     install_dir (markUninstalled clears that field, so it's non-blank only for a genuinely
+        //     installed game) — so updating an SD game updates the SD copy in place, never a stray
+        //     internal one.
+        //   • a fresh install honours the SD toggle (installRoot = <sd>/bannerlator/steam_games) when
+        //     set, else the internal imagefs default (the fast path — unchanged from before).
+        val internalBase = File(ctx.filesDir, "imagefs/steam_games")
+        val resumeDir   = if (isResume) db.getDownload(appId)?.installDir?.takeIf { it.isNotBlank() } else null
+        val existingDir = row.installDir.takeIf { it.isNotBlank() }
+        val installDir = when {
+            resumeDir   != null -> File(resumeDir)
+            existingDir != null -> File(existingDir)
+            installRoot != null -> File(File(installRoot), safeName)
+            else                -> File(internalBase, safeName)
+        }
+        // A brand-new install steered onto the SD card (or any off-imagefs root) by the toggle. Update
+        // and resume paths never take the installRoot branch, so they never re-check space here (the
+        // SD free-space guard fires once installTotal is known, further below).
+        val isFreshSdInstall = installRoot != null && resumeDir == null && existingDir == null
+        val onInternal = installDir.absolutePath.startsWith(ctx.filesDir.absolutePath.trimEnd('/') + "/")
+        dlog("Install dir: ${installDir.absolutePath}${if (onInternal) "" else " (external/SD)"}")
 
         // Denominators come from the SELECTED-depot sums computed at library sync
         // (SteamRepository now filters out other-OS / non-english / undownloadable depots):
@@ -377,6 +566,28 @@ object SteamDepotDownloader {
         dlog("Denominators: install=${fmtSize(installTotal)} download=${fmtSize(downloadTotalSeed)} " +
                 "(hasPicsSize=$hasPicsSize, cachedDownload=$cachedDownload)")
 
+        // SD free-space guard — reuse SteamSdInstall's margin (shared with CopyGameToDriveC). StatFs
+        // needs an existing path, so walk up to the nearest existing ancestor of the target (the card
+        // root before its bannerlator/ tree is created). Requiring the FULL install size up front
+        // (best-effort — this is the manifest-true total when resolved, else the PICS estimate) stops
+        // an SD download from filling the card and stranding a half-install. Only a genuine fresh SD
+        // install is checked; a resume/update reuses files already on the card.
+        if (isFreshSdInstall && installTotal > 1L) {
+            var probe = installDir
+            while (!probe.exists() && probe.parentFile != null) probe = probe.parentFile!!
+            val free = SteamSdInstall.freeBytes(probe)
+            if (free < installTotal + SteamSdInstall.FREE_SPACE_MARGIN) {
+                dlog("SD free-space guard FAILED: need ${fmtSize(installTotal)} + margin " +
+                        "${fmtSize(SteamSdInstall.FREE_SPACE_MARGIN)}, only ${fmtSize(free)} free on " +
+                        probe.absolutePath)
+                emitFailed(appId, "Not enough space on the SD card — need about ${fmtSize(installTotal)}, " +
+                        "${fmtSize(free)} free. Free some space or install to internal storage.")
+                return
+            }
+            dlog("SD free-space guard OK: ${fmtSize(free)} free on ${probe.absolutePath} for a " +
+                    "${fmtSize(installTotal)} install")
+        }
+
         // Queue in DB so UI shows progress (skip reset on resume — keep existing bytes).
         // The DB tracks the INSTALL (uncompressed) bytes/total; compressed is UI-only.
         if (isResume) {
@@ -390,6 +601,12 @@ object SteamDepotDownloader {
         // single depot and stalls partway. installByDepot=uncompressed, downloadByDepot=compressed.
         val installByDepot  = java.util.concurrent.ConcurrentHashMap<Int, Long>()
         val downloadByDepot = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+        // Highest engine-reported manifest-relative completion per depot (depotPercentComplete =
+        // sizeDownloaded/completeDownloadSize). 1.0 == that depot's needed file set finished THIS
+        // session. Kept as a running max (chunk callbacks can arrive out of order across worker
+        // threads). Absent key ⇒ the depot transferred nothing this session (already on disk /
+        // de-duped / skipped). Drives the per-depot completion verdict in onDownloadCompleted.
+        val lastDepotPct = java.util.concurrent.ConcurrentHashMap<Int, Float>()
 
         // Resume seeding: the DB persists only install bytes. Seed both bars so neither
         // restarts at 0. The download (compressed) seed is derived from the install fraction
@@ -441,30 +658,31 @@ object SteamDepotDownloader {
             repo.emit("DownloadProgress:$appId:$iDone:$iTotal:$dDone:$dTotal:$etaSeconds:$speedBps")
         }
 
-        // Derive the three pipeline-stage caps from CPU cores × the selected tier's ratios
-        // (see DownloadSpeedConfig, a faithful port of GameNative on this same engine). The 7th
-        // ctor arg is maxFileWrites (NOT progressUpdateInterval — that's a hardcoded 500L inside
-        // the engine); passing a large value there let up to ~100 chunks hold multi-MB decompressed
-        // buffers at once and OOM'd the 256 MB heap. maxDownloads stays high (network parallelism is
-        // cheap on heap); decompress + file-write are the heap drivers and are kept bounded.
+        // Derive the two pipeline-stage caps from CPU cores × the selected tier's ratios
+        // (see DownloadSpeedConfig). On the joshuatam fork engine, chunk buffers are disk-spooled
+        // (temp files) rather than held in memory, so heap peak no longer scales with game size and
+        // these are purely throughput knobs — the old maxFileWrites stage was removed upstream.
         val speedConfig   = DownloadSpeedConfig(speedTier)
         val cores         = speedConfig.cpuCores
         val maxDownloads  = speedConfig.maxDownloads
         val maxDecompress = speedConfig.maxDecompress
-        val maxFileWrites = speedConfig.maxFileWrites
         dlog("Constructing DepotDownloader(tier=$speedTier, cores=$cores, maxDownloads=$maxDownloads, " +
-                "maxDecompress=$maxDecompress, maxFileWrites=$maxFileWrites, androidEmulation=true, debug=$verbose)")
+                "maxDecompress=$maxDecompress, androidEmulation=true, skipLargeFileAllocation=true, debug=$verbose)")
         val downloader = try {
+            // Named args: the fork removed the maxFileWrites ctor arg (it no longer has a separate
+            // file-write stage — decompress+write are combined), so the positional slots shifted.
             DepotDownloader(
-                steamClient,
-                licenses,
-                verbose,       // debug (gated: BuildConfig.DEBUG || user "Log debug session")
-                false,         // useLanCache
-                maxDownloads,  // maxDownloads (cores × tier download ratio)
-                maxDecompress, // maxDecompress (cores × tier decompress ratio — bounds the big buffers)
-                maxFileWrites, // maxFileWrites (tied to maxDecompress; was 100, mislabeled "progressUpdateInterval")
-                true,          // androidEmulation
-                null,          // parentJob
+                steamClient = steamClient,
+                licenses = licenses,
+                debug = verbose,                 // gated: BuildConfig.DEBUG || user "Log debug session"
+                useLanCache = false,
+                maxDownloads = maxDownloads,      // cores × tier download ratio
+                maxDecompress = maxDecompress,    // cores × tier decompress ratio
+                androidEmulation = true,
+                parentJob = null,
+                // #408: the fork disk-spools chunks so heap no longer scales with game size; this
+                // flag also skips the multi-GB per-file pre-allocation that HITMAN's large files tripped.
+                skipLargeFileAllocation = true,
             )
         } catch (e: Exception) {
             dlog("FAIL: DepotDownloader constructor threw")
@@ -485,6 +703,14 @@ object SteamDepotDownloader {
         // so the retry must force a genuinely FRESH session (reconnectAndRelogin) rather than a
         // plain ensureLoggedIn that would short-circuit true on the same dead session.
         val gotDepotKeyOrChunk = AtomicBoolean(false)
+        // Layer 1 signal: set by onDownloadCompleted when the per-depot manifest verify finds a SELECTED
+        // depot short (the engine reported "complete" but a depot's content is missing/truncated). The
+        // tail (outside the try/finally) then decides bounded auto-resume vs fail — mirroring the
+        // session-recovery retryAsResume path. onDiskAtCompletion carries the footprint at that verdict
+        // so the tail's forward-progress check needs no extra directory walk.
+        val depotResumeNeeded  = AtomicBoolean(false)
+        val depotShortSummary  = AtomicReference("")
+        val onDiskAtCompletion = AtomicLong(0L)
         // Throttle FGS notification updates to whole-percent changes (chunks fire far too often).
         val lastNotifiedPct = AtomicInteger(-1)
 
@@ -523,6 +749,11 @@ object SteamDepotDownloader {
                 // depot, then SUM across depots so multi-depot games climb to the true total.
                 if (uncompressedBytes > (installByDepot[depotId] ?: 0L)) installByDepot[depotId] = uncompressedBytes
                 if (compressedBytes   > (downloadByDepot[depotId] ?: 0L)) downloadByDepot[depotId] = compressedBytes
+                // Track the engine's manifest-relative completion for this depot (running max — callbacks
+                // can arrive out of order). This is the primary per-depot completeness signal in the
+                // false-complete verdict; it needs no separate manifest resolve and is never inflated by
+                // a shared/redist depot's PICS size.
+                lastDepotPct.merge(depotId, depotPercentComplete) { a, b -> maxOf(a, b) }
 
                 // maxOf(base, sessionSum): fresh downloads use the sum directly (base=0);
                 // resumes never drop below the persisted floor.
@@ -594,19 +825,24 @@ object SteamDepotDownloader {
                         if (speedBps > 0L)    append(" · ${formatDownloadSpeed(speedBps)}")
                         if (etaSeconds >= 0L) append(" · ${formatEta(etaSeconds)}")
                     }
-                    try { SteamForegroundService.setStatusText("Downloading ${row.name} — $pct%$extra") }
+                    try { SteamForegroundService.setStatusText("Downloading ${row.name} — $pct%$extra${DownloadQueue.fgsSuffix()}") }
                     catch (_: Throwable) {}
                 }
             }
 
             override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
-                // The engine's per-depot byte args here UNDER-report (observed: a ~575 MB depot logged
-                // as 47.5 MB). Prefer our own cumulative per-depot tracking from onChunkCompleted, which
-                // is accurate (it drives the progress bar + DB); fall back to the engine arg only if we
-                // tracked nothing for this depot.
-                val u = maxOf(uncompressedBytes, installByDepot[depotId] ?: 0L)
-                val c = maxOf(compressedBytes,   downloadByDepot[depotId] ?: 0L)
-                dlog("Depot $depotId complete: ${fmtSize(u)} uncompressed / ${fmtSize(c)} compressed")
+                // The engine's per-depot args here are SESSION DELTAS and under-report: a depot already
+                // on disk (resume/verify) or de-duped against a twin fires here with 0 bytes even though
+                // its content is fully present. So this callback is NOT authoritative completion — the
+                // old "Depot N complete: 0 KB" line was a desynced running-tally artefact. The real
+                // per-depot verdict is computed in onDownloadCompleted from installByDepot +
+                // depotPercentComplete + the on-disk manifest-true footprint. Log only a breadcrumb of
+                // what THIS session actually delivered for the depot (from our accurate tracking).
+                val delivered = maxOf(uncompressedBytes, installByDepot[depotId] ?: 0L)
+                val pct = lastDepotPct[depotId]
+                dlog("Depot $depotId processed: delivered ${fmtSize(delivered)} this session" +
+                        (if (pct != null) " (engine ${"%.1f".format(pct * 100)}%)"
+                         else " (no chunk activity — already on disk / de-duped / skipped)"))
             }
 
             override fun onDownloadCompleted(item: DownloadItem) {
@@ -618,68 +854,172 @@ object SteamDepotDownloader {
                 dlog("Total downloaded: ${fmtSize(finalInstall)} uncompressed / " +
                         "${fmtSize(downloadByDepot.values.sum())} compressed across ${installByDepot.size} depot(s)")
 
-                // FALSE-COMPLETE GUARD: after an interrupted/polluted install, DepotDownloader can
-                // declare "complete" having written almost nothing — leftover partial files + stale
-                // .DepotDownloader state make it skip the main depot (proven: HL2 marked Installed at
-                // 405MB of 8.4GB). If <90% of the EXPECTED size landed on disk, this is NOT a genuine
-                // completion: refuse to markInstalled and surface a retryable failure.
+                // ============================================================================
+                // PER-DEPOT MANIFEST COMPLETION VERDICT  (Layer 2 — replaces the whole-app PICS gate)
                 //
-                // EXPECTED SIZE = the sum of the SELECTED depots' MANIFEST-declared uncompressed sizes
-                // (DepotSizeResolver), NOT the PICS estimate. PICS both over-reports (appId 313830:
-                // 181 MB PICS vs 130 MB real content → a complete install was wrongly rejected as
-                // "incomplete") and under-reports. cached() is a pure DB read (no CM traffic here). We
-                // fall back to the PICS estimate only when the real size is UNRESOLVED — and even then
-                // we relax, never tighten: if every selected depot delivered bytes (no skipped depot),
-                // trust the engine's completion rather than reject on the unreliable PICS number.
-                // Honour DLC opt-outs: judge completion against ONLY the depots this download actually
-                // pulled. Excluded DLC depots aren't fetched, so they must not count toward the expected
-                // size or the "every depot delivered" check — otherwise opting out of DLC would falsely
-                // fail an otherwise-complete install (self-inflicted version of the See No Evil bug).
+                // The old guard compared bytes-on-disk against the SUMMED whole-app size. That over-counts
+                // SHARED/redist depots a game only partly pulls — e.g. Risk of Rain 2's Steamworks Common
+                // Redistributables depot 228988 (from app 228980) declares GBs but RoR2 needs only ~57 MB,
+                // inflating the whole-app estimate to ~5.6 GB — so a genuinely-complete 3.0 GB install was
+                // rejected as "incomplete". A summed check also can't tell a truncated depot (Dead Cells'
+                // 588651 stopping at ~50%) from a mere PICS over-report.
+                //
+                // Instead judge EACH selected depot against ITS OWN manifest, from three signals:
+                //   1. depotPercentComplete (lastDepotPct) — the ENGINE's manifest-relative completion for
+                //      the depot (sizeDownloaded/completeDownloadSize). ≥DEPOT_PCT_COMPLETE ⇒ that depot's
+                //      needed file set finished THIS session. Primary, always available for any depot that
+                //      transferred bytes; needs no separate resolve and is NEVER inflated by shared PICS.
+                //      A depot the engine actively downloaded but left below 1.0 is genuinely SHORT.
+                //   2. manifest-true uncompressed sizes (DepotSizeResolver → realSizeBytes) summed over the
+                //      KEPT depots that resolved, vs the on-disk footprint — the authoritative "the whole
+                //      install is already present" check for a verify/re-check pass (engine transfers
+                //      nothing, so signal 1 is silent). Manifest-true, so NOT inflated by shared depots.
+                //   3. overlapping-depot de-dup: two depots with identical files → the engine writes each
+                //      unique file once, so a de-duped twin transfers 0 bytes yet the install is complete
+                //      (on disk it reaches ~the largest single kept depot, with no zero-byte skip files).
+                //
+                // INSTALLED iff EVERY kept depot is complete — regardless of the inflated whole-app PICS
+                // estimate. Any short depot ⇒ defer to bounded auto-resume (Layer 1) in the tail; never
+                // mark installed while a selected depot is genuinely short. DLC opt-outs are honoured
+                // (judge only the depots this download actually pulled).
+                // ============================================================================
                 val excluded = try { SteamPrefs.getExcludedDlc(appId) } catch (_: Throwable) { emptySet() }
                 val keptRows = try { db.getDepotManifests(appId).filter { it.depotId !in excluded } }
                                catch (_: Throwable) { emptyList() }
-                // Manifest-true expected = sum of KEPT depots' real sizes, only when every kept depot
-                // resolved. (Replaces DepotSizeResolver.cached() which sums ALL selected depots.)
-                val realExpected: Long? =
-                    if (keptRows.isNotEmpty() && keptRows.all { it.realSizeBytes > 0L })
-                        keptRows.sumOf { it.realSizeBytes }.takeIf { it > 0L }
-                    else null
+                val onDisk      = dirSizeBytes(installDir)
+                onDiskAtCompletion.set(onDisk)
+                val hasEmpty    = hasZeroByteFile(installDir)
+                // Manifest-true footprint yardstick — sum ONLY the kept depots that actually resolved.
+                // Shared/redist depots that never resolve are simply excluded from the sum (their bytes
+                // still count on disk), so this can never be inflated the way the whole-app PICS sum is.
+                val manifestSum = keptRows.filter { it.realSizeBytes > 0L }.sumOf { it.realSizeBytes }
+                // A complete install's on-disk file bytes ≈ the manifest uncompressed total. A complete
+                // game may legitimately ship zero-byte files (e.g. CS:S), so this does NOT gate on hasEmpty.
+                val onDiskCoversManifest = manifestSum > 0L && onDisk >= (manifestSum * COMPLETE_PCT / 100L)
+                // Overlapping-depot yardstick: the largest single kept depot (real size if resolved, else
+                // PICS). De-duped twins collapse to ~one copy on disk ≈ this value.
+                val largestKept = keptRows.maxOfOrNull { maxOf(it.realSizeBytes, it.sizeBytes) } ?: 0L
 
-                if (realExpected != null) {
-                    // True size known → authoritative 90% check. 313830 → 130/130 passes; a real skip
-                    // (HL2 405 MB of 10.66 GB) still fails.
-                    if (finalInstall < (realExpected * 90L / 100L)) {
-                        dlog("INCOMPLETE: only ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} " +
-                                "(manifest-true) on disk (<90%) — refusing to mark installed")
-                        emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(realExpected)}) — please retry")
-                        return
-                    }
-                    dlog("Complete: ${fmtSize(finalInstall)} of ${fmtSize(realExpected)} manifest-true (≥90%)")
-                } else {
-                    // Real size unresolved → PICS guard, RELAXED (never stricter): a genuine truncation
-                    // skips a whole depot, showing up as a KEPT depot with zero bytes delivered. If every
-                    // kept depot delivered something, the shortfall vs the PICS estimate is a PICS
-                    // over-report, not a skip — trust the engine's completion. Expected uses KEPT depots'
-                    // PICS sizes (exclusion-aware), falling back to the running total if unavailable.
-                    val picsExpected = keptRows.sumOf { it.sizeBytes }.takeIf { it > 0L } ?: iTotal
-                    if (picsExpected > 0L && finalInstall < (picsExpected * 90L / 100L)) {
-                        val selectedDepots: List<Int> = keptRows.map { it.depotId }
-                        val everyDepotDelivered = selectedDepots.isNotEmpty() &&
-                                selectedDepots.all { (installByDepot[it] ?: 0L) > 0L }
-                        if (!everyDepotDelivered) {
-                            dlog("INCOMPLETE: only ${fmtSize(finalInstall)} of ${fmtSize(picsExpected)} PICS-est on disk " +
-                                    "(<90%) and a selected depot delivered nothing — refusing to mark installed")
-                            emitFailed(appId, "Download incomplete (${fmtSize(finalInstall)}/${fmtSize(picsExpected)}) — please retry")
-                            return
+                // Verdict for one depot → (verdict, note). Order matters: engine-truth first, then the
+                // footprint escape for verify/resume/de-dup passes, then genuine-short, then the
+                // denied/not-owned catch. See [DepotVerdict].
+                fun verifyDepot(row: SteamDatabase.DepotManifestRow): Pair<DepotVerdict, String> {
+                    val d         = row.depotId
+                    val pct       = lastDepotPct[d]                 // engine manifest %, or null (no transfer)
+                    val delivered = installByDepot[d] ?: 0L         // uncompressed, THIS session
+                    val expected  = row.realSizeBytes               // manifest-true uncompressed, 0=unresolved
+                    val exp = if (expected > 0L) fmtSize(expected) else "?"
+                    return when {
+                        // 1. Engine says this depot's needed file set finished this session.
+                        pct != null && pct >= DEPOT_PCT_COMPLETE ->
+                            DepotVerdict.COMPLETE to "engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp"
+                        // 2. Whole install footprint already covers the manifest-true total (verify pass,
+                        //    a finished resume, or de-dup) → every present depot's content is on disk.
+                        onDiskCoversManifest ->
+                            DepotVerdict.COMPLETE to "no/partial transfer but on-disk ${fmtSize(onDisk)} covers manifest-true ${fmtSize(manifestSum)}"
+                        // 3. Engine actively transferred this depot but left it below 1.0 → genuinely SHORT
+                        //    (the Dead Cells case: 588651 stalled at ~50% of its own manifest). The account
+                        //    OWNS it (chunks were flowing) → Layer-1 auto-resume territory.
+                        pct != null -> {
+                            val by = if (expected > 0L) " (short by ~${fmtSize((expected - delivered).coerceAtLeast(0L))})" else ""
+                            DepotVerdict.SHORT to "SHORT engine ${"%.1f".format(pct * 100)}% · delivered ${fmtSize(delivered)}/$exp$by"
                         }
-                        dlog("Complete: ${fmtSize(finalInstall)} < 90% of PICS-est ${fmtSize(picsExpected)} but all " +
-                                "${selectedDepots.size} kept depot(s) delivered — trusting completion (PICS over-report)")
+                        // 4a. No transfer this session but on disk ≈ the largest single kept depot with no
+                        //     empty files → overlapping/de-duplicated twin, complete.
+                        !hasEmpty && largestKept > 0L && onDisk >= (largestKept * COMPLETE_PCT / 100L) ->
+                            DepotVerdict.COMPLETE to "no transfer; on-disk ${fmtSize(onDisk)} ≥ largest depot ${fmtSize(largestKept)} — overlapping/de-duped"
+                        // 4b. Bytes delivered but no engine % and no manifest cover (defensive) → trust the
+                        //     engine rather than fail; a depot that moved bytes is owned, not denied.
+                        delivered > 0L ->
+                            DepotVerdict.COMPLETE to "delivered ${fmtSize(delivered)} (no manifest total — trusting engine)"
+                        // 4c. ZERO transfer this session AND not present on disk. The engine finished the
+                        //     app download without ever fetching a chunk for this selected depot → it
+                        //     skipped it because the account is NOT ENTITLED (Steam refused the depot key).
+                        //     An OWNED depot that still needs content is never left at zero transfer when the
+                        //     app reports complete — it shows engine progress (case 3). So this is DENIED
+                        //     (not-owned), tolerated/skipped, never a blocking SHORT. Parity with the Rust
+                        //     engine tolerating `.bl_depot/denied.depots` (Hades' soundtrack depot 1145362).
+                        else ->
+                            DepotVerdict.DENIED to (if (expected > 0L)
+                                "DENIED not owned · no transfer, on-disk ${fmtSize(onDisk)} < manifest-true ${fmtSize(manifestSum)} (depot expected $exp)"
+                            else
+                                "DENIED not owned · nothing delivered and no manifest content for this account")
                     }
+                }
+
+                if (keptRows.isEmpty()) {
+                    // No depot metadata (unresolved library row) — nothing to verify against. Preserve the
+                    // prior lenient behaviour: trust the engine's completion rather than block the install.
+                    dlog("Per-depot verify: no depot rows for appId=$appId — trusting engine completion " +
+                            "(on-disk ${fmtSize(onDisk)})")
+                } else {
+                    val checks = keptRows.map { it.depotId to verifyDepot(it) }
+                    // Layer 3 — per-depot diagnosis line for every selected depot.
+                    checks.forEach { (id, cn) ->
+                        val label = when (cn.first) {
+                            DepotVerdict.COMPLETE -> "COMPLETE"
+                            DepotVerdict.SHORT    -> "SHORT"
+                            DepotVerdict.DENIED   -> "DENIED (skipped — not owned on this account)"
+                        }
+                        dlog("Depot $id: $label — ${cn.second}")
+                    }
+                    val shorts   = checks.filter { it.second.first == DepotVerdict.SHORT }
+                    val denied   = checks.filter { it.second.first == DepotVerdict.DENIED }
+                    val complete = checks.filter { it.second.first == DepotVerdict.COMPLETE }
+                    // A genuinely-SHORT (owned) depot still blocks → Layer-1 auto-resume, unchanged.
+                    // Denied depots are handled only once nothing is short, so a mixed pass never
+                    // persists a depot as excluded while owned content is still being fetched.
+                    if (shorts.isNotEmpty()) {
+                        val summary = shorts.joinToString("; ") { "depot ${it.first} [${it.second.second}]" }
+                        depotShortSummary.set(summary)
+                        depotResumeNeeded.set(true)
+                        dlog("INCOMPLETE (per-depot manifest verify): ${shorts.size}/${checks.size} selected " +
+                                "depot(s) short — on-disk ${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)}. " +
+                                "SHORT: $summary")
+                        dlog("Deferring to bounded auto-resume (Layer 1) — NOT marking installed this pass.")
+                        return   // do NOT markInstalled; the tail decides resume-vs-fail (bounded + backoff)
+                    }
+                    // No genuinely-short depot remains. GUARD: if NOTHING completed (every selected depot
+                    // was denied), the account owns none of this game — fail honestly instead of letting
+                    // "tolerate denied" turn a fully-unowned game into a false success.
+                    if (complete.isEmpty()) {
+                        val msg = "Steam denied access to every depot of this game (not owned on this account?)"
+                        dlog("NOT OWNED: all ${checks.size} selected depot(s) denied — $msg")
+                        emitFailed(appId, msg)   // marks DB/registry failed + advances the queue
+                        return                    // do NOT markInstalled
+                    }
+                    // Owned content is complete; any remaining depots were denied (not owned). Remember
+                    // ALL denied depots as excluded so a later re-download/update never re-selects and
+                    // re-denies them, then fall through to markInstalled.
+                    if (denied.isNotEmpty()) {
+                        val deniedIds = denied.map { it.first }
+                        deniedIds.forEach { dlog("Depot $it: skipped — not owned on this account (Steam refused the depot key)") }
+                        try { SteamPrefs.setExcludedDlc(appId, excluded + deniedIds) } catch (_: Throwable) {}
+                        dlog("Recorded ${deniedIds.size} denied depot(s) as excluded so a re-download won't re-select them: ${deniedIds.joinToString(",")}")
+                    }
+                    dlog("Per-depot verify PASS: ${complete.size}/${checks.size} selected depot(s) COMPLETE" +
+                            (if (denied.isNotEmpty()) ", ${denied.size} denied depot(s) skipped" else "") +
+                            " — on-disk ${fmtSize(onDisk)}, manifest-true ${fmtSize(manifestSum)} → INSTALLED " +
+                            "(whole-app PICS estimate ${fmtSize(iTotal)} ignored — it over-counts shared/redist depots)")
                 }
 
                 // Both bars reach 100% before switching to installed state.
                 emitProgress(iTotal, iTotal, dTotal, dTotal)
                 db.markInstalled(appId, installDir.absolutePath, if (finalInstall > 0L) finalInstall else iTotal)
+                // Success → the download is done; clear its steam_downloads row so nothing keeps
+                // rendering a stale "downloading" state. The game now lives in steam_games
+                // (is_installed=1) and is represented by the INSTALLED DownloadRegistry entry +
+                // the Library section. Only clear on SUCCESS — paused/failed/cancelled keep their
+                // row (finishPaused/fail/finishCancelled) so Resume/retry still works.
+                db.deleteDownload(appId)
+                // Stamp the build we just installed so the RealSteam update-on-launch gate
+                // (SteamGameUpdater) can cheaply detect this game is current next time — it compares
+                // this marker against the live steam_branches build id. Resolved independently of the
+                // download's selectedBranch (declared later in runInstall, out of this listener's scope).
+                try {
+                    val stampBranch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+                    SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, stampBranch)
+                } catch (_: Throwable) {}
                 repo.emit("DownloadComplete:$appId")
                 // Terminal success → INSTALLED. The registry persists INSTALLED rows to the
                 // durable library, so this game survives process death in the Library section.
@@ -692,6 +1032,7 @@ object SteamDepotDownloader {
                         installTotal = iTotal,
                     )
                 }
+                // Terminal success — the queue is advanced at the END of runInstall (after teardown).
             }
 
             override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
@@ -709,19 +1050,42 @@ object SteamDepotDownloader {
             }
         })
 
+        // Beta-branch selector: the branch the user chose on the detail page (default "public") plus
+        // the verified access code for a password-protected branch (null for public / unlocked-none).
+        // Ported from GameNative (GPL-3.0): SteamService AppItem(branch, branchPassword) wiring.
+        val selectedBranch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        val branchPassword: String? = if (selectedBranch != "public") {
+            try { db.getUnlockedBranchPassword(appId, selectedBranch) } catch (_: Throwable) { null }
+        } else null
+
         // DLC picker: DLC the user opted out of (appId == depot id). When non-empty we hand the
         // engine an EXPLICIT depot list (our filtered selection minus the excluded DLC) instead of
         // letting it auto-resolve — so the unchecked DLC simply isn't downloaded. Default (nothing
         // excluded) → empty lists → engine auto-resolves exactly as before.
         val excludedDlc = try { SteamPrefs.getExcludedDlc(appId) } catch (_: Throwable) { emptySet() }
+        // Also drop this app's known stale-duplicate depots (see STALE_DUPLICATE_DEPOTS) so the engine
+        // can't de-dupe a maintained file down to its outdated twin (e.g. Lossless Scaling's 993092).
+        val staleDupeDepots = STALE_DUPLICATE_DEPOTS[appId].orEmpty()
+        val dropDepots = excludedDlc + staleDupeDepots
         val explicitDepots: List<Int>
         val explicitManifests: List<Long>
-        if (excludedDlc.isNotEmpty()) {
-            val kept = try { db.getDepotManifests(appId).filter { it.depotId !in excludedDlc && it.manifestId != 0L } }
+        // The explicit manifest gids come from our PUBLIC-branch DB rows, so they only apply to the
+        // public branch. For any other branch, hand the engine EMPTY lists so it resolves that
+        // branch's own manifests (given AppItem.branch/branchPassword). The DLC opt-out and the
+        // stale-duplicate drop therefore only take effect on the public branch — matching where this
+        // manifest data is valid (and the branch these overlapping depots occur on).
+        if (dropDepots.isNotEmpty() && selectedBranch == "public") {
+            val kept = try { db.getDepotManifests(appId).filter { it.depotId !in dropDepots && it.manifestId != 0L } }
                        catch (_: Throwable) { emptyList() }
             explicitDepots   = kept.map { it.depotId }
             explicitManifests = kept.map { it.manifestId }
-            dlog("DLC opt-out: excluding ${excludedDlc.joinToString(",")} → downloading ${explicitDepots.size} depot(s) explicitly")
+            if (staleDupeDepots.isNotEmpty()) {
+                dlog("Stale-duplicate depot drop for app $appId: excluding ${staleDupeDepots.joinToString(",")}" +
+                     (if (excludedDlc.isNotEmpty()) " + DLC ${excludedDlc.joinToString(",")}" else "") +
+                     " → downloading ${explicitDepots.size} depot(s) explicitly")
+            } else {
+                dlog("DLC opt-out: excluding ${excludedDlc.joinToString(",")} → downloading ${explicitDepots.size} depot(s) explicitly")
+            }
         } else {
             explicitDepots = emptyList()
             explicitManifests = emptyList()
@@ -730,7 +1094,8 @@ object SteamDepotDownloader {
         val item = AppItem(
             appId = appId,
             installDirectory = installDir.absolutePath,
-            branch = "public",
+            branch = selectedBranch,
+            branchPassword = branchPassword,
             // Explicitly request Windows depots — don't let Util.getSteamOS() guess,
             // since androidEmulation only works if IS_OS_ANDROID is true at runtime.
             os = "windows",
@@ -741,7 +1106,9 @@ object SteamDepotDownloader {
             depot = explicitDepots,
             manifest = explicitManifests,
         )
-        dlog("Adding AppItem: appId=${item.appId} branch=${item.branch} dir=${item.installDirectory}" +
+        dlog("Adding AppItem: appId=${item.appId} branch=${item.branch}" +
+             (if (branchPassword != null) " (pwd-protected)" else "") +
+             " dir=${item.installDirectory}" +
              if (explicitDepots.isNotEmpty()) " depots=${explicitDepots.size}(explicit)" else "")
         downloader.add(item)
         downloader.finishAdding()
@@ -808,6 +1175,8 @@ object SteamDepotDownloader {
                         db.markDownloadPaused(appId, lastInstallDone.get())
                         repo.emit("DownloadPaused:$appId")
                         DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.PAUSED) }
+                        // Pausing the active download frees the slot → advance the queue.
+                        DownloadQueue.onActiveTerminal(appId)
                     }
                     cancelled.get() -> {
                         // Cancel path: delete files + row
@@ -818,6 +1187,8 @@ object SteamDepotDownloader {
                         // any collector sees the CANCELLED transition before it disappears).
                         DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.CANCELLED) }
                         DownloadRegistry.remove(dmKey)
+                        // Active slot freed → advance the queue.
+                        DownloadQueue.onActiveTerminal(appId)
                     }
                     else -> {
                         // Genuine failure. Before surfacing it, give the session a chance to come back
@@ -854,31 +1225,106 @@ object SteamDepotDownloader {
         }
 
         // Outside the try/finally so the failed attempt is fully torn down first. Bounded by
-        // MAX_SESSION_RETRIES; re-enters as a resume so already-downloaded files are reused.
+        // MAX_SESSION_RETRIES; re-enters as a resume so already-downloaded files are reused. The
+        // short-depot resume counters ride through unchanged (this is a session-recovery retry, a
+        // different failure domain).
         if (retryAsResume) {
             dlog("Retrying install for appId=$appId (attempt ${attempt + 1} → ${attempt + 2}) as resume")
             runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog,
-                    isResume = true, attempt = attempt + 1, control = control)
+                    isResume = true, attempt = attempt + 1, control = control,
+                    resumeAttempt = resumeAttempt, resumeFloorBytes = resumeFloorBytes)
+            return
         }
+
+        // Layer 1 — AUTO-RESUME a genuinely-short selected depot. The engine reported "download
+        // complete" but the per-depot manifest verify (onDownloadCompleted) found a kept depot short
+        // (Dead Cells' 588651 stopping at ~50%). Re-enter as a RESUME so the engine re-verifies files
+        // already on disk and re-fetches only the missing chunks (over CDN HTTP). Bounded by
+        // MAX_DEPOT_RESUME_ATTEMPTS, with backoff and a no-forward-progress fail-fast so an
+        // unavailable depot (no key / dead CDN — e.g. an unowned depot) can never loop. Session
+        // recovery (retryAsResume) takes precedence and already returned above.
+        if (depotResumeNeeded.get() && !cancelled.get() && !paused.get()) {
+            val curOnDisk  = onDiskAtCompletion.get().takeIf { it > 0L } ?: dirSizeBytes(installDir)
+            val summary    = depotShortSummary.get()
+            val progressed = curOnDisk > resumeFloorBytes + MIN_RESUME_PROGRESS_BYTES
+            when {
+                resumeAttempt >= MAX_DEPOT_RESUME_ATTEMPTS -> {
+                    dlog("Auto-resume exhausted after $MAX_DEPOT_RESUME_ATTEMPTS attempt(s) — still SHORT: $summary")
+                    emitFailed(appId, "Download incomplete after $MAX_DEPOT_RESUME_ATTEMPTS resume attempts — please retry")
+                }
+                resumeAttempt > 0 && !progressed -> {
+                    // A resume that added no data means the short depot's chunks are unreachable (no key /
+                    // CDN failure). Fail fast rather than burn the remaining attempts on a dead depot.
+                    dlog("Auto-resume made NO forward progress (on-disk ${fmtSize(curOnDisk)} ≤ floor " +
+                            "${fmtSize(resumeFloorBytes)} + ${fmtSize(MIN_RESUME_PROGRESS_BYTES)}) — a selected " +
+                            "depot is unavailable (no key / dead CDN). Failing fast. SHORT: $summary")
+                    emitFailed(appId, "Download stalled — a depot delivered no new data on resume; please retry")
+                }
+                else -> {
+                    val backoff = DEPOT_RESUME_BACKOFF_MS[resumeAttempt.coerceAtMost(DEPOT_RESUME_BACKOFF_MS.size - 1)]
+                    dlog("Auto-resume attempt ${resumeAttempt + 1}/$MAX_DEPOT_RESUME_ATTEMPTS in ${backoff}ms " +
+                            "(on-disk floor ${fmtSize(curOnDisk)}) — re-fetching missing chunks for SHORT: $summary")
+                    // Return the DB/registry to a resumable/downloading state — the engine flipped nothing
+                    // (we returned before markInstalled), so just re-enter as a resume. Re-mark this appId
+                    // active BEFORE the backoff sleep so the UI's stale-row detector (isDownloading) doesn't
+                    // flag the row during the pause; the re-entered runInstall re-marks it anyway.
+                    activeDownloads[appId] = Unit
+                    try { db.markDownloadResuming(appId) } catch (_: Throwable) {}
+                    DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+                    try { Thread.sleep(backoff) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+                    // attempt=0: a short-depot resume gets a fresh session-recovery budget. resumeFloorBytes
+                    // = the footprint we just measured, so the next pass can prove forward progress.
+                    runInstall(appId, ctx, cancelled, paused, downloaderRef, speedTier, debugLog,
+                            isResume = true, attempt = 0, control = control,
+                            resumeAttempt = resumeAttempt + 1, resumeFloorBytes = curOnDisk)
+                }
+            }
+        }
+
+        // Worker done for good → free the queue slot and start the next queued download. Placed HERE,
+        // after the finally's setDownloadActive(false)/wakelock teardown, so the next download never
+        // overlaps this one's teardown. Idempotent — onActiveTerminal no-ops when this appId is no
+        // longer the active slot (early-return terminals already advanced via the finally / emitFailed).
+        // The re-entry paths never reach here: retryAsResume returns above, and a depot-resume re-enters
+        // runInstall synchronously (that inner pass advances; this outer call then no-ops).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
-    private fun emitFailed(appId: Int, reason: String) {
+    internal fun emitFailed(appId: Int, reason: String) {
         SteamRepository.getInstance().database.markDownloadFailed(appId, reason)
         SteamRepository.getInstance().emit("DownloadFailed:$appId:$reason")
         Log.e(TAG, "DownloadFailed $appId: $reason")
         // Central failure sink — covers the pre-flight checks, the false-complete guard, and
-        // the finally's genuine-failure path. No-op if no registry entry exists yet (early
-        // pre-flight failures fire before the entry is upserted).
+        // the finally's genuine-failure path (BOTH engines). No-op if no registry entry exists yet
+        // (early pre-flight failures fire before the entry is upserted).
         DownloadRegistry.update("${Store.STEAM}:$appId") { it.copy(state = DownloadState.FAILED, error = reason) }
+        // Terminal for the active download → free the queue slot and start the next queued item.
+        // No-op if this appId isn't the active download (e.g. a pre-flight failure of a queued item).
+        DownloadQueue.onActiveTerminal(appId)
     }
 
-    private fun fmtSize(bytes: Long): String = when {
+    internal fun fmtSize(bytes: Long): String = when {
         bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
         bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
         else                    -> "%.0f KB".format(bytes / 1024.0)
     }
+
+    /** Recursive on-disk byte total for a completed install (real footprint, dedup already applied
+     *  by the filesystem — used by the false-complete guard's overlapping-depot branch). */
+    internal fun dirSizeBytes(f: File): Long =
+        when {
+            !f.exists() -> 0L
+            f.isFile    -> f.length()
+            else        -> f.listFiles()?.sumOf { dirSizeBytes(it) } ?: 0L
+        }
+
+    /** True if any regular file under [root] is zero-length — the signature of a pre-allocated but
+     *  unfilled file left by a genuinely-skipped/truncated depot (distinguishes a real skip from a
+     *  legitimately de-duplicated overlapping depot, whose files are all present and non-empty). */
+    private fun hasZeroByteFile(root: File): Boolean =
+        root.walkTopDown().any { it.isFile && it.length() == 0L }
 }

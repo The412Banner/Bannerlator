@@ -1,0 +1,30 @@
+{
+  "id": "2026-07-27T18-25-39-48f3ae",
+  "created": "2026-07-27T18:25:39.727Z",
+  "ip_hash": "QFzJZa/peO",
+  "fields": {
+    "device_model": "Daria Bond 1",
+    "soc": "Dimensity 7050 5g",
+    "gpu": "MALi _ g68 mc4",
+    "android": "Android 15",
+    "ram": "8g",
+    "app_version": "2.8.2",
+    "install_source": "",
+    "game_name": "GTA V",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Runs but very low FPS",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

@@ -86,6 +86,8 @@ public class ASurfaceRenderer implements HostRenderer,
     private boolean gameCursorVisible = true; // guest-requested cursor visibility
     // Fullscreen aspect-ratio mode (#71). STRETCH fills the surface (distorts); OFF/FIT letterbox.
     private int fullscreenMode = Container.FULLSCREEN_OFF;
+    // Screen alignment (#413). Only moves the letterbox bar vertically; CENTER == historical output.
+    private int screenAlignment = Container.ALIGN_CENTER;
     private boolean isStretch() { return fullscreenMode == Container.FULLSCREEN_STRETCH; }
     private boolean screenOffsetYRelativeToCursor = false;
     private float magnifierZoom = 1.0f;
@@ -160,7 +162,7 @@ public class ASurfaceRenderer implements HostRenderer,
     public void onSurfaceChanged(Surface surface, int width, int height) {
         surfaceWidth = width;
         surfaceHeight = height;
-        viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height, fullscreenMode);
+        viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height, fullscreenMode, screenAlignment);
         if (!surfaceInitialized) {
             onSurfaceCreated(surface);
         } else {
@@ -186,12 +188,29 @@ public class ASurfaceRenderer implements HostRenderer,
         // live (setFullscreenMode -> updateTransform/updateScene). STRETCH ignores viewTransformation.
         if (surfaceWidth > 0 && surfaceHeight > 0)
             viewTransformation.update(surfaceWidth, surfaceHeight,
-                    xServer.screenInfo.width, xServer.screenInfo.height, fullscreenMode);
+                    xServer.screenInfo.width, xServer.screenInfo.height, fullscreenMode, screenAlignment);
+        // nativeScanoutSetDst drives the cursor geometry mapping (guest coords -> this dst rect). #413:
+        // feed it the region-confined draw rect so the pointer stays in the game's half. CENTER's region
+        // == the full surface, so these collapse to the historical values.
+        boolean regionIsFullSurface = viewTransformation.regionOffsetX == 0 && viewTransformation.regionOffsetY == 0
+                && viewTransformation.regionWidth == surfaceWidth && viewTransformation.regionHeight == surfaceHeight;
         if (isStretch()) {
-            nativeScanoutSetDst(0, 0, surfaceWidth, surfaceHeight);
-        } else {
+            // STRETCH fills its region (== full surface at CENTER, so identical to the historical call).
+            nativeScanoutSetDst(viewTransformation.regionOffsetX, viewTransformation.regionOffsetY,
+                    viewTransformation.regionWidth, viewTransformation.regionHeight);
+        } else if (regionIsFullSurface) {
+            // CENTER: unchanged draw rect.
             nativeScanoutSetDst(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY,
                     viewTransformation.viewWidth, viewTransformation.viewHeight);
+        } else {
+            // TOP/BOTTOM: draw rect clipped to the region so the cursor never maps into the controls half.
+            int l = Math.max(viewTransformation.viewOffsetX, viewTransformation.regionOffsetX);
+            int t = Math.max(viewTransformation.viewOffsetY, viewTransformation.regionOffsetY);
+            int r = Math.min(viewTransformation.viewOffsetX + viewTransformation.viewWidth,
+                             viewTransformation.regionOffsetX + viewTransformation.regionWidth);
+            int b = Math.min(viewTransformation.viewOffsetY + viewTransformation.viewHeight,
+                             viewTransformation.regionOffsetY + viewTransformation.regionHeight);
+            nativeScanoutSetDst(l, t, Math.max(0, r - l), Math.max(0, b - t));
         }
     }
 
@@ -328,27 +347,38 @@ public class ASurfaceRenderer implements HostRenderer,
                                       boolean isDesktopWindow, boolean isDesktopChild,
                                       Rect outSrc, Rect outDst) {
         outSrc.set(0, 0, w, h);
-        // STRETCH (#71): non-uniform map from the whole guest screen onto the whole surface — fills
-        // the surface and distorts aspect, matching the GL/Vulkan stretch path.
+        // #413: region == the game's half on TOP/BOTTOM, the whole surface on CENTER. Every mode maps
+        // WITHIN the region and is clipped to it, so a FILL/STRETCH window can't spill into the controls
+        // half. CENTER preserves the exact historical rects (region == surface -> the LT-only clip).
+        boolean regionIsFullSurface = viewTransformation.regionOffsetX == 0 && viewTransformation.regionOffsetY == 0
+                && viewTransformation.regionWidth == surfaceWidth && viewTransformation.regionHeight == surfaceHeight;
+        // STRETCH (#71): non-uniform map from the whole guest screen onto the region — fills the region
+        // and distorts aspect, matching the GL/Vulkan stretch path. (Region == surface at CENTER -> the
+        // historical whole-surface stretch, byte-identical.)
         if (isStretch()) {
-            float sx = surfaceWidth  > 0 ? (float) surfaceWidth  / xServer.screenInfo.width  : 1f;
-            float sy = surfaceHeight > 0 ? (float) surfaceHeight / xServer.screenInfo.height : 1f;
-            int sdstL = Math.round(rootX * sx);
-            int sdstT = Math.round(rootY * sy);
+            int rw = viewTransformation.regionWidth, rh = viewTransformation.regionHeight;
+            int rox = viewTransformation.regionOffsetX, roy = viewTransformation.regionOffsetY;
+            float sx = xServer.screenInfo.width  > 0 ? (float) rw / xServer.screenInfo.width  : 1f;
+            float sy = xServer.screenInfo.height > 0 ? (float) rh / xServer.screenInfo.height : 1f;
+            int sdstL = rox + Math.round(rootX * sx);
+            int sdstT = roy + Math.round(rootY * sy);
             outDst.set(sdstL, sdstT, sdstL + Math.round(w * sx), sdstT + Math.round(h * sy));
-            return adjustRectLT(outSrc, outDst);
+            return regionIsFullSurface ? adjustRectLT(outSrc, outDst) : adjustRectToRegion(outSrc, outDst);
         }
-        // OFF/FIT: uniform map from X-screen space to the letterboxed surface region. `aspect` is the
-        // surface-pixels-per-X-pixel scale (viewWidth/screenWidth) and viewOffset is the
-        // letterbox bar. rootX/rootY are already root-relative X-screen coords, so every window
-        // (desktop, child, top-level) scales identically — no special desktop casing needed.
-        // (Previously used the normalized sceneScaleX (~1.0), which left the game at native size
-        // in the top-left corner instead of filling the surface.)
+        // OFF/FIT/FILL/INTEGER: uniform map from X-screen space to the region-confined draw rect.
+        // `aspect` is the surface-pixels-per-X-pixel scale (fit against the region) and viewOffset is the
+        // (region-relative) top-left of the draw rect. rootX/rootY are already root-relative X-screen
+        // coords, so every window (desktop, child, top-level) scales identically — no special desktop
+        // casing needed.
         float s = viewTransformation.aspect > 0f ? viewTransformation.aspect : 1f;
         int dstL = viewTransformation.viewOffsetX + Math.round(rootX * s);
         int dstT = viewTransformation.viewOffsetY + Math.round(rootY * s);
         outDst.set(dstL, dstT, dstL + Math.round(w * s), dstT + Math.round(h * s));
-        return adjustRectLT(outSrc, outDst);
+        // CENTER: clip only left/top against the surface origin (historical; SurfaceFlinger clips a FILL
+        // rect that overruns right/bottom against the display). TOP/BOTTOM: clip all four edges to the
+        // region so FILL overflow is CROPPED at the half boundary (top edge of a bottom-half region and
+        // bottom edge of a top-half region), with src cropped proportionally so nothing distorts.
+        return regionIsFullSurface ? adjustRectLT(outSrc, outDst) : adjustRectToRegion(outSrc, outDst);
     }
 
     private boolean adjustRectLT(Rect src, Rect dst) {
@@ -364,6 +394,26 @@ public class ASurfaceRenderer implements HostRenderer,
             src.top += (int) (((long) clip * src.height()) / originalDstH);
             dst.top = 0;
         }
+        return src.right > src.left && src.bottom > src.top && dst.right > dst.left && dst.bottom > dst.top;
+    }
+
+    // #413 (TOP/BOTTOM only): clip dst to the game region on ALL FOUR edges, cropping src proportionally
+    // (using the ORIGINAL src/dst extents so left+right and top+bottom crops stay consistent) so an
+    // overflowing FILL game is cropped at the region/half boundary instead of spilling into the controls
+    // half. Mirrors adjustRectLT's proportional-crop idiom, extended to right/bottom and to an arbitrary
+    // region origin.
+    private boolean adjustRectToRegion(Rect src, Rect dst) {
+        final int rl = viewTransformation.regionOffsetX;
+        final int rt = viewTransformation.regionOffsetY;
+        final int rr = rl + viewTransformation.regionWidth;
+        final int rb = rt + viewTransformation.regionHeight;
+        final int origDstW = dst.width(), origDstH = dst.height();
+        if (origDstW <= 0 || origDstH <= 0) return false;
+        final int origSrcW = src.width(), origSrcH = src.height();
+        if (dst.left < rl)   { int clip = rl - dst.left;   src.left   += (int) (((long) clip * origSrcW) / origDstW); dst.left   = rl; }
+        if (dst.top  < rt)   { int clip = rt - dst.top;    src.top    += (int) (((long) clip * origSrcH) / origDstH); dst.top    = rt; }
+        if (dst.right  > rr) { int clip = dst.right - rr;  src.right  -= (int) (((long) clip * origSrcW) / origDstW); dst.right  = rr; }
+        if (dst.bottom > rb) { int clip = dst.bottom - rb; src.bottom -= (int) (((long) clip * origSrcH) / origDstH); dst.bottom = rb; }
         return src.right > src.left && src.bottom > src.top && dst.right > dst.left && dst.bottom > dst.top;
     }
 
@@ -443,9 +493,10 @@ public class ASurfaceRenderer implements HostRenderer,
         if (!surfaceInitialized || !cursorVisible) return;
         if (cursor != null && !cursor.isVisible()) return;
         Drawable cd = cursor != null ? cursor.cursorImage : null;
-        if (cd == null || cd.getBuffer() == null) return;
+        if (cd == null) return;
         synchronized (cd.renderLock) {
             ByteBuffer buf = cd.getBuffer();
+            if (buf == null) return;
             nativeScanoutSetCursorImage(buf, cd.width, cd.height, (short) (buf.capacity() / (cd.height * 4)));
         }
     }
@@ -548,6 +599,8 @@ public class ASurfaceRenderer implements HostRenderer,
     @Override public boolean isFullscreen() { return fullscreenMode != Container.FULLSCREEN_OFF; }
     @Override public int getFullscreenMode() { return fullscreenMode; }
     @Override public void setFullscreenMode(int mode) { fullscreenMode = mode; updateTransform(); updateScene(); }
+    @Override public int getScreenAlignment() { return screenAlignment; }
+    @Override public void setScreenAlignment(int alignment) { screenAlignment = alignment; updateTransform(); updateScene(); }
     @Override public void setScreenOffsetYRelativeToCursor(boolean b) { screenOffsetYRelativeToCursor = b; }
     @Override public boolean isScreenOffsetYRelativeToCursor() { return screenOffsetYRelativeToCursor; }
     @Override public void setFpsWindowId(int id) { this.fpsWindowId = id; }

@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-04T18-12-08-a9e547",
+  "created": "2026-08-04T18:12:08.601Z",
+  "ip_hash": "mwzsKUaTIk",
+  "fields": {
+    "reporter_name": "Fasil",
+    "device_model": "Oppo Find X9 Pro",
+    "soc": "Dimensity 9500",
+    "gpu": "Mali-G1-Ultra MC12",
+    "android": "Color OS 16",
+    "ram": "16 GB",
+    "app_version": "2.9.4",
+    "install_source": "GitHub release",
+    "game_name": "SP Football Life 2026",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "FL_2026.exe (also tried the launcher FL 2026 start.exe — .NET Core based)",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "Wrapper + bcn_layer (BCn→ASTC transcode active — confirmed in logs)",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.x (latest installed)",
+    "proton": "Proton 11.0-1 x86-64, then proton-11.0-1-arm64ec-unixlibs-sdk35",
+    "box64": "Box64 (x86-64) then FEXCore (ARM64EC unixlibs)",
+    "resolution": "Default",
+    "framegen": "No",
+    "repro": "Launch FL 2026 start.exe (or FL_2026.exe directly)\nLauncher starts, then crashes before any window appears\nGame never opens — no rendering, no window",
+    "tried": "Attempt\tResult\nWinlator-Mali, Wine 10 ARM64EC mode\t❌ virtual_setup_exception stack overflow\nBannerlator x86-64 + Box64 + Proton 11\t❌ Same stack overflow\n.NET GC caps (DOTNET_gcServer=0, DOTNET_GCHeapHardLimit=0x40000000)\t✅ Fixed the 0x8007000E GC heap crash, got further\nESYNC/FSYNC off\t❌ Cleared a .NET execute page fault, still stack overflow\nARM64EC + FEXCore unixlibs (sdk35)\t❌ Same stack overflow\nRoot: sysctl -w vm.legacy_va_layout=0\t❌ Impossible — locked bootloader, no su, adb root blocked\nNFS Most Wanted 2005 (32-bit, no .NET)\t✅ Runs flawlessly — GPU stack healthy"
+  },
+  "logs": [
+    {
+      "name": "Bannerlator-FootballLife-Full-Logs.txt"
+    }
+  ]
+}

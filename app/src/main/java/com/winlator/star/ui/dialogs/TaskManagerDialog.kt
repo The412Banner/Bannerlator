@@ -46,6 +46,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.R
 import com.winlator.star.ui.XServerDialogState
+import com.winlator.star.ui.screens.MenuItemDivider
+import com.winlator.star.ui.screens.outlinedMenuCard
 import kotlinx.coroutines.delay
 
 @Composable
@@ -191,7 +193,8 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
             }
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
+                onDismissRequest = { menuExpanded = false },
+                modifier = Modifier.outlinedMenuCard()
             ) {
                 DropdownMenuItem(
                     text = { Text("Bring to Front") },
@@ -201,6 +204,7 @@ private fun ProcessRow(proc: XServerDialogState.TmProcess, state: XServerDialogS
                         state.dismiss()
                     }
                 )
+                MenuItemDivider()
                 DropdownMenuItem(
                     text = { Text("End Process") },
                     onClick = {

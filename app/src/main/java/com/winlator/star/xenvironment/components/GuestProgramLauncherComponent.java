@@ -5,11 +5,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.RouteInfo;
 import android.os.Process;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import com.winlator.star.BuildConfig;
 import com.winlator.star.box64.Box64Preset;
 import com.winlator.star.box64.Box64PresetManager;
 import com.winlator.star.container.Container;
@@ -22,11 +26,14 @@ import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.ProcessHelper;
+import com.winlator.star.store.SteamLogRedactor;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
+import com.winlator.star.core.WinebusRumblePatcher;
 import com.winlator.star.fexcore.FEXCoreManager;
 import com.winlator.star.fexcore.FEXCorePreset;
 import com.winlator.star.fexcore.FEXCorePresetManager;
+import com.winlator.star.inputcontrols.FakeInputWriter;
 import com.winlator.star.xconnector.UnixSocketConfig;
 import com.winlator.star.xenvironment.EnvironmentComponent;
 import com.winlator.star.xenvironment.ImageFs;
@@ -36,13 +43,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 
 public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private String guestExecutable;
@@ -229,7 +236,30 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             else
                 extractBox64Files();
             checkDependencies();
+            patchWinebusRumbleDuration();
             pid = execGuestProgram();
+        }
+    }
+
+    /**
+     * Force SDL rumble to never auto-expire (TideGear #91 duration patch), applied to the
+     * winebus.so wine actually loads for THIS launch's selected Proton/arch. Resolved from
+     * the container's live wine selection ({@code imageFs.getWinePath()} == {@code wineInfo.path}
+     * == {@code <imagefs>/opt/proton-<version>-<arch>}, pinned at
+     * {@code XServerDisplayActivity.setWinePath(wineInfo.path)}), so it tracks Proton 9/10/11
+     * automatically instead of hardcoding a version. Runs on every start right before the guest
+     * process is spawned; {@link WinebusRumblePatcher#patchDuration} is idempotent and
+     * exact-count-guarded, so re-running is cheap and a no-op once patched.
+     */
+    private void patchWinebusRumbleDuration() {
+        try {
+            String archDir = wineInfo.isArm64EC() ? "aarch64-unix" : "x86_64-unix";
+            File winebus = new File(environment.getImageFs().getWinePath(),
+                    "lib/wine/" + archDir + "/winebus.so");
+            WinebusRumblePatcher.patchDuration(winebus, archDir);
+        } catch (Exception e) {
+            // Never let a cosmetic rumble tweak block a game launch.
+            Log.w("GuestProgramLauncherComponent", "winebus rumble patch skipped: " + e.getMessage());
         }
     }
 
@@ -321,6 +351,19 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
 
+    /**
+     * Values to apply INSTEAD of looking the preset id up in the shared preset list — set when the
+     * container or the game carries its own copy of that preset
+     * ({@link com.winlator.star.core.PresetOverrides}). Null (the normal case) keeps the previous
+     * behaviour exactly: resolve the id through the preset manager.
+     */
+    private EnvVars box64PresetVars = null;
+    private EnvVars fexcorePresetVars = null;
+
+    public void setBox64PresetVars(EnvVars envVars) { this.box64PresetVars = envVars; }
+
+    public void setFEXCorePresetVars(EnvVars envVars) { this.fexcorePresetVars = envVars; }
+
     private int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
@@ -341,7 +384,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         EnvVars envVars = new EnvVars();
 
         addBox64EnvVars(envVars, enableBox64Logs);
-        envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+        envVars.putAll(fexcorePresetVars != null
+                ? fexcorePresetVars : FEXCorePresetManager.getEnvVars(context, fexcorePreset));
 
         String renderer = GPUInformation.getRenderer(null, null);
 
@@ -411,14 +455,47 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
  
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
 
+        // Pick the first USABLE IPv4 resolver, not blindly getDnsServers().get(0).
+        // The guest netstack can't use an IPv6 link-local server (the %wlan0 scope
+        // is meaningless inside the container), and dual-stack networks frequently
+        // list an fe80:: address first — taking [0] then handed the guest an
+        // unresolvable DNS (connectivity fine, every hostname lookup failed).
+        // Fall back to 8.8.4.4 when the active network exposes no usable IPv4 server.
         String primaryDNS = "8.8.4.4";
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
-        if (connectivityManager.getActiveNetwork() != null) {
-            ArrayList<InetAddress> dnsServers = new ArrayList<>(connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getDnsServers());
-            primaryDNS = dnsServers.get(0).toString().substring(1);
+        Network activeNetwork = connectivityManager.getActiveNetwork();
+        if (activeNetwork != null) {
+            LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
+            if (linkProperties != null) {
+                for (InetAddress dnsServer : linkProperties.getDnsServers()) {
+                    if (dnsServer instanceof Inet4Address
+                            && !dnsServer.isLoopbackAddress()
+                            && !dnsServer.isAnyLocalAddress()
+                            && !dnsServer.isLinkLocalAddress()) {
+                        primaryDNS = dnsServer.getHostAddress();
+                        break;
+                    }
+                }
+            }
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
         envVars.put("WINE_NEW_NDIS", "1");
+        // Default-route gateway for the layer's WINE_NEW_NDIS route table (eanet layers): the guest's
+        // GetBestRoute()/SIO_ROUTING_INTERFACE_QUERY need a 0.0.0.0/0 entry; the layer falls back to
+        // the subnet .1 when this is absent, so older layers are unaffected.
+        if (activeNetwork != null) {
+            LinkProperties lp = connectivityManager.getLinkProperties(activeNetwork);
+            if (lp != null) {
+                for (RouteInfo r : lp.getRoutes()) {
+                    InetAddress gw = r.getGateway();
+                    if (gw instanceof Inet4Address && !gw.isAnyLocalAddress()
+                            && r.getDestination() != null && r.getDestination().getPrefixLength() == 0) {
+                        envVars.put("WINE_ANDROID_GATEWAY", gw.getHostAddress());
+                        break;
+                    }
+                }
+            }
+        }
 
         String ld_preload = "";
 
@@ -438,9 +515,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         try {
             if (fakeinputSrc.exists()) {
+                // Refresh every launch so the guest reader can never skew from the
+                // app-side ring writer (a same-size rebuild defeats length checks).
+                // Do NOT reintroduce a `!fakeinputDest.exists()` guard here.
                 FileUtils.copy(fakeinputSrc, fakeinputDest);
                 Log.d("GuestLauncher", "Copied libfakeinput.so to imagefs");
-            } else {
+            } else if (!fakeinputDest.exists()) {
                 Log.e("GuestLauncher", "libfakeinput.so NOT FOUND in APK: " + fakeinputSrc.getAbsolutePath());
             }
         } catch (Exception e) {
@@ -464,6 +544,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         envVars.put("FAKE_EVDEV_VIBRATION", "1");
 
+        // Fake-input transport is a fixed-size mmap ring per slot (see FakeInputWriter).
+        // Prepare all 4 slot rings and hand the native reader their canonical paths so
+        // an open() of /dev/input/eventN maps the matching ring. The static rings are
+        // shared with the WinHandler writers created later in this same process.
+        String ringPaths = FakeInputWriter.getRingEnv(devInputDir);
+        if (ringPaths != null && !ringPaths.isEmpty()) {
+            envVars.put("FAKE_EVDEV_MEMFD_PATHS", ringPaths);
+        }
+
+        Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         // winewayland.so (unixlib) dlopens libwayland-client/-egl/xkbcommon/xkbregistry. These resolve
         // from imagefs/usr/lib via LD_LIBRARY_PATH exactly like winex11.so's libX11/libXext deps do
         // (proven: winex11.so has the same Termux RUNPATH yet loads fine). So NO wayland-specific
@@ -478,6 +568,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (this.envVars.has("MANGOHUD_CONFIG")) {
             this.envVars.remove("MANGOHUD_CONFIG");
         }
+
+        // WINEVMEMMAXSIZE (MB) caps the guest Wine VA reservation — the fix for heavy AAA titles
+        // (e.g. Deus Ex: MD on EOS) that reserve hundreds of GB of address space up-front and OOM the
+        // X server (observed ~489 GB: err:virtual:allocate_virtual_memory ... size 71f6ea0000). It is
+        // OPT-IN / default-off: set it per shortcut/container envVars only when a game needs it (it
+        // then propagates to the guest verbatim via the external-env merge below, covering both the
+        // arm64ec/WOWBox64+FEX and box64 paths). Recognized in the env-var picker (KnownEnvVars).
+        // Only effective on a Wine/Proton build patched to READ WINEVMEMMAXSIZE (coffincolors ntdll
+        // patch, not in stock Wine); inert otherwise.
 
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
@@ -515,6 +614,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             FileUtils.chmod(box64File, 0755);
         }
 
+        // Diagnostic: dump every env var the Wine process actually receives.
+        // Log individually to stay under Android's ~4KB per-message truncation limit.
+        if (BuildConfig.DEBUG) {
+            String[] finalEnv = envVars.toStringArray();
+            Log.d("GuestProgramLauncherComponent", "=== FINAL ENV VARS (" + finalEnv.length + " entries) ===");
+            for (String entry : finalEnv) {
+                Log.d("GuestProgramLauncherComponent", "  " + SteamLogRedactor.redact(entry));
+            }
+        }
+
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
             synchronized (lock) {
                 pid = -1;
@@ -534,7 +643,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             envVars.put("BOX64_DYNAREC_MISSING", "1");
         }
 
-        envVars.putAll(Box64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
+        envVars.putAll(box64PresetVars != null ? box64PresetVars
+                : Box64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
         envVars.put("BOX64_NORCFILES", "1");
     }

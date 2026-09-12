@@ -148,6 +148,14 @@ public class ALSAClient {
         return (int)(((float)bufferSize / sampleRate) * 1000);
     }
 
+    /**
+     * Push the adaptive-audio config to the native ALSA player (process-global; read at stream open).
+     * perfMode: 0=NONE, 1=LOW_LATENCY, 2=POWER_SAVING. adaptive: 1=grow buffer on underruns.
+     * bufferTarget/maxBuffer: frames, 0 = auto/device-capacity. Bumps a generation counter so any live
+     * stream reopens on its next write() — lets the in-game AUDIO tab apply without a relaunch.
+     */
+    public static native void nativeSetAudioConfig(int perfMode, int adaptive, int bufferTarget, int maxBuffer);
+
     private native long create(int format, byte channelCount, int sampleRate, int bufferSize);
 
     private native int write(long streamPtr, ByteBuffer buffer, int numFrames);

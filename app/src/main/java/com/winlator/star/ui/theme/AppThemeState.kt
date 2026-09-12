@@ -22,6 +22,25 @@ object AppThemeState {
     private val _isDarkMode = MutableStateFlow(true)
     val isDarkMode: StateFlow<Boolean> = _isDarkMode
 
+    /** Whether the drawer's "Stores" section (GOG, Epic, Amazon, Steam) is shown. */
+    private val _showStores = MutableStateFlow(true)
+    val showStores: StateFlow<Boolean> = _showStores
+
+    /** The two drawer storage cards, toggled independently. */
+    private val _showInternalStorage = MutableStateFlow(true)
+    val showInternalStorage: StateFlow<Boolean> = _showInternalStorage
+
+    private val _showSdStorage = MutableStateFlow(true)
+    val showSdStorage: StateFlow<Boolean> = _showSdStorage
+
+    /** Global interface scale (Compose density multiplier) and font scale, applied in
+     *  WinlatorTheme. 1.0 = unchanged; clamped 0.5..1.5 by the setters. */
+    private val _uiScale = MutableStateFlow(0.9f)
+    val uiScale: StateFlow<Float> = _uiScale
+
+    private val _fontScale = MutableStateFlow(0.9f)
+    val fontScale: StateFlow<Float> = _fontScale
+
     // The preset whose background/surface colors back the custom accent
     private val _customBaseIndex = MutableStateFlow(0)
 
@@ -69,6 +88,41 @@ object AppThemeState {
         _customAccent.value = Color(savedAccent)
         _customBaseIndex.value = themePrefs.getInt("custom_base_index", 1).coerceIn(0, CUSTOM_PRESET_INDEX)
         _isDarkMode.value = true
+        _showStores.value = themePrefs.getBoolean("show_stores", true)
+        _showInternalStorage.value = themePrefs.getBoolean("show_internal_storage", true)
+        _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
+        _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
+        _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
+    }
+
+    /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */
+    fun setShowStores(show: Boolean) {
+        _showStores.value = show
+        themePrefs.edit().putBoolean("show_stores", show).apply()
+    }
+
+    fun setShowInternalStorage(show: Boolean) {
+        _showInternalStorage.value = show
+        themePrefs.edit().putBoolean("show_internal_storage", show).apply()
+    }
+
+    fun setShowSdStorage(show: Boolean) {
+        _showSdStorage.value = show
+        themePrefs.edit().putBoolean("show_sd_storage", show).apply()
+    }
+
+    /** Global Compose density multiplier. Clamped 0.5..1.5 so a stray value can't leave
+     *  the UI unusable. Applied live in WinlatorTheme. */
+    fun setUiScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 1.5f)
+        _uiScale.value = clamped
+        themePrefs.edit().putFloat("ui_scale", clamped).apply()
+    }
+
+    fun setFontScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 1.5f)
+        _fontScale.value = clamped
+        themePrefs.edit().putFloat("font_scale", clamped).apply()
     }
 
     fun setPreset(index: Int) {
@@ -102,7 +156,7 @@ object AppThemeState {
     }
 
     /** Java-friendly entry point: returns the current accent (primary) color as an
-     *  ARGB int. Used by legacy AndroidView widgets (CPUListView, EnvVarsView) so
+     *  ARGB int. Used by the remaining legacy AndroidView widgets (CPUListView) so
      *  they can tint their CheckBox/ToggleButton drawables to match the Compose
      *  accent picker. */
     @JvmStatic

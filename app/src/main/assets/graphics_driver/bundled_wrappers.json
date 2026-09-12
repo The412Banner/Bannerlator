@@ -1,0 +1,39 @@
+{
+  "_comment": "Version + catalog mapping for the BUNDLED wrapper slots (#132). listSlots() reads this (tiny, instant — no tar decompression) so bundled cards show a real version instead of 'Unknown'. catalogId + catalogVersion map a bundled slot to its canonical catalog entry so the manager can flag 'update available' when the catalog ships a newer version. Bump catalogVersion here whenever a bundled wrapper asset is swapped to a newer upstream build.",
+  "wrapper.tzst": {
+    "version": "Winlator base",
+    "notes": "Default Winlator wrapper (Bruno lineage).",
+    "catalogId": "bannerlator-wrapper",
+    "catalogVersion": 1
+  },
+  "wrapper-original.tzst": {
+    "version": "Winlator original",
+    "notes": "Bruno's original Winlator wrapper.",
+    "catalogId": "bannerlator-original",
+    "catalogVersion": 1
+  },
+  "wrapper-legacy.tzst": {
+    "version": "Winlator Bionic",
+    "notes": "Pipetto-crypto's Winlator Bionic wrapper.",
+    "catalogId": "bannerlator-legacy",
+    "catalogVersion": 1
+  },
+  "wrapper-leegao.tzst": {
+    "version": "leegao ICD 2025-10",
+    "notes": "leegao's Bionic Vulkan wrapper ICD (GameNative-packaged build).",
+    "catalogId": "bannerlator-leegao",
+    "catalogVersion": 1
+  },
+  "wrapper-gamenative.tzst": {
+    "version": "GameNative 20260723",
+    "notes": "GameNative's wrapper (DX12 + integrated BCn), 32-bit game support; leegao's changes for older devices (#1762).",
+    "catalogId": "gamenative-wrapper",
+    "catalogVersion": 3
+  },
+  "leegao_bcn.tzst": {
+    "version": "leegao bcn_layer 20260719",
+    "notes": "leegao's BCn transcode layer with the device-hook composition fix.",
+    "catalogId": "bannerlator-bcn-leegao",
+    "catalogVersion": 1
+  }
+}

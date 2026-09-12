@@ -65,6 +65,7 @@ public class PerfHudView extends View {
     // ---- Config ------------------------------------------------------------
     private boolean showEngine = true, showGpuModel = false, showGPU = true, showCPU = true;
     private boolean showRAM = true, showPower = true, showFPS = true, showGraph = false, showTemp = true;
+    private HudMetrics.TempDisplay tempDisplay = HudMetrics.TempDisplay.from(null);
     private boolean vertical = false;
     private Skin skin = Skin.CLASSIC;
     private ColorIntensity intensity = ColorIntensity.MID;
@@ -91,6 +92,20 @@ public class PerfHudView extends View {
     private FpsCounter fpsCounter = null;
     public void setFpsCounter(FpsCounter c) { this.fpsCounter = c; }
 
+    // Frames per second actually reaching the panel. FpsCounter is ticked once
+    // per GUEST frame, so it cannot see frames added after the game - with
+    // native LSFG generating three for every one it reads 30 while the display
+    // shows 118. 0 = nothing is adding frames; the readout is unchanged.
+    private float presentedFps = 0f;
+    public void setPresentedFps(float v) { this.presentedFps = v; }
+
+    /** "30\u2192118" while frames are being added, else the plain value. */
+    private String fpsText() {
+        return presentedFps > 0f && Math.abs(presentedFps - fps) > Math.max(1f, fps * 0.10f)
+            ? String.format(Locale.ENGLISH, "%.0f\u2192%.0f", fps, presentedFps)
+            : String.format(Locale.ENGLISH, "%.0f", fps);
+    }
+
     // ---- Paints (rebuilt when scale/skin/outline change) ------------------
     private final float density;
     private Paint fillPaint, strokePaint, graphPaint, guidePaint, bgPaint, sepPaint;
@@ -108,6 +123,11 @@ public class PerfHudView extends View {
     private java.util.function.BiConsumer<Float, Float> onMovedListener = null;
     public void setOnMovedListener(java.util.function.BiConsumer<Float, Float> l) { this.onMovedListener = l; }
 
+    // Shared lock / tap / drag behaviour (long-press toggles the position lock).
+    private final HudLockController lockController;
+    private java.util.function.Consumer<Boolean> onLockChangedListener = null;
+    public void setOnLockChangedListener(java.util.function.Consumer<Boolean> l) { this.onLockChangedListener = l; }
+
     public PerfHudView(Context context) { this(context, null); }
     public PerfHudView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -115,6 +135,11 @@ public class PerfHudView extends View {
         this.density = context.getResources().getDisplayMetrics().density;
         this.metrics = new HudMetrics(context);
         buildPaints();
+        lockController = new HudLockController(context, this, new HudLockController.Callbacks() {
+            @Override public void onTap() { if (onTapListener != null) onTapListener.run(); }
+            @Override public void onMoved(float x, float y) { if (onMovedListener != null) onMovedListener.accept(x, y); }
+            @Override public void onLockChanged(boolean locked) { if (onLockChangedListener != null) onLockChangedListener.accept(locked); }
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -205,8 +230,14 @@ public class PerfHudView extends View {
         if (showPower) cells.add(new Cell(charging ? "CHG" : "PWR",
                                           String.format(Locale.ENGLISH, "%.1fW", powerW),
                                           charging ? C_CHG : C_PWR));
-        if (showTemp)  cells.add(new Cell("TMP", String.format(Locale.ENGLISH, "%.1f°C", tempC), C_TMP));
-        if (showFPS)   cells.add(new Cell("FPS", String.format(Locale.ENGLISH, "%.0f", fps), C_FPS));
+        if (showTemp) {
+            // Only the CPU temp is shown in this style. Colour the whole cell by danger band; the
+            // label keeps its identity colour when banding is off.
+            HudMetrics.Thresholds t = metrics.resolveThresholds(HudMetrics.TempSensor.CPU, tempDisplay);
+            cells.add(new Cell("TMP", HudMetrics.formatTemp(tempC, tempDisplay, true),
+                               HudMetrics.tempColor(tempC, t, tempDisplay, C_TMP)));
+        }
+        if (showFPS)   cells.add(new Cell("FPS", fpsText(), C_FPS));
         return cells;
     }
 
@@ -293,6 +324,8 @@ public class PerfHudView extends View {
                 drawGraph(canvas, x, getHeight() / 2f);
             }
         }
+
+        lockController.drawBadge(canvas);
     }
 
     /** Draws "LABEL value" at (x, baseline); returns the x cursor after the text. */
@@ -396,6 +429,7 @@ public class PerfHudView extends View {
         showRAM      = cfg.get("showRAM", "1").equals("1");
         showPower    = cfg.get("showPower", "1").equals("1");
         showTemp     = cfg.get("showTemp", "1").equals("1");
+        tempDisplay  = HudMetrics.TempDisplay.from(cfg);
         showEngine   = cfg.get("showEngine", "1").equals("1");
         showGpuModel = cfg.get("showGpuModel", "0").equals("1");
         dualBattery  = cfg.get("hudDualBattery", "0").equals("1");
@@ -413,6 +447,7 @@ public class PerfHudView extends View {
         }
         outlineIntensity = parseOutlineIntensity(cfg.get("hudOutline", "40")) / 100f;
         outlineFollowAccent = cfg.get("hudOutlineAccent", "1").equals("1");
+        if (lockController != null) lockController.setLocked(cfg.get("hudLocked", "0").equals("1"));
         try {
             int sc = Integer.parseInt(cfg.get("hudScale", String.valueOf(Container.DEFAULT_HUD_SCALE)));
             scale = Math.max(60, Math.min(140, sc)) / 100f;
@@ -430,31 +465,9 @@ public class PerfHudView extends View {
     public boolean isVertical() { return vertical; }
     public void setVertical(boolean v) { this.vertical = v; requestLayout(); invalidate(); }
 
-    // ---- Touch: tap toggles orientation, drag moves the overlay -----------
+    // ---- Touch: long-press locks, tap toggles orientation, drag moves ------
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                lastX = event.getRawX(); lastY = event.getRawY();
-                offsetX = getX(); offsetY = getY();
-                downTime = event.getEventTime(); moved = false;
-                return true;
-            case MotionEvent.ACTION_MOVE:
-                float dx = event.getRawX() - lastX, dy = event.getRawY() - lastY;
-                int slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
-                if (Math.abs(dx) > slop || Math.abs(dy) > slop) moved = true;
-                setX(offsetX + dx); setY(offsetY + dy);
-                return true;
-            case MotionEvent.ACTION_UP:
-                if (!moved
-                        && (event.getEventTime() - downTime) <= ViewConfiguration.getLongPressTimeout()
-                        && onTapListener != null) {
-                    onTapListener.run();
-                } else if (moved && onMovedListener != null) {
-                    onMovedListener.accept(getX(), getY());
-                }
-                return true;
-        }
-        return super.onTouchEvent(event);
+        return lockController.onTouchEvent(event);
     }
 }

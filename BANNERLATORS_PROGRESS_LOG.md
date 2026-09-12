@@ -610,3 +610,100 @@ confirm whether onLoggedOff fired (LoggedOff:<result>) vs onDisconnected. (2) FI
      depot requests, so re-login completes first.
 Note: access tokens from refresh-token logon ~24h, but CM session drops on idle far sooner; app
 backgrounding + foreground-service socket idle is a plausible trigger. NOT fixed tonight (needs repro).
+
+## 2026-08-08 — stale-wine second-launch crash ("exited before rendering / exit code 1") FIXED on fix/stale-wine-launch
+Commit `43389833` pushed to branch `fix/stale-wine-launch` (off main `8632de63`), 3 files, +82 lines.
+Artifacts-only CI run **31271990672** (label `stale-wine-fix`) = ✅ **GREEN**, headSha `433898338e5e1bc9268c0f26809a8255ba0edded`==tip, all 3 flavors (standard/ludashi/pubg) success.
+
+**Symptom:** launch a container/game, swipe it away from recents, launch the SAME game again → second launch dies "The game exited before rendering" / exit code 1. Reviewer also flagged: after swipe the app "was still running" (notification up, audio/drain) — wine never got torn down.
+
+**Root cause:** `XServerDisplayActivity.exit()` (`:2521`) was the ONLY wine teardown (`terminateAllWineProcesses()` `:2544`). Recents-swipe destroys the activity WITHOUT running exit() (onDestroy `:2809` only disposes UI/perf state). Old wineserver + wine tree survive as orphans; next launch recreates the fake-input ring files those stale procs still hold mmap'd → stale reader SIGBUS on first touch → exit code 1 on SECOND launch only.
+
+**Fix (mirrors WinNative SessionKeepAliveService.onTaskRemoved, refs `a2fc5080`/`e988447b`):**
+1. `ProcessHelper.terminateAllWineProcessesAndWait(graceMs, forceKill)` — SIGCONT → SIGTERM → bounded wait → SIGKILL survivors; idempotent.
+2. `GameSessionForegroundService.onTaskRemoved` — 1500ms later: defensive wine sweep → stopForeground(STOP_FOREGROUND_REMOVE) → stopSelf → `Process.killProcess(myPid())` (swipe = close everything). `onDestroy` = minimal, NO sweep (system may destroy FGS while a session legitimately runs).
+3. `XServerDisplayActivity.sweepStaleWineProcesses()` at fresh-launch start — defense in depth for kill paths that fire no callbacks (LMK/force-stop/background optimisation); safe because launch-only, paused-resume never re-enters the runnable.
+
+**Device-verify:** launch game → swipe from recents → relaunch → should boot clean; logcat `GameSessionFgService` "Task removed (user swipe)…" + `XServerDisplayActivity` "Sweeping stale wine processes…".
+
+## 2026-08-08 (cont.) — stale-wine fix ✅ DEVICE-VERIFIED (crash buffer + game logs)
+Fixed build installed over vc69 (pubg). Verified via device crash buffer + preserved game logs:
+- **BEFORE (old build), 14:16:22** — crash buffer: `Fatal signal 7 (SIGBUS), code 2 (BUS_ADRERR)` in **wineserver** pid 32199, backtrace `libfakeinput.so (read+60)` → `wineserver read_request` → `thread_poll_event`. This is EXACTLY the predicted stale fake-input ring mmap SIGBUS. The crashed session's wine_debug.log (kept in `bannerlator/DiRT 3/previous/2026-08-08_14-16-22/`) ends with `wine client error:0: recvmsg: Connection reset by peer`.
+- **AFTER (fixed build, installed ~14:37)** — 4 recreation launches (14:39:28 / 14:39:43 / 14:40:17 / 14:40:44) ALL clean; current session renders (DXVK `1280x720@144`, FIFO swapchain); **no wineserver/app SIGBUS after 14:16:22** anywhere in the crash buffer.
+Caveat: fix's own logcat tags rotated out of the main buffer pre-capture; effectiveness confirmed by outcome (exact pre-fix crash gone across 4 recreations).
+Branch fix/stale-wine-launch still NOT merged — user decision pending.
+
+## 2026-08-08 (cont.) — stale-wine fix MERGED to main `e57882e2`
+`--no-ff` merge of `fix/stale-wine-launch` into main in the `bannerlators-dnsfix` worktree; file list pre-verified = exactly 4 files (3 Java + progress log), no drift/LICENSE touched; pushed `e3a1ce6a..e57882e2`. Merge commit `e57882e2` (parents `e3a1ce6a`, `50c6c5b3`). Feature branch left in place (not deleted). Device-verified before merge (see previous entry).
+
+## 2026-08-08 (cont.) — post-merge main artifacts build
+Run **31272915069** (label `stale-wine-merged`, ref main, headSha `f1360fcf`==tip) = ✅ GREEN, 3 flavors (standard/ludashi/pubg). Pubg APK staged `/sdcard/Download/Bannerlator-stale-wine-merged-pubg.apk` (sha256 `ba0b7885a1357f5adcaacfced6a3261e12b32b456f0ba616ab0f05e781214810`, vc69/2.9.7, same cert → installs over cleanly).
+
+## 2026-08-08 (cont.) — IN-GAME TASK MANAGER CPU AFFINITY: user report "works at startup but reverts to E-cores during gameplay" — ANALYZED (no code change yet)
+**Report (hotice77):** picking cores in the in-game Task Manager Processor Affinity dialog works fine during menus/loading screens, but once actual gameplay starts the load migrates back to the efficiency (little) cores — WD2: ~52% usage, 12 fps.
+
+**Verdict:** NOT a regression. Verified against code — this is the documented **one-shot design** of the affinity feature (merged `e50219d7` + readback race fix `e32cb580`). Full prior history + abandoned Part 2 in `~/.claude/projects/-home-claude-user/memory/project_bannerlator_taskmgr_affinity_readback.md`.
+
+**Technical root cause (code-verified):**
+- Every affinity set is a **one-shot, per-process call** (`winHandler.setProcessAffinity(pid, mask)` → `SET_PROCESS_AFFINITY` packet → guest `winhandler.exe` → `SetProcessAffinityMask` → wine `sched_setaffinity`). Set points: `assignTaskAffinity` at window-map only (`XServerDisplayActivity.java:1684`/`:6406`), Prefer Big Cores toggle one-shot (`:6456`), TM dialog OK (`:7232`).
+- The **only** periodic re-apply is `reapplyManualAffinities` (`XServerDisplayActivity.java:7309`), which fires inside the **Task-Manager-OPEN** process-list refresh loop (10+/sec). **Close the TM and nothing ever re-pins.**
+- Threads spawned by the game AFTER the last set escape to all cores (documented wow64/FEX stickiness gap); Android's EAS scheduler then migrates them onto little cores → low utilization + bad fps. Exactly matches the startup-vs-gameplay split.
+- Shipped `winhandler.exe` (original 61376B) has NO per-thread pin — `applyAffinityToThreads` (commit `52783e8b`) is source-only, never shipped (Part 2 abandoned: ~18 leftover threads are native DXVK/Turnip POSIX threads unreachable via Toolhelp; pinning them off big cores would HURT fps).
+
+**Layman's version (for handoff):** The CPU is an office with 8 desks — 4 fast (big cores), 4 slow-but-battery-friendly (little cores). Picking cores = telling the office manager "the game works only at desks 4–7." The manager only reads that rule **once**, when you open the Task Manager. Close it → he stops enforcing. The game keeps hiring new workers (background threads) once real gameplay starts; nobody tells the new workers the rule, they drift to any desk, and Android's scheduler sees them on the slow desks and keeps them there. Menus look fine (few workers, all already told); gameplay tanks (many new workers, no one re-checks). The obvious "tell every worker directly" fix is impossible because the graphics-driver worker threads can't even be addressed — hence the abandoned Part 2.
+
+**Real fix options (app-layer, no guest rebuild — NOT coded, awaiting user decision):**
+1. **Periodic re-apply timer** (cheap, recommended): while any manual/task affinity mask exists for a live pid, re-call `setProcessAffinity(pid, mask)` every ~2–3s regardless of TM state. Re-pins Windows threads spawned later (the bulk of game job threads) via the EXISTING binary. Reuses `reapplyBigCoresToRunningGuest` pattern (`:6428`).
+2. **Host-side `sched_setaffinity` on `/proc/<pid>/task/*`** (full fix incl. native threads): same-uid, no root, but JNI work + risks pinning GPU/present threads (see Part 2 dead-end note).
+3. `assignTaskAffinity` (`:6406`) is also one-shot at window-map only — same drift applies to the container CPU-list path.
+
+**Status:** diagnosed + logged, NO code written yet. PICK UP HERE with Claude: decide option 1 vs 2, then implement + device-verify (GoW: set cores, watch `Cpus_allowed` on `/proc/<gow-pid>/task/*/status` across gameplay, esp. threads spawned after the set).
+
+## 2026-08-08 (cont.) — TM affinity drift: IMPLEMENTED "drift-detected re-pin" (Option 1, refined) — branch fix/affinity-reapply-timer
+Picked up the hotice77 E-core-drift diagnosis and implemented the fix. Chosen approach = **drift-detected re-pin** (refinement of Option 1 after a stutter-risk review + a live comparison of GameNative / WinNative / StevenMXZ Ludashi).
+
+**Live comparison (all three, fetched from GitHub today):** NONE of GameNative (utkarshdalal/master), WinNative (WinNative-Emu/main), or Ludashi (StevenMXZ/ludashi-3.1, pushed today) re-pin affinity or set it host-side — all three are one-shot `SetProcessAffinityMask` and drift identically. Only novel idea worth borrowing = **StevenMXZ reads real affinity from `/proc/<pid>/status` `Cpus_allowed:`** (Wine's mask is unreliable post-set under wow64/FEX). WinNative's `PendingTaskAffinity` is just optimistic-UI bookkeeping, not a retry. So our shipped Part-1 + TM-open reapply already exceeds all three; this change goes further.
+
+**Why not a blind timer:** re-applying every ~2.5s re-walks all threads (winhandler Toolhelp snapshot) each tick even when nothing changed → periodic micro-stutter risk on heavy titles. Drift-detected avoids all steady-state re-pins.
+
+**Implementation (app-only, no guest rebuild):**
+- `ProcessHelper.getThreadCount(pid)` = entry count of `/proc/<pid>/task` (pid is the Linux pid — proven: we already read `/proc/<pid>/cmdline` with it at XSDA:623, and Ludashi reads `/proc/<pid>/status` with it). Returns -1 when the process is gone.
+- `ProcessHelper.getProcessAffinityMask(pid)` = reads `Cpus_allowed:` (borrowed from Ludashi; used for the drift-log, verification).
+- `XServerDisplayActivity` drift checker (Handler, 2000ms): for each pinned pid, re-pin the remembered mask ONLY when its thread count grew past the last-pinned high-water (new unpinned threads appeared). Steady-state thread pool = zero re-pins = no stutter; load→gameplay transition = caught within one interval. Dead pids dropped (clearManualAffinity + high-water remove). Debug log "AffinityDrift" on each re-pin for on-device correlation.
+- `WinHandler`: added `hasManualAffinity()`, `getManualAffinityPids()`, `clearManualAffinity(pid)`. `reapplyManualAffinities()` still drives the TM-OPEN loop.
+- Wired `startAffinityReapply()` into the 3 pid set-sites: TM Processor Affinity dialog (`onTmSetAffinity`), Prefer Big Cores toggle (ON), per-window `assignTaskAffinity` (pid path). Torn down in `exit()`.
+
+**Scope (confirmed w/ user):** targets the in-game **Task Manager Processor Affinity dialog (side menu, during gameplay)** — hotice77's exact case — plus Prefer Big Cores. Shares the `manualAffinity` map, so it also keeps the container CPU-list pin from drifting as a side benefit; NOT a change to the container/game-settings CPU-List setting itself.
+
+**Known limits (documented in code):** (a) class-name-only affinity (window mapped before it has a pid) isn't in the map until the pid path picks it up; (b) native DXVK/Turnip/FEX driver threads remain unreachable by any Windows affinity API — the complete fix would be host-side per-tid `sched_setaffinity` (Option 2, deliberately not done here); (c) an existing thread widened by an explicit SetThreadAffinityMask (no new thread) isn't caught by the thread-count trigger — rare.
+
+**Status:** code complete on branch `fix/affinity-reapply-timer` (off main `ab6be8ed`). NOT device-proven yet. Building pubg for hotice77/user device test — verify: set cores in TM during gameplay, watch fps + `logcat | grep AffinityDrift` + `Cpus_allowed` on `/proc/<pid>/task/*/status` across the menu→gameplay transition (esp. threads spawned after the set). Gate to merge = device-proven.
+
+## 2026-08-08 (cont.) — added #1 clamp-detection log (HyperOS diagnosis) to the affinity-drift branch
+Added a steady-state "NOT-HONORED" check to the drift checker: on ticks where no re-pin fires, read the process's real Cpus_allowed (/proc/<pid>/status) and compare to the requested mask; if they differ, log whether the ROM re-allowed excluded cores (cpuset/scheduler override, e.g. HyperOS/MIUI) or only a subset is available. Pure diagnostic, no behavior change — makes hotice77's single logcat capture distinguish "fix working" from "ROM clamped it". #2 (ADPF PerformanceHintManager) deliberately NOT bundled: it changes scheduling and would confound the drift-re-pin attribution in his test; queued as its own next branch. Rebuilding + re-staging.
+
+## 2026-08-08 (cont.) — device test on DiRT 3 (SD8Gen3) + class-name gap FIX
+**Device test (drift2 APK, DiRT 3, cpuList pre-set to big 2-7, autonomous root recorder):** all 99→102 threads stayed on big cores the full 4 min incl. 3 new threads at t=135s. BUT AffinityDrift log EMPTY + induced-drift (taskset -a ff) triggered no re-pin/NOT-HONORED → the drift checker was DORMANT. Root cause proven: DiRT's window maps BEFORE _NET_WM_PID arrives, so assignTaskAffinity took the class-name path (no pid → no manualAffinity entry → checker never starts). Threads held via Linux inheritance, not our fix. Also: opening threads to all cores (ff) left them RUNNING on big anyway (eff=0) → this device's scheduler prefers big for heavy threads, so hotice77's drift does NOT reproduce here (his HyperOS actively pushes to little). NOTE: toybox taskset needs BARE hex ("ff" not "0xff") — the sweep-mode masks had 0x prefix and silently failed.
+
+**FIX (class-name gap):** hook `onModifyWindowProperty` — when `_NET_WM_PID` arrives, re-run `assignTaskAffinity(window)` so the now-known pid takes the pid path (registers in manualAffinity + starts the drift checker). Also gated `startAffinityReapply()` on a genuine restriction (`bitCount(mask) < availableProcessors`) so the checker doesn't run for the all-cores default. This closes the shortcut/settings CPU-list path = hotice77's test config #1. Branch fix/affinity-reapply-timer. Needs device re-verify (AffinityDrift log should now fire on DiRT).
+
+## 2026-08-08 (cont.) — ROOT CAUSE FOUND + FIXED: affinity pid was a Wine "Windows" pid, not a Linux pid
+Diagnostic build (92f7d2c4, AffinityDiag logging) on DiRT 3 proved the drift checker armed correctly (hook fired, pid path taken, startAffinityReapply called) but every pid gave **/proc-threads=-1** — the winhandler/_NET_WM_PID pids (236, 324, 312) are Wine **Windows** pids that don't exist under /proc; the real Linux pid was **5062**. So getThreadCount()/getProcessAffinityMask() by that pid always failed → checker dropped every pid → dormant on ALL builds. The earlier "it held" on DiRT was Linux inheritance, NOT our fix.
+
+**FIX (built in worktree /home/claude-user/bannerlators-affinity-wt, branch fix/affinity-reapply-timer):**
+- `ProcessHelper.findLinuxPidByExe(exe)` — resolves the game's real Linux pid by matching the exe basename in /proc/<pid>/cmdline (max-thread match = engine). `ProcessHelper.setLinuxAffinity(pid,mask)` — host-side `taskset -a -p <barehex>` (same-uid, no root; reaches native FEX/driver threads the Windows API can't).
+- Checker rewritten: track `affinityTargetExe`+`affinityTargetMask` (captured from window className in assignTaskAffinity for a genuine restriction), resolve the Linux pid (cached; re-scan only when it dies), drift-detect via /proc thread count on the LINUX pid, and re-pin HOST-SIDE on growth. NOT-HONORED clamp log now reads the real Linux Cpus_allowed.
+- assignTaskAffinity simplified: immediate winhandler pin (pid or name) + arm the exe/mask-based checker.
+- SCOPE: fixes the shortcut/settings CPU-list path (hotice77 config #1). TM-dialog + Prefer-Big-Cores paths still need affinityTargetExe/Mask wired (follow-up). Diagnostic AffinityDiag logs kept for this validation, to be stripped after. NEEDS device re-verify: AffinityDrift "host-repin" should now fire on DiRT.
+
+## 2026-08-08 (cont.) — VALIDATED on device + finished (diagnostics stripped, all 3 paths wired)
+Linux-pid fix (84be7482) DEVICE-VALIDATED on DiRT 3: log showed `arm checker exe=dirt3_game.exe`, resolved real `lpid=2699` (not -1), and `host-repin mask=0xfc ok=true achieved=0xfc` firing on every thread-growth step (null->65->92->98->102). Supervisor now genuinely engages + host-side re-pins as threads spawn — exactly hotice77's scenario. No stutter observed.
+Finish work: (#2) stripped all temporary AffinityDiag logging (kept AffinityDrift host-repin/NOT-HONORED). (#3) wired the other two entry points to the exe/mask checker via new `gameExeBasename()` (prefers window class name, falls back to shortcut.getExecutable()): Prefer Big Cores ON arms it / OFF clears it; TM dialog arms on a restriction / clears on all-cores. All three paths (shortcut/settings, Prefer Big Cores, TM dialog) now maintain the game on the chosen cores. Ready to merge to main after CI green.
+
+## 2026-08-08 (cont.) — session wrap: reviewed today's merges + affinity drift fix shipped
+Reviewed the three merges big pickle landed on main today, all VERIFIED CORRECT:
+- **silent session notification** (`8632de63`): HIGH→LOW channel importance + delete-and-recreate channel to force the downgrade on upgrade + startForeground gate lowered 34→29 (typed overload exists since API 29). Minor caveat only: Android may restore a user's manual importance override on delete+recreate (default case fine).
+- **stale-wine swipe-kill** (`e57882e2`): sound + device-verified (SIGBUS gone across 4 recreations). NIT (not blocking): `ProcessHelper.terminateAllWineProcessesAndWait` busy-spins `listRunningWineProcesses()` with no sleep between polls — add a ~20-50ms sleep. onTaskRemoved's 1500ms postDelayed is best-effort (fresh-launch sweep is the real safety net).
+- **ERL #1-9** (`444445f3`): cursor/pool/NativeTexture/scanout/GPUImage-height/colormap/setTexture leaks+races + Vulkan fence-timeout — all confirmed real in current source ([[project_bannerlator_erl_bugreport_fixes]]).
+
+Then diagnosed + fixed hotice77's CPU-affinity drift and MERGED it to main `e758c17d` (post-merge build GREEN, run `31282097688`). Full detail incl. the Wine-pid-vs-Linux-pid root cause, host-side taskset re-pin, device validation, and the HyperOS follow-up → memory `project_bannerlator_affinity_drift_hostside`. hotice77 handoff writeup saved `/sdcard/Download/affinity-fix-for-hotice77.txt`.

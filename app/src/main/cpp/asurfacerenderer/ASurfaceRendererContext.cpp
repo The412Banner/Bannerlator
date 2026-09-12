@@ -1,6 +1,7 @@
 #include "ASurfaceRendererContext.h"
 #include "blit_converter.h"
 #include <algorithm>
+#include <climits>
 #include <cstring>
 #include <dlfcn.h>
 #include <unistd.h>
@@ -68,6 +69,7 @@ typedef void  (*pfn_STReparent)(void*, void*, void*);
 
 void ASurfaceRendererContext::oneShot(std::function<void(void*)> fill) {
     void* tx = ST_CREATE();
+    if (!tx) return;
     fill(tx);
     ST_APPLY(tx);
     ST_DELETE(tx);
@@ -248,6 +250,10 @@ void ASurfaceRendererContext::scanoutSetCursorImage(void* pixels, short w, short
     if (scanoutCursorFence >= 0) { close(scanoutCursorFence); scanoutCursorFence = -1; }
     AHardwareBuffer_unlock(scanoutCursorBuf, &scanoutCursorFence);
     void* tx = ST_CREATE();
+    // Bail BEFORE taking ownership of the unlock fence: leaving it in scanoutCursorFence keeps the
+    // fd owned by this object (closed on the next upload / teardown). Moving it into `fence` first
+    // and then returning would orphan the fd.
+    if (!tx) return;
     int fence = scanoutCursorFence;
     scanoutCursorFence = -1;
     ST_SETBUF(tx, scanoutCursorSC, scanoutCursorBuf, fence);
@@ -281,6 +287,13 @@ void ASurfaceRendererContext::applyCursorGeometry(short x, short y, short hotX, 
     ARect srcR{ 0, 0, scanoutCursorBufW, scanoutCursorBufH };
     ARect dstR{ px, py, px + curW, py + curH };
     void* tx = ST_CREATE();
+    if (!tx) {
+        // scanoutSetCursorPos already recorded this position as applied. Invalidate the dedupe
+        // cache so the next motion event re-issues it instead of being suppressed as a no-op,
+        // which would leave the cursor stranded at its previous position.
+        lastRawCursorX = lastRawCursorY = SHRT_MIN;
+        return;
+    }
     ST_SETGEO(tx, scanoutCursorSC, &srcR, &dstR, 0);
     ST_SETVIS(tx, scanoutCursorSC, cursorVisible);
     ST_APPLY(tx);
@@ -597,7 +610,9 @@ void ASurfaceRendererContext::updateWindow(int64_t contentId, bool visible, int 
     }
     if (!sc) return;
 
+    // The ternary only covers a null currentTx — ST_CREATE can still hand back nothing.
     void* tx = currentTx ? currentTx : ST_CREATE();
+    if (!tx) return;
 
     ST_SETVIS(tx, sc, visible ? 1 : 0);
     if (visible) {

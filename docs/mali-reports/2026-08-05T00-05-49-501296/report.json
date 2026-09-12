@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-05T00-05-49-501296",
+  "created": "2026-08-05T00:05:49.843Z",
+  "ip_hash": "maDwuRYktm",
+  "fields": {
+    "reporter_name": "Ipaw",
+    "device_model": "Samsung Galaxy M22",
+    "soc": "Mediatek Helio G80",
+    "gpu": "Mali-G52 MC2",
+    "android": "Android 13 / One Ul 5.1",
+    "ram": "6 GB",
+    "app_version": "2.9.4",
+    "install_source": "GitHub release",
+    "game_name": "Pro Evolution Soccer 2013",
+    "steam_appid": "",
+    "store": "",
+    "exe": "pes2013.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.0.3",
+    "proton": "proton 9.0 arm64ec",
+    "box64": "All Box And Fex preset Performance Etc",
+    "resolution": "All resolutions 1280 x 720 etc",
+    "framegen": "No",
+    "repro": "1. When Open Oke , But In Game Bug In some place And Sound Bug Littel Double Sound , FPS Oke/Fast .\n\n2. Upon entering the player edit menu, the player appears black, with only a small part of the legs visible.\n\n3. When selecting a team or country, the player appears black and parts of the model are missing.\n\n4. The same issue occurs during gameplay: the pitch, players, and spectators all appear black.\n\n5. Audio and FPS are fine (my phone gets 40–60 FPS), but the graphics are heavily corrupted, as described above.\n\nCould you please help me? I play Pro Evolution Soccer 2013 using Winlator 7.1.5 Mod Ajay without the graphical glitches mentioned above, but the FPS is low on my phone (ranging from 15 to 25 FPS).\n\nAny help would be appreciated. Thank you.",
+    "tried": "I Have Tried All What I Can , And Searcing In Some Place Reddit Facebook Telegram Whatch Youtube Etc But Stil Bug , \n\nPlease Help Brother Thanks"
+  },
+  "logs": [
+    {
+      "name": "Pes2013_Helio_G80_Bug_Grafix_06_All.jpg"
+    }
+  ]
+}

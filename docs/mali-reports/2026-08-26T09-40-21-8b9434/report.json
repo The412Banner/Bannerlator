@@ -1,0 +1,31 @@
+{
+  "id": "2026-08-26T09-40-21-8b9434",
+  "created": "2026-08-26T09:40:21.334Z",
+  "ip_hash": "EkNqZjniZO",
+  "fields": {
+    "reporter_name": "Gta",
+    "device_model": "S20",
+    "soc": "2989",
+    "gpu": "M.Y65",
+    "android": "2867",
+    "ram": "2GB",
+    "app_version": "2.7.9",
+    "install_source": "GitHub release",
+    "game_name": "Gta",
+    "steam_appid": "114369645",
+    "store": "GOG",
+    "exe": "Gta5.exe",
+    "symptom": "Runs but very low FPS",
+    "when": "Never launches at all",
+    "graphics_driver": "Xhkhkgzyj",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.6.7.",
+    "proton": "",
+    "box64": "Xwin8",
+    "resolution": "1280×750",
+    "framegen": "FSR5",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bannerlator · Mali Reports — Triage</title>
+<style>
+:root{
+  --bg:#08090C; --bg-2:#0E1015; --panel:#14161D; --panel-2:#191C25;
+  --line:#242833; --line-2:#2E3340;
+  --ink:#EEF0F5; --muted:#9BA1AF; --faint:#6B7180;
+  --violet:#7C5CFF; --violet-2:#A98BFF; --pink:#FF4FA3; --cyan:#36D1DC;
+  --ok:#3DD68C; --ok-bg:#10221A; --warn:#FFB02E; --warn-bg:#241B08; --err:#FF5D70; --err-bg:#2A1418;
+  --font:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:var(--font);line-height:1.5;
+  background:radial-gradient(1200px 600px at 80% -10%,#171a24,transparent),var(--bg)}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 18px 80px}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 12px/1 var(--mono);
+  letter-spacing:.2em;text-transform:uppercase;color:var(--violet-2)}
+.hex{width:15px;height:17px;background:linear-gradient(150deg,var(--violet-2),var(--pink));
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+h1{font-size:1.6rem;margin:12px 0 2px}
+h1 .accent{background:linear-gradient(100deg,var(--violet-2),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+input,select,button,textarea{font:inherit}
+input,select,textarea{background:var(--bg-2);border:1px solid var(--line-2);border-radius:9px;color:var(--ink);padding:9px 11px;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px #7c5cff33}
+button{border:0;border-radius:9px;padding:9px 15px;cursor:pointer;background:linear-gradient(100deg,var(--violet),var(--pink));color:#fff;font-weight:600;font-size:14px}
+button.ghost{background:var(--panel-2);color:var(--ink);border:1px solid var(--line-2)}
+button.del{background:transparent;color:var(--err);border:1px solid #4a2028}
+button.del:hover{background:var(--err-bg)}
+button:disabled{opacity:.5;cursor:not-allowed}
+
+/* login */
+#login{max-width:360px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+#login h2{margin:0 0 4px;font-size:1.2rem}
+#login p{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+#login label{display:block;margin-bottom:12px}
+#login .lab{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+#login input{width:100%}
+#login button{width:100%;margin-top:6px}
+.loginerr{color:#ffb3bd;font-size:13.5px;margin-top:12px;min-height:1em}
+
+/* app */
+#app{display:none}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0}
+.bar .grow{flex:1}
+.count{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px}
+.tab{padding:7px 13px;border-radius:999px;background:var(--panel);border:1px solid var(--line-2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:600}
+.tab.on{color:#fff;background:linear-gradient(100deg,var(--violet),var(--pink));border-color:transparent}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.card.new{border-left:3px solid var(--warn)}
+.card.read{border-left:3px solid var(--cyan)}
+.card.fixed{border-left:3px solid var(--ok);opacity:.82}
+.card h3{margin:0 0 3px;font-size:1.05rem}
+.card .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.badge{font:600 11px/1 var(--mono);padding:5px 8px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);color:var(--muted)}
+.badge b{color:var(--ink);font-weight:600}
+.st{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:5px 9px;border-radius:999px}
+.st.new{background:var(--warn-bg);color:var(--warn)}
+.st.read{background:#0c2226;color:var(--cyan)}
+.st.fixed{background:var(--ok-bg);color:var(--ok)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.row a{color:var(--cyan);text-decoration:none;font-size:13.5px;font-weight:600}
+.logs{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.logs a{color:var(--violet-2);margin-right:12px}
+.empty{color:var(--faint);text-align:center;padding:40px;font-size:14px}
+.note{width:100%;margin-top:10px;min-height:38px;font-size:13.5px}
+.saved{color:var(--ok);font-size:12px;margin-left:8px;opacity:0;transition:opacity .2s}
+.saved.show{opacity:1}
+.topbtns{display:flex;gap:8px;align-items:center}
+
+/* thread */
+.thread{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;display:none}
+.thread.open{display:block}
+.tmsg{border:1px solid var(--line-2);border-radius:10px;padding:9px 11px;margin:8px 0;background:var(--bg-2)}
+.tmsg.dev{border-color:#e07b3966;background:#1a130c}
+.tmsg.op{border-color:#2f7de066;background:#0b1420}
+.tmh{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;font-weight:600;margin-bottom:4px}
+.tmh .mt{color:var(--faint);font-weight:400;display:flex;gap:8px;align-items:center}
+.tmb{font-size:13.5px;color:var(--ink);overflow-wrap:anywhere;white-space:pre-wrap}
+.devtag{font:600 10px/1 var(--mono);background:#e07b39;color:#fff;padding:2px 6px;border-radius:4px}
+.optag{font:600 10px/1 var(--mono);background:#2f7de0;color:#fff;padding:2px 6px;border-radius:4px}
+.xmsg{background:transparent;border:1px solid #4a2028;color:var(--err);padding:2px 7px;border-radius:6px;font-size:11px;cursor:pointer}
+.xmsg:hover{background:var(--err-bg)}
+.dcompose{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.dcompose textarea{width:100%;min-height:56px}
+.dcrow{display:flex;gap:10px;align-items:center}
+.tempty{color:var(--faint);font-size:13px;padding:6px 0}
+.pill{font:600 10.5px/1 var(--mono);padding:4px 7px;border-radius:6px;margin-left:6px}
+.pill.ans{background:var(--ok-bg);color:var(--ok)}
+.pill.lock{background:var(--err-bg);color:var(--err)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LOGIN -->
+  <div id="login">
+    <span class="eyebrow"><span class="hex"></span>Bannerlator</span>
+    <h2>Mali reports — triage</h2>
+    <p>Maintainer sign-in.</p>
+    <label><span class="lab">User</span><input id="u" autocomplete="username"></label>
+    <label><span class="lab">Password</span><input id="p" type="password" autocomplete="current-password"></label>
+    <button id="loginBtn">Sign in</button>
+    <div class="loginerr" id="loginerr"></div>
+  </div>
+
+  <!-- APP -->
+  <div id="app">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <span class="eyebrow"><span class="hex"></span>Bannerlator</span>
+        <h1>Mali reports <span class="accent">triage</span></h1>
+      </div>
+      <div class="topbtns">
+        <span class="count" id="who"></span>
+        <button class="ghost" id="refresh">↻ Refresh</button>
+        <button class="ghost" id="logout">Sign out</button>
+      </div>
+    </div>
+
+    <div class="bar">
+      <div class="tabs">
+        <span class="tab on" data-f="all">All</span>
+        <span class="tab" data-f="new">New</span>
+        <span class="tab" data-f="read">Read</span>
+        <span class="tab" data-f="fixed">Fixed</span>
+      </div>
+      <div class="grow"></div>
+      <input id="search" placeholder="Search device, GPU, game…" style="min-width:220px">
+      <span class="count" id="count"></span>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+const WORKER = "https://bannerlator-mali-reports.the412banner.workers.dev";
+const KEY = "mali_triage_token";
+let TOKEN = localStorage.getItem(KEY) || "";
+let REPORTS = [], FILTER = "all", Q = "";
+
+const $ = (s)=>document.querySelector(s);
+const loginEl = $("#login"), appEl = $("#app");
+
+async function api(path, opts={}) {
+  const res = await fetch(WORKER + path, {
+    ...opts,
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer "+TOKEN, ...(opts.headers||{}) },
+  });
+  if (res.status === 401) { logout(); throw new Error("Session expired — sign in again."); }
+  return res;
+}
+
+// ── login ──
+$("#loginBtn").addEventListener("click", doLogin);
+$("#p").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+async function doLogin(){
+  const err = $("#loginerr"); err.textContent="";
+  const user = $("#u").value.trim(), pass = $("#p").value;
+  if(!user||!pass){ err.textContent="Enter user and password."; return; }
+  try{
+    const res = await fetch(WORKER+"/login",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({user,pass})});
+    const out = await res.json();
+    if(!res.ok||!out.ok) throw new Error(out.error==="invalid_login"?"Wrong user or password.":(out.detail||out.error||"Login failed"));
+    TOKEN = out.token; localStorage.setItem(KEY, TOKEN);
+    $("#who").textContent = "signed in as "+out.user;
+    enterApp();
+  }catch(e){ err.textContent = e.message; }
+}
+function logout(){ TOKEN=""; localStorage.removeItem(KEY); appEl.style.display="none"; loginEl.style.display="block"; }
+$("#logout").addEventListener("click", logout);
+
+function enterApp(){ loginEl.style.display="none"; appEl.style.display="block"; load(); }
+
+// ── load + render ──
+$("#refresh").addEventListener("click", load);
+$("#search").addEventListener("input", e=>{ Q=e.target.value.toLowerCase(); render(); });
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  t.classList.add("on"); FILTER=t.dataset.f; render();
+}));
+
+async function load(){
+  $("#list").innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const res = await api("/admin/list");
+    const out = await res.json();
+    REPORTS = out.reports || [];
+    render();
+  }catch(e){ $("#list").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+function render(){
+  const list = $("#list");
+  let items = REPORTS.filter(r => FILTER==="all" || r.status===FILTER);
+  if(Q) items = items.filter(r => (r.device+" "+r.gpu+" "+r.game+" "+r.symptom+" "+r.id).toLowerCase().includes(Q));
+  $("#count").textContent = items.length + " of " + REPORTS.length;
+  if(!items.length){ list.innerHTML = '<div class="empty">No reports here.</div>'; return; }
+  list.innerHTML = items.map(cardHtml).join("");
+  items.forEach(r=>{
+    document.querySelectorAll(`[data-id="${cssEsc(r.id)}"] [data-act]`).forEach(btn=>{
+      btn.addEventListener("click", ()=>setStatus(r.id, btn.dataset.act));
+    });
+    const card = document.querySelector(`[data-id="${cssEsc(r.id)}"]`);
+    const tbtn = card.querySelector("[data-thread]");
+    if(tbtn) tbtn.addEventListener("click", ()=>toggleThread(r.id));
+    const cbtn = card.querySelector("[data-close]");
+    if(cbtn) cbtn.addEventListener("click", ()=>setClosed(r.id, !r.closed));
+    const del = card.querySelector("[data-del]");
+    if(del) del.addEventListener("click", ()=>deleteReport(r.id, r.game));
+  });
+}
+
+function cardHtml(r){
+  const badge = (k,v)=> v ? `<span class="badge">${k} <b>${esc(v)}</b></span>` : "";
+  const logs = (r.logs>0)
+    ? `<div class="logs">📎 ${r.logs} log file(s): <a href="${r.report_url}" target="_blank" rel="noopener">open report page</a></div>`
+    : `<div class="logs">📎 no logs attached</div>`;
+  const when = new Date(r.created).toLocaleString();
+  return `<div class="card ${r.status}" data-id="${esc(r.id)}">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div>
+        <h3>${esc(r.game||"(no game)")} — ${esc(r.symptom||"?")}</h3>
+        <div class="sub">${esc(r.device||"?")} · <code style="color:var(--muted)">${esc(r.id)}</code> · ${esc(when)}</div>
+      </div>
+      <span class="st ${r.status}">${r.status}</span>
+    </div>
+    <div class="badges">
+      ${badge("Reporter", r.reporter)}
+      ${badge("GPU", r.gpu)}
+      ${badge("Device", r.device)}
+      ${r.answered?'<span class="pill ans">✓ answered</span>':""}
+      ${r.closed?'<span class="pill lock">🔒 closed</span>':""}
+    </div>
+    ${logs}
+    <div class="row">
+      <a href="${r.report_url}" target="_blank" rel="noopener">↗ View full report</a>
+      <a href="${r.raw_base}/report.json" target="_blank" rel="noopener">⤓ JSON</a>
+      <button class="ghost" data-thread>💬 Discussion (${r.replies||0})</button>
+      <button class="ghost" data-close>${r.closed?"🔓 Reopen":"🔒 Close"}</button>
+      <div class="grow" style="flex:1"></div>
+      <button class="ghost" data-act="new"   ${r.status==="new"?"disabled":""}>Mark New</button>
+      <button class="ghost" data-act="read"  ${r.status==="read"?"disabled":""}>Mark Read</button>
+      <button data-act="fixed" ${r.status==="fixed"?"disabled":""}>Mark Fixed</button>
+      <button class="del" data-del>Delete</button>
+      <span class="saved" data-saved>saved ✓</span>
+    </div>
+    <div class="thread" data-thread-panel></div>
+  </div>`;
+}
+
+async function setStatus(id, status){
+  try{
+    await api("/admin/status",{method:"POST",body:JSON.stringify({id,status})});
+    const r = REPORTS.find(x=>x.id===id); if(r) r.status=status;
+    flashSaved(id); render();
+  }catch(e){ alert(e.message); }
+}
+// ── thread moderation ──
+async function toggleThread(id){
+  const panel = document.querySelector(`[data-id="${cssEsc(id)}"] [data-thread-panel]`);
+  if(!panel) return;
+  if(panel.classList.contains("open")){ panel.classList.remove("open"); return; }
+  panel.classList.add("open");
+  await loadThread(id);
+}
+
+function fmtDT(t){ try{ return new Date(t).toLocaleString(); }catch(e){ return t; } }
+
+async function loadThread(id){
+  const panel = document.querySelector(`[data-id="${cssEsc(id)}"] [data-thread-panel]`);
+  if(!panel) return;
+  panel.innerHTML = '<div class="tempty">Loading…</div>';
+  let data;
+  try{
+    const res = await fetch(WORKER + "/thread?id=" + encodeURIComponent(id));
+    data = await res.json();
+  }catch(e){ panel.innerHTML = '<div class="tempty">Could not load thread.</div>'; return; }
+  const msgs = (data && data.messages) || [];
+  const closed = !!(data && data.closed);
+  let h = "";
+  if(!msgs.length) h += '<div class="tempty">No messages yet.</div>';
+  for(const m of msgs){
+    const role = m.role;
+    const tag = role==="dev" ? ' <span class="devtag">DEV</span>' : (role==="op" ? ' <span class="optag">OP</span>' : '');
+    const nm  = role==="dev" ? (m.name||"dev") : (role==="op" ? (m.name||"Original poster") : (m.name||"Anonymous"));
+    const who = esc(nm) + tag;
+    h += '<div class="tmsg'+(role==="dev"?" dev":(role==="op"?" op":""))+'">'
+      + '<div class="tmh"><span>'+who+'</span><span class="mt">'+esc(fmtDT(m.ts))
+      + ' <button class="xmsg" data-delmid="'+esc(m.mid)+'">delete</button></span></div>'
+      + '<div class="tmb">'+esc(m.text)+'</div></div>';
+  }
+  h += '<div class="dcompose"><textarea placeholder="Reply as a developer — public, badged DEV…" data-dev-text></textarea>'
+     + '<div class="dcrow"><button data-dev-send>Post dev reply</button>'
+     + '<span class="count">'+(closed?"🔒 closed to users — your reply still posts":"")+'</span></div></div>';
+  panel.innerHTML = h;
+  panel.querySelectorAll("[data-delmid]").forEach(b=>b.addEventListener("click",()=>delMsg(id,b.dataset.delmid)));
+  const ta = panel.querySelector("[data-dev-text]");
+  panel.querySelector("[data-dev-send]").addEventListener("click", ()=>devReply(id, ta.value));
+}
+
+async function devReply(id, text){
+  text = (text||"").trim();
+  if(!text) return;
+  try{
+    await api("/admin/reply",{method:"POST",body:JSON.stringify({id,text})});
+    bumpReplyCount(id, +1);
+    await loadThread(id);
+  }catch(e){ alert(e.message); }
+}
+
+async function delMsg(id, mid){
+  if(!confirm("Delete this message permanently? This cannot be undone.")) return;
+  try{
+    await api("/admin/thread",{method:"POST",body:JSON.stringify({id,action:"delmsg",mid})});
+    bumpReplyCount(id, -1);
+    await loadThread(id);
+  }catch(e){ alert(e.message); }
+}
+
+async function setClosed(id, closed){
+  try{
+    await api("/admin/thread",{method:"POST",body:JSON.stringify({id,action:closed?"close":"open"})});
+    const r = REPORTS.find(x=>x.id===id); if(r) r.closed=closed;
+    render();
+  }catch(e){ alert(e.message); }
+}
+
+function bumpReplyCount(id, delta){
+  const r = REPORTS.find(x=>x.id===id);
+  if(r) r.replies = Math.max(0, (r.replies||0) + delta);
+  const btn = document.querySelector(`[data-id="${cssEsc(id)}"] [data-thread]`);
+  if(btn && r) btn.textContent = "💬 Discussion ("+r.replies+")";
+}
+async function deleteReport(id, game){
+  if(!confirm(`Delete this report permanently?\n\n${game||id}\n\nThis removes the report page and its logs from the repo. This cannot be undone.`)) return;
+  try{
+    await api("/admin/delete",{method:"POST",body:JSON.stringify({id})});
+    REPORTS = REPORTS.filter(x=>x.id!==id);
+    render();
+  }catch(e){ alert(e.message); }
+}
+function flashSaved(id){
+  const el = document.querySelector(`[data-id="${cssEsc(id)}"] [data-saved]`);
+  if(el){ el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1200); }
+}
+
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function cssEsc(s){return String(s).replace(/["\\]/g,"\\$&");}
+
+// ── boot: resume session if token present ──
+(async ()=>{
+  if(TOKEN){
+    try{ const r = await fetch(WORKER+"/me",{headers:{Authorization:"Bearer "+TOKEN}});
+      const o = await r.json();
+      if(r.ok&&o.ok){ $("#who").textContent="signed in as "+o.user; enterApp(); return; } }catch{}
+    logout();
+  }
+})();
+</script>
+</body>
+</html>

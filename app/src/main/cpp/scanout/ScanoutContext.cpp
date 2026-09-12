@@ -90,13 +90,28 @@ void ScanoutContext::initFromWindow(ANativeWindow* win) {
     }
 
     void* setupTx = ST_CREATE();
+    if (!setupTx) {
+        SCANOUT_LOG("initScanout: setup transaction creation failed");
+        SC_RELEASE(scanoutGameSC);   scanoutGameSC   = nullptr;
+        SC_RELEASE(scanoutCursorSC); scanoutCursorSC = nullptr;
+        return;
+    }
     ST_SETZORDER(setupTx, scanoutGameSC,   0); ST_SETVIS(setupTx, scanoutGameSC,   0);
     ST_SETZORDER(setupTx, scanoutCursorSC, 1); ST_SETVIS(setupTx, scanoutCursorSC, 0);
     ST_APPLY(setupTx);
     ST_DELETE(setupTx);
 
+    // Both persistent transactions are required — scanoutActive must not go true with only one.
     scanoutGameTx = ST_CREATE();
     scanoutTx     = ST_CREATE();
+    if (!scanoutGameTx || !scanoutTx) {
+        SCANOUT_LOG("initScanout: persistent transaction creation failed");
+        if (scanoutGameTx) { ST_DELETE(scanoutGameTx); scanoutGameTx = nullptr; }
+        if (scanoutTx)     { ST_DELETE(scanoutTx);     scanoutTx     = nullptr; }
+        SC_RELEASE(scanoutGameSC);   scanoutGameSC   = nullptr;
+        SC_RELEASE(scanoutCursorSC); scanoutCursorSC = nullptr;
+        return;
+    }
 
     scanoutVisShown = false;
     scanoutGeoDirty = true;
@@ -126,13 +141,28 @@ void ScanoutContext::initFromWindows(ANativeWindow* gameWin, ANativeWindow* curs
     }
 
     void* setupTx = ST_CREATE();
+    if (!setupTx) {
+        SCANOUT_LOG("initScanoutFromWindows: setup transaction creation failed, fallback");
+        SC_RELEASE(scanoutGameSC);   scanoutGameSC   = nullptr;
+        SC_RELEASE(scanoutCursorSC); scanoutCursorSC = nullptr;
+        initFromWindow(); return;
+    }
     ST_SETZORDER(setupTx, scanoutGameSC,   0); ST_SETVIS(setupTx, scanoutGameSC,   0);
     ST_SETZORDER(setupTx, scanoutCursorSC, 1); ST_SETVIS(setupTx, scanoutCursorSC, 0);
     ST_APPLY(setupTx);
     ST_DELETE(setupTx);
 
+    // Both persistent transactions are required — scanoutActive must not go true with only one.
     scanoutGameTx = ST_CREATE();
     scanoutTx     = ST_CREATE();
+    if (!scanoutGameTx || !scanoutTx) {
+        SCANOUT_LOG("initScanoutFromWindows: persistent transaction creation failed, fallback");
+        if (scanoutGameTx) { ST_DELETE(scanoutGameTx); scanoutGameTx = nullptr; }
+        if (scanoutTx)     { ST_DELETE(scanoutTx);     scanoutTx     = nullptr; }
+        SC_RELEASE(scanoutGameSC);   scanoutGameSC   = nullptr;
+        SC_RELEASE(scanoutCursorSC); scanoutCursorSC = nullptr;
+        initFromWindow(); return;
+    }
 
     scanoutVisShown = false;
     scanoutGeoDirty = true;
@@ -148,11 +178,15 @@ void ScanoutContext::destroy() {
     scanoutActive.store(false);
 
     if (scanoutGameSC || scanoutCursorSC) {
+        // Best-effort hide. If the transaction can't be created there is nothing to hide through,
+        // but teardown below must still run — never early-return out of destroy().
         void* t = ST_CREATE();
-        if (scanoutGameSC)   ST_SETVIS(t, scanoutGameSC,   0);
-        if (scanoutCursorSC) ST_SETVIS(t, scanoutCursorSC, 0);
-        ST_APPLY(t);
-        ST_DELETE(t);
+        if (t) {
+            if (scanoutGameSC)   ST_SETVIS(t, scanoutGameSC,   0);
+            if (scanoutCursorSC) ST_SETVIS(t, scanoutCursorSC, 0);
+            ST_APPLY(t);
+            ST_DELETE(t);
+        }
     }
 
     if (scanoutGameTx) { ST_DELETE(scanoutGameTx); scanoutGameTx = nullptr; }

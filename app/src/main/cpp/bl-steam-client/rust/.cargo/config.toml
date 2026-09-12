@@ -1,0 +1,16 @@
+# Cross-compile settings for the Android arm64 build of libblsteam.so.
+#
+# The linker is resolved by NAME on PATH: the CI step (and any local build) must
+# prepend the NDK's `toolchains/llvm/prebuilt/<host>/bin` directory to PATH and
+# export CC_aarch64_linux_android / AR_aarch64_linux_android for the one
+# C-compiling dependency (`ring`, pulled in by rustls). API level 26 matches
+# minSdkVersion in app/build.gradle.
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android26-clang"
+rustflags = ["-C", "link-arg=-Wl,-soname,libblsteam.so"]
+
+[env]
+BL_STEAM_CLIENT_VERSION_MAJOR = "0"
+BL_STEAM_CLIENT_VERSION_MINOR = "1"
+BL_STEAM_CLIENT_VERSION_PATCH = "0"
+BL_STEAM_CLIENT_VERSION_STRING = "0.1.0"

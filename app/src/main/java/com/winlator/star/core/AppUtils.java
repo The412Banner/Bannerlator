@@ -206,26 +206,37 @@ public abstract class AppUtils {
 
     public static void showHelpBox(Context context, View anchor, String text) {
         int padding = (int)UnitUtils.dpToPx(12);
+        int widthPx = (int)UnitUtils.dpToPx(284);
+
         TextView textView = new TextView(context);
-        textView.setLayoutParams(new ViewGroup.LayoutParams((int)UnitUtils.dpToPx(284), ViewGroup.LayoutParams.WRAP_CONTENT));
         textView.setPadding(padding, padding, padding, padding);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         textView.setTextColor(0xFFFFFFFF);
+        textView.setText(Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY));
 
-        // Give the help popup a visible outline + dark fill so it isn't just a
-        // black/transparent box (matches the FieldSet styling used elsewhere).
+        // Wrap the text in a ScrollView so long descriptions SCROLL inside the bubble instead of
+        // clipping (the old version measured the text at UNSPECIFIED width, under-counted the wrapped
+        // height, and had no scroll — so multi-line help ran off the bottom of the popup).
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(context);
+        scrollView.addView(textView, new ViewGroup.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Visible outline + dark fill on the OUTER bubble (matches the FieldSet styling elsewhere).
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setColor(0xFF1A1A2E);
         bg.setStroke((int)UnitUtils.dpToPx(1), 0xFF3A3A4E);
         bg.setCornerRadius(UnitUtils.dpToPx(8));
-        textView.setBackground(bg);
+        scrollView.setBackground(bg);
 
-        textView.setText(Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY));
-        int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        textView.measure(widthMeasureSpec, heightMeasureSpec);
-        showPopupWindow(anchor, textView, 300, textView.getMeasuredHeight());
+        // Measure the text at the ACTUAL display width so wrapping is counted, then cap the popup
+        // height — content shorter than the cap shows in full; longer content scrolls within the cap.
+        int wSpec = View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY);
+        int hSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        textView.measure(wSpec, hSpec);
+        int popupPx = Math.min(textView.getMeasuredHeight(), (int)UnitUtils.dpToPx(380));
+
+        // showPopupWindow takes width/height in DP (it dpToPx's them) — convert the measured px back.
+        showPopupWindow(anchor, scrollView, 292, (int)UnitUtils.pxToDp(popupPx));
     }
 
     public static int getVersionCode(Context context) {

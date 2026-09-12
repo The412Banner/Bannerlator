@@ -22,10 +22,10 @@
         <LinearLayout android:orientation="vertical" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/profile" />
             <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:layout_width="fill_parent" android:layout_height="wrap_content">
-                <Spinner android:id="@id/SProfile" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0" style="@style/ComboBox" />
+                <Spinner android:id="@+id/SProfile" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0" style="@style/ComboBox" />
                 <LinearLayout style="@style/Toolbox">
-                    <ImageButton android:id="@id/BTAddProfile" android:src="@drawable/icon_add" style="@style/ListMenuButton" />
-                    <ImageButton android:id="@id/BTRemoveProfile" android:layout_marginRight="0.0dip" android:src="@drawable/icon_remove" style="@style/ListMenuButton" />
+                    <ImageButton android:id="@+id/BTAddProfile" android:src="@drawable/icon_add" style="@style/ListMenuButton" />
+                    <ImageButton android:id="@+id/BTRemoveProfile" android:layout_marginRight="0.0dip" android:src="@drawable/icon_remove" style="@style/ListMenuButton" />
                 </LinearLayout>
             </LinearLayout>
             <CheckBox android:id="@+id/CBEnableFXAA" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8.0dip" android:text="@string/enable_fxaa" />

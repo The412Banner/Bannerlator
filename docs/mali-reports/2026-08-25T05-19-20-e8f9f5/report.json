@@ -1,0 +1,35 @@
+{
+  "id": "2026-08-25T05-19-20-e8f9f5",
+  "created": "2026-08-25T05:19:20.584Z",
+  "ip_hash": "3bJnBUnRCv",
+  "fields": {
+    "reporter_name": "sandz",
+    "device_model": "anbernic rg vita",
+    "soc": "unisoc t618",
+    "gpu": "g52",
+    "android": "android 12",
+    "ram": "3GB",
+    "app_version": "2.7",
+    "install_source": "GitHub release",
+    "game_name": "red faction: dashfaction modlauncher",
+    "steam_appid": "",
+    "store": "GOG",
+    "exe": "",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.9.4",
+    "proton": "proton 9",
+    "box64": "performance",
+    "resolution": "1280*720",
+    "framegen": "no",
+    "repro": "normal game can open but its very slow since its a dx8 game. using dashfaction launcher mod works on original winlator 11 and runs full speed. but in bannerlator theres injection error prompt and the game wont open",
+    "tried": "tried all the graphics drivers, fexcore or box64, all dxvk version same result."
+  },
+  "logs": [
+    {
+      "name": "Screenshot_20260825-131842.jpg"
+    }
+  ]
+}

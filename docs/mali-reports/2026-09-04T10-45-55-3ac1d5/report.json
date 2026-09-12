@@ -1,0 +1,38 @@
+{
+  "id": "2026-09-04T10-45-55-3ac1d5",
+  "created": "2026-09-04T10:45:55.573Z",
+  "ip_hash": "VrWS0+4C+j",
+  "fields": {
+    "reporter_name": "Ayajo",
+    "device_model": "Realme 11 pro",
+    "soc": "Dimensity 7050",
+    "gpu": "Mali g68 mc 4",
+    "android": "Android 15/ Realme ui 6.0",
+    "ram": "8 GB",
+    "app_version": "3.0.3",
+    "install_source": "In-app updater",
+    "game_name": "Resident evil 2 remake",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Re2.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.13.0 dyasync arm64ec",
+    "proton": "Proton 11.0-2-arm64ec-1",
+    "box64": "Performance (tso)",
+    "resolution": "780*360",
+    "framegen": "No",
+    "repro": "Using wrapper leegao or wrapper gamenative or wrapper original or using dxvk 1.12 sarek or 1.13 sarek even on wrapper legacy",
+    "tried": "Different dxvks , different proton versions , different wrappers"
+  },
+  "logs": [
+    {
+      "name": "re2_d3d11.log"
+    },
+    {
+      "name": "re2_dxgi.log"
+    }
+  ]
+}

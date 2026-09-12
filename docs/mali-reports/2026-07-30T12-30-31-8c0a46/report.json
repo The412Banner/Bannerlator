@@ -1,0 +1,31 @@
+{
+  "id": "2026-07-30T12-30-31-8c0a46",
+  "created": "2026-07-30T12:30:31.774Z",
+  "ip_hash": "9pNR2nhM+W",
+  "fields": {
+    "reporter_name": "Kong",
+    "device_model": "VIVO Y18",
+    "soc": "HELIO G85",
+    "gpu": "MALI G52 MC2",
+    "android": "Android 16",
+    "ram": "8gb",
+    "app_version": "Latest",
+    "install_source": "GitHub release",
+    "game_name": "PES2013",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "PES2013.exe",
+    "symptom": "Runs but very low FPS",
+    "when": "Crashes after a while in-game",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.1.1 sarek",
+    "proton": "Proton 10 arm 64",
+    "box64": "COMPATIBILITY",
+    "resolution": "800×600",
+    "framegen": "NO",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

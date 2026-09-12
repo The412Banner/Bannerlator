@@ -22,9 +22,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -54,6 +56,8 @@ public final class GogDownloadManager {
 
     private static final String TAG = "BH_GOG_DL";
     private static final int TIMEOUT = 30_000;
+    /** Rust engine only: minimum inflate/hash/write pool (stream mode pins one chunk per worker). */
+    private static final int RUST_MIN_PROCESS_WORKERS = 16;
 
     public interface Callback {
         void onProgress(String msg, int pct);
@@ -91,6 +95,56 @@ public final class GogDownloadManager {
             if (dir != null) deleteDir(dir);
             cb.onCancelled();
         };
+    }
+
+    /**
+     * Verify / Repair entry point.  Clears the completion marker and re-runs the
+     * normal download: the per-file size+MD5 resume check ({@link #fileVerified})
+     * then re-pulls only the files that are missing or fail integrity — i.e. a
+     * repair.  Returns the same cancel Runnable as {@link #startDownload}.
+     */
+    public static Runnable verifyRepair(Context ctx, GogGame game, Callback cb) {
+        try {
+            SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
+            String dirName = prefs.getString("gog_dir_" + game.gameId, game.title);
+            File installPath = GogInstallPath.getInstallDir(ctx, dirName);
+            File marker = new File(installPath, "_gog_manifest.json");
+            if (marker.exists()) marker.delete();
+        } catch (Exception ignored) {}
+        return startDownload(ctx, game, cb);
+    }
+
+    /**
+     * gap#5 — installs one owned DLC into an already-installed base game.
+     *
+     * DLC lives in the SAME base build manifest, tagged by {@code productId}; its chunks live in a
+     * per-product CDN namespace behind a per-product, entitlement-gated secure link. So this:
+     *   1. re-fetches the base build manifest (shared head),
+     *   2. collects depots where {@code depot.productId == dlcProductId} (+ language compat),
+     *   3. requests a secure link for the DLC's OWN productId (403 ⇒ not owned / not propagated),
+     *   4. downloads + MD5-verifies into the SAME base install dir via {@link #assembleDepotFile},
+     *   5. records a per-DLC installed marker + written-file list (for a future per-DLC uninstall).
+     *
+     * Idempotent (per-file size+MD5 skip). Fail-soft: a DLC failure NEVER touches the base game.
+     * Mirrors {@link #startDownload}'s threading; the returned Runnable cancels (it does NOT delete
+     * anything — DLC files interleave into the base dir, which must survive a cancel).
+     */
+    public static Runnable installDlc(Context ctx, GogGame baseGame, String dlcProductId,
+                                       String dlcTitle, Callback cb) {
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        Thread t = new Thread(
+                () -> doInstallDlc(ctx, baseGame, dlcProductId, dlcTitle, cb, cancelled),
+                "gog-dlc-" + baseGame.gameId + "-" + dlcProductId);
+        t.start();
+        return () -> { cancelled.set(true); cb.onCancelled(); };
+    }
+
+    /** True if this DLC's per-DLC installed marker is set. */
+    public static boolean isDlcInstalled(Context ctx, String baseId, String dlcProductId) {
+        try {
+            return ctx.getSharedPreferences("bh_gog_prefs", 0)
+                    .getBoolean("gog_dlc_installed_" + baseId + "_" + dlcProductId, false);
+        } catch (Exception e) { return false; }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -136,6 +190,13 @@ public final class GogDownloadManager {
             if (buildsJson != null) {
                 String err = runGen2(ctx, game, token, buildsJson, cb, dbg, cancelled, installDirRef);
                 if (err == null) { writeDebug(ctx, dbg); return; }
+                if (err.startsWith("DISK_GUARD:")) {
+                    // Hard stop — user already notified via cb.onError; do NOT fall through
+                    // to Gen1 (same install would need the same missing space).
+                    dbg.append("gen2_disk_guard=").append(err).append("\n");
+                    writeDebug(ctx, dbg);
+                    return;
+                }
                 dbg.append("gen2_failed=").append(err).append("\n");
             }
 
@@ -191,6 +252,26 @@ public final class GogDownloadManager {
         }
     }
 
+    // Resolve the download-pool thread count. Default heuristic is (cores * 2)
+    // clamped to [6, 16] — low-core devices stay conservative, fast phones scale
+    // up without hammering the CDN or device I/O. An optional user override lives
+    // in bh_gog_prefs under "gog_dl_threads" (>=1 wins; <1 or absent = auto).
+    // This is our clean-room DownloadSpeedConfig equivalent: a plain int knob.
+    private static int resolveDownloadThreads(Context ctx) {
+        try {
+            int override = ctx.getSharedPreferences("bh_gog_prefs", 0)
+                    .getInt("gog_dl_threads", 0);
+            if (override >= 1) return override;
+        } catch (Exception ignored) {
+            // Absent/invalid pref → fall through to the auto heuristic.
+        }
+        int cores = Runtime.getRuntime().availableProcessors();
+        int threads = cores * 2;
+        if (threads < 6)  threads = 6;
+        if (threads > 16) threads = 16;
+        return threads;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Gen 2 pipeline
     // ─────────────────────────────────────────────────────────────────────────
@@ -201,42 +282,14 @@ public final class GogDownloadManager {
                                    AtomicBoolean cancelled, AtomicReference<File> installDirRef) {
         try {
             dbg.append("\n--- Gen2 ---\n");
-            JSONObject builds = new JSONObject(buildsJson);
-            JSONArray items = builds.optJSONArray("items");
-            if (items == null || items.length() == 0)
-                return "no items in builds response";
-            dbg.append("items=").append(items.length()).append("\n");
-
-            // Pick first windows build
-            String buildId = null, manifestUrl = null;
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                dbg.append("item[").append(i).append("] os=").append(item.optString("os"))
-                   .append(" gen=").append(item.optInt("generation")).append("\n");
-                if ("windows".equals(item.optString("os"))) {
-                    buildId     = item.optString("build_id");
-                    manifestUrl = item.optString("link");
-                    if (manifestUrl == null || manifestUrl.isEmpty())
-                        manifestUrl = item.optString("meta_url");
-                    break;
-                }
-            }
-            if (buildId == null || manifestUrl == null || manifestUrl.isEmpty())
-                return "no windows build or manifest URL empty";
-            dbg.append("buildId=").append(buildId).append("\nmanifestUrl=")
-               .append(manifestUrl.substring(0, Math.min(120, manifestUrl.length()))).append("\n");
-
             cb.onProgress("Fetching manifest…", 5);
-            byte[] manifestRaw = fetchBytes(manifestUrl, token);
-            if (manifestRaw == null) return "manifest fetch returned null";
-            dbg.append("manifestRaw bytes=").append(manifestRaw.length)
-               .append(String.format(" first2=%02X%02X\n", manifestRaw[0]&0xFF, manifestRaw[1]&0xFF));
-            String manifestStr = decompressBytes(manifestRaw);
-            if (manifestStr == null) return "manifest decompress failed";
-            dbg.append("manifestStr snippet=")
-               .append(manifestStr.substring(0, Math.min(300, manifestStr.length()))).append("\n");
-
-            JSONObject manifest = new JSONObject(manifestStr);
+            // Shared build-manifest head (token → builds → windows build → meta → decompress → JSON),
+            // reused by installDlc() so the fetch/decompress logic lives in one place.
+            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token, dbg);
+            if (gm == null) return "gen2 manifest resolve failed";
+            String buildId = gm.buildId;
+            JSONObject manifest = gm.manifest;
+            dbg.append("buildId=").append(buildId).append("\n");
             String installDir = manifest.optString("installDirectory", game.title);
             String manifestClientId     = manifest.optString("clientId", null);
             String manifestClientSecret = manifest.optString("clientSecret", null);
@@ -244,6 +297,15 @@ public final class GogDownloadManager {
             if (depots == null)
                 return "no depots in manifest; keys=" + manifest.keys().toString();
             dbg.append("installDir=").append(installDir).append(" depots=").append(depots.length()).append("\n");
+
+            // gap#3 (GOG redists / ISI): the build manifest carries the game's required GOG
+            // "dependencies" (repository redist ids, e.g. ["MSVC2017_x64"]) and a scriptInterpreter
+            // flag at the SAME level as depots. Persist them keyed by gameId so the redist installer
+            // (GogRedistInstaller) and a future ISI step can read them at add-to-container time. This
+            // is gen2-only — the gen1/installer paths are untouched.
+            persistDependencies(ctx, game.gameId,
+                    manifest.optJSONArray("dependencies"),
+                    manifest.optBoolean("scriptInterpreter", false), dbg);
 
             // Extract temp_executable from products[0] (primary exe hint)
             String tempExe = null;
@@ -254,23 +316,44 @@ public final class GogDownloadManager {
             }
             dbg.append("tempExe=").append(tempExe).append("\n");
 
-            // Collect DepotFiles from each language-compatible depot
+            // gap#5 base-install fix: the base build manifest lists EVERY product's depots (base +
+            // DLC), each tagged by its own productId, with a top-level baseProductId. Restrict the
+            // base install to the BASE product's depots. Without this, DLC depots that pass the
+            // language filter get pulled under the base secure_link — which is path-scoped to the
+            // base product (§2 of the plan) → 403 on DLC chunks → the whole install fails. DLC is
+            // installed separately via installDlc() with its own per-product secure link.
+            // Type coercion: productId is numeric in JSON; optString() coerces both sides to the
+            // same string form so "1508702879" == "1508702879".
+            String baseProductId = manifest.optString("baseProductId", null);
+            if (baseProductId == null || baseProductId.isEmpty()) {
+                if (products != null && products.length() > 0)
+                    baseProductId = products.getJSONObject(0).optString("productId", null);
+            }
+            if (baseProductId == null || baseProductId.isEmpty()) baseProductId = game.gameId;
+            dbg.append("baseProductId=").append(baseProductId).append("\n");
+
+            // Collect DepotFiles from each language-compatible BASE depot
             cb.onProgress("Reading depot manifests…", 10);
             List<DepotFile> files = new ArrayList<>();
+            // The same inflated depot manifests, kept for the Rust engine (it parses them with the
+            // same rules as parseDepotManifest — see docs/RUST_GOG_PARITY.md §3).
+            List<String> depotJsons = new ArrayList<>();
+            int baseDepotCount = 0, skippedDlcDepotCount = 0;
             for (int i = 0; i < depots.length(); i++) {
                 JSONObject depot = depots.getJSONObject(i);
-                JSONArray languages = depot.optJSONArray("languages");
-                boolean compatible = false;
-                if (languages == null || languages.length() == 0) {
-                    compatible = true;
-                } else {
-                    String langsStr = languages.toString();
-                    if (langsStr.contains("*") || langsStr.contains("en-US")
-                            || langsStr.contains("\"en\"") || langsStr.contains("english")) {
-                        compatible = true;
-                    }
+                // Skip any depot NOT belonging to the base product. Depots with no productId
+                // (older / single-product manifests, e.g. ELDERBORN) are always kept so single-
+                // product titles install exactly as before.
+                String depotPid = depot.optString("productId", "");
+                if (!depotPid.isEmpty() && !depotPid.equals(baseProductId)) {
+                    skippedDlcDepotCount++;
+                    dbg.append("depot[").append(i).append("] skipped: productId=").append(depotPid)
+                       .append(" != base\n");
+                    continue;
                 }
-                dbg.append("depot[").append(i).append("] langs=").append(languages)
+                baseDepotCount++;
+                boolean compatible = languageCompatible(depot);
+                dbg.append("depot[").append(i).append("] langs=").append(depot.optJSONArray("languages"))
                    .append(" compat=").append(compatible).append("\n");
                 if (!compatible) continue;
 
@@ -296,19 +379,19 @@ public final class GogDownloadManager {
                    .append(dmStr.substring(0, Math.min(500, dmStr.length()))).append("\n");
                 int before = files.size();
                 parseDepotManifest(dmStr, files);
+                depotJsons.add(dmStr);
                 dbg.append("depot[").append(i).append("] added ").append(files.size() - before).append(" files\n");
             }
 
+            dbg.append("base depot filter: base=").append(baseDepotCount)
+               .append(" skippedDlc=").append(skippedDlcDepotCount).append("\n");
+            GogCloudSaveManager.debug(ctx, "DLC: base install productId=" + baseProductId
+                    + " baseDepots=" + baseDepotCount + " skippedDlcDepots=" + skippedDlcDepotCount);
             if (files.isEmpty()) return "no depot files collected after processing all depots";
             dbg.append("total files=").append(files.size()).append("\n");
 
-            // Fetch CDN base URL via secure_link
+            // Fetch CDN base URL via secure_link (base product — path-scoped to baseProductId)
             cb.onProgress("Fetching CDN link…", 15);
-            String baseProductId = game.gameId;
-            if (products != null && products.length() > 0) {
-                String pid = products.getJSONObject(0).optString("productId", null);
-                if (pid != null && !pid.isEmpty()) baseProductId = pid;
-            }
             String secureLinkUrl = "https://content-system.gog.com/products/" + baseProductId
                     + "/secure_link?_version=2&generation=2&path=/";
             String secureLinkJson = httpGet(secureLinkUrl, token);
@@ -328,7 +411,30 @@ public final class GogDownloadManager {
             File chunksDir = new File(installPath, ".gog_chunks");
             chunksDir.mkdirs();
 
-            // Download + assemble files — 6 parallel threads
+            // Free-space guard: sum planned (decompressed) size, compare to usable bytes
+            // on the install target. Hard-stop (via DISK_GUARD sentinel) before writing.
+            long plannedBytes = 0;
+            for (DepotFile df : files) plannedBytes += df.totalSize;
+            if (plannedBytes > 0) {
+                long usable = installPath.getUsableSpace();
+                dbg.append("disk guard: planned=").append(plannedBytes)
+                   .append(" usable=").append(usable).append("\n");
+                if (usable > 0 && plannedBytes > usable) {
+                    cb.onError("Not enough free space: need " + formatBytes(plannedBytes)
+                            + ", only " + formatBytes(usable) + " free");
+                    return "DISK_GUARD: need=" + plannedBytes + " usable=" + usable;
+                }
+            }
+
+            // Largest-file-first (LPT) scheduling: sort the already-filtered install
+            // list by descending total (decompressed) size so the biggest archives
+            // start first and small files fill the tail — no lone-giant straggler at
+            // the end. Pure ordering change; runs AFTER the base-product/language
+            // filters so those selections are untouched. df.totalSize == Σ chunk.size.
+            java.util.Collections.sort(files, (a, b) -> Long.compare(b.totalSize, a.totalSize));
+
+            // Download + assemble files — pool size resolved by resolveDownloadThreads
+            final int downloadThreads = resolveDownloadThreads(ctx);
             final int total = files.size();
             final AtomicInteger doneCount    = new AtomicInteger(0);
             final AtomicLong    totalBytes   = new AtomicLong(0);
@@ -336,83 +442,75 @@ public final class GogDownloadManager {
             final AtomicLong    lastSpeedB   = new AtomicLong(0);
             final AtomicLong    speedBps     = new AtomicLong(0);
             final AtomicBoolean anyFailed    = new AtomicBoolean(false);
-            final String        fCdnBase     = cdnBase;
+            final AtomicReference<String> cdnBaseRef = new AtomicReference<>(cdnBase);
+            final AtomicInteger cdnRefreshCount = new AtomicInteger(0);
+            final int    MAX_CDN_REFRESH = 5;
+            final String fSecureLinkUrl  = secureLinkUrl;
             final java.util.concurrent.ConcurrentLinkedQueue<String> fileLog2 =
                     new java.util.concurrent.ConcurrentLinkedQueue<>();
-            dbg.append("gen2 parallel download: ").append(total).append(" files, 8 threads\n");
+            dbg.append("gen2 parallel download: ").append(total)
+               .append(" files, ").append(downloadThreads).append(" threads (largest-first)\n");
 
-            ExecutorService pool = Executors.newFixedThreadPool(8);
+            // Engine switch (docs/RUST_GOG_PARITY.md): the Rust engine replaces ONLY this
+            // fetch/inflate/verify/assemble loop. Same resume/skip rule, same .bhtmp staging +
+            // atomic rename, same progress strings + pct math, same secure-link refresh cap,
+            // same anyFailed / cancelled semantics — everything before and after is shared.
+            final boolean useRustEngine = useRustEngine(ctx);
+            dbg.append("engine=").append(useRustEngine ? "rust" : "java").append("\n");
+            if (useRustEngine) {
+                runRustChunkEngine(ctx, com.winlator.star.store.blsteam.BlGogDownload.KIND_GEN2_CHUNKS,
+                        "Verified…", depotJsons, installPath,
+                        cdnBaseRef, fSecureLinkUrl, token, cdnRefreshCount, MAX_CDN_REFRESH,
+                        downloadThreads, downloadThreads, true, "gog base=" + baseProductId,
+                        cancelled, anyFailed, doneCount, total, totalBytes,
+                        lastSpeedMs, lastSpeedB, speedBps, cb, true, null, fileLog2);
+            } else {
+            ExecutorService pool = Executors.newFixedThreadPool(downloadThreads);
             List<Future<Void>> futures = new ArrayList<>();
             for (DepotFile df : files) {
                 futures.add(pool.submit((Callable<Void>) () -> {
                     if (cancelled.get() || anyFailed.get()) return null;
                     File outFile = new File(installPath, df.relativePath);
-                    File tmpFile = new File(installPath, df.relativePath + ".bhtmp");
                     outFile.getParentFile().mkdirs();
 
-                    // Resume: skip if already fully written
-                    if (outFile.exists() && outFile.length() > 0) {
+                    // Resume / repair: skip only if the existing file passes size+MD5.
+                    // A corrupt or truncated partial fails this and is re-downloaded.
+                    if (fileVerified(outFile, df.totalSize, df.md5)) {
                         int done = doneCount.incrementAndGet();
                         int pct  = 15 + (int) ((done / (float) total) * 80);
-                        cb.onProgress("Resuming…", pct);
+                        cb.onProgress("Verified…", pct);
                         return null;
                     }
 
-                    for (int attempt = 1; attempt <= 3; attempt++) {
-                        if (cancelled.get() || anyFailed.get()) return null;
-                        tmpFile.delete();
-                        long fileBytes = 0;
-                        boolean ok = false;
-                        try (FileOutputStream fos = new FileOutputStream(tmpFile)) {
-                            ok = true;
-                            for (DepotFile.ChunkRef chunk : df.chunks) {
-                                if (cancelled.get()) return null;
-                                String chunkPath = buildCdnPath(chunk.hash);
-                                int qIdx = fCdnBase.indexOf('?');
-                                String chunkUrl = qIdx >= 0
-                                        ? fCdnBase.substring(0, qIdx) + "/" + chunkPath + fCdnBase.substring(qIdx)
-                                        : fCdnBase + "/" + chunkPath;
-                                byte[] chunkRaw = fetchBytes(chunkUrl, null);
-                                if (chunkRaw == null) { ok = false; break; }
-                                fileBytes += chunkRaw.length;
-                                byte[] inflated = inflateZlib(chunkRaw);
-                                if (inflated == null) inflated = chunkRaw;
-                                fos.write(inflated);
-                            }
-                        } catch (Exception e) {
-                            ok = false;
-                        }
-                        if (ok) {
-                            if (outFile.exists()) outFile.delete();
-                            tmpFile.renameTo(outFile);
-                            int done = doneCount.incrementAndGet();
-                            long tb  = totalBytes.addAndGet(fileBytes);
-                            int pct  = 15 + (int) ((done / (float) total) * 80);
-                            long nowMs  = System.currentTimeMillis();
-                            long prevMs = lastSpeedMs.get();
-                            if (nowMs - prevMs >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
-                                long prevB = lastSpeedB.getAndSet(tb);
-                                long dt = nowMs - prevMs;
-                                if (dt > 0) speedBps.set((tb - prevB) * 1000L / dt);
-                            }
-                            String speedStr = formatSpeed(speedBps.get());
-                            String name = df.relativePath.contains("/")
-                                    ? df.relativePath.substring(df.relativePath.lastIndexOf('/') + 1)
-                                    : df.relativePath;
-                            cb.onProgress("Downloading: " + name
-                                    + (speedStr.isEmpty() ? "" : "  " + speedStr), pct);
-                            return null;
-                        }
-                        fileLog2.add("RETRY attempt=" + attempt + " file=" + df.relativePath);
-                        tmpFile.delete();
-                        if (attempt < 3) {
-                            try { Thread.sleep(1000L << (attempt - 1)); }
-                            catch (InterruptedException ie) { Thread.currentThread().interrupt(); return null; }
-                        }
+                    // Download + verify + assemble via the shared MD5-verified chunk path (also used
+                    // by the dependency-redist assembler). On success the whole file is size+MD5 clean.
+                    boolean ok = assembleDepotFile(
+                            df, outFile, cdnBaseRef, fSecureLinkUrl, token,
+                            cdnRefreshCount, MAX_CDN_REFRESH, cancelled, fileLog2);
+                    if (cancelled.get()) return null;
+                    if (!ok) {
+                        fileLog2.add("FAIL file=" + df.relativePath);
+                        Log.e(TAG, "Gen2 file failed integrity/download: " + df.relativePath);
+                        anyFailed.set(true);
+                        return null;
                     }
-                    fileLog2.add("FAIL file=" + df.relativePath);
-                    Log.e(TAG, "Gen2 file failed after 3 attempts: " + df.relativePath);
-                    anyFailed.set(true);
+                    long fileBytes = df.totalSize;
+                    int done = doneCount.incrementAndGet();
+                    long tb  = totalBytes.addAndGet(fileBytes);
+                    int pct  = 15 + (int) ((done / (float) total) * 80);
+                    long nowMs  = System.currentTimeMillis();
+                    long prevMs = lastSpeedMs.get();
+                    if (nowMs - prevMs >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
+                        long prevB = lastSpeedB.getAndSet(tb);
+                        long dt = nowMs - prevMs;
+                        if (dt > 0) speedBps.set((tb - prevB) * 1000L / dt);
+                    }
+                    String speedStr = formatSpeed(speedBps.get());
+                    String name = df.relativePath.contains("/")
+                            ? df.relativePath.substring(df.relativePath.lastIndexOf('/') + 1)
+                            : df.relativePath;
+                    cb.onProgress("Downloading: " + name
+                            + (speedStr.isEmpty() ? "" : "  " + speedStr), pct);
                     return null;
                 }));
             }
@@ -423,6 +521,7 @@ public final class GogDownloadManager {
                 pool.shutdownNow();
                 return "parallel download error: " + e;
             }
+            } // end Java engine
             for (String line : fileLog2) dbg.append(line).append("\n");
             if (cancelled.get()) return "cancelled";
             if (anyFailed.get()) return "one or more chunks failed to download";
@@ -486,6 +585,297 @@ public final class GogDownloadManager {
         } catch (Exception e) {
             return "exception: " + e;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Shared gen2 build-manifest head + language predicate
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Parsed gen2 windows build manifest (shared by base install + DLC install). */
+    private static final class Gen2Manifest {
+        final JSONObject manifest;
+        final String buildId;
+        final String manifestUrl;
+        Gen2Manifest(JSONObject manifest, String buildId, String manifestUrl) {
+            this.manifest = manifest; this.buildId = buildId; this.manifestUrl = manifestUrl;
+        }
+    }
+
+    /**
+     * Picks the first windows build from a {@code builds?generation=2} response, fetches its meta
+     * manifest, decompresses, and parses to JSON. Returns null on any failure (a short reason is
+     * appended to {@code dbg}). Shared by {@link #runGen2} and {@link #doInstallDlc}.
+     */
+    private static Gen2Manifest resolveGen2Manifest(String buildsJson, String token, StringBuilder dbg) {
+        try {
+            JSONObject builds = new JSONObject(buildsJson);
+            JSONArray items = builds.optJSONArray("items");
+            if (items == null || items.length() == 0) { dbg.append("resolveGen2Manifest: no items\n"); return null; }
+            dbg.append("items=").append(items.length()).append("\n");
+            String buildId = null, manifestUrl = null;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.getJSONObject(i);
+                if ("windows".equals(item.optString("os"))) {
+                    buildId     = item.optString("build_id");
+                    manifestUrl = item.optString("link");
+                    if (manifestUrl == null || manifestUrl.isEmpty())
+                        manifestUrl = item.optString("meta_url");
+                    break;
+                }
+            }
+            if (buildId == null || manifestUrl == null || manifestUrl.isEmpty()) {
+                dbg.append("resolveGen2Manifest: no windows build / manifest URL empty\n"); return null;
+            }
+            byte[] manifestRaw = fetchBytes(manifestUrl, token);
+            if (manifestRaw == null) { dbg.append("resolveGen2Manifest: manifest fetch null\n"); return null; }
+            String manifestStr = decompressBytes(manifestRaw);
+            if (manifestStr == null) { dbg.append("resolveGen2Manifest: decompress failed\n"); return null; }
+            return new Gen2Manifest(new JSONObject(manifestStr), buildId, manifestUrl);
+        } catch (Exception e) {
+            dbg.append("resolveGen2Manifest exception: ").append(e).append("\n");
+            return null;
+        }
+    }
+
+    /** English/all-language depot predicate (shared by base install + DLC install). */
+    private static boolean languageCompatible(JSONObject depot) {
+        JSONArray languages = depot.optJSONArray("languages");
+        if (languages == null || languages.length() == 0) return true;
+        String langsStr = languages.toString();
+        return langsStr.contains("*") || langsStr.contains("en-US")
+                || langsStr.contains("\"en\"") || langsStr.contains("english");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DLC install (gap#5)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static void doInstallDlc(Context ctx, GogGame baseGame, String dlcProductId,
+                                      String dlcTitle, Callback cb, AtomicBoolean cancelled) {
+        final String baseId = baseGame.gameId;
+        final String dlgTag = "DLC: " + dlcProductId + " (" + dlcTitle + ") base=" + baseId;
+        StringBuilder dbg = new StringBuilder();
+        try {
+            GogCloudSaveManager.debug(ctx, dlgTag + " install start");
+            if (cancelled.get()) return;
+
+            SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
+
+            // Base must be installed — DLC files interleave into the base install dir.
+            String dirName = prefs.getString("gog_dir_" + baseId, null);
+            if (dirName == null) {
+                GogCloudSaveManager.debug(ctx, dlgTag + " ABORT base not installed");
+                cb.onError("Install the game first"); return;
+            }
+
+            boolean already = isDlcInstalled(ctx, baseId, dlcProductId);
+            if (already) GogCloudSaveManager.debug(ctx, dlgTag + " already marked installed — verify-and-skip run");
+
+            cb.onProgress("Checking token…", 0);
+            String token = prefs.getString("access_token", null);
+            if (token == null) { cb.onError("Not logged in to GOG"); return; }
+            int loginTime = prefs.getInt("bh_gog_login_time", 0);
+            int expiresIn = prefs.getInt("bh_gog_expires_in", 3600);
+            int nowSec    = (int) (System.currentTimeMillis() / 1000L);
+            if (loginTime == 0 || nowSec >= loginTime + expiresIn) {
+                cb.onProgress("Refreshing token…", 0);
+                String newToken = GogTokenRefresh.refresh(ctx);
+                if (newToken == null) { cb.onError("Token expired — please sign in again"); return; }
+                token = newToken;
+            }
+
+            if (cancelled.get()) return;
+
+            // Re-fetch the base build manifest (DLC lives in the SAME manifest, tagged by productId).
+            cb.onProgress("Fetching manifest…", 3);
+            String buildsUrl = "https://content-system.gog.com/products/" + baseId
+                    + "/os/windows/builds?generation=2";
+            String buildsJson = httpGet(buildsUrl, null);
+            if (buildsJson == null) buildsJson = httpGet(buildsUrl, token);
+            if (buildsJson == null) {
+                GogCloudSaveManager.debug(ctx, dlgTag + " builds fetch null");
+                cb.onError("DLC install failed: no builds"); return;
+            }
+            Gen2Manifest gm = resolveGen2Manifest(buildsJson, token, dbg);
+            if (gm == null) {
+                GogCloudSaveManager.debug(ctx, dlgTag + " manifest resolve failed: " + dbg);
+                cb.onError("DLC install failed: manifest unavailable"); return;
+            }
+            JSONObject manifest = gm.manifest;
+            JSONArray depots = manifest.optJSONArray("depots");
+            if (depots == null) { cb.onError("DLC install failed: no depots"); return; }
+
+            // Collect the DLC's own depots (productId == dlcProductId) + language compat.
+            cb.onProgress("Reading DLC manifests…", 8);
+            List<DepotFile> files = new ArrayList<>();
+            List<String> depotJsons = new ArrayList<>();   // for the Rust engine (same strings)
+            int matched = 0;
+            for (int i = 0; i < depots.length(); i++) {
+                if (cancelled.get()) return;
+                JSONObject depot = depots.getJSONObject(i);
+                if (!dlcProductId.equals(depot.optString("productId", ""))) continue;
+                matched++;
+                if (!languageCompatible(depot)) continue;
+                String manifestHash = depot.optString("manifest");
+                if (manifestHash == null || manifestHash.isEmpty()) continue;
+                String metaUrl = "https://gog-cdn-fastly.gog.com/content-system/v2/meta/"
+                        + buildCdnPath(manifestHash);
+                byte[] dmRaw = fetchBytes(metaUrl, null); // CDN, no auth
+                if (dmRaw == null) continue;
+                String dmStr = decompressBytes(dmRaw);
+                if (dmStr == null) continue;
+                parseDepotManifest(dmStr, files);
+                depotJsons.add(dmStr);
+            }
+            GogCloudSaveManager.debug(ctx, dlgTag + " depots matched=" + matched + " files=" + files.size());
+
+            // A product with no depots of its own (data already ships in the base) → nothing to
+            // download. Mark installed and finish cleanly (not an error).
+            if (files.isEmpty()) {
+                markDlcInstalled(ctx, baseId, dlcProductId, new ArrayList<>());
+                GogCloudSaveManager.debug(ctx, dlgTag + " no own depots — content included in base, marked installed");
+                cb.onProgress("Already included in the base game", 100);
+                cb.onComplete("");
+                return;
+            }
+
+            // The DLC's OWN secure link (path-scoped to dlcProductId). 403/parse-fail ⇒ not owned
+            // (server-side entitlement gate) or the licence hasn't propagated yet.
+            cb.onProgress("Fetching CDN link…", 12);
+            String secureLinkUrl = "https://content-system.gog.com/products/" + dlcProductId
+                    + "/secure_link?_version=2&generation=2&path=/";
+            String secureLinkJson = httpGet(secureLinkUrl, token);
+            String cdnBase = parseCdnUrl(secureLinkJson);
+            if (cdnBase == null) {
+                GogCloudSaveManager.debug(ctx, dlgTag + " secure_link FAILED (403/entitlement) resp="
+                        + (secureLinkJson == null ? "NULL"
+                           : secureLinkJson.substring(0, Math.min(160, secureLinkJson.length()))));
+                cb.onError("You may not own this DLC (or the licence hasn't propagated yet)");
+                return;
+            }
+            GogCloudSaveManager.debug(ctx, dlgTag + " secure_link OK");
+
+            // Assemble into the SAME base install dir (never a separate target).
+            File installPath = GogInstallPath.getInstallDir(ctx, dirName);
+            installPath.mkdirs();
+
+            // Free-space guard before writing.
+            long plannedBytes = 0;
+            for (DepotFile df : files) plannedBytes += df.totalSize;
+            if (plannedBytes > 0) {
+                long usable = installPath.getUsableSpace();
+                if (usable > 0 && plannedBytes > usable) {
+                    GogCloudSaveManager.debug(ctx, dlgTag + " disk guard need=" + plannedBytes + " usable=" + usable);
+                    cb.onError("Not enough free space: need " + formatBytes(plannedBytes)
+                            + ", only " + formatBytes(usable) + " free");
+                    return;
+                }
+            }
+
+            final int total = files.size();
+            final AtomicInteger doneCount = new AtomicInteger(0);
+            final AtomicBoolean anyFailed = new AtomicBoolean(false);
+            final AtomicReference<String> cdnBaseRef = new AtomicReference<>(cdnBase);
+            final AtomicInteger cdnRefreshCount = new AtomicInteger(0);
+            final int MAX_CDN_REFRESH = 5;
+            final String fSecureLinkUrl = secureLinkUrl;
+            final String fToken = token;
+            final File fInstallPath = installPath;
+            final java.util.concurrent.ConcurrentLinkedQueue<String> fileLog =
+                    new java.util.concurrent.ConcurrentLinkedQueue<>();
+            final java.util.concurrent.ConcurrentLinkedQueue<String> written =
+                    new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+            // Engine switch — see runGen2. DLC: fixed 8 workers, manifest order, no speed string.
+            final boolean useRustEngine = useRustEngine(ctx);
+            GogCloudSaveManager.debug(ctx, dlgTag + " engine=" + (useRustEngine ? "rust" : "java"));
+            if (useRustEngine) {
+                runRustChunkEngine(ctx, com.winlator.star.store.blsteam.BlGogDownload.KIND_GEN2_CHUNKS,
+                        "Verified…", depotJsons, fInstallPath,
+                        cdnBaseRef, fSecureLinkUrl, fToken, cdnRefreshCount, MAX_CDN_REFRESH,
+                        8, 8, false, "gog dlc=" + dlcProductId + " base=" + baseId,
+                        cancelled, anyFailed, doneCount, total, new AtomicLong(0),
+                        new AtomicLong(System.currentTimeMillis()), new AtomicLong(0), new AtomicLong(0),
+                        cb, false, written, fileLog);
+            } else {
+            ExecutorService pool = Executors.newFixedThreadPool(8);
+            List<Future<Void>> futures = new ArrayList<>();
+            for (DepotFile df : files) {
+                futures.add(pool.submit((Callable<Void>) () -> {
+                    if (cancelled.get() || anyFailed.get()) return null;
+                    File outFile = new File(fInstallPath, df.relativePath);
+                    if (outFile.getParentFile() != null) outFile.getParentFile().mkdirs();
+
+                    // Idempotent resume: skip if the existing file already passes size+MD5.
+                    if (fileVerified(outFile, df.totalSize, df.md5)) {
+                        written.add(df.relativePath);
+                        int done = doneCount.incrementAndGet();
+                        cb.onProgress("Verified…", 15 + (int) ((done / (float) total) * 80));
+                        return null;
+                    }
+                    boolean ok = assembleDepotFile(df, outFile, cdnBaseRef, fSecureLinkUrl, fToken,
+                            cdnRefreshCount, MAX_CDN_REFRESH, cancelled, fileLog);
+                    if (cancelled.get()) return null;
+                    if (!ok) {
+                        fileLog.add("FAIL file=" + df.relativePath);
+                        anyFailed.set(true);
+                        return null;
+                    }
+                    written.add(df.relativePath);
+                    int done = doneCount.incrementAndGet();
+                    int pct = 15 + (int) ((done / (float) total) * 80);
+                    String name = df.relativePath.contains("/")
+                            ? df.relativePath.substring(df.relativePath.lastIndexOf('/') + 1)
+                            : df.relativePath;
+                    cb.onProgress("Downloading: " + name, pct);
+                    return null;
+                }));
+            }
+            pool.shutdown();
+            try {
+                for (Future<Void> f : futures) f.get();
+            } catch (Exception e) {
+                pool.shutdownNow();
+                GogCloudSaveManager.debug(ctx, dlgTag + " pool error: " + e);
+                cb.onError("DLC install failed: " + e.getMessage());
+                return;
+            }
+            } // end Java engine
+            for (String line : fileLog) GogCloudSaveManager.debug(ctx, dlgTag + " " + line);
+
+            if (cancelled.get()) { GogCloudSaveManager.debug(ctx, dlgTag + " cancelled"); return; }
+            if (anyFailed.get()) {
+                GogCloudSaveManager.debug(ctx, dlgTag + " FAILED — one or more chunks failed");
+                cb.onError("DLC install failed");
+                return;
+            }
+
+            // Full success only: write the installed marker + the written-file list (for uninstall).
+            markDlcInstalled(ctx, baseId, dlcProductId, new ArrayList<>(written));
+            GogCloudSaveManager.debug(ctx, dlgTag + " DONE files=" + written.size() + " marker written");
+            cb.onProgress("DLC installed!", 100);
+            cb.onComplete("");
+        } catch (Exception e) {
+            GogCloudSaveManager.debug(ctx, dlgTag + " EXCEPTION " + e);
+            cb.onError("DLC install error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Records the per-DLC installed marker {@code gog_dlc_installed_<baseId>_<dlcProductId>=true}
+     * and the written-file list {@code gog_dlc_files_<baseId>_<dlcProductId>} (JSON array of
+     * install-dir-relative paths) — the latter enables a future per-DLC uninstall (P2).
+     */
+    private static void markDlcInstalled(Context ctx, String baseId, String dlcProductId,
+                                          List<String> writtenPaths) {
+        try {
+            JSONArray arr = new JSONArray();
+            for (String p : writtenPaths) arr.put(p);
+            ctx.getSharedPreferences("bh_gog_prefs", 0).edit()
+                    .putBoolean("gog_dlc_installed_" + baseId + "_" + dlcProductId, true)
+                    .putString("gog_dlc_files_" + baseId + "_" + dlcProductId, arr.toString())
+                    .apply();
+        } catch (Exception ignored) {}
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -561,9 +951,23 @@ public final class GogDownloadManager {
             final AtomicBoolean anyFailedG1     = new AtomicBoolean(false);
             final java.util.concurrent.ConcurrentLinkedQueue<String> fileLog1 =
                     new java.util.concurrent.ConcurrentLinkedQueue<>();
-            dbg.append("gen1 parallel download: ").append(totalG1).append(" files, 8 threads\n");
+            final int downloadThreadsG1 = resolveDownloadThreads(ctx);
+            dbg.append("gen1 parallel download: ").append(totalG1)
+               .append(" files, ").append(downloadThreadsG1).append(" threads\n");
 
-            ExecutorService poolG1 = Executors.newFixedThreadPool(8);
+            // Engine switch — see runGen2. gen1: one Range GET per file streamed to disk, size-only
+            // resume ("Resuming…"), no secure-link refresh (cap 0), same speed string.
+            final boolean useRustEngineG1 = useRustEngine(ctx);
+            dbg.append("engine=").append(useRustEngineG1 ? "rust" : "java").append("\n");
+            if (useRustEngineG1) {
+                runRustChunkEngine(ctx, com.winlator.star.store.blsteam.BlGogDownload.KIND_GEN1_RANGES,
+                        "Resuming…", java.util.Collections.singletonList(manifestStr), installPath,
+                        new AtomicReference<>(""), null, null, new AtomicInteger(0), 0,
+                        downloadThreadsG1, downloadThreadsG1, false, "gog gen1=" + game.gameId,
+                        cancelled, anyFailedG1, doneG1, totalG1, totalBytesG1,
+                        lastSpeedMsG1, lastSpeedBG1, speedBpsG1, cb, true, null, fileLog1);
+            } else {
+            ExecutorService poolG1 = Executors.newFixedThreadPool(downloadThreadsG1);
             List<Future<Void>> futuresG1 = new ArrayList<>();
             for (Gen1File gf : files) {
                 futuresG1.add(poolG1.submit((Callable<Void>) () -> {
@@ -620,6 +1024,7 @@ public final class GogDownloadManager {
                 poolG1.shutdownNow();
                 return "gen1 parallel error: " + e;
             }
+            } // end Java engine
             for (String line : fileLog1) dbg.append(line).append("\n");
             if (cancelled.get()) return "cancelled";
             if (anyFailedG1.get()) return "one or more gen1 files failed to download";
@@ -853,12 +1258,24 @@ public final class GogDownloadManager {
                 if (path.isEmpty() || chunks == null || chunks.length() == 0) continue;
 
                 DepotFile df = new DepotFile(path);
+                String fileMd5 = entry.optString("md5", null);
+                if (fileMd5 != null && !fileMd5.isEmpty()) df.md5 = fileMd5;
+                long fileTotal = 0;
                 for (int c = 0; c < chunks.length(); c++) {
                     JSONObject chunk = chunks.getJSONObject(c);
-                    String md5 = chunk.optString("compressedMd5");
-                    if (md5 == null || md5.isEmpty()) md5 = chunk.optString("md5");
-                    if (md5 != null && !md5.isEmpty()) df.chunks.add(new DepotFile.ChunkRef(md5));
+                    String compressedMd5 = chunk.optString("compressedMd5");
+                    String decMd5        = chunk.optString("md5");
+                    long compressedSize  = chunk.optLong("compressedSize", 0);
+                    long decSize         = chunk.optLong("size", 0);
+                    // GOG v2 CDN path is keyed on the compressed MD5 (fall back to md5).
+                    String hash = (compressedMd5 != null && !compressedMd5.isEmpty())
+                            ? compressedMd5 : decMd5;
+                    if (hash == null || hash.isEmpty()) continue;
+                    df.chunks.add(new DepotFile.ChunkRef(
+                            hash, compressedMd5, decMd5, compressedSize, decSize));
+                    fileTotal += decSize;
                 }
+                df.totalSize = fileTotal;
                 if (!df.chunks.isEmpty()) out.add(df);
             }
         } catch (Exception e) {
@@ -867,8 +1284,161 @@ public final class GogDownloadManager {
     }
 
     /** Builds the CDN path from a chunk hash: "ab/cd/abcdef..." */
-    private static String buildCdnPath(String hash) {
+    static String buildCdnPath(String hash) {
         return hash.substring(0, 2) + "/" + hash.substring(2, 4) + "/" + hash;
+    }
+
+    /**
+     * Persists a gen2 game's required GOG dependency ids + scriptInterpreter flag into
+     * {@code bh_gog_prefs} under {@code gog_deps_<gameId>} as
+     * {@code {"deps":[...],"scriptInterpreter":bool}}. Read by GogRedistInstaller at
+     * add-to-container time. Fail-soft: any error is logged and swallowed (never blocks a download).
+     */
+    private static void persistDependencies(Context ctx, String gameId,
+                                            JSONArray dependencies, boolean scriptInterpreter,
+                                            StringBuilder dbg) {
+        try {
+            JSONArray deps = dependencies != null ? dependencies : new JSONArray();
+            JSONObject rec = new JSONObject();
+            rec.put("deps", deps);
+            rec.put("scriptInterpreter", scriptInterpreter);
+            ctx.getSharedPreferences("bh_gog_prefs", 0).edit()
+                    .putString("gog_deps_" + gameId, rec.toString()).apply();
+            dbg.append("gog deps captured: ").append(deps.toString())
+               .append(" scriptInterpreter=").append(scriptInterpreter).append("\n");
+        } catch (Exception e) {
+            dbg.append("persistDependencies failed: ").append(e).append("\n");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Shared gen2 chunk assembler (game files AND dependency redists)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Downloads every chunk of {@code df}, verifying each end-to-end
+     * (compressed size/MD5 → inflate → decompressed size/MD5) via {@link #fetchChunkVerified},
+     * assembles them into {@code outFile}, then verifies the whole-file size + MD5. Writes to a
+     * {@code .bhtmp} sibling and atomically renames on success. Returns true on a verified file.
+     *
+     * This is the single MD5-verified assembly path shared by the game-file download loop in
+     * {@link #runGen2} and the dependency-redist assembler {@link #assembleDependencyInstaller}
+     * — so redist integrity is guaranteed by exactly the same code as game files.
+     *
+     * For the unauthenticated dependency store pass {@code secureLinkUrl=null},
+     * {@code token=null}, {@code maxCdnRefresh=0} (there is no secure_link to refresh).
+     */
+    private static boolean assembleDepotFile(
+            DepotFile df, File outFile,
+            AtomicReference<String> cdnBaseRef, String secureLinkUrl, String token,
+            AtomicInteger cdnRefreshCount, int maxCdnRefresh, AtomicBoolean cancelled,
+            java.util.concurrent.ConcurrentLinkedQueue<String> log) {
+        File tmpFile = new File(outFile.getAbsolutePath() + ".bhtmp");
+        File parent = outFile.getParentFile();
+        if (parent != null) parent.mkdirs();
+        tmpFile.delete();
+        boolean ok = true;
+        try (FileOutputStream fos = new FileOutputStream(tmpFile)) {
+            for (DepotFile.ChunkRef chunk : df.chunks) {
+                if (cancelled.get()) { ok = false; break; }
+                String chunkPath = buildCdnPath(chunk.hash);
+                byte[] inflated = fetchChunkVerified(
+                        cdnBaseRef, chunkPath, chunk, secureLinkUrl, token,
+                        cdnRefreshCount, maxCdnRefresh, cancelled, log);
+                if (inflated == null) { ok = false; break; }
+                fos.write(inflated);
+            }
+        } catch (Exception e) {
+            ok = false;
+        }
+        if (!ok || cancelled.get()) { tmpFile.delete(); return false; }
+
+        if (df.totalSize > 0 && tmpFile.length() != df.totalSize) {
+            log.add("FILE size mismatch file=" + df.relativePath
+                    + " exp=" + df.totalSize + " got=" + tmpFile.length());
+            tmpFile.delete();
+            return false;
+        }
+        if (df.md5 != null && !df.md5.isEmpty()) {
+            String actual = md5HexFile(tmpFile);
+            if (actual == null || !actual.equalsIgnoreCase(df.md5)) {
+                log.add("FILE md5 mismatch file=" + df.relativePath);
+                tmpFile.delete();
+                return false;
+            }
+        }
+        if (outFile.exists()) outFile.delete();
+        return tmpFile.renameTo(outFile);
+    }
+
+    /**
+     * Assembles a GOG dependency (redist) installer from its depot manifest into {@code destDir},
+     * reusing the shared MD5-verified {@link #assembleDepotFile} chunk path against the
+     * unauthenticated dependency store (no secure_link). {@code depManifestJson} is the inflated
+     * per-dependency depot manifest; {@code storeBase} is
+     * {@code .../content-system/v2/dependencies/store}; {@code exeRelPath} is the repository entry's
+     * {@code executable.path} (e.g. {@code __redist/MSVC2017_x64/VC_redist.x64.exe}).
+     *
+     * Returns the assembled installer file (the entry's executable), or null on any failure.
+     * Called from GogRedistInstaller on a background thread.
+     */
+    public static File assembleDependencyInstaller(
+            String depManifestJson, String storeBase, File destDir, String exeRelPath,
+            AtomicBoolean cancelled,
+            java.util.concurrent.ConcurrentLinkedQueue<String> log) {
+        try {
+            List<DepotFile> files = new ArrayList<>();
+            parseDepotManifest(depManifestJson, files);
+            if (files.isEmpty()) { log.add("dep manifest had no depot files"); return null; }
+
+            AtomicReference<String> baseRef = new AtomicReference<>(storeBase);
+            AtomicInteger refresh = new AtomicInteger(0);
+
+            String wantTail = exeRelPath == null ? null
+                    : exeRelPath.replace("\\", "/").replaceFirst("^/+", "");
+
+            // Engine switch — see runGen2. No Context reaches this entry point (GogRedistInstaller
+            // calls it), so the flag is read through the registry's application Context; when
+            // that is not initialised yet the Java assembler runs, as before.
+            Context engineCtx = com.winlator.star.store.download.DownloadRegistry.INSTANCE.appContext();
+            if (engineCtx != null && useRustEngine(engineCtx)) {
+                log.add("engine=rust (dependency)");
+                AtomicBoolean anyFailed = new AtomicBoolean(false);
+                runRustChunkEngine(engineCtx, com.winlator.star.store.blsteam.BlGogDownload.KIND_GEN2_CHUNKS,
+                        "Verified…", java.util.Collections.singletonList(depManifestJson), destDir,
+                        baseRef, null, null, refresh, 0,
+                        1, 1, false, "gog dep=" + (wantTail == null ? "?" : wantTail),
+                        cancelled, anyFailed, new AtomicInteger(0), files.size(), new AtomicLong(0),
+                        new AtomicLong(System.currentTimeMillis()), new AtomicLong(0), new AtomicLong(0),
+                        null, false, null, log);
+                if (cancelled.get() || anyFailed.get()) {
+                    log.add("dep chunk assembly failed (rust engine)");
+                    return null;
+                }
+                File rustExeOut = null;
+                for (DepotFile df : files) {
+                    File outFile = new File(destDir, df.relativePath);
+                    if (wantTail != null && df.relativePath.endsWith(wantTail)) rustExeOut = outFile;
+                    if (rustExeOut == null) rustExeOut = outFile; // fallback: first file
+                }
+                return rustExeOut;
+            }
+            File exeOut = null;
+            for (DepotFile df : files) {
+                File outFile = new File(destDir, df.relativePath);
+                if (!assembleDepotFile(df, outFile, baseRef, null, null,
+                        refresh, 0, cancelled, log)) {
+                    log.add("dep chunk assembly failed for " + df.relativePath);
+                    return null;
+                }
+                if (wantTail != null && df.relativePath.endsWith(wantTail)) exeOut = outFile;
+                if (exeOut == null) exeOut = outFile; // fallback: first file
+            }
+            return exeOut;
+        } catch (Exception e) {
+            log.add("assembleDependencyInstaller exception: " + e);
+            return null;
+        }
     }
 
     /** Parses the secure_link JSON → CDN base URL (strips trailing /{path}). */
@@ -923,7 +1493,7 @@ public final class GogDownloadManager {
     }
 
     /** HTTP GET, returns response body string or null on failure. */
-    private static String httpGet(String url, String token) {
+    static String httpGet(String url, String token) {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(TIMEOUT);
@@ -945,35 +1515,15 @@ public final class GogDownloadManager {
     }
 
     /** Fetches URL bytes, returns null on failure. */
-    private static byte[] fetchBytes(String url, String token) {
-        try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(TIMEOUT);
-            conn.setReadTimeout(TIMEOUT);
-            conn.setRequestProperty("User-Agent", "GOG Galaxy");
-            if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
-            if (conn.getResponseCode() != 200) { conn.disconnect(); return null; }
-            int contentLength = conn.getContentLength();
-            ByteArrayOutputStream bos = contentLength > 0
-                    ? new ByteArrayOutputStream(contentLength)
-                    : new ByteArrayOutputStream();
-            byte[] buf = new byte[131072];
-            try (InputStream is = conn.getInputStream()) {
-                int n;
-                while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
-            }
-            conn.disconnect();
-            return bos.toByteArray();
-        } catch (Exception e) {
-            return null;
-        }
+    static byte[] fetchBytes(String url, String token) {
+        return fetchBytesEx(url, token).body;
     }
 
     /**
      * Detects gzip (0x1F 0x8B) or zlib (0x78 xx) and decompresses.
      * Falls back to raw UTF-8 string.
      */
-    private static String decompressBytes(byte[] data) {
+    static String decompressBytes(byte[] data) {
         if (data == null || data.length < 2) return null;
         try {
             int b0 = data[0] & 0xFF, b1 = data[1] & 0xFF;
@@ -1026,6 +1576,369 @@ public final class GogDownloadManager {
             return bos.toByteArray();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Integrity + resilient chunk fetch (GOG reliability bundle)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static final class HttpResult {
+        final byte[] body; final int status;
+        HttpResult(byte[] body, int status) { this.body = body; this.status = status; }
+    }
+
+    /** Like fetchBytes but surfaces the HTTP status (or -1 on connect error). */
+    private static HttpResult fetchBytesEx(String url, String token) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(TIMEOUT);
+            conn.setReadTimeout(TIMEOUT);
+            conn.setRequestProperty("User-Agent", "GOG Galaxy");
+            if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
+            int code = conn.getResponseCode();
+            if (code != 200) { conn.disconnect(); return new HttpResult(null, code); }
+            int contentLength = conn.getContentLength();
+            ByteArrayOutputStream bos = contentLength > 0
+                    ? new ByteArrayOutputStream(contentLength) : new ByteArrayOutputStream();
+            byte[] buf = new byte[131072];
+            try (InputStream is = conn.getInputStream()) {
+                int n;
+                while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
+            }
+            conn.disconnect();
+            return new HttpResult(bos.toByteArray(), code);
+        } catch (Exception e) {
+            if (conn != null) { try { conn.disconnect(); } catch (Exception ignored) {} }
+            return new HttpResult(null, -1);
+        }
+    }
+
+    /** Appends the chunk path BEFORE any query string so the secure-link token survives. */
+    private static String buildChunkUrl(String base, String chunkPath) {
+        int qIdx = base.indexOf('?');
+        return qIdx >= 0
+                ? base.substring(0, qIdx) + "/" + chunkPath + base.substring(qIdx)
+                : base + "/" + chunkPath;
+    }
+
+    /** lowercase hex MD5 of an in-memory buffer (chunks are bounded — safe to hash directly). */
+    private static String md5Hex(byte[] data) {
+        try {
+            return toHex(java.security.MessageDigest.getInstance("MD5").digest(data));
+        } catch (Exception e) { return null; }
+    }
+
+    /** Streaming lowercase hex MD5 of a file — never buffers the whole file (OOM-safe). */
+    private static String md5HexFile(File f) {
+        try (FileInputStream fis = new FileInputStream(f)) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] buf = new byte[131072];
+            int n;
+            while ((n = fis.read(buf)) != -1) md.update(buf, 0, n);
+            return toHex(md.digest());
+        } catch (Exception e) { return null; }
+    }
+
+    private static String toHex(byte[] d) {
+        StringBuilder sb = new StringBuilder(d.length * 2);
+        for (byte b : d) {
+            int v = b & 0xFF;
+            if (v < 16) sb.append('0');
+            sb.append(Integer.toHexString(v));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Resume/repair predicate: true only if {@code f} exists and passes the size
+     * (when known) and MD5 (when known) checks.  Falls back to exists+non-empty
+     * when the manifest supplies neither — preserving old resume behavior.
+     */
+    private static boolean fileVerified(File f, long expectedSize, String expectedMd5) {
+        if (f == null || !f.exists() || f.length() == 0) return false;
+        if (expectedSize > 0 && f.length() != expectedSize) return false;
+        if (expectedMd5 != null && !expectedMd5.isEmpty()) {
+            String actual = md5HexFile(f);
+            if (actual == null || !actual.equalsIgnoreCase(expectedMd5)) return false;
+        }
+        return true;
+    }
+
+    private static void sleepBackoff(int attempt) {
+        try { Thread.sleep(Math.min(1000L << Math.max(0, attempt - 1), 8000L)); }
+        catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+    }
+
+    /**
+     * Re-requests the secure link and rebuilds the CDN base when a chunk 401/403/
+     * 404/500s (expired link).  Capped by {@code refreshCount}/{@code cap}.
+     * Returns true if the base is now usable (refreshed, or another thread already
+     * refreshed it); false if the cap is hit or the refresh failed.
+     */
+    private static boolean tryRefreshCdn(AtomicReference<String> cdnBaseRef, String staleBase,
+            String secureLinkUrl, String token, AtomicInteger refreshCount, int cap,
+            java.util.concurrent.ConcurrentLinkedQueue<String> log) {
+        synchronized (cdnBaseRef) {
+            String current = cdnBaseRef.get();
+            if (staleBase == null || !staleBase.equals(current)) return true; // already refreshed
+            if (refreshCount.get() >= cap) {
+                log.add("CDN refresh cap reached (" + cap + ")");
+                return false;
+            }
+            String json = httpGet(secureLinkUrl, token);
+            String neu = parseCdnUrl(json);
+            if (neu == null || neu.isEmpty()) {
+                log.add("CDN refresh FAILED (secure_link null/parse)");
+                return false;
+            }
+            cdnBaseRef.set(neu);
+            int n = refreshCount.incrementAndGet();
+            log.add("secure-link refreshed #" + n);
+            return true;
+        }
+    }
+
+    /**
+     * Fetches one chunk and verifies it end-to-end:
+     *   compressed size + compressed MD5 (before inflate) → inflate →
+     *   decompressed size + decompressed MD5 (after inflate).
+     * Re-fetches on mismatch (bounded to 3 hard failures) and refreshes the secure
+     * link on expiry HTTP codes (which do not count as a hard failure).  Returns the
+     * verified, inflated bytes, or null on unrecoverable failure.
+     */
+    private static byte[] fetchChunkVerified(AtomicReference<String> cdnBaseRef, String chunkPath,
+            DepotFile.ChunkRef chunk, String secureLinkUrl, String token,
+            AtomicInteger cdnRefreshCount, int maxCdnRefresh, AtomicBoolean cancelled,
+            java.util.concurrent.ConcurrentLinkedQueue<String> log) {
+        int hardFail = 0;
+        int iterGuard = 0;
+        while (iterGuard++ < 8) {
+            if (cancelled.get()) return null;
+            String base = cdnBaseRef.get();
+            String url = buildChunkUrl(base, chunkPath);
+            HttpResult res = fetchBytesEx(url, null);
+            if (res.body == null) {
+                int code = res.status;
+                if (code == 401 || code == 403 || code == 404 || code == 500) {
+                    if (tryRefreshCdn(cdnBaseRef, base, secureLinkUrl, token,
+                            cdnRefreshCount, maxCdnRefresh, log)) {
+                        continue; // retry with fresh base — not a hard failure
+                    }
+                }
+                log.add("chunk http fail code=" + code + " chunk=" + chunk.hash);
+                if (++hardFail >= 3) return null;
+                sleepBackoff(hardFail);
+                continue;
+            }
+            byte[] raw = res.body;
+            if (chunk.compressedSize > 0 && raw.length != chunk.compressedSize) {
+                log.add("chunk compressed-size mismatch chunk=" + chunk.hash
+                        + " exp=" + chunk.compressedSize + " got=" + raw.length);
+                if (++hardFail >= 3) return null;
+                sleepBackoff(hardFail);
+                continue;
+            }
+            if (chunk.compressedMd5 != null && !chunk.compressedMd5.isEmpty()) {
+                String actual = md5Hex(raw);
+                if (actual == null || !actual.equalsIgnoreCase(chunk.compressedMd5)) {
+                    log.add("chunk compressed-md5 mismatch chunk=" + chunk.hash);
+                    if (++hardFail >= 3) return null;
+                    sleepBackoff(hardFail);
+                    continue;
+                }
+            }
+            byte[] inflated = inflateZlib(raw);
+            if (inflated == null) inflated = raw; // stored (non-zlib) chunk
+            if (chunk.size > 0 && inflated.length != chunk.size) {
+                log.add("chunk decompressed-size mismatch chunk=" + chunk.hash
+                        + " exp=" + chunk.size + " got=" + inflated.length);
+                if (++hardFail >= 3) return null;
+                sleepBackoff(hardFail);
+                continue;
+            }
+            if (chunk.md5 != null && !chunk.md5.isEmpty()) {
+                String actual = md5Hex(inflated);
+                if (actual == null || !actual.equalsIgnoreCase(chunk.md5)) {
+                    log.add("chunk decompressed-md5 mismatch chunk=" + chunk.hash);
+                    if (++hardFail >= 3) return null;
+                    sleepBackoff(hardFail);
+                    continue;
+                }
+            }
+            return inflated;
+        }
+        return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rust fetch engine (gen2 chunk path) — docs/RUST_GOG_PARITY.md
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * True when the Rust GOG engine flag is ON and {@code libblsteam.so} loads with its GOG JNI
+     * exports bound. Any failure degrades to the Java loop (never throws).
+     */
+    private static boolean useRustEngine(Context ctx) {
+        try {
+            return ctx != null
+                    && com.winlator.star.store.blsteam.BlStoreEngineFlag.isGogEnabled(ctx)
+                    && com.winlator.star.store.blsteam.BlGogDownload.isAvailable();
+        } catch (Throwable t) {
+            Log.w(TAG, "rust engine unavailable: " + t);
+            return false;
+        }
+    }
+
+    /**
+     * Drives the Rust engine for ONE fetch loop ({@code kind} = gen2 chunk loop for base install /
+     * DLC install / dependency redist assembly, or the gen1 range loop), producing exactly what
+     * the Java pool loop produced:
+     * <ul>
+     *   <li>per verified (resume-skipped) file: {@code doneCount++}, {@code verifiedMsg}
+     *       ({@code "Verified…"} gen2 / {@code "Resuming…"} gen1) at {@code 15 + done/total*80};</li>
+     *   <li>per assembled file: {@code doneCount++}, {@code totalBytes += size}, the same 500 ms
+     *       speed window and {@code "Downloading: <name>  <speed>"} string;</li>
+     *   <li>the DLC written-file list gets both kinds, like the Java tasks;</li>
+     *   <li>engine log lines go to the same debug buffer as the Java {@code fileLog};</li>
+     *   <li>secure-link expiry (a run dying on HTTP 401/403/404/500) → {@link #tryRefreshCdn} with
+     *       the SAME counter/cap, then a re-run for the files not yet done (the engine is told which
+     *       paths are already complete so they are neither re-hashed nor re-reported);</li>
+     *   <li>any other failure → {@code anyFailed = true} (the caller's "one or more chunks failed"
+     *       path); cancel → returns with {@code cancelled} left as the caller set it.</li>
+     * </ul>
+     * Cancel is propagated by polling the caller's {@code cancelled} flag every 250 ms.
+     */
+    private static void runRustChunkEngine(
+            Context ctx, int kind, String verifiedMsg,
+            List<String> depotJsons, File installPath,
+            AtomicReference<String> cdnBaseRef, String secureLinkUrl, String token,
+            AtomicInteger cdnRefreshCount, int maxCdnRefresh,
+            int maxWorkers, int processWorkers, boolean sortLargestFirst, String label,
+            AtomicBoolean cancelled, AtomicBoolean anyFailed,
+            AtomicInteger doneCount, int total, AtomicLong totalBytes,
+            AtomicLong lastSpeedMs, AtomicLong lastSpeedB, AtomicLong speedBps,
+            Callback cb, boolean showSpeed,
+            java.util.Collection<String> written,
+            java.util.concurrent.ConcurrentLinkedQueue<String> log) {
+        final String caPath;
+        try {
+            caPath = com.winlator.star.store.blsteam.CaBundleExtractor.INSTANCE.ensureBundle(ctx);
+        } catch (Throwable t) {
+            log.add("rust engine: CA bundle unavailable: " + t);
+            anyFailed.set(true);
+            return;
+        }
+        // Improvement round 1: the Rust path takes its ceiling from the Steam speed tier (Fast =
+        // window 32) and at least RUST_MIN_PROCESS_WORKERS inflate/hash/write threads (stream mode
+        // pins each chunk to one pool worker). The Java loop keeps its own counts (maxWorkers /
+        // processWorkers are still what it would have used — logged for the A/B).
+        int rustWorkers = maxWorkers;
+        int rustProcess = Math.max(processWorkers, RUST_MIN_PROCESS_WORKERS);
+        try {
+            DownloadSpeedConfig cfg = StoreDownloadTier.config(ctx);
+            rustWorkers = Math.max(1, Math.min(128, cfg.getMaxNetworkWindow()));
+            rustProcess = Math.max(rustProcess, Math.max(1, Math.min(32, cfg.getMaxDecompress())));
+        } catch (Throwable t) {
+            log.add("rust engine: speed config unavailable (" + t + "), keeping Java counts");
+        }
+        log.add("rust engine concurrency: workers=" + rustWorkers + " process_workers=" + rustProcess
+                + " (java loop would use " + maxWorkers + ")");
+        final String[] manifests = depotJsons.toArray(new String[0]);
+        // Files completed by earlier runs of THIS download (refresh re-runs skip them silently).
+        final java.util.Set<String> donePaths = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        int run = 0;
+        while (!cancelled.get()) {
+            run++;
+            final String base = cdnBaseRef.get();
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicBoolean okRef = new AtomicBoolean(false);
+            final AtomicBoolean linkExpiryRef = new AtomicBoolean(false);
+            final AtomicReference<String> errRef = new AtomicReference<>("");
+            com.winlator.star.store.blsteam.BlGogDownloadListener listener =
+                    new com.winlator.star.store.blsteam.BlGogDownloadListener() {
+                @Override
+                public void onProgress(long bytesDone, long bytesTotal, int filesDone, int filesTotal,
+                                       String file, long fileBytes, boolean verified) {
+                    donePaths.add(file);
+                    if (written != null) written.add(file);
+                    int done = doneCount.incrementAndGet();
+                    int pct  = 15 + (int) ((done / (float) total) * 80);
+                    if (verified) {
+                        if (cb != null) cb.onProgress(verifiedMsg, pct);
+                        return;
+                    }
+                    long tb = totalBytes.addAndGet(fileBytes);
+                    String speedStr = "";
+                    if (showSpeed) {
+                        long nowMs  = System.currentTimeMillis();
+                        long prevMs = lastSpeedMs.get();
+                        if (nowMs - prevMs >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
+                            long prevB = lastSpeedB.getAndSet(tb);
+                            long dt = nowMs - prevMs;
+                            if (dt > 0) speedBps.set((tb - prevB) * 1000L / dt);
+                        }
+                        speedStr = formatSpeed(speedBps.get());
+                    }
+                    String name = file.contains("/")
+                            ? file.substring(file.lastIndexOf('/') + 1) : file;
+                    if (cb != null) cb.onProgress("Downloading: " + name
+                            + (speedStr.isEmpty() ? "" : "  " + speedStr), pct);
+                }
+                @Override
+                public void onLog(String line) { log.add(line); }
+                @Override
+                public void onComplete(boolean success, boolean wasCancelled, boolean linkExpiry,
+                                       String error, long bytesWritten, int filesDone) {
+                    okRef.set(success);
+                    linkExpiryRef.set(linkExpiry);
+                    errRef.set(error == null ? "" : error);
+                    latch.countDown();
+                }
+            };
+            long handle = com.winlator.star.store.blsteam.BlGogDownload.start(
+                    kind, manifests, base, installPath.getAbsolutePath(),
+                    donePaths.toArray(new String[0]), caPath,
+                    rustWorkers, rustProcess, sortLargestFirst, label + " run=" + run, listener);
+            if (handle == 0L) {
+                log.add("rust engine: start failed (see logcat BL_GOG_DL)");
+                anyFailed.set(true);
+                return;
+            }
+            boolean interrupted = false;
+            try {
+                while (true) {
+                    try {
+                        if (latch.await(250, TimeUnit.MILLISECONDS)) break;
+                    } catch (InterruptedException ie) {
+                        interrupted = true;
+                    }
+                    if (cancelled.get() || interrupted) {
+                        com.winlator.star.store.blsteam.BlGogDownload.cancel(handle);
+                    }
+                }
+            } finally {
+                com.winlator.star.store.blsteam.BlGogDownload.release(handle);
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+                log.add("rust engine: interrupted");
+                anyFailed.set(true);
+                return;
+            }
+            if (cancelled.get()) return;
+            if (okRef.get()) return;
+            String err = errRef.get();
+            if (linkExpiryRef.get() && tryRefreshCdn(cdnBaseRef, base, secureLinkUrl, token,
+                    cdnRefreshCount, maxCdnRefresh, log)) {
+                log.add("rust engine: secure-link expiry (" + err
+                        + ") — refreshed, re-running for the remaining files");
+                continue;
+            }
+            log.add("rust engine FAILED: " + err);
+            anyFailed.set(true);
+            return;
         }
     }
 
@@ -1112,12 +2025,25 @@ public final class GogDownloadManager {
     private static class DepotFile {
         final String relativePath;
         final List<ChunkRef> chunks = new ArrayList<>();
+        String md5;         // whole-file MD5 from manifest (null if absent)
+        long totalSize;     // sum of chunk decompressed sizes (0 if unknown)
 
         DepotFile(String relativePath) { this.relativePath = relativePath; }
 
         static class ChunkRef {
-            final String hash;
-            ChunkRef(String hash) { this.hash = hash; }
+            final String hash;          // CDN-path hash (compressedMd5 preferred, else md5)
+            final String compressedMd5; // verify compressed bytes before inflate (may be empty)
+            final String md5;           // verify decompressed bytes after inflate (may be empty)
+            final long compressedSize;  // expected compressed size, 0 if absent
+            final long size;            // expected decompressed size, 0 if absent
+            ChunkRef(String hash, String compressedMd5, String md5,
+                     long compressedSize, long size) {
+                this.hash = hash;
+                this.compressedMd5 = compressedMd5;
+                this.md5 = md5;
+                this.compressedSize = compressedSize;
+                this.size = size;
+            }
         }
     }
 

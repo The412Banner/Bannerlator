@@ -38,7 +38,21 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     //     equalled real_size); zero it so the fixed block-rounding recomputes on next resolve.
     // v7: additive included_dlc (CSV of owned DLC appIds whose depots download with the game) on
     //     steam_games — surfaced as an "Includes DLC:" line on the detail page.
-    private static final int    DB_VERSION = 7;
+    // v8: additive steam_branches (beta-branch metadata parsed from depots/branches/*) +
+    //     steam_unlocked_branches (per-app beta access passwords the user has verified). Both are
+    //     new tables — NO existing library table is touched, so no re-sync required.
+    // v9: additive steam_achievements (per-app achievement schema + earned state, from
+    //     SteamUserStats.getUserStats → getExpandedAchievements). NEW table only — no existing
+    //     library table is touched, so no re-sync required.
+    // v10: additive steam_dlc — the FULL per-base extended/listofdlc catalogue (owned + unowned,
+    //     cached name + delivery kind) that feeds the detail-page DLC TAB. Distinct from and
+    //     independent of steam_games.included_dlc (the depot-bundled owned subset that drives the
+    //     download picker/size): steam_dlc is DISPLAY-ONLY. NEW table only — no existing library
+    //     table is touched. It is (re)populated on library sync; empty until the next sync/open.
+    // v11: steam_games.vac_secure (ADDITIVE column) — VAC marker from PICS app-info, filled on the next
+    //      library sync (processAppKv); 0 until then (= "no secure launch needed" → the RealSteam
+    //      launch's short fallback window). Per-shortcut override lives in the shortcut extras.
+    private static final int    DB_VERSION = 11;
 
     // -------------------------------------------------------------------------
     // DDL
@@ -65,7 +79,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  real_disk_bytes INTEGER NOT NULL DEFAULT 0," +
             // CSV of owned DLC appIds whose depots download with this game (for the detail-page
             // "Includes DLC:" line). Empty = no owned DLC bundled.
-            "  included_dlc TEXT NOT NULL DEFAULT ''" +
+            "  included_dlc TEXT NOT NULL DEFAULT ''," +
+            // 1 when the app's PICS app-info marks it VAC-secured (common/category/category_8 "Valve
+            // Anti-Cheat enabled" or any extended/vac* key such as vacmodulefilename); 0 otherwise.
+            // Drives the RealSteam launch's WN_STEAM_VAC policy (secure-launch wait window).
+            "  vac_secure INTEGER NOT NULL DEFAULT 0" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -109,6 +127,71 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             "  PRIMARY KEY (app_id, depot_id)" +
             ")";
 
+    // Beta-branch metadata (depots/branches/* from PICS). One row per branch per app. Re-parsed on
+    // every library sync (SteamRepository clears the app's rows first, then upserts each branch).
+    private static final String SQL_BRANCHES =
+            "CREATE TABLE IF NOT EXISTS steam_branches (" +
+            "  app_id       INTEGER NOT NULL," +
+            "  branch_name  TEXT    NOT NULL," +
+            "  pwd_required INTEGER NOT NULL DEFAULT 0," +   // 1 = password-protected beta
+            "  build_id     INTEGER NOT NULL DEFAULT 0," +
+            "  time_updated INTEGER NOT NULL DEFAULT 0," +   // epoch seconds of last build
+            "  description  TEXT    NOT NULL DEFAULT ''," +
+            "  PRIMARY KEY (app_id, branch_name)" +
+            ")";
+
+    // Beta access passwords the user has successfully verified (SteamApps.checkAppBetaPassword).
+    // Persisted so an unlocked branch stays selectable — and downloadable — across sessions.
+    private static final String SQL_UNLOCKED_BRANCHES =
+            "CREATE TABLE IF NOT EXISTS steam_unlocked_branches (" +
+            "  app_id      INTEGER NOT NULL," +
+            "  branch_name TEXT    NOT NULL," +
+            "  password    TEXT    NOT NULL DEFAULT ''," +
+            "  PRIMARY KEY (app_id, branch_name)" +
+            ")";
+
+    // Per-app achievement schema + earned state (SteamUserStats.getUserStats → getExpandedAchievements).
+    // One row per achievement per app. icon/icon_gray store the raw CDN FILENAME (not the full URL) —
+    // SteamAchievementStore rebuilds the URL and resolves the on-disk cached path. Re-upserted on every
+    // fetch (SteamAchievementStore clears nothing; upsert refreshes each row's earned state in place).
+    private static final String SQL_ACHIEVEMENTS =
+            "CREATE TABLE IF NOT EXISTS steam_achievements (" +
+            "  app_id       INTEGER NOT NULL," +
+            "  api_name     TEXT    NOT NULL," +
+            "  display_name TEXT    NOT NULL DEFAULT ''," +
+            "  description  TEXT    NOT NULL DEFAULT ''," +
+            "  hidden       INTEGER NOT NULL DEFAULT 0," +
+            "  icon         TEXT    NOT NULL DEFAULT ''," +     // color-icon CDN filename
+            "  icon_gray    TEXT    NOT NULL DEFAULT ''," +     // locked/gray CDN filename
+            "  unlocked     INTEGER NOT NULL DEFAULT 0," +
+            "  unlock_time  INTEGER NOT NULL DEFAULT 0," +      // epoch seconds; 0 if locked
+            "  PRIMARY KEY (app_id, api_name)" +
+            ")";
+
+    // Per-base-game DLC catalogue for the detail-page DLC TAB — the FULL extended/listofdlc set the
+    // game lists, split owned/unowned, each with a cached display name and a delivery "kind". This is
+    // DISPLAY-ONLY and is deliberately SEPARATE from steam_games.included_dlc (the depot-bundled owned
+    // subset that drives the download picker + size): broadening what the TAB shows must never change
+    // what actually downloads. One row per (base, dlc). dlc_app_id = 0 is a resolved-empty SENTINEL —
+    // it marks a base whose DLC set was resolved but is empty (the game genuinely has no DLC), so the
+    // tab can tell "no DLC" apart from "not resolved yet" without re-fetching. kind is one of:
+    //   depot        — DLC content is a base-game depot bundled with the install ("Installs with game")
+    //   app          — the DLC's OWN app has public content depots            ("Installs with game")
+    //   entitlement  — owned, content is in shared base depots / ownership-unlocked (no separate DL)
+    //   unowned      — the user is not licensed for this DLC
+    //   '' (blank)   — owned but not yet resolved (app vs entitlement pending a PICS name/kind fetch)
+    // Re-derived on every library sync; names/kinds for owned DLC are filled lazily by
+    // SteamRepository.resolveOwnedDlc() when a detail page opens (a DLC's real name lives in its own app).
+    private static final String SQL_DLC =
+            "CREATE TABLE IF NOT EXISTS steam_dlc (" +
+            "  base_app_id INTEGER NOT NULL," +
+            "  dlc_app_id  INTEGER NOT NULL," +   // 0 = resolved-empty sentinel
+            "  name        TEXT    NOT NULL DEFAULT ''," +
+            "  owned       INTEGER NOT NULL DEFAULT 0," +   // 1 = user is licensed for this DLC
+            "  kind        TEXT    NOT NULL DEFAULT ''," +   // depot|app|entitlement|unowned|'' (unresolved)
+            "  PRIMARY KEY (base_app_id, dlc_app_id)" +
+            ")";
+
     // -------------------------------------------------------------------------
     // Singleton
     // -------------------------------------------------------------------------
@@ -147,6 +230,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL(SQL_LICENSE_APPS);
         db.execSQL(SQL_DOWNLOADS);
         db.execSQL(SQL_DEPOT_MANIFESTS);
+        db.execSQL(SQL_BRANCHES);
+        db.execSQL(SQL_UNLOCKED_BRANCHES);
+        db.execSQL(SQL_ACHIEVEMENTS);
+        db.execSQL(SQL_DLC);
         Log.i(TAG, "steam.db created (v" + DB_VERSION + ")");
     }
 
@@ -190,6 +277,28 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         if (oldVersion < 7) {
             addColumnIfMissing(db, "steam_games", "included_dlc", "TEXT NOT NULL DEFAULT ''");
         }
+        // v7 → v8: ADDITIVE — two NEW tables for beta branches + unlocked passwords. CREATE IF NOT
+        // EXISTS, and crucially NO drop of the library tables (steam_games etc. stay intact).
+        if (oldVersion < 8) {
+            db.execSQL(SQL_BRANCHES);
+            db.execSQL(SQL_UNLOCKED_BRANCHES);
+        }
+        // v8 → v9: ADDITIVE — one NEW table for per-app achievements. CREATE IF NOT EXISTS, no drop
+        // of any existing table (library data stays intact).
+        if (oldVersion < 9) {
+            db.execSQL(SQL_ACHIEVEMENTS);
+        }
+        // v9 → v10: ADDITIVE — one NEW table for the per-base DLC catalogue (detail-page DLC tab).
+        // CREATE IF NOT EXISTS, no drop of any existing table. Empty until the next library sync (or
+        // a detail-page open) repopulates it — steam_games.included_dlc is untouched, so the download
+        // picker/size keep working immediately.
+        if (oldVersion < 10) {
+            db.execSQL(SQL_DLC);
+        }
+        // v10 → v11: ADDITIVE — steam_games.vac_secure (see DB_VERSION comment). No drop of any table.
+        if (oldVersion < 11) {
+            addColumnIfMissing(db, "steam_games", "vac_secure", "INTEGER NOT NULL DEFAULT 0");
+        }
     }
 
     /**
@@ -208,6 +317,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS steam_license_apps");
         db.execSQL("DROP TABLE IF EXISTS steam_licenses");
         db.execSQL("DROP TABLE IF EXISTS steam_games");
+        db.execSQL("DROP TABLE IF EXISTS steam_branches");
+        db.execSQL("DROP TABLE IF EXISTS steam_unlocked_branches");
+        db.execSQL("DROP TABLE IF EXISTS steam_achievements");
+        db.execSQL("DROP TABLE IF EXISTS steam_dlc");
         onCreate(db);
     }
 
@@ -273,6 +386,73 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         }
     }
 
+    /** One beta branch's metadata (from depots/branches/*). */
+    public static final class BranchRow {
+        public final int     appId;
+        public final String  branchName;
+        public final boolean pwdRequired;   // true = password-protected beta
+        public final long    buildId;
+        public final long    timeUpdated;    // epoch seconds of the branch's last build (0 = unknown)
+        public final String  description;    // Steam-authored branch blurb (may be empty)
+
+        BranchRow(int appId, String branchName, boolean pwdRequired,
+                  long buildId, long timeUpdated, String description) {
+            this.appId       = appId;
+            this.branchName  = branchName;
+            this.pwdRequired = pwdRequired;
+            this.buildId     = buildId;
+            this.timeUpdated = timeUpdated;
+            this.description = description;
+        }
+    }
+
+    /** One achievement's persisted schema + earned state. icon/iconGray are raw CDN FILENAMES. */
+    public static final class AchievementRow {
+        public final int     appId;
+        public final String  apiName;
+        public final String  displayName;
+        public final String  description;
+        public final boolean hidden;
+        public final String  icon;         // color-icon CDN filename (not a URL)
+        public final String  iconGray;     // locked/gray CDN filename (not a URL)
+        public final boolean unlocked;
+        public final long    unlockTime;   // epoch seconds; 0 if locked
+
+        public AchievementRow(int appId, String apiName, String displayName, String description,
+                              boolean hidden, String icon, String iconGray,
+                              boolean unlocked, long unlockTime) {
+            this.appId       = appId;
+            this.apiName     = apiName;
+            this.displayName = displayName;
+            this.description = description;
+            this.hidden      = hidden;
+            this.icon        = icon;
+            this.iconGray    = iconGray;
+            this.unlocked    = unlocked;
+            this.unlockTime  = unlockTime;
+        }
+    }
+
+    /** One DLC entry from a base game's extended/listofdlc (detail-page DLC tab). name is
+     *  display-ready (falls back to the DLC's own library-row name, then "DLC <id>"); kind is
+     *  depot|app|entitlement|unowned|'' as documented on SQL_DLC. DISPLAY-ONLY — never affects
+     *  what downloads (that stays driven by steam_games.included_dlc). */
+    public static final class DlcRow {
+        public final int     baseAppId;
+        public final int     dlcAppId;
+        public final String  name;
+        public final boolean owned;
+        public final String  kind;
+
+        public DlcRow(int baseAppId, int dlcAppId, String name, boolean owned, String kind) {
+            this.baseAppId = baseAppId;
+            this.dlcAppId  = dlcAppId;
+            this.name      = name != null ? name : "";
+            this.owned     = owned;
+            this.kind      = kind != null ? kind : "";
+        }
+    }
+
     // =========================================================================
     // steam_games
     // =========================================================================
@@ -310,6 +490,25 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         upd.put("genres",           cv.getAsString("genres"));
         upd.put("last_updated",     now);
         db.update("steam_games", upd, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** Record whether PICS app-info marks this app VAC-secured (see the vac_secure column). Separate
+     *  from upsertGame so its signature (and all callers) stay unchanged. */
+    public void setVacSecure(int appId, boolean vac) {
+        ContentValues cv = new ContentValues();
+        cv.put("vac_secure", vac ? 1 : 0);
+        getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** True when the last library sync marked this app VAC-secured; false when not, or unknown. */
+    public boolean isVacSecure(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT vac_secure FROM steam_games WHERE app_id = ?",
+                new String[]{String.valueOf(appId)})) {
+            return c.moveToNext() && c.getInt(0) != 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Record the owned DLC (appId CSV) whose depots download with this game. Separate from
@@ -351,6 +550,141 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     /** Display names of the owned DLC bundled with this game. Empty list = none. */
     public List<String> getIncludedDlcNames(int appId) {
         return new ArrayList<>(getIncludedDlcEntries(appId).values());
+    }
+
+    // =========================================================================
+    // steam_dlc — full per-base DLC catalogue (detail-page DLC tab, DISPLAY-ONLY)
+    // =========================================================================
+
+    /** steam_games.name for an appId, or "" if the app isn't in the library. */
+    private String lookupGameName(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT name FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) { String n = c.getString(0); return n != null ? n : ""; }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    /**
+     * Replace the FULL DLC catalogue for a base game (from extended/listofdlc). Preserves any
+     * previously cached name / lazily-resolved kind for DLC still present, updates ownership, and
+     * prunes DLC no longer listed. An EMPTY set writes ONLY the resolved-empty sentinel
+     * (dlc_app_id = 0) so the tab can distinguish "no DLC" from "not resolved yet". DISPLAY-ONLY —
+     * never touches steam_games.included_dlc, so the download picker/size are unaffected.
+     */
+    public void replaceDlcSet(int baseAppId, List<DlcRow> entries) {
+        SQLiteDatabase db = getWritableDatabase();
+        // Snapshot existing name/kind so a re-sync doesn't wipe lazily-resolved values.
+        java.util.HashMap<Integer, String[]> prev = new java.util.HashMap<>();
+        try (Cursor c = db.rawQuery("SELECT dlc_app_id,name,kind FROM steam_dlc WHERE base_app_id = ?",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) prev.put(c.getInt(0), new String[]{c.getString(1), c.getString(2)});
+        } catch (Exception ignored) {}
+        db.beginTransaction();
+        try {
+            db.delete("steam_dlc", "base_app_id = ?", new String[]{String.valueOf(baseAppId)});
+            if (entries == null || entries.isEmpty()) {
+                ContentValues cv = new ContentValues();
+                cv.put("base_app_id", baseAppId);
+                cv.put("dlc_app_id",  0);
+                cv.put("name",        "");
+                cv.put("owned",       0);
+                cv.put("kind",        "none");   // resolved-empty sentinel
+                db.insertWithOnConflict("steam_dlc", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+            } else {
+                for (DlcRow e : entries) {
+                    if (e.dlcAppId == 0) continue;   // never let a real set write the sentinel id
+                    String[] p = prev.get(e.dlcAppId);
+                    // Carry a cached name forward when the fresh parse has none (music-type DLC).
+                    String name = !e.name.isEmpty() ? e.name : (p != null && p[0] != null ? p[0] : "");
+                    // 'depot' from the parse is authoritative; otherwise keep a previously resolved
+                    // app/entitlement kind so we don't re-fetch it every sync.
+                    String kind = e.kind;
+                    if (!"depot".equals(kind) && p != null && p[1] != null
+                            && ("app".equals(p[1]) || "entitlement".equals(p[1]))) {
+                        kind = p[1];
+                    }
+                    ContentValues cv = new ContentValues();
+                    cv.put("base_app_id", baseAppId);
+                    cv.put("dlc_app_id",  e.dlcAppId);
+                    cv.put("name",        name != null ? name : "");
+                    cv.put("owned",       e.owned ? 1 : 0);
+                    cv.put("kind",        kind != null ? kind : "");
+                    db.insertWithOnConflict("steam_dlc", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                }
+            }
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            Log.w(TAG, "replaceDlcSet(" + baseAppId + ") failed: " + e.getMessage());
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /** True once a base's DLC set has been resolved at least once (any row, incl. the sentinel). */
+    public boolean isDlcResolved(int baseAppId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM steam_dlc WHERE base_app_id = ? LIMIT 1",
+                new String[]{String.valueOf(baseAppId)})) {
+            return c.moveToNext();
+        } catch (Exception e) { return false; }
+    }
+
+    /** True if this base genuinely lists DLC (a real, non-sentinel row exists). */
+    public boolean hasAnyDlc(int baseAppId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM steam_dlc WHERE base_app_id = ? AND dlc_app_id <> 0 LIMIT 1",
+                new String[]{String.valueOf(baseAppId)})) {
+            return c.moveToNext();
+        } catch (Exception e) { return false; }
+    }
+
+    /** The full DLC catalogue for a base, owned-first then by appId, with display-ready names
+     *  (cached → DLC's own library name → "DLC <id>"). Excludes the sentinel. Empty = not resolved
+     *  or genuinely no DLC (callers use hasAnyDlc to tell them apart). */
+    public List<DlcRow> getDlcRows(int baseAppId) {
+        List<DlcRow> out = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT dlc_app_id,name,owned,kind FROM steam_dlc " +
+                "WHERE base_app_id = ? AND dlc_app_id <> 0 ORDER BY owned DESC, dlc_app_id ASC",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) {
+                int dlcAppId = c.getInt(0);
+                String name  = c.getString(1);
+                if (name == null || name.isEmpty()) {
+                    name = lookupGameName(dlcAppId);
+                    if (name.isEmpty()) name = "DLC " + dlcAppId;
+                }
+                out.add(new DlcRow(baseAppId, dlcAppId, name, c.getInt(2) != 0, c.getString(3)));
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    /** Owned DLC rows that still need a PICS resolve — missing a cached name OR an unresolved kind
+     *  ('' blank; 'depot' is already final). Feeds the lazy DLC-name/kind fetch. Sentinel excluded. */
+    public List<DlcRow> getOwnedDlcNeedingResolve(int baseAppId) {
+        List<DlcRow> out = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT dlc_app_id,name,owned,kind FROM steam_dlc " +
+                "WHERE base_app_id = ? AND dlc_app_id <> 0 AND owned = 1 AND (name = '' OR kind = '')",
+                new String[]{String.valueOf(baseAppId)})) {
+            while (c.moveToNext()) {
+                out.add(new DlcRow(baseAppId, c.getInt(0), c.getString(1), c.getInt(2) != 0, c.getString(3)));
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    /** Persist a DLC's resolved display name + delivery kind after a PICS fetch. Empty name/kind
+     *  args leave that column untouched (so we never clobber a good cached value, e.g. keep 'depot'). */
+    public void updateDlcResolved(int baseAppId, int dlcAppId, String name, String kind) {
+        ContentValues cv = new ContentValues();
+        if (name != null && !name.isEmpty()) cv.put("name", name);
+        if (kind != null && !kind.isEmpty()) cv.put("kind", kind);
+        if (cv.size() == 0) return;
+        getWritableDatabase().update("steam_dlc", cv, "base_app_id = ? AND dlc_app_id = ?",
+                new String[]{String.valueOf(baseAppId), String.valueOf(dlcAppId)});
     }
 
     /** Mark a game as installed at the given path. */
@@ -512,6 +846,27 @@ public final class SteamDatabase extends SQLiteOpenHelper {
      * real_*_bytes when the manifest GID is UNCHANGED; a GID change (new build) resets them to 0
      * so DepotSizeResolver re-fetches. Called on every library sync — must not clobber real sizes.
      */
+    /**
+     * The agent's {@code WN_STEAM_DEPOTS} contract: {@code depot:manifest:size,…} for every depot of
+     * {@code appId} with a known manifest GID (real uncompressed size when resolved, else the PICS
+     * estimate). Empty string when nothing is known.
+     */
+    public String getDepotManifestsCsv(int appId) {
+        StringBuilder sb = new StringBuilder();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT depot_id, manifest_id, CASE WHEN real_size_bytes > 0 THEN real_size_bytes ELSE size_bytes END" +
+                " FROM depot_manifests WHERE app_id = ? AND manifest_id > 0 ORDER BY depot_id",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) {
+                if (sb.length() > 0) sb.append(',');
+                sb.append(c.getInt(0)).append(':').append(c.getLong(1)).append(':').append(c.getLong(2));
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "getDepotManifestsCsv(" + appId + "): " + e.getMessage());
+        }
+        return sb.toString();
+    }
+
     public void upsertDepotManifest(int appId, int depotId, long manifestId, long sizeBytes) {
         long realSize = 0L, realDownload = 0L, realDisk = 0L;
         try (Cursor c = getReadableDatabase().rawQuery(
@@ -620,6 +975,149 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     }
 
     // =========================================================================
+    // steam_branches / steam_unlocked_branches (beta-branch selector)
+    // =========================================================================
+
+    /** Insert or replace one branch's metadata for an app. */
+    public void upsertBranch(int appId, String branchName, boolean pwdRequired,
+                             long buildId, long timeUpdated, String description) {
+        ContentValues cv = new ContentValues();
+        cv.put("app_id",       appId);
+        cv.put("branch_name",  branchName != null ? branchName : "");
+        cv.put("pwd_required", pwdRequired ? 1 : 0);
+        cv.put("build_id",     buildId);
+        cv.put("time_updated", timeUpdated);
+        cv.put("description",  description != null ? description : "");
+        getWritableDatabase().insertWithOnConflict(
+                "steam_branches", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    /** All known branches for an app, ordered public-first then by name. Empty = no branch data. */
+    public List<BranchRow> getBranches(int appId) {
+        List<BranchRow> rows = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT app_id,branch_name,pwd_required,build_id,time_updated,description" +
+                " FROM steam_branches WHERE app_id = ?" +
+                " ORDER BY (branch_name = 'public') DESC, branch_name COLLATE NOCASE",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) {
+                rows.add(new BranchRow(
+                        c.getInt(0), c.getString(1), c.getInt(2) != 0,
+                        c.getLong(3), c.getLong(4), c.getString(5)));
+            }
+        } catch (Exception ignored) {}
+        return rows;
+    }
+
+    /** Drop all branch rows for an app (call before re-parsing a sync's branch list). */
+    public void clearBranches(int appId) {
+        getWritableDatabase().delete("steam_branches", "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** Persist a verified beta access password for a branch (unlocks it for selection + download). */
+    public void insertUnlockedBranch(int appId, String branchName, String password) {
+        ContentValues cv = new ContentValues();
+        cv.put("app_id",      appId);
+        cv.put("branch_name", branchName != null ? branchName : "");
+        cv.put("password",    password != null ? password : "");
+        getWritableDatabase().insertWithOnConflict(
+                "steam_unlocked_branches", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    /** Branch names the user has unlocked (verified a password for) for this app. */
+    public List<String> getUnlockedBranchNames(int appId) {
+        List<String> names = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT branch_name FROM steam_unlocked_branches WHERE app_id = ?",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) names.add(c.getString(0));
+        } catch (Exception ignored) {}
+        return names;
+    }
+
+    /** The stored beta password for an unlocked branch, or null if the branch isn't unlocked. */
+    public String getUnlockedBranchPassword(int appId, String branch) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT password FROM steam_unlocked_branches WHERE app_id = ? AND branch_name = ?",
+                new String[]{String.valueOf(appId), branch != null ? branch : ""})) {
+            if (c.moveToNext()) return c.getString(0);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    // =========================================================================
+    // steam_achievements
+    // =========================================================================
+
+    /** Insert or replace one achievement's schema + earned state (icon/iconGray are raw filenames). */
+    public void upsertAchievement(int appId, String apiName, String displayName, String description,
+                                  boolean hidden, String icon, String iconGray,
+                                  boolean unlocked, long unlockTime) {
+        ContentValues cv = new ContentValues();
+        cv.put("app_id",       appId);
+        cv.put("api_name",     apiName != null ? apiName : "");
+        cv.put("display_name", displayName != null ? displayName : "");
+        cv.put("description",  description != null ? description : "");
+        cv.put("hidden",       hidden ? 1 : 0);
+        cv.put("icon",         icon != null ? icon : "");
+        cv.put("icon_gray",    iconGray != null ? iconGray : "");
+        cv.put("unlocked",     unlocked ? 1 : 0);
+        cv.put("unlock_time",  unlockTime);
+        getWritableDatabase().insertWithOnConflict(
+                "steam_achievements", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    /** Batch upsert of an app's achievements in one transaction (called on every fetch). */
+    public void upsertAchievements(int appId, List<AchievementRow> rows) {
+        if (rows == null || rows.isEmpty()) return;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (AchievementRow r : rows) {
+                upsertAchievement(appId, r.apiName, r.displayName, r.description,
+                        r.hidden, r.icon, r.iconGray, r.unlocked, r.unlockTime);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /** All achievements for an app, unlocked-first then by display name. Empty = none cached yet. */
+    public List<AchievementRow> getAchievements(int appId) {
+        List<AchievementRow> rows = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT app_id,api_name,display_name,description,hidden,icon,icon_gray,unlocked,unlock_time" +
+                " FROM steam_achievements WHERE app_id = ?" +
+                " ORDER BY unlocked DESC, display_name COLLATE NOCASE",
+                new String[]{String.valueOf(appId)})) {
+            while (c.moveToNext()) {
+                rows.add(new AchievementRow(
+                        c.getInt(0), c.getString(1), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0, c.getString(5), c.getString(6),
+                        c.getInt(7) != 0, c.getLong(8)));
+            }
+        } catch (Exception ignored) {}
+        return rows;
+    }
+
+    /** One achievement by api_name, or null if not cached. */
+    public AchievementRow getAchievement(int appId, String apiName) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT app_id,api_name,display_name,description,hidden,icon,icon_gray,unlocked,unlock_time" +
+                " FROM steam_achievements WHERE app_id = ? AND api_name = ?",
+                new String[]{String.valueOf(appId), apiName != null ? apiName : ""})) {
+            if (c.moveToNext()) {
+                return new AchievementRow(
+                        c.getInt(0), c.getString(1), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0, c.getString(5), c.getString(6),
+                        c.getInt(7) != 0, c.getLong(8));
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    // =========================================================================
     // steam_downloads
     // =========================================================================
 
@@ -670,6 +1168,20 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     public void markDownloadResuming(int appId) {
         ContentValues cv = new ContentValues();
         cv.put("status", DL_DOWNLOADING);
+        getWritableDatabase().update(
+                "steam_downloads", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /**
+     * Flip an EXISTING download row to {@code queued} without touching bytes_downloaded / install_dir
+     * (status-only, like {@link #markDownloadResuming}). Used by the managed download queue when a
+     * paused/failed download is re-enqueued behind an active one — it must keep its partial-progress
+     * bytes + install dir so the eventual resume lands in the same place. A brand-new (fresh) queued
+     * download has no row yet and is created with {@link #queueDownload} instead.
+     */
+    public void markDownloadQueued(int appId) {
+        ContentValues cv = new ContentValues();
+        cv.put("status", DL_QUEUED);
         getWritableDatabase().update(
                 "steam_downloads", cv, "app_id = ?", new String[]{String.valueOf(appId)});
     }

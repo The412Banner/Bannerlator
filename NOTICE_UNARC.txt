@@ -1,0 +1,42 @@
+FreeArc unarc decompressor bundled as libunarc.so
+==================================================
+
+Purpose
+-------
+libunarc.so is the engine for FreeArc / ISDone game repacks (FitGirl/DODI/…). Their game
+data lives in FreeArc volumes (Setup-1.bin, Setup-2.bin, …) beside the InnoSetup Setup.exe.
+7-Zip and innoextract can't read FreeArc; unarc decodes it (lzma/tornado/rep/grzip/4x4/exe/
+delta), letting the File Manager unpack the game IN-APP instead of only via the container
+installer. Byte-exact / CRC-verified against the Crimson Desert repack by the compat engineer.
+
+Product & licence
+-----------------
+FreeArc 0.67-alpha unpacker (`unarc`), decompress-only build.
+Upstream: https://github.com/mirror/freearc (FreeArc by Bulat Ziganshin). Licence: GNU GPL.
+Corresponding source + the build recipe live with the port; the one functional change is the
+grzip LP64 fix below.
+
+Build
+-----
+Cross-compiled for arm64-v8a Android/bionic with the NDK r29 clang toolchain (dynamically
+linked; interpreter /system/bin/linker64), decompress-only:
+  -DFREEARC_UNIX -DFREEARC_INTEL_BYTE_ORDER -DFREEARC_64BIT
+  -DFREEARC_DECOMPRESS_ONLY -D_NO_EXCEPTIONS -DUNARC
+Codecs compiled in: LZMA2, BCJ, Delta, REP, GRZip, Tornado, 4x4, External. (No SREP — a
+srep-layered repack fails, which the UI turns into an honest "install on a PC / in a
+container" message.)
+
+grzip LP64 fix (required on 64-bit): GRZip/LZP.c allocated its context hash table using
+sizeof(uint32) for what are uint8* pointers, corrupting memory on LP64. Fixed to sizeof(uint8*):
+  -  (LZP_HT_Size+1)*sizeof(uint32)   ->   (LZP_HT_Size+1)*sizeof(uint8*)   (alloc + memset)
+
+A bionic build is REQUIRED: a generic-Linux binary inherits the app's seccomp-bpf filter and
+SIGSYS-dies (exit 159). Bionic integrates with Android's seccomp.
+
+Runtime
+-------
+Deps: system libc/libm/libdl + libc++_shared.so (already bundled). Exec'd from
+applicationInfo.nativeLibraryDir with LD_LIBRARY_PATH set to that dir. Invocation:
+  unarc x -o+ -ld- -dp<destDir> <Setup-1.bin>
+The `-ld-` (no memory limit) flag is REQUIRED — the default decompression memory cap corrupts
+the huge lzma/rep chains these repacks use.

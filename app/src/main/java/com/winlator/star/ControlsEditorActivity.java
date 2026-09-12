@@ -1,60 +1,68 @@
 package com.winlator.star;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.content.SharedPreferences;
-import android.view.LayoutInflater;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
-import android.widget.EditText;
+import android.view.ViewGroup;
+import android.view.MotionEvent;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
-import android.widget.RadioGroup;
-import android.widget.SeekBar;
-import android.widget.Spinner;
-import android.widget.TextView;
+import android.graphics.Rect;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.preference.PreferenceManager;
+import androidx.compose.runtime.Composer;
+import androidx.compose.ui.platform.ComposeView;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.winlator.star.R;
-import com.winlator.star.contentdialog.ContentDialog;
 import com.winlator.star.inputcontrols.Binding;
 import com.winlator.star.inputcontrols.ControlElement;
 import com.winlator.star.inputcontrols.ControlsProfile;
 import com.winlator.star.inputcontrols.InputControlsManager;
 import com.winlator.star.inputcontrols.CustomIconManager;
-import com.winlator.star.math.Mathf;
 import com.winlator.star.core.AppUtils;
-import com.winlator.star.core.FileUtils;
-import com.winlator.star.core.UnitUtils;
-import com.winlator.star.widget.AccentArrayAdapter;
 import com.winlator.star.widget.InputControlsView;
-import com.winlator.star.widget.NumberPicker;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-public class ControlsEditorActivity extends AppCompatActivity implements View.OnClickListener {
+import kotlin.Unit;
+import kotlin.jvm.functions.Function0;
+import kotlin.jvm.functions.Function1;
+import kotlin.jvm.functions.Function2;
+
+public class ControlsEditorActivity extends AppCompatActivity {
     private InputControlsView inputControlsView;
     private ControlsProfile profile;
     private CustomIconManager customIconManager;
+    private EditorReferenceState editorReferenceState;
     private ActivityResultLauncher<String> iconPickerLauncher;
     private ActivityResultLauncher<Intent> iconPickerInAppLauncher;
-    private LinearLayout currentLLCustomIconList; // To refresh UI after picking
+
+    // Background image picker
+    private ActivityResultLauncher<String> bgImagePickerLauncher;
+    private ActivityResultLauncher<Intent> bgImagePickerInAppLauncher;
+
+    private View sidebarOverlay;
+    private View sidebarScrollView;
+    private LinearLayout sidebarContent;
+    private ComposeView sidebarComposeView;
+    private ComposeView dialogComposeView;
+    private String activeDialogMode;
+    private boolean sidebarOpen = false;
+    private boolean sidebarOnRight = false;
+    private int sidebarSettingsReloadKey = 0;
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -63,20 +71,95 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         setContentView(R.layout.controls_editor_activity);
 
         customIconManager = new CustomIconManager(this);
+        editorReferenceState = new ViewModelProvider(this).get(EditorReferenceState.class);
         inputControlsView = new InputControlsView(this);
         inputControlsView.setEditMode(true);
         inputControlsView.setOverlayOpacity(0.6f);
+        inputControlsView.setBackgroundOpacity(editorReferenceState.getOpacity());
+        Bitmap restoredBackground = editorReferenceState.createBitmapCopy();
+        if (restoredBackground != null) inputControlsView.setBackgroundImage(restoredBackground);
 
         profile = InputControlsManager.loadProfile(this, ControlsProfile.getProfileFile(this, getIntent().getIntExtra("profile_id", 0)));
-        ((TextView)findViewById(R.id.TVProfileName)).setText(profile.getName());
         inputControlsView.setProfile(profile);
+
+        ComposeView composeToolbar = findViewById(R.id.ComposeToolbar);
+        if (composeToolbar != null) {
+            composeToolbar.setContent(new Function2<Composer, Integer, Unit>() {
+                @Override
+                public Unit invoke(Composer composer, Integer changed) {
+                    ControlsEditorToolbarKt.ControlsEditorToolbar(
+                        profile.getName(),
+                        new Function0<Unit>() {
+                            @Override
+                            public Unit invoke() {
+                                showAddElementTypeDialog();
+                                return Unit.INSTANCE;
+                            }
+                        },
+                        new Function0<Unit>() {
+                            @Override
+                            public Unit invoke() {
+                                removeElement();
+                                return Unit.INSTANCE;
+                            }
+                        },
+                        new Function0<Unit>() {
+                            @Override
+                            public Unit invoke() {
+                                ControlElement selectedElement = inputControlsView.getSelectedElement();
+                                if (selectedElement != null) showControlElementSettingsFor(selectedElement);
+                                else AppUtils.showToast(ControlsEditorActivity.this, R.string.no_control_element_selected);
+                                return Unit.INSTANCE;
+                            }
+                        },
+                        new Function0<Unit>() {
+                            @Override
+                            public Unit invoke() {
+                                toggleGroupListDialog();
+                                return Unit.INSTANCE;
+                            }
+                        },
+                        new Function0<Unit>() {
+                            @Override
+                            public Unit invoke() {
+                                showBackgroundImageDialog();
+                                return Unit.INSTANCE;
+                            }
+                        },
+                        composer,
+                        0
+                    );
+                    return Unit.INSTANCE;
+                }
+            });
+        }
+        dialogComposeView = findViewById(R.id.ComposeDialogHost);
+        renderDialogHost();
 
         FrameLayout container = findViewById(R.id.FLContainer);
         container.addView(inputControlsView, 0);
 
-        container.findViewById(R.id.BTAddElement).setOnClickListener(this);
-        container.findViewById(R.id.BTRemoveElement).setOnClickListener(this);
-        container.findViewById(R.id.BTElementSettings).setOnClickListener(this);
+        sidebarOverlay = findViewById(R.id.VSidebarOverlay);
+        sidebarScrollView = findViewById(R.id.SVSidebar);
+        sidebarContent = findViewById(R.id.LLSidebarContent);
+        updateSidebarWidth(getResources().getDisplayMetrics().widthPixels);
+        container.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> updateSidebarWidth(right - left));
+        if (sidebarOverlay != null) {
+            sidebarOverlay.setClickable(false);
+            sidebarOverlay.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    ControlElement hitElement = findElementAtScreen(event.getRawX(), event.getRawY());
+                    if (hitElement != null) {
+                        showControlElementSettingsFor(hitElement);
+                        return true;
+                    }
+                    closeSidebar();
+                    return true;
+                }
+                return false;
+            });
+        }
 
         // Custom-icon pickers: the built-in file picker (primary) and the system SAF picker (secondary).
         iconPickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -88,335 +171,512 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 if (path != null) addCustomIconFromUri(Uri.fromFile(new java.io.File(path)));
             }
         });
+
+        // Background image pickers
+        bgImagePickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) setBackgroundImageFromUri(uri);
+        });
+        bgImagePickerInAppLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                String path = result.getData().getStringExtra(FilePickerActivity.EXTRA_SELECTED_FILE);
+                if (path != null) setBackgroundImageFromUri(Uri.fromFile(new java.io.File(path)));
+            }
+        });
+    }
+
+    static int calculateSidebarWidth(int availableWidth, float density) {
+        return Math.min(Math.round(300 * density), Math.round(availableWidth * 0.85f));
+    }
+
+    private void updateSidebarWidth(int availableWidth) {
+        if (sidebarScrollView == null || availableWidth <= 0) return;
+        ViewGroup.LayoutParams params = sidebarScrollView.getLayoutParams();
+        int width = calculateSidebarWidth(availableWidth, getResources().getDisplayMetrics().density);
+        if (params.width != width) {
+            params.width = width;
+            sidebarScrollView.setLayoutParams(params);
+        }
+    }
+
+    private void setBackgroundImageFromUri(Uri uri) {
+        try {
+            Bitmap bitmap = decodeSampledBitmap(uri);
+            if (bitmap != null) {
+                if (editorReferenceState.replaceBitmapWithCopy(bitmap)) {
+                    inputControlsView.setBackgroundImage(bitmap);
+                    AppUtils.showToast(this, R.string.background_image_set);
+                } else {
+                    bitmap.recycle();
+                    AppUtils.showToast(this, R.string.unable_to_load_image);
+                }
+            } else {
+                AppUtils.showToast(this, R.string.unable_to_load_image);
+            }
+        } catch (IOException | SecurityException | OutOfMemoryError e) {
+            AppUtils.showToast(this, R.string.unable_to_load_image);
+        }
+    }
+
+    private Bitmap decodeSampledBitmap(Uri uri) throws IOException {
+        int targetWidth = inputControlsView.getWidth();
+        int targetHeight = inputControlsView.getHeight();
+        if (targetWidth <= 0 || targetHeight <= 0) {
+            targetWidth = getResources().getDisplayMetrics().widthPixels;
+            targetHeight = getResources().getDisplayMetrics().heightPixels;
+        }
+
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        try (InputStream stream = getContentResolver().openInputStream(uri)) {
+            if (stream == null) return null;
+            BitmapFactory.decodeStream(stream, null, bounds);
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
+        int sampleSize = 1;
+        while (bounds.outWidth / (sampleSize * 2) >= targetWidth
+                || bounds.outHeight / (sampleSize * 2) >= targetHeight) {
+            sampleSize *= 2;
+        }
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sampleSize;
+        try (InputStream stream = getContentResolver().openInputStream(uri)) {
+            return stream != null ? BitmapFactory.decodeStream(stream, null, options) : null;
+        }
+    }
+
+    private void showAddElementTypeDialog() {
+        showComposeDialog(ControlsEditorDialogsKt.DIALOG_ADD_ELEMENT);
+    }
+
+    private void showBackgroundImageDialog() {
+        showComposeDialog(ControlsEditorDialogsKt.DIALOG_BACKGROUND_IMAGE);
+    }
+
+    private void toggleGroupListDialog() {
+        if (ControlsEditorDialogsKt.DIALOG_GROUP_VISIBILITY.equals(activeDialogMode)) closeComposeDialog();
+        else showComposeDialog(ControlsEditorDialogsKt.DIALOG_GROUP_VISIBILITY);
+    }
+
+    private void addElement(ControlElement.Type type) {
+        if (inputControlsView.addElement(type)) {
+            ControlElement selectedElement = inputControlsView.getSelectedElement();
+            closeComposeDialog();
+            if (selectedElement != null) showControlElementSettingsFor(selectedElement);
+        } else {
+            AppUtils.showToast(this, R.string.no_profile_selected);
+        }
+    }
+
+    private void addAndroidKeyboardButton() {
+        if (!inputControlsView.addElement(ControlElement.Type.BUTTON)) {
+            AppUtils.showToast(this, R.string.no_profile_selected);
+            return;
+        }
+        ControlElement element = inputControlsView.getSelectedElement();
+        element.setBindingAt(0, Binding.SHOW_ANDROID_KEYBOARD);
+        element.setText(getString(R.string.keyboard));
+        profile.save();
+        inputControlsView.invalidate();
+        closeComposeDialog();
+        showControlElementSettingsFor(element);
     }
 
     // Shared: add a custom icon from any Uri (file:// from the in-app picker, content:// from SAF).
     private void addCustomIconFromUri(Uri uri) {
-        if (currentLLCustomIconList != null) {
-            customIconManager.addCustomIcon(uri);
-            loadCustomIcons(currentLLCustomIconList, inputControlsView.getSelectedElement().getIconId());
+        ControlElement selectedElement = inputControlsView.getSelectedElement();
+        if (selectedElement == null) return;
+
+        short iconId = customIconManager.addCustomIcon(uri);
+        if (iconId >= 0) {
+            selectedElement.setIconId(iconId);
+            profile.save();
+            inputControlsView.invalidate();
+        } else {
+            AppUtils.showToast(this, R.string.unable_to_load_image);
         }
+        refreshSidebarSettings();
     }
 
     // Two-option chooser: built-in picker first, then system SAF.
-    private void promptPickCustomIcon() {
-        new android.app.AlertDialog.Builder(this)
-            .setItems(new CharSequence[]{"Browse files", "Pick via system…"}, (d, which) -> {
-                if (which == 0) {
-                    Intent intent = new Intent(this, FilePickerActivity.class);
-                    intent.putExtra(FilePickerActivity.EXTRA_EXTENSIONS, new String[]{"png", "jpg", "jpeg", "webp", "bmp", "gif"});
-                    intent.putExtra(FilePickerActivity.EXTRA_PICKER_TITLE, "Select icon image");
-                    iconPickerInAppLauncher.launch(intent);
-                } else {
-                    iconPickerLauncher.launch("image/*");
+    public void promptPickCustomIcon() {
+        showComposeDialog(ControlsEditorDialogsKt.DIALOG_CUSTOM_ICON_SOURCE);
+    }
+
+    private void showComposeDialog(String dialogMode) {
+        activeDialogMode = dialogMode;
+        renderDialogHost();
+    }
+
+    private void closeComposeDialog() {
+        activeDialogMode = null;
+        renderDialogHost();
+    }
+
+    private void renderDialogHost() {
+        if (dialogComposeView == null) return;
+        dialogComposeView.setVisibility(activeDialogMode == null ? View.GONE : View.VISIBLE);
+        final String dialogMode = activeDialogMode;
+        final float backgroundOpacity = inputControlsView != null ? inputControlsView.getBackgroundOpacity() : 0f;
+
+        dialogComposeView.setContent(new Function2<Composer, Integer, Unit>() {
+            @Override
+            public Unit invoke(Composer composer, Integer changed) {
+                ControlsEditorDialogsKt.ControlsEditorDialogHost(
+                    dialogMode,
+                    profile,
+                    backgroundOpacity,
+                    new ControlsEditorDialogActions() {
+                        @Override
+                        public void onDismiss() {
+                            closeComposeDialog();
+                        }
+                        @Override
+                        public void onAddElement(ControlElement.Type type) {
+                            addElement(type);
+                        }
+                        @Override
+                        public void onAddAndroidKeyboardButton() {
+                            addAndroidKeyboardButton();
+                        }
+                        @Override
+                        public void onPickBackgroundFile() {
+                            pickBackgroundFromFiles();
+                        }
+                        @Override
+                        public void onPickBackgroundSystem() {
+                            pickBackgroundViaSystem();
+                        }
+                        @Override
+                        public void onClearBackground() {
+                            clearBackgroundImage();
+                        }
+                        @Override
+                        public void onBackgroundOpacityChange(float opacity) {
+                            editorReferenceState.setOpacity(opacity);
+                            if (inputControlsView != null) inputControlsView.setBackgroundOpacity(opacity);
+                        }
+                        @Override
+                        public void onGroupVisibilityChange(String groupName, boolean visible) {
+                            setGroupVisibility(groupName, visible);
+                        }
+                        @Override
+                        public void onPickIconFile() {
+                            pickCustomIconFromFiles();
+                        }
+                        @Override
+                        public void onPickIconSystem() {
+                            pickCustomIconViaSystem();
+                        }
+                    },
+                    composer,
+                    0
+                );
+                return Unit.INSTANCE;
+            }
+        });
+    }
+
+    private void pickBackgroundFromFiles() {
+        closeComposeDialog();
+        Intent intent = new Intent(this, FilePickerActivity.class);
+        intent.putExtra(FilePickerActivity.EXTRA_EXTENSIONS, new String[]{"png", "jpg", "jpeg", "webp", "bmp"});
+        intent.putExtra(FilePickerActivity.EXTRA_PICKER_TITLE, getString(R.string.select_background_image));
+        bgImagePickerInAppLauncher.launch(intent);
+    }
+
+    private void pickBackgroundViaSystem() {
+        closeComposeDialog();
+        bgImagePickerLauncher.launch("image/*");
+    }
+
+    private void clearBackgroundImage() {
+        closeComposeDialog();
+        editorReferenceState.clearBitmap();
+        inputControlsView.setBackgroundImage(null);
+        AppUtils.showToast(this, R.string.background_cleared);
+    }
+
+    private void pickCustomIconFromFiles() {
+        closeComposeDialog();
+        Intent intent = new Intent(this, FilePickerActivity.class);
+        intent.putExtra(FilePickerActivity.EXTRA_EXTENSIONS, new String[]{"png", "jpg", "jpeg", "webp", "bmp", "gif", "svg"});
+        intent.putExtra(FilePickerActivity.EXTRA_PICKER_TITLE, getString(R.string.select_icon_image));
+        iconPickerInAppLauncher.launch(intent);
+    }
+
+    private void pickCustomIconViaSystem() {
+        closeComposeDialog();
+        iconPickerLauncher.launch("image/*");
+    }
+
+    private void setGroupVisibility(String groupName, boolean visible) {
+        if (profile == null || groupName == null) return;
+        profile.setGroupVisible(groupName, visible);
+        profile.save();
+        inputControlsView.invalidate();
+        refreshSidebarSettings();
+        renderDialogHost();
+    }
+
+    private void removeElement() {
+        if (inputControlsView.removeElement()) {
+            closeSidebar();
+        } else {
+            AppUtils.showToast(this, R.string.no_control_element_selected);
+        }
+    }
+
+    public void showControlElementSettingsFor(ControlElement element) {
+        if (element == null || sidebarContent == null || sidebarScrollView == null || sidebarOverlay == null || inputControlsView == null) return;
+        inputControlsView.selectElementAt(element);
+        if (sidebarOpen) saveSidebarState();
+
+        sidebarComposeView = ensureSidebarComposeView();
+        bindSidebarSettings(element);
+
+        final float sidebarWidthPx = sidebarScrollView.getLayoutParams().width;
+        final float screenWidth = inputControlsView.getWidth() > 0
+                ? inputControlsView.getWidth()
+                : getResources().getDisplayMetrics().widthPixels;
+        Rect elementBounds = element.getBoundingBox();
+        final float centerX = elementBounds != null && !elementBounds.isEmpty() ? elementBounds.centerX() : element.getX();
+        sidebarOnRight = centerX <= screenWidth / 2f;
+
+        boolean animateIn = !sidebarOpen || sidebarScrollView == null || sidebarScrollView.getVisibility() != View.VISIBLE;
+
+        if (sidebarScrollView != null) {
+            if (sidebarScrollView.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) sidebarScrollView.getLayoutParams();
+                lp.gravity = sidebarOnRight ? (Gravity.END | Gravity.TOP) : (Gravity.START | Gravity.TOP);
+                sidebarScrollView.setLayoutParams(lp);
+            }
+            sidebarScrollView.animate().cancel();
+            sidebarScrollView.setVisibility(View.VISIBLE);
+            sidebarScrollView.setAlpha(1f);
+            if (animateIn) {
+                sidebarScrollView.setTranslationX(sidebarOnRight ? sidebarWidthPx : -sidebarWidthPx);
+                sidebarScrollView.animate()
+                    .translationX(0f)
+                    .setDuration(250)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+            } else {
+                sidebarScrollView.setTranslationX(0f);
+            }
+        }
+
+        if (sidebarOverlay != null) {
+            sidebarOverlay.animate().cancel();
+            sidebarOverlay.setVisibility(View.VISIBLE);
+            if (animateIn) {
+                sidebarOverlay.setAlpha(0f);
+                sidebarOverlay.animate().alpha(1f).setDuration(200).start();
+            } else {
+                sidebarOverlay.setAlpha(1f);
+            }
+        }
+
+        sidebarOpen = true;
+    }
+
+    private ComposeView ensureSidebarComposeView() {
+        if (sidebarComposeView == null) {
+            sidebarComposeView = new ComposeView(this);
+        }
+        if (sidebarComposeView.getParent() == null && sidebarContent != null) {
+            sidebarContent.addView(sidebarComposeView);
+        }
+        return sidebarComposeView;
+    }
+
+    private void bindSidebarSettings(final ControlElement element) {
+        if (sidebarComposeView == null) return;
+        final int reloadKey = sidebarSettingsReloadKey;
+        sidebarComposeView.setContent(new Function2<Composer, Integer, Unit>() {
+            @Override
+            public Unit invoke(Composer composer, Integer changed) {
+                ControlsEditorSettingsPaneKt.ControlsEditorSettingsPane(
+                    element,
+                    profile,
+                    new Function0<Unit>() {
+                        @Override
+                        public Unit invoke() {
+                            inputControlsView.invalidate();
+                            return Unit.INSTANCE;
+                        }
+                    },
+                    customIconManager,
+                    reloadKey,
+                    ControlsEditorActivity.this,
+                    new Function0<Unit>() {
+                        @Override
+                        public Unit invoke() {
+                            closeSidebar();
+                            return Unit.INSTANCE;
+                        }
+                    },
+                    new Function0<Unit>() {
+                        @Override
+                        public Unit invoke() {
+                            promptPickCustomIcon();
+                            return Unit.INSTANCE;
+                        }
+                    },
+                    new Function1<Integer, Boolean>() {
+                        @Override
+                        public Boolean invoke(Integer iconId) {
+                            if (iconId == null || !customIconManager.deleteIconIfUnused(iconId)) return false;
+                            inputControlsView.evictCustomIcon(iconId);
+                            refreshSidebarSettings();
+                            return true;
+                        }
+                    },
+                    composer,
+                    0
+                );
+                return Unit.INSTANCE;
+            }
+        });
+    }
+
+    private void refreshSidebarSettings() {
+        if (sidebarScrollView == null || sidebarScrollView.getVisibility() != View.VISIBLE) return;
+        ControlElement selectedElement = inputControlsView.getSelectedElement();
+        if (selectedElement == null) return;
+        sidebarSettingsReloadKey++;
+        ensureSidebarComposeView();
+        bindSidebarSettings(selectedElement);
+    }
+    private void saveSidebarState() {
+        if (profile != null) profile.save();
+    }
+
+    /** Find a control element at the given raw screen coordinates (for overlay passthrough). */
+    private ControlElement findElementAtScreen(float rawX, float rawY) {
+        if (inputControlsView == null || profile == null || !profile.isElementsLoaded()) return null;
+        // Convert raw screen coordinates to local coordinates relative to the InputControlsView
+        int[] loc = new int[2];
+        inputControlsView.getLocationOnScreen(loc);
+        float localX = rawX - loc[0];
+        float localY = rawY - loc[1];
+        List<ControlElement> elements = profile.getElements();
+        for (int i = elements.size() - 1; i >= 0; i--) {
+            ControlElement element = elements.get(i);
+            if (!isElementVisible(element)) continue;
+            if (element.containsPoint(localX, localY)) return element;
+        }
+        return null;
+    }
+
+    private boolean isElementVisible(ControlElement element) {
+        return element != null && (!element.isInGroup() || profile == null || profile.isGroupVisible(element.getGroupId()));
+    }
+
+    public void closeSidebar() {
+        if (sidebarScrollView == null || sidebarOverlay == null) return;
+        if (sidebarScrollView.getVisibility() != View.VISIBLE) return;
+
+        saveSidebarState();
+        sidebarOpen = false;
+
+        final float sidebarWidthPx = sidebarScrollView.getLayoutParams().width;
+        sidebarOverlay.animate().cancel();
+        sidebarScrollView.animate().cancel();
+
+        sidebarOverlay.animate()
+            .alpha(0f)
+            .setDuration(200)
+            .start();
+
+        sidebarScrollView.animate()
+            .translationX(sidebarOnRight ? sidebarWidthPx : -sidebarWidthPx)
+            .setDuration(250)
+            .setInterpolator(new DecelerateInterpolator())
+            .setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    sidebarScrollView.setVisibility(View.GONE);
+                    sidebarOverlay.setVisibility(View.GONE);
+                    sidebarScrollView.setAlpha(1f);
+                    sidebarOverlay.setAlpha(1f);
+                    sidebarScrollView.animate().setListener(null);
                 }
             })
-            .show();
-    }
-
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.BTAddElement:
-                if (!inputControlsView.addElement()) AppUtils.showToast(this, R.string.no_profile_selected);
-                break;
-            case R.id.BTRemoveElement:
-                if (!inputControlsView.removeElement()) AppUtils.showToast(this, R.string.no_control_element_selected);
-                break;
-            case R.id.BTElementSettings:
-                ControlElement selectedElement = inputControlsView.getSelectedElement();
-                if (selectedElement != null) showControlElementSettings(v);
-                else AppUtils.showToast(this, R.string.no_control_element_selected);
-                break;
-        }
-    }
-
-    private void showControlElementSettings(View anchorView) {
-        final ControlElement element = inputControlsView.getSelectedElement();
-        View view = LayoutInflater.from(this).inflate(R.layout.control_element_settings, null);
-
-        final Runnable updateLayout = () -> {
-            ControlElement.Type type = element.getType();
-            View llShape = view.findViewById(R.id.LLShape);
-            View cbToggle = view.findViewById(R.id.CBToggleSwitch);
-            View llCustom = view.findViewById(R.id.LLCustomTextIcon);
-            View llRange = view.findViewById(R.id.LLRangeOptions);
-
-            if (llShape != null) llShape.setVisibility(type == ControlElement.Type.BUTTON ? View.VISIBLE : View.GONE);
-            if (cbToggle != null) cbToggle.setVisibility(type == ControlElement.Type.BUTTON ? View.VISIBLE : View.GONE);
-            if (llCustom != null) llCustom.setVisibility(type == ControlElement.Type.BUTTON ? View.VISIBLE : View.GONE);
-            if (llRange != null) llRange.setVisibility(type == ControlElement.Type.RANGE_BUTTON ? View.VISIBLE : View.GONE);
-
-            loadBindingSpinners(element, view);
-        };
-
-        loadTypeSpinner(element, view.findViewById(R.id.SType), updateLayout);
-        loadShapeSpinner(element, view.findViewById(R.id.SShape));
-        loadRangeSpinner(element, view.findViewById(R.id.SRange));
-
-        RadioGroup rgOrientation = view.findViewById(R.id.RGOrientation);
-        if (rgOrientation != null) {
-            rgOrientation.check(element.getOrientation() == 1 ? R.id.RBVertical : R.id.RBHorizontal);
-            rgOrientation.setOnCheckedChangeListener((group, checkedId) -> {
-                element.setOrientation((byte)(checkedId == R.id.RBVertical ? 1 : 0));
-                profile.save();
-                inputControlsView.invalidate();
-            });
-        }
-
-        NumberPicker npColumns = view.findViewById(R.id.NPColumns);
-        if (npColumns != null) {
-            npColumns.setValue(element.getBindingCount());
-            npColumns.setOnValueChangeListener((numberPicker, value) -> {
-                element.setBindingCount(value);
-                profile.save();
-                inputControlsView.invalidate();
-            });
-        }
-
-        final TextView tvScale = view.findViewById(R.id.TVScale);
-        SeekBar sbScale = view.findViewById(R.id.SBScale);
-        if (sbScale != null) {
-            sbScale.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override
-                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                    if (tvScale != null) tvScale.setText(progress+"%");
-                    if (fromUser) {
-                        progress = (int)Mathf.roundTo(progress, 5);
-                        seekBar.setProgress(progress);
-                        element.setScale(progress / 100.0f);
-                        profile.save();
-                        inputControlsView.invalidate();
-                    }
-                }
-                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-            });
-            sbScale.setProgress((int)(element.getScale() * 100));
-        }
-
-        CheckBox cbToggleSwitch = view.findViewById(R.id.CBToggleSwitch);
-        if (cbToggleSwitch != null) {
-            cbToggleSwitch.setChecked(element.isToggleSwitch());
-            cbToggleSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                element.setToggleSwitch(isChecked);
-                profile.save();
-            });
-        }
-
-        final EditText etCustomText = view.findViewById(R.id.ETCustomText);
-        if (etCustomText != null) etCustomText.setText(element.getText());
-
-        // LOAD BOTH ICON LISTS
-        final LinearLayout llIconList = view.findViewById(R.id.LLIconList);
-        if (llIconList != null) loadIcons(llIconList, element.getIconId());
-
-        currentLLCustomIconList = view.findViewById(R.id.LLCustomIconList);
-        if (currentLLCustomIconList != null) loadCustomIcons(currentLLCustomIconList, element.getIconId());
-
-        View btAddIcon = view.findViewById(R.id.BTAddCustomIcon);
-        if (btAddIcon != null) btAddIcon.setOnClickListener(v -> promptPickCustomIcon());
-
-        updateLayout.run();
-
-        PopupWindow popupWindow = AppUtils.showPopupWindow(anchorView, view, 340, 0);
-        popupWindow.setOnDismissListener(() -> {
-            if (etCustomText != null) element.setText(etCustomText.getText().toString().trim());
-            
-            // Check both lists for selection
-            short selectedIconId = 0;
-            if (llIconList != null) selectedIconId = getSelectedIdFromList(llIconList);
-            if (selectedIconId == 0 && currentLLCustomIconList != null) selectedIconId = getSelectedIdFromList(currentLLCustomIconList);
-
-            element.setIconId((byte)selectedIconId);
-            profile.save();
-            inputControlsView.invalidate();
-        });
-    }
-
-    private short getSelectedIdFromList(LinearLayout parent) {
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            View child = parent.getChildAt(i);
-            if (child.isSelected()) return (short)child.getTag();
-        }
-        return 0;
-    }
-
-    private void loadIcons(final LinearLayout parent, int selectedId) {
-        parent.removeAllViews();
-        List<Byte> iconIds = new ArrayList<>();
-        try {
-            String[] filenames = getAssets().list("inputcontrols/icons/");
-            for (String file : filenames) iconIds.add(Byte.parseByte(FileUtils.getBasename(file)));
-        } catch (Exception e) {}
-        Collections.sort(iconIds);
-        addIconViewsToParent(parent, iconIds, selectedId, false);
-    }
-
-    private void loadCustomIcons(final LinearLayout parent, int selectedId) {
-        parent.removeAllViews();
-        List<Short> iconIds = customIconManager.getCustomIconIds();
-        addIconViewsToParent(parent, iconIds, selectedId, true);
-    }
-
-    private void addIconViewsToParent(LinearLayout parent, List<? extends Number> ids, int selectedId, boolean isCustom) {
-        int size = (int)UnitUtils.dpToPx(40);
-        int margin = (int)UnitUtils.dpToPx(2);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
-        params.setMargins(margin, 0, margin, 0);
-
-        for (Number idObj : ids) {
-            final short id = idObj.shortValue();
-            ImageView imageView = new ImageView(this);
-            imageView.setLayoutParams(params);
-            imageView.setPadding(4, 4, 4, 4);
-            imageView.setBackgroundResource(R.drawable.icon_background);
-            imageView.setTag(id);
-            imageView.setSelected(id == selectedId);
-
-            if (isCustom) imageView.setImageBitmap(customIconManager.loadIcon(id));
-            else {
-                try (InputStream is = getAssets().open("inputcontrols/icons/" + id + ".png")) {
-                    imageView.setImageBitmap(BitmapFactory.decodeStream(is));
-                } catch (IOException e) {}
-            }
-
-            imageView.setOnClickListener(v -> {
-                // Deselect others in BOTH lists
-                View root = (View) parent.getParent().getParent().getParent();
-                clearSelection((LinearLayout) root.findViewById(R.id.LLIconList));
-                clearSelection((LinearLayout) root.findViewById(R.id.LLCustomIconList));
-                v.setSelected(true);
-            });
-            parent.addView(imageView);
-        }
-    }
-
-    private void clearSelection(LinearLayout layout) {
-        if (layout == null) return;
-        for (int i = 0; i < layout.getChildCount(); i++) layout.getChildAt(i).setSelected(false);
-    }
-
-    // --- REMAINDER OF YOUR SPINNER/BINDING LOGIC ---
-    private void loadTypeSpinner(final ControlElement element, Spinner spinner, Runnable callback) {
-        if (spinner == null) return;
-        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ControlElement.Type.names()));
-        spinner.setSelection(element.getType().ordinal(), false);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                element.setType(ControlElement.Type.values()[position]);
-                profile.save();
-                callback.run();
-                inputControlsView.invalidate();
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-    }
-
-    private void loadShapeSpinner(final ControlElement element, Spinner spinner) {
-        if (spinner == null) return;
-        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ControlElement.Shape.names()));
-        spinner.setSelection(element.getShape().ordinal(), false);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                element.setShape(ControlElement.Shape.values()[position]);
-                profile.save();
-                inputControlsView.invalidate();
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-    }
-
-    private void loadRangeSpinner(final ControlElement element, Spinner spinner) {
-        if (spinner == null) return;
-        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ControlElement.Range.names()));
-        spinner.setSelection(element.getRange().ordinal(), false);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                element.setRange(ControlElement.Range.values()[position]);
-                profile.save();
-                inputControlsView.invalidate();
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-    }
-
-    private void loadBindingSpinners(ControlElement element, View view) {
-        LinearLayout container = view.findViewById(R.id.LLBindings);
-        if (container == null) return;
-        container.removeAllViews();
-        ControlElement.Type type = element.getType();
-        if (type == ControlElement.Type.BUTTON) loadBindingSpinner(element, container, 0, R.string.binding);
-        else if (type == ControlElement.Type.D_PAD || type == ControlElement.Type.STICK || type == ControlElement.Type.TRACKPAD) {
-            loadBindingSpinner(element, container, 0, R.string.binding_up);
-            loadBindingSpinner(element, container, 1, R.string.binding_right);
-            loadBindingSpinner(element, container, 2, R.string.binding_down);
-            loadBindingSpinner(element, container, 3, R.string.binding_left);
-        }
-    }
-
-    private void loadBindingSpinner(final ControlElement element, LinearLayout container, final int index, int titleResId) {
-        View view = LayoutInflater.from(this).inflate(R.layout.binding_field, container, false);
-        ((TextView)view.findViewById(R.id.TVTitle)).setText(titleResId);
-        final Spinner sBindingType = view.findViewById(R.id.SBindingType);
-        final Spinner sBinding = view.findViewById(R.id.SBinding);
-
-        // Set the binding-type adapter in code (was android:entries in XML) so it uses
-        // our blue-text item layouts and stays readable on a black background.
-        // AccentArrayAdapter routes binding_spinner_item's colorPrimary text to the
-        // runtime theme accent (was static #0055FF baked at inflation).
-        AccentArrayAdapter<CharSequence> typeAdapter = new AccentArrayAdapter<>(
-                this, R.layout.binding_spinner_item, getResources().getTextArray(R.array.binding_type_entries));
-        typeAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
-        sBindingType.setAdapter(typeAdapter);
-
-        Runnable update = () -> {
-            String[] bindingEntries = null;
-            switch (sBindingType.getSelectedItemPosition()) {
-                case 0: bindingEntries = Binding.keyboardBindingLabels(); break;
-                case 1: bindingEntries = Binding.mouseBindingLabels(); break;
-                case 2: bindingEntries = Binding.gamepadBindingLabels(); break;
-            }
-            AccentArrayAdapter<String> bindingAdapter =
-                    new AccentArrayAdapter<>(this, R.layout.binding_spinner_item, bindingEntries);
-            bindingAdapter.setDropDownViewResource(R.layout.binding_spinner_dropdown_item);
-            sBinding.setAdapter(bindingAdapter);
-            AppUtils.setSpinnerSelectionFromValue(sBinding, element.getBindingAt(index).toString());
-        };
-
-        sBindingType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { update.run(); }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        Binding selectedBinding = element.getBindingAt(index);
-        if (selectedBinding.isKeyboard()) sBindingType.setSelection(0, false);
-        else if (selectedBinding.isMouse()) sBindingType.setSelection(1, false);
-        else if (selectedBinding.isGamepad()) sBindingType.setSelection(2, false);
-
-        sBinding.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                Binding binding = Binding.NONE;
-                switch (sBindingType.getSelectedItemPosition()) {
-                    case 0: binding = Binding.keyboardBindingValues()[position]; break;
-                    case 1: binding = Binding.mouseBindingValues()[position]; break;
-                    case 2: binding = Binding.gamepadBindingValues()[position]; break;
-                }
-                if (binding != element.getBindingAt(index)) {
-                    element.setBindingAt(index, binding);
-                    profile.save();
-                    inputControlsView.invalidate();
-                }
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-        update.run();
-        container.addView(view);
+            .start();
     }
 
     @Override
     public void onBackPressed() {
+        if (activeDialogMode != null) {
+            closeComposeDialog();
+            return;
+        }
+        if (sidebarScrollView != null && sidebarScrollView.getVisibility() == View.VISIBLE) {
+            closeSidebar();
+            return;
+        }
         super.onBackPressed();
         overridePendingTransition(R.anim.slide_in_down, R.anim.slide_out_up);
+    }
+
+    @Override
+    protected void onStop() {
+        if (profile != null) profile.save();
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        activeDialogMode = null;
+        if (inputControlsView != null) inputControlsView.setBackgroundImage(null);
+        super.onDestroy();
+    }
+
+    public static final class EditorReferenceState extends ViewModel {
+        private Bitmap bitmap;
+        private float opacity = 0.65f;
+
+        public float getOpacity() {
+            return opacity;
+        }
+
+        public void setOpacity(float opacity) {
+            this.opacity = Math.max(0f, Math.min(1f, opacity));
+        }
+
+        public boolean replaceBitmapWithCopy(Bitmap source) {
+            Bitmap copy = copyBitmap(source);
+            if (copy == null) return false;
+            clearBitmap();
+            bitmap = copy;
+            return true;
+        }
+
+        public Bitmap createBitmapCopy() {
+            return copyBitmap(bitmap);
+        }
+
+        public void clearBitmap() {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+            bitmap = null;
+        }
+
+        private static Bitmap copyBitmap(Bitmap source) {
+            if (source == null || source.isRecycled()) return null;
+            Bitmap.Config config = source.getConfig() != null ? source.getConfig() : Bitmap.Config.ARGB_8888;
+            try {
+                return source.copy(config, false);
+            }
+            catch (OutOfMemoryError e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected void onCleared() {
+            clearBitmap();
+        }
     }
 }

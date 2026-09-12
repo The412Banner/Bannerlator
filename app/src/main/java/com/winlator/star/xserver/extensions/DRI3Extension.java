@@ -157,10 +157,18 @@ public class DRI3Extension implements Extension {
             // GPUImage(fd) now locks the buffer, so getStride() is valid (matches the SHM path's
             // stride-based width). Mark the drawable directScanout so the Vulkan renderer can
             // present the AHB directly instead of compositing a blank CPU buffer (-> black).
-            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), height, depth);
+            // ERL bug report #6: use the buffer's real height (from AHardwareBuffer_describe),
+            // mirroring how width already uses getStride() rather than the wire value.
+            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), gpuImage.getHeight(), depth);
             drawable.setTexture(gpuImage);
             drawable.setDirectScanout(true);
-            client.xServer.pixmapManager.createPixmap(drawable);
+            // Register the client as owner so the pixmap (and its GPUImage/AHB or SHM mapping)
+            // is released in freeResources() when the client disconnects. Without this, DRI3
+            // pixmaps leaked whenever a client died without an explicit FreePixmap. Mirrors the
+            // core PixmapRequests path. pixmapId was validated non-existent above, so createPixmap
+            // is non-null here; the guard is defensive only.
+            Pixmap pixmap = client.xServer.pixmapManager.createPixmap(drawable);
+            if (pixmap != null) client.registerAsOwnerOfResource(pixmap);
         }
         finally {
             XConnectorEpoll.closeFd(fd);
@@ -177,7 +185,13 @@ public class DRI3Extension implements Extension {
             drawable.setData(buffer);
             drawable.setTexture(null);
             drawable.setOnDestroyListener(onDestroyDrawableListener);
-            client.xServer.pixmapManager.createPixmap(drawable);
+            // Register the client as owner so the pixmap (and its GPUImage/AHB or SHM mapping)
+            // is released in freeResources() when the client disconnects. Without this, DRI3
+            // pixmaps leaked whenever a client died without an explicit FreePixmap. Mirrors the
+            // core PixmapRequests path. pixmapId was validated non-existent above, so createPixmap
+            // is non-null here; the guard is defensive only.
+            Pixmap pixmap = client.xServer.pixmapManager.createPixmap(drawable);
+            if (pixmap != null) client.registerAsOwnerOfResource(pixmap);
         }
         finally {
             XConnectorEpoll.closeFd(fd);

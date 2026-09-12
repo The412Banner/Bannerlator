@@ -1,0 +1,603 @@
+=== Wine Debug Log ===
+WINEDEBUG: +warn,+err,+fixme
+WINEPREFIX: /data/user/0/com.winlator.banner/files/imagefs/home/xuser/.wine
+Container ID: 12
+Shortcut: null (launching Wine File Manager)
+--- DX Wrapper State ---
+dxwrapper type: dxvk+vkd3d
+dxwrapperConfig (raw): version=2.7.1-1-gplasync-arm64ec-0,framerate=30,async=1,asyncCache=1,vkd3dVersion=None,vkd3dLevel=12_1,ddrawrapper=none,csmt=3,gpuName=NVIDIA GeForce GTX 480,videoMemorySize=2048,strict_shader_math=1,OffscreenRenderingMode=fbo,renderer=gl,d7vkVersion=Bundled (default),dxvkConfigFile=
+vkd3dVersion (parsed): None
+dxvk version (parsed): 2.7.1-1-gplasync-arm64ec-0
+ddrawrapper (parsed): none
+cached dxwrapper extra: dxvk-2.7.1-1-gplasync-arm64ec-0;vkd3d-None;none
+expected full string: dxvk-2.7.1-1-gplasync-arm64ec-0;vkd3d-None;none
+extraction will run: false
+--- End DX Wrapper State ---
+=== Wine output below ===
+_r_debug not found in ld.so
+esync: up and running.
+0024:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+002c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0034:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0040:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0068:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+0098:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+_r_debug not found in ld.so
+00c4:fixme:fsync:do_fsync futexes not supported on this platform.
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0088:fixme:xinput:pdo_pnp code 0xc, not implemented!
+0070:err:ntoskrnl:ZwLoadDriver failed to create driver L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\winebth": c00000e5
+0034:fixme:service:scmdatabase_autostart_services Auto-start service L"winebth" failed to start: 1359
+_r_debug not found in ld.so
+00f4:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0108:fixme:fsync:do_fsync futexes not supported on this platform.
+0108:err:environ:init_peb starting L"C:\\windows\\winhandler.exe" in experimental ARM64EC mode
+_r_debug not found in ld.so
+0118:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+013c:fixme:fsync:do_fsync futexes not supported on this platform.
+_r_debug not found in ld.so
+0148:fixme:fsync:do_fsync futexes not supported on this platform.
+0148:err:environ:init_peb starting L"C:\\windows\\wfm.exe" in experimental ARM64EC mode
+013c:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+013c:fixme:uiautomation:uia_get_providers_for_hwnd Override provider callback currently unimplemented.
+013c:fixme:uiautomation:default_uia_provider_callback Default ProviderType_NonClientArea provider unimplemented.
+013c:fixme:oleacc:find_class_data unhandled window class: L"#32769"
+013c:fixme:uiautomation:base_hwnd_fragment_get_FragmentRoot 00000000006FBB88, 000000000011FC08: stub!
+013c:fixme:uiautomation:base_hwnd_fragment_GetEmbeddedFragmentRoots 00000000006FBB88, 000000000011FBF8: stub!
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000710790, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"SysListView32"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 000000000071EC30, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32768"
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32768"
+_r_debug not found in ld.so
+01b0:fixme:fsync:do_fsync futexes not supported on this platform.
+01b0:err:environ:init_peb starting L"C:\\APlagueTale\\APlagueTaleInnocence_x64.exe" in experimental ARM64EC mode
+01b0:fixme:ver:GetCurrentPackageId (000000000012CBA0 0000000000000000): stub
+01b0:fixme:msvcrt:_set_abort_behavior _WRITE_CALL_REPORTFAULT unhandled
+01b0:fixme:win:DisableProcessWindowsGhosting : stub
+01b0:fixme:thread:NtSetInformationThread ThreadIdealProcessor stub!
+info:  Game: APlagueTaleInnocence_x64.exe
+info:  DXVK: v2.7.1-gplasync-arm64ec
+info:  Build: aarch64 clang 21.1.8
+info:  Found config env: dxgi.maxFrameRate = 30; d3d9.maxFrameRate = 30; dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    dxvk.enableStarProfile = Auto
+info:    vegas.enableUpscaler = Auto
+info:    d3d9.maxFrameRate = 30
+info:    dxgi.maxFrameRate = 30
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ffc157cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+ATTENTION: default value of option tu_override_uncached_as_cache_coherent overridden by environment.
+info:  Found device: Wrapper(Turnip Adreno (TM) 650) (Wrapper driver 26.2.99)
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+01b0:fixme:system:NtUserSystemParametersInfo Unimplemented action: 59 (SPI_SETSTICKYKEYS)
+01b0:fixme:system:NtUserSystemParametersInfo Unimplemented action: 53 (SPI_SETTOGGLEKEYS)
+01b0:fixme:system:NtUserSystemParametersInfo Unimplemented action: 51 (SPI_SETFILTERKEYS)
+01b0:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+info:  Game: APlagueTaleInnocence_x64.exe
+info:  DXVK: v2.7.1-gplasync-arm64ec
+info:  Build: aarch64 clang 21.1.8
+info:  Found config env: dxgi.maxFrameRate = 30; d3d9.maxFrameRate = 30; dxvk.enableStarProfile = Auto; vegas.enableUpscaler = Auto
+info:  Effective configuration:
+info:    dxvk.enableStarProfile = Auto
+info:    vegas.enableUpscaler = Auto
+info:    d3d9.maxFrameRate = 30
+info:    dxgi.maxFrameRate = 30
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x6ffc137cc0
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_EXT_surface_maintenance1
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+ATTENTION: default value of option tu_override_uncached_as_cache_coherent overridden by environment.
+info:  Found device: Wrapper(Turnip Adreno (TM) 650) (Wrapper driver 26.2.99)
+err:   readMonitorEdidFromKey: Failed to get EDID reg key size
+err:   DXGI: Failed to parse display metadata + colorimetry info, using blank.
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_1
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Creating device:
+info:  Wrapper(Turnip Adreno (TM) 650):
+info:    Driver   : Wrapper driver 26.2.99
+info:  Queues:
+info:    Graphics : (0, 0)
+info:    Transfer : (0, 0)
+info:    Sparse   : (4294967295, 0)
+info:  Memory:
+info:    Heap 0: 4.0 GiB (DEVICE_LOCAL)
+info:    Budget: 4.36 GiB
+info:      Type  0: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT
+info:      Type  1: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT | HOST_CACHED
+info:      Type  2: DEVICE_LOCAL | HOST_VISIBLE | HOST_CACHED
+info:  Enabled extensions:
+info:    VK_EXT_attachment_feedback_loop_layout
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_graphics_pipeline_library
+info:    VK_EXT_multi_draw
+info:    VK_EXT_non_seamless_cube_map
+info:    VK_EXT_robustness2
+info:    VK_EXT_shader_module_identifier
+info:    VK_EXT_shader_stencil_export
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_load_store_op_none
+info:    VK_KHR_maintenance5
+info:    VK_KHR_maintenance6
+info:    VK_KHR_pipeline_library
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_swapchain_mutable_format
+info:    VK_KHR_win32_keyed_mutex
+info:  Enabled features:
+info:    depthBiasClamp                 : 1
+info:    depthBounds                    : 1
+info:    depthClamp                     : 1
+info:    drawIndirectFirstInstance      : 1
+info:    dualSrcBlend                   : 1
+info:    fillModeNonSolid               : 1
+info:    fragmentStoresAndAtomics       : 1
+info:    fullDrawIndexUint32            : 1
+info:    geometryShader                 : 1
+info:    imageCubeArray                 : 1
+info:    independentBlend               : 1
+info:    logicOp                        : 1
+info:    multiDrawIndirect              : 1
+info:    multiViewport                  : 1
+info:    occlusionQueryPrecise          : 1
+info:    pipelineStatisticsQuery        : 1
+info:    robustBufferAccess             : 1
+info:    sampleRateShading              : 1
+info:    samplerAnisotropy              : 1
+info:    shaderClipDistance             : 1
+info:    shaderCullDistance             : 1
+info:    shaderFloat64                  : 0
+info:    shaderImageGatherExtended      : 1
+info:    shaderInt16                    : 1
+info:    shaderInt64                    : 1
+info:    shaderSampledImageArrayDynamicIndexing : 1
+info:    sparseBinding                  : 0
+info:    sparseResidencyBuffer          : 0
+info:    sparseResidencyImage2D         : 0
+info:    sparseResidencyImage3D         : 0
+info:    sparseResidency2Samples        : 0
+info:    sparseResidency4Samples        : 0
+info:    sparseResidency8Samples        : 0
+info:    sparseResidency16Samples       : 0
+info:    sparseResidencyAliased         : 0
+info:    shaderResourceResidency        : 0
+info:    shaderResourceMinLod           : 1
+info:    tessellationShader             : 1
+info:    textureCompressionBC           : 1
+info:    variableMultisampleRate        : 1
+info:    vertexPipelineStoresAndAtomics : 1
+info:    wideLines                      : 0
+info:    shaderDrawParameters           : 1
+info:    storagePushConstant16          : 0
+info:    bufferDeviceAddress            : 1
+info:    descriptorIndexing             : 1
+info:    descriptorBindingSampledImageUpdateAfterBind : 1
+info:    descriptorBindingUpdateUnusedWhilePending : 1
+info:    descriptorBindingPartiallyBound : 1
+info:    drawIndirectCount              : 1
+info:    hostQueryReset                 : 1
+info:    runtimeDescriptorArray         : 1
+info:    samplerFilterMinmax            : 1
+info:    samplerMirrorClampToEdge       : 1
+info:    shaderInt8                     : 1
+info:    shaderOutputViewportIndex      : 1
+info:    shaderOutputLayer              : 1
+info:    timelineSemaphore              : 1
+info:    uniformBufferStandardLayout    : 1
+info:    vulkanMemoryModel              : 1
+info:    dynamicRendering               : 1
+info:    maintenance4                   : 1
+info:    robustImageAccess              : 0
+info:    pipelineCreationCacheControl   : 1
+info:    shaderDemoteToHelperInvocation : 1
+info:    shaderZeroInitializeWorkgroupMemory : 1
+info:    synchronization2               : 1
+info:  VK_EXT_attachment_feedback_loop_layout:
+info:    attachmentFeedbackLoopLayout   : 1
+info:  VK_EXT_conservative_rasterization:
+info:    extConservativeRasterization   : 0
+info:  VK_EXT_custom_border_color:
+info:    customBorderColors             : 1
+info:    customBorderColorWithoutFormat : 1
+info:  VK_EXT_depth_clip_enable:
+info:    depthClipEnable                : 1
+info:  VK_EXT_depth_bias_control:
+info:    depthBiasControl               : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation            : 0
+info:    depthBiasExact                 : 0
+info:  VK_EXT_descriptor_buffer:
+info:    descriptorBuffer               : 0
+info:  VK_EXT_extended_dynamic_state3:
+info:    extendedDynamicState3AlphaToCoverageEnable : 1
+info:    extendedDynamicState3DepthClipEnable : 1
+info:    extendedDynamicState3RasterizationSamples : 1
+info:    extendedDynamicState3SampleMask : 1
+info:    extendedDynamicState3LineRasterizationMode : 1
+info:  VK_EXT_fragment_shader_interlock:
+info:    fragmentShaderSampleInterlock  : 0
+info:    fragmentShaderPixelInterlock   : 0
+info:  VK_EXT_full_screen_exclusive:
+info:    extFullScreenExclusive         : 0
+info:  VK_EXT_graphics_pipeline_library:
+info:    graphicsPipelineLibrary        : 1
+info:  VK_EXT_hdr_metadata:
+info:    extHdrMetadata                 : 0
+info:  VK_EXT_line_rasterization:
+info:    rectangularLines               : 0
+info:    smoothLines                    : 0
+info:  VK_EXT_memory_budget:
+info:    extMemoryBudget                : 1
+info:  VK_EXT_memory_priority:
+info:    memoryPriority                 : 0
+info:  VK_EXT_multi_draw:
+info:    multiDraw                      : 1
+info:  VK_EXT_non_seamless_cube_map:
+info:    nonSeamlessCubeMap             : 1
+info:  VK_EXT_pageable_device_local_memory:
+info:    pageableDeviceLocalMemory      : 0
+info:  VK_EXT_robustness2:
+info:    robustBufferAccess2            : 1
+info:    robustImageAccess2             : 1
+info:    nullDescriptor                 : 1
+info:  VK_EXT_shader_module_identifier:
+info:    shaderModuleIdentifier         : 1
+info:  VK_EXT_shader_stencil_export:
+info:    extShaderStencilExport         : 1
+info:  VK_EXT_swapchain_colorspace:
+info:    extSwapchainColorSpace         : 0
+info:  VK_EXT_swapchain_maintenance1:
+info:    swapchainMaintenance1          : 1
+info:  VK_EXT_transform_feedback:
+info:    transformFeedback              : 1
+info:    geometryStreams                : 1
+info:  VK_EXT_vertex_attribute_divisor:
+info:    vertexAttributeInstanceRateDivisor : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32:
+info:    khrExternalMemoryWin32         : 1
+info:  VK_KHR_external_semaphore_win32:
+info:    khrExternalSemaphoreWin32      : 1
+info:  VK_KHR_load_store_op_none:
+info:    khrLoadStoreOpNone             : 1
+info:  VK_KHR_maintenance5:
+info:    maintenance5                   : 1
+info:  VK_KHR_maintenance6:
+info:    maintenance6                   : 1
+info:  VK_KHR_maintenance7:
+info:    maintenance7                   : 0
+info:  VK_KHR_pipeline_library:
+info:    khrPipelineLibrary             : 1
+info:  VK_KHR_present_id:
+info:    presentId                      : 1
+info:  VK_KHR_present_wait:
+info:    presentWait                    : 1
+info:  VK_KHR_swapchain:
+info:    khrSwapchain                   : 1
+info:  VK_KHR_swapchain_mutable_format:
+info:    khrSwapchainMutableFormat      : 1
+info:  VK_KHR_win32_keyed_mutex:
+info:    khrWin32KeyedMutex             : 1
+info:  VK_NV_descriptor_pool_overallocation:
+info:    descriptorPoolOverallocation   : 0
+info:  VK_NV_low_latency2:
+info:    nvLowLatency2                  : 0
+info:  VK_NV_raw_access_chains:
+info:    shaderRawAccessChains          : 0
+info:  VK_NVX_binary_import:
+info:    nvxBinaryImport                : 0
+info:  VK_NVX_image_view_handle:
+info:    nvxImageViewHandle             : 0
+info:  Memory type mask for buffer resources: 0x7, usage: 0x219ff
+info:  DXVK: Graphics pipeline libraries supported
+info:  D3D11InternalCreateDevice: Maximum supported feature level: D3D_FEATURE_LEVEL_11_1
+info:  D3D11InternalCreateDevice: Using feature level D3D_FEATURE_LEVEL_11_0
+info:  Creating device:
+info:  Wrapper(Turnip Adreno (TM) 650):
+info:    Driver   : Wrapper driver 26.2.99
+info:  Queues:
+info:    Graphics : (0, 0)
+info:    Transfer : (0, 0)
+info:    Sparse   : (4294967295, 0)
+info:  Memory:
+info:    Heap 0: 4.0 GiB (DEVICE_LOCAL)
+info:    Budget: 4.36 GiB
+info:      Type  0: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT
+info:      Type  1: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT | HOST_CACHED
+info:      Type  2: DEVICE_LOCAL | HOST_VISIBLE | HOST_CACHED
+info:  Enabled extensions:
+info:    VK_EXT_attachment_feedback_loop_layout
+info:    VK_EXT_custom_border_color
+info:    VK_EXT_depth_clip_enable
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_graphics_pipeline_library
+info:    VK_EXT_multi_draw
+info:    VK_EXT_non_seamless_cube_map
+info:    VK_EXT_robustness2
+info:    VK_EXT_shader_module_identifier
+info:    VK_EXT_shader_stencil_export
+info:    VK_EXT_swapchain_maintenance1
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_external_memory_win32
+info:    VK_KHR_external_semaphore_win32
+info:    VK_KHR_load_store_op_none
+info:    VK_KHR_maintenance5
+info:    VK_KHR_maintenance6
+info:    VK_KHR_pipeline_library
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_swapchain
+info:    VK_KHR_swapchain_mutable_format
+info:    VK_KHR_win32_keyed_mutex
+info:  Enabled features:
+info:    depthBiasClamp                 : 1
+info:    depthBounds                    : 1
+info:    depthClamp                     : 1
+info:    drawIndirectFirstInstance      : 1
+info:    dualSrcBlend                   : 1
+info:    fillModeNonSolid               : 1
+info:    fragmentStoresAndAtomics       : 1
+info:    fullDrawIndexUint32            : 1
+info:    geometryShader                 : 1
+info:    imageCubeArray                 : 1
+info:    independentBlend               : 1
+info:    logicOp                        : 1
+info:    multiDrawIndirect              : 1
+info:    multiViewport                  : 1
+info:    occlusionQueryPrecise          : 1
+info:    pipelineStatisticsQuery        : 1
+info:    robustBufferAccess             : 1
+info:    sampleRateShading              : 1
+info:    samplerAnisotropy              : 1
+info:    shaderClipDistance             : 1
+info:    shaderCullDistance             : 1
+info:    shaderFloat64                  : 0
+info:    shaderImageGatherExtended      : 1
+info:    shaderInt16                    : 1
+info:    shaderInt64                    : 1
+info:    shaderSampledImageArrayDynamicIndexing : 1
+info:    sparseBinding                  : 0
+info:    sparseResidencyBuffer          : 0
+info:    sparseResidencyImage2D         : 0
+info:    sparseResidencyImage3D         : 0
+info:    sparseResidency2Samples        : 0
+info:    sparseResidency4Samples        : 0
+info:    sparseResidency8Samples        : 0
+info:    sparseResidency16Samples       : 0
+info:    sparseResidencyAliased         : 0
+info:    shaderResourceResidency        : 0
+info:    shaderResourceMinLod           : 1
+info:    tessellationShader             : 1
+info:    textureCompressionBC           : 1
+info:    variableMultisampleRate        : 1
+info:    vertexPipelineStoresAndAtomics : 1
+info:    wideLines                      : 0
+info:    shaderDrawParameters           : 1
+info:    storagePushConstant16          : 0
+info:    bufferDeviceAddress            : 1
+info:    descriptorIndexing             : 1
+info:    descriptorBindingSampledImageUpdateAfterBind : 1
+info:    descriptorBindingUpdateUnusedWhilePending : 1
+info:    descriptorBindingPartiallyBound : 1
+info:    drawIndirectCount              : 1
+info:    hostQueryReset                 : 1
+info:    runtimeDescriptorArray         : 1
+info:    samplerFilterMinmax            : 1
+info:    samplerMirrorClampToEdge       : 1
+info:    shaderInt8                     : 1
+info:    shaderOutputViewportIndex      : 1
+info:    shaderOutputLayer              : 1
+info:    timelineSemaphore              : 1
+info:    uniformBufferStandardLayout    : 1
+info:    vulkanMemoryModel              : 1
+info:    dynamicRendering               : 1
+info:    maintenance4                   : 1
+info:    robustImageAccess              : 0
+info:    pipelineCreationCacheControl   : 1
+info:    shaderDemoteToHelperInvocation : 1
+info:    shaderZeroInitializeWorkgroupMemory : 1
+info:    synchronization2               : 1
+info:  VK_EXT_attachment_feedback_loop_layout:
+info:    attachmentFeedbackLoopLayout   : 1
+info:  VK_EXT_conservative_rasterization:
+info:    extConservativeRasterization   : 0
+info:  VK_EXT_custom_border_color:
+info:    customBorderColors             : 1
+info:    customBorderColorWithoutFormat : 1
+info:  VK_EXT_depth_clip_enable:
+info:    depthClipEnable                : 1
+info:  VK_EXT_depth_bias_control:
+info:    depthBiasControl               : 0
+info:    leastRepresentableValueForceUnormRepresentation : 0
+info:    floatRepresentation            : 0
+info:    depthBiasExact                 : 0
+info:  VK_EXT_descriptor_buffer:
+info:    descriptorBuffer               : 0
+info:  VK_EXT_extended_dynamic_state3:
+info:    extendedDynamicState3AlphaToCoverageEnable : 1
+info:    extendedDynamicState3DepthClipEnable : 1
+info:    extendedDynamicState3RasterizationSamples : 1
+info:    extendedDynamicState3SampleMask : 1
+info:    extendedDynamicState3LineRasterizationMode : 1
+info:  VK_EXT_fragment_shader_interlock:
+info:    fragmentShaderSampleInterlock  : 0
+info:    fragmentShaderPixelInterlock   : 0
+info:  VK_EXT_full_screen_exclusive:
+info:    extFullScreenExclusive         : 0
+info:  VK_EXT_graphics_pipeline_library:
+info:    graphicsPipelineLibrary        : 1
+info:  VK_EXT_hdr_metadata:
+info:    extHdrMetadata                 : 0
+info:  VK_EXT_line_rasterization:
+info:    rectangularLines               : 0
+info:    smoothLines                    : 0
+info:  VK_EXT_memory_budget:
+info:    extMemoryBudget                : 1
+info:  VK_EXT_memory_priority:
+info:    memoryPriority                 : 0
+info:  VK_EXT_multi_draw:
+info:    multiDraw                      : 1
+info:  VK_EXT_non_seamless_cube_map:
+info:    nonSeamlessCubeMap             : 1
+info:  VK_EXT_pageable_device_local_memory:
+info:    pageableDeviceLocalMemory      : 0
+info:  VK_EXT_robustness2:
+info:    robustBufferAccess2            : 1
+info:    robustImageAccess2             : 1
+info:    nullDescriptor                 : 1
+info:  VK_EXT_shader_module_identifier:
+info:    shaderModuleIdentifier         : 1
+info:  VK_EXT_shader_stencil_export:
+info:    extShaderStencilExport         : 1
+info:  VK_EXT_swapchain_colorspace:
+info:    extSwapchainColorSpace         : 0
+info:  VK_EXT_swapchain_maintenance1:
+info:    swapchainMaintenance1          : 1
+info:  VK_EXT_transform_feedback:
+info:    transformFeedback              : 1
+info:    geometryStreams                : 1
+info:  VK_EXT_vertex_attribute_divisor:
+info:    vertexAttributeInstanceRateDivisor : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_external_memory_win32:
+info:    khrExternalMemoryWin32         : 1
+info:  VK_KHR_external_semaphore_win32:
+info:    khrExternalSemaphoreWin32      : 1
+info:  VK_KHR_load_store_op_none:
+info:    khrLoadStoreOpNone             : 1
+info:  VK_KHR_maintenance5:
+info:    maintenance5                   : 1
+info:  VK_KHR_maintenance6:
+info:    maintenance6                   : 1
+info:  VK_KHR_maintenance7:
+info:    maintenance7                   : 0
+info:  VK_KHR_pipeline_library:
+info:    khrPipelineLibrary             : 1
+info:  VK_KHR_present_id:
+info:    presentId                      : 1
+info:  VK_KHR_present_wait:
+info:    presentWait                    : 1
+info:  VK_KHR_swapchain:
+info:    khrSwapchain                   : 1
+info:  VK_KHR_swapchain_mutable_format:
+info:    khrSwapchainMutableFormat      : 1
+info:  VK_KHR_win32_keyed_mutex:
+info:    khrWin32KeyedMutex             : 1
+info:  VK_NV_descriptor_pool_overallocation:
+info:    descriptorPoolOverallocation   : 0
+info:  VK_NV_low_latency2:
+info:    nvLowLatency2                  : 0
+info:  VK_NV_raw_access_chains:
+info:    shaderRawAccessChains          : 0
+info:  VK_NVX_binary_import:
+info:    nvxBinaryImport                : 0
+info:  VK_NVX_image_view_handle:
+info:    nvxImageViewHandle             : 0
+info:  Memory type mask for buffer resources: 0x7, usage: 0x219ff
+info:  DXVK: Graphics pipeline libraries supported
+warn:  D3D11DXGIDevice::QueryInterface: Unknown interface query
+warn:  0ec870a6-5d7e-4c22-8cfc-5baae07616ed
+warn:  DXGI: MakeWindowAssociation: Ignoring flags
+info:  Presenter: Actual swapchain properties:
+info:    Format:       VK_FORMAT_B8G8R8A8_UNORM
+info:    Color space:  VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+info:    Present mode: VK_PRESENT_MODE_IMMEDIATE_KHR (dynamic: yes)
+info:    Buffer size:  960x544
+info:    Image count:  4
+info:  DXVK: Using 8 compiler threads
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000710790, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+info:  Setting timer interval to 1000 us
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+0154:fixme:oleacc:find_class_data unhandled window class: L"ListBox"
+0154:fixme:oleacc:find_class_data unhandled window class: L"ListBox"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 00000000007205C0, 10002, 000000000142F980: stub
+01b0:fixme:mmdevapi:control_RegisterAudioSessionNotification (00000000099D28D0)->(000000000B3D7D08) - stub
+028c:fixme:avrt:AvSetMmThreadCharacteristicsW (L"Audio",000000000D3BFE64): stub
+028c:fixme:avrt:AvSetMmThreadPriority (0000000012345678)->(1) stub
+01b0:fixme:thread:NtSetInformationThread ThreadIdealProcessor stub!
+01b0:fixme:thread:NtSetInformationThread ThreadIdealProcessor stub!
+01b0:fixme:mmdevapi:control_RegisterAudioSessionNotification (00000000099D2B10)->(000000000B3D7D88) - stub
+02ac:fixme:avrt:AvSetMmThreadCharacteristicsW (L"Audio",000000000D4CFE64): stub
+02ac:fixme:avrt:AvSetMmThreadPriority (0000000012345678)->(1) stub
+01b0:fixme:thread:NtSetInformationThread ThreadIdealProcessor stub!
+0230:fixme:bcrypt:BCryptCreateHash ignoring object buffer
+0230:fixme:bcrypt:BCryptGenerateSymmetricKey ignoring object buffer
+cbc.c:72: void nettle_cbc_decrypt(const void *, nettle_cipher_func *, size_t, uint8_t *, size_t, uint8_t *, const uint8_t *): assertion "!(length % block_size)" failed
+0230:err:seh:call_seh_handlers invalid frame 1036ff5f0 (00000000095B2000-00000000096C0000)
+0230:err:seh:NtRaiseException Exception frame is not in stack limits => unable to dispatch exception.
+0154:fixme:oleacc:Window_get_accState (0000000000717210)->(000000000142FD60 {VT_I4: 0} 000000000142FD48)
+00f4:err:module:import_dll Loading library xinput1_3.dll (which is needed by L"C:\\windows\\system32\\joy.cpl") failed (error c000007b).
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 00000000007026A0, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32768"
+0154:fixme:oleacc:find_class_data unhandled window class: L"Button"
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 00000000007205C0, 10002, 000000000142F980: stub
+0154:fixme:oleacc:find_class_data unhandled window class: L"#32770"
+_r_debug not found in ld.so
+02f8:fixme:fsync:do_fsync futexes not supported on this platform.
+0154:fixme:uiautomation:msaa_provider_GetPatternProvider Unimplemented patternId 10002
+0154:fixme:uiautomation:base_hwnd_provider_GetPatternProvider 0000000000710790, 10002, 000000000142F980: stub
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).
+X connection to :0 broken (explicit kill or server shutdown).

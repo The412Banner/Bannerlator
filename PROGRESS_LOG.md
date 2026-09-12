@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🎞️ **MERGED to main: PR #512 (clintOnSky) — LSFG Native capture resolution + Vulkan 1.1 driver compat (experimental)** (`--no-ff`, merge `22f7d121`)
+> - User go ("let's merge it to main"). Two commits: `28ae0197` (the feature) + `ea93c2e3` (fixes for all 15 points of our review `5178315591`; re-reviewed, all addressed, nothing new to fix). CI-green on `ea93c2e3` (run 34653579121, all 3 flavors).
+> - What lands, behind `FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED` (on; defaults = 3.1.0 behaviour): per-container **Capture resolution** (Panel / Game / a height) — the LSFG chain and the post-effect chain run on a smaller composite ring, blitted up (LINEAR when the format supports it); **LSFG on Vulkan 1.1 drivers (compat)** — lowers the cached SPIR-V 1.6 to 1.4/1.5 for a stock driver offering spirv_1_4 + float_controls + vulkan_memory_model, only in sessions that run LSFG Native. The frame-gen "couldn't start" notice now also covers a chain build rejected after the engine came up (both engines).
+> - Untouched: VRR/Auto screen fit, over-limit warning + "Set Max FPS", FPS limiter locks, present mode (no diff lines). Merge file list = the PR's 22 files; the only non-PR delta is main's XMB one-word `graphicsProbeMutex` private→internal in `ContainerDetailScreen.kt`.
+> - Device status: contributor's Adreno 710 only; not yet run on the Pocket FIT. Known cosmetic leftover: the container editor still offers heights the renderer clamps (no drawer chip highlighted then).
+> - Next: fix the arm-time chain double build the contributor found (LSFG config applied before the engine exists → first build at flow 1.00, rebuilt next frame; ~4 s per build on the stock driver).
+
 ## 2026-09-11 — ✅🔧 **MERGED to main: XMB r5 fixes** (`feat/games-xmb-view`, `--no-ff`)
 > - User go ("yes merge it to main"). Lands the three fixes from the device test: text rows open with the cursor at the end, no stale "✓ Saved", Game Details / Properties open on safe rows.
 > - Code identical to r5 (CI-green run 34668206430, commit `3ea48319`). No versionCode change.

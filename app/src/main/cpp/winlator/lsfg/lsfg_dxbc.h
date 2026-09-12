@@ -32,6 +32,8 @@ namespace lsfg {
 // into a dense 0..n range in encounter order. Returns false (leaving outWords
 // empty) on any malformed input — DXVK's compiler throws, and everything is
 // caught here.
+// Emits DXVK's native SPIR-V 1.6; lowering for a Vulkan 1.1/1.2 device happens
+// at load time (lsfg_dll.h downgradeSpirv).
 bool translateDxbc(const uint8_t* bytecode, uint32_t size, std::vector<uint32_t>& outWords);
 
 } // namespace lsfg

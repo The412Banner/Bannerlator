@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include "lsfg_dll.h"
 #include "lsfg_vkd.h"
 
 namespace lsfg {
@@ -20,7 +21,10 @@ class Device;
 class LsfgShaders {
 public:
     LsfgShaders() = default;
-    LsfgShaders(const Device& device, const std::string& cache_path);
+    // `spirv_target` is the highest SPIR-V version the device accepts (see
+    // lsfg_probe.h); cached modules above it are lowered before creation.
+    LsfgShaders(const Device& device, const std::string& cache_path,
+                uint32_t spirv_target = kSpirv16);
     ~LsfgShaders();
 
     LsfgShaders(const LsfgShaders&) = delete;

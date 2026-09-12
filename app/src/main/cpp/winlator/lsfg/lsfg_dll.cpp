@@ -614,4 +614,89 @@ DllStatus loadModules(const std::string& cachePath, ModuleSet& outSet) {
     return status;
 }
 
+// ---- SPIR-V version lowering (Vulkan 1.1/1.2 compat) ----------------------
+
+namespace {
+
+constexpr uint32_t kSpirvOpExtension    = 10u;
+constexpr uint32_t kSpirvOpExtInstImport= 11u;
+constexpr uint32_t kSpirvOpMemoryModel  = 14u;
+constexpr uint32_t kSpirvOpCapability   = 17u;
+
+// Capabilities that are core in the version the translator emits but not in
+// the versions we lower to.
+constexpr uint32_t kCapVulkanMemoryModel            = 5345u;  // core from 1.5
+constexpr uint32_t kCapVulkanMemoryModelDeviceScope = 5346u;  // core from 1.5
+constexpr uint32_t kCapDemoteToHelperInvocation     = 5379u;  // core from 1.6
+
+std::vector<uint32_t> encodeOpExtension(const char* name) {
+    const size_t len = strlen(name) + 1;                 // incl. NUL
+    const size_t strWords = (len + 3) / 4;
+    std::vector<uint32_t> ins(1 + strWords, 0u);
+    ins[0] = ((uint32_t)(1 + strWords) << kSpirvWordCountShift) | kSpirvOpExtension;
+    memcpy(&ins[1], name, len);
+    return ins;
+}
+
+bool hasOpExtension(const std::vector<uint32_t>& w, const char* name) {
+    size_t off = kSpirvHeaderWords;
+    while (off < w.size()) {
+        const uint32_t length = w[off] >> kSpirvWordCountShift;
+        const uint32_t opcode = w[off] & kSpirvOpcodeMask;
+        if (length == 0 || off + length > w.size()) return false;
+        if (opcode == kSpirvOpFunction || opcode == kSpirvOpMemoryModel) break;
+        if (opcode == kSpirvOpExtension && length >= 2) {
+            const char* s = reinterpret_cast<const char*>(&w[off + 1]);
+            if (strncmp(s, name, (length - 1) * 4) == 0) return true;
+        }
+        off += length;
+    }
+    return false;
+}
+
+} // namespace
+
+bool downgradeSpirv(std::vector<uint32_t>& w, uint32_t targetVersion) {
+    if (w.size() < kSpirvHeaderWords || w[0] != kSpirvMagic) return false;
+    if (targetVersion < kSpirv14) return false;
+    if (w[1] <= targetVersion) return true;             // already low enough
+
+    // Walk the preamble first and only touch the module once it is known to
+    // be lowerable: note which extension-gated capabilities are declared and
+    // where the capability block ends (OpExtension must follow every
+    // OpCapability and precede OpExtInstImport / OpMemoryModel).
+    bool needMemoryModel = false;
+    size_t insertAt = kSpirvHeaderWords;
+    size_t off = kSpirvHeaderWords;
+    while (off < w.size()) {
+        const uint32_t length = w[off] >> kSpirvWordCountShift;
+        const uint32_t opcode = w[off] & kSpirvOpcodeMask;
+        if (length == 0 || off + length > w.size()) return false;
+        if (opcode == kSpirvOpCapability && length >= 2) {
+            const uint32_t cap = w[off + 1];
+            if (cap == kCapVulkanMemoryModel || cap == kCapVulkanMemoryModelDeviceScope) needMemoryModel = true;
+            // Core only in 1.6, and VK_EXT_shader_demote_to_helper_invocation
+            // is never enabled on the compat path: refuse rather than hand the
+            // driver a module that is not legal at the lowered version.
+            if (cap == kCapDemoteToHelperInvocation) return false;
+            insertAt = off + length;
+        } else if (opcode == kSpirvOpExtension) {
+            insertAt = off + length;
+        } else if (opcode == kSpirvOpExtInstImport || opcode == kSpirvOpMemoryModel
+                   || opcode == kSpirvOpFunction) {
+            break;
+        }
+        off += length;
+    }
+
+    // 1.5 has the memory model as core; only 1.4 needs it declared.
+    if (targetVersion < kSpirv15 && needMemoryModel
+        && !hasOpExtension(w, "SPV_KHR_vulkan_memory_model")) {
+        const auto e = encodeOpExtension("SPV_KHR_vulkan_memory_model");
+        w.insert(w.begin() + (std::ptrdiff_t)insertAt, e.begin(), e.end());
+    }
+    w[1] = targetVersion;
+    return true;
+}
+
 } // namespace lsfg

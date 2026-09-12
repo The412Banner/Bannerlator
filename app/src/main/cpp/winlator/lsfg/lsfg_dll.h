@@ -47,6 +47,13 @@ enum class DllStatus {
     CacheUnusable        // cache could not be written or read back
 };
 
+// SPIR-V version words. The translator emits 1.6; a Vulkan 1.1 device takes
+// 1.4 (via VK_KHR_spirv_1_4) and a 1.2 device 1.5. One definition for the
+// probe, the engine and the shader loader.
+constexpr uint32_t kSpirv14 = 0x00010400u;
+constexpr uint32_t kSpirv15 = 0x00010500u;
+constexpr uint32_t kSpirv16 = 0x00010600u;
+
 enum class Variant {
     None = 0,
     SpirvFp16,      // precompiled fp16 blobs at base+49
@@ -108,5 +115,20 @@ DllStatus loadModules(const std::string& cachePath, ModuleSet& outSet);
 
 // Which producer built an existing cache, without loading the modules.
 DllStatus cacheVariant(const std::string& cachePath, Variant& outVariant);
+
+// Experimental Vulkan 1.1 / 1.2 compat: lower a DXBC-translated module's
+// declared SPIR-V version to `targetVersion` (kSpirv14 or kSpirv15). Below 1.5
+// the Vulkan memory model is not core, so SPV_KHR_vulkan_memory_model is
+// declared for it (the device side enables VK_KHR_vulkan_memory_model). The
+// cache is built without a device in hand, always at the translator's native
+// 1.6, so this runs at load time against whatever the device can take. A
+// module already at or below the target is left untouched. Returns false,
+// leaving the module untouched, for a malformed module, a target below 1.4, or
+// a module declaring DemoteToHelperInvocation: that capability is core only in
+// 1.6 and its extension is never enabled on the compat path, so such a module
+// cannot be made legal here (DXVK emits it for pixel-shader discard only, so
+// the 25 compute shaders never carry it). Whether the device then accepts the
+// result is vkCreateShaderModule's / vkCreateComputePipelines' verdict.
+bool downgradeSpirv(std::vector<uint32_t>& words, uint32_t targetVersion);
 
 } // namespace lsfg

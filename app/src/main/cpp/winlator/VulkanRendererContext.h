@@ -84,6 +84,7 @@ struct VkTable {
     PFN_vkCmdSetScissor CmdSetScissor;
     PFN_vkCmdPipelineBarrier CmdPipelineBarrier;
     PFN_vkCmdCopyImage CmdCopyImage;
+    PFN_vkCmdBlitImage CmdBlitImage;   // frame-gen capture resolution: composite -> swapchain upscale
     // Compute: the native LSFG chain is 25 compute dispatches.
     PFN_vkCmdDispatch CmdDispatch;
     PFN_vkCreateComputePipelines CreateComputePipelines;
@@ -216,7 +217,11 @@ struct DebandPushConstants {               // 28 bytes
 
 class VulkanRendererContext {
 public:
-    VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr);
+    // `lsfgVk11Compat` (experimental) lets the LSFG capability probe accept a
+    // Vulkan 1.1/1.2 device that offers the extensions the chain needs; it has
+    // to be known before vkCreateDevice, hence a constructor argument.
+    VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr,
+                          bool lsfgVk11Compat = false);
     ~VulkanRendererContext();
 
     void onSurfaceResized(int width, int height);
@@ -317,7 +322,13 @@ public:
     void setLsfgCachePath(const char* path);
     // Flow scale (0.25-1.0) and the panel's real refresh rate. The pacer never
     // generates above the refresh rate.
-    void setFrameGenTuning(float flowScale, float refreshHz);
+    // Experimental: `captureHeight` sizes the composite ring the chain runs on,
+    // the width following the swapchain's aspect, so a phone GPU generates at
+    // game-like resolution and the result is blitted up. 0 = panel;
+    // kFgCaptureGame = the X screen's height (containerHeight), which already
+    // carries the per-game override and render scale; otherwise a pixel height.
+    static constexpr int32_t kFgCaptureGame = -1;
+    void setFrameGenTuning(float flowScale, float refreshHz, int32_t captureHeight = 0);
     // Which native engine generates: 0 = LSFG (needs the cache built from the
     // user's Lossless.dll), 1 = win-fg (our own chain, embedded, needs nothing).
     // Switching drops the other engine so only one ever holds GPU resources.
@@ -359,6 +370,7 @@ private:
     // the renderer thread (setClipRegion), read from the render thread (recordCmdBuf) -> atomic.
     std::atomic<int> clipRegionX{0}, clipRegionY{0}, clipRegionW{0}, clipRegionH{0};
     void* adrenotoolsHandle = nullptr;
+    bool  lsfgVk11Compat_   = false;   // see the constructor
     int filterMode = 0;
     bool swapRB = false;
     float maxAnisotropy           = 1.0f;
@@ -514,6 +526,27 @@ private:
     std::atomic<float> fgFlowScale_{1.0f};
     std::atomic<float> fgRefreshHz_{0.0f};
     std::atomic<bool>  fgConfigDirty_{true};
+    // Experimental (see setFrameGenTuning): capture height of the composite
+    // ring. 0 = panel resolution, kFgCaptureGame = the X screen's height.
+    std::atomic<int32_t> fgCaptureHeight_{0};
+    // Extent the composite ring should have for the current swapchain and
+    // capture height (width follows the swapchain aspect, both even).
+    void compositeExtentFor(uint32_t& w, uint32_t& h) const;
+    // The extent the scene is rendered at this frame: the composite ring while
+    // frame gen runs on a ring smaller than the swapchain (experimental capture
+    // resolution), otherwise the swapchain. Every full-target pass (the effect
+    // chain, the spatial upscalers, the render-scale downscale) sizes itself by
+    // this, so those keep working below panel resolution and their
+    // intermediates shrink with the ring.
+    VkExtent2D renderExtent() const {
+        if (compositeActive() && (compositeW != swapchainExt.width || compositeH != swapchainExt.height))
+            return VkExtent2D{compositeW, compositeH};
+        return swapchainExt;
+    }
+    // Copy (same extent) or blit (composite smaller than the swapchain) a
+    // composite-ring image, already in TRANSFER_SRC, into a swapchain image
+    // already in TRANSFER_DST.
+    void recordCompositeToSwapchainTransfer(VkCommandBuffer cb, VkImage src, uint32_t imgIdx);
 
     bool  createCompositeRenderPass();
     bool  ensureCompositeTargets(uint32_t w, uint32_t h, uint32_t count);

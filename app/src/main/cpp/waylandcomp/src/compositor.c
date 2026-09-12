@@ -53,6 +53,9 @@ static int log_budget(void) {
 #ifndef BTN_LEFT
 #define BTN_LEFT 0x110  /* linux/input-event-codes.h */
 #endif
+#ifndef BTN_RIGHT
+#define BTN_RIGHT 0x111
+#endif
 
 /* Java sends pointer coordinates in this space, covering the whole output surface. */
 #define INPUT_SPACE_W 1920
@@ -1131,21 +1134,17 @@ static void keyboard_focus(struct wl_resource *target) {
     wl_array_release(&keys);
 }
 
-static void deliver_pointer(const struct input_msg *m) {
-    int action = m->p1, w, h;
+/* One pointer event at scene coordinates: motion, then an optional button change
+ * (button 0 = none). */
+static void pointer_event(double x, double y, uint32_t button, int pressed) {
     struct surface *target;
-    double x, y;
-
-    scene_size(&w, &h);
-    x = (double)m->p2 * w / INPUT_SPACE_W;
-    y = (double)m->p3 * h / INPUT_SPACE_H;
 
     if (g_desktop) {
         target = g_desktop;
     } else {
         target = g_grab ? g_grab : toplevel_at(x, y);
-        if (action == 0) { g_grab = target; g_key_target = target; }
-        if (action == 2) g_grab = NULL;
+        if (button && pressed) { g_grab = target; g_key_target = target; }
+        if (button && !pressed) g_grab = NULL;
     }
     if (!target) return;
 
@@ -1158,18 +1157,28 @@ static void deliver_pointer(const struct input_msg *m) {
 
     pointer_focus(target->resource, fx, fy);
     wl_pointer_send_motion(sp->ptr, t, fx, fy);
-    if (action == 0)
-        wl_pointer_send_button(sp->ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
-                               WL_POINTER_BUTTON_STATE_PRESSED);
-    else if (action == 2)
-        wl_pointer_send_button(sp->ptr, wl_display_next_serial(g_display), t, BTN_LEFT,
-                               WL_POINTER_BUTTON_STATE_RELEASED);
+    if (button)
+        wl_pointer_send_button(sp->ptr, wl_display_next_serial(g_display), t, button,
+                               pressed ? WL_POINTER_BUTTON_STATE_PRESSED : WL_POINTER_BUTTON_STATE_RELEASED);
     if (wl_resource_get_version(sp->ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
         wl_pointer_send_frame(sp->ptr);
     wl_display_flush_clients(g_display);
 }
 
+/* Java touch events arrive in INPUT_SPACE over the whole output: action 0=press, 1=move, 2=release. */
+static void deliver_pointer(const struct input_msg *m) {
+    int w, h;
+    scene_size(&w, &h);
+    pointer_event((double)m->p2 * w / INPUT_SPACE_W, (double)m->p3 * h / INPUT_SPACE_H,
+                  m->p1 == 1 ? 0 : BTN_LEFT, m->p1 == 0);
+}
+
+static void key_event(uint32_t evdev, int pressed);
 static void deliver_key(const struct input_msg *m) {
+    key_event((uint32_t)m->p1, m->p2);
+}
+
+static void key_event(uint32_t evdev, int pressed) {
     struct surface *target = g_desktop ? g_desktop : g_key_target;
     if (!target) {
         struct surface *s;
@@ -1179,8 +1188,8 @@ static void deliver_key(const struct input_msg *m) {
     struct seat_keyboard *sk = keyboard_for(wl_resource_get_client(target->resource));
     if (!sk) return;
     keyboard_focus(target->resource);
-    wl_keyboard_send_key(sk->kb, wl_display_next_serial(g_display), now_ms(), (uint32_t)m->p1,
-                         m->p2 ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);
+    wl_keyboard_send_key(sk->kb, wl_display_next_serial(g_display), now_ms(), evdev,
+                         pressed ? WL_KEYBOARD_KEY_STATE_PRESSED : WL_KEYBOARD_KEY_STATE_RELEASED);
     wl_display_flush_clients(g_display);
 }
 
@@ -1209,6 +1218,78 @@ void banner_wayland_send_key(int evdev, int state) {
     struct input_msg m = { 1, evdev, state, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
+}
+
+/* ------------------------------------------------------------------ test input
+ * $XDG_RUNTIME_DIR/test-input is a FIFO for scripted testing from a root shell, in scene
+ * (desktop) coordinates: "move X Y", "click X Y", "rclick X Y", "dclick X Y", "down X Y",
+ * "up X Y", "rdown X Y", "rup X Y", "key CODE" (evdev), "keydown CODE", "keyup CODE".
+ * It lives in the app's private directory, so only the app and root can reach it. */
+
+static char g_test_buf[512];
+static size_t g_test_len;
+
+static void test_input_line(const char *line) {
+    double x, y;
+    unsigned code;
+    char cmd[16];
+    int n = sscanf(line, "%15s %lf %lf", cmd, &x, &y);
+
+    if (n < 2) return;
+    WLOGI("test input: %s", line);
+    if (!strcmp(cmd, "key") || !strcmp(cmd, "keydown") || !strcmp(cmd, "keyup")) {
+        code = (unsigned)x;
+        if (strcmp(cmd, "keyup")) key_event(code, 1);
+        if (strcmp(cmd, "keydown")) key_event(code, 0);
+        return;
+    }
+    if (n < 3) return;
+    if (!strcmp(cmd, "move")) pointer_event(x, y, 0, 0);
+    else if (!strcmp(cmd, "down")) pointer_event(x, y, BTN_LEFT, 1);
+    else if (!strcmp(cmd, "up")) pointer_event(x, y, BTN_LEFT, 0);
+    else if (!strcmp(cmd, "rdown")) pointer_event(x, y, BTN_RIGHT, 1);
+    else if (!strcmp(cmd, "rup")) pointer_event(x, y, BTN_RIGHT, 0);
+    else if (!strcmp(cmd, "click") || !strcmp(cmd, "rclick") || !strcmp(cmd, "dclick")) {
+        uint32_t button = cmd[0] == 'r' ? BTN_RIGHT : BTN_LEFT;
+        int times = cmd[0] == 'd' ? 2 : 1;
+        pointer_event(x, y, 0, 0);
+        for (int i = 0; i < times; i++) {
+            pointer_event(x, y, button, 1);
+            pointer_event(x, y, button, 0);
+        }
+    }
+}
+
+static int on_test_input(int fd, uint32_t mask, void *data) {
+    ssize_t r;
+    while ((r = read(fd, g_test_buf + g_test_len, sizeof(g_test_buf) - 1 - g_test_len)) > 0) {
+        char *start = g_test_buf, *nl;
+        g_test_len += (size_t)r;
+        g_test_buf[g_test_len] = 0;
+        while ((nl = strchr(start, '\n'))) {
+            *nl = 0;
+            test_input_line(start);
+            start = nl + 1;
+        }
+        g_test_len = strlen(start);
+        memmove(g_test_buf, start, g_test_len);
+        if (g_test_len >= sizeof(g_test_buf) - 1) g_test_len = 0; /* overlong line: drop */
+    }
+    return 0;
+}
+
+static void start_test_input(struct wl_event_loop *loop) {
+    const char *rt = getenv("XDG_RUNTIME_DIR");
+    char path[512];
+    int fd;
+
+    if (!rt || !*rt) return;
+    snprintf(path, sizeof(path), "%s/test-input", rt);
+    unlink(path);
+    if (mkfifo(path, 0600) != 0) return;
+    /* O_RDWR keeps a writer open ourselves, so a closing test shell never leaves us at EOF. */
+    if ((fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC)) < 0) return;
+    wl_event_loop_add_fd(loop, fd, WL_EVENT_READABLE, on_test_input, NULL);
 }
 
 /* ------------------------------------------------------------------ entry
@@ -1265,6 +1346,7 @@ int banner_wayland_run(void) {
     } else {
         WLOGE("input pipe creation failed");
     }
+    start_test_input(wl_display_get_event_loop(display));
 
     wl_display_run(display); /* blocks, dispatches the event loop */
 

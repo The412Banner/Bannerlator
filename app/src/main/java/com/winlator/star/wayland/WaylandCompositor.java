@@ -86,6 +86,10 @@ public final class WaylandCompositor {
      *  once per tick, so games run unthrottled and the screen shows their latest frame. */
     public static native void nativeVsync(long frameTimeNanos);
 
+    /** Shortcut launches: don't draw explorer's windows (desktop, taskbar, Start menu), matching the
+     *  X11 renderer's unviewable "explorer.exe". Set before the compositor starts. */
+    public static native void nativeSetHideShell(boolean hide);
+
     /** The in-game FPS limiter: frames per second, 0 = unlimited. Paces when replaced buffers go
      *  back to the game, like the X11 IdleNotify pacer, so the game itself slows to the cap. */
     public static native void nativeSetFpsLimit(int fps);

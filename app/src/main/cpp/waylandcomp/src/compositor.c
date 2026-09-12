@@ -249,6 +249,10 @@ static int g_fallback_armed;
  * read here. Like the X11 path, which delays the "your buffer is free" notice, the limit paces
  * when a replaced buffer is released to its client, so the game itself slows to the cap. */
 volatile int g_fps_limit;
+
+/* Shortcut launches: explorer's windows (the desktop, taskbar, Start menu) aren't drawn, matching
+ * the X11 renderer's unviewable "explorer.exe". They still exist for input routing. */
+volatile int g_hide_shell;
 struct pending_release {
     struct wl_resource *buffer;
     struct wl_listener destroy;
@@ -1299,9 +1303,10 @@ static void render_scene(void) {
         g_scene_w = w;
         g_scene_h = h;
     }
-    if (g_desktop) add_tree(&dl, g_desktop, 0, 0, 0);
+    if (g_desktop && !g_hide_shell) add_tree(&dl, g_desktop, 0, 0, 0);
     wl_list_for_each(s, &g_toplevels, toplevel_link) {
         if (g_desktop && !s->placed) continue; /* wait for its position */
+        if (g_hide_shell && !strcmp(client_name(wl_resource_get_client(s->resource)), "explorer.exe")) continue;
         add_tree(&dl, s, s->placed ? s->x : 0, s->placed ? s->y : 0, 0);
     }
 

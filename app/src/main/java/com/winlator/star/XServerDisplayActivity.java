@@ -7680,6 +7680,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         if (shortcut != null) {
             renderer.setUnviewableWMClasses("explorer.exe");
+            // Wayland: the compositor skips explorer's windows the same way.
+            if (waylandMode) com.winlator.star.wayland.WaylandCompositor.nativeSetHideShell(true);
         }
 
         xServer.setRenderer(renderer);

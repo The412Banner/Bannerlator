@@ -6729,6 +6729,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (evdev > 0) com.winlator.star.wayland.WaylandCompositor.nativeSendKey(evdev, pressed ? 1 : 0);
             }
         });
+        // Advertise the panel's real refresh rate (X11 offers it through RandR; games pick their
+        // saved 144 Hz mode from Wine's mode list, which Wine derives from the Wayland output).
+        try {
+            com.winlator.star.wayland.WaylandCompositor.nativeSetOutputRefreshRate(currentDisplayRefreshHz());
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "wayland: refresh rate unavailable", t);
+        }
         waylandSurfaceView = new android.view.SurfaceView(this);
         waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));

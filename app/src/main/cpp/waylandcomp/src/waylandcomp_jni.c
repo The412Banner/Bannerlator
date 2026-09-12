@@ -20,6 +20,7 @@ extern void banner_wayland_send_scene_input(int type, int a, int b);
 extern void banner_wayland_vsync(int64_t frame_time_ns);
 extern volatile int g_fps_limit;
 extern volatile int g_hide_shell;
+extern volatile int g_output_refresh_mhz;
 
 #define TAG "BannerWayland"
 
@@ -195,6 +196,12 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeVsync(JNIEnv *env, jclass
 JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSetHideShell(JNIEnv *env, jclass clazz, jboolean hide) {
     g_hide_shell = hide ? 1 : 0;
+}
+
+/* The panel's refresh rate (Hz) for the advertised wl_output mode. Set before the compositor starts. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetOutputRefreshRate(JNIEnv *env, jclass clazz, jfloat hz) {
+    g_output_refresh_mhz = hz > 1.0f ? (int)(hz * 1000.0f + 0.5f) : 0;
 }
 
 /* The in-game FPS limiter: frames per second, 0 = unlimited. */

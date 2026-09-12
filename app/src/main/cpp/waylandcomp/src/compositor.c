@@ -253,6 +253,10 @@ volatile int g_fps_limit;
 /* Shortcut launches: explorer's windows (the desktop, taskbar, Start menu) aren't drawn, matching
  * the X11 renderer's unviewable "explorer.exe". They still exist for input routing. */
 volatile int g_hide_shell;
+
+/* The panel's refresh rate in mHz, from the app; wl_output advertises it so Wine's display modes
+ * carry the real rate (games pick their saved 144 Hz mode, as on X11). 0 = 60 Hz. */
+volatile int g_output_refresh_mhz;
 struct pending_release {
     struct wl_resource *buffer;
     struct wl_listener destroy;
@@ -1209,7 +1213,8 @@ static void bind_output(struct wl_client *c, void *data, uint32_t ver, uint32_t 
     wl_resource_set_implementation(r, NULL, NULL, NULL);
     wl_output_send_geometry(r, 0, 0, 340, 190, WL_OUTPUT_SUBPIXEL_UNKNOWN,
                             "Bannerlator", "Wayland", WL_OUTPUT_TRANSFORM_NORMAL);
-    wl_output_send_mode(r, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED, 1920, 1080, 60000);
+    wl_output_send_mode(r, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED, 1920, 1080,
+                        g_output_refresh_mhz > 0 ? g_output_refresh_mhz : 60000);
     if (ver >= 2) {
         wl_output_send_scale(r, 1);
         wl_output_send_done(r);

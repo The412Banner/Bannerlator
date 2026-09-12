@@ -90,6 +90,11 @@ public final class WaylandCompositor {
      *  X11 renderer's unviewable "explorer.exe". Set before the compositor starts. */
     public static native void nativeSetHideShell(boolean hide);
 
+    /** The panel's refresh rate in Hz, advertised on the Wayland output so Wine's display modes
+     *  carry the real rate (games that insist on their saved 144 Hz mode find it, as on X11).
+     *  Set before the compositor starts. */
+    public static native void nativeSetOutputRefreshRate(float hz);
+
     /** The in-game FPS limiter: frames per second, 0 = unlimited. Paces when replaced buffers go
      *  back to the game, like the X11 IdleNotify pacer, so the game itself slows to the cap. */
     public static native void nativeSetFpsLimit(int fps);

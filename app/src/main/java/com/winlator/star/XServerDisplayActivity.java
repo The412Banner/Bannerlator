@@ -6733,6 +6733,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // saved 144 Hz mode from Wine's mode list, which Wine derives from the Wayland output).
         try {
             com.winlator.star.wayland.WaylandCompositor.nativeSetOutputRefreshRate(currentDisplayRefreshHz());
+            // And the container's screen size: on X11 the X server's screen is the container size, so
+            // Wine lists display modes up to it; a 1920x1080 output listed modes above the desktop.
+            if (xServer != null)
+                com.winlator.star.wayland.WaylandCompositor.nativeSetOutputSize(
+                        xServer.screenInfo.width, xServer.screenInfo.height);
         } catch (Throwable t) {
             Log.w("XServerDisplayActivity", "wayland: refresh rate unavailable", t);
         }

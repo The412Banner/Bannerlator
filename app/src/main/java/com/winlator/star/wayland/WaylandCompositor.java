@@ -95,6 +95,10 @@ public final class WaylandCompositor {
      *  Set before the compositor starts. */
     public static native void nativeSetOutputRefreshRate(float hz);
 
+    /** The container's screen size, advertised as the Wayland output's mode so Wine's display-mode
+     *  list stops at the desktop size, as the X server's does on X11. Set before the compositor starts. */
+    public static native void nativeSetOutputSize(int width, int height);
+
     /** The in-game FPS limiter: frames per second, 0 = unlimited. Paces when replaced buffers go
      *  back to the game, like the X11 IdleNotify pacer, so the game itself slows to the cap. */
     public static native void nativeSetFpsLimit(int fps);

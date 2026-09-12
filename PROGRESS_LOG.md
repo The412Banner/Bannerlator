@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🌊 **Wayland checkpoint re-cut on merged main** (`feat/wayland-runtime` `beebf354`)
+> - Merged main `2d17c427` (the LSFG Native single-build and PR #512 work) into the Wayland branch: clean, no Wayland files touched. APK run 34716084926 installed and verified on the device (graphics test presents, 143.8 frames/s on screen, ~2,000 fps game).
+> - Share kit in Download/Wayland is now: this APK, the Proton wcp from proton-wine `3a2cc355` (Termux Turnip, OpenGL gated behind BANNER_WAYLAND_GL=1, verified 16:03), and the combined Turnip zip for X11.
+> - Tried and reverted on the Proton side: our own Linux-style Turnip from the Banners-Turnip `wayland` branch (creates a device, crashes in vkCreateSwapchainKHR) and the combined Android+Wayland driver (not loadable by the container's Vulkan loader). Both noted in android/wayland-deps/TURNIP.md.
+> - Open from user testing: a shortcut launch shows the desktop/taskbar around the game (X11 hides explorer's windows for shortcuts; the compositor doesn't yet), and DiRT Rally 2.0 stalls on its splash (D3D11 device created, no swapchain, no frames).
+
 ## 2026-09-12 — ✅🌊 **Wayland checkpoint: "functioning Wayland"** (`feat/wayland-runtime` `1fef8b08`, proton-wine `feat/winewayland-desktop-11.0-2`)
 > - A real Windows desktop renders on the embedded compositor (wallpaper, taskbar, Start menu, file manager, 1280×720), with the desktop protocol `banner_desktop_v1` placing and stacking windows across Wine processes.
 > - DXVK Direct3D 9/10/11 and Vulkan draw at full speed: `wp_presentation` feedback lets Mesa's driver run unthrottled (1,900–2,300 fps in the graphics test, the same as X11; D3D9 went from 3 fps to ~2,100). The compositor draws once per screen refresh from the activity's Choreographer ticks (143.7 frames/s measured on the 144 Hz panel).

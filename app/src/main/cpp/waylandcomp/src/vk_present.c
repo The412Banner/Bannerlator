@@ -53,7 +53,27 @@ static pthread_mutex_t g_swap_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Implemented in waylandcomp_jni.c — notifies Java (dismiss launch overlay). */
 extern void banner_on_first_frame(void);
 
-static VkFormat drm_to_vk(uint32_t drm) { (void)drm; return VK_FORMAT_B8G8R8A8_UNORM; }
+/* DRM fourccs name the channels of a little-endian 32-bit word: XRGB8888 is B,G,R,X in memory
+ * (= VK B8G8R8A8) and XBGR8888 is R,G,B,X (= VK R8G8B8A8). Turnip's Wayland WSI sends XB24 for
+ * R8G8B8A8 swapchains, so reading everything as BGRA swaps red and blue. */
+static VkFormat drm_to_vk(uint32_t drm) {
+    switch (drm) {
+    case 0x34324241: /* AB24 */
+    case 0x34324258: /* XB24 */
+        return VK_FORMAT_R8G8B8A8_UNORM;
+    case 0x30334241: /* AB30 */
+    case 0x30334258: /* XB30 */
+        return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+    case 0x30335241: /* AR30 */
+    case 0x30335258: /* XR30 */
+        return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+    case 0x48344241: /* AB4H */
+    case 0x48344258: /* XB4H */
+        return VK_FORMAT_R16G16B16A16_SFLOAT;
+    default: /* AR24 / XR24 */
+        return VK_FORMAT_B8G8R8A8_UNORM;
+    }
+}
 
 void vk_present_set_driver(const char *driver_path, const char *library_name,
                            const char *native_lib_dir) {

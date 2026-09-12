@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🪟 **PROMOTED: v7 Wine XP layers → stable / Latest + in-app catalog default**
+> - User go ("can we move them to stable / latest release and update bannerlator catalog with them" + "merge to their home/parent branches"). The 7 parent branches were already fast-forwarded on 09-11; GitHub compare shows each one identical to its v7 source, so nothing to merge.
+> - Delivery copies: `winlator-contents` release `bionic-layers-20260911-xp` ("Bionic layers v7 — Wine XP desktop"), published server-side by a one-off workflow on branch `publish/v7-xp` that downloads the 8 files from the proton-wine release and checks each against the verified sha256 before publishing. Latest there; names and sizes identical to proton-wine; all 8 URLs HTTP 200.
+> - Catalog: `winlator-contents` `contents.json` commit `39f9c6a` — 8 Proton rows `(v6)` → `(v7)`, verCode 6 → 7, links → the new release, versionName unchanged (24+/24−). Containers on a v6 layer are now offered **Update layer → v7**.
+> - proton-wine `build-bionic-layers-20260911-xp`: pre-release → stable + Latest; both release pages carry the same updated text (current release, in-place update, built from the parent branches).
+> - Bannerlator 3.1.1 release page: new section "📦 New compatibility layers — versionCode 7: the Wine XP desktop", a line in the lead paragraph, credit + Microsoft trademark line; same edit in `docs/releases/3.1.1.md`. The in-app update line (update.json) is unchanged.
+> - Device status (as stated in the notes): GE-Proton 11.0-6 v7 device-tested, including a fresh container; the other six layers verified inside each file, not booted.
+
 ## 2026-09-12 — ✅🏁 **RELEASED 3.1.1 (Latest, versionCode 85)** — [release page](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.1)
 > - Cut commit `91b320ef` ("release: 3.1.1 (versionCode 85)") on top of the docs merge; tag 3.1.1 → `91b320ef` (verified, == the built commit). release.yml run 34716667257: notes, 3 builds, release — all green. Published 2026-09-12 20:29 UTC.
 > - Page: house layout from `docs/releases/3.1.1.md` + 6-item change list since 3.1.0, collapsed Proton 9 + Credits, no TODOs. `update.json` (latest): versionCode 85, versionName 3.1.1, the update-summary line, 3 APK mappings.

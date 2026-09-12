@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🎞️ **MERGED to main: LSFG Native builds its chain once when frame gen arms** (`fix/lsfg-native-arm-single-build`, `--no-ff`)
+> - User go ("merge it to main and build artifacts only from it"), merged before a device test. App code identical to the CI-green r1 (`8f480cd3`, run 34705008903); the branch only added PROGRESS_LOG entries on top. No versionCode change.
+> - Main now carries PR #512 + this fix; build-artifacts is dispatched on main (not a release).
+
+## 2026-09-12 — 🧭 **CHECKPOINT: LSFG Native builds its chain once when frame gen arms (fix in CI)** (`fix/lsfg-native-arm-single-build`)
+> - Bug (found by clintOnSky on #512, verified on main): the LSFG branch of `renderFrame` applied the user's config only if the engine already existed, and ran before `ensureLsfgEngine()` created it. A fresh engine was built at the default flow scale (1.00), then rebuilt one frame later at the user's scale. Each build recompiles all 25 pipelines: ~2.4 s on our Adreno 750 / Turnip, ~4 s on a stock driver, with the game frozen meanwhile. With a capture resolution below the panel it hit on nearly every arm.
+> - Fix: configure after ensure, the same order the win-fg branch already uses (`VulkanRendererContext.cpp`, one file). Nothing reads the config while disarmed, so a change made then waits for the next armed frame.
+> - Commit `8f480cd3`, CI run 34705008903 (headSha verified), release label `1.0-lsfg-arm-once-r1`. ✅ CI-green, all 3 flavors. Staged `/sdcard/Download/Bannerlator-1.0-lsfg-arm-once-r1-pubg.apk` sha `d28e8b7f…`. Not merged; not device-proven. Proof on device: one `chain built at …` line per arm (was two) with capture = Game or 720p and flow scale below 1.0.
+
 ## 2026-09-12 — ✅🎞️ **MERGED to main: PR #512 (clintOnSky) — LSFG Native capture resolution + Vulkan 1.1 driver compat (experimental)** (`--no-ff`, merge `22f7d121`)
 > - User go ("let's merge it to main"). Two commits: `28ae0197` (the feature) + `ea93c2e3` (fixes for all 15 points of our review `5178315591`; re-reviewed, all addressed, nothing new to fix). CI-green on `ea93c2e3` (run 34653579121, all 3 flavors).
 > - What lands, behind `FeatureFlags.LSFG_NATIVE_EXPERIMENTS_ENABLED` (on; defaults = 3.1.0 behaviour): per-container **Capture resolution** (Panel / Game / a height) — the LSFG chain and the post-effect chain run on a smaller composite ring, blitted up (LINEAR when the format supports it); **LSFG on Vulkan 1.1 drivers (compat)** — lowers the cached SPIR-V 1.6 to 1.4/1.5 for a stock driver offering spirv_1_4 + float_controls + vulkan_memory_model, only in sessions that run LSFG Native. The frame-gen "couldn't start" notice now also covers a chain build rejected after the engine came up (both engines).

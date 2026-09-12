@@ -107,6 +107,7 @@ class FusionHudView(
     private var showSession = true
 
     private var engineLabel = ""
+    private var displayServer = ""     // "X11" / "Wayland": which display server the game runs on
     private var gpuModel = ""
     // Stack-layer version strings (Mega bottom band + DX version on the engine row); fed by the host.
     private var wineVersion = ""       // "Proton 10.0-4"
@@ -132,6 +133,7 @@ class FusionHudView(
     private val colValue = 0xFFF2F5F9.toInt()
     private val colDim = 0xFF9AA4B2.toInt()
     private val colLo = 0xFFE4E8EE.toInt()
+    private val colDisp = 0xFF4DD0E1.toInt()   // display server (X11 / Wayland)
 
     // ---- Paints -----------------------------------------------------------
     private val measurePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -181,6 +183,7 @@ class FusionHudView(
     // ---- Public surface (symmetric with the other overlays) ---------------
     fun setEngineLabel(s: String?) { engineLabel = s ?: ""; post { rebuildAndInvalidate() } }
     fun setGpuModel(s: String?) { gpuModel = s ?: ""; post { rebuildAndInvalidate() } }
+    fun setDisplayServer(s: String?) { displayServer = s ?: ""; post { rebuildAndInvalidate() } }
     fun setWineVersion(s: String?) { wineVersion = s ?: ""; post { rebuildAndInvalidate() } }
     fun setGraphicsWrapper(s: String?) { graphicsWrapper = s ?: ""; post { rebuildAndInvalidate() } }
     fun setDxWrapper(dxvk: String?, vkd3d: String?) {
@@ -439,6 +442,8 @@ class FusionHudView(
 
         if (showGpuModel && gpuModel.isNotBlank())
             rows.add(HudRow(Span("GPU", colGpu, rowPx), listOf(Span(gpuModel, colValue, rowPx))))
+        if (displayServer.isNotBlank())
+            rows.add(HudRow(Span("DISP", colDisp, rowPx), listOf(Span(displayServer, colValue, rowPx))))
         if (showGPU) {
             val v = ArrayList<Span>()
             v += numUnit(s.gpuPercent?.toString(), "%", rowPx, unitPx)
@@ -547,6 +552,8 @@ class FusionHudView(
         if (showEngine && engineLabel.isNotBlank())
             tiles.add(Tile("API", colFps, listOf(Span(engineLabel, colValue, valPx)),
                 dxVersion().ifBlank { null }, false))
+        if (displayServer.isNotBlank())
+            tiles.add(Tile("DISPLAY", colDisp, listOf(Span(displayServer, colValue, valPx)), null, false))
         if (showGpuModel && gpuModel.isNotBlank())
             tiles.add(Tile("GPU", colGpu, listOf(Span(gpuModel, colValue, valPx)), null, true))
         if (showBattery || showPower || showBatteryTemp) {
@@ -611,7 +618,15 @@ class FusionHudView(
         left += Span("fps", colDim, if (generating) bigUnitPx * 0.8f else bigUnitPx)
 
         val stack = ArrayList<List<Span>>()
-        if (showGpuModel && gpuModel.isNotBlank()) stack.add(listOf(Span(gpuModel, colDim, stkPx)))
+        run {
+            val l = ArrayList<Span>()
+            if (showGpuModel && gpuModel.isNotBlank()) l += Span(gpuModel, colDim, stkPx)
+            if (displayServer.isNotBlank()) {
+                if (l.isNotEmpty()) l += Span(" · ", colDim, stkPx)
+                l += Span(displayServer, colDisp, stkPx)
+            }
+            if (l.isNotEmpty()) stack.add(l)
+        }
         run {
             val l = ArrayList<Span>()
             if (showGPU) { l += Span("GPU ${s.gpuPercent ?: "—"}%", colGpu, stkPx) }
@@ -721,11 +736,13 @@ class FusionHudView(
         // Small API/engine label (DXVK/VKD3D/Zink), bottom-LEFT, near the graph — balances the subtle
         // clock on the bottom-right (both share the same footer line). Gated by the "Engine" chip. Placed
         // BEFORE addSubtleClock so both read the same footerTop (= contentH - pad).
-        if (showEngine && engineLabel.isNotBlank()) {
+        val footerLabel = listOf(if (showEngine) engineLabel else "", displayServer)
+            .filter { it.isNotBlank() }.joinToString(" · ")
+        if (footerLabel.isNotBlank()) {
             val apiPx = sp(9.5f)
             val footerTop = contentH - pad
-            glyphs.add(Glyph(pad, footerTop - ascent(apiPx), engineLabel, blend(colDim), apiPx))
-            val apiW = measure(engineLabel, apiPx)
+            glyphs.add(Glyph(pad, footerTop - ascent(apiPx), footerLabel, blend(colDim), apiPx))
+            val apiW = measure(footerLabel, apiPx)
             val clockW = if (showClockTime) measure(clockTimeString(), apiPx) else 0f
             contentW = max(contentW, pad + apiW + sp(12f) + clockW + pad)
             // The clock (when shown) grows contentH for the footer line; when it's hidden, do it here.
@@ -867,6 +884,7 @@ class FusionHudView(
         // (The graphics wrapper moved to the FPS-row label above, so it's no longer in this band.)
         val band = ArrayList<List<Span>>()
         if (showResolution) band.add(listOf(Span("RES ", colDim, bandPx), Span(resolutionString(), colValue, bandPx)))
+        if (displayServer.isNotBlank()) band.add(listOf(Span("DISP ", colDim, bandPx), Span(displayServer, colDisp, bandPx)))
         if (showProton && wineVersion.isNotBlank()) band.add(listOf(Span(wineVersion, colVram, bandPx)))
         if (showSession) band.add(listOf(Span("elapsed ", colDim, bandPx), Span(elapsedString(), colValue, bandPx)))
         if (band.isNotEmpty()) {

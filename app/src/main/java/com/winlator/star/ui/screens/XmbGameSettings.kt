@@ -176,6 +176,20 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
 
     // Display
     rows += XmbRow.Header("hDisplay", "Display")
+    // Display backend: "" inherits the container's, else force X11 / Wayland (same extra as the
+    // pop-up editor). Wayland replaces the Renderer group with the embedded compositor.
+    val dbValues = listOf("", Container.DISPLAY_BACKEND_X11, Container.DISPLAY_BACKEND_WAYLAND)
+    val dbLabels = listOf(
+        "Container default (" + (if (c.isWaylandBackend) "Wayland" else "X11") + ")",
+        "X11", "Wayland (experimental)")
+    val dbOverride = p.ex("displayBackend", "")
+    val waylandGame = if (dbOverride.isEmpty()) c.isWaylandBackend else dbOverride == Container.DISPLAY_BACKEND_WAYLAND
+    rows += XmbRow.Choice("displayBackend", "Display backend", Icons.Filled.DesktopWindows, dbLabels,
+        dbLabels[dbValues.indexOf(dbOverride).coerceAtLeast(0)],
+        subtitle = if (waylandGame) "Runs through the Wayland compositor" else "Runs on the X11 server",
+        confirm = { v -> if (v == dbLabels[2]) XmbConfirm("Wayland", "Wayland is experimental. Run this game on Wayland?", "Use Wayland") else null }) { v ->
+        xmb.set(p, "displayBackend", dbValues[dbLabels.indexOf(v)].ifEmpty { null })
+    }
     val sizes = p.arr(R.array.screen_size_entries)
     val rawSize = p.ex("screenSize", c.getScreenSize())
     val sizeLabel = sizes.firstOrNull { StringUtils.parseIdentifier(it).equals(rawSize, ignoreCase = true) } ?: "Custom"
@@ -271,6 +285,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     val rendId = p.ex("renderer", c.renderer).lowercase()
     val rend = when (rendId) { "vulkan" -> "Vulkan"; "surfaceflinger" -> "SurfaceFlinger"; else -> "OpenGL" }
     rows += XmbRow.Choice("renderer", "Renderer", Icons.Filled.DesktopWindows, listOf("OpenGL", "Vulkan", "SurfaceFlinger"), rend,
+        disabledReason = if (waylandGame) "Wayland draws through its own compositor" else null,
         confirm = { v -> if (v == "SurfaceFlinger") XmbConfirm("SurfaceFlinger renderer", "SurfaceFlinger renderer — experimental. Use it for this game?", "Use SurfaceFlinger") else null }) { v ->
         xmb.set(p, "renderer", v.lowercase())
     }

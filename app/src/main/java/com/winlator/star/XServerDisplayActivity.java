@@ -2122,6 +2122,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
 
+        // Display backend: the game's override, else the container's. Resolved here so every launch
+        // path (shortcut list, Games tab, Big Picture, pinned shortcuts, container Run) honours it,
+        // not only the ones that pass wayland_mode.
+        if (!waylandMode) {
+            String backend = shortcut != null ? shortcut.getExtra("displayBackend", "") : "";
+            if (backend.isEmpty()) backend = container.getDisplayBackend();
+            waylandMode = Container.DISPLAY_BACKEND_WAYLAND.equals(backend);
+        }
+
         // In-game Friends tab (drawer): read the friends/chat opt-in once for this launch and start
         // watching for a live source. The RealSteam hint keeps the app-session source from flashing up
         // before maybeStageRealSteam() arms the plan (which confirms or withdraws it); disarmed in onDestroy.
@@ -11756,6 +11765,7 @@ return true;
         fusionHud.applyConfig(fpsConfigString);
         if (hudEngineShort != null) fusionHud.setEngineLabel(hudEngineShort);
         if (hudGpuName != null) fusionHud.setGpuModel(hudGpuName);
+        fusionHud.setDisplayServer(waylandMode ? "Wayland" : "X11");
         // Mega stack-layer versions: Proton/Wine, the graphics-driver wrapper package, and DX wrapper.
         if (wineInfo != null) fusionHud.setWineVersion(wineInfo.toString());
         fusionHud.setGraphicsWrapper(friendlyGraphicsWrapper());

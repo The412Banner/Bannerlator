@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-09-12 — ✅🌊 **Wayland checkpoint: "functioning Wayland"** (`feat/wayland-runtime` `1fef8b08`, proton-wine `feat/winewayland-desktop-11.0-2`)
+> - A real Windows desktop renders on the embedded compositor (wallpaper, taskbar, Start menu, file manager, 1280×720), with the desktop protocol `banner_desktop_v1` placing and stacking windows across Wine processes.
+> - DXVK Direct3D 9/10/11 and Vulkan draw at full speed: `wp_presentation` feedback lets Mesa's driver run unthrottled (1,900–2,300 fps in the graphics test, the same as X11; D3D9 went from 3 fps to ~2,100). The compositor draws once per screen refresh from the activity's Choreographer ticks (143.7 frames/s measured on the 144 Hz panel).
+> - The in-game drawer's FPS limiter works on Wayland by pacing buffer releases, like the X11 IdleNotify pacer. Confirmed by the user with the drawer toggle.
+> - Controller buttons, on-screen controls, mouse and touch reach the game (X server input sink → compositor); the Fusion HUD shows live FPS and an X11/Wayland label in all five sizes; the per-game display-backend choice is honoured from every launch path.
+> - Colours fixed (dmabuf fourcc → VkFormat), title bars on Vulkan/DirectX windows (new `pClipClientSurfaces` driver callback, GDI driver version 109), readable per-session logs in Download/Wayland-logs.
+> - Share kit in Download/Wayland: the pubg APK, the Wayland Proton wcp (installs as Proton-11.0-2-arm64ec-90), and a combined Android+Wayland Turnip zip for X11 testing. Insane 2 plays (119 fps in a race).
+> - Not yet: OpenGL/WineD3D. Our Zink build initialises on the compositor (Wine reports GL 4.6 on "zink Vulkan 1.4 (Turnip Adreno 750)"), but with WINE_USE_EGL set win32u probes the GPU at every process start and the probe in the desktop process deadlocks other processes opening a display DC, so every launch hangs. Gated behind BANNER_WAYLAND_GL=1 until the probe is moved. Also open: D3D12/D3D8/DDraw checks, clipboard, mouse-look/cursor lock, first-launch desktop size after a Proton re-extract, layered-window alpha.
+
 ## 2026-09-12 — 🔀🌊 **Wayland branch caught up to main** (`feat/wayland-runtime` ← main `d62ce447`)
 > - User go ("catch the branch up to main first"). The branch was parked on 2026-07-19 and had fallen 1,952 commits behind. Main was merged in (not rebased), so the 41 pushed Wayland commits keep their hashes.
 > - 7 files conflicted. Main had switched `AndroidManifest.xml`, `XServerDisplayActivity.java` and `GuestProgramLauncherComponent.java` to LF line endings, which made each one a whole-file conflict; they were re-merged with line endings normalized. What remained were spots where both sides added code in the same place, and both were kept.

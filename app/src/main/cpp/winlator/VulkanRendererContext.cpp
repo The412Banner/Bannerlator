@@ -2508,13 +2508,20 @@ ok=true;}catch(...){}
             }
         }
     } else {
-        if (lsfgEngine_ && fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
-            lsfgEngine_->configure(
-                (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
-                fgFlowScale_.load(std::memory_order_relaxed),
-                fgRefreshHz_.load(std::memory_order_relaxed));
-        }
         if (compositeActive() && ensureLsfgEngine()) {
+            // Configure AFTER ensure, as win-fg does above. ensureLsfgEngine()
+            // marks the config dirty when it creates the engine, but this used
+            // to run before it, while lsfgEngine_ was still null - so a fresh
+            // engine was prepared at its default flow scale (1.00), and the
+            // user's scale arrived one frame later and forced a second chain
+            // build. A dirty config seen while disarmed now simply waits for
+            // the next armed frame; nothing reads it in between.
+            if (fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+                lsfgEngine_->configure(
+                    (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2), 0,
+                    fgFlowScale_.load(std::memory_order_relaxed),
+                    fgRefreshHz_.load(std::memory_order_relaxed));
+            }
             // Tell the engine how large the GUEST actually renders BEFORE asking
             // it to build anything. The flow pyramid's resolution is derived from
             // that ratio, so preparing first builds the most expensive chain

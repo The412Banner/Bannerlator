@@ -53,4 +53,9 @@ public final class WaylandCompositor {
 
     /** Inject a key event. evdev = Linux input keycode (KEY_A=30…); state: 1=down, 0=up. */
     public static native void nativeSendKey(int evdev, int state);
+
+    /** Inject the app's X-server input in scene (virtual desktop) pixels. type 2 = move to a,b;
+     *  3 = evdev button a (BTN_LEFT=0x110…) pressed (b=1) or released (b=0); 4 = a wheel steps,
+     *  negative = up. */
+    public static native void nativeSendSceneInput(int type, int a, int b);
 }

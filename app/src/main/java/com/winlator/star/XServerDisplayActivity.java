@@ -6595,6 +6595,37 @@ public class XServerDisplayActivity extends AppCompatActivity {
             new android.os.Handler(getMainLooper()).postDelayed(
                     preloaderDialog::closeOnUiThread, LAUNCH_OVERLAY_GRACE_MS);
         }));
+        // On-screen controls, a mouse and keys mapped to controller buttons all inject into the X
+        // server, which has no client in wayland mode: hand that input to the compositor too.
+        if (xServer != null) xServer.setInputSink(new com.winlator.star.xserver.XServer.InputSink() {
+            @Override public void onPointerMove(int x, int y) {
+                com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(2, x, y);
+                runOnUiThread(() -> {
+                    if (waylandSurfaceView == null || waylandCursorView == null) return;
+                    int vw = waylandSurfaceView.getWidth(), vh = waylandSurfaceView.getHeight();
+                    if (vw <= 0 || vh <= 0) return;
+                    waylandCursorX = (float) x * vw / xServer.screenInfo.width;
+                    waylandCursorY = (float) y * vh / xServer.screenInfo.height;
+                    waylandCursorView.setX(waylandCursorX);
+                    waylandCursorView.setY(waylandCursorY);
+                    if (waylandCursorView.getVisibility() != View.VISIBLE)
+                        waylandCursorView.setVisibility(View.VISIBLE);
+                });
+            }
+            @Override public void onPointerButton(com.winlator.star.xserver.Pointer.Button button, boolean pressed) {
+                switch (button) {
+                    case BUTTON_LEFT: com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(3, 0x110, pressed ? 1 : 0); break;
+                    case BUTTON_RIGHT: com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(3, 0x111, pressed ? 1 : 0); break;
+                    case BUTTON_MIDDLE: com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(3, 0x112, pressed ? 1 : 0); break;
+                    case BUTTON_SCROLL_UP: if (pressed) com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(4, -1, 0); break;
+                    case BUTTON_SCROLL_DOWN: if (pressed) com.winlator.star.wayland.WaylandCompositor.nativeSendSceneInput(4, 1, 0); break;
+                    default: break;
+                }
+            }
+            @Override public void onKey(int evdev, boolean pressed) {
+                if (evdev > 0) com.winlator.star.wayland.WaylandCompositor.nativeSendKey(evdev, pressed ? 1 : 0);
+            }
+        });
         waylandSurfaceView = new android.view.SurfaceView(this);
         waylandSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
@@ -9538,8 +9569,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Wayland mode: route keyboard keys to wl_keyboard (the guest) instead of the X server.
+        // Game controller buttons stay on the normal path below (WinHandler -> XInput, drawer
+        // hotkeys), exactly like X11; only the sticks arrive as motion events, so sending the
+        // buttons to wl_keyboard left pads with working sticks and dead A/B/X/Y.
         // Leave system keys (back/volume/home) to Android so the device still behaves normally.
-        if (waylandMode) {
+        if (waylandMode && !ExternalController.isGameController(event.getDevice())) {
             int kc = event.getKeyCode();
             boolean systemKey = kc == KeyEvent.KEYCODE_BACK || kc == KeyEvent.KEYCODE_HOME
                     || kc == KeyEvent.KEYCODE_VOLUME_UP || kc == KeyEvent.KEYCODE_VOLUME_DOWN

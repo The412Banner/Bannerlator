@@ -156,28 +156,62 @@ public class XServer {
         return null;
     }
 
+    /** Wayland mode: no X client is connected, so the input the app injects (on-screen controls,
+     *  mouse, mapped keys) is handed to the Wayland compositor as well. Coordinates are in screen
+     *  pixels (the virtual desktop), keys are evdev codes. */
+    public interface InputSink {
+        void onPointerMove(int x, int y);
+        void onPointerButton(Pointer.Button button, boolean pressed);
+        void onKey(int evdev, boolean pressed);
+    }
+
+    private volatile InputSink inputSink;
+
+    public void setInputSink(InputSink sink) {
+        inputSink = sink;
+    }
+
+    private void sinkPointerMove() {
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerMove(pointer.getX(), pointer.getY());
+    }
+
+    private void sinkPointerButton(Pointer.Button button, boolean pressed) {
+        InputSink sink = inputSink;
+        if (sink != null) sink.onPointerButton(button, pressed);
+    }
+
+    private void sinkKey(XKeycode xKeycode, boolean pressed) {
+        InputSink sink = inputSink;
+        if (sink != null) sink.onKey((xKeycode.id & 0xff) - 8, pressed);
+    }
+
     public void injectPointerMove(int x, int y) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setPosition(x, y);
         }
+        sinkPointerMove();
     }
 
     public void injectPointerMoveDelta(int dx, int dy) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setPosition(pointer.getX() + dx, pointer.getY() + dy);
         }
+        sinkPointerMove();
     }
 
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, true);
         }
+        sinkPointerButton(buttonCode, true);
     }
 
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, false);
         }
+        sinkPointerButton(buttonCode, false);
     }
 
     public void injectPointerButtonPulse(Pointer.Button buttonCode) {
@@ -185,6 +219,8 @@ public class XServer {
             pointer.setButton(buttonCode, true);
             pointer.setButton(buttonCode, false);
         }
+        sinkPointerButton(buttonCode, true);
+        sinkPointerButton(buttonCode, false);
     }
 
     public void injectKeyPress(XKeycode xKeycode) {
@@ -195,12 +231,14 @@ public class XServer {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyPress(xKeycode.id, keysym);
         }
+        sinkKey(xKeycode, true);
     }
 
     public void injectKeyRelease(XKeycode xKeycode) {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyRelease(xKeycode.id);
         }
+        sinkKey(xKeycode, false);
     }
 
     private void setupExtensions() {

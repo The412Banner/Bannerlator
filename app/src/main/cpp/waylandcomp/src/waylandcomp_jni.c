@@ -15,6 +15,7 @@
 extern int banner_wayland_run(void);
 extern void banner_wayland_send_pointer(int action, int x, int y);
 extern void banner_wayland_send_key(int evdev, int state);
+extern void banner_wayland_send_scene_input(int type, int a, int b);
 
 #define TAG "BannerWayland"
 
@@ -128,6 +129,13 @@ JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSendKey(
         JNIEnv *env, jclass clazz, jint evdev, jint state) {
     banner_wayland_send_key(evdev, state);
+}
+
+/* App X-server input in scene (virtual desktop) coordinates; see banner_wayland_send_scene_input. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSendSceneInput(
+        JNIEnv *env, jclass clazz, jint type, jint a, jint b) {
+    banner_wayland_send_scene_input(type, a, b);
 }
 
 /* Swap/clear the output window (e.g. SurfaceView recreated/destroyed). */

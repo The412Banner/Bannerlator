@@ -1293,10 +1293,16 @@ static void keyboard_focus(struct wl_resource *target) {
     wl_array_release(&keys);
 }
 
+/* Last pointer position in scene coordinates (buttons and scrolls from the app's X-server
+ * input path arrive without one). */
+static double g_ptr_x, g_ptr_y;
+
 /* One pointer event at scene coordinates: motion, then an optional button change
  * (button 0 = none). */
 static void pointer_event(double x, double y, uint32_t button, int pressed) {
     struct surface *target;
+
+    g_ptr_x = x; g_ptr_y = y;
 
     if (g_desktop) {
         target = g_desktop;
@@ -1337,6 +1343,24 @@ static void deliver_key(const struct input_msg *m) {
     key_event((uint32_t)m->p1, m->p2);
 }
 
+/* Vertical wheel steps (negative = up) at the current pointer position. */
+static void scroll_event(int steps) {
+    struct surface *target = g_desktop ? g_desktop : (g_grab ? g_grab : toplevel_at(g_ptr_x, g_ptr_y));
+    if (!target || !steps) return;
+    struct seat_pointer *sp = pointer_for(wl_resource_get_client(target->resource));
+    if (!sp) return;
+    int tx = 0, ty = 0;
+    if (target != g_desktop && target->placed) { tx = target->x; ty = target->y; }
+    uint32_t t = now_ms();
+    pointer_focus(target->resource, wl_fixed_from_double(g_ptr_x - tx), wl_fixed_from_double(g_ptr_y - ty));
+    if (wl_resource_get_version(sp->ptr) >= WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
+        wl_pointer_send_axis_discrete(sp->ptr, WL_POINTER_AXIS_VERTICAL_SCROLL, steps);
+    wl_pointer_send_axis(sp->ptr, t, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(steps * 10));
+    if (wl_resource_get_version(sp->ptr) >= WL_POINTER_FRAME_SINCE_VERSION)
+        wl_pointer_send_frame(sp->ptr);
+    wl_display_flush_clients(g_display);
+}
+
 static void key_event(uint32_t evdev, int pressed) {
     struct surface *target = g_desktop ? g_desktop : g_key_target;
     if (!target) {
@@ -1356,8 +1380,13 @@ static void key_event(uint32_t evdev, int pressed) {
 static int on_input_readable(int fd, uint32_t mask, void *data) {
     struct input_msg m;
     while (read(fd, &m, sizeof(m)) == (ssize_t)sizeof(m)) {
-        if (m.type == 1) deliver_key(&m);
-        else deliver_pointer(&m);
+        switch (m.type) {
+        case 1: deliver_key(&m); break;
+        case 2: pointer_event(m.p1, m.p2, 0, 0); break;          /* scene motion */
+        case 3: pointer_event(g_ptr_x, g_ptr_y, m.p1, m.p2); break; /* button at pointer */
+        case 4: scroll_event(m.p1); break;
+        default: deliver_pointer(&m); break;
+        }
     }
     return 0;
 }
@@ -1375,6 +1404,15 @@ void banner_wayland_send_pointer(int action, int x, int y) {
 void banner_wayland_send_key(int evdev, int state) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 1, evdev, state, 0 };
+    ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
+    (void)n;
+}
+
+/* Called from JNI with the app's X-server input (on-screen controls, mouse): type 2 = motion
+ * to scene x,y; 3 = evdev button a pressed/released (b); 4 = a wheel steps (negative = up). */
+void banner_wayland_send_scene_input(int type, int a, int b) {
+    if (g_input_pipe[1] < 0) return;
+    struct input_msg m = { type, a, b, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
 }

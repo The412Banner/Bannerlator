@@ -8,7 +8,12 @@
 // StorageImageWriteWithoutFormat. Three consequences, all checked here:
 //
 //   * SPIR-V 1.6 will not load on a Vulkan 1.1 device, so the DEVICE (not just
-//     the instance) must report 1.3+.
+//     the instance) must report 1.3+ ... OR, on the experimental Vulkan 1.1
+//     compat path, offer VK_KHR_spirv_1_4 + VK_KHR_vulkan_memory_model so the
+//     same modules can be handed over as SPIR-V 1.4 (see downgradeSpirv in
+//     lsfg_dll.h). The stock Qualcomm driver on Adreno 7xx phones reports
+//     1.1.128 yet carries every one of those extensions (measured on an
+//     Adreno 710 / HyperOS device with `cmd gpu vkjson`).
 //   * vulkanMemoryModel, shaderStorageImageWriteWithoutFormat and
 //     shaderStorageImageExtendedFormats must be ENABLED at device creation.
 //     Today the renderer enables no features at all, so all three are off.
@@ -23,6 +28,9 @@
 
 #include <vulkan/vulkan.h>
 #include <cstdint>
+#include <vector>
+
+#include "lsfg_dll.h"   // kSpirv14/15/16
 
 struct VkTable;
 
@@ -39,9 +47,19 @@ struct FeatureSupport {
     bool storageImageExtendedFormats = false;
     uint32_t deviceApiVersion        = 0;
 
+    // Experimental Vulkan 1.1 compat: the device is below 1.3 but offers the
+    // extensions that make the chain loadable. When set, the renderer must
+    // enable those extensions at device creation (see extensionNames) and the
+    // modules are downgraded to `spirvTarget` at load.
+    bool     extensionPath   = false;
+    bool     hasSpirv14        = false; // VK_KHR_spirv_1_4
+    bool     hasFloatControls  = false; // VK_KHR_shader_float_controls (spirv_1_4 depends on it)
+    bool     hasMemoryModelExt = false; // VK_KHR_vulkan_memory_model
+    uint32_t spirvTarget     = kSpirv16;
+
     // Every hard device-level gate passes (format is checked separately).
     bool deviceGatesPass() const {
-        return queried && apiAtLeast13 && vulkanMemoryModel
+        return queried && (apiAtLeast13 || extensionPath) && vulkanMemoryModel
             && storageImageWriteWithoutFormat && storageImageExtendedFormats;
     }
 };
@@ -51,6 +69,10 @@ struct Caps {
     FeatureSupport features;
     bool featuresEnabled   = false;  // the chain was passed to vkCreateDevice
     bool storageOnSwapchainFormat = false;
+    // The swapchain format blits with VK_FILTER_LINEAR (needs
+    // SAMPLED_IMAGE_FILTER_LINEAR on the source). Not a gate: without it the
+    // capture-resolution upscale falls back to NEAREST.
+    bool linearBlitOnSwapchainFormat = false;
     VkFormat probedFormat  = VK_FORMAT_UNDEFINED;
     char reason[160]       = "not probed";
 
@@ -62,13 +84,26 @@ struct Caps {
 
 // Ask the physical device which of the required features it offers.
 // Safe on any driver: if vkGetPhysicalDeviceFeatures2 cannot be resolved, or
-// the device reports below Vulkan 1.2, nothing is chained and `queried` is
-// left false — the caller then creates the device exactly as it always has.
-FeatureSupport queryFeatures(const VkTable& vk, VkPhysicalDevice pd);
+// the device reports below Vulkan 1.2 and `allowVk11` is false, nothing is
+// chained and `queried` is left false — the caller then creates the device
+// exactly as it always has. With `allowVk11`, a 1.1 device is accepted when
+// `deviceExtensions` lists VK_KHR_spirv_1_4, VK_KHR_shader_float_controls and
+// VK_KHR_vulkan_memory_model, and the memory-model features are queried
+// through the KHR struct instead of VkPhysicalDeviceVulkan12Features.
+FeatureSupport queryFeatures(const VkTable& vk, VkPhysicalDevice pd,
+                             const std::vector<VkExtensionProperties>& deviceExtensions,
+                             bool allowVk11);
+
+// The device extensions the extension path needs enabled, in the order they
+// should be pushed onto VkDeviceCreateInfo. Empty unless extensionPath.
+std::vector<const char*> extensionNames(const FeatureSupport& f);
 
 // Probe VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT on the live swapchain format.
 // `generate` writes into an image of this format via a compute dispatch.
 bool probeStorageFormat(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt);
+
+// Whether the format may be the source of a VK_FILTER_LINEAR blit.
+bool probeLinearBlit(const VkTable& vk, VkPhysicalDevice pd, VkFormat fmt);
 
 // Fill caps.reason with the FIRST gate that failed (or "supported").
 void explain(Caps& caps);

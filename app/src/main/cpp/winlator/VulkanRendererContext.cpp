@@ -78,9 +78,10 @@ static void fsrRcasCon(uint32_t con[4], float rcasScale) {
     con[3] = 0;
 }
 
-VulkanRendererContext::VulkanRendererContext(ANativeWindow* win, int cW, int cH, void* aHandle)
+VulkanRendererContext::VulkanRendererContext(ANativeWindow* win, int cW, int cH, void* aHandle,
+                                             bool lsfgVk11Compat)
     : window(win), surfaceWidth(cW), surfaceHeight(cH), containerWidth(cW), containerHeight(cH),
-      adrenotoolsHandle(aHandle)
+      adrenotoolsHandle(aHandle), lsfgVk11Compat_(lsfgVk11Compat)
 {
     // Seed the renderer-neutral scanout impl with the owner's window/sizes.
     scanout.setFallbackWindow(window);
@@ -263,6 +264,7 @@ void VulkanRendererContext::loadDeviceDispatch() {
     LOAD_D2(CmdSetScissor);
     LOAD_D2(CmdPipelineBarrier);
     LOAD_D2(CmdCopyImage);
+    LOAD_D2(CmdBlitImage);
     LOAD_D2(CmdCopyBufferToImage);
     LOAD_D2(CreateSampler);
     LOAD_D2(DestroySampler);
@@ -339,8 +341,9 @@ void VulkanRendererContext::createLogicalDevice() {
 
     PFN_vkEnumerateDeviceExtensionProperties enumDevExts =
         (PFN_vkEnumerateDeviceExtensionProperties)gipa(instance, "vkEnumerateDeviceExtensionProperties");
+    std::vector<VkExtensionProperties> av;
     { uint32_t n=0; if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,nullptr);
-      std::vector<VkExtensionProperties> av(n);
+      av.resize(n);
       if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,av.data());
       for (auto& e:av) {
           if (strcmp(e.extensionName,"VK_EXT_filter_cubic")==0
@@ -353,29 +356,44 @@ void VulkanRendererContext::createLogicalDevice() {
     if (cubicSupported) extList.push_back("VK_EXT_filter_cubic");
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
-    ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
 
     // --- Native LSFG frame generation: enable the three features its shaders
     // need. The renderer has historically enabled NO features at all
     // (pEnabledFeatures = nullptr, no pNext), so all three are off by default.
     // Only chain anything when the device passes every gate: on any other
     // device this block is inert and vkCreateDevice is called exactly as it
-    // always has been.
+    // always has been. With the experimental Vulkan 1.1 compat flag the probe
+    // may also accept a 1.1/1.2 device through extensions (lsfg_probe.h); those
+    // are then enabled here and the memory model is requested through the KHR
+    // struct, which a 1.1 driver understands.
     lsfgCaps_ = lsfg::Caps{};
-    lsfgCaps_.features = lsfg::queryFeatures(vk_, physicalDevice);
+    lsfgCaps_.features = lsfg::queryFeatures(vk_, physicalDevice, av, lsfgVk11Compat_);
 
-    VkPhysicalDeviceVulkan12Features lsfgV12{};
-    VkPhysicalDeviceFeatures2        lsfgF2{};
+    // Copy so a rejected feature chain can fall back to the pre-LSFG list.
+    const std::vector<const char*> baseExtList = extList;
+    VkPhysicalDeviceVulkan12Features             lsfgV12{};
+    VkPhysicalDeviceVulkanMemoryModelFeaturesKHR lsfgMM{};
+    VkPhysicalDeviceFeatures2                    lsfgF2{};
     if (lsfgCaps_.features.deviceGatesPass()) {
-        lsfgV12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        lsfgV12.vulkanMemoryModel = VK_TRUE;
-        // Device scope is a separate SPIR-V capability; enable it only when the
-        // driver offers it, so a driver without it still gets the base model.
-        lsfgV12.vulkanMemoryModelDeviceScope =
-            lsfgCaps_.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+        const bool khrPath = lsfgCaps_.features.deviceApiVersion < VK_API_VERSION_1_2;
+        if (khrPath) {
+            lsfgMM.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR;
+            lsfgMM.vulkanMemoryModel = VK_TRUE;
+            lsfgMM.vulkanMemoryModelDeviceScope =
+                lsfgCaps_.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+            for (const char* e : lsfg::extensionNames(lsfgCaps_.features)) extList.push_back(e);
+            RLOG("createLogicalDevice: LSFG Vulkan 1.1 compat - enabling spirv_1_4 + vulkan_memory_model");
+        } else {
+            lsfgV12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            lsfgV12.vulkanMemoryModel = VK_TRUE;
+            // Device scope is a separate SPIR-V capability; enable it only when the
+            // driver offers it, so a driver without it still gets the base model.
+            lsfgV12.vulkanMemoryModelDeviceScope =
+                lsfgCaps_.features.vulkanMemoryModelDeviceScope ? VK_TRUE : VK_FALSE;
+        }
 
         lsfgF2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        lsfgF2.pNext = &lsfgV12;
+        lsfgF2.pNext = khrPath ? (void*)&lsfgMM : (void*)&lsfgV12;
         lsfgF2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
         lsfgF2.features.shaderStorageImageExtendedFormats    = VK_TRUE;
 
@@ -384,6 +402,7 @@ void VulkanRendererContext::createLogicalDevice() {
         ci.pNext = &lsfgF2;
         lsfgCaps_.featuresEnabled = true;
     }
+    ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
 
     if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) {
         // A driver that rejects the feature chain must not cost us the whole
@@ -391,6 +410,7 @@ void VulkanRendererContext::createLogicalDevice() {
         if (lsfgCaps_.featuresEnabled) {
             RLOG_E("createLogicalDevice: CreateDevice failed WITH LSFG features; retrying without");
             ci.pNext = nullptr;
+            ci.enabledExtensionCount=(uint32_t)baseExtList.size(); ci.ppEnabledExtensionNames=baseExtList.data();
             lsfgCaps_.featuresEnabled = false;
             if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS)
                 throw std::runtime_error("device");
@@ -425,6 +445,8 @@ void VulkanRendererContext::createSwapchain() {
     lsfgCaps_.probedFormat = swapchainFmt;
     lsfgCaps_.storageOnSwapchainFormat =
         lsfg::probeStorageFormat(vk_, physicalDevice, swapchainFmt);
+    lsfgCaps_.linearBlitOnSwapchainFormat =
+        lsfg::probeLinearBlit(vk_, physicalDevice, swapchainFmt);
     lsfg::explain(lsfgCaps_);
     RLOG("lsfg-native: %s (features enabled=%d, storage-on-fmt=%d)",
          lsfgCaps_.reason, (int)lsfgCaps_.featuresEnabled,
@@ -896,13 +918,14 @@ bool VulkanRendererContext::ensureLsfgEngine() {
     }
 
     auto engine = std::make_unique<lsfg::Engine>();
-    if (!engine->init(device, physicalDevice, lsfgCachePath_)) {
-        RLOG_E("lsfg-native: engine init failed (cache %s)", lsfgCachePath_.c_str());
+    if (!engine->init(device, physicalDevice, lsfgCachePath_, lsfgCaps_.features.spirvTarget)) {
+        RLOG_E("lsfg-native: engine init failed (cache %s, spirv target 0x%x)",
+               lsfgCachePath_.c_str(), lsfgCaps_.features.spirvTarget);
         return false;
     }
     lsfgEngine_ = std::move(engine);
     fgConfigDirty_.store(true, std::memory_order_relaxed);
-    RLOG("lsfg-native: engine ready");
+    RLOG("lsfg-native: engine ready (spirv target 0x%x)", lsfgCaps_.features.spirvTarget);
     return true;
 }
 
@@ -975,9 +998,15 @@ int VulkanRendererContext::frameGenProblem() const {
     if (!fgCapsOk()) return 1;
     // Read without renderMutex, like frameGenStats: a stale answer here only
     // delays the notice by one poll.
+    // An engine that came up (its modules loaded) can still fail to build the
+    // chain at vkCreateComputePipelines - proprietary drivers often do the real
+    // compile there, so a lowered module (Vulkan 1.1 compat) may pass module
+    // creation and be rejected here. The engine object stays alive with
+    // unavailable() set; report that as a start failure too, or the drawer
+    // would show frame gen armed while nothing generates.
     if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
-        return (winfgEngineTried_ && !winfgEngine_) ? 2 : 0;
-    return (lsfgEngineTried_ && !lsfgEngine_) ? 2 : 0;
+        return ((winfgEngineTried_ && !winfgEngine_) || (winfgEngine_ && winfgEngine_->unavailable())) ? 2 : 0;
+    return ((lsfgEngineTried_ && !lsfgEngine_) || (lsfgEngine_ && lsfgEngine_->unavailable())) ? 2 : 0;
 }
 
 void VulkanRendererContext::setFrameGenEngine(int kind) {
@@ -1057,13 +1086,8 @@ void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_
         vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,nullptr, 0,nullptr, 2,pre);
 
-        VkImageCopy region{};
-        region.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
-        region.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
-        region.extent={w,h,1};
-        vk_.CmdCopyImage(cb, dst.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                         swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                         1, &region);
+        // Copy at panel resolution, blit up when the ring is smaller.
+        recordCompositeToSwapchainTransfer(cb, dst.img, imgIdx);
 
         // Restore the generation target first; the swapchain image's own final
         // transition depends on whether the cursor overlay runs for it.
@@ -1109,13 +1133,71 @@ void VulkanRendererContext::setLsfgCachePath(const char* path) {
     lsfgEngine_.reset();
 }
 
-void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz) {
+void VulkanRendererContext::setFrameGenTuning(float flowScale, float refreshHz,
+                                              int32_t captureHeight) {
+    if (captureHeight < 0) captureHeight = kFgCaptureGame;
     fgFlowScale_.store(flowScale, std::memory_order_relaxed);
     // A zero here means the display could not be read, not "0 Hz". Keeping the
     // last good value stops the pacer's refresh ceiling flapping between 144
     // and unknown, which was visible in the logs as max= alternating.
     if (refreshHz > 1.0f) fgRefreshHz_.store(refreshHz, std::memory_order_relaxed);
+    const int32_t wasCapture = fgCaptureHeight_.exchange(captureHeight, std::memory_order_relaxed);
+    if (wasCapture != captureHeight)
+        RLOG("native-fg: tuning captureHeight=%d->%d (-1 = game, 0 = panel)", wasCapture, captureHeight);
+    // A capture-height change resizes the composite ring on the next armed
+    // frame (ensureCompositeTargets sees a new extent) and the engine's
+    // prepare() rebuilds the chain for it; nothing else has to be forced.
     fgConfigDirty_.store(true, std::memory_order_relaxed);
+}
+
+void VulkanRendererContext::compositeExtentFor(uint32_t& w, uint32_t& h) const {
+    w = swapchainExt.width; h = swapchainExt.height;
+    const int32_t sel = fgCaptureHeight_.load(std::memory_order_relaxed);
+    // "Game" is resolved here, not in Java: containerHeight is the X screen the
+    // game really renders to (shortcut override, TV resolution and render scale
+    // already applied when nativeInit received it).
+    const uint32_t want = sel == kFgCaptureGame ? (uint32_t)std::max(containerHeight, 0)
+                                                : (uint32_t)std::max(sel, 0);
+    if (want == 0 || swapchainExt.width == 0 || swapchainExt.height == 0) return;
+    // Never below a quarter of the panel (the chain's 7-level pyramid needs
+    // pixels to work with) and never above it (that is just the panel).
+    const uint32_t minH = std::max(16u, swapchainExt.height / 4u);
+    uint32_t H = std::min(std::max(want, minH), swapchainExt.height);
+    if (H >= swapchainExt.height) return;
+    uint32_t W = (uint32_t)std::lround((double)H * (double)swapchainExt.width / (double)swapchainExt.height);
+    W &= ~1u; H &= ~1u;
+    if (W < 2u || H < 2u) return;
+    w = W; h = H;
+}
+
+void VulkanRendererContext::recordCompositeToSwapchainTransfer(VkCommandBuffer cb, VkImage src,
+                                                               uint32_t imgIdx) {
+    const bool sameExtent = compositeW == swapchainExt.width && compositeH == swapchainExt.height;
+    if (sameExtent || !vk_.CmdBlitImage) {
+        // Same format and same extent, so a copy is enough — no filtering.
+        VkImageCopy region{};
+        region.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+        region.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+        region.extent={compositeW, compositeH, 1};
+        vk_.CmdCopyImage(cb, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                         swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        return;
+    }
+    // Capture resolution below the panel: the ring is smaller than the
+    // swapchain, so the frame - real or generated - is upscaled on its way
+    // out. NEAREST is the filter every blittable format supports; LINEAR
+    // additionally needs SAMPLED_IMAGE_FILTER_LINEAR on the source format
+    // (mandatory for the usual swapchain formats, probed once in
+    // createSwapchain), so fall back when it is missing.
+    const VkFilter filter = lsfgCaps_.linearBlitOnSwapchainFormat ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    VkImageBlit blit{};
+    blit.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+    blit.srcOffsets[1]={(int32_t)compositeW,(int32_t)compositeH,1};
+    blit.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
+    blit.dstOffsets[1]={(int32_t)swapchainExt.width,(int32_t)swapchainExt.height,1};
+    vk_.CmdBlitImage(cb, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                     swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                     1, &blit, filter);
 }
 
 // ================== Native LSFG: per-present software cursor =================
@@ -1328,15 +1410,9 @@ void VulkanRendererContext::copyCompositeToSwapchain(VkCommandBuffer cb, uint32_
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT|VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,nullptr, 0,nullptr, 2,pre);
 
-    // Same format and same extent, so a copy is enough — no blit, no filtering.
-    VkImageCopy region{};
-    region.srcSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
-    region.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
-    region.extent={compositeW, compositeH, 1};
-    vk_.CmdCopyImage(cb,
-        t.img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        swapchainImages[imgIdx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1, &region);
+    // Same format: a copy at panel resolution, a linear blit when the ring is
+    // smaller (experimental capture resolution).
+    recordCompositeToSwapchainTransfer(cb, t.img, imgIdx);
 
     // The cursor overlay, when it runs, takes the image from TRANSFER_DST to
     // PRESENT_SRC itself; only do it here when there is no overlay.
@@ -1817,9 +1893,17 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         vk_.CmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             0, 0, nullptr, 0, nullptr, (uint32_t)postUpload.size(), postUpload.data());
 
+    // Experimental capture resolution: while frame gen runs on a composite
+    // ring smaller than the swapchain, the whole scene is drawn at the ring's
+    // size and blitted up on the way out. Both paths below size themselves by
+    // renderExtent(), so the effect chain, the spatial upscalers and the
+    // render-scale downscale keep working on the smaller ring.
+    const VkExtent2D targetExt = renderExtent();
+
     if (upFrame.active) {
-        // Spatial-upscaler path: composite to an offscreen target at game res,
-        // then SGSR/FSR-upscale it into the swapchain (see recordUpscalePasses).
+        // Spatial-upscaler / effects path: composite to an offscreen target at
+        // game res, then upscale / run the effect chain into the render target
+        // (see recordUpscalePasses).
         recordUpscalePasses(cb, imgIdx, draws, cursorDrawn,
             ptrX, ptrY, curHotX, curHotY, curW, curH,
             ox, oy, sx, sy, cw, ch);
@@ -1828,28 +1912,33 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
     VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     // Frame gen redirects the final target to a composite image we own; the
     // accessors return the swapchain pair unchanged when it is off.
-    rpi.renderPass=targetRenderPass(); rpi.framebuffer=targetFramebuffer(imgIdx); rpi.renderArea={{0,0},swapchainExt};
+    rpi.renderPass=targetRenderPass(); rpi.framebuffer=targetFramebuffer(imgIdx); rpi.renderArea={{0,0},targetExt};
     VkClearValue clr={{{0.f,0.f,0.f,1.f}}}; rpi.clearValueCount=1; rpi.pClearValues=&clr;
 
     vk_.CmdBeginRenderPass(cb, &rpi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
+    // The window quads are placed in NDC (normalised to the surface), so a
+    // same-aspect smaller target needs only a smaller viewport, not new maths.
+    VkViewport vp{0,0,(float)targetExt.width,(float)targetExt.height,0,1};
     vk_.CmdSetViewport(cb, 0, 1, &vp);
     // #413: clip the compositor draws to the game region (a half of the surface on TOP/BOTTOM alignment)
     // so a FILL/STRETCH game that overflows the region is cropped and can't bleed into the on-screen-
     // controls half. The renderpass clear still covers the whole renderArea (full swapchain, above), so
     // the controls half is painted black each frame. A full-surface (or w<=0) clip region disables the
     // crop, making the scissor the whole swapchain -> byte-identical to the historical CENTER output.
-    VkRect2D sc{{0,0},swapchainExt};
+    VkRect2D sc{{0,0},targetExt};
     {
         int32_t cx = clipRegionX.load(std::memory_order_relaxed);
         int32_t cy = clipRegionY.load(std::memory_order_relaxed);
         int32_t cw = clipRegionW.load(std::memory_order_relaxed);
         int32_t ch = clipRegionH.load(std::memory_order_relaxed);
         if (cw > 0 && ch > 0) {
-            int32_t l = std::max(0, cx);
-            int32_t t = std::max(0, cy);
-            int32_t r = std::min((int32_t)swapchainExt.width,  cx + cw);
-            int32_t b = std::min((int32_t)swapchainExt.height, cy + ch);
+            // The clip rect is in surface pixels; scale it onto a downsized ring.
+            const float kx = (float)targetExt.width  / (float)std::max(1u, swapchainExt.width);
+            const float ky = (float)targetExt.height / (float)std::max(1u, swapchainExt.height);
+            int32_t l = std::max(0, (int32_t)std::lround(cx * kx));
+            int32_t t = std::max(0, (int32_t)std::lround(cy * ky));
+            int32_t r = std::min((int32_t)targetExt.width,  (int32_t)std::lround((cx + cw) * kx));
+            int32_t b = std::min((int32_t)targetExt.height, (int32_t)std::lround((cy + ch) * ky));
             if (r > l && b > t) { sc.offset = {l, t}; sc.extent = {(uint32_t)(r - l), (uint32_t)(b - t)}; }
         }
     }
@@ -1913,8 +2002,11 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
     float ox, float oy, float sx, float sy, float scw, float sch)
 {
     const VkClearValue blk={{{0.f,0.f,0.f,1.f}}};
-    const VkViewport fullVp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
-    const VkRect2D   fullSc{{0,0},swapchainExt};
+    // The output extent: the swapchain, or the composite ring while frame gen
+    // runs below panel resolution (planUpscaleFrame sized everything by it).
+    const VkExtent2D outExt = renderExtent();
+    const VkViewport fullVp{0,0,(float)outExt.width,(float)outExt.height,0,1};
+    const VkRect2D   fullSc{{0,0},outExt};
 
     const bool hasScaling = (upFrame.mode>=3 && upFrame.mode<=8) || upFrame.mode==UPMODE_DOWNSCALE;
     // Must include EVERY chainable effect (matches planUpscaleFrame's fxOn) — else a
@@ -1975,7 +2067,7 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
                       VkDescriptorSet srcDS, const void* pcd, uint32_t pcsz){
         VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpi.renderPass = toSwapchain ? targetRenderPass() : offscreenRenderPass;
-        rpi.framebuffer=fb; rpi.renderArea={{0,0},swapchainExt};
+        rpi.framebuffer=fb; rpi.renderArea={{0,0},outExt};
         rpi.clearValueCount=1; rpi.pClearValues=&blk;
         vk_.CmdBeginRenderPass(cb,&rpi,VK_SUBPASS_CONTENTS_INLINE);
         vk_.CmdSetViewport(cb,0,1,&fullVp); vk_.CmdSetScissor(cb,0,1,&fullSc);
@@ -2029,8 +2121,8 @@ void VulkanRendererContext::recordUpscalePasses(VkCommandBuffer cb, uint32_t img
         curDS = fx1DS;
     } else {
         // Effects-only (no scaling mode active): composite with the normal scene
-        // transform straight into fx1 (full swapchain), then run the effect chain.
-        composite(fx1FB, (int)swapchainExt.width, (int)swapchainExt.height, /*identity*/false, scw, sch);
+        // transform straight into fx1 (full output extent), then run the effect chain.
+        composite(fx1FB, (int)outExt.width, (int)outExt.height, /*identity*/false, scw, sch);
         curDS = fx1DS;
     }
 
@@ -2095,19 +2187,23 @@ void VulkanRendererContext::planUpscaleFrame() {
     // Any of the 7 composable effects engages the post chain (even at mode 0/1/2).
     const bool fxOn = casOn || hdrEnabled || fxaaEnabled || toonEnabled ||
                       colorEnabled || ntscEnabled || crtEnabled || debandEnabled;
-    const float scW=(float)swapchainExt.width, scH=(float)swapchainExt.height;
+    // Everything below is sized by the output extent: the swapchain, or the
+    // composite ring while frame gen runs below panel resolution (experimental
+    // capture resolution). renderFrame arms/resizes the ring before this runs.
+    const VkExtent2D outExt = renderExtent();
+    const float scW=(float)outExt.width, scH=(float)outExt.height;
     const bool renderAboveDisplay =
-        ((int)swapchainExt.width<containerWidth || (int)swapchainExt.height<containerHeight);
+        ((int)outExt.width<containerWidth || (int)outExt.height<containerHeight);
     const bool renderBelowDisplay =
-        ((int)swapchainExt.width>containerWidth || (int)swapchainExt.height>containerHeight);
+        ((int)outExt.width>containerWidth || (int)outExt.height>containerHeight);
 
-    // Aspect-fit letterbox rect for the swapchain (used by all fit paths).
+    // Aspect-fit letterbox rect for the output extent (used by all fit paths).
     auto fitRect=[&](int& outX,int& outY,int& outW,int& outH){
         float a=std::min(scW/(float)containerWidth, scH/(float)containerHeight);
         outW=(int)((float)containerWidth*a+0.5f);
         outH=(int)((float)containerHeight*a+0.5f);
-        outX=((int)swapchainExt.width-outW)/2;
-        outY=((int)swapchainExt.height-outH)/2;
+        outX=((int)outExt.width-outW)/2;
+        outY=((int)outExt.height-outH)/2;
     };
 
     bool scaling=false;
@@ -2132,7 +2228,7 @@ void VulkanRendererContext::planUpscaleFrame() {
         if (mode>=3 && (mode==6 || renderBelowDisplay)) {
             int outX,outY,outW,outH;
             if (mode==4) {                               // fsr (fill / stretch)
-                outX=0; outY=0; outW=(int)swapchainExt.width; outH=(int)swapchainExt.height;
+                outX=0; outY=0; outW=(int)outExt.width; outH=(int)outExt.height;
             } else {                                     // sgsr(3/8) / fsr_fit(5) / sharpen(6) / nis(7)
                 fitRect(outX,outY,outW,outH);
             }
@@ -2197,12 +2293,12 @@ void VulkanRendererContext::planUpscaleFrame() {
         if (!fxOn) return;                       // nothing to do -> direct path
         upFrame.active=true; upFrame.mode=0;
         upFrame.outX=0; upFrame.outY=0;
-        upFrame.outW=(int)swapchainExt.width; upFrame.outH=(int)swapchainExt.height;
+        upFrame.outW=(int)outExt.width; upFrame.outH=(int)outExt.height;
     }
 
     // ---- Ensure the effect-chain intermediates and pack each effect's push const.
     if (fxOn && upFrame.active) {
-        const int fw=(int)swapchainExt.width, fh=(int)swapchainExt.height;
+        const int fw=(int)outExt.width, fh=(int)outExt.height;
         const int nEffects=(int)fxaaEnabled+(int)toonEnabled+(int)colorEnabled+
                            (int)casOn+(int)hdrEnabled+(int)ntscEnabled+(int)crtEnabled+
                            (int)debandEnabled;
@@ -2372,7 +2468,11 @@ ok=true;}catch(...){}
     if (fgArmed_.load(std::memory_order_relaxed) && fgCapsOk() && !scanoutActive.load()) {
         const int mult = fgMultiplier_.load(std::memory_order_relaxed);
         const uint32_t want = (uint32_t)std::min(std::max(mult, 2), 4) + 1u;
-        compositeArmed = ensureCompositeTargets(swapchainExt.width, swapchainExt.height, want);
+        // Experimental capture resolution: the ring (and so the whole chain)
+        // can run below the panel and be blitted up on the way out.
+        uint32_t ringW = 0, ringH = 0;
+        compositeExtentFor(ringW, ringH);
+        compositeArmed = ensureCompositeTargets(ringW, ringH, want);
         if (compositeArmed) createCursorOverlayRenderPass();
         if (compositeArmed && !compositeTargets.empty())
             compositeIndex = (compositeIndex + 1) % (uint32_t)compositeTargets.size();
@@ -2402,7 +2502,7 @@ ok=true;}catch(...){}
                     fgPerfPreset_.load(std::memory_order_relaxed),
                     fgFlowScale_.load(std::memory_order_relaxed));
             }
-            if (winfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+            if (winfgEngine_->prepare(compositeW, compositeH, swapchainFmt)) {
                 fgPlan_.generations = winfgEngine_->plan(fgCapacity);
                 ++fgSourceFrames_;
             }
@@ -2433,7 +2533,7 @@ ok=true;}catch(...){}
             // legitimately needs the 0x0 path.
             if (containerWidth > 0 && containerHeight > 0)
                 lsfgEngine_->setGuestExtent((uint32_t)containerWidth, (uint32_t)containerHeight);
-            if (lsfgEngine_->prepare(swapchainExt.width, swapchainExt.height, swapchainFmt)) {
+            if (lsfgEngine_->prepare(compositeW, compositeH, swapchainFmt)) {
                 // The governor judges whether an extra generated frame paid off,
                 // so it must be given the rate that actually reaches the PANEL,
                 // not the guest rate wearing a different name.

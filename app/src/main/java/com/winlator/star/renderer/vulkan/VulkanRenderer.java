@@ -81,7 +81,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         } catch (Exception e) { return null; }
     }
 
-    private native long nativeInit(Surface surface, int screenWidth, int screenHeight, String driverPath, String libraryName, String nativeLibDir);
+    private native long nativeInit(Surface surface, int screenWidth, int screenHeight, String driverPath, String libraryName, String nativeLibDir, boolean lsfgVk11Compat);
     private native void nativeResize(long handle, int width, int height);
     private native void nativeDestroy(long handle);
     private native void nativeUpdateWindowContent(long handle, long id, java.nio.ByteBuffer pixels,
@@ -135,7 +135,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native int nativeFrameGenProblem(long handle);
     private native void nativeSetFrameGenArmed(long handle, boolean armed, int multiplier);
     private native void nativeSetLsfgCachePath(long handle, String path);
-    private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz);
+    private native void nativeSetFrameGenTuning(long handle, float flowScale, float refreshHz,
+                                                int captureHeight);
     private native float[] nativeFrameGenStats(long handle);
     private native void nativeSetFrameGenEngine(long handle, int kind);
     private native void nativeSetWinFgTuning(long handle, int model, int perfPreset);
@@ -171,7 +172,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         return;
                     }
                 }
-                nativeHandle = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height, driverPath, driverLibraryName, nativeLibDir);
+                nativeHandle = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height, driverPath, driverLibraryName, nativeLibDir, lsfgVk11Compat);
                 if (nativeHandle != 0) {
                     nativeSetPresentMode(nativeHandle, pendingPresentMode);
                     nativeSetFilterMode(nativeHandle, pendingFilterMode);
@@ -191,7 +192,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         nativeSetLsfgCachePath(nativeHandle, pendingLsfgCachePath);
                     nativeSetFrameGenEngine(nativeHandle, pendingFgEngine);
                     nativeSetWinFgTuning(nativeHandle, pendingFgModel, pendingFgPerfPreset);
-                    nativeSetFrameGenTuning(nativeHandle, pendingFgFlowScale, pendingFgRefreshHz);
+                    nativeSetFrameGenTuning(nativeHandle, pendingFgFlowScale, pendingFgRefreshHz,
+                        pendingFgCaptureHeight);
                     if (pendingFgArmed)
                         nativeSetFrameGenArmed(nativeHandle, true, pendingFgMultiplier);
                     updateTransform();
@@ -796,6 +798,16 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             "setDriverInfo: path=" + driverPath + " lib=" + libraryName);
     }
 
+    // Experimental: let the LSFG Native capability probe accept a Vulkan 1.1/1.2
+    // compositor driver that offers VK_KHR_spirv_1_4 + VK_KHR_vulkan_memory_model (the
+    // stock Adreno driver on many phones). Has to be known before the device is created,
+    // so, like setDriverInfo, it must be called before the async nativeInit.
+    private boolean lsfgVk11Compat = false;
+    public void setLsfgVk11Compat(boolean enabled) {
+        this.lsfgVk11Compat = enabled;
+        android.util.Log.d("Winlator_Renderer", "setLsfgVk11Compat: " + enabled);
+    }
+
     public void setVerboseLog(boolean v) {
         synchronized (lock) { if (nativeHandle != 0) nativeSetVerboseLog(nativeHandle, v); }
     }
@@ -952,12 +964,24 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         return null;
     }
 
-    /** Flow scale (0.25-1.0) and the panel's real refresh rate. */
+    /** Flow scale (0.25-1.0) and the panel's real refresh rate; the capture height is left as is. */
     public void setFrameGenTuning(float flowScale, float refreshHz) {
+        setFrameGenTuning(flowScale, refreshHz, pendingFgCaptureHeight);
+    }
+
+    /**
+     * As above, plus the experimental {@code captureHeight}: the height the frame-gen chain
+     * runs at, the width following the screen's aspect, with the result blitted up to the
+     * panel. 0 = panel; {@link Container#FG_CAPTURE_HEIGHT_GAME} = the game's own height
+     * (the renderer resolves it from the X screen it was created with).
+     */
+    public void setFrameGenTuning(float flowScale, float refreshHz, int captureHeight) {
         pendingFgFlowScale = flowScale;
         pendingFgRefreshHz = refreshHz;
+        pendingFgCaptureHeight = captureHeight;
         synchronized (lock) {
-            if (nativeHandle != 0) nativeSetFrameGenTuning(nativeHandle, flowScale, refreshHz);
+            if (nativeHandle != 0)
+                nativeSetFrameGenTuning(nativeHandle, flowScale, refreshHz, captureHeight);
         }
     }
 
@@ -1075,6 +1099,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private int     pendingFgMultiplier   = 0;
     private float   pendingFgFlowScale    = 1.0f;
     private float   pendingFgRefreshHz    = 0.0f;
+    private int     pendingFgCaptureHeight= 0;      // experimental capture resolution (0 = panel)
     private String  pendingLsfgCachePath  = null;
     private int     pendingFgEngine       = FG_ENGINE_LSFG;
     private int     pendingFgModel        = 4;

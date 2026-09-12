@@ -96,7 +96,8 @@ Engine::~Engine() {
     shaders_.reset();
 }
 
-bool Engine::init(VkDevice device, VkPhysicalDevice physicalDevice, const std::string& cachePath) {
+bool Engine::init(VkDevice device, VkPhysicalDevice physicalDevice, const std::string& cachePath,
+                  uint32_t spirvTarget) {
     if (device == VK_NULL_HANDLE || physicalDevice == VK_NULL_HANDLE || cachePath.empty())
         return false;
     if (!lsfgVkdReady()) {
@@ -107,7 +108,7 @@ bool Engine::init(VkDevice device, VkPhysicalDevice physicalDevice, const std::s
     device_ = Device(device, physicalDevice);
     cachePath_ = cachePath;
 
-    shaders_ = std::make_unique<LsfgShaders>(device_, cachePath_);
+    shaders_ = std::make_unique<LsfgShaders>(device_, cachePath_, spirvTarget);
     if (!shaders_->IsValid()) {
         LSFG_LOGW("shader cache at %s did not yield all modules", cachePath.c_str());
         shaders_.reset();

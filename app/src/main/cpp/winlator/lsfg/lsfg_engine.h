@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "lsfg_common.hpp"
+#include "lsfg_dll.h"      // kSpirv16
 #include "lsfg_governor.h"
 #include "lsfg_pacer.hpp"
 
@@ -53,8 +54,11 @@ public:
     Engine& operator=(const Engine&) = delete;
 
     // Build the shader modules from a cache produced by lsfg_dll::buildCache.
-    // Returns false if the cache does not yield all 25 modules.
-    bool init(VkDevice device, VkPhysicalDevice physicalDevice, const std::string& cachePath);
+    // Returns false if the cache does not yield all 25 modules. `spirvTarget`
+    // is the highest SPIR-V version the device accepts (lsfg_probe.h); the
+    // cached 1.6 modules are lowered to it when it is below that.
+    bool init(VkDevice device, VkPhysicalDevice physicalDevice, const std::string& cachePath,
+              uint32_t spirvTarget = kSpirv16);
 
     bool valid() const { return shaders_ != nullptr && !unavailable_; }
     bool unavailable() const { return unavailable_; }

@@ -1,0 +1,51 @@
+name: Build Wayland compositor (libbannerwayland.so)
+
+# Builds only the embedded Wayland compositor for quick iterations: a ~2 minute run and a
+# small artifact instead of a full app build. Push-triggered on the Wayland branch
+# (workflow_dispatch needs the file on the default branch).
+on:
+  push:
+    branches: [ feat/wayland-runtime ]
+    paths:
+      - 'app/src/main/cpp/waylandcomp/**'
+      - '.github/workflows/build-waylandcomp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"
+          echo "NDK=$NDK"
+          grep Pkg.Revision "$NDK/source.properties"
+          echo "NDK=$NDK" >> "$GITHUB_ENV"
+          cmake -S app/src/main/cpp/waylandcomp/standalone -B build \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target bannerwayland -j"$(nproc)"
+
+      - name: Strip and describe
+        run: |
+          BIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          mkdir -p out
+          cp "$(find build -name libbannerwayland.so | head -1)" out/
+          "$BIN/llvm-strip" --strip-unneeded out/libbannerwayland.so
+          "$BIN/llvm-readelf" -d out/libbannerwayland.so | grep NEEDED
+          ls -l out/libbannerwayland.so
+          sha256sum out/libbannerwayland.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libbannerwayland
+          path: out/libbannerwayland.so
+          if-no-files-found: error
+          retention-days: 14

@@ -27,7 +27,7 @@
     X(ResetCommandBuffer) X(BeginCommandBuffer) X(CmdPipelineBarrier) X(CmdBlitImage) \
     X(EndCommandBuffer) X(ResetFences) X(QueueSubmit) X(QueuePresentKHR) X(WaitForFences) \
     X(QueueWaitIdle) X(GetMemoryFdPropertiesKHR) \
-    X(GetImageSubresourceLayout) X(MapMemory) X(UnmapMemory)
+    X(GetImageSubresourceLayout) X(MapMemory) X(UnmapMemory) X(CmdClearColorImage)
 
 struct vk_api {
 #define X(n) PFN_vk##n n;

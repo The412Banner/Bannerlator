@@ -13,6 +13,7 @@ add_library(bannerwayland SHARED
         generated/linux-dmabuf-v1-protocol.c
         generated/viewporter-protocol.c
         generated/banner-desktop-v1-protocol.c
+        generated/presentation-time-protocol.c
 )
 target_include_directories(bannerwayland PRIVATE
         generated

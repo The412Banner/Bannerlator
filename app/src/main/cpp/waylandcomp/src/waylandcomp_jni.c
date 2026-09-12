@@ -5,6 +5,7 @@
  * the server so a Wayland client (eventually winewayland.drv) can connect.
  */
 #include <jni.h>
+#include <stdint.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,8 @@ extern int banner_wayland_run(void);
 extern void banner_wayland_send_pointer(int action, int x, int y);
 extern void banner_wayland_send_key(int evdev, int state);
 extern void banner_wayland_send_scene_input(int type, int a, int b);
+extern void banner_wayland_vsync(int64_t frame_time_ns);
+extern volatile int g_fps_limit;
 
 #define TAG "BannerWayland"
 
@@ -179,6 +182,19 @@ JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSendSceneInput(
         JNIEnv *env, jclass clazz, jint type, jint a, jint b) {
     banner_wayland_send_scene_input(type, a, b);
+}
+
+/* One screen refresh (Choreographer frame callback, UI thread): the compositor draws once. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeVsync(JNIEnv *env, jclass clazz, jlong frameTimeNanos) {
+    banner_wayland_vsync((int64_t)frameTimeNanos);
+}
+
+/* The in-game FPS limiter: frames per second, 0 = unlimited. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetFpsLimit(JNIEnv *env, jclass clazz, jint fps) {
+    g_fps_limit = fps > 0 ? fps : 0;
+    __android_log_print(ANDROID_LOG_INFO, TAG, "fps limit %d", fps);
 }
 
 /* Swap/clear the output window (e.g. SurfaceView recreated/destroyed). */

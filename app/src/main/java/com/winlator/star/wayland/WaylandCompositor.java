@@ -82,6 +82,14 @@ public final class WaylandCompositor {
     /** Inject a key event. evdev = Linux input keycode (KEY_A=30…); state: 1=down, 0=up. */
     public static native void nativeSendKey(int evdev, int state);
 
+    /** One screen refresh (Choreographer frame callback). The compositor draws the newest state
+     *  once per tick, so games run unthrottled and the screen shows their latest frame. */
+    public static native void nativeVsync(long frameTimeNanos);
+
+    /** The in-game FPS limiter: frames per second, 0 = unlimited. Paces when replaced buffers go
+     *  back to the game, like the X11 IdleNotify pacer, so the game itself slows to the cap. */
+    public static native void nativeSetFpsLimit(int fps);
+
     /** Inject the app's X-server input in scene (virtual desktop) pixels. type 2 = move to a,b;
      *  3 = evdev button a (BTN_LEFT=0x110…) pressed (b=1) or released (b=0); 4 = a wheel steps,
      *  negative = up. */

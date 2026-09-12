@@ -6193,6 +6193,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             inGameControlsEditor.dispose();
             inGameControlsEditor = null;
         }
+        waylandVsyncRunning = false;
         super.onDestroy();
         // Power-user perf: stop the thermal watchdog and revert any privileged sysfs writes on game
         // exit (no-op unless a root toggle wrote something this session).
@@ -6769,6 +6770,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     started = true;
                     com.winlator.star.wayland.WaylandCompositor.nativeStartWithSurface(
                             h.getSurface(), xdgRuntimeDir, fDriverPath, fLibraryName, nativeLibDir);
+                    startWaylandVsync();
                 } else {
                     com.winlator.star.wayland.WaylandCompositor.nativeSetSurface(h.getSurface());
                 }
@@ -6784,6 +6786,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /** Move the overlay pointer to the current touchpad position and send the guest a wl_pointer
      *  event mapped to the 1920x1080 output space. action: 0=press, 1=motion, 2=release. */
+    // The compositor draws once per screen refresh: feed it the Choreographer's vsync ticks for as
+    // long as this activity lives (the tick is a cheap JNI call; the compositor ignores it while
+    // it has nothing new to draw or no window).
+    private boolean waylandVsyncRunning = false;
+    private final android.view.Choreographer.FrameCallback waylandVsyncCallback = new android.view.Choreographer.FrameCallback() {
+        @Override public void doFrame(long frameTimeNanos) {
+            if (!waylandVsyncRunning) return;
+            com.winlator.star.wayland.WaylandCompositor.nativeVsync(frameTimeNanos);
+            android.view.Choreographer.getInstance().postFrameCallback(this);
+        }
+    };
+
+    private void startWaylandVsync() {
+        if (waylandVsyncRunning) return;
+        waylandVsyncRunning = true;
+        android.view.Choreographer.getInstance().postFrameCallback(waylandVsyncCallback);
+    }
+
     private void updateWaylandCursor(int vw, int vh, int action) {
         if (waylandCursorView != null) {
             waylandCursorView.setX(waylandCursorX);
@@ -11147,6 +11167,8 @@ return true;
             HostRenderer r = xServerView.getRenderer();
             if (r != null) r.setFpsLimit(fps);
         }
+        // Wayland: the compositor paces buffer returns instead of the Present extension.
+        if (waylandMode) com.winlator.star.wayland.WaylandCompositor.nativeSetFpsLimit(Math.round(paced));
         // VRR / refresh-rate matching: vote the panel cadence to match the displayed FPS.
         applyVrr(vrrCap);
     }

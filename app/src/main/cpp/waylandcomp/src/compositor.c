@@ -30,6 +30,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <sys/timerfd.h>
 #include <android/log.h>
 #include <wayland-server.h>
 
@@ -37,6 +38,7 @@
 #include "linux-dmabuf-v1-server-protocol.h"
 #include "viewporter-server-protocol.h"
 #include "banner-desktop-v1-server-protocol.h"
+#include "presentation-time-server-protocol.h"
 #include "vk_present.h"
 
 #define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
@@ -189,6 +191,7 @@ struct surface {
     float pending_src[4];                   /* x, y, w, h; w < 0 = unset */
     int pending_dst[2];                     /* w, h; w < 0 = unset */
     struct wl_list pending_frames;
+    struct wl_list pending_feedback;        /* wp_presentation feedback asked for before commit */
 
     /* Current content. */
     struct vkp_image *shm_img;              /* our copy of the last wl_shm buffer */
@@ -199,6 +202,9 @@ struct surface {
     float src[4];
     int dst[2];
     struct wl_list frames;                  /* frame callbacks for the next redraw */
+    struct wl_list feedback;                /* presentation feedback for the current content */
+    int drawn;                              /* part of the last rendered scene */
+    int64_t next_release_ns;                /* FPS limiter: when this surface's next buffer goes back */
 
     enum surface_role role;
     struct wl_resource *xdg_surface, *xdg_toplevel;
@@ -228,11 +234,97 @@ static struct surface *g_desktop;
 static uint32_t *g_zorder;                  /* last reported Windows stacking order, top first */
 static size_t g_zorder_count;
 static struct wl_event_source *g_render_idle, *g_frame_timer;
+
+/* Rendering is driven by the screen's vsync (Java's Choreographer ticks, nativeVsync): one scene
+ * per refresh showing the newest buffers, so the event loop is never parked in the swapchain and
+ * clients get their buffers back as soon as they're replaced. Without ticks (an older app, no
+ * window) a fallback timer renders instead. */
+static int g_dirty;                         /* something changed since the last render */
+static int64_t g_last_vsync_ns;             /* last tick, 0 = none yet */
+static int64_t g_refresh_ns = 16666667;     /* screen refresh interval, from the ticks */
+static struct wl_event_source *g_fallback_timer;
+static int g_fallback_armed;
+
+/* FPS limiter (the in-game drawer's): frames per second, 0 = unlimited. Set from the app thread,
+ * read here. Like the X11 path, which delays the "your buffer is free" notice, the limit paces
+ * when a replaced buffer is released to its client, so the game itself slows to the cap. */
+volatile int g_fps_limit;
+struct pending_release {
+    struct wl_resource *buffer;
+    struct wl_listener destroy;
+    int64_t at_ns;
+    struct wl_list link;
+};
+static struct wl_list g_pending_releases;
+static int g_release_timer_fd = -1;
+static struct wl_event_source *g_release_source;
 static int g_scene_w, g_scene_h;            /* size of the last drawn scene */
 static int g_desktop_w, g_desktop_h;        /* last size the desktop had content at */
 static unsigned g_stat_frames, g_stat_dmabuf, g_stat_shm; /* since the last 10 s summary */
 
 static void schedule_render(void);
+
+static int64_t now_ns(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
+/* ------------------------------------------------------------------ buffer release pacing */
+
+static void pending_release_free(struct pending_release *pr) {
+    wl_list_remove(&pr->destroy.link);
+    wl_list_remove(&pr->link);
+    free(pr);
+}
+
+static void on_pending_release_buffer_destroyed(struct wl_listener *l, void *data) {
+    struct pending_release *pr = wl_container_of(l, pr, destroy);
+    pending_release_free(pr);
+}
+
+static void arm_release_timer(void) {
+    struct pending_release *pr;
+    int64_t earliest = 0;
+    if (g_release_timer_fd < 0) return;
+    wl_list_for_each(pr, &g_pending_releases, link)
+        if (!earliest || pr->at_ns < earliest) earliest = pr->at_ns;
+    struct itimerspec its = {0};
+    if (earliest) { its.it_value.tv_sec = earliest / 1000000000LL; its.it_value.tv_nsec = earliest % 1000000000LL; }
+    timerfd_settime(g_release_timer_fd, TFD_TIMER_ABSTIME, &its, NULL);
+}
+
+static int on_release_timer(int fd, uint32_t mask, void *data) {
+    struct pending_release *pr, *tmp;
+    uint64_t expirations;
+    int64_t now = now_ns() + 300000; /* anything due within 0.3 ms goes now */
+    if (read(fd, &expirations, sizeof(expirations)) < 0 && errno != EAGAIN) return 0;
+    wl_list_for_each_safe(pr, tmp, &g_pending_releases, link) {
+        if (pr->at_ns <= now) {
+            wl_buffer_send_release(pr->buffer);
+            pending_release_free(pr);
+        }
+    }
+    wl_display_flush_clients(g_display);
+    arm_release_timer();
+    return 0;
+}
+
+/* Give a replaced buffer back to its client: now, or on the limiter's cadence. */
+static void release_buffer(struct surface *s, struct wl_resource *buffer) {
+    int limit = g_fps_limit;
+    if (limit <= 0 || g_release_timer_fd < 0) { wl_buffer_send_release(buffer); return; }
+    int64_t interval = 1000000000LL / limit, now = now_ns();
+    if (s->next_release_ns <= now - interval) s->next_release_ns = now + interval;
+    else s->next_release_ns += interval;
+    struct pending_release *pr = calloc(1, sizeof(*pr));
+    if (!pr) { wl_buffer_send_release(buffer); return; }
+    pr->buffer = buffer;
+    pr->at_ns = s->next_release_ns;
+    pr->destroy.notify = on_pending_release_buffer_destroyed;
+    wl_resource_add_destroy_listener(buffer, &pr->destroy);
+    wl_list_insert(g_pending_releases.prev, &pr->link);
+    arm_release_timer();
+}
 
 /* ------------------------------------------------------------------ seat state */
 
@@ -358,7 +450,7 @@ static void unmap_toplevel(struct surface *s) {
 static void drop_dmabuf(struct surface *s, int release) {
     if (!s->dmabuf) return;
     wl_list_remove(&s->dmabuf_destroy.link);
-    if (release) wl_buffer_send_release(s->dmabuf);
+    if (release) release_buffer(s, s->dmabuf);
     s->dmabuf = NULL;
 }
 
@@ -481,6 +573,55 @@ static void surface_damage(struct wl_client *c, struct wl_resource *r,
 static void frame_callback_destroy(struct wl_resource *r) {
     wl_list_remove(wl_resource_get_link(r));
 }
+
+/* wp_presentation: tells Mesa's Vulkan driver when a frame reached the screen or was replaced
+ * before it did. Without it the driver waits for a frame callback (one per refresh) for every
+ * frame, which paced games to the screen rate even in mailbox mode. */
+static void feedback_resource_destroy(struct wl_resource *r) {
+    wl_list_remove(wl_resource_get_link(r));
+}
+
+static void feedback_discard_all(struct wl_list *list) {
+    struct wl_resource *fb, *tmp;
+    wl_resource_for_each_safe(fb, tmp, list) {
+        wp_presentation_feedback_send_discarded(fb);
+        wl_resource_destroy(fb);
+    }
+}
+
+static void feedback_present_all(struct wl_list *list, int64_t t) {
+    struct wl_resource *fb, *tmp;
+    uint64_t sec = (uint64_t)(t / 1000000000LL);
+    uint32_t nsec = (uint32_t)(t % 1000000000LL);
+    wl_resource_for_each_safe(fb, tmp, list) {
+        wp_presentation_feedback_send_presented(fb, (uint32_t)(sec >> 32), (uint32_t)sec, nsec,
+                                                (uint32_t)g_refresh_ns, 0, 0,
+                                                WP_PRESENTATION_FEEDBACK_KIND_VSYNC);
+        wl_resource_destroy(fb);
+    }
+}
+
+static void presentation_destroy(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
+static void presentation_feedback(struct wl_client *c, struct wl_resource *r,
+                                  struct wl_resource *surface, uint32_t id) {
+    struct surface *s = wl_resource_get_user_data(surface);
+    struct wl_resource *fb = wl_resource_create(c, &wp_presentation_feedback_interface,
+                                                wl_resource_get_version(r), id);
+    if (!fb) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(fb, NULL, NULL, feedback_resource_destroy);
+    if (!s) { wp_presentation_feedback_send_discarded(fb); wl_resource_destroy(fb); return; }
+    wl_list_insert(s->pending_feedback.prev, wl_resource_get_link(fb));
+}
+static const struct wp_presentation_interface presentation_impl = {
+    .destroy = presentation_destroy,
+    .feedback = presentation_feedback,
+};
+static void bind_presentation(struct wl_client *c, void *data, uint32_t ver, uint32_t id) {
+    struct wl_resource *r = wl_resource_create(c, &wp_presentation_interface, ver, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &presentation_impl, NULL, NULL);
+    wp_presentation_send_clock_id(r, CLOCK_MONOTONIC);
+}
 static void surface_frame(struct wl_client *c, struct wl_resource *r, uint32_t cb) {
     struct surface *s = wl_resource_get_user_data(r);
     struct wl_resource *callback = wl_resource_create(c, &wl_callback_interface, 1, cb);
@@ -512,6 +653,9 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
         struct wl_resource *buffer = s->pending_buffer;
         struct dmabuf_buffer *db = get_dmabuf(buffer);
         struct wl_shm_buffer *shm = buffer && !db ? wl_shm_buffer_get(buffer) : NULL;
+
+        /* The previous content is replaced before reaching the screen. */
+        feedback_discard_all(&s->feedback);
 
         if (buffer) {
             wl_list_remove(&s->pending_buffer_destroy.link);
@@ -546,6 +690,8 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
 
     wl_list_insert_list(s->frames.prev, &s->pending_frames);
     wl_list_init(&s->pending_frames);
+    wl_list_insert_list(s->feedback.prev, &s->pending_feedback);
+    wl_list_init(&s->pending_feedback);
 
     if (s->role == ROLE_TOPLEVEL && s->xdg_toplevel) {
         if (s->has_content) map_toplevel(s);
@@ -605,6 +751,8 @@ static void surface_resource_destroy(struct wl_resource *r) {
     vkp_image_destroy(s->shm_img);
     wl_resource_for_each_safe(cb, cbtmp, &s->pending_frames) wl_resource_destroy(cb);
     wl_resource_for_each_safe(cb, cbtmp, &s->frames) wl_resource_destroy(cb);
+    feedback_discard_all(&s->pending_feedback);
+    feedback_discard_all(&s->feedback);
     if (s->viewport) wl_resource_set_user_data(s->viewport, NULL);
     if (s->subsurface) wl_resource_set_user_data(s->subsurface, NULL);
     if (s->xdg_surface) wl_resource_set_user_data(s->xdg_surface, NULL);
@@ -637,6 +785,8 @@ static void compositor_create_surface(struct wl_client *c, struct wl_resource *r
     if (!s->resource) { free(s); wl_client_post_no_memory(c); return; }
     wl_list_init(&s->pending_frames);
     wl_list_init(&s->frames);
+    wl_list_init(&s->pending_feedback);
+    wl_list_init(&s->feedback);
     wl_list_init(&s->children);
     wl_list_init(&s->child_link);
     wl_list_init(&s->toplevel_link);
@@ -1090,6 +1240,7 @@ static void add_surface(struct draw_list *dl, struct surface *s, int ox, int oy)
         dl->cap = cap;
     }
     dl->d[dl->n++] = (struct vkp_draw){img, sx, sy, sw, sh, ox, oy, dw, dh};
+    s->drawn = 1;
 }
 
 static void add_tree(struct draw_list *dl, struct surface *s, int ox, int oy, int depth) {
@@ -1139,6 +1290,8 @@ static void render_scene(void) {
     struct surface *s;
     int w, h;
 
+    g_dirty = 0;
+    wl_list_for_each(s, &g_surfaces, link) s->drawn = 0;
     scene_size(&w, &h);
     if (w != g_scene_w || h != g_scene_h) {
         if (g_desktop) banner_log("desktop", "size %dx%d", w, h);
@@ -1153,7 +1306,10 @@ static void render_scene(void) {
     }
 
     if (vkp_render(w, h, dl.d, dl.n) == 0) {
+        int64_t t = now_ns();
         g_stat_frames++;
+        wl_list_for_each(s, &g_surfaces, link)
+            if (s->drawn) feedback_present_all(&s->feedback, t);
         fire_all_frames();
     } else {
         /* No output surface yet (or it went away): keep clients paced without it. */
@@ -1166,14 +1322,36 @@ static void render_scene(void) {
     wl_display_flush_clients(g_display);
 }
 
-static void render_idle(void *data) {
-    g_render_idle = NULL;
-    render_scene();
+static int on_fallback_timer(void *data) {
+    g_fallback_armed = 0;
+    if (g_dirty) render_scene();
+    return 0;
 }
 
 static void schedule_render(void) {
-    if (g_render_idle || !g_display) return;
-    g_render_idle = wl_event_loop_add_idle(wl_display_get_event_loop(g_display), render_idle, NULL);
+    g_dirty = 1;
+    if (!g_display) return;
+    /* With vsync ticks flowing the next tick renders; otherwise render on a timer. */
+    if (g_last_vsync_ns && now_ns() - g_last_vsync_ns < 100000000LL) return;
+    if (g_fallback_armed) return;
+    if (!g_fallback_timer)
+        g_fallback_timer = wl_event_loop_add_timer(wl_display_get_event_loop(g_display),
+                                                   on_fallback_timer, NULL);
+    if (!g_fallback_timer) return;
+    g_fallback_armed = 1;
+    wl_event_source_timer_update(g_fallback_timer, 8);
+}
+
+/* A screen refresh (Choreographer tick): draw the newest state once. */
+static void on_vsync(int64_t frame_time_ns) {
+    int64_t now = now_ns();
+    if (g_last_vsync_ns) {
+        int64_t d = now - g_last_vsync_ns;
+        if (d > 3000000LL && d < 40000000LL) g_refresh_ns = (g_refresh_ns * 7 + d) / 8;
+    }
+    g_last_vsync_ns = now;
+    (void)frame_time_ns;
+    if (g_dirty) render_scene();
 }
 
 /* ------------------------------------------------------------------ wl_seat */
@@ -1397,6 +1575,7 @@ static int on_input_readable(int fd, uint32_t mask, void *data) {
         case 2: pointer_event(m.p1, m.p2, 0, 0); break;          /* scene motion */
         case 3: pointer_event(g_ptr_x, g_ptr_y, m.p1, m.p2); break; /* button at pointer */
         case 4: scroll_event(m.p1); break;
+        case 5: on_vsync(((int64_t)m.p1 << 32) | (uint32_t)m.p2); break;
         default: deliver_pointer(&m); break;
         }
     }
@@ -1416,6 +1595,14 @@ void banner_wayland_send_pointer(int action, int x, int y) {
 void banner_wayland_send_key(int evdev, int state) {
     if (g_input_pipe[1] < 0) return;
     struct input_msg m = { 1, evdev, state, 0 };
+    ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
+    (void)n;
+}
+
+/* Called from JNI on every screen refresh (Choreographer). */
+void banner_wayland_vsync(int64_t frame_time_ns) {
+    if (g_input_pipe[1] < 0) return;
+    struct input_msg m = { 5, (int)(frame_time_ns >> 32), (int)(uint32_t)frame_time_ns, 0 };
     ssize_t n = write(g_input_pipe[1], &m, sizeof(m));
     (void)n;
 }
@@ -1565,6 +1752,12 @@ int banner_wayland_run(void) {
     wl_global_create(display, &zwp_linux_dmabuf_v1_interface, 3, NULL, bind_dmabuf);
     wl_global_create(display, &wl_seat_interface, 5, NULL, bind_seat);
     wl_global_create(display, &banner_desktop_v1_interface, 1, NULL, bind_desktop);
+    wl_global_create(display, &wp_presentation_interface, 2, NULL, bind_presentation);
+    wl_list_init(&g_pending_releases);
+    g_release_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (g_release_timer_fd >= 0)
+        g_release_source = wl_event_loop_add_fd(wl_display_get_event_loop(display), g_release_timer_fd,
+                                                WL_EVENT_READABLE, on_release_timer, NULL);
 
     /* Input injection: the Android UI thread writes events to g_input_pipe[1];
      * the wl event loop drains them on this thread. */

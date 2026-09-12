@@ -28,6 +28,8 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <time.h>
+#include <stdarg.h>
+#include <errno.h>
 #include <android/log.h>
 #include <wayland-server.h>
 
@@ -39,6 +41,61 @@
 
 #define WLOGI(...) __android_log_print(ANDROID_LOG_INFO, "BannerWayland", __VA_ARGS__)
 #define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
+
+/* ------------------------------------------------------------------ session log
+ * One readable, time-stamped file per Wayland session in Download/Wayland-logs, also
+ * mirrored to logcat: which programs connect, the desktop, windows opening and closing,
+ * Vulkan frames arriving, a frame-rate summary every 10 seconds, and errors. */
+
+#define SESSION_LOG_DIR "/storage/emulated/0/Download/Wayland-logs"
+
+static FILE *g_log;
+
+void banner_log(const char *tag, const char *fmt, ...) {
+    char msg[512];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, ap);
+    va_end(ap);
+    WLOGI("[%s] %s", tag, msg);
+    if (!g_log) return;
+    struct timespec ts;
+    struct tm tm;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    localtime_r(&ts.tv_sec, &tm);
+    fprintf(g_log, "%02d:%02d:%02d.%03ld  %-9s %s\n", tm.tm_hour, tm.tm_min, tm.tm_sec,
+            ts.tv_nsec / 1000000, tag, msg);
+}
+
+static void open_session_log(void) {
+    char path[256], stamp[32];
+    time_t now = time(NULL);
+    struct tm tm;
+
+    localtime_r(&now, &tm);
+    strftime(stamp, sizeof(stamp), "%Y-%m-%d_%H-%M-%S", &tm);
+    mkdir("/storage/emulated/0/Download", 0775);
+    if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
+        WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
+    snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);
+    if (!(g_log = fopen(path, "w"))) {
+        WLOGE("can't open session log %s: %s", path, strerror(errno));
+        return;
+    }
+    setvbuf(g_log, NULL, _IOLBF, 0);
+    strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &tm);
+    fprintf(g_log,
+            "Bannerlator Wayland session\n"
+            "===========================\n"
+            "Started   %s\n"
+            "Display   Wayland: Windows programs draw through the Bannerlator compositor.\n"
+            "          No X server is used for this session.\n"
+            "Log       %s\n\n"
+            "Time          Area      Event\n"
+            "------------  --------  -----------------------------------------------------\n",
+            stamp, path);
+    WLOGI("session log: %s", path);
+}
 
 /* At most ~10 lines a second for chatty events (window moves), so a drag can't flood logcat. */
 static int log_budget(void) {
@@ -62,6 +119,59 @@ static int log_budget(void) {
 #define INPUT_SPACE_H 1080
 
 static struct wl_display *g_display;
+
+/* Which program each Wayland client is (from /proc/<pid>/cmdline), for the session log. */
+struct client_info {
+    struct wl_client *client;
+    struct wl_listener destroy;
+    pid_t pid;
+    char name[64];
+    struct client_info *next;
+};
+static struct client_info *g_clients;
+
+static const char *client_name(struct wl_client *client) {
+    for (struct client_info *ci = g_clients; ci; ci = ci->next)
+        if (ci->client == client) return ci->name;
+    return "a program";
+}
+
+static void on_client_destroyed(struct wl_listener *l, void *data) {
+    struct client_info *ci = wl_container_of(l, ci, destroy), **pp;
+    banner_log("program", "disconnected: %s (pid %d)", ci->name, (int)ci->pid);
+    for (pp = &g_clients; *pp; pp = &(*pp)->next)
+        if (*pp == ci) { *pp = ci->next; break; }
+    free(ci);
+}
+
+static void on_client_created(struct wl_listener *l, void *data) {
+    struct wl_client *client = data;
+    struct client_info *ci = calloc(1, sizeof(*ci));
+    char path[64], buf[256];
+    uid_t uid; gid_t gid;
+    int fd;
+    ssize_t n;
+
+    if (!ci) return;
+    ci->client = client;
+    wl_client_get_credentials(client, &ci->pid, &uid, &gid);
+    snprintf(ci->name, sizeof(ci->name), "pid %d", (int)ci->pid);
+    snprintf(path, sizeof(path), "/proc/%d/cmdline", (int)ci->pid);
+    if ((fd = open(path, O_RDONLY | O_CLOEXEC)) >= 0) {
+        if ((n = read(fd, buf, sizeof(buf) - 1)) > 0) {
+            char *base = buf, *p;
+            buf[n] = 0;  /* argv[0] only; Wine puts the Windows program path there */
+            for (p = buf; *p; p++) if (*p == '\\' || *p == '/') base = p + 1;
+            if (*base) snprintf(ci->name, sizeof(ci->name), "%s", base);
+        }
+        close(fd);
+    }
+    ci->destroy.notify = on_client_destroyed;
+    wl_client_add_destroy_listener(client, &ci->destroy);
+    ci->next = g_clients;
+    g_clients = ci;
+    banner_log("program", "connected over Wayland: %s (pid %d)", ci->name, (int)ci->pid);
+}
 
 /* ------------------------------------------------------------------ surfaces */
 
@@ -107,6 +217,9 @@ struct surface {
     struct wl_list child_link;
     int sub_x, sub_y, sub_pending_x, sub_pending_y, sub_pending;
     int below_parent;
+
+    char *title;                            /* xdg_toplevel title, for the session log */
+    int announced_vulkan;                   /* logged its first dmabuf frame */
 };
 
 static struct wl_list g_surfaces;           /* every surface */
@@ -117,6 +230,7 @@ static size_t g_zorder_count;
 static struct wl_event_source *g_render_idle, *g_frame_timer;
 static int g_scene_w, g_scene_h;            /* size of the last drawn scene */
 static int g_desktop_w, g_desktop_h;        /* last size the desktop had content at */
+static unsigned g_stat_frames, g_stat_dmabuf, g_stat_shm; /* since the last 10 s summary */
 
 static void schedule_render(void);
 
@@ -186,6 +300,16 @@ static void surface_size(const struct surface *s, int *w, int *h) {
     else { *w = s->buf_w; *h = s->buf_h; }
 }
 
+/* "Title" (program) for the log; subsurfaces are named after the window they belong to. */
+static void describe(const struct surface *s, char *out, size_t size) {
+    const struct surface *w = s;
+    while (w->parent) w = w->parent;
+    const char *prog = client_name(wl_resource_get_client(w->resource));
+    if (w->title && *w->title) snprintf(out, size, "\"%s\" (%s)", w->title, prog);
+    else if (w->role == ROLE_DESKTOP) snprintf(out, size, "the desktop (%s)", prog);
+    else snprintf(out, size, "window %#x (%s)", w->hwnd, prog);
+}
+
 static struct surface *toplevel_by_hwnd(uint32_t hwnd) {
     struct surface *s;
     wl_list_for_each(s, &g_toplevels, toplevel_link)
@@ -209,7 +333,12 @@ static void map_toplevel(struct surface *s) {
     if (s->mapped) return;
     s->mapped = 1;
     surface_size(s, &w, &h);
-    WLOGI("window %#x mapped %dx%d at %d,%d%s", s->hwnd, w, h, s->x, s->y, s->placed ? "" : " (not placed yet)");
+    {
+        char name[160];
+        describe(s, name, sizeof(name));
+        banner_log("window", "opened %s %dx%d at %d,%d%s", name, w, h, s->x, s->y,
+                   s->placed ? "" : " (no desktop position yet)");
+    }
     wl_list_insert(g_toplevels.prev, &s->toplevel_link); /* new windows start on top */
     apply_zorder();
 }
@@ -217,7 +346,11 @@ static void map_toplevel(struct surface *s) {
 static void unmap_toplevel(struct surface *s) {
     if (!s->mapped) return;
     s->mapped = 0;
-    WLOGI("window %#x unmapped", s->hwnd);
+    {
+        char name[160];
+        describe(s, name, sizeof(name));
+        banner_log("window", "closed %s", name);
+    }
     wl_list_remove(&s->toplevel_link);
     wl_list_init(&s->toplevel_link);
 }
@@ -276,6 +409,7 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
     s->buf_w = w;
     s->buf_h = h;
     s->has_content = s->shm_img != NULL;
+    g_stat_shm++;
 }
 
 static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_resource *buffer) {
@@ -298,6 +432,20 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
     s->buf_w = b->width;
     s->buf_h = b->height;
     s->has_content = b->img != NULL;
+    g_stat_dmabuf++;
+    if (!s->announced_vulkan) {
+        char name[160];
+        s->announced_vulkan = 1;
+        describe(s, name, sizeof(name));
+        if (b->img)
+            banner_log("vulkan", "%s is presenting GPU frames through Wayland: %dx%d, format %c%c%c%c, %s (zero-copy)",
+                       name, b->width, b->height, b->format & 0xff, (b->format >> 8) & 0xff,
+                       (b->format >> 16) & 0xff, (b->format >> 24) & 0xff,
+                       b->modifier == MOD_LINEAR ? "linear" : "tiled");
+        else
+            banner_log("error", "could not import GPU frames from %s (%dx%d, modifier %#llx)",
+                       name, b->width, b->height, (unsigned long long)b->modifier);
+    }
 }
 
 /* ------------------------------------------------------------------ wl_surface */
@@ -431,7 +579,7 @@ static void surface_resource_destroy(struct wl_resource *r) {
     for (int i = 0; i < g_nkbs; i++) if (g_kbs[i].focus == r) g_kbs[i].focus = NULL;
     if (g_grab == s) g_grab = NULL;
     if (g_key_target == s) g_key_target = NULL;
-    if (g_desktop == s) { g_desktop = NULL; WLOGI("desktop surface destroyed"); }
+    if (g_desktop == s) { g_desktop = NULL; banner_log("desktop", "the desktop closed"); }
 
     unmap_toplevel(s);
     detach_from_parent(s);
@@ -450,6 +598,7 @@ static void surface_resource_destroy(struct wl_resource *r) {
     if (s->xdg_surface) wl_resource_set_user_data(s->xdg_surface, NULL);
     if (s->xdg_toplevel) wl_resource_set_user_data(s->xdg_toplevel, NULL);
     wl_list_remove(&s->link);
+    free(s->title);
     free(s);
     schedule_render();
 }
@@ -636,7 +785,12 @@ static void bind_viewporter(struct wl_client *c, void *data, uint32_t ver, uint3
 
 static void xdg_toplevel_destroy_req(struct wl_client *c, struct wl_resource *r) { wl_resource_destroy(r); }
 static void xdg_toplevel_noop_parent(struct wl_client *c, struct wl_resource *r, struct wl_resource *p) {}
-static void xdg_toplevel_set_title(struct wl_client *c, struct wl_resource *r, const char *title) {}
+static void xdg_toplevel_set_title(struct wl_client *c, struct wl_resource *r, const char *title) {
+    struct surface *s = wl_resource_get_user_data(r);
+    if (!s) return;
+    free(s->title);
+    s->title = title ? strdup(title) : NULL;
+}
 static void xdg_toplevel_set_app_id(struct wl_client *c, struct wl_resource *r, const char *id) {}
 static void xdg_toplevel_show_menu(struct wl_client *c, struct wl_resource *r, struct wl_resource *seat,
                                    uint32_t serial, int32_t x, int32_t y) {}
@@ -741,15 +895,18 @@ static void desktop_set_desktop(struct wl_client *c, struct wl_resource *r, stru
     if (!s || (s->role != ROLE_NONE && s->role != ROLE_DESKTOP)) return;
     s->role = ROLE_DESKTOP;
     g_desktop = s;
-    WLOGI("desktop surface set");
+    banner_log("desktop", "Windows virtual desktop created by %s", client_name(c));
     schedule_render();
 }
 static void desktop_set_window(struct wl_client *c, struct wl_resource *r, struct wl_resource *surface,
                                uint32_t hwnd, int32_t x, int32_t y) {
     struct surface *s = wl_resource_get_user_data(surface);
     if (!s) return;
-    if (!s->placed || ((s->x != x || s->y != y) && log_budget()))
-        WLOGI("window %#x at %d,%d", hwnd, x, y);
+    if (s->placed && (s->x != x || s->y != y) && s->mapped && log_budget()) {
+        char name[160];
+        describe(s, name, sizeof(name));
+        banner_log("window", "moved %s to %d,%d", name, x, y);
+    }
     s->hwnd = hwnd;
     s->x = x;
     s->y = y;
@@ -972,7 +1129,8 @@ static void render_scene(void) {
 
     scene_size(&w, &h);
     if (w != g_scene_w || h != g_scene_h) {
-        WLOGI("scene %dx%d (%s)", w, h, g_desktop ? "desktop" : "no desktop");
+        if (g_desktop) banner_log("desktop", "size %dx%d", w, h);
+        else banner_log("desktop", "no desktop: showing %dx%d (largest window)", w, h);
         g_scene_w = w;
         g_scene_h = h;
     }
@@ -983,6 +1141,7 @@ static void render_scene(void) {
     }
 
     if (vkp_render(w, h, dl.d, dl.n) == 0) {
+        g_stat_frames++;
         fire_all_frames();
     } else {
         /* No output surface yet (or it went away): keep clients paced without it. */
@@ -1220,6 +1379,22 @@ void banner_wayland_send_key(int evdev, int state) {
     (void)n;
 }
 
+/* ------------------------------------------------------------------ 10 s summary */
+
+static struct wl_event_source *g_stats_timer;
+
+static int on_stats_timer(void *data) {
+    int windows = 0;
+    struct surface *s;
+    wl_list_for_each(s, &g_toplevels, toplevel_link) windows++;
+    if (g_stat_frames || g_stat_dmabuf || g_stat_shm)
+        banner_log("stats", "last 10 s: %u frames on screen (%.1f fps) | %u GPU frames from games | %u window redraws | %d windows open",
+                   g_stat_frames, g_stat_frames / 10.0, g_stat_dmabuf, g_stat_shm, windows);
+    g_stat_frames = g_stat_dmabuf = g_stat_shm = 0;
+    wl_event_source_timer_update(g_stats_timer, 10000);
+    return 0;
+}
+
 /* ------------------------------------------------------------------ test input
  * $XDG_RUNTIME_DIR/test-input is a FIFO for scripted testing from a root shell, in scene
  * (desktop) coordinates: "move X Y", "click X Y", "rclick X Y", "dclick X Y", "down X Y",
@@ -1236,7 +1411,7 @@ static void test_input_line(const char *line) {
     int n = sscanf(line, "%15s %lf %lf", cmd, &x, &y);
 
     if (n < 2) return;
-    WLOGI("test input: %s", line);
+    banner_log("test", "input: %s", line);
     if (!strcmp(cmd, "key") || !strcmp(cmd, "keydown") || !strcmp(cmd, "keyup")) {
         code = (unsigned)x;
         if (strcmp(cmd, "keyup")) key_event(code, 1);
@@ -1296,9 +1471,12 @@ static void start_test_input(struct wl_event_loop *loop) {
  * Blocks in the wl event loop, so the JNI wrapper runs it on a dedicated thread.
  * XDG_RUNTIME_DIR must be set by the caller before this runs. */
 
+static struct wl_listener g_client_created = { .notify = on_client_created };
+
 int banner_wayland_run(void) {
     wl_list_init(&g_surfaces);
     wl_list_init(&g_toplevels);
+    open_session_log();
 
     /* Bring the GPU up before any client can connect: loading Turnip the first time
      * can take many seconds, and it must not stall a client mid-handshake. */
@@ -1325,7 +1503,8 @@ int banner_wayland_run(void) {
               rt ? rt : "(null)");
         return 1;
     }
-    WLOGI("listening on %s/wayland-0", rt ? rt : "?");
+    banner_log("display", "Wayland compositor listening on %s/wayland-0", rt ? rt : "?");
+    wl_display_add_client_created_listener(display, &g_client_created);
 
     wl_global_create(display, &wl_compositor_interface, 6, NULL, bind_compositor);
     wl_global_create(display, &wl_subcompositor_interface, 1, NULL, bind_subcompositor);
@@ -1347,6 +1526,8 @@ int banner_wayland_run(void) {
         WLOGE("input pipe creation failed");
     }
     start_test_input(wl_display_get_event_loop(display));
+    if ((g_stats_timer = wl_event_loop_add_timer(wl_display_get_event_loop(display), on_stats_timer, NULL)))
+        wl_event_source_timer_update(g_stats_timer, 10000);
 
     wl_display_run(display); /* blocks, dispatches the event loop */
 

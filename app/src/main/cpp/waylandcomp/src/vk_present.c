@@ -12,7 +12,7 @@
 
 #define TAG "BannerWayland"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOGE(...) banner_log("error", __VA_ARGS__)
 #define MOD_INVALID 0x00ffffffffffffffULL
 
 struct vkp_image {
@@ -129,7 +129,9 @@ static int dev_init(void) {
     {
         VkPhysicalDeviceProperties props;
         g_vk.GetPhysicalDeviceProperties(g_pd, &props);
-        LOGI("present: GPU '%s'", props.deviceName);
+        banner_log("gpu", "compositor renders on %s with %s", props.deviceName,
+                   g_library_name ? g_library_name : "the system Vulkan driver");
+        if (g_driver_path) banner_log("gpu", "driver folder %s", g_driver_path);
     }
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
 
@@ -230,7 +232,7 @@ static int swap_init(void) {
     g_images = calloc(g_nimg, sizeof(VkImage));
     g_vk.GetSwapchainImagesKHR(g_dev, g_swapchain, &g_nimg, g_images);
 
-    LOGI("present: swapchain up %ux%u, %u images", g_extent.width, g_extent.height, g_nimg);
+    banner_log("gpu", "screen output %ux%u, %u buffers, vsync", g_extent.width, g_extent.height, g_nimg);
     return 0;
 }
 

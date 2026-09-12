@@ -50,4 +50,7 @@ int vkp_ready(void);
 // Returns 0 on success, -1 if nothing could be presented (no window yet, etc.).
 int vkp_render(int scene_w, int scene_h, const struct vkp_draw *draws, int n);
 
+// Session log (compositor.c): one line to Download/Wayland-logs and logcat.
+void banner_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+
 #endif

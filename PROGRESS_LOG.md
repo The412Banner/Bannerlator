@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-09-11 — 🧭 **CHECKPOINT: device test of the merged XMB view (driven over the root bridge)**
+> - Build under test: r4 = main `1204b8dc` app tree (pubg `com.tencent.ig`, sha `72531f10…`). Plan: games-bar navigation; Settings → General (change a value with ◀▶, confirm the shortcut file changed, revert); L1/R1 sections; Controller toggle (confirm + revert); a text row (keyboard, focus stays on the row, confirm + clear); Up to the top bar and Down back; Game Details / Properties / View logs / Remove (opens on Cancel). Read-only on app files; every change is made and reverted through the UI.
+
 ## 2026-09-11 — 🧭 **CHECKPOINT: XMB r4 — controller focus lost after the keyboard (fix in CI)** (`feat/games-xmb-view`)
 > - r3 device test (user screenshot): after any text row's keyboard closed, D-pad focus landed on the top-bar buttons (Steam friends) and Down never came back to the XMB.
 > - Two causes: the "hand focus back to the XMB" hook after editing was never wired (`XmbNavState.refocus` stayed a no-op), and since r2 the XMB's focus target extended up behind the see-through top bar — D-pad focus search skips a target that overlaps the button you're on, so Down found nothing.

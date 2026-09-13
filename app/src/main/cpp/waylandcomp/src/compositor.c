@@ -1340,8 +1340,14 @@ static void render_scene(void) {
     if (vkp_render(w, h, dl.d, dl.n) == 0) {
         int64_t t = now_ns();
         g_stat_frames++;
-        wl_list_for_each(s, &g_surfaces, link)
+        /* A surface outside the scene (role-less, not placed yet, a hidden helper window such
+         * as wined3d's device window) was not shown, so its feedback is discarded rather than
+         * left pending: a FIFO present waits on it, and a client blocked there never commits
+         * again. */
+        wl_list_for_each(s, &g_surfaces, link) {
             if (s->drawn) feedback_present_all(&s->feedback, t);
+            else feedback_discard_all(&s->feedback);
+        }
         fire_all_frames();
     } else {
         /* No output surface yet (or it went away): keep clients paced without it, now and on a

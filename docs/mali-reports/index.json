@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-09-13T01-40-28-941e27",
+    "created": "2026-09-13T01:40:28.396Z",
+    "reporter": "JClone",
+    "device": "Tecno Camon 20 Pro 5G+",
+    "gpu": "Mali-G77 MP9",
+    "game": "Left 4 Dead 2",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "logs": 4
+  },
+  {
     "id": "2026-09-12T22-26-30-d7e7e9",
     "created": "2026-09-12T22:26:30.443Z",
     "reporter": "",

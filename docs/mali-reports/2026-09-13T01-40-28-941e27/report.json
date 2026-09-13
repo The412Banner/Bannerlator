@@ -1,0 +1,44 @@
+{
+  "id": "2026-09-13T01-40-28-941e27",
+  "created": "2026-09-13T01:40:28.396Z",
+  "ip_hash": "hCH+Wml7M6",
+  "fields": {
+    "reporter_name": "JClone",
+    "device_model": "Tecno Camon 20 Pro 5G+",
+    "soc": "Dimensity 8050",
+    "gpu": "Mali-G77 MP9",
+    "android": "Android 14",
+    "ram": "8",
+    "app_version": "3.1.1",
+    "install_source": "GitHub release",
+    "game_name": "Left 4 Dead 2",
+    "steam_appid": "550",
+    "store": "Steam",
+    "exe": "left4dead2.exe",
+    "symptom": "Graphical glitches (corruption, flicker, missing textures)",
+    "when": "Never launches at all",
+    "graphics_driver": "System",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.5.5",
+    "proton": "Proton 9",
+    "box64": "Performance (TSO)",
+    "resolution": "854*480",
+    "framegen": "No",
+    "repro": "1. Open Game\n2. Game intro video starts, skipped them. (-novid doesn't seem to work).\n3. Then in-game screens are just black images, same with backgrounds (BG zombies have no textures so they defaulted to black silhouettes.\n4. Started a singleplayer game, no textures as well, everything is just dark, sky is just white, no clouds or anything.",
+    "tried": "Things I've tried.\n1. Applied different community config, meaning each settings have been changed each time (DHVK, Graphics Driver, etc...). No changes, Some don't launch.\n2. Switched containers, Proton-9 versions seems to be the only one that works, any other (wine containers and other proton like 10 and 11) shuts down immediately after \"Signing in to Steam\". 2nd option is another mali-report I want to make, seems connected to this mali-report.\n3. Restarted phone.\n4. Tried a pirated version of the game, steam doesn't work in container tho, so no luck finding out. Pirated game works in winlator.\n5. Mods might be the problem so, unsubscribed to the mods, no luck too.\n6. Tried In-game settings. No Luck.\nThings I haven't tried.\n1. Reinstall Game.\n2. Reinstall App.\n3. Change App Version.\n4. Change App Variant.\nNotes.\n1. Proton 9 only works.\n2. Might be a GPU problem, GPU doesn't seem to be working. GPU is recognized (name can be seen) but 0 FPS or no Load(%). \"Might be.\"\n3. Exec Arguments aren't working.\n4. This is the BIONIC variant not LUDASHI.\n5. Unrelated maybe but; Repo is just black screen, Cult of the Lamb also has texture issues.\nFeedback or Requests I'd like.\n1. Add a \"Verify Files\" in Steam section, steam game options.\n2. Add a way to use Steam in container (not in launch options, SteamLite/Real Steam), able to install steam but can't open interface so no way to login."
+  },
+  "logs": [
+    {
+      "name": "PSPIME8M.jpg"
+    },
+    {
+      "name": "0MNwvchD.jpg"
+    },
+    {
+      "name": "_2lD-k8K.jpg"
+    },
+    {
+      "name": "XzlaznEi.jpg"
+    }
+  ]
+}

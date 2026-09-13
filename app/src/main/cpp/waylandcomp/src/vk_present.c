@@ -105,6 +105,10 @@ void vk_present_set_window(ANativeWindow *window) {
     pthread_mutex_unlock(&g_swap_lock);
 }
 
+int vkp_has_window(void) {
+    return g_window != NULL;
+}
+
 static int has_ext(VkExtensionProperties *e, uint32_t n, const char *name) {
     for (uint32_t i = 0; i < n; i++)
         if (!strcmp(e[i].extensionName, name)) return 1;

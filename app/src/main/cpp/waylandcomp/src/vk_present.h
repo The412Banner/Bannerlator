@@ -48,6 +48,8 @@ const char *vkp_gpu_name(void);
 
 // 0 if the renderer can create images (device up), -1 otherwise.
 int vkp_ready(void);
+/* Whether an output window is attached; without one vkp_render() draws nothing. */
+int vkp_has_window(void);
 
 // Clear to black, blit the draws in order (first = bottom) and present.
 // Returns 0 on success, -1 if nothing could be presented (no window yet, etc.).

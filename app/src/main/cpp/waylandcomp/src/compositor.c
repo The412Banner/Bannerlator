@@ -1294,8 +1294,25 @@ static void fire_all_frames(void) {
     wl_list_for_each(s, &g_surfaces, link) fire_frames(&s->frames);
 }
 
+/* With no output window (the app is in the background, or the SurfaceView is being rebuilt)
+ * nothing gets drawn, but the clients must not be left waiting on us. A FIFO swapchain blocks
+ * in its present until its wp_presentation feedback and frame callback arrive, and a client
+ * blocked there stops pumping messages: winhandler.exe then wedges behind it and the app
+ * concludes the program has exited and closes the whole session. (DXVK's mailbox presents
+ * never wait, which is why only OpenGL/Zink clients died on a background/resume.) Answer every
+ * pending frame and feedback as discarded, and keep doing so until a window is back. */
+static void pace_without_output(void) {
+    struct surface *s;
+    wl_list_for_each(s, &g_surfaces, link) {
+        fire_frames(&s->frames);
+        feedback_discard_all(&s->feedback);
+    }
+    wl_display_flush_clients(g_display);
+}
+
 static int on_frame_timer(void *data) {
-    fire_all_frames();
+    pace_without_output();
+    if (!vkp_has_window() && g_frame_timer) wl_event_source_timer_update(g_frame_timer, 16);
     return 0;
 }
 
@@ -1327,7 +1344,9 @@ static void render_scene(void) {
             if (s->drawn) feedback_present_all(&s->feedback, t);
         fire_all_frames();
     } else {
-        /* No output surface yet (or it went away): keep clients paced without it. */
+        /* No output surface yet (or it went away): keep clients paced without it, now and on a
+         * timer that re-arms itself until a window is back (see pace_without_output). */
+        pace_without_output();
         if (!g_frame_timer)
             g_frame_timer = wl_event_loop_add_timer(wl_display_get_event_loop(g_display),
                                                     on_frame_timer, NULL);

@@ -1,8 +1,21 @@
-Bannerlator Wayland test kit  (2026-09-14, phase 4 = pre-release 6)
+Bannerlator Wayland test kit  (2026-09-14, phase 5 = pre-release 7)
 ====================================================================
 
-1. Bannerlator-3.1.2-wayland-pre6-<flavour>.apk   (all three flavours on the GitHub pre-release)
+1. Bannerlator-3.1.2-wayland-pre7-<flavour>.apk   (all three flavours on the GitHub pre-release)
    versionCode 85 like 3.1.1, so you can go back to 3.1.1 or forward to the next stable.
+   New since pre-release 6 (use the v8 layer below):
+   - OpenGL safe mode: on by default for OpenGL games on Wayland (drawer switch, next launch).
+     Stops OpenGL games vanishing a few seconds in (Mesa's threaded context crash).
+   - Every session log starts with what the screen can do for HDR; Task Manager shows it too.
+   - A window over a game no longer costs hardware composition for the rest of the session on a
+     screen that rotates and scales the game (handhelds like the Pocket FIT).
+   - The HUD names what really renders on Wayland: an OpenGL game says "OpenGL", not "DXVK".
+     Cards read "Vulkan (Wayland)", and X11 cards now read "Vulkan (X11)" / "OpenGL (X11)".
+   - Creating a container now keeps everything the create screen showed: Wayland, the Wayland
+     game driver, drivers, DXVK/VKD3D versions, and env vars you deleted stay deleted.
+   - A Wayland container never starts with a blank "Compositor driver": it picks a Turnip that
+     works (your New Container Defaults driver first); with none installed it offers a download.
+   - No more Wine Mono download prompt on a new container or after a layer update (all layers).
    New since pre-release 5 (NEEDS the v7 layer below):
    - Games that use OpenGL directly now RENDER on Wayland. They were always a black window with
      sound. Two faults: the compositor described its buffer sharing with an older protocol version
@@ -53,7 +66,10 @@ Bannerlator Wayland test kit  (2026-09-14, phase 4 = pre-release 6)
      Wine's desktop no longer closes a second into a game's startup (32-bit games under FEX).
    - Keyboard layout names now come from xkb data bundled in the Proton (no longer forced to "us").
 
-2. proton-11.0-2.1-arm64ec-wayland-v7.wcp   (installs as Proton-11.0-2.1-arm64ec-7)
+2. proton-11.0-2.1-arm64ec-wayland-v8.wcp   (installs as Proton-11.0-2.1-arm64ec-8)
+   New in v8: the XP Start menu's "Control Panel" opens Wine's Control Panel again (it did nothing
+   on v7), with the proper icon; Add/Remove Programs is reachable from it. Containers on -7 show an
+   "Update layer" button - it backs up the registry first and can be reverted.
    Proton 11.0-2 + winewayland + EIGHT Wayland Turnips chosen under "Wayland game driver":
      Bundled                    upstream Mesa 7cda7850, no patches        Adreno 6xx, 730, 740, 750
      Bundled a7xx               Vauzi-17 "710" v3.6 recipe                  Adreno 710, 720, 722
@@ -65,7 +81,8 @@ Bannerlator Wayland test kit  (2026-09-14, phase 4 = pre-release 6)
      Bundled a8xx upstream      pure Mesa main @ bbc7792f (2026-09-13), no patches
    Also inside: the zero-copy swapchain patch in every driver, xkeyboard-config data, and the
    Wine fix restoring the 1 s desktop-close grace, and the drivers that follow the live zero-copy
-   switch, and the EGL fix that lets OpenGL games render. Remove older -1 … -6 entries.
+   switch, and the EGL fix that lets OpenGL games render. Remove older -1 … -6 entries (keep -7
+   until your containers are updated to -8).
    All eight load and render on an Adreno 750; none has been run on real 710/720/722 or 830/840 yet.
 
 3. No Turnip zip needed: the compositor uses whatever Android Turnip you pick under
@@ -74,8 +91,8 @@ Bannerlator Wayland test kit  (2026-09-14, phase 4 = pre-release 6)
 Setup
 -----
 1. Install the APK for your flavour over 3.1.1 or an earlier pre-release.
-2. Contents > Proton > Install from file: the v7 wcp.
-3. Container: Proton = Proton-11.0-2.1-arm64ec-7, Display backend = Wayland, Compositor driver =
+2. Contents > Proton > Install from file: the v8 wcp.
+3. Container: Proton = Proton-11.0-2.1-arm64ec-8, Display backend = Wayland, Compositor driver =
    an Android Turnip, Wayland game driver = Auto (8xx owners: try the alternatives one by one),
    FEXCore = an installed version. DXVK / VKD3D / components / audio as on X11.
 4. Optional experiments via Env Vars: BANNER_WAYLAND_ZERO_COPY=1 (fullscreen games only),

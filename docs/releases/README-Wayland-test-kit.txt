@@ -50,7 +50,7 @@ Bannerlator Wayland test kit  (2026-09-14, phase 5 = pre-release 7)
      Nearest, SGSR, SGSR HQ, FSR, FSR Fit, Sharpen, NIS), CAS, HDR, Debanding, Looks, brightness/
      contrast/gamma/saturation, FXAA, CRT, Toon, NTSC (13-pass Vulkan chain in the compositor).
    - Frame generation WORKS on Wayland: LSFG Native and Win-FG Native, armed from the drawer as on
-     X11 (the launch never auto-arms; bionic-fg stays X11-only). Proven: Half-Life 2 at 30 fps shown
+     X11 (the launch never auto-arms). Proven: Half-Life 2 at 30 fps shown
      at 60 / 90 / 120 fps with LSFG Native 2x / 3x / 4x.
    - Effects or frame generation on => the session uses the copy path (zero-copy pauses, the log says so).
    - HUD fps no longer reads 0.0 when zero-copy frames bypass the compositor (tester report).
@@ -132,7 +132,7 @@ Known gaps
   Env Vars. Mesa's threaded-driver helper can fault on this build, and Wine's crash handling means
   the process just disappears. The game used to find this went from dying after two frames to
   playing its full intro at a steady 30 fps.
-- bionic-fg stays X11-only; drag-and-drop, image clipboard and window decorations are not on Wayland yet.
+- Drag-and-drop, image clipboard and window decorations are not on Wayland yet.
 - With a window above the game, THIS panel hands the frame back to the GPU instead of composing two
   layers itself (the game still keeps its copy-free frames). Other panels may differ - please report.
 - Frame generation still needs the compositor pass, so it pauses zero-copy.

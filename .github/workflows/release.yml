@@ -151,3 +151,24 @@ jobs:
         # Only a stable cut becomes "latest"; pre-releases never do, so the
         # default (toggle-off) updater keeps pointing at the last stable.
         make_latest: ${{ inputs.make_prerelease != 'true' }}
+
+    # Wayland pre-release 7 only (this branch): attach the proven v8 layer straight from the
+    # proton-wine CI run, server-side, plus the test-kit README. The hash must match the build
+    # that was proven on the device.
+    - name: Attach the Wayland test kit (layer + README)
+      if: ${{ inputs.make_prerelease == 'true' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -e
+        mkdir -p kit
+        gh run download 34846379023 -R The412Banner/proton-wine -n proton-arm64ec-sdk28 -D kit/pw
+        ls -laR kit/pw
+        WCP=$(find kit/pw -name '*.wcp' | head -1)
+        [ -n "$WCP" ] || { echo "no .wcp in the artifact"; exit 1; }
+        cp "$WCP" kit/proton-11.0-2.1-arm64ec-wayland-v8.wcp
+        echo "de8dcad0227dbfb0f32fd766a6c34497bd69787b9a62459657a146895a4c5d09  kit/proton-11.0-2.1-arm64ec-wayland-v8.wcp" | sha256sum -c -
+        gh release upload "${{ inputs.release_tag }}" \
+          kit/proton-11.0-2.1-arm64ec-wayland-v8.wcp docs/releases/README-Wayland-test-kit.txt \
+          --clobber -R "${{ github.repository }}"
+        gh release delete-asset "${{ inputs.release_tag }}" update.json -y -R "${{ github.repository }}" || true

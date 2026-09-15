@@ -1,9 +1,30 @@
-Bannerlator Wayland test kit  (2026-09-14, phase 5 = pre-release 7)
+Bannerlator Wayland test kit  (2026-09-15, pre-release 8: real HDR)
 ====================================================================
 
-1. Bannerlator-3.1.2-wayland-pre7-<flavour>.apk   (all three flavours on the GitHub pre-release)
+1. Bannerlator-3.1.2-wayland-pre8-<flavour>.apk   (all three flavours on the GitHub pre-release)
    versionCode 85 like 3.1.1, so you can go back to 3.1.1 or forward to the next stable.
-   New since pre-release 6 (use the v9 layer below):
+   New since pre-release 7 (use the v11 layer below):
+   - HDR10 on HDR screens: an "HDR output (HDR10)" setting in the container, game shortcut and
+     XMB settings (shown only on screens that report HDR10; applies from the next launch; sets
+     DXVK_HDR=1 and hands your screen's brightness to the layer). The game's own 10-bit HDR frames
+     go straight to the display tagged HDR10 (BT.2020 PQ).
+   - HDR stays on with screen effects, windowed games, a window on top and zero-copy off (one
+     10-bit HDR picture on the game's display layer). The drawer's Graphics tab has a live
+     "HDR output" switch: Off = the same picture tone-mapped to normal brightness.
+   - Frame generation keeps HDR: LSFG Native / Win-FG Native run on the HDR picture in 16-bit and
+     present through a 10-bit HDR10 swapchain (60 fps shown at 120, every frame HDR, on the Fold).
+     Where the screen offers no HDR10 swapchain the frames are tone-mapped to SDR, never washed out.
+   - On Android 15+ the app asks Android for the HDR boost (not proven to help yet on phones that
+     do not boost on their own).
+   - The HUD shows the HDR state on its own line under "<latency> . Wayland": HDR, HDR (no
+     headroom), HDR off, HDR tone-mapped, HDR ready. Non-HDR sessions look as before.
+   - The session log explains HDR: the screen's capability, each HDR path, the live HDR/SDR
+     headroom, and the phone's heat level and brightness when the boost drops. Screenshots,
+     screen recordings and a hot phone switch the boost off - that is Android.
+   - Fusion HUD starts in the top-right corner; new containers get the Fusion pill at 75% with
+     every metric on (existing containers keep their own HUD settings).
+   - The frame generation picker works on Wayland in the container, shortcut and XMB settings.
+   New since pre-release 6 (pre-release 7):
    - OpenGL safe mode: on by default for OpenGL games on Wayland (drawer switch, next launch).
      Stops OpenGL games vanishing a few seconds in (Mesa's threaded context crash).
    - Every session log starts with what the screen can do for HDR; Task Manager shows it too.
@@ -66,7 +87,12 @@ Bannerlator Wayland test kit  (2026-09-14, phase 5 = pre-release 7)
      Wine's desktop no longer closes a second into a game's startup (32-bit games under FEX).
    - Keyboard layout names now come from xkb data bundled in the Proton (no longer forced to "us").
 
-2. proton-11.0-2.1-arm64ec-wayland-v9.wcp   (installs as Proton-11.0-2.1-arm64ec-9)
+2. proton-11.0-2.1-arm64ec-wayland-v11.wcp   (installs as Proton-11.0-2.1-arm64ec-11)
+   New in v11: games see your screen's real HDR description (peak, full-screen brightness, black
+   level, colours, as Android reports them) instead of DXVK's made-up 1499-nit screen. v10 built
+   the description; v11 fixed Wine's virtual desktop, which handed games a monitor without it.
+   Proven: 1345 nits on a Galaxy Z Fold 8 Ultra, 1207 on a ROG Phone 9 Pro, 892 on an Adreno 735.
+   Nothing changes on a screen without HDR10.
    New in v9: OpenGL games draw on phones that hide their display device (they were black with
    sound on many retail Adreno 830/840 phones; the session log now says when this path is taken).
    New in v8: the XP Start menu's "Control Panel" opens Wine's Control Panel again (it did nothing
@@ -83,25 +109,50 @@ Bannerlator Wayland test kit  (2026-09-14, phase 5 = pre-release 7)
      Bundled a8xx upstream      pure Mesa main @ bbc7792f (2026-09-13), no patches
    Also inside: the zero-copy swapchain patch in every driver, xkeyboard-config data, and the
    Wine fix restoring the 1 s desktop-close grace, and the drivers that follow the live zero-copy
-   switch, and the EGL fix that lets OpenGL games render. Remove older -1 … -6 entries (keep -7 and -8
-   until your containers are updated to -9).
-   All eight load and render on an Adreno 750; none has been run on real 710/720/722 or 830/840 yet.
+   switch, and the EGL fix that lets OpenGL games render. Containers on -7 to -10 show an
+   "Update layer" button that moves them to -11 (registry backed up first, revertable).
+   All eight load and render on an Adreno 750; the a8xx builds now run on real Adreno 830/840
+   phones; 710/720/722 are still untested on real hardware.
 
 3. No Turnip zip needed: the compositor uses whatever Android Turnip you pick under
    "Compositor driver" (any recent one from the in-app catalog). Never pick "System".
 
+4. AIO-Graphics-Test-HDR-64bit.exe   (a testing build of AIO Graphics Test with an HDR test card)
+   Run it in your Wayland container with HDR output on, then Display Tests > HDR.
+   - Top line "HDR10 ON"; the line under it says whether Windows sees your screen
+     ("DXGI reports your screen (~N nits)") or DXVK's stand-in (1499/799/0.01).
+   - Square corner button = true fullscreen ("fullscreen: yes (W x H at 0,0)"), so the frames can
+     go straight to the display (zero-copy).
+   - Tap HDR10 / SDR to compare: in HDR the 400 / 600 / 1000 / max patches step up in brightness
+     and the sun glares; in SDR everything from 203 up is the same white.
+   - Banding strips: the 10-bit strip should stay smooth, also with frame generation on.
+   - Report: AIO Results\HDR\AIO-Graphics-Test_hdr.txt next to where it runs. Don't screen-record
+     while testing HDR (it switches the HDR boost off); a photo of the screen is fine.
+
 Setup
 -----
 1. Install the APK for your flavour over 3.1.1 or an earlier pre-release.
-2. Contents > Proton > Install from file: the v9 wcp.
-3. Container: Proton = Proton-11.0-2.1-arm64ec-9, Display backend = Wayland, Compositor driver =
+2. Contents > Proton > Install from file: the v11 wcp.
+3. Container: Proton = Proton-11.0-2.1-arm64ec-11, Display backend = Wayland, Compositor driver =
    an Android Turnip, Wayland game driver = Auto (8xx owners: try the alternatives one by one),
    FEXCore = an installed version. DXVK / VKD3D / components / audio as on X11.
 4. Optional experiments via Env Vars: BANNER_WAYLAND_ZERO_COPY=1 (fullscreen games only),
    BANNER_WAYLAND_UBWC=0 (if the picture is scrambled), TU_DEBUG=sysmem (Vauzi's tip for 710/720/722).
+5. HDR (HDR screens only): turn on "HDR output (HDR10)" in the game's shortcut settings, switch HDR
+   on in the game's own options (DXVK v3.1 is the tested version), and check with the AIO HDR card.
 
-Verified on this build (AYANEO Pocket FIT, Adreno 750)
------------------------------------------------------
+Verified for HDR (Samsung Galaxy Z Fold 8 Ultra, Adreno 840, HDR10 1351 nits)
+------------------------------------------------------------------------------
+  God of War: 10-bit HDR frames zero-copy on the display layer, HDR/SDR headroom up to 2.3-3.2x
+  while the phone was cool; drawer HDR switch off/on; CAS / FXAA / colour effects kept HDR.
+  AIO HDR card: DXGI reports the screen (1345 nits); fullscreen HDR zero-copy 599 frames per 10 s;
+  frame generation 2x at 120 fps, every frame through the 10-bit HDR10 swapchain, 0 tone-mapped;
+  headroom 3.0-3.6x steady. 0 washed-out frames in every run.
+  The screen description also reached DXGI on a ROG Phone 9 Pro (1207 nits) and an Adreno 735
+  phone (892 nits).
+
+Verified on the Wayland backend (AYANEO Pocket FIT, Adreno 750)
+--------------------------------------------------------------
   All eight game drivers load their own manifest and render the AIO Graphics Test on Wayland.
   Switch sweep Vulkan -> D3D12 -> D3D9 alive in one launch.
   Half-Life 2: desktop survives the launch; touch mouse-look under a pointer lock; 144 fps.
@@ -124,16 +175,18 @@ Verified on this build (AYANEO Pocket FIT, Adreno 750)
 
 Known gaps
 ----------
+- The HDR boost depends on the phone: the Fold brightens HDR highlights up to ~3.6x; a ROG Phone 9 Pro
+  got a correct HDR picture but no extra brightness. This build asks Android for the boost (15+);
+  not proven to help yet. Screenshots, screen recordings and heat switch the boost off.
+- scRGB (the other HDR format some games use) shows in normal brightness: the compositor offers HDR10.
 - Measured on the Pocket FIT, Half-Life 2 uncapped, 2x60 s each: zero-copy 185 fps vs 187 fps copy path
   (no change, CPU-bound), GPU busy 79% vs 83%, GPU clock 944 vs 1000 MHz, power 16.3 W vs 16.8 W.
   Zero-copy removes the compositor's GPU work; fps gains need a GPU-bound game or a big panel.
-- Real Adreno 710/720/722 and 830/840 hardware untested: please report which a8xx build works best.
+- Real Adreno 710/720/722 hardware untested; 830/840 owners: please report which a8xx build works best.
 - OpenGL is newly working, not broadly tested. Reports from OpenGL games are the most useful thing
   to send right now.
-- If an OpenGL game vanishes with no error, no log and no crash dialog, put GALLIUM_THREAD=0 in its
-  Env Vars. Mesa's threaded-driver helper can fault on this build, and Wine's crash handling means
-  the process just disappears. The game used to find this went from dying after two frames to
-  playing its full intro at a steady 30 fps.
+- OpenGL safe mode (on by default) avoids the vanishing-game crash in Mesa's threaded driver; it does
+  not fix it.
 - Drag-and-drop, image clipboard and window decorations are not on Wayland yet.
 - With a window above the game, THIS panel hands the frame back to the GPU instead of composing two
   layers itself (the game still keeps its copy-free frames). Other panels may differ - please report.

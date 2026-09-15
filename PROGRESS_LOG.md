@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-09-14 21:45 — 🎛️ **New containers start on the Fusion pill at 75% with every metric on; the Fusion HUD moves to the top-right corner** (branch `feat/fusion-hud-defaults` `1a9dbe57`, off `main` `326359f8`; not merged)
+
+> **Default config.** `Container.DEFAULT_FPS_COUNTER_CONFIG` now writes every Fusion metric key as 1: FPS graph, battery, power, CPU/GPU/battery temperatures, GPU model, clock and the Mega-only rows. It also sets `hudLocked=0` and `hudScale=75` (`NEW_CONTAINER_HUD_SCALE`). Both spellings are written wherever the editors emit two, so the container and in-game editors show what the overlay draws. `DEFAULT_HUD_SCALE` stays 100 as the fallback for a config that has no `hudScale` key, so older configs keep their size. Existing containers keep their saved HUD settings.
+>
+> **Position.** `buildFusionHud` anchors the Fusion overlay `TOP|END` (10 px margins), so a bigger size grows leftward. A layout listener pulls a dragged HUD back on screen when a size change would push it past an edge. Saved drag positions (`hudPosFusion`) are absolute and still restore.
+>
+> **Testing build.** Merged into `feat/wayland-hdr` as `be2f4501` so it ships with the HDR round 2b HUD line; CI run 34915289832 (`hdr-r2c`). Nothing device-tested yet.
+
 ## 2026-09-14 17:25 — 🌈 **HDR round 1 in flight** (branch `feat/wayland-hdr`; nothing merged, no Bannerlator release)
 
 > **Why now.** `app/src/main/cpp/waylandcomp/HDR_RECON.md` parked HDR until an HDR panel was in the loop and multi-layer presentation had landed. Both are now true: the user's Galaxy Fold (Adreno 840, API 37) reports `HDR10, HLG, HDR10+ | 1351 nits | HDR/SDR headroom available`.

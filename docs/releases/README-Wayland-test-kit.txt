@@ -1,9 +1,30 @@
-Bannerlator Wayland test kit  (2026-09-15, pre-release 8: real HDR)
-====================================================================
+Bannerlator Wayland test kit  (2026-09-16, pre-release 9: TV launch, faster Wayland, GPU spoof)
+===============================================================================================
 
-1. Bannerlator-3.1.2-wayland-pre8-<flavour>.apk   (all three flavours on the GitHub pre-release)
+1. Bannerlator-3.1.2-wayland-pre9-<flavour>.apk   (all three flavours on the GitHub pre-release)
    versionCode 85 like 3.1.1, so you can go back to 3.1.1 or forward to the next stable.
-   New since pre-release 7 (use the v11 layer below):
+   New since pre-release 8 (use the v16 layer below):
+   - Launch a game on your TV: a "TV" tab in the game's settings (and XMB settings) appears while an
+     external screen is connected; it reads the screen's modes and HDR10 support. "Launch this game
+     on the TV" starts the session on that screen; the handheld shows a companion screen (Send input
+     back to the TV, End the game). Touching the handheld no longer freezes the game; pulling the
+     cable pauses the game and moves it back to the handheld. HUD/drawer HDR readouts follow the
+     screen the game is on. Not tested yet: Home + reopen, match resolution, output-mode picker.
+   - Wayland performance phase 1: layer pool of 5 with GPU-side release waits and UBWC requests,
+     letterbox-only clears, CPU affinity on Wayland, "Prefer big cores" = every core >=70% of peak.
+     Pocket FIT AIO copy path vs pre-release 8: Vulkan +9%, D3D12 +12%, DirectDraw +20%, D3D11 +3.5%.
+   - Wayland driver settings (the gear next to "Wayland game driver"): GPU Name (spoof) - written to
+     a generated DXVK config so every DXVK version gets it (proven with God of War on DXVK 2.4.1),
+     the HUD shows "<card> spoof"; DXVK memory cap; present mode; OneUI / HyperOS UBWC hint.
+   - Unreal Engine HDR (game settings): Off / DirectX 12 fix / DirectX 11 (experimental, bundled
+     dxvk-nvapi 0.9.2). Tetris Effect: HDR10 on a TV (DX12 + DX11) and on the Fold (DX11), with HDR
+     forced in its ini files (the game's own menu did not switch it on).
+   - RE Engine HDR (Resident Evil): the games only offer HDR with an AMD GPU. With the v16 layer and
+     GPU Name (spoof) = an AMD card (e.g. Radeon RX 6800/6800 XT / 6900 XT) + HDR output on,
+     Resident Evil 3 asks "Enable HDR?" and AGS reports an HDR10 display. Not yet seen on an HDR screen.
+   - AIO Graphics Test with the HDR card is built into new containers (Start menu: AIO Graphics Test (HDR)).
+   - Fusion HUD pill: a long GPU name (a spoofed card) gets its own top line instead of stretching the pill.
+   New since pre-release 7 (pre-release 8):
    - HDR10 on HDR screens: an "HDR output (HDR10)" setting in the container, game shortcut and
      XMB settings (shown only on screens that report HDR10; applies from the next launch; sets
      DXVK_HDR=1 and hands your screen's brightness to the layer). The game's own 10-bit HDR frames
@@ -87,7 +108,13 @@ Bannerlator Wayland test kit  (2026-09-15, pre-release 8: real HDR)
      Wine's desktop no longer closes a second into a game's startup (32-bit games under FEX).
    - Keyboard layout names now come from xkb data bundled in the Proton (no longer forced to "us").
 
-2. proton-11.0-2.1-arm64ec-wayland-v11.wcp   (installs as Proton-11.0-2.1-arm64ec-11)
+2. proton-11.0-2.1-arm64ec-wayland-v16.wcp   (installs as Proton-11.0-2.1-arm64ec-16)
+   New in v16: Wine's own AMD AGS library (amd_ags_x64) is built and wins over the copy a game ships
+   with (arm64ec). It answers from DXGI, so RE Engine games see an HDR10 display when HDR is on.
+   Proven: Resident Evil 3 still runs at 60 fps with it, and with an AMD GPU spoof it asks "Enable HDR?".
+   New in v13-v14: Windows' display-configuration API reports your monitor as HDR (advanced colour),
+   plus the SDR white level and advanced colour state answers.
+   New in v12: the eight Turnips ask for compressed (UBWC) buffers for zero-copy.
    New in v11: games see your screen's real HDR description (peak, full-screen brightness, black
    level, colours, as Android reports them) instead of DXVK's made-up 1499-nit screen. v10 built
    the description; v11 fixed Wine's virtual desktop, which handed games a monitor without it.
@@ -109,15 +136,15 @@ Bannerlator Wayland test kit  (2026-09-15, pre-release 8: real HDR)
      Bundled a8xx upstream      pure Mesa main @ bbc7792f (2026-09-13), no patches
    Also inside: the zero-copy swapchain patch in every driver, xkeyboard-config data, and the
    Wine fix restoring the 1 s desktop-close grace, and the drivers that follow the live zero-copy
-   switch, and the EGL fix that lets OpenGL games render. Containers on -7 to -10 show an
-   "Update layer" button that moves them to -11 (registry backed up first, revertable).
+   switch, and the EGL fix that lets OpenGL games render. Containers on -7 to -15 show an
+   "Update layer" button that moves them to -16 (registry backed up first, revertable).
    All eight load and render on an Adreno 750; the a8xx builds now run on real Adreno 830/840
    phones; 710/720/722 are still untested on real hardware.
 
 3. No Turnip zip needed: the compositor uses whatever Android Turnip you pick under
    "Compositor driver" (any recent one from the in-app catalog). Never pick "System".
 
-4. AIO-Graphics-Test-HDR-64bit.exe   (a testing build of AIO Graphics Test with an HDR test card)
+4. AIO-Graphics-Test-HDR-64bit.exe   (AIO Graphics Test with the HDR test card; new containers include it)
    Run it in your Wayland container with HDR output on, then Display Tests > HDR.
    - Top line "HDR10 ON"; the line under it says whether Windows sees your screen
      ("DXGI reports your screen (~N nits)") or DXVK's stand-in (1499/799/0.01).
@@ -132,14 +159,17 @@ Bannerlator Wayland test kit  (2026-09-15, pre-release 8: real HDR)
 Setup
 -----
 1. Install the APK for your flavour over 3.1.1 or an earlier pre-release.
-2. Contents > Proton > Install from file: the v11 wcp.
-3. Container: Proton = Proton-11.0-2.1-arm64ec-11, Display backend = Wayland, Compositor driver =
+2. Contents > Proton > Install from file: the v16 wcp.
+3. Container: Proton = Proton-11.0-2.1-arm64ec-16, Display backend = Wayland, Compositor driver =
    an Android Turnip, Wayland game driver = Auto (8xx owners: try the alternatives one by one),
    FEXCore = an installed version. DXVK / VKD3D / components / audio as on X11.
 4. Optional experiments via Env Vars: BANNER_WAYLAND_ZERO_COPY=1 (fullscreen games only),
    BANNER_WAYLAND_UBWC=0 (if the picture is scrambled), TU_DEBUG=sysmem (Vauzi's tip for 710/720/722).
 5. HDR (HDR screens only): turn on "HDR output (HDR10)" in the game's shortcut settings, switch HDR
    on in the game's own options (DXVK v3.1 is the tested version), and check with the AIO HDR card.
+   Unreal Engine games: set "Unreal Engine HDR". RE Engine (Resident Evil) games: gear > GPU Name
+   (spoof) = an AMD card, e.g. Radeon RX 6800/6800 XT / 6900 XT.
+6. TV: plug the screen in, game settings > TV > "Launch this game on the TV", then launch the game.
 
 Verified for HDR (Samsung Galaxy Z Fold 8 Ultra, Adreno 840, HDR10 1351 nits)
 ------------------------------------------------------------------------------
@@ -150,6 +180,17 @@ Verified for HDR (Samsung Galaxy Z Fold 8 Ultra, Adreno 840, HDR10 1351 nits)
   headroom 3.0-3.6x steady. 0 washed-out frames in every run.
   The screen description also reached DXGI on a ROG Phone 9 Pro (1207 nits) and an Adreno 735
   phone (892 nits).
+
+Verified in pre-release 9 (AYANEO Pocket FIT, Adreno 750)
+--------------------------------------------------------
+  TV tab: launch from the Games tab onto an HDR TV (HDR gate open for the TV), companion screen on
+  the handheld, touching the handheld kept the game running at 54 fps with the controller on the TV,
+  End the game, cable pull -> pause -> resumes on the handheld with sound.
+  GPU spoof: God of War on DXVK 2.4.1 got all six spoof settings; the HUD read "<card> spoof".
+  Tetris Effect HDR10 on a TV in DX12 and DX11 (Unreal Engine HDR, ini forced); DX11 also on the Fold.
+  Resident Evil 3 on v16: 60 fps; with a Radeon RX 6800 spoof the game asks "Enable HDR?" and AGS
+  reports Stage 7, ColorSpace HDR10, HDR10 1.
+  Phase 1, copy path vs pre-release 8 (AIO): Vulkan +9%, D3D12 +12%, DirectDraw +20%, D3D11 +3.5%.
 
 Verified on the Wayland backend (AYANEO Pocket FIT, Adreno 750)
 --------------------------------------------------------------
@@ -175,6 +216,12 @@ Verified on the Wayland backend (AYANEO Pocket FIT, Adreno 750)
 
 Known gaps
 ----------
+- HDR in games needs a per-engine helper: RE Engine needs an AMD GPU spoof (RE3's HDR not yet seen on
+  an HDR screen); Tetris needed HDR forced in its ini files (Unreal Engine HDR doesn't write them yet).
+- TV launch: Home + reopen, match resolution and the output-mode picker are untested. Android gives
+  input to one screen at a time: use "Send input back to the TV" if the controller stops reaching the game.
+- Not device-tested: the DXVK memory cap, present mode and UBWC hint in the gear; the Fusion pill top line.
+- Unreal Engine HDR also shows on X11, where it doesn't help yet.
 - The HDR boost depends on the phone: the Fold brightens HDR highlights up to ~3.6x; a ROG Phone 9 Pro
   got a correct HDR picture but no extra brightness. This build asks Android for the boost (15+);
   not proven to help yet. Screenshots, screen recordings and heat switch the boost off.

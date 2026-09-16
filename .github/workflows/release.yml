@@ -151,3 +151,29 @@ jobs:
         # Only a stable cut becomes "latest"; pre-releases never do, so the
         # default (toggle-off) updater keeps pointing at the last stable.
         make_latest: ${{ inputs.make_prerelease != 'true' }}
+
+    # Wayland pre-release 9 only (this branch): attach the v16 layer and the AIO Graphics Test HDR
+    # card straight from their CI runs, server-side, plus the test-kit README. Each hash must match
+    # the build that was proven on the device.
+    - name: Attach the Wayland test kit (layer + HDR test card + README)
+      if: ${{ inputs.make_prerelease == 'true' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -e
+        mkdir -p kit
+        gh run download 35051048569 -R The412Banner/proton-wine -n proton-arm64ec-sdk28 -D kit/pw
+        WCP=$(find kit/pw -name '*.wcp' | head -1)
+        [ -n "$WCP" ] || { echo "no .wcp in the artifact"; exit 1; }
+        cp "$WCP" kit/proton-11.0-2.1-arm64ec-wayland-v16.wcp
+        echo "28d8c3609b811a81af7003c74014fb175365529d55497b76b3d1dffe507dba87  kit/proton-11.0-2.1-arm64ec-wayland-v16.wcp" | sha256sum -c -
+        gh run download 34958086333 -R The412Banner/AIO-Graphics-Test -n AIO-Graphics-Test-windows-64bit -D kit/aio
+        EXE=$(find kit/aio -name 'AIO-Graphics-Test-64bit.exe' | head -1)
+        [ -n "$EXE" ] || { echo "no AIO exe in the artifact"; exit 1; }
+        cp "$EXE" kit/AIO-Graphics-Test-HDR-64bit.exe
+        echo "19ed24333613cee3824c4ab75571f3ca78b92be07eb3939bdf95cde259c90803  kit/AIO-Graphics-Test-HDR-64bit.exe" | sha256sum -c -
+        gh release upload "${{ inputs.release_tag }}" \
+          kit/proton-11.0-2.1-arm64ec-wayland-v16.wcp kit/AIO-Graphics-Test-HDR-64bit.exe \
+          docs/releases/README-Wayland-test-kit.txt \
+          --clobber -R "${{ github.repository }}"
+        gh release delete-asset "${{ inputs.release_tag }}" update.json -y -R "${{ github.repository }}" || true

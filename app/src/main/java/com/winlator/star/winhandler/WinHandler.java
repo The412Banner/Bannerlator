@@ -1203,8 +1203,8 @@ public class WinHandler {
             clearGamepadState(controller.state);
             clearGamepadState(controller.remappedState);
             int slot = assignSlot(controller.getDeviceId());
-            if (slot >= 0 && slot < MAX_CONTROLLERS && this.writers[slot] != null) {
-                this.writers[slot].writeGamepadState(controller.state);
+            if (slot >= 0 && slot < MAX_CONTROLLERS) {
+                writeSlotState(slot, controller.getDeviceId(), controller.state);
             }
         }
     }

@@ -395,7 +395,7 @@ read_snapshot(const FakeInputRingHeader *ring) {
     for (int i = 0; i < 8; i++)
       axes[i] = ring->snapshot_axes[i];
     __atomic_thread_fence(__ATOMIC_ACQUIRE);
-    uint64_t s2 = __atomic_load_n(&ring->snapshot_seq, __ATOMIC_RELAXED);
+    uint64_t s2 = __atomic_load_n(&ring->snapshot_seq, __ATOMIC_ACQUIRE);
     if (s1 == s2) {
       out.buttons = buttons;
       for (int i = 0; i < 8; i++)

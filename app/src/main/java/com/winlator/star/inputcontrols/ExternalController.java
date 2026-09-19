@@ -165,8 +165,8 @@ public class ExternalController {
         float r = event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0f ? event.getAxisValue(MotionEvent.AXIS_GAS) : event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
         state.triggerL = l;
         state.triggerR = r;
-        state.setPressed(IDX_BUTTON_L2, l == 1.0f);
-        state.setPressed(IDX_BUTTON_R2, r == 1.0f);
+        state.setPressed(IDX_BUTTON_L2, l >= 0.9f);
+        state.setPressed(IDX_BUTTON_R2, r >= 0.9f);
     }
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
@@ -186,12 +186,7 @@ public class ExternalController {
         int keyCode = event.getKeyCode();
         int buttonIdx = getButtonIdxByKeyCode(keyCode);
         if (buttonIdx != -1) {
-            if (buttonIdx == IDX_BUTTON_L2) {
-                return true;
-            } else if (buttonIdx == IDX_BUTTON_R2) {
-                return true;
-            } else
-                state.setPressed(buttonIdx, pressed);
+            state.setPressed(buttonIdx, pressed);
             return true;
         }
 
@@ -361,8 +356,9 @@ public class ExternalController {
 
         if (Math.abs(value) <= flat) return 0.0f;
 
-        if (axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y || axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ) {
-             return Math.abs(value) >= ControlElement.STICK_DEAD_ZONE ? value : 0.0f;
+        if (axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y || axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ || axis == MotionEvent.AXIS_RX || axis == MotionEvent.AXIS_RY) {
+             if (Math.abs(value) < ControlElement.STICK_DEAD_ZONE) return 0.0f;
+             return Math.max(-1.0f, Math.min(1.0f, value));
         }
 
         return 0.0f;

@@ -1551,6 +1551,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean gamescopeMode = false;
     /** This Linux session's log folder, for the teardown collection. */
     private File linuxSessionLogDir;
+    /** The option files the in-game drawer rewrites while a Linux session runs (LinuxTuning.writeLive). */
+    private File linuxLiveDir;
+    /** A first Back press waiting to see whether a second follows (double Back opens Steam's Quick Access Menu). */
+    private Runnable pendingLinuxBack;
+    /** The on-screen Steam and Quick Access Menu buttons of a Steam session, or null outside one. */
+    private android.view.View linuxSteamButtons;
     // HUD metric sampling for wayland mode (see startWaylandCompositor): its own thread, never the
     // compositor's. update() self-throttles to 500 ms and posts the view refresh to the UI thread.
     private android.os.HandlerThread waylandHudThread;
@@ -7034,11 +7040,151 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return;
         }
         if (environment != null) {
-            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.openDrawer(GravityCompat.START);
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawers();
+                return;
             }
-            else drawerLayout.closeDrawers();
+            // Steam (Linux): two Back presses within half a second open Steam's Quick Access Menu,
+            // and one still opens the drawer, just half a second later. (From The412Banner/DroidDeck.)
+            if (isLinuxSteamSession() && com.winlator.star.linux.LinuxTuning.isOn(
+                    shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) {
+                if (pendingLinuxBack != null) {
+                    drawerLayout.removeCallbacks(pendingLinuxBack);
+                    pendingLinuxBack = null;
+                    pressLinuxSteamButton(true);
+                    return;
+                }
+                pendingLinuxBack = () -> {
+                    pendingLinuxBack = null;
+                    if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
+                };
+                drawerLayout.postDelayed(pendingLinuxBack, LINUX_DOUBLE_BACK_MS);
+                return;
+            }
+            drawerLayout.openDrawer(GravityCompat.START);
         }
+    }
+
+    /** How long a first Back press waits for a second one in a Steam (Linux) session. */
+    private static final long LINUX_DOUBLE_BACK_MS = 500;
+
+    /** A Linux session running the Steam client, where the Steam button and Quick Access Menu mean something. */
+    private boolean isLinuxSteamSession() {
+        return gamescopeMode && shortcut != null && com.winlator.star.linux.LinuxRuntime.MODE_STEAM.equals(
+                shortcut.getExtra(com.winlator.star.linux.LinuxRuntime.EXTRA_LINUX_MODE, ""));
+    }
+
+    /**
+     * Presses the Steam button on player one's pad (Steam's own menu), or with {@code qam} the chord
+     * that opens the Quick Access Menu: Steam held, A tapped under it, Steam released. The timings are
+     * DroidDeck's PadBridge (80 ms lead, 120 ms A, 40 ms tail), which the client reads reliably. The
+     * drawer closes first, and the press waits for it to be gone.
+     */
+    private void pressLinuxSteamButton(boolean qam) {
+        if (winHandler == null) return;
+        boolean drawerWasOpen = drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START);
+        if (drawerWasOpen) drawerLayout.closeDrawers();
+        long t = drawerWasOpen ? 250 : 0;
+        android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+        h.postDelayed(() -> winHandler.setSystemButtons(true, false), t);
+        if (qam) {
+            h.postDelayed(() -> winHandler.setSystemButtons(true, true), t + 80);
+            h.postDelayed(() -> winHandler.setSystemButtons(true, false), t + 200);
+            h.postDelayed(() -> winHandler.setSystemButtons(false, false), t + 240);
+        } else {
+            h.postDelayed(() -> winHandler.setSystemButtons(false, false), t + 90);
+        }
+        Log.i("XServerDisplayActivity", "Steam (Linux): " + (qam ? "Quick Access Menu" : "Steam button") + " pressed for the client");
+    }
+
+    /** The switches the drawer's Steam client section mirrors from the entry's Steam (Linux) settings. */
+    private static final String[] LINUX_DRAWER_OPTIONS = {
+            com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN,
+            com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3,
+            com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS,
+            com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM,
+            com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA,
+            com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP,
+    };
+
+    /**
+     * The drawer's Steam client section and the on-screen Steam and Quick Access Menu buttons.
+     * Every switch there is the entry's own Steam (Linux) setting: a flip is saved to the entry, and
+     * applied at once where it can be - fill-screen through the session's watcher, the Quake-engine
+     * fix and xalia at the next game start through the Proton wrappers, the buttons and double Back
+     * immediately. proot's seccomp and Turnip's sysmem take effect at the next session.
+     */
+    private void setupLinuxSteamDrawerGlue(FrameLayout rootView) {
+        XServerDrawerState state = XServerDrawerState.INSTANCE;
+        java.util.Map<String, Boolean> options = new java.util.LinkedHashMap<>();
+        for (String key : LINUX_DRAWER_OPTIONS) options.put(key, com.winlator.star.linux.LinuxTuning.isOn(shortcut, key));
+        state.setLinuxOptions(options);
+        state.setLinuxTurnipSysmem(com.winlator.star.linux.LinuxTuning.turnipSysmemChoice(shortcut));
+        state.setLinuxSteamSession(true);
+        state.onLinuxSteamGuide = () -> pressLinuxSteamButton(false);
+        state.onLinuxSteamQam = () -> pressLinuxSteamButton(true);
+        state.onLinuxOption = (key, on) -> {
+            shortcut.putExtra(key, on ? "1" : "0");
+            shortcut.saveData();
+            state.setLinuxOption(key, on);
+            File live = linuxLiveDir != null ? linuxLiveDir : new File(getFilesDir(), "linux-session/live");
+            if (com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN.equals(key)) {
+                com.winlator.star.linux.LinuxTuning.writeLive(live, "fill", on);
+            } else if (com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3.equals(key)) {
+                com.winlator.star.linux.LinuxTuning.writeLive(live, "idtech3", on);
+            } else if (com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA.equals(key)) {
+                com.winlator.star.linux.LinuxTuning.writeLive(live, "xalia", !on);
+            } else if (com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS.equals(key)) {
+                if (linuxSteamButtons != null) linuxSteamButtons.setVisibility(on ? android.view.View.VISIBLE : android.view.View.GONE);
+            }
+            Log.i("XServerDisplayActivity", "Steam (Linux): " + key + " " + (on ? "on" : "off") + " from the drawer, saved to the entry");
+        };
+        state.onLinuxTurnipSysmem = choice -> {
+            shortcut.putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM, choice.isEmpty() ? null : choice);
+            shortcut.saveData();
+            state.setLinuxTurnipSysmem(choice);
+            Log.i("XServerDisplayActivity", "Steam (Linux): Turnip sysmem " + (choice.isEmpty() ? "automatic" : choice) + " from the drawer, next session");
+        };
+        addLinuxSteamButtons(rootView);
+    }
+
+    /**
+     * Two small round buttons in the top corners: the Steam button on the left, the Quick Access Menu
+     * on the right. They are how a phone with no Steam button reaches the client's menus. Above every
+     * other view by elevation, so they take their own touches and nothing else; everywhere else the
+     * layer lets touches through to the game.
+     */
+    private void addLinuxSteamButtons(FrameLayout rootView) {
+        float d = getResources().getDisplayMetrics().density;
+        FrameLayout layer = new FrameLayout(this);
+        layer.setTranslationZ(100 * d);
+        int size = Math.round(40 * d), margin = Math.round(12 * d);
+        String[][] buttons = {{"STEAM", "left"}, {"\u22EF", "right"}};
+        for (String[] spec : buttons) {
+            boolean qam = "right".equals(spec[1]);
+            android.widget.TextView b = new android.widget.TextView(this);
+            b.setText(spec[0]);
+            b.setTextColor(0xFFFFFFFF);
+            b.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, qam ? 18 : 9);
+            b.setGravity(android.view.Gravity.CENTER);
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            bg.setColor(0x99202020);
+            bg.setStroke(Math.round(d), 0x66FFFFFF);
+            b.setBackground(bg);
+            b.setAlpha(0.75f);
+            b.setContentDescription(qam ? "Steam Quick Access Menu" : "Steam button");
+            b.setOnClickListener(v -> pressLinuxSteamButton(qam));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size,
+                    android.view.Gravity.TOP | (qam ? android.view.Gravity.END : android.view.Gravity.START));
+            lp.setMargins(margin, margin, margin, margin);
+            layer.addView(b, lp);
+        }
+        boolean on = com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS);
+        layer.setVisibility(on ? android.view.View.VISIBLE : android.view.View.GONE);
+        linuxSteamButtons = layer;
+        rootView.addView(layer, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
     private void openXServerDrawer() {
@@ -9057,6 +9203,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // They are set in the Steam (Linux) settings.
         // The effective set goes into the device report below, so a measurement names what produced it.
         com.winlator.star.linux.LinuxTuning.apply(guest, shortcut);
+        // The options the in-game drawer changes while the session runs: the fill-screen watcher in the
+        // session script and the Proton wrappers read these files, so they start from the entry's settings.
+        linuxLiveDir = new File(getFilesDir(), "linux-session/live");
+        com.winlator.star.linux.LinuxTuning.writeLive(linuxLiveDir, shortcut);
+        guest.add("BL_LIVE_DIR=" + linuxLiveDir.getPath());
+        // HDR10: startWaylandCompositor opened the compositor's HDR gate for this session (the entry's
+        // HDR output setting, on a screen that lists HDR10). gamescope then needs --hdr-enabled to offer
+        // HDR to the games, and DXVK_HDR=1 is what makes DXVK tell a game its display is HDR. A DXVK_HDR
+        // of the user's own, in the entry's env vars, comes later in the list and wins.
+        if (waylandHdrActive) {
+            guest.add("BL_HDR=1");
+            guest.add("DXVK_HDR=1");
+            Log.i("XServerDisplayActivity", "Linux session: HDR output on (gamescope --hdr-enabled, DXVK_HDR=1)");
+        }
         linuxSessionLogDir = logDir;
         try {
             StringBuilder eff = new StringBuilder();
@@ -9312,6 +9472,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // dies before it starts, with the reason only in `logcat -b crash`.
         String prootLibs = com.winlator.star.linux.LinuxRuntime.prootLibraryPath(this);
         if (!prootLibs.isEmpty()) hostEnv.put("LD_LIBRARY_PATH", prootLibs);
+        // proot reads this itself, so it belongs in proot's environment rather than the guest's: every
+        // system call is traced by proot instead of being filtered through seccomp first. Slower; a
+        // switch for a device whose seccomp misbehaves. (From The412Banner/DroidDeck.)
+        if (com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)) {
+            hostEnv.put("PROOT_NO_SECCOMP", "1");
+            Log.i("XServerDisplayActivity", "proot: seccomp acceleration off by the entry's setting");
+        }
 
         // The games this app already downloaded, handed to the Steam client as a library folder so
         // the same install serves both launchers and nothing is fetched twice.
@@ -9360,6 +9527,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
         String vkIcd = com.winlator.star.core.LinuxVulkanDriver.resolveIcdPath(
                 this, shortcut != null ? shortcut.getExtra(com.winlator.star.core.LinuxVulkanDriver.EXTRA, "") : "");
         if (vkIcd != null) lateEnv.add(com.winlator.star.core.LinuxVulkanDriver.ENV + "=" + vkIcd);
+        // Turnip's sysmem rendering, for the client and every game: the entry's choice, or automatically
+        // for an imported driver from the A710/A720/A722 builds. A TU_DEBUG in the entry's env vars wins.
+        {
+            String drawId = shortcut != null ? shortcut.getExtra(com.winlator.star.core.LinuxVulkanDriver.EXTRA, "") : "";
+            String drawName = vkIcd != null && drawId != null && !drawId.isEmpty()
+                    ? new com.winlator.star.contents.LinuxVulkanDriverManager(this).getDriverName(drawId) : "";
+            EnvVars userEnv = effectiveUserEnv();
+            if (com.winlator.star.linux.LinuxTuning.turnipSysmem(shortcut, drawName)
+                    && (userEnv == null || !userEnv.has("TU_DEBUG"))) {
+                lateEnv.add("TU_DEBUG=sysmem");
+                Log.i("XServerDisplayActivity", "Linux session: TU_DEBUG=sysmem" + (drawName.isEmpty() ? "" : " (" + drawName + ")"));
+            }
+        }
 
         String clientCpus = cpuListOrEmpty("linuxClientCpuList");
         String gameCpus = cpuListOrEmpty("linuxGameCpuList");
@@ -10210,6 +10390,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // in onCreate) so the drawer can grey Wayland-unsupported controls such as Relative Mouse.
         XServerDrawerState.INSTANCE.setIsWaylandMode(waylandMode);
         if (waylandMode) setupWaylandDrawerGlue();
+        if (isLinuxSteamSession()) setupLinuxSteamDrawerGlue(rootView);
         xServerView = new XServerView(this, xServer);
         String rendererType = container != null ? resolvedRenderer() : "vulkan";
         // Native Rendering now routes to the hardened SurfaceFlinger (ASR) renderer instead of the

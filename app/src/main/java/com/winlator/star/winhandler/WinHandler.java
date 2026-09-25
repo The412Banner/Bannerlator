@@ -2148,6 +2148,17 @@ public class WinHandler {
         return -1;
     }
 
+    /**
+     * Presses or releases the app's own Steam button and A on player one's pad, merged with whatever
+     * the pad itself holds. In a Linux session the Steam client reads that slot, so this is how the
+     * in-game drawer and the on-screen buttons open Steam's menu and its Quick Access Menu on a device
+     * with no Steam button of its own.
+     */
+    public void setSystemButtons(boolean guide, boolean a) {
+        ensureWriterForSlot(0);
+        if (writers[0] != null) writers[0].setSystemButtons(guide, a);
+    }
+
     /** Lazily creates and opens the fake-input writer backing a slot. Opening the writer
      *  activates the slot's mmap ring (P0), which is what the guest sees as a controller. */
     private void ensureWriterForSlot(int slot) {

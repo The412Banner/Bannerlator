@@ -89,6 +89,44 @@ bl_game_cpus() {
 }
 """
 
+# Per-game options the app can change while the session runs. The app keeps each one in a file under
+# BL_LIVE_DIR (bound into the session at its own path), and they are read here, at every game start,
+# so a change in the in-game drawer reaches the next game without restarting the client.
+# - idtech3: Quake III engine games (id Tech 3) set their own resolution and switch the display to
+#   it. Under gamescope with the ARM64 Proton that switch is refused ("calling CDS: failed, bad mode")
+#   and the game never gets OpenGL; left at its own size in a window, it draws small in a corner. So
+#   these titles are told to stay windowed at the session's own size - unless the user's launch
+#   options already say something about the video mode, which are left as they are. "0" turns it off.
+#   (From The412Banner/DroidDeck.)
+# - xalia: "0" sets PROTON_USE_XALIA=0, Proton's own gate for its xalia accessibility helper, which
+#   crash-looped one Galaxy Fold. Anything else leaves Proton to decide, as Valve ships it.
+BL_GAME_OPTIONS_SETUP = """
+bl_game_options() {
+  BL_EXTRA_ARGS=()
+  live=${BL_LIVE_DIR:-}
+  if [ -n "$live" ] && [ "$(cat "$live/xalia" 2>/dev/null)" = 0 ]; then
+    PROTON_USE_XALIA=0
+    export PROTON_USE_XALIA
+    echo "bannerlator-proton: xalia off (PROTON_USE_XALIA=0)" >&2
+  fi
+  [ -n "$live" ] && [ "$(cat "$live/idtech3" 2>/dev/null)" = 0 ] && return 0
+  case "${SteamAppId:-${STEAM_COMPAT_APP_ID:-}}" in
+    # Quake III Arena, Quake III: Team Arena, Return to Castle Wolfenstein, Jedi Academy.
+    2200|2350|9010|6020) ;;
+    *) return 0 ;;
+  esac
+  case " $* " in
+    *r_fullscreen*|*r_mode*|*r_customwidth*|*r_customheight*)
+      echo "bannerlator-proton: Quake-engine title; its launch options set the video mode, left as they are" >&2
+      return 0 ;;
+  esac
+  w=${BL_WIDTH:-1280}
+  h=${BL_HEIGHT:-720}
+  BL_EXTRA_ARGS=(+set r_fullscreen 0 +set r_mode -1 +set r_customwidth "$w" +set r_customheight "$h")
+  echo "bannerlator-proton: Quake-engine title: windowed at ${w}x${h}" >&2
+}
+"""
+
 BL_DIRECTAUDIO_SETUP = """
 bl_directaudio() {
   base=$1
@@ -174,7 +212,8 @@ for name in %s; do
   if [ -d "$depot/files/bin-arm64" ] && [ -x "$depot/proton" ]; then
     bl_directaudio "$depot"
     bl_game_cpus
-    exec ${BL_TASKSET:-} "$depot/proton" "$verb" "$@"
+    bl_game_options "$@"
+    exec ${BL_TASKSET:-} "$depot/proton" "$verb" "$@" "${BL_EXTRA_ARGS[@]}"
   fi
 done
 echo "bannerlator-proton: no ARM64 Proton depot yet - the client downloads one as this tool's dependency; retry the launch once it has" >&2
@@ -184,7 +223,7 @@ exit 1
 # and a % format would eat that into a single %, leaving a shell expansion that silently does
 # something else.
 LAUNCHER_SH = LAUNCHER_SH.replace(
-    "verb=$1; shift", "verb=$1; shift\n" + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP, 1)
+    "verb=$1; shift", "verb=$1; shift\n" + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP + BL_GAME_OPTIONS_SETUP, 1)
 
 # A third-party Proton dropped into compatibilitytools.d - GE-Proton, proton-cachyos, anything of
 # that shape - is adopted rather than used as shipped, for the same two reasons Valve's ARM64 depot
@@ -218,9 +257,10 @@ if [ -f "$fake" ]; then
 fi
 bl_directaudio "$here"
 bl_game_cpus
+bl_game_options "$@"
 # Proton takes its base directory from dirname(sys.argv[0]) without resolving it, so it has to be
 # started from its own tree.
-exec ${BL_TASKSET:-} "$here/%s" "$verb" "$@"
+exec ${BL_TASKSET:-} "$here/%s" "$verb" "$@" "${BL_EXTRA_ARGS[@]}"
 """
 
 EXTRA_COMPAT_TOOL_VDF = """"compatibilitytools"
@@ -380,7 +420,7 @@ def adopt_extras(tools):
             # ${major%%.*} of its own, and putting it through the format would eat both.
             body = (EXTRA_WRAPPER_SH % entry_point).replace(
                     'here=$(dirname "$0")',
-                    'here=$(dirname "$0")\n' + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP, 1)
+                    'here=$(dirname "$0")\n' + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP + BL_GAME_OPTIONS_SETUP, 1)
             with open(wrapper, "w", encoding="utf-8") as f:
                 f.write(body)
             os.chmod(wrapper, 0o755)

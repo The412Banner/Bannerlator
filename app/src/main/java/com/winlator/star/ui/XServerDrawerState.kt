@@ -74,6 +74,16 @@ object XServerDrawerState {
     // when the guest's GL driver starts - so the row is a saved preference, not a live switch.
     private val _waylandGlSafeMode        = MutableStateFlow(true)
     val waylandGlSafeMode: StateFlow<Boolean> = _waylandGlSafeMode
+    // Steam (Linux) session: the drawer's "Steam client" section. `linuxSteamSession` shows it; the
+    // options are keyed by their LinuxTuning extra names and mirror the entry's Steam (Linux)
+    // settings - a flip here is saved to the entry as well as applied (live where it can be).
+    private val _linuxSteamSession        = MutableStateFlow(false)
+    val linuxSteamSession: StateFlow<Boolean> = _linuxSteamSession
+    private val _linuxOptions             = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val linuxOptions: StateFlow<Map<String, Boolean>> = _linuxOptions
+    // Turnip sysmem: "" automatic, "1" on, "0" off (LinuxTuning.TU_SYSMEM_CHOICES).
+    private val _linuxTurnipSysmem        = MutableStateFlow("")
+    val linuxTurnipSysmem: StateFlow<String> = _linuxTurnipSysmem
     // HDR output (Wayland, HDR sessions only). `available` = the compositor opened HDR for this session
     // (the game/container setting was on AND this screen reports HDR10) - the row is shown only then.
     // `output` = the live switch: on = the game's HDR frames go to the display as HDR, off = the same
@@ -482,6 +492,12 @@ object XServerDrawerState {
     // OpenGL safe mode toggle: saves GALLIUM_THREAD=0 on/off to the shortcut (else the container)
     // as the next launch's default. Nothing is applied to the running game.
     @JvmField var onWaylandGlSafeModeToggle: java.util.function.Consumer<Boolean>? = null
+    // Steam (Linux): press the Steam button, open the Quick Access Menu, and change one option
+    // (extra name, value) or the Turnip sysmem choice. The activity saves and applies each.
+    @JvmField var onLinuxSteamGuide: Runnable? = null
+    @JvmField var onLinuxSteamQam: Runnable? = null
+    @JvmField var onLinuxOption: java.util.function.BiConsumer<String, Boolean>? = null
+    @JvmField var onLinuxTurnipSysmem: java.util.function.Consumer<String>? = null
     // HDR output switch: applied to the RUNNING compositor at once (nativeSetHdrOutput); nothing is
     // saved - it lasts for this session only.
     @JvmField var onWaylandHdrOutputToggle: java.util.function.Consumer<Boolean>? = null
@@ -537,6 +553,10 @@ object XServerDrawerState {
     fun setWaylandZeroCopyFrames(v: Int)        { _waylandZeroCopyFrames.value = v }
     fun setWaylandZeroCopyLive(v: Boolean)      { _waylandZeroCopyLive.value = v }
     fun setWaylandGlSafeMode(v: Boolean)        { _waylandGlSafeMode.value = v }
+    fun setLinuxSteamSession(v: Boolean)        { _linuxSteamSession.value = v }
+    fun setLinuxOptions(v: Map<String, Boolean>) { _linuxOptions.value = v }
+    fun setLinuxOption(key: String, v: Boolean) { _linuxOptions.value = _linuxOptions.value + (key to v) }
+    fun setLinuxTurnipSysmem(v: String)         { _linuxTurnipSysmem.value = v }
     fun setWaylandHdrAvailable(v: Boolean)      { _waylandHdrAvailable.value = v }
     fun setWaylandHdrOutput(v: Boolean)         { _waylandHdrOutput.value = v }
     fun setWaylandHdrOnScreen(v: Boolean)       { _waylandHdrOnScreen.value = v }
@@ -694,6 +714,9 @@ object XServerDrawerState {
         _waylandZeroCopyFrames.value = 0
         _waylandZeroCopyLive.value = false
         _waylandGlSafeMode.value = true
+        _linuxSteamSession.value = false
+        _linuxOptions.value = emptyMap()
+        _linuxTurnipSysmem.value = ""
         _waylandHdrAvailable.value = false
         _waylandHdrOutput.value = true
         _waylandHdrOnScreen.value = false
@@ -765,6 +788,7 @@ object XServerDrawerState {
         onNativeRenderingToggle = null; onFpsConfigApply = null
         onWaylandZeroCopyToggle = null; onWaylandZeroCopyPoll = null
         onWaylandGlSafeModeToggle = null
+        onLinuxSteamGuide = null; onLinuxSteamQam = null; onLinuxOption = null; onLinuxTurnipSysmem = null
         onWaylandHdrOutputToggle = null
         onBionicFgConfigChange = null; onFpsLimitChange = null
         onPresentModeChange = null

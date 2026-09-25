@@ -95,6 +95,16 @@ if [ -z "${BL_INSIDE:-}" ]; then
     linear|nearest|pixel|fsr|nis|sgsr) args+=(-F "$BL_FILTER") ;;
   esac
   [ "$mode" = steam ] && args+=(-e)
+  # A game that resizes its own window when it loses focus (the Steam menu opening over it) comes
+  # back smaller, and gamescope draws a window that is not flagged fullscreen at its own size in the
+  # top-left corner - FlatOut after Guide -> Resume game. Forcing every window to the output's size
+  # keeps it filling the screen. BL_FILL=0 (the entry's "Stretch games to fill the screen") turns it
+  # off; the in-game drawer changes it live, see the watcher below. (From The412Banner/DroidDeck.)
+  [ "$mode" = steam ] && [ "${BL_FILL:-1}" = 1 ] && args+=(--force-windows-fullscreen)
+  # HDR10: the app opened its compositor's HDR gate for this session (the entry's HDR output setting
+  # on a screen that lists HDR10), and gamescope offers HDR to the games through the same colour
+  # management it binds on ours. Without it a game's HDR setting stays greyed out.
+  [ "${BL_HDR:-0}" = 1 ] && args+=(--hdr-enabled)
   # Deck mode's performance overlay (Quick Access Menu, Performance, Overlay Level) is drawn by mangoapp, which gamescope starts beside the client.
   # The client picks the level by rewriting the file MANGOHUD_CONFIGFILE names, so it starts hidden until the client writes one.
   # The apk carries Valve's aarch64 build (tools/mangoapp); without it the menu still offers the levels and nothing appears.
@@ -296,6 +306,25 @@ case $mode in
     # moments later, so the seeder has only that gap to mark the redistributables as already run.
     # It stamps each prefix it has covered and skips it thereafter, so the extra passes cost
     # almost nothing.
+    # "Stretch games to fill the screen", live: the app writes the drawer's choice to $BL_LIVE_DIR/fill,
+    # and each change goes to gamescope as GAMESCOPE_FORCE_WINDOWS_FULLSCREEN on the root window, which
+    # it watches. What gamescope was started with is where this begins. It lives as long as this script.
+    if [ -n "${BL_LIVE_DIR:-}" ] && command -v xprop >/dev/null 2>&1; then
+      (
+        last=${BL_FILL:-1}
+        script=$$
+        while kill -0 "$script" 2>/dev/null; do
+          sleep 1
+          want=$(cat "$BL_LIVE_DIR/fill" 2>/dev/null) || continue
+          case $want in 0|1) ;; *) continue ;; esac
+          [ "$want" = "$last" ] && continue
+          if xprop -root -f GAMESCOPE_FORCE_WINDOWS_FULLSCREEN 32c -set GAMESCOPE_FORCE_WINDOWS_FULLSCREEN "$want" 2>/dev/null; then
+            echo "== stretch games to fill the screen: $want (live)"
+            last=$want
+          fi
+        done
+      ) &
+    fi
     (
       beat=0
       for _ in $(seq 1 720); do

@@ -6363,6 +6363,14 @@ internal fun ShortcutSettingsDialogScreen(
         mutableStateOf(shortcut.getExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL, "").let { v -> if (v in com.winlator.star.linux.LinuxTuning.STEAM_CHANNELS) v else "" })
     }
     var linuxFilter by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.filter(shortcut)) }
+    // Steam client switches, mirrored in the in-game drawer's Steam client section (which saves to the same extras).
+    var linuxFillScreen by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)) }
+    var linuxIdTech3 by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)) }
+    var linuxSteamButtons by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS)) }
+    var linuxDoubleBackQam by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) }
+    var linuxNoXalia by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)) }
+    var linuxProotNoSeccomp by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)) }
+    var linuxTurnipSysmem by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.turnipSysmemChoice(shortcut)) }
     // The app's own games in the client's library, their shared saves, and any Games folders (LinuxAppGames).
     var linuxAppGames by remember {
         mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(
@@ -7025,6 +7033,13 @@ internal fun ShortcutSettingsDialogScreen(
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL, linuxSteamChannel.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_SCALER, linuxScaler.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_FILTER, linuxFilter.ifEmpty { null })
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN, if (linuxFillScreen) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3, if (linuxIdTech3) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS, if (linuxSteamButtons) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM, if (linuxDoubleBackQam) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA, if (linuxNoXalia) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP, if (linuxProotNoSeccomp) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM, linuxTurnipSysmem.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_APP_GAMES, if (linuxAppGames) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_SHARE_SAVES, if (linuxShareSaves) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_GAMES_FOLDERS,
@@ -7072,6 +7087,13 @@ internal fun ShortcutSettingsDialogScreen(
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_SCALER)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_FILTER)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_APP_GAMES)
                     if (linuxAppGames) add(com.winlator.star.linux.LinuxTuning.EXTRA_SHARE_SAVES)
                     linuxGamesFolders.forEach { add("linuxGamesFolderRemove:$it") }
@@ -7684,7 +7706,7 @@ internal fun ShortcutSettingsDialogScreen(
                                                 + "Known problems, found on device:\n"
                                                 + "\u2022 Games stop receiving the controller. Steam's own menus still work, but in a game the pad does nothing.\n"
                                                 + "\u2022 The client may show a Steam Client update under System that will not install. Deck mode now uses the Steam Deck beta channel to avoid it, but if it appears, do not press Apply.\n"
-                                                + "\u2022 The Quick Access Menu's performance overlay cannot be turned on.\n\n"
+                                                + "\u2022 The Quick Access Menu's performance overlay is new and not yet tried on a device.\n\n"
                                                 + "The scaling controls below do the useful part without it, and the in-game drawer's FPS limit caps the frame rate. Turn Deck mode off again if a game stops responding to the controller."
                                         )
                                     },
@@ -7735,6 +7757,58 @@ internal fun ShortcutSettingsDialogScreen(
                             Text(
                                 "Scaling mode and filter only matter when a game renders below the session's resolution. "
                                     + "FSR, NIS and SGSR upscale and sharpen; SGSR is Qualcomm's, made for Adreno.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+
+                            // The Steam client switches. The in-game drawer's Steam client section shows the same
+                            // ones and saves to the same extras; there they apply live where they can.
+                            Text("Steam client", style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.height(4.dp))
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS,
+                                "On-screen Steam and Quick Access buttons", linuxSteamButtons,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS)) { linuxSteamButtons = it }
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM,
+                                "Double Back opens Quick Access", linuxDoubleBackQam,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) { linuxDoubleBackQam = it }
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN,
+                                "Stretch games to fill the screen", linuxFillScreen,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)) { linuxFillScreen = it }
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3,
+                                "Quake-engine games windowed", linuxIdTech3,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)) { linuxIdTech3 = it }
+                            Text(
+                                "The buttons sit in the top corners: Steam's menu on the left, its Quick Access Menu on the right. "
+                                    + "With double Back, one Back press still opens the in-game drawer. "
+                                    + "Stretch keeps a game that shrinks its window (FlatOut after Resume game) filling the screen. "
+                                    + "Quake III, Team Arena, Return to Castle Wolfenstein and Jedi Academy run windowed at the session's size, the one way they start here. "
+                                    + "The in-game drawer has all of these too, and changes them without restarting.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text("Troubleshooting", style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.height(4.dp))
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA,
+                                "Xalia off (PROTON_USE_XALIA=0)", linuxNoXalia,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)) { linuxNoXalia = it }
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP,
+                                "proot without seccomp (PROOT_NO_SECCOMP)", linuxProotNoSeccomp,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)) { linuxProotNoSeccomp = it }
+                            val sysmemLabels = listOf("Automatic (A710/A720/A722 drivers)", "On", "Off")
+                            DpDrop(
+                                dp, com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM,
+                                label = "Turnip sysmem rendering (TU_DEBUG=sysmem)",
+                                options = sysmemLabels,
+                                selected = sysmemLabels[com.winlator.star.linux.LinuxTuning.TU_SYSMEM_CHOICES.indexOf(linuxTurnipSysmem).coerceAtLeast(0)],
+                                onSelect = { linuxTurnipSysmem = com.winlator.star.linux.LinuxTuning.TU_SYSMEM_CHOICES[sysmemLabels.indexOf(it).coerceAtLeast(0)] }
+                            )
+                            Text(
+                                "Only for a device that misbehaves. Xalia off is for a game that crash-loops at start (one Galaxy Fold). "
+                                    + "proot without seccomp is slower, for a device whose seccomp gets in the way. "
+                                    + "Sysmem rendering is what the A710/A720/A722 driver builds need; Automatic turns it on for those imports. "
+                                    + "A TU_DEBUG in the env vars below wins.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

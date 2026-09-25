@@ -595,9 +595,28 @@ public class FakeInputWriter {
         writeEvent(EV_KEY, BUTTON_MAP[idx], pressed ? 1 : 0);
     }
 
+    // Buttons the app presses on its own, on top of whatever the pad sends: the Steam button and A,
+    // which is what the in-game drawer's and the on-screen Steam and Quick Access Menu buttons use.
+    // They are OR'd into every write, so a held button of the user's is never released by them.
+    private boolean overlayGuide = false;
+    private boolean overlayA = false;
+    // The last state the pad wrote, so a change of the overlay alone can be published against it.
+    private final GamepadState lastPadState = new GamepadState();
+
+    /** Presses or releases the app's own Steam button and A on this slot, merged with the pad's state. */
+    public synchronized void setSystemButtons(boolean guide, boolean a) {
+        if (overlayGuide == guide && overlayA == a)
+            return;
+        overlayGuide = guide;
+        overlayA = a;
+        writeGamepadState(lastPadState);
+    }
+
     public synchronized void writeGamepadState(GamepadState state) {
         if (!isOpen && !open())
             return;
+        if (state != lastPadState)
+            lastPadState.copy(state);
 
         // Keep the ring delta-first for latency. Full event frames are only used as
         // a one-shot repair after a failed publish; normal open/overflow recovery is
@@ -613,13 +632,14 @@ public class FakeInputWriter {
 
         // Buttons
         for (int i = 0; i < 10; i++) {
-            writeButton(i, state.isPressed((byte) i));
+            writeButton(i, state.isPressed((byte) i)
+                    || (overlayA && i == com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_A));
         }
         // The Steam button. In a Linux session this is what opens the client's own in-game menu,
         // and the client looks for it where an Xbox pad keeps it: evdev BTN_MODE, which SDL then
         // reports as button 8 - exactly the "guide:b8" in the mapping Steam writes for this pad.
         writeButton(SNAPSHOT_IDX_MODE,
-                state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_MODE));
+                state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_MODE) || overlayGuide);
 
         // Sticks
         int lx = (int) (state.thumbLX * 32767);

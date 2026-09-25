@@ -50,6 +50,23 @@ public final class LinuxTuning {
     /** Folders whose subfolders are games to add as well, joined with {@link LinuxAppGames#FOLDER_SEPARATOR}. */
     public static final String EXTRA_GAMES_FOLDERS = "linuxGamesFolders";
 
+    /** gamescope's --force-windows-fullscreen: a game that shrinks its window comes back filling the screen. On unless turned off; the drawer changes it live. */
+    public static final String EXTRA_FILL_SCREEN = "linuxFillScreen";
+    /** Quake III engine games told to run windowed at the session's size, the one way they get OpenGL here. On unless turned off. */
+    public static final String EXTRA_IDTECH3 = "linuxIdTech3Windowed";
+    /** The on-screen Steam and Quick Access Menu buttons in a Steam session. On unless turned off. */
+    public static final String EXTRA_STEAM_BUTTONS = "linuxSteamButtons";
+    /** Two Back presses within half a second open Steam's Quick Access Menu; one still opens the drawer. On unless turned off. */
+    public static final String EXTRA_DOUBLE_BACK_QAM = "linuxDoubleBackQam";
+    /** PROTON_USE_XALIA=0 for the games the client starts. Off unless turned on. */
+    public static final String EXTRA_NO_XALIA = "linuxNoXalia";
+    /** PROOT_NO_SECCOMP=1: proot traces every system call itself instead of filtering them with seccomp. Off unless turned on. */
+    public static final String EXTRA_PROOT_NO_SECCOMP = "linuxProotNoSeccomp";
+    /** Turnip's sysmem rendering (TU_DEBUG=sysmem): "" automatic, "1" on, "0" off. */
+    public static final String EXTRA_TU_SYSMEM = "linuxTurnipSysmem";
+    /** The choices for {@link #EXTRA_TU_SYSMEM}, the empty first entry meaning automatic. */
+    public static final String[] TU_SYSMEM_CHOICES = {"", "1", "0"};
+
     /** gamescope's upscaler type; unset leaves gamescope's own default. */
     public static final String EXTRA_SCALER = "linuxScaler";
     /** gamescope's upscaler filter; unset leaves gamescope's own default. */
@@ -71,14 +88,16 @@ public final class LinuxTuning {
      * <p>The three environment ones are on so a tester who changes nothing is still testing them.
      * Deck mode is off, and the editor only turns it on through a warning, because on device it
      * breaks games: Steam Input takes the pad ({@code uses xinput : true} in Steam's controller log)
-     * and the virtual pad it hands the game never arrives. It also leaves a Steam Client update that
-     * cannot install, and the Quick Access Menu's performance overlay needs mangoapp, which the
-     * rootfs does not ship. Its scaling is offered on its own instead ({@link #EXTRA_SCALER},
-     * {@link #EXTRA_FILTER}); a frame cap is the in-game drawer's FPS limit.
+     * and the virtual pad it hands the game never arrives. Its scaling is offered on its own instead
+     * ({@link #EXTRA_SCALER}, {@link #EXTRA_FILTER}); a frame cap is the in-game drawer's FPS limit.
      * Only {@code -steamdeck} is passed and never {@code -steamos3}; the session script says why.
+     * The two troubleshooting switches ({@link #EXTRA_NO_XALIA}, {@link #EXTRA_PROOT_NO_SECCOMP}) are
+     * off: each takes away something Valve or proot does on purpose, for a device where it misbehaves.
      */
     public static boolean defaultOn(String extra) {
-        return !EXTRA_STEAMDECK.equals(extra);
+        return !EXTRA_STEAMDECK.equals(extra)
+                && !EXTRA_NO_XALIA.equals(extra)
+                && !EXTRA_PROOT_NO_SECCOMP.equals(extra);
     }
 
     /** A switch's state for this entry: its own value, or the default when it has none. */
@@ -97,6 +116,54 @@ public final class LinuxTuning {
         String chosen = oneOf(shortcut, EXTRA_STEAM_CHANNEL, STEAM_CHANNELS);
         if (!chosen.isEmpty()) return chosen;
         return isOn(shortcut, EXTRA_STEAMDECK) ? "steamdeck_publicbeta" : "publicbeta";
+    }
+
+    /** The saved sysmem choice: "" automatic, "1" on or "0" off. */
+    public static String turnipSysmemChoice(Shortcut shortcut) {
+        return oneOf(shortcut, EXTRA_TU_SYSMEM, TU_SYSMEM_CHOICES);
+    }
+
+    /**
+     * Whether the session runs Turnip in sysmem mode.
+     * Automatic turns it on for an imported driver from the A710/A720/A722 builds, which is what their
+     * authors advise for those GPUs and what nothing else in the list needs. (From The412Banner/DroidDeck.)
+     *
+     * @param drawDriverLabel the draw driver's display name, or "" for the runtime's own
+     */
+    public static boolean turnipSysmem(Shortcut shortcut, String drawDriverLabel) {
+        String chosen = turnipSysmemChoice(shortcut);
+        if (!chosen.isEmpty()) return "1".equals(chosen);
+        String name = drawDriverLabel != null ? drawDriverLabel.toLowerCase(java.util.Locale.ROOT) : "";
+        return name.contains("710") || name.contains("720") || name.contains("722");
+    }
+
+    /**
+     * The per-game options the Proton wrappers read at every game start, and the session script's
+     * fill-screen watcher, as files in {@code dir}: {@code fill}, {@code idtech3} and {@code xalia},
+     * each "1" or "0". Written at session start from the entry's settings, and again by the in-game
+     * drawer, which is what makes them live.
+     */
+    public static void writeLive(java.io.File dir, Shortcut shortcut) {
+        writeLive(dir, "fill", isOn(shortcut, EXTRA_FILL_SCREEN));
+        writeLive(dir, "idtech3", isOn(shortcut, EXTRA_IDTECH3));
+        // The file holds whether xalia may run, so the switch's sense is inverted here.
+        writeLive(dir, "xalia", !isOn(shortcut, EXTRA_NO_XALIA));
+    }
+
+    /** One live option file, replaced by a rename so a reader never sees it half-written. */
+    public static void writeLive(java.io.File dir, String name, boolean on) {
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            dir.mkdirs();
+            java.io.File staged = new java.io.File(dir, name + ".staged");
+            java.nio.file.Files.write(staged.toPath(), (on ? "1" : "0").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            if (!staged.renameTo(new java.io.File(dir, name))) {
+                //noinspection ResultOfMethodCallIgnored
+                staged.delete();
+            }
+        } catch (java.io.IOException e) {
+            android.util.Log.w("LinuxTuning", "could not write the live option " + name, e);
+        }
     }
 
     /** The saved scaler, or "" when it is unset or not one gamescope accepts. */
@@ -142,6 +209,8 @@ public final class LinuxTuning {
         if (!sc.isEmpty()) guest.add("BL_SCALER=" + sc);
         String fi = filter(shortcut);
         if (!fi.isEmpty()) guest.add("BL_FILTER=" + fi);
+        // What gamescope starts with; the drawer's changes go through the live file instead.
+        guest.add("BL_FILL=" + (isOn(shortcut, EXTRA_FILL_SCREEN) ? "1" : "0"));
     }
 
     /** One line per switch for the session's device report, so a number names its settings. */
@@ -153,6 +222,12 @@ public final class LinuxTuning {
                 {"Steam Deck mode", EXTRA_STEAMDECK},
                 {"App games in Steam", EXTRA_APP_GAMES},
                 {"Share saves with app", EXTRA_SHARE_SAVES},
+                {"Fill the screen", EXTRA_FILL_SCREEN},
+                {"Quake-engine windowed", EXTRA_IDTECH3},
+                {"Steam/QAM buttons", EXTRA_STEAM_BUTTONS},
+                {"Double Back opens QAM", EXTRA_DOUBLE_BACK_QAM},
+                {"Xalia off", EXTRA_NO_XALIA},
+                {"proot without seccomp", EXTRA_PROOT_NO_SECCOMP},
         };
         StringBuilder b = new StringBuilder();
         for (String[] row : rows) {
@@ -169,6 +244,8 @@ public final class LinuxTuning {
         b.append(String.format("%-24s", "Scaling mode")).append(sc.isEmpty() ? "(gamescope default)" : sc).append('\n');
         String fi = filter(shortcut);
         b.append(String.format("%-24s", "Scaling filter")).append(fi.isEmpty() ? "(gamescope default)" : fi).append('\n');
+        String sysmem = turnipSysmemChoice(shortcut);
+        b.append(String.format("%-24s", "Turnip sysmem")).append(sysmem.isEmpty() ? "automatic" : ("1".equals(sysmem) ? "on" : "off")).append('\n');
         return b.toString();
     }
 }

@@ -1,5 +1,6 @@
 package com.winlator.star.ui
 
+import com.winlator.star.linux.LinuxTuning
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -886,6 +887,9 @@ private fun GraphicsContent(state: XServerDrawerState) {
         RuntimeBackendChip(state)
     }
 
+    // Steam (Linux) sessions: the client's own menus and the entry's session switches, first.
+    LinuxSteamSection(state)
+
     // Frame Generation pinned to the top of the Graphics tab.
     FrameGenSection(state)
 
@@ -1365,6 +1369,87 @@ private fun GraphicsContent(state: XServerDrawerState) {
     if (isWaylandSession) WaylandHdrOutputRow(state)
     if (isWaylandSession) WaylandZeroCopyRow(state, waylandEffectsOk)
     if (isWaylandSession) WaylandGlSafeModeRow(state)
+}
+
+// ───── Steam (Linux): the client's menus and the entry's session switches ─────
+// Shown only in a Steam (Linux) session. The two buttons press the Steam button on player one's pad,
+// or the chord that opens the Quick Access Menu, for a phone with no Steam button. Every switch below is
+// the entry's own Steam (Linux) setting - a flip is saved to the entry, so the editor shows it too - and
+// each says when it takes effect: now, at the next game start, or at the next session.
+@Composable
+private fun LinuxSteamSection(state: XServerDrawerState) {
+    val active by state.linuxSteamSession.collectAsState()
+    if (!active) return
+    val options by state.linuxOptions.collectAsState()
+    val sysmem by state.linuxTurnipSysmem.collectAsState()
+    fun on(key: String) = options[key] ?: false
+    fun flip(key: String, v: Boolean) {
+        state.setLinuxOption(key, v)
+        state.onLinuxOption?.accept(key, v)
+    }
+
+    SectionHeader("Steam client")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        AccentButton("Steam menu", Modifier.weight(1f)) { state.onLinuxSteamGuide?.run() }
+        AccentButton("Quick Access", Modifier.weight(1f)) { state.onLinuxSteamQam?.run() }
+    }
+    HelperText("Presses the Steam button, or opens Steam's Quick Access Menu, on player one's controller.")
+
+    Spacer(Modifier.height(6.dp))
+    ToggleRow("On-screen Steam and Quick Access buttons", on(LinuxTuning.EXTRA_STEAM_BUTTONS)) {
+        flip(LinuxTuning.EXTRA_STEAM_BUTTONS, it)
+    }
+    ToggleRow("Double Back opens Quick Access", on(LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) {
+        flip(LinuxTuning.EXTRA_DOUBLE_BACK_QAM, it)
+    }
+    HelperText("One Back press still opens this drawer. Both apply now.")
+
+    Spacer(Modifier.height(6.dp))
+    ToggleRow("Stretch games to fill the screen", on(LinuxTuning.EXTRA_FILL_SCREEN)) {
+        flip(LinuxTuning.EXTRA_FILL_SCREEN, it)
+    }
+    HelperText("Keeps a game that shrinks its window (FlatOut after Resume game) filling the screen. Applies now.")
+    ToggleRow("Quake-engine games windowed", on(LinuxTuning.EXTRA_IDTECH3)) {
+        flip(LinuxTuning.EXTRA_IDTECH3, it)
+    }
+    HelperText("Quake III, Team Arena, Return to Castle Wolfenstein and Jedi Academy run windowed at the session's size, " +
+        "the one way they start here. Applies at the next game start.")
+
+    Spacer(Modifier.height(6.dp))
+    Text("Troubleshooting", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+    ToggleRow("Xalia off (PROTON_USE_XALIA=0)", on(LinuxTuning.EXTRA_NO_XALIA)) {
+        flip(LinuxTuning.EXTRA_NO_XALIA, it)
+    }
+    HelperText("For a game that crash-loops at start. Applies at the next game start.")
+    ToggleRow("proot without seccomp", on(LinuxTuning.EXTRA_PROOT_NO_SECCOMP)) {
+        flip(LinuxTuning.EXTRA_PROOT_NO_SECCOMP, it)
+    }
+    HelperText("Slower; for a device whose seccomp misbehaves. Applies at the next session.")
+    Text("Turnip sysmem rendering", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 4.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        listOf("" to "Automatic", "1" to "On", "0" to "Off").forEach { (value, label) ->
+            val selected = sysmem == value
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface)
+                    .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                    .clickable {
+                        state.setLinuxTurnipSysmem(value)
+                        state.onLinuxTurnipSysmem?.accept(value)
+                    }
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+    HelperText("Automatic turns it on for the imported A710/A720/A722 Linux drivers. Applies at the next session.")
+
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 }
 
 // ───── Wayland: HDR output (live, HDR sessions only) ─────

@@ -11081,3 +11081,89 @@ Prepared for **3.1.3 pre-release 2**, on the working branch only: versionCode 88
 stable is ≥ 89), `docs/releases/3.1.3-pre2.md` in the house layout with pre-release 1's changes collapsed
 underneath, and the README's pre-release section pointing at it. `release_notes.py 3.1.3-pre2
 --prerelease` passes. Nothing tagged or published: that waits on the user's go.
+
+### 2026-09-23 — 3.1.3 pre-release 2 published
+
+Tag `3.1.3-pre2` → main `39d43ebf` (fast-forwarded from `4e904851`), versionCode 88, release run
+35853633675 green: a pre-release with the three APKs and update.json, Latest still 3.1.2.
+Rollback ref `refs/backup/20260923/linux-313-pre2-known-good`.
+
+### 2026-09-23 — SteamDeck PR 9 ported (items 2–6), merged to main `d660bf04`
+
+From The412Banner/SteamDeck PR 9, on `feat/linux-steamdeck-port` off `39d43ebf`:
+- `6d0144bb` — SteamOS helper stand-ins (`steamos-update`, `steamos-select-branch`, `jupiter-biosupdate`,
+  `jupiter-dock-updater`, polkit helpers), a client update-channel setting (`BL_STEAM_CHANNEL`; Deck mode
+  follows `steamdeck_publicbeta`, everything else `publicbeta`), and `LinuxBatteryComponent` writing
+  Deck-style BAT0/BAT1 every 5 s, bound over `/sys/class/power_supply`.
+- `d4c6c98c` — `module-directaudio-sink` built against PulseAudio 13 and added to `pulseaudio.tzst`
+  (77 → 78 files), so the client's own sound goes to the DirectAudio relay when DirectAudio is chosen.
+- `a343682b` + `d660bf04` — a patched gamescope 3.16.29 (Armada's 0002/0009/0019/0020, plus our 0100: realtime
+  queues and the gamepad cursor), SteamDeck's build moved unchanged to winlator-contents
+  `gamescope-3.16.29-p1` (pre-release, never Latest), fetched and sha-checked by `_build.yml`, staged over
+  `/usr/local/bin/gamescope`.
+
+Proven on the FIT with Deck mode on and off: `gamescope version 3.16.29+ … at /usr/local/bin/gamescope`, the
+DA-Relay "hello from pulseaudio", clean menu sound, the battery in Steam's UI, no "Update Error", one client
+update when the channel switched and then clean starts, and every stub call answered. Deck mode still takes
+the game's controller away. Merged on the user's word; backup `refs/backup/20260923/main-before-deckport-merge`.
+
+### 2026-09-23 — Games-tab games in the Steam client; DirectAudio was never reaching games
+
+`6fc35d2d` (branch `feat/linux-steam-app-games`): `LinuxAppGames.kt` lists the Games-tab shortcuts (not
+Steam, Epic or Amazon ones) and any Games folders, and `bannerlator-steam-shortcuts` writes them to
+`shortcuts.vdf` before the client starts, tagged `bannerlator-app` so a user's own entries are left alone,
+with the app's cover or Steam store art. They run under Steam's Proton. Shared saves: the prefix's Documents,
+AppData (Roaming, Local, LocalLow) and Saved Games are symlinks to the container's folders. A non-empty
+folder is renamed "(Steam's own, before sharing)", and turning sharing off restores it. Settings: "Your
+games in Steam", on by default.
+On device: 14 games listed; DOOM I Enhanced launched and wrote its save into the container's folder;
+**Titanfall 2 loaded a save made in the app**. Insane 2 crashes (a `symsrv.dll` it drops writes into the
+game's own PE header under Valve's Proton + FEX); DiRT Showdown and DiRT Rally 2.0 hang at the splash.
+
+Titanfall 2's crackle exposed a main bug. `bannerlator-steam-compat` wrote the Audio key through `printf`,
+which halved the backslashes, so user.reg got `[Software\Wine\Drivers]`. Wine reads that as
+`[SoftwareWineDrivers]`, so every Linux-client game had always used winepulse → PulseAudio. **`af4df881`**
+writes the real key and repairs old prefixes. After the fix, Titanfall 2 on **Proton Experimental (ARM64)**
+crashed before its menu: `No driver from L"directaudio" could be initialized`, because `winedirectaudio.drv`
+failed with c0000135. That Proton looks in `x86_64-windows` for a 64-bit game, and our bundle has only
+aarch64/i386. On **GE-Proton11-7** it loads and connects (`DirectAudio: relay: connected`), and the game
+played with sound. Merged to main `af4df881` on the user's word (backup
+`refs/backup/20260923/main-before-appgames-merge`).
+
+### 2026-09-23 — SteamDeck PR 16's non-driver pieces, on the working branch
+
+`729047c5`: when no client is running, the session clears `.crash`, `steam.pid` and the htmlcache Singleton
+locks left by a killed session, and Deck mode exports `STEAM_GAMESCOPE_NIS_SUPPORTED=1`. `a9de8a35` +
+`a022ef88`: Valve's mangoapp (six pinned packages, sha-checked, with a curl retry) staged in
+`/usr/local/lib/mangoapp`, and `--mangoapp` in Deck mode. Built green; not seen on a device yet.
+
+### 2026-09-24 — the safety net: PulseAudio behind DirectAudio, merged to main `df6a0446`
+
+`df6a0446` on the working branch (after merging main into it, `a22e7ba4`): `"Audio"="directaudio,pulse"`.
+mmdevapi keeps the first driver that loads unless a later one ranks higher, and both rank Preferred, so
+DirectAudio wins wherever it loads and PulseAudio takes the rest. That covers Proton Experimental's 64-bit
+games, and DirectAudio switched off, which used to leave no device at all. Old DA-only values are repaired
+even with DirectAudio off, and the check reads the last Audio value, so nothing gets appended twice. Build run
+36046039678.
+On device (installed sha `d3f4c628…`): **Titanfall 2 on Proton Experimental started with sound and did not
+crash.** Its prefix (`compatdata/4152514375`, 11.0-100) carries the new value. `pulse.log` shows Titanfall2.exe
+probing winepulse, but it logged no game playback stream, so the log alone does not show which driver
+carried the sound. There were no app deaths. A stray `[SoftwareWineDrivers]` key from a 09-23 dev build is
+still in that prefix; Wine ignores it. Fast-forwarded main `af4df881` → `df6a0446` on the user's word
+(backup `refs/backup/20260924/main-before-safetynet-merge`); the #16 pieces came with it. Artifacts run
+36088248554.
+
+### 2026-09-25 — 3.1.3 pre-release 3 published
+
+Released on the user's word. `762d6bee` bumps versionCode 88 → **89** and versionName to `3.1.3-pre3`, and
+adds `docs/releases/3.1.3-pre3.md` (pre-release 3 open, pre-releases 2 and 1 in collapsed tabs, the pre-1/2
+DirectAudio claim corrected) plus the README's pre-release section. Main was fast-forwarded to it, tagged
+`3.1.3-pre3`, with rollback ref `refs/backup/20260925/linux-313-pre3-known-good`.
+Release run **36113515054** green, headSha verified: prerelease, not draft, Latest still 3.1.2, the tag on
+`762d6bee`, a 428-line body, three APKs (pubg 538,887,346 B), and update.json with vc 89 and the
+update-summary line. The released pubg is staged at `/sdcard/Download/Bannerlator-3.1.3-pre3-pubg.apk`,
+sha `3c8ff207ca77c611…`. **The next stable must be ≥ 90.**
+
+Still open: an x86_64 `winedirectaudio.drv` for Proton Experimental; DirectAudio before a game's first
+start; Insane 2 and the DiRT hangs; a per-game "run in the app" option; Deck mode's controller; testing
+mangoapp, NIS and the session cleanup; FlatOut (`--force-windows-fullscreen`); TF2 secure.

@@ -11167,3 +11167,28 @@ sha `3c8ff207ca77c611…`. **The next stable must be ≥ 90.**
 Still open: an x86_64 `winedirectaudio.drv` for Proton Experimental; DirectAudio before a game's first
 start; Insane 2 and the DiRT hangs; a per-game "run in the app" option; Deck mode's controller; testing
 mangoapp, NIS and the session cleanup; FlatOut (`--force-windows-fullscreen`); TF2 secure.
+
+### 2026-09-25 — from DroidDeck: Steam and Quick Access buttons, fill the screen, HDR, troubleshooting switches (built, not device-tested)
+
+The user picked items 1, 2, 6 and 7 of the DroidDeck gap survey. Every switch is in the Steam (Linux)
+settings and mirrored in a new **Steam client** section at the top of the drawer's Graphics tab, which
+saves to the same extras and applies live where it can. Commit `94296e8f`, build-artifacts run
+**36123594107** green on all three flavours, headSha verified. Staged:
+`/sdcard/Download/Bannerlator-steambuttons-94296e8f-pubg.apk`, sha `f9845511…`.
+
+- **Steam menu / Quick Access** buttons in the drawer, two on-screen corner buttons (on by default), and
+  double Back → Quick Access (on by default; one Back still opens the drawer, 500 ms later).
+  `FakeInputWriter.setSystemButtons` ORs Steam and A over the pad's own state on slot 0; Quick Access is
+  Steam, then A at +80 ms for 120 ms, then Steam released 40 ms later (DroidDeck's PadBridge).
+- **Stretch games to fill the screen** (on): `--force-windows-fullscreen`, plus a watcher that sets
+  `GAMESCOPE_FORCE_WINDOWS_FULLSCREEN` on the root window from `$BL_LIVE_DIR/fill`. The flag and the atom
+  are both in our gamescope binary (checked on the FIT). The likely fix for FlatOut's shrink.
+- **Quake-engine games windowed** (on) and **Xalia off** (off): `bl_game_options` in both Proton wrappers
+  reads `$BL_LIVE_DIR/{idtech3,xalia}` at every game start. Seven cases pass locally, and the generated
+  wrappers pass `bash -n`.
+- **HDR output now reaches games:** `BL_HDR=1` + `DXVK_HDR=1` when `waylandHdrActive`, and the script adds
+  `--hdr-enabled`. The editor switch existed but did nothing. Proving it needs an HDR10 screen (the FIT has none).
+- **proot without seccomp** (`PROOT_NO_SECCOMP`, off) and **Turnip sysmem** (Automatic = an imported
+  Linux driver whose name has 710/720/722; a user TU_DEBUG wins), both at the next session.
+- The survey's "entry env vars never reach the guest" was wrong: the Linux entry has settings container
+  -7, and `effectiveUserEnv()` goes into lateEnv.

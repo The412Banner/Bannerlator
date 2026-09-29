@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
@@ -79,9 +80,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.core.UpdateManager
@@ -109,8 +112,8 @@ internal enum class DeckTab(val label: String, val icon: ImageVector, val root: 
     HOME("Home", Icons.Filled.Home, DeckRoutes.HOME),
     STORES("Stores", Icons.Filled.Storefront, DeckRoutes.STORES),
     CONTAINERS("Containers", Icons.Filled.Inventory2, Screen.Containers.route),
-    COMPONENTS("Components", Icons.Filled.Extension, Screen.Contents.route),
-    CONTROLS("Controls", Icons.Filled.SportsEsports, Screen.InputControls.route),
+    COMPONENTS("Components", Icons.Filled.Extension, DeckRoutes.COMPONENTS),
+    CONTROLS("Controls", Icons.Filled.SportsEsports, DeckRoutes.CONTROLS),
     TOOLS("Tools", Icons.Filled.Build, DeckRoutes.TOOLS),
     SETTINGS("Settings", Icons.Filled.Settings, Screen.Settings.route),
 }
@@ -123,17 +126,26 @@ internal fun deckTabOf(route: String?): DeckTab = when {
     route == null -> DeckTab.HOME
     route == DeckRoutes.STORES -> DeckTab.STORES
     route == Screen.Containers.route || route.startsWith("container_detail") -> DeckTab.CONTAINERS
-    route == Screen.Contents.route -> DeckTab.COMPONENTS
-    route == Screen.InputControls.route -> DeckTab.CONTROLS
+    route == DeckRoutes.COMPONENTS || route == Screen.Contents.route -> DeckTab.COMPONENTS
+    route == DeckRoutes.CONTROLS || route == Screen.InputControls.route -> DeckTab.CONTROLS
     route == DeckRoutes.TOOLS || route == Screen.FileManager.route || route == Screen.SaveManager.route ||
         route == Screen.Saves.route || route == Screen.Wrappers.route || route == Screen.AdrenoTools.route -> DeckTab.TOOLS
     route == Screen.Settings.route || route == Screen.Appearance.route -> DeckTab.SETTINGS
     else -> DeckTab.HOME
 }
 
+/** Classic routes that have a Deck page of their own: opening one lands on the Deck page instead. */
+private val DECK_ALIASES = mapOf(
+    Screen.Contents.route to DeckRoutes.COMPONENTS,
+    Screen.InputControls.route to DeckRoutes.CONTROLS,
+)
+
+/** Routes the shell draws itself (no page bar above them). */
+private fun isDeckPage(route: String): Boolean = route.startsWith("deck_")
+
 /**
  * The Deck interface: a console-style shell around the same AppNavGraph routes the classic drawer uses,
- * plus a Deck home and two hub pages. Tabs across the top (L1/R1), a button legend along the bottom,
+ * plus the Deck home, game page and hub pages. Tabs across the top (L1/R1, or L2/R2 on a page with its own tab strip), a button legend along the bottom,
  * and on a phone a bottom bar instead. Colours all come from the user's theme.
  */
 @Composable
@@ -173,6 +185,8 @@ private fun DeckShellContent(
     val tab = deckTabOf(currentRoute)
 
     val nav = remember(navController) { DeckNav(navController) }
+    var searchOpen by remember { mutableStateOf(false) }
+    val openSearch: () -> Unit = { searchOpen = true }
 
     // Same as the classic shell: clear the previous screen's top-bar actions on navigation and re-read the signed-in account.
     // Screens re-set their actions from a LaunchedEffect that runs after this one.
@@ -206,11 +220,11 @@ private fun DeckShellContent(
         }
     }
     // A route requested by a relaunch intent or the component-install resume.
-    // "Games" means the Deck home unless the component-install return is waiting for the Games screen to reopen a game's settings.
+    // "Games" means the Deck home unless the Games screen has work waiting: the component-install return reopening a game's settings, or a queued request such as the first-run's "Add a game".
     LaunchedEffect(pendingRoute) {
         if (pendingRoute != null) {
-            val target = if (pendingRoute == Screen.Games.route && ComponentReturnBus.openShortcutSettings == null)
-                DeckRoutes.HOME else pendingRoute
+            val gamesWanted = ComponentReturnBus.openShortcutSettings != null || GamesScreenRequests.pending != null
+            val target = if (pendingRoute == Screen.Games.route && !gamesWanted) DeckRoutes.HOME else pendingRoute
             nav.open(target)
             onPendingRouteConsumed()
         }
@@ -227,8 +241,17 @@ private fun DeckShellContent(
         val handler: (KeyEvent) -> Boolean = handler@{ ev ->
             val first = ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0
             when (ev.keyCode) {
-                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) nav.cycle(-1); true }
-                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) nav.cycle(1); true }
+                // L1/R1 move a page's own tab strip when it has one, else the top-level tabs; L2/R2 always move the top-level tabs.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> {
+                    if (first) deckActions.subTab.value?.invoke(-1) ?: nav.cycle(-1)
+                    true
+                }
+                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> {
+                    if (first) deckActions.subTab.value?.invoke(1) ?: nav.cycle(1)
+                    true
+                }
+                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) nav.cycle(-1); true }
+                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) nav.cycle(1); true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (nav.currentRoute() == DeckRoutes.HOME) return@handler false
                     if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) {
@@ -237,8 +260,7 @@ private fun DeckShellContent(
                     true
                 }
                 KeyEvent.KEYCODE_BUTTON_Y -> {
-                    val search = deckActions.search.value ?: return@handler false
-                    if (first) search()
+                    if (first) (deckActions.search.value ?: openSearch)()
                     true
                 }
                 KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_START -> {
@@ -294,15 +316,17 @@ private fun DeckShellContent(
                     AccountUiBus.requestMyAccount()
                 }
                 if (compact) {
-                    DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount)
+                    DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch)
                 } else {
                     DeckTopBar(
                         current = tab,
                         wide = cfg.screenWidthDp >= DECK_WIDE_TABS_DP,
+                        topGlyphs = if (deckActions.subTab.value != null) "L2" to "R2" else "L1" to "R1",
                         avatarUrl = account?.displayAvatarUrl,
                         onTab = { nav.goTab(it) },
                         onCycle = { nav.cycle(it) },
                         onAccount = onAccount,
+                        onSearch = openSearch,
                     )
                 }
 
@@ -318,7 +342,7 @@ private fun DeckShellContent(
                     )
                 }
 
-                if (currentRoute != DeckRoutes.HOME && currentRoute != DeckRoutes.STORES && currentRoute != DeckRoutes.TOOLS) {
+                if (!isDeckPage(currentRoute)) {
                     DeckPageBar(
                         title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
                         showBack = currentRoute != tab.root,
@@ -338,21 +362,36 @@ private fun DeckShellContent(
                         extraRoutes = {
                             composable(DeckRoutes.HOME) {
                                 DeckHome(
-                                    onGameAction = { action, shortcut ->
-                                        GamesScreenRequests.pending = GamesScreenRequests.Request(action, shortcut?.file?.path)
+                                    onOpenGame = { shortcut -> nav.open(DeckRoutes.game(shortcut.file.path)) },
+                                    onAddGame = {
+                                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME)
                                         nav.open(Screen.Games.route)
                                     },
+                                    onBigPicture = { nav.open(Screen.BigPicture.route) },
                                     onOpenLibrary = { nav.open(Screen.Games.route) },
                                 )
                             }
-                            composable(DeckRoutes.STORES) {
-                                DeckStoresHub(
-                                    onLaunchStore = onLaunchStore,
-                                    onOpenAppearance = { nav.open(Screen.Appearance.route) },
+                            composable(
+                                route = DeckRoutes.GAME,
+                                arguments = listOf(navArgument(DeckRoutes.GAME_ARG) { type = NavType.StringType; defaultValue = "" }),
+                            ) { entry ->
+                                DeckGamePage(
+                                    shortcutPath = entry.arguments?.getString(DeckRoutes.GAME_ARG).orEmpty(),
+                                    onBack = { nav.back() },
+                                    onOpenContainer = { id -> nav.open("container_detail?id=$id") },
                                 )
                             }
+                            composable(DeckRoutes.STORES) {
+                                DeckStoresPage(
+                                    onLaunchStore = onLaunchStore,
+                                    onOpenAppearance = { nav.open(Screen.Appearance.route) },
+                                    onOpenGame = { path -> nav.open(DeckRoutes.game(path)) },
+                                )
+                            }
+                            composable(DeckRoutes.COMPONENTS) { DeckComponentsPage() }
+                            composable(DeckRoutes.CONTROLS) { DeckControlsPage() }
                             composable(DeckRoutes.TOOLS) {
-                                DeckToolsHub(
+                                DeckToolsPage(
                                     onNavigate = { route -> nav.open(route) },
                                     onMyAccount = onAccount,
                                     onAbout = onAbout,
@@ -369,14 +408,24 @@ private fun DeckShellContent(
                 } else {
                     DeckLegend(
                         atHome = currentRoute == DeckRoutes.HOME,
+                        subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
                         optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
-                        hasSearch = deckActions.search.value != null,
-                        onCycle = { nav.cycle(1) },
+                        onCycle = { deckActions.subTab.value?.invoke(1) ?: nav.cycle(1) },
                         onBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() },
                         onOptions = { deckActions.options.value?.invoke() },
-                        onSearch = { deckActions.search.value?.invoke() },
+                        onSearch = { (deckActions.search.value ?: openSearch)() },
                     )
                 }
+            }
+
+            if (searchOpen) {
+                DeckSearchOverlay(
+                    onDismiss = { searchOpen = false },
+                    onOpenGame = { path -> searchOpen = false; nav.open(DeckRoutes.game(path)) },
+                    onOpenRoute = { route -> searchOpen = false; nav.open(route) },
+                    onLaunchStore = { screen -> searchOpen = false; onLaunchStore(screen) },
+                    onAbout = { searchOpen = false; onAbout() },
+                )
             }
         }
     }
@@ -409,7 +458,8 @@ private class DeckNav(private val navController: NavHostController) {
     }
 
     /** Open any route: switch to its tab first, then push it when it is a sub-page of that tab. */
-    fun open(route: String) {
+    fun open(requested: String) {
+        val route = DECK_ALIASES[requested] ?: requested
         val t = deckTabOf(route)
         goTab(t)
         if (route != t.root && currentRoute() != route) {
@@ -445,10 +495,12 @@ private fun deckPageTitle(context: Context, route: String, id: Int): String = wh
 private fun DeckTopBar(
     current: DeckTab,
     wide: Boolean,
+    topGlyphs: Pair<String, String>,
     avatarUrl: String?,
     onTab: (DeckTab) -> Unit,
     onCycle: (Int) -> Unit,
     onAccount: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     val line = deckLine()
     Row(
@@ -467,7 +519,7 @@ private fun DeckTopBar(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.weight(1f),
         ) {
-            DeckGlyph("L1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(-1) })
+            DeckGlyph(topGlyphs.first, GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(-1) })
             Spacer(Modifier.width(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -482,14 +534,15 @@ private fun DeckTopBar(
                 }
             }
             Spacer(Modifier.width(8.dp))
-            DeckGlyph("R1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(1) })
+            DeckGlyph(topGlyphs.second, GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(1) })
         }
+        DeckSearchButton(onSearch)
         DeckStatus(avatarUrl = avatarUrl, showBattery = true, onAccount = onAccount)
     }
 }
 
 @Composable
-private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () -> Unit) {
+private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () -> Unit, onSearch: () -> Unit) {
     val line = deckLine()
     val showBattery = LocalConfiguration.current.screenWidthDp >= 420
     Row(
@@ -513,7 +566,23 @@ private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () ->
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        DeckSearchButton(onSearch)
         DeckStatus(avatarUrl = avatarUrl, showBattery = showBattery, onAccount = onAccount)
+    }
+}
+
+/** The top bar's magnifier: opens the same search overlay as Y. */
+@Composable
+private fun DeckSearchButton(onSearch: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .deckFocusRing(CircleShape, scaleTo = 1f)
+            .clip(CircleShape)
+            .clickable(onClick = onSearch)
+            .size(40.dp),
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
     }
 }
 
@@ -741,8 +810,8 @@ private fun DeckUpdateBanner(versionName: String, onUpdate: () -> Unit, onSkip: 
 @Composable
 private fun DeckLegend(
     atHome: Boolean,
+    subTabLabel: String?,
     optionsLabel: String?,
-    hasSearch: Boolean,
     onCycle: () -> Unit,
     onBack: () -> Unit,
     onOptions: () -> Unit,
@@ -759,11 +828,11 @@ private fun DeckLegend(
             .drawBehind { drawRect(line, topLeft = Offset.Zero, size = Size(size.width, 1f)) }
             .padding(horizontal = 16.dp),
     ) {
-        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), "Switch tab", onCycle)
+        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), subTabLabel ?: "Switch tab", onCycle)
         LegendItem(listOf("A" to GlyphKind.A), "Select", null)
         if (!atHome) LegendItem(listOf("B" to GlyphKind.B), "Back", onBack)
         if (optionsLabel != null) LegendItem(listOf("X" to GlyphKind.X), optionsLabel, onOptions)
-        if (hasSearch) LegendItem(listOf("Y" to GlyphKind.Y), "Search", onSearch)
+        LegendItem(listOf("Y" to GlyphKind.Y), "Search", onSearch)
     }
 }
 

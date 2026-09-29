@@ -472,7 +472,10 @@ class MainActivity : AppCompatActivity() {
             controllerTestFeedKeyEvent(event)
             return true
         }
-        return super.dispatchKeyEvent(event)
+        if (super.dispatchKeyEvent(event)) return true
+        // Deck shell controller shortcuts (L1/R1 tabs, B back, X/Start options, Y search) get only keys the view tree left unhandled.
+        // The handler is null unless the Deck shell is on screen.
+        return com.winlator.star.ui.deck.DeckInput.handler?.invoke(event) ?: false
     }
 
     private fun isControllerTestMotionEvent(event: android.view.MotionEvent): Boolean {
@@ -585,8 +588,60 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
+// Picks the shell from Appearance → Interface style.
+// Classic is the drawer + top bar below, untouched; Deck is the console-style tab shell (ui/deck).
+// Switching applies live by recomposing into the other shell.
+// Switching to Deck in a session that started in Classic lands on Settings → Appearance.
 @Composable
 private fun AppShell(
+    startRoute: String,
+    pendingRoute: String?,
+    onPendingRouteConsumed: () -> Unit,
+    showAllFilesDialog: Boolean,
+    showAboutDialog: Boolean,
+    onDismissAllFilesDialog: () -> Unit,
+    onConfirmAllFilesDialog: () -> Unit,
+    onDismissAboutDialog: () -> Unit,
+    onAboutRequested: () -> Unit,
+    onLaunchStore: (Screen) -> Unit,
+) {
+    val uiStyle by AppThemeState.uiStyle.collectAsState()
+    val launchStyle = remember { uiStyle }
+    if (uiStyle == AppThemeState.UI_STYLE_DECK) {
+        com.winlator.star.ui.deck.DeckShell(
+            startRoute = if (launchStyle != uiStyle) Screen.Appearance.route else startRoute,
+            pendingRoute = pendingRoute,
+            onPendingRouteConsumed = onPendingRouteConsumed,
+            onAbout = onAboutRequested,
+            onLaunchStore = onLaunchStore,
+        )
+        if (showAllFilesDialog) {
+            AllFilesAccessDialog(
+                onConfirm = onConfirmAllFilesDialog,
+                onDismiss = onDismissAllFilesDialog,
+            )
+        }
+        if (showAboutDialog) {
+            AboutDialog(onDismiss = onDismissAboutDialog)
+        }
+    } else {
+        ClassicAppShell(
+            startRoute = startRoute,
+            pendingRoute = pendingRoute,
+            onPendingRouteConsumed = onPendingRouteConsumed,
+            showAllFilesDialog = showAllFilesDialog,
+            showAboutDialog = showAboutDialog,
+            onDismissAllFilesDialog = onDismissAllFilesDialog,
+            onConfirmAllFilesDialog = onConfirmAllFilesDialog,
+            onDismissAboutDialog = onDismissAboutDialog,
+            onAboutRequested = onAboutRequested,
+            onLaunchStore = onLaunchStore,
+        )
+    }
+}
+
+@Composable
+private fun ClassicAppShell(
     startRoute: String,
     pendingRoute: String?,
     onPendingRouteConsumed: () -> Unit,

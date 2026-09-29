@@ -41,6 +41,14 @@ object AppThemeState {
     private val _fontScale = MutableStateFlow(0.9f)
     val fontScale: StateFlow<Float> = _fontScale
 
+    /** App shell style: [UI_STYLE_CLASSIC] (drawer + top bar, the default) or [UI_STYLE_DECK]
+     *  (console-style tab shell). Read by MainActivity's AppShell and applied live. */
+    const val UI_STYLE_CLASSIC = "classic"
+    const val UI_STYLE_DECK = "deck"
+
+    private val _uiStyle = MutableStateFlow(UI_STYLE_CLASSIC)
+    val uiStyle: StateFlow<String> = _uiStyle
+
     // The preset whose background/surface colors back the custom accent
     private val _customBaseIndex = MutableStateFlow(0)
 
@@ -93,6 +101,15 @@ object AppThemeState {
         _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
         _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
         _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
+        _uiStyle.value = if (themePrefs.getString("ui_style", UI_STYLE_CLASSIC) == UI_STYLE_DECK) UI_STYLE_DECK
+                         else UI_STYLE_CLASSIC
+    }
+
+    /** Switch the app shell between Classic and Deck. Takes effect immediately, no restart. */
+    fun setUiStyle(style: String) {
+        val v = if (style == UI_STYLE_DECK) UI_STYLE_DECK else UI_STYLE_CLASSIC
+        _uiStyle.value = v
+        themePrefs.edit().putString("ui_style", v).apply()
     }
 
     /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */

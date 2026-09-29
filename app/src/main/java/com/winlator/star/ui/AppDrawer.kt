@@ -238,7 +238,7 @@ private fun DrawerSectionHeader(title: String, note: String? = null, showDivider
 }
 
 @Composable
-private fun StorageWidget() {
+internal fun StorageWidget() {
     val context = LocalContext.current
     var usedBytes by remember { mutableStateOf(0L) }
     var totalBytes by remember { mutableStateOf(0L) }
@@ -493,7 +493,7 @@ private fun DrawerIconItem(label: String, icon: ImageVector, onClick: () -> Unit
 }
 
 @Composable
-private fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit) {
+internal fun HelpSupportDialog(onDismiss: () -> Unit, onOpenUrl: (String) -> Unit) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Help & Support") },

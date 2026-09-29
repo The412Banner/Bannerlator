@@ -80,6 +80,33 @@ fun AppearanceScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // ── Interface style ──────────────────────────────────────────────
+        SectionLabel("Interface Style")
+        Text(
+            text = "Classic keeps the side menu. Deck is a console-style layout with tabs across the top, " +
+                "made for controllers. Your theme and accent apply to both.",
+            color = OnSurfaceVariant,
+            fontSize = 12.sp,
+        )
+        Spacer(Modifier.height(6.dp))
+        val uiStyle by AppThemeState.uiStyle.collectAsState()
+        val styleOptions = listOf(
+            AppThemeState.UI_STYLE_CLASSIC to "Classic",
+            AppThemeState.UI_STYLE_DECK to "Deck",
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            styleOptions.forEachIndexed { index, (style, label) ->
+                SegmentedButton(
+                    selected = uiStyle == style,
+                    onClick = { AppThemeState.setUiStyle(style) },
+                    shape = SegmentedButtonDefaults.itemShape(index, styleOptions.size),
+                ) { Text(label) }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Divider))
+
         // ── Preset themes ────────────────────────────────────────────────
         SectionLabel("Theme Presets")
 

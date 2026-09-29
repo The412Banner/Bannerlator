@@ -209,9 +209,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // Frame-gen engine (per-container): "off" | "bionic" | "lsfg" (mutually exclusive).
     // multiplier & flow scale are tuned live from the in-game side menu (bionic-fg).
     var frameGenEngine by mutableStateOf("off")
-    // bionic-fg interpolation model (per-container, 0-3). 0 = the long-standing default chain;
-    // 1-3 are newer engines that are not device-proven yet. Only meaningful when engine=="bionic".
-    var frameGenModel by mutableStateOf(0)
+    // Win-FG interpolation model (per-container): 3 = optical flow (default), 4 = bidirectional.
+    // Only meaningful when engine=="bionic"; legacy stored 0-2 are normalised to 3 on load.
+    var frameGenModel by mutableStateOf(Container.FRAMEGEN_DEFAULT_MODEL)
     // lsfg-vk performance_mode (per-container): lower interpolation quality for higher FPS. Also
     // live-toggleable from the in-game FG menu. Only meaningful when frameGenEngine == "lsfg".
     // Default ON for new/unset containers (see loadContainerData) — initial value mirrors that.
@@ -612,7 +612,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         screenAlignment     = seed?.getScreenAlignment() ?: Container.ALIGN_CENTER
 
         frameGenEngine     = seed?.frameGenEngine ?: "off"
-        frameGenModel      = seed?.frameGenModel ?: 0
+        frameGenModel      = if (seed?.frameGenModel == 4) 4 else Container.FRAMEGEN_DEFAULT_MODEL
         lsfgPerformanceMode = seed?.isLsfgPerformanceMode != false   // default ON for new/unset containers
         lsfgAutoEnable      = seed?.isLsfgAutoEnable != false   // default ON for new/unset containers (GameNative parity)
         seedFgCaptureSelection(seed?.fgCaptureResolution)

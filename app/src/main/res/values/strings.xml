@@ -1292,11 +1292,8 @@
     <string name="frame_generation_ingame_hint">Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
     <string name="frame_generation_model">Interpolation model</string>
     <string name="frame_generation_model_default">Optical flow</string>
-    <string name="frame_generation_model_traced">Optical flow</string>
-    <string name="frame_generation_model_v2">Optical flow</string>
-    <string name="frame_generation_model_fsr3">Optical flow</string>
-    <string name="frame_generation_model_fsr3_v2">Optical flow · bidirectional</string>
-    <string name="frame_generation_model_experimental_hint">Experimental model — may render incorrectly or cost more performance than it gains. Switch back to Default if a game misbehaves.</string>
+    <string name="frame_generation_model_bidirectional">Optical flow · bidirectional</string>
+    <string name="frame_generation_model_bidirectional_hint">Solves motion in both directions to clean up edges around moving objects, at a noticeably higher GPU cost. Switch back to Optical flow if the frame rate drops.</string>
     <string name="frame_generation_lsfg_hint">Uses your imported Lossless.dll (set it at the bottom of Settings). Tune the multiplier &amp; flow scale live from the in-game side menu.</string>
     <string name="frame_generation_lsfg_native_hint">Runs the Lossless Scaling shaders inside Bannerlator itself instead of inside the game, so the extra frames reach the screen directly. Needs your imported Lossless.dll, the Vulkan renderer, and a Renderer Driver with Vulkan 1.3 (on older Adreno GPUs, pick a Turnip driver under Renderer Driver). Smoother motion; adds about one frame of input delay, as all frame interpolation does.</string>
     <string name="frame_generation_lsfg_native_unsupported">LSFG Native is unavailable on this device: %1$s</string>

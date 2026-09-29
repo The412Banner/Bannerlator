@@ -14407,16 +14407,21 @@ return true;
 
     // bionic-fg interpolation model for this launch: per-game override else the container value.
     // Same read-only resolver discipline as resolvedFrameGenEngine — never writes back.
+    // Win-FG only has models 3 (optical flow) and 4 (bidirectional).
+    // Legacy stored 0-2 resolve to 3, which is what the layer's clamp and the drawer already show; the native engines would otherwise read them as 4.
     private int resolvedFrameGenModel() {
         int fallback = container.getFrameGenModel();
-        if (shortcut == null) return fallback;
-        try {
-            int m = Integer.parseInt(shortcut.getExtra("frameGenModel", String.valueOf(fallback)));
-            return (m < 0 || m > 4) ? fallback : m;
+        int m = fallback;
+        if (shortcut != null) {
+            try {
+                m = Integer.parseInt(shortcut.getExtra("frameGenModel", String.valueOf(fallback)));
+                if (m < 0 || m > 4) m = fallback;
+            }
+            catch (NumberFormatException e) {
+                m = fallback;
+            }
         }
-        catch (NumberFormatException e) {
-            return fallback;
-        }
+        return m == 4 ? 4 : 3;
     }
 
     // win-fg performance preset resolution — same read-only resolver discipline as

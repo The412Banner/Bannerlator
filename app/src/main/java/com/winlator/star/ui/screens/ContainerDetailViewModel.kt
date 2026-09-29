@@ -753,6 +753,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // A form loaded on Wayland with an empty/"System" compositor driver gets the default now.
         resetCompositorFill()
         syncCompositorDriverWithBackend()
+        markClean()
     }
 
     /** The Display backend dropdown. */
@@ -831,7 +832,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             if (!isWaylandBackend || (now.isNotEmpty() && now != "System")) return@launch
             if (pick == null) { compositorDriverNoneUsable = true; return@launch }
             versionBeforeCompositorFill = now
+            // The auto-picked driver is part of the loaded form, not a user edit.
+            val wasClean = !hasUnsavedChanges(cpuList, cpuListWoW64, null)
             graphicsDriverConfig = withGraphicsDriverVersion(graphicsDriverConfig, pick)
+            if (wasClean) markClean()
             compositorDriverAutoPicked = pick
             compositorDriverPickedFromDefaults = pick == preferred
         }
@@ -1150,6 +1154,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         cpuListWoW64In: String,
         colorAsString: String,
         seedControllerGlobals: Boolean,
+        finalizeDriverVersion: Boolean = true,
     ) {
         // Belt-and-suspenders: never write Audio=directaudio for a layer that can't load it. The UI
         // grey-out already blocks a fresh pick, but a container loaded already-set (or edited without
@@ -1158,7 +1163,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
         // Finalize graphics driver config (ensure version is set)
         var finalGDConfig = gdConfig
-        try {
+        // The unsaved-changes check skips this: it is a native driver probe, and it fills the same gap on both sides of the comparison.
+        if (finalizeDriverVersion) try {
             val cfg = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(gdConfig)
             if (cfg["version"].isNullOrEmpty()) {
                 cfg["version"] = if (GPUInformation.isDriverSupported(DefaultVersion.WRAPPER_ADRENO, context))
@@ -1266,6 +1272,40 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         c.setLC_ALL(lcAll)
         c.setPrimaryController(selectedPrimaryController)
         c.setControllerMapping(buildControllerMapping())
+    }
+
+    // ── Unsaved-changes check ─────────────────────────────────────────────────
+    // Signature of the form as last loaded (or saved). null until the first load, so nothing reads as dirty before then.
+    private var cleanSignature: String? = null
+
+    // What the ✓ would write, as one string: the whole form through applyFormTo onto a throwaway container, plus the three values that live outside its config.
+    // CPU lists are compared as sets, since CPUListView and the stored string can order the same picks differently.
+    // [colorAsString] is the colour picker's value, or null when the picker was never shown (the loaded colour is used then).
+    private fun formSignature(cpuListIn: String, cpuListWoW64In: String, colorAsString: String?): String {
+        fun normCpu(list: String) = list.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted().joinToString(",")
+        val color = colorAsString ?: if (desktopBgTypeIndex == WineThemeManager.BackgroundType.COLOR.ordinal)
+            String.format(java.util.Locale.ENGLISH, "#%06X", 0x00ffffff and desktopBgColorInt)
+        else "#0277bd"
+        val scratch = Container(0, manager)
+        applyFormTo(scratch, graphicsDriverConfig, dxWrapperConfig, fpsCounterConfig, envVarsStr,
+            normCpu(cpuListIn), normCpu(cpuListWoW64In), color,
+            seedControllerGlobals = false, finalizeDriverVersion = false)
+        return scratch.getData().apply {
+            put("wineVersion", selectedWineVersion)
+            put("runAsAdmin", runAsAdmin)
+            put("mouseWarp", selectedMouseWarpIndex)
+        }.toString()
+    }
+
+    private fun markClean() {
+        cleanSignature = runCatching { formSignature(cpuList, cpuListWoW64, null) }.getOrNull()
+    }
+
+    /** True when the form differs from what was loaded, i.e. leaving without the ✓ would lose edits. */
+    fun hasUnsavedChanges(resolvedCPUList: String, resolvedCPUListWoW64: String, resolvedColorAsString: String?): Boolean {
+        val clean = cleanSignature ?: return false
+        return runCatching { formSignature(resolvedCPUList, resolvedCPUListWoW64, resolvedColorAsString) != clean }
+            .getOrDefault(false)
     }
 
     // The create-mode container-config `data` JSON — built by writing the WHOLE form onto a

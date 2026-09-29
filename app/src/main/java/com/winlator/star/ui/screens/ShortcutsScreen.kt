@@ -6476,12 +6476,9 @@ internal fun ShortcutSettingsDialogScreen(
     }
 
     // Save
-    fun save() {
-        val newName = name.trim()
-        if (newName.isNotEmpty() && newName != shortcut.name) {
-            renameShortcut(shortcut, newName)
-        }
-
+    // Every per-game value the OK button stores, handed to [putExtra] one key at a time.
+    // save() writes them onto the shortcut; the unsaved-changes check collects them into a map instead, so the two can never disagree about what changed.
+    fun writeExtras(putExtra: (String, String?) -> Unit) {
         val screenSize = if (selectedScreenSize == "Custom") {
             val w = customWidth.trim(); val h = customHeight.trim()
             if (w.matches(Regex("[0-9]+")) && h.matches(Regex("[0-9]+"))) {
@@ -6513,7 +6510,7 @@ internal fun ShortcutSettingsDialogScreen(
         val startupIdx = startupSelectionEntries.indexOf(selectedStartupSelection).coerceAtLeast(0)
         val numCtrl = (numControllersEntries.indexOf(selectedNumControllers) + 1).coerceAtLeast(1)
 
-        with(shortcut) {
+        run {
             putExtra("execArgs", execArgs.ifEmpty { null })
             if (isEpicShortcut) putExtra("epicEos", if (epicEosEnabled) "1" else "0")
             if (isEpicShortcut) putExtra("epicOvtForce", if (epicOvtForce) "1" else "0")
@@ -6644,8 +6641,40 @@ internal fun ShortcutSettingsDialogScreen(
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_GAMES_FOLDERS,
                     linuxGamesFolders.joinToString(com.winlator.star.linux.LinuxAppGames.FOLDER_SEPARATOR).ifEmpty { null })
             }
-            saveData()
         }
+    }
+
+    fun save() {
+        val newName = name.trim()
+        if (newName.isNotEmpty() && newName != shortcut.name) {
+            renameShortcut(shortcut, newName)
+        }
+        writeExtras { key, value -> shortcut.putExtra(key, value) }
+        shortcut.saveData()
+    }
+
+    // ── Unsaved-changes check ──
+    // What OK would store right now. CPU lists are compared as sets, since CPUListView and the stored string can order the same picks differently.
+    fun formSignature(): Map<String, String?> {
+        val sig = linkedMapOf<String, String?>()
+        writeExtras { key, value -> sig[key] = value }
+        for (k in listOf("cpuList", "linuxClientCpuList", "linuxGameCpuList")) {
+            sig[k] = sig[k]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.distinct()?.sorted()?.joinToString(",")
+        }
+        sig["name"] = name.trim().ifEmpty { shortcut.name }
+        return sig
+    }
+    // Taken once the async lists (presets, versions, controls profiles) have landed, since they settle several values. null = never dirty.
+    var cleanSignature by remember { mutableStateOf<Map<String, String?>?>(null) }
+    LaunchedEffect(archLoaded) {
+        if (archLoaded && cleanSignature == null) cleanSignature = runCatching { formSignature() }.getOrNull()
+    }
+    var showUnsavedPrompt by remember { mutableStateOf(false) }
+    // Back, tap outside, ✕ and Cancel all come here: they close straight away unless there are edits OK hasn't stored.
+    val requestClose: () -> Unit = {
+        val clean = cleanSignature
+        val dirty = clean != null && runCatching { formSignature() != clean }.getOrDefault(false)
+        if (dirty) showUnsavedPrompt = true else onDismiss()
     }
 
     // Panel refresh rates (drives whether the "In-game refresh rate" row exists) — hoisted so the D-pad
@@ -6757,7 +6786,7 @@ internal fun ShortcutSettingsDialogScreen(
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestClose,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
@@ -6768,7 +6797,7 @@ internal fun ShortcutSettingsDialogScreen(
             // inner Column fills it and the footer pins flush to the bottom, mirroring the top bar.
             modifier = Modifier.fillMaxWidth(0.95f)
                 .height((LocalConfiguration.current.screenHeightDp * 0.92f).dp)
-                .settingsDpad(dp, { dpadIds }, onDismiss),
+                .settingsDpad(dp, { dpadIds }, requestClose),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
@@ -6785,8 +6814,8 @@ internal fun ShortcutSettingsDialogScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(shortcut.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    DpButton(dp, "titleX", onActivate = onDismiss) {
-                        IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    DpButton(dp, "titleX", onActivate = requestClose) {
+                        IconButton(onClick = requestClose, modifier = Modifier.size(28.dp)) {
                             Icon(Icons.Default.Close, contentDescription = "Close")
                         }
                     }
@@ -8598,9 +8627,9 @@ internal fun ShortcutSettingsDialogScreen(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    DpButton(dp, "cancel", onActivate = onDismiss, onRightId = "ok") {
+                    DpButton(dp, "cancel", onActivate = requestClose, onRightId = "ok") {
                         TextButton(
-                            onClick = onDismiss,
+                            onClick = requestClose,
                             // Definite height overrides TextButton's internal 40dp defaultMinSize
                             // floor (which heightIn(min=…) can't lower), so the footer bar is genuinely
                             // short — roughly matching the slim title bar at the top.
@@ -8671,6 +8700,13 @@ internal fun ShortcutSettingsDialogScreen(
     // config dialogs above) so HelpDialog / the glossary ModalBottomSheet render on top of it.
     helpRes?.let { HelpDialog(it) { helpRes = null } }
     glossaryQuery?.let { ContainerGlossarySheet(initialQuery = it, onDismiss = { glossaryQuery = null }) }
+    if (showUnsavedPrompt) {
+        UnsavedChangesDialog(
+            onSave = { showUnsavedPrompt = false; save(); onDismiss() },
+            onDiscard = { showUnsavedPrompt = false; onDismiss() },
+            onKeepEditing = { showUnsavedPrompt = false },
+        )
+    }
 
     if (showBox64DownloadSheet) {
         // Arch-match the download sheet to the selector above it: arm64ec containers use WOWBox64,

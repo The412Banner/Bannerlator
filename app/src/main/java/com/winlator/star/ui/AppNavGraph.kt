@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -31,6 +32,9 @@ fun AppNavGraph(
     navController: NavHostController,
     startRoute: String = Screen.Games.route,
     modifier: Modifier = Modifier,
+    // Extra destinations registered by the Deck shell (its home and hub pages).
+    // The classic shell passes nothing, so its graph is exactly the routes below.
+    extraRoutes: (NavGraphBuilder.() -> Unit)? = null,
 ) {
     val activity = LocalContext.current as FragmentActivity
 
@@ -121,5 +125,7 @@ fun AppNavGraph(
         composable(Screen.SaveManager.route) {
             SaveManagerScreen()
         }
+
+        extraRoutes?.invoke(this)
     }
 }

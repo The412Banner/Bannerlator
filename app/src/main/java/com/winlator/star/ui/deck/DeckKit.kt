@@ -132,9 +132,9 @@ internal fun DeckSectionLabel(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * A page's second-level tab strip (Library / Store / Friends..., Browse / Installed...), with L1 and R1
- * glyphs either side. It registers itself with the shell so the controller's L1/R1 move between these
- * tabs while the page is up (the top-level tabs then move with L2/R2).
+ * A page's second-level tab strip (Library / Store / Friends..., Browse / Installed...), with L2 and R2
+ * glyphs either side. It registers itself with the shell so the controller's L2/R2 move between these
+ * tabs while the page is up (L1/R1 always move the top-level tabs).
  */
 @Composable
 internal fun DeckTabStrip(
@@ -161,7 +161,7 @@ internal fun DeckTabStrip(
         modifier = modifier.fillMaxWidth(),
     ) {
         if (!deckCompact()) {
-            DeckGlyph("L1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected - 1 + count) % count) })
+            DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected - 1 + count) % count) })
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -218,7 +218,7 @@ internal fun DeckTabStrip(
             }
         }
         if (!deckCompact()) {
-            DeckGlyph("R1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected + 1) % count) })
+            DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected + 1) % count) })
         }
     }
 }

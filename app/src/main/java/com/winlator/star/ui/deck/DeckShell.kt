@@ -60,6 +60,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +75,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,6 +115,7 @@ import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.GamesScreenRequests
 import com.winlator.star.ui.topBarActionsState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Below this width (dp) the Deck shell uses the phone layout: bottom bar, no legend. */
 internal const val DECK_COMPACT_WIDTH_DP = 720
@@ -148,7 +161,7 @@ private fun isDeckPage(route: String): Boolean = route.startsWith("deck_")
 
 /**
  * The Deck interface: a console-style shell around the same AppNavGraph routes the classic drawer uses,
- * plus the Deck home, game page and hub pages. Tabs across the top (L1/R1, or L2/R2 on a page with its own tab strip), a button legend along the bottom,
+ * plus the Deck home, game page and hub pages. Tabs across the top (L1/R1; a page's own tab strip uses L2/R2), a button legend along the bottom,
  * and on a phone a bottom bar instead. Colours all come from the user's theme.
  */
 @Composable
@@ -188,6 +201,26 @@ private fun DeckShellContent(
     val tab = deckTabOf(currentRoute)
 
     val nav = remember(navController) { DeckNav(navController) }
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val tabRequesters = remember { DeckTab.entries.associateWith { FocusRequester() } }
+    val tabsFocused = remember { mutableStateOf(false) }
+    // L1/R1: next menu, with focus on its tab, so the bumpers keep moving across menus until Down enters one.
+    // No top bar (phone layout): the requester is not attached, so focus stays where it is.
+    val switchMenu: (Int) -> Unit = { delta ->
+        val t = nav.cycle(delta)
+        deckActions.navHold.value = true
+        if (runCatching { tabRequesters.getValue(t).requestFocus() }.isFailure) deckActions.navHold.value = false
+    }
+    // Down from the top bar: the page takes its own first focus; a page without one (a classic screen) gets the nearest control below.
+    val enterContent: () -> Unit = {
+        deckActions.navHold.value = false
+        deckActions.enterTick.intValue++
+        scope.launch {
+            repeat(4) { withFrameNanos { } }
+            if (tabsFocused.value) focusManager.moveFocus(FocusDirection.Down)
+        }
+    }
     var searchOpen by remember { mutableStateOf(false) }
     val openSearch: () -> Unit = { searchOpen = true }
     // Settings from any game menu (Home, game page, All games) opens the Deck editor while the shell is up.
@@ -246,17 +279,11 @@ private fun DeckShellContent(
         val handler: (KeyEvent) -> Boolean = handler@{ ev ->
             val first = ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0
             when (ev.keyCode) {
-                // L1/R1 move a page's own tabs when it has them (a tab strip, the settings editor's categories), else the top-level tabs; L2/R2 always move the top-level tabs.
-                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> {
-                    if (first) deckActions.subTab.value?.invoke(-1) ?: nav.cycle(-1)
-                    true
-                }
-                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> {
-                    if (first) deckActions.subTab.value?.invoke(1) ?: nav.cycle(1)
-                    true
-                }
-                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) nav.cycle(-1); true }
-                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) nav.cycle(1); true }
+                // L1/R1 always move the top-level tabs; L2/R2 move a page's own tabs (a tab strip, the settings editor's categories), else the top-level tabs.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) switchMenu(-1); true }
+                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) switchMenu(1); true }
+                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.invoke(-1) ?: switchMenu(-1); true }
+                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.invoke(1) ?: switchMenu(1); true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (nav.currentRoute() == DeckRoutes.HOME) return@handler false
                     if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) {
@@ -326,10 +353,15 @@ private fun DeckShellContent(
                     DeckTopBar(
                         current = tab,
                         wide = cfg.screenWidthDp >= DECK_WIDE_TABS_DP,
-                        topGlyphs = if (deckActions.subTab.value != null) "L2" to "R2" else "L1" to "R1",
+                        tabRequesters = tabRequesters,
                         avatarUrl = account?.displayAvatarUrl,
                         onTab = { nav.goTab(it) },
                         onCycle = { nav.cycle(it) },
+                        onTabsFocus = { focused ->
+                            tabsFocused.value = focused
+                            deckActions.navHold.value = focused
+                        },
+                        onEnterContent = enterContent,
                         onAccount = onAccount,
                         onSearch = openSearch,
                     )
@@ -418,7 +450,8 @@ private fun DeckShellContent(
                         atHome = currentRoute == DeckRoutes.HOME,
                         subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
                         optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
-                        onCycle = { deckActions.subTab.value?.invoke(1) ?: nav.cycle(1) },
+                        onCycle = { switchMenu(1) },
+                        onSubCycle = { deckActions.subTab.value?.invoke(1) },
                         onBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() },
                         onOptions = { deckActions.options.value?.invoke() },
                         onSearch = { (deckActions.search.value ?: openSearch)() },
@@ -459,10 +492,13 @@ private class DeckNav(private val navController: NavHostController) {
         }
     }
 
-    fun cycle(delta: Int) {
+    /** Move [delta] tabs along, wrapping; returns the tab now shown. */
+    fun cycle(delta: Int): DeckTab {
         val tabs = DeckTab.entries
         val i = tabs.indexOf(deckTabOf(currentRoute()))
-        goTab(tabs[(i + delta + tabs.size) % tabs.size])
+        val t = tabs[(i + delta + tabs.size) % tabs.size]
+        goTab(t)
+        return t
     }
 
     /** Open any route: switch to its tab first, then push it when it is a sub-page of that tab. */
@@ -503,10 +539,12 @@ private fun deckPageTitle(context: Context, route: String, id: Int): String = wh
 private fun DeckTopBar(
     current: DeckTab,
     wide: Boolean,
-    topGlyphs: Pair<String, String>,
+    tabRequesters: Map<DeckTab, FocusRequester>,
     avatarUrl: String?,
     onTab: (DeckTab) -> Unit,
     onCycle: (Int) -> Unit,
+    onTabsFocus: (Boolean) -> Unit,
+    onEnterContent: () -> Unit,
     onAccount: () -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -527,22 +565,32 @@ private fun DeckTopBar(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.weight(1f),
         ) {
-            DeckGlyph(topGlyphs.first, GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(-1) })
+            DeckGlyph("L1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(-1) })
             Spacer(Modifier.width(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .weight(1f, fill = false)
+                    .onFocusChanged { onTabsFocus(it.hasFocus) }
+                    // Down leaves the tabs for the page itself, not whichever control happens to sit below the tab.
+                    .onPreviewKeyEvent { e ->
+                        if (e.key == Key.DirectionDown && e.type == KeyEventType.KeyDown) { onEnterContent(); true } else false
+                    }
                     .horizontalScroll(rememberScrollState())
                     .padding(vertical = 4.dp),
             ) {
                 DeckTab.entries.forEach { t ->
-                    DeckTabButton(t, selected = t == current, showLabel = wide || t == current) { onTab(t) }
+                    DeckTabButton(
+                        t,
+                        selected = t == current,
+                        showLabel = wide || t == current,
+                        modifier = Modifier.focusRequester(tabRequesters.getValue(t)),
+                    ) { onTab(t) }
                 }
             }
             Spacer(Modifier.width(8.dp))
-            DeckGlyph(topGlyphs.second, GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(1) })
+            DeckGlyph("R1", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { onCycle(1) })
         }
         DeckSearchButton(onSearch)
         DeckStatus(avatarUrl = avatarUrl, showBattery = true, onAccount = onAccount)
@@ -595,14 +643,14 @@ private fun DeckSearchButton(onSearch: () -> Unit) {
 }
 
 @Composable
-private fun DeckTabButton(tab: DeckTab, selected: Boolean, showLabel: Boolean, onClick: () -> Unit) {
+private fun DeckTabButton(tab: DeckTab, selected: Boolean, showLabel: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(12.dp)
     val accent = cs.primary
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
-        modifier = Modifier
+        modifier = modifier
             .deckFocusRing(shape, scaleTo = 1f)
             .clip(shape)
             .background(if (selected) accent.copy(alpha = 0.16f) else Color.Transparent)
@@ -822,6 +870,7 @@ private fun DeckLegend(
     subTabLabel: String?,
     optionsLabel: String?,
     onCycle: () -> Unit,
+    onSubCycle: () -> Unit,
     onBack: () -> Unit,
     onOptions: () -> Unit,
     onSearch: () -> Unit,
@@ -837,7 +886,8 @@ private fun DeckLegend(
             .drawBehind { drawRect(line, topLeft = Offset.Zero, size = Size(size.width, 1f)) }
             .padding(horizontal = 16.dp),
     ) {
-        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), subTabLabel ?: "Switch tab", onCycle)
+        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), "Menu", onCycle)
+        if (subTabLabel != null) LegendItem(listOf("L2" to GlyphKind.BUMPER, "R2" to GlyphKind.BUMPER), subTabLabel, onSubCycle)
         LegendItem(listOf("A" to GlyphKind.A), "Select", null)
         if (!atHome) LegendItem(listOf("B" to GlyphKind.B), "Back", onBack)
         if (optionsLabel != null) LegendItem(listOf("X" to GlyphKind.X), optionsLabel, onOptions)

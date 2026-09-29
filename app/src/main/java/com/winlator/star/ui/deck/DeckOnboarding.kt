@@ -99,8 +99,8 @@ private val ONBOARDING_STEPS = listOf(
     "You're ready",
 )
 
-/** The interface-size presets offered on "Make it yours"; the full slider stays in Appearance. */
-private val UI_SIZES = listOf("Compact" to 0.8f, "Comfortable" to 0.9f, "Spacious" to 1.0f)
+/** The one interface size the first run offers: Compact, Appearance's UI size at 80%. The full slider stays in Appearance. */
+private const val UI_SIZE_COMPACT = 0.8f
 
 /** Marks the Deck first-run finished so it doesn't come back on the next start. */
 internal fun markDeckSetupDone(context: Context) {
@@ -453,6 +453,8 @@ private fun StepBody(
             val presetIndex by AppThemeState.presetIndex.collectAsState()
             val uiStyle by AppThemeState.uiStyle.collectAsState()
             val uiScale by AppThemeState.uiScale.collectAsState()
+            // The Deck is laid out for Compact: the first run sets it; Appearance can change it later.
+            LaunchedEffect(Unit) { AppThemeState.setUiScale(UI_SIZE_COMPACT) }
             DeckCard {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Theme", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -485,9 +487,7 @@ private fun StepBody(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Interface size", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        UI_SIZES.forEach { (label, scale) ->
-                            DeckChoiceChip(label, kotlin.math.abs(uiScale - scale) < 0.01f) { AppThemeState.setUiScale(scale) }
-                        }
+                        DeckChoiceChip("Compact", kotlin.math.abs(uiScale - UI_SIZE_COMPACT) < 0.01f) { AppThemeState.setUiScale(UI_SIZE_COMPACT) }
                     }
                 }
             }

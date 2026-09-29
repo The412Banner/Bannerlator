@@ -276,9 +276,8 @@ internal fun DeckHome(
     val addRequester = remember { FocusRequester() }
     val hasGames = shortcuts.isNotEmpty()
     // Initial focus: the hero's Play button (or "Add a game" when the library is empty), once it exists.
-    LaunchedEffect(hasGames, mode) {
-        withFrameNanos { }
-        runCatching { if (hasGames && mode == LibraryMode.SHELF) playRequester.requestFocus() else if (!hasGames) addRequester.requestFocus() }
+    DeckEntryFocus(hasGames, mode) {
+        if (hasGames && mode == LibraryMode.SHELF) playRequester.requestFocus() else if (!hasGames) addRequester.requestFocus()
     }
 
     val onFocus: (Shortcut) -> Unit = { focusedPath = it.file.path }

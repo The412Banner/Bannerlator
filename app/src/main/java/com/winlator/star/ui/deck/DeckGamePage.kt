@@ -160,10 +160,7 @@ internal fun DeckGamePage(
         }
     }
     val playRequester = remember { FocusRequester() }
-    LaunchedEffect(s.file.path) {
-        withFrameNanos { }
-        runCatching { playRequester.requestFocus() }
-    }
+    DeckEntryFocus(s.file.path) { playRequester.requestFocus() }
     var remembered by remember(shortcuts) { mutableStateOf(rememberedLaunchLabel(s)) }
     val gutter = deckGutter()
 

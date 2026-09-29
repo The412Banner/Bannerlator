@@ -94,6 +94,7 @@ import com.winlator.star.ui.deck.DECK_COMPACT_WIDTH_DP
 import com.winlator.star.ui.deck.DeckGlyph
 import com.winlator.star.ui.deck.GlyphKind
 import com.winlator.star.ui.deck.LocalDeckActions
+import com.winlator.star.ui.deck.DeckEntryFocus
 import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.deck.deckCardFill
 import com.winlator.star.ui.deck.deckFocusRing
@@ -599,10 +600,7 @@ private fun CategoryList(
 ) {
     val requester = remember { FocusRequester() }
     // The controller starts on the list, on the category being shown.
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { requester.requestFocus() }
-    }
+    DeckEntryFocus { requester.requestFocus() }
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(start = if (compact) 16.dp else 20.dp, end = if (compact) 16.dp else 8.dp, top = 6.dp, bottom = 24.dp),

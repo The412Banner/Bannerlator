@@ -7269,6 +7269,45 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
+    // Controller path to the in-game menu: Select + Start pressed together (either order) toggles the drawer, and B closes it while it is open.
+    // The first button of the chord reaches the game as usual; only the one that completes it is swallowed (down, repeats and up), so a lone Start or Select is never delayed or eaten.
+    private boolean padSelectHeld = false;
+    private boolean padStartHeld = false;
+    private final java.util.Set<Integer> padKeysSwallowedUntilUp = new java.util.HashSet<>();
+
+    private boolean handlePadMenuKeys(KeyEvent event) {
+        if (environment == null || drawerLayout == null || !ExternalController.isGameController(event.getDevice())) return false;
+        int kc = event.getKeyCode();
+        int action = event.getAction();
+        if (kc == KeyEvent.KEYCODE_BUTTON_SELECT || kc == KeyEvent.KEYCODE_BUTTON_START) {
+            boolean isSelect = kc == KeyEvent.KEYCODE_BUTTON_SELECT;
+            if (action == KeyEvent.ACTION_UP) {
+                if (isSelect) padSelectHeld = false; else padStartHeld = false;
+                return padKeysSwallowedUntilUp.remove(kc);
+            }
+            if (action != KeyEvent.ACTION_DOWN) return false;
+            if (event.getRepeatCount() > 0) return padKeysSwallowedUntilUp.contains(kc);
+            boolean otherHeld = isSelect ? padStartHeld : padSelectHeld;
+            if (isSelect) padSelectHeld = true; else padStartHeld = true;
+            if (!otherHeld) return false;
+            padKeysSwallowedUntilUp.add(kc);
+            openXServerDrawer();
+            return true;
+        }
+        if (kc == KeyEvent.KEYCODE_BUTTON_B) {
+            if (action == KeyEvent.ACTION_UP) return padKeysSwallowedUntilUp.remove(kc);
+            if (action != KeyEvent.ACTION_DOWN) return false;
+            if (event.getRepeatCount() == 0 && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                padKeysSwallowedUntilUp.add(kc);
+                drawerLayout.closeDrawers();
+                return true;
+            }
+            return padKeysSwallowedUntilUp.contains(kc);
+        }
+        return false;
+    }
+
+    /** Opens the drawer, or closes it when it is already open (the controller chord above). */
     private void openXServerDrawer() {
         if (environment != null) {
             releasePointerCaptureIfNeeded("open-drawer/shortcut");
@@ -7307,6 +7346,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        // Button releases made while another window has focus never reach dispatchKeyEvent, so the chord state could go stale.
+        if (!hasFocus) {
+            padSelectHeld = false;
+            padStartHeld = false;
+            padKeysSwallowedUntilUp.clear();
+        }
         if (hasFocus && waylandClipboard != null) waylandClipboard.refresh();
 
         if (hasFocus && (cursorLock || isRelativeMouseMovement || waylandPointerLocked) && inGameControlsEditor == null) {
@@ -12998,6 +13043,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             controllerTestFeedKeyEvent(event);
             return true;
         }
+        if (handlePadMenuKeys(event)) return true;
 
         // Wayland mode: route keyboard keys to wl_keyboard (the guest) instead of the X server.
         // Game controller buttons stay on the normal path below (WinHandler -> XInput, drawer

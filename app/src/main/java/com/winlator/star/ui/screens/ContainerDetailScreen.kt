@@ -9,6 +9,7 @@ import android.content.Context
 import android.net.Uri
 import android.view.ContextThemeWrapper
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -166,31 +167,55 @@ fun ContainerDetailScreen(
     else
         listOf("GENERAL", "ENVIRONMENT", "DRIVES", "WIN COMPONENTS", "ADVANCED")
 
+    // The ✓ FAB's save, also run by "Save" in the unsaved-changes prompt so both go through the same checks.
+    val saveAndExit: () -> Unit = {
+        val duplicates = viewModel.duplicateDriveLetters
+        if (duplicates.isNotEmpty()) {
+            // Saving would write two drives onto one letter; send the user to the tab.
+            viewModel.selectedTab = tabTitles.indexOf("DRIVES")
+            Toast.makeText(
+                context,
+                "Two drives share " + duplicates.sorted().joinToString(", ") { "$it:" } +
+                    " — give each drive its own letter",
+                Toast.LENGTH_LONG,
+            ).show()
+        } else if (!viewModel.isSaving) viewModel.confirm(
+            resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
+            resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
+            resolvedFPSCounterConfig     = viewModel.fpsCounterConfig,
+            resolvedEnvVars      = viewModel.envVarsStr,
+            resolvedCPUList      = cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
+            resolvedCPUListWoW64 = cpuListWoW64Ref.value?.checkedCPUListAsString ?: viewModel.cpuListWoW64,
+            resolvedColorAsString = colorPickerViewRef.value?.colorAsString ?: "#0277bd",
+            onDone = onNavigateBack
+        )
+    }
+
+    // System back used to drop every edit silently; now it asks first whenever the form differs from what was loaded.
+    var showUnsavedPrompt by remember { mutableStateOf(false) }
+    BackHandler {
+        when {
+            viewModel.isSaving -> Unit  // a save is already on its way out
+            viewModel.hasUnsavedChanges(
+                cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
+                cpuListWoW64Ref.value?.checkedCPUListAsString ?: viewModel.cpuListWoW64,
+                colorPickerViewRef.value?.colorAsString,
+            ) -> showUnsavedPrompt = true
+            else -> onNavigateBack()
+        }
+    }
+    if (showUnsavedPrompt) {
+        UnsavedChangesDialog(
+            onSave = { showUnsavedPrompt = false; saveAndExit() },
+            onDiscard = { showUnsavedPrompt = false; onNavigateBack() },
+            onKeepEditing = { showUnsavedPrompt = false },
+        )
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    val duplicates = viewModel.duplicateDriveLetters
-                    if (duplicates.isNotEmpty()) {
-                        // Saving would write two drives onto one letter; send the user to the tab.
-                        viewModel.selectedTab = tabTitles.indexOf("DRIVES")
-                        Toast.makeText(
-                            context,
-                            "Two drives share " + duplicates.sorted().joinToString(", ") { "$it:" } +
-                                " — give each drive its own letter",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    } else if (!viewModel.isSaving) viewModel.confirm(
-                        resolvedGraphicsDriverConfig = viewModel.graphicsDriverConfig,
-                        resolvedDXWrapperConfig      = viewModel.dxWrapperConfig,
-                        resolvedFPSCounterConfig     = viewModel.fpsCounterConfig,
-                        resolvedEnvVars      = viewModel.envVarsStr,
-                        resolvedCPUList      = cpuListViewRef.value?.checkedCPUListAsString ?: viewModel.cpuList,
-                        resolvedCPUListWoW64 = cpuListWoW64Ref.value?.checkedCPUListAsString ?: viewModel.cpuListWoW64,
-                        resolvedColorAsString = colorPickerViewRef.value?.colorAsString ?: "#0277bd",
-                        onDone = onNavigateBack
-                    )
-                },
+                onClick = saveAndExit,
                 containerColor = if (viewModel.isSaving)
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else

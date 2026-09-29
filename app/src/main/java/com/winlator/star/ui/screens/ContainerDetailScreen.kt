@@ -464,8 +464,7 @@ fun ContainerDetailScreen(
         )
     }
     if (showStockConfigSheet) {
-        // Parked stock .conf files are re-listed when the DXVK dialog reopens, so a fetched config
-        // shows up under "Stock config" straight away.
+        // Parked stock .conf files are re-listed when the DXVK dialog reopens, so a fetched config shows up under "Stock config" straight away.
         StockConfigDownloadSheet(
             onDismiss = { showStockConfigSheet = false; dxvkRefreshKey++; showDxvkConfig = true }
         )
@@ -1599,24 +1598,22 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
-            // Interpolation model. Default (0) is the long-standing chain; 1-3 are newer engines
-            // that are not yet device-proven, hence the explicit "experimental" labelling.
+            // Win-FG has two models (same pair as the in-game drawer): 3 = single-direction optical flow (the default), 4 = bidirectional flow with occlusion gating.
+            // Legacy stored 0-2 show as 3.
+            val fgModels = listOf(3, 4)
             val fgModelLabels = listOf(
                 stringResource(R.string.frame_generation_model_default),
-                stringResource(R.string.frame_generation_model_traced),
-                stringResource(R.string.frame_generation_model_v2),
-                stringResource(R.string.frame_generation_model_fsr3),
-                stringResource(R.string.frame_generation_model_fsr3_v2)
+                stringResource(R.string.frame_generation_model_bidirectional)
             )
             LabeledDropdown(
                 label = stringResource(R.string.frame_generation_model),
                 options = fgModelLabels,
-                selectedOption = fgModelLabels[viewModel.frameGenModel.coerceIn(0, 4)],
-                onSelect = { viewModel.frameGenModel = fgModelLabels.indexOf(it) }
+                selectedOption = fgModelLabels[if (viewModel.frameGenModel == 4) 1 else 0],
+                onSelect = { viewModel.frameGenModel = fgModels[fgModelLabels.indexOf(it)] }
             )
-            if (viewModel.frameGenModel != 0) {
+            if (viewModel.frameGenModel == 4) {
                 Text(
-                    text = stringResource(R.string.frame_generation_model_experimental_hint),
+                    text = stringResource(R.string.frame_generation_model_bidirectional_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)

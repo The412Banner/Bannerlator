@@ -24,21 +24,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,22 +45,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.ui.HelpSupportDialog
 import com.winlator.star.ui.Screen
 import com.winlator.star.ui.StorageWidget
-import com.winlator.star.ui.screens.LogManagerScreen
-import com.winlator.star.ui.theme.AppThemeState
 
-/** One tile on a Deck hub page. */
-private data class HubTile(
+/** One tile on a Deck tile grid. */
+internal data class HubTile(
     val title: String,
     val subtitle: String,
     val icon: ImageVector,
@@ -73,69 +63,29 @@ private data class HubTile(
 )
 
 /**
- * Stores tab: the same four storefronts the drawer's Stores section opens, as big tiles. Each one
- * starts the store's own activity exactly as the drawer does. Honours Appearance → "Show game stores".
+ * Tools → More: everything the drawer kept below its lists (wrappers, GPU drivers, account, About,
+ * Help and Support, storage cards) plus "Run setup again" for the Deck first-run. About and Help are
+ * the drawer's own dialogs.
  */
 @Composable
-internal fun DeckStoresHub(onLaunchStore: (Screen) -> Unit, onOpenAppearance: () -> Unit) {
-    val showStores by AppThemeState.showStores.collectAsState()
-    val tiles = listOf(
-        HubTile("Steam", "Your Steam library, downloads and cloud saves", Icons.Filled.Storefront) { onLaunchStore(Screen.Steam) },
-        HubTile("Epic Games", "Your Epic library", Icons.Filled.Storefront) { onLaunchStore(Screen.Epic) },
-        HubTile("GOG", "Your GOG library", Icons.Filled.Storefront) { onLaunchStore(Screen.Gog) },
-        HubTile("Amazon Games", "Your Amazon library", Icons.Filled.Storefront) { onLaunchStore(Screen.Amazon) },
-    )
-    DeckHubGrid(
-        title = "Stores",
-        subtitle = if (showStores) "Sign in, browse and install. Installed games land on Home." else null,
-    ) {
-        if (showStores) {
-            hubTiles(tiles, focusFirst = true)
-        } else {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Game stores are hidden. Turn on \"Show game stores\" in Appearance to list them here.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                    )
-                    HubTileCard(
-                        HubTile("Appearance", "Show or hide the game stores", Icons.Filled.Palette, onOpenAppearance),
-                        focusFirst = true,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Tools tab: file and save management, logs, wrappers, GPU drivers, plus everything the drawer kept
- * below its lists (account, About, Help and Support, storage cards). Log Manager opens the same full-
- * screen dialog Settings uses; About and Help are the drawer's own dialogs.
- */
-@Composable
-internal fun DeckToolsHub(
+internal fun DeckMoreTools(
     onNavigate: (String) -> Unit,
     onMyAccount: () -> Unit,
     onAbout: () -> Unit,
 ) {
     val context = LocalContext.current
-    var showLogManager by remember { mutableStateOf(false) }
     var showHelp by remember { mutableStateOf(false) }
     val tools = listOf(
-        HubTile("File Manager", "Browse drives and add games from folders", Icons.Filled.FolderOpen) { onNavigate(Screen.FileManager.route) },
-        HubTile("Save Manager", "Back up, restore and sync game saves", Icons.Filled.Save) { onNavigate(Screen.SaveManager.route) },
-        HubTile("Log Manager", "Collect and share logs for bug reports", Icons.Filled.Description) { showLogManager = true },
         HubTile("Wrappers", "Manage graphics wrappers", Icons.Filled.Layers) { onNavigate(Screen.Wrappers.route) },
         HubTile("Adrenotools", "GPU drivers for Adreno devices", Icons.Filled.Memory) { onNavigate(Screen.AdrenoTools.route) },
+        HubTile("Run setup again", "Walk through the Deck first-run: permissions, theme, stores", Icons.Filled.RestartAlt) { DeckSetup.requestRerun() },
     )
     val more = listOf(
         HubTile("My account", "Sign in to manage your shared configs", Icons.Filled.AccountCircle, onMyAccount),
         HubTile("About", "Version, updates and credits", Icons.Filled.Info, onAbout),
         HubTile("Help and Support", "GitHub, issue tracker and Discord", Icons.Filled.HelpOutline) { showHelp = true },
     )
-    DeckHubGrid(title = "Tools", subtitle = null) {
+    DeckTileGrid {
         hubTiles(tools, focusFirst = true)
         hubHeader("About and help")
         hubTiles(more, focusFirst = false)
@@ -143,15 +93,6 @@ internal fun DeckToolsHub(
         item(span = { GridItemSpan(maxLineSpan) }) {
             // The drawer's storage cards (honours the Appearance toggles). They carry their own inset.
             Column { StorageWidget() }
-        }
-    }
-
-    if (showLogManager) {
-        Dialog(
-            onDismissRequest = { showLogManager = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            LogManagerScreen(onClose = { showLogManager = false })
         }
     }
     if (showHelp) {
@@ -162,28 +103,22 @@ internal fun DeckToolsHub(
     }
 }
 
+/** An adaptive grid of [HubTileCard]s with the page gutter. */
 @Composable
-private fun DeckHubGrid(title: String, subtitle: String?, content: LazyGridScope.() -> Unit) {
-    val compact = LocalConfiguration.current.screenWidthDp < DECK_COMPACT_WIDTH_DP
-    val gutter = if (compact) 16.dp else 24.dp
+internal fun DeckTileGrid(content: LazyGridScope.() -> Unit) {
+    val compact = deckCompact()
+    val gutter = deckGutter()
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = if (compact) 260.dp else 280.dp),
-        contentPadding = PaddingValues(start = gutter, end = gutter, top = 18.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(start = gutter, end = gutter, top = 14.dp, bottom = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = MaterialTheme.colorScheme.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-                if (subtitle != null) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.5.sp)
-            }
-        }
-        content()
-    }
+        content = content,
+    )
 }
 
-private fun LazyGridScope.hubHeader(label: String) {
+internal fun LazyGridScope.hubHeader(label: String) {
     item(span = { GridItemSpan(maxLineSpan) }) {
         Text(
             text = label,
@@ -196,14 +131,15 @@ private fun LazyGridScope.hubHeader(label: String) {
     }
 }
 
-private fun LazyGridScope.hubTiles(tiles: List<HubTile>, focusFirst: Boolean) {
+internal fun LazyGridScope.hubTiles(tiles: List<HubTile>, focusFirst: Boolean) {
     tiles.forEachIndexed { i, tile ->
         item(key = tile.title) { HubTileCard(tile, focusFirst = focusFirst && i == 0) }
     }
 }
 
+/** A big icon + title + subtitle tile. [focusFirst] takes the initial focus once composed. */
 @Composable
-private fun HubTileCard(tile: HubTile, focusFirst: Boolean) {
+internal fun HubTileCard(tile: HubTile, focusFirst: Boolean) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(18.dp)
     val requester = remember { FocusRequester() }

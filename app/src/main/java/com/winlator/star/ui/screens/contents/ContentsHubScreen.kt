@@ -145,8 +145,13 @@ private fun tabIcon(t: HubTab): ImageVector = when (t) {
     HubTab.LINUX -> Icons.Filled.DeveloperBoard
 }
 
+/**
+ * [hostTab] is for the Deck shell, which draws its own tab strip: when set (0 Download, 1 Installed,
+ * 2 My Files, 3 Linux) only that tab's content is shown, without the rail or the TabRow. Classic
+ * passes nothing and gets the screen exactly as before.
+ */
 @Composable
-fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
+fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel(), hostTab: Int? = null) {
     val cs = MaterialTheme.colorScheme
     var tab by remember { mutableStateOf(HubTab.DOWNLOAD) }
 
@@ -155,7 +160,9 @@ fun ContentsHubScreen(vm: ContentsHubViewModel = viewModel()) {
     // (so landscape reads rail · repo-list · detail).
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(cs.background)) {
         val wide = maxWidth >= 760.dp
-        if (wide) {
+        if (hostTab != null) {
+            HubTabContent(vm, HubTab.values()[hostTab.coerceIn(0, HubTab.values().size - 1)], wide)
+        } else if (wide) {
             Row(modifier = Modifier.fillMaxSize()) {
                 NavigationRail(containerColor = cs.background) {
                     HubTab.values().forEach { t ->

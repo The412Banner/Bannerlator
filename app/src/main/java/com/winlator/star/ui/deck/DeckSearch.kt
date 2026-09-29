@@ -192,7 +192,7 @@ internal fun DeckSearchOverlay(
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = {
-                        games.firstOrNull()?.let { onOpenGame(it.file.path) } ?: places.firstOrNull()?.let { open(it, onOpenRoute, onLaunchStore, onAbout) }
+                        games.firstOrNull()?.let { onOpenGame(it.file.path) } ?: places.firstOrNull()?.let { openDestination(it, onOpenRoute, onLaunchStore, onAbout) }
                     }),
                     shape = RoundedCornerShape(18.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = cs.primary, unfocusedBorderColor = deckLine()),
@@ -219,7 +219,7 @@ internal fun DeckSearchOverlay(
                     if (places.isNotEmpty()) {
                         item(key = "h-places") { DeckSectionLabel("Screens and tools · ${places.size}", Modifier.padding(top = 8.dp)) }
                         items(places, key = { "d:" + it.title }) { d ->
-                            SearchResultRow(d.title, d.path, d.icon, null) { open(d, onOpenRoute, onLaunchStore, onAbout) }
+                            SearchResultRow(d.title, d.path, d.icon, null) { openDestination(d, onOpenRoute, onLaunchStore, onAbout) }
                         }
                     }
                     if (q.isNotEmpty() && games.isEmpty() && places.isEmpty()) {
@@ -238,7 +238,7 @@ internal fun DeckSearchOverlay(
     }
 }
 
-private fun open(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
+private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
     when {
         d.about -> onAbout()
         d.store != null -> onLaunchStore(d.store)

@@ -322,33 +322,24 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     val context = LocalContext.current
     val activity = context as Activity
 
-    var confirmRemove by remember { mutableStateOf<Shortcut?>(null) }
+    // The per-game ⋮ menu (which dialog is open for which game, and the flows behind each item) lives in ShortcutActions, shared with the Deck game page.
+    // The local delegates keep every call site below reading exactly as before.
+    val actions = rememberShortcutActions(vm)
+    var confirmRemove by actions::confirmRemove
     // Multi-select. Keyed by file path rather than by Shortcut because refresh() rebuilds the
     // objects, and a set of stale instances would silently stop matching anything.
     var selectionMode by remember { mutableStateOf(false) }
     var selectedPaths by remember { mutableStateOf(setOf<String>()) }
     var confirmRemoveSelected by remember { mutableStateOf(false) }
-    var cloneTarget by remember { mutableStateOf<Shortcut?>(null) }
-    // Save Backup (custom-import games): a picked .zip awaiting a target-container choice, plus the
-    // label of the game the restore was launched from (shown in the container picker title).
-    var restoreZipUri by remember { mutableStateOf<Uri?>(null) }
-    var restoreForName by remember { mutableStateOf("") }
-    // Emulator account ids a restore held back because the container already runs a different one.
-    var emuConflicts by remember { mutableStateOf<List<GameSaveBackup.EmuIdConflict>>(emptyList()) }
-    // The shortcut whose "Back up saves" layout-choice dialog is open (Winlator vs GameHub).
-    var backupFormatShortcut by remember { mutableStateOf<Shortcut?>(null) }
-    var settingsShortcut by remember { mutableStateOf<Shortcut?>(null) }
-    // "Copy to Drive C…" target — the game whose folder is being copied onto the container's C:
-    // drive (and then repointed). Both entry points (the ⋮ menu item and the editor's Storage row)
-    // set this; the shared CopyToDriveCCoordinator below owns the whole confirm→copy→repoint flow.
-    var copyToDriveCTarget by remember { mutableStateOf<Shortcut?>(null) }
-    // "Change executable…" target — the game being repointed at a different .exe/.lnk (launcher →
-    // real exe, dx11 ↔ dx9, a config tool). Both entry points set it; ChangeExecutableCoordinator
-    // owns the pick → args-choice → rewrite flow via the shared CopyGameToDriveC.setShortcutExe.
-    var changeExeTarget by remember { mutableStateOf<Shortcut?>(null) }
-    var gameDetailsShortcut by remember { mutableStateOf<Shortcut?>(null) }
-    var propertiesShortcut by remember { mutableStateOf<Shortcut?>(null) }
-    var logsShortcut by remember { mutableStateOf<Shortcut?>(null) }
+    var cloneTarget by actions::cloneTarget
+    var settingsShortcut by actions::settingsShortcut
+    var copyToDriveCTarget by actions::copyToDriveCTarget
+    var changeExeTarget by actions::changeExeTarget
+    var gameDetailsShortcut by actions::gameDetailsShortcut
+    var propertiesShortcut by actions::propertiesShortcut
+    var logsShortcut by actions::logsShortcut
+    var showCommunityBrowser by actions::showCommunityBrowser
+    var showMyAccount by actions::showMyAccount
     // XMB view: a nested menu is open (hides the + button) / its "Manage wrappers" row asked for the dialog.
     var xmbNested by remember { mutableStateOf(false) }
     var showWrapperManagerXmb by remember { mutableStateOf(false) }
@@ -384,242 +375,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var confirmAppId by remember { mutableStateOf<Int?>(null) }      // detected/selected Steam appId
     var steamSearchResults by remember { mutableStateOf<List<SteamStoreSearch.SteamSuggestion>>(emptyList()) }
     var steamSearching by remember { mutableStateOf(false) }
-    var scrapeTarget by remember { mutableStateOf<Shortcut?>(null) }
-    val scrapeCovers = remember { mutableStateListOf<Pair<Bitmap, String>>() }
-    var scrapeLoading by remember { mutableStateOf(false) }
-    var communityTarget by remember { mutableStateOf<Shortcut?>(null) }
-    var communityResult by remember { mutableStateOf<CommunityMatchResult?>(null) }
-    var communityLoading by remember { mutableStateOf(false) }
-    var communitySearch by remember(communityTarget) { mutableStateOf("") }
-    var communitySearchResults by remember(communityTarget) { mutableStateOf<List<CanonicalGame>>(emptyList()) }
-    // Catalog browser (catalog-first entry from the header) + the shared Phase 2 apply flow.
-    var showCommunityBrowser by remember { mutableStateOf(false) }
-    var applyPicker by remember { mutableStateOf<CommunityPick?>(null) }
-    var applyMismatch by remember { mutableStateOf<Pair<Shortcut, CommunityPick>?>(null) }
-    var applyBusy by remember { mutableStateOf(false) }
-    var applyResult by remember { mutableStateOf<CommunityConfigApply.ConfigApplyResult?>(null) }
-    // The shortcut the current result was applied to — threaded through so a post-install component
-    // fixup can write the resolved version sub-field back to the right shortcut.
-    var applyTarget by remember { mutableStateOf<Shortcut?>(null) }
-    // Missing component the user tapped "Install" on → opens its single-type download sheet.
-    var installSheetFor by remember { mutableStateOf<CommunityConfigApply.MissingComponent?>(null) }
-    // Missing GPU driver the user tapped "Browse all drivers" on → opens the adrenotools driver browser.
-    var driverSheetFor by remember { mutableStateOf<CommunityConfigApply.MissingDriver?>(null) }
-    // Phase 3 step 2 — LOCAL export/import.
-    // The generated export artifact awaiting a Share / Save-to-Downloads choice (null = no export sheet).
-    var exportResult by remember { mutableStateOf<ShortcutExporter.ExportResult?>(null) }
-    // The shortcut a freshly-picked import file applies to; null means it came from the catalog browser
-    // (no target yet) so the picked file is stashed in [importedConfigUri] and a target picker is shown.
-    var importPendingTarget by remember { mutableStateOf<Shortcut?>(null) }
-    var importedConfigUri by remember { mutableStateOf<Uri?>(null) }
-    // Phase 3 (online sharing) — UPLOAD. uploadingConfig gates the busy state; uploadStarted flips the
-    // button text from "Preparing…" to "Uploading…" once the real upload begins (after any replace
-    // confirm). When the user already shared a config for this game the worker gate is surfaced as a
-    // replace-confirm: (existing record, proceed, cancel) — Replace calls proceed(), Cancel calls cancel()
-    // so the parked coroutine unwinds cleanly.
-    var uploadingConfig by remember { mutableStateOf(false) }
-    var uploadStarted by remember { mutableStateOf(false) }
-    var replaceUploadPrompt by remember { mutableStateOf<Triple<UploadedConfig, () -> Unit, () -> Unit>?>(null) }
-    // Phase 3 (online sharing) — MY UPLOADS. showMyUploads opens the manager dialog; myUploads is the
-    // loaded list (null = still loading). The list is expandable (single-expand via expandedUploadSha);
-    // the expanded row's inline description editor shares uploadDescText / uploadDescLoading (reloaded on
-    // expand). deleteUploadRow drives the delete-confirm sub-dialog.
-    var showMyUploads by remember { mutableStateOf(false) }
-    // Phase 2 (optional accounts) — the "My account" sheet. Opened from the globe browser's person icon;
-    // hosts create/login/reset when logged out and profile + "My uploads" + "Log out" when signed in.
-    var showMyAccount by remember { mutableStateOf(false) }
-    var myUploads by remember { mutableStateOf<List<MyUploadRow>?>(null) }
-    var deleteUploadRow by remember { mutableStateOf<MyUploadRow?>(null) }
-    var expandedUploadSha by remember { mutableStateOf<String?>(null) }
-    var uploadDescText by remember { mutableStateOf("") }
-    var uploadDescLoading by remember { mutableStateOf(false) }
-    // A tapped config row → small "Apply to game… | View details" chooser. The pair carries the picked
-    // config (a specific uploaded file, or a device-row fallback) plus the in-context shortcut (non-null
-    // from the per-shortcut sheet, null from the catalog browser where a target hasn't been chosen yet).
-    var configAction by remember { mutableStateOf<Pair<CommunityPick, Shortcut?>?>(null) }
-    // The config whose read-only detail page is open (same pick + optional-context-shortcut pair).
-    var detailFor by remember { mutableStateOf<Pair<CommunityPick, Shortcut?>?>(null) }
-    // Labels of missing components/drivers that resolved after an install (→ checkmark instead of a
-    // button). Drivers are namespaced "driver:<wanted>" so they can't collide with component labels.
-    val resolvedMissing = remember(applyResult) { mutableStateListOf<String>() }
-    // Any install sheet (component OR driver) open → hide EVERY community dialog layer so the
-    // ModalBottomSheet isn't rendered behind an AlertDialog's window; they reappear when it closes.
-    // The chooser + detail layers join the predicate so the lower community dialogs (match/browser/
-    // picker/result) don't stack behind them; the chooser/detail themselves are gated on installSheetOpen.
-    val installSheetOpen = installSheetFor != null || driverSheetFor != null
-    val communityDialogsGated = installSheetOpen || configAction != null || detailFor != null
     val scope = rememberCoroutineScope()
 
-    // Shared apply runner — used by both the catalog browser and the per-shortcut sheet. Dispatches by
-    // pick kind: a specific uploaded file applies THAT file; a device-row fallback applies the
-    // best-for-device pick (offline path). Same downstream applyResult → smart-install flow either way.
-    val runCommunityApply: (Shortcut, CommunityPick) -> Unit = { sc, pick ->
-        applyBusy = true
-        applyResult = null
-        applyTarget = sc
-        val onDone: (CommunityConfigApply.ConfigApplyResult) -> Unit = { res ->
-            applyBusy = false
-            applyResult = res
-        }
-        when (pick) {
-            is CommunityPick.File -> vm.applyCommunityConfigFile(sc, pick.ref, onDone)
-            is CommunityPick.Device -> vm.applyCommunityConfig(sc, pick.game, pick.device, onDone)
-        }
-    }
-    // Kick off the real apply for a config: with an in-context shortcut (per-shortcut sheet) run it
-    // straight; without one (browser) fall to the target picker. Reused by BOTH the chooser's "Apply to
-    // game…" and the detail dialog's "Apply" so details never duplicates the apply/install flow.
-    val startConfigApply: (CommunityPick, Shortcut?) -> Unit = { pick, sc ->
-        if (sc != null) runCommunityApply(sc, pick) else applyPicker = pick
-    }
-    // Pick a target shortcut for a browser-selected config; warn when its game doesn't match.
-    val chooseApplyTarget: (Shortcut, CommunityPick) -> Unit = { sc, pick ->
-        applyPicker = null
-        if (GameMatcher.match(sc.name, listOf(pick.game)).isNotEmpty()) runCommunityApply(sc, pick)
-        else applyMismatch = sc to pick
-    }
+    // The ⋮ items that start a flow rather than open a dialog.
+    val scrapeCoverFor: (Shortcut) -> Unit = actions::scrapeCoverFor
+    val communityConfigsFor: (Shortcut) -> Unit = actions::communityConfigsFor
 
-    // Phase 3 step 2 — IMPORT runner. Read + translate + apply an imported file to [sc], funnelling
-    // into the SAME applyBusy → applyResult → smart-install flow a browsed config takes. A malformed
-    // file returns a clean ok=false result (shown by the existing "Couldn't apply" dialog), never a crash.
-    val runImport: (Shortcut, Uri) -> Unit = { sc, uri ->
-        applyBusy = true
-        applyResult = null
-        applyTarget = sc
-        vm.importConfigFile(uri, sc) { res ->
-            applyBusy = false
-            applyResult = res
-        }
-    }
-
-    // Phase 3 step 2 — EXPORT. Write the generated config to cacheDir/community_configs/export/<file>
-    // off-main, then hand it off. Share uses the app's existing FileProvider (${applicationId}.tileprovider,
-    // the same authority the save-share + updater use); Save copies it to public Downloads and toasts.
-    val shareExport: (ShortcutExporter.ExportResult) -> Unit = { res ->
-        exportResult = null
-        scope.launch(Dispatchers.IO) {
-            val dir = File(context.cacheDir, "community_configs/export").apply { mkdirs() }
-            val file = File(dir, res.fileName)
-            file.writeText(res.json)
-            withContext(Dispatchers.Main) {
-                try {
-                    val authority = context.packageName + ".tileprovider"
-                    val uri = FileProvider.getUriForFile(context, authority, file)
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/json"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        putExtra(Intent.EXTRA_SUBJECT, res.game)
-                        putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(send, "Share config"))
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-    val saveExportToDownloads: (ShortcutExporter.ExportResult) -> Unit = { res ->
-        exportResult = null
-        scope.launch(Dispatchers.IO) {
-            val ok = try {
-                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                // Exported configs live under Download/bannerlator/game-configs/ (created if absent).
-                val exportDir = File(downloads, "bannerlator/game-configs")
-                if (!exportDir.exists()) exportDir.mkdirs()
-                val out = File(exportDir, res.fileName)
-                out.writeText(res.json)
-                out.setReadable(true, false)
-                MediaScannerConnection.scanFile(context, arrayOf(out.absolutePath), null, null)
-                out.absolutePath
-            } catch (e: Exception) {
-                null
-            }
-            withContext(Dispatchers.Main) {
-                if (ok != null) Toast.makeText(context, "Saved to $ok", Toast.LENGTH_LONG).show()
-                else Toast.makeText(context, "Couldn't save the config.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // Shared "Scrape cover" action so both grid tiles and list rows fire the same flow.
-    val scrapeCoverFor: (Shortcut) -> Unit = { shortcut ->
-        scrapeTarget = shortcut
-        scrapeCovers.clear()
-        scrapeLoading = true
-        scope.launch(Dispatchers.IO) {
-            val json = StarLaunchBridge.sgdbFetchGridsJson(shortcut.name)
-            val covers = mutableListOf<Pair<Bitmap, String>>()
-            try {
-                val arr = JSONArray(json)
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val thumbUrl = obj.optString("thumb", "")
-                    val fullUrl = obj.optString("url", "")
-                    if (thumbUrl.isNotEmpty() && fullUrl.isNotEmpty()) {
-                        val conn = java.net.URL(thumbUrl).openConnection() as java.net.HttpURLConnection
-                        conn.connectTimeout = 10000
-                        conn.readTimeout = 10000
-                        val bmp = BitmapFactory.decodeStream(conn.inputStream)
-                        conn.disconnect()
-                        if (bmp != null) covers.add(bmp to fullUrl)
-                    }
-                }
-            } catch (_: Exception) {}
-            withContext(Dispatchers.Main) {
-                scrapeCovers.clear()
-                scrapeCovers.addAll(covers)
-                scrapeLoading = false
-            }
-        }
-    }
-
-    // Shared "Community configs" action — opens the sheet and kicks off the offline-first match.
-    val communityConfigsFor: (Shortcut) -> Unit = { shortcut ->
-        communityTarget = shortcut
-        communityResult = null
-        communityLoading = true
-        vm.matchCommunityConfigs(shortcut) { result ->
-            communityResult = result
-            communityLoading = false
-        }
-    }
-
-    // Post-install fixup shared by the inline installer and the "Browse all versions" fallback sheet:
-    // re-read what's on disk off-main, surgically auto-apply the resolved version to the target
-    // shortcut, then mark the row done + refresh. Same behaviour the download sheet's onContentChanged had.
-    val applyAfterInstall: (CommunityConfigApply.MissingComponent) -> Unit = { mc ->
-        val target = applyTarget
-        if (target != null) {
-            scope.launch {
-                val resolved = withContext(Dispatchers.IO) {
-                    val installed = com.winlator.star.communityconfigs.InstalledComponents.read(context)
-                    // Try the exact wanted version first. If the user installed a CLOSEST build instead
-                    // (e.g. a date-stamped FEX like "Fex-20260103" that has no exact catalog match), the
-                    // wanted string never re-resolves — so fall back to the NEWEST installed build of this
-                    // type, i.e. the one that was just installed, and apply that.
-                    if (CommunityConfigApply.applyResolvedComponent(target, mc, installed)) {
-                        true
-                    } else {
-                        val newest = CommunityConfigApply.installedTypeKey(mc.type)?.let { installed.newestToken(it) }
-                        newest != null &&
-                            CommunityConfigApply.applyResolvedComponent(target, mc.copy(wanted = newest), installed)
-                    }
-                }
-                if (resolved) {
-                    if (mc.label !in resolvedMissing) resolvedMissing.add(mc.label)
-                    vm.refresh()
-                    Toast.makeText(context, "Installed and applied to \"${target.name}\".", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Installed, but couldn't auto-apply — open \"Browse all versions\" to finish.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            }
-        }
-    }
 
     fun handleShortcutImport(uri: Uri) {
         if (pendingImportContainerIndex >= 0) {
@@ -645,45 +406,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         if (uri != null) handleShortcutImport(uri)
     }
 
-    // ── Save Backup / Restore (custom-import games only) ──────────────────────────────────────────
-    // In-app file picker for a backup .zip; on pick we hold the uri and show a target-container picker.
-    // (GameSaveBackup.restore auto-detects the layout — GameHub steamuser <-> our xuser — so a GameHub
-    // or Bannerlator save both restore through this one path; no format prompt needed.)
-    val restoreSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedUri(result.data)?.let { restoreZipUri = it }
-    }
-
-    // "Back up saves" → first pick the archive layout (Winlator vs GameHub), mirroring the Containers
-    // backup menu; the chosen layout runs in runCustomBackup below.
-    fun startSaveBackup(shortcut: Shortcut) {
-        backupFormatShortcut = shortcut
-    }
-
-    // Back up this game's saves into the shared per-game folder via the one shared impl
-    // (CustomSaveVault.manualBackup) so the ⋮ menu and the Save Manager agree; the dialog/UX + toasts
-    // stay here. manualBackup discovers roots (with whole-container fallback) and zips off the main
-    // thread, posting its result on the main thread.
-    fun runCustomBackup(shortcut: Shortcut, layout: GameSaveBackup.BackupLayout) {
-        val name = shortcut.name
-        Toast.makeText(context, "Backing up saves for \"$name\"…", Toast.LENGTH_SHORT).show()
-        CustomSaveVault.manualBackup(context, shortcut.container, shortcut, layout) { r ->
-            if (r.wholeContainer && r.ok) {
-                Toast.makeText(context, "No per-game saves detected — backed up the whole container.", Toast.LENGTH_LONG).show()
-            }
-            Toast.makeText(
-                context,
-                if (r.ok) "Backed up ${r.fileCount} files → ${r.path?.substringAfterLast('/')}"
-                else "Backup failed: ${r.error ?: "unknown error"}",
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-    }
-
-    // Restore: pick a .zip (SAF) → then choose the target container (ContainerPickerDialog) → restore.
-    fun startSaveRestore(shortcut: Shortcut) {
-        restoreForName = shortcut.name
-        restoreSaveLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select a save .zip"))
-    }
+    fun startSaveBackup(shortcut: Shortcut) = actions.startSaveBackup(shortcut)
+    fun startSaveRestore(shortcut: Shortcut) = actions.startSaveRestore(shortcut)
     // Built-in in-app file picker (primary).
     val importFileInAppLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -716,35 +440,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }
         }
     }
-    // Phase 3 step 2 — config-import picker (in-app File Manager, `.json` only). A known
-    // [importPendingTarget] applies straight to that shortcut; otherwise (from the catalog browser)
-    // the picked file is stashed and a target picker is shown.
-    val importConfigInAppLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            InAppFilePicker.pickedUri(result.data)?.let { uri ->
-                val target = importPendingTarget
-                if (target != null) runImport(target, uri) else importedConfigUri = uri
-            }
-        }
-    }
-    // Launch the config-import picker for [target] (null = from the browser → pick a target afterwards).
-    val launchConfigImport: (Shortcut?) -> Unit = { target ->
-        importPendingTarget = target
-        importConfigInAppLauncher.launch(
-            InAppFilePicker.buildIntent(context, InAppFilePicker.JSON, "Select a config .json")
-        )
-    }
-    // Open the My-uploads manager (shared by the per-game dialog button AND the My-account sheet).
-    val openMyUploads: () -> Unit = {
-        myUploads = null
-        expandedUploadSha = null
-        showMyUploads = true
-        vm.loadMyUploads { myUploads = it }
-    }
-    // Open the My-account sheet (Phase 2), the globe browser's person-icon entry point.
-    val openMyAccount: () -> Unit = { showMyAccount = true }
     // Phase 3: the nav-drawer's profile header lands here then flips this one-shot flag — open the sheet.
     LaunchedEffect(AccountUiBus.openMyAccountRequested) {
         if (AccountUiBus.openMyAccountRequested) {
@@ -1584,27 +1279,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         )
     }
 
-    // Remove confirmation
-    confirmRemove?.let { s ->
-        OutlinedAlertDialog(
-            onDismissRequest = { confirmRemove = null },
-            title = { Text("Remove shortcut?") },
-            text = { Text("Remove \"${s.name}\"?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    val ok = vm.remove(s, context)
-                    confirmRemove = null
-                    Toast.makeText(
-                        context,
-                        if (ok) "Shortcut removed." else "Failed to remove shortcut.",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }) { Text("Remove") }
-            },
-            dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
-        )
-    }
-
     // Bulk remove. Counts rather than names: a list of twenty titles is not something anyone
     // reads, and the number is the part that decides whether you meant it.
     if (confirmRemoveSelected) {
@@ -1637,6 +1311,292 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             dismissButton = {
                 TextButton(onClick = { confirmRemoveSelected = false }) { Text("Cancel") }
             },
+        )
+    }
+
+    if (showWrapperManagerXmb) WrapperManagerDialog(onDismiss = { showWrapperManagerXmb = false })
+
+    // Per-game ⋮ menu dialogs (shared with the Deck game page).
+    ShortcutActionDialogs(actions)
+
+    // Launch-flow dialogs (EA, launch method, SteamLite pre-flight, component download, Steam update/verify).
+    ShortcutLaunchDialogs(launcher)
+}
+
+/**
+ * Every dialog behind the per-game ⋮ menu (remove, clone, Drive C, change exe, save backup/restore,
+ * logs, properties, cover scraping, community configs with its apply/upload flows, the per-game
+ * editor and Game Details). Shared by the Games screen and the Deck game page.
+ */
+@Composable
+internal fun ShortcutActionDialogs(actions: ShortcutActions) {
+    val vm = actions.vm
+    val context = LocalContext.current
+    val scope = actions.scope
+    var confirmRemove by actions::confirmRemove
+    var cloneTarget by actions::cloneTarget
+    var restoreZipUri by actions::restoreZipUri
+    var restoreForName by actions::restoreForName
+    var emuConflicts by actions::emuConflicts
+    var backupFormatShortcut by actions::backupFormatShortcut
+    var settingsShortcut by actions::settingsShortcut
+    var copyToDriveCTarget by actions::copyToDriveCTarget
+    var changeExeTarget by actions::changeExeTarget
+    var gameDetailsShortcut by actions::gameDetailsShortcut
+    var propertiesShortcut by actions::propertiesShortcut
+    var logsShortcut by actions::logsShortcut
+    var scrapeTarget by actions::scrapeTarget
+    val scrapeCovers = actions.scrapeCovers
+    var scrapeLoading by actions::scrapeLoading
+    var communityTarget by actions::communityTarget
+    var communityResult by actions::communityResult
+    var communityLoading by actions::communityLoading
+    var communitySearch by remember(communityTarget) { mutableStateOf("") }
+    var communitySearchResults by remember(communityTarget) { mutableStateOf<List<CanonicalGame>>(emptyList()) }
+    var showCommunityBrowser by actions::showCommunityBrowser
+    var applyPicker by actions::applyPicker
+    var applyMismatch by actions::applyMismatch
+    var applyBusy by actions::applyBusy
+    var applyResult by actions::applyResult
+    var applyTarget by actions::applyTarget
+    var installSheetFor by actions::installSheetFor
+    var driverSheetFor by actions::driverSheetFor
+    var exportResult by actions::exportResult
+    var importPendingTarget by actions::importPendingTarget
+    var importedConfigUri by actions::importedConfigUri
+    var uploadingConfig by actions::uploadingConfig
+    var uploadStarted by actions::uploadStarted
+    var replaceUploadPrompt by actions::replaceUploadPrompt
+    var showMyUploads by actions::showMyUploads
+    var showMyAccount by actions::showMyAccount
+    var myUploads by actions::myUploads
+    var deleteUploadRow by actions::deleteUploadRow
+    var expandedUploadSha by actions::expandedUploadSha
+    var uploadDescText by actions::uploadDescText
+    var uploadDescLoading by actions::uploadDescLoading
+    var configAction by actions::configAction
+    var detailFor by actions::detailFor
+    // Labels of missing components/drivers that resolved after an install (→ checkmark instead of a
+    // button). Drivers are namespaced "driver:<wanted>" so they can't collide with component labels.
+    val resolvedMissing = remember(applyResult) { mutableStateListOf<String>() }
+    // Any install sheet (component OR driver) open → hide EVERY community dialog layer so the
+    // ModalBottomSheet isn't rendered behind an AlertDialog's window; they reappear when it closes.
+    // The chooser + detail layers join the predicate so the lower community dialogs (match/browser/
+    // picker/result) don't stack behind them; the chooser/detail themselves are gated on installSheetOpen.
+    val installSheetOpen = installSheetFor != null || driverSheetFor != null
+    val communityDialogsGated = installSheetOpen || configAction != null || detailFor != null
+
+    // Shared apply runner — used by both the catalog browser and the per-shortcut sheet. Dispatches by
+    // pick kind: a specific uploaded file applies THAT file; a device-row fallback applies the
+    // best-for-device pick (offline path). Same downstream applyResult → smart-install flow either way.
+    val runCommunityApply: (Shortcut, CommunityPick) -> Unit = { sc, pick ->
+        applyBusy = true
+        applyResult = null
+        applyTarget = sc
+        val onDone: (CommunityConfigApply.ConfigApplyResult) -> Unit = { res ->
+            applyBusy = false
+            applyResult = res
+        }
+        when (pick) {
+            is CommunityPick.File -> vm.applyCommunityConfigFile(sc, pick.ref, onDone)
+            is CommunityPick.Device -> vm.applyCommunityConfig(sc, pick.game, pick.device, onDone)
+        }
+    }
+    // Kick off the real apply for a config: with an in-context shortcut (per-shortcut sheet) run it
+    // straight; without one (browser) fall to the target picker. Reused by BOTH the chooser's "Apply to
+    // game…" and the detail dialog's "Apply" so details never duplicates the apply/install flow.
+    val startConfigApply: (CommunityPick, Shortcut?) -> Unit = { pick, sc ->
+        if (sc != null) runCommunityApply(sc, pick) else applyPicker = pick
+    }
+    // Pick a target shortcut for a browser-selected config; warn when its game doesn't match.
+    val chooseApplyTarget: (Shortcut, CommunityPick) -> Unit = { sc, pick ->
+        applyPicker = null
+        if (GameMatcher.match(sc.name, listOf(pick.game)).isNotEmpty()) runCommunityApply(sc, pick)
+        else applyMismatch = sc to pick
+    }
+
+    // Phase 3 step 2 — IMPORT runner. Read + translate + apply an imported file to [sc], funnelling
+    // into the SAME applyBusy → applyResult → smart-install flow a browsed config takes. A malformed
+    // file returns a clean ok=false result (shown by the existing "Couldn't apply" dialog), never a crash.
+    val runImport: (Shortcut, Uri) -> Unit = { sc, uri ->
+        applyBusy = true
+        applyResult = null
+        applyTarget = sc
+        vm.importConfigFile(uri, sc) { res ->
+            applyBusy = false
+            applyResult = res
+        }
+    }
+
+    // Phase 3 step 2 — EXPORT. Write the generated config to cacheDir/community_configs/export/<file>
+    // off-main, then hand it off. Share uses the app's existing FileProvider (${applicationId}.tileprovider,
+    // the same authority the save-share + updater use); Save copies it to public Downloads and toasts.
+    val shareExport: (ShortcutExporter.ExportResult) -> Unit = { res ->
+        exportResult = null
+        scope.launch(Dispatchers.IO) {
+            val dir = File(context.cacheDir, "community_configs/export").apply { mkdirs() }
+            val file = File(dir, res.fileName)
+            file.writeText(res.json)
+            withContext(Dispatchers.Main) {
+                try {
+                    val authority = context.packageName + ".tileprovider"
+                    val uri = FileProvider.getUriForFile(context, authority, file)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, res.game)
+                        putExtra(Intent.EXTRA_TEXT, "Bannerlator config for ${res.game}")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(send, "Share config"))
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Couldn't share the config.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    val saveExportToDownloads: (ShortcutExporter.ExportResult) -> Unit = { res ->
+        exportResult = null
+        scope.launch(Dispatchers.IO) {
+            val ok = try {
+                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                // Exported configs live under Download/bannerlator/game-configs/ (created if absent).
+                val exportDir = File(downloads, "bannerlator/game-configs")
+                if (!exportDir.exists()) exportDir.mkdirs()
+                val out = File(exportDir, res.fileName)
+                out.writeText(res.json)
+                out.setReadable(true, false)
+                MediaScannerConnection.scanFile(context, arrayOf(out.absolutePath), null, null)
+                out.absolutePath
+            } catch (e: Exception) {
+                null
+            }
+            withContext(Dispatchers.Main) {
+                if (ok != null) Toast.makeText(context, "Saved to $ok", Toast.LENGTH_LONG).show()
+                else Toast.makeText(context, "Couldn't save the config.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Post-install fixup shared by the inline installer and the "Browse all versions" fallback sheet:
+    // re-read what's on disk off-main, surgically auto-apply the resolved version to the target
+    // shortcut, then mark the row done + refresh. Same behaviour the download sheet's onContentChanged had.
+    val applyAfterInstall: (CommunityConfigApply.MissingComponent) -> Unit = { mc ->
+        val target = applyTarget
+        if (target != null) {
+            scope.launch {
+                val resolved = withContext(Dispatchers.IO) {
+                    val installed = com.winlator.star.communityconfigs.InstalledComponents.read(context)
+                    // Try the exact wanted version first. If the user installed a CLOSEST build instead
+                    // (e.g. a date-stamped FEX like "Fex-20260103" that has no exact catalog match), the
+                    // wanted string never re-resolves — so fall back to the NEWEST installed build of this
+                    // type, i.e. the one that was just installed, and apply that.
+                    if (CommunityConfigApply.applyResolvedComponent(target, mc, installed)) {
+                        true
+                    } else {
+                        val newest = CommunityConfigApply.installedTypeKey(mc.type)?.let { installed.newestToken(it) }
+                        newest != null &&
+                            CommunityConfigApply.applyResolvedComponent(target, mc.copy(wanted = newest), installed)
+                    }
+                }
+                if (resolved) {
+                    if (mc.label !in resolvedMissing) resolvedMissing.add(mc.label)
+                    vm.refresh()
+                    Toast.makeText(context, "Installed and applied to \"${target.name}\".", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Installed, but couldn't auto-apply — open \"Browse all versions\" to finish.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+    }
+    // ── Save Backup / Restore (custom-import games only) ──────────────────────────────────────────
+    // In-app file picker for a backup .zip; on pick we hold the uri and show a target-container picker.
+    // (GameSaveBackup.restore auto-detects the layout — GameHub steamuser <-> our xuser — so a GameHub
+    // or Bannerlator save both restore through this one path; no format prompt needed.)
+    val restoreSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) InAppFilePicker.pickedUri(result.data)?.let { restoreZipUri = it }
+    }
+
+    // Back up this game's saves into the shared per-game folder via the one shared impl
+    // (CustomSaveVault.manualBackup) so the ⋮ menu and the Save Manager agree; the dialog/UX + toasts
+    // stay here. manualBackup discovers roots (with whole-container fallback) and zips off the main
+    // thread, posting its result on the main thread.
+    fun runCustomBackup(shortcut: Shortcut, layout: GameSaveBackup.BackupLayout) {
+        val name = shortcut.name
+        Toast.makeText(context, "Backing up saves for \"$name\"…", Toast.LENGTH_SHORT).show()
+        CustomSaveVault.manualBackup(context, shortcut.container, shortcut, layout) { r ->
+            if (r.wholeContainer && r.ok) {
+                Toast.makeText(context, "No per-game saves detected — backed up the whole container.", Toast.LENGTH_LONG).show()
+            }
+            Toast.makeText(
+                context,
+                if (r.ok) "Backed up ${r.fileCount} files → ${r.path?.substringAfterLast('/')}"
+                else "Backup failed: ${r.error ?: "unknown error"}",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+
+    // The ⋮ menu's "Restore saves" (ShortcutActions.startSaveRestore) goes through this launcher.
+    SideEffect {
+        actions.launchRestorePicker = {
+            restoreSaveLauncher.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.SAVE, "Select a save .zip"))
+        }
+    }
+
+    // Phase 3 step 2 — config-import picker (in-app File Manager, `.json` only). A known
+    // [importPendingTarget] applies straight to that shortcut; otherwise (from the catalog browser)
+    // the picked file is stashed and a target picker is shown.
+    val importConfigInAppLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            InAppFilePicker.pickedUri(result.data)?.let { uri ->
+                val target = importPendingTarget
+                if (target != null) runImport(target, uri) else importedConfigUri = uri
+            }
+        }
+    }
+    // Launch the config-import picker for [target] (null = from the browser → pick a target afterwards).
+    val launchConfigImport: (Shortcut?) -> Unit = { target ->
+        importPendingTarget = target
+        importConfigInAppLauncher.launch(
+            InAppFilePicker.buildIntent(context, InAppFilePicker.JSON, "Select a config .json")
+        )
+    }
+    // Open the My-uploads manager (shared by the per-game dialog button AND the My-account sheet).
+    val openMyUploads: () -> Unit = {
+        myUploads = null
+        expandedUploadSha = null
+        showMyUploads = true
+        vm.loadMyUploads { myUploads = it }
+    }
+    // Open the My-account sheet (Phase 2), the globe browser's person-icon entry point.
+    val openMyAccount: () -> Unit = { showMyAccount = true }
+
+    // Remove confirmation
+    confirmRemove?.let { s ->
+        OutlinedAlertDialog(
+            onDismissRequest = { confirmRemove = null },
+            title = { Text("Remove shortcut?") },
+            text = { Text("Remove \"${s.name}\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val ok = vm.remove(s, context)
+                    confirmRemove = null
+                    Toast.makeText(
+                        context,
+                        if (ok) "Shortcut removed." else "Failed to remove shortcut.",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
         )
     }
 
@@ -2788,7 +2748,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     // Game Details editor (Edit Game): name + Steam link/search + genres/description/year/metacritic.
-    if (showWrapperManagerXmb) WrapperManagerDialog(onDismiss = { showWrapperManagerXmb = false })
     gameDetailsShortcut?.let { s ->
         GameDetailsSheet(
             shortcut = s,
@@ -2796,9 +2755,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             onSaved = { vm.refresh() },
         )
     }
-
-    // Launch-flow dialogs (EA, launch method, SteamLite pre-flight, component download, Steam update/verify).
-    ShortcutLaunchDialogs(launcher)
 }
 
 // Small "BANNERLATOR" source pill for configs shared through our own repo (app_source=bannerlator), so
@@ -9796,6 +9752,7 @@ private fun Set<String>.toggle(path: String): Set<String> =
 // other game comes straight in.
 // [preflightDone] = the SteamLite pre-flight already pulled cloud saves; the activity skips its own pull.
 internal fun launchShortcutNow(activity: Activity, shortcut: Shortcut, preflightDone: Boolean = false) {
+    recordLastPlayed(shortcut)
     if (!XrActivity.isEnabled(activity)) {
         // Effective display backend: per-game override, else the container default. Wayland reuses
         // XServerDisplayActivity's launch machinery via a guarded wayland_mode flag.
@@ -9812,6 +9769,23 @@ internal fun launchShortcutNow(activity: Activity, shortcut: Shortcut, preflight
         if (!launchOnExternalDisplay(activity, shortcut, intent)) activity.startActivity(intent)
     } else {
         XrActivity.openIntent(activity, shortcut.container.id, shortcut.file.path)
+    }
+}
+
+/** Extra Data key holding the wall-clock millis of the game's last launch (absent = never launched from here). */
+internal const val EXTRA_LAST_PLAYED = "lastPlayed"
+
+/**
+ * Stamps [EXTRA_LAST_PLAYED] on the shortcut; the Deck's "Continue playing" order and "Last played" line
+ * read it. saveData() rewrites the .desktop file, so its modified time is put back afterwards, since the
+ * Deck's "Recently added" shelf sorts on it. Best-effort: a failed write never blocks the launch.
+ */
+internal fun recordLastPlayed(shortcut: Shortcut) {
+    runCatching {
+        val modified = shortcut.file.lastModified()
+        shortcut.putExtra(EXTRA_LAST_PLAYED, System.currentTimeMillis().toString())
+        shortcut.saveData()
+        if (modified > 0L) shortcut.file.setLastModified(modified)
     }
 }
 

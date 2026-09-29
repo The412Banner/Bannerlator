@@ -1853,6 +1853,7 @@ internal fun loadCover(s: Shortcut): ImageBitmap? {
 // `internal` so the Games-wall screen launches games through the identical entry point.
 // [preflightDone] = the SteamLite pre-flight already pulled cloud saves; the activity skips its own pull.
 internal fun launchShortcut(activity: Activity, shortcut: Shortcut, preflightDone: Boolean = false) {
+    recordLastPlayed(shortcut)
     if (!XrActivity.isEnabled(activity)) {
         val intent = Intent(activity, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", shortcut.container.id)

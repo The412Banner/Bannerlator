@@ -162,9 +162,9 @@ fun ContainerDetailScreen(
     // DRIVES is per-container (letters map to real paths), so it's dropped in "New Container Defaults"
     // mode. Content is dispatched by TITLE below (not raw index) so removing a tab never misaligns.
     val tabTitles = if (viewModel.defaultsMode)
-        listOf("GENERAL", "ENVIROMENT", "WIN COMPONENTS", "ADVANCED")
+        listOf("GENERAL", "ENVIRONMENT", "WIN COMPONENTS", "ADVANCED")
     else
-        listOf("GENERAL", "ENVIROMENT", "DRIVES", "WIN COMPONENTS", "ADVANCED")
+        listOf("GENERAL", "ENVIRONMENT", "DRIVES", "WIN COMPONENTS", "ADVANCED")
 
     Scaffold(
         floatingActionButton = {
@@ -251,7 +251,7 @@ fun ContainerDetailScreen(
                             )
                             WineConfigTab(viewModel, colorPickerViewRef)
                         }
-                        "ENVIROMENT" -> EnvVarsTab(viewModel)
+                        "ENVIRONMENT" -> EnvVarsTab(viewModel)
                         "DRIVES" -> DrivesTab(viewModel)
                         "WIN COMPONENTS" -> WinComponentsTab(viewModel)
                         "ADVANCED" -> Column {
@@ -476,7 +476,7 @@ private fun parseVulkanConfig(s: String): Map<String, String> =
 /** The Material icon for each container-settings tab (mirrors the mockup's glyphs). */
 private fun tabIcon(title: String): ImageVector = when (title) {
     "GENERAL" -> Icons.Filled.Settings
-    "ENVIROMENT" -> Icons.Filled.Extension
+    "ENVIRONMENT" -> Icons.Filled.Extension
     "DRIVES" -> Icons.Filled.Storage
     "WIN COMPONENTS" -> Icons.Filled.Widgets
     "ADVANCED" -> Icons.Filled.Tune
@@ -486,7 +486,7 @@ private fun tabIcon(title: String): ImageVector = when (title) {
 /** Abbreviates the two long tab titles so the portrait top bar stays tidy (mirrors the rail's
  *  collapsed labels). */
 private fun topTabLabel(title: String): String = when (title) {
-    "ENVIROMENT" -> "ENVIRON"
+    "ENVIRONMENT" -> "ENV"
     "WIN COMPONENTS" -> "WIN COMP"
     else -> title
 }

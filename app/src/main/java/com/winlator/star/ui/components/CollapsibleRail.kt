@@ -71,7 +71,7 @@ data class RailSection(val header: String?, val items: List<RailItem>)
  */
 private fun collapsedLabel(label: String): String {
     when (label) {
-        "ENVIROMENT" -> return "ENVIRON"        // the app's existing (mis)spelling, kept uppercase
+        "ENVIRONMENT" -> return "ENV"
         "WIN COMPONENTS" -> return "WIN COMP"
         "Downloads" -> return "Downlds"
     }

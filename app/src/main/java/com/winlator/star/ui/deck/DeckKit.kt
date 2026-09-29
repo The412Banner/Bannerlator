@@ -153,7 +153,10 @@ internal fun DeckTabStrip(
         val cycle: (Int) -> Unit = { delta -> if (count > 0) currentOnSelect((currentSelected + delta + count) % count) }
         deckActions.subTab.value = cycle
         deckActions.subTabLabel.value = label
-        onDispose { if (deckActions.subTab.value === cycle) deckActions.subTab.value = null }
+        onDispose {
+            if (deckActions.subTab.value === cycle) deckActions.subTab.value = null
+            deckActions.stripFocused.value = false
+        }
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -168,6 +171,7 @@ internal fun DeckTabStrip(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .weight(1f, fill = false)
+                .onFocusChanged { deckActions.stripFocused.value = it.hasFocus }
                 .clip(RoundedCornerShape(18.dp))
                 .background(deckCardFill())
                 .border(1.dp, deckLine(), RoundedCornerShape(18.dp))

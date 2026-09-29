@@ -487,6 +487,8 @@ class MainActivity : AppCompatActivity() {
             controllerTestFeedMotionEvent(event)
             return true
         }
+        // Analog-only L2/R2 become the Deck shell's trigger presses; the event still goes on to the view tree.
+        com.winlator.star.ui.deck.DeckInput.onMotion(event)
         return super.dispatchGenericMotionEvent(event)
     }
 

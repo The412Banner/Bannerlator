@@ -219,6 +219,11 @@ private fun DeckShellContent(
         scope.launch {
             repeat(4) { withFrameNanos { } }
             if (tabsFocused.value) focusManager.moveFocus(FocusDirection.Down)
+            // The page's own tab strip moves with L2/R2 from anywhere, so Down goes past it into the page.
+            if (deckActions.stripFocused.value) {
+                withFrameNanos { }
+                focusManager.moveFocus(FocusDirection.Down)
+            }
         }
     }
     var searchOpen by remember { mutableStateOf(false) }

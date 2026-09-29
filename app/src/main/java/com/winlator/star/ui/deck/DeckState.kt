@@ -1,6 +1,8 @@
 package com.winlator.star.ui.deck
 
+import android.view.InputDevice
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
@@ -45,6 +47,8 @@ internal class DeckActions {
     val navHold: MutableState<Boolean> = mutableStateOf(false)
     /** Bumped when Down leaves the top bar, so the page on screen takes focus again through [DeckEntryFocus]. */
     val enterTick: MutableIntState = mutableIntStateOf(0)
+    /** True while a page's own tab strip holds focus; Down from the top bar goes past it, since L2/R2 already move it. */
+    val stripFocused: MutableState<Boolean> = mutableStateOf(false)
 }
 
 /**
@@ -75,6 +79,32 @@ internal val LocalDeckAmbient = compositionLocalOf<MutableState<Pair<Color, Colo
 object DeckInput {
     @Volatile
     var handler: ((KeyEvent) -> Boolean)? = null
+
+    private var l2Down = false
+    private var r2Down = false
+
+    /**
+     * Pads that report L2/R2 only as analog axes (the built-in Xbox-layout pad on handhelds has no trigger
+     * buttons in its key layout) reach the shell as BUTTON_L2/R2 presses: down past 0.6, up again below 0.3.
+     */
+    fun onMotion(ev: MotionEvent) {
+        val h = handler ?: return
+        if (ev.action != MotionEvent.ACTION_MOVE) return
+        if ((ev.source and InputDevice.SOURCE_JOYSTICK) != InputDevice.SOURCE_JOYSTICK) return
+        val l = maxOf(ev.getAxisValue(MotionEvent.AXIS_LTRIGGER), ev.getAxisValue(MotionEvent.AXIS_BRAKE))
+        val r = maxOf(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER), ev.getAxisValue(MotionEvent.AXIS_GAS))
+        l2Down = trigger(h, ev, l, l2Down, KeyEvent.KEYCODE_BUTTON_L2)
+        r2Down = trigger(h, ev, r, r2Down, KeyEvent.KEYCODE_BUTTON_R2)
+    }
+
+    private fun trigger(h: (KeyEvent) -> Boolean, ev: MotionEvent, value: Float, down: Boolean, code: Int): Boolean {
+        val nowDown = if (down) value > 0.3f else value > 0.6f
+        if (nowDown != down) {
+            val action = if (nowDown) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP
+            h(KeyEvent(ev.downTime, ev.eventTime, action, code, 0, 0, ev.deviceId, 0, 0, InputDevice.SOURCE_GAMEPAD))
+        }
+        return nowDown
+    }
 }
 
 /**

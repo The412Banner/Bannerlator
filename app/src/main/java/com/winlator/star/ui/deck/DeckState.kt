@@ -23,9 +23,9 @@ internal object DeckRoutes {
 
 /**
  * What the current Deck page offers to the controller: X/Start = [options], Y = [search], L1/R1 =
- * [subTab] (a page's own tab strip; the top-level tabs then move with L2/R2). A page sets these while
- * it is on screen and clears only its own value when it leaves. The legend reads them too, so a page
- * without options simply shows no X hint. Search is the shell's own overlay unless a page swaps it.
+ * [subTab] (a page's own tabs, -1 / +1: a tab strip, or the settings editor's categories; the top-level
+ * tabs then move with L2/R2). A page sets these while it is on screen and clears only its own value when
+ * it leaves. The legend reads them too, so a page without options simply shows no X hint. Search is the shell's own overlay unless a page swaps it.
  */
 @Stable
 internal class DeckActions {

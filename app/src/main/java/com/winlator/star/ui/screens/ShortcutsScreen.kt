@@ -2735,7 +2735,14 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Compose shortcut settings dialog
-    settingsShortcut?.let { s ->
+    // Inside the Deck shell a game's Settings opens the Deck editor instead (DeckSettingsBus is only set there).
+    val deckSettings = com.winlator.star.ui.deck.settings.DeckSettingsBus.openGame
+    if (deckSettings != null) settingsShortcut?.let { s ->
+        LaunchedEffect(s) {
+            settingsShortcut = null
+            deckSettings(s.file.path)
+        }
+    } else settingsShortcut?.let { s ->
         ShortcutSettingsDialogScreen(
             shortcut = s,
             onDismiss = { settingsShortcut = null; vm.refresh() },

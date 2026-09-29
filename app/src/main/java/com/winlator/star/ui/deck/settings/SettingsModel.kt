@@ -135,8 +135,8 @@ internal class SettingsEnv(
     val vm: ContainerDetailViewModel?,
     val shortcut: Shortcut?,
 ) {
-    val isLinuxEntry: Boolean = shortcut != null && com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(shortcut)
-    val isSteam: Boolean = shortcut != null && runCatching { isSteamOriginShortcut(shortcut) }.getOrDefault(false)
+    val isLinuxEntry: Boolean = shortcut?.let { com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(it) } == true
+    val isSteam: Boolean = shortcut?.let { s -> runCatching { isSteamOriginShortcut(s) }.getOrDefault(false) } == true
     val arm64ec: Boolean get() = vm?.isArm64EC == true
 
     /** Whether the container's Wine layer can drive Wayland. Always true on the defaults profile, which has no layer. */

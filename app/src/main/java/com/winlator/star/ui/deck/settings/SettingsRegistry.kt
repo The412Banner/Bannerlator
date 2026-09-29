@@ -85,10 +85,14 @@ internal object SettingsRegistry {
             if (!game) h("Drives", "Drive letters D: to Z: and the folders behind them. Duplicate letters are checked there (Drives tab).") else null,
             if (!game) h("Wine / Proton version and wallpaper", "The layer is chosen when the container is created; the wallpaper and colours are on the Wine Config tab.") else null,
         )
-        if (env.isLinuxEntry || scope != EditorScope.GAME) {
+        // The Linux runtime options live on the Linux Steam client entry only; containers have none.
+        if (game && env.isLinuxEntry) {
             m["linux"] = listOf(h("Linux runtime options", "Draw driver, Steam client update channel, gamescope scaling, speed tweaks, troubleshooting and component swaps."))
         }
-        m["expert"] = listOf(h("Environment variables", "Raw environment variables, and game-folder DLL overrides (Env Vars tab)."))
+        m["expert"] = listOf(
+            if (game) h("Environment variables", "Raw environment variables, merged over the container's, and game-folder DLL overrides (Env Vars tab).")
+            else h("Environment variables", "Raw environment variables every game in this container starts with (Env Vars tab)."),
+        )
         return m
     }
 

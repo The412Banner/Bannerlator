@@ -22,6 +22,8 @@ public class MidiManager {
     public static final String SF2_ASSETS_DIR = "soundfonts";
     public static final String DEFAULT_SF2_FILE = "wt_210k_G.sf2";
     public static final String SF_DIR = "soundfonts";
+    // Settings > Sound: the SoundFont new containers start with, by file name ("" = MIDI disabled).
+    public static final String PREF_DEFAULT_SOUND_FONT = "default_midi_sound_font";
     public static final int ERROR_UNKNOWN = 0;
     public static final int ERROR_EXIST = 1;
     public static final int ERROR_BADFORMAT = 2;

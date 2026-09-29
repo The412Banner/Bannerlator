@@ -602,7 +602,13 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         coerceAudioDriverForWine()
 
         // MIDI
-        val midiVal = seed?.getMIDISoundFont() ?: ""
+        // A new container with no MIDI choice from its defaults profile starts on the Settings > Sound default.
+        val midiVal = (seed?.getMIDISoundFont() ?: "").ifEmpty {
+            if (c == null && !defaultsMode)
+                PreferenceManager.getDefaultSharedPreferences(context)
+                    .getString(MidiManager.PREF_DEFAULT_SOUND_FONT, "") ?: ""
+            else ""
+        }
         selectedMidiIndex = if (midiVal.isEmpty()) 0
                             else midiEntries.indexOf(midiVal).takeIf { it >= 0 } ?: 0
 

@@ -83,6 +83,7 @@ SOFTWARE.
 | Eden emulator — native LSFG present path (PR #4263, camillelavey) | Eden Team | GPL-3.0 *(per upstream)* | **LSFG Native**: PE-resource shader map, ALPHA/BETA/GAMMA/DELTA chain decomposition and pacer, ported into the compositor (WinNative's implementation used as design reference, no code) |
 | [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) | Khronos | Apache-2.0 *(per upstream)* | XR support |
 | [SDL3](https://github.com/libsdl-org/SDL) 3.4.16 (official Android release AAR, unmodified, `vendor/maven/org/libsdl/android/SDL3`) | **Sam Lantinga** and SDL contributors | **Zlib** ✔ | Optional **Steam Controller** support: SDL's HIDAPI Steam drivers read the 2015 / 2026 Steam Controller over Bluetooth LE or USB (only those drivers are enabled) |
+| [Sora](https://github.com/sora-xor/sora-font) and [Nunito Sans](https://github.com/Fonthausen/NunitoSans) static fonts (`app/src/main/res/font/sora_*.ttf`, `nunito_sans_*.ttf`, from Google Fonts) | The Sora Project Authors (© 2019); The Nunito Sans Project Authors (© 2016) | **SIL Open Font License 1.1** ✔ | Headings and body text of the **Deck** interface style |
 
 ---
 

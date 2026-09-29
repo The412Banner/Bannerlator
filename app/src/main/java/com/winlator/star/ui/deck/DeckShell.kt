@@ -397,7 +397,8 @@ private class DeckNav(private val navController: NavHostController) {
         navController.navigate(t.root) {
             popUpTo(DeckRoutes.HOME) { saveState = true }
             launchSingleTop = true
-            restoreState = true
+            // Home is never restored: a non-inclusive popUpTo files the tab being left under Home's id too.
+            restoreState = t != DeckTab.HOME
         }
     }
 

@@ -108,7 +108,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     var fexcorePresets by remember { mutableStateOf(listOf<FEXCorePreset>()) }
     var selectedFEXCorePreset by remember { mutableStateOf(prefs.getString("fexcore_preset", FEXCorePreset.COMPATIBILITY) ?: FEXCorePreset.COMPATIBILITY) }
     var sfNames by remember { mutableStateOf(listOf<String>()) }
-    var selectedSF by remember { mutableStateOf(0) }
+    // Default MIDI SoundFont for new containers, by file name ("" = MIDI disabled). Read by ContainerDetailViewModel.
+    var selectedSF by remember { mutableStateOf(prefs.getString(MidiManager.PREF_DEFAULT_SOUND_FONT, "") ?: "") }
 
     var darkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
     var bigPictureMode by remember { mutableStateOf(prefs.getBoolean("enable_big_picture_mode", false)) }
@@ -235,6 +236,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             for (f in files) if (f.name.endsWith(".sf2")) names.add(f.name)
         }
         sfNames = names
+        // A default that points at a removed SoundFont falls back to disabled.
+        if (selectedSF.isNotEmpty() && selectedSF !in names) selectedSF = ""
     }
 
     fun saveSettings() {
@@ -252,6 +255,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         editor.putBoolean("use_dri3", useDRI3)
         editor.putBoolean("use_xr", useXR)
         editor.putFloat("cursor_speed", cursorSpeed)
+        editor.putString(MidiManager.PREF_DEFAULT_SOUND_FONT, selectedSF)
         // NOTE: enable_wine_debug / wine_debug_channels / enable_box64_logs / log_location_mode /
         // log_location_custom_path are owned by the Log Manager now and are deliberately NOT saved
         // here. This screen snapshots preferences into state at first composition and writes them
@@ -905,24 +909,29 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         FieldSetLabel("Sound")
         FieldSet {
             Text("MIDI Sound Font", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(
+                "New containers start with this SoundFont. Existing containers keep their own MIDI choice.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+            )
+            val sfDisabledLabel = "-- ${context.getString(R.string.disabled)} --"
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
                     Button(onClick = { showSFDropdown = true },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                         modifier = Modifier.fillMaxWidth()) {
-                        Text(sfNames.getOrElse(selectedSF) { "Default" }, color = MaterialTheme.colorScheme.onSurface)
+                        Text(selectedSF.ifEmpty { sfDisabledLabel }, color = MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(
                         expanded = showSFDropdown,
                         onDismissRequest = { showSFDropdown = false },
                         modifier = Modifier.outlinedMenuCard()
                     ) {
-                        sfNames.forEachIndexed { i, name ->
+                        (listOf("") + sfNames).forEachIndexed { i, name ->
                             if (i > 0) MenuItemDivider()
                             DropdownMenuItem(
-                                text = { Text(name) },
-                                onClick = { selectedSF = i; showSFDropdown = false }
+                                text = { Text(name.ifEmpty { sfDisabledLabel }) },
+                                onClick = { selectedSF = name; showSFDropdown = false }
                             )
                         }
                     }
@@ -964,9 +973,9 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     onSystem = { prepareSFInstall(); installSFLauncher.launch(arrayOf("*/*")) },
                 )
                 IconButton(onClick = {
-                    if (selectedSF != 0) {
+                    if (selectedSF.isNotEmpty() && selectedSF != MidiManager.DEFAULT_SF2_FILE) {
                         ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_sound_font) {
-                            if (MidiManager.removeSF2File(context, sfNames[selectedSF])) {
+                            if (MidiManager.removeSF2File(context, selectedSF)) {
                                 AppUtils.showToast(context, R.string.sound_font_removed_success)
                                 refreshSF()
                             } else AppUtils.showToast(context, R.string.sound_font_removed_failed)

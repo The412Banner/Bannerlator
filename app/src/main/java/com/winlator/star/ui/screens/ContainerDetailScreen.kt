@@ -1716,44 +1716,6 @@ private fun TopLevelFields(
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
             )
         }
-        if (viewModel.frameGenEngine == "lsfg") {
-            Text(
-                text = stringResource(R.string.frame_generation_lsfg_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-            // lsfg-vk performance_mode: lower quality for higher FPS. Also live-toggleable in-game.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.lsfgPerformanceMode,
-                    onCheckedChange = { viewModel.lsfgPerformanceMode = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.fg_performance_mode), modifier = Modifier.weight(1f))
-            }
-            Text(
-                text = stringResource(R.string.fg_performance_mode_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-            // lsfg-vk auto-enable at launch: start frame gen live at the saved multiplier from launch.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = viewModel.lsfgAutoEnable,
-                    onCheckedChange = { viewModel.lsfgAutoEnable = it }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.lsfg_auto_enable), modifier = Modifier.weight(1f))
-            }
-            Text(
-                text = stringResource(R.string.lsfg_auto_enable_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 4.dp)
-            )
-        }
 
         // FPS Limiter (bionic-fg). This switch just loads the layer; the cap value is set live
         // from the in-game FPS menu. (Frame Generation also loads the layer, so this is only

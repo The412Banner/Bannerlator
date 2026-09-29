@@ -463,6 +463,13 @@ fun ContainerDetailScreen(
             onContentChanged = { dxvkRefreshKey++ }
         )
     }
+    if (showStockConfigSheet) {
+        // Parked stock .conf files are re-listed when the DXVK dialog reopens, so a fetched config
+        // shows up under "Stock config" straight away.
+        StockConfigDownloadSheet(
+            onDismiss = { showStockConfigSheet = false; dxvkRefreshKey++; showDxvkConfig = true }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -102,6 +102,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.container.Shortcut
 import com.winlator.star.linux.LinuxShortcuts
+import com.winlator.star.ui.deck.settings.DeckSettingsBus
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutSettingsDialogScreen
@@ -321,7 +322,8 @@ internal fun DeckHome(
             onAction = { action ->
                 optionsFor = null
                 when (action) {
-                    GameMenuAction.SETTINGS -> settingsShortcut = s
+                    // The Deck settings editor, or the classic dialog if the editor's route isn't registered.
+                    GameMenuAction.SETTINGS -> DeckSettingsBus.openGame?.invoke(s.file.path) ?: run { settingsShortcut = s }
                     GameMenuAction.ADD_TO_HOME -> addToHomeScreen(context, s)
                     GameMenuAction.EXPORT -> exportShortcut(context, s)
                     GameMenuAction.CLOUD_SAVES -> launchSaveManager(context, steamAppIdOf(s))

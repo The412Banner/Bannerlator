@@ -92,6 +92,9 @@ import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.LocalTopBarActions
 import com.winlator.star.ui.LocalTopBarTransparent
 import com.winlator.star.ui.Screen
+import com.winlator.star.ui.deck.settings.BindDeckSettingsBus
+import com.winlator.star.ui.deck.settings.DeckSettingsRoutes
+import com.winlator.star.ui.deck.settings.deckSettingsRoutes
 import com.winlator.star.ui.screens.ContainerDetailViewModel
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.GamesScreenRequests
@@ -112,7 +115,7 @@ internal enum class DeckTab(val label: String, val icon: ImageVector, val root: 
     COMPONENTS("Components", Icons.Filled.Extension, Screen.Contents.route),
     CONTROLS("Controls", Icons.Filled.SportsEsports, Screen.InputControls.route),
     TOOLS("Tools", Icons.Filled.Build, DeckRoutes.TOOLS),
-    SETTINGS("Settings", Icons.Filled.Settings, Screen.Settings.route),
+    SETTINGS("Settings", Icons.Filled.Settings, DeckSettingsRoutes.APP),
 }
 
 /** Phone bottom bar: these five, and "More" for the rest. */
@@ -122,12 +125,12 @@ private val PORTRAIT_MAIN = listOf(DeckTab.HOME, DeckTab.STORES, DeckTab.CONTAIN
 internal fun deckTabOf(route: String?): DeckTab = when {
     route == null -> DeckTab.HOME
     route == DeckRoutes.STORES -> DeckTab.STORES
-    route == Screen.Containers.route || route.startsWith("container_detail") -> DeckTab.CONTAINERS
+    route == Screen.Containers.route || route.startsWith("container_detail") || DeckSettingsRoutes.isContainerEditor(route) -> DeckTab.CONTAINERS
     route == Screen.Contents.route -> DeckTab.COMPONENTS
     route == Screen.InputControls.route -> DeckTab.CONTROLS
     route == DeckRoutes.TOOLS || route == Screen.FileManager.route || route == Screen.SaveManager.route ||
         route == Screen.Saves.route || route == Screen.Wrappers.route || route == Screen.AdrenoTools.route -> DeckTab.TOOLS
-    route == Screen.Settings.route || route == Screen.Appearance.route -> DeckTab.SETTINGS
+    route == DeckSettingsRoutes.APP || route == Screen.Settings.route || route == Screen.Appearance.route -> DeckTab.SETTINGS
     else -> DeckTab.HOME
 }
 
@@ -173,6 +176,7 @@ private fun DeckShellContent(
     val tab = deckTabOf(currentRoute)
 
     val nav = remember(navController) { DeckNav(navController) }
+    BindDeckSettingsBus(navController)
 
     // Same as the classic shell: clear the previous screen's top-bar actions on navigation and re-read the signed-in account.
     // Screens re-set their actions from a LaunchedEffect that runs after this one.
@@ -227,8 +231,9 @@ private fun DeckShellContent(
         val handler: (KeyEvent) -> Boolean = handler@{ ev ->
             val first = ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0
             when (ev.keyCode) {
-                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) nav.cycle(-1); true }
-                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) nav.cycle(1); true }
+                // A page that steps through its own sections (the settings editor's categories) takes L1/R1 over.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) (deckActions.bumpers.value ?: nav::cycle)(-1); true }
+                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) (deckActions.bumpers.value ?: nav::cycle)(1); true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (nav.currentRoute() == DeckRoutes.HOME) return@handler false
                     if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) {
@@ -318,7 +323,10 @@ private fun DeckShellContent(
                     )
                 }
 
-                if (currentRoute != DeckRoutes.HOME && currentRoute != DeckRoutes.STORES && currentRoute != DeckRoutes.TOOLS) {
+                // The settings editors draw their own header.
+                if (currentRoute != DeckRoutes.HOME && currentRoute != DeckRoutes.STORES && currentRoute != DeckRoutes.TOOLS &&
+                    !DeckSettingsRoutes.isEditor(currentRoute)
+                ) {
                     DeckPageBar(
                         title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
                         showBack = currentRoute != tab.root,
@@ -335,12 +343,17 @@ private fun DeckShellContent(
                         navController = navController,
                         startRoute = DeckRoutes.HOME,
                         modifier = Modifier.fillMaxSize(),
+                        containerEditorRoute = DeckSettingsRoutes::containerEditorFor,
                         extraRoutes = {
                             composable(DeckRoutes.HOME) {
                                 DeckHome(
                                     onGameAction = { action, shortcut ->
-                                        GamesScreenRequests.pending = GamesScreenRequests.Request(action, shortcut?.file?.path)
-                                        nav.open(Screen.Games.route)
+                                        if (action == GameMenuAction.SETTINGS && shortcut != null) {
+                                            navController.navigate(DeckSettingsRoutes.game(shortcut.file.path))
+                                        } else {
+                                            GamesScreenRequests.pending = GamesScreenRequests.Request(action, shortcut?.file?.path)
+                                            nav.open(Screen.Games.route)
+                                        }
                                     },
                                     onOpenLibrary = { nav.open(Screen.Games.route) },
                                 )
@@ -351,6 +364,7 @@ private fun DeckShellContent(
                                     onOpenAppearance = { nav.open(Screen.Appearance.route) },
                                 )
                             }
+                            deckSettingsRoutes(navController, onAbout)
                             composable(DeckRoutes.TOOLS) {
                                 DeckToolsHub(
                                     onNavigate = { route -> nav.open(route) },
@@ -371,7 +385,8 @@ private fun DeckShellContent(
                         atHome = currentRoute == DeckRoutes.HOME,
                         optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
                         hasSearch = deckActions.search.value != null,
-                        onCycle = { nav.cycle(1) },
+                        bumpersLabel = if (deckActions.bumpers.value != null) deckActions.bumpersLabel.value else "Switch tab",
+                        onCycle = { (deckActions.bumpers.value ?: nav::cycle)(1) },
                         onBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() },
                         onOptions = { deckActions.options.value?.invoke() },
                         onSearch = { deckActions.search.value?.invoke() },
@@ -743,6 +758,7 @@ private fun DeckLegend(
     atHome: Boolean,
     optionsLabel: String?,
     hasSearch: Boolean,
+    bumpersLabel: String,
     onCycle: () -> Unit,
     onBack: () -> Unit,
     onOptions: () -> Unit,
@@ -759,7 +775,7 @@ private fun DeckLegend(
             .drawBehind { drawRect(line, topLeft = Offset.Zero, size = Size(size.width, 1f)) }
             .padding(horizontal = 16.dp),
     ) {
-        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), "Switch tab", onCycle)
+        LegendItem(listOf("L1" to GlyphKind.BUMPER, "R1" to GlyphKind.BUMPER), bumpersLabel, onCycle)
         LegendItem(listOf("A" to GlyphKind.A), "Select", null)
         if (!atHome) LegendItem(listOf("B" to GlyphKind.B), "Back", onBack)
         if (optionsLabel != null) LegendItem(listOf("X" to GlyphKind.X), optionsLabel, onOptions)

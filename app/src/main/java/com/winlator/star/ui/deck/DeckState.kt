@@ -24,6 +24,9 @@ internal class DeckActions {
     val options: MutableState<(() -> Unit)?> = mutableStateOf(null)
     val optionsLabel: MutableState<String> = mutableStateOf("Options")
     val search: MutableState<(() -> Unit)?> = mutableStateOf(null)
+    /** L1 / R1 for a page that steps through its own sections (-1 / +1). null = L1 / R1 switch Deck tabs. */
+    val bumpers: MutableState<((Int) -> Unit)?> = mutableStateOf(null)
+    val bumpersLabel: MutableState<String> = mutableStateOf("Switch tab")
 }
 
 internal val LocalDeckActions = compositionLocalOf { DeckActions() }

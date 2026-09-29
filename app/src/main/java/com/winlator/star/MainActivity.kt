@@ -125,6 +125,8 @@ class MainActivity : AppCompatActivity() {
     private var contentReady = false
 
     private val showAllFilesDialog = mutableStateOf(false)
+    // Deck first-run due at this start (Deck style, never finished); cleared once the user finishes or skips it.
+    private val deckOnboardingPending = mutableStateOf(false)
     private val showAboutDialog = mutableStateOf(false)
 
     // Route requested via EXTRA_OPEN_SCREEN on a relaunch (onNewIntent); consumed
@@ -197,7 +199,9 @@ class MainActivity : AppCompatActivity() {
             }
 
         val willInstall = splashViewModel.installIfNeeded(this)
-        if (!willInstall) {
+        deckOnboardingPending.value = com.winlator.star.ui.deck.deckSetupPending(this)
+        // The Deck first-run asks for these itself (steps 2 and 3), so they are not fired at it here.
+        if (!willInstall && !deckOnboardingPending.value) {
             // Already installed — request permissions immediately
             requestAppPermissions()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
@@ -268,7 +272,28 @@ class MainActivity : AppCompatActivity() {
                         onNavigateToGames = { pendingRoute.value = Screen.Games.route },
                     )
 
-                    if (isInstalling) {
+                    // The Deck first-run covers the app (and owns the install screen as its step 5) while it is due or re-run from Tools.
+                    val uiStyle by AppThemeState.uiStyle.collectAsState()
+                    val showDeckOnboarding = uiStyle == AppThemeState.UI_STYLE_DECK &&
+                        (deckOnboardingPending.value || com.winlator.star.ui.deck.DeckSetup.rerun.value)
+                    if (showDeckOnboarding) {
+                        com.winlator.star.ui.deck.DeckOnboarding(
+                            installing = isInstalling,
+                            installProgress = installProgress,
+                            installDone = showProceed,
+                            onInstallContinue = { splashViewModel.dismissSplash() },
+                            onLaunchStore = { screen -> launchStore(screen) },
+                            onFinish = { addGame ->
+                                deckOnboardingPending.value = false
+                                com.winlator.star.ui.deck.DeckSetup.rerun.value = false
+                                if (addGame) {
+                                    com.winlator.star.ui.screens.GamesScreenRequests.pending =
+                                        com.winlator.star.ui.screens.GamesScreenRequests.Request(com.winlator.star.ui.screens.GameMenuAction.ADD_GAME)
+                                    pendingRoute.value = Screen.Games.route
+                                }
+                            },
+                        )
+                    } else if (isInstalling) {
                         SplashScreen(
                             progress = installProgress,
                             showProceed = showProceed,

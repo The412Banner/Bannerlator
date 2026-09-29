@@ -385,7 +385,7 @@ private fun AudioContent(state: XServerDrawerState) {
 }
 
 @Composable
-private fun TvContent(state: XServerDrawerState) {
+internal fun TvContent(state: XServerDrawerState) {
     val tvConnected by state.tvConnected.collectAsState()
     val displayName by state.tvDisplayName.collectAsState()
     val playOnTv by state.tvPlayOnTv.collectAsState()
@@ -947,6 +947,15 @@ private fun GraphicsContent(state: XServerDrawerState) {
     Spacer(Modifier.height(4.dp))
     HorizontalDivider(color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(vertical = 6.dp))
 
+    GraphicsEffectsSection(state)
+}
+
+// The renderer-specific effect/scaling controls plus Native Rendering and the Wayland rows: the lower half of the
+// Graphics tab, split out so the Deck in-game menu can host it on its own Visual effects page.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun GraphicsEffectsSection(state: XServerDrawerState) {
+    val accent = MaterialTheme.colorScheme.primary
     // Renderer-specific graphics controls. Each host renderer has its own set, so
     // show ONLY the set that applies to the active renderer instead of packing the
     // tab with disabled rows: GL effects on OpenGL, Scaling mode on Vulkan, and
@@ -1387,7 +1396,7 @@ private fun GraphicsContent(state: XServerDrawerState) {
 // the entry's own Steam (Linux) setting - a flip is saved to the entry, so the editor shows it too - and
 // each says when it takes effect: now, at the next game start, or at the next session.
 @Composable
-private fun LinuxSteamSection(state: XServerDrawerState) {
+internal fun LinuxSteamSection(state: XServerDrawerState) {
     val active by state.linuxSteamSession.collectAsState()
     if (!active) return
     val options by state.linuxOptions.collectAsState()
@@ -1495,7 +1504,7 @@ private fun LinuxSteamSection(state: XServerDrawerState) {
 // wrappers put it back before each start if anything changed it. Downloading, importing and deleting
 // stay on the entry's Components tab in the editor. (From The412Banner/DroidDeck.)
 @Composable
-private fun LinuxComponentsContent(state: XServerDrawerState) {
+internal fun LinuxComponentsContent(state: XServerDrawerState) {
     val active by state.linuxSteamSession.collectAsState()
     if (!active) return
     val snap by state.linuxComponents.collectAsState()
@@ -1736,7 +1745,7 @@ private fun WaylandNotYetNote() = HelperText("Not on Wayland in this build yet")
 // accent/green; DLL (self-contained FEX DLL path) = muted. Box64/x86-64 shows no unixlib segment.
 // It is a status readout, never a "faster" flag. Hidden until the activity seeds arch+translator.
 @Composable
-private fun RuntimeBackendChip(state: XServerDrawerState) {
+internal fun RuntimeBackendChip(state: XServerDrawerState) {
     val backend by state.runtimeBackend.collectAsState()
     if (!backend.isValid) return
 
@@ -1772,7 +1781,7 @@ private fun RuntimeBackendChip(state: XServerDrawerState) {
 // via conf.toml. Multiplier is a segmented button row (Off / 2× / 3× / 4×); the Flow
 // Scale slider collapses while Off and expands when a multiplier is selected.
 @Composable
-private fun FrameGenSection(state: XServerDrawerState) {
+internal fun FrameGenSection(state: XServerDrawerState) {
     val accent = MaterialTheme.colorScheme.primary
     val frameGenEnabled by state.frameGenEnabled.collectAsState()
     val initFgMult by state.frameGenMultiplier.collectAsState()
@@ -2319,7 +2328,7 @@ private fun ReshadeContent(state: XServerDrawerState) {
 // toggles + tunes the loaded set. Every change rides the single onReshadeApply seam (-> applyReshadeLive:
 // conf rewrite the patched libvkbasalt mtime-watch picks up live, and persists to Container/shortcut).
 @Composable
-private fun ReshadeSection() {
+internal fun ReshadeSection() {
     val accent = MaterialTheme.colorScheme.primary
     val supported by XServerDialogState.reshadeSupported.collectAsState()
     // Seed ONCE from the flows (the launch/last-applied state). Read via .value (not collectAsState)
@@ -3250,7 +3259,7 @@ private fun SeShaderToggle(label: String, checked: Boolean, enabled: Boolean = t
 // ───── HUD Tab ─────
 
 @Composable
-private fun HudContent(state: XServerDrawerState) {
+internal fun HudContent(state: XServerDrawerState, embedded: Boolean = false) {
     val accent = MaterialTheme.colorScheme.primary
     val fpsConfig by state.fpsConfig.collectAsState()
 
@@ -3258,7 +3267,8 @@ private fun HudContent(state: XServerDrawerState) {
     // open; the display listener keeps it current while the drawer stays open.
     LaunchedEffect(Unit) { state.onRefreshRatePoll?.run() }
 
-    SectionHeader("HUD")
+    // Embedded (the Deck in-game menu): the page supplies its own title and hosts the frame-rate controls elsewhere.
+    if (!embedded) SectionHeader("HUD")
 
     // ── FPS Limiter state (caps the game's own frames; with LSFG Native / Win-FG Native the screen
     //    gets cap x multiplier, and it steps aside while lsfg-vk multiplies). Declared here; its UI
@@ -3436,8 +3446,8 @@ private fun HudContent(state: XServerDrawerState) {
     ToggleRow("Show HUD", hudEnabled) { hudEnabled = it; apply() }
 
     // ── Performance group: always shown. The limiter + refresh live here regardless of the HUD. ──
-    HudGroupLabel("Performance")
-    CollapsibleSection("Frame rate & refresh", lead = "always on", initiallyExpanded = true) {
+    if (!embedded) HudGroupLabel("Performance")
+    if (!embedded) CollapsibleSection("Frame rate & refresh", lead = "always on", initiallyExpanded = true) {
         Text("FPS Limiter", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
         val nativeFgLocks by state.nativeFgLocks.collectAsState()
@@ -3841,7 +3851,7 @@ private fun HudChipRow(label: String, options: List<String>, selected: Int, onSe
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ControlsContent(state: XServerDrawerState) {
+internal fun ControlsContent(state: XServerDrawerState) {
     val accent = MaterialTheme.colorScheme.primary
     val profiles by XServerDialogState.inputProfiles.collectAsState()
     val initProfileIdx by XServerDialogState.selectedProfileIdx.collectAsState()
@@ -5006,7 +5016,7 @@ private fun TmProcessRow(proc: XServerDialogState.TmProcess) {
  * resets if the process restarts, exactly like Windows.
  */
 @Composable
-private fun ProcessorAffinityDialog(
+internal fun ProcessorAffinityDialog(
     proc: XServerDialogState.TmProcess,
     onDismiss: () -> Unit,
 ) {
@@ -5166,7 +5176,7 @@ private fun TmSectionLabel(
  *  block). CPU/GPU are accent-tinted, FPS reads "ok" green, battery reads "warn" amber; every
  *  nullable/Mali metric still renders gracefully as "—". */
 @Composable
-private fun TmStatGrid(h: XServerDialogState.TmHeaderStats?) {
+internal fun TmStatGrid(h: XServerDialogState.TmHeaderStats?) {
     if (h == null) return
     val accent = MaterialTheme.colorScheme.primary
     val onSurf = MaterialTheme.colorScheme.onSurface
@@ -5253,7 +5263,7 @@ private fun StatTile(tile: TmTile, modifier: Modifier = Modifier) {
 /** Horizontal, scrollable per-core current-clock strip. Values are shown in FULL MHz (the raw
  *  perCoreMhz integer, NOT abbreviated to GHz) with a tiny "MHz" unit. */
 @Composable
-private fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
+internal fun TmCoreStrip(h: XServerDialogState.TmHeaderStats?) {
     val cores = h?.perCoreMhz ?: return
     if (cores.isEmpty()) return
     val accent = MaterialTheme.colorScheme.primary

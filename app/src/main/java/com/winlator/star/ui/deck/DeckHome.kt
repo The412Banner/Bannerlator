@@ -514,7 +514,7 @@ private fun IconTile(icon: ImageVector, label: String, onClick: () -> Unit) {
             .background(cs.surfaceContainerHigh)
             .border(1.dp, deckLine(), shape)
             .clickable(onClick = onClick)
-            .size(48.dp),
+            .size(44.dp),
     ) {
         Icon(icon, contentDescription = label, tint = cs.onSurface, modifier = Modifier.size(22.dp))
     }
@@ -899,7 +899,7 @@ private fun DeckListRow(
                 .deckFocusRing(CircleShape, scaleTo = 1f)
                 .clip(CircleShape)
                 .clickable(onClick = onMenu)
-                .size(48.dp),
+                .size(44.dp),
         ) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Game options", tint = cs.onSurfaceVariant)
         }

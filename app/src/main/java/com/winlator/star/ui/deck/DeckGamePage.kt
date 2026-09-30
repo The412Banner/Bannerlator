@@ -533,7 +533,7 @@ internal fun DeckGameMenuSheet(
                             .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f)
                             .clip(RoundedCornerShape(14.dp))
                             .clickable(onClick = onDismiss)
-                            .size(48.dp),
+                            .size(44.dp),
                     ) {
                         Icon(Icons.Filled.Close, contentDescription = "Close", tint = cs.onSurface)
                     }

@@ -635,8 +635,7 @@ private fun DeckSearchButton(onSearch: () -> Unit) {
             .deckFocusRing(CircleShape, scaleTo = 1f)
             .clip(CircleShape)
             .clickable(onClick = onSearch)
-            // 48 so the target stays about 40 on screen at DECK_SCALE.
-            .size(48.dp),
+            .size(40.dp),
     ) {
         Icon(Icons.Filled.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
     }
@@ -655,8 +654,6 @@ private fun DeckTabButton(tab: DeckTab, selected: Boolean, showLabel: Boolean, m
             .clip(shape)
             .background(if (selected) accent.copy(alpha = 0.16f) else Color.Transparent)
             .clickable(onClick = onClick)
-            // A full-size target at DECK_SCALE; the bar has room for it.
-            .heightIn(min = 48.dp)
             .drawBehind {
                 if (selected) {
                     val barH = 3.dp.toPx()

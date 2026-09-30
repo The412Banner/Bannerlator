@@ -267,9 +267,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private XEnvironment environment;
     private DrawerLayout drawerLayout;
-    // Appearance › Interface style = Deck: the in-game menus are the Deck quick menu and game menu (ui/deck/DeckInGame.kt) in their own layer instead of the drawer.
-    private boolean deckInGameUi = false;
-    private ComposeView deckInGameView;
     private ContainerManager containerManager;
     protected Container container;
     private XServer xServer;
@@ -1956,7 +1953,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setIsRelativeMouseMovement(isRelativeMouseMovement);
         state.setIsMouseDisabled(isMouseDisabled);
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
-        state.onClose                  = () -> runOnUiThread(this::closeInGameMenu);
+        state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
         state.onKeyboard               = this::showGuestKeyboard;
         state.onInputControls          = () -> showInputControlsDialog();
         state.onScreenEffects          = () -> showScreenEffectsDialog();
@@ -2433,25 +2430,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         xServerDisplay.addView(dialogHostView);
         XServerDialogHostKt.setupDialogHost(dialogHostView);
-
-        // Deck interface style: the quick menu and the full game menu get a full-screen layer of their own on top of
-        // everything (game, on-screen controls, HUD). It draws nothing while both are closed, so touches reach the game
-        // then. The Classic drawer stays in the layout but is never opened in this style.
-        deckInGameUi = com.winlator.star.ui.theme.AppThemeState.UI_STYLE_DECK.equals(
-                com.winlator.star.ui.theme.AppThemeState.INSTANCE.getUiStyle().getValue());
-        com.winlator.star.ui.deck.DeckInGameState deckState = com.winlator.star.ui.deck.DeckInGameState.INSTANCE;
-        deckState.reset();
-        if (deckInGameUi) {
-            deckState.setCornerButton(preferences.getBoolean("deck_ingame_corner_button", false));
-            deckState.onCornerButtonChange = v -> preferences.edit().putBoolean("deck_ingame_corner_button", v).apply();
-            deckState.onPanelOpenChanged = this::onDeckPanelOpenChanged;
-            deckInGameView = new ComposeView(this);
-            deckInGameView.setFocusable(true);
-            deckInGameView.setFocusableInTouchMode(true);
-            addContentView(deckInGameView, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            com.winlator.star.ui.deck.DeckInGameKt.setupDeckInGame(deckInGameView);
-        }
 
         imageFs = ImageFs.find(this);
 
@@ -7093,10 +7071,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return;
         }
         if (environment != null) {
-            if (deckInGameUi && com.winlator.star.ui.deck.DeckInGameState.INSTANCE.isOpen()) {
-                com.winlator.star.ui.deck.DeckInGameState.INSTANCE.close();
-                return;
-            }
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawers();
                 return;
@@ -7113,48 +7087,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
                 pendingLinuxBack = () -> {
                     pendingLinuxBack = null;
-                    if (!isInGameMenuOpen()) openInGameMenu();
+                    if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
                 };
                 drawerLayout.postDelayed(pendingLinuxBack, android.view.ViewConfiguration.getDoubleTapTimeout());
                 return;
             }
-            openInGameMenu();
-        }
-    }
-
-    /** Opens the in-game menu of the current interface style: the drawer, or the Deck full game menu. */
-    private void openInGameMenu() {
-        if (deckInGameUi) com.winlator.star.ui.deck.DeckInGameState.INSTANCE.openMenu();
-        else drawerLayout.openDrawer(GravityCompat.START);
-    }
-
-    private boolean isInGameMenuOpen() {
-        return drawerLayout.isDrawerOpen(GravityCompat.START)
-                || (deckInGameUi && com.winlator.star.ui.deck.DeckInGameState.INSTANCE.isOpen());
-    }
-
-    /** Closes whichever in-game menu is up (the drawer's onClose, and every "close the menu first" action). */
-    private void closeInGameMenu() {
-        drawerLayout.closeDrawers();
-        if (deckInGameUi) com.winlator.star.ui.deck.DeckInGameState.INSTANCE.close();
-    }
-
-    /**
-     * A Deck panel opened from nothing, or the last one closed: the same bookkeeping the drawer listener does, so the
-     * controller is handed over and back the same way. Opening flushes a neutral pad state to the game and releases
-     * pointer capture (as the controller chord does for the drawer); closing re-captures it for Relative Mouse.
-     */
-    private void onDeckPanelOpenChanged(boolean open) {
-        XServerDialogState.INSTANCE.setMenuOpen(open);
-        if (open) {
-            releasePointerCaptureIfNeeded("deck-menu");
-            if (winHandler != null) winHandler.neutralizeControllers();
-        } else {
-            deckKeysToPanelUntilUp.clear();
-            if (deckInGameView != null) deckInGameView.clearFocus();
-            if (isRelativeMouseMovement && !pointerCaptureRequested) {
-                drawerLayout.postDelayed(() -> ensurePointerCapture("deck-menu-closed"), 2000);
-            }
+            drawerLayout.openDrawer(GravityCompat.START);
         }
     }
 
@@ -7405,7 +7343,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     private boolean handlePadMenuKeys(KeyEvent event) {
         if (environment == null || drawerLayout == null || !ExternalController.isGameController(event.getDevice())) return false;
-        if (deckInGameUi) return handleDeckPadKeys(event);
         int kc = event.getKeyCode();
         int action = event.getAction();
         if (kc == KeyEvent.KEYCODE_BUTTON_SELECT || kc == KeyEvent.KEYCODE_BUTTON_START) {
@@ -7434,74 +7371,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return padKeysSwallowedUntilUp.contains(kc);
         }
         return false;
-    }
-
-    // Deck style: keys whose press went to an open Deck panel, so their release goes there too even if the panel closed in between.
-    private final java.util.Set<Integer> deckKeysToPanelUntilUp = new java.util.HashSet<>();
-
-    /**
-     * The controller path in Deck style. Select + Start (either order) steps through quick menu, full game menu, closed.
-     * While a panel is open no pad button reaches the game: L1 / R1 / X / B drive the panel (DeckInGameState.handlePanelKey),
-     * the d-pad and A move and press the focused control, and everything else is held back. With both panels closed only
-     * the chord is taken, exactly as in the Classic path, and a release whose press went to the game still goes to the game.
-     */
-    private boolean handleDeckPadKeys(KeyEvent event) {
-        com.winlator.star.ui.deck.DeckInGameState deck = com.winlator.star.ui.deck.DeckInGameState.INSTANCE;
-        int kc = event.getKeyCode();
-        int action = event.getAction();
-        // A pad that sends Back for B keeps Android's Back handling (onBackPressed closes the panel).
-        if (kc == KeyEvent.KEYCODE_BACK) return false;
-        boolean isSelect = kc == KeyEvent.KEYCODE_BUTTON_SELECT;
-        boolean chordKey = isSelect || kc == KeyEvent.KEYCODE_BUTTON_START;
-        if (action == KeyEvent.ACTION_UP) {
-            if (chordKey) { if (isSelect) padSelectHeld = false; else padStartHeld = false; }
-            if (padKeysSwallowedUntilUp.remove(kc)) return true;
-            if (deckKeysToPanelUntilUp.remove(kc)) { routeKeyToDeckPanel(event); return true; }
-            return false;
-        }
-        if (action != KeyEvent.ACTION_DOWN) return deck.isOpen();
-        if (event.getRepeatCount() > 0) {
-            if (padKeysSwallowedUntilUp.contains(kc)) return true;
-            if (deckKeysToPanelUntilUp.contains(kc)) { routeKeyToDeckPanel(event); return true; }
-            return deck.isOpen();
-        }
-        if (chordKey) {
-            boolean otherHeld = isSelect ? padStartHeld : padSelectHeld;
-            if (isSelect) padSelectHeld = true; else padStartHeld = true;
-            if (otherHeld) {
-                padKeysSwallowedUntilUp.add(kc);
-                releasePointerCaptureIfNeeded("deck-menu/chord");
-                deck.chord();
-                return true;
-            }
-        }
-        if (!deck.isOpen()) return false;
-        if (deck.handlePanelKey(kc)) {
-            padKeysSwallowedUntilUp.add(kc);
-            return true;
-        }
-        deckKeysToPanelUntilUp.add(kc);
-        routeKeyToDeckPanel(event);
-        return true;
-    }
-
-    /** Hands a d-pad or A event to the Deck panel's focus system; A becomes the d-pad centre key, which presses the focused control. */
-    private void routeKeyToDeckPanel(KeyEvent event) {
-        int kc = event.getKeyCode();
-        if (kc == KeyEvent.KEYCODE_BUTTON_A) kc = KeyEvent.KEYCODE_DPAD_CENTER;
-        boolean nav = kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN
-                || kc == KeyEvent.KEYCODE_DPAD_LEFT || kc == KeyEvent.KEYCODE_DPAD_RIGHT
-                || kc == KeyEvent.KEYCODE_DPAD_CENTER;
-        if (!nav || deckInGameView == null) return;
-        // Nothing in the panel has focus yet (a touch opened it, or focus was lost): the first press only puts focus on it.
-        if (!deckInGameView.hasFocus()) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) com.winlator.star.ui.deck.DeckInGameState.INSTANCE.requestFocus();
-            return;
-        }
-        KeyEvent routed = kc == event.getKeyCode() ? event : new KeyEvent(event.getDownTime(), event.getEventTime(),
-                event.getAction(), kc, event.getRepeatCount(), event.getMetaState(), event.getDeviceId(),
-                event.getScanCode(), event.getFlags(), event.getSource());
-        super.dispatchKeyEvent(routed);
     }
 
     /** Opens the drawer, or closes it when it is already open (the controller chord above). */
@@ -7564,7 +7433,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             padSelectHeld = false;
             padStartHeld = false;
             padKeysSwallowedUntilUp.clear();
-            deckKeysToPanelUntilUp.clear();
         }
         if (hasFocus && waylandClipboard != null) waylandClipboard.refresh();
 
@@ -10869,11 +10737,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Seeded here (after the container + backend are resolved, and after the drawer's reset()
         // in onCreate) so the drawer can grey Wayland-unsupported controls such as Relative Mouse.
         XServerDrawerState.INSTANCE.setIsWaylandMode(waylandMode);
-        // Deck menus: the title they show and which "saved for" label is true (a shortcut to write to, or the container).
-        com.winlator.star.ui.deck.DeckInGameState deckSeed = com.winlator.star.ui.deck.DeckInGameState.INSTANCE;
-        deckSeed.setGameTitle(shortcut != null && shortcut.name != null ? shortcut.name : (container != null ? container.getName() : ""));
-        deckSeed.setLaunchedFromShortcut(shortcut != null);
-        deckSeed.setHudSavedToShortcut(shortcutOwnsFpsConfig());
         if (waylandMode) setupWaylandDrawerGlue();
         if (isLinuxSteamSession()) setupLinuxSteamDrawerGlue(rootView);
         xServerView = new XServerView(this, xServer);
@@ -11325,7 +11188,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         touchpadView.setSensitivity(globalCursorSpeed);
         touchpadView.setMouseEnabled(!isMouseDisabled);
         touchpadView.setFourFingersTapCallback(() -> {
-            if (!isInGameMenuOpen()) openInGameMenu();
+            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
         });
         // The preference persists across launches but was never restored onto the view, so
         // Cursor to Touch silently reverted to off every session until it was toggled again.
@@ -12433,7 +12296,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inGameEditorPreviousTimeoutEnabled = preferences.getBoolean("touchscreen_timeout_enabled", false);
         inGameEditorPreviousProfile = inputControlsView.getProfile();
         XServerDialogState.INSTANCE.dismiss();
-        closeInGameMenu();
+        drawerLayout.closeDrawers();
         releasePointerCaptureIfNeeded("in-game-controls-editor");
         inputControlsView.releaseAllInputs();
         if (touchpadView != null) touchpadView.releaseAllInputs();
@@ -13211,11 +13074,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         }
         if (isSteamControllerShadowEvent(event.getDevice())) return true;
-        // Deck panel open: sticks and the hat go to the panel (Android turns them into d-pad moves there), never the game.
-        if (deckInGameUi && com.winlator.star.ui.deck.DeckInGameState.INSTANCE.isOpen()
-                && ExternalController.isGameController(event.getDevice())) {
-            return super.dispatchGenericMotionEvent(event);
-        }
         // Controller-test isolation: while the Players popup is open, a game-controller AXIS event
         // drives ONLY the throwaway visualizer snapshot and is swallowed here — it never reaches
         // winHandler / touchpadView / the guest. Strictly gated on controllerTestActive so the normal

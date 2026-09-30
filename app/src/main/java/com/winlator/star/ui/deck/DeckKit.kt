@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +61,31 @@ internal fun deckGutter(): Dp =
 internal fun deckCompact(): Boolean = LocalConfiguration.current.screenWidthDp < DECK_COMPACT_WIDTH_DP
 
 /**
+ * The landscape frame: main tabs and page tabs as side rails, one slim title line, no page headers.
+ * Portrait keeps the top bar (and a phone its bottom bar).
+ */
+@Composable
+internal fun deckRails(): Boolean {
+    val cfg = LocalConfiguration.current
+    return cfg.screenWidthDp >= DECK_COMPACT_WIDTH_DP && cfg.orientation == Configuration.ORIENTATION_LANDSCAPE
+}
+
+/**
+ * Hands the page's title and description to the shell's slim title line (landscape only; elsewhere
+ * the page draws its own header). The last page to register wins, and a page clears only its own.
+ */
+@Composable
+internal fun DeckPageTitle(title: String, description: String?) {
+    if (!deckRails()) return
+    val actions = LocalDeckActions.current
+    val info = remember(title, description) { DeckPageInfo(title, description) }
+    DisposableEffect(actions, info) {
+        actions.pageInfo.value = info
+        onDispose { if (actions.pageInfo.value === info) actions.pageInfo.value = null }
+    }
+}
+
+/**
  * Big page header: an accent icon tile, the title and a one-line description, with optional
  * buttons underneath (Search / Refresh / Settings on Components, for example).
  */
@@ -70,6 +97,12 @@ internal fun DeckPageHeader(
     modifier: Modifier = Modifier,
     actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
+    // Landscape: the shell's title line shows the title, with the description behind its info button,
+    // and the screen's top-bar actions on the right.
+    if (deckRails()) {
+        DeckPageTitle(title, description)
+        return
+    }
     val cs = MaterialTheme.colorScheme
     val compact = deckCompact()
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -135,6 +168,8 @@ internal fun DeckSectionLabel(text: String, modifier: Modifier = Modifier) {
  * A page's second-level tab strip (Library / Store / Friends..., Browse / Installed...), with L2 and R2
  * glyphs either side. It registers itself with the shell so the controller's L2/R2 move between these
  * tabs while the page is up (L1/R1 always move the top-level tabs).
+ * In landscape the shell draws the tabs as a rail beside the content instead, icon-only when
+ * [compactRail] is set or the hosted screen brings its own side list; nothing is drawn here then.
  */
 @Composable
 internal fun DeckTabStrip(
@@ -143,6 +178,7 @@ internal fun DeckTabStrip(
     onSelect: (Int) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    compactRail: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     val deckActions = LocalDeckActions.current
@@ -157,6 +193,20 @@ internal fun DeckTabStrip(
             if (deckActions.subTab.value === cycle) deckActions.subTab.value = null
             deckActions.stripFocused.value = false
         }
+    }
+    if (deckRails()) {
+        val rail = remember { DeckPageTabs() }
+        SideEffect {
+            rail.tabs = tabs
+            rail.selected = selected
+            rail.compact = compactRail
+            rail.onSelect = onSelect
+        }
+        DisposableEffect(deckActions, rail) {
+            deckActions.pageTabs.value = rail
+            onDispose { if (deckActions.pageTabs.value === rail) deckActions.pageTabs.value = null }
+        }
+        return
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,

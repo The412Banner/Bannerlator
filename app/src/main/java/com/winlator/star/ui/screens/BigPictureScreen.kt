@@ -399,7 +399,13 @@ fun BigPictureScreen(navController: NavController) {
         val controller = WindowCompat.getInsetsController(activity.window, view)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
+        // Landscape Deck keeps Android's navigation bar hidden, so only the status bar comes back there.
+        onDispose {
+            controller.show(
+                if (com.winlator.star.ui.DeckWindow.navBarHidden) WindowInsetsCompat.Type.statusBars()
+                else WindowInsetsCompat.Type.systemBars()
+            )
+        }
     }
 
     // Refresh shortcuts on resume (new games, edited settings/covers) and re-grab focus after we

@@ -187,7 +187,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            // The Deck shell's landscape frame shows the title, and its tabs replace Close.
+            if (!com.winlator.star.ui.LocalHostedInDeck.current) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Log Manager",
                     style = MaterialTheme.typography.titleLarge,

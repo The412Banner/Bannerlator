@@ -389,7 +389,8 @@ internal fun SaveManagerScreen(
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Header bar — mirrors the Steam Library header idiom (back + title).
-        Row(
+        // The Deck shell's landscape frame shows the title and the connection pill itself.
+        if (!com.winlator.star.ui.LocalHostedInDeck.current) Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -176,6 +176,8 @@ fun CollapsibleRail(
     // the container/save rails keep their lighter flat rows (5 stacked outlined tabs read too heavy).
     outlinedItems: Boolean = false,
 ) {
+    // Inside the Deck shell this rail is the page's own side list, so the Deck page-tab rail goes icon-only beside it.
+    com.winlator.star.ui.ReportSideListToDeck()
     val collapsed = state.collapsed
     val width by animateDpAsState(if (collapsed) 58.dp else 190.dp, label = "railWidth")
 

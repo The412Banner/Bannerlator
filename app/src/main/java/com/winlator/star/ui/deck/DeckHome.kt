@@ -213,6 +213,7 @@ internal fun DeckHome(
     val context = LocalContext.current
     val cfg = LocalConfiguration.current
     val compact = cfg.screenWidthDp < DECK_COMPACT_WIDTH_DP
+    val rails = deckRails()
     val launcher = rememberShortcutLauncher()
     val actions = rememberShortcutActions(vm)
     // A SteamLite launch that failed inside the container asks for a relaunch.
@@ -317,7 +318,9 @@ internal fun DeckHome(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = gutter, vertical = 16.dp),
         ) {
-            val heroHeight = (cfg.screenHeightDp * 0.44f).coerceIn(210f, 300f).dp
+            // The landscape side rails free the top bar's height, so the hero takes a bigger share of it.
+            val heroHeight = if (rails) (cfg.screenHeightDp * 0.56f).coerceIn(240f, 360f).dp
+                             else (cfg.screenHeightDp * 0.44f).coerceIn(210f, 300f).dp
             focused?.let { s ->
                 val st = stats[s.file.path] ?: PlayStats(0L, 0, 0L)
                 val last = lastPlayedLabel(context, st.lastPlayed)

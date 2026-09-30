@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.sp
 fun SteamStatusPill(
     status: SteamRepository.SteamStatus,
     onReconnect: () -> Unit,
+    // A one-word label in smaller type, for narrow places such as the Deck side rail.
+    compact: Boolean = false,
 ) {
     val (dot, label, tappable) = when (status) {
         SteamRepository.SteamStatus.ONLINE ->
@@ -61,9 +63,15 @@ fun SteamStatusPill(
         .background(Color(0x22FFFFFF))
         .border(1.dp, dot.copy(alpha = 0.5f), RoundedCornerShape(50))
     val mod = if (tappable) base.clickable { onReconnect() } else base
+    val shown = if (!compact) label else when (status) {
+        SteamRepository.SteamStatus.CONNECTING -> "Connecting"
+        SteamRepository.SteamStatus.SIGNED_IN_ELSEWHERE -> "Elsewhere"
+        SteamRepository.SteamStatus.PAUSED_FOR_GAME -> "Paused"
+        else -> label
+    }
 
     Row(
-        modifier = mod.padding(horizontal = 10.dp, vertical = 5.dp),
+        modifier = mod.padding(horizontal = if (compact) 7.dp else 10.dp, vertical = if (compact) 3.dp else 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(
@@ -72,14 +80,15 @@ fun SteamStatusPill(
                 .clip(CircleShape)
                 .background(dot),
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(if (compact) 4.dp else 6.dp))
         Text(
-            text = label,
+            text = shown,
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = if (compact) 10.sp else 12.sp,
             fontWeight = FontWeight.Medium,
+            maxLines = 1,
         )
-        if (tappable) {
+        if (tappable && !compact) {
             Spacer(Modifier.width(4.dp))
             Text(text = "↻", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
@@ -98,7 +107,7 @@ fun SteamStatusPill(
  * every status event, so signing in from the store makes the pill appear without an app restart.
  */
 @Composable
-fun SteamConnectionPill() {
+fun SteamConnectionPill(compact: Boolean = false) {
     val repo = remember { SteamRepository.getInstance() }
     var status by remember { mutableStateOf(runCatching { repo.status }.getOrDefault(SteamRepository.SteamStatus.OFFLINE)) }
     var loggedIn by remember { mutableStateOf(runCatching { SteamPrefs.isLoggedIn }.getOrDefault(false)) }
@@ -118,6 +127,6 @@ fun SteamConnectionPill() {
         onDispose { repo.removeListener(l) }
     }
     if (loggedIn) {
-        SteamStatusPill(status = status, onReconnect = { runCatching { repo.reconnectNow() } })
+        SteamStatusPill(status = status, onReconnect = { runCatching { repo.reconnectNow() } }, compact = compact)
     }
 }

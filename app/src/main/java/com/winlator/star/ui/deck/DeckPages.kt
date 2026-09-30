@@ -44,7 +44,7 @@ import com.winlator.star.ui.screens.contents.ContentsHubViewModel
 
 /**
  * Components: Deck header, then Browse / Installed / Saved archives / Linux runtime on the Deck tab
- * strip (L1/R1). Each tab is the Contents hub's own tab content, hosted without its rail or TabRow,
+ * strip (L2/R2). Each tab is the Contents hub's own tab content, hosted without its rail or TabRow,
  * so installs, the install-progress popup and the source manager are unchanged.
  */
 @Composable
@@ -115,6 +115,8 @@ internal fun DeckToolsPage(
         selected = tab,
         onSelect = { tab = it },
         tabLabel = "Tool",
+        // Files and Saves bring their own side list, so the page tabs stay an icon rail on every Tools tab.
+        compactTabs = true,
     ) {
         when (tab) {
             0 -> FileManagerScreen()
@@ -128,7 +130,8 @@ internal fun DeckToolsPage(
 /**
  * The frame the three pages share: header, optional tab strip with the hosted screen's own top-bar
  * actions beside it, and the hosted content filling the remaining height. On a phone the description
- * is dropped so the hosted screen keeps its room.
+ * is dropped so the hosted screen keeps its room. In landscape the shell draws the title line and the
+ * tab rail ([compactTabs] = icon rail), so the content gets the whole area.
  */
 @Composable
 private fun DeckHostedPage(
@@ -139,8 +142,15 @@ private fun DeckHostedPage(
     selected: Int,
     onSelect: (Int) -> Unit,
     tabLabel: String,
+    compactTabs: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    if (deckRails()) {
+        DeckPageTitle(title, description)
+        if (tabs != null) DeckTabStrip(tabs = tabs, selected = selected, onSelect = onSelect, label = tabLabel, compactRail = compactTabs)
+        Box(modifier = Modifier.fillMaxSize()) { content() }
+        return
+    }
     val gutter = deckGutter()
     val compact = deckCompact()
     val topActions = LocalTopBarActions.current.value

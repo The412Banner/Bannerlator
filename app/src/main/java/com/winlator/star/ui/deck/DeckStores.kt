@@ -216,6 +216,7 @@ internal fun DeckStoresPage(
         return
     }
 
+    DeckPageTitle("Stores", "Your storefronts: sign in, see what each one has installed here, and open its store, friends and downloads.")
     Column(modifier = Modifier.fillMaxSize().padding(top = 14.dp)) {
         // Store switcher, with the open / more buttons on the right (under it on a phone).
         val switcher: @Composable () -> Unit = {

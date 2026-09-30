@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.Color
 
@@ -49,6 +50,25 @@ internal class DeckActions {
     val enterTick: MutableIntState = mutableIntStateOf(0)
     /** True while a page's own tab strip holds focus; Down from the top bar goes past it, since L2/R2 already move it. */
     val stripFocused: MutableState<Boolean> = mutableStateOf(false)
+    /** Landscape: the page's title and description for the shell's slim title line ([DeckPageTitle]). */
+    val pageInfo: MutableState<DeckPageInfo?> = mutableStateOf(null)
+    /** Landscape: the page's tabs, drawn by the shell as the second rail ([DeckTabStrip] registers them). */
+    val pageTabs: MutableState<DeckPageTabs?> = mutableStateOf(null)
+}
+
+/** A Deck page's title and one-line description, shown by the shell's title line in landscape. */
+internal data class DeckPageInfo(val title: String, val description: String?)
+
+/**
+ * A page's tabs as the shell draws them in landscape, beside the content. The page keeps owning the
+ * selection; the shell only reads it. [compact] asks for the icon-only rail.
+ */
+@Stable
+internal class DeckPageTabs {
+    var tabs: List<DeckTabItem> by mutableStateOf(emptyList())
+    var selected: Int by mutableIntStateOf(0)
+    var compact: Boolean by mutableStateOf(false)
+    var onSelect: (Int) -> Unit = {}
 }
 
 /**

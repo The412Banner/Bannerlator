@@ -1,0 +1,209 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <droiddeck@users.noreply.github.com>
+Date: Tue, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] seccomp: trace ioctl by request, drop exit stops the kernel
+ does not need
+
+Ported to termux/proot v5.1.107.92 for Bannerlator, with two additions for that tree.
+Its enter.c also answers SIOCGIFINDEX itself (Android denies it; bubblewrap's loopback
+setup and interface lookups need it), so the ioctl block traces that request too.
+The statx exit stop is also where the extensions get STATX_SYSCALL: fake_id0 (as root)
+maps the real uid to the emulated one there and link2symlink its link count, so both now
+list statx with FILTER_SYSEXIT, and dropping it from the core list on a new kernel no
+longer drops it for them. In fake_id0's identity mode (Bannerlator's -i uid:uid) that
+handler is a no-op, and identity_sysnums leaves statx out.
+
+---
+ src/extension/fake_id0/fake_id0.c         |   1 +
+ src/extension/link2symlink/link2symlink.c |   1 +
+ src/syscall/seccomp.c                     | 103 +++++++++++++++++++++++++++++-
+ 3 files changed, 104 insertions(+), 1 deletion(-)
+
+diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
+index 2914589..92e54c7 100644
+--- a/src/extension/fake_id0/fake_id0.c
++++ b/src/extension/fake_id0/fake_id0.c
+@@ -381,6 +381,7 @@ static FilteredSysnum filtered_sysnums[] = {
+ 	{ PR_stat64,		FILTER_SYSEXIT },
+ 	{ PR_statfs,		FILTER_SYSEXIT },
+ 	{ PR_statfs64,		FILTER_SYSEXIT },
++	{ PR_statx,		FILTER_SYSEXIT },
+ 	FILTERED_SYSNUM_END,
+ };
+ 
+diff --git a/src/extension/link2symlink/link2symlink.c b/src/extension/link2symlink/link2symlink.c
+index 9c67b10..7cab9dd 100644
+--- a/src/extension/link2symlink/link2symlink.c
++++ b/src/extension/link2symlink/link2symlink.c
+@@ -1139,6 +1139,7 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
+ 			{ PR_newfstatat,	FILTER_SYSEXIT },
+ 			{ PR_stat,		FILTER_SYSEXIT },
+ 			{ PR_stat64,		FILTER_SYSEXIT },
++			{ PR_statx,		FILTER_SYSEXIT },
+ 			{ PR_rename,		FILTER_SYSEXIT },
+ 			{ PR_renameat,		FILTER_SYSEXIT },
+ 			{ PR_renameat2,		FILTER_SYSEXIT },
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 5155f99..4a744f6 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -39,6 +39,12 @@
+ #include <stdint.h>        /* uint*_t, UINT*_MAX, */
+ #include <stdbool.h>
+ #include <sys/resource.h>
++#include <sys/utsname.h>   /* uname(2), */
++#include <stdio.h>         /* sscanf(3), */
++#include <asm/ioctls.h>    /* TCGETS2, TCSETS*2, */
++#include <asm/termbits.h>  /* struct termios2, */
++#include <linux/fs.h>      /* FICLONE, */
++#include <linux/sockios.h> /* SIOCGIFINDEX, */
+ #include <assert.h>        /* assert(3), */
+ 
+ #include "syscall/seccomp.h"
+@@ -166,6 +172,48 @@ static int add_trace_prlimit_stack(struct sock_fprog *program, word_t syscall, i
+ 	return add_statements(program, LENGTH_TRACE_PRLIMIT_STACK, statements);
+ }
+ 
++/**
++ * Append to @program->filter the statements that trace @syscall
++ * (ioctl) only for the requests enter.c and exit.c act on - the
++ * termios requests Android's policy denies an app on a pty, rewritten
++ * to ones it allows, SIOCGIFINDEX, which Android denies and enter.c
++ * answers itself, and FICLONE, whose EACCES is turned into
++ * EOPNOTSUPP - and allow any other request at once.  Every GPU submit
++ * and wait is an ioctl, so they no longer stop in the tracer, and the
++ * block is emitted first so they are also spared the rest of the list.
++ * (After WinNative, maxjivi05, 53836ca9.)
++ */
++static int add_trace_ioctl_requests(struct sock_fprog *program, word_t syscall, int flag)
++{
++	const size_t request_offset = offsetof(struct seccomp_data, args[1]);
++
++	#define LENGTH_TRACE_IOCTL 11
++	struct sock_filter statements[LENGTH_TRACE_IOCTL] = {
++		/* Not this syscall: skip the block, the accumulator
++		 * still holds the syscall number.  */
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 10),
++
++		/* Load the request's low word into the accumulator.  */
++		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, request_offset),
++
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETSF,  6, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCGETS2,  5, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETS2,  4, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETSW2, 3, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, TCSETSF2, 2, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, SIOCGIFINDEX, 1, 0),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (uint32_t) FICLONE, 0, 1),
++
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW)
++	};
++
++	DEBUG_FILTER("FILTER:     trace if syscall == %ld and a termios2/TCSETSF/SIOCGIFINDEX/FICLONE request\n",
++		syscall);
++
++	return add_statements(program, LENGTH_TRACE_IOCTL, statements);
++}
++
+ static size_t trace_length(Sysnum sysnum)
+ {
+ 	switch (sysnum) {
+@@ -174,6 +222,8 @@ static size_t trace_length(Sysnum sysnum)
+ 		return LENGTH_TRACE_SYSCALL_IF_ARG;
+ 	case PR_prlimit64:
+ 		return LENGTH_TRACE_PRLIMIT_STACK;
++	case PR_ioctl:
++		return LENGTH_TRACE_IOCTL;
+ 	default:
+ 		return LENGTH_TRACE_SYSCALL;
+ 	}
+@@ -191,6 +241,8 @@ static int add_trace(struct sock_fprog *program, Sysnum sysnum, word_t syscall,
+ 		return add_trace_syscall_if_arg(program, syscall, 0, RLIMIT_STACK, flag);
+ 	case PR_prlimit64:
+ 		return add_trace_prlimit_stack(program, syscall, flag);
++	case PR_ioctl:
++		return add_trace_ioctl_requests(program, syscall, flag);
+ 	default:
+ 		return add_trace_syscall(program, syscall, flag);
+ 	}
+@@ -329,7 +381,7 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums)
+ 
+ 	struct sock_fprog program = { .len = 0, .filter = NULL };
+ 	size_t section_length;
+-	size_t i, j, k;
++	size_t i, j, k, pass;
+ 	int status;
+ 
+ 	status = new_program_filter(&program);
+@@ -355,8 +407,14 @@ static int set_seccomp_filters(const FilteredSysnum *sysnums)
+ 		if (status < 0)
+ 			goto end;
+ 
++		/* Two passes: ioctl first, it is by far the most frequent
++		 * syscall and almost every one of them is allowed.  */
++		for (pass = 0; pass < 2; pass++)
+ 		for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
+ 			for (k = 0; sysnums[k].value != PR_void; k++) {
++				if ((sysnums[k].value == PR_ioctl) != (pass == 0))
++					continue;
++
+ 				/* Get the architecture specific syscall number.  */
+ 				syscall = detranslate_sysnum(seccomp_archs[i].abis[j], sysnums[k].value);
+ 				if (syscall == SYSCALL_AVOIDER)
+@@ -582,12 +640,55 @@ int enable_syscall_filtering(const Tracee *tracee)
+ 	return 0;
+ }
+ 
++/**
++ * Drop the exit stops PRoot only needs on kernels older than the one it
++ * runs on.  The faccessat2 exit stop restores the arguments for glibc's
++ * fallback to faccessat on ENOSYS (kernels before 5.8, termux 5ba8b95);
++ * the statx one emulates the call when it fails, which only a kernel
++ * before 4.11 does for want of it - a statx Android's policy traps is
++ * emulated from SIGSYS instead.  Both stops re-read and re-translate
++ * the path, and are paid on every call.  The statx exit stop also
++ * hands the result to the extensions (STATX_SYSCALL), so fake_id0 and
++ * link2symlink list statx themselves, and the merge keeps it for them.
++ */
++static void drop_unneeded_exit_stops(void)
++{
++	static bool done = false;
++	struct utsname utsname;
++	int major, minor;
++	size_t i;
++
++	if (done)
++		return;
++	done = true;
++
++	if (uname(&utsname) < 0 || sscanf(utsname.release, "%d.%d", &major, &minor) != 2)
++		return;
++
++	for (i = 0; proot_sysnums[i].value != PR_void; i++) {
++		switch (proot_sysnums[i].value) {
++		case PR_faccessat2:
++			if (major > 5 || (major == 5 && minor >= 8))
++				proot_sysnums[i].flags &= ~FILTER_SYSEXIT;
++			break;
++		case PR_statx:
++			if (major > 4 || (major == 4 && minor >= 11))
++				proot_sysnums[i].flags &= ~FILTER_SYSEXIT;
++			break;
++		default:
++			break;
++		}
++	}
++}
++
+ static int collect_filtered_sysnums(TALLOC_CTX *context, const Tracee *tracee,
+ 				FilteredSysnum **filtered_sysnums)
+ {
+ 	Extension *extension;
+ 	int status;
+ 
++	drop_unneeded_exit_stops();
++
+ 	/* Add the sysnums required by PRoot to the list of filtered
+ 	 * sysnums.  TODO: only if path translation is required.  */
+ 	status = merge_filtered_sysnums(context, filtered_sysnums, proot_sysnums);

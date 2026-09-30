@@ -1,8 +1,10 @@
 package com.winlator.star.core
 
 import android.graphics.Bitmap
+import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 
 /** Which face of the launch overlay is currently showing. */
 enum class Phase { SETUP, GUEST, FAILED }
@@ -41,6 +43,8 @@ data class PreloaderUi(
     val centered: Boolean = false,     // true for the centered status/shutdown screen (no cover hero)
     val percent: Int = -1,             // centered screen: a determinate bar when >= 0 (a download's progress)
     val elapsed: String? = null,       // centered screen: the clock line, so a quiet log still shows time moving
+    val linuxSteam: Boolean = false,   // centered screen: the Linux Steam session's black page with the entry's art
+    val closingSince: Long = 0L,       // Linux page: elapsedRealtime when the close began; > 0 = closing, the page runs its own clock
 )
 
 /**
@@ -89,6 +93,24 @@ object PreloaderState {
         _ui.value = PreloaderUi(title = "", tailLabel = title ?: "", phase = Phase.GUEST, centered = true)
     }
 
+    /**
+     * The Linux Steam session's loading screen: the centered status screen, on plain black with the Steam (Linux) entry's art instead of the neon wallpaper.
+     * [linuxProgress] keeps the flag, since it copies the state it updates.
+     */
+    @JvmStatic fun showLinuxSteam(title: String?) {
+        _ui.value = PreloaderUi(title = "", tailLabel = title ?: "", phase = Phase.GUEST, centered = true,
+            linuxSteam = true)
+    }
+
+    /**
+     * The same Linux Steam page for the session's close, with [hint] under [title] and a clock the page counts from now.
+     * [linuxProgress] leaves it alone, so a late update from the loading watcher cannot put a startup line back on it.
+     */
+    @JvmStatic fun showLinuxSteamClosing(title: String?, hint: String?) {
+        _ui.value = PreloaderUi(title = "", tailLabel = title ?: "", phase = Phase.GUEST, centered = true,
+            linuxSteam = true, hint = hint, closingSince = SystemClock.elapsedRealtime())
+    }
+
     /** Advance the determinate bar to [index]/stepTotal with [label]. */
     @JvmStatic fun step(index: Int, label: String) {
         val cur = _ui.value ?: PreloaderUi(title = "")
@@ -108,9 +130,11 @@ object PreloaderState {
      * running session (the first-run mirror did exactly that once).
      */
     @JvmStatic fun linuxProgress(step: String, percent: Int, elapsed: String?, hint: String?) {
-        val cur = _ui.value ?: return
-        if (!cur.centered) return
-        _ui.value = cur.copy(tailLabel = step, percent = percent, elapsed = elapsed, hint = hint)
+        // A compare-and-set, because the watcher calls this from its own thread and a plain read-then-write could land a startup line over a close that began in between.
+        _ui.update { cur ->
+            if (cur == null || !cur.centered || cur.closingSince > 0L) cur
+            else cur.copy(tailLabel = step, percent = percent, elapsed = elapsed, hint = hint)
+        }
     }
 
     /** Set (or clear, with null) the not-frozen reassurance line. */

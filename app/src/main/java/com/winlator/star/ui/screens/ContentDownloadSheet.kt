@@ -610,9 +610,13 @@ private fun DownloadContentItem(
                             SourcePill(sourceLabel, sourceColor)
                         }
                     }
+                    // An installed layer shows its versionCode: the same name can be installed as several
+                    // builds (11.0-2.1-arm64ec-11 and -16), and the card is where the choice is made.
+                    val vc = if (isLocal && profile.verCode > 0) " · v${profile.verCode}" else ""
                     val sub = when {
-                        isInUse -> "In use"
-                        isLocal || communityInstalled -> "Installed"
+                        isInUse -> "In use$vc"
+                        isLocal -> "Installed$vc"
+                        communityInstalled -> "Installed"
                         !profile.desc.isNullOrEmpty() -> profile.desc
                         else -> null
                     }

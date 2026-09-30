@@ -451,6 +451,11 @@ fun BigPictureScreen(navController: NavController) {
     // by the launch pipeline; "Raw" is a plain launch).
     val onLaunch: () -> Unit = {
         selected?.let { sc ->
+            // An Android game opens as its own app; the launch-method popup means nothing for it.
+            if (com.winlator.star.androidgames.AndroidGames.isAndroidEntry(sc)) {
+                launchShortcut(activity, sc)
+                return@let
+            }
             val remembered = sc.getExtra("launchMode", "").isNotEmpty() &&
                 sc.getExtra("launchModeRemembered", "") == "1"
             when {
@@ -1243,9 +1248,12 @@ private fun GameOptionsSheet(
     // Rows built inline (not remembered) so the passed-in callbacks never go stale. The Change-cover row
     // captures the launcher; the Remove-cover row only appears when there's a custom cover to remove.
     val rows = buildList {
-        add(BpRow(Icons.Filled.Edit, "Edit shortcut", onEditShortcut))
-        add(BpRow(Icons.Filled.Tune, "Container settings", onContainerSettings))
-        add(BpRow(Icons.Filled.Public, "Community configs", onCommunityConfigs))
+        // An Android game has no Wine settings, container or community configs — only its cover.
+        if (!com.winlator.star.androidgames.AndroidGames.isAndroidEntry(shortcut)) {
+            add(BpRow(Icons.Filled.Edit, "Edit shortcut", onEditShortcut))
+            add(BpRow(Icons.Filled.Tune, "Container settings", onContainerSettings))
+            add(BpRow(Icons.Filled.Public, "Community configs", onCommunityConfigs))
+        }
         add(BpRow(Icons.Filled.Image, "Change cover art") {
             coverPicker.launch(
                 com.winlator.star.util.InAppFilePicker.buildIntent(
@@ -1853,6 +1861,15 @@ internal fun loadCover(s: Shortcut): ImageBitmap? {
 // `internal` so the Games-wall screen launches games through the identical entry point.
 // [preflightDone] = the SteamLite pre-flight already pulled cloud saves; the activity skips its own pull.
 internal fun launchShortcut(activity: Activity, shortcut: Shortcut, preflightDone: Boolean = false) {
+    // Android games (Games tab → Add Android game) start the app itself, never a session.
+    if (com.winlator.star.androidgames.AndroidGames.isAndroidEntry(shortcut)) {
+        val r = com.winlator.star.androidgames.AndroidGames.launch(activity, shortcut)
+        if (r == com.winlator.star.androidgames.AndroidGames.LaunchResult.STARTED) recordLastPlayed(shortcut)
+        com.winlator.star.androidgames.AndroidGames.failureMessage(shortcut, r)?.let {
+            android.widget.Toast.makeText(activity, it, android.widget.Toast.LENGTH_SHORT).show()
+        }
+        return
+    }
     recordLastPlayed(shortcut)
     if (!XrActivity.isEnabled(activity)) {
         val intent = Intent(activity, XServerDisplayActivity::class.java).apply {

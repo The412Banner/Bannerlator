@@ -14,8 +14,12 @@ library list, before anything is published.
 - `0020-color-p3-red-is-wide-gamut.patch` - Armada, verbatim.
 - `0100-realtime-queue-and-gamepad-cursor.patch` - this app, two of Armada's ported by hand onto
   3.16.29: realtime-priority Vulkan queues on request (`GAMESCOPE_FORCE_VULKAN_REALTIME=1`)
-  without CAP_SYS_NICE, which proot can never have; and the gamepad-driven cursor sprite following
-  the X pointer that XTest moves (it sat frozen).
+  without CAP_SYS_NICE, which proot can never have (a no-op on KGSL Turnip, which has a single
+  submit-queue priority); and the gamepad-driven cursor sprite following the X pointer that XTest
+  moves (it sat frozen). The X pointer is asked for only while a cursor image is drawn - every
+  vblank while shown, every 50 ms while hidden for inactivity - since each ask is a blocking round
+  trip to Xwayland on the paint thread; with no image, wlserver's position is used as upstream does
+  (DroidDeck #84, from p4).
 - `0110-wayland-backend-touch.patch` - DroidDeck: the nested Wayland backend bound only the host's
   pointer and keyboard, so a finger on the phone's screen never reached Steam. It now binds
   `wl_touch` too and hands each finger to wlserver's touch path (`wlserver_touchdown` / `motion` /
@@ -27,6 +31,14 @@ library list, before anything is published.
   down moves nothing - so in touchpad mode the Steam client saw no hover and a click landed wherever
   the pointer had last been. The motion now always warps the real pointer as well
   (`bAlwaysWarpCursor`), which the other touch modes did already.
+- `0112-restore-iconified-game-on-resume.patch` - DroidDeck (#89, from p4): the Steam menu is an
+  overlay that takes input without changing the focus window, and a fullscreen wine game minimizes
+  itself when it loses input. gamescope only takes a window out of iconic when the focus window
+  changes, and wine will not activate a window it believes iconic, so after Resume the game stayed
+  minimized: a black screen with its small caption in the top-left corner (Titanfall 2, GE-Proton
+  11). The iconify request is remembered and the window goes back to NormalState before input
+  returns to it, then focus is handed over again. `GAMESCOPE_RESTORE_FOCUS_WINDOW` on the root
+  window asks for the same restore from outside (the session script's resume watcher).
 
 Sixteen more of Armada's patches are DRM/lease/HDR-on-KMS work for a native display, which this
 app's Wayland-hosted gamescope never reaches, or need a newer gamescope than the runtime has.
@@ -34,6 +46,6 @@ app's Wayland-hosted gamescope never reaches, or need a newer gamescope than the
 ## Where the published copy lives
 
 The apk build fetches the archive named in `release.env` from **The412Banner/winlator-contents**, next to the Linux runtime it belongs to, and checks its sha256 before packing it in.
-The copy there is DroidDeck's own `gamescope-3.16.29-p3` build (Droid-Deck/DroidDeck), moved unchanged, so both apps share one file.
+The copy there is DroidDeck's own `gamescope-3.16.29-p4` build (Droid-Deck/DroidDeck), moved unchanged, so both apps share one file.
 It is a pre-release that is never marked Latest, and it is not part of the runtime download (`linuxfs-r9` is untouched).
 `build-gamescope.yml` here builds the same recipe on every change to `tools/gamescope`; to replace the published copy, build it, upload the result to winlator-contents as a new tag, and update `release.env`.

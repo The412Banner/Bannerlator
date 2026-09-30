@@ -57,6 +57,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Collections
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.linux.LinuxShortcuts
 
 enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
@@ -193,7 +194,10 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             val sorted = when (order) {
                 ShortcutSortOrder.NAME_ASC   -> list.sortedBy { it.name.lowercase() }
                 ShortcutSortOrder.NAME_DESC  -> list.sortedByDescending { it.name.lowercase() }
-                ShortcutSortOrder.CONTAINER  -> list.sortedBy { (it.container?.name ?: "").lowercase() }
+                // Android games have no container: they form their own group, after every container's.
+                ShortcutSortOrder.CONTAINER  -> list.sortedWith(
+                    compareBy<Shortcut>({ AndroidGames.isHome(it.container) }, { (it.container?.name ?: "").lowercase() })
+                )
             }
             // The Steam entry is a launcher for everything else, not one game among many, so it
             // stays at the front of every view and sort order rather than being hunted for.
@@ -1030,6 +1034,26 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         return BulkImportSummary(added, failures.size, failures)
     }
 
+    /**
+     * Writes a Games-list entry for each picked Android app into the Android games home
+     * (files/android-games — no container involved, see AndroidGames). Blocking — call from a
+     * background dispatcher.
+     */
+    fun addAndroidGames(
+        apps: List<AndroidGames.InstalledApp>,
+        context: Context,
+    ): BulkImportSummary {
+        val container = manager.androidGamesContainer
+        var added = 0
+        val failures = mutableListOf<String>()
+        for (app in apps) {
+            if (AndroidGames.addToShortcuts(context, container, app) != null) added++
+            else failures += "${app.label}: couldn't write the shortcut"
+        }
+        refresh()
+        return BulkImportSummary(added, failures.size, failures)
+    }
+
     fun importShortcut(containerIndex: Int, uri: Uri, context: Context): ImportResult {
         val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) {
@@ -1191,6 +1215,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         if (lnk.exists()) lnk.delete()
         if (deleted) {
             disableOnScreen(context, shortcut)
+            if (AndroidGames.isHome(shortcut.container)) AndroidGames.deleteArt(shortcut)
             refresh()
         }
         return deleted

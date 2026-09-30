@@ -63,9 +63,19 @@ if [ -n "${BL_VK_DRIVER:-}" ]; then
   fi
   unset bl_icd_lib
 fi
-# The app's patched gamescope (tools/gamescope) takes realtime-priority Vulkan queues on this switch instead of on CAP_SYS_NICE, which proot never has.
+# The app's patched gamescope (tools/gamescope) asks for realtime-priority Vulkan queues on this switch instead of on CAP_SYS_NICE, which proot never has.
 # It falls back to normal priority where the driver refuses, and the runtime's own gamescope ignores the variable, so it is safe either way.
-export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-1}
+# On KGSL Turnip it changes nothing yet: the driver reports one submit-queue priority and creates every KGSL context with the same flags, so no priority reaches the GPU.
+# Where a driver does map it, the compositor's queue preempting the game's buys nothing on a device whose GPU is waiting on the CPU, so it is off by default.
+# BL_GAMESCOPE_REALTIME=1 in the entry's env vars turns it on. (From Droid-Deck/DroidDeck #84 and #85.)
+export GAMESCOPE_FORCE_VULKAN_REALTIME=${BL_GAMESCOPE_REALTIME:-0}
+# A sleep that starts no process.
+# Under proot every exec is a traced execve plus the loader's opens and maps, and the watchers below poll for the whole session: `sleep 1` in a loop was 60 execs a minute each.
+# read -t on a pipe nothing ever writes to waits in bash itself. (From Droid-Deck/DroidDeck #84.)
+nap() {
+  [ -n "${bl_nap_fd:-}" ] || exec {bl_nap_fd}<> <(:)
+  read -r -t "$1" -u "$bl_nap_fd" _ 2>/dev/null || :
+}
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
@@ -148,6 +158,27 @@ reap_orphans() {
     sleep 0.2
   done
 }
+# This script's own background loops and daemons: the fill-screen and resume watchers never end on their own, and the seeder and core-pinning loops run for an hour.
+# Left running when the script exits, they pass to gamescope's reaper and hold the compositor up on a black screen. (From Droid-Deck/DroidDeck #50.)
+# Each job's direct children go first, since killing a subshell leaves its pipeline running (the resume watcher's xprop -spy) and its current nap asleep.
+# The jobs are waited for, so what they leave behind has been handed to gamescope by the time reap_orphans looks.
+# One that is still up after two seconds is killed outright, so a job that ignores SIGTERM cannot hang the teardown here.
+stop_own_jobs() {
+  local jobs_left j alive
+  jobs_left=$(jobs -p)
+  [ -n "$jobs_left" ] || return 0
+  for j in $jobs_left; do pkill -TERM -P "$j" 2>/dev/null; done
+  kill $jobs_left 2>/dev/null
+  for _ in $(seq 1 20); do
+    alive=
+    for j in $jobs_left; do kill -0 "$j" 2>/dev/null && alive="$alive $j"; done
+    [ -n "$alive" ] || break
+    sleep 0.1
+  done
+  [ -n "$alive" ] && kill -9 $alive 2>/dev/null
+  wait $jobs_left 2>/dev/null
+  return 0
+}
 
 case $mode in
   desktop)
@@ -172,6 +203,8 @@ case $mode in
     esac
     ;;
   steam)
+    # Every way out of this branch, a signal from the teardown included, stops the loops started below.
+    trap stop_own_jobs EXIT
     step "checking the Steam client (first run downloads it, ~1-2 min with nothing on screen)"
     bannerlator-steam-install || exit $?
     step "Steam client ready"
@@ -223,7 +256,7 @@ case $mode in
           for _p in $(pgrep -f 'steamwebhelper|steamrtarm64/steam|gamescope' 2>/dev/null); do
             taskset -cp "$BL_CLIENT_CPUS" "$_p" >/dev/null 2>&1 || true
           done
-          sleep 5
+          nap 5
         done
       ) &
     fi
@@ -256,10 +289,10 @@ case $mode in
       (
         _bl_acf="$steam_root/steamapps/appmanifest_4427310.acf"
         for _ in $(seq 1 360); do
-          sleep 10
+          nap 10
           # StateFlags 4 = fully installed; a moment more for the client to finish its bookkeeping.
           if grep -q '"StateFlags"[[:space:]]*"4"' "$_bl_acf" 2>/dev/null; then
-            sleep 10
+            nap 10
             bannerlator-steam-compat "$steam_root" >/dev/null 2>&1 || true
             step "compatibility layer installed: restarting the Steam client once"
             : > "$HOME/.bl-restart-once"
@@ -279,10 +312,10 @@ case $mode in
           _bl_conn="$steam_root/logs/connection_log.txt"
           _bl_from=$(stat -c %s "$_bl_conn" 2>/dev/null || echo 0)
           for _ in $(seq 1 180); do
-            sleep 10
+            nap 10
             [ -f "$steam_root/steamapps/appmanifest_4427310.acf" ] && exit 0
             if tail -c +$((_bl_from + 1)) "$_bl_conn" 2>/dev/null | grep -q "RecvMsgClientLogOnResponse() : processing complete"; then
-              sleep 15
+              nap 15
               [ -f "$steam_root/steamapps/appmanifest_4427310.acf" ] && exit 0
               echo "== STEP $(date -u +%H:%M:%S) signed in: asking the client again for the ARM64 Proton"
               "$steam_root/steamrtarm64/steam" steam://install/4427310 >/dev/null 2>&1 || true
@@ -317,8 +350,9 @@ case $mode in
         last=${BL_FILL:-1}
         script=$$
         while kill -0 "$script" 2>/dev/null; do
-          sleep 1
-          want=$(cat "$BL_LIVE_DIR/fill" 2>/dev/null) || continue
+          nap 1
+          want=
+          { read -r want || [ -n "$want" ]; } < "$BL_LIVE_DIR/fill" 2>/dev/null || continue
           case $want in 0|1) ;; *) continue ;; esac
           [ "$want" = "$last" ] && continue
           if xprop -root -f GAMESCOPE_FORCE_WINDOWS_FULLSCREEN 32c -set GAMESCOPE_FORCE_WINDOWS_FULLSCREEN "$want" 2>/dev/null; then
@@ -328,10 +362,30 @@ case $mode in
         done
       ) &
     fi
+    # Resume from the Steam menu.
+    # The menu is an overlay that takes input, and a fullscreen game that loses input minimizes itself.
+    # gamescope only takes a window out of that state when the focused window changes, which the menu never does, so the game stayed minimized after Resume (a black screen with its small caption in the top-left corner).
+    # gamescope-3.16.29-p4 restores it itself, and this asks it again a moment after input comes back from the client (app 769) to anything else, which covers a game that minimizes late.
+    # It is harmless when nothing is minimized, and BL_RESTORE_ON_RESUME=0 turns it off. (From Droid-Deck/DroidDeck #89.)
+    if [ "${BL_RESTORE_ON_RESUME:-1}" = 1 ] && command -v xprop >/dev/null 2>&1; then
+      (
+        prev=
+        xprop -spy -root GAMESCOPE_FOCUSED_APP 2>/dev/null | while read -r line; do
+          app=${line##*= }
+          case $app in ''|*[!0-9]*) prev=; continue ;; esac
+          if [ "$prev" = 769 ] && [ "$app" != 769 ]; then
+            nap 1
+            xprop -root -f GAMESCOPE_RESTORE_FOCUS_WINDOW 32c -set GAMESCOPE_RESTORE_FOCUS_WINDOW 1 2>/dev/null \
+              && echo "== resume: asked gamescope to restore the game window (app $app)"
+          fi
+          prev=$app
+        done
+      ) &
+    fi
     (
       beat=0
       for _ in $(seq 1 720); do
-        sleep 5
+        nap 5
         bannerlator-seed-redists "$steam_root" >/dev/null 2>&1 || true
         beat=$((beat + 1))
         if [ "$((beat % 3))" -eq 0 ]; then
@@ -417,17 +471,18 @@ BUSCONF
       -cef-use-gl=angle -cef-use-angle=vulkan)
     # SteamOS runs its own session as `steam -gamepadui -steamos3 -steamdeck`, which is the shape Valve tunes Big Picture for.
     # The app sets BL_STEAMDECK from the Steam Deck mode switch in the entry's settings.
-    # Only -steamdeck is passed, never -steamos3.
-    # -steamos3 makes the client manage itself as SteamOS does, and it calls steamos-select-branch, which is not in this rootfs.
-    # Deck mode on its own still opts the install into the steamdeck_stable client branch, written to package/beta during the run (seen on device: publicbeta at start, steamdeck_stable after the client's own update restart).
+    # Deck mode passes both flags, as SteamOS does.
+    # -steamdeck puts the Quick Access Menu and the Deck settings pages on screen, and the Quick Access Menu's performance overlay controls stay greyed out without -steamos3.
+    # -steamos3 makes the client manage itself as SteamOS does, and the SteamOS helpers it calls (steamos-select-branch, steamos-update, the polkit helpers) are staged as no-op stubs under /usr/bin.
+    # Deck mode opts the install into the steamdeck_stable client branch, written to package/beta during the run (seen on device: publicbeta at start, steamdeck_stable after the client's own update restart).
     # That branch outlives the setting, and it then loses to the -clientbeta above on every launch.
     # The updater reads the forced branch, finds "installed version 0" against a package set installed from the other one, marks an update pending and exits 42 to apply it - which never happens, so the client restarts for ever.
-    # Each of those restarts tears the client down under a running game and takes Steam Input with it, which is a game left running with no controller.
+    # The loop below puts package/beta back before every start, which is what keeps that from happening.
     if [ "${BL_STEAMDECK:-0}" = 1 ]; then
-      steam_args+=(-steamdeck)
+      steam_args+=(-steamdeck -steamos3)
       # The Quick Access Menu's Scaling Filter lists NVIDIA Image Scaling only when it is told gamescope has it, and this gamescope does.
       export STEAM_GAMESCOPE_NIS_SUPPORTED=1
-      echo "== steam: Deck mode on (-steamdeck)"
+      echo "== steam: Deck mode on (-steamdeck -steamos3)"
     fi
     # What a killed session leaves behind is cleared here, while no client or web helper is running.
     # Android ends sessions without warning (backgrounding, the low-memory killer), and the next client then finds .crash and opens its update screen on the spinner.
@@ -449,8 +504,100 @@ BUSCONF
     # A session that keeps restarting looks to the user like a menu that opens and closes by itself, and the game it was launched over loses its controller each time.
     steam_updates=0
     steam_beta=$steam_root/package/beta
+    # When the session is being stopped, the app asks for a clean exit by writing $BL_LIVE_DIR/steam-stop, and the client is shut down with its own -shutdown switch instead of being killed with the session.
+    # A killed client leaves .crash behind and loses whatever it had not yet written, such as cloud sync state and the library it had just changed.
+    # steam-stop-ready tells the app a watcher is listening, so a session that never got this far is torn down at once instead of waiting on a request nobody reads.
+    # (From Droid-Deck/DroidDeck #68.)
+    rm -f "$HOME/.bl-stop-requested"
+    if [ -n "${BL_LIVE_DIR:-}" ] && [ -d "$BL_LIVE_DIR" ]; then
+      rm -f "$BL_LIVE_DIR/steam-stop"
+      (
+        script=$$
+        while kill -0 "$script" 2>/dev/null; do
+          if [ -e "$BL_LIVE_DIR/steam-stop" ]; then
+            rm -f "$BL_LIVE_DIR/steam-stop"
+            : > "$HOME/.bl-stop-requested"
+            echo "== steam: the app asked for a clean exit"
+            "$steam_root/steamrtarm64/steam" -shutdown >/dev/null 2>&1 || true
+            exit 0
+          fi
+          nap 0.5
+        done
+      ) &
+      stop_watcher=$!
+      : > "$BL_LIVE_DIR/steam-stop-ready"
+    fi
+    # Offline mode, from the entry's settings: the client starts in its own offline mode instead of signing in to Valve.
+    # Two keys in the account's block of loginusers.vdf decide it: WantsOfflineMode goes offline without trying, and SkipOfflineModeWarning stops the client asking first.
+    # The client reads them only while it starts and rewrites the file when it exits, so they are written before every start, the restarts below included.
+    # On, the account the client signs in as gets both set to 1, added when the block lacks them.
+    # That account is the one marked MostRecent "1" (older clients) or AutoLogin "1" (the client on the device, 2026-09-30), or every account when none is marked, as DroidDeck does.
+    # Off, any of those keys set to 1 in any account goes back to 0, so a session that was offline does not stay that way; nothing is added.
+    # Only those two keys are touched, and the file is replaced only when something changed.
+    # It needs a remembered sign-in from an earlier online session on this device; with none there is nothing to be offline as, and the client asks for a sign-in as usual. (From Droid-Deck/DroidDeck, OfflineMode.)
+    steam_offline_mode() {
+      local users=$steam_root/config/loginusers.vdf want=${BL_STEAM_OFFLINE:-0}
+      case $want in 0|1) ;; *) return 0 ;; esac
+      if [ ! -s "$users" ]; then
+        [ "$want" = 1 ] && echo "== steam: offline mode asked for, but no account has signed in on this device yet; signing in online"
+        return 0
+      fi
+      if [ "$want" = 1 ] && ! grep -q '"RememberPassword"[[:space:]]*"1"' "$users" 2>/dev/null; then
+        echo "== steam: offline mode asked for, but no account has a remembered sign-in; the client will ask to sign in"
+      fi
+      awk -v want="$want" '
+        NR == FNR {
+          if ($0 ~ /^[[:space:]]*\{[[:space:]]*$/) { depth++; if (depth == 2) cur = pending; next }
+          if ($0 ~ /^[[:space:]]*\}[[:space:]]*$/) { depth--; next }
+          if (depth == 1 && $0 ~ /^[[:space:]]*"[^"]*"[[:space:]]*$/) { pending = $0; next }
+          if (depth == 2 && $0 ~ /"(MostRecent|AutoLogin)"[[:space:]]*"1"/) { recent[cur] = 1; anyrecent = 1 }
+          next
+        }
+        FNR == 1 { depth = 0 }
+        {
+          line = $0
+          if (line ~ /^[[:space:]]*\{[[:space:]]*$/) {
+            depth++
+            if (depth == 2) { cur = pending; target = (want == 1) && (!anyrecent || (cur in recent)); sawwants = 0; sawskip = 0; indent = "" }
+            print line; next
+          }
+          if (line ~ /^[[:space:]]*\}[[:space:]]*$/) {
+            if (depth == 2 && target) {
+              if (!sawwants) { print indent "\"WantsOfflineMode\"\t\t\"1\""; changed = 1 }
+              if (!sawskip) { print indent "\"SkipOfflineModeWarning\"\t\t\"1\""; changed = 1 }
+            }
+            depth--
+            print line; next
+          }
+          if (depth == 1 && line ~ /^[[:space:]]*"[^"]*"[[:space:]]*$/) pending = line
+          if (depth == 2) {
+            if (indent == "" && match(line, /^[[:space:]]*"/)) indent = substr(line, 1, RLENGTH - 1)
+            if (line ~ /^[[:space:]]*"(WantsOfflineMode|SkipOfflineModeWarning)"[[:space:]]*"[01]"[[:space:]]*$/) {
+              if (line ~ /"WantsOfflineMode"/) sawwants = 1; else sawskip = 1
+              value = target ? "1" : (want == 1 ? "" : "0")
+              if (value != "" && line !~ ("\"" value "\"[[:space:]]*$")) {
+                sub(/"[01]"[[:space:]]*$/, "\"" value "\"", line)
+                changed = 1
+              }
+            }
+          }
+          print line
+        }
+        END { exit changed ? 0 : 3 }
+      ' "$users" "$users" > "$users.bl-offline"
+      case $? in
+        0)
+          mv -f "$users.bl-offline" "$users"
+          echo "== steam: offline mode $([ "$want" = 1 ] && echo on || echo off) written to loginusers.vdf"
+          ;;
+        *)
+          rm -f "$users.bl-offline"
+          ;;
+      esac
+    }
     while :; do
       rm -f "$HOME/.bl-restart-once"
+      steam_offline_mode
       # The branch on disk has to agree with the one forced on the command line, and it is checked before every start rather than once.
       # The client rewrites package/beta during its own run, and an rc=42 restart below would otherwise start it again on the branch it just wrote.
       # A disagreement is the restart loop described above, and it is silent apart from rc=42 in this log.
@@ -463,6 +610,11 @@ BUSCONF
       rc=$?
       echo "== steam exited rc=$rc"
       collect_steam_logs
+      # A clean exit the app asked for ends the session here, whatever the client's exit code or a pending restart says.
+      if [ -f "$HOME/.bl-stop-requested" ]; then
+        rm -f "$HOME/.bl-stop-requested" "$HOME/.bl-restart-once"
+        break
+      fi
       # 42 = the client updated itself; the marker = the session asked for one restart after the
       # compatibility layer landed. The URL arguments are not repeated: they were acted on.
       if [ -f "$HOME/.bl-restart-once" ]; then set --; continue; fi
@@ -474,7 +626,14 @@ BUSCONF
       fi
       set --
     done
+    # The client is down: the app stops waiting on it once the marker is gone.
+    if [ -n "${stop_watcher:-}" ]; then
+      rm -f "$BL_LIVE_DIR/steam-stop-ready"
+      kill "$stop_watcher" 2>/dev/null || true
+      wait "$stop_watcher" 2>/dev/null || true
+    fi
     kill ${netmanager:-} ${system_bus:-} 2>/dev/null || true
+    stop_own_jobs
     reap_orphans
     exit "$rc"
     ;;

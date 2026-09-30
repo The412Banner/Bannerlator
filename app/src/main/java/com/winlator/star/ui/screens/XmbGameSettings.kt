@@ -14,12 +14,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.HdrOn
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Label
@@ -52,6 +54,8 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.WrapperManager
 import com.winlator.star.core.DirectAudioSupport
+import com.winlator.star.core.SyncMode
+import com.winlator.star.core.SyncSupport
 import com.winlator.star.core.StringUtils
 import com.winlator.star.core.WineInfo
 import com.winlator.star.core.WinePath
@@ -155,6 +159,8 @@ private var xmbBundledDriverVersionsLoading = false
 // Same once-per-process pattern for the variant "Auto" resolves to (native renderer probe) — the
 // "Auto (by GPU: …)" label of the Wayland game driver row; WaylandGameDriver caches the answer.
 private var xmbWaylandAutoLoading = false
+// Layers whose Sync capabilities are being probed (SyncSupport caches the answer).
+private val xmbSyncProbing = HashSet<String>()
 
 private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<XmbRow> {
     val s = p.shortcut
@@ -186,6 +192,44 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         if (com.winlator.star.FeatureFlags.EPIC_OVERLAY_ENABLED) {
             rows += XmbRow.Toggle("epicOverlay", "Epic friends overlay", Icons.Filled.Layers, p.ex("epicOverlay", "0") == "1",
                 subtitle = "Experimental — Shift+F3 in game", disabledReason = if (eos) null else "Needs EOS sign-in") { xmb.set(p, "epicOverlay", if (it) "1" else "0") }
+        }
+    }
+
+    // Sync (esync / ntsync / fsync / wineserver): same extra and rules as the pop-up editor —
+    // "Container default" clears the per-game override; greyed against the container's layer. The
+    // layer probe reads ntdll.so, so a first visit starts it off-main and refreshes when it lands.
+    if (!com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(s)) {
+        val syncLayer = c.wineVersion ?: ""
+        val syncCaps = SyncSupport.peek(syncLayer)
+        if (syncCaps == null && xmbSyncProbing.add(syncLayer)) {
+            xmb.scope.launch {
+                withContext(Dispatchers.IO) { SyncSupport.capsFor(p.context, null, syncLayer) }
+                xmbSyncProbing.remove(syncLayer)
+                xmb.refresh()
+            }
+        }
+        val cStored = SyncSupport.storedMode(c.getExtra(SyncMode.EXTRA, ""), c.envVars)
+        val cEff = syncCaps?.resolve(cStored) ?: cStored ?: SyncMode.ESYNC
+        val sEff = SyncSupport.storedMode(p.ex(SyncMode.EXTRA, ""), p.ex("envVars", ""))
+            ?.let { syncCaps?.resolve(it) ?: it }
+        val syncLabels = listOf("Container default ($cEff)") + SyncMode.ALL
+        val overriding = sEff != null && sEff != cEff
+        val greyed = com.winlator.star.ui.components.syncGreyedReasons(syncCaps, syncLayer).joinToString("; ")
+        rows += XmbRow.Header("hWine", "Wine")
+        rows += XmbRow.Choice("syncMode", "Sync", Icons.Filled.Sync, syncLabels,
+            if (overriding) sEff!! else syncLabels[0],
+            subtitle = (if (overriding) "$sEff for this game only (container: $cEff)." else "Following the container: $cEff.") +
+                "  Greyed: $greyed.",
+            disabledOptions = SyncMode.ALL.filter { it == SyncMode.FSYNC || syncCaps?.isAvailable(it) == false }.toSet()) { v ->
+            // The sync variables leave this game's env string for good (the selector owns them now).
+            val env = p.ex("envVars", "")
+            val stripped = SyncSupport.stripSyncVars(env)
+            if (stripped != env) s.putExtra("envVars", stripped.ifEmpty { null })
+            xmb.set(p, SyncMode.EXTRA, (if (v == syncLabels[0]) null else v)?.takeIf { it != cEff })
+        }
+        // The pop-up editors' "?" (help_sync_mode), as its own column.
+        rows += XmbRow.Link("syncHelp", "What is Sync?", Icons.Filled.HelpOutline, subtitle = "esync, ntsync, fsync and wineserver explained") {
+            xmbHelpMenu(p.context, xmb.scope, "Sync", R.string.help_sync_mode)
         }
     }
 

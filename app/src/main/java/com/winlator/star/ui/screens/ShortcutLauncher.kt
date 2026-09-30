@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.WinePath
 import com.winlator.star.linux.LinuxShortcuts
@@ -214,7 +215,24 @@ class ShortcutLauncher internal constructor(
     // launchShortcutNow (the launchMode extra is honored by the launch pipeline; "Raw" is a plain launch).
     // A remembered RealSteam pick still goes through the SteamLite pre-flight (it is the launch's
     // session check, not part of the method choice).
+    // An Android game whose app has since been uninstalled: say so and offer to drop the entry.
+    internal var androidMissingFor by mutableStateOf<Shortcut?>(null)
+
+    // Android games open the normal Android way, as their own task — no container, no session.
+    // A start counts as played, so they reach "Continue playing" like any other game.
+    private fun launchAndroidGame(shortcut: Shortcut) {
+        when (val r = AndroidGames.launch(context, shortcut)) {
+            AndroidGames.LaunchResult.STARTED -> recordLastPlayed(shortcut)
+            AndroidGames.LaunchResult.NOT_INSTALLED -> androidMissingFor = shortcut
+            else -> AndroidGames.failureMessage(shortcut, r)?.let {
+                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     fun requestLaunch(shortcut: Shortcut) {
+        // Nothing about the launch-method popup (SteamLite/Goldberg/Raw) applies to an Android app.
+        if (AndroidGames.isAndroidEntry(shortcut)) { launchAndroidGame(shortcut); return }
         // EA-published Steam titles have exactly one working path: the genuine client (SteamLite) via
         // EA Desktop's launcher chain. Skip the method popup, make sure the prefix is set up (wine-mono +
         // EA Desktop, one-time), and refuse titles that ship EA Javelin anti-cheat (kernel driver).
@@ -275,11 +293,34 @@ fun rememberShortcutLauncher(): ShortcutLauncher {
     return remember(context) { ShortcutLauncher(context, context as Activity, eaScope) }
 }
 
-/** Every dialog the launch flow can raise. Place it where the launching screen draws its own dialogs. */
+/**
+ * Every dialog the launch flow can raise. Place it where the launching screen draws its own dialogs.
+ * [onRemove] drops an entry from the Games list (the "isn't installed anymore" dialog's Remove).
+ */
 @Composable
-fun ShortcutLaunchDialogs(launcher: ShortcutLauncher) {
+fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Boolean) {
     val context = LocalContext.current
     val activity = context as Activity
+
+    launcher.androidMissingFor?.let { s ->
+        OutlinedAlertDialog(
+            onDismissRequest = { launcher.androidMissingFor = null },
+            title = { Text("${s.name} isn't installed anymore") },
+            text = { Text("The app is no longer on this phone. Remove it from your Games list?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    launcher.androidMissingFor = null
+                    val ok = onRemove(s)
+                    Toast.makeText(
+                        context,
+                        if (ok) "Shortcut removed." else "Failed to remove shortcut.",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { launcher.androidMissingFor = null }) { Text("Keep") } },
+        )
+    }
 
     // ── Steam launch-method popup (M3): SteamLite (real Steam / VAC) vs Goldberg (offline) ──────────
     launcher.eaUnsupportedFor?.let { s ->

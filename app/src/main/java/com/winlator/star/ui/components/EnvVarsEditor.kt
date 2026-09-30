@@ -103,7 +103,8 @@ internal object KnownEnvVars {
         KnownEnvVar("ZINK_DEBUG", EnvVarType.SELECT_MULTIPLE, listOf("nir", "spirv", "tgsi", "validation", "sync", "compact", "noreorder")),
         KnownEnvVar("MESA_SHADER_CACHE_DISABLE", EnvVarType.CHECKBOX, listOf("false", "true")),
         KnownEnvVar("mesa_glthread", EnvVarType.CHECKBOX, listOf("false", "true")),
-        KnownEnvVar("WINEESYNC", EnvVarType.CHECKBOX, listOf("0", "1")),
+        // WINEESYNC / WINEFSYNC / WINENTSYNC are not listed: the "Sync" setting on the General tab owns
+        // them (core.SyncSupport) and overwrites any typed value at launch.
         KnownEnvVar("FD_DEV_FEATURES", EnvVarType.SELECT_MULTIPLE, listOf("enable_tp_ubwc_flag_hint=1", "storage_8bit=1")),
         KnownEnvVar("TU_DEBUG", EnvVarType.SELECT_MULTIPLE, listOf(
             "forcecb", "nocb", "startup", "deck_emu", "nir", "nobin", "sysmem", "gmem", "forcebin", "layout",
@@ -141,7 +142,6 @@ internal object KnownEnvVars {
             "force_bindless_texel_buffer")),
         KnownEnvVar("VKD3D_DEBUG", EnvVarType.SELECT, listOf("none", "err", "fixme", "warn", "trace")),
         // Wine tuning
-        KnownEnvVar("WINEFSYNC", EnvVarType.CHECKBOX, listOf("0", "1")),
         // Our own NtYieldExecution gate (proton-wine fcbe8302). Off by default in the layer; this
         // is the only way to discover it from inside the app.
         KnownEnvVar("WINE_FAST_YIELD", EnvVarType.CHECKBOX, listOf("0", "1")),

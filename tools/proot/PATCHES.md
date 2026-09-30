@@ -53,6 +53,40 @@ DroidDeck's.
   with no children or ptracees no longer walks every tracee; the per-stop memory collector is
   emptied instead of freed and reallocated.
 
+Ported from Droid-Deck/DroidDeck (org PRs #81 and #84), numbered as there (DroidDeck has no
+0010). They are DroidDeck's own, measured there on an x86_64 host build and an SD 8 Gen 2 guest;
+0011 is byte-identical to DroidDeck's, 0012 and 0013 were re-taken on our tree, said in the patch
+header.
+
+- `0011-kompat-utsname-only.patch` - `--kernel-release` loads kompat, whose filter traps `futex`,
+  `fcntl`, `epoll_pwait`, `pselect6`, `pipe2`, `eventfd2`, `socket` and more, and which strips
+  `AT_SYSINFO_EHDR` on every `execve`, so glibc runs without the vDSO. When the virtual release is
+  not older than the real kernel and the hwcap is left alone, every one of those handlers is a
+  no-op: kompat then traces only `uname`, `sethostname` and `setdomainname` and leaves the auxv as
+  the kernel wrote it. The app passes no `-k` today, so this changes nothing until it does; it is
+  carried to keep the set in step with DroidDeck.
+- `0012-fake_id0-identity-only.patch` - `-i uid:gid` (the app passes its own uid for Xwayland's
+  setgid/setuid before it runs xkbcomp) loads fake_id0, whose filter traps every
+  `fstat`/`newfstatat`/`stat`, every `sendmsg` (all Wayland, X11, Chromium and PulseAudio traffic),
+  `socket`, `getsockopt`, the `get*id` family and the chown/chmod family. When the ids given are
+  the ones proot really has and are not 0, every one of those handlers is a no-op; fake_id0 then
+  traces only the `set*id` family and the xattr permission fixups, and leaves set-user-ID bits
+  alone on `execve` (Android mounts the app's data `nosuid`, so the kernel would not honour them
+  either). DroidDeck measured `fstat` 41.7 -> 1.3 us and `sendmsg` 18.0 -> 2.5 us. **Adapted:**
+  our fake_id0 `Config` already ends with `caps_active`/`keep_caps` (so the new field goes after
+  them), and its list also traces `prctl`, which only mirrors `PR_SET_KEEPCAPS` for `caps_active`;
+  that is never set in this mode, so `prctl` stays out of the short list.
+- `0013-seccomp-ioctl-by-request-and-kernel-exit-stops.patch` - every `ioctl` stopped on entry and
+  exit, which is every GPU submit and wait. The filter now traces only the requests enter.c and
+  exit.c act on and allows the rest at once, with the ioctl block emitted first. The `faccessat2`
+  exit stop (glibc's ENOSYS fallback on kernels before 5.8) and the `statx` one (emulation on
+  kernels before 4.11) are dropped when the running kernel is newer. DroidDeck measured `ioctl`
+  31.6 -> 0.5 us and `stat`/`statx`/`faccessat2` about 44 -> 28 us. **Adapted:** our enter.c also
+  answers `SIOCGIFINDEX` itself (Android denies it; bubblewrap's loopback setup needs it), so that
+  request is traced too, next to `TCSETSF`, the four termios2 requests and `FICLONE`. And since the
+  `statx` exit stop is also where fake_id0 (as root) and link2symlink get `STATX_SYSCALL`, both now
+  list `statx` themselves, so dropping it from the core list does not drop it for them.
+
 ## Checking a change to the set
 
 The workflow dry-runs then applies each patch with GNU `patch -p1 -F0 --forward`, in order, into

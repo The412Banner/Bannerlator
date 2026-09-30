@@ -91,6 +91,13 @@ object ShortcutExporter {
         put(effective, "numControllers", shortcut.getExtra("numControllers"))
         put(effective, "controlsProfile", shortcut.getExtra("controlsProfile"))
         put(effective, "autoCloseOnExit", shortcut.getExtra("autoCloseOnExit"))
+        // Sync (esync / ntsync / wineserver): effective = this game's override, else the container's
+        // choice (each read from its extra, else from its pre-selector WINEESYNC / WINENTSYNC env).
+        // Absent when neither ever chose — the importer then keeps its own layer default.
+        put(effective, com.winlator.star.core.SyncMode.EXTRA,
+            com.winlator.star.core.SyncSupport.requestedMode(
+                container?.getExtra(com.winlator.star.core.SyncMode.EXTRA), container?.getEnvVars(),
+                shortcut.getExtra(com.winlator.star.core.SyncMode.EXTRA), shortcut.getExtra("envVars")) ?: "")
 
         // Community-config coverage pass (2026-07). Container-level settings resolve EFFECTIVE exactly
         // as dxwrapperConfig/screenSize above do — shortcut override via orDefault, else the container

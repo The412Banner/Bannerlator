@@ -1230,6 +1230,11 @@ EXPORT int close(int fd) {
   return my_close(fd);
 }
 
+// Longest wait between ring polls in read(), poll() and select(), in milliseconds.
+// The backoff starts at 1 ms and doubles up to this cap, so a press reaches the reader within about 2 ms instead of up to 16 ms.
+// The cost is more wakeups while a reader blocks on an idle fake pad (about 500 a second instead of about 60).
+static constexpr int kMaxRingWaitMs = 2;
+
 EXPORT ssize_t read(int fd, void *buf, size_t count) {
   std::unique_lock<std::recursive_mutex> guard(controller_mutex());
   auto controller = controller_map().find(fd);
@@ -1322,7 +1327,7 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
     int result = nanosleep(&sleep_time, nullptr);
     guard.lock();
     if (result < 0) return -1;
-    if (backoff_ns < 16 * 1000 * 1000) backoff_ns *= 2;
+    if (backoff_ns < kMaxRingWaitMs * 1000 * 1000) backoff_ns *= 2;
   }
 }
 
@@ -1468,7 +1473,7 @@ static int poll_fake(struct pollfd *fds, nfds_t nfds, int timeout,
     if (deadline_ms >= 0 && monotonic_ms() >= deadline_ms)
       return 0;
 
-    if (backoff_ms < 16)
+    if (backoff_ms < kMaxRingWaitMs)
       backoff_ms *= 2;
   }
 }
@@ -1643,7 +1648,7 @@ EXPORT int select(int nfds, fd_set *readfds, fd_set *writefds,
     if (deadline_ms >= 0 && monotonic_ms() >= deadline_ms)
       return 0;
 
-    if (backoff_ms < 16)
+    if (backoff_ms < kMaxRingWaitMs)
       backoff_ms *= 2;
   }
 }

@@ -98,6 +98,78 @@ public class LinuxProgramLauncherComponent extends EnvironmentComponent {
         }
     }
 
+    /** How long the session script gets to pick up a clean-exit request before the session is torn down without it. */
+    private static final long STEAM_PICKUP_MS = 1500L;
+    /** How long the Steam client then gets to shut itself down before the session is torn down anyway. */
+    private static final long STEAM_EXIT_MS = 10_000L;
+
+    /**
+     * True when the session script is listening for a clean-exit request: its watcher is armed and proot is still running.
+     * Cheap, so it can be asked on the main thread.
+     */
+    public boolean steamStopArmed(File liveDir) {
+        int prootPid;
+        synchronized (lock) {
+            prootPid = pid;
+        }
+        return steamStopArmed(prootPid, liveDir);
+    }
+
+    private static boolean steamStopArmed(int prootPid, File liveDir) {
+        return prootPid > 1 && new File("/proc/" + prootPid).exists()
+                && new File(liveDir, "steam-stop-ready").exists();
+    }
+
+    /**
+     * Asks the Steam client to shut down by itself before {@link #stop} takes the session down, and waits for it.
+     * A killed client leaves .crash behind for the next start and loses whatever it had not yet written.
+     * The session script runs the client's own -shutdown on the request and removes steam-stop-ready once the client has exited.
+     * Blocks for up to {@link #STEAM_PICKUP_MS} plus {@link #STEAM_EXIT_MS}, so it must never run on the main thread.
+     * It returns at once when nothing is listening, and {@link #stop} still kills whatever is left afterwards.
+     * (From Droid-Deck/DroidDeck #68.)
+     */
+    public void askSteamToExit(File liveDir) {
+        int prootPid;
+        synchronized (lock) {
+            prootPid = pid;
+        }
+        if (!steamStopArmed(prootPid, liveDir)) return;
+        File ready = new File(liveDir, "steam-stop-ready");
+        File request = new File(liveDir, "steam-stop");
+        try {
+            new java.io.FileOutputStream(request).close();
+        } catch (IOException e) {
+            Log.w(TAG, "could not ask the Steam client to exit", e);
+            return;
+        }
+        long started = System.currentTimeMillis();
+        // The watcher removes the request when it acts on it; one still there after the pickup window was never read.
+        if (!waitFor(() -> !request.exists() || !ready.exists() || !new File("/proc/" + prootPid).exists(), STEAM_PICKUP_MS)) {
+            //noinspection ResultOfMethodCallIgnored
+            request.delete();
+            Log.w(TAG, "the session did not pick up the request to stop the Steam client; tearing it down");
+            return;
+        }
+        boolean exited = waitFor(() -> !ready.exists() || !new File("/proc/" + prootPid).exists(), STEAM_EXIT_MS);
+        Log.i(TAG, "Steam client " + (exited ? "exited" : "did not exit") + " after "
+                + (System.currentTimeMillis() - started) + " ms");
+    }
+
+    /** True once {@code done} holds, false if it still does not after {@code timeout}. */
+    private static boolean waitFor(java.util.function.BooleanSupplier done, long timeout) {
+        long deadline = System.currentTimeMillis() + timeout;
+        while (System.currentTimeMillis() < deadline) {
+            if (done.getAsBoolean()) return true;
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return done.getAsBoolean();
+    }
+
     /**
      * Every process of ours still running a program out of the Linux runtime once proot is gone.
      * The sweep above reaches what proot still traced when the session ended; a tracee it had

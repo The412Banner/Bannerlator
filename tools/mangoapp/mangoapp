@@ -1,4 +1,22 @@
 #!/bin/sh
 # gamescope --mangoapp runs `mangoapp` from PATH, and this wrapper is that command.
 # It runs Valve's build with the libraries the runtime lacks (fmt 10, spdlog 1.13, glfw, libtracefs, libtraceevent) first on the library path.
+# mangoapp opens its window through GLFW's X11 API, and it has to land on gamescope's X server.
+# GLFW 3.4 treats XDG_SESSION_TYPE=wayland with a WAYLAND_DISPLAY as Wayland-only, and with it unset libwayland falls back to wayland-0.
+# wayland-0 is the app's own compositor, which shares XDG_RUNTIME_DIR with the session, so both of those fail.
+# x11 makes GLFW use gamescope's X server. (From Droid-Deck/DroidDeck #55.)
+export XDG_SESSION_TYPE=x11
+# gamescope's reaper restarts mangoapp the moment it exits, with no backoff.
+# One that dies at start (a stale session preload without the System V message queue, a driver it crashes on) was started about once a second for the whole session.
+# Each of those starts is a full exec under proot, and the Steam menu itself lagged.
+# More than 5 starts in 60 s leaves the overlay off for the session.
+# The wrapper then waits instead of exiting, so the reaper has nothing to restart until the session ends. (From Droid-Deck/DroidDeck #81.)
+starts=/tmp/bannerlator-mangoapp-starts
+now=$(date +%s)
+recent=$(awk -v now="$now" '$1 > now - 60' "$starts" 2>/dev/null)
+printf '%s\n%s\n' "$recent" "$now" | sed '/^$/d' > "$starts"
+if [ "$(wc -l < "$starts")" -gt 5 ]; then
+  echo "mangoapp: started $(wc -l < "$starts") times in 60 s; the performance overlay stays off for this session" >&2
+  exec sleep infinity
+fi
 LD_LIBRARY_PATH=/usr/local/lib/mangoapp${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} exec /usr/local/lib/mangoapp/mangoapp "$@"

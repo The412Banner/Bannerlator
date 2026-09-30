@@ -127,6 +127,27 @@ bl_game_options() {
 }
 """
 
+# The session puts the client's own libraries (steamrtarm64 and its panorama/) ahead of everything for the client, and a game inherits that.
+# Wine then resolved gnutls, SDL, FFmpeg and the rest against the client's private copies instead of the rootfs it was built for.
+# Inside Steam's runtime container that path never reaches Proton either, so the game is started without it.
+# BL_KEEP_CLIENT_LIBPATH=1 leaves the path as the client passed it. (From Droid-Deck/DroidDeck #84, after WinNative's winnative-proton-launch.)
+BL_LIBPATH_SETUP = """
+bl_libpath() {
+  [ "${BL_KEEP_CLIENT_LIBPATH:-0}" = 1 ] && return 0
+  [ -n "${LD_LIBRARY_PATH:-}" ] || return 0
+  local kept= dir old_ifs=$IFS
+  IFS=:
+  for dir in $LD_LIBRARY_PATH; do
+    case $dir in
+      "" | */steamrtarm64 | */steamrtarm64/*) ;;
+      *) kept=${kept:+$kept:}$dir ;;
+    esac
+  done
+  IFS=$old_ifs
+  if [ -n "$kept" ]; then export LD_LIBRARY_PATH="$kept"; else unset LD_LIBRARY_PATH; fi
+}
+"""
+
 BL_DIRECTAUDIO_SETUP = """
 bl_directaudio() {
   base=$1
@@ -266,6 +287,7 @@ for name in %s; do
     bl_directaudio "$depot"
     bl_game_cpus
     bl_game_options "$@"
+    bl_libpath
     exec ${BL_TASKSET:-} "$depot/proton" "$verb" "$@" "${BL_EXTRA_ARGS[@]}"
   fi
 done
@@ -277,7 +299,7 @@ exit 1
 # silently does something else.
 LAUNCHER_SH = LAUNCHER_SH.replace(
     "verb=$1; shift", "verb=$1; shift\n" + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP + BL_GAME_OPTIONS_SETUP
-    + BL_COMPONENTS_SETUP, 1)
+    + BL_COMPONENTS_SETUP + BL_LIBPATH_SETUP, 1)
 
 # A third-party Proton dropped into compatibilitytools.d - GE-Proton, proton-cachyos, anything of
 # that shape - is adopted rather than used as shipped, for the same two reasons Valve's ARM64 depot
@@ -313,6 +335,7 @@ bl_components "$here"
 bl_directaudio "$here"
 bl_game_cpus
 bl_game_options "$@"
+bl_libpath
 # Proton takes its base directory from dirname(sys.argv[0]) without resolving it, so it has to be
 # started from its own tree.
 exec ${BL_TASKSET:-} "$here/%s" "$verb" "$@" "${BL_EXTRA_ARGS[@]}"
@@ -403,6 +426,28 @@ def serialize(tokens):
     return "\n".join(out) + "\n"
 
 
+def write_changed(path, text, mode=None):
+    """Writes `text` to `path` only when it differs, through a rename so a reader never sees half a file.
+    The session runs this script every 15 s for as long as the client does, and rewriting files that had not changed cost writes each time.
+    config.vdf is the client's own, and it may be writing it at that moment.
+    Returns whether anything was written. (From Droid-Deck/DroidDeck #84.)"""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            same = f.read() == text
+    except OSError:
+        same = False
+    if not same:
+        tmp = path + ".bannerlator"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        if mode is not None:
+            os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    elif mode is not None and (os.stat(path).st_mode & 0o7777) != mode:
+        os.chmod(path, mode)
+    return not same
+
+
 def first_key(path, section):
     """The single key naming a block inside `section`, or None. Used to keep a third-party tool's
     own internal name, so a mapping the user already made against it keeps working."""
@@ -476,14 +521,10 @@ def adopt_extras(tools):
             body = (EXTRA_WRAPPER_SH % entry_point).replace(
                     'here=$(dirname "$0")',
                     'here=$(dirname "$0")\n' + BL_DIRECTAUDIO_SETUP + BL_GAME_CPUS_SETUP + BL_GAME_OPTIONS_SETUP
-                    + BL_COMPONENTS_SETUP, 1)
-            with open(wrapper, "w", encoding="utf-8") as f:
-                f.write(body)
-            os.chmod(wrapper, 0o755)
-            with open(manifest, "w", encoding="utf-8") as f:
-                f.write(EXTRA_MANIFEST_VDF)
-            with open(compat_vdf, "w", encoding="utf-8") as f:
-                f.write(EXTRA_COMPAT_TOOL_VDF % (name, entry))
+                    + BL_COMPONENTS_SETUP + BL_LIBPATH_SETUP, 1)
+            write_changed(wrapper, body, 0o755)
+            write_changed(manifest, EXTRA_MANIFEST_VDF)
+            write_changed(compat_vdf, EXTRA_COMPAT_TOOL_VDF % (name, entry))
         except OSError as e:
             print("bannerlator-steam-compat: could not adopt %s (%s)" % (entry, e))
             continue
@@ -560,7 +601,8 @@ def register_default(config_path, apps=(), name=None, protect=()):
     # Tool names the user may deliberately have chosen (see adopt_extras); never repointed.
     keep = {n.lower() for n in protect}
     with open(config_path, encoding="utf-8", errors="replace") as f:
-        tokens = tokenize(f.read())
+        original = f.read()
+    tokens = tokenize(original)
     steam = find_block(tokens, ["InstallConfigStore", "Software", "Valve", "Steam"])
     if steam is None:
         return
@@ -587,10 +629,10 @@ def register_default(config_path, apps=(), name=None, protect=()):
                 continue
             tokens[mapping + 1:mapping + 1] = [
                 '"%s"' % app, "{", '"name"', '"%s"' % tool, '"config"', '""', '"priority"', '"250"', "}"]
-    tmp = config_path + ".bannerlator"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(serialize(tokens))
-    os.replace(tmp, config_path)
+    # Nothing to change is the usual case on the session's beat, and then the client's own file is left alone.
+    text = serialize(tokens)
+    if text != serialize(tokenize(original)):
+        write_changed(config_path, text)
 
 
 def find_source(steam_root):
@@ -608,18 +650,14 @@ def build_tool(tool_dir):
     """Our own manifests and the launcher. The depot is found at launch time, not here."""
     if os.path.islink(tool_dir):
         os.unlink(tool_dir)
-    elif os.path.isdir(tool_dir):
+    elif os.path.isdir(tool_dir) and set(os.listdir(tool_dir)) - set(OWN_FILES):
         # Earlier versions mirrored the depot in here as symlinks; start clean.
+        # A directory holding only our own files is kept, and each file is rewritten only when it changed.
         shutil.rmtree(tool_dir)
-    os.makedirs(tool_dir)
-    with open(os.path.join(tool_dir, "toolmanifest.vdf"), "w", encoding="utf-8") as f:
-        f.write(TOOL_MANIFEST_VDF)
-    with open(os.path.join(tool_dir, "compatibilitytool.vdf"), "w", encoding="utf-8") as f:
-        f.write(COMPAT_TOOL_VDF % TOOL)
-    launcher = os.path.join(tool_dir, LAUNCHER)
-    with open(launcher, "w", encoding="utf-8") as f:
-        f.write(LAUNCHER_SH)
-    os.chmod(launcher, 0o755)
+    os.makedirs(tool_dir, exist_ok=True)
+    write_changed(os.path.join(tool_dir, "toolmanifest.vdf"), TOOL_MANIFEST_VDF)
+    write_changed(os.path.join(tool_dir, "compatibilitytool.vdf"), COMPAT_TOOL_VDF % TOOL)
+    write_changed(os.path.join(tool_dir, LAUNCHER), LAUNCHER_SH, 0o755)
 
 
 def main():

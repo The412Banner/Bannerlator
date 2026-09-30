@@ -1185,6 +1185,8 @@ public class InputControlsView extends View {
         }
 
         if (!editMode && profile != null && showTouchscreenControls) {
+            // On-screen buttons and sticks get each touch sample as it arrives for the rest of this gesture, not batched to vsync.
+            if (actionMasked == MotionEvent.ACTION_DOWN) requestUnbufferedDispatch(event);
             int actionIndex = event.getActionIndex();
             int pointerId = event.getPointerId(actionIndex);
             boolean handled = false;

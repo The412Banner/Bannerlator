@@ -958,9 +958,12 @@ private fun GameOptionsWallSheet(
     onRemoveCover: () -> Unit,
 ) {
     val rows = buildList {
-        add(WallSheetRow(Icons.Filled.Edit, "Edit shortcut", onEditShortcut))
-        add(WallSheetRow(Icons.Filled.Tune, "Container settings", onContainerSettings))
-        add(WallSheetRow(Icons.Filled.Public, "Community configs", onCommunityConfigs))
+        // An Android game has no Wine settings, container or community configs.
+        if (!com.winlator.star.androidgames.AndroidGames.isAndroidEntry(shortcut)) {
+            add(WallSheetRow(Icons.Filled.Edit, "Edit shortcut", onEditShortcut))
+            add(WallSheetRow(Icons.Filled.Tune, "Container settings", onContainerSettings))
+            add(WallSheetRow(Icons.Filled.Public, "Community configs", onCommunityConfigs))
+        }
         if (!shortcut.customCoverArtPath.isNullOrEmpty()) {
             add(WallSheetRow(Icons.Filled.Image, "Remove cover art", onRemoveCover))
         }

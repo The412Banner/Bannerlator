@@ -430,7 +430,7 @@ internal fun DeckHome(
     }
 
     ShortcutActionDialogs(actions)
-    ShortcutLaunchDialogs(launcher)
+    ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
 }
 
 @Composable

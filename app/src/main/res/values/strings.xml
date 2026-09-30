@@ -508,6 +508,16 @@
         <b>Wine version</b><br /><br />
         The compatibility layer that runs the Windows game — it translates Windows into Android without a real Windows install. <i><b>Proton</b></i> is a gaming-tuned build of Wine. Newer builds fix more games; leave it on the default unless a game needs a specific one.
     ]]></string>
+    <string name="help_sync_mode"><![CDATA[
+        <b>Sync</b><br /><br />
+        Windows games constantly tell their threads to wait for each other (“wait until this is loaded”, “signal when the frame is ready”). Wine has several ways to handle that; the faster ones mean less stutter and CPU overhead. This setting picks which one the game uses. Options the selected compatibility layer can\'t do are greyed out.<br /><br />
+        <b>esync</b> — the default. Wine handles most waits with Linux event files instead of asking its background server each time. Fast and well tested; what every layer has used so far.<br /><br />
+        <b>ntsync</b> — copies how Windows itself does it, so it is the most accurate and also fast. Uses GameNative\'s userspace ntsync (no kernel support needed). New: try it per game; only on the v9 Proton 11 layers. If it can\'t start, the game falls back to esync automatically.<br /><br />
+        <b>fsync</b> — a faster method used on Linux PCs (Steam Deck), built on a Linux feature Android blocks for apps. Always greyed out here; it cannot work on Android.<br /><br />
+        <b>wineserver</b> — no shortcut at all: every wait goes through Wine\'s background server. Slowest and heaviest on the CPU, but the most compatible — use it when a game hangs, stutters or misbehaves on the others.<br /><br />
+        Game settings follow the container unless you pick something else for that game.<br /><br />
+        <i>Sets at launch: esync → WINEESYNC=1 · ntsync → WINENTSYNC=1 + WINEESYNC=1 · wineserver → WINEESYNC=0. Any of these typed into Environment Variables is replaced by this setting.</i>
+    ]]></string>
     <string name="help_graphics_driver"><![CDATA[
         <b>Graphics driver (wrapper)</b><br /><br />
         The Vulkan driver the container uses to talk to your GPU. Different wrappers suit different GPUs — <i><b>Adreno</b></i> (Snapdragon) has the best support; <i><b>Mali</b></i> phones may need a specific wrapper to handle compressed textures. Stick with the default unless you\'re troubleshooting.
@@ -2252,21 +2262,22 @@ better than Wine’s, or the reverse. The editor detects DLLs in the game folder
 per file, which is easier than typing this by hand.
         ]]></string>
     <string name="env_var_help__wineesync"><![CDATA[
-        Eventfd-based thread synchronisation. Windows programs wait on each other constantly; esync makes
-those waits far cheaper than Wine’s default server round-trip.<br /><br />
-<b>0</b> : Off, use the normal Wine server path.<br />
-<b>1</b> : On. Often a large frame-rate gain in threaded games.<br /><br />
-<b>When to change:</b> on by default in most of our layers and usually worth having. Turn it off if
-a game deadlocks or hangs on a loading screen — esync is known to deadlock some titles.
+        Eventfd-based thread synchronisation (esync). Windows programs wait on each other constantly; esync makes
+those waits far cheaper than Wine’s server round-trip.<br /><br />
+<b>Set by the Sync setting:</b> the container’s General tab (under the compatibility layer) and each
+game’s settings pick esync, ntsync or wineserver, and write this variable at launch — a value typed
+here is replaced. esync = WINEESYNC=1, wineserver = WINEESYNC=0.
         ]]></string>
     <string name="env_var_help__winefsync"><![CDATA[
-        Futex-based synchronisation. Same purpose as esync but using a newer kernel mechanism, generally
-faster where the kernel supports it.<br /><br />
-<b>0</b> : Off.<br />
-<b>1</b> : On.<br /><br />
-<b>When to change:</b> needs kernel support that many Android devices lack, and it is silently
-ignored where unavailable. If enabling it changes nothing, your kernel does not have it — esync is
-the fallback.
+        Futex-based synchronisation (fsync), used on Linux PCs such as the Steam Deck.<br /><br />
+<b>Does nothing here:</b> it relies on a Linux feature Android blocks for apps, and our layers are
+built without it, so this variable is removed at launch. Pick esync, ntsync or wineserver with the
+Sync setting instead.
+        ]]></string>
+    <string name="env_var_help__winentsync"><![CDATA[
+        Windows-style thread synchronisation (ntsync) — the most accurate, and fast.<br /><br />
+<b>Set by the Sync setting:</b> choosing ntsync there writes WINENTSYNC=1 (plus WINEESYNC=1 as the
+fallback) at launch; a value typed here is replaced. Only the v9 Proton 11 layers have it.
         ]]></string>
     <string name="env_var_help__winevmemmaxsize"><![CDATA[
         Caps the video memory Wine reports to the game, in megabytes.<br /><br />
@@ -2510,6 +2521,10 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
         <b>Game cores</b><br /><br />
         Chooses which CPU cores a <b>game launched from the Steam client</b> may run on. It reaches games only - the client and its menus keep the list above. Leaving every core ticked lets Android place the work itself, which is usually the best choice.
     ]]></string>
+    <!-- The Linux session's closing screen: the same page as the loading screen, with these lines. -->
+    <string name="linux_steam_closing">Closing the Steam client</string>
+    <string name="linux_steam_closing_hint">The session is shutting down and closes on its own; nothing is stuck while this clock is moving.</string>
+    <string name="linux_steam_closing_saving_hint">Steam is saving and shutting down; the session closes on its own when it is done.</string>
     <!-- Rotating lines under the Linux session's loading screen, one every 8 s, while the client boots. -->
     <string-array name="linux_loading_hints">
         <item>The first run downloads the Steam client from Valve and then its update — a few minutes on a good connection.</item>

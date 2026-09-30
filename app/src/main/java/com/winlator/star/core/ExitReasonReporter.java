@@ -7,11 +7,14 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +49,8 @@ public final class ExitReasonReporter {
     private static final int MAX_RECORDS = 8;
     private static final int MAX_FRAMES = 64;          // per thread
     private static final int MAX_TRACE_BYTES = 2 * 1024 * 1024;
+    /** Log lines kept from the process that exited last (its final moments). */
+    private static final int DEAD_PROCESS_LINES = 400;
 
     private ExitReasonReporter() {}
 
@@ -78,6 +83,9 @@ public final class ExitReasonReporter {
                 sb.append("when      : ").append(fmt.format(new Date(info.getTimestamp()))).append('\n');
                 sb.append("reason    : ").append(reasonName(info.getReason()))
                   .append(" (").append(info.getReason()).append(")\n");
+                sb.append("process   : ").append(String.valueOf(info.getProcessName()))
+                  .append(" (pid ").append(info.getPid()).append(")\n");
+                sb.append("status    : ").append(statusText(info.getReason(), info.getStatus())).append('\n');
                 sb.append("desc      : ").append(String.valueOf(info.getDescription())).append('\n');
                 sb.append("importance: ").append(info.getImportance()).append('\n');
                 sb.append("memory    : pss ").append(info.getPss())
@@ -317,6 +325,41 @@ public final class ExitReasonReporter {
     }
 
     @SuppressLint("NewApi")
+    /**
+     * getStatus() is the signal number for a signaled or native-crash exit and the exit code for a
+     * self exit; other reasons leave it 0. Naming the signal tells an outside kill (SIGKILL/SIGTERM)
+     * apart from a crash (SIGSEGV/SIGABRT/...).
+     */
+    private static String statusText(int reason, int status) {
+        switch (reason) {
+            case ApplicationExitInfo.REASON_SIGNALED:
+            case ApplicationExitInfo.REASON_CRASH_NATIVE:
+                return "signal " + status + " (" + signalName(status) + ")";
+            case ApplicationExitInfo.REASON_EXIT_SELF:
+                return "exit code " + status;
+            default:
+                return String.valueOf(status);
+        }
+    }
+
+    private static String signalName(int signal) {
+        switch (signal) {
+            case 1:  return "SIGHUP";
+            case 2:  return "SIGINT";
+            case 3:  return "SIGQUIT";
+            case 4:  return "SIGILL";
+            case 5:  return "SIGTRAP";
+            case 6:  return "SIGABRT";
+            case 7:  return "SIGBUS";
+            case 8:  return "SIGFPE";
+            case 9:  return "SIGKILL";
+            case 11: return "SIGSEGV";
+            case 13: return "SIGPIPE";
+            case 15: return "SIGTERM";
+            default: return "?";
+        }
+    }
+
     private static String reasonName(int reason) {
         switch (reason) {
             case ApplicationExitInfo.REASON_CRASH:             return "JAVA_CRASH";
@@ -338,6 +381,53 @@ public final class ExitReasonReporter {
         }
     }
 
+    /**
+     * The last lines the most recently exited process wrote, read back from Android's log buffers by
+     * its pid. The app's own logcat capture only covers the running process, so after a kill and a
+     * relaunch the lines leading up to the exit would otherwise be lost. Android keeps them only
+     * until the buffer rotates, so this works best when the app is reopened soon after it closed.
+     * An app can only read its own log lines, so this stays Bannerlator-only.
+     */
+    @SuppressLint("NewApi") // only reached from captureToFile, which checks isSupported()
+    private static String lastExitLogcat(Context context) {
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ApplicationExitInfo> infos =
+                    am.getHistoricalProcessExitReasons(context.getPackageName(), 0, 1);
+            if (infos == null || infos.isEmpty()) return "";
+            ApplicationExitInfo info = infos.get(0);
+            int pid = info.getPid();
+            if (pid <= 0 || pid == android.os.Process.myPid()) return "";
+
+            ArrayDeque<String> tail = new ArrayDeque<>(DEAD_PROCESS_LINES);
+            Process p = Runtime.getRuntime().exec(
+                    new String[] {"logcat", "-d", "-b", "main,system,crash", "--pid=" + pid});
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (tail.size() == DEAD_PROCESS_LINES) tail.removeFirst();
+                    tail.addLast(LogcatCapture.redact(line));
+                }
+            }
+            p.destroy();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("\n=== last log lines of the process that exited: ")
+              .append(String.valueOf(info.getProcessName())).append(" (pid ").append(pid).append(") ===\n");
+            if (tail.isEmpty()) {
+                sb.append("(Android no longer holds log lines for this pid. They rotate out quickly, "
+                        + "so reopen the app soon after it closes.)\n");
+            } else {
+                for (String line : tail) sb.append(line).append('\n');
+            }
+            return sb.toString();
+        } catch (Throwable t) {
+            Log.w(TAG, "could not read the exited process's log lines", t);
+            return "\n=== last log lines of the process that exited: could not read ("
+                    + t.getMessage() + ") ===\n";
+        }
+    }
+
     /** Where the exit-reason reports are filed: {@code <log dir>/exit-reasons/}. */
     public static File folder(Context context) {
         File dir = new File(LogLocation.resolveLogDir(context), FOLDER);
@@ -353,7 +443,8 @@ public final class ExitReasonReporter {
         if (!isSupported()) return null;
         try {
             File out = new File(folder(context), "exit-reasons-" + LogcatCapture.timestamp() + ".log");
-            FileUtils.writeString(out, LogcatCapture.deviceHeader(context) + capture(context));
+            FileUtils.writeString(out, LogcatCapture.deviceHeader(context) + capture(context)
+                    + lastExitLogcat(context));
             return out;
         } catch (Throwable t) {
             Log.w(TAG, "could not write exit-reasons file", t);

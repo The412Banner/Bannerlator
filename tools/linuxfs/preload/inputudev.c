@@ -131,6 +131,9 @@ static struct pad *pad_for_syslink(const char *path) {
 
 static void *next_symbol(const char *name) { return dlsym(RTLD_NEXT, name); }
 
+char *bl_cached_realpath(const char *path, char *resolved, char *(*real)(const char *, char *))
+    __attribute__((visibility("hidden")));
+
 /* Wine reaches libudev from its HID bus driver, which is the only caller these pads are for. */
 static int caller_is_winebus(void *caller) {
   Dl_info info;
@@ -152,7 +155,7 @@ char *realpath(const char *path, char *resolved) {
   }
   if (real_realpath == NULL) real_realpath = next_symbol("realpath");
   if (real_realpath == NULL) return NULL;
-  return real_realpath(path, resolved);
+  return bl_cached_realpath(path, resolved, real_realpath);
 }
 
 void *udev_device_new_from_syspath(void *udev, const char *syspath) {

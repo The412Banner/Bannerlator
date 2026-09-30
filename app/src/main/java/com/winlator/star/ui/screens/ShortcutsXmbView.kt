@@ -452,7 +452,10 @@ internal fun ShortcutsXmbView(
                     label = "xmbTitle",
                     modifier = Modifier.offset(m.titleX.dp, m.titleY.dp).width(m.titleW.dp),
                 ) { s ->
-                    val meta = remember(s) { buildLaunchSpec(s, context).meta }
+                    // An Android game has no container/resolution line; its package name stands in.
+                    val meta = remember(s) {
+                        com.winlator.star.androidgames.AndroidGames.packageOf(s) ?: buildLaunchSpec(s, context).meta
+                    }
                     Column {
                         Text(
                             s.name, color = Color.White, fontSize = m.titleSize.sp, lineHeight = (m.titleSize * 1.15f).sp,
@@ -677,7 +680,7 @@ private fun XmbInfo(s: Shortcut, playtime: String?, descLines: Int, storeBadges:
     val spec = remember(s) { buildLaunchSpec(s, context) }
     val details = remember(s) { buildLaunchDetails(s) }
     storeBadges(s)
-    SpecChipRows(
+    if (!remember(s) { com.winlator.star.androidgames.AndroidGames.isAndroidEntry(s) }) SpecChipRows(
         rendererLabel = spec.rendererLabel,
         dxvkVersion = spec.dxvkVersion,
         frameGenLabel = spec.frameGenLabel,

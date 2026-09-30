@@ -27,6 +27,9 @@ import com.winlator.star.core.NewContainerDefaults
 import com.winlator.star.core.PreloaderState
 import com.winlator.star.core.StorageRoots
 import com.winlator.star.core.StringUtils
+import com.winlator.star.core.SyncCaps
+import com.winlator.star.core.SyncMode
+import com.winlator.star.core.SyncSupport
 import com.winlator.star.core.WineInfo
 import com.winlator.star.core.WinePath
 import com.winlator.star.core.WineRegistryEditor
@@ -181,6 +184,49 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         if (!::contentsManager.isInitialized || wineVersion.isEmpty()) return false
         return com.winlator.star.core.WineWaylandSupport.isWaylandCapable(context, contentsManager, wineVersion)
     }
+    // Sync (extra "syncMode": esync | ntsync | wineserver; core.SyncSupport). syncMode is the pick the
+    // pills show; syncCaps what the selected layer can run (null while the off-main ntdll.so probe
+    // runs); syncNotice the "switched back" line after a layer change made the pick unavailable.
+    // syncFollowsLayer: nothing was chosen yet (new container, or an old one whose env never said),
+    // so the pick tracks the layer default quietly instead of claiming a choice.
+    var syncMode by mutableStateOf(SyncMode.ESYNC); private set
+    var syncCaps by mutableStateOf<SyncCaps?>(null); private set
+    var syncNotice by mutableStateOf<String?>(null); private set
+    private var syncFollowsLayer = true
+    private var syncProbeJob: Job? = null
+
+    fun onSyncModePicked(mode: String) {
+        if (syncCaps?.isAvailable(mode) == false || SyncMode.normalize(mode) == null) return
+        syncMode = mode
+        syncFollowsLayer = false
+        syncNotice = null
+    }
+
+    // Re-probe the selected layer (cached per layer dir) and re-check the pick against it. The cached
+    // answer, if any, applies at once so the greying never lags a layer switch.
+    private fun refreshSyncCaps(layer: String) {
+        syncProbeJob?.cancel()
+        syncNotice = null
+        if (defaultsMode || layer.isEmpty()) { syncCaps = null; return }
+        val known = SyncSupport.peek(layer)
+        if (known != null) applySyncCaps(layer, known) else syncCaps = null
+        syncProbeJob = viewModelScope.launch(Dispatchers.Main) {
+            val caps = withContext(Dispatchers.IO) { SyncSupport.capsFor(context, contentsManager, layer) }
+            if (selectedWineVersion == layer) applySyncCaps(layer, caps)
+        }
+    }
+
+    private fun applySyncCaps(layer: String, caps: SyncCaps) {
+        syncCaps = caps
+        when {
+            syncFollowsLayer -> syncMode = caps.defaultMode
+            !caps.isAvailable(syncMode) -> {
+                syncNotice = com.winlator.star.ui.components.syncSwitchedBackNotice(syncMode, layer, caps)
+                syncMode = caps.defaultMode
+            }
+        }
+    }
+
     // Render scale (supersampling) — stored via the "renderScale" extra (no DB field). "1.0" = Off.
     var renderScale         by mutableStateOf("1.0")
     var autoCloseOnExit     by mutableStateOf(true)
@@ -725,8 +771,19 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // Win Components
         loadWinComponents(seed?.winComponents ?: Container.DEFAULT_WINCOMPONENTS)
 
-        // Env vars
-        envVarsStr = seed?.envVars ?: Container.DEFAULT_ENV_VARS
+        // Env vars. Outside defaults mode the sync variables move to the Sync selector: its stored
+        // extra wins, else what the env string said (WINEESYNC=0 → wineserver, WINENTSYNC=1 → ntsync,
+        // WINEESYNC=1 → esync), else the layer default; then they leave the env string.
+        val rawEnv = seed?.envVars ?: Container.DEFAULT_ENV_VARS
+        if (defaultsMode) {
+            envVarsStr = rawEnv
+        } else {
+            val stored = SyncSupport.storedMode(seed?.getExtra(SyncMode.EXTRA, ""), rawEnv)
+            syncFollowsLayer = stored == null
+            syncMode = stored ?: SyncMode.ESYNC
+            envVarsStr = SyncSupport.stripSyncVars(rawEnv)
+            refreshSyncCaps(selectedWineVersion)
+        }
 
         // Drives
         drives.clear()
@@ -940,7 +997,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * DirectAudio only loads on the arm64ec Proton builds in DirectAudioSupport.SUPPORTED_BUILD_TOKENS
-     * (7 as of driver v1.3.2); on any other layer it does
+     * (8 tokens as of driver v1.3.2); on any other layer it does
      * nothing / breaks audio. So it must never survive as the chosen driver on an unsupported layer:
      * if the currently-selected driver is DirectAudio but [selectedWineVersion] isn't one of those
      * builds, fall back to the app default (PulseAudio). Called on load, on a Wine-version change, and
@@ -960,6 +1017,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // Wayland is only offered on a layer that ships winewayland + its Wayland Turnip: snap back to X11.
         if (isWaylandStored && !isWineWaylandCapable(version)) displayBackend = Container.DISPLAY_BACKEND_X11
         refreshWineDependent(version)   // updates isArm64EC + swaps the box64/wowbox64 list
+        refreshSyncCaps(version)        // re-grey the Sync pills; an unavailable pick falls back
 
         // CREATE mode only: a wine change can FLIP the architecture. applyArch() swapped the box64 list
         // and reset its selection but did NOT re-seed the arch-dependent fields, so without this they'd
@@ -1179,7 +1237,14 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
         c.name               = containerName
         c.screenSize         = buildScreenSize()
-        c.envVars            = envVarsIn
+        // Sync: the selector's pick is stored and the env string no longer carries sync variables
+        // (defaults mode has no layer to judge against, so it leaves both as they were).
+        if (defaultsMode) {
+            c.envVars        = envVarsIn
+        } else {
+            c.envVars        = SyncSupport.stripSyncVars(envVarsIn)
+            c.putExtra(SyncMode.EXTRA, syncCaps?.resolve(syncMode) ?: syncMode)
+        }
         c.setCPUList(cpuListIn)
         c.setCPUListWoW64(cpuListWoW64In)
         c.graphicsDriver     = StringUtils.parseIdentifier(selectedGraphicsDriver)

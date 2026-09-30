@@ -2819,7 +2819,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // DirectAudio's winedirectaudio.drv only loads on the arm64ec Proton builds listed in
-        // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (7 as of driver v1.3.2); on
+        // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (8 tokens as of driver v1.3.2); on
         // any other layer it does nothing / breaks audio. The editors grey it out and coerce it on save,
         // but a container/shortcut written before this gate (or whose layer was swapped elsewhere) can
         // still arrive here as "directaudio" — the last place it could be applied to the guest registry.
@@ -5362,8 +5362,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
         stopDxApiDetection();
         // Stop the session foreground service (also removes its ongoing notification).
         stopService(new Intent(this, com.winlator.star.core.GameSessionForegroundService.class));
-        preloaderDialog.showOnUiThread(R.string.shutdown);
-        handler.postDelayed(new Runnable() {
+        if (gamescopeMode) {
+            // The Linux loading watcher stops here and not only in onDestroy.
+            // Left running, it rewrote this screen every half second with the session log's last startup milestone, its start hints and a clock counted from the launch.
+            // A pass already under way cannot undo that either: the closing screen refuses progress updates, and the restart branch checks this flag.
+            linuxSessionWatchStop = true;
+            com.winlator.star.core.PreloaderState.showLinuxSteamClosing(
+                    getString(R.string.linux_steam_closing), getString(R.string.linux_steam_closing_hint));
+        } else {
+            preloaderDialog.showOnUiThread(R.string.shutdown);
+        }
+        final Runnable teardown = new Runnable() {
             @Override
             public void run() {
                 savePlaytimeData(); // Save on destroy
@@ -5499,7 +5508,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     }
                 }, "BH-ExitSaveBackup").start();
             }
-        }, 1000);
+        };
+        // A Linux session's Steam client is asked to shut down by itself first, so it is not killed mid-write and does not open on its update screen next time.
+        // The wait runs on a worker, and the teardown keeps the same one-second floor it always had; the teardown still kills whatever is left.
+        // With nothing listening in the session (it never reached the client), the teardown is posted exactly as before.
+        final com.winlator.star.linux.LinuxProgramLauncherComponent linuxLauncher = gamescopeMode && environment != null
+                ? environment.getComponent(com.winlator.star.linux.LinuxProgramLauncherComponent.class) : null;
+        final File steamStopDir = linuxLiveDir;
+        if (linuxLauncher != null && steamStopDir != null && linuxLauncher.steamStopArmed(steamStopDir)) {
+            final long teardownAt = android.os.SystemClock.uptimeMillis() + 1000;
+            preloaderDialog.hint(getString(R.string.linux_steam_closing_saving_hint));
+            new Thread(() -> {
+                try {
+                    linuxLauncher.askSteamToExit(steamStopDir);
+                } catch (Throwable t) {
+                    Log.w("XServerDisplayActivity", "asking the Steam client to exit failed", t);
+                } finally {
+                    handler.postAtTime(teardown, teardownAt);
+                }
+            }, "linux-steam-stop").start();
+        } else {
+            handler.postDelayed(teardown, 1000);
+        }
     }
 
     /**
@@ -7071,8 +7101,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 drawerLayout.closeDrawers();
                 return;
             }
-            // Steam (Linux): two Back presses within half a second open Steam's Quick Access Menu,
-            // and one still opens the drawer, just half a second later. (From The412Banner/DroidDeck.)
+            // Steam (Linux): two Back presses within Android's double-tap window (300 ms by default) open Steam's Quick Access Menu, and one still opens the drawer, just that much later.
+            // The window is Android's own rather than half a second, so the single press is felt sooner. (From The412Banner/DroidDeck, window from Droid-Deck/DroidDeck #73.)
             if (isLinuxSteamSession() && com.winlator.star.linux.LinuxTuning.isOn(
                     shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) {
                 if (pendingLinuxBack != null) {
@@ -7085,7 +7115,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     pendingLinuxBack = null;
                     if (!isInGameMenuOpen()) openInGameMenu();
                 };
-                drawerLayout.postDelayed(pendingLinuxBack, LINUX_DOUBLE_BACK_MS);
+                drawerLayout.postDelayed(pendingLinuxBack, android.view.ViewConfiguration.getDoubleTapTimeout());
                 return;
             }
             openInGameMenu();
@@ -7128,34 +7158,69 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
-    /** How long a first Back press waits for a second one in a Steam (Linux) session. */
-    private static final long LINUX_DOUBLE_BACK_MS = 500;
-
     /** A Linux session running the Steam client, where the Steam button and Quick Access Menu mean something. */
     private boolean isLinuxSteamSession() {
         return gamescopeMode && shortcut != null && com.winlator.star.linux.LinuxRuntime.MODE_STEAM.equals(
                 shortcut.getExtra(com.winlator.star.linux.LinuxRuntime.EXTRA_LINUX_MODE, ""));
     }
 
+    // The client takes A as part of the chord only once it has had Guide held for a while, and a client starved of CPU needs longer.
+    // Too short, and it acts on A as well, selecting whatever it had focused before opening the Quick Access Menu.
+    // On DroidDeck, 80 ms of lead let that through 3 times in 20 at rest and 250 ms none in 20; at 1 fps a fixed 400 ms still let 3 in 15 through, where 1000 ms let none.
+    // So the lead keeps 80 ms when frames are quick, for a menu that feels immediate, and stretches to eight frames when they are slow. (From Droid-Deck/DroidDeck #70.)
+    private static final long LINUX_QAM_GUIDE_LEAD_MIN_MS = 80;
+    private static final long LINUX_QAM_GUIDE_LEAD_MAX_MS = 1500;
+    private static final int LINUX_QAM_GUIDE_LEAD_FRAMES = 8;
+    private static final long LINUX_QAM_A_HOLD_MS = 200;
+    private static final long LINUX_QAM_GUIDE_TAIL_MS = 200;
+    private static final long LINUX_STEAM_BUTTON_HOLD_MS = 90;
+    // The chord's steps run on their own thread, so a busy main thread cannot shorten or stretch them.
+    private static android.os.Handler linuxChord;
+
+    private static synchronized android.os.Handler linuxChordHandler() {
+        if (linuxChord == null) {
+            android.os.HandlerThread thread = new android.os.HandlerThread("steam-qam-chord", android.os.Process.THREAD_PRIORITY_DISPLAY);
+            thread.start();
+            linuxChord = new android.os.Handler(thread.getLooper());
+        }
+        return linuxChord;
+    }
+
+    /** Guide's lead before A in the Quick Access Menu chord: eight of the game's recent frames, within 80 ms to 1.5 s. */
+    private static long linuxQamGuideLeadMs() {
+        long frame = com.winlator.star.wayland.WaylandCompositor.recentFrameIntervalMs();
+        if (frame <= 0) return LINUX_QAM_GUIDE_LEAD_MIN_MS;
+        return Math.max(LINUX_QAM_GUIDE_LEAD_MIN_MS, Math.min(LINUX_QAM_GUIDE_LEAD_MAX_MS, frame * LINUX_QAM_GUIDE_LEAD_FRAMES));
+    }
+
     /**
-     * Presses the Steam button on player one's pad (Steam's own menu), or with {@code qam} the chord
-     * that opens the Quick Access Menu: Steam held, A tapped under it, Steam released. The timings are
-     * DroidDeck's PadBridge (80 ms lead, 120 ms A, 40 ms tail), which the client reads reliably. The
-     * drawer closes first, and the press waits for it to be gone.
+     * Presses the Steam button on player one's pad (Steam's own menu), or with {@code qam} the chord that opens the Quick Access Menu: Steam held, A tapped under it, Steam released.
+     * The timings are DroidDeck's PadBridge (a lead of eight frames within 80 ms to 1.5 s, 200 ms A, 200 ms tail), which the client reads reliably even when it is short of CPU.
+     * The drawer closes first, and the press waits for it to be gone.
+     * A new press replaces one still in flight, and every sequence ends released.
      */
     private void pressLinuxSteamButton(boolean qam) {
-        if (winHandler == null) return;
-        boolean drawerWasOpen = drawerLayout != null && isInGameMenuOpen();
-        if (drawerWasOpen) closeInGameMenu();
+        final WinHandler buttons = winHandler;
+        if (buttons == null) return;
+        boolean drawerWasOpen = drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START);
+        if (drawerWasOpen) drawerLayout.closeDrawers();
         long t = drawerWasOpen ? 250 : 0;
-        android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
-        h.postDelayed(() -> winHandler.setSystemButtons(true, false), t);
+        android.os.Handler h = linuxChordHandler();
+        h.removeCallbacksAndMessages(null);
+        // Released here first, on the main thread where the pad creates the slot's writer too, so the chord thread never has to create it.
+        buttons.setSystemButtons(false, false);
         if (qam) {
-            h.postDelayed(() -> winHandler.setSystemButtons(true, true), t + 80);
-            h.postDelayed(() -> winHandler.setSystemButtons(true, false), t + 200);
-            h.postDelayed(() -> winHandler.setSystemButtons(false, false), t + 240);
+            h.postDelayed(() -> {
+                buttons.setSystemButtons(true, false);
+                long lead = linuxQamGuideLeadMs();
+                h.postDelayed(() -> buttons.setSystemButtons(true, true), lead);
+                h.postDelayed(() -> buttons.setSystemButtons(true, false), lead + LINUX_QAM_A_HOLD_MS);
+                h.postDelayed(() -> buttons.setSystemButtons(false, false), lead + LINUX_QAM_A_HOLD_MS + LINUX_QAM_GUIDE_TAIL_MS);
+                Log.i("XServerDisplayActivity", "Steam (Linux): Quick Access Menu chord with a " + lead + " ms Guide lead");
+            }, t);
         } else {
-            h.postDelayed(() -> winHandler.setSystemButtons(false, false), t + 90);
+            h.postDelayed(() -> buttons.setSystemButtons(true, false), t);
+            h.postDelayed(() -> buttons.setSystemButtons(false, false), t + LINUX_STEAM_BUTTON_HOLD_MS);
         }
         Log.i("XServerDisplayActivity", "Steam (Linux): " + (qam ? "Quick Access Menu" : "Steam button") + " pressed for the client");
     }
@@ -7168,6 +7233,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM,
             com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA,
             com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP,
+            com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE,
     };
 
     /**
@@ -7175,7 +7241,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * Every switch there is the entry's own Steam (Linux) setting: a flip is saved to the entry, and
      * applied at once where it can be - fill-screen through the session's watcher, the Quake-engine
      * fix and xalia at the next game start through the Proton wrappers, the buttons and double Back
-     * immediately. proot's seccomp and Turnip's sysmem take effect at the next session.
+     * immediately. proot's seccomp, Turnip's sysmem and offline mode take effect at the next session.
      */
     private void setupLinuxSteamDrawerGlue(FrameLayout rootView) {
         XServerDrawerState state = XServerDrawerState.INSTANCE;
@@ -7472,6 +7538,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ds.setVibrationMasterEnabled(winHandler.isVibrationMasterEnabled());
         ds.onVibrationMasterChanged = (enabled) -> winHandler.setVibrationMasterEnabled(enabled);
         ds.show(XServerDialogState.ActiveDialog.VIBRATION);
+    }
+
+    // Gamepad sticks, trackballs and touchpads are delivered as they arrive instead of batched to the next vsync.
+    // That takes up to one frame of latency off physical controller input in both Linux and Wine sessions.
+    private static final int UNBUFFERED_INPUT_SOURCES = android.view.InputDevice.SOURCE_CLASS_JOYSTICK
+            | android.view.InputDevice.SOURCE_CLASS_TRACKBALL | android.view.InputDevice.SOURCE_CLASS_POSITION;
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+        final View decor = getWindow().getDecorView();
+        decor.requestUnbufferedDispatch(UNBUFFERED_INPUT_SOURCES);
+        // The request follows the focused view, so it is renewed whenever focus moves inside the window.
+        decor.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) ->
+                decor.post(() -> decor.requestUnbufferedDispatch(UNBUFFERED_INPUT_SOURCES)));
     }
 
     @Override
@@ -9273,6 +9355,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             String restartSeen = null;
             while (!linuxSessionWatchStop) {
                 try { Thread.sleep(500); } catch (InterruptedException e) { return; }
+                // The session may have begun closing during the nap; nothing from here on belongs on the closing screen.
+                if (linuxSessionWatchStop) return;
                 boolean up = preloaderDialog != null && preloaderDialog.isShowing();
                 if (up && !winStarted && System.currentTimeMillis() > deadline) {
                     Log.w("XServerDisplayActivity", "Linux session: no first frame after 10 min; uncovering the session");
@@ -9292,8 +9376,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     loading.restartClock();
                     deadline = System.currentTimeMillis() + 10 * 60 * 1000L;
                     runOnUiThread(() -> {
+                        // Checked again on the main thread, where exit() sets it, so a close that began after the log read still wins.
+                        if (linuxSessionWatchStop) return;
                         winStarted = false;
-                        com.winlator.star.core.PreloaderState.show("Steam is restarting once…");
+                        com.winlator.star.core.PreloaderState.showLinuxSteam("Steam is restarting once…");
                         try { com.winlator.star.wayland.WaylandCompositor.nativeResetFirstFrame(); }
                         catch (Throwable e) { Log.w("XServerDisplayActivity", "first-frame re-arm unavailable", e); }
                     });
@@ -9395,6 +9481,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     private void setupLinuxSession(String rootPath) {
+        // An update killed mid-swap leaves the rootfs parked beside its real name, so put it back before checking for it.
+        com.winlator.star.linux.LinuxRuntimeInstaller.recoverInterruptedSwap(this);
         if (!com.winlator.star.linux.LinuxRuntime.isInstalled(this)) {
             throw new IllegalStateException("The Linux runtime is not installed."
                     + " Install it from Components before launching a gamescope session.");
@@ -9543,6 +9631,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // session script and the Proton wrappers read these files, so they start from the entry's settings.
         linuxLiveDir = new File(getFilesDir(), "linux-session/live");
         com.winlator.star.linux.LinuxTuning.writeLive(linuxLiveDir, shortcut);
+        // A killed session leaves its clean-exit markers behind, and a stale one would have the next exit wait on a watcher that is not there yet.
+        //noinspection ResultOfMethodCallIgnored
+        new File(linuxLiveDir, "steam-stop").delete();
+        //noinspection ResultOfMethodCallIgnored
+        new File(linuxLiveDir, "steam-stop-ready").delete();
         guest.add("BL_LIVE_DIR=" + linuxLiveDir.getPath());
         // HDR10: startWaylandCompositor opened the compositor's HDR gate for this session (the entry's
         // HDR output setting, on a screen that lists HDR10). gamescope then needs --hdr-enabled to offer
@@ -9995,7 +10088,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The watcher's 10-minute deadline covers a session that never presents.
         // (No startLaunchTimers here: its shader-compile hints are for Wine launches, and the
         // loading screen rotates its own.)
-        com.winlator.star.core.PreloaderState.show("Steam is starting…");
+        com.winlator.star.core.PreloaderState.showLinuxSteam("Steam is starting…");
         winHandler.start();
     }
 
@@ -10018,7 +10111,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.i("XServerDisplayActivity", "Linux session: placing " + name + " before the client's first start");
             // The centered status card, the same one the session's own milestones drive once it
             // is running; linuxProgress writes to nothing else.
-            com.winlator.star.core.PreloaderState.show("Downloading " + name + "…");
+            com.winlator.star.core.PreloaderState.showLinuxSteam("Downloading " + name + "…");
             final long startedAt = android.os.SystemClock.elapsedRealtime();
             final String hint = "Once only · the Steam client keeps it up to date from here on";
             com.winlator.star.linux.LinuxSteamSeed.Entry entry = com.winlator.star.linux.LinuxSteamSeed.fetchProton();
@@ -10517,9 +10610,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 } catch (Throwable ignored) {}
             }
 
-            if (!envVars.has("WINEESYNC")) {
-                envVars.put("WINEESYNC", "1");
-            }
+            // Sync (esync / ntsync / wineserver) is no longer defaulted here: applySyncModeEnv() below
+            // writes it after every env source (overrideEnvVars included) is merged.
 
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) {
@@ -10566,6 +10658,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             envVars.putAll(overrideEnvVars);
             overrideEnvVars.clear(); // Clear overrideEnvVars as per smali logic
         }
+
+        // Sync selector: the ONE writer of WINEESYNC / WINENTSYNC (and the remover of WINEFSYNC). After
+        // every env merge so a stale value in the container/shortcut env string can't fight it.
+        applySyncModeEnv();
 
         // Create our overall XEnvironment with various components
         preloaderDialog.step(3, "Building environment…");
@@ -13880,6 +13976,29 @@ return true;
             FileUtils.copy(srcFile, dstFile);
         }
    }
+
+    /**
+     * Resolve the "Sync" setting for this launch and write its env (core.SyncSupport): the shortcut's
+     * own choice, else the container's, else the layer default; a choice the layer can't run (ntsync
+     * off a v9 Proton 11 layer, esync on a layer without it) falls back to the layer default. Runs on
+     * the launch worker thread (the layer probe reads ntdll.so once, then it is cached).
+     */
+    private void applySyncModeEnv() {
+        if (container == null) return;
+        String requested = com.winlator.star.core.SyncSupport.requestedMode(
+                container.getExtra(com.winlator.star.core.SyncMode.EXTRA),
+                container.getEnvVars(),
+                shortcut != null ? shortcut.getExtra(com.winlator.star.core.SyncMode.EXTRA) : null,
+                shortcut != null ? shortcut.getExtra("envVars") : null);
+        com.winlator.star.core.SyncCaps caps = com.winlator.star.core.SyncSupport.capsForLayerPath(
+                wineInfo != null ? wineInfo.path : null);
+        String mode = caps.resolve(requested);
+        com.winlator.star.core.SyncSupport.applyToEnv(envVars, mode);
+        Log.i("XServerDisplayActivity", "sync: requested=" + (requested != null ? requested : "(layer default)")
+                + " -> " + mode + " [layer esync=" + caps.getEsync() + " ntsync=" + caps.getNtsync() + "]"
+                + " WINEESYNC=" + envVars.get("WINEESYNC")
+                + (envVars.has("WINENTSYNC") ? " WINENTSYNC=" + envVars.get("WINENTSYNC") : ""));
+    }
 
     private String getWineStartCommand() {
         // Initialize overrideEnvVars if not already done

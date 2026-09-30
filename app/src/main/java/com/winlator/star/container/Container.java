@@ -31,7 +31,8 @@ public class Container {
     // env-var editor (so its HUD-element chips are one tap away) while nothing is shown until a user
     // opts in. EnvVars keeps "DXVK_HUD=" (index of '=' > 0) with an empty value, and DXVK renders no
     // overlay for an empty element list — so a fresh container starts with the HUD off.
-    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform,sysmem DXVK_HUD=";
+    // No WINEESYNC: sync is the "Sync" setting (extra "syncMode", core.SyncSupport), written at launch.
+    public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true TU_DEBUG=noconform,sysmem DXVK_HUD=";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
 
     /**

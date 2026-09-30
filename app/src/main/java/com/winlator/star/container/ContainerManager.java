@@ -321,6 +321,13 @@ public class ContainerManager {
 
     public ArrayList<Shortcut> loadShortcuts() {
         ArrayList<Shortcut> shortcuts = new ArrayList<>();
+        // Android games written into a Wine container by the feature's first build move to their
+        // own home once, before anything is listed (no-op after the first pass).
+        try {
+            com.winlator.star.androidgames.AndroidGames.migrateOnce(getAndroidGamesContainer(), snapshotContainers());
+        } catch (Exception e) {
+            Log.w("ContainerManager", "could not move Android games out of containers", e);
+        }
         for (Container container : snapshotContainers()) {
             File desktopDir = container.getDesktopDir();
             ArrayList<File> files = new ArrayList<>();
@@ -369,6 +376,21 @@ public class ContainerManager {
             }
         } catch (Exception e) {
             Log.w("ContainerManager", "could not list the Linux runtime's entries", e);
+        }
+
+        // Android games ("+" → Add Android game) live in their own container-free home.
+        try {
+            Container android = getAndroidGamesContainer();
+            File[] androidFiles = android.getDesktopDir().listFiles();
+            if (androidFiles != null) {
+                for (File file : androidFiles) {
+                    if (!file.getName().endsWith(".desktop")) continue;
+                    Shortcut shortcut = loadShortcutOrNull(android, file);
+                    if (shortcut != null) shortcuts.add(shortcut);
+                }
+            }
+        } catch (Exception e) {
+            Log.w("ContainerManager", "could not list the Android games", e);
         }
 
         shortcuts.sort(Comparator.comparing(a -> a.name));
@@ -438,6 +460,7 @@ public class ContainerManager {
 
     public Container getContainerById(int id) {
         if (com.winlator.star.linux.LinuxSettings.isLinuxContainer(id)) return getLinuxContainer();
+        if (com.winlator.star.androidgames.AndroidGames.isHome(id)) return getAndroidGamesContainer();
         for (Container container : snapshotContainers()) if (container.id == id) return container;
         return null;
     }
@@ -455,6 +478,19 @@ public class ContainerManager {
             linuxContainer = com.winlator.star.linux.LinuxSettings.container(context, this);
         }
         return linuxContainer;
+    }
+
+    private Container androidGamesContainer;
+
+    /**
+     * Where Android games live: container-free, never in {@link #getContainers()}. See
+     * {@link com.winlator.star.androidgames.AndroidGames#homeContainer}.
+     */
+    public synchronized Container getAndroidGamesContainer() {
+        if (androidGamesContainer == null) {
+            androidGamesContainer = com.winlator.star.androidgames.AndroidGames.homeContainer(context, this);
+        }
+        return androidGamesContainer;
     }
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {

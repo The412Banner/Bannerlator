@@ -79,7 +79,7 @@ Before any **stable release** is published, all changes are **manually debugged 
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) |
-| **Version** | Bannerlator **V 3.1.2** — built from Star **marcescence** (`versionName 3.1.2`, `versionCode 86`) |
+| **Version** | Bannerlator **V 3.1.3** — built from Star **marcescence** (`versionName 3.1.3`, `versionCode 90`). Testers: **3.1.4 pre-release 1** (`versionCode 91`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
@@ -112,7 +112,7 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [ℹ️ Information](#ℹ️-information)
 - [🐛 Report a Mali GPU Issue](#-report-a-mali-gpu-game-issue)
 - [🧪 3.1.4 pre-release 1 (testers): Wayland](#-314-pre-release-1-testers-wayland)
-- [🐧 Linux Steam Client (3.1.3 pre-release)](#-linux-steam-client--313-pre-release-testers)
+- [🐧 Linux Steam Client (3.1.3)](#-linux-steam-client-313)
 - [🆕 What's New in 3.1.2](#-whats-new-in-312)
 - [🎞️ Frame Generation & Present Modes](#-frame-generation--present-modes)
 - [✨ Full Features](#-full-features)
@@ -130,14 +130,14 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 
 **[3.1.4 pre-release 1](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.4-pre1) makes the Wayland display mode easier and faster.** Wayland now runs games on the same Turnip driver you pick for X11, through a built-in adapter, so there's one driver choice. Games start without tapping the screen, zero-copy no longer shows half-drawn frames, and DirectX 12 on Wayland is no longer capped by a driver wait (a small DirectX 12 test went from about 600 to over 4,000 fps). X11 is unchanged. It's a **tester pre-release**: you're only offered it in-app with **Settings → Include pre-releases** switched on. Full details are in the [release notes](docs/releases/3.1.4-pre1.md).
 
-## 🐧 Linux Steam Client — 3.1.3 pre-release (testers)
+## 🐧 Linux Steam Client (3.1.3)
 
-**[3.1.3 pre-release 3](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.3-pre3) runs Valve's own native ARM64 Linux Steam client inside Bannerlator** — sign in, install a game from your library and play it through Valve's ARM64 Proton, with no Wine container involved. Pre-release 3 puts the games you added in the app's Games tab into the client's library, with shared saves, and gives games their sound through DirectAudio (PulseAudio where it cannot load). Pre-release 2 put the client's interface back on the GPU, where it runs at about twice the frame rate. It is a **tester pre-release**: the stable release is still **3.1.2**, and you are only offered it in-app with **Settings → Include pre-releases** switched on.
+**Since [3.1.3](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.3), Bannerlator runs Valve's own native ARM64 Linux Steam client**. Sign in, install a game from your library and play it through Valve's ARM64 Proton, with no Wine container involved. Proton is ready at first sign-in. Big Picture works with your fingers as well as a controller, a **Components** tab swaps FEX, DXVK and VKD3D per Proton, and the games in the app's Games tab show up in Steam with shared saves. It's an **optional, experimental extra** in the stable release: nothing changes unless you download it.
 
-> ⚠️ **Adreno GPUs only**, and it needs Android's **Disable child process restrictions** developer setting. Mali, Xclipse and PowerVR phones get sound over a black screen. Leave the experimental **Steam Deck mode** off: it breaks game controllers. Full caveats are in the [release notes](docs/releases/3.1.3-pre3.md).
+> ⚠️ **Adreno GPUs only**, and it needs Android's **Disable child process restrictions** developer setting. Mali, Xclipse and PowerVR phones get sound over a black screen. Leave the experimental **Steam Deck mode** off: it breaks game controllers. Full caveats are in the [release notes](docs/releases/3.1.3.md).
 
 <details>
-<summary><b>📖 Step-by-step in plain English — a brand-new install, or upgrading from an earlier pre-release or the September 21 test build</b> (tap to expand)</summary>
+<summary><b>📖 Step-by-step in plain English — a brand-new install, or upgrading</b> (tap to expand)</summary>
 
 ### 🆕 New here? Installing for the first time
 
@@ -145,52 +145,34 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 
 - **Your phone needs an Adreno GPU** (Snapdragon). Mali, Xclipse and PowerVR phones will get sound over a black screen. **Contents → Linux Runtime** warns you about this before the download.
 - **Turn on one Android setting first:** go to **Settings → Developer options → Disable child process restrictions** and switch it **on**. Do not see Developer options? Go to **Settings → About phone** and tap **Build number** seven times, then it appears.
-  Without this switch, Android randomly kills the Steam client and your session just dies for no visible reason. Some phones do not have the switch at all — on those, this build will not work yet.
+  Without this switch, Android randomly kills the Steam client and your session just dies for no visible reason. Some phones do not have the switch at all — on those, the client won't stay up yet.
 
 **Then:**
 
 1. **Download and install the APK.** There are three — just take **standard** unless you specifically use the pubg or ludashi build already.
 2. **Open the app and go to Contents → Linux Runtime → Download.** This is about **755 MB**, once. It is not in the APK, so this step is required.
 3. When it finishes, a **Steam (Linux)** entry appears in your games list. **Tap it.**
-4. **First launch takes a few minutes.** You will see a loading screen — Steam is downloading and updating itself. There is a clock on screen so you know it is alive. It may restart itself once; that is normal.
+4. **First launch takes a few minutes.** A loading screen first downloads **Proton Experimental (ARM64)** (about 400 MB), then lets Steam download and update itself. There's a clock on screen so you know it's still working.
 5. **Sign in** with your Steam account. Password, or the QR code with the Steam mobile app — both work.
-6. **⏳ Now wait. Do not install a game yet — this is the part people get wrong.**
+6. **Install a game and play.** There's nothing to pick and no restart to wait for, because Proton is already there.
 
-   Steam fetches Valve's ARM64 Proton by itself. **It may not start downloading on its own** — watch for an install box for **Proton Experimental (ARM64)** (about 2 GB). If your phone has an SD card, Steam will ask **where to put it: internal storage or the SD card**. Pick one and tap **Install**. If nothing appears, check the **Downloads** page — it may be sitting there waiting on that choice.
-
-   **When the download finishes, still do not touch anything.** The loading screen comes back saying **"Steam is restarting once…"** — **the client restarts itself automatically.** That restart is what makes every game you install run properly. Let it happen; Steam reopens on its own, still signed in.
-
-   ⚠️ **Installing a game before that restart breaks it.** Steam grabs the wrong set of tools — about 1.7 GB you will never use — and the game just fails to launch with no error message. Wait for the restart. It is a minute or two.
-7. **Once Steam has come back on its own — now install a game from your library and play it.** Nothing to configure, nothing to pick.
+If the Proton download on the loading screen fails, the app skips it and Steam fetches Proton itself instead. In that case, watch for the **Proton Experimental (ARM64)** install box, let the client **restart itself once**, and only then install a game. A game installed before that restart fails to launch.
 
 **That's it.** Your existing Wine containers and games are completely untouched by any of this.
 
-**Optional tweaks** — the ⚙️ next to the Steam (Linux) entry has resolution (720p by default, because Steam's own interface is expensive to draw), drivers, audio, frame generation and the HUD.
+**Optional tweaks** — the ⚙️ next to the Steam (Linux) entry holds resolution (720p by default, because Steam's own interface is expensive to draw), drivers, cores, audio, frame generation, the HUD, **Touch**, **Components**, **Your games in Steam** and the Steam client update channel. **GE-Proton** and **proton-cachyos** (ARM64 builds) can be downloaded in **Contents → Linux Runtime** and picked per game on Steam's own *Compatibility* page.
 
-### ⬆️ Already running the Linux Steam client?
+### ⬆️ Upgrading
 
-**From pre-release 1 or 2:** install this APK over your current install. That is all — nothing to re-download, and you stay signed in.
+- **From 3.1.2:** install over. Nothing else changes until you download the Linux Runtime.
+- **From a 3.1.3 pre-release:** install over. You stay signed in, and your games, Proton and settings are kept.
+- **From the September 21 test build:** install over, then open **Contents → Linux Runtime** once. That moves the Steam (Linux) entry out of its old Wine container and carries your settings over (HUD, LSFG, audio, drivers). **Don't remove or re-download the runtime.** If you made a container *only* for Steam, you can delete it afterwards (the **Linux Desktop** entry stays in the container — leave that one alone if you use it).
 
-**From the September 21 test build:** two steps. Nothing to re-download.
-
-1. **Install this APK over your current install.** Your data is kept — do not uninstall first.
-2. **Open Contents → Linux Runtime once.**
-   In the old build, Steam (Linux) lived inside a Wine container. It now stands on its own with its own settings. Just opening that tab moves your entry out of the container and carries your settings over (HUD, LSFG, audio, drivers).
-
-Then launch **Steam (Linux)** from your games list as usual.
-
-- ✅ You stay signed in. Your games, Valve's ARM64 Proton and your downloads are all still there.
-- ❌ **Do not remove or re-download the Linux Runtime.**
-- 🗑️ If you made a container *only* for Steam and nothing else lives in it, you can delete it afterwards. (The **Linux Desktop** entry stays in the container — leave that one alone if you use it.)
-- If you skip step 2 it still launches, but it will keep using the old container's settings until you open that tab.
-
-**In-app updates:** you will not be offered this automatically unless you turn on **Settings → Include pre-releases**. Stable users are never offered pre-releases.
-
-### 🐞 If something goes wrong (both groups)
+### 🐞 If something goes wrong
 
 Post the **whole** session folder from `Download/Bannerlator-LinuxSteam/session-<date>-<time>/`. It is already scrubbed — tokens, Steam IDs and login files are masked or never copied, so it is safe to post.
 
-Known and already on the list, no need to report: **Steam Deck mode breaks game controllers**, **FlatOut shrinks to the corner after Guide → Resume**, **TF2 says "insecure"**, GTA V *Enhanced* does not run, Serious Sam Shatterverse is killed for memory, NFS Hot Pursuit Remastered faults. Everything was proven on one AYANEO Pocket FIT — reports from any other device are the single most useful thing right now.
+Known and already on the list, no need to report: **Steam Deck mode breaks game controllers**, **FlatOut shrinks to the corner after Guide → Resume**, **TF2 says "insecure"**, GTA V *Enhanced* does not run, Serious Sam Shatterverse is killed for memory, NFS Hot Pursuit Remastered faults. Almost everything was proven on one AYANEO Pocket FIT — reports from any other device are the single most useful thing right now.
 
 </details>
 
@@ -373,7 +355,7 @@ Everything Bannerlator offers, at a glance. No PC and no root required — it ru
 <summary><b>🖥️ Renderers</b></summary>
 
 - Multiple host renderers — **Vulkan**, **OpenGL**, **SurfaceFlinger**, and **VirGL**.
-- **Wayland display backend** *(experimental, new in 3.1.2)* — an alternative to the Java X server: the game draws into Bannerlator's own embedded **Wayland compositor**. Brings **HDR10**, **launching a game on an external screen / TV**, **zero-copy presentation**, real **mouse-look** and **eight bundled Wayland Turnip drivers** selectable per game. Chosen **per container**, off by default.
+- **Wayland display backend** *(experimental, new in 3.1.2)* — an alternative to the Java X server: the game draws into Bannerlator's own embedded **Wayland compositor**. Brings **HDR10**, **launching a game on an external screen / TV**, **zero-copy presentation**, real **mouse-look** and **eight bundled Wayland Turnip drivers** selectable per game. Chosen **per container**, off by default. *(3.1.4 pre-release 1: a built-in adapter runs your normal Turnip driver on Wayland too, so it's one driver choice, like X11.)*
   - > ⚠️ **Experimental, and not a replacement for X11.** Expect bugs; X11 stays the default and stays supported. Requires a **versionCode 8 arm64ec Proton 11 layer** (the **(v8)** catalog rows) and an **Adreno** GPU — Mali / Xclipse / PowerVR stay on X11.
 - **SurfaceFlinger renderer colour fix** — the SurfaceFlinger (ASurfaceRenderer) host renderer got a crash + colour-accuracy fix (red/blue channel swap corrected, GPU-side format converter, proper fencing), with a **"Correct SurfaceFlinger colours"** toggle available **per container and per game** (shown inline under the Renderer picker when SurfaceFlinger is selected, on by default). *(Ported from [GameNative](https://github.com/utkarshdalal/GameNative) #1620 / #1644.)*
 - > ℹ️ The **Vulkan host renderer** uses the rendering path from **[StevenMXZ](https://github.com/StevenMXZ/Winlator-Ludashi)** (Winlator-Ludashi); its `AHardwareBuffer` present path — what makes Vulkan / DXVK / VKD3D content actually display correctly — was ported from / cross-examined against **[GameNative](https://github.com/utkarshdalal/GameNative)**. See [Credits](#-credits).

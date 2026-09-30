@@ -41,7 +41,7 @@ object CommunityConfigApply {
         "renderScale", "fullscreenMode", "sharpnessEffect", "sharpnessLevel", "sharpnessDenoise",
         "reshadeLoadout", "reshadeMode", "reshadeParams", "reshadeEffect", "startupSelection",
         "exclusiveXInput", "disableXinput", "simTouchScreen", "numControllers", "controlsProfile",
-        "midiSoundFont", "lc_all", "autoCloseOnExit", "fpsLimiterEnabled",
+        "midiSoundFont", "lc_all", "autoCloseOnExit", "fpsLimiterEnabled", "syncMode",
     )
 
     /** Advisory only — surfaced to the user but NEVER written to the shortcut (container-scoped). */

@@ -388,7 +388,7 @@ internal fun DeckGamePage(
     }
 
     ShortcutActionDialogs(actions)
-    ShortcutLaunchDialogs(launcher)
+    ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
 }
 
 /** One Deck game-menu entry: a classic ⋮ item (or Play / Container settings) with a line saying what it does. */

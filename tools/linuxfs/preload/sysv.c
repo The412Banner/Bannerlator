@@ -1,4 +1,4 @@
-/* System V semaphores and shared memory for programs in the Linux runtime.
+/* System V semaphores, shared memory and message queues for programs in the Linux runtime.
  *
  * Android kernels are built without System V IPC, so semget/shmget fail with ENOSYS. Steam's tier0
  * creates its client-instance semaphore with semget and gives up when that fails. This library is
@@ -7,7 +7,8 @@
  * segment is a plain file that shmat maps. Objects are found by the inode of their file, which is
  * what the id is. semop applies its operations one by one (no all-or-nothing across a set) and
  * SEM_UNDO is accepted but not performed - enough for the client, which uses single-counter sets.
- * Message queues stay unsupported. */
+ * A message queue is a table of slots in its file.
+ * gamescope hands mangoapp (Deck mode's performance overlay) each frame's timings through one (from Droid-Deck/DroidDeck #55). */
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
@@ -15,6 +16,7 @@
 #include <limits.h>
 #include <linux/futex.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -23,6 +25,7 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/mman.h>
+#include <sys/msg.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
@@ -394,6 +397,126 @@ int shmctl(int shmid, int cmd, struct shmid_ds *buf) {
     case IPC_SET: case SHM_LOCK: case SHM_UNLOCK: return 0;
     default: errno = EINVAL; return -1;
     }
+}
+
+/* ------------------------------------------------------------------ message queues */
+
+/* Only what gamescope and mangoapp use: msgtyp 0 or > 0, IPC_NOWAIT and IPC_RMID. */
+#define MSG_MAGIC 0x574e4d51u /* "WNMQ" */
+#define MSG_SLOTS 32
+
+struct msg_queue {
+    uint32_t magic;
+    _Atomic int32_t lock;    /* 0 free, else the holder's pid */
+    _Atomic int32_t changed; /* bumped on every send and receive; waiters sleep on it */
+    uint64_t next_seq;
+    struct { uint64_t seq; long mtype; size_t len; char data[2048]; } slot[MSG_SLOTS]; /* seq 0: free */
+};
+
+static struct msg_queue *msg_map(int id) {
+    int fd = open_by_id("msg", id);
+    if (fd < 0) return NULL;
+    struct msg_queue *q = mmap(NULL, sizeof(*q), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    close(fd);
+    if (q == MAP_FAILED) return NULL;
+    if (q->magic == MSG_MAGIC) return q;
+    munmap(q, sizeof(*q));
+    errno = EINVAL;
+    return NULL;
+}
+
+/* A process killed while holding the lock (Android ends sessions without warning) loses it. */
+static void msg_lock(struct msg_queue *q) {
+    for (int32_t owner = 0; !atomic_compare_exchange_strong(&q->lock, &owner, getpid()); owner = 0) {
+        if (kill(owner, 0) != 0 && errno == ESRCH) atomic_compare_exchange_strong(&q->lock, &owner, 0);
+        else futex(&q->lock, FUTEX_WAIT, owner, &(struct timespec){0, 20000000});
+    }
+}
+
+static void msg_unlock(struct msg_queue *q, int changed) {
+    atomic_store(&q->lock, 0);
+    futex(&q->lock, FUTEX_WAKE, 1, NULL);
+    if (changed) {
+        atomic_fetch_add(&q->changed, 1);
+        futex(&q->changed, FUTEX_WAKE, INT_MAX, NULL);
+    }
+}
+
+int msgget(key_t key, int msgflg) {
+    int created;
+    int fd = open_object("msg", key, msgflg, &created);
+    if (fd < 0) return -1;
+    uint32_t magic = MSG_MAGIC;
+    if (created && (ftruncate(fd, sizeof(struct msg_queue)) != 0 || pwrite(fd, &magic, sizeof(magic), 0) != sizeof(magic))) {
+        close(fd);
+        return -1;
+    }
+    int id = object_id(fd);
+    close(fd);
+    return id;
+}
+
+int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg) {
+    struct msg_queue *q = msg_map(msqid);
+    if (!q) return -1;
+    if (msgsz > sizeof(q->slot[0].data) || *(const long *)msgp < 1) { munmap(q, sizeof(*q)); errno = EINVAL; return -1; }
+    for (;;) {
+        msg_lock(q);
+        int32_t seen = atomic_load(&q->changed);
+        for (int i = 0; i < MSG_SLOTS; i++) {
+            if (q->slot[i].seq) continue;
+            q->slot[i].mtype = *(const long *)msgp;
+            q->slot[i].len = msgsz;
+            memcpy(q->slot[i].data, (const long *)msgp + 1, msgsz);
+            q->slot[i].seq = ++q->next_seq;
+            msg_unlock(q, 1);
+            munmap(q, sizeof(*q));
+            return 0;
+        }
+        msg_unlock(q, 0);
+        if ((msgflg & IPC_NOWAIT) || (futex(&q->changed, FUTEX_WAIT, seen, NULL) != 0 && errno == EINTR)) {
+            munmap(q, sizeof(*q));
+            if (msgflg & IPC_NOWAIT) errno = EAGAIN;
+            return -1;
+        }
+    }
+}
+
+ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp, int msgflg) {
+    if (msgtyp < 0) { errno = EINVAL; return -1; }
+    struct msg_queue *q = msg_map(msqid);
+    if (!q) return -1;
+    for (;;) {
+        msg_lock(q);
+        int32_t seen = atomic_load(&q->changed);
+        int best = -1;
+        for (int i = 0; i < MSG_SLOTS; i++)
+            if (q->slot[i].seq && (!msgtyp || q->slot[i].mtype == msgtyp) && (best < 0 || q->slot[i].seq < q->slot[best].seq))
+                best = i;
+        if (best >= 0) {
+            size_t n = q->slot[best].len < msgsz ? q->slot[best].len : msgsz;
+            *(long *)msgp = q->slot[best].mtype;
+            memcpy((long *)msgp + 1, q->slot[best].data, n);
+            q->slot[best].seq = 0;
+            msg_unlock(q, 1);
+            munmap(q, sizeof(*q));
+            return (ssize_t)n;
+        }
+        msg_unlock(q, 0);
+        if ((msgflg & IPC_NOWAIT) || (futex(&q->changed, FUTEX_WAIT, seen, NULL) != 0 && errno == EINTR)) {
+            munmap(q, sizeof(*q));
+            if (msgflg & IPC_NOWAIT) errno = ENOMSG;
+            return -1;
+        }
+    }
+}
+
+int msgctl(int msqid, int cmd, struct msqid_ds *buf) {
+    if (cmd != IPC_RMID) { errno = EINVAL; return -1; }
+    pthread_mutex_lock(&g_lock);
+    int rc = unlink_by_id("msg", msqid);
+    pthread_mutex_unlock(&g_lock);
+    return rc;
 }
 
 /*

@@ -7,8 +7,8 @@ index 54e4efc..024af02 100644
  
  	float queuePriorities = 1.0f;
 +	// Without CAP_SYS_NICE gamescope never asks for realtime-priority queues. Under proot on
-+	// Android there is no capability to have, but the driver may still grant the priority (Turnip
-+	// does on Adreno), and the existing fallback below covers a driver that refuses. Opt in with
++	// Android there is no capability to have; the fallback below covers a driver that refuses. KGSL
++	// Turnip accepts but ignores it (one submit-queue priority, contexts created alike). Opt in with
 +	// GAMESCOPE_FORCE_VULKAN_REALTIME=1. (Armada's --force-vulkan-realtime, as an environment switch.)
 +	const char *pszForceRealtime = getenv( "GAMESCOPE_FORCE_VULKAN_REALTIME" );
 +	const bool useRealtimeVulkanQueue = gamescope::Process::HasCapSysNice() || ( pszForceRealtime && atoi( pszForceRealtime ) != 0 );
@@ -52,27 +52,10 @@ index 54e4efc..024af02 100644
  			fprintf(stderr, "vkCreateDevice failed with a high-priority queue (compute). Falling back to regular priority (all).\n");
  			queueCreateInfos[0].pNext = nullptr;
 diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
-index 18b799e..16f7846 100644
+index 10990b8..08afbc4 100644
 --- a/src/steamcompmgr.cpp
 +++ b/src/steamcompmgr.cpp
-@@ -2020,23 +2020,41 @@ MouseCursor::MouseCursor(xwayland_ctx_t *ctx)
- 
- void MouseCursor::UpdatePosition()
- {
-+	// The gamepad-driven cursor is moved through XTest, which moves the X pointer and nothing
-+	// else: wlserver's copy of the position never changes, so the sprite sat frozen while the
-+	// pointer moved. Ask X where the pointer is. (Armada 0001, on 3.16.29.)
-+	Window root_ret, child_ret;
-+	int root_x = m_x, root_y = m_y, win_x = 0, win_y = 0;
-+	unsigned int mask;
-+	XQueryPointer( m_ctx->dpy, DefaultRootWindow( m_ctx->dpy ),
-+	               &root_ret, &child_ret,
-+	               &root_x, &root_y,
-+	               &win_x, &win_y,
-+	               &mask );
-+
- 	wlserver_lock();
- 	struct wlr_pointer_constraint_v1 *pConstraint = wlserver.GetCursorConstraint();
+@@ -2025,18 +2025,53 @@ void MouseCursor::UpdatePosition()
  	if ( pConstraint && pConstraint->current.cursor_hint.enabled )
  	{
  		m_bConstrained = true;
@@ -84,23 +67,61 @@ index 18b799e..16f7846 100644
  	}
 -	else
 +	m_bConstrained = false;
-+	wlserver_unlock();
-+	if ( root_x != m_x || root_y != m_y )
++	// Nothing to draw (the gamepad UI, most games): the position only feeds focus and zoom, and
++	// wlserver's copy is what stock gamescope uses for those. No round trip to X.
++	if ( m_imageEmpty )
  	{
 -		m_bConstrained = false;
 -
--		m_x = wlserver.mouse_surface_cursorx;
--		m_y = wlserver.mouse_surface_cursory;
+ 		m_x = wlserver.mouse_surface_cursorx;
+ 		m_y = wlserver.mouse_surface_cursory;
++		wlserver_unlock();
++		return;
+ 	}
+ 	wlserver_unlock();
++
++	// The gamepad-driven cursor is moved through XTest, which moves the X pointer and nothing
++	// else: wlserver's copy of the position never changes, so the sprite sat frozen while the
++	// pointer moved. Ask X where the pointer is. (Armada 0001, on 3.16.29.) That is a blocking
++	// round trip to Xwayland on the paint thread, which waits while Xwayland is busy drawing the
++	// client's interface: once per vblank only while the sprite is shown, and every 50 ms while
++	// it is hidden for inactivity - enough to bring it back within a few frames of a move.
++	if ( wlserver.bCursorHidden )
++	{
++		const uint64_t now = get_time_in_nanos();
++		if ( now - m_ulLastPointerQuery < 50'000'000ul )
++			return;
++		m_ulLastPointerQuery = now;
++	}
++	Window root_ret, child_ret;
++	int root_x = m_x, root_y = m_y, win_x = 0, win_y = 0;
++	unsigned int mask;
++	XQueryPointer( m_ctx->dpy, DefaultRootWindow( m_ctx->dpy ),
++	               &root_ret, &child_ret,
++	               &root_x, &root_y,
++	               &win_x, &win_y,
++	               &mask );
++
++	if ( root_x != m_x || root_y != m_y )
++	{
 +		m_x = root_x;
 +		m_y = root_y;
-+		if ( !m_imageEmpty )
-+		{
-+			wlserver.ulLastMovedCursorTime = get_time_in_nanos();
-+			wlserver.bCursorHidden = !wlserver.bCursorHasImage;
-+			hasRepaintNonBasePlane = true;
-+		}
- 	}
--	wlserver_unlock();
++		wlserver.ulLastMovedCursorTime = get_time_in_nanos();
++		wlserver.bCursorHidden = !wlserver.bCursorHasImage;
++		hasRepaintNonBasePlane = true;
++	}
  }
  
  void MouseCursor::checkSuspension()
+diff --git a/src/steamcompmgr.hpp b/src/steamcompmgr.hpp
+index c428784..bd62fd1 100644
+--- a/src/steamcompmgr.hpp
++++ b/src/steamcompmgr.hpp
+@@ -109,6 +109,7 @@ private:
+ 
+ 	int m_x = 0, m_y = 0;
+ 	bool m_bConstrained = false;
++	uint64_t m_ulLastPointerQuery = 0;
+ 	int m_hotspotX = 0, m_hotspotY = 0;
+ 
+ 	gamescope::OwningRc<CVulkanTexture> m_texture;

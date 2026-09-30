@@ -69,6 +69,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AddToHomeScreen
@@ -227,6 +228,7 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.linux.LinuxRuntimeInstaller
 import com.winlator.star.linux.LinuxRuntimeUpdate
 import com.winlator.star.linux.LinuxShortcuts
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
@@ -355,6 +357,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Bulk games-folder import: pick one folder holding many game folders, scan each for its exe,
     // then confirm the findings before anything is written to the container.
     var showImportMethodPicker by remember { mutableStateOf(false) }
+    // The + flow asks WHAT to add first; only the two Wine imports then ask for a container, and
+    // this holds which of them the container pick is for (null = none pending).
+    var pendingImportKind by remember { mutableStateOf<ImportKind?>(null) }
+    // "Add Android game": the picker, and the write that follows its Add.
+    var showAndroidPicker by remember { mutableStateOf(false) }
+    var androidAddRunning by remember { mutableStateOf(false) }
     var folderScanRunning by remember { mutableStateOf(false) }
     var folderScanResults by remember { mutableStateOf<List<GameFolderScanner.Candidate>>(emptyList()) }
     var folderScanSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -466,7 +474,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         val req = GamesScreenRequests.pending ?: return@LaunchedEffect
         if (req.action == GameMenuAction.ADD_GAME) {
             GamesScreenRequests.pending = null
-            showImportContainerPicker = true
+            // Same as the + button: ask what to add first (Android games never need a container).
+            showImportMethodPicker = true
             return@LaunchedEffect
         }
         if (shortcuts.isEmpty()) return@LaunchedEffect // still loading — retry when it changes
@@ -613,6 +622,14 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     )
     val xmbActionsFor: (Shortcut) -> List<XmbAction> = { shortcut ->
         buildList {
+            // An Android game has no Wine side: no settings, saves, configs, logs or container moves.
+            if (AndroidGames.isAndroidEntry(shortcut)) {
+                add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
+                add(XmbAction("Scrape cover", Icons.Filled.Search, menu = { xmbScrapeCoverMenu(it, shortcut) }))
+                add(XmbAction("Add to home screen", Icons.Filled.AddToHomeScreen, "Android's pin prompt") { addToHomeScreen(context, shortcut) })
+                add(XmbAction("Remove", Icons.Filled.Delete, "Asks to confirm first", danger = true, menu = { xmbRemoveMenu(it, shortcut, xmbHost) }))
+                return@buildList
+            }
             add(XmbAction("Settings", Icons.Filled.Settings, "Display, graphics, controller…", menu = { xmbSettingsMenu(it, shortcut, xmbHost) }))
             add(XmbAction("Game Details", Icons.Filled.Edit, "Name, genres, year, description", menu = { xmbGameDetailsMenu(it, shortcut) }))
             if (isSteamOriginShortcut(shortcut)) {
@@ -664,6 +681,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
                                     showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                                     showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
+                                    showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
                                 )
                             },
                             sdBadge = { shortcut ->
@@ -691,6 +709,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(shortcuts, key = { it.file.path }) { shortcut ->
+                                // Android games keep only what makes sense outside Wine: no settings, container moves, exe,
+                                // export, community configs, logs or saves.
+                                val wine = remember(shortcut) { !AndroidGames.isAndroidEntry(shortcut) }
                                 ShortcutGridItem(
                                     shortcut = shortcut,
                                     selectionMode = selectionMode,
@@ -699,23 +720,23 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                         if (selectionMode) selectedPaths = selectedPaths.toggle(shortcut.file.path)
                                         else requestLaunch(shortcut)
                                     },
-                                    onSettings = { settingsShortcut = shortcut },
+                                    onSettings = if (wine) ({ settingsShortcut = shortcut }) else null,
                                     onRemove = { confirmRemove = shortcut },
-                                    onClone = { cloneTarget = shortcut },
-                                    onCopyToDriveC = { copyToDriveCTarget = shortcut },
-                                    onChangeExe = { changeExeTarget = shortcut },
+                                    onClone = if (wine) ({ cloneTarget = shortcut }) else null,
+                                    onCopyToDriveC = if (wine) ({ copyToDriveCTarget = shortcut }) else null,
+                                    onChangeExe = if (wine) ({ changeExeTarget = shortcut }) else null,
                                     onAddToHome = { addToHomeScreen(context, shortcut) },
-                                    onExport = { exportShortcut(context, shortcut) },
+                                    onExport = if (wine) ({ exportShortcut(context, shortcut) }) else null,
                                     onProperties = { propertiesShortcut = shortcut },
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
-                                    onCommunityConfigs = { communityConfigsFor(shortcut) },
+                                    onCommunityConfigs = if (wine) ({ communityConfigsFor(shortcut) }) else null,
                                     onGameDetails = { gameDetailsShortcut = shortcut },
-                                    onViewLogs = { logsShortcut = shortcut },
-                                    onCloudSaves = if (isSteamOriginShortcut(shortcut))
+                                    onViewLogs = if (wine) ({ logsShortcut = shortcut }) else null,
+                                    onCloudSaves = if (wine && isSteamOriginShortcut(shortcut))
                                         ({ launchSaveManager(context, steamAppIdOf(shortcut)) }) else null,
-                                    onBackupSaves = if (isCustomShortcut(shortcut))
+                                    onBackupSaves = if (wine && isCustomShortcut(shortcut))
                                         ({ startSaveBackup(shortcut) }) else null,
-                                    onRestoreSaves = if (isCustomShortcut(shortcut))
+                                    onRestoreSaves = if (wine && isCustomShortcut(shortcut))
                                         ({ startSaveRestore(shortcut) }) else null,
                                 )
                             }
@@ -735,28 +756,29 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 val itemAddToHome = { addToHomeScreen(context, shortcut) }
                                 val itemExport = { exportShortcut(context, shortcut) }
                                 val itemProperties = { propertiesShortcut = shortcut }
+                                val wine = remember(shortcut) { !AndroidGames.isAndroidEntry(shortcut) }
                                 ShortcutItemLayoutL(
                                     shortcut = shortcut,
                                     selectionMode = selectionMode,
                                     selected = shortcut.file.path in selectedPaths,
                                     onRun = itemRun,
-                                    onSettings = itemSettings,
+                                    onSettings = if (wine) itemSettings else null,
                                     onRemove = itemRemove,
-                                    onClone = itemClone,
-                                    onCopyToDriveC = itemCopyToDriveC,
-                                    onChangeExe = itemChangeExe,
+                                    onClone = if (wine) itemClone else null,
+                                    onCopyToDriveC = if (wine) itemCopyToDriveC else null,
+                                    onChangeExe = if (wine) itemChangeExe else null,
                                     onAddToHome = itemAddToHome,
-                                    onExport = itemExport,
+                                    onExport = if (wine) itemExport else null,
                                     onProperties = itemProperties,
                                     onScrapeCover = { scrapeCoverFor(shortcut) },
-                                    onCommunityConfigs = { communityConfigsFor(shortcut) },
+                                    onCommunityConfigs = if (wine) ({ communityConfigsFor(shortcut) }) else null,
                                     onGameDetails = { gameDetailsShortcut = shortcut },
-                                    onViewLogs = { logsShortcut = shortcut },
-                                    onCloudSaves = if (isSteamOriginShortcut(shortcut))
+                                    onViewLogs = if (wine) ({ logsShortcut = shortcut }) else null,
+                                    onCloudSaves = if (wine && isSteamOriginShortcut(shortcut))
                                         ({ launchSaveManager(context, steamAppIdOf(shortcut)) }) else null,
-                                    onBackupSaves = if (isCustomShortcut(shortcut))
+                                    onBackupSaves = if (wine && isCustomShortcut(shortcut))
                                         ({ startSaveBackup(shortcut) }) else null,
-                                    onRestoreSaves = if (isCustomShortcut(shortcut))
+                                    onRestoreSaves = if (wine && isCustomShortcut(shortcut))
                                         ({ startSaveRestore(shortcut) }) else null,
                                 )
                             }
@@ -768,7 +790,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             // menu is open (it would sit on top of the menu's rows).
             if (!(viewMode == ShortcutViewMode.XMB && xmbNested)) DraggableAddButton(
                 prefKey = "games",
-                onClick = { showImportContainerPicker = true },
+                onClick = { showImportMethodPicker = true },
                 outerPadding = 16.dp,
                 buttonModifier = Modifier
                     .size(56.dp)
@@ -905,13 +927,32 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
         )
     }
 
-    // How to add: one exe (the original flow) or a whole folder of game folders.
+    // Once a container is picked for a Wine import, open the matching file/folder picker. A container
+    // is chosen by then, so hand the in-app picker its C: drive: a game living on C: imports as C:\…
+    // via WinePath and runs FROM the container's C:. Null-safe: only when the C: drive actually
+    // exists on disk. The system picker (SAF) has no C: notion.
+    fun launchImportPicker(kind: ImportKind) {
+        val driveC = pendingImportContainerIndex.takeIf { it >= 0 }
+            ?.let { vm.containers().getOrNull(it) }
+            ?.let { File(it.rootDir, ".wine/drive_c") }
+            ?.takeIf { it.isDirectory }
+        when (kind) {
+            ImportKind.EXE ->
+                if (importUseSystemPicker) importFileLauncher.launch("*/*")
+                else importFileInAppLauncher.launch(
+                    InAppFilePicker.buildIntent(context, InAppFilePicker.SHORTCUT, "Select .exe / .desktop / .lnk", driveCPath = driveC?.absolutePath)
+                )
+            ImportKind.FOLDER -> importFolderLauncher.launch(
+                InAppFilePicker.buildDirIntent(context, "Select your games folder", driveCPath = driveC?.absolutePath)
+            )
+        }
+    }
+
+    // What to add, asked first: one exe (the original flow), a whole folder of game folders — both
+    // then ask for a container — or Android games, which never use one.
     if (showImportMethodPicker) {
         OutlinedAlertDialog(
-            onDismissRequest = {
-                showImportMethodPicker = false
-                pendingImportContainerIndex = -1
-            },
+            onDismissRequest = { showImportMethodPicker = false },
             title = { Text("Add games") },
             text = {
                 Column {
@@ -921,18 +962,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         icon = Icons.Default.InsertDriveFile,
                     ) {
                         showImportMethodPicker = false
-                        // A container is already chosen here — hand the in-app picker its C: drive so
-                        // the user can pick a game living on C: (games picked under drive_c import as
-                        // C:\… via WinePath, running FROM the container's C:). Null-safe: only when the
-                        // C: drive actually exists on disk. The system picker (SAF) has no C: notion.
-                        val driveC = pendingImportContainerIndex.takeIf { it >= 0 }
-                            ?.let { vm.containers().getOrNull(it) }
-                            ?.let { File(it.rootDir, ".wine/drive_c") }
-                            ?.takeIf { it.isDirectory }
-                        if (importUseSystemPicker) importFileLauncher.launch("*/*")
-                        else importFileInAppLauncher.launch(
-                            InAppFilePicker.buildIntent(context, InAppFilePicker.SHORTCUT, "Select .exe / .desktop / .lnk", driveCPath = driveC?.absolutePath)
-                        )
+                        pendingImportKind = ImportKind.EXE
+                        showImportContainerPicker = true
                     }
                     MenuOptionCard(
                         title = "Add games folder",
@@ -940,24 +971,46 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         icon = Icons.Default.Folder,
                     ) {
                         showImportMethodPicker = false
-                        // Same C: hand-off as the single-exe path: let the folder picker browse the
-                        // chosen container's C: drive (scanned games under drive_c import as C:\…).
-                        val driveC = pendingImportContainerIndex.takeIf { it >= 0 }
-                            ?.let { vm.containers().getOrNull(it) }
-                            ?.let { File(it.rootDir, ".wine/drive_c") }
-                            ?.takeIf { it.isDirectory }
-                        importFolderLauncher.launch(
-                            InAppFilePicker.buildDirIntent(context, "Select your games folder", driveCPath = driveC?.absolutePath)
-                        )
+                        pendingImportKind = ImportKind.FOLDER
+                        showImportContainerPicker = true
+                    }
+                    // No container: Android games live in their own home (see AndroidGames).
+                    MenuOptionCard(
+                        title = "Add Android game",
+                        subtitle = "Pick games installed on this phone — they open as normal Android apps",
+                        icon = Icons.Filled.Android,
+                    ) {
+                        showImportMethodPicker = false
+                        showAndroidPicker = true
                     }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = {
-                    showImportMethodPicker = false
-                    pendingImportContainerIndex = -1
-                }) { Text("Cancel") }
+                TextButton(onClick = { showImportMethodPicker = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showAndroidPicker) {
+        val added = remember(shortcuts) { AndroidGames.addedPackages(shortcuts) }
+        AndroidGamePickerDialog(
+            alreadyAdded = added,
+            adding = androidAddRunning,
+            onDismiss = { showAndroidPicker = false },
+            onAdd = { apps ->
+                androidAddRunning = true
+                scope.launch {
+                    val summary = withContext(Dispatchers.IO) { vm.addAndroidGames(apps, context) }
+                    androidAddRunning = false
+                    showAndroidPicker = false
+                    val message = if (summary.failed == 0) {
+                        "Added ${summary.added} Android game${if (summary.added == 1) "" else "s"}"
+                    } else {
+                        "Added ${summary.added}, ${summary.failed} failed — ${summary.failures.firstOrNull().orEmpty()}"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
             },
         )
     }
@@ -1072,7 +1125,10 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     if (showImportContainerPicker) {
         val containers = vm.containers()
         OutlinedAlertDialog(
-            onDismissRequest = { showImportContainerPicker = false },
+            onDismissRequest = {
+                showImportContainerPicker = false
+                pendingImportKind = null
+            },
             title = { Text("Select container") },
             text = {
                 Column {
@@ -1094,9 +1150,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 ) {
                                     showImportContainerPicker = false
                                     pendingImportContainerIndex = index
-                                    // Ask HOW to add before asking WHAT to add: one exe, or a whole
-                                    // folder of game folders.
-                                    showImportMethodPicker = true
+                                    pendingImportKind?.let { launchImportPicker(it) }
+                                    pendingImportKind = null
                                 }
                             }
                         }
@@ -1108,7 +1163,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { showImportContainerPicker = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showImportContainerPicker = false
+                    pendingImportKind = null
+                }) { Text("Cancel") }
+            },
         )
     }
 
@@ -1320,7 +1380,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     ShortcutActionDialogs(actions)
 
     // Launch-flow dialogs (EA, launch method, SteamLite pre-flight, component download, Steam update/verify).
-    ShortcutLaunchDialogs(launcher)
+    ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
 }
 
 /**
@@ -4650,7 +4710,8 @@ internal fun steamAppIdOf(shortcut: Shortcut): Int =
 
 // A shortcut is "custom" (exe/folder import) when it is NOT a genuine Steam-library game. Steam games
 // get the "Cloud Saves" item; custom games get the local-only "Back up / Restore saves" items.
-internal fun isCustomShortcut(shortcut: Shortcut): Boolean = !isSteamOriginShortcut(shortcut)
+internal fun isCustomShortcut(shortcut: Shortcut): Boolean =
+    !isSteamOriginShortcut(shortcut) && !AndroidGames.isAndroidEntry(shortcut)
 
 internal fun launchSaveManager(context: Context, focusAppId: Int) {
     context.startActivity(
@@ -4668,18 +4729,19 @@ private fun ShortcutItemLayoutL(
     selectionMode: Boolean,
     selected: Boolean,
     onRun: () -> Unit,
-    onSettings: () -> Unit,
+    // Null = the item doesn't apply to this entry (an Android game has no Wine side) and is hidden.
+    onSettings: (() -> Unit)?,
     onRemove: () -> Unit,
-    onClone: () -> Unit,
-    onCopyToDriveC: () -> Unit,
-    onChangeExe: () -> Unit,
+    onClone: (() -> Unit)?,
+    onCopyToDriveC: (() -> Unit)?,
+    onChangeExe: (() -> Unit)?,
     onAddToHome: () -> Unit,
-    onExport: () -> Unit,
+    onExport: (() -> Unit)?,
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
-    onCommunityConfigs: () -> Unit,
+    onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
-    onViewLogs: () -> Unit,
+    onViewLogs: (() -> Unit)?,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
@@ -4695,7 +4757,9 @@ private fun ShortcutItemLayoutL(
     val driverLabel = spec.driverLabel
     val frameGenLabel = spec.frameGenLabel
     val backendLabel = spec.backendLabel
-    val subtitle = spec.meta
+    // An Android game has no Wine components to show; its package name says what it is instead.
+    val isAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) }
+    val subtitle = if (isAndroid) AndroidGames.packageOf(shortcut).orEmpty() else spec.meta
 
     // Floating card to match the Containers list (rounded surfaceVariant panel + outline
     // border + side margins) instead of a flat edge-to-edge row.
@@ -4775,6 +4839,7 @@ private fun ShortcutItemLayoutL(
                     showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
                     showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                                     showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
+                                    showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }
@@ -4796,7 +4861,7 @@ private fun ShortcutItemLayoutL(
             }
             // Component specs: bright primary chips (renderer · DXVK · frame-gen) then a
             // muted secondary dot-line (driver · VKD3D · backend). Shared with Containers.
-            SpecChipRows(
+            if (!isAndroid) SpecChipRows(
                 rendererLabel = rendererLabel,
                 dxvkVersion = dxvkVersion,
                 frameGenLabel = frameGenLabel,
@@ -4829,18 +4894,19 @@ private fun ShortcutItemLayoutL(
 // Shared overflow (⋮) button + menu for the list-view cards.
 @Composable
 private fun ShortcutOverflowButton(
-    onSettings: () -> Unit,
+    // Null = the item doesn't apply to this entry (an Android game has no Wine side) and is hidden.
+    onSettings: (() -> Unit)?,
     onRemove: () -> Unit,
-    onClone: () -> Unit,
-    onCopyToDriveC: () -> Unit,
-    onChangeExe: () -> Unit,
+    onClone: (() -> Unit)?,
+    onCopyToDriveC: (() -> Unit)?,
+    onChangeExe: (() -> Unit)?,
     onAddToHome: () -> Unit,
-    onExport: () -> Unit,
+    onExport: (() -> Unit)?,
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
-    onCommunityConfigs: () -> Unit,
+    onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
-    onViewLogs: () -> Unit,
+    onViewLogs: (() -> Unit)?,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
@@ -4855,47 +4921,57 @@ private fun ShortcutOverflowButton(
             onDismissRequest = { menuExpanded = false },
             modifier = Modifier.outlinedMenuCard(),
         ) {
-            DropdownMenuItem(
-                text = { Text("Settings") },
-                leadingIcon = { Icon(Icons.Filled.Settings, null) },
-                onClick = { menuExpanded = false; onSettings() },
-            )
-            MenuItemDivider()
+            if (onSettings != null) {
+                DropdownMenuItem(
+                    text = { Text("Settings") },
+                    leadingIcon = { Icon(Icons.Filled.Settings, null) },
+                    onClick = { menuExpanded = false; onSettings() },
+                )
+                MenuItemDivider()
+            }
             DropdownMenuItem(
                 text = { Text("Remove") },
                 leadingIcon = { Icon(Icons.Filled.Delete, null) },
                 onClick = { menuExpanded = false; onRemove() },
             )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("Clone to container") },
-                leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
-                onClick = { menuExpanded = false; onClone() },
-            )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("Copy to Drive C…") },
-                leadingIcon = { Icon(Icons.Filled.DriveFileMove, null, tint = MaterialTheme.colorScheme.primary) },
-                onClick = { menuExpanded = false; onCopyToDriveC() },
-            )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("Change executable…") },
-                leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary) },
-                onClick = { menuExpanded = false; onChangeExe() },
-            )
+            if (onClone != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("Clone to container") },
+                    leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
+                    onClick = { menuExpanded = false; onClone() },
+                )
+            }
+            if (onCopyToDriveC != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("Copy to Drive C…") },
+                    leadingIcon = { Icon(Icons.Filled.DriveFileMove, null, tint = MaterialTheme.colorScheme.primary) },
+                    onClick = { menuExpanded = false; onCopyToDriveC() },
+                )
+            }
+            if (onChangeExe != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("Change executable…") },
+                    leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary) },
+                    onClick = { menuExpanded = false; onChangeExe() },
+                )
+            }
             MenuItemDivider()
             DropdownMenuItem(
                 text = { Text("Add to home screen") },
                 leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) },
                 onClick = { menuExpanded = false; onAddToHome() },
             )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("Export") },
-                leadingIcon = { Icon(Icons.Filled.Upload, null) },
-                onClick = { menuExpanded = false; onExport() },
-            )
+            if (onExport != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("Export") },
+                    leadingIcon = { Icon(Icons.Filled.Upload, null) },
+                    onClick = { menuExpanded = false; onExport() },
+                )
+            }
             MenuItemDivider()
             DropdownMenuItem(
                 text = { Text("Game Details") },
@@ -4934,18 +5010,22 @@ private fun ShortcutOverflowButton(
                 leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { menuExpanded = false; onScrapeCover() },
             )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("Community configs") },
-                leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) },
-                onClick = { menuExpanded = false; onCommunityConfigs() },
-            )
-            MenuItemDivider()
-            DropdownMenuItem(
-                text = { Text("View logs") },
-                leadingIcon = { Icon(Icons.Filled.Description, null) },
-                onClick = { menuExpanded = false; onViewLogs() },
-            )
+            if (onCommunityConfigs != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("Community configs") },
+                    leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) },
+                    onClick = { menuExpanded = false; onCommunityConfigs() },
+                )
+            }
+            if (onViewLogs != null) {
+                MenuItemDivider()
+                DropdownMenuItem(
+                    text = { Text("View logs") },
+                    leadingIcon = { Icon(Icons.Filled.Description, null) },
+                    onClick = { menuExpanded = false; onViewLogs() },
+                )
+            }
             MenuItemDivider()
             DropdownMenuItem(
                 text = { Text("Properties") },
@@ -4963,23 +5043,25 @@ private fun ShortcutGridItem(
     selectionMode: Boolean,
     selected: Boolean,
     onRun: () -> Unit,
-    onSettings: () -> Unit,
+    // Null = the item doesn't apply to this entry (an Android game has no Wine side) and is hidden.
+    onSettings: (() -> Unit)?,
     onRemove: () -> Unit,
-    onClone: () -> Unit,
-    onCopyToDriveC: () -> Unit,
-    onChangeExe: () -> Unit,
+    onClone: (() -> Unit)?,
+    onCopyToDriveC: (() -> Unit)?,
+    onChangeExe: (() -> Unit)?,
     onAddToHome: () -> Unit,
-    onExport: () -> Unit,
+    onExport: (() -> Unit)?,
     onProperties: () -> Unit,
     onScrapeCover: () -> Unit,
-    onCommunityConfigs: () -> Unit,
+    onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
-    onViewLogs: () -> Unit,
+    onViewLogs: (() -> Unit)?,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val isAndroidTile = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) }
 
     Box(
         modifier = Modifier
@@ -5037,6 +5119,7 @@ private fun ShortcutGridItem(
             showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
             showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
             showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
+            showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(6.dp),
@@ -5063,7 +5146,8 @@ private fun ShortcutGridItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (!shortcut.container?.name.isNullOrEmpty()) {
+                // Android games have no container to name (their home is not one).
+                if (!shortcut.container?.name.isNullOrEmpty() && !isAndroidTile) {
                     Text(
                         text = shortcut.container?.name ?: "",
                         fontSize = 10.sp,
@@ -5156,19 +5240,29 @@ private fun ShortcutGridItem(
             onDismissRequest = { menuExpanded = false },
             modifier = Modifier.outlinedMenuCard(),
         ) {
-            DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
-            MenuItemDivider()
+            if (onSettings != null) {
+                DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })
+                MenuItemDivider()
+            }
             DropdownMenuItem(text = { Text("Remove") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { menuExpanded = false; onRemove() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("Copy to Drive C…") }, leadingIcon = { Icon(Icons.Filled.DriveFileMove, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCopyToDriveC() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("Change executable…") }, leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onChangeExe() })
+            if (onClone != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("Clone to container") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menuExpanded = false; onClone() })
+            }
+            if (onCopyToDriveC != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("Copy to Drive C…") }, leadingIcon = { Icon(Icons.Filled.DriveFileMove, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCopyToDriveC() })
+            }
+            if (onChangeExe != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("Change executable…") }, leadingIcon = { Icon(Icons.Filled.SwapHoriz, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onChangeExe() })
+            }
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Add to home screen") }, leadingIcon = { Icon(Icons.Filled.AddToHomeScreen, null) }, onClick = { menuExpanded = false; onAddToHome() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+            if (onExport != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("Export") }, leadingIcon = { Icon(Icons.Filled.Upload, null) }, onClick = { menuExpanded = false; onExport() })
+            }
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Game Details") }, leadingIcon = { Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onGameDetails() })
             // Steam-origin only — opens the Save Manager focused on this game.
@@ -5187,10 +5281,14 @@ private fun ShortcutGridItem(
             }
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Scrape cover") }, leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onScrapeCover() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("Community configs") }, leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCommunityConfigs() })
-            MenuItemDivider()
-            DropdownMenuItem(text = { Text("View logs") }, leadingIcon = { Icon(Icons.Filled.Description, null) }, onClick = { menuExpanded = false; onViewLogs() })
+            if (onCommunityConfigs != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("Community configs") }, leadingIcon = { Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary) }, onClick = { menuExpanded = false; onCommunityConfigs() })
+            }
+            if (onViewLogs != null) {
+                MenuItemDivider()
+                DropdownMenuItem(text = { Text("View logs") }, leadingIcon = { Icon(Icons.Filled.Description, null) }, onClick = { menuExpanded = false; onViewLogs() })
+            }
             MenuItemDivider()
             DropdownMenuItem(text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })
         }
@@ -5880,6 +5978,37 @@ internal fun ShortcutSettingsDialogScreen(
         Container.DISPLAY_BACKEND_X11 -> false
         else -> containerWaylandDefault
     }
+    // Sync per-game override (extra "syncMode"; core.SyncSupport). null = follow the container. The
+    // stored value is the extra, else what this game's own env string said before the selector
+    // existed (WINEESYNC=0 → wineserver, WINENTSYNC=1 → ntsync, WINEESYNC=1 → esync). Greyed against
+    // the layer the game runs on — the container's (a shortcut has no layer of its own); the probe
+    // reads ntdll.so off-main and is cached per layer, so it's keyed on the wine version.
+    val syncLayer = shortcut.container.wineVersion ?: ""
+    val containerSyncStored = remember(shortcut.container) {
+        com.winlator.star.core.SyncSupport.storedMode(
+            shortcut.container.getExtra(com.winlator.star.core.SyncMode.EXTRA, ""), shortcut.container.envVars)
+    }
+    var syncCaps by remember(syncLayer) { mutableStateOf(com.winlator.star.core.SyncSupport.peek(syncLayer)) }
+    LaunchedEffect(syncLayer) {
+        if (isLinuxEntry) return@LaunchedEffect
+        syncCaps = withContext(Dispatchers.IO) {
+            com.winlator.star.core.SyncSupport.capsFor(context, null, syncLayer)
+        }
+    }
+    var syncOverride by remember {
+        mutableStateOf(com.winlator.star.core.SyncSupport.storedMode(
+            shortcut.getExtra(com.winlator.star.core.SyncMode.EXTRA, ""), shortcut.getExtra("envVars")))
+    }
+    val containerSyncEffective = syncCaps?.resolve(containerSyncStored)
+        ?: containerSyncStored ?: com.winlator.star.core.SyncMode.ESYNC
+    val syncEffective = syncOverride?.let { o -> syncCaps?.resolve(o) ?: o } ?: containerSyncEffective
+    val syncOverriding = syncOverride != null && syncEffective != containerSyncEffective
+    val syncOverrideUnavailable = syncOverride != null && syncCaps?.isAvailable(syncOverride!!) == false
+    val pickSync: (String) -> Unit = { m ->
+        if (syncCaps?.isAvailable(m) != false && com.winlator.star.core.SyncMode.normalize(m) != null)
+            syncOverride = if (m == containerSyncEffective) null else m
+    }
+
     // Wayland GAME driver override (per-game, same extra name as the container's): "" = the
     // container's choice. Only shown when the effective backend is Wayland; see core.WaylandGameDriver.
     var waylandGameDriverOverride by remember { mutableStateOf(shortcut.getExtra("waylandGameDriver", "")) }
@@ -5927,6 +6056,7 @@ internal fun ShortcutSettingsDialogScreen(
     var linuxDoubleBackQam by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)) }
     var linuxNoXalia by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)) }
     var linuxProotNoSeccomp by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)) }
+    var linuxOffline by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE)) }
     var linuxTurnipSysmem by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.turnipSysmemChoice(shortcut)) }
     var linuxTouch by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.touchChoice(shortcut)) }
     // The app's own games in the client's library, their shared saves, and any Games folders (LinuxAppGames).
@@ -6114,7 +6244,7 @@ internal fun ShortcutSettingsDialogScreen(
     var perfExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Audio driver. DirectAudio only loads on the arm64ec Proton builds in
-    // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (7 as of driver v1.3.2); a shortcut
+    // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (8 tokens as of driver v1.3.2); a shortcut
     // can't override the Wine version (container-only), so support is fixed by the container's layer.
     // Grey the option out off those layers and coerce a stale saved pick back to the default so the
     // dropdown never shows an unselectable value as selected.
@@ -6281,7 +6411,13 @@ internal fun ShortcutSettingsDialogScreen(
 
     // Env vars live in dialog-level state (not in the tab) so switching tabs can't drop
     // in-progress edits; written back to the shortcut's extras in save() below.
-    var envVarsStr by remember { mutableStateOf(shortcut.getExtra("envVars")) }
+    // The sync variables left the env string for the Sync selector (read into syncOverride above),
+    // so they're dropped here and on save; a Linux entry's env is handed back untouched.
+    var envVarsStr by remember {
+        mutableStateOf(shortcut.getExtra("envVars").let {
+            if (isLinuxEntry) it else com.winlator.star.core.SyncSupport.stripSyncVars(it)
+        })
+    }
     var showScAudioSettings by remember { mutableStateOf(false) }
     // The game's folder on the Android side, derived from the shortcut's Exec= path, so the
     // editor can look for DLLs the game ships. Null when the drive letter isn't mapped.
@@ -6457,7 +6593,7 @@ internal fun ShortcutSettingsDialogScreen(
         if (enableDInput) finalInputType = finalInputType or WinHandler.FLAG_INPUT_TYPE_DINPUT.toInt()
 
         val wincomps = winComponents.joinToString(",") { "${it.key}=${it.selectedIndex}" }
-        val envVars = envVarsStr
+        val envVars = if (isLinuxEntry) envVarsStr else com.winlator.star.core.SyncSupport.stripSyncVars(envVarsStr)
         val cpuList = cpuListViewRef.value?.getCheckedCPUListAsString() ?: shortcut.getExtra("cpuList", shortcut.container.getCPUList(true))
         val linuxClientCpuList = linuxClientCpuListViewRef.value?.getCheckedCPUListAsString()
             ?: shortcut.getExtra("linuxClientCpuList", shortcut.container.getCPUList(true))
@@ -6578,6 +6714,12 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("reshadeEffect", reshadeLoadout.firstEffectName())
             putExtra("wincomponents", wincomps)
             putExtra("envVars", envVars.ifEmpty { null })
+            // Sync override: only a pick that differs from the container's is stored (null clears the
+            // extra = follow the container). A pick the layer can't run saves as what it resolves to.
+            if (!isLinuxEntry) {
+                putExtra(com.winlator.star.core.SyncMode.EXTRA,
+                    syncOverride?.let { o -> syncCaps?.resolve(o) ?: o }?.takeIf { it != containerSyncEffective })
+            }
             putExtra("cpuList", cpuList)
             // Only a Linux entry draws the two pickers, so only a Linux entry writes their keys — a
             // Wine shortcut keeps exactly the extras it had.
@@ -6597,6 +6739,7 @@ internal fun ShortcutSettingsDialogScreen(
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM, if (linuxDoubleBackQam) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA, if (linuxNoXalia) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP, if (linuxProotNoSeccomp) "1" else "0")
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE, if (linuxOffline) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM, linuxTurnipSysmem.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_TOUCH, linuxTouch.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_APP_GAMES, if (linuxAppGames) "1" else "0")
@@ -6669,7 +6812,7 @@ internal fun ShortcutSettingsDialogScreen(
                 add("selectIcon")
                 // The Wine/X11 graphics stack is not registered for a Linux entry, so the D-pad
                 // cursor can never land on a row that isn't drawn (see the render conditionals).
-                if (!isLinuxEntry) add("displayBackend")
+                if (!isLinuxEntry) { add("syncMode"); add("displayBackend") }
                 add("gfxDriver")   // the compositor driver: live on the gamescope path too
                 if (effectiveWaylandShortcut && !isLinuxEntry) {
                     add("waylandAdvanced"); add("waylandDriverCfg")
@@ -6688,6 +6831,7 @@ internal fun ShortcutSettingsDialogScreen(
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_DOUBLE_BACK_QAM)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM)
@@ -7074,6 +7218,35 @@ internal fun ShortcutSettingsDialogScreen(
                         Text("❔  What is all this?")
                     }
 
+                    // Sync (esync / ntsync / fsync / wineserver) — follows the container unless this game
+                    // picks otherwise. D-pad: Left/Right step through the runnable modes, A goes back
+                    // to the container's. Not for a Linux entry: no Wine of ours runs there.
+                    if (!isLinuxEntry) {
+                        val runnable = com.winlator.star.core.SyncMode.ALL.filter { syncCaps?.isAvailable(it) ?: (it != com.winlator.star.core.SyncMode.FSYNC && it != com.winlator.star.core.SyncMode.NTSYNC) }
+                        SideEffect {
+                            dp.actions["syncMode"] = ControlActions(
+                                activate = { syncOverride = null },
+                                onLeft = { runnable.getOrNull(runnable.indexOf(syncEffective) - 1)?.let(pickSync) },
+                                onRight = { runnable.getOrNull(runnable.indexOf(syncEffective) + 1)?.let(pickSync) },
+                            )
+                        }
+                        com.winlator.star.ui.components.SyncModeSelector(
+                            selected = syncEffective,
+                            caps = syncCaps,
+                            helper = when {
+                                syncOverrideUnavailable && syncCaps != null ->
+                                    com.winlator.star.ui.components.syncSwitchedBackNotice(syncOverride!!, syncLayer, syncCaps!!)
+                                syncOverriding -> "$syncEffective for this game only (container: $containerSyncEffective)."
+                                else -> "Following the container: $containerSyncEffective."
+                            },
+                            onPick = pickSync,
+                            focused = dp.isFocused("syncMode"),
+                            onUseContainer = if (syncOverriding) ({ syncOverride = null }) else null,
+                            onHelp = { helpRes = R.string.help_sync_mode },
+                            modifier = Modifier.dpadBringIntoView(dp, "syncMode"),
+                        )
+                    }
+
                     // Display backend override (per-game): default to the container, or force
                     // X11 / Wayland. Wayland greys the Renderer group below (compositor replaces it)
                     // and the driver-config button (the game runs on the Proton's bundled Turnip).
@@ -7384,13 +7557,17 @@ internal fun ShortcutSettingsDialogScreen(
                             PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3,
                                 "Quake-engine games windowed", linuxIdTech3,
                                 com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)) { linuxIdTech3 = it }
+                            PerfEditRow(dp, com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE,
+                                "Offline mode (no sign-in to Valve)", linuxOffline,
+                                com.winlator.star.linux.LinuxTuning.defaultOn(com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE)) { linuxOffline = it }
                             Text(
                                 "Touchscreen sends fingers to Steam as real touches (Big Picture scrolls under one); Touchpad moves the pointer with a drag and clicks with a tap. "
                                     + "The buttons sit in the top corners: Steam's menu on the left, its Quick Access Menu on the right. "
                                     + "With double Back, one Back press still opens the in-game drawer. "
                                     + "Stretch keeps a game that shrinks its window (FlatOut after Resume game) filling the screen. "
                                     + "Quake III, Team Arena, Return to Castle Wolfenstein and Jedi Academy run windowed at the session's size, the one way they start here. "
-                                    + "The in-game drawer has all of these too, and changes them without restarting.",
+                                    + "Offline mode starts Steam without signing in to Valve, and installed games still launch; it needs one online sign-in on this device first. "
+                                    + "The in-game drawer has all of these too, and changes them without restarting, except offline mode, which applies at the next session.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -7412,7 +7589,8 @@ internal fun ShortcutSettingsDialogScreen(
                                 onSelect = { linuxTurnipSysmem = com.winlator.star.linux.LinuxTuning.TU_SYSMEM_CHOICES[sysmemLabels.indexOf(it).coerceAtLeast(0)] }
                             )
                             Text(
-                                "Only for a device that misbehaves. Xalia off is for a game that crash-loops at start (one Galaxy Fold). "
+                                "Xalia off is on by default: xalia costs every game CPU time under FEX, so turn it off only for a game that needs its gamepad navigation. "
+                                    + "The others are only for a device that misbehaves. "
                                     + "proot without seccomp is slower, for a device whose seccomp gets in the way. "
                                     + "Sysmem rendering is what the A710/A720/A722 driver builds need; Automatic turns it on for those imports. "
                                     + "A TU_DEBUG in the env vars below wins.",
@@ -9759,6 +9937,14 @@ private fun Set<String>.toggle(path: String): Set<String> =
 // other game comes straight in.
 // [preflightDone] = the SteamLite pre-flight already pulled cloud saves; the activity skips its own pull.
 internal fun launchShortcutNow(activity: Activity, shortcut: Shortcut, preflightDone: Boolean = false) {
+    // Backstop for any path that reaches here without going through requestLaunch: an Android game
+    // never opens a session.
+    if (AndroidGames.isAndroidEntry(shortcut)) {
+        val r = AndroidGames.launch(activity, shortcut)
+        if (r == AndroidGames.LaunchResult.STARTED) recordLastPlayed(shortcut)
+        AndroidGames.failureMessage(shortcut, r)?.let { Toast.makeText(activity, it, Toast.LENGTH_SHORT).show() }
+        return
+    }
     recordLastPlayed(shortcut)
     if (!XrActivity.isEnabled(activity)) {
         // Effective display backend: per-game override, else the container default. Wayland reuses
@@ -9852,7 +10038,13 @@ internal fun addToHomeScreen(context: Context, shortcut: Shortcut) {
     try {
         val sm = ContextCompat.getSystemService(context, ShortcutManager::class.java)
         if (sm != null && sm.isRequestPinShortcutSupported) {
-            val intent = Intent(context, XServerDisplayActivity::class.java).apply {
+            // An Android game's pin opens the app itself, exactly like its own launcher icon.
+            val intent = if (AndroidGames.isAndroidEntry(shortcut)) {
+                AndroidGames.launchIntent(context, shortcut) ?: run {
+                    Toast.makeText(context, "${shortcut.name} isn't installed anymore", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            } else Intent(context, XServerDisplayActivity::class.java).apply {
                 action = Intent.ACTION_VIEW
                 putExtra("container_id", shortcut.container.id)
                 putExtra("shortcut_path", shortcut.file.path)
@@ -10051,6 +10243,24 @@ private fun LinuxBadge(modifier: Modifier = Modifier) {
     }
 }
 
+/** An Android app from this phone (storeSource=android): Android green, sized like the store pills. */
+@Composable
+private fun AndroidBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF3DDC84))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "ANDROID",
+            color = Color(0xFF062B17),
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
 /** Amazon-brand orange pill, sized identically to the EPIC/EOS/GOG/STEAM/CUSTOM pills. */
 @Composable
 private fun CustomBadge(modifier: Modifier = Modifier) {
@@ -10090,6 +10300,9 @@ internal fun isCustomOriginShortcut(shortcut: Shortcut): Boolean {
     // The Linux runtime's own entries carry no store tag, so they would otherwise read as
     // user-added games. They are neither: they get their own badge.
     if (LinuxShortcuts.isLinuxEntry(shortcut)) return false
+    // Android games are tagged storeSource=android, which the rule below already excludes; said
+    // here too so the CUSTOM pill can never sit next to the ANDROID one.
+    if (AndroidGames.isAndroidEntry(shortcut)) return false
     val src = shortcut.getExtra("storeSource", "")
     if (src.isNotEmpty() && src != "custom") return false
     if (isSteamOriginShortcut(shortcut)) return false
@@ -10117,6 +10330,9 @@ private val AMAZON_ROOT_RE = Regex("""(^|[\\/])Amazon[\\/]""")
  */
 // The stages of the "Copy to Drive C" flow, in order: confirm the source root, resolve a
 // destination collision, run the background copy, then offer to delete the original.
+// The two "+" imports that run in a Wine container, and so ask for one after being picked.
+private enum class ImportKind { EXE, FOLDER }
+
 private enum class CopyToCPhase { CONFIRM, OVERWRITE, COPYING, DELETE_ORIGINAL }
 
 /**
@@ -10553,8 +10769,15 @@ private fun ShortcutBadgeOverlay(
     showCustom: Boolean = false,
     showEa: Boolean = false,
     showLinux: Boolean = false,
+    showAndroid: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    // An Android game is only ever that: its package name can look like a store path to the
+    // path-based rules above it, so it gets its own pill and nothing else.
+    if (showAndroid) {
+        Row(modifier = modifier) { AndroidBadge() }
+        return
+    }
     if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom && !showEa
         && !showLinux) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {

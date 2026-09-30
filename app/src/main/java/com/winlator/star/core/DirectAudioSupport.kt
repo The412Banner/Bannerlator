@@ -9,20 +9,21 @@ package com.winlator.star.core
  * layer isn't one of these.
  *
  * SINGLE SOURCE OF TRUTH — shared with the DirectAudio driver-overlay gate. Keep it to EXACTLY these
- * seven builds. Match is by the layer's version NAME containing one of the tokens, the same way the
+ * builds ("11.0-7" also matches GE-Proton 11.0-7.1; both ship the driver since the v8 layers).
+ * Match is by the layer's version NAME containing one of the tokens, the same way the
  * in-game refresh unlock keys off "10.0-4" / "11.0-1" in the launch code (a layer's entry name always
  * carries its version, e.g. "GE-Proton 11.0-5 arm64ec").
  */
 object DirectAudioSupport {
     /** The Proton/Wine builds (arm64ec) that ship a compatible winedirectaudio.drv. */
     @JvmField
-    val SUPPORTED_BUILD_TOKENS = listOf("10.0-4", "10.0-34", "11.0-1", "11.0-2", "11.0-3", "11.0-5", "11.0-6")
+    val SUPPORTED_BUILD_TOKENS = listOf("10.0-4", "10.0-34", "11.0-1", "11.0-2", "11.0-3", "11.0-5", "11.0-6", "11.0-7")
 
-    /** Human-readable list for helper notes: "10.0-4 / 10.0-34 / 11.0-1 / 11.0-2 / 11.0-3 / 11.0-5 / 11.0-6". */
-    const val SUPPORTED_LABEL = "10.0-4 / 10.0-34 / 11.0-1 / 11.0-2 / 11.0-3 / 11.0-5 / 11.0-6"
+    /** Human-readable list for helper notes: "10.0-4 / 10.0-34 / 11.0-1 / 11.0-2 / 11.0-3 / 11.0-5 / 11.0-6 / 11.0-7 / 11.0-7.1". */
+    const val SUPPORTED_LABEL = "10.0-4 / 10.0-34 / 11.0-1 / 11.0-2 / 11.0-3 / 11.0-5 / 11.0-6 / 11.0-7 / 11.0-7.1"
 
     /**
-     * True when the selected Wine/Proton version name is one of the seven supported builds. A blank/null
+     * True when the selected Wine/Proton version name is one of the supported builds. A blank/null
      * name (e.g. a brand-new container before a layer is chosen) is treated as UNSUPPORTED — the safe
      * default, since the app default is PulseAudio anyway and this re-evaluates once a layer is picked.
      */

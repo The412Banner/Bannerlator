@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Convert a small HTML help string (<b>/<i>/<br>) into a styled AnnotatedString for Compose Text. */
-private fun htmlToAnnotated(html: String): AnnotatedString {
+internal fun htmlToAnnotated(html: String): AnnotatedString {
     val spanned: Spanned = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY)
     val plain = spanned.toString().trimEnd('\n', ' ')
     return buildAnnotatedString {

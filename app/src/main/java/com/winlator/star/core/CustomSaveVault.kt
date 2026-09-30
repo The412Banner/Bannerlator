@@ -123,7 +123,8 @@ object CustomSaveVault {
      */
     private fun isCustom(shortcut: Shortcut): Boolean {
         when (shortcut.getExtra("storeSource")) {
-            "steam", "epic", "gog" -> return false
+            // "android": an Android app from this phone keeps its own saves; nothing to back up here.
+            "steam", "epic", "gog", "android" -> return false
         }
         val p = shortcut.path ?: return true
         return !p.contains("steam_games", ignoreCase = true) &&

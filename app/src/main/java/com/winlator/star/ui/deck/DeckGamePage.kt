@@ -79,13 +79,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.WinePath
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.linux.LinuxShortcuts
 import com.winlator.star.store.SteamAchievementStore
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.ShortcutActionDialogs
 import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
-import com.winlator.star.ui.screens.isCustomShortcut
+import com.winlator.star.ui.screens.gameMenuOffers
 import com.winlator.star.ui.screens.isSteamOriginShortcut
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
@@ -149,10 +150,12 @@ internal fun DeckGamePage(
         return
     }
     val s: Shortcut = shortcut
+    // An Android game opens as its own app: no container, no Wine setup, no per-game settings.
+    val android = remember(s) { AndroidGames.isAndroidEntry(s) }
     // Re-read on every refresh: shortcuts is rebuilt by refresh(), so keying on it picks up new playtime and extras.
     val stats = remember(shortcuts) { readPlayStats(context, listOf(s))[s.file.path] ?: PlayStats(0L, 0, 0L) }
     val details = remember(shortcuts) { GameDetails.from(s) }
-    val onSd = remember(s) { runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
+    val onSd = remember(s) { !android && runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
     val achievements by produceState<Pair<Int, Int>?>(null, s.file.path) {
         val appId = if (isSteamOriginShortcut(s)) steamAppIdOf(s) else 0
         value = if (appId <= 0) null else withContext(Dispatchers.IO) {
@@ -224,7 +227,10 @@ internal fun DeckGamePage(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (android) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeckAndroidPill()
+                    AndroidGames.packageOf(s)?.let { DeckPill(it) }
+                } else FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // The container chip opens that container's settings.
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -256,7 +262,7 @@ internal fun DeckGamePage(
                         DeckStat("$got / $total", "Achievements", tile, progress = got.toFloat() / total.coerceAtLeast(1))
                     }
                     DeckStat(if (stats.count > 0) "${stats.count}" else "—", if (stats.count == 1) "Launch" else "Launches", tile)
-                    DeckStat(if (onSd) "SD card" else "Internal", "Storage", tile)
+                    if (!android) DeckStat(if (onSd) "SD card" else "Internal", "Storage", tile)
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -265,7 +271,7 @@ internal fun DeckGamePage(
                     modifier = Modifier.horizontalScroll(rememberScrollState()).padding(6.dp),
                 ) {
                     DeckButton("Play", Icons.Filled.PlayArrow, { launcher.requestLaunch(s) }, primary = true, big = true, glyph = "A", modifier = Modifier.focusRequester(playRequester))
-                    DeckButton("Game settings", Icons.Filled.Tune, { actions.perform(GameMenuAction.SETTINGS, s) }, big = true)
+                    if (!android) DeckButton("Game settings", Icons.Filled.Tune, { actions.perform(GameMenuAction.SETTINGS, s) }, big = true)
                     DeckButton("Options", Icons.Filled.MoreHoriz, { menuOpen = true }, big = true, glyph = "X")
                 }
                 remembered?.let { how ->
@@ -285,32 +291,35 @@ internal fun DeckGamePage(
                     }
                 }
                 // Setup at a glance: does this game follow its container, or carry its own settings?
-                val overrides = overrideCount(s)
-                val setupShape = RoundedCornerShape(20.dp)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .deckFocusRing(setupShape, scaleTo = 1.01f)
-                        .clip(setupShape)
-                        .background(cs.primary.copy(alpha = 0.10f))
-                        .border(1.dp, cs.primary.copy(alpha = 0.45f), setupShape)
-                        .clickable { actions.perform(GameMenuAction.SETTINGS, s) }
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                ) {
-                    Icon(Icons.Filled.AccountTree, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (overrides == 0) "Uses its container’s setup"
-                                   else "$overrides setting${if (overrides == 1) "" else "s"} set just for this game",
-                            color = cs.onSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                        )
-                        Text(setupSummary(s), color = cs.onSurfaceVariant, fontSize = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // An Android game has neither, so the card is left out.
+                if (!android) {
+                    val overrides = overrideCount(s)
+                    val setupShape = RoundedCornerShape(20.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .deckFocusRing(setupShape, scaleTo = 1.01f)
+                            .clip(setupShape)
+                            .background(cs.primary.copy(alpha = 0.10f))
+                            .border(1.dp, cs.primary.copy(alpha = 0.45f), setupShape)
+                            .clickable { actions.perform(GameMenuAction.SETTINGS, s) }
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                    ) {
+                        Icon(Icons.Filled.AccountTree, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (overrides == 0) "Uses its container’s setup"
+                                       else "$overrides setting${if (overrides == 1) "" else "s"} set just for this game",
+                                color = cs.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                            )
+                            Text(setupSummary(s), color = cs.onSurfaceVariant, fontSize = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant)
                     }
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant)
                 }
                 if (details.hasDisplayableDetails()) {
                     Column {
@@ -399,18 +408,18 @@ private const val ENTRY_PLAY = "play"
 private const val ENTRY_CONTAINER = "container"
 
 /**
- * The classic ⋮ menu for [s] in Deck groups: same items, same visibility rules (Cloud Saves for Steam
- * games, Back up / Restore saves for the others), plus Play and Container settings at the top.
+ * The classic ⋮ menu for [s] in Deck groups: the same items under the same rules ([gameMenuOffers]),
+ * plus Play and Container settings at the top. An Android game has no container to open.
  */
 private fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>> {
-    val steam = isSteamOriginShortcut(s)
-    val custom = isCustomShortcut(s)
-    fun e(a: GameMenuAction, hint: String, danger: Boolean = false) = null as String? to GameMenuEntry(menuTitle(a), hint, a, danger)
+    val android = AndroidGames.isAndroidEntry(s)
+    fun e(a: GameMenuAction, hint: String, danger: Boolean = false) =
+        if (gameMenuOffers(a, s)) null as String? to GameMenuEntry(menuTitle(a), hint, a, danger) else null
     return listOf(
-        listOf(ENTRY_PLAY to GameMenuEntry("Play", "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync.", null)),
-        listOf(
-            e(GameMenuAction.SETTINGS, "Display, graphics, controls… everything shows whether it follows the container or is set for this game."),
-            ENTRY_CONTAINER to GameMenuEntry("Container settings", "Opens the container this game runs in.", null),
+        listOf(ENTRY_PLAY to GameMenuEntry("Play", if (android) "Opens the app, as Android's own launcher would." else "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync.", null)),
+        listOfNotNull(
+            e(GameMenuAction.SETTINGS, "Display, graphics, controls and more, for this game only."),
+            if (android) null else ENTRY_CONTAINER to GameMenuEntry("Container settings", "Opens the container this game runs in.", null),
         ),
         listOfNotNull(
             e(GameMenuAction.GAME_DETAILS, "Name, Steam link, genres, year, description."),
@@ -418,21 +427,21 @@ private fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>
             e(GameMenuAction.COMMUNITY_CONFIGS, "Settings other players tuned for this game on their devices."),
         ),
         listOfNotNull(
-            if (steam) e(GameMenuAction.CLOUD_SAVES, "Steam Cloud sync for this game.") else null,
-            if (custom) e(GameMenuAction.BACKUP_SAVES, "Zip this game's saves into its backup folder.") else null,
-            if (custom) e(GameMenuAction.RESTORE_SAVES, "Pick a save backup and restore it into a container.") else null,
+            e(GameMenuAction.CLOUD_SAVES, "Steam Cloud sync for this game."),
+            e(GameMenuAction.BACKUP_SAVES, "Zip this game's saves into its backup folder."),
+            e(GameMenuAction.RESTORE_SAVES, "Pick a save backup and restore it into a container."),
             e(GameMenuAction.VIEW_LOGS, "This game's captured logs."),
             e(GameMenuAction.PROPERTIES, "Times played and total playtime."),
         ),
-        listOf(
+        listOfNotNull(
             e(GameMenuAction.CLONE, "Copy this shortcut into another container."),
             e(GameMenuAction.COPY_TO_DRIVE_C, "Copy the game folder onto the container's C: drive and repoint it."),
             e(GameMenuAction.CHANGE_EXE, "Point the shortcut at a different .exe in the game's folder."),
             e(GameMenuAction.ADD_TO_HOME, "Pin a launcher icon to Android's home screen."),
             e(GameMenuAction.EXPORT, "Save this shortcut to your export folder."),
         ),
-        listOf(e(GameMenuAction.REMOVE, "Asks first. Only the shortcut goes; the game files stay.", danger = true)),
-    )
+        listOfNotNull(e(GameMenuAction.REMOVE, "Asks first. Only the shortcut goes; the game files stay.", danger = true)),
+    ).filter { it.isNotEmpty() }
 }
 
 private fun menuTitle(a: GameMenuAction): String = when (a) {

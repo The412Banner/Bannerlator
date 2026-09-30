@@ -483,3 +483,20 @@ internal fun DeckPill(text: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }
+
+/** The green ANDROID pill: an Android game in the list, which opens as its own app rather than in Wine. [small] sits on a cover. */
+@Composable
+internal fun DeckAndroidPill(modifier: Modifier = Modifier, small: Boolean = false) {
+    Text(
+        text = "ANDROID",
+        color = Color(0xFF062B17),
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = if (small) 10.sp else 13.sp,
+        letterSpacing = 0.6.sp,
+        maxLines = 1,
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF3DDC84))
+            .padding(horizontal = if (small) 8.dp else 12.dp, vertical = if (small) 3.dp else 6.dp),
+    )
+}

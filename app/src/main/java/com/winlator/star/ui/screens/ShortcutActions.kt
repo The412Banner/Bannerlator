@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.communityconfigs.CommunityConfigApply
 import com.winlator.star.container.Shortcut
 import com.winlator.star.communityconfigs.ShortcutExporter
@@ -191,6 +192,25 @@ class ShortcutActions internal constructor(
     fun startSaveRestore(shortcut: Shortcut) {
         restoreForName = shortcut.name
         launchRestorePicker?.invoke()
+    }
+}
+
+/**
+ * Whether the per-game ⋮ menu offers [action] for [shortcut]: the rules the Games grid and list apply
+ * (Cloud Saves for Steam games, Back up / Restore saves for the others, and nothing Wine-side for an
+ * Android game: no settings, container moves, exe, export, community configs, logs or saves). The Deck
+ * game menu asks this, so it always lists what the classic menu lists.
+ */
+internal fun gameMenuOffers(action: GameMenuAction, shortcut: Shortcut): Boolean {
+    val wine = !AndroidGames.isAndroidEntry(shortcut)
+    return when (action) {
+        GameMenuAction.SETTINGS, GameMenuAction.CLONE, GameMenuAction.COPY_TO_DRIVE_C, GameMenuAction.CHANGE_EXE,
+        GameMenuAction.EXPORT, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS -> wine
+        GameMenuAction.CLOUD_SAVES -> wine && isSteamOriginShortcut(shortcut)
+        GameMenuAction.BACKUP_SAVES, GameMenuAction.RESTORE_SAVES -> wine && isCustomShortcut(shortcut)
+        GameMenuAction.ADD_GAME -> false
+        GameMenuAction.REMOVE, GameMenuAction.ADD_TO_HOME, GameMenuAction.GAME_DETAILS,
+        GameMenuAction.SCRAPE_COVER, GameMenuAction.PROPERTIES -> true
     }
 }
 

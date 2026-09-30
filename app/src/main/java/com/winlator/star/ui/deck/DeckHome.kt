@@ -108,9 +108,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.SteamFriendsAction
 import com.winlator.star.ui.screens.GameMenuAction
+import com.winlator.star.ui.screens.gameMenuOffers
 import com.winlator.star.ui.screens.ShortcutActionDialogs
 import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
@@ -201,6 +203,7 @@ internal fun coverTints(bmp: Bitmap): Pair<Color, Color>? = runCatching {
 @Composable
 internal fun DeckHome(
     onOpenGame: (Shortcut) -> Unit,
+    onOpenContainer: (Int) -> Unit,
     onAddGame: () -> Unit,
     onBigPicture: () -> Unit,
     onOpenLibrary: () -> Unit,
@@ -329,14 +332,15 @@ internal fun DeckHome(
                         add(Icons.Filled.Storefront to storeLabelOf(s))
                         add(Icons.Filled.Schedule to playtimeLabel(st.ms))
                         if (last != null) add(Icons.Filled.CalendarMonth to "Last played ${last.lowercase().takeIf { last == "Today" || last == "Yesterday" } ?: last}")
-                        s.container?.name?.takeIf { it.isNotEmpty() }?.let { add(Icons.Filled.Inventory2 to it) }
+                        if (!AndroidGames.isAndroidEntry(s)) s.container?.name?.takeIf { it.isNotEmpty() }?.let { add(Icons.Filled.Inventory2 to it) }
                     },
                     height = heroHeight,
                     compact = compact,
                     playRequester = playRequester,
                     onPlay = { launcher.requestLaunch(s) },
                     onGamePage = { onOpenGame(s) },
-                    onSettings = { actions.perform(GameMenuAction.SETTINGS, s) },
+                    // An Android game has no per-game settings (see gameMenuOffers).
+                    onSettings = if (gameMenuOffers(GameMenuAction.SETTINGS, s)) ({ actions.perform(GameMenuAction.SETTINGS, s) }) else null,
                     onOptions = { menuFor = s },
                 )
             }
@@ -424,8 +428,7 @@ internal fun DeckHome(
             onDismiss = { menuFor = null },
             onPlay = { menuFor = null; launcher.requestLaunch(s) },
             onAction = { a -> menuFor = null; actions.perform(a, s) },
-            // Container settings go through the game page, which knows how to reach the container editor.
-            onContainer = { menuFor = null; onOpenGame(s) },
+            onContainer = { menuFor = null; onOpenContainer(s.container.id) },
         )
     }
 
@@ -613,7 +616,7 @@ private fun DeckHero(
     playRequester: FocusRequester,
     onPlay: () -> Unit,
     onGamePage: () -> Unit,
-    onSettings: () -> Unit,
+    onSettings: (() -> Unit)?,
     onOptions: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -704,7 +707,7 @@ private fun DeckHero(
             ) {
                 DeckButton("Play", Icons.Filled.PlayArrow, onPlay, primary = true, big = true, modifier = Modifier.focusRequester(playRequester))
                 DeckButton("Game page", Icons.Filled.Info, onGamePage)
-                DeckButton("Settings", Icons.Filled.Tune, onSettings)
+                if (onSettings != null) DeckButton("Settings", Icons.Filled.Tune, onSettings)
                 DeckButton("Options", Icons.Filled.MoreHoriz, onOptions, glyph = "X")
             }
         }
@@ -801,6 +804,9 @@ private fun DeckGameCard(
                     }
                 }
             }
+            if (remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) }) {
+                DeckAndroidPill(Modifier.align(Alignment.TopStart).padding(6.dp), small = true)
+            }
         }
         if (subtitle != null) {
             Text(
@@ -874,6 +880,7 @@ private fun DeckListRow(
                 Text(subtitle, color = cs.onSurfaceVariant, fontSize = 13.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!compact) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (AndroidGames.isAndroidEntry(shortcut)) DeckAndroidPill()
                         setupSummary(shortcut).split(" · ").drop(1).forEach { DeckPill(it) }
                     }
                 }

@@ -2,6 +2,7 @@ package com.winlator.star.ui.deck
 
 import android.content.Context
 import android.text.format.DateUtils
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
 import com.winlator.star.linux.LinuxShortcuts
@@ -77,12 +78,13 @@ internal fun continuePlayingOrder(shortcuts: List<Shortcut>, stats: Map<String, 
     return launched + older
 }
 
-/** Store shelves in the order the Stores tab lists them. Linux runtime entries sit in no store shelf. */
+/** Store shelves in the order the Stores tab lists them, then Android games. Linux runtime entries sit in no store shelf. */
 internal val STORE_SHELVES: List<Pair<String, (Shortcut) -> Boolean>> = listOf(
     "Steam" to { s: Shortcut -> isSteamOriginShortcut(s) && !LinuxShortcuts.isLinuxEntry(s) },
     "Epic Games" to { s: Shortcut -> s.getExtra("storeSource") == "epic" },
     "GOG" to { s: Shortcut -> isGogShortcut(s) },
     "Amazon Games" to { s: Shortcut -> isAmazonShortcut(s) },
+    "Android" to { s: Shortcut -> AndroidGames.isAndroidEntry(s) },
     "Added by me" to { s: Shortcut -> isCustomOriginShortcut(s) },
 )
 
@@ -92,7 +94,7 @@ internal fun storeLabelOf(s: Shortcut): String = when {
 }
 
 /**
- * Per-game settings the editor writes to the shortcut's Extra Data when a value differs from the
+ * Per-game settings the game's settings dialog writes to the shortcut's Extra Data when a value differs from the
  * container's. Used only to say "N settings set just for this game" on the game page.
  */
 private val OVERRIDE_KEYS = listOf(
@@ -104,8 +106,12 @@ private val OVERRIDE_KEYS = listOf(
 
 internal fun overrideCount(s: Shortcut): Int = OVERRIDE_KEYS.count { s.getExtra(it, "").isNotBlank() }
 
-/** One line of the effective setup: container · graphics driver · DX wrapper · display backend. */
+/**
+ * One line of the effective setup: container · graphics driver · DX wrapper · display backend.
+ * An Android game has none of that; it gets "Android app" and its package.
+ */
 internal fun setupSummary(s: Shortcut): String {
+    AndroidGames.packageOf(s)?.let { return "Android app · $it" }
     val c = s.container
     val driver = s.getExtra("graphicsDriver", c.graphicsDriver)
     val dx = s.getExtra("dxwrapper", c.getDXWrapper())

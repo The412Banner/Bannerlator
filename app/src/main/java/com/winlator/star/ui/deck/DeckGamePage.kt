@@ -151,11 +151,11 @@ internal fun DeckGamePage(
     }
     val s: Shortcut = shortcut
     // An Android game opens as its own app: no container, no Wine setup, no per-game settings.
-    val android = remember(s) { AndroidGames.isAndroidEntry(s) }
+    val isAndroid = remember(s) { AndroidGames.isAndroidEntry(s) }
     // Re-read on every refresh: shortcuts is rebuilt by refresh(), so keying on it picks up new playtime and extras.
     val stats = remember(shortcuts) { readPlayStats(context, listOf(s))[s.file.path] ?: PlayStats(0L, 0, 0L) }
     val details = remember(shortcuts) { GameDetails.from(s) }
-    val onSd = remember(s) { !android && runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
+    val onSd = remember(s) { !isAndroid && runCatching { WinePath.isOnRemovableStorage(s.container, s.path) }.getOrDefault(false) }
     val achievements by produceState<Pair<Int, Int>?>(null, s.file.path) {
         val appId = if (isSteamOriginShortcut(s)) steamAppIdOf(s) else 0
         value = if (appId <= 0) null else withContext(Dispatchers.IO) {
@@ -227,7 +227,7 @@ internal fun DeckGamePage(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (android) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isAndroid) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DeckAndroidPill()
                     AndroidGames.packageOf(s)?.let { DeckPill(it) }
                 } else FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -262,7 +262,7 @@ internal fun DeckGamePage(
                         DeckStat("$got / $total", "Achievements", tile, progress = got.toFloat() / total.coerceAtLeast(1))
                     }
                     DeckStat(if (stats.count > 0) "${stats.count}" else "—", if (stats.count == 1) "Launch" else "Launches", tile)
-                    if (!android) DeckStat(if (onSd) "SD card" else "Internal", "Storage", tile)
+                    if (!isAndroid) DeckStat(if (onSd) "SD card" else "Internal", "Storage", tile)
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -271,7 +271,7 @@ internal fun DeckGamePage(
                     modifier = Modifier.horizontalScroll(rememberScrollState()).padding(6.dp),
                 ) {
                     DeckButton("Play", Icons.Filled.PlayArrow, { launcher.requestLaunch(s) }, primary = true, big = true, glyph = "A", modifier = Modifier.focusRequester(playRequester))
-                    if (!android) DeckButton("Game settings", Icons.Filled.Tune, { actions.perform(GameMenuAction.SETTINGS, s) }, big = true)
+                    if (!isAndroid) DeckButton("Game settings", Icons.Filled.Tune, { actions.perform(GameMenuAction.SETTINGS, s) }, big = true)
                     DeckButton("Options", Icons.Filled.MoreHoriz, { menuOpen = true }, big = true, glyph = "X")
                 }
                 remembered?.let { how ->
@@ -292,7 +292,7 @@ internal fun DeckGamePage(
                 }
                 // Setup at a glance: does this game follow its container, or carry its own settings?
                 // An Android game has neither, so the card is left out.
-                if (!android) {
+                if (!isAndroid) {
                     val overrides = overrideCount(s)
                     val setupShape = RoundedCornerShape(20.dp)
                     Row(
@@ -412,14 +412,14 @@ private const val ENTRY_CONTAINER = "container"
  * plus Play and Container settings at the top. An Android game has no container to open.
  */
 private fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>> {
-    val android = AndroidGames.isAndroidEntry(s)
+    val isAndroid = AndroidGames.isAndroidEntry(s)
     fun e(a: GameMenuAction, hint: String, danger: Boolean = false) =
         if (gameMenuOffers(a, s)) null as String? to GameMenuEntry(menuTitle(a), hint, a, danger) else null
     return listOf(
-        listOf(ENTRY_PLAY to GameMenuEntry("Play", if (android) "Opens the app, as Android's own launcher would." else "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync.", null)),
+        listOf(ENTRY_PLAY to GameMenuEntry("Play", if (isAndroid) "Opens the app, as Android's own launcher would." else "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync.", null)),
         listOfNotNull(
             e(GameMenuAction.SETTINGS, "Display, graphics, controls and more, for this game only."),
-            if (android) null else ENTRY_CONTAINER to GameMenuEntry("Container settings", "Opens the container this game runs in.", null),
+            if (isAndroid) null else ENTRY_CONTAINER to GameMenuEntry("Container settings", "Opens the container this game runs in.", null),
         ),
         listOfNotNull(
             e(GameMenuAction.GAME_DETAILS, "Name, Steam link, genres, year, description."),

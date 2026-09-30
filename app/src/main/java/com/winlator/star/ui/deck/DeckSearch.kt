@@ -73,7 +73,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.container.Shortcut
 import com.winlator.star.ui.Screen
-import com.winlator.star.ui.deck.settings.DeckSettingsRoutes
 import com.winlator.star.ui.screens.ShortcutsViewModel
 
 /** A place the search can jump to: a Deck route, a store, or the About dialog. */
@@ -104,7 +103,7 @@ private val DESTINATIONS = listOf(
     SearchDestination("Save Manager", "Tools › Saves", Icons.Filled.Save, "saves backup restore cloud sync", route = Screen.SaveManager.route),
     SearchDestination("Wrappers", "Tools › Graphics wrappers", Icons.Filled.Layers, "wrapper vulkan graphics", route = Screen.Wrappers.route),
     SearchDestination("Adrenotools", "Tools › GPU drivers", Icons.Filled.Memory, "gpu driver adreno turnip mesa", route = Screen.AdrenoTools.route),
-    SearchDestination("Settings", "App settings", Icons.Filled.Settings, "settings preferences performance network storage logs advanced", route = DeckSettingsRoutes.APP),
+    SearchDestination("Settings", "App settings", Icons.Filled.Settings, "settings preferences performance network storage logs advanced", route = Screen.Settings.route),
     SearchDestination("Appearance", "Settings › Appearance", Icons.Filled.Palette, "appearance theme accent dark light interface style deck classic size font", route = Screen.Appearance.route),
     SearchDestination("Logs", "Tools › Logs", Icons.Filled.Description, "logs log manager debug wine dxvk", route = DeckRoutes.TOOLS),
     SearchDestination("About", "Version, updates and credits", Icons.Filled.Info, "about version update credits license", about = true),

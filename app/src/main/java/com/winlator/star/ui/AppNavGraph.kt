@@ -35,9 +35,6 @@ fun AppNavGraph(
     // Extra destinations registered by the Deck shell (its home and hub pages).
     // The classic shell passes nothing, so its graph is exactly the routes below.
     extraRoutes: (NavGraphBuilder.() -> Unit)? = null,
-    // The Deck shell's own editor route for the Containers list's Edit / New Container Defaults (null = the classic form).
-    // The classic shell passes nothing.
-    containerEditorRoute: ((Int) -> String?)? = null,
 ) {
     val activity = LocalContext.current as FragmentActivity
 
@@ -48,7 +45,7 @@ fun AppNavGraph(
             ContainersScreen(
                 onNavigateToDetail = { containerId ->
                     val route = if (containerId != null) {
-                        containerEditorRoute?.invoke(containerId) ?: "container_detail?id=$containerId"
+                        "container_detail?id=$containerId"
                     } else {
                         "container_detail?id=-1"
                     }

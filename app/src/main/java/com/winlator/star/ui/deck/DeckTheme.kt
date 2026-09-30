@@ -13,6 +13,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,10 +25,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
@@ -52,11 +55,28 @@ private fun TextStyle.heading(weight: FontWeight) = copy(fontFamily = SoraFamily
 private fun TextStyle.body(weight: FontWeight) = copy(fontFamily = NunitoSansFamily, fontWeight = weight)
 
 /**
- * Wraps the Deck shell. Keeps the ambient colour scheme and swaps only typography and shapes, so
- * the screens hosted inside (Containers, Settings, ...) pick up the Deck type without any colour change.
+ * How much smaller the Deck draws than Classic, on top of Appearance's interface size (WinlatorTheme
+ * already folds that into the density). Everything under [DeckTheme] scales together: the Deck pages,
+ * the Classic screens and dialogs hosted in the shell, and the first-run.
+ */
+internal const val DECK_SCALE = 0.85f
+
+/**
+ * Wraps the Deck shell and the Deck first-run. Keeps the ambient colour scheme and swaps only typography and shapes, so
+ * the screens hosted inside (Containers, Settings, ...) pick up the Deck type without any colour change, and draws
+ * everything at [DECK_SCALE] (text included, since the font scale rides on the density).
  */
 @Composable
 internal fun DeckTheme(content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    val scaled = remember(density) { Density(density.density * DECK_SCALE, density.fontScale) }
+    CompositionLocalProvider(LocalDensity provides scaled) {
+        DeckMaterialTheme(content)
+    }
+}
+
+@Composable
+private fun DeckMaterialTheme(content: @Composable () -> Unit) {
     val base = MaterialTheme.typography
     val typography = Typography(
         displayLarge   = base.displayLarge.heading(FontWeight.ExtraBold),

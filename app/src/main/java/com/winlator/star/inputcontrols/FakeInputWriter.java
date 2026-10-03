@@ -67,6 +67,9 @@ public class FakeInputWriter {
     /** Bit 10 of the snapshot word. The first ten are GamepadState's own bit order; the Steam
      *  button is not, because GamepadState keeps 10 and 11 for the triggers. */
     private static final int SNAPSHOT_IDX_MODE = 10;
+    /** Bit 11: the Quick Access button. Snapshot only - an Xbox pad's evdev node has no such key;
+     *  libfakeinput's Deck controller reads it from here. */
+    private static final int SNAPSHOT_IDX_QAM = 11;
 
     private static final int EVENT_SIZE = 24;
     static final int MAX_EVENTS_PER_UPDATE = 32;
@@ -92,6 +95,19 @@ public class FakeInputWriter {
     private static final int RING_SNAPSHOT_BUTTONS_OFFSET = 40;
     private static final int RING_SNAPSHOT_AXES_OFFSET = 44; // short[8]
     private static final String RING_DIR_NAME = "fakeinput-rings";
+    // After the events - MUST match the block in fakeinput_steam.cpp (DeckImu): what a Deck has and
+    // an Xbox pad does not - motion, back grips, trackpads - in the Steam Deck controller's axes and
+    // units, under a seqlock like the snapshot's. Only libfakeinput's Deck controller reads it; the
+    // bionic reader Wine preloads maps RING_SIZE and never sees it. (From Droid-Deck/DroidDeck #86.)
+    private static final int IMU_OFFSET = RING_SIZE;
+    private static final int IMU_MAGIC = 0x31554D49; // IMU1
+    private static final int IMU_SEQ_OFFSET = IMU_OFFSET + 8;
+    private static final int IMU_ACCEL_OFFSET = IMU_OFFSET + 16; // short[3]
+    private static final int IMU_GYRO_OFFSET = IMU_OFFSET + 22; // short[3]
+    private static final int DECK_PADS_OFFSET = IMU_OFFSET + 28; // short[4]: left X, Y, right X, Y
+    private static final int DECK_PRESSURE_OFFSET = IMU_OFFSET + 36; // short[2]: left, right
+    private static final int DECK_CONTROLS_OFFSET = IMU_OFFSET + 40; // int: DECK_EXTRA_* bits
+    private static final int RING_FILE_SIZE = RING_SIZE + 64;
 
     private static final Object RING_LOCK = new Object();
     private static final RingSlot[] RING_SLOTS = new RingSlot[MAX_FAKE_INPUT_SLOTS];
@@ -110,6 +126,7 @@ public class FakeInputWriter {
     private volatile boolean destroyed = false;
 
     private final boolean[] prevButtonStates = new boolean[12];
+    private boolean prevQam;
     private int prevThumbLX, prevThumbLY, prevThumbRX, prevThumbRY;
     private int prevTriggerL, prevTriggerR;
     private int prevHatX, prevHatY;
@@ -217,30 +234,40 @@ public class FakeInputWriter {
         for (int i = 0; i < 8; i++) {
             data.putShort(RING_SNAPSHOT_AXES_OFFSET + (i * 2), (short) 0);
         }
+        data.putInt(IMU_OFFSET, 0);
+        data.putLong(IMU_SEQ_OFFSET, 0L);
+        for (int i = 0; i < 12; i++) {
+            data.putShort(IMU_ACCEL_OFFSET + (i * 2), (short) 0);
+        }
+        data.putInt(DECK_CONTROLS_OFFSET, 0);
     }
 
+    // Lock order: RING_LOCK, then the slot. Every writer holds the slot while it touches data, and
+    // re-checks it there: a writer that looked the slot up just before this ran finds it gone.
     private static void releaseRingSlotLocked(int slot) {
         RingSlot ringSlot = RING_SLOTS[slot];
         if (ringSlot == null) {
             return;
         }
-        ringSlot.data = null;
-        if (ringSlot.ringChannel != null) {
-            try {
-                ringSlot.ringChannel.close();
-            } catch (IOException ignored) {
+        synchronized (ringSlot) {
+            ringSlot.data = null;
+            if (ringSlot.ringChannel != null) {
+                try {
+                    ringSlot.ringChannel.close();
+                } catch (IOException ignored) {
+                }
+                ringSlot.ringChannel = null;
             }
-            ringSlot.ringChannel = null;
-        }
-        if (ringSlot.ringRaf != null) {
-            try {
-                ringSlot.ringRaf.close();
-            } catch (IOException ignored) {
+            if (ringSlot.ringRaf != null) {
+                try {
+                    ringSlot.ringRaf.close();
+                } catch (IOException ignored) {
+                }
+                ringSlot.ringRaf = null;
             }
-            ringSlot.ringRaf = null;
-        }
-        if (ringSlot.ringFile != null && ringSlot.ringFile.exists()) {
-            ringSlot.ringFile.delete();
+            if (ringSlot.ringFile != null && ringSlot.ringFile.exists()) {
+                ringSlot.ringFile.delete();
+            }
         }
         RING_SLOTS[slot] = null;
     }
@@ -289,9 +316,9 @@ public class FakeInputWriter {
         FileChannel channel = null;
         try {
             raf = new RandomAccessFile(ringFile, "rw");
-            raf.setLength(RING_SIZE);
+            raf.setLength(RING_FILE_SIZE);
             channel = raf.getChannel();
-            ByteBuffer data = channel.map(FileChannel.MapMode.READ_WRITE, 0, RING_SIZE);
+            ByteBuffer data = channel.map(FileChannel.MapMode.READ_WRITE, 0, RING_FILE_SIZE);
             initializeRingHeader(data);
 
             RingSlot ringSlot = new RingSlot();
@@ -332,6 +359,9 @@ public class FakeInputWriter {
             return false;
         }
         synchronized (ringSlot) {
+            if (ringSlot.data == null) {
+                return false;
+            }
             if (!ringSlot.active) {
                 if (ringSlot.everActivated) {
                     ringSlot.generation++;
@@ -381,6 +411,9 @@ public class FakeInputWriter {
         ByteBuffer source = this.buffer.duplicate();
         synchronized (ringSlot) {
             ByteBuffer ring = ringSlot.data;
+            if (ring == null) {
+                return false;
+            }
             long writeSeq = ring.getLong(RING_WRITE_SEQ_OFFSET);
             int sourceLimit = source.limit();
             while (source.remaining() >= EVENT_SIZE) {
@@ -416,6 +449,9 @@ public class FakeInputWriter {
                 buttons |= (1 << i);
             }
         }
+        if (this.prevQam) {
+            buttons |= (1 << SNAPSHOT_IDX_QAM);
+        }
         long seq = ring.getLong(RING_SNAPSHOT_SEQ_OFFSET);
         ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 1); // odd: write in progress
         nativeStoreFence();
@@ -432,6 +468,59 @@ public class FakeInputWriter {
         ring.putShort(RING_SNAPSHOT_AXES_OFFSET + 14, clampShort(this.prevHatY));
         nativeStoreFence();
         ring.putLong(RING_SNAPSHOT_SEQ_OFFSET, seq + 2); // even: write complete
+    }
+
+    /**
+     * Publishes the pad's motion for slot {@code slot}: accelerometer and gyro, already in the Deck
+     * controller's axes and units. Safe from any thread. Nothing in the app feeds it yet.
+     */
+    public static void writeMotion(int slot, short[] accel, short[] gyro) {
+        RingSlot ringSlot;
+        synchronized (RING_LOCK) {
+            ringSlot = slot >= 0 && slot < RING_SLOTS.length ? RING_SLOTS[slot] : null;
+        }
+        if (ringSlot == null) return;
+        synchronized (ringSlot) {
+            ByteBuffer ring = ringSlot.data;
+            if (ring == null) return;
+            long seq = ring.getLong(IMU_SEQ_OFFSET);
+            ring.putLong(IMU_SEQ_OFFSET, seq + 1); // odd: write in progress
+            nativeStoreFence();
+            for (int i = 0; i < 3; i++) {
+                ring.putShort(IMU_ACCEL_OFFSET + i * 2, accel[i]);
+                ring.putShort(IMU_GYRO_OFFSET + i * 2, gyro[i]);
+            }
+            ring.putInt(IMU_OFFSET, IMU_MAGIC);
+            nativeStoreFence();
+            ring.putLong(IMU_SEQ_OFFSET, seq + 2);
+        }
+    }
+
+    /**
+     * Publishes the Deck's back grips and trackpads for slot {@code slot}: {@code controls} is the
+     * DECK_EXTRA_* bit set of fakeinput_steam.cpp (L4 1, R4 2, L5 4, R5 8, left/right pad touch 16/32,
+     * left/right pad click 64/128), {@code pads} left X, Y, right X, Y and {@code pressure} left,
+     * right, already in the Deck's units. Safe from any thread. Nothing in the app feeds it yet.
+     */
+    public static void writeDeckControls(int slot, int controls, short[] pads, short[] pressure) {
+        RingSlot ringSlot;
+        synchronized (RING_LOCK) {
+            ringSlot = slot >= 0 && slot < RING_SLOTS.length ? RING_SLOTS[slot] : null;
+        }
+        if (ringSlot == null) return;
+        synchronized (ringSlot) {
+            ByteBuffer ring = ringSlot.data;
+            if (ring == null) return;
+            long seq = ring.getLong(IMU_SEQ_OFFSET);
+            ring.putLong(IMU_SEQ_OFFSET, seq + 1);
+            nativeStoreFence();
+            for (int i = 0; i < 4; i++) ring.putShort(DECK_PADS_OFFSET + i * 2, pads[i]);
+            for (int i = 0; i < 2; i++) ring.putShort(DECK_PRESSURE_OFFSET + i * 2, pressure[i]);
+            ring.putInt(DECK_CONTROLS_OFFSET, controls);
+            ring.putInt(IMU_OFFSET, IMU_MAGIC);
+            nativeStoreFence();
+            ring.putLong(IMU_SEQ_OFFSET, seq + 2);
+        }
     }
 
     private static short clampShort(int value) {
@@ -510,6 +599,11 @@ public class FakeInputWriter {
                 writeEvent(EV_MSC, MSC_SCAN, BUTTON_MAP[i]);
                 writeEvent(EV_KEY, BUTTON_MAP[i], 0);
             }
+        }
+
+        if (prevQam) {
+            prevQam = false;
+            hasChanges = true;
         }
 
         // Zero all axes
@@ -603,6 +697,18 @@ public class FakeInputWriter {
     // The last state the pad wrote, so a change of the overlay alone can be published against it.
     private final GamepadState lastPadState = new GamepadState();
 
+    // The Quick Access button, which GamepadState has no place for: it reaches only the snapshot,
+    // for libfakeinput's Steam Deck controller. Nothing presses it yet.
+    private boolean quickAccess = false;
+
+    /** Presses or releases the Quick Access button on this slot (the Steam Deck controller's only). */
+    public synchronized void setQuickAccess(boolean down) {
+        if (quickAccess == down)
+            return;
+        quickAccess = down;
+        writeGamepadState(lastPadState);
+    }
+
     /** Presses or releases the app's own Steam button and A on this slot, merged with the pad's state. */
     public synchronized void setSystemButtons(boolean guide, boolean a) {
         if (overlayGuide == guide && overlayA == a)
@@ -640,6 +746,10 @@ public class FakeInputWriter {
         // reports as button 8 - exactly the "guide:b8" in the mapping Steam writes for this pad.
         writeButton(SNAPSHOT_IDX_MODE,
                 state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_MODE) || overlayGuide);
+        if (forceResend || quickAccess != prevQam) {
+            prevQam = quickAccess;
+            hasChanges = true;
+        }
 
         // Sticks
         int lx = (int) (state.thumbLX * 32767);

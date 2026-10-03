@@ -1553,6 +1553,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private volatile int waylandBringToFrontSeq = 0;
     /** This Linux session's log folder, for the teardown collection. */
     private File linuxSessionLogDir;
+    /** The Steam Deck controller's sysfs binds (SteamDeckPad), when this Linux session presents the pad as one. */
+    private List<String> deckBinds = java.util.Collections.emptyList();
     /** The option files the in-game drawer rewrites while a Linux session runs (LinuxTuning.writeLive). */
     private File linuxLiveDir;
     /** A first Back press waiting to see whether a second follows (double Back opens Steam's Quick Access Menu). */
@@ -9593,6 +9595,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         boolean fakeInputEnabled = !noFakeInput.exists();
         if (!fakeInputEnabled) {
             Log.w("XServerDisplayActivity", "controller support disabled by " + noFakeInput);
+            // A Deck pad link an earlier session left would otherwise still be bound over /sys/dev/char.
+            com.winlator.star.linux.SteamDeckPad.forget(this);
         }
 
         // The session's preload libraries, refreshed from the app's own copies at every launch.
@@ -9740,20 +9744,43 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // No LD_PRELOAD here: the Steam client rebuilds LD_PRELOAD for every process it starts
             // and appends its overlay without a separator, silently dropping whatever was there.
             // Both shims are named in /etc/ld.so.preload instead, which the app writes below.
-            // Steam Input hides a pad it manages from the game and shows it a virtual one instead,
-            // which needs /dev/uinput; the pad carries that identity itself for everything but the client.
-            guest.add("FAKE_EVDEV_STEAM_VIRTUAL=1");
+            // Steam Input hides a pad it manages from the game and shows it a virtual one instead, made through /dev/uinput.
+            // libfakeinput stands in for /dev/uinput, so that virtual pad becomes a node the game reads, carrying the player's layout, as on a Deck.
+            // For the client the pad is then what a Deck's is: a Steam Deck controller over hidraw (SteamDeckPad), which needs that virtual pad for games.
+            // The Deck is decided only once its sysfs is in place: with it asked for, the pad's own nodes are withdrawn, so without it there would be no controller at all.
+            // (From Droid-Deck/DroidDeck #86.)
+            File sdcard = android.os.Environment.getExternalStorageDirectory();
+            boolean uinput = !new File(sdcard, "Download/bannerlator-no-uinput").exists();
+            if (uinput && !new File(sdcard, "Download/bannerlator-no-deck-pad").exists()) {
+                deckBinds = com.winlator.star.linux.SteamDeckPad.prepare(this, imageFs.getRootDir());
+            } else {
+                com.winlator.star.linux.SteamDeckPad.forget(this);
+                deckBinds = java.util.Collections.emptyList();
+            }
+            boolean deckPad = !deckBinds.isEmpty();
+            if (uinput) {
+                guest.add("FAKE_EVDEV_UINPUT=1");
+                if (deckPad) {
+                    guest.add("FAKE_EVDEV_DECK=1");
+                    guest.add("FAKE_DECK_SYSFS_LISTING="
+                            + com.winlator.star.linux.SteamDeckPad.listingDir(imageFs.getRootDir()).getPath());
+                }
+            } else {
+                // Without the stand-in, games read the pad itself, wearing the virtual pad's identity for everything but the client.
+                guest.add("FAKE_EVDEV_STEAM_VIRTUAL=1");
+            }
+            Log.i("XServerDisplayActivity", "fake evdev: uinput " + (uinput ? "on" : "off")
+                    + ", pad presented to the client as " + (deckPad ? "a Steam Deck controller" : "an Xbox 360 controller"));
             // No udev runs in the runtime: SDL and Steam's hidapi scan /dev/input themselves, and
             // the netlink monitor they still open is answered by the session shim's stand-in.
             guest.add("SDL_JOYSTICK_DISABLE_UDEV=1");
             guest.add("SDL_HIDAPI_JOYSTICK_DISABLE_UDEV=1");
-            guest.add("SDL_JOYSTICK_HIDAPI=0");
-            File traceSwitch = new File(android.os.Environment.getExternalStorageDirectory(),
-                    "Download/bannerlator-fake-input-log");
-            if (traceSwitch.exists()) {
-                guest.add("FAKE_EVDEV_LOG=1");
-                Log.i("XServerDisplayActivity", "fake evdev tracing enabled by " + traceSwitch);
-            }
+            // The client reads a Deck controller through SDL's HIDAPI; a hint in the environment outranks the client's own.
+            if (!deckPad) guest.add("SDL_JOYSTICK_HIDAPI=0");
+            // libfakeinput's side of the pads (which were opened, the Deck's hidraw and why it was refused) in pad.log beside the session's other logs.
+            // Setup-time lines only, nothing per input event. (From Droid-Deck/DroidDeck #125.)
+            guest.add("FAKE_EVDEV_LOG=1");
+            guest.add("FAKE_EVDEV_LOG_FILE=" + new File(logDir, "pad.log").getPath());
         }
         Log.i("XServerDisplayActivity", "Linux session log: " + sessionLog.getPath());
         showLinuxFirstRunProgress(sessionLog);
@@ -9780,7 +9807,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             sb.append("controller support enabled: ").append(fakeInputEnabled).append('\n');
             sb.append("ld.so.preload: ").append(preloadList.replace("\n", " ").trim()).append('\n');
             for (String e : guest) {
-                if (e.startsWith("FAKE_EVDEV") || e.startsWith("LD_PRELOAD")
+                if (e.startsWith("FAKE_EVDEV") || e.startsWith("FAKE_DECK") || e.startsWith("LD_PRELOAD")
                         || e.startsWith("SDL_JOYSTICK") || e.startsWith("SDL_HIDAPI")
                         || e.startsWith("SDL_LINUX")) {
                     sb.append("env: ").append(e).append('\n');
@@ -9899,6 +9926,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Apps may not list /dev/input; the fake evdev nodes the input rings back stand in for it.
         gameBinds = new ArrayList<>(gameBinds);
         if (fakeInputEnabled) gameBinds.add(fakeInputDir.getPath() + ":/dev/input");
+        if (fakeInputEnabled) gameBinds.addAll(deckBinds);
         gameBinds.add(linuxBatteryDir.getPath() + ":/sys/class/power_supply");
         // The app's own games, for the runtime's shortcuts writer to put in the client's library before the client starts (see LinuxAppGames and bannerlator-steam-shortcuts).
         // The list is written every session, empty or not, so games that are gone or turned off leave the client's library too.
@@ -14568,6 +14596,11 @@ return true;
         StringBuilder removed = new StringBuilder();
         for (File node : nodes) {
             String name = node.getName();
+            // The hidden rings of the virtual pads a client made last session (libfakeinput's /dev/uinput stand-in); a client that crashed never took its own down.
+            if (name.startsWith(".uinput-")) {
+                if (node.delete()) removed.append(' ').append(name);
+                continue;
+            }
             if (!name.startsWith("event")) continue;
             int slot;
             try {

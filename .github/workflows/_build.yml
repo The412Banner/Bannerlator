@@ -280,7 +280,7 @@ jobs:
         done
         # The interposers are the whole point: if any is missing the client sees no controller.
         SYMS=$(aarch64-linux-gnu-nm -D --defined-only "$D/libfakeinput.so" | awk '{print $NF}')
-        for sym in open openat ioctl read close poll ppoll select stat fstat access scandir; do
+        for sym in open openat ioctl read close poll ppoll select stat fstat access scandir opendir statfs fstatfs statx; do
           grep -qx "$sym" <<<"$SYMS" \
             || { echo "::error::libfakeinput.so does not export $sym"; exit 1; }
         done

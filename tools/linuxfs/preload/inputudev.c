@@ -20,6 +20,14 @@
  * Only Wine's device host is answered, and only for the session's own nodes: the Steam client
  * enumerates the same nodes for itself and would take a pad wearing Steam Input's identity for one
  * of its own and ignore it. Every other caller, path and device object goes straight through.
+ *
+ * With libfakeinput's /dev/uinput stand-in (FAKE_EVDEV_UINPUT=1) Steam Input's own virtual pads
+ * exist too, as event16 and up, and those are what Wine is meant to read: each is described with
+ * the identity the client gave it, from the .uevent file libfakeinput writes beside the node.
+ * While one exists the app's pads are described as what they are, an Xbox 360 controller, which
+ * Wine's HID bus leaves alone - the game reads Steam Input's output, not the pad under it, as on
+ * a Steam Deck. With none (Steam Input off for the game) they keep the virtual identity, so the
+ * game still has a controller.
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -31,8 +39,11 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
-/* The app opens one ring per configured controller; four is what its launcher offers. */
-#define PAD_MAX 4
+/* The app opens one ring per configured controller; four is what its launcher offers. Nodes from
+ * UINPUT_BASE up are the virtual pads made through libfakeinput's /dev/uinput stand-in. */
+#define RING_MAX 4
+#define UINPUT_BASE 16
+#define PAD_MAX 64
 #define EVENT_MINOR_BASE 64
 
 /* BUS_VIRTUAL, and the identity Steam Input gives the gamepad it presents to a game. */
@@ -41,16 +52,23 @@
   "NAME=\"Generic HID Gamepad %d\"\n"                                                              \
   "PHYS=\"usb-fakeinput/input%d\"\n"
 
+/* The identity libfakeinput gives the pad itself (FAKE_EVDEV_IDENTITY=xbox360). */
+#define PAD_PHYSICAL_UEVENT_FORMAT                                                                 \
+  "PRODUCT=3/45e/28e/110\n"                                                                        \
+  "NAME=\"Xbox 360 Controller (%d)\"\n"                                                            \
+  "PHYS=\"usb-fakeinput/input%d\"\n"
+
 struct pad {
   char syspath[64];
   char devnode[32];
   char sysname[16];
-  char uevent[128];
+  char uevent[256];
   dev_t devnum;
 };
 
 static struct pad pads[PAD_MAX];
 static int pad_count;
+static pthread_mutex_t virtual_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * The slots the app published rings for, named in FAKE_EVDEV_MEMFD_PATHS as "<slot>=<path>"
@@ -66,7 +84,7 @@ static void discover_pads(void) {
     char *end;
     long slot = strtol(entry, &end, 10);
 
-    if (end != entry && *end == '=' && slot >= 0 && slot < PAD_MAX) {
+    if (end != entry && *end == '=' && slot >= 0 && slot < RING_MAX) {
       struct pad *pad = &pads[slot];
 
       if (pad->devnode[0] == '\0') {
@@ -88,6 +106,66 @@ static void discover_pads(void) {
 static void ensure_pads(void) {
   static pthread_once_t once = PTHREAD_ONCE_INIT;
   pthread_once(&once, discover_pads);
+}
+
+static int uinput_enabled(void) {
+  const char *enabled = getenv("FAKE_EVDEV_UINPUT");
+  return enabled != NULL && atoi(enabled) != 0;
+}
+
+/* Reads the .uevent libfakeinput wrote for virtual pad <node> into buf; 0 when there is none. */
+static int read_virtual_uevent(int node, char *buf, size_t size) {
+  const char *dir = getenv("FAKE_EVDEV_DIR");
+  char path[PATH_MAX];
+  FILE *file;
+  size_t length;
+
+  if (dir == NULL) return 0;
+  snprintf(path, sizeof(path), "%s/.uinput-event%d.uevent", dir, node);
+  if ((file = fopen(path, "re")) == NULL) return 0;
+  length = fread(buf, 1, size - 1, file);
+  fclose(file);
+  buf[length] = '\0';
+  return length > 0;
+}
+
+static int any_virtual_pad(void) {
+  char uevent[256];
+  int node;
+
+  for (node = UINPUT_BASE; node < PAD_MAX; node++)
+    if (read_virtual_uevent(node, uevent, sizeof(uevent))) return 1;
+  return 0;
+}
+
+/*
+ * Brings the entry for event<node> up to date before Wine resolves it: a virtual pad comes and
+ * goes with the client, and the app's pads change identity with it.
+ */
+static void refresh_pad(int node) {
+  struct pad *pad;
+
+  if (node < 0 || node >= PAD_MAX) return;
+  pad = &pads[node];
+  pthread_mutex_lock(&virtual_lock);
+  if (node >= UINPUT_BASE) {
+    char uevent[sizeof(pad->uevent)];
+
+    if (read_virtual_uevent(node, uevent, sizeof(uevent))) {
+      snprintf(pad->sysname, sizeof(pad->sysname), "event%d", node);
+      snprintf(pad->syspath, sizeof(pad->syspath), "/sys/devices/virtual/input/bannerlator%d", node);
+      memcpy(pad->uevent, uevent, sizeof(uevent));
+      pad->devnum = makedev(13, EVENT_MINOR_BASE + (unsigned int)node);
+      snprintf(pad->devnode, sizeof(pad->devnode), "/dev/input/event%d", node);
+      if (node >= pad_count) pad_count = node + 1;
+    } else {
+      pad->devnode[0] = '\0';
+    }
+  } else if (pad->devnode[0] != '\0' && uinput_enabled()) {
+    snprintf(pad->uevent, sizeof(pad->uevent),
+             any_virtual_pad() ? PAD_PHYSICAL_UEVENT_FORMAT : PAD_UEVENT_FORMAT, node, node);
+  }
+  pthread_mutex_unlock(&virtual_lock);
 }
 
 /* The pad a synthetic syspath names, or NULL when the path is not one of ours. */
@@ -123,6 +201,7 @@ static struct pad *pad_for_syslink(const char *path) {
   if (path == NULL || strncmp(path, prefix, sizeof(prefix) - 1) != 0) return NULL;
   name = path + sizeof(prefix) - 1;
   ensure_pads();
+  if (strncmp(name, "event", 5) == 0 && name[5] >= '0' && name[5] <= '9') refresh_pad(atoi(name + 5));
   for (i = 0; i < pad_count; i++) {
     if (pads[i].devnode[0] != '\0' && strcmp(pads[i].sysname, name) == 0) return &pads[i];
   }

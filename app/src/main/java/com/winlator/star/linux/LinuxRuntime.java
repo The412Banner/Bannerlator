@@ -233,24 +233,30 @@ public final class LinuxRuntime {
      * linux-dmabuf without one. The KGSL device Turnip actually drives ({@code gpu_device}, which we
      * may open) stands in: it appears as a render node with the sysfs entries libdrm reads, and our
      * Turnip build reports the same device numbers for it.
+     *
+     * The same {@code drm/sys} folder over {@code /sys/dev/char} also carries the Steam Deck
+     * controller's {@code 240:16} entry when a session presents the pad as one (SteamDeckPad), so a
+     * device with no KGSL node still gets that folder bound whenever the entry is there.
      */
     private static void bindGpuNode(Context context, List<String> cmd) {
+        File base = new File(context.getCacheDir(), "drm");
         StructStat st;
         try {
             st = Os.stat(KGSL_DEVICE);
         } catch (ErrnoException e) {
+            bindDeckCharDir(base, cmd);
             return;
         }
         long dev = st.st_rdev;
         long major = ((dev >> 8) & 0xfff) | ((dev >> 32) & ~0xfffL);
         long minor = (dev & 0xff) | ((dev >> 12) & ~0xffL);
         String node = "renderD" + minor;
-        File base = new File(context.getCacheDir(), "drm");
         File dri = new File(base, "dri");
         File device = new File(base, "sys/" + major + ":" + minor + "/device");
         File drm = new File(device, "drm/" + node);
         try {
             if ((!dri.isDirectory() && !dri.mkdirs()) || (!drm.isDirectory() && !drm.mkdirs())) {
+                bindDeckCharDir(base, cmd);
                 return;
             }
             new File(dri, node).createNewFile();
@@ -263,11 +269,20 @@ public final class LinuxRuntime {
                 Os.symlink("/sys/bus/platform", subsystem.getPath());
             }
         } catch (IOException | ErrnoException e) {
+            bindDeckCharDir(base, cmd);
             return;
         }
         bind(cmd, new File(base, "sys").getPath() + ":/sys/dev/char");
         bind(cmd, dri.getPath() + ":/dev/dri");
         bind(cmd, KGSL_DEVICE + ":/dev/dri/" + node);
+    }
+
+    /** Without a GPU node: binds {@code drm/sys} over {@code /sys/dev/char} only for the Deck controller's entry, if this session made one. */
+    private static void bindDeckCharDir(File base, List<String> cmd) {
+        File sys = new File(base, "sys");
+        if (Files.isSymbolicLink(new File(sys, SteamDeckPad.CHAR_DEV).toPath())) {
+            bind(cmd, sys.getPath() + ":/sys/dev/char");
+        }
     }
 
     /**

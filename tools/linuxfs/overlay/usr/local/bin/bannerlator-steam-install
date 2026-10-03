@@ -27,7 +27,10 @@ curl -fsSL "$cdn/$manifest" -o "$work/manifest"
 version=$(awk -F'"' '$2 == "version" { print $4; exit }' "$work/manifest")
 if [ -n "$sync" ]; then
   installed=$(awk -F'"' '$2 == "version" { print $4; exit }' "$steam_root/package/$manifest.manifest" 2>/dev/null || true)
-  [ -x "$steam_root/steamrtarm64/steam" ] && [ "$installed" = "$version" ] && exit 0
+  if [ -x "$steam_root/steamrtarm64/steam" ] && [ "$installed" = "$version" ]; then
+    chmod -R a+x "$steam_root/steamrtarm64" "$steam_root/linuxarm64" 2>/dev/null || true
+    exit 0
+  fi
   echo "== STEP $(date -u +%H:%M:%S) updating the arm64 Steam client to $version (was ${installed:-none}) for the x86-64 client"
 fi
 # Every component block: its name, then the plain zip's file name and sha256.

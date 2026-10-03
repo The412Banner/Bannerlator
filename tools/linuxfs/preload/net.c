@@ -14,6 +14,7 @@
 #include <linux/netlink.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -194,10 +195,44 @@ static int maybe_answer_lsof(const char *path, char *const argv[]) {
   _exit(0);
 }
 
+/* The x86-64 Steam client's web helper is the arm64 client's (bannerlator-x64-arm-webhelper, named
+ * by BL_X64_ARM_WEBHELPER, which bannerlator-steam-x64 sets for the client): steamrt64's
+ * steamwebhelper.sh ends in `exec ./steamwebhelper`, and that exec becomes the launcher with the same
+ * arguments. Steam's own files stay as shipped - the client checksums them as it starts and
+ * reinstalled itself over an edited launcher every time. The arm64 helper (steamrtarm64) never
+ * matches. Returns the launcher's argv to exec instead, or NULL. */
+static char **web_helper_redirect(const char *path, char *const argv[], const char **launcher) {
+  const char *want = getenv("BL_X64_ARM_WEBHELPER");
+  if (!want || !*want || !path) return NULL;
+  const char *base = strrchr(path, '/');
+  if (strcmp(base ? base + 1 : path, "steamwebhelper") != 0) return NULL;
+  if (!strstr(path, "/steamrt64/")) {
+    char cwd[PATH_MAX];
+    size_t n;
+    if (path[0] == '/' || !getcwd(cwd, sizeof(cwd))) return NULL;
+    n = strlen(cwd);
+    if (n < 10 || strcmp(cwd + n - 10, "/steamrt64") != 0) return NULL;
+  }
+  int argc = 0;
+  while (argv && argv[argc]) argc++;
+  char **out = calloc((size_t)argc + 2, sizeof(char *));
+  if (!out) return NULL;
+  out[0] = (char *)want;
+  for (int i = 1; i < argc; i++) out[i] = argv[i];
+  *launcher = want;
+  return out;
+}
+
 int execve(const char *path, char *const argv[], char *const envp[]) {
   static int (*real)(const char *, char *const[], char *const[]);
   if (!real) real = (int (*)(const char *, char *const[], char *const[]))dlsym(RTLD_NEXT, "execve");
   maybe_answer_lsof(path, argv);
+  const char *launcher = NULL;
+  char **redirected = web_helper_redirect(path, argv, &launcher);
+  if (redirected) {
+    real(launcher, redirected, envp);
+    free(redirected); /* only on failure: the original exec runs */
+  }
   return real(path, argv, envp);
 }
 
@@ -229,6 +264,12 @@ int execv(const char *path, char *const argv[]) {
   static int (*real)(const char *, char *const[]);
   if (!real) real = (int (*)(const char *, char *const[]))dlsym(RTLD_NEXT, "execv");
   maybe_answer_lsof(path, argv);
+  const char *launcher = NULL;
+  char **redirected = web_helper_redirect(path, argv, &launcher);
+  if (redirected) {
+    real(launcher, redirected);
+    free(redirected);
+  }
   return real(path, argv);
 }
 

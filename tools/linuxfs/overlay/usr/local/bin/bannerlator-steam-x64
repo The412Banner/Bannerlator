@@ -557,33 +557,14 @@ export BL_WEBHELPER_HIDE_TRACER=1
 x64_exec() {
   x64_env
   cd "$STEAM_X64"
-  # The client's own web helper launcher, pointed at the arm64 client's helper (FEX hands that arm64
-  # program to the CPU). The client checks its files' sizes at every start and reinstalls itself
-  # over one that differs (device: install loop, "steamwebhelper.sh is 176 bytes, expected 84"), so
-  # the replacement is padded to the size of the client's own copy. It is pointed again whenever it
-  # differs, for as long as this client runs: a full check puts the client's copy back.
-  case "${1:-}" in
-    -shutdown|steam://*) ;;
-    *) if [ "${BL_X64_X86_WEBHELPER:-0}" != 1 ] && [ -x /usr/local/bin/bannerlator-x64-arm-webhelper ] &&
-          [ -x "$ARM_STEAM/steamrtarm64/steamwebhelper" ]; then
-         (
-           client=$$ wh=$STEAM_X64/steamrt64/steamwebhelper.sh
-           base=$(printf '#!/bin/sh\nexec /usr/local/bin/bannerlator-x64-arm-webhelper "$@"\n#')
-           size= want=
-           while kill -0 "$client" 2>/dev/null; do
-             if [ -f "$wh" ] && ! grep -q bannerlator-x64-arm-webhelper "$wh" 2>/dev/null; then
-               size=$(stat -c %s "$wh") want=
-               pad=$((size - ${#base} - 1))
-               [ "$pad" -ge 0 ] && want=$base$(printf '%*s' "$pad" '' | tr ' ' '-')
-             fi
-             if [ -n "$want" ] && [ "$(cat "$wh" 2>/dev/null)" != "$want" ]; then
-               printf '%s\n' "$want" > "$wh.new" && chmod 755 "$wh.new" && mv -f "$wh.new" "$wh"
-             fi
-             sleep 1
-           done
-         ) &
-       fi ;;
-  esac
+  # The client's web helper is the arm64 client's (bannerlator-x64-arm-webhelper; FEX hands that arm64
+  # program to the CPU): the session shim turns steamrt64/steamwebhelper.sh's exec of ./steamwebhelper
+  # into it (preload/net.c). Nothing of the client's is edited - it checksums its files as it starts
+  # and reinstalled itself over an edited launcher (2-3 minutes) on every start.
+  if [ "${BL_X64_X86_WEBHELPER:-0}" != 1 ] && [ -x /usr/local/bin/bannerlator-x64-arm-webhelper ] &&
+     [ -x "$ARM_STEAM/steamrtarm64/steamwebhelper" ]; then
+    export BL_X64_ARM_WEBHELPER=/usr/local/bin/bannerlator-x64-arm-webhelper
+  fi
   exec "${BL_FEX:-/usr/local/bin/FEX}" "$STEAM_X64/steamrt64/steam" "$@"
 }
 

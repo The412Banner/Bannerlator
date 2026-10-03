@@ -9687,6 +9687,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             sessionFiles = withFile;
         }
         String[][] x86Libraries = {
+                // FEX's own libxxhash, which this runtime image lacks; installed where missing by bannerlator-steam-x64.
+                {"usr/local/lib/bannerlator/libxxhash.so.0", "usr/local/lib/bannerlator/libxxhash.so.0"},
                 {"libblsession-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libblsession.so"},
                 {"libfakeinput-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libfakeinput.so"},
                 {"libblsession-i386.so", "usr/local/lib/i386-linux-gnu/libblsession.so"},

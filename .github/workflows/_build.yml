@@ -373,6 +373,17 @@ jobs:
         install -Dm644 tools/mangoapp/mangoapp "$D/usr/local/bin/mangoapp"
         rm -rf mango-pkgs
         ls -l "$M"
+        # libxxhash for FEX (the x86-64 Steam client option): its build links it, and this runtime image does
+        # not carry it. Valve's Deck mirror, pinned; bannerlator-steam-x64 installs it only where it is missing.
+        X="$D/usr/local/lib/bannerlator"
+        mkdir -p "$X" xxh-pkg
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o xxh-pkg/pkg.tar.zst \
+          https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/xxhash-0.8.2-1-aarch64.pkg.tar.zst
+        echo "4c39aa4e6c58fb42a1b8cc7e04878e385630c3b9393771fad1b8f3ed479272b3  xxh-pkg/pkg.tar.zst" | sha256sum -c -
+        tar --use-compress-program=unzstd -xf xxh-pkg/pkg.tar.zst -C xxh-pkg
+        cp -L xxh-pkg/usr/lib/libxxhash.so.0 "$X/libxxhash.so.0"
+        rm -rf xxh-pkg
+        ls -l "$X"
         ls -l "$D/usr/local/bin/"
 
     # The PulseAudio sink that sends the Steam client's own sound through the DirectAudio relay (tools/aaudio-sink, from The412Banner/SteamDeck).

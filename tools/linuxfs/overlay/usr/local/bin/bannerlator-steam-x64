@@ -60,6 +60,12 @@ if [ ! -x /usr/local/bin/FEX ] || [ "$(cat /usr/local/share/fex-emu/.bannerlator
   rm -rf "$tmp"
   mkdir -p /usr/local/share/fex-emu && echo "$FEX_TAG" > /usr/local/share/fex-emu/.bannerlator-tag
 fi
+# FEX links libxxhash, which not every runtime image carries (FEX then fails to load, and the client
+# with it); the app stages a copy, installed only where the image has none.
+if [ ! -e /usr/lib/libxxhash.so.0 ] && [ -f /usr/local/lib/bannerlator/libxxhash.so.0 ]; then
+  cp -f /usr/local/lib/bannerlator/libxxhash.so.0 /usr/lib/libxxhash.so.0 && chmod 755 /usr/lib/libxxhash.so.0 &&
+    step "installed libxxhash for FEX"
+fi
 step "FEX ready ($FEX_TAG)"
 
 # --- x86 rootfs --------------------------------------------------------------------------------

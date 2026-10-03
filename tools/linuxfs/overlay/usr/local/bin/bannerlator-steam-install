@@ -1,17 +1,35 @@
 #!/bin/bash
 # Fetches the native arm64 Steam client from Valve's client-update CDN into ~/.local/share/Steam.
 # The client is not redistributable, so the runtime ships this script instead of the client.
+#
+#   bannerlator-steam-install                   install once
+#   bannerlator-steam-install --sync CHANNEL    bring the installed client to CHANNEL's current build
+#
+# --sync is for the x86-64 client option (bannerlator-steam-x64): it runs this client's web helper,
+# which only talks to a client of its own build, and the x86-64 client updates itself on every start
+# while this one only updates when it runs (device: 1790721607 against 1790904859, the helper restarted
+# every 10 s and the interface never came up).
 set -eu
 cdn=https://client-update.fastly.steamstatic.com
 manifest=steam_client_publicbeta_linuxarm64
 steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
 stamp=$steam_root/package/bannerlator-installed
-[ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
+sync=
+if [ "${1:-}" = --sync ]; then
+  case "${2:-}" in publicbeta|steamdeck_publicbeta) sync=$2 ;; *) sync=publicbeta ;; esac
+  manifest=steam_client_${sync}_linuxarm64
+fi
+[ -z "$sync" ] && [ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 curl -fsSL "$cdn/$manifest" -o "$work/manifest"
 version=$(awk -F'"' '$2 == "version" { print $4; exit }' "$work/manifest")
+if [ -n "$sync" ]; then
+  installed=$(awk -F'"' '$2 == "version" { print $4; exit }' "$steam_root/package/$manifest.manifest" 2>/dev/null || true)
+  [ -x "$steam_root/steamrtarm64/steam" ] && [ "$installed" = "$version" ] && exit 0
+  echo "== STEP $(date -u +%H:%M:%S) updating the arm64 Steam client to $version (was ${installed:-none}) for the x86-64 client"
+fi
 # Every component block: its name, then the plain zip's file name and sha256.
 awk -F'"' '
   /^\t"/ && NF >= 3 && $4 == "" { block = $2 }
@@ -41,7 +59,12 @@ find "$steam_root" -depth -name '*\\*' | while read -r odd; do
     mv -f "$odd" "$fixed"
   fi
 done
-echo publicbeta > "$steam_root/package/beta"
+if [ -n "$sync" ]; then
+  # The client's own record of what it has, so it does not take the new files for an update to undo.
+  cp -f "$work/manifest" "$steam_root/package/$manifest.manifest"
+else
+  echo publicbeta > "$steam_root/package/beta"
+fi
 echo "$version" > "$stamp"
 ln -sfn "$steam_root/steamrtarm64" "$steam_root/steamrtarm32"
 chmod +x "$steam_root/steamrtarm64/steam" 2>/dev/null || true

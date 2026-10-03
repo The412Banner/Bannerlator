@@ -67,6 +67,10 @@ if [ ! -e /usr/lib/libxxhash.so.0 ] && [ -f /usr/local/lib/bannerlator/libxxhash
     step "installed libxxhash for FEX"
 fi
 step "FEX ready ($FEX_TAG)"
+# The client takes this file in its folder as the opt-in to its SteamRT3 build (steamrt64/steam).
+# Without it, it re-executes itself in the scout environment through steam.sh, whose start-up checks
+# need what proot cannot give, and the session stalls before the interface (device, Bannerlator).
+mkdir -p "$STEAM_X64" && : > "$STEAM_X64/.steam-enable-steamrt64-client"
 
 # --- x86 rootfs --------------------------------------------------------------------------------
 if [ ! -f "$ROOTFS/.bannerlator-complete" ]; then
@@ -567,9 +571,20 @@ x64_exec() {
   # program to the CPU): the session shim turns steamrt64/steamwebhelper.sh's exec of ./steamwebhelper
   # into it (preload/net.c). Nothing of the client's is edited - it checksums its files as it starts
   # and reinstalled itself over an edited launcher (2-3 minutes) on every start.
+  # Only while both clients are one build: the helper talks to the client over IPC, and one of another
+  # build never comes up - the client restarted it every 10 s (device: 1790721607 against 1790904859).
+  # Otherwise the client keeps its own (x86, software) helper. The session updates the arm64 parts first.
   if [ "${BL_X64_X86_WEBHELPER:-0}" != 1 ] && [ -x /usr/local/bin/bannerlator-x64-arm-webhelper ] &&
      [ -x "$ARM_STEAM/steamrtarm64/steamwebhelper" ]; then
-    export BL_X64_ARM_WEBHELPER=/usr/local/bin/bannerlator-x64-arm-webhelper
+    local chan x86_build arm_build
+    chan=$(cat "$STEAM_X64/package/beta" 2>/dev/null || echo publicbeta)
+    x86_build=$(awk -F'"' '$2 == "version" { print $4; exit }' "$STEAM_X64/package/steam_client_${chan}_ubuntu12.manifest" 2>/dev/null)
+    arm_build=$(awk -F'"' '$2 == "version" { print $4; exit }' "$ARM_STEAM/package/steam_client_${chan}_linuxarm64.manifest" 2>/dev/null)
+    if [ -n "$x86_build" ] && [ "$x86_build" = "$arm_build" ]; then
+      export BL_X64_ARM_WEBHELPER=/usr/local/bin/bannerlator-x64-arm-webhelper
+    else
+      echo "== x86-64 client build ${x86_build:-?}, arm64 web helper's ${arm_build:-?}: keeping the x86 web helper" >&2
+    fi
   fi
   exec "${BL_FEX:-/usr/local/bin/FEX}" "$STEAM_X64/steamrt64/steam" "$@"
 }

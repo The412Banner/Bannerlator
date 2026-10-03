@@ -233,6 +233,9 @@ case $mode in
       # its game overlay and steamclient.so serve the arm64 Protons the x86-64 client starts.
       step "checking the Steam client's arm64 parts (first run downloads them, ~1-2 min)"
       bannerlator-steam-install || exit $?
+      # Its web helper only talks to a client of its own build; the x86-64 client updates itself on
+      # every start, the arm64 one only when it runs.
+      bannerlator-steam-install --sync "${BL_STEAM_CHANNEL:-publicbeta}" || step "could not update the arm64 client's parts; the x86-64 client keeps its own web helper"
       step "checking the x86-64 Steam client (FEX, experimental; the first run downloads ~2 GB)"
       bannerlator-steam-x64 --prepare || exit $?
       step "x86-64 Steam client ready"

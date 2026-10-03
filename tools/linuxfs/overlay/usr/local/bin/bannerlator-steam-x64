@@ -363,6 +363,22 @@ VDF
       "$name" "$X64_HOME/arm64/env" "$name" > "$dst/run"
     chmod 755 "$dst/run"
   done
+  # Signed in once: a client with no sign-in of its own takes the arm64 client's remembered one (its
+  # account list, the token in local.vdf and the auto-login name), so it starts signed in like that
+  # one. Same device, same account files the client keeps; a sign-in this client already has is never
+  # replaced. The token works while it is current (device: one copied right after the arm64 client
+  # signed in logged on; a 3-day-old one was refused, and the client asked for the password).
+  if [ ! -f "$STEAM_X64/config/loginusers.vdf" ] && [ -f "$ARM_STEAM/config/loginusers.vdf" ] &&
+     [ -f "$ARM_STEAM/local.vdf" ] && ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    mkdir -p "$STEAM_X64/config" "$X64_HOME/.steam"
+    cp -f "$ARM_STEAM/config/loginusers.vdf" "$STEAM_X64/config/loginusers.vdf"
+    cp -f "$ARM_STEAM/local.vdf" "$STEAM_X64/local.vdf"
+    if [ -f "$REAL_HOME/.steam/registry.vdf" ] &&
+       ! grep -q '"AutoLoginUser"[[:space:]]*"[^"]' "$X64_HOME/.steam/registry.vdf" 2>/dev/null; then
+      cp -f "$REAL_HOME/.steam/registry.vdf" "$X64_HOME/.steam/registry.vdf"
+    fi
+    step "using the arm64 client's sign-in"
+  fi
   # One library with the arm64 client: its library folders become this client's too, so a Windows
   # game installed by either is installed for both. Titles this client runs as Linux builds (the
   # Bannerlator direct ones) keep their own copy in its own folder - the arm64 client needs the

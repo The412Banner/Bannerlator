@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <time.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <android/log.h>
 
@@ -35,6 +36,8 @@ struct vkp_image {
     int in_general;           /* shm images: moved from PREINITIALIZED to GENERAL */
     VkFormat fmt;
     int sampled;              /* created with SAMPLED usage: the alpha pass can read it */
+    int reading;              /* copy-path frames in flight that read it (the frame ring) */
+    int doomed;               /* destroyed while read: freed when the last of those frames retires */
 };
 
 static ANativeWindow *g_window;  /* the window frames go to; compositor thread only */
@@ -46,14 +49,51 @@ static VkDevice g_dev;
 static VkQueue g_queue;
 static uint32_t g_qfam;
 static VkCommandPool g_pool;
-/* One command buffer + acquire/render-done semaphore pair per PRESENT. A scene frame is one
- * present, or up to 1 + VKP_FG_MAX_GENERATIONS with frame generation (the generated frames go
- * out first, the real frame last), each on its own slot so no semaphore ever carries two
- * pending signals. Slot 0 is also the layer-mode blit's command buffer. */
+/* A scene frame is one present, or up to 1 + VKP_FG_MAX_GENERATIONS with frame generation (the
+ * generated frames go out first, the real frame last), each present on its own command buffer and
+ * acquire/render-done semaphore pair so no semaphore ever carries two pending signals. */
 #define MAX_PRESENTS (1 + VKP_FG_MAX_GENERATIONS)
+/* The layer path's command buffer and fence (vkp_blit_image, the compositor pass into a layer
+ * buffer): synchronous, waited for right after the submit. Only g_cmds[0] is used there. */
 static VkCommandBuffer g_cmds[MAX_PRESENTS];
-static VkSemaphore g_acqs[MAX_PRESENTS], g_rnds[MAX_PRESENTS];
 static VkFence g_fence;
+
+/* The copy path's frame ring. Every scene frame vkp_render presents takes a slot: its own command
+ * buffers and semaphores for the frame's presents and its own fence. The compositor thread no longer
+ * waits for that fence after the present - the frame stays "in flight" and the slot is reused only
+ * once the fence has signalled (vkp_retire_frames: from the compositor's vsync tick, from
+ * render_scene, and from the event loop through vkp_frame_wait_fd). Why: the screen blit queues
+ * behind the game's own GPU work, and waiting for it HERE parked the whole Wayland dispatch loop -
+ * buffer releases, frame callbacks, presentation feedback - for 30-90 ms per frame on a busy GPU
+ * (Hot_Ice's logs, 2026-10-02: "fence wait 34-45 ms avg / 86 ms max"), which paced every game to the
+ * compositor's blit latency and showed as jitter that grew with GPU load. FRAME_SLOTS = 2: one frame
+ * on the GPU while the next is recorded; more would only add latency. BANNER_WAYLAND_ASYNC_COPY=0
+ * (vkp_set_async_copy) waits after every present as before. Frames of the compositor PASS (screen
+ * effects, frame generation, the HDR composition) are always waited for: their chains run on
+ * single-buffered intermediate images and rewrite descriptor sets per frame. */
+#define FRAME_SLOTS 2
+enum { FRAME_SYNC_FENCE, FRAME_SYNC_FD, FRAME_SYNC_DONE };
+struct frame_slot {
+    VkCommandBuffer cmds[MAX_PRESENTS];
+    VkSemaphore acqs[MAX_PRESENTS], rnds[MAX_PRESENTS];
+    VkFence fence;
+    int busy;                 /* submitted, not yet retired */
+    int sync;                 /* how completion is seen: FRAME_SYNC_FENCE (bounded fence waits),
+                               * FRAME_SYNC_FD (poll the sync_file), FRAME_SYNC_DONE (known complete) */
+    int fd;                   /* FRAME_SYNC_FD: the fence as a sync_file (VK_KHR_external_fence_fd) */
+    uint64_t seq;             /* the number the compositor knows the frame by (vkp_last_frame_seq) */
+    int64_t submit_ns;
+    struct vkp_image **imgs;  /* the client images the frame reads (reading++ until it retires) */
+    int nimgs, imgs_cap;
+};
+static struct frame_slot g_frames[FRAME_SLOTS];
+static int g_frame_next;                 /* the slot the next frame takes (round robin) */
+static uint64_t g_frame_seq;             /* last sequence number handed out */
+static int g_async_copy = 1;             /* the kill switch (vkp_set_async_copy), read at dev_init */
+static int g_async_mode;                 /* what this device runs: 1 = frames in flight, 0 = waited */
+static PFN_vkGetFenceFdKHR g_get_fence_fd; /* NULL = no sync_files: fences get bounded waits */
+extern void banner_frame_retired(uint64_t seq, int64_t in_flight_ns); /* compositor.c */
+static void frames_abandon(void);
 /* Extra swapchain images this swapchain was built with (frame generation: one per generated
  * frame, so all presents of a scene frame queue without waiting for a vblank). */
 static int g_swap_extra;
@@ -220,17 +260,21 @@ void vk_present_set_driver(const char *driver_path, const char *library_name,
  * (Adreno answers OUT_OF_DATE, which rebuilds again - a loop). Fresh objects cannot carry that. */
 static void reset_sync(void) {
     VkSemaphoreCreateInfo semci = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    for (int k = 0; k < MAX_PRESENTS; k++) {
-        if (g_acqs[k]) g_vk.DestroySemaphore(g_dev, g_acqs[k], NULL);
-        if (g_rnds[k]) g_vk.DestroySemaphore(g_dev, g_rnds[k], NULL);
-        g_vk.CreateSemaphore(g_dev, &semci, NULL, &g_acqs[k]);
-        g_vk.CreateSemaphore(g_dev, &semci, NULL, &g_rnds[k]);
+    for (int f = 0; f < FRAME_SLOTS; f++) {
+        struct frame_slot *fs = &g_frames[f];
+        for (int k = 0; k < MAX_PRESENTS; k++) {
+            if (fs->acqs[k]) g_vk.DestroySemaphore(g_dev, fs->acqs[k], NULL);
+            if (fs->rnds[k]) g_vk.DestroySemaphore(g_dev, fs->rnds[k], NULL);
+            g_vk.CreateSemaphore(g_dev, &semci, NULL, &fs->acqs[k]);
+            g_vk.CreateSemaphore(g_dev, &semci, NULL, &fs->rnds[k]);
+        }
     }
 }
 
 static void destroy_swapchain(void) {
     g_base_black = 0; /* a new swapchain starts with nothing on it */
     if (g_dev_state != 1) return;
+    vkp_retire_frames(1); /* the frames in flight first: their buffers go back, their feedback goes out */
     g_vk.DeviceWaitIdle(g_dev);
     reset_sync();
     for (uint32_t i = 0; i < g_nimg; i++) blendp_forget_image(g_images[i]);
@@ -451,9 +495,9 @@ static int dev_init(void) {
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
 
     /* Verify the dmabuf-import extensions are present, and log any that are missing. */
-    const char *dev_exts[7] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_external_memory_fd",
+    const char *dev_exts[9] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_external_memory_fd",
                                "VK_EXT_external_memory_dma_buf", "VK_EXT_image_drm_format_modifier",
-                               "VK_KHR_image_format_list", NULL, NULL};
+                               "VK_KHR_image_format_list", NULL, NULL, NULL, NULL};
     uint32_t n_dev_exts = 5;
     uint32_t ne = 0;
     g_vk.EnumerateDeviceExtensionProperties(g_pd, NULL, &ne, NULL);
@@ -472,10 +516,26 @@ static int dev_init(void) {
      * back to waiting for them on the CPU without it. */
     const int want_sem_fd = has_ext(exts, ne, VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME);
     if (want_sem_fd) dev_exts[n_dev_exts++] = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
+    /* The frame ring's fences as sync_files (VK_KHR_external_fence_fd): completion is then seen with
+     * poll(), never with a zero-timeout fence query - which a Turnip on KGSL turns into an UNBOUNDED
+     * wait (the zero-timeout "poll" bug, Banners-Turnip 2026-09-29; most community drivers have it).
+     * Without the extension the fences get short bounded waits instead (frame_done). */
+    const int want_fence_fd = has_ext(exts, ne, VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME);
+    if (want_fence_fd) dev_exts[n_dev_exts++] = VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME;
+    /* Queue priority: the screen blit is a few hundred microseconds of GPU work that otherwise queues
+     * behind every command batch the game has in flight (its KGSL context and ours share the GPU at
+     * equal priority). HIGH global priority - a higher-priority KGSL context underneath - lets it run
+     * ahead of them. The driver may refuse it (NOT_PERMITTED); the device is then created without. */
+    const char *gp_ext = has_ext(exts, ne, "VK_KHR_global_priority") ? "VK_KHR_global_priority"
+                       : has_ext(exts, ne, "VK_EXT_global_priority") ? "VK_EXT_global_priority" : NULL;
+    if (gp_ext) dev_exts[n_dev_exts++] = gp_ext;
     free(exts);
 
     float prio = 1.0f;
-    VkDeviceQueueCreateInfo qci = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+    VkDeviceQueueGlobalPriorityCreateInfoEXT gpci = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT,
+        .globalPriority = VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT};
+    VkDeviceQueueCreateInfo qci = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .pNext = gp_ext ? &gpci : NULL,
                                    .queueFamilyIndex = g_qfam, .queueCount = 1, .pQueuePriorities = &prio};
     /* Frame generation (framegen_bridge.c): the LSFG chain needs the memory-model and
      * storage-image features enabled at device creation; the probe hands back the pNext chain
@@ -486,6 +546,15 @@ static int dev_init(void) {
                               .queueCreateInfoCount = 1, .pQueueCreateInfos = &qci,
                               .enabledExtensionCount = n_dev_exts, .ppEnabledExtensionNames = dev_exts};
     VkResult dr = g_vk.CreateDevice(g_pd, &dci, NULL, &g_dev);
+    int gp_said = 0;
+    if (dr != VK_SUCCESS && gp_ext) {
+        banner_log("gpu", "compositor queue priority: high refused by the driver (%s); default priority",
+                   vk_result_name(dr));
+        gp_said = 1;
+        qci.pNext = NULL;
+        gp_ext = NULL;
+        dr = g_vk.CreateDevice(g_pd, &dci, NULL, &g_dev);
+    }
     if (dr != VK_SUCCESS && fg_features) {
         banner_log("framegen", "the driver refused the LSFG feature set (%s); device created without it",
                    vk_result_name(dr));
@@ -496,8 +565,15 @@ static int dev_init(void) {
     if (dr != VK_SUCCESS) {
         LOGE("present: vkCreateDevice failed"); g_dev_state = -1; return -1;
     }
+    if (gp_ext)
+        banner_log("gpu", "compositor queue priority: high (%s): the screen blit runs ahead of the game's queued GPU work",
+                   gp_ext);
+    else if (!gp_said)
+        banner_log("gpu", "compositor queue priority: default (this driver has no VK_KHR_global_priority)");
     vk_loader_load_device(g_dev);
     g_vk.GetDeviceQueue(g_dev, g_qfam, 0, &g_queue);
+    if (want_fence_fd)
+        g_get_fence_fd = (PFN_vkGetFenceFdKHR)g_vk.GetDeviceProcAddr(g_dev, "vkGetFenceFdKHR");
     if (want_sem_fd) {
         g_import_sem_fd = (PFN_vkImportSemaphoreFdKHR)g_vk.GetDeviceProcAddr(g_dev, "vkImportSemaphoreFdKHR");
         VkSemaphoreCreateInfo wsci = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -526,6 +602,28 @@ static int dev_init(void) {
     g_vk.AllocateCommandBuffers(g_dev, &cai, g_cmds);
     VkFenceCreateInfo fci = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     g_vk.CreateFence(g_dev, &fci, NULL, &g_fence);
+    /* The frame ring: command buffers for every present of a frame, and a fence that can leave as a
+     * sync_file when the driver has the extension. */
+    for (int f = 0; f < FRAME_SLOTS; f++) {
+        struct frame_slot *fs = &g_frames[f];
+        VkCommandBufferAllocateInfo fai = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                           .commandPool = g_pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                           .commandBufferCount = MAX_PRESENTS};
+        VkExportFenceCreateInfo efci = {.sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+                                        .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT};
+        VkFenceCreateInfo ffci = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = g_get_fence_fd ? &efci : NULL};
+        fs->fd = -1;
+        if (g_vk.AllocateCommandBuffers(g_dev, &fai, fs->cmds) != VK_SUCCESS ||
+            g_vk.CreateFence(g_dev, &ffci, NULL, &fs->fence) != VK_SUCCESS) {
+            LOGE("present: frame ring objects failed"); g_dev_state = -1; return -1;
+        }
+    }
+    g_async_mode = g_async_copy;
+    banner_log("gpu", "copy path: %s", !g_async_mode ? "synchronous (BANNER_WAYLAND_ASYNC_COPY=0: every frame is waited for after its present)"
+               : g_get_fence_fd ? "asynchronous (2 frames in flight; frame fences watched as sync files)"
+                                : "asynchronous (2 frames in flight; no VK_KHR_external_fence_fd, frame fences polled with 2 ms waits)");
+    /* The alpha pass must not recycle a source/target slot a frame still on the GPU refers to. */
+    blendp_set_in_flight(g_async_mode ? FRAME_SLOTS : 0);
 
     vkp_effects_bind_device(g_dev, g_pd, &g_memprops);
     hdrc_bind_device(g_dev, &g_memprops);
@@ -1085,8 +1183,7 @@ void vkp_image_upload_shm(struct vkp_image *img, const void *data, int stride) {
 int vkp_image_width(const struct vkp_image *img) { return img ? img->w : 0; }
 int vkp_image_height(const struct vkp_image *img) { return img ? img->h : 0; }
 
-void vkp_image_destroy(struct vkp_image *img) {
-    if (!img) return;
+static void image_free(struct vkp_image *img) {
     if (g_dev) {
         blendp_forget_image(img->image);
         if (img->map) g_vk.UnmapMemory(g_dev, img->mem);
@@ -1095,6 +1192,15 @@ void vkp_image_destroy(struct vkp_image *img) {
     }
     free(img);
 }
+
+void vkp_image_destroy(struct vkp_image *img) {
+    if (!img) return;
+    /* A frame in flight still reads it: freed by frame_retire when the last such frame is done. */
+    if (img->reading > 0) { img->doomed = 1; return; }
+    image_free(img);
+}
+
+int vkp_image_in_flight(const struct vkp_image *img) { return img && img->reading > 0; }
 
 /* Map a draw into swapchain pixels through the scale mode, clipping the destination to the
  * picture's region (the whole output, or its half on TOP/BOTTOM; FILL's overflow is cut here)
@@ -1279,6 +1385,157 @@ static int compose_hdr(VkCommandBuffer cmd, const struct vkp_draw *draws, int n,
     return hdrc_encode(cmd, g_mixed.img, out, out_fmt, scene_w, scene_h, &p);
 }
 
+/* ---------------------------------------------------------------- the frame ring */
+
+/* Is this frame's GPU work done? Never a zero-timeout fence query (see FRAME_SLOTS): a sync_file is
+ * polled for timeout_ms; a bare fence gets a bounded vkWaitForFences of at least 2 ms, which the KGSL
+ * backend rounds to a real (non-zero) wait. 1 = done, or nothing left to wait for (device lost). */
+static int frame_done(struct frame_slot *fs, int timeout_ms) {
+    if (!fs->busy || fs->sync == FRAME_SYNC_DONE) return 1;
+    if (fs->sync == FRAME_SYNC_FD) {
+        struct pollfd p = {.fd = fs->fd, .events = POLLIN};
+        int r;
+        do { r = poll(&p, 1, timeout_ms); } while (r < 0 && errno == EINTR);
+        return r != 0; /* ready, or a broken fd nobody can wait for */
+    }
+    const uint64_t ns = (uint64_t)(timeout_ms < 2 ? 2 : timeout_ms) * 1000000ULL;
+    return g_vk.WaitForFences(g_dev, 1, &fs->fence, VK_TRUE, ns) != VK_TIMEOUT;
+}
+
+/* The frame is done (or abandoned with the device): let go of the images it read, tell the
+ * compositor (its buffer releases and feedback), free the slot. */
+static void frame_retire(struct frame_slot *fs) {
+    if (!fs->busy) return;
+    for (int i = 0; i < fs->nimgs; i++) {
+        struct vkp_image *im = fs->imgs[i];
+        if (--im->reading <= 0) {
+            im->reading = 0;
+            if (im->doomed) image_free(im);
+        }
+    }
+    fs->nimgs = 0;
+    if (fs->fd >= 0) close(fs->fd);
+    fs->fd = -1;
+    fs->busy = 0;
+    banner_frame_retired(fs->seq, perf_now() - fs->submit_ns);
+}
+
+/* The oldest frame in flight (smallest sequence number), or NULL. Frames finish in submission order
+ * (one queue), so retirement walks them that way and stops at the first unfinished one. */
+static struct frame_slot *frame_oldest(void) {
+    struct frame_slot *o = NULL;
+    for (int f = 0; f < FRAME_SLOTS; f++)
+        if (g_frames[f].busy && (!o || g_frames[f].seq < o->seq)) o = &g_frames[f];
+    return o;
+}
+
+int vkp_retire_frames(int wait_all) {
+    int n = 0;
+    struct frame_slot *fs;
+    while ((fs = frame_oldest())) {
+        if (wait_all) {
+            /* Bounded: a frame the GPU never finishes must not park the compositor here for good. */
+            if (!frame_done(fs, 1000))
+                banner_log("gpu", "copy path: frame %llu still on the GPU after 1 s; giving it up",
+                           (unsigned long long)fs->seq);
+        } else if (!frame_done(fs, 0)) {
+            break;
+        }
+        frame_retire(fs);
+        n++;
+    }
+    return n;
+}
+
+/* Device lost: no fence will ever signal; retire everything as is. */
+static void frames_abandon(void) {
+    struct frame_slot *fs;
+    while ((fs = frame_oldest())) frame_retire(fs);
+}
+
+/* The slot for the next frame. When the frame that used it last is still on the GPU, this waits for
+ * it (the perf line's "slot wait": with two slots that is the frame before the previous one, so a
+ * wait here means the GPU is more than a frame behind). */
+static struct frame_slot *frame_take(void) {
+    struct frame_slot *fs = &g_frames[g_frame_next];
+    if (fs->busy) {
+        if (!frame_done(fs, 0)) {
+            const int64_t t0 = perf_now();
+            static int said;
+            while (!frame_done(fs, 1000)) {
+                if (!said) {
+                    said = 1;
+                    banner_log("gpu", "copy path: a frame has been on the GPU for over 1 s; the compositor waits for it");
+                }
+            }
+            perf_add(&g_perf.slot_wait_ns, &g_perf.slot_wait_max_ns, &g_perf.slot_waits, perf_now() - t0);
+        }
+        vkp_retire_frames(0); /* it, and anything older, is done */
+        if (fs->busy) frame_retire(fs);
+    }
+    return fs;
+}
+
+/* A client image the frame reads: kept alive (reading) until the frame retires. */
+static void frame_note_image(struct frame_slot *fs, struct vkp_image *im) {
+    if (!im) return;
+    for (int i = 0; i < fs->nimgs; i++) if (fs->imgs[i] == im) return;
+    if (fs->nimgs == fs->imgs_cap) {
+        int cap = fs->imgs_cap ? fs->imgs_cap * 2 : 16;
+        struct vkp_image **grown = realloc(fs->imgs, (size_t)cap * sizeof(*grown));
+        if (!grown) return; /* out of memory: the image is not held (only its destroy could then race) */
+        fs->imgs = grown;
+        fs->imgs_cap = cap;
+    }
+    fs->imgs[fs->nimgs++] = im;
+    im->reading++;
+}
+
+/* The frame's presents are queued: the slot is in flight from here. async = completion is seen later
+ * (the fence as a sync_file, else bounded fence waits); otherwise the caller already waited for the
+ * fence (waited_ok says whether that succeeded). */
+static void frame_submitted(struct frame_slot *fs, const struct vkp_draw *draws, int n, int async, int waited_ok) {
+    fs->busy = 1;
+    fs->seq = ++g_frame_seq;
+    fs->submit_ns = perf_now();
+    fs->fd = -1;
+    for (int i = 0; i < n; i++) frame_note_image(fs, draws[i].img);
+    if (!async) {
+        fs->sync = waited_ok ? FRAME_SYNC_DONE : FRAME_SYNC_FENCE;
+    } else if (g_get_fence_fd) {
+        /* Copy transference: the sync_file carries the signal and the VkFence is reset by the export,
+         * ready for the slot's next frame (ResetFences before the submit covers the other modes). */
+        VkFenceGetFdInfoKHR gi = {.sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR, .fence = fs->fence,
+                                  .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT};
+        int fd = -1;
+        VkResult r = g_get_fence_fd(g_dev, &gi, &fd);
+        if (r == VK_SUCCESS && fd >= 0) { fs->fd = fd; fs->sync = FRAME_SYNC_FD; }
+        else if (r == VK_SUCCESS) fs->sync = FRAME_SYNC_DONE; /* -1 = already signalled */
+        else {
+            static int said;
+            if (!said) {
+                said = 1;
+                banner_log("gpu", "copy path: the driver refused to export a frame fence as a sync_file (%s); "
+                           "frame fences are polled with 2 ms waits instead", vk_result_name(r));
+            }
+            fs->sync = FRAME_SYNC_FENCE;
+        }
+    } else {
+        fs->sync = FRAME_SYNC_FENCE;
+    }
+    g_frame_next = (g_frame_next + 1) % FRAME_SLOTS;
+}
+
+void vkp_set_async_copy(int on) { g_async_copy = on ? 1 : 0; }
+int vkp_async_copy(void) { return g_async_mode; }
+uint64_t vkp_last_frame_seq(void) { return g_frame_seq; }
+
+int vkp_frame_wait_fd(void) {
+    struct frame_slot *fs = frame_oldest();
+    if (!fs || fs->sync != FRAME_SYNC_FD || fs->fd < 0) return -1;
+    return fcntl(fs->fd, F_DUPFD_CLOEXEC, 0);
+}
+
 /* VK_ERROR_DEVICE_LOST: nothing on this device works any more, and there is no way back short
  * of a new session. Say so once and stop touching the swapchain; clients keep being paced by the
  * compositor (see pace_without_output) so they don't wedge, they just aren't shown. */
@@ -1286,6 +1543,7 @@ static void device_lost(const char *where) {
     if (g_dev_state == -2) return;
     g_dev_state = -2;
     g_base_black = 0;
+    frames_abandon(); /* nothing will signal now: the compositor gets every frame back as is */
     vkp_framegen_device_lost();
     banner_log("error", "GPU device lost (VK_ERROR_DEVICE_LOST in %s): the compositor has stopped presenting; "
                "restart the session", where);
@@ -1374,13 +1632,13 @@ static void record_screen_blit(VkCommandBuffer cmd, VkImage src, int src_w, int 
  * resize/rotation, SURFACE_LOST when the window was torn down) - once, so a frame is not lost to
  * a recreate that would have succeeded. Later slots have presents in flight on this swapchain,
  * so they never rebuild; they fail and the frame ends early. 0 on success. */
-static int acquire_image(int k, int first, uint32_t *img, VkResult *ar_out) {
+static int acquire_image(struct frame_slot *fs, int k, int first, uint32_t *img, VkResult *ar_out) {
     for (int attempt = 0; ; attempt++) {
         if (!g_swapchain && (!first || swap_init() != 0)) return -1;
         /* A bounded wait: a surface that went away without telling us must not park the
          * compositor thread forever (clients are paced from this thread). */
         const int64_t t_acq = perf_now();
-        VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, 1000000000ULL, g_acqs[k], VK_NULL_HANDLE, img);
+        VkResult ar = g_vk.AcquireNextImageKHR(g_dev, g_swapchain, 1000000000ULL, fs->acqs[k], VK_NULL_HANDLE, img);
         perf_add(&g_perf.acquire_ns, &g_perf.acquire_max_ns, &g_perf.acquires, perf_now() - t_acq);
         if (ar == VK_SUCCESS || ar == VK_SUBOPTIMAL_KHR) { *ar_out = ar; return 0; }
         if (ar == VK_ERROR_DEVICE_LOST) { device_lost("acquire"); return -1; }
@@ -1538,9 +1796,13 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     }
     g_swap_hdr_want = want_hdr;
 
+    /* This frame's ring slot (waits for the frame that used it last if that is still on the GPU). */
+    struct frame_slot *fs = frame_take();
+    if (!fs || g_dev_state != 1) return -1;
+
     uint32_t img = 0;
     VkResult ar;
-    if (acquire_image(0, 1, &img, &ar) != 0) return -1;
+    if (acquire_image(fs, 0, 1, &img, &ar) != 0) return -1;
     update_map(scene_w, scene_h);
     /* A new HDR10 swapchain, or a new image description on it: hand the game's metadata over. */
     if (g_swap_is_hdr && hf && hf->color && hf->color->identity != g_swap_md_identity) {
@@ -1583,7 +1845,7 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     const VkFormat scene_fmt = deep ? FG_HDR_FMT : SCENE_FMT;
     const VkFilter blit_filter = vkp_effects_blit_filter();
 
-    VkCommandBuffer cmd = g_cmds[0];
+    VkCommandBuffer cmd = fs->cmds[0];
     g_vk.ResetCommandBuffer(cmd, 0);
     VkCommandBufferBeginInfo bi = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
@@ -1741,17 +2003,17 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     const int presents = 1 + ngen;
     int fence_submitted = 0, presented_gen = 0;
     VkResult pr = VK_SUCCESS;
-    g_vk.ResetFences(g_dev, 1, &g_fence);
+    g_vk.ResetFences(g_dev, 1, &fs->fence);
     for (int k = 0; k < presents; k++) {
         if (k > 0) {
             VkResult ark;
-            if (acquire_image(k, 0, &img, &ark) != 0) {
+            if (acquire_image(fs, k, 0, &img, &ark) != 0) {
                 banner_log("framegen", "present %d/%d: no swapchain image; the frame ends early", k + 1, presents);
                 pr = VK_ERROR_OUT_OF_DATE_KHR;
                 break;
             }
             if (ark == VK_SUBOPTIMAL_KHR) ar = ark;
-            VkCommandBuffer ck = g_cmds[k];
+            VkCommandBuffer ck = fs->cmds[k];
             g_vk.ResetCommandBuffer(ck, 0);
             g_vk.BeginCommandBuffer(ck, &bi);
             record_screen_blit(ck, k < ngen ? gens[k] : result, rw, rh, scene_w, scene_h, img, blit_filter);
@@ -1760,9 +2022,9 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
         const int last = (k + 1 == presents);
         VkPipelineStageFlags wait = VK_PIPELINE_STAGE_TRANSFER_BIT;
         VkSubmitInfo si = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .waitSemaphoreCount = 1,
-                           .pWaitSemaphores = &g_acqs[k], .pWaitDstStageMask = &wait, .commandBufferCount = 1,
-                           .pCommandBuffers = &g_cmds[k], .signalSemaphoreCount = 1, .pSignalSemaphores = &g_rnds[k]};
-        VkResult qr = g_vk.QueueSubmit(g_queue, 1, &si, last ? g_fence : VK_NULL_HANDLE);
+                           .pWaitSemaphores = &fs->acqs[k], .pWaitDstStageMask = &wait, .commandBufferCount = 1,
+                           .pCommandBuffers = &fs->cmds[k], .signalSemaphoreCount = 1, .pSignalSemaphores = &fs->rnds[k]};
+        VkResult qr = g_vk.QueueSubmit(g_queue, 1, &si, last ? fs->fence : VK_NULL_HANDLE);
         if (qr != VK_SUCCESS) {
             if (qr == VK_ERROR_DEVICE_LOST) device_lost("submit");
             else LOGE("present: submit %d/%d failed (%d)", k + 1, presents, (int)qr);
@@ -1772,7 +2034,7 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
         }
         fence_submitted = last;
         VkPresentInfoKHR pi = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .waitSemaphoreCount = 1,
-                               .pWaitSemaphores = &g_rnds[k], .swapchainCount = 1,
+                               .pWaitSemaphores = &fs->rnds[k], .swapchainCount = 1,
                                .pSwapchains = &g_swapchain, .pImageIndices = &img};
         const int64_t t_pres = perf_now();
         pr = g_vk.QueuePresentKHR(g_queue, &pi);
@@ -1782,12 +2044,20 @@ static int render_impl(int scene_w, int scene_h, const struct vkp_draw *draws, i
     }
     if (!fence_submitted) {
         /* Ended early: an empty submit carrying the fence is ordered after everything queued
-         * above, so the wait below still means "this frame's work is done". */
+         * above, so the fence still means "this frame's work is done". */
         VkSubmitInfo si = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        g_vk.QueueSubmit(g_queue, 1, &si, g_fence);
+        g_vk.QueueSubmit(g_queue, 1, &si, fs->fence);
     }
-    VkResult fr = timed_wait(g_fence, UINT64_MAX);
-    if (fg) vkp_framegen_presented(presented_gen);
+    /* The frame is in flight from here. The direct copy path leaves it to vkp_retire_frames (the
+     * fence as a sync_file, else bounded polls) and returns at once; the compositor pass and the
+     * synchronous mode wait for it here, as every frame once did (the perf line's "fence wait"). */
+    const int async = g_async_mode && !pass;
+    VkResult fr = VK_SUCCESS;
+    if (!async) {
+        fr = timed_wait(fs->fence, UINT64_MAX);
+        if (fg) vkp_framegen_presented(presented_gen);
+    }
+    frame_submitted(fs, draws, n, async, fr == VK_SUCCESS);
     if (fr == VK_ERROR_DEVICE_LOST || pr == VK_ERROR_DEVICE_LOST) { device_lost("present"); return -1; }
     if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_ERROR_SURFACE_LOST_KHR) {
         /* The surface changed or went away under this frame: rebuild before the next one. */

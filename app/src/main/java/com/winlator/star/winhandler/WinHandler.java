@@ -2159,6 +2159,12 @@ public class WinHandler {
         if (writers[0] != null) writers[0].setSystemButtons(guide, a);
     }
 
+    /** Presses or releases the Steam Deck controller's Quick Access button on player one's pad. */
+    public void setQuickAccess(boolean down) {
+        ensureWriterForSlot(0);
+        if (writers[0] != null) writers[0].setQuickAccess(down);
+    }
+
     /** Lazily creates and opens the fake-input writer backing a slot. Opening the writer
      *  activates the slot's mmap ring (P0), which is what the guest sees as a controller. */
     private void ensureWriterForSlot(int slot) {

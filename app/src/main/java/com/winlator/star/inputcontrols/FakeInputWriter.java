@@ -698,8 +698,17 @@ public class FakeInputWriter {
     private final GamepadState lastPadState = new GamepadState();
 
     // The Quick Access button, which GamepadState has no place for: it reaches only the snapshot,
-    // for libfakeinput's Steam Deck controller. Nothing presses it yet.
+    // for libfakeinput's Steam Deck controller.
     private boolean quickAccess = false;
+
+    /**
+     * The Linux Steam session shows the client a Steam Deck controller (libfakeinput, FAKE_EVDEV_DECK).
+     * A Deck opens its Quick Access Menu with a button of its own, not the Guide-then-A chord an Xbox pad
+     * uses, so there the pad's Guide + A is turned into that button: A pressed while Guide is held presses
+     * Quick Access instead, for as long as A stays down.
+     */
+    public static volatile boolean deckPad = false;
+    private boolean chordQuickAccess = false;
 
     /** Presses or releases the Quick Access button on this slot (the Steam Deck controller's only). */
     public synchronized void setQuickAccess(boolean down) {
@@ -736,18 +745,31 @@ public class FakeInputWriter {
         buffer.clear();
         hasChanges = false;
 
+        boolean padGuide = state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_MODE);
+        boolean padA = state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_A);
+        if (deckPad) {
+            if (padGuide && padA) chordQuickAccess = true;
+            else if (!padA) chordQuickAccess = false;
+        } else {
+            chordQuickAccess = false;
+        }
+        boolean qamNow = quickAccess || chordQuickAccess;
+
         // Buttons
         for (int i = 0; i < 10; i++) {
-            writeButton(i, state.isPressed((byte) i)
-                    || (overlayA && i == com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_A));
+            boolean down = state.isPressed((byte) i)
+                    || (overlayA && i == com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_A);
+            // A is the Quick Access button while the chord holds it, not A as well.
+            if (chordQuickAccess && i == com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_A) down = false;
+            writeButton(i, down);
         }
         // The Steam button. In a Linux session this is what opens the client's own in-game menu,
         // and the client looks for it where an Xbox pad keeps it: evdev BTN_MODE, which SDL then
         // reports as button 8 - exactly the "guide:b8" in the mapping Steam writes for this pad.
         writeButton(SNAPSHOT_IDX_MODE,
                 state.isPressed(com.winlator.star.inputcontrols.ExternalController.IDX_BUTTON_MODE) || overlayGuide);
-        if (forceResend || quickAccess != prevQam) {
-            prevQam = quickAccess;
+        if (forceResend || qamNow != prevQam) {
+            prevQam = qamNow;
             hasChanges = true;
         }
 

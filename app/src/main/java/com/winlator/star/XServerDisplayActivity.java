@@ -7226,6 +7226,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         h.removeCallbacksAndMessages(null);
         // Released here first, on the main thread where the pad creates the slot's writer too, so the chord thread never has to create it.
         buttons.setSystemButtons(false, false);
+        // A Steam Deck controller (the session's Deck pad) has a Quick Access button of its own, and the
+        // client takes no Guide-then-A chord from it: the button is tapped instead. (DroidDeck PadBridge.)
+        if (qam && com.winlator.star.inputcontrols.FakeInputWriter.deckPad) {
+            h.postDelayed(() -> buttons.setQuickAccess(true), t);
+            h.postDelayed(() -> buttons.setQuickAccess(false), t + LINUX_QAM_A_HOLD_MS);
+            Log.i("XServerDisplayActivity", "Steam (Linux): Quick Access button tapped on the Deck pad");
+            return;
+        }
         if (qam) {
             h.postDelayed(() -> {
                 buttons.setSystemButtons(true, false);
@@ -9597,6 +9605,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         File noFakeInput = new File(android.os.Environment.getExternalStorageDirectory(),
                 "Download/bannerlator-no-fake-input");
         boolean fakeInputEnabled = !noFakeInput.exists();
+        com.winlator.star.inputcontrols.FakeInputWriter.deckPad = false; // set again below when the Deck pad is shown
         // proot's fast path: only with a proot that carries it (patch 0014), never with seccomp off,
         // and Download/bannerlator-no-fastpath leaves the session exactly as before it.
         boolean fastPathEnabled = linuxAssetPresent("libblfastpath.so")
@@ -9801,6 +9810,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 deckBinds = java.util.Collections.emptyList();
             }
             boolean deckPad = !deckBinds.isEmpty();
+            com.winlator.star.inputcontrols.FakeInputWriter.deckPad = deckPad;
             if (uinput) {
                 guest.add("FAKE_EVDEV_UINPUT=1");
                 if (deckPad) {

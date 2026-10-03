@@ -9042,6 +9042,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean ubwc = !(ub != null && (ub.equals("0") || ub.equalsIgnoreCase("false") || ub.equalsIgnoreCase("off")));
             com.winlator.star.wayland.WaylandCompositor.nativeSetUbwc(ubwc);
             if (!ubwc) Log.i("XServerDisplayActivity", "wayland: compressed (UBWC) game buffers disabled by BANNER_WAYLAND_UBWC");
+            // The compositor's asynchronous copy path (frames in flight; the compositor thread no longer
+            // waits for its own screen blit), default on; BANNER_WAYLAND_ASYNC_COPY=0 (or false/off)
+            // restores the synchronous path for an A/B run.
+            String ac = env != null ? env.get("BANNER_WAYLAND_ASYNC_COPY") : null;
+            boolean asyncCopy = !(ac != null && (ac.equals("0") || ac.equalsIgnoreCase("false") || ac.equalsIgnoreCase("off")));
+            com.winlator.star.wayland.WaylandCompositor.nativeSetAsyncCopy(asyncCopy);
+            if (!asyncCopy) Log.i("XServerDisplayActivity", "wayland: asynchronous copy path disabled by BANNER_WAYLAND_ASYNC_COPY");
             // Windows the compositor focuses by itself are made Wine's foreground window: by default
             // through winhandler.exe (the X11 path's DesktopHelper does the same on every map), "click"
             // = one synthetic click instead, 0/false/off = keyboard focus only. Wine sessions only: in a

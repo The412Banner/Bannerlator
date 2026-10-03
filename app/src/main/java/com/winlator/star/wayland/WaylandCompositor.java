@@ -240,6 +240,12 @@ public final class WaylandCompositor {
      *  Set before the compositor starts. */
     public static native void nativeSetUbwc(boolean on);
 
+    /** The compositor's asynchronous copy path: a presented frame stays in flight on the GPU and the
+     *  compositor thread no longer waits for its own screen blit (which queued behind the game's work
+     *  and paced every game to that wait). Default on; BANNER_WAYLAND_ASYNC_COPY=0 in the container's
+     *  environment variables restores the synchronous path (A/B). Set before the compositor starts. */
+    public static native void nativeSetAsyncCopy(boolean on);
+
     /** How a program window the compositor focuses by itself (a new window, or the one left when the
      *  focused window closes) is made Wine's foreground window, so a game that pauses unfocused starts
      *  without a tap: {@link #AUTO_ACTIVATE_BRING_TO_FRONT} (default; {@link BringToFrontListener} →

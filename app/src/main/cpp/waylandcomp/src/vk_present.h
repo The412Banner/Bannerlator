@@ -71,7 +71,10 @@ void vkp_image_upload_shm(struct vkp_image *img, const void *data, int stride);
 
 int vkp_image_width(const struct vkp_image *img);
 int vkp_image_height(const struct vkp_image *img);
+/* Destroy an image. One a copy-path frame in flight still reads is freed when that frame retires. */
 void vkp_image_destroy(struct vkp_image *img);
+/* 1 while a copy-path frame in flight reads the image (a host write into it would tear that frame). */
+int vkp_image_in_flight(const struct vkp_image *img);
 
 // One scene draw: the src rectangle of an image (image pixels) scaled into the dst
 // rectangle (scene pixels). The scene is mapped onto the output by the scale mode.
@@ -116,8 +119,32 @@ struct vkp_perf {
     unsigned base_presents;               /* black frames presented under the display layers */
     unsigned base_kept;                   /* layer frames that kept the black frame already there */
     unsigned gpu_release_waits;           /* layer-buffer release fences waited for on the GPU */
+    unsigned slot_waits;                  /* frames that had to wait for the slot of the frame before */
+    int64_t slot_wait_ns, slot_wait_max_ns; /* ... and for how long (the frame ring, below) */
 };
 void vkp_perf_take(struct vkp_perf *out);
+
+/* ---- the copy path's frame ring ----
+ * vkp_render presents a frame and returns without waiting for its GPU work; the frame stays "in
+ * flight" until vkp_retire_frames sees its fence, and compositor.c is told through
+ * banner_frame_retired(seq, in_flight_ns) (compositor thread, from inside vkp_retire_frames or from a
+ * vkp_render that reuses the slot / rebuilds the swapchain / loses the device). The compositor keeps
+ * the frame's deferred work (buffer releases, presentation feedback) under that sequence number. */
+/* The kill switch (BANNER_WAYLAND_ASYNC_COPY=0): 0 = wait for every frame right after its present, as
+ * before. Set from the app before the compositor starts; read once when the device comes up. */
+void vkp_set_async_copy(int on);
+/* 1 while the device runs the asynchronous copy path. */
+int vkp_async_copy(void);
+/* The sequence number of the frame the last successful vkp_render / vkp_render_hdr / vkp_base_black
+ * present put in flight (0 before the first). */
+uint64_t vkp_last_frame_seq(void);
+/* Retire every in-flight frame whose GPU work is done, oldest first (banner_frame_retired for each).
+ * wait_all = 1 waits for all of them (bounded). Returns how many retired. Compositor thread. */
+int vkp_retire_frames(int wait_all);
+/* A dup of the oldest in-flight frame's fence as a sync_file (VK_KHR_external_fence_fd), readable once
+ * the frame is done - for the compositor's event loop - or -1 (nothing in flight, or no sync_file for
+ * it: the vsync tick's vkp_retire_frames call sees it instead). The caller owns and closes the fd. */
+int vkp_frame_wait_fd(void);
 /* 1 when a release fence (sync_file) can be handed to the GPU as a wait (VK_KHR_external_semaphore_fd):
  * the layer pool then reuses a buffer the display is still reading without blocking on the CPU. */
 int vkp_can_wait_sync_fd(void);

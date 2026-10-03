@@ -18,6 +18,9 @@ void blendp_bind_device(VkDevice dev);
 void blendp_forget_image(VkImage img);
 /* A new command buffer is being recorded: what the previous one used may be recycled again. */
 void blendp_begin_frame(void);
+/* How many of the most recent frames may still be executing on the GPU (vk_present.c's frame ring):
+ * a source/target slot one of them used is not recycled. 0 = every frame is waited for (default). */
+void blendp_set_in_flight(unsigned frames);
 
 /* Record one surface over `dst`. `dst` is in TRANSFER_DST_OPTIMAL before and after. `src` was created
  * with SAMPLED usage and is in GENERAL (src_general) or TRANSFER_SRC_OPTIMAL, and is left there.

@@ -369,6 +369,16 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeSetUbwc(JNIEnv *env, jcla
     __android_log_print(ANDROID_LOG_INFO, TAG, "compressed (UBWC) game buffers %s", on ? "on" : "off");
 }
 
+/* The copy path's frame ring (vk_present.c): frames stay in flight and the compositor thread never
+ * waits for its own blit. Default on; BANNER_WAYLAND_ASYNC_COPY=0 = the old synchronous path (every
+ * frame waited for right after its present), for an A/B on the device. Set before the compositor
+ * starts (read when its Vulkan device comes up). */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetAsyncCopy(JNIEnv *env, jclass clazz, jboolean on) {
+    vkp_set_async_copy(on ? 1 : 0);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "asynchronous copy path %s", on ? "on" : "off");
+}
+
 /* How a window the compositor focuses by itself is made Wine's foreground window: 1 = winhandler.exe
  * bring-to-front (default), 2 = one synthetic click, 0 = off (BANNER_WAYLAND_AUTO_ACTIVATE). Set
  * before the compositor starts. */

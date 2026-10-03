@@ -298,6 +298,10 @@ jobs:
             || { echo "::error::libblsession.so does not export $sym"; exit 1; }
         done
         ls -l "$D/libblsession.so"
+        # Android's clipboard into gamescope's Xwayland (tools/linuxfs/clipboard), a guest program.
+        mkdir -p "$D/usr/local/bin"
+        aarch64-linux-gnu-gcc -O2 -Wall -Wextra -o "$D/usr/local/bin/bannerlator-clipboard" tools/linuxfs/clipboard/clipboard.c -ldl
+        aarch64-linux-gnu-strip --strip-unneeded "$D/usr/local/bin/bannerlator-clipboard"
         # The same session shim and controller reader for x86 programs under FEX - the x86-64 Steam
         # client option (bannerlator-steam-x64) and its native Linux games: the x86 client needs the
         # System V semaphores and the pads just as the arm64 one does. Native gcc on this x86-64

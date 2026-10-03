@@ -113,7 +113,9 @@ object LinuxAppGames {
         for (root in rootList) {
             if (!root.host.isDirectory) { Log.w(TAG, "games folder ${root.host} is not a folder this session; skipped"); continue }
             binds.add(root.host.absolutePath + ":" + root.guest)
+            val steamInstalls = steamInstallDirs(root.host)
             for (folder in root.host.listFiles { f -> f.isDirectory }?.sortedBy { it.name.lowercase() } ?: emptyList()) {
+                if (folder.name.lowercase() in steamInstalls) continue
                 fromFolder(context, folder, rootList, binds)?.let { games.add(it) }
             }
         }
@@ -124,6 +126,25 @@ object LinuxAppGames {
         Thread({ runCatching { fetchMissingArt(context, unique) }.onFailure { Log.w(TAG, "art lookup failed", it) } }, "LinuxAppGamesArt").start()
         return Session(listing, binds.toList(), unique)
     }
+
+    /**
+     * The folders under a library's steamapps/common that a manifest beside it already claims.
+     * Steam lists those itself, so a shortcut would only add a non-Steam copy of the game. Steam
+     * may lowercase installdir on Android's case-insensitive storage, so names compare lowercased.
+     * (From Droid-Deck/DroidDeck #138.)
+     */
+    internal fun steamInstallDirs(dir: File): Set<String> {
+        val steamapps = dir.parentFile?.takeIf { dir.name == "common" && it.name == "steamapps" } ?: return emptySet()
+        return steamapps.listFiles { f -> f.isFile && f.name.startsWith("appmanifest_") && f.name.endsWith(".acf") }
+            .orEmpty()
+            .mapNotNull { manifest ->
+                runCatching { INSTALL_DIR.find(manifest.readText())?.groupValues?.get(1)?.trim()?.lowercase() }.getOrNull()
+            }
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }
+
+    private val INSTALL_DIR = Regex("\"installdir\"\\s*\"([^\"]*)\"", RegexOption.IGNORE_CASE)
 
     private fun fromGamesTab(
         context: Context, containerManager: ContainerManager, rootList: List<Root>, binds: MutableSet<String>, share: Boolean,

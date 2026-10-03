@@ -9539,6 +9539,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         //noinspection ResultOfMethodCallIgnored
         new File(linuxLiveDir, "steam-stop-ready").delete();
         guest.add("BL_LIVE_DIR=" + linuxLiveDir.getPath());
+        // Android's clipboard text for gamescope's own Xwayland (bannerlator-clipboard in the session).
+        File androidClipboard = new File(linuxLiveDir, "android-clipboard");
+        if (waylandClipboard != null) waylandClipboard.setMirrorFile(androidClipboard);
+        guest.add("BL_ANDROID_CLIPBOARD=" + androidClipboard.getPath());
         // HDR10: startWaylandCompositor opened the compositor's HDR gate for this session (the entry's
         // HDR output setting, on a screen that lists HDR10). gamescope then needs --hdr-enabled to offer
         // HDR to the games, and DXVK_HDR=1 is what makes DXVK tell a game its display is HDR. A DXVK_HDR
@@ -9666,6 +9670,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The session shim and the controller reader built for x86 programs under FEX (the x86-64 Steam
         // client and its native Linux games), each in its architecture's folder; bannerlator-steam-x64
         // copies them into FEX's rootfs and names them in its ld.so.preload. Staged when the apk carries them.
+        if (linuxAssetPresent("usr/local/bin/bannerlator-clipboard")) {
+            String[][] withFile = java.util.Arrays.copyOf(sessionFiles, sessionFiles.length + 1);
+            withFile[sessionFiles.length] = new String[]{"usr/local/bin/bannerlator-clipboard", "usr/local/bin/bannerlator-clipboard"};
+            sessionFiles = withFile;
+        }
         String[][] x86Libraries = {
                 {"libblsession-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libblsession.so"},
                 {"libfakeinput-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libfakeinput.so"},

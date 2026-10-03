@@ -187,6 +187,12 @@ stop_own_jobs() {
   return 0
 }
 
+# Gamescope's Wayland backend does not forward the outer clipboard into its Xwayland. This helper
+# owns only Android text selections and exits with this guest session. (From Droid-Deck/DroidDeck #151.)
+if [ -n "${BL_INSIDE:-}" ] && [ -n "${BL_ANDROID_CLIPBOARD:-}" ] && [ -x /usr/local/bin/bannerlator-clipboard ]; then
+  /usr/local/bin/bannerlator-clipboard "$BL_ANDROID_CLIPBOARD" &
+fi
+
 case $mode in
   desktop)
     exec pcmanfm

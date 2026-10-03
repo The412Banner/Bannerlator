@@ -28,6 +28,8 @@ public final class WaylandClipboardSync implements WaylandCompositor.ClipboardLi
     private String lastFromGuest;   // echo guard: the last text the guest gave us
     private String lastToGuest;     // the last text we pushed down
     private boolean started;
+    // The Linux session's copy of Android's text, for gamescope's own Xwayland (bannerlator-clipboard).
+    private java.io.File mirror;
 
     public WaylandClipboardSync(Activity activity) {
         context = activity.getApplicationContext();
@@ -50,6 +52,18 @@ public final class WaylandClipboardSync implements WaylandCompositor.ClipboardLi
         if (clipboard != null) clipboard.removePrimaryClipChangedListener(this);
     }
 
+    /**
+     * Also keep Android's text in this file, for a Linux session: gamescope's Wayland backend does not
+     * relay this compositor's selection into its own Xwayland, so a guest helper (bannerlator-clipboard)
+     * offers the file's text there. Written whole by rename, in private app data. (From
+     * Droid-Deck/DroidDeck #151.)
+     */
+    public void setMirrorFile(java.io.File file) {
+        mirror = file;
+        lastToGuest = null;
+        refresh();
+    }
+
     /** Re-read Android's clipboard and hand any new text to the guest (resume / window focus). */
     public void refresh() {
         if (!started || clipboard == null) return;
@@ -58,6 +72,24 @@ public final class WaylandClipboardSync implements WaylandCompositor.ClipboardLi
         if (text.equals(lastFromGuest) || text.equals(lastToGuest)) return;
         lastToGuest = text;
         WaylandCompositor.setClipboardText(text);
+        writeMirror(text);
+    }
+
+    private void writeMirror(String text) {
+        java.io.File file = mirror;
+        if (file == null) return;
+        java.io.File pending = new java.io.File(file.getParentFile(), file.getName() + ".pending");
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            file.getParentFile().mkdirs();
+            java.nio.file.Files.write(pending.toPath(), text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (!pending.renameTo(file)) Log.w(TAG, "could not publish the clipboard for the Linux session");
+        } catch (Exception e) {
+            Log.w(TAG, "could not write the clipboard for the Linux session", e);
+        } finally {
+            //noinspection ResultOfMethodCallIgnored
+            pending.delete();
+        }
     }
 
     private String currentText() {

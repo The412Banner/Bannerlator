@@ -1,0 +1,130 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: The412Banner <the412banner@users.noreply.github.com>
+Date: Sat, 3 Oct 2026 00:00:00 -0400
+Subject: [PATCH] fastpath: withdraw it once bindings change at run time
+
+Bannerlator only; DroidDeck's base has no mount emulation. termux/proot
+v5.1.107.92 emulates mount(2), umount(2) and pivot_root(2) by adding,
+removing and rebasing bindings at run time (bubblewrap's sandbox is
+built that way), while the fast path (0014, tools/proot/fastpath) maps
+guest paths with the bindings proot was started with. After an emulated
+mount it would answer from the wrong place. So with PROOT_FASTPATH set,
+the first such call withdraws the fast path for every process: at each
+tracee's next stop proot checks for the trampoline page (by its first
+two instructions) and sets a flag at offset 0x800 in it, which the
+library reads before every call it would answer; after an exec the
+library makes one traced getcwd before answering anything, so a fresh
+page is flagged before it is used. A fork copies the flag with the page.
+proot says so once on stderr. Without PROOT_FASTPATH nothing changes.
+
+---
+ src/syscall/enter.c | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 61 insertions(+)
+
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 7c97889..98f7dc3 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -46,6 +46,7 @@
+ #include <netpacket/packet.h> /* struct sockaddr_ll (AF_PACKET) */
+ #include <sys/ioctl.h>   /* ioctl(2): SIOCGIFMTU / SIOCGIFHWADDR */
+ #include <sys/time.h>    /* struct timeval, for SO_RCVTIMEO */
++#include <sys/ptrace.h>  /* ptrace(2), PTRACE_PEEKDATA, PTRACE_POKEDATA, */
+ #include "syscall/pipe_shadow.h"
+ 
+ /* ABI-stable rtnetlink constants we synthesise for the loopback reply.
+@@ -441,6 +442,58 @@ static void emulate_umount(Tracee *tracee, const char *target_user)
+ 	remove_binding_from_all_lists(tracee, binding);
+ }
+ 
++/**
++ * The fast path (tools/proot/fastpath, patch 0014) maps guest paths
++ * itself, with the bindings proot was started with.  An emulated
++ * mount(2), umount(2) or pivot_root(2) changes proot's bindings at run
++ * time - bubblewrap's sandbox is built that way - and the fast path
++ * cannot see that, so from the first one on it is withdrawn: at each
++ * tracee's next stop, a flag is set in its trampoline page, where the
++ * library looks before every call it would answer, and the library asks
++ * for that stop (a traced getcwd) before it answers anything after an
++ * exec.  These must match fastpath.c: the page's address, its first two
++ * instructions (mov x8, x0; mov x0, x1) and the flag's offset.
++ */
++#define FASTPATH_STUB_ADDR	0xffff00000ULL
++#define FASTPATH_STUB_CODE	0xAA0103E0AA0003E8ULL
++#define FASTPATH_WITHDRAWN	0x800ULL
++
++static bool fastpath_bindings_changed = false;
++
++static void note_bindings_changed(Tracee *tracee)
++{
++	if (fastpath_bindings_changed || getenv("PROOT_FASTPATH") == NULL)
++		return;
++
++	fastpath_bindings_changed = true;
++	note(tracee, WARNING, USER,
++		"bindings changed at run time: the fast path is withdrawn for every process");
++}
++
++static void fastpath_withdraw(const Tracee *tracee)
++{
++	word_t word;
++
++	if (!fastpath_bindings_changed)
++		return;
++
++	/* No page there (EIO), or already withdrawn.  */
++	errno = 0;
++	word = ptrace(PTRACE_PEEKDATA, tracee->pid, FASTPATH_STUB_ADDR + FASTPATH_WITHDRAWN, NULL);
++	if (errno != 0 || word != 0)
++		return;
++
++	/* Something else mapped at that address: leave it alone.  */
++	errno = 0;
++	word = ptrace(PTRACE_PEEKDATA, tracee->pid, FASTPATH_STUB_ADDR, NULL);
++	if (errno != 0 || word != FASTPATH_STUB_CODE)
++		return;
++
++	/* The page is read-only and executable; PTRACE_POKEDATA writes
++	 * it anyway, as it does a breakpoint.  */
++	(void) ptrace(PTRACE_POKEDATA, tracee->pid, FASTPATH_STUB_ADDR + FASTPATH_WITHDRAWN, 1);
++}
++
+ /**
+  * Read umount(2)/umount2(2) arguments from the @tracee's registers
+  * and apply emulate_umount().
+@@ -449,6 +502,8 @@ void apply_emulated_umount(Tracee *tracee)
+ {
+ 	char target_user[PATH_MAX];
+ 
++	note_bindings_changed(tracee);
++
+ 	if (get_sysarg_path(tracee, target_user, SYSARG_1) < 0)
+ 		return;
+ 
+@@ -469,6 +524,8 @@ void apply_emulated_mount(Tracee *tracee)
+ 	word_t fstype_addr;
+ 	unsigned long flags;
+ 
++	note_bindings_changed(tracee);
++
+ 	fstype[0] = '\0';
+ 	/* read_string doesn't guarantee a trailing NUL when it hits the
+ 	 * size limit before finding one in the tracee's memory; pin the
+@@ -497,6 +554,8 @@ void apply_emulated_pivot_root(Tracee *tracee)
+ 	char new_root_user[PATH_MAX];
+ 	char put_old_user[PATH_MAX];
+ 
++	note_bindings_changed(tracee);
++
+ 	if (get_sysarg_path(tracee, new_root_user, SYSARG_1) < 0)
+ 		return;
+ 	if (get_sysarg_path(tracee, put_old_user, SYSARG_2) < 0)
+@@ -2928,6 +2987,8 @@ int translate_syscall_enter(Tracee *tracee)
+ 
+ 
+ end:
++	fastpath_withdraw(tracee);
++
+ 	status2 = notify_extensions(tracee, SYSCALL_ENTER_END, status, 0);
+ 	if (status2 < 0)
+ 		status = status2;

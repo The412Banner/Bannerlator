@@ -84,6 +84,35 @@ jobs:
           [ "$n" -gt 0 ] || { echo "::error::no patches found under tools/proot/patches"; exit 1; }
           echo "$n patches applied"
 
+      - name: Check each patch left its mark in the source
+        run: |
+          set -euo pipefail
+          # One line each patch adds, looked for in the tree it was applied to: a patch that
+          # "applied" without changing what it is about fails here naming itself. Patches with no
+          # entry are covered by the marker symbol checked after the build.
+          src=proot-src/src
+          miss=0
+          mark() { grep -qF -- "$3" "$src/$2" || { echo "::error::$1: not found in $2: $3"; miss=1; }; }
+          mark 0010 syscall/enter.c            'case PR_open_tree:'
+          mark 0010 syscall/sysnums-arm64.h    '[ 428 ] = PR_open_tree,'
+          mark 0010 syscall/seccomp.c          '{ PR_mount_setattr,'
+          mark 0012-android-hardlink syscall/enter.c 'if ((flags & __O_TMPFILE) != 0) {'
+          mark 0012-android-hardlink syscall/exit.c  'poke_reg(tracee, SYSARG_RESULT, -EPERM);'
+          mark 0014 syscall/seccomp.c          '#define FASTPATH_STUB_ADDR 0xffff00000ULL'
+          mark 0014 syscall/enter.c            '? set_sysarg_path(tracee, oldpath, SYSARG_1)'
+          mark 0014 tracee/event.c             'if (getenv("PROOT_FASTPATH") != NULL) {'
+          mark 0015 syscall/enter.c            'fastpath_withdraw(tracee);'
+          [ "$miss" = 0 ] || exit 1
+          # The trampoline's address and the withdrawal flag's offset are written down three times:
+          # proot's filter (0014), proot's withdrawal (0015) and the guest library. They must agree,
+          # or every fast call stops in proot (address) or a withdrawn process keeps answering.
+          lib=tools/proot/fastpath/fastpath.c
+          grep -qF '#define FP_STUB_ADDR 0xffff00000UL' "$lib" || { echo "::error::$lib: FP_STUB_ADDR differs from FASTPATH_STUB_ADDR (0xffff00000)"; exit 1; }
+          grep -qE '^#define FASTPATH_STUB_ADDR[[:space:]]+0xffff00000ULL$' "$src/syscall/enter.c" || { echo "::error::0015: FASTPATH_STUB_ADDR differs from 0014's"; exit 1; }
+          grep -qF '#define FP_WITHDRAWN 0x800UL' "$lib" && grep -qE '^#define FASTPATH_WITHDRAWN[[:space:]]+0x800ULL$' "$src/syscall/enter.c" \
+            || { echo "::error::the withdrawal flag's offset differs between $lib and 0015"; exit 1; }
+          echo "all markers present"
+
       - name: Build
         run: |
           set -e
@@ -110,10 +139,32 @@ jobs:
           grep -q '^#define HAVE_SECCOMP_FILTER' proot-src/src/build.h || { echo "::error::proot was built without seccomp filtering"; exit 1; }
           grep -q '^#define HAVE_PROCESS_VM' proot-src/src/build.h || { echo "::error::proot was built without process_vm"; exit 1; }
           "$BIN/llvm-nm" out/arm64-v8a/libproot.so | grep -q ' T filtered_sysnum_flags$' || { echo "::error::the patch set's marker symbol is missing from libproot.so"; exit 1; }
+          # The fast path's switch (0014) and its withdrawal notice (0015) are literals in the
+          # binary. The app looks for PROOT_FASTPATH in the proot it is about to run before it sets
+          # the fast path up (Termux's shipped proot has neither string), so it must be there.
+          grep -qa 'PROOT_FASTPATH' out/arm64-v8a/libproot.so || { echo "::error::libproot.so does not read PROOT_FASTPATH (0014 missing)"; exit 1; }
+          grep -qa 'the fast path is withdrawn' out/arm64-v8a/libproot.so || { echo "::error::libproot.so has no fast-path withdrawal (0015 missing)"; exit 1; }
           "$BIN/llvm-readelf" -d out/arm64-v8a/libproot.so | grep -E "NEEDED|RUNPATH"
           "$BIN/llvm-readelf" -h out/arm64-v8a/libproot-loader.so | grep -E "Type|Entry"
           ls -la out/arm64-v8a
           for f in out/arm64-v8a/*.so; do echo "$(sha256sum "$f" | cut -d' ' -f1)  $(basename "$f")"; done | tee out/SHA256SUMS
+
+      - name: Build the fast path's guest library (glibc aarch64)
+        run: |
+          set -euo pipefail
+          # libblfastpath.so runs inside the runtime, not on Android: glibc, built the way the app
+          # build makes its other session preloads. Built here too so a change to it is compiled
+          # with the proot it has to match; out/guest is for testing, not for jniLibs.
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu >/dev/null
+          mkdir -p out/guest
+          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -Werror -pthread \
+            -o out/guest/libblfastpath.so tools/proot/fastpath/fastpath.c -ldl
+          aarch64-linux-gnu-strip --strip-unneeded out/guest/libblfastpath.so
+          syms=$(aarch64-linux-gnu-nm -D --defined-only out/guest/libblfastpath.so)
+          for s in openat open stat lstat fstatat statx access faccessat readlink readlinkat opendir fopen; do
+            printf '%s\n' "$syms" | grep -q " T $s$" || { echo "::error::libblfastpath.so does not export $s"; exit 1; }
+          done
+          echo "$(sha256sum out/guest/libblfastpath.so | cut -d' ' -f1)  guest/libblfastpath.so" | tee -a out/SHA256SUMS
 
       - uses: actions/upload-artifact@v4
         with:

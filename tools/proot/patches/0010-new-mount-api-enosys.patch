@@ -1,0 +1,122 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <noreply@droiddeck.invalid>
+Date: Tue, 29 Sep 2026 08:00:00 -0400
+Subject: [PATCH] syscall: answer the new mount API with ENOSYS
+
+open_tree(AT_FDCWD, "/") and its relatives take paths proot never
+translates, so libglnx (Flatpak) got a descriptor for the host root and
+created directories there. Unsupported, callers fall back to openat.
+
+Ported to termux/proot v5.1.107.92 for Bannerlator: that tree emulates
+mount(2), umount(2) and pivot_root(2) (bindings added at run time), so
+the four cases sit beside those and the comment says callers fall back
+to the emulated mount(2) as well; its pivot_root is traced with an exit
+stop, which is the context the filter entries go in front of. The
+sysnum tables are DroidDeck's, unchanged.
+
+---
+ src/syscall/enter.c         | 11 +++++++++++
+ src/syscall/seccomp.c       |  4 ++++
+ src/syscall/sysnums-arm.h   |  4 ++++
+ src/syscall/sysnums-arm64.h |  4 ++++
+ src/syscall/sysnums.list    |  4 ++++
+ 5 files changed, 27 insertions(+)
+
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 0433f94..f6bb4c0 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -2467,6 +2467,17 @@ int translate_syscall_enter(Tracee *tracee)
+ 		status = 0;
+ 		break;
+ 
++	/* The new mount API opens and moves paths proot never sees:
++	 * open_tree(AT_FDCWD, "/") hands back the host's root.  Callers
++	 * (libglnx, systemd, util-linux) fall back to openat(2) and to
++	 * mount(2), which is emulated above.  */
++	case PR_open_tree:
++	case PR_move_mount:
++	case PR_fspick:
++	case PR_mount_setattr:
++		status = -ENOSYS;
++		break;
++
+ 	case PR_open:
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_2);
+ 
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 4a744f6..0d6bef7 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -523,6 +523,10 @@ static FilteredSysnum proot_sysnums[] = {
+ 	{ PR_open,		0 },
+ 	{ PR_openat,		0 },
+ 	{ PR_openat2,		0 },
++	{ PR_open_tree,		0 },
++	{ PR_move_mount,	0 },
++	{ PR_fspick,		0 },
++	{ PR_mount_setattr,	0 },
+ 	{ PR_pivot_root,	FILTER_SYSEXIT },
+ 	{ PR_prctl, 		0 },
+ 	{ PR_prlimit64,		FILTER_SYSEXIT },
+diff --git a/src/syscall/sysnums-arm.h b/src/syscall/sysnums-arm.h
+index e3f6f6b..ebf0afc 100644
+--- a/src/syscall/sysnums-arm.h
++++ b/src/syscall/sysnums-arm.h
+@@ -358,6 +358,10 @@ static const Sysnum sysnums_arm[] = {
+ 	[ 397 ] = PR_statx,
+ 	[ 439 ] = PR_faccessat2,
+ 	[ 435 ] = PR_clone3,
++	[ 428 ] = PR_open_tree,
++	[ 429 ] = PR_move_mount,
++	[ 433 ] = PR_fspick,
+ 	[ 437 ] = PR_openat2,
++	[ 442 ] = PR_mount_setattr,
+ 	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums-arm64.h b/src/syscall/sysnums-arm64.h
+index b257339..c68a1f8 100644
+--- a/src/syscall/sysnums-arm64.h
++++ b/src/syscall/sysnums-arm64.h
+@@ -278,8 +278,12 @@ static const Sysnum sysnums_arm64[] = {
+ 	[ 289 ] = PR_pkey_alloc,
+ 	[ 290 ] = PR_pkey_free,
+ 	[ 291 ] = PR_statx,
++	[ 428 ] = PR_open_tree,
++	[ 429 ] = PR_move_mount,
++	[ 433 ] = PR_fspick,
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
++	[ 442 ] = PR_mount_setattr,
+ 	[ 439 ] = PR_faccessat2,
+ 	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums.list b/src/syscall/sysnums.list
+index c221ddd..93ea2e2 100644
+--- a/src/syscall/sysnums.list
++++ b/src/syscall/sysnums.list
+@@ -86,6 +86,7 @@ SYSNUM(flock)
+ SYSNUM(fork)
+ SYSNUM(fremovexattr)
+ SYSNUM(fsetxattr)
++SYSNUM(fspick)
+ SYSNUM(fstat)
+ SYSNUM(fstat64)
+ SYSNUM(fstatat64)
+@@ -191,6 +192,8 @@ SYSNUM(mmap)
+ SYSNUM(mmap2)
+ SYSNUM(modify_ldt)
+ SYSNUM(mount)
++SYSNUM(mount_setattr)
++SYSNUM(move_mount)
+ SYSNUM(move_pages)
+ SYSNUM(mprotect)
+ SYSNUM(mpx)
+@@ -221,6 +224,7 @@ SYSNUM(oldstat)
+ SYSNUM(olduname)
+ SYSNUM(open)
+ SYSNUM(open_by_handle_at)
++SYSNUM(open_tree)
+ SYSNUM(openat)
+ SYSNUM(openat2)
+ SYSNUM(pause)

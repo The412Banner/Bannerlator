@@ -53,10 +53,19 @@ DroidDeck's.
   with no children or ptracees no longer walks every tracee; the per-stop memory collector is
   emptied instead of freed and reallocated.
 
-Ported from Droid-Deck/DroidDeck (org PRs #81 and #84), numbered as there (DroidDeck has no
-0010). They are DroidDeck's own, measured there on an x86_64 host build and an SD 8 Gen 2 guest;
-0011 is byte-identical to DroidDeck's, 0012 and 0013 were re-taken on our tree, said in the patch
-header.
+Ported from Droid-Deck/DroidDeck, numbered as there (two patches share 0012 there too; the glob
+applies `0012-android-hardlink-denial` before `0012-fake_id0-identity-only`, as DroidDeck does).
+0011 to 0013 came with org PRs #81 and #84, measured there on an x86_64 host build and an SD 8 Gen
+2 guest; 0010 and the hard-link 0012 are DroidDeck's Flatpak fixes, ported later with the fast path
+below. 0011 is byte-identical to DroidDeck's; the others were re-taken on our tree, said in each
+patch header.
+
+- `0010-new-mount-api-enosys.patch` - `open_tree`, `move_mount`, `fspick` and `mount_setattr`
+  answer `ENOSYS`. They take paths proot never translated, so libglnx's `open_tree(AT_FDCWD, "/")`
+  handed Flatpak a descriptor for the host's root; unsupported, callers fall back to `openat`.
+  **Adapted:** our tree emulates `mount`/`umount`/`pivot_root` (bindings changed at run time), so
+  the cases sit beside those and callers also fall back to the emulated `mount(2)`; the sysnum
+  tables are DroidDeck's.
 
 - `0011-kompat-utsname-only.patch` - `--kernel-release` loads kompat, whose filter traps `futex`,
   `fcntl`, `epoll_pwait`, `pselect6`, `pipe2`, `eventfd2`, `socket` and more, and which strips
@@ -65,6 +74,13 @@ header.
   no-op: kompat then traces only `uname`, `sethostname` and `setdomainname` and leaves the auxv as
   the kernel wrote it. The app passes no `-k` today, so this changes nothing until it does; it is
   carried to keep the set in step with DroidDeck.
+- `0012-android-hardlink-denial.patch` - Android's SELinux policy denies apps hard links, so
+  `linkat` fails with `EACCES` and Flatpak could not create its repo. `O_TMPFILE` answers
+  `EOPNOTSUPP`, so libglnx writes a named temporary file and renames it, and a denied link answers
+  `EPERM`, on which ostree's checkout copies instead (`link`/`linkat` gain an exit stop on Android
+  for that). **Adapted:** our `open` case also watches for `/proc/self/auxv` and our `openat` case
+  is where a rewritten `openat2` lands, so the check goes straight after the flags are read in both
+  and covers `openat2` too.
 - `0012-fake_id0-identity-only.patch` - `-i uid:gid` (the app passes its own uid for Xwayland's
   setgid/setuid before it runs xkbcomp) loads fake_id0, whose filter traps every
   `fstat`/`newfstatat`/`stat`, every `sendmsg` (all Wayland, X11, Chromium and PulseAudio traffic),
@@ -87,6 +103,51 @@ header.
   `statx` exit stop is also where fake_id0 (as root) and link2symlink get `STATX_SYSCALL`, both now
   list `statx` themselves, so dropping it from the core list does not drop it for them.
 
+The fast path (DroidDeck's `tools/proot/fastpath`, `patches/0014`; inert unless `PROOT_FASTPATH`
+is in proot's environment, and nothing in the app sets it yet):
+
+- `0014-fastpath-trampoline.patch` - with `PROOT_FASTPATH`, every `SECCOMP_RET_TRACE` in the filter
+  is preceded by a check of the caller's address, and a syscall made from the fast path's
+  trampoline page (`fastpath/fastpath.c`, `0xffff00000`) runs without a stop: the tracee already
+  translated it. The check comes after the syscall-number dispatch, so untraced syscalls stay
+  constant-ALLOW and keep the kernel's seccomp action cache. `chdir`/`fchdir`, still emulated, also
+  move the kernel's cwd to the host directory, and the first tracee starts at `-w`'s, so relative
+  lookups inside the tracee resolve where proot would. DroidDeck measured on SM8850 (adb shell):
+  `stat` 25.3 -> 0.6 us, `open+close` 25.3 -> 0.9 us, ENOENT 22.9 -> 1.6 us, 8 threads `stat`ing
+  89k -> 3.6M/s, with its equivalence suite (`bench/equiv.py`) byte-identical to proot.
+  **Adapted:** our `chdir` also pokes a 0 result before voiding the call, so with the fast path
+  both are skipped and the real `chdir(2)` runs on the host path; the first tracee's `chdir` is made
+  before `PTRACE_TRACEME` rather than after the filter is installed, so `translate_path()`'s own
+  lookups there are not trapped and translated a second time. The filter side is DroidDeck's: each
+  of our trace blocks, the ioctl one with `SIOCGIFINDEX` included, still has exactly one
+  `RET_TRACE`.
+- `0015-fastpath-withdraw-on-emulated-mount.patch` - ours only (DroidDeck's base has no mount
+  emulation). The fast path maps guest paths with the bindings proot started with, but our proot
+  changes its bindings at run time for an emulated `mount`, `umount` or `pivot_root` (bubblewrap
+  builds its sandbox that way), after which the library would answer from the wrong place. With
+  `PROOT_FASTPATH`, the first such call withdraws the fast path for every process: at each
+  tracee's next stop proot recognises the trampoline page by its first two instructions and sets a
+  flag at offset `0x800` in it (with `PTRACE_POKEDATA`, which writes the read-only page as it does a
+  breakpoint), which the library checks before every answer; after an exec the library makes one
+  traced `getcwd` before answering anything, so a fresh page is flagged before it is used. proot
+  says so once on stderr ("the fast path is withdrawn"). After that every call goes to proot,
+  exactly as without the library.
+
+`fastpath/fastpath.c` is the guest side: `libblfastpath.so`, glibc aarch64, preloaded into every
+process of the session through `/etc/ld.so.preload`. It answers `open`/`openat`/`fopen`/`opendir`,
+the `stat` family, `statx`, `access`/`faccessat` and `readlink`/`readlinkat` itself when the
+parent directory is proven symlink-free and the last component is not a symlink, and leaves
+everything else (`..`, `/proc`, a symlink, any flag it does not handle) to proot. It needs
+`PROOT_FP_ROOT`, `PROOT_FP_BINDS` (`host:guest|...`, exactly the `-r` and `-b` proot was given) and
+`PROOT_FP_KEY` in the guest, and stays idle unless its tracer's own environment holds
+`PROOT_FASTPATH=<that key>` and no `PROOT_NO_SECCOMP`; `PROOT_FP_OFF=1` turns it off,
+`PROOT_FP_STATS=1` prints hits and misses at exit, `PROOT_FP_TTL_MS` sets how long a verified
+parent is trusted (2000 ms; 0 checks every call). From DroidDeck, with its x86-64-client change
+(DroidDeck `7b836d5`): in a FEX process it stays on only when the program FEX is about to run is a
+64-bit ELF, since it broke FEX's 32-bit mode (SIGILL at start); plus the 0015 flag check and
+`getcwd` above. `bench/` is DroidDeck's measuring kit, unchanged (its scripts expect DroidDeck's
+`/data/local/tmp/dd` layout on an adb-connected device).
+
 ## Checking a change to the set
 
 The workflow dry-runs then applies each patch with GNU `patch -p1 -F0 --forward`, in order, into
@@ -95,6 +156,12 @@ relative to the checkout and "applies" nothing). To do the same by hand:
 
     curl -fsSLo proot.zip https://github.com/termux/proot/archive/v5.1.107.92.zip && unzip -q proot.zip
     for p in tools/proot/patches/*.patch; do patch -p1 -F0 --forward -d proot-5.1.107.92 < "$p" || break; done
+
+After applying, the workflow greps the tree for one line each of 0010, the hard-link 0012, 0014
+and 0015 add (the step fails naming the patch), checks that `fastpath.c` and the patches agree on
+the trampoline's address and the flag's offset, and after the build that `libproot.so` holds the
+strings `PROOT_FASTPATH` and `the fast path is withdrawn`. It also builds `libblfastpath.so` with
+`-Werror` into `out/guest/` (for testing; the app build makes the copy it ships).
 
 `filtered_sysnum_flags` (0005) is the set's one global symbol: `llvm-nm libproot.so | grep
 filtered_sysnum_flags` says whether a given binary carries it (Termux's shipped `proot` does not).

@@ -1,0 +1,95 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: DroidDeck <noreply@droiddeck.invalid>
+Date: Tue, 29 Sep 2026 15:00:00 -0400
+Subject: [PATCH] syscall: work around Android's denial of hard links
+
+SELinux denies apps the file link permission, so linkat fails with
+EACCES. libostree names its O_TMPFILE files with linkat and failed to
+create the Flathub repo ("Creating repo: linkat: Permission denied").
+O_TMPFILE now answers EOPNOTSUPP, so libglnx falls back to a named
+temporary file and a rename, and a denied link answers EPERM, which
+ostree's checkout takes as a filesystem without hard links and copies.
+
+Ported to termux/proot v5.1.107.92 for Bannerlator: that tree's open
+case also watches for /proc/self/auxv and its openat case is where an
+openat2 lands once rewritten (the open_how flags already moved into the
+flags register), so the O_TMPFILE check goes straight after the flags
+are read in both, and covers openat2 too. The exit and filter changes
+are DroidDeck's, at that tree's offsets.
+
+---
+ src/syscall/enter.c   | 13 +++++++++++++
+ src/syscall/exit.c    | 10 ++++++++++
+ src/syscall/seccomp.c |  5 +++++
+ 3 files changed, 28 insertions(+)
+
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index f6bb4c0..5607d7f 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -2480,6 +2480,13 @@ int translate_syscall_enter(Tracee *tracee)
+ 
+ 	case PR_open:
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_2);
++#ifdef __ANDROID__
++		/* An O_TMPFILE file can only be named by linkat, which Android denies apps. */
++		if ((flags & __O_TMPFILE) != 0) {
++			status = -EOPNOTSUPP;
++			break;
++		}
++#endif
+ 
+ 		if (tracee->execfn_addr != 0
+ 		    && read_string(tracee, path, peek_reg(tracee, CURRENT, SYSARG_1), PATH_MAX) > 0
+@@ -2631,6 +2638,12 @@ int translate_syscall_enter(Tracee *tracee)
+ 	case PR_openat:
+ 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_3);
++#ifdef __ANDROID__
++		if ((flags & __O_TMPFILE) != 0) {
++			status = -EOPNOTSUPP;
++			break;
++		}
++#endif
+ 
+ 		status = get_sysarg_path(tracee, path, SYSARG_2);
+ 		if (status < 0)
+diff --git a/src/syscall/exit.c b/src/syscall/exit.c
+index 2fe81b0..7256b4c 100644
+--- a/src/syscall/exit.c
++++ b/src/syscall/exit.c
+@@ -732,6 +732,16 @@ void translate_syscall_exit(Tracee *tracee)
+ 		status = handle_statx_syscall(tracee, false);
+ 		break;
+ 
++#ifdef __ANDROID__
++	/* Android denies apps hard links with EACCES; EPERM is what callers such as
++	 * libostree take as "no hard links here" and copy instead. */
++	case PR_link:
++	case PR_linkat:
++		if ((int) syscall_result == -EACCES)
++			poke_reg(tracee, SYSARG_RESULT, -EPERM);
++		goto end;
++#endif
++
+ 	case PR_ioctl:
+ 		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == _IOW(0x94, 9, int) /* FICLONE */ &&
+ 				(int) peek_reg(tracee, CURRENT, SYSARG_RESULT) == -EACCES) {
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 0d6bef7..ca76a6f 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -500,8 +500,13 @@ static FilteredSysnum proot_sysnums[] = {
+ 	{ PR_lchown,		0 },
+ 	{ PR_lchown32,		0 },
+ 	{ PR_lgetxattr,		0 },
++#ifdef __ANDROID__
++	{ PR_link,		FILTER_SYSEXIT },
++	{ PR_linkat,		FILTER_SYSEXIT },
++#else
+ 	{ PR_link,		0 },
+ 	{ PR_linkat,		0 },
++#endif
+ 	{ PR_listxattr,		0 },
+ 	{ PR_llistxattr,	0 },
+ 	{ PR_lremovexattr,	0 },

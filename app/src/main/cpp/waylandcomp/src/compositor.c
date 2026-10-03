@@ -800,6 +800,9 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
  * so such a surface is counted as the window it is part of, once per commit of that window.
  * (From WinNative, maxjivi05, feature/wayland-gamescope f467345c; GPL-3.0.) */
 static struct surface *g_hud_surface;
+/* That window's last committed game frame (now_ns), and whether the screen has drawn it yet. */
+static int64_t g_hud_last_ns;
+static int g_hud_fresh;
 static struct surface *hud_window(struct surface *s) {
     while (s->parent && s->sub_sync) s = s->parent;
     return s;
@@ -1089,6 +1092,8 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r) {
     /* One frame per commit of the window, however many of its planes were attached to. */
     if (s == g_hud_surface && s->hud_frame) {
         s->hud_frame = 0;
+        g_hud_last_ns = now_ns();
+        g_hud_fresh = 1;
         banner_on_game_frame();
     }
     constraints_surface_commit(s);
@@ -2233,6 +2238,7 @@ static void render_scene(void) {
     int copy = 0; /* this scene went through the screen swapchain (the perf line's "copy") */
 
     g_dirty = 0;
+    g_hud_fresh = 0;
     g_hdr_unimported = NULL; /* found again while the scene is built (HDR gate open only) */
     wl_list_for_each(s, &g_surfaces, link) s->drawn = 0;
     scene_size(&w, &h);
@@ -2450,6 +2456,14 @@ static void schedule_render(void) {
     wl_event_source_timer_update(g_fallback_timer, 8);
 }
 
+/* With frame generation on, every scene is the engine's next source frame, so one drawn for
+ * another window (Steam's overlay) counted as a game frame and took its present slots. Such a
+ * change waits for the game's next frame, unless the game has been still for 100 ms.
+ * (From Droid-Deck/DroidDeck #129, maxjivi05.) */
+static int scene_waits_for_game(int64_t now) {
+    return g_hud_surface && !g_hud_fresh && now - g_hud_last_ns < 100000000LL && vkp_framegen_active();
+}
+
 /* A screen refresh (Choreographer tick): draw the newest state once. */
 static void on_vsync(int64_t frame_time_ns) {
     int64_t now = now_ns();
@@ -2465,7 +2479,7 @@ static void on_vsync(int64_t frame_time_ns) {
     if (vkp_apply_window_request()) g_dirty = 1;
     /* A screen-effect setting changed (JNI, any thread): redraw so it shows on a static scene too. */
     if (vkp_effects_sync()) g_dirty = 1;
-    if (g_dirty) render_scene();
+    if (g_dirty && !scene_waits_for_game(now)) render_scene();
 }
 
 /* ------------------------------------------------------------------ wl_seat */

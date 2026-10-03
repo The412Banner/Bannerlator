@@ -212,10 +212,36 @@ case $mode in
   steam)
     # Every way out of this branch, a signal from the teardown included, stops the loops started below.
     trap stop_own_jobs EXIT
-    step "checking the Steam client (first run downloads it, ~1-2 min with nothing on screen)"
-    bannerlator-steam-install || exit $?
-    step "Steam client ready"
-    steam_root=$XDG_DATA_HOME/Steam
+    # BL_STEAM_CLIENT_ARCH=x86_64 (the entry's Steam client setting): Valve's x86-64 client under FEX
+    # instead of the arm64 one, in a home of its own (bannerlator-steam-x64), for what the arm64
+    # client cannot do - VAC. Everything this session does around the client applies to it; what is
+    # only for the arm64 client (fetching its ARM64 Proton depot) is skipped. Its browser is the
+    # arm64 client's web helper (bannerlator-x64-arm-webhelper), on the GPU with the same flags; the
+    # x86 one (BL_X64_X86_WEBHELPER=1) stays in software, since its GPU process needs libgbm, which
+    # FEX does not thunk. (From Droid-Deck/DroidDeck, feat/x86-64-steam-client.)
+    steam_x64=0
+    [ "${BL_STEAM_CLIENT_ARCH:-}" = x86_64 ] && steam_x64=1
+    steam_cef=(-cef-force-gpu -cef-ozone-platform=x11 -cef-use-gl=angle -cef-use-angle=vulkan)
+    if [ "$steam_x64" = 1 ]; then
+      # The arm64 client's own files are part of this one: its web helper draws the interface, and
+      # its game overlay and steamclient.so serve the arm64 Protons the x86-64 client starts.
+      step "checking the Steam client's arm64 parts (first run downloads them, ~1-2 min)"
+      bannerlator-steam-install || exit $?
+      step "checking the x86-64 Steam client (FEX, experimental; the first run downloads ~2 GB)"
+      bannerlator-steam-x64 --prepare || exit $?
+      step "x86-64 Steam client ready"
+      steam_root=${BL_X64_HOME:-$HOME/.bannerlator-x64}/.local/share/Steam
+      steam_client=(bannerlator-steam-x64 --exec)
+      if [ "${BL_X64_X86_WEBHELPER:-0}" = 1 ] && ! { [ "${BL_X64_CEF_GPU:-0}" = 1 ] && bannerlator-steam-x64 --gpu; }; then
+        steam_cef=(-cef-disable-gpu)
+      fi
+    else
+      step "checking the Steam client (first run downloads it, ~1-2 min with nothing on screen)"
+      bannerlator-steam-install || exit $?
+      step "Steam client ready"
+      steam_root=$XDG_DATA_HOME/Steam
+      steam_client=("$steam_root/steamrtarm64/steam")
+    fi
     # Register the card library (bound at /mnt/bannerlator-sd) with the client - internal storage is
     # its main library already - and the ARM64 Proton that lets it launch the Windows ones.
     # A request left in ~/.bl-proton-extra installs a third-party Proton before the client starts,
@@ -223,13 +249,26 @@ case $mode in
     # arguments to bannerlator-proton-extra: "ge", "cachyos", "ge --tag GE-Proton11-7", or a URL.
     # Hundreds of megabytes each, so it is only ever done on request, and the line is dropped once
     # it has succeeded - a failed download stays and is retried next session.
+    # The x86-64 client runs the arm64 client's Protons, so they go there; its default is GE-Proton
+    # (Proton Experimental leaked Xwayland's window buffers until the device ran out of memory), so
+    # one is fetched when the arm64 client has none, as the arm64 side fetches its own Proton.
+    _bl_proton_root=$steam_root
+    if [ "$steam_x64" = 1 ]; then
+      _bl_proton_root=$XDG_DATA_HOME/Steam
+      if ! ls -d "$_bl_proton_root"/compatibilitytools.d/GE-Proton*-aarch64 >/dev/null 2>&1 &&
+         ! grep -q '^ge' "$HOME/.bl-proton-extra" 2>/dev/null; then
+        echo ge >> "$HOME/.bl-proton-extra"
+      fi
+    fi
     if [ -s "$HOME/.bl-proton-extra" ]; then
       _bl_left=$HOME/.bl-proton-extra.left
       : > "$_bl_left"
+      _bl_got_proton=0
       while read -r _bl_extra || [ -n "$_bl_extra" ]; do
         case ${_bl_extra# } in ""|"#"*) continue ;; esac
         step "installing Proton '$_bl_extra' (large download, several minutes)"
-        if bannerlator-proton-extra "$steam_root" $_bl_extra; then
+        if bannerlator-proton-extra "$_bl_proton_root" $_bl_extra; then
+          _bl_got_proton=1
           step "installed Proton '$_bl_extra'"
         else
           step "Proton '$_bl_extra' failed; will retry next session"
@@ -237,6 +276,10 @@ case $mode in
         fi
       done < "$HOME/.bl-proton-extra"
       mv -f "$_bl_left" "$HOME/.bl-proton-extra"
+      # The x86-64 client's wrappers are made at --prepare: once more for the new one.
+      if [ "$steam_x64" = 1 ] && [ "$_bl_got_proton" = 1 ]; then
+        bannerlator-steam-x64 --prepare || true
+      fi
     fi
     # steam:// URLs left in ~/.bl-steam-urls are handed to the client on its command line. The app
     # writes one when the user asks for a Proton that is one of Valve's own depots rather than a
@@ -280,6 +323,7 @@ case $mode in
       ) &
     fi
 
+    if [ "$steam_x64" = 0 ]; then
     step "registering the app's game library with Steam"
     bannerlator-steam-library "$steam_root" || true
     step "setting up the ARM64 Proton compatibility tool"
@@ -293,9 +337,26 @@ case $mode in
     # Steam runs a game's shared redistributables inside its prefix on first launch; marking
     # them as already run keeps those x86 installers from starting under emulation at all.
     bannerlator-seed-redists "$steam_root" || true
+    else
+    # The x86-64 client: the arm64 client's library folders are its own too (bannerlator-steam-x64),
+    # and its Windows titles run the arm64 Protons through wrappers. A per-app entry the client aims
+    # at one of Valve's x86 Protons is pointed at the wrapper it defaults to, the app's own games are
+    # its shortcuts too, and redistributables are marked in both clients' prefixes.
+    _bl_x64_tool=$(bannerlator-steam-x64 --default-tool)
+    if [ -n "$_bl_x64_tool" ]; then
+      step "pointing the x86-64 client's Windows titles at $_bl_x64_tool"
+      BL_COMPAT_TOOL=$_bl_x64_tool bannerlator-steam-compat "$steam_root" --x64 || true
+      if [ -n "${BL_APP_GAMES:-}" ]; then
+        step "adding the app's own games to the x86-64 client's library"
+        BL_COMPAT_TOOL=$_bl_x64_tool bannerlator-steam-shortcuts "$steam_root" "$BL_APP_GAMES" || true
+      fi
+    fi
+    bannerlator-seed-redists "$XDG_DATA_HOME/Steam" || true
+    bannerlator-seed-redists "$steam_root" || true
+    fi
     # The compatibility tool runs Valve's arm64 Proton, which the client fetches like any depot.
     # Asked for on the command line the first time, so a Windows title has it before it is needed.
-    if [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
+    if [ "$steam_x64" = 0 ] && [ ! -f "$steam_root/steamapps/appmanifest_4427310.acf" ]; then
       step "asking the client to fetch the ARM64 Proton"
       set -- "$@" steam://install/4427310
       # The client decides a title's compatibility tool when the title is installed and keeps that
@@ -315,7 +376,7 @@ case $mode in
             bannerlator-steam-compat "$steam_root" >/dev/null 2>&1 || true
             step "compatibility layer installed: restarting the Steam client once"
             : > "$HOME/.bl-restart-once"
-            "$steam_root/steamrtarm64/steam" -shutdown >/dev/null 2>&1 || true
+            "${steam_client[@]}" -shutdown >/dev/null 2>&1 || true
             exit 0
           fi
         done
@@ -337,7 +398,7 @@ case $mode in
               nap 15
               [ -f "$steam_root/steamapps/appmanifest_4427310.acf" ] && exit 0
               echo "== STEP $(date -u +%H:%M:%S) signed in: asking the client again for the ARM64 Proton"
-              "$steam_root/steamrtarm64/steam" steam://install/4427310 >/dev/null 2>&1 || true
+              "${steam_client[@]}" steam://install/4427310 >/dev/null 2>&1 || true
               exit 0
             fi
           done
@@ -405,26 +466,70 @@ case $mode in
     # every beat has nothing new for it: it runs when a directory it reads from has changed since
     # its last run - a new manifest, a new depot or tool, the client rewriting config.vdf - which
     # [ -nt ] answers without starting anything, and once a minute regardless. (DroidDeck #87.)
+    # The x86-64 client: the same beat over both clients' libraries (it installs Windows titles into
+    # the arm64 client's), its compat pass the --x64 one (bannerlator-steam-compat), and a title it
+    # aimed at one of Valve's x86 Protons while it ran restarts it once that title has installed:
+    # the entry written meanwhile only counts from the client's next start, and until then the
+    # client launches the title its own way. Once per title, three times per session at most.
+    _bl_beat_roots=("$steam_root")
+    [ "$steam_x64" = 1 ] && _bl_beat_roots+=("$XDG_DATA_HOME/Steam")
     (
       beat=0
       compat_stamp=$HOME/.bl-compat-beat
+      compat_pending=$HOME/.bl-compat-pending
+      compat_restarted=$HOME/.bl-compat-restarted
+      rm -f "$compat_pending"
+      : > "$compat_restarted"
+      compat_restarts=0
+      compat_settled() {
+        local app m flags _r
+        while read -r app; do
+          [ -n "$app" ] || continue
+          m=
+          for _r in "${_bl_beat_roots[@]}" /mnt/bannerlator-sd; do
+            [ -f "$_r/steamapps/appmanifest_$app.acf" ] && { m=$_r/steamapps/appmanifest_$app.acf; break; }
+          done
+          [ -n "$m" ] || return 1
+          flags=$(sed -n 's/^[[:space:]]*"StateFlags"[[:space:]]*"\([0-9]*\)".*/\1/p' "$m" | head -n 1)
+          [ "$flags" = 4 ] || return 1
+        done < "$compat_pending"
+        ! pgrep -f 'reaper SteamLaunch' >/dev/null 2>&1
+      }
       rm -f "$compat_stamp"
       compat_due() {
         local d
         [ -e "$compat_stamp" ] && [ "$((beat % 12))" -ne 0 ] || return 0
         for d in "$steam_root/steamapps" "$steam_root/steamapps/common" "$steam_root/config" \
-                 "$steam_root/compatibilitytools.d" /mnt/bannerlator/steamapps /mnt/bannerlator-sd/steamapps; do
+                 "$steam_root/compatibilitytools.d" /mnt/bannerlator/steamapps /mnt/bannerlator-sd/steamapps \
+                 "${_bl_beat_roots[@]/%//steamapps}"; do
           [ "$d" -nt "$compat_stamp" ] && return 0
         done
         return 1
       }
       for _ in $(seq 1 720); do
         nap 5
-        bannerlator-seed-redists "$steam_root" >/dev/null 2>&1 || true
+        for _r in "${_bl_beat_roots[@]}"; do
+          bannerlator-seed-redists "$_r" >/dev/null 2>&1 || true
+        done
         beat=$((beat + 1))
         if [ "$((beat % 3))" -eq 0 ] && compat_due; then
           : > "$compat_stamp"
-          bannerlator-steam-compat "$steam_root" >/dev/null 2>&1 || true
+          if [ "$steam_x64" = 1 ]; then
+            [ -n "${_bl_x64_tool:-}" ] &&
+              BL_COMPAT_TOOL=$_bl_x64_tool bannerlator-steam-compat "$steam_root" --x64 --live >/dev/null 2>&1 || true
+          else
+            bannerlator-steam-compat "$steam_root" >/dev/null 2>&1 || true
+          fi
+        fi
+        if [ -s "$compat_pending" ] && compat_settled; then
+          _bl_new=$(sort -u "$compat_pending" | grep -vxF -f "$compat_restarted" || true)
+          rm -f "$compat_pending"
+          [ -n "$_bl_new" ] && [ "$compat_restarts" -lt 3 ] || continue
+          compat_restarts=$((compat_restarts + 1))
+          printf '%s\n' $_bl_new >> "$compat_restarted"
+          step "newly installed title(s) $(echo $_bl_new) set to the ARM64 Proton: restarting the Steam client once so it takes effect"
+          : > "$HOME/.bl-restart-once"
+          "${steam_client[@]}" -shutdown >/dev/null 2>&1 || true
         fi
       done
     ) &
@@ -520,9 +625,7 @@ BUSCONF
       publicbeta|steamdeck_publicbeta) steam_channel=$BL_STEAM_CHANNEL ;;
       *) steam_channel=publicbeta ;;
     esac
-    steam_args=(-gamepadui -clientbeta "$steam_channel"
-      -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11
-      -cef-use-gl=angle -cef-use-angle=vulkan)
+    steam_args=(-gamepadui -clientbeta "$steam_channel" -no-cef-sandbox "${steam_cef[@]}")
     # SteamOS runs its own session as `steam -gamepadui -steamos3 -steamdeck`, which is the shape Valve tunes Big Picture for.
     # The app sets BL_STEAMDECK from the Steam Deck mode switch in the entry's settings.
     # Deck mode passes both flags, as SteamOS does.
@@ -532,7 +635,10 @@ BUSCONF
     # That branch outlives the setting, and it then loses to the -clientbeta above on every launch.
     # The updater reads the forced branch, finds "installed version 0" against a package set installed from the other one, marks an update pending and exits 42 to apply it - which never happens, so the client restarts for ever.
     # The loop below puts package/beta back before every start, which is what keeps that from happening.
-    if [ "${BL_STEAMDECK:-0}" = 1 ]; then
+    # The x86-64 client too: with -steamos3 its SteamOS audio manager hands libpulse an operation a
+    # failed request never returned, and libpulse aborted the client right after start; the session
+    # preload answers it (preload/pulseguard.c). BL_X64_DECK=0 starts it without the Deck flags.
+    if [ "${BL_STEAMDECK:-0}" = 1 ] && { [ "$steam_x64" = 0 ] || [ "${BL_X64_DECK:-1}" != 0 ]; }; then
       steam_args+=(-steamdeck -steamos3)
       # The Quick Access Menu's Scaling Filter lists NVIDIA Image Scaling only when it is told gamescope has it, and this gamescope does.
       export STEAM_GAMESCOPE_NIS_SUPPORTED=1
@@ -541,7 +647,7 @@ BUSCONF
     # What a killed session leaves behind is cleared here, while no client or web helper is running.
     # Android ends sessions without warning (backgrounding, the low-memory killer), and the next client then finds .crash and opens its update screen on the spinner.
     # The web helper's Singleton* locks in htmlcache are left too, owned by a process that is gone, and they can leave the Gamepad UI blank. (From The412Banner/SteamDeck.)
-    if ! pgrep -f 'steamwebhelper|steamrtarm64/steam' >/dev/null 2>&1; then
+    if ! pgrep -f 'steamwebhelper|steamrtarm64/steam|steamrt64/steam' >/dev/null 2>&1; then
       _stale=""
       for _f in "$steam_root/.crash" "$steam_root/steam.pid" \
                 "$steam_root/config/htmlcache/SingletonLock" "$steam_root/config/htmlcache/SingletonCookie" \
@@ -551,7 +657,7 @@ BUSCONF
       [ -n "$_stale" ] && echo "== steam: cleared what an earlier session left:$_stale"
       unset _stale _f
     fi
-    echo "== steam args: ${steam_args[*]}"
+    echo "== steam args: ${steam_args[*]}$([ "$steam_x64" = 1 ] && echo ' (x86-64 client under FEX)')"
 
     # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
     # An update that cannot install asks for that restart every time, so the count is capped.
@@ -572,7 +678,7 @@ BUSCONF
             rm -f "$BL_LIVE_DIR/steam-stop"
             : > "$HOME/.bl-stop-requested"
             echo "== steam: the app asked for a clean exit"
-            "$steam_root/steamrtarm64/steam" -shutdown >/dev/null 2>&1 || true
+            "${steam_client[@]}" -shutdown >/dev/null 2>&1 || true
             exit 0
           fi
           nap 0.5
@@ -660,7 +766,7 @@ BUSCONF
         echo "$steam_channel" > "$steam_beta"
       fi
       step "starting the Steam client"
-      "$steam_root/steamrtarm64/steam" "${steam_args[@]}" "$@"
+      "${steam_client[@]}" "${steam_args[@]}" "$@"
       rc=$?
       echo "== steam exited rc=$rc"
       collect_steam_logs
@@ -671,7 +777,15 @@ BUSCONF
       fi
       # 42 = the client updated itself; the marker = the session asked for one restart after the
       # compatibility layer landed. The URL arguments are not repeated: they were acted on.
-      if [ -f "$HOME/.bl-restart-once" ]; then set --; continue; fi
+      if [ -f "$HOME/.bl-restart-once" ]; then
+        # The x86-64 client wrote config.vdf back from its own memory as it exited, which can drop
+        # the per-title entries written while it ran - the very ones this restart is for.
+        if [ "$steam_x64" = 1 ] && [ -n "${_bl_x64_tool:-}" ]; then
+          BL_COMPAT_TOOL=$_bl_x64_tool bannerlator-steam-compat "$steam_root" --x64 >/dev/null 2>&1 || true
+        fi
+        set --
+        continue
+      fi
       [ "$rc" -eq 42 ] || break
       steam_updates=$((steam_updates + 1))
       if [ "$steam_updates" -ge 3 ]; then

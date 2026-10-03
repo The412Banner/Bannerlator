@@ -55,7 +55,8 @@ static int enabled(void) {
   if (cached >= 0) return cached;
   off = getenv("BL_NO_PATH_CACHE");
   cached = strcmp(program_invocation_short_name, "steam") == 0 &&
-           strstr(program_invocation_name, "steamrtarm64") != NULL &&
+           (strstr(program_invocation_name, "steamrtarm64") != NULL ||
+            strstr(program_invocation_name, "steamrt64") != NULL) &&
            !(off != NULL && off[0] == '1');
   return cached;
 }

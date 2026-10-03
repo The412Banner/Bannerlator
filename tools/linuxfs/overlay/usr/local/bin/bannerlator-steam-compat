@@ -21,6 +21,9 @@ import shutil
 import sys
 
 TOOL = "bannerlator-proton-arm64"
+# The x86-64 client (bannerlator-steam-x64) runs the arm64 Protons through wrappers of its own, named
+# *-a64, and passes the one to map titles to here; its own config and shortcuts take that name.
+TOOL = os.environ.get("BL_COMPAT_TOOL") or TOOL
 # Valve's own ARM64 Proton, by the name the client registers it under. Used only to bootstrap a
 # fresh install: naming it is what makes the client offer it and fetch the depot.
 SEED_TOOL = "proton-experimental-arm64"
@@ -598,11 +601,30 @@ def mapped_apps(steam_root):
     return sorted(apps, key=int)
 
 
-def register_default(config_path, apps=(), name=None, protect=()):
+def local_tools(steam_root):
+    """The names of the compatibility tools installed in steam_root/compatibilitytools.d."""
+    names = set()
+    tools = os.path.join(steam_root, "compatibilitytools.d")
+    try:
+        entries = os.listdir(tools)
+    except OSError:
+        return names
+    for entry in entries:
+        try:
+            with open(os.path.join(tools, entry, "compatibilitytool.vdf"), encoding="utf-8", errors="replace") as f:
+                m = re.search(r'"compat_tools"\s*\{\s*"([^"]+)"', f.read())
+        except OSError:
+            continue
+        if m:
+            names.add(m.group(1).lower())
+    return names
+
+
+def register_default(config_path, apps=(), name=None, protect=(), repointed=None):
     """Writes the mapping. `name` defaults to our own tool; the first-run seed passes Valve's."""
     tool = name or TOOL
     # Tool names the user may deliberately have chosen (see adopt_extras); never repointed.
-    keep = {n.lower() for n in protect}
+    keep = {n.lower() for n in protect} | local_tools(os.path.dirname(os.path.dirname(config_path)))
     with open(config_path, encoding="utf-8", errors="replace") as f:
         original = f.read()
     tokens = tokenize(original)
@@ -622,6 +644,9 @@ def register_default(config_path, apps=(), name=None, protect=()):
             if (tokens[i] == '"name"' and named.startswith("proton")
                     and named != tool.lower() and named not in keep):
                 tokens[i + 1] = '"%s"' % tool
+                # The app the entry belongs to ("<appid>" { "name" ... }), for a caller that asks.
+                if repointed is not None and i >= 2 and tokens[i - 1] == "{" and tokens[i - 2] != '"0"':
+                    repointed.append(tokens[i - 2].strip('"'))
         if find_block(tokens[mapping + 1:], ["0"]) is None:
             tokens[mapping + 1:mapping + 1] = entry
         # The "0" default only decides how a title is installed, so it settles new downloads and
@@ -666,6 +691,22 @@ def build_tool(tool_dir):
 
 def main():
     steam_root = sys.argv[1]
+    if "--x64" in sys.argv[2:]:
+        # The x86-64 client: its tools are wrappers bannerlator-steam-x64 makes and its Linux titles
+        # run as Linux builds (FEX), so only the per-app entries the client aimed at a Proton it
+        # cannot start are repointed, to BL_COMPAT_TOOL. An entry changed while the client runs
+        # counts from its next start, so --live notes the apps for the session, which restarts the
+        # client once the title has installed.
+        config = os.path.join(steam_root, "config", "config.vdf")
+        if os.path.isfile(config):
+            moved = []
+            register_default(config, repointed=moved)
+            print("bannerlator-steam-compat: x86-64 client's Proton entries point at %s" % TOOL)
+            if moved and "--live" in sys.argv[2:]:
+                with open(os.path.join(os.path.expanduser("~"), ".bl-compat-pending"), "a") as f:
+                    f.write("".join("%s\n" % a for a in moved))
+                print("bannerlator-steam-compat: repointed while the client runs: %s" % " ".join(moved))
+        return
     tools = os.path.join(steam_root, "compatibilitytools.d")
     os.makedirs(tools, exist_ok=True)
     build_tool(os.path.join(tools, TOOL))

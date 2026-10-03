@@ -1,0 +1,685 @@
+#!/bin/bash
+# EXPERIMENT, opt-in: Valve's x86-64 Linux Steam client under FEX, beside the default arm64 one.
+#   bannerlator-steam-x64 [steam:// URL or client arguments]   run it (the desktop menu entry)
+#   bannerlator-steam-x64 --prepare                            install and set up, then exit
+#   bannerlator-steam-x64 --exec ARGS...                       run the client binary with ARGS in
+#                                                              its environment (bannerlator-session
+#                                                              with BL_STEAM_CLIENT_ARCH=x86_64)
+#
+# Why: the arm64 Linux client never runs VAC (TF2, L4D2: "Connection Blocked ... VAC secured
+# server", no VAC line in any client log) - VAC modules are x86 code. The x86-64 client under FEX
+# has a module it can run, the way SteamLite does in Wine. This runs Valve's client unchanged.
+#
+# Everything lives in its own home ($X64_HOME): the x86 client gets its own ~/.steam links, its
+# own login, config and library, and never touches the arm64 client's. Only one client runs at a
+# time (same account), so the arm64 one is shut down first.
+#
+# First run downloads FEX (this repo's release), FEX's Ubuntu 24.04 x86 rootfs (~525 MB, unpacked
+# ~1.5 GB) and the x86 client (~600 MB). Log: $X64_HOME/steam-x64.log.
+set -eu
+FEX_TAG=fex-2609-r3
+FEX_SHA256=cf3a87805ec51f8c42e197ff4883575e5bdec5247abe4c0beefb1796db358b5f
+FEX_URL=https://github.com/The412Banner/Bannerlator/releases/download/$FEX_TAG/fex.tzst
+ROOTFS_URL=https://rootfs.fex-emu.gg/Ubuntu_24_04/2026-08-11/Ubuntu_24_04.sqsh
+ROOTFS_SHA256=2854b06d3ff1b8f6e526135bfb6dd5b7b30ab3ab73e79ae933a3d9fed959a178
+CDN=https://client-update.fastly.steamstatic.com
+MANIFEST=steam_client_publicbeta_ubuntu12
+
+REAL_HOME=${HOME:-/root}
+X64_HOME=${BL_X64_HOME:-$REAL_HOME/.bannerlator-x64}
+ROOTFS=$X64_HOME/rootfs
+STEAM_X64=$X64_HOME/.local/share/Steam
+ARM_STEAM=${XDG_DATA_HOME:-$REAL_HOME/.local/share}/Steam
+LOG=$X64_HOME/steam-x64.log
+mkdir -p "$X64_HOME"
+step() { echo "== $(date -u +%H:%M:%S) $*" | tee -a "$LOG"; }
+
+# The arm64 Proton wrapper this client maps Windows titles to: the newest GE-Proton, else the arm64
+# client's own (bannerlator-proton-arm64, Proton Experimental). Prints its folder; --default-tool
+# prints its tool name, which the session hands to bannerlator-steam-compat and the shortcuts.
+x64_default_dir() {
+  local d
+  for d in $(ls -d "$STEAM_X64"/compatibilitytools.d/GE-Proton*-aarch64 2>/dev/null | sort -V -r); do
+    [ -f "$d/.bannerlator-arm64-proton" ] && { echo "$d"; return; }
+  done
+  echo "$STEAM_X64/compatibilitytools.d/bannerlator-proton-arm64"
+}
+x64_default_tool() {
+  sed -n 's/^[[:space:]]*"\([^"]*\)"[[:space:]]*$/\1/p' "$(x64_default_dir)/compatibilitytool.vdf" 2>/dev/null |
+    grep -v -x -e compatibilitytools -e compat_tools | head -n 1
+}
+
+x64_prepare() {
+# --- FEX -------------------------------------------------------------------------------------
+if [ ! -x /usr/local/bin/FEX ] || [ "$(cat /usr/local/share/fex-emu/.bannerlator-tag 2>/dev/null)" != "$FEX_TAG" ]; then
+  step "downloading FEX ($FEX_TAG)"
+  tmp=$(mktemp -d)
+  curl -fL --progress-bar "$FEX_URL" -o "$tmp/fex.tzst"
+  if [ "$FEX_SHA256" != PENDING ]; then echo "$FEX_SHA256  $tmp/fex.tzst" | sha256sum -c --quiet; fi
+  zstd -dc "$tmp/fex.tzst" | tar -C / -x
+  rm -rf "$tmp"
+  mkdir -p /usr/local/share/fex-emu && echo "$FEX_TAG" > /usr/local/share/fex-emu/.bannerlator-tag
+fi
+step "FEX ready ($FEX_TAG)"
+
+# --- x86 rootfs --------------------------------------------------------------------------------
+if [ ! -f "$ROOTFS/.bannerlator-complete" ]; then
+  step "downloading FEX's Ubuntu 24.04 x86 rootfs"
+  # Resumes a part-done download; a finished one answers 416, which is not a failure here.
+  curl -fL --progress-bar -C - "$ROOTFS_URL" -o "$X64_HOME/rootfs.sqsh" || {
+    rc=$?
+    [ "$rc" = 22 ] && [ -s "$X64_HOME/rootfs.sqsh" ] || { step "rootfs download failed (curl $rc)"; exit 1; }
+  }
+  if ! echo "$ROOTFS_SHA256  $X64_HOME/rootfs.sqsh" | sha256sum -c --quiet >/dev/null 2>&1; then
+    rm -f "$X64_HOME/rootfs.sqsh"; step "rootfs download did not match its checksum; try again"; exit 1
+  fi
+  step "unpacking the rootfs"
+  rm -rf "$ROOTFS"
+  # Ownership and xattrs mean nothing in this guest; device nodes cannot be made here and are not
+  # needed (FEX passes /dev through from the host).
+  /usr/local/bin/unsquashfs -no-xattrs -no-progress -ignore-errors -d "$ROOTFS" "$X64_HOME/rootfs.sqsh" >>"$LOG" 2>&1 || true
+  [ -x "$ROOTFS/usr/bin/bash" ] || { step "rootfs unpack failed (no usr/bin/bash); see $LOG"; exit 1; }
+  rm -f "$X64_HOME/rootfs.sqsh"
+  touch "$ROOTFS/.bannerlator-complete"
+fi
+# The rootfs's own ld.so.preload: a path missing from the rootfs falls through to the guest, whose
+# list names the session's arm64 preloads. In it, the session shim built for x86-64 (System V IPC,
+# which Android kernels lack: the client's tier0 gives up on start without its semaphore).
+# Each architecture's copy under the rootfs's own multiarch folder, named once through glibc's $LIB
+# (lib/x86_64-linux-gnu or lib/i386-linux-gnu): every process loads the one built for it, so the
+# 32-bit games get them too. A missing copy is skipped by the loader.
+: > "$ROOTFS/etc/ld.so.preload"
+for lib in libblsession libfakeinput; do
+  have=0
+  # The 32-bit controller reader crashes Left 4 Dead 2: its fake devices reach the game's own SDL2
+  # through udev with a missing attribute, and SDL strdup()s the NULL (device, segvlog: strlen in
+  # libc <- __strdup <- libSDL2 <- udev_device_get_sysattr_value). Until it is fixed, 32-bit
+  # programs get only the session shim; its preload line names the x86_64 copy outright, since
+  # with $LIB FEX falls through to the session's own /usr/local/lib/i386-linux-gnu copy.
+  arches="x86_64 i386"; [ "$lib" = libfakeinput ] && arches=x86_64
+  rm -f "$ROOTFS/usr/local/lib/i386-linux-gnu/libfakeinput.so"
+  for arch in $arches; do
+    [ -f "/usr/local/lib/$arch-linux-gnu/$lib.so" ] || continue
+    mkdir -p "$ROOTFS/usr/local/lib/$arch-linux-gnu"
+    cp -f "/usr/local/lib/$arch-linux-gnu/$lib.so" "$ROOTFS/usr/local/lib/$arch-linux-gnu/$lib.so"
+    have=1
+  done
+  if [ "$have" = 1 ] && [ "$lib" = libfakeinput ]; then
+    echo "/usr/local/lib/x86_64-linux-gnu/$lib.so" >> "$ROOTFS/etc/ld.so.preload"
+  elif [ "$have" = 1 ]; then echo "/usr/local/\$LIB/$lib.so" >> "$ROOTFS/etc/ld.so.preload"
+  else step "warning: no x86 build of $lib (/usr/local/lib/x86_64-linux-gnu/$lib.so)"; fi
+done
+rm -f "$ROOTFS/usr/local/lib/libblsession-x86_64.so" "$ROOTFS/usr/local/lib/libfakeinput-x86_64.so"
+# --- the x86-64 client -------------------------------------------------------------------------
+if [ ! -x "$STEAM_X64/steamrt64/steam" ] || [ ! -f "$STEAM_X64/package/bannerlator-installed" ]; then
+  step "downloading the x86-64 Steam client ($MANIFEST)"
+  work=$(mktemp -d)
+  curl -fsSL "$CDN/$MANIFEST" -o "$work/manifest"
+  version=$(awk -F'"' '$2 == "version" { print $4; exit }' "$work/manifest")
+  # Same parsing as bannerlator-steam-install: every component block's plain zip and sha256.
+  awk -F'"' '
+    /^\t"/ && NF >= 3 && $4 == "" { block = $2 }
+    $2 == "file" { file[block] = $4 }
+    $2 == "sha2" { sha[block] = $4 }
+    END { for (b in file) if (b ~ /_all$/ || b ~ /_ubuntu12$/) print b, file[b], sha[b] }
+  ' "$work/manifest" | sort > "$work/parts"
+  [ -s "$work/parts" ] || { step "no client components in $MANIFEST"; exit 1; }
+  mkdir -p "$STEAM_X64/package"
+  total=$(grep -c . "$work/parts")
+  i=0
+  while read -r block file sum; do
+    i=$((i + 1))
+    step "client: $block ($i/$total)"
+    curl -fsSL "$CDN/$file" -o "$work/$file"
+    echo "$sum  $work/$file" | sha256sum -c --quiet
+    unzip -qo "$work/$file" -d "$STEAM_X64"
+    rm -f "$work/$file"
+  done < "$work/parts"
+  rm -rf "$work"
+  echo publicbeta > "$STEAM_X64/package/beta"
+  echo "$version" > "$STEAM_X64/package/bannerlator-installed"
+  chmod +x "$STEAM_X64/steam.sh" "$STEAM_X64/steamrt64/steam" "$STEAM_X64/ubuntu12_32/steam" 2>/dev/null || true
+fi
+# Its own library: the arm64 client's Windows installs are not what this client runs (it would
+# switch a shared install to the Linux build and the arm64 client would download it again).
+[ -L "$STEAM_X64/steamapps" ] && rm -f "$STEAM_X64/steamapps"
+mkdir -p "$STEAM_X64/steamapps"
+# They still enumerate /dev/dri, find the session's KGSL node there, and spin on it (x86 Turnip
+# "failed to query kernel driver version", KMS dumb-buffer ioctls in a loop) - the webhelper never
+# got a browser up. FEX looks in the rootfs first: an empty /dev/dri there hides the node.
+mkdir -p "$ROOTFS/dev/dri"
+# What steam.sh sets up before it runs the client, for the x86 tree.
+mkdir -p "$X64_HOME/.steam"
+ln -sfn "$STEAM_X64" "$X64_HOME/.steam/root"
+ln -sfn "$STEAM_X64" "$X64_HOME/.steam/steam"
+ln -sfn "$STEAM_X64/ubuntu12_32" "$X64_HOME/.steam/bin32"
+ln -sfn "$STEAM_X64/ubuntu12_64" "$X64_HOME/.steam/bin64"
+ln -sfn "$STEAM_X64/linux32" "$X64_HOME/.steam/sdk32"
+ln -sfn "$STEAM_X64/linux64" "$X64_HOME/.steam/sdk64"
+# Unlike the arm64 client, this one carries pressure-vessel (steamrt64/pv-runtime) and refuses to
+# start when steam-runtime-check-requirements' bwrap probe cannot make a user namespace, which no
+# Android app can. proot is the container here, as it is for the arm64 client, which has no such
+# probe. STEAM_RUNTIME_STEAMRT names the runtime the client takes the probe from: Valve's own,
+# linked file by file, with only the probe answering that the requirements are met.
+srt_real=$STEAM_X64/steamrt64/pv-runtime/steam-runtime-steamrt
+srt_shim=$X64_HOME/steamrt-shim
+if [ -d "$srt_real" ]; then
+  rm -rf "$srt_shim"
+  mkdir -p "$srt_shim/bin"
+  for e in "$srt_real"/* "$srt_real"/.[!.]*; do
+    [ -e "$e" ] || continue
+    [ "$(basename "$e")" = bin ] || ln -s "$e" "$srt_shim/$(basename "$e")"
+  done
+  for e in "$srt_real"/bin/*; do ln -s "$e" "$srt_shim/bin/$(basename "$e")"; done
+  rm -f "$srt_shim/bin/steam-runtime-check-requirements"
+  printf '#!/bin/sh
+# bannerlator-steam-x64: proot stands in for user namespaces here.
+exit 0
+' > "$srt_shim/bin/steam-runtime-check-requirements"
+  chmod 755 "$srt_shim/bin/steam-runtime-check-requirements"
+  # steam-runtime-launch-client --alongside-steam [options] -- COMMAND: no container to leave here.
+  rm -f "$srt_shim/bin/steam-runtime-launch-client"
+  cat > "$srt_shim/bin/steam-runtime-launch-client" <<'LAUNCH'
+#!/bin/sh
+# bannerlator-steam-x64: no SteamRT container here, so "alongside Steam" is right here - run it.
+while [ $# -gt 0 ]; do
+  case $1 in
+    --) shift; break ;;
+    --directory=*) cd "${1#--directory=}" || exit 127 ;;
+    --env=*) export "${1#--env=}" ;;
+    --unset-env=*) unset "${1#--unset-env=}" ;;
+  esac
+  shift
+done
+[ $# -gt 0 ] || exit 0
+exec "$@"
+LAUNCH
+  chmod 755 "$srt_shim/bin/steam-runtime-launch-client"
+fi
+# The libraries the SteamRT container would give the client and the rootfs lacks (GTK 2 for
+# steamui.so, ...): Valve's own platform runtime files, for what the rootfs does not have.
+# They ship without their soname links (pressure-vessel makes those when it builds the container),
+# so they are linked into a folder of our own and the rootfs's ldconfig adds the soname links there.
+srt_libs=$X64_HOME/steamrt-libs
+rm -rf "$srt_libs"
+mkdir -p "$srt_libs"
+for d in "$STEAM_X64"/steamrt64/pv-runtime/steam-runtime-steamrt/steamrt3c_platform_*/files/lib/x86_64-linux-gnu \
+         "$STEAM_X64"/steamrt64/pv-runtime/steam-runtime-steamrt/steamrt3c_platform_*/files/usr/lib/x86_64-linux-gnu; do
+  [ -d "$d" ] || continue
+  for f in "$d"/*.so*; do [ -e "$srt_libs/$(basename "$f")" ] || ln -s "$f" "$srt_libs/"; done
+done
+FEX_ROOTFS=$ROOTFS /usr/local/bin/FEX "$ROOTFS/usr/sbin/ldconfig.real" -n "$srt_libs" >>"$LOG" 2>&1 || step "ldconfig on $srt_libs failed"
+# LD_LIBRARY_PATH beats the system folders whatever its order, so only what the rootfs lacks stays:
+# the platform's own (older) glibc and the rest must not shadow the rootfs's.
+for f in "$srt_libs"/*; do
+  n=$(basename "$f")
+  if [ -e "$ROOTFS/usr/lib/x86_64-linux-gnu/$n" ] || [ -e "$ROOTFS/lib/x86_64-linux-gnu/$n" ]; then rm -f "$f"; fi
+done
+  # Native Linux games: Steam runs them in the Steam Linux Runtime container (pressure-vessel), which
+  # needs bwrap - no user namespaces here, as for the client. "Bannerlator direct" runs them with
+  # Valve's scout library runtime instead, directly under FEX; the titles below are mapped to it.
+  tool=$STEAM_X64/compatibilitytools.d/bannerlator-direct
+  mkdir -p "$tool"
+  cat > "$tool/compatibilitytool.vdf" <<'VDF'
+"compatibilitytools"
+{
+  "compat_tools"
+  {
+    "bannerlator-direct"
+    {
+      "install_path" "."
+      "display_name" "Bannerlator direct (no container)"
+      "from_oslist" "linux"
+      "to_oslist" "linux"
+    }
+  }
+}
+VDF
+  cat > "$tool/toolmanifest.vdf" <<'VDF'
+"manifest"
+{
+  "version" "2"
+  "commandline" "/run %verb%"
+}
+VDF
+  cat > "$tool/run" <<'RUN'
+#!/bin/sh
+# Bannerlator direct: a native Linux game with Valve's scout library runtime, no container.
+verb=$1; shift
+rt=$HOME/.local/share/Steam/ubuntu12_32/steam-runtime.old
+[ -x "$rt/run.sh" ] || rt=$HOME/.local/share/Steam/ubuntu12_32/steam-runtime
+# Source games keep their console in console.log (-condebug): what the VAC diagnostics read - the
+# server they joined and whether it is secure.
+case "$*" in *hl2.sh*|*hl2_linux*|*srcds*) set -- "$@" -condebug ;; esac
+# The GPU: FEX's host thunks and the session's GPU settings, saved by the launcher (the client
+# itself draws in software). BL_X64_GAME_SOFTWARE=1 keeps the game in software too. game-gpu.env is
+# rewritten whenever the launcher runs; game-gpu.local (yours, never rewritten) is read after it.
+gpu=$HOME/game-gpu.env
+if [ -f "$gpu" ] && [ "${BL_X64_GAME_SOFTWARE:-0}" != 1 ]; then
+  . "$gpu"
+  [ -f "$HOME/game-gpu.local" ] && . "$HOME/game-gpu.local"
+else
+  # GL threading is a GPU-path tuning from the session; with software GL under FEX it is no help.
+  export mesa_glthread=false
+fi
+case $verb in
+  run|waitforexitandrun) exec "$rt/run.sh" "$@" ;;
+  *) exec "$@" ;;
+esac
+RUN
+  chmod 755 "$tool/run"
+  # The mapping lives in config.vdf, which the client rewrites from memory as it exits: written
+  # here, while no x86 client runs.
+  if [ -f "$STEAM_X64/config/config.vdf" ] && ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    python3 - "$STEAM_X64/config/config.vdf" ${BL_X64_DIRECT_APPS:-550} <<'PY' || step "could not map titles to Bannerlator direct"
+import re, sys
+path, apps = sys.argv[1], sys.argv[2:]
+s = open(path, encoding="utf-8", errors="surrogateescape").read()
+
+def block(text, key):
+    """(start of the key, index after its opening brace, index of its closing brace) or None."""
+    m = re.search(r'"%s"\s*\{' % re.escape(key), text)
+    if not m:
+        return None
+    depth, k = 1, m.end()
+    while depth:
+        c = text[k]
+        depth += c == "{"
+        depth -= c == "}"
+        k += 1
+    return m.start(), m.end(), k - 1
+
+if not block(s, "CompatToolMapping"):
+    st = block(s, "Steam")
+    if not st:
+        sys.exit("no Steam section")
+    s = s[:st[1]] + '\n\t\t\t\t"CompatToolMapping"\n\t\t\t\t{\n\t\t\t\t}' + s[st[1]:]
+for app in apps:
+    _, open_, close = block(s, "CompatToolMapping")
+    inner = s[open_:close]
+    old = block(inner, app)
+    if old:
+        inner = inner[:old[0]] + inner[old[2] + 1:]
+    entry = ('\n\t\t\t\t\t"%s"\n\t\t\t\t\t{\n\t\t\t\t\t\t"name"\t\t"bannerlator-direct"\n'
+             '\t\t\t\t\t\t"config"\t\t""\n\t\t\t\t\t\t"priority"\t\t"250"\n\t\t\t\t\t}' % app)
+    s = s[:open_] + entry + inner + s[close:]
+open(path, "w", encoding="utf-8", errors="surrogateescape").write(s)
+PY
+  fi
+  # The arm64 client's Proton tools (bannerlator-proton-arm64, GE-Proton, CachyOS): one wrapper per
+  # tool, same folder and tool name (Components swaps and per-title mappings are keyed by them). The
+  # wrapper is an x86 script under FEX; it starts bannerlator-x64-arm-proton through an arm64 binary,
+  # which FEX hands to the CPU, so Wine and the game run exactly as from the arm64 client.
+  arm_tools=$ARM_STEAM/compatibilitytools.d
+  mkdir -p "$X64_HOME/arm64"
+  cp -f /usr/bin/env "$X64_HOME/arm64/env"
+  for w in "$STEAM_X64"/compatibilitytools.d/*/.bannerlator-arm64-proton; do
+    [ -e "$w" ] || continue
+    d=${w%/.bannerlator-arm64-proton}
+    [ -d "$arm_tools/${d##*/}" ] || rm -rf "$d"
+  done
+  for src in "$arm_tools"/*/; do
+    src=${src%/}; name=${src##*/}
+    [ -f "$src/compatibilitytool.vdf" ] && [ -f "$src/toolmanifest.vdf" ] || continue
+    [ "$name" = bannerlator-direct ] && continue
+    dst=$STEAM_X64/compatibilitytools.d/$name
+    mkdir -p "$dst"
+    : > "$dst/.bannerlator-arm64-proton"
+    # The tool's own name and display name, as the arm64 client shows it.
+    python3 - "$src/compatibilitytool.vdf" "$dst/compatibilitytool.vdf" <<'PY' || { rm -rf "$dst"; continue; }
+import re, sys
+s = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+m = re.search(r'"compat_tools"\s*\{\s*"([^"]+)"', s)
+if not m:
+    sys.exit(1)
+# The x86-64 client takes a tool named *arm64* for one built for the arm64 client and ignores it
+# ("for a different target platform linux arm64"): the wrapper's name says a64 instead.
+key = re.sub(r"arm64|aarch64", "a64", m.group(1))
+d = re.search(r'"display_name"\s*"([^"]*)"', s)
+name = d.group(1) if d else key
+open(sys.argv[2], "w").write(
+    '"compatibilitytools"\n{\n  "compat_tools"\n  {\n    "%s"\n    {\n      "install_path" "."\n'
+    '      "display_name" "%s"\n      "from_oslist" "windows"\n      "to_oslist" "linux"\n    }\n  }\n}\n'
+    % (key, name))
+PY
+    cat > "$dst/toolmanifest.vdf" <<'VDF'
+"manifest"
+{
+  "version" "2"
+  "commandline" "/run %verb%"
+}
+VDF
+    printf '#!/bin/sh\n# The arm64 client'"'"'s %s, run natively (bannerlator-x64-arm-proton).\nexec "%s" /usr/local/bin/bannerlator-x64-arm-proton "%s" "$@"\n' \
+      "$name" "$X64_HOME/arm64/env" "$name" > "$dst/run"
+    chmod 755 "$dst/run"
+  done
+  # One library with the arm64 client: its library folders become this client's too, so a Windows
+  # game installed by either is installed for both. Titles this client runs as Linux builds (the
+  # Bannerlator direct ones) keep their own copy in its own folder - the arm64 client needs the
+  # Windows build of the same title. Written while no x86 client runs: it rewrites these on exit.
+  if ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    python3 - "$ARM_STEAM/config/libraryfolders.vdf" \
+      "$STEAM_X64/config/libraryfolders.vdf" "$STEAM_X64/steamapps/libraryfolders.vdf" <<'PY' || step "could not share the arm64 client's library folders"
+import os, re, sys
+src, dsts = sys.argv[1], sys.argv[2:]
+if not os.path.isfile(src):
+    sys.exit(0)
+want = re.findall(r'"path"\s*"([^"]+)"', open(src, encoding="utf-8", errors="replace").read())
+for dst in dsts:
+    if os.path.isfile(dst):
+        s = open(dst, encoding="utf-8", errors="surrogateescape").read()
+    else:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        s = '"libraryfolders"\n{\n}\n'
+    have = set(re.findall(r'"path"\s*"([^"]+)"', s))
+    nums = [int(n) for n in re.findall(r'^\t"(\d+)"\s*$', s, re.M)]
+    n = max(nums) + 1 if nums else 0
+    add = ""
+    for path in want:
+        if path in have:
+            continue
+        add += ('\t"%d"\n\t{\n\t\t"path"\t\t"%s"\n\t\t"label"\t\t""\n\t\t"contentid"\t\t"0"\n'
+                '\t\t"totalsize"\t\t"0"\n\t\t"apps"\n\t\t{\n\t\t}\n\t}\n' % (n, path))
+        n += 1
+    if add:
+        end = s.rstrip().rfind("}")
+        s = s[:end] + add + s[end:]
+        open(dst, "w", encoding="utf-8", errors="surrogateescape").write(s)
+PY
+  fi
+  # Steam Play for every title not mapped otherwise: one of the arm64 client's own ARM64 Protons, so a
+  # shared install stays the Windows build the arm64 client also runs. The newest GE-Proton first:
+  # with bannerlator-proton-arm64 (Proton Experimental) Xwayland never got its window buffers back
+  # and FlatOut took the device's RAM with it (10.5 GB of dma-buf in 35 s); GE-Proton, same game,
+  # same client, stayed flat. bannerlator-proton-a64 when no GE-Proton is installed.
+  default=$(x64_default_dir)
+  if [ -f "$default/compatibilitytool.vdf" ] && [ -f "$STEAM_X64/config/config.vdf" ] &&
+     ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    python3 - "$STEAM_X64/config/config.vdf" "$default/compatibilitytool.vdf" <<'PY' || step "could not make ARM64 Proton the default"
+import re, sys
+path = sys.argv[1]
+tool = re.search(r'"compat_tools"\s*\{\s*"([^"]+)"', open(sys.argv[2]).read()).group(1)
+s = open(path, encoding="utf-8", errors="surrogateescape").read()
+m = re.search(r'"CompatToolMapping"\s*\{', s)
+if not m:
+    sys.exit(0)
+depth, k = 1, m.end()
+while depth:
+    depth += s[k] == "{"
+    depth -= s[k] == "}"
+    k += 1
+block = s[m.end():k]
+z = re.search(r'^\s*"0"\s*\{([^{}]*)\}', block, re.M)
+if z:
+    # Kept when the user chose another default; replaced when it names a tool this client ignores,
+    # or is the earlier default this script set (bannerlator-proton-a64 at priority 75).
+    ours = re.search(r'"name"\s*"bannerlator-proton-a64"', z.group(1)) and \
+        re.search(r'"priority"\s*"75"', z.group(1))
+    if "arm64" not in z.group(1) and not ours:
+        sys.exit(0)
+    if re.search(r'"name"\s*"%s"' % re.escape(tool), z.group(1)):
+        sys.exit(0)
+    s = s[:m.end() + z.start()] + s[m.end() + z.end():]
+entry = ('\n\t\t\t\t\t"0"\n\t\t\t\t\t{\n\t\t\t\t\t\t"name"\t\t"%s"\n' % tool +
+         '\t\t\t\t\t\t"config"\t\t""\n\t\t\t\t\t\t"priority"\t\t"75"\n\t\t\t\t\t}')
+s = s[:m.end()] + entry + s[m.end():]
+open(path, "w", encoding="utf-8", errors="surrogateescape").write(s)
+PY
+  fi
+  # The startup movie the app stages for the arm64 client (its config/uioverrides/movies, chosen in
+  # its config.vdf as StartupMovie): the same one here, through a link to that folder and the same
+  # choice in this client's config. And Decky's marker for the client's CEF debugging port, which the
+  # loader talks to whichever client runs: the browser is the arm64 one either way.
+  if [ -d "$ARM_STEAM/config/uioverrides" ] && [ ! -e "$STEAM_X64/config/uioverrides" ]; then
+    ln -s "$ARM_STEAM/config/uioverrides" "$STEAM_X64/config/uioverrides"
+  fi
+  if [ -f "$ARM_STEAM/.cef-enable-remote-debugging" ]; then
+    : > "$STEAM_X64/.cef-enable-remote-debugging"
+  else
+    rm -f "$STEAM_X64/.cef-enable-remote-debugging"
+  fi
+  if [ -f "$ARM_STEAM/config/config.vdf" ] && [ -f "$STEAM_X64/config/config.vdf" ] &&
+     ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    python3 - "$ARM_STEAM/config/config.vdf" "$STEAM_X64/config/config.vdf" <<'PY' || step "could not copy the startup movie choice"
+import re, sys
+movie = re.search(r'\n([ \t]*)"StartupMovie"\s*\{[^{}]*\}', open(sys.argv[1], encoding="utf-8", errors="replace").read())
+if not movie:
+    sys.exit(0)
+path = sys.argv[2]
+s = open(path, encoding="utf-8", errors="surrogateescape").read()
+old = re.search(r'\n[ \t]*"StartupMovie"\s*\{[^{}]*\}', s)
+if old:
+    if old.group(0).split(None, 1)[1] == movie.group(0).split(None, 1)[1]:
+        sys.exit(0)
+    s = s[:old.start()] + s[old.end():]
+steam = re.search(r'"Valve"\s*\{\s*"Steam"\s*\{', s)
+if not steam:
+    sys.exit(0)
+s = s[:steam.end()] + movie.group(0) + s[steam.end():]
+open(path, "w", encoding="utf-8", errors="surrogateescape").write(s)
+PY
+  fi
+  # A FEX process takes its rootfs from FEXServer, not from its own environment, and a server
+  # started earlier without FEX_ROOTFS (any FEX run in this guest) answers with no rootfs at all:
+  # every x86 library lookup then falls through to the arm64 guest. Stop it while no x86 client
+  # runs, so the next FEX starts one with this rootfs.
+  if ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+    FEX_ROOTFS=$ROOTFS /usr/local/bin/FEXServer -k >/dev/null 2>&1 || true
+  fi
+}
+
+# Whether the client draws on the GPU: FEX built with its host thunks (Vulkan and GL to the runtime's
+# own drivers), unless BL_X64_SOFTWARE=1. Without them, software rendering (llvmpipe).
+x64_gpu() {
+  [ "${BL_X64_SOFTWARE:-0}" != 1 ] && [ -d /usr/local/share/fex-emu/GuestThunks ] && [ -d /usr/local/lib/fex-emu/HostThunks ]
+}
+
+# The environment the client and everything it starts run in.
+x64_env() {
+# The arm64 session's environment as it is now, for the arm64 Proton tools this client starts
+# (bannerlator-x64-arm-proton puts it back before Proton runs).
+export -p | grep -v -E '^declare -x (PWD|OLDPWD|SHLVL|_)=' > "$X64_HOME/arm-session.env.new" || true
+mv -f "$X64_HOME/arm-session.env.new" "$X64_HOME/arm-session.env"
+# The arm64 session's library paths and preloads are aarch64 and mean nothing to x86 processes.
+unset LD_LIBRARY_PATH LD_PRELOAD STEAM_RUNTIME STEAM_RUNTIME_PREFER_HOST_LIBRARIES
+# The client and its browser draw in software, as they always have: with the thunks the browser's
+# GPU process (even under -cef-disable-gpu it probes GL and Vulkan) gets the host drivers, fails
+# ("MESA-LOADER: failed to retrieve device information") and dies, and the client never opens a
+# window (device: 0 windows, "Starting display and audio" forever). Games get the GPU: the session's
+# GPU settings are saved for Bannerlator direct, which hands them, and FEX's host thunks, to the game.
+gpu_vars="GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE VK_ICD_FILENAMES VK_DRIVER_FILES LIBGL_KOPPER_DRI2 ZINK_DEBUG ZINK_DESCRIPTORS TU_DEBUG MESA_NO_ERROR mesa_glthread"
+rm -f "$X64_HOME/game-gpu.env"
+if x64_gpu; then
+  printf '{"ThunksDB": {"GL": 1, "Vulkan": 1}}\n' > "$X64_HOME/thunks.json"
+  {
+    echo "export FEX_THUNKCONFIG='$X64_HOME/thunks.json'"
+    echo "unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE GALLIUM_DRIVER"
+    for v in $gpu_vars; do
+      eval "val=\${$v-}"; [ -n "$val" ] && printf "export %s='%s'\n" "$v" "$val"
+    done
+  } > "$X64_HOME/game-gpu.env"
+fi
+# The web helper is the arm64 client's (bannerlator-x64-arm-webhelper), which sets its own GPU
+# environment, so the client itself can have the GPU now: it shows every Big Picture frame the helper
+# draws, and in software (llvmpipe under FEX) that held the UI at ~20 fps. BL_X64_CLIENT_SOFTWARE=1
+# keeps it in software.
+if x64_gpu && [ "${BL_X64_CLIENT_SOFTWARE:-0}" != 1 ]; then
+  export FEX_THUNKCONFIG=$X64_HOME/thunks.json
+  unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE
+else
+unset FEX_THUNKCONFIG $gpu_vars
+# x86 Mesa has no driver for this GPU, so software: llvmpipe for GL (the client's own window needs
+# GLX), and the rootfs's own Vulkan ICDs (lavapipe) found by the x86 loader instead of the arm64 one.
+export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+# The X server hands out the GPU node (DRI3 open), and Mesa's software path then tries KMS dumb
+# buffers on it in a loop: present through plain X instead.
+export LIBGL_DRI3_DISABLE=1
+fi
+# The proot fast path (libblfastpath, preloaded into every guest process, FEX included) stands down
+# by itself when FEX is about to run a 32-bit program (it broke FEX's 32-bit mode: SIGILL at start);
+# 64-bit ones keep it. BL_X64_FP_OFF=1 turns it off for everything, as before.
+[ "${BL_X64_FP_OFF:-0}" = 1 ] && export PROOT_FP_OFF=1
+# FEX tuning: the app's default preset for games (core/FexPreset.kt PERFORMANCE_TSO, WinNative's
+# default) - FEX's own defaults keep half-barrier TSO and full-precision x87, which cost every x86
+# program time. A value already in the environment wins.
+export FEX_TSOENABLED=${FEX_TSOENABLED:-1} FEX_VECTORTSOENABLED=${FEX_VECTORTSOENABLED:-0} \
+  FEX_MEMCPYSETTSOENABLED=${FEX_MEMCPYSETTSOENABLED:-0} FEX_HALFBARRIERTSOENABLED=${FEX_HALFBARRIERTSOENABLED:-0} \
+  FEX_X87REDUCEDPRECISION=${FEX_X87REDUCEDPRECISION:-1} FEX_MULTIBLOCK=${FEX_MULTIBLOCK:-1}
+export HOME=$X64_HOME
+# The session points these at the arm64 client's home; this client has its own.
+export XDG_DATA_HOME=$X64_HOME/.local/share XDG_CONFIG_HOME=$X64_HOME/.config XDG_CACHE_HOME=$X64_HOME/.cache
+export FEX_ROOTFS=$ROOTFS
+export STEAM_EXTRA_COMPAT_TOOLS_PATHS=
+# Valve's 64-bit SteamRT3 client (steamrt64/steam), the x86 twin of the arm64 one, started the way
+# the session starts that one (bannerlator-session): directly, STEAM_RUNTIME=1, its own library
+# folders first. Through steam.sh it would first run steam-runtime-check-requirements, whose
+# bwrap probe needs user namespaces - proot has none. Software rendering: no x86 GPU driver.
+export STEAM_RUNTIME=1
+[ -d "$X64_HOME/steamrt-shim" ] && export STEAM_RUNTIME_STEAMRT=$X64_HOME/steamrt-shim
+# The client believes it is inside the SteamRT container (the recursion guard), so it starts games
+# and system commands "alongside Steam" through steam-runtime-launch-client: Valve's asks a launcher
+# service on the session bus (there is none - the game ended at once), and without one on PATH the
+# launch fails (No such file). The shim's own launch client runs the command right here.
+[ -d "$X64_HOME/steamrt-shim/bin" ] && export PATH=$X64_HOME/steamrt-shim/bin:$PATH
+export LD_LIBRARY_PATH=$STEAM_X64/steamrt64:$STEAM_X64/steamrt64/panorama:$X64_HOME/steamrt-libs
+# After an update the client re-executes itself inside the SteamRT container through
+# pressure-vessel-wrap, which needs bwrap. The FEX rootfs with the client's own steamrt64 libraries
+# is that container here; the client's recursion guard says it is already inside one.
+export STEAM_STEAMRT_RECURSION_GUARD=1
+# proot is a tracer, so tier0 believes a debugger is attached and breaks into it with int3 on the
+# first failed assertion: the web helper died of SIGTRAP a second after every start. The session
+# shim hides the tracer from the x86 web helper too (preload/tracer.c).
+export BL_WEBHELPER_HIDE_TRACER=1
+}
+
+# The client binary under FEX, for the session: the starting arguments, or -shutdown / a steam://
+# URL handed to the running instance.
+x64_exec() {
+  x64_env
+  cd "$STEAM_X64"
+  # The client's own web helper launcher, pointed at the arm64 client's helper (FEX hands that arm64
+  # program to the CPU). The client checks its files' sizes at every start and reinstalls itself
+  # over one that differs (device: install loop, "steamwebhelper.sh is 176 bytes, expected 84"), so
+  # the replacement is padded to the size of the client's own copy. It is pointed again whenever it
+  # differs, for as long as this client runs: a full check puts the client's copy back.
+  case "${1:-}" in
+    -shutdown|steam://*) ;;
+    *) if [ "${BL_X64_X86_WEBHELPER:-0}" != 1 ] && [ -x /usr/local/bin/bannerlator-x64-arm-webhelper ] &&
+          [ -x "$ARM_STEAM/steamrtarm64/steamwebhelper" ]; then
+         (
+           client=$$ wh=$STEAM_X64/steamrt64/steamwebhelper.sh
+           base=$(printf '#!/bin/sh\nexec /usr/local/bin/bannerlator-x64-arm-webhelper "$@"\n#')
+           size= want=
+           while kill -0 "$client" 2>/dev/null; do
+             if [ -f "$wh" ] && ! grep -q bannerlator-x64-arm-webhelper "$wh" 2>/dev/null; then
+               size=$(stat -c %s "$wh") want=
+               pad=$((size - ${#base} - 1))
+               [ "$pad" -ge 0 ] && want=$base$(printf '%*s' "$pad" '' | tr ' ' '-')
+             fi
+             if [ -n "$want" ] && [ "$(cat "$wh" 2>/dev/null)" != "$want" ]; then
+               printf '%s\n' "$want" > "$wh.new" && chmod 755 "$wh.new" && mv -f "$wh.new" "$wh"
+             fi
+             sleep 1
+           done
+         ) &
+       fi ;;
+  esac
+  exec "${BL_FEX:-/usr/local/bin/FEX}" "$STEAM_X64/steamrt64/steam" "$@"
+}
+
+case "${1:-}" in
+  --prepare) x64_prepare; exit 0 ;;
+  --exec) shift; x64_exec "$@" ;;
+  --gpu) x64_gpu; exit $? ;;
+  --default-tool) x64_default_tool; exit 0 ;;
+esac
+
+# --- standalone (the desktop menu entry) ------------------------------------------------------
+# --- one client at a time ----------------------------------------------------------------------
+if pgrep -f 'steamrtarm64/steam( |$)' >/dev/null 2>&1; then
+  step "shutting down the arm64 client first"
+  "$ARM_STEAM/steamrtarm64/steam" -shutdown >/dev/null 2>&1 || true
+  for _ in $(seq 1 30); do pgrep -f 'steamrtarm64/steam( |$)' >/dev/null 2>&1 || break; sleep 1; done
+fi
+x64_prepare
+step "FEX, rootfs and client ready"
+# BL_FEXSERVER_LOG: a FEXServer of our own in the foreground, logging there - every FEX process that
+# logs to "server" (FEX_OUTPUTLOG, or an AppConfig) then has its lines tagged with its pid.
+if [ -n "${BL_FEXSERVER_LOG:-}" ]; then
+  FEX_ROOTFS=$ROOTFS "$(dirname "${BL_FEX:-/usr/local/bin/FEX}")/FEXServer" -f -p 600 >"$BL_FEXSERVER_LOG" 2>&1 &
+  sleep 1
+fi
+# --- what bannerlator-session gives the arm64 client ---------------------------------------
+# The client's connection header and Settings > Internet come from NetworkManager on the SYSTEM
+# bus; without them it shows no connection while downloads run. Same bus config and stand-in as the
+# session, started here when no system bus is up (a desktop has none), stopped with the client.
+x64_bus= x64_nm= x64_pin=
+x64_cleanup() {
+  [ -n "$x64_pin" ] && kill "$x64_pin" 2>/dev/null
+  [ -n "$x64_nm" ] && kill "$x64_nm" 2>/dev/null
+  [ -n "$x64_bus" ] && kill "$x64_bus" 2>/dev/null
+  return 0
+}
+trap x64_cleanup EXIT
+if ! pgrep -f 'dbus-daemon --config-file=/usr/local/share/bannerlator/system-bus.conf' >/dev/null 2>&1 \
+   && command -v dbus-daemon >/dev/null 2>&1 && command -v bannerlator-netmanager >/dev/null 2>&1; then
+  mkdir -p /run/dbus /usr/local/share/bannerlator
+  cat > /usr/local/share/bannerlator/system-bus.conf <<'BUSCONF'
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>system</type>
+  <listen>unix:path=/run/dbus/system_bus_socket</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow user="*"/>
+    <allow own="*"/>
+    <allow send_destination="*"/>
+    <allow receive_sender="*"/>
+  </policy>
+</busconfig>
+BUSCONF
+  rm -f /run/dbus/system_bus_socket
+  dbus-daemon --config-file=/usr/local/share/bannerlator/system-bus.conf --nofork --nopidfile &
+  x64_bus=$!
+  for _ in $(seq 1 50); do [ -S /run/dbus/system_bus_socket ] && break; sleep 0.1; done
+  if [ -S /run/dbus/system_bus_socket ]; then
+    bannerlator-netmanager &
+    x64_nm=$!
+    step "network: system bus up, NetworkManager stand-in running"
+  else
+    step "network: the system bus did not come up; the client will show no connection"
+  fi
+fi
+# What a killed client leaves behind: .crash opens the update UI on its spinner, stale htmlcache
+# Singleton* locks can leave the UI blank (as in bannerlator-session).
+if ! pgrep -f 'steamrt64/steam( |$)' >/dev/null 2>&1; then
+  for f in "$STEAM_X64/.crash" "$STEAM_X64/steam.pid" "$STEAM_X64/config/htmlcache/SingletonLock" \
+           "$STEAM_X64/config/htmlcache/SingletonCookie" "$STEAM_X64/config/htmlcache/SingletonSocket"; do
+    { [ -e "$f" ] || [ -L "$f" ]; } && rm -f "$f"
+  done
+fi
+# The session's CPU set for the client (BL_CLIENT_CPUS): Steam pins itself and its web helper to a
+# few cores; re-pin every 5 s as the session does for the arm64 client.
+if [ -n "${BL_CLIENT_CPUS:-}" ] && command -v taskset >/dev/null 2>&1; then
+  (
+    while sleep 5; do
+      for pid in $(ps -A -o PID,ARGS | awk '$2=="FEX" && ($3 ~ /steamrt64\/steam$/ || $3 ~ /steamwebhelper$/) {print $1}'); do
+        taskset -a -p -c "$BL_CLIENT_CPUS" "$pid" >/dev/null 2>&1
+      done
+    done
+  ) &
+  x64_pin=$!
+fi
+# BL_FEX: another FEX build for the client and everything it starts (a DEBUG_STRACE one, say).
+# Restart on request (42, as steam.sh does), at most a few times.
+for attempt in 1 2 3 4 5; do
+  # The branch on disk must match -clientbeta before every start, or the client loops on rc=42.
+  echo publicbeta > "$STEAM_X64/package/beta"
+  step "starting the x86-64 SteamRT3 client under FEX (attempt $attempt): $*"
+  rc=0
+  if [ "${BL_X64_X86_WEBHELPER:-0}" != 1 ] || { [ "${BL_X64_CEF_GPU:-0}" = 1 ] && x64_gpu; }; then cef=(-cef-force-gpu -cef-ozone-platform=x11 -cef-use-gl=angle -cef-use-angle=vulkan); else cef=(-cef-disable-gpu); fi
+  ( x64_exec -clientbeta publicbeta -no-cef-sandbox "${cef[@]}" "$@" ) >>"$LOG" 2>&1 || rc=$?
+  step "client exited rc=$rc"
+  [ "$rc" = 42 ] || break
+done

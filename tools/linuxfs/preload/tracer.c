@@ -18,8 +18,10 @@
  */
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -47,9 +49,20 @@ static int is_status_path(const char *path) {
 }
 
 /* Chromium stands its hang watchdogs down when it sees a tracer, and the client's web helper does
- * not come up within their patience here: it is left reading the truth. */
-static int is_web_helper(void) {
-  return strcmp(program_invocation_short_name, "steamwebhelper") == 0;
+ * not come up within their patience here: it is left reading the truth. Chromium also traps when a
+ * status descriptor it opened turns out not to be procfs. The x86-64 client under FEX
+ * (BL_WEBHELPER_HIDE_TRACER=1, set by bannerlator-steam-x64) still needs its tier0 told: tier0
+ * reads the status, sees the tracer, and breaks into the supposed debugger with int3 on the first
+ * failed assertion - the web helper died of SIGTRAP a second after it started. There tier0's own
+ * opens (by caller) get the copy and Chromium's the real file. */
+static int is_web_helper(const void *caller) {
+  if (strcmp(program_invocation_short_name, "steamwebhelper") != 0) return 0;
+  const char *hide = getenv("BL_WEBHELPER_HIDE_TRACER");
+  Dl_info info;
+  if (hide && hide[0] == '1' && caller && dladdr(caller, &info) && info.dli_fname
+      && strstr(info.dli_fname, "libtier0_s.so"))
+    return 0;
+  return 1;
 }
 
 static int write_all(int fd, const char *data, size_t len) {
@@ -65,13 +78,13 @@ static int write_all(int fd, const char *data, size_t len) {
 
 /* The descriptor to hand back for a read-only open of a status file, or -1 with errno untouched
  * when the path is something else or the copy cannot be made, and the real open should run. */
-__attribute__((visibility("hidden"))) int bl_status_without_tracer(const char *path, int flags) {
+__attribute__((visibility("hidden"))) int bl_status_without_tracer(const char *path, int flags, const void *caller) {
   char text[STATUS_MAX];
   size_t len = 0;
   int saved = errno;
   int out = -1;
 
-  if ((flags & O_ACCMODE) != O_RDONLY || !is_status_path(path) || is_web_helper()) return -1;
+  if ((flags & O_ACCMODE) != O_RDONLY || !is_status_path(path) || is_web_helper(caller)) return -1;
   int in = (int)syscall(SYS_openat, AT_FDCWD, path, O_RDONLY | O_CLOEXEC);
   if (in < 0) goto done;
   for (;;) {

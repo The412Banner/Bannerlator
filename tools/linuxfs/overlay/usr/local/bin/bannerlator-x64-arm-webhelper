@@ -1,0 +1,27 @@
+#!/bin/bash
+# The x86-64 client's web helper (its whole UI) is the arm64 client's, run natively: both clients are
+# the same Steam build, and steamrt64/steamwebhelper.sh is pointed here (bannerlator-steam-x64) through
+# an arm64 binary, which FEX hands to the CPU. Under FEX the x86 helper could not have the GPU (its GPU
+# process needs libgbm, which FEX does not thunk) and drew on SwiftShader; this one draws with ANGLE on
+# Turnip and takes the session's preloads (KGSL poll fix, fast path), as from the arm64 client.
+x64_home=$HOME
+arm=/root/.local/share/Steam/steamrtarm64
+
+# Drop the x86 side: FEX's settings, the x86 library paths and preloads, the client's software GL.
+for v in $(compgen -e); do
+  case $v in FEX_*) unset "$v" ;; esac
+done
+unset LD_PRELOAD LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE BL_WEBHELPER_HIDE_TRACER
+# The arm64 session's GPU settings (saved by bannerlator-steam-x64 at start).
+if [ -f "$x64_home/arm-session.env" ]; then
+  eval "$(grep -E '^declare -x (VK_ICD_FILENAMES|VK_DRIVER_FILES|GALLIUM_DRIVER|MESA_LOADER_DRIVER_OVERRIDE|LIBGL_KOPPER_DRI2|TU_DEBUG|ZINK_DEBUG|ZINK_DESCRIPTORS|MESA_NO_ERROR|MESA_DISK_CACHE_DATABASE)=' "$x64_home/arm-session.env")"
+fi
+export LD_LIBRARY_PATH=$arm:$arm/panorama LIBGL_KOPPER_DISABLE=true
+
+# The client was started for a software browser; the arm64 client's helper is told what it is told.
+args=()
+for a in "$@"; do
+  case $a in --disable-gpu|--disable-gpu-compositing) ;; *) args+=("$a") ;; esac
+done
+cd "$arm" || exit 1
+exec "$arm/steamwebhelper" "${args[@]}" --ignore-gpu-blocklist

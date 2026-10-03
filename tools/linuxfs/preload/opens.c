@@ -33,7 +33,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-int bl_status_without_tracer(const char *path, int flags) __attribute__((visibility("hidden")));
+int bl_status_without_tracer(const char *path, int flags, const void *caller) __attribute__((visibility("hidden")));
 int bl_writable_retry(int dirfd, const char *path, int flags) __attribute__((visibility("hidden")));
 
 static int retry_without_noatime(int fd, int flags) {
@@ -60,7 +60,7 @@ int open(const char *path, int flags, ...) {
     errno = EACCES;
     return -1;
   }
-  if ((fd = bl_status_without_tracer(path, flags)) >= 0) return fd;
+  if ((fd = bl_status_without_tracer(path, flags, __builtin_return_address(0))) >= 0) return fd;
   if (real_open == NULL) real_open = dlsym(RTLD_NEXT, "open");
   if (real_open == NULL) {
     errno = ENOSYS;
@@ -86,7 +86,7 @@ int openat(int dirfd, const char *path, int flags, ...) {
     errno = EACCES;
     return -1;
   }
-  if ((fd = bl_status_without_tracer(path, flags)) >= 0) return fd;
+  if ((fd = bl_status_without_tracer(path, flags, __builtin_return_address(0))) >= 0) return fd;
   if (real_openat == NULL) real_openat = dlsym(RTLD_NEXT, "openat");
   if (real_openat == NULL) {
     errno = ENOSYS;

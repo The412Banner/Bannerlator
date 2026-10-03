@@ -1,20 +1,17 @@
 #!/usr/bin/python3
-# Ported from WinNative (maxjivi05, feature/wayland-gamescope e7a224ae), GPL-3.0, with thanks.
-# Renamed for this runtime; the answers themselves are his.
-#
-# Answers for NetworkManager on the runtime's system bus, for the Steam client:
-#   bannerlator-netmanager
-#
-# The client's network page and its connection indicator are built on NetworkManager. It asks for
-# one over the system bus as it starts, and without an answer it leaves out half of what its
-# interface then calls: Settings > Internet stops with "StartScanningForNetworks is not a function"
-# and the header shows no connection while downloads run.
-#
-# The network here is Android's: the app has no say in Wi-Fi, and nothing in this runtime could
-# scan or join one. So this reports what is true and no more - one connection that is up while
-# Android has a route out, under the address the app was given - and refuses what it cannot do.
+# Based on WinNative (maxjivi05, feature/wayland-gamescope e7a224ae), GPL-3.0.
+# Steam speaks NetworkManager; Android owns the radios, routes and connection. Export the
+# app's live snapshot through that API, including nearby Wi-Fi access points. Requests to
+# scan are handed to Android; Android settings still handle joining networks.
+import ipaddress
+import json
+import re
+import time
 import socket
+import struct
 import sys
+from pathlib import Path
+from xml.sax.saxutils import escape
 
 import gi
 
@@ -24,207 +21,401 @@ from gi.repository import Gio, GLib  # noqa: E402
 NAME = "org.freedesktop.NetworkManager"
 ROOT = "/org/freedesktop/NetworkManager"
 SETTINGS = ROOT + "/Settings"
-DEVICE = ROOT + "/Devices/1"
 ACTIVE = ROOT + "/ActiveConnection/1"
 IP4 = ROOT + "/IP4Config/1"
+IP6 = ROOT + "/IP6Config/1"
+AP = ROOT + "/AccessPoint/1"
 PROFILE = SETTINGS + "/1"
 UUID = "b1d0c8e4-57f0-4c0e-9d60-77696e6e6174"
-CHECK_SECONDS = 10
+SNAPSHOT = Path("/etc/bannerlator-network.json")
+SCAN_REQUEST = Path("/etc/bannerlator-wifi-scan-request")
+OBJECT_MANAGER = "org.freedesktop.DBus.ObjectManager"
+PROPERTIES = "org.freedesktop.DBus.Properties"
 
-# NetworkManager's own numbers.
-NM_STATE_DISCONNECTED, NM_STATE_CONNECTED_GLOBAL = 20, 70
-NM_CONNECTIVITY_NONE, NM_CONNECTIVITY_FULL = 1, 4
-NM_DEVICE_TYPE_ETHERNET = 1
-NM_DEVICE_STATE_DISCONNECTED, NM_DEVICE_STATE_ACTIVATED = 30, 100
-NM_ACTIVE_CONNECTION_STATE_ACTIVATED = 2
-
-INTROSPECTION = """
-<node>
-  <interface name="org.freedesktop.DBus.ObjectManager">
-    <method name="GetManagedObjects">
-      <arg type="a{oa{sa{sv}}}" direction="out"/>
-    </method>
-  </interface>
-  <interface name="org.freedesktop.NetworkManager">
-    <method name="GetPermissions"><arg type="a{ss}" direction="out"/></method>
-    <method name="CheckConnectivity"><arg type="u" direction="out"/></method>
-    <method name="GetDevices"><arg type="ao" direction="out"/></method>
-    <method name="GetAllDevices"><arg type="ao" direction="out"/></method>
-    <signal name="StateChanged"><arg type="u"/></signal>
-  </interface>
-  <interface name="org.freedesktop.NetworkManager.Settings.Connection">
-    <method name="GetSettings"><arg type="a{sa{sv}}" direction="out"/></method>
-  </interface>
-  <interface name="org.freedesktop.NetworkManager.Device">
-    <signal name="StateChanged"><arg type="u"/><arg type="u"/><arg type="u"/></signal>
-  </interface>
-</node>
-"""
-
-
-def address():
-    """The address Android routes out by, or None without a route. Nothing is sent."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("192.0.2.1", 9))
-            return s.getsockname()[0]
-    except OSError:
-        return None
+METHODS = {
+    OBJECT_MANAGER: '''
+      <method name="GetManagedObjects"><arg type="a{oa{sa{sv}}}" direction="out"/></method>
+      <signal name="InterfacesAdded"><arg type="o"/><arg type="a{sa{sv}}"/></signal>
+      <signal name="InterfacesRemoved"><arg type="o"/><arg type="as"/></signal>''',
+    NAME: '''
+      <method name="GetPermissions"><arg type="a{ss}" direction="out"/></method>
+      <method name="CheckConnectivity"><arg type="u" direction="out"/></method>
+      <method name="GetDevices"><arg type="ao" direction="out"/></method>
+      <method name="GetAllDevices"><arg type="ao" direction="out"/></method>
+      <signal name="StateChanged"><arg type="u"/></signal>''',
+    NAME + ".Settings": '<method name="ListConnections"><arg type="ao" direction="out"/></method>',
+    NAME + ".Settings.Connection": '<method name="GetSettings"><arg type="a{sa{sv}}" direction="out"/></method><signal name="Updated"/>',
+    NAME + ".Device": '<signal name="StateChanged"><arg type="u"/><arg type="u"/><arg type="u"/></signal>',
+    NAME + ".Device.Wireless": '''
+      <method name="GetAccessPoints"><arg type="ao" direction="out"/></method>
+      <method name="GetAllAccessPoints"><arg type="ao" direction="out"/></method>
+      <method name="RequestScan"><arg type="a{sv}" direction="in"/></method>
+      <signal name="AccessPointAdded"><arg type="o"/></signal>
+      <signal name="AccessPointRemoved"><arg type="o"/></signal>''',
+}
 
 
 def v(signature, value):
     return GLib.Variant(signature, value)
 
 
-def objects(ip):
-    """Every object NetworkManager would export, as its ObjectManager describes them."""
-    up = ip is not None
+def read_snapshot():
+    # Atomic replacement by the app means we never see a partially written handover.
+    try:
+        state = json.loads(SNAPSHOT.read_text())
+        if not isinstance(state, dict) or not isinstance(state.get("connected"), bool):
+            return None
+        return state
+    except (OSError, ValueError):
+        return None
+
+
+def legacy_snapshot():
+    # Older APKs do not publish transport metadata. Never guess Wi-Fi from an interface name.
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.0.2.1", 9))
+            ip = sock.getsockname()[0]
+        return {"connected": True, "transport": "ethernet", "addresses": [{"address": ip, "prefix": 32}]}
+    except OSError:
+        return {"connected": False, "transport": "none"}
+
+
+def connection_type(state):
+    return {"wifi": "802-11-wireless", "cellular": "gsm", "ethernet": "802-3-ethernet",
+            "vpn": "tun"}.get(state.get("transport"), "generic")
+
+
+def device_path(state):
+    transport = state.get("transport", "none")
+    if not state["connected"] and state.get("wifiEnabled"):
+        transport = "wifi"
+    return ROOT + "/Devices/" + {"wifi": "Wifi", "cellular": "Cellular", "ethernet": "Ethernet",
+                                 "vpn": "Vpn"}.get(transport, "Android")
+
+
+def connection_name(state):
+    return {"wifi": state.get("ssid") or "Wi-Fi", "cellular": "Cellular", "ethernet": "Ethernet",
+            "vpn": "VPN"}.get(state.get("transport"), "Android")
+
+
+def connectivity(state):
+    if not state["connected"]:
+        return 1  # NONE
+    if state.get("validated"):
+        return 4  # FULL
+    return 2 if state.get("captivePortal") else 3  # PORTAL / LIMITED
+
+
+def metered(state):
+    return {True: 1, False: 2}.get(state.get("metered"), 0)
+
+
+def family_addresses(state, version):
+    return [entry for entry in state.get("addresses", [])
+            if ipaddress.ip_address(entry["address"]).version == version]
+
+
+def ip_config(state, version):
+    entries = family_addresses(state, version)
+    gateways = [ip for ip in state.get("gateways", []) if ipaddress.ip_address(ip).version == version]
+    dns = [ip for ip in state.get("dns", []) if ipaddress.ip_address(ip).version == version]
+    gateway = gateways[0] if gateways else ""
+    props = {
+        "AddressData": v("aa{sv}", [{"address": v("s", a["address"]), "prefix": v("u", a["prefix"])} for a in entries]),
+        "Gateway": v("s", gateway), "RouteData": v("aa{sv}", []),
+        "Domains": v("as", []), "Searches": v("as", []), "DnsOptions": v("as", []), "DnsPriority": v("i", 0),
+    }
+    if version == 4:
+        native = lambda ip: struct.unpack("=I", socket.inet_aton(ip))[0]
+        props.update({
+            "Addresses": v("aau", [[native(a["address"]), a["prefix"], native(gateway) if gateway else 0] for a in entries]),
+            "Routes": v("aau", []),
+            "NameserverData": v("aa{sv}", [{"address": v("s", ip)} for ip in dns]),
+            "Nameservers": v("au", [native(ip) for ip in dns]),
+            "WinsServerData": v("as", []), "WinsServers": v("au", []),
+        })
+    else:
+        packed = lambda ip: list(socket.inet_pton(socket.AF_INET6, ip))
+        props.update({
+            "Addresses": v("a(ayuay)", [(packed(a["address"]), a["prefix"], packed(gateway) if gateway else [0] * 16) for a in entries]),
+            "Routes": v("a(ayuayu)", []), "Nameservers": v("aay", [packed(ip) for ip in dns]),
+        })
+    return props
+
+
+def ap_path(bssid):
+    if bssid and re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", bssid):
+        return ROOT + "/AccessPoint/" + bssid.replace(":", "").lower()
+    return AP
+
+
+def active_ap(state):
+    return ap_path(state.get("bssid")) if state["connected"] and state.get("transport") == "wifi" else "/"
+
+
+def ap_security(capabilities):
+    # NetworkManager's cipher/key-management flags, from Android's beacon capabilities.
+    wpa = rsn = 0
+    for group in re.findall(r"\[([^]]+)\]", capabilities.upper()):
+        flags = 0
+        if "CCMP" in group:
+            flags |= 0x08 | 0x80
+        if "TKIP" in group:
+            flags |= 0x04 | 0x40
+        if "PSK" in group:
+            flags |= 0x100
+        if "EAP" in group:
+            flags |= 0x200
+        if "SAE" in group:
+            flags |= 0x400
+        if "OWE" in group:
+            flags |= 0x800
+        if "WPA2" in group or "RSN" in group or "SAE" in group or "OWE" in group:
+            rsn |= flags
+        elif "WPA" in group:
+            wpa |= flags
+    privacy = int(bool(wpa or rsn or "WEP" in capabilities.upper()))
+    return privacy, wpa, rsn
+
+
+def access_points(state):
+    result = {ap_path(ap.get("bssid")): dict(ap) for ap in state.get("accessPoints", []) if ap.get("ssid")}
+    if active_ap(state) != "/":
+        current = result.setdefault(active_ap(state), {})
+        for key in ("ssid", "bssid", "strength", "frequency", "bitrate"):
+            if key in state:
+                current[key] = state[key]
+        current.setdefault("ssid", "Wi-Fi")
+    return result
+
+
+def ap_properties(ap):
+    privacy, wpa, rsn = ap_security(ap.get("capabilities", ""))
+    return {
+        "Flags": v("u", privacy), "WpaFlags": v("u", wpa), "RsnFlags": v("u", rsn),
+        "Ssid": v("ay", list(ap["ssid"].encode("utf-8"))),
+        "Frequency": v("u", ap.get("frequency", 0)), "HwAddress": v("s", ap.get("bssid", "")), "Mode": v("u", 2),
+        "MaxBitrate": v("u", ap.get("bitrate", 0)),
+        "Strength": v("y", max(0, min(100, ap.get("strength", 0)))), "LastSeen": v("i", ap.get("lastSeen", -1)),
+    }
+
+
+def objects(state):
+    device = device_path(state)
+    aps = access_points(state)
+    current_ap = active_ap(state)
+    up = state["connected"]
+    transport = state.get("transport", "none")
+    wifi = transport == "wifi" or (not up and state.get("wifiEnabled", False))
+    cellular = transport == "cellular"
+    kind = connection_type(state)
+    ip4 = up and bool(family_addresses(state, 4))
+    ip6 = up and bool(family_addresses(state, 6))
+    device_state = 100 if up else 30
     found = {
         ROOT: {NAME: {
-            "Devices": v("ao", [DEVICE]),
-            "AllDevices": v("ao", [DEVICE]),
+            "Devices": v("ao", [device]), "AllDevices": v("ao", [device]),
             "ActiveConnections": v("ao", [ACTIVE] if up else []),
             "PrimaryConnection": v("o", ACTIVE if up else "/"),
-            "PrimaryConnectionType": v("s", "802-3-ethernet" if up else ""),
-            "ActivatingConnection": v("o", "/"),
+            "PrimaryConnectionType": v("s", kind if up else ""), "ActivatingConnection": v("o", "/"),
             "NetworkingEnabled": v("b", True),
-            "WirelessEnabled": v("b", False),
-            "WirelessHardwareEnabled": v("b", False),
-            "WwanEnabled": v("b", False),
-            "WwanHardwareEnabled": v("b", False),
-            "Startup": v("b", False),
-            "Version": v("s", "1.46.0"),
-            "State": v("u", NM_STATE_CONNECTED_GLOBAL if up else NM_STATE_DISCONNECTED),
-            "Connectivity": v("u", NM_CONNECTIVITY_FULL if up else NM_CONNECTIVITY_NONE),
-            "ConnectivityCheckAvailable": v("b", False),
-            "ConnectivityCheckEnabled": v("b", False),
-            "Metered": v("u", 0),
+            "WirelessEnabled": v("b", bool(state.get("wifiEnabled", wifi))),
+            "WirelessHardwareEnabled": v("b", bool(state.get("wifiEnabled", wifi))),
+            "WwanEnabled": v("b", cellular), "WwanHardwareEnabled": v("b", cellular),
+            "Startup": v("b", False), "Version": v("s", "1.46.0"),
+            "State": v("u", (70 if state.get("validated") else 60) if up else 20),
+            "Connectivity": v("u", connectivity(state)),
+            "ConnectivityCheckAvailable": v("b", False), "ConnectivityCheckEnabled": v("b", False),
+            "Metered": v("u", metered(state)),
         }},
         SETTINGS: {NAME + ".Settings": {
-            "Connections": v("ao", [PROFILE]),
-            "Hostname": v("s", socket.gethostname()),
-            "CanModify": v("b", False),
+            "Connections": v("ao", [PROFILE]), "Hostname": v("s", socket.gethostname()), "CanModify": v("b", False),
         }},
         PROFILE: {NAME + ".Settings.Connection": {
-            "Unsaved": v("b", False),
-            "Flags": v("u", 0),
-            "Filename": v("s", ""),
+            "Unsaved": v("b", True), "Flags": v("u", 0), "Filename": v("s", ""),
         }},
-        DEVICE: {
-            NAME + ".Device": {
-                "Interface": v("s", "android"),
-                "IpInterface": v("s", "android" if up else ""),
-                "Driver": v("s", "android"),
-                "DeviceType": v("u", NM_DEVICE_TYPE_ETHERNET),
-                "State": v("u", NM_DEVICE_STATE_ACTIVATED if up else NM_DEVICE_STATE_DISCONNECTED),
-                "StateReason": v("(uu)", (NM_DEVICE_STATE_ACTIVATED if up else NM_DEVICE_STATE_DISCONNECTED, 0)),
-                "ActiveConnection": v("o", ACTIVE if up else "/"),
-                "Ip4Config": v("o", IP4 if up else "/"),
-                "Ip6Config": v("o", "/"),
-                "Dhcp4Config": v("o", "/"),
-                "Dhcp6Config": v("o", "/"),
-                "AvailableConnections": v("ao", [PROFILE]),
-                "Managed": v("b", True),
-                "Autoconnect": v("b", True),
-                "Real": v("b", True),
-                "Capabilities": v("u", 1),
-                "Mtu": v("u", 1500),
-                "HwAddress": v("s", ""),
-            },
-            NAME + ".Device.Wired": {
-                "HwAddress": v("s", ""),
-                "PermHwAddress": v("s", ""),
-                "Speed": v("u", 0),
-                "Carrier": v("b", up),
-            },
-        },
+        device: {NAME + ".Device": {
+            "Interface": v("s", state.get("interface", "android")),
+            "IpInterface": v("s", state.get("interface", "android") if up else ""),
+            "Driver": v("s", "android"),
+            "DeviceType": v("u", 2 if wifi else 8 if cellular else {"ethernet": 1, "vpn": 16}.get(transport, 14)),
+            "State": v("u", device_state), "StateReason": v("(uu)", (device_state, 0)),
+            "ActiveConnection": v("o", ACTIVE if up else "/"),
+            "Ip4Config": v("o", IP4 if ip4 else "/"), "Ip6Config": v("o", IP6 if ip6 else "/"),
+            "Dhcp4Config": v("o", "/"), "Dhcp6Config": v("o", "/"),
+            "AvailableConnections": v("ao", [PROFILE]), "Managed": v("b", True),
+            "Autoconnect": v("b", False), "Real": v("b", True), "Capabilities": v("u", 1),
+            "Mtu": v("u", state.get("mtu", 1500)), "HwAddress": v("s", ""), "Metered": v("u", metered(state)),
+        }},
     }
+    if wifi:
+        found[device][NAME + ".Device.Wireless"] = {
+            "HwAddress": v("s", ""), "PermHwAddress": v("s", ""), "Mode": v("u", 2),
+            "Bitrate": v("u", state.get("bitrate", 0)), "WirelessCapabilities": v("u", 0),
+            "AccessPoints": v("ao", list(aps)), "ActiveAccessPoint": v("o", current_ap),
+            "LastScan": v("x", state.get("lastScan", -1)),
+        }
+        for path, ap in aps.items():
+            found[path] = {NAME + ".AccessPoint": ap_properties(ap)}
+    elif cellular:
+        found[device][NAME + ".Device.Modem"] = {
+            "ModemCapabilities": v("u", 4), "CurrentCapabilities": v("u", 4),
+            "DeviceId": v("s", "android"), "OperatorCode": v("s", ""), "Apn": v("s", ""),
+        }
+    elif transport == "ethernet":
+        found[device][NAME + ".Device.Wired"] = {
+            "HwAddress": v("s", ""), "PermHwAddress": v("s", ""), "Speed": v("u", 0), "Carrier": v("b", up),
+        }
     if up:
         found[ACTIVE] = {NAME + ".Connection.Active": {
-            "Connection": v("o", PROFILE),
-            "SpecificObject": v("o", "/"),
-            "Id": v("s", "Android"),
-            "Uuid": v("s", UUID),
-            "Type": v("s", "802-3-ethernet"),
-            "Devices": v("ao", [DEVICE]),
-            "State": v("u", NM_ACTIVE_CONNECTION_STATE_ACTIVATED),
-            "StateFlags": v("u", 0),
-            "Default": v("b", True),
-            "Ip4Config": v("o", IP4),
-            "Dhcp4Config": v("o", "/"),
-            "Default6": v("b", False),
-            "Ip6Config": v("o", "/"),
-            "Dhcp6Config": v("o", "/"),
-            "Vpn": v("b", False),
-            "Master": v("o", "/"),
+            "Connection": v("o", PROFILE), "SpecificObject": v("o", current_ap),
+            "Id": v("s", connection_name(state)), "Uuid": v("s", UUID), "Type": v("s", kind),
+            "Devices": v("ao", [device]), "State": v("u", 2), "StateFlags": v("u", 0),
+            "Default": v("b", ip4), "Default6": v("b", ip6),
+            "Ip4Config": v("o", IP4 if ip4 else "/"), "Ip6Config": v("o", IP6 if ip6 else "/"),
+            "Dhcp4Config": v("o", "/"), "Dhcp6Config": v("o", "/"), "Vpn": v("b", False), "Master": v("o", "/"),
         }}
-        found[IP4] = {NAME + ".IP4Config": {
-            # The one address the app can see; the prefix says only that much is known.
-            "AddressData": v("aa{sv}", [{"address": v("s", ip), "prefix": v("u", 32)}]),
-            "Addresses": v("aau", []),
-            "Gateway": v("s", ""),
-            "RouteData": v("aa{sv}", []),
-            "Routes": v("aau", []),
-            "NameserverData": v("aa{sv}", []),
-            "Nameservers": v("au", []),
-            "Domains": v("as", []),
-            "Searches": v("as", []),
-            "DnsOptions": v("as", []),
-            "DnsPriority": v("i", 0),
-            "WinsServerData": v("as", []),
-            "WinsServers": v("au", []),
-        }}
+        for version, present, path in ((4, ip4, IP4), (6, ip6, IP6)):
+            if present:
+                found[path] = {NAME + f".IP{version}Config": ip_config(state, version)}
+    if up and not wifi and state.get("wifiEnabled"):
+        # Android can keep its Wi-Fi radio available while cellular/VPN is the default route.
+        wireless = objects(dict(state, connected=False, transport="none",
+                                interface=state.get("wifiInterface", "wlan0"), metered=None))
+        wifi_device = ROOT + "/Devices/Wifi"
+        found[wifi_device] = wireless[wifi_device]
+        found[wifi_device][NAME + ".Device"]["AvailableConnections"] = v("ao", [])
+        for path, interfaces in wireless.items():
+            if NAME + ".AccessPoint" in interfaces:
+                found[path] = interfaces
+        found[ROOT][NAME]["Devices"] = v("ao", [device, wifi_device])
+        found[ROOT][NAME]["AllDevices"] = v("ao", [device, wifi_device])
     return found
+
+
+def settings(state):
+    result = {"connection": {
+        "id": v("s", connection_name(state)), "uuid": v("s", UUID), "type": v("s", connection_type(state)),
+        "interface-name": v("s", state.get("interface", "android")), "metered": v("u", metered(state)),
+    }}
+    if state.get("transport") == "wifi":
+        result["802-11-wireless"] = {
+            "ssid": v("ay", list((state.get("ssid") or "Wi-Fi").encode("utf-8"))), "mode": v("s", "infrastructure"),
+        }
+    elif state.get("transport") == "cellular":
+        result["gsm"] = {}  # Android owns the SIM/APN; no credentials are exported.
+    return result
+
+
+def interface_info(interface, values):
+    # Register properties on the actual objects as well as returning ObjectManager snapshots.
+    # Steam/libnm also use Properties.Get/GetAll and introspect the wireless methods.
+    props = "".join(f'<property name="{escape(key)}" type="{value.get_type_string()}" access="read"/>'
+                    for key, value in values.items())
+    node = Gio.DBusNodeInfo.new_for_xml(f'<node><interface name="{interface}">{METHODS.get(interface, "")}{props}</interface></node>')
+    return node.interfaces[0]
 
 
 class NetworkManager:
     def __init__(self, bus):
         self.bus = bus
-        self.ip = address()
-        node = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION)
-        manager, root, profile, device = node.interfaces
-        for path, interface in (("/org/freedesktop", manager), (ROOT, root), (PROFILE, profile), (DEVICE, device)):
-            bus.register_object_with_closures2(path, interface, self.call, None, None)
-        GLib.timeout_add_seconds(CHECK_SECONDS, self.check)
+        self.state = read_snapshot() or legacy_snapshot()
+        self.objects = objects(self.state)
+        self.registrations = {}
+        for path in ("/org/freedesktop", ROOT):
+            bus.register_object(path, interface_info(OBJECT_MANAGER, {}), self.call, None, None)
+        self.register(self.objects)
+        GLib.timeout_add_seconds(1, self.check)
+
+    def register(self, found):
+        wanted = {(path, interface) for path, interfaces in found.items() for interface in interfaces}
+        for key in self.registrations.keys() - wanted:
+            self.bus.unregister_object(self.registrations.pop(key))
+        for path, interface in wanted - self.registrations.keys():
+            self.registrations[(path, interface)] = self.bus.register_object(
+                path, interface_info(interface, found[path][interface]), self.call, self.get_property, None)
+
+    def get_property(self, bus, sender, path, interface, name):
+        return self.objects.get(path, {}).get(interface, {}).get(name)
 
     def call(self, bus, sender, path, interface, method, args, invocation):
         if method == "GetManagedObjects":
-            invocation.return_value(v("(a{oa{sa{sv}}})", (objects(self.ip),)))
+            invocation.return_value(v("(a{oa{sa{sv}}})", (self.objects,)))
         elif method == "GetPermissions":
             invocation.return_value(v("(a{ss})", ({},)))
         elif method == "CheckConnectivity":
             self.check()
-            invocation.return_value(v("(u)", (NM_CONNECTIVITY_FULL if self.ip else NM_CONNECTIVITY_NONE,)))
+            invocation.return_value(v("(u)", (connectivity(self.state),)))
         elif method == "GetSettings":
-            # The name the client shows the connection under.
-            invocation.return_value(v("(a{sa{sv}})", ({"connection": {
-                "id": v("s", "Android"), "uuid": v("s", UUID), "type": v("s", "802-3-ethernet")}},)))
+            invocation.return_value(v("(a{sa{sv}})", (settings(self.state),)))
+        elif method == "ListConnections":
+            invocation.return_value(v("(ao)", ([PROFILE],)))
+        elif method in ("GetAccessPoints", "GetAllAccessPoints"):
+            invocation.return_value(v("(ao)", (self.objects[path][NAME + ".Device.Wireless"]["AccessPoints"].unpack(),)))
+        elif method == "RequestScan":
+            if self.state.get("scanAllowed") is False:
+                invocation.return_dbus_error(NAME + ".Device.NotAllowed", "Wi-Fi discovery requires Android Location permission and enabled Location services")
+                return
+            try:
+                SCAN_REQUEST.write_text(str(time.monotonic_ns()))
+            except OSError:
+                invocation.return_dbus_error(NAME + ".Device.Failed", "Could not request an Android Wi-Fi scan")
+                return
+            self.check()
+            invocation.return_value(v("()", ()))
+        elif method in ("GetDevices", "GetAllDevices"):
+            invocation.return_value(v("(ao)", (self.objects[ROOT][NAME]["Devices"].unpack(),)))
         else:
-            invocation.return_value(v("(ao)", ([DEVICE],)))
+            invocation.return_dbus_error(NAME + ".NotSupported", "Manage this connection in Android settings")
 
     def check(self):
-        """Tells the bus when Android gains or loses its route, as NetworkManager would."""
-        ip = address()
-        if (ip is None) != (self.ip is None) or (ip and ip != self.ip):
-            before, after = objects(self.ip), objects(ip)
-            self.ip = ip
-            for path in before.keys() - after.keys():
-                self.announce("InterfacesRemoved", path, v("(oas)", (path, list(before[path]))))
-            for path in after.keys() - before.keys():
-                self.announce("InterfacesAdded", path, v("(oa{sa{sv}})", (path, after[path])))
-            for path in after.keys() & before.keys():
-                for interface, values in after[path].items():
-                    self.bus.emit_signal(None, path, "org.freedesktop.DBus.Properties", "PropertiesChanged",
-                                         v("(sa{sv}as)", (interface, values, [])))
-            state = after[ROOT][NAME]["State"].unpack()
-            device = after[DEVICE][NAME + ".Device"]["State"].unpack()
-            was = before[DEVICE][NAME + ".Device"]["State"].unpack()
-            self.bus.emit_signal(None, ROOT, NAME, "StateChanged", v("(u)", (state,)))
-            self.bus.emit_signal(None, DEVICE, NAME + ".Device", "StateChanged", v("(uuu)", (device, was, 0)))
+        state = read_snapshot()
+        if state is None:
+            return True  # A transient read failure must not replace a known link with Ethernet.
+        if state == self.state:
+            return True
+        before, after = self.objects, objects(state)
+        old_state = self.state
+        self.state, self.objects = state, after
+        self.register(after)
+        for path in before.keys() | after.keys():
+            removed = before.get(path, {}).keys() - after.get(path, {}).keys()
+            added = after.get(path, {}).keys() - before.get(path, {}).keys()
+            if removed:
+                self.announce("InterfacesRemoved", v("(oas)", (path, list(removed))))
+            if added:
+                self.announce("InterfacesAdded", v("(oa{sa{sv}})", (path, {i: after[path][i] for i in added})))
+            for interface in before.get(path, {}).keys() & after.get(path, {}).keys():
+                changed = {k: value for k, value in after[path][interface].items() if value != before[path][interface].get(k)}
+                if changed:
+                    self.bus.emit_signal(None, path, PROPERTIES, "PropertiesChanged", v("(sa{sv}as)", (interface, changed, [])))
+        wifi_device = ROOT + "/Devices/Wifi"
+        wireless = NAME + ".Device.Wireless"
+        old_aps = before.get(wifi_device, {}).get(wireless, {}).get("AccessPoints", v("ao", [])).unpack()
+        new_aps = after.get(wifi_device, {}).get(wireless, {}).get("AccessPoints", v("ao", [])).unpack()
+        if wifi_device in after:
+            for path in set(old_aps) - set(new_aps):
+                self.bus.emit_signal(None, wifi_device, wireless, "AccessPointRemoved", v("(o)", (path,)))
+            for path in set(new_aps) - set(old_aps):
+                self.bus.emit_signal(None, wifi_device, wireless, "AccessPointAdded", v("(o)", (path,)))
+        was = before[ROOT][NAME]["State"]
+        now = after[ROOT][NAME]["State"]
+        if now != was:
+            self.bus.emit_signal(None, ROOT, NAME, "StateChanged", v("(u)", (now.unpack(),)))
+        device = device_path(state)
+        if device in before:
+            was = before[device][NAME + ".Device"]["State"]
+            now = after[device][NAME + ".Device"]["State"]
+            if now != was:
+                self.bus.emit_signal(None, device, NAME + ".Device", "StateChanged", v("(uuu)", (now.unpack(), was.unpack(), 0)))
+        if settings(old_state) != settings(state):
+            self.bus.emit_signal(None, PROFILE, NAME + ".Settings.Connection", "Updated", v("()", ()))
         return True
 
-    def announce(self, signal, path, body):
-        self.bus.emit_signal(None, "/org/freedesktop", "org.freedesktop.DBus.ObjectManager", signal, body)
+    def announce(self, signal, body):
+        for path in ("/org/freedesktop", ROOT):
+            self.bus.emit_signal(None, path, OBJECT_MANAGER, signal, body)
 
 
 def main():
@@ -243,6 +434,7 @@ def main():
         loop.run()
     except KeyboardInterrupt:
         pass  # the session's teardown; nothing to say
+
 
 if __name__ == "__main__":
     main()

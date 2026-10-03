@@ -155,6 +155,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -6248,6 +6249,142 @@ internal fun perfExtraOrNull(value: Boolean, global: Boolean): String? =
     if (value == global) null else if (value) "1" else "0"
 
 /** A per-game perf toggle row with an override/inherit indicator and a per-toggle Reset. */
+/**
+ * The Linux runtime's optional Wi-Fi discovery ([com.winlator.star.linux.WifiDiscovery]): Steam's network
+ * page lists Android's Wi-Fi networks and can ask for scans. Android gates both behind Location, so
+ * it is requested only after the explanation, and only when the user turns the switch on. App-wide
+ * and saved at once - the grant is the app's, and a running session picks it up within a second.
+ * Port of DroidDeck's Steam settings row (Droid-Deck/DroidDeck #150).
+ */
+@Stable
+private class WifiDiscoveryUi {
+    var enabled by mutableStateOf(false)
+    var permission by mutableStateOf(false)
+    var location by mutableStateOf(false)
+    var asked by mutableStateOf(false)
+    /** Denied with no rationale left: only Android's app settings can grant it now. */
+    var blocked by mutableStateOf(false)
+    var explain by mutableStateOf(false)
+    var turnOn: () -> Unit = {}
+    var turnOff: () -> Unit = {}
+    var openLocationSettings: () -> Unit = {}
+    val showLocationSettings get() = enabled && !location
+}
+
+@Composable
+private fun rememberWifiDiscoveryUi(): WifiDiscoveryUi {
+    val context = LocalContext.current
+    val ui = remember { WifiDiscoveryUi() }
+    val refresh = {
+        val wd = com.winlator.star.linux.WifiDiscovery
+        val activity = context.findActivity()
+        ui.permission = wd.permissionGranted(context)
+        ui.location = wd.locationEnabled(context)
+        ui.asked = wd.asked(context)
+        ui.blocked = !ui.permission && ui.asked && activity != null &&
+            wd.permissions.none { activity.shouldShowRequestPermissionRationale(it) }
+        // A revoked grant must not leave an enabled switch behind.
+        if (!ui.permission && wd.enabled(context)) wd.setEnabled(context, false)
+        ui.enabled = wd.enabled(context)
+    }
+    // Both return paths only ever follow the user turning the switch on, so a grant opts them in.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        com.winlator.star.linux.WifiDiscovery.setEnabled(context, com.winlator.star.linux.WifiDiscovery.permissionGranted(context))
+        refresh()
+    }
+    val appSettingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        com.winlator.star.linux.WifiDiscovery.setEnabled(context, com.winlator.star.linux.WifiDiscovery.permissionGranted(context))
+        refresh()
+    }
+    ui.turnOn = {
+        val wd = com.winlator.star.linux.WifiDiscovery
+        when {
+            wd.permissionGranted(context) -> { wd.setEnabled(context, true); refresh() }
+            ui.blocked -> appSettingsLauncher.launch(
+                Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:" + context.packageName))
+            )
+            else -> { wd.setAsked(context); permissionLauncher.launch(wd.permissions) }
+        }
+    }
+    ui.turnOff = { com.winlator.star.linux.WifiDiscovery.setEnabled(context, false); refresh() }
+    ui.openLocationSettings = {
+        try {
+            context.startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+        } catch (e: android.content.ActivityNotFoundException) {
+            Toast.makeText(context, "Turn on Location in Android's settings.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    // Back from Android's settings, and Location flipped from the quick settings while this is open.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, context) {
+        refresh()
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) refresh() }
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) { refresh() }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        context.registerReceiver(receiver, android.content.IntentFilter(android.location.LocationManager.MODE_CHANGED_ACTION))
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            try { context.unregisterReceiver(receiver) } catch (e: IllegalArgumentException) { }
+        }
+    }
+    return ui
+}
+
+@Composable
+private fun LinuxWifiDiscoveryRow(dp: SettingsDpad, ui: WifiDiscoveryUi) {
+    val hint = when {
+        ui.enabled && !ui.location -> "Location services are off, so Android hides Wi-Fi names."
+        !ui.permission && ui.asked -> "Location permission not granted."
+        else -> "Show Wi-Fi names and nearby networks in Steam's network settings."
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+        DpSwitch(dp, "linuxWifiDiscovery", checked = ui.enabled, onCheckedChange = { on ->
+            if (on) ui.explain = true else ui.turnOff()
+        })
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Wi-Fi discovery", fontSize = 13.sp)
+            Text(hint, fontSize = 11.sp, color = if (ui.enabled && !ui.location) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (ui.showLocationSettings) {
+            DpButton(dp, "linuxWifiDiscoverySettings", onActivate = ui.openLocationSettings) {
+                TextButton(onClick = ui.openLocationSettings) { Text("Open settings") }
+            }
+        }
+    }
+    Text(
+        "Applies to every Linux Steam entry at once, a running session included; it is not part of this entry's Save. "
+            + "Internet access works without it.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    if (ui.explain) {
+        OutlinedAlertDialog(
+            onDismissRequest = { ui.explain = false },
+            title = { Text("Enable Wi-Fi discovery?") },
+            text = {
+                Text(
+                    "Android requires Location permission to read Wi-Fi names and discover nearby networks. "
+                        + "Bannerlator uses this access only to show those networks in Steam. "
+                        + "We don't track your location. Internet access works without this permission."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { ui.explain = false; ui.turnOn() }) {
+                    Text(if (ui.blocked) "Open settings" else "Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ui.explain = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
 @Composable
 private fun PerfEditRow(dp: SettingsDpad, id: String, label: String, checked: Boolean, global: Boolean, onChange: (Boolean) -> Unit) {
     val overridden = checked != global
@@ -7288,6 +7425,7 @@ internal fun ShortcutSettingsDialogScreen(
     // The Components tab's controls come and go with what is stored and listed, which only the tab
     // knows, so it publishes its own ordered ids (ScLinuxComponentsTab) and they are spliced in here.
     var linuxComponentIds by remember { mutableStateOf(emptyList<String>()) }
+    val wifiDiscovery = rememberWifiDiscoveryUi()
     val dpadIds = buildList {
         add("titleX")
         when (selectedTab) {
@@ -7321,6 +7459,8 @@ internal fun ShortcutSettingsDialogScreen(
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_OFFLINE)
+                    add("linuxWifiDiscovery")
+                    if (wifiDiscovery.showLocationSettings) add("linuxWifiDiscoverySettings")
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_NO_XALIA)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_TU_SYSMEM)
@@ -8139,6 +8279,12 @@ internal fun ShortcutSettingsDialogScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Spacer(Modifier.height(8.dp))
+
+                            // Optional Wi-Fi discovery (linux/WifiDiscovery): app-wide and applied at once, not on Save.
+                            Text("Network", style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.height(4.dp))
+                            LinuxWifiDiscoveryRow(dp, wifiDiscovery)
                             Spacer(Modifier.height(8.dp))
                             Text("Troubleshooting", style = MaterialTheme.typography.titleSmall)
                             Spacer(Modifier.height(4.dp))

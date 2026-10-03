@@ -9622,6 +9622,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 {"usr/local/bin/bannerlator-netmanager", "usr/local/bin/bannerlator-netmanager"},
                 // login1 stand-in: Steam's idle sleep and resume (From Droid-Deck/DroidDeck #155.)
                 {"usr/local/bin/bannerlator-login1", "usr/local/bin/bannerlator-login1"},
+                // The x86-64 Steam client option (bannerlator-steam-x64), with the arm64 Proton and web
+                // helper hand-offs it runs. (From Droid-Deck/DroidDeck feat/x86-64-steam-client.)
+                {"usr/local/bin/bannerlator-steam-x64", "usr/local/bin/bannerlator-steam-x64"},
+                {"usr/local/bin/bannerlator-x64-arm-proton", "usr/local/bin/bannerlator-x64-arm-proton"},
+                {"usr/local/bin/bannerlator-x64-arm-webhelper", "usr/local/bin/bannerlator-x64-arm-webhelper"},
                 // The SteamOS helpers the client calls in Deck mode, all no-ops that answer "nothing to do".
                 // On device the client called four of them by their polkit-helpers path rather than /usr/bin, and the "Update Error" dialog was steamos-update missing there. (From The412Banner/SteamDeck.)
                 {"usr/bin/steamos-update", "usr/bin/steamos-update"},
@@ -9656,6 +9661,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (!linuxAssetPresent(path)) continue;
             String[][] withFile = java.util.Arrays.copyOf(sessionFiles, sessionFiles.length + 1);
             withFile[sessionFiles.length] = new String[]{path, path};
+            sessionFiles = withFile;
+        }
+        // The session shim and the controller reader built for x86 programs under FEX (the x86-64 Steam
+        // client and its native Linux games), each in its architecture's folder; bannerlator-steam-x64
+        // copies them into FEX's rootfs and names them in its ld.so.preload. Staged when the apk carries them.
+        String[][] x86Libraries = {
+                {"libblsession-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libblsession.so"},
+                {"libfakeinput-x86_64.so", "usr/local/lib/x86_64-linux-gnu/libfakeinput.so"},
+                {"libblsession-i386.so", "usr/local/lib/i386-linux-gnu/libblsession.so"},
+        };
+        for (String[] entry : x86Libraries) {
+            if (!linuxAssetPresent(entry[0])) continue;
+            String[][] withFile = java.util.Arrays.copyOf(sessionFiles, sessionFiles.length + 1);
+            withFile[sessionFiles.length] = entry;
             sessionFiles = withFile;
         }
         // Android has no /dev/shm; a directory under the cache stands in for it, and unlike the real

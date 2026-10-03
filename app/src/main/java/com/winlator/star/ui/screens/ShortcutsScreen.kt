@@ -6558,6 +6558,8 @@ internal fun ShortcutSettingsDialogScreen(
         mutableStateOf(shortcut.getExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL, "").let { v -> if (v in com.winlator.star.linux.LinuxTuning.STEAM_CHANNELS) v else "" })
     }
     var linuxFilter by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.filter(shortcut)) }
+    // "" the ARM64 client, "x86_64" Valve's x86-64 client under FEX (for VAC-secured servers).
+    var linuxSteamClientArch by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.steamClientArch(shortcut)) }
     // Steam client switches, mirrored in the in-game drawer's Steam client section (which saves to the same extras).
     var linuxFillScreen by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN)) }
     var linuxIdTech3 by remember { mutableStateOf(com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_IDTECH3)) }
@@ -7248,6 +7250,7 @@ internal fun ShortcutSettingsDialogScreen(
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_NO_GL_ERROR, if (linuxNoGlError) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAMDECK, if (linuxDeckMode) "1" else "0")
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL, linuxSteamChannel.ifEmpty { null })
+                putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CLIENT_ARCH, linuxSteamClientArch.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_SCALER, linuxScaler.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_FILTER, linuxFilter.ifEmpty { null })
                 putExtra(com.winlator.star.linux.LinuxTuning.EXTRA_FILL_SCREEN, if (linuxFillScreen) "1" else "0")
@@ -7310,6 +7313,7 @@ internal fun ShortcutSettingsDialogScreen(
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_NO_GL_ERROR)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAMDECK)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CHANNEL)
+                    add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CLIENT_ARCH)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_SCALER)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_FILTER)
                     add(com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_BUTTONS)
@@ -8054,6 +8058,18 @@ internal fun ShortcutSettingsDialogScreen(
                                 options = channelLabels,
                                 selected = channelLabels[com.winlator.star.linux.LinuxTuning.STEAM_CHANNELS.indexOf(linuxSteamChannel).coerceAtLeast(0)],
                                 onSelect = { linuxSteamChannel = com.winlator.star.linux.LinuxTuning.STEAM_CHANNELS[channelLabels.indexOf(it).coerceAtLeast(0)] }
+                            )
+                            // The x86-64 client runs under FEX with the ARM64 client's Protons, web helper and library:
+                            // slower to start and experimental, but its VAC module runs, so VAC-secured servers let it in.
+                            val archLabels = com.winlator.star.linux.LinuxTuning.STEAM_CLIENT_ARCHS.map {
+                                if (it.isEmpty()) "ARM64 (recommended)" else "x86-64 (FEX, experimental, for VAC servers)"
+                            }
+                            DpDrop(
+                                dp, com.winlator.star.linux.LinuxTuning.EXTRA_STEAM_CLIENT_ARCH,
+                                label = "Steam client",
+                                options = archLabels,
+                                selected = archLabels[com.winlator.star.linux.LinuxTuning.STEAM_CLIENT_ARCHS.indexOf(linuxSteamClientArch).coerceAtLeast(0)],
+                                onSelect = { linuxSteamClientArch = com.winlator.star.linux.LinuxTuning.STEAM_CLIENT_ARCHS[archLabels.indexOf(it).coerceAtLeast(0)] }
                             )
                             val scalerLabels = com.winlator.star.linux.LinuxTuning.SCALERS.map { if (it.isEmpty()) "Default" else it.replaceFirstChar(Char::uppercase) }
                             DpDrop(

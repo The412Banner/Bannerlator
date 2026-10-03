@@ -43,6 +43,20 @@ public final class LinuxTuning {
      */
     public static final String[] STEAM_CHANNELS = {"", "publicbeta", "steamdeck_publicbeta"};
 
+    /**
+     * Which Steam client the session runs: unset or "arm64" the native ARM64 client, "x86_64" Valve's
+     * x86-64 client under FEX (bannerlator-steam-x64), experimental, for what the ARM64 client cannot
+     * do - its VAC module is x86 code, so VAC-secured servers turn the ARM64 client away.
+     * (From Droid-Deck/DroidDeck feat/x86-64-steam-client.)
+     */
+    public static final String EXTRA_STEAM_CLIENT_ARCH = "linuxSteamClientArch";
+    public static final String[] STEAM_CLIENT_ARCHS = {"", "x86_64"};
+
+    /** "x86_64" when this entry runs the x86-64 client, else "" (the ARM64 one). */
+    public static String steamClientArch(Shortcut shortcut) {
+        return oneOf(shortcut, EXTRA_STEAM_CLIENT_ARCH, STEAM_CLIENT_ARCHS);
+    }
+
     /** Puts the Games tab's own games in the client's library as non-Steam shortcuts; on unless turned off. */
     public static final String EXTRA_APP_GAMES = "linuxAppGamesInSteam";
     /** Links those games' save folders to their containers' own, so both sides share progress; on unless turned off. */
@@ -238,6 +252,8 @@ public final class LinuxTuning {
         }
         guest.add("BL_STEAMDECK=" + (isOn(shortcut, EXTRA_STEAMDECK) ? "1" : "0"));
         guest.add("BL_STEAM_CHANNEL=" + steamChannel(shortcut));
+        String arch = steamClientArch(shortcut);
+        if (!arch.isEmpty()) guest.add("BL_STEAM_CLIENT_ARCH=" + arch);
         // The session script checks these against the same lists before gamescope sees them.
         String sc = scaler(shortcut);
         if (!sc.isEmpty()) guest.add("BL_SCALER=" + sc);
@@ -277,6 +293,8 @@ public final class LinuxTuning {
         String chosen = oneOf(shortcut, EXTRA_STEAM_CHANNEL, STEAM_CHANNELS);
         b.append(String.format("%-24s", "Client update channel")).append(steamChannel(shortcut))
          .append(chosen.isEmpty() ? " (follows Deck mode)" : "").append('\n');
+        b.append(String.format("%-24s", "Steam client")).append(steamClientArch(shortcut).isEmpty()
+                ? "ARM64" : "x86-64 (FEX)").append('\n');
         String sc = scaler(shortcut);
         b.append(String.format("%-24s", "Scaling mode")).append(sc.isEmpty() ? "(gamescope default)" : sc).append('\n');
         String fi = filter(shortcut);

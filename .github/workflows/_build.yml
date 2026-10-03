@@ -298,6 +298,28 @@ jobs:
             || { echo "::error::libblsession.so does not export $sym"; exit 1; }
         done
         ls -l "$D/libblsession.so"
+        # The same session shim and controller reader for x86 programs under FEX - the x86-64 Steam
+        # client option (bannerlator-steam-x64) and its native Linux games: the x86 client needs the
+        # System V semaphores and the pads just as the arm64 one does. Native gcc on this x86-64
+        # runner; 32-bit (Left 4 Dead 2 and the other Source games are i386) through the i686 cross
+        # compiler, since gcc-multilib would remove the aarch64 one. The 32-bit controller reader is
+        # not built: in a game it crashed SDL's udev scan, and the pad reaches 32-bit games through
+        # the client's Steam Input. (From Droid-Deck/DroidDeck feat/x86-64-steam-client.)
+        sudo apt-get install -y -qq gcc-i686-linux-gnu >/dev/null
+        gcc -shared -fPIC -O2 -Wall -pthread \
+          -o "$D/libblsession-x86_64.so" tools/linuxfs/preload/*.c -ldl
+        strip --strip-unneeded "$D/libblsession-x86_64.so"
+        g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare -pthread -std=c++17 -static-libstdc++ -static-libgcc \
+          -Wl,--exclude-libs,ALL -o "$D/libfakeinput-x86_64.so" app/src/main/cpp/winlator/fakeinput_steam.cpp -ldl
+        strip --strip-unneeded "$D/libfakeinput-x86_64.so"
+        i686-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
+          -o "$D/libblsession-i386.so" tools/linuxfs/preload/*.c -ldl
+        i686-linux-gnu-strip --strip-unneeded "$D/libblsession-i386.so"
+        for lib in libblsession-x86_64.so libblsession-i386.so; do
+          nm -D --defined-only "$D/$lib" | awk '{print $NF}' | grep -qx semget \
+            || { echo "::error::$lib does not export semget"; exit 1; }
+        done
+        ls -l "$D"/libblsession-x86_64.so "$D"/libfakeinput-x86_64.so "$D"/libblsession-i386.so
         # The session's scripts too, so a fix in one reaches an installed runtime the same way.
         for script in tools/linuxfs/overlay/usr/local/bin/bannerlator-*; do
           install -Dm644 "$script" "$D/usr/local/bin/$(basename "$script")"

@@ -343,7 +343,12 @@ def main():
         spec.loader.exec_module(compat)
         cfg = os.path.join(steam_root, "config", "config.vdf")
         if os.path.isfile(cfg) and ours:
-            extras = compat.adopt_extras(os.path.join(steam_root, "compatibilitytools.d"))
+            # The x86-64 client's tools (BL_COMPAT_TOOL set) are bannerlator-steam-x64's own wrappers and
+            # its "Bannerlator direct" Linux tool: adopting them as Protons rewrote that one to
+            # from_oslist windows, and the client then fetched Left 4 Dead 2's Windows binaries
+            # instead of its Linux ones (device). register_default leaves local tools alone anyway.
+            extras = {} if os.environ.get("BL_COMPAT_TOOL") else \
+                compat.adopt_extras(os.path.join(steam_root, "compatibilitytools.d"))
             compat.register_default(cfg, apps=[str(unsigned(g)) for g in games], protect=extras)
             say("mapped them to %s" % compat.TOOL)
     except Exception as e:  # noqa: BLE001 - the games still show; the client falls back to the default tool

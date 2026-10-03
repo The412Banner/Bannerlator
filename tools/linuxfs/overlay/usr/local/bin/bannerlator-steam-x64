@@ -230,6 +230,8 @@ done
   # Valve's scout library runtime instead, directly under FEX; the titles below are mapped to it.
   tool=$STEAM_X64/compatibilitytools.d/bannerlator-direct
   mkdir -p "$tool"
+  # What the arm64 registrar's Proton adoption once left here (it wrapped this tool as a Proton).
+  rm -f "$tool/bannerlator-proton-wrap" "$tool/toolmanifest.vdf.bannerlator-orig"
   cat > "$tool/compatibilitytool.vdf" <<'VDF'
 "compatibilitytools"
 {
@@ -335,6 +337,7 @@ PY
     dst=$STEAM_X64/compatibilitytools.d/$name
     mkdir -p "$dst"
     : > "$dst/.bannerlator-arm64-proton"
+    rm -f "$dst/bannerlator-proton-wrap" "$dst/toolmanifest.vdf.bannerlator-orig"
     # The tool's own name and display name, as the arm64 client shows it.
     python3 - "$src/compatibilitytool.vdf" "$dst/compatibilitytool.vdf" <<'PY' || { rm -rf "$dst"; continue; }
 import re, sys

@@ -298,6 +298,11 @@ jobs:
             || { echo "::error::libblsession.so does not export $sym"; exit 1; }
         done
         ls -l "$D/libblsession.so"
+        # proot's fast path, guest side (tools/proot/fastpath): preloaded last, idle unless the session's
+        # proot carries the key.
+        aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
+          -o "$D/libblfastpath.so" tools/proot/fastpath/fastpath.c -ldl
+        aarch64-linux-gnu-strip --strip-unneeded "$D/libblfastpath.so"
         # Android's clipboard into gamescope's Xwayland (tools/linuxfs/clipboard), a guest program.
         mkdir -p "$D/usr/local/bin"
         aarch64-linux-gnu-gcc -O2 -Wall -Wextra -o "$D/usr/local/bin/bannerlator-clipboard" tools/linuxfs/clipboard/clipboard.c -ldl

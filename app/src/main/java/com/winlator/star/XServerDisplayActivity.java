@@ -9597,6 +9597,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         File noFakeInput = new File(android.os.Environment.getExternalStorageDirectory(),
                 "Download/bannerlator-no-fake-input");
         boolean fakeInputEnabled = !noFakeInput.exists();
+        // proot's fast path: only with a proot that carries it (patch 0014), never with seccomp off,
+        // and Download/bannerlator-no-fastpath leaves the session exactly as before it.
+        boolean fastPathEnabled = linuxAssetPresent("libblfastpath.so")
+                && !com.winlator.star.linux.LinuxTuning.isOn(shortcut, com.winlator.star.linux.LinuxTuning.EXTRA_PROOT_NO_SECCOMP)
+                && !new File(android.os.Environment.getExternalStorageDirectory(), com.winlator.star.linux.ProotFastPath.SWITCH).exists()
+                && com.winlator.star.linux.ProotFastPath.supportedBy(com.winlator.star.linux.LinuxRuntime.prootBinary(this));
         if (!fakeInputEnabled) {
             Log.w("XServerDisplayActivity", "controller support disabled by " + noFakeInput);
             // A Deck pad link an earlier session left would otherwise still be bound over /sys/dev/char.
@@ -9670,6 +9676,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The session shim and the controller reader built for x86 programs under FEX (the x86-64 Steam
         // client and its native Linux games), each in its architecture's folder; bannerlator-steam-x64
         // copies them into FEX's rootfs and names them in its ld.so.preload. Staged when the apk carries them.
+        if (linuxAssetPresent("libblfastpath.so")) {
+            String[][] withFastPath = java.util.Arrays.copyOf(sessionFiles, sessionFiles.length + 1);
+            withFastPath[sessionFiles.length] = new String[]{"libblfastpath.so", "usr/local/lib/libblfastpath.so"};
+            sessionFiles = withFastPath;
+        }
         if (linuxAssetPresent("usr/local/bin/bannerlator-clipboard")) {
             String[][] withFile = java.util.Arrays.copyOf(sessionFiles, sessionFiles.length + 1);
             withFile[sessionFiles.length] = new String[]{"usr/local/bin/bannerlator-clipboard", "usr/local/bin/bannerlator-clipboard"};
@@ -9720,8 +9731,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // What every process in the session preloads. The runtime image ships this naming the
         // session shim alone; the controller reader is added here, so an installed runtime gains it
         // and the off switch removes it again. Written by rename like the libraries.
+        // The fast path's library goes last, so the other preloads reach it through RTLD_NEXT.
         String preloadList = "/usr/local/lib/libblsession.so\n"
-                + (fakeInputEnabled ? "/usr/local/lib/libfakeinput.so\n" : "");
+                + (fakeInputEnabled ? "/usr/local/lib/libfakeinput.so\n" : "")
+                + (fastPathEnabled ? com.winlator.star.linux.ProotFastPath.LIBRARY + "\n" : "");
         try {
             File etc = new File(com.winlator.star.linux.LinuxRuntime.rootDir(this), "etc");
             File stagedList = new File(etc, "ld.so.preload.staged");
@@ -10003,6 +10016,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         List<String> command = com.winlator.star.linux.LinuxRuntime.command(this, imageFs, runtimeDir,
                 android.os.Environment.getExternalStorageDirectory(), gameBinds, guest);
+        // The fast path's key comes from the exact binds proot was just given; the guest is told them
+        // ahead of the script, proot the key.
+        if (fastPathEnabled) {
+            File fpRoot = com.winlator.star.linux.LinuxRuntime.rootDir(this);
+            List<String> fpBinds = com.winlator.star.linux.ProotFastPath.bindSpecs(command, guest.size());
+            String fpKey = com.winlator.star.linux.ProotFastPath.key(fpRoot, fpBinds);
+            int at = command.indexOf(com.winlator.star.linux.LinuxRuntime.SESSION_SCRIPT);
+            if (fpKey != null && at >= 0) {
+                command.addAll(at, com.winlator.star.linux.ProotFastPath.guestEnv(fpRoot, fpBinds, fpKey));
+                hostEnv.put("PROOT_FASTPATH", fpKey);
+                Log.i("XServerDisplayActivity", "proot: fast path on (" + fpBinds.size() + " binds)");
+            }
+        }
         // The device's network link, for the runtime's processes: written before the session so
         // its first process already sees it, then kept current while it runs.
         com.winlator.star.linux.LinuxNetworkLinkComponent networkLink =

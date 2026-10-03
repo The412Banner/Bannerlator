@@ -9433,7 +9433,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Without this the session is UTC and the client's clock and log timestamps are hours off
         // from the device's. (WinNative, maxjivi05, cb52935c.)
         guest.add("TZ=" + java.util.TimeZone.getDefault().getID());
-        guest.add("XDG_RUNTIME_DIR=" + runtimeDir.getPath());
+        guest.add("XDG_RUNTIME_DIR=" + com.winlator.star.linux.LinuxRuntime.GUEST_RUNTIME_DIR);
         guest.add("XDG_SESSION_TYPE=wayland");
         guest.add("WAYLAND_DISPLAY=wayland-0");
         guest.add("GAMESCOPE_FORCE_GENERAL_QUEUE=1");
@@ -9616,6 +9616,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 {"usr/local/bin/bannerlator-proton-extra", "usr/local/bin/bannerlator-proton-extra"},
                 {"usr/local/bin/bannerlator-steam-shortcuts", "usr/local/bin/bannerlator-steam-shortcuts"},
                 {"usr/local/bin/bannerlator-netmanager", "usr/local/bin/bannerlator-netmanager"},
+                // login1 stand-in: Steam's idle sleep and resume (From Droid-Deck/DroidDeck #155.)
+                {"usr/local/bin/bannerlator-login1", "usr/local/bin/bannerlator-login1"},
                 // The SteamOS helpers the client calls in Deck mode, all no-ops that answer "nothing to do".
                 // On device the client called four of them by their polkit-helpers path rather than /usr/bin, and the "Update Error" dialog was steamos-update missing there. (From The412Banner/SteamDeck.)
                 {"usr/bin/steamos-update", "usr/bin/steamos-update"},

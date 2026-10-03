@@ -1,0 +1,148 @@
+#!/usr/bin/python3
+"""Steam's login1 sleep notifications, backed by the app's session pause.
+
+Android owns device power. Suspend here asks the app to pause the guest; the
+app's resume completes PrepareForSleep(false), and with no answer from the app
+within 5 s the session resumes by itself. Steam must see this service before
+startup or it can stay black after its idle timer. (From DroidDeck #155.)
+"""
+import os
+from pathlib import Path
+import sys
+import uuid
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+NAME = "org.freedesktop.login1"
+ROOT = "/org/freedesktop/login1"
+INTERFACE = NAME + ".Manager"
+INTROSPECTION = """
+<node>
+  <interface name="org.freedesktop.login1.Manager">
+    <method name="Suspend"><arg type="b" direction="in"/></method>
+    <method name="SuspendWithFlags"><arg type="t" direction="in"/></method>
+    <method name="CanSuspend"><arg type="s" direction="out"/></method>
+    <property name="PreparingForSleep" type="b" access="read"/>
+    <signal name="PrepareForSleep"><arg type="b"/></signal>
+  </interface>
+</node>
+"""
+
+
+class LoginManager:
+    def __init__(self, bus, directory):
+        self.bus = bus
+        self.directory = Path(directory)
+        self.request = self.directory / "steam-sleep"
+        self.state = self.directory / "steam-sleep-state"
+        self.pending = None
+        self.timeout = None
+        info = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION).interfaces[0]
+        self.registration = bus.register_object(ROOT, info, self.method, self.property, None)
+        self.monitor = Gio.File.new_for_path(str(self.directory)).monitor_directory(Gio.FileMonitorFlags.NONE, None)
+        self.monitor.connect("changed", self.changed)
+
+    def property(self, connection, sender, path, interface, name):
+        if name == "PreparingForSleep":
+            return GLib.Variant("b", self.pending is not None)
+        return None
+
+    def notify(self, sleeping):
+        self.bus.emit_signal(None, ROOT, INTERFACE, "PrepareForSleep", GLib.Variant("(b)", (sleeping,)))
+        self.bus.emit_signal(None, ROOT, "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                             GLib.Variant("(sa{sv}as)", (INTERFACE, {
+                                 "PreparingForSleep": GLib.Variant("b", sleeping),
+                             }, [])))
+        self.bus.flush_sync(None)
+        print("== login1: " + ("pausing the session" if sleeping else "session resumed"), flush=True)
+
+    def method(self, connection, sender, path, interface, name, args, reply):
+        if name == "CanSuspend":
+            reply.return_value(GLib.Variant("(s)", ("yes",)))
+        elif name in ("Suspend", "SuspendWithFlags"):
+            if self.pending:
+                reply.return_dbus_error(NAME + ".OperationInProgress", "The session is already pausing")
+                return
+            self.pending = uuid.uuid4().hex
+            self.notify(True)
+            # Complete the D-Bus call before the host can freeze this service and
+            # its caller. Publishing on the next main-loop turn avoids that race.
+            reply.return_value(None)
+            self.bus.flush_sync(None)
+            GLib.idle_add(self.publish)
+
+    def publish(self):
+        try:
+            staged = self.request.with_suffix(".tmp")
+            staged.write_text(self.pending + "\n")
+            staged.replace(self.request)
+            self.timeout = GLib.timeout_add_seconds(5, self.check_ack)
+        except OSError as error:
+            print("== login1: cannot request pause: " + str(error), file=sys.stderr)
+            self.resume()
+        return False
+
+    def changed(self, monitor, file, other, event):
+        if file.get_basename() == self.state.name or (other and other.get_basename() == self.state.name):
+            self.check_state()
+
+    def read_state(self):
+        try:
+            return self.state.read_text().strip()
+        except OSError:
+            return ""
+
+    def check_state(self):
+        if self.pending and self.read_state() == self.pending + ":awake":
+            self.resume()
+
+    def check_ack(self):
+        self.timeout = None
+        if self.pending and self.read_state() != self.pending + ":paused":
+            # A missing host or a failed freeze must not strand Steam in black.
+            self.request.unlink(missing_ok=True)
+            self.resume()
+        return False
+
+    def resume(self):
+        if self.pending is None:
+            return
+        self.pending = None
+        if self.timeout is not None:
+            GLib.source_remove(self.timeout)
+            self.timeout = None
+        self.notify(False)
+
+
+def main():
+    directory = os.environ.get("BL_LAUNCH_DIR")
+    if not directory or not Path(directory).is_dir():
+        sys.exit("bannerlator-login1: no session directory")
+    ready = Path(directory) / "steam-sleep-ready"
+    ready.unlink(missing_ok=True)
+    loop = GLib.MainLoop()
+    manager = []
+
+    def connected(bus, name):
+        manager.append(LoginManager(bus, directory))
+
+    def acquired(bus, name):
+        ready.write_text("ready\n")
+
+    def lost(bus, name):
+        ready.unlink(missing_ok=True)
+        loop.quit()
+
+    owner = Gio.bus_own_name(Gio.BusType.SYSTEM, NAME, Gio.BusNameOwnerFlags.NONE, connected, acquired, lost)
+    try:
+        loop.run()
+    finally:
+        ready.unlink(missing_ok=True)
+        Gio.bus_unown_name(owner)
+
+
+if __name__ == "__main__":
+    main()

@@ -30,6 +30,13 @@ public final class LinuxRuntime {
     public static final String MODE_DESKTOP = "desktop";
     public static final String MODE_STEAM = "steam";
     public static final String MODE_RUN = "run";
+    /**
+     * Where the guest sees the session's XDG_RUNTIME_DIR. A Unix socket's path must fit in 108 bytes,
+     * and on adopted storage the app's own path (/mnt/expand/<uuid>/user/0/...) leaves the compositor's
+     * and gamescope's sockets no room, so the directory is bound here too and the guest is pointed at
+     * this. (From Droid-Deck/DroidDeck #119.)
+     */
+    public static final String GUEST_RUNTIME_DIR = "/run/bannerlator";
     /** Shortcut extra naming which of the modes above a Linux entry launches. */
     public static final String EXTRA_LINUX_MODE = "linux_mode";
     private static final String KGSL_DEVICE = "/dev/kgsl-3d0";
@@ -162,6 +169,7 @@ public final class LinuxRuntime {
         bind(cmd, context.getFilesDir().getPath());
         bind(cmd, context.getCacheDir().getPath());
         bind(cmd, runtimeDir.getPath());
+        bind(cmd, runtimeDir.getPath() + ":" + GUEST_RUNTIME_DIR);
         if (imageFs != null) bind(cmd, imageFs.getRootDir().getPath());
         if (externalStorage != null && externalStorage.isDirectory()) {
             bind(cmd, externalStorage.getPath());

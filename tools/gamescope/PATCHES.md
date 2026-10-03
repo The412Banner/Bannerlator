@@ -40,6 +40,14 @@ library list, before anything is published.
   returns to it, then focus is handed over again. `GAMESCOPE_RESTORE_FOCUS_WINDOW` on the root
   window asks for the same restore from outside (the session script's resume watcher).
 
+- `0113-steam-overlay-keeps-game-keyboard-focus.patch` - DroidDeck: the Steam client opens the Quick
+  Access Menu and Steam menu over a game with `STEAM_INPUT_FOCUS` 1, which moves X keyboard focus to
+  its overlay; wine then deactivates the game and a fullscreen game minimizes itself, freezing
+  behind the menu instead of running on as on a Steam Deck. Steam's own overlay taking input now
+  keeps keyboard focus on the game, as mode 2 does; its input comes from the controller through
+  Steam Input, not the X keyboard. The pointer warps gamescope makes as input moves to Steam and
+  back are skipped around it, since the game - still taking input - saw them as a mouse jump (p5).
+
 Sixteen more of Armada's patches are DRM/lease/HDR-on-KMS work for a native display, which this
 app's Wayland-hosted gamescope never reaches, or need a newer gamescope than the runtime has.
 

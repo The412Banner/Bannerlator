@@ -280,8 +280,10 @@ if [ -f "$fake" ]; then
     *) LD_PRELOAD="$fake${LD_PRELOAD:+:$LD_PRELOAD}"; export LD_PRELOAD ;;
   esac
 fi
+# The depot may live in the card library too, when that is where the client was told to install.
 for name in %s; do
-  depot="$steam_root/steamapps/common/$name"
+ for library in "$steam_root" /mnt/bannerlator-sd; do
+  depot="$library/steamapps/common/$name"
   if [ -d "$depot/files/bin-arm64" ] && [ -x "$depot/proton" ]; then
     bl_components "$depot"
     bl_directaudio "$depot"
@@ -290,6 +292,7 @@ for name in %s; do
     bl_libpath
     exec ${BL_TASKSET:-} "$depot/proton" "$verb" "$@" "${BL_EXTRA_ARGS[@]}"
   fi
+ done
 done
 echo "bannerlator-proton: no ARM64 Proton depot yet - the client downloads one as this tool's dependency; retry the launch once it has" >&2
 exit 1
@@ -636,13 +639,14 @@ def register_default(config_path, apps=(), name=None, protect=()):
 
 
 def find_source(steam_root):
-    """The ARM64 Proton depot the client has downloaded, or None."""
-    common = os.path.join(steam_root, "steamapps", "common")
-    for name in SOURCES:
-        depot = os.path.join(common, name)
-        # bin-arm64 is what makes it the native build rather than the x86_64 one.
-        if os.path.isdir(os.path.join(depot, "files", "bin-arm64")):
-            return depot
+    """The ARM64 Proton depot the client has downloaded, or None (internal storage, then the card)."""
+    for root in (steam_root, LIBRARY + "-sd"):
+        common = os.path.join(root, "steamapps", "common")
+        for name in SOURCES:
+            depot = os.path.join(common, name)
+            # bin-arm64 is what makes it the native build rather than the x86_64 one.
+            if os.path.isdir(os.path.join(depot, "files", "bin-arm64")):
+                return depot
     return None
 
 

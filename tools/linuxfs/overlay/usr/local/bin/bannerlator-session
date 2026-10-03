@@ -108,6 +108,11 @@ if [ -z "${BL_INSIDE:-}" ]; then
     linear|nearest|pixel|fsr|nis|sgsr) args+=(-F "$BL_FILTER") ;;
   esac
   [ "$mode" = steam ] && args+=(-e)
+  # Touch passes through to the client as touch until the client says otherwise, as SteamOS's
+  # gamescope-session starts it (TOUCH_MODE=4). The client sets the mode itself (STEAM_TOUCH_CLICK_MODE)
+  # only once it has a controller; until then gamescope's own default made a finger a left-click
+  # mouse, so the Steam interface took taps but would not scroll. (From Droid-Deck/DroidDeck #123.)
+  [ "$mode" = steam ] && args+=(--default-touch-mode 4)
   # A game that resizes its own window when it loses focus (the Steam menu opening over it) comes
   # back smaller, and gamescope draws a window that is not flagged fullscreen at its own size in the
   # top-left corner - FlatOut after Guide -> Resume game. Forcing every window to the output's size
@@ -118,6 +123,8 @@ if [ -z "${BL_INSIDE:-}" ]; then
   # on a screen that lists HDR10), and gamescope offers HDR to the games through the same colour
   # management it binds on ours. Without it a game's HDR setting stays greyed out.
   [ "${BL_HDR:-0}" = 1 ] && args+=(--hdr-enabled)
+  # Extra gamescope arguments for an experiment (--debug-focus, say), from the entry's environment.
+  [ -n "${BL_GAMESCOPE_ARGS:-}" ] && read -r -a _bl_extra <<<"$BL_GAMESCOPE_ARGS" && args+=("${_bl_extra[@]}")
   # Deck mode's performance overlay (Quick Access Menu, Performance, Overlay Level) is drawn by mangoapp, which gamescope starts beside the client.
   # The client picks the level by rewriting the file MANGOHUD_CONFIGFILE names, so it starts hidden until the client writes one.
   # The apk carries Valve's aarch64 build (tools/mangoapp); without it the menu still offers the levels and nothing appears.
@@ -248,13 +255,25 @@ case $mode in
     # device it took 5 of 8, leaving out both little cores and the fastest one - which is a
     # reasonable thing to do while a game is running and the wrong thing when the client is all
     # there is. BL_CLIENT_CPUS overrides it. Re-applied on a beat because steamwebhelper spawns
-    # children continuously and each one inherits Steam's choice, not ours.
+    # children continuously and each one inherits Steam's choice, not ours. The beat reads /proc
+    # itself instead of running pgrep, and only runs taskset for a process that is new or has
+    # grown threads since it was last pinned: every fork is a round of traced syscalls, and a
+    # beat that forked a taskset per process every 5 s did that for an hour. taskset -a, because
+    # without it only a process's main thread moves and the renderer's workers stay where they
+    # were. (DroidDeck #87, maxjivi05.)
     if [ -n "${BL_CLIENT_CPUS:-}" ]; then
       step "client cores: $BL_CLIENT_CPUS"
       (
-        for _ in $(seq 1 720); do
-          for _p in $(pgrep -f 'steamwebhelper|steamrtarm64/steam|gamescope' 2>/dev/null); do
-            taskset -cp "$BL_CLIENT_CPUS" "$_p" >/dev/null 2>&1 || true
+        declare -A _bl_pinned=()
+        for ((_i = 0; _i < 720; _i++)); do
+          for _d in /proc/[0-9]*; do
+            IFS= read -r -d '' _c < "$_d/cmdline" 2>/dev/null || continue
+            case $_c in *steamwebhelper*|*steamrtarm64/steam|*steamrt64/steam|*gamescope*) ;; *) continue ;; esac
+            _t=("$_d"/task/*)
+            _p=${_d#/proc/}
+            [ "${_bl_pinned[$_p]:-}" = "${#_t[@]}" ] && continue
+            taskset -a -cp "$BL_CLIENT_CPUS" "$_p" >/dev/null 2>&1 || true
+            _bl_pinned[$_p]=${#_t[@]}
           done
           nap 5
         done
@@ -382,13 +401,29 @@ case $mode in
         done
       ) &
     fi
+    # The compat pass is a python start and a parse of the client's config under proot, and nearly
+    # every beat has nothing new for it: it runs when a directory it reads from has changed since
+    # its last run - a new manifest, a new depot or tool, the client rewriting config.vdf - which
+    # [ -nt ] answers without starting anything, and once a minute regardless. (DroidDeck #87.)
     (
       beat=0
+      compat_stamp=$HOME/.bl-compat-beat
+      rm -f "$compat_stamp"
+      compat_due() {
+        local d
+        [ -e "$compat_stamp" ] && [ "$((beat % 12))" -ne 0 ] || return 0
+        for d in "$steam_root/steamapps" "$steam_root/steamapps/common" "$steam_root/config" \
+                 "$steam_root/compatibilitytools.d" /mnt/bannerlator/steamapps /mnt/bannerlator-sd/steamapps; do
+          [ "$d" -nt "$compat_stamp" ] && return 0
+        done
+        return 1
+      }
       for _ in $(seq 1 720); do
         nap 5
         bannerlator-seed-redists "$steam_root" >/dev/null 2>&1 || true
         beat=$((beat + 1))
-        if [ "$((beat % 3))" -eq 0 ]; then
+        if [ "$((beat % 3))" -eq 0 ] && compat_due; then
+          : > "$compat_stamp"
           bannerlator-steam-compat "$steam_root" >/dev/null 2>&1 || true
         fi
       done
@@ -442,6 +477,25 @@ BUSCONF
         bannerlator-netmanager &
         netmanager=$!
         echo "== network: system bus up, NetworkManager stand-in running"
+        # Steam blanks its main UI before it calls login1.Suspend on its idle timer, and stays black
+        # without the matching resume notification although the menus work. The stand-in owns the
+        # name before the client builds its login1 proxy at startup; it hands the request to the app
+        # in $BL_LIVE_DIR and resumes the session by itself when the app does not answer in 5 s.
+        if [ -n "${BL_LIVE_DIR:-}" ] && [ -d "$BL_LIVE_DIR" ] && command -v bannerlator-login1 >/dev/null 2>&1; then
+          rm -f "$BL_LIVE_DIR/steam-sleep-ready"
+          BL_LAUNCH_DIR=$BL_LIVE_DIR bannerlator-login1 &
+          login_manager=$!
+          for ((_i = 0; _i < 50; _i++)); do
+            [ -f "$BL_LIVE_DIR/steam-sleep-ready" ] && break
+            kill -0 "$login_manager" 2>/dev/null || break
+            nap 0.1
+          done
+          if [ -f "$BL_LIVE_DIR/steam-sleep-ready" ]; then
+            echo "== sleep: login1 ready, Steam's idle sleep resumes"
+          else
+            echo "== sleep: login1 did not start; Steam may stay black after its idle sleep"
+          fi
+        fi
       else
         echo "== network: the system bus did not come up; the client will show no connection"
       fi
@@ -632,7 +686,7 @@ BUSCONF
       kill "$stop_watcher" 2>/dev/null || true
       wait "$stop_watcher" 2>/dev/null || true
     fi
-    kill ${netmanager:-} ${system_bus:-} 2>/dev/null || true
+    kill ${login_manager:-} ${netmanager:-} ${system_bus:-} 2>/dev/null || true
     stop_own_jobs
     reap_orphans
     exit "$rc"

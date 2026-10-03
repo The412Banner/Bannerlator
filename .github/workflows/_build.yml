@@ -345,7 +345,7 @@ jobs:
         else
           echo "no tools/gamescope/release.env: the apk carries no gamescope of its own"
         fi
-        # Valve's aarch64 mangoapp for Deck mode's performance overlay, plus the five libraries the runtime lacks, pinned by sha256 in tools/mangoapp/packages.txt.
+        # Valve's aarch64 mangoapp for Deck mode's performance overlay, plus the libraries the runtime lacks, pinned by sha256 in tools/mangoapp/packages.txt.
         # Each library is stored under the SONAME it is loaded by, as a real file, because assets cannot carry symlinks.
         M="$D/usr/local/lib/mangoapp"
         mkdir -p "$M" mango-pkgs
@@ -358,9 +358,13 @@ jobs:
           rm mango-pkgs/pkg.tar.zst
         done
         install -m644 mango-pkgs/usr/bin/mangoapp "$M/mangoapp"
-        for so in libfmt.so.10 libspdlog.so.1.13 libglfw.so.3 libtraceevent.so.1 libtracefs.so.1; do
+        for so in libfmt.so.10 libspdlog.so.1.13 libglfw.so.3 libtraceevent.so.1; do
           cp -L "mango-pkgs/usr/lib/$so" "$M/$so"
         done
+        # Ours, not the package's: GPU memory without tracefs (tools/mangoapp/libtracefs-shim.c). (From Droid-Deck/DroidDeck #127.)
+        aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -Wl,-soname,libtracefs.so.1 \
+          -o "$M/libtracefs.so.1" tools/mangoapp/libtracefs-shim.c
+        aarch64-linux-gnu-strip --strip-unneeded "$M/libtracefs.so.1"
         install -Dm644 tools/mangoapp/mangoapp "$D/usr/local/bin/mangoapp"
         rm -rf mango-pkgs
         ls -l "$M"

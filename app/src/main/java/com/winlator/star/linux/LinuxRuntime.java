@@ -212,12 +212,15 @@ public final class LinuxRuntime {
         };
         for (String[] entry : procFiles) {
             File fake = new File(fakeProc, entry[0]);
-            if (fake.isFile() && !new File(entry[1]).canRead()) {
+            // A live stand-in the session binds itself (LinuxCpuStatComponent's /proc/stat) wins.
+            boolean live = false;
+            if (extraBinds != null) for (String spec : extraBinds) live |= spec.endsWith(":" + entry[1]);
+            if (!live && fake.isFile() && !new File(entry[1]).canRead()) {
                 bind(cmd, fake.getPath() + ":" + entry[1]);
             }
         }
         bindGpuNode(context, cmd);
-        bindAdrenoStats(cmd);
+        bindAdrenoStats(cmd, extraBinds);
         bindCpuTemps(cmd, root);
         if (extraBinds != null) {
             for (String spec : extraBinds) bind(cmd, spec);
@@ -268,6 +271,11 @@ public final class LinuxRuntime {
             if (!Files.isSymbolicLink(subsystem.toPath())) {
                 Os.symlink("/sys/bus/platform", subsystem.getPath());
             }
+            // What MangoHud names a GPU's driver by; msm_drm is how an Adreno's render node reads on a mainline kernel, and the driver it reads the load of (bindAdrenoStats).
+            File driver = new File(device, "driver");
+            if (!Files.isSymbolicLink(driver.toPath())) {
+                Os.symlink("/sys/bus/platform/drivers/msm_drm", driver.getPath());
+            }
         } catch (IOException | ErrnoException e) {
             bindDeckCharDir(base, cmd);
             return;
@@ -275,6 +283,55 @@ public final class LinuxRuntime {
         bind(cmd, new File(base, "sys").getPath() + ":/sys/dev/char");
         bind(cmd, dri.getPath() + ":/dev/dri");
         bind(cmd, KGSL_DEVICE + ":/dev/dri/" + node);
+        bindDrmClass(base, cmd, node, major + ":" + minor);
+    }
+
+    /**
+     * MangoHud (Deck mode's performance overlay, mangoapp) finds the GPU by listing {@code /sys/class/drm}, and an exception from that listing ends the process.
+     * Under an enforcing SELinux policy - every retail phone - an app may not list it, so mangoapp died on start, gamescope restarted it until the wrapper gave up, and there was no overlay.
+     * Where the app cannot list it, the session's {@code /sys/class/drm} is ours: the render node above, named as an Adreno's is.
+     * MangoHud then reads the GPU's stats from KGSL's sysfs, which such a device refuses too - LinuxGpuStatsComponent stands in for that.
+     * Where the listing is allowed it is left alone. (From Droid-Deck/DroidDeck #127.)
+     */
+    private static void bindDrmClass(File base, List<String> cmd, String node, String devNumbers) {
+        if (new File("/sys/class/drm").list() != null) return;
+        File drmClass = new File(base, "class");
+        try {
+            if (!drmClass.isDirectory() && !drmClass.mkdirs()) return;
+            // Only symlinks are ever made here; deleting them must not follow one into its target.
+            File[] old = drmClass.listFiles();
+            if (old != null) for (File f : old) Files.deleteIfExists(f.toPath());
+            Os.symlink("/sys/dev/char/" + devNumbers, new File(drmClass, node).getPath());
+        } catch (IOException | ErrnoException e) {
+            return;
+        }
+        bind(cmd, drmClass.getPath() + ":/sys/class/drm");
+        android.util.Log.i("LinuxRuntime", "hud: /sys/class/drm is not listable here; the session's lists " + node);
+        // Also refused to list, also asked for by MangoHud twice a second - an error line each time in the session log - and holding nothing it reads on an Adreno phone.
+        if (new File("/sys/class/powercap").list() == null) {
+            File empty = new File(base, "empty-powercap");
+            if (empty.isDirectory() || empty.mkdirs()) bind(cmd, empty.getPath() + ":/sys/class/powercap");
+        }
+    }
+
+    /** The temperature of a CPU zone the app may read (the first by name), or null. */
+    public static String cpuTempSource() {
+        for (java.util.Map.Entry<String, File> e : new java.util.TreeMap<>(thermalZones()).entrySet()) {
+            File temp = new File(e.getValue(), "temp");
+            if (e.getKey().contains("cpu") && !e.getKey().contains("gpu") && temp.canRead()) return temp.getPath();
+        }
+        return null;
+    }
+
+    /** The file the GPU's temperature reads from, or null where the app may read none. */
+    public static String gpuTempSource() {
+        String kgsl = "/sys/class/kgsl/kgsl-3d0/";
+        return firstReadable(kgsl + "temp", kgsl + "devfreq/temp", thermalZone("gpu"));
+    }
+
+    private static String gpuLoadSource() {
+        String kgsl = "/sys/class/kgsl/kgsl-3d0/";
+        return firstReadable(kgsl + "gpu_busy_percentage", kgsl + "devfreq/gpu_load");
     }
 
     /** Without a GPU node: binds {@code drm/sys} over {@code /sys/dev/char} only for the Deck controller's entry, if this session made one. */
@@ -291,11 +348,11 @@ public final class LinuxRuntime {
      * So each value takes the first source that exists, in the order other Android PC emulators (GameNative, Winlator forks) read them.
      * A value found nowhere is left alone. (From Droid-Deck/DroidDeck #55.)
      */
-    private static void bindAdrenoStats(List<String> cmd) {
+    private static void bindAdrenoStats(List<String> cmd, List<String> extraBinds) {
         String kgsl = "/sys/class/kgsl/kgsl-3d0/";
-        String gpuTemp = firstReadable(kgsl + "temp", kgsl + "devfreq/temp", thermalZone("gpu"));
+        String gpuTemp = gpuTempSource();
         String[][] stats = {
-                {firstReadable(kgsl + "gpu_busy_percentage", kgsl + "devfreq/gpu_load"), "/sys/kernel/debug/dri/0/perf_now"},
+                {gpuLoadSource(), "/sys/kernel/debug/dri/0/perf_now"},
                 {firstReadable(kgsl + "devfreq/cur_freq", kgsl + "gpuclk"),
                         "/sys/devices/platform/soc@0/3d00000.gpu/devfreq/3d00000.gpu/cur_freq"},
                 {gpuTemp, "/sys/class/thermal/thermal_zone28/temp"},
@@ -303,8 +360,20 @@ public final class LinuxRuntime {
                 {thermalZone("ddr"), "/sys/class/thermal/thermal_zone22/temp"},
         };
         for (String[] stat : stats) {
-            if (stat[0] != null) bind(cmd, stat[0] + ":" + stat[1]);
+            // A value the session feeds itself (LinuxGpuStatsComponent, where KGSL is refused) wins.
+            boolean fed = false;
+            if (extraBinds != null) for (String spec : extraBinds) fed |= spec.endsWith(":" + stat[1]);
+            if (stat[0] != null && !fed) bind(cmd, stat[0] + ":" + stat[1]);
         }
+        // Which of the overlay's GPU values this device lets the app read: a phone under an enforcing policy refuses some of them, and the overlay then has no line for that value.
+        android.util.Log.i("LinuxRuntime", "hud sources: gpu load " + orNone(stats[0][0]) + ", gpu clock "
+                + orNone(stats[1][0]) + ", gpu temp " + orNone(gpuTemp) + ", ddr temp " + orNone(stats[4][0])
+                + ", thermal zones " + thermalZones().size()
+                + ", kgsl gpubusy " + (new File(kgsl + "gpubusy").canRead() ? "readable" : "refused"));
+    }
+
+    private static String orNone(String path) {
+        return path != null ? path : "none";
     }
 
     /**

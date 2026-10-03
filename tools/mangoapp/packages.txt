@@ -1,4 +1,4 @@
-# Valve's aarch64 mangoapp (the Steam Deck performance overlay) and the five libraries it needs that the runtime does not have.
+# Valve's aarch64 mangoapp (the Steam Deck performance overlay) and the libraries it needs that the runtime does not have.
 # They are pinned at the versions mangoapp was built against, which its .BUILDINFO gives as fmt 10.2.0 and spdlog 1.13.0.
 # CI fetches each package, checks its sha256 and stages the files it needs into the apk under usr/local/lib/mangoapp.
 # The app copies them into the runtime at every session start. (Taken from The412Banner/SteamDeck.)
@@ -7,5 +7,6 @@
 ef7411229ea4e9b3ab4e36ac356a85b5072f362ee1de68b28d09c43f0b0ecc44  https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/fmt-10.2.0-1-aarch64.pkg.tar.zst
 c9bfd2c3f15071329d381b9c2061d07503c4787ceb7001b9dfbf72a23c85cb04  https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/spdlog-1.13.0-1-aarch64.pkg.tar.zst
 f9fae6c84a0382188f1cb20761424051593fd09b1456191cc250bd16e0a1d7a5  https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/glfw-3.4-2-aarch64.pkg.tar.zst
+# libtracefs is ours (libtracefs-shim.c), and reads libtraceevent's structures as 1.8.2 lays them out.
+# Moving libtraceevent off 1.8.2 means checking event-parse.h against the shim. (From Droid-Deck/DroidDeck #127.)
 0cccdc9c92cb3cae1e37ebeb0ed20b93bb3b5000c8f955b63d0e07bd878c7018  https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/libtraceevent-1%3A1.8.2-2-aarch64.pkg.tar.zst
-47ffd6a953959d6a0df44539bef30a67d0b8c95cce0053273908d9d70ef7abc4  https://steamdeck-packages.steamos.cloud/archlinux-deckard/archlinux/mash-20240705.2/extra/os/aarch64/libtracefs-1.8.0-1-aarch64.pkg.tar.zst

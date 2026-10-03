@@ -9956,6 +9956,33 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (fakeInputEnabled) gameBinds.add(fakeInputDir.getPath() + ":/dev/input");
         if (fakeInputEnabled) gameBinds.addAll(deckBinds);
         gameBinds.add(linuxBatteryDir.getPath() + ":/sys/class/power_supply");
+        // What Deck mode's performance overlay reads and an Android app may not: CPU load, the CPU and GPU temperatures and the fan, GPU memory, and the GPU's own stats where KGSL is refused.
+        // Each is written before the session so its first read already has a value, then kept current while it runs. (From Droid-Deck/DroidDeck #127.)
+        try {
+            File linuxRoot = com.winlator.star.linux.LinuxRuntime.rootDir(this);
+            com.winlator.star.linux.LinuxHwmonComponent hwmon = new com.winlator.star.linux.LinuxHwmonComponent(
+                    new File(getFilesDir(), "linux-session/sys/hwmon"), linuxRoot);
+            if (hwmon.prepare()) {
+                environment.addComponent(hwmon);
+                gameBinds.add(hwmon.getDir().getPath() + ":/sys/class/hwmon");
+            }
+            com.winlator.star.linux.LinuxCpuStatComponent cpuStat = new com.winlator.star.linux.LinuxCpuStatComponent(
+                    new File(getFilesDir(), "linux-session/proc-stat"));
+            if (cpuStat.prepare()) {
+                environment.addComponent(cpuStat);
+                gameBinds.add(cpuStat.getFile().getPath() + ":/proc/stat");
+            }
+            com.winlator.star.linux.LinuxGpuMemComponent gpuMem = new com.winlator.star.linux.LinuxGpuMemComponent(linuxRoot);
+            if (gpuMem.prepare()) environment.addComponent(gpuMem);
+            com.winlator.star.linux.LinuxGpuStatsComponent gpuStats = new com.winlator.star.linux.LinuxGpuStatsComponent(
+                    new File(getFilesDir(), "linux-session/sys/kgsl-3d0"));
+            if (gpuStats.prepare()) {
+                environment.addComponent(gpuStats);
+                gameBinds.addAll(gpuStats.binds());
+            }
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "could not set up the overlay's stand-ins", t);
+        }
         // The app's own games, for the runtime's shortcuts writer to put in the client's library before the client starts (see LinuxAppGames and bannerlator-steam-shortcuts).
         // The list is written every session, empty or not, so games that are gone or turned off leave the client's library too.
         try {

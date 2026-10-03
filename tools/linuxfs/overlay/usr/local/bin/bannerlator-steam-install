@@ -59,6 +59,10 @@ find "$steam_root" -depth -name '*\\*' | while read -r odd; do
     mv -f "$odd" "$fixed"
   fi
 done
+# The zips carry no permissions: the client marks its own programs executable when it runs, but the
+# x86-64 client option runs this client's web helper without running this client (device: "Permission
+# denied" on steamrtarm64/steamwebhelper after an update), so they are marked here.
+chmod -R a+x "$steam_root/steamrtarm64" "$steam_root/linuxarm64" 2>/dev/null || true
 if [ -n "$sync" ]; then
   # The client's own record of what it has, so it does not take the new files for an update to undo.
   cp -f "$work/manifest" "$steam_root/package/$manifest.manifest"

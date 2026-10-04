@@ -3362,6 +3362,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
+        sessionInForeground = true;
 
         // A TV session that was paused but never stopped is in front again, so the teardown onPause
         // handed to onStop is moot — and there is nothing for the restore below to undo, because
@@ -3430,6 +3431,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     public void onPause() {
         if (inGameControlsEditor != null) inGameControlsEditor.save();
         super.onPause();
+        sessionInForeground = false;
 
         // A session playing on the TV is PAUSED the moment ANOTHER activity of this app comes to the
         // front on the handheld — the games list the user was left looking at, and now the companion
@@ -7011,6 +7013,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        sessionInForeground = false;
         // The last word on the handheld's companion screen, whatever took this session down (Exit, the
         // game's own watcher, a recents swipe, the system). Every other dismissal is about telling the
         // user something sooner; this one is the guarantee that nothing is left on the handheld
@@ -7723,18 +7726,50 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // Bring up the embedded Wayland compositor into a full-screen SurfaceView. The socket is created
     // under the imagefs /tmp (XDG_RUNTIME_DIR = rootDir/tmp) so the guest — which sees the imagefs as
     // its root — finds it at /tmp/wayland-0 (matching the guest env in GuestProgramLauncherComponent).
-    /** BANNER_WAYLAND_ZERO_COPY=1 (or true) in the container's or the shortcut's environment variables:
-     *  the Wayland zero-copy layer mode (ZERO_COPY_SPIKE.md). One switch for both halves: the compositor
-     *  (nativeSetZeroCopy) and the guest's Wayland Turnip (BANNER_WSI_AHB=1, gralloc swapchain images). */
+    /** The Wayland zero-copy layer mode (ZERO_COPY_SPIKE.md) for this launch: BANNER_WAYLAND_ZERO_COPY=1
+     *  (or true) in the container's or the shortcut's environment variables, else the Wayland adapter
+     *  settings (profile / Advanced switch — core.WaylandAdapterSettings). One switch for both halves: the
+     *  compositor (nativeSetZeroCopy) and the guest's Wayland Turnip (BANNER_WSI_AHB=1, gralloc swapchain
+     *  images). */
     private boolean isWaylandZeroCopyRequested() {
         if (container == null) return false;
-        String raw = container.getEnvVars();
-        if (shortcut != null) {
-            String sv = shortcut.getExtra("envVars", "");
-            if (sv != null && !sv.isEmpty()) raw = (raw == null ? "" : raw + " ") + sv;
+        com.winlator.star.core.WaylandAdapterSettings.Effective e = waylandAdapterEffective();
+        return e != null && Boolean.TRUE.equals(e.zeroCopy);
+    }
+
+    /** The resolved Wayland adapter settings of this launch (shortcut keys > container keys > profile, with
+     *  the user's env vars over all of them), computed once: the compositor setters (startWaylandCompositor),
+     *  the drawer's zero-copy switch and the guest env (setupXEnvironment) all read the same answer. The
+     *  Auto profile reads the cached probe report of the graphics driver this session uses. */
+    private com.winlator.star.core.WaylandAdapterSettings.Effective waylandAdapterEffective;
+
+    private com.winlator.star.core.WaylandAdapterSettings.Effective waylandAdapterEffective() {
+        if (waylandAdapterEffective != null) return waylandAdapterEffective;
+        // Before the container is resolved there is nothing to read: answer the defaults, uncached.
+        if (container == null) return com.winlator.star.core.WaylandAdapterSettings.resolve(null, null, null, null);
+        try {
+            String containerCfg = container.getGraphicsDriverConfig();
+            String shortcutCfg = shortcut != null ? shortcut.getExtra("graphicsDriverConfig", "") : null;
+            if (shortcutCfg != null && shortcutCfg.isEmpty()) shortcutCfg = null;
+            String driverId = com.winlator.star.contentdialog.GraphicsDriverConfigDialog
+                    .getVersion(shortcutCfg != null ? shortcutCfg : containerCfg);
+            com.winlator.star.core.WaylandDriverProbe.Report probe =
+                    com.winlator.star.core.WaylandDriverProbe.cached(this, driverId);
+            waylandAdapterEffective = com.winlator.star.core.WaylandAdapterSettings.resolve(
+                    containerCfg, shortcutCfg, effectiveUserEnv(), probe);
+        } catch (Exception e) {
+            Log.e("XServerDisplayActivity", "wayland: adapter settings resolve failed; using defaults", e);
+            waylandAdapterEffective = com.winlator.star.core.WaylandAdapterSettings.resolve(null, null, null, null);
         }
-        String zc = raw != null && !raw.isEmpty() ? new EnvVars(raw).get("BANNER_WAYLAND_ZERO_COPY") : null;
-        return zc != null && (zc.equals("1") || zc.equalsIgnoreCase("true"));
+        return waylandAdapterEffective;
+    }
+
+    // Whether a game session is on screen: core.WaylandDriverProbe refuses to run beside one (a second
+    // Vulkan device on the same driver while a game renders is not worth the risk for a settings dialog).
+    private static volatile boolean sessionInForeground;
+
+    public static boolean isSessionInForeground() {
+        return sessionInForeground;
     }
 
     /** The effective env (container first, shortcut second, so the shortcut wins), or null. */
@@ -8622,7 +8657,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         String game;
         try {
             String choice = com.winlator.star.core.WaylandGameDriver.effectiveChoice(container, shortcut);
-            if (Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(choice)) {
+            // Auto resolves to the adapter whenever it can (WaylandGameDriver.resolve), so both read alike.
+            if (com.winlator.star.core.WaylandGameDriver.isAdapterChoice(choice)
+                    && com.winlator.star.core.WaylandAdapter.isBundled(this)) {
                 String gdc = (shortcut != null)
                         ? shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig())
                         : container.getGraphicsDriverConfig();
@@ -9036,25 +9073,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.wayland.WaylandCompositor.nativeSetZeroCopy(zeroCopy);
             XServerDrawerState.INSTANCE.setWaylandZeroCopyActive(zeroCopy);
             if (zeroCopy) Log.i("XServerDisplayActivity", "wayland: zero-copy layer mode requested");
-            // Compressed (UBWC) game buffers, default on; BANNER_WAYLAND_UBWC=0 (or false/off) forces the
-            // linear-only advertisement for an A/B run.
-            String ub = env != null ? env.get("BANNER_WAYLAND_UBWC") : null;
-            boolean ubwc = !(ub != null && (ub.equals("0") || ub.equalsIgnoreCase("false") || ub.equalsIgnoreCase("off")));
+            // The Wayland adapter settings (core.WaylandAdapterSettings): the three switches below and the
+            // zero-copy flag above come from ONE resolution — an env var the user typed (BANNER_WAYLAND_UBWC=0
+            // and friends, as before) > the shortcut's keys > the container's keys > the profile. The guest
+            // half of the same answer is written in setupXEnvironment. Logged once per launch here.
+            com.winlator.star.core.WaylandAdapterSettings.Effective adapterCfg = waylandAdapterEffective();
+            Log.i("XServerDisplayActivity", "wayland: adapter settings " + adapterCfg.describe()
+                    + " -> " + adapterCfg.summary(null));
+            // Compressed (UBWC) game buffers, default on; off forces the linear-only advertisement.
+            boolean ubwc = !Boolean.FALSE.equals(adapterCfg.ubwc);
             com.winlator.star.wayland.WaylandCompositor.nativeSetUbwc(ubwc);
-            if (!ubwc) Log.i("XServerDisplayActivity", "wayland: compressed (UBWC) game buffers disabled by BANNER_WAYLAND_UBWC");
+            if (!ubwc) Log.i("XServerDisplayActivity", "wayland: compressed (UBWC) game buffers disabled");
             // The compositor's asynchronous copy path (frames in flight; the compositor thread no longer
-            // waits for its own screen blit), default on; BANNER_WAYLAND_ASYNC_COPY=0 (or false/off)
-            // restores the synchronous path for an A/B run.
-            String ac = env != null ? env.get("BANNER_WAYLAND_ASYNC_COPY") : null;
-            boolean asyncCopy = !(ac != null && (ac.equals("0") || ac.equalsIgnoreCase("false") || ac.equalsIgnoreCase("off")));
+            // waits for its own screen blit), default on; off restores the synchronous path.
+            boolean asyncCopy = !Boolean.FALSE.equals(adapterCfg.asyncCopy);
             com.winlator.star.wayland.WaylandCompositor.nativeSetAsyncCopy(asyncCopy);
-            if (!asyncCopy) Log.i("XServerDisplayActivity", "wayland: asynchronous copy path disabled by BANNER_WAYLAND_ASYNC_COPY");
+            if (!asyncCopy) Log.i("XServerDisplayActivity", "wayland: asynchronous copy path disabled");
             // Zero-copy acquire fences the game's driver attaches itself (banner_ahb_v1 version 3), default on;
-            // BANNER_WAYLAND_ZC_CLIENT_FENCE=0 (or false/off) makes the compositor ignore them for an A/B run.
-            String cf = env != null ? env.get("BANNER_WAYLAND_ZC_CLIENT_FENCE") : null;
-            boolean clientFence = !(cf != null && (cf.equals("0") || cf.equalsIgnoreCase("false") || cf.equalsIgnoreCase("off")));
+            // off makes the compositor ignore them.
+            boolean clientFence = !Boolean.FALSE.equals(adapterCfg.clientFence);
             com.winlator.star.wayland.WaylandCompositor.nativeSetZeroCopyClientFence(clientFence);
-            if (!clientFence) Log.i("XServerDisplayActivity", "wayland: zero-copy client render fences ignored by BANNER_WAYLAND_ZC_CLIENT_FENCE");
+            if (!clientFence) Log.i("XServerDisplayActivity", "wayland: zero-copy client render fences ignored");
             // Windows the compositor focuses by itself are made Wine's foreground window: by default
             // through winhandler.exe (the X11 path's DesktopHelper does the same on every map), "click"
             // = one synthetic click instead, 0/false/off = keyboard focus only. Wine sessions only: in a
@@ -10433,6 +10472,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
+
+            // Wayland adapter settings, guest half (core.WaylandAdapterSettings.applyToGuestEnv): the
+            // present mode, async copy, zero-copy, client fences, UBWC, DRM modifiers and KGSL timing shim
+            // the profile / Advanced switches decided, as the env vars the adapter, Mesa and the compositor
+            // read — written AFTER both user env merges and skipping every var the user typed, so an
+            // explicit env var always wins. MESA_VK_WSI_PRESENT_MODE from the stored X11 presentMode key
+            // (extractGraphicsDriverFiles) is replaced only when a Wayland present mode was decided.
+            if (waylandMode) {
+                com.winlator.star.core.WaylandAdapterSettings.Effective adapterCfg = waylandAdapterEffective();
+                if (adapterCfg != null) com.winlator.star.core.WaylandAdapterSettings.applyToGuestEnv(envVars, adapterCfg);
+            }
 
             // Wayland zero-copy layer mode: the same BANNER_WAYLAND_ZERO_COPY=1 that puts the game on
             // its own Android layer (startWaylandCompositor) also tells our Wayland Turnip's WSI to

@@ -460,7 +460,11 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
                 xmb.refresh()
             }
         }
-        val wgdOverride = p.ex("waylandGameDriver", "")
+        // A stored auto shows as the adapter it resolves to (WaylandGameDriver.editorChoice), so the list
+        // never carries two entries with the adapter's label.
+        val wgdOverride = p.ex("waylandGameDriver", "").let {
+            if (it.isEmpty()) "" else com.winlator.star.core.WaylandGameDriver.editorChoice(p.context, it)
+        }
         val wgdInstalled = com.winlator.star.core.WaylandGameDriver.optionValues(p.context)
         val wgdValues = listOf("") + (if (wgdOverride.isEmpty() || wgdOverride in wgdInstalled) wgdInstalled else wgdInstalled + wgdOverride)
         val wgdLabels = wgdValues.map {

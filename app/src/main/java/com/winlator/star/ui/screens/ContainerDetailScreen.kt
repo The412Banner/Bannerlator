@@ -1072,7 +1072,8 @@ private fun TopLevelFields(
             }
             // What this one pick drives, keyed on the stored game driver + the pick itself so it
             // follows either dropdown.
-            val adapterChoice = viewModel.waylandGameDriver == Container.WAYLAND_GAME_DRIVER_ADAPTER
+            // adapter, auto and "" all resolve to the adapter first (WaylandGameDriver.isAdapterChoice).
+            val adapterChoice = com.winlator.star.core.WaylandGameDriver.isAdapterChoice(viewModel.waylandGameDriver)
             val blobPicked = remember(compositorVersion) {
                 com.winlator.star.core.WaylandAdapter.isProprietaryBlob(context, compositorVersion)
             }
@@ -1092,42 +1093,51 @@ private fun TopLevelFields(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
-            // Advanced: the Wayland game driver — what the GAME renders on (winewayland sets
-            // VK_ICD_FILENAMES from it). Adapter / Auto / the bundled Turnip variants / each imported
-            // Linux ICD. A stored imported:<id> whose import is gone is still listed (labelled missing)
-            // so the editor shows what is saved; launch falls back to Auto for it. Folded away while the
-            // adapter is the choice (null = not toggled yet: follow the stored choice once it loads).
-            // The gear opens the settings that reach a Wayland game (GPU name spoof, memory cap,
-            // present mode, UBWC hint), stored in the same graphicsDriverConfig keys as X11's driver
-            // configuration; with the adapter they apply to the one driver.
+            // The Wayland game driver — what the GAME renders on (winewayland sets VK_ICD_FILENAMES from
+            // it). The default is the adapter (one pick: the graphics driver above); a stored auto / ""
+            // (every container from before the adapter) shows AS the adapter because it resolves to it
+            // (WaylandGameDriver.editorChoice) — nothing is rewritten until the user picks. The bundled
+            // Turnip variants and imported Linux ICDs are the fallback, under an expander; a stored
+            // imported:<id> whose import is gone is still listed (labelled missing) so the editor shows
+            // what is saved; launch falls back for it. Folded while the adapter is the choice (null = not
+            // toggled yet: follow the stored choice once it loads). The gear opens the Wayland adapter
+            // settings (profile + switches, GPU name spoof, memory cap, UBWC hint), stored in the same
+            // graphicsDriverConfig keys as X11's driver configuration.
             run {
                 val stored = viewModel.waylandGameDriver
-                val values = if (stored in waylandGameDriverValues) waylandGameDriverValues
-                             else waylandGameDriverValues + stored
+                val shown = com.winlator.star.core.WaylandGameDriver.editorChoice(context, stored)
+                val values = if (shown in waylandGameDriverValues) waylandGameDriverValues
+                             else waylandGameDriverValues + shown
                 val labels = values.map { com.winlator.star.core.WaylandGameDriver.optionLabel(context, it, waylandAutoPick) }
                 var showWaylandDriverSettings by remember { mutableStateOf(false) }
                 var advancedToggled by remember { mutableStateOf<Boolean?>(null) }
                 val advancedOpen = advancedToggled ?: !adapterChoice
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { advancedToggled = !advancedOpen }, modifier = Modifier.weight(1f)) {
-                        Icon(if (advancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Advanced: Wayland game driver (" +
-                                com.winlator.star.core.WaylandGameDriver.optionLabel(context, stored, waylandAutoPick) + ")",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    Text(
+                        "Wayland game driver: " + com.winlator.star.core.WaylandGameDriver.optionLabel(context, shown, waylandAutoPick),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
                     IconButton(onClick = { showWaylandDriverSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Wayland driver settings")
+                        Icon(Icons.Default.Settings, contentDescription = "Wayland adapter settings")
                     }
                 }
+                TextButton(onClick = { advancedToggled = !advancedOpen }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(if (advancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(com.winlator.star.core.WaylandGameDriver.FALLBACK_EXPANDER, modifier = Modifier.weight(1f))
+                }
                 if (advancedOpen) {
+                    Text(
+                        com.winlator.star.core.WaylandGameDriver.FALLBACK_HINT,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     LabeledDropdown(
                         label = "Wayland game driver",
                         options = labels,
-                        selectedOption = labels[values.indexOf(stored)],
+                        selectedOption = labels[values.indexOf(shown)],
                         onSelect = { viewModel.waylandGameDriver = values[labels.indexOf(it)] },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -3121,28 +3131,35 @@ internal fun withGraphicsDriverKeys(config: String, values: Map<String, String>)
 internal val WAYLAND_PRESENT_MODES = listOf("mailbox", "fifo")
 
 internal const val WAYLAND_DRIVER_SETTINGS_HELP =
-    "For games that refuse to start or misbehave on an Adreno GPU. GPU name makes DirectX games (DXVK, " +
-        "and D3D12 through it) see another graphics card; native Vulkan and OpenGL games still see the real " +
-        "one for now. Off by default (Device). Warning: an NVIDIA name can make a game try NVAPI, DLSS or " +
-        "Reflex, and an AMD name can send it down AMD AGS paths; go back to Device if a game misbehaves. " +
-        "These are the X11 driver configuration's settings, so they follow the game across backends."
+    "How the Wayland adapter puts the game's frames on screen. The report says what your graphics driver " +
+        "can do; the profile picks sensible switches from it (Auto) or forces a known set. The GPU name, " +
+        "memory and UBWC-hint settings at the bottom are the X11 driver configuration's, so they follow the " +
+        "game across backends (an NVIDIA name can make a game try NVAPI, DLSS or Reflex; go back to Device " +
+        "if a game misbehaves)."
 
 /**
- * The Wayland game driver's settings (the gear next to "Wayland game driver"): the graphicsDriverConfig
- * keys that reach a Wayland game — gpuName (the spoof, handed to DXVK through DXVK_CONFIG),
- * maxDeviceMemory (dxgi.maxDeviceMemory), presentMode (MESA_VK_WSI_PRESENT_MODE) and fdDevFeatures
- * (FD_DEV_FEATURES for the game's Turnip). Same keys as GraphicsDriverConfigDialog, so a choice
- * survives switching backends; OK writes only these back (withGraphicsDriverKeys). The X11 wrapper
- * plumbing (extensions, BCn, resource type, sync/present-wait) and Vulkan version are left out: nothing
- * on the Wayland path reads them, and the Wayland Turnips ignore MESA_VK_VERSION_OVERRIDE.
+ * The Wayland adapter settings (the gear next to "Wayland game driver"), container default and per-game
+ * override alike. Three parts:
+ *  - the ADAPTER REPORT: core.WaylandDriverProbe's capability probe of the graphics driver this config
+ *    names (cached per driver + app build; run here when no cache exists, never beside a game session);
+ *  - the PROFILE (Auto / Smooth / Fast / Compatibility) and the ADVANCED tri-state switches, stored as the
+ *    graphicsDriverConfig keys core.WaylandAdapterSettings owns ("" = Default = inject nothing) and
+ *    resolved at launch shortcut > container > profile, with the user's env vars over all of them;
+ *  - the per-game driver settings that were here before: gpuName (the spoof, handed to DXVK through
+ *    DXVK_CONFIG), maxDeviceMemory (dxgi.maxDeviceMemory) and fdDevFeatures (FD_DEV_FEATURES).
+ * Same keys as GraphicsDriverConfigDialog, so a choice survives switching backends; OK writes only these
+ * back (withGraphicsDriverKeys). [containerConfig] non-null = a shortcut's override: every adapter key
+ * offers "Inherit" (= "") and the preview resolves against the container's config.
  */
 @Composable
 internal fun WaylandDriverSettingsDialog(
     initialConfig: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
+    containerConfig: String? = null,
 ) {
     val context = LocalContext.current
+    val perGame = containerConfig != null
     val cfg = remember(initialConfig) {
         initialConfig.split(";").associate { elem ->
             val parts = elem.split("=")
@@ -3150,8 +3167,8 @@ internal fun WaylandDriverSettingsDialog(
         }
     }
     var gpuName by remember(initialConfig) { mutableStateOf(com.winlator.star.core.GpuSpoof.gpuNameOf(initialConfig)) }
+    // The X11 presentMode key is what the launch exports when no Wayland present mode is decided here.
     val storedPresent = cfg["presentMode"]?.ifEmpty { null } ?: "mailbox"
-    var presentMode by remember(initialConfig) { mutableStateOf(storedPresent) }
     var fdDevFeatures by remember(initialConfig) { mutableStateOf(cfg["fdDevFeatures"] == "1") }
     val deviceMemoryEntries = remember { context.resources.getStringArray(R.array.device_memory_entries).toList() }
     var memoryEntry by remember(initialConfig) {
@@ -3166,16 +3183,70 @@ internal fun WaylandDriverSettingsDialog(
     LaunchedEffect(gpuName) {
         vendorWarning = withContext(Dispatchers.IO) { com.winlator.star.core.GpuSpoof.vendorWarning(context, gpuName) }
     }
-    // A stored X11-only mode (immediate / relaxed) stays listed, labelled, so OK keeps it for X11.
-    val presentValues = WAYLAND_PRESENT_MODES + (if (storedPresent in WAYLAND_PRESENT_MODES) emptyList() else listOf(storedPresent))
-    val presentLabels = presentValues.map { if (it in WAYLAND_PRESENT_MODES) it else "$it (X11 only, not used here)" }
+
+    // The adapter keys, "" = Default (container) / Inherit (shortcut).
+    val adapterKeys = com.winlator.star.core.WaylandAdapterSettings.KEYS
+    var adapter by remember(initialConfig) { mutableStateOf(adapterKeys.associateWith { cfg[it] ?: "" }) }
+    fun setKey(key: String, value: String) { adapter = adapter + (key to value) }
+    val profileKey = com.winlator.star.core.WaylandAdapterSettings.KEY_PROFILE
+    val profile = adapter[profileKey] ?: ""
+
+    // The adapter report of the graphics driver this config names (a shortcut without its own falls back
+    // to the container's). Cached per driver + app build; probed here when there is no cache, serialized
+    // with the other native GPU probes on graphicsProbeMutex, never while a game session is on screen.
+    val driverId = remember(initialConfig, containerConfig) {
+        com.winlator.star.contentdialog.GraphicsDriverConfigDialog.getVersion(initialConfig)?.ifEmpty { null }
+            ?: containerConfig?.let { com.winlator.star.contentdialog.GraphicsDriverConfigDialog.getVersion(it) } ?: ""
+    }
+    var probe by remember(driverId) { mutableStateOf<com.winlator.star.core.WaylandDriverProbe.Report?>(null) }
+    var probing by remember { mutableStateOf(false) }
+    var probeNote by remember { mutableStateOf<String?>(null) }
+    var probeTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(driverId, probeTick) {
+        probeNote = null
+        if (driverId.isEmpty() || driverId == "System") {
+            probe = null
+            probeNote = "No Turnip graphics driver is set, so there is nothing to check."
+            return@LaunchedEffect
+        }
+        val cached = withContext(Dispatchers.IO) {
+            runCatching { com.winlator.star.core.WaylandDriverProbe.cached(context, driverId) }.getOrNull()
+        }
+        if (cached != null) { probe = cached; return@LaunchedEffect }
+        if (com.winlator.star.XServerDisplayActivity.isSessionInForeground()) {
+            probeNote = com.winlator.star.core.WaylandDriverProbe.SESSION_RUNNING_NOTE
+            return@LaunchedEffect
+        }
+        probing = true
+        probe = withContext(Dispatchers.IO) {
+            graphicsProbeMutex.withLock {
+                runCatching { com.winlator.star.core.WaylandDriverProbe.probe(context, driverId) }.getOrNull()
+            }
+        }
+        probing = false
+        if (probe == null) probeNote = "The driver could not be checked."
+    }
+
+    // What the launch will apply for this draft (the dialog's one-line summary).
+    val draft = withGraphicsDriverKeys(initialConfig, adapter)
+    val effective = remember(draft, containerConfig, probe) {
+        if (perGame) com.winlator.star.core.WaylandAdapterSettings.resolve(containerConfig, draft, null, probe)
+        else com.winlator.star.core.WaylandAdapterSettings.resolve(draft, null, null, probe)
+    }
+    val containerProfile = remember(containerConfig) {
+        containerConfig?.let { c ->
+            com.winlator.star.core.WaylandAdapterSettings.profileLabel(
+                com.winlator.star.contentdialog.GraphicsDriverConfigDialog.parseGraphicsDriverConfig(c)[profileKey] ?: "")
+        }
+    }
 
     var helpRes by remember { mutableStateOf<Int?>(null) }
     helpRes?.let { HelpDialog(it) { helpRes = null } }
+    var advancedOpen by remember { mutableStateOf(adapterKeys.any { it != profileKey && !(adapter[it] ?: "").isEmpty() }) }
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Wayland driver settings") },
+        title = { Text("Wayland adapter settings") },
         text = {
             val maxContentHeight = (LocalConfiguration.current.screenHeightDp * 0.7f).dp
             Column(
@@ -3189,7 +3260,121 @@ internal fun WaylandDriverSettingsDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
+
+                // ── Adapter report ─────────────────────────────────────────────────────────────
+                Text("Adapter report", style = MaterialTheme.typography.titleSmall)
+                WaylandAdapterReportBlock(
+                    report = probe, probing = probing, note = probeNote,
+                    onRecheck = {
+                        com.winlator.star.core.WaylandDriverProbe.forget(context, driverId)
+                        probe = null
+                        probeTick++
+                    }
+                )
+                Spacer(Modifier.height(10.dp))
+
+                // ── Profile ────────────────────────────────────────────────────────────────────
+                Text("Profile", style = MaterialTheme.typography.titleSmall)
+                if (perGame) WaylandProfileRow(
+                    label = "Inherit the container's (${containerProfile ?: "Auto"})",
+                    help = "Use whatever the container is set to.",
+                    selected = profile.isEmpty(), onSelect = { setKey(profileKey, "") }
+                )
+                for (p in com.winlator.star.core.WaylandAdapterSettings.PROFILES) {
+                    // A container stores Auto as "" too (nothing to store); a shortcut stores it as "auto"
+                    // so it can differ from the container's choice.
+                    val value = if (!perGame && p == com.winlator.star.core.WaylandAdapterSettings.PROFILE_AUTO) "" else p
+                    val isSelected = if (perGame) profile == p
+                        else com.winlator.star.core.WaylandAdapterSettings.normalizeProfile(profile) == p
+                    WaylandProfileRow(
+                        label = com.winlator.star.core.WaylandAdapterSettings.profileLabel(p),
+                        help = com.winlator.star.core.WaylandAdapterSettings.profileHelp(p),
+                        selected = isSelected, onSelect = { setKey(profileKey, value) }
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Applied at launch: " + effective.summary(storedPresent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Env vars you type under Env vars always win over these; the switches below win over the profile.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(6.dp))
+
+                // ── Advanced ───────────────────────────────────────────────────────────────────
+                TextButton(onClick = { advancedOpen = !advancedOpen }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(if (advancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Advanced: single switches", modifier = Modifier.weight(1f))
+                }
+                if (advancedOpen) {
+                    val defaultWord = if (perGame) "Inherit" else "Default"
+                    WaylandTriStateRow(
+                        label = stringResource(R.string.graphics_driver_present_modes),
+                        help = "mailbox = newest frame, lowest latency; fifo = vsync, even pacing. Default follows the " +
+                            "profile, else the stored $storedPresent. Immediate needs tearing, which Wayland does not offer.",
+                        options = listOf("" to defaultWord, "mailbox" to "mailbox", "fifo" to "fifo"),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_PRESENT] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_PRESENT, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "Asynchronous copy",
+                        help = "The compositor keeps frames in flight instead of waiting for each screen blit. Turn off if " +
+                            "frames arrive out of order or a game stutters only on Wayland.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_ASYNC_COPY] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_ASYNC_COPY, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "Zero-copy presentation",
+                        help = "The game's own buffer goes on screen without a copy (lowest latency, less heat). Needs " +
+                            "sync-file fences in the driver (see the report). Turn off if you see tearing or stale frames.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_ZERO_COPY] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_ZERO_COPY, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "Client render fences",
+                        help = "With zero-copy, the game's driver tells the compositor when a frame is finished. Turn off " +
+                            "only to compare; off can show half-drawn frames.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_CLIENT_FENCE] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_CLIENT_FENCE, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "UBWC / compressed buffers",
+                        help = "Frames travel as compressed GPU buffers (less bandwidth). Turn off if the picture shows " +
+                            "garbled blocks or stripes.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_UBWC] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_UBWC, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "DRM format modifiers",
+                        help = "Lets the game's driver and the compositor agree on buffer layouts. Off makes the game use " +
+                            "plain linear buffers (BANNER_WSI_NO_MODIFIERS=1); try it for a black screen or corrupt frames.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_MODIFIERS] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_MODIFIERS, it) }
+                    )
+                    WaylandTriStateRow(
+                        label = "KGSL timing shim",
+                        help = "Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame " +
+                            "(the report's timing bug). Default lets the adapter detect it; On forces it, Off disables it.",
+                        options = triState(defaultWord),
+                        value = adapter[com.winlator.star.core.WaylandAdapterSettings.KEY_KGSL_SHIM] ?: "",
+                        onChange = { setKey(com.winlator.star.core.WaylandAdapterSettings.KEY_KGSL_SHIM, it) }
+                    )
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+                // ── Per-game driver settings (unchanged) ───────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabeledDropdown(
                         stringResource(R.string.gpu_name) + " (spoof)",
@@ -3220,22 +3405,6 @@ internal fun WaylandDriverSettingsDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    LabeledDropdown(
-                        stringResource(R.string.graphics_driver_present_modes), presentLabels,
-                        presentLabels[presentValues.indexOf(presentMode).coerceAtLeast(0)],
-                        { presentMode = presentValues[presentLabels.indexOf(it)] }, modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { helpRes = R.string.help_wrapper_present_modes }) {
-                        Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                    }
-                }
-                Text(
-                    "Wayland offers mailbox and fifo only: immediate needs tearing, which the compositor doesn't allow.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = fdDevFeatures, onCheckedChange = { fdDevFeatures = it })
                     Text("OneUI / HyperOS Fix (UBWC flag hint)", modifier = Modifier.weight(1f))
                     IconButton(onClick = { helpRes = R.string.help_oneui_hyperos_fix }) {
@@ -3258,9 +3427,8 @@ internal fun WaylandDriverSettingsDialog(
                         linkedMapOf(
                             "gpuName" to gpuName,
                             "maxDeviceMemory" to StringUtils.parseNumber(memoryEntry),
-                            "presentMode" to presentMode,
                             "fdDevFeatures" to if (fdDevFeatures) "1" else "0",
-                        )
+                        ) + adapter
                     )
                 )
             }) { Text(stringResource(android.R.string.ok)) }
@@ -3269,6 +3437,101 @@ internal fun WaylandDriverSettingsDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         }
     )
+}
+
+/** Default/Inherit · On · Off, the value triple core.WaylandAdapterSettings stores ("" / "1" / "0"). */
+private fun triState(defaultWord: String): List<Pair<String, String>> =
+    listOf("" to defaultWord, "1" to "On", "0" to "Off")
+
+/** One radio row of the profile picker. */
+@Composable
+private fun WaylandProfileRow(label: String, help: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect)
+    ) {
+        RadioButton(selected = selected, onClick = onSelect)
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text(help, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** One Advanced switch: a label, a segmented tri-state (or present-mode) choice and one line of help. */
+@Composable
+private fun WaylandTriStateRow(
+    label: String,
+    help: String,
+    options: List<Pair<String, String>>,
+    value: String,
+    onChange: (String) -> Unit,
+) {
+    Text(label, style = MaterialTheme.typography.bodyMedium)
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (v, l) ->
+            SegmentedButton(
+                selected = value == v,
+                onClick = { onChange(v) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+            ) { Text(l, maxLines = 1) }
+        }
+    }
+    Text(help, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(8.dp))
+}
+
+/**
+ * The "Adapter report": what core.WaylandDriverProbe measured on the graphics driver, in plain words, with
+ * the progress row while it runs and a Re-check that drops the cache.
+ */
+@Composable
+private fun WaylandAdapterReportBlock(
+    report: com.winlator.star.core.WaylandDriverProbe.Report?,
+    probing: Boolean,
+    note: String?,
+    onRecheck: () -> Unit,
+) {
+    val dim = MaterialTheme.colorScheme.onSurfaceVariant
+    @Composable fun line(name: String, value: String, bad: Boolean = false) {
+        Text(
+            "$name: $value",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (bad) MaterialTheme.colorScheme.error else dim
+        )
+    }
+    when {
+        probing -> Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text("Checking driver… about 2 seconds", style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+        note != null -> Text(note, style = MaterialTheme.typography.bodySmall, color = dim)
+        report == null -> Text("Not checked yet.", style = MaterialTheme.typography.bodySmall, color = dim)
+        !report.ok -> line("Could not check", report.error ?: "unknown error", bad = true)
+        else -> {
+            Text(report.driverLine(), style = MaterialTheme.typography.bodySmall)
+            line("Timing bug", when (report.kgslZeroTimeoutBug) {
+                true -> "yes — the timing shim will be used"
+                false -> "no"
+                null -> "not measured"
+            })
+            line("Fences (sync file)", if (report.syncFdFence) "yes" else "no", bad = !report.syncFdFence)
+            line("Zero-copy safe", (if (report.zeroCopySafe()) "yes" else "no") + " — " + report.zeroCopyReason(),
+                bad = !report.zeroCopySafe())
+            line("Compressed buffers (modifiers)", if (report.drmModifiers) "yes" else "no")
+            line("High GPU priority", when (report.highPriorityAccepted) {
+                true -> "accepted"
+                false -> "refused" + (if (report.highPriorityRefusal.isNotEmpty()) " (${report.highPriorityRefusal})" else "")
+                null -> "not offered by the driver"
+            })
+            Text(
+                "Checked in ${report.probeMs} ms" + (if (report.fromCache) " (saved result)" else ""),
+                style = MaterialTheme.typography.bodySmall, color = dim
+            )
+        }
+    }
+    TextButton(onClick = onRecheck, enabled = !probing) { Text("Re-check") }
 }
 
 /**

@@ -6412,7 +6412,17 @@ internal fun ShortcutSettingsDialogScreen(
             ?: graphicsDriverEntries.firstOrNull() ?: id)
     }
     var graphicsDriverConfig by remember {
-        mutableStateOf(shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig()))
+        // A game without its own config starts from a copy of the container's — with the Wayland adapter
+        // keys (core.WaylandAdapterSettings) blanked, so they read as "Inherit" instead of pinning the
+        // container's choices of today onto the game. Every other key is copied as before.
+        val own = shortcut.getExtra("graphicsDriverConfig", "")
+        mutableStateOf(
+            if (own.isNotEmpty()) own
+            else withGraphicsDriverKeys(
+                shortcut.container.getGraphicsDriverConfig(),
+                com.winlator.star.core.WaylandAdapterSettings.KEYS.associateWith { "" }
+            )
+        )
     }
 
     // DX wrapper
@@ -6528,8 +6538,8 @@ internal fun ShortcutSettingsDialogScreen(
     // The game driver row sits under a fold on Wayland; folded while the effective choice is the
     // adapter (one driver pick), open otherwise, until the user toggles it (null = not toggled).
     var waylandAdvancedToggled by remember { mutableStateOf<Boolean?>(null) }
-    val waylandAdapterChoice = waylandGameDriverOverride.ifEmpty { shortcut.container.waylandGameDriver } ==
-        Container.WAYLAND_GAME_DRIVER_ADAPTER
+    val waylandAdapterChoice = com.winlator.star.core.WaylandGameDriver.isAdapterChoice(
+        waylandGameDriverOverride.ifEmpty { shortcut.container.waylandGameDriver })
     val waylandAdvancedOpen = waylandAdvancedToggled ?: !waylandAdapterChoice
     // Which Vulkan driver a LINUX session draws with ("" = the one inside the runtime). Separate
     // from the row above it in the editor, which picks the Android driver that displays the session.
@@ -8259,44 +8269,57 @@ internal fun ShortcutSettingsDialogScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(8.dp))
-                        // Advanced: the Wayland game driver (per-game): "Use container default (<its
-                        // label>)" first, then Adapter / Auto / bundled variants / imported Linux ICDs.
-                        // A stored imported:<id> whose import is gone stays listed (labelled missing);
-                        // launch uses Auto for it. Folded while the effective choice is the adapter.
+                        // The Wayland game driver (per-game): "Use container default (<its label>)" first, then
+                        // Adapter / bundled variants / imported Linux ICDs (a stored auto shows as the adapter,
+                        // which it resolves to: WaylandGameDriver.editorChoice). A stored imported:<id> whose
+                        // import is gone stays listed (labelled missing); launch falls back for it. The bundled
+                        // and imported choices are the fallback, under an expander folded while the effective
+                        // choice is the adapter. The gear: this game's Wayland adapter settings (profile and
+                        // switches, GPU name spoof, memory cap, UBWC hint) in its graphicsDriverConfig, blank
+                        // adapter keys inheriting the container's.
                         run {
                             val containerChoice = shortcut.container.waylandGameDriver
+                            val overrideShown = if (waylandGameDriverOverride.isEmpty()) ""
+                                else com.winlator.star.core.WaylandGameDriver.editorChoice(gfxContext, waylandGameDriverOverride)
                             val values = listOf("") + (
-                                if (waylandGameDriverOverride.isEmpty() || waylandGameDriverOverride in waylandGameDriverValues) waylandGameDriverValues
-                                else waylandGameDriverValues + waylandGameDriverOverride)
+                                if (overrideShown.isEmpty() || overrideShown in waylandGameDriverValues) waylandGameDriverValues
+                                else waylandGameDriverValues + overrideShown)
                             val labels = values.map {
                                 if (it.isEmpty()) "Use container default (" + com.winlator.star.core.WaylandGameDriver.optionLabel(gfxContext, containerChoice, waylandAutoPick) + ")"
                                 else com.winlator.star.core.WaylandGameDriver.optionLabel(gfxContext, it, waylandAutoPick)
                             }
-                            // The gear: this game's Wayland driver settings (GPU name spoof, memory cap,
-                            // present mode, UBWC hint) in its graphicsDriverConfig, like X11's per-game
-                            // driver configuration.
-                            val selectedLabel = labels[values.indexOf(waylandGameDriverOverride).coerceAtLeast(0)]
+                            val selectedLabel = labels[values.indexOf(overrideShown).coerceAtLeast(0)]
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                DpButton(
-                                    dp, "waylandAdvanced",
-                                    onActivate = { waylandAdvancedToggled = !waylandAdvancedOpen },
-                                    modifier = Modifier.weight(1f),
-                                    onRightId = "waylandDriverCfg"
-                                ) {
-                                    TextButton(onClick = { waylandAdvancedToggled = !waylandAdvancedOpen }, modifier = Modifier.fillMaxWidth()) {
-                                        Icon(if (waylandAdvancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                            contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("Advanced: Wayland game driver ($selectedLabel)", modifier = Modifier.weight(1f))
-                                    }
-                                }
+                                Text(
+                                    "Wayland game driver: $selectedLabel",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
                                 DpButton(dp, "waylandDriverCfg", onActivate = { showWaylandDriverCfg = true }, onLeftId = "waylandAdvanced") {
                                     IconButton(onClick = { showWaylandDriverCfg = true }) {
-                                        Icon(Icons.Default.Settings, contentDescription = "Wayland driver settings")
+                                        Icon(Icons.Default.Settings, contentDescription = "Wayland adapter settings")
                                     }
                                 }
                             }
+                            DpButton(
+                                dp, "waylandAdvanced",
+                                onActivate = { waylandAdvancedToggled = !waylandAdvancedOpen },
+                                modifier = Modifier.fillMaxWidth(),
+                                onRightId = "waylandDriverCfg"
+                            ) {
+                                TextButton(onClick = { waylandAdvancedToggled = !waylandAdvancedOpen }, modifier = Modifier.fillMaxWidth()) {
+                                    Icon(if (waylandAdvancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(com.winlator.star.core.WaylandGameDriver.FALLBACK_EXPANDER, modifier = Modifier.weight(1f))
+                                }
+                            }
                             if (waylandAdvancedOpen) {
+                                Text(
+                                    com.winlator.star.core.WaylandGameDriver.FALLBACK_HINT,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 DpDrop(
                                     dp, "waylandGameDriver",
                                     label = "Wayland game driver",
@@ -9402,10 +9425,12 @@ internal fun ShortcutSettingsDialogScreen(
         )
     }
     if (showWaylandDriverCfg) {
+        // Per-game: the container's config is the fallback every blank adapter key inherits.
         WaylandDriverSettingsDialog(
             initialConfig = graphicsDriverConfig,
             onConfirm = { graphicsDriverConfig = it; showWaylandDriverCfg = false },
-            onDismiss = { showWaylandDriverCfg = false }
+            onDismiss = { showWaylandDriverCfg = false },
+            containerConfig = shortcut.container.getGraphicsDriverConfig()
         )
     }
     val isVegasCfg = StringUtils.parseIdentifier(selectedDxWrapper).contains("vegas")

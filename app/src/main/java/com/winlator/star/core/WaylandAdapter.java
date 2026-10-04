@@ -74,6 +74,16 @@ public final class WaylandAdapter {
             File dir = new File(root, id);
             File lib = new File(dir, LIB_NAME);
             File icd = new File(dir, ICD_NAME);
+            // An icd.json from an earlier build wrote '/' as "\/" (org.json), which winewayland's
+            // pin reads literally ("could not pin ..."); rewrite such a manifest in place.
+            if (lib.isFile() && icd.isFile()) {
+                String cur = FileUtils.readString(icd);
+                if (cur != null && cur.contains("\\/")) {
+                    if (!FileUtils.writeString(icd, cur.replace("\\/", "/")))
+                        Log.w(TAG, "could not rewrite " + icd);
+                    else Log.i(TAG, "rewrote " + icd + " without escaped slashes");
+                }
+            }
             if (!lib.isFile() || !icd.isFile()) {
                 if (!root.isDirectory() && !root.mkdirs()) throw new IOException("cannot create " + root);
                 File tmp = new File(root, ".tmp-" + System.currentTimeMillis());
@@ -90,16 +100,17 @@ public final class WaylandAdapter {
                     // The guest dlopen()s it by absolute path: readable + executable for the app's uid.
                     tmpLib.setReadable(true, false);
                     tmpLib.setExecutable(true, false);
-                    // Same manifest as an imported Wayland game driver (WaylandGameDriverManager), which is
-                    // the form the adapter was device-proven with (JSONObject writes '/' as "\/", so
-                    // winewayland logs "could not pin"; the Vulkan loader reads it fine).
+                    // Same manifest as an imported Wayland game driver (WaylandGameDriverManager).
+                    // org.json writes '/' as "\/": the Vulkan loader accepts that, winewayland's
+                    // pin_icd_library reads the string literally and fails ("could not pin"), so the
+                    // slashes are written plain.
                     JSONObject body = new JSONObject();
                     body.put("library_path", lib.getAbsolutePath());
                     body.put("api_version", "1.3.0");
                     JSONObject manifest = new JSONObject();
                     manifest.put("file_format_version", "1.0.0");
                     manifest.put("ICD", body);
-                    if (!FileUtils.writeString(new File(tmp, ICD_NAME), manifest.toString(2)))
+                    if (!FileUtils.writeString(new File(tmp, ICD_NAME), manifest.toString(2).replace("\\/", "/")))
                         throw new IOException("cannot write icd.json");
                     FileUtils.delete(dir);
                     if (!tmp.renameTo(dir)) throw new IOException("cannot move into " + dir);

@@ -74,7 +74,7 @@ static char *g_prelog[PRELOG_MAX];
 static int g_prelog_n;
 
 void banner_log(const char *tag, const char *fmt, ...) {
-    char msg[512];
+    char msg[1024];
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(msg, sizeof(msg), fmt, ap);
@@ -84,7 +84,7 @@ void banner_log(const char *tag, const char *fmt, ...) {
     struct tm tm;
     clock_gettime(CLOCK_REALTIME, &ts);
     localtime_r(&ts.tv_sec, &tm);
-    char line[640];
+    char line[1152];
     snprintf(line, sizeof(line), "%02d:%02d:%02d.%03ld  %-9s %s\n", tm.tm_hour, tm.tm_min, tm.tm_sec,
              ts.tv_nsec / 1000000, tag, msg);
     pthread_mutex_lock(&g_log_lock);

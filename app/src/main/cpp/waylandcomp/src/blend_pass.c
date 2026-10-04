@@ -21,6 +21,7 @@ static VkPipelineLayout g_pl;
 static VkDescriptorPool g_dpool;
 static VkShaderModule g_vert, g_frag;
 static unsigned g_frame = 1;
+static unsigned g_keep;    /* frames that may still be on the GPU: their slots stay (blendp_set_in_flight) */
 
 /* One render pass + pipeline per target format: the screen swapchain's, the scene image's, the HDR
  * composition's. */
@@ -35,6 +36,7 @@ static struct { VkImage img; VkFormat fmt; int w, h; VkImageView view; VkFramebu
 void blendp_bind_device(VkDevice dev) { g_dev = dev; }
 
 void blendp_begin_frame(void) { g_frame++; }
+void blendp_set_in_flight(unsigned frames) { g_keep = frames; }
 
 static void src_release(int i) {
     if (g_src[i].ds) g_vk.FreeDescriptorSets(g_dev, g_dpool, 1, &g_src[i].ds);
@@ -203,13 +205,13 @@ static VkImageView make_view(VkImage img, VkFormat fmt) {
 }
 
 /* The slot to recycle: a free one, else the one unused for longest - never one this command buffer
- * already refers to. -1 = every slot is in this frame. */
+ * already refers to, nor one a frame that may still be on the GPU used (g_keep). -1 = none. */
 #define OLDEST(arr, n, out) do { \
         unsigned age_ = 0; \
         (out) = -1; \
         for (int k_ = 0; k_ < (n); k_++) { \
             if (!(arr)[k_].img) { (out) = k_; break; } \
-            if ((arr)[k_].frame != g_frame && g_frame - (arr)[k_].frame > age_) { age_ = g_frame - (arr)[k_].frame; (out) = k_; } \
+            if ((arr)[k_].frame != g_frame && g_frame - (arr)[k_].frame > g_keep && g_frame - (arr)[k_].frame > age_) { age_ = g_frame - (arr)[k_].frame; (out) = k_; } \
         } \
     } while (0)
 

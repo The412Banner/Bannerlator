@@ -380,9 +380,13 @@ static struct {
     unsigned unshown;                        /* replaced before any scene showed them (mailbox: given back at once) */
     unsigned refresh_paced;                  /* releases put on the refresh cadence without a limit (gamescope) */
     int layer_in_flight_max;                 /* display-layer transactions SurfaceFlinger had not answered yet */
+    unsigned late_frames;                    /* copy-path frames whose GPU work took over 1.5 refresh intervals */
 } g_perf;
 
 static void schedule_render(void);
+struct dmabuf_buffer; /* defined with the zwp_linux_dmabuf_v1 code below */
+static void defer_release(struct dmabuf_buffer *b, struct wl_resource *buffer, struct surface *s);
+static void retire_frames(int wait_all);
 
 static int64_t now_ns(void) {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -629,10 +633,23 @@ struct dmabuf_buffer {
      * until the surface commits something newer, so the picture never blinks to black. */
     int refs;
     void *ahb_state;                        /* zero-copy: ahb_swapchain.c's record (the game's AHardwareBuffer) */
+    /* The copy path's frames in flight that read the buffer (frame_work, each holding a ref), and
+     * the wl_buffer.release its surface owes the program once the last of them has retired. */
+    int reading;
+    int rel_pending;
+    struct wl_resource *rel_resource;       /* NULL once the program destroyed the wl_buffer meanwhile */
+    struct wl_listener rel_destroy;
+    struct surface *rel_surface;            /* the limiter's cadence applies; NULL = released at once */
+    int64_t rel_since_ns;                   /* when it was replaced (the perf line's release time) */
+    struct wl_list rel_link;                /* g_deferred_releases */
 };
 
 static void dmabuf_buffer_unref(struct dmabuf_buffer *b) {
     if (!b || --b->refs > 0) return;
+    if (b->rel_pending) { /* cannot normally happen: a reading frame holds a ref; keep the lists sane */
+        wl_list_remove(&b->rel_link);
+        if (b->rel_resource) wl_list_remove(&b->rel_destroy.link);
+    }
     vkp_image_destroy(b->img);
     for (int i = 0; i < b->n_planes; i++)
         if (b->fd[i] >= 0) close(b->fd[i]);
@@ -728,9 +745,11 @@ static void drop_dmabuf(struct surface *s, int paced) {
         /* Replaced before any scene showed it: superseded, nothing reads it (the perf line). */
         if (paced && !s->dmabuf_shown) g_perf.unshown++;
         /* A buffer on the zero-copy layer is the display's until SurfaceFlinger says otherwise:
-         * ahb_swapchain.c releases it then. */
+         * ahb_swapchain.c releases it then. One a copy-path frame still reads on the GPU goes back
+         * when that frame retires (defer_release); anything else at once. */
         if (!ahb_swapchain_defer_release(s->dmabuf_buf, s->dmabuf, s, paced)) {
-            if (paced) release_buffer(s, s->dmabuf, now_ns());
+            if (s->dmabuf_buf && s->dmabuf_buf->reading > 0) defer_release(s->dmabuf_buf, s->dmabuf, paced ? s : NULL);
+            else if (paced) release_buffer(s, s->dmabuf, now_ns());
             else wl_buffer_send_release(s->dmabuf);
         }
         s->dmabuf = NULL;
@@ -772,7 +791,10 @@ static void take_shm(struct surface *s, struct wl_shm_buffer *shm, struct wl_res
     int32_t w = wl_shm_buffer_get_width(shm), h = wl_shm_buffer_get_height(shm);
     int32_t stride = wl_shm_buffer_get_stride(shm);
 
-    if (s->shm_img && (vkp_image_width(s->shm_img) != w || vkp_image_height(s->shm_img) != h)) {
+    /* A size change, or a copy-path frame in flight still reads the image (the upload below would
+     * tear that frame): a fresh image; the old one is freed when that frame retires (vk_present.c). */
+    if (s->shm_img && (vkp_image_width(s->shm_img) != w || vkp_image_height(s->shm_img) != h ||
+                       vkp_image_in_flight(s->shm_img))) {
         vkp_image_destroy(s->shm_img);
         s->shm_img = NULL;
     }
@@ -988,6 +1010,203 @@ static void bind_presentation(struct wl_client *c, void *data, uint32_t ver, uin
     wl_resource_set_implementation(r, &presentation_impl, NULL, NULL);
     wp_presentation_send_clock_id(r, CLOCK_MONOTONIC);
 }
+
+/* ------------------------------------------------------------------ frames in flight (copy path)
+ *
+ * vk_present.c presents a scene frame and returns before its GPU work is done (the frame ring,
+ * FRAME_SLOTS there). What the frame still owes is kept here under its sequence number until
+ * banner_frame_retired says the fence signalled:
+ *   - the wp_presentation feedback of the surfaces it showed ("presented" is sent then, with that
+ *     time: the closest this thread gets to the frame reaching the screen);
+ *   - a reference on every client buffer it reads. A buffer the program replaced meanwhile is
+ *     released only when the last frame reading it has retired (defer_release / dmabuf_buffer.rel_*),
+ *     on the limiter's cadence exactly as release_buffer always did.
+ * Frame callbacks are NOT held: they fire when the frame is submitted (render_scene), which is the
+ * compositor's "draw your next frame now" - so a FIFO client records its next frame while this one
+ * is on the GPU, instead of idling behind the blit as it did when the thread waited here. In the
+ * synchronous mode (BANNER_WAYLAND_ASYNC_COPY=0) the frame is already done when it is registered and
+ * retires in the same render_scene call: feedback and releases then go out where they always did. */
+struct frame_work {
+    uint64_t seq;
+    int64_t submit_ns;
+    struct wl_list feedback;                /* wp_presentation feedback to answer on retirement */
+    struct dmabuf_buffer **bufs;
+    int nbufs;
+    struct wl_list link;                    /* g_frames_in_flight, oldest first */
+};
+static struct wl_list g_frames_in_flight;
+static struct wl_list g_deferred_releases;  /* dmabuf_buffers with rel_pending */
+static struct wl_event_source *g_frame_fd_src; /* the oldest frame's fence in the event loop */
+static int g_frame_fd = -1;                 /* ... (our dup of it; vk_present.c keeps its own) */
+
+static void on_deferred_release_buffer_destroyed(struct wl_listener *l, void *data) {
+    struct dmabuf_buffer *b = wl_container_of(l, b, rel_destroy);
+    wl_list_remove(&b->rel_destroy.link);
+    wl_list_init(&b->rel_destroy.link);
+    b->rel_resource = NULL; /* the program let go of the wl_buffer: nothing to release any more */
+}
+
+/* A replaced buffer a frame in flight still reads: released when that frame retires. s = the surface
+ * whose limiter cadence applies (NULL: at once, like an unpaced release). */
+static void defer_release(struct dmabuf_buffer *b, struct wl_resource *buffer, struct surface *s) {
+    if (b->rel_pending) {
+        /* Not expected (a buffer is attached once between releases); honour the earlier one now. */
+        if (b->rel_resource) { wl_list_remove(&b->rel_destroy.link); wl_buffer_send_release(b->rel_resource); }
+        wl_list_remove(&b->rel_link);
+    }
+    b->rel_pending = 1;
+    b->rel_resource = buffer;
+    b->rel_destroy.notify = on_deferred_release_buffer_destroyed;
+    wl_resource_add_destroy_listener(buffer, &b->rel_destroy);
+    b->rel_surface = s;
+    b->rel_since_ns = now_ns();
+    wl_list_insert(g_deferred_releases.prev, &b->rel_link);
+}
+
+/* The last frame reading the buffer has retired: send the release it owes. */
+static void deferred_release_send(struct dmabuf_buffer *b) {
+    if (!b->rel_pending) return;
+    b->rel_pending = 0;
+    wl_list_remove(&b->rel_link);
+    wl_list_init(&b->rel_link);
+    if (b->rel_resource) {
+        struct wl_resource *res = b->rel_resource;
+        wl_list_remove(&b->rel_destroy.link);
+        wl_list_init(&b->rel_destroy.link);
+        b->rel_resource = NULL;
+        if (b->rel_surface) release_buffer(b->rel_surface, res, b->rel_since_ns);
+        else { wl_buffer_send_release(res); perf_note_release(b->rel_since_ns); }
+    }
+    b->rel_surface = NULL;
+}
+
+/* A surface is going away: its deferred releases still go out, unpaced. */
+static void deferred_releases_forget_surface(struct surface *s) {
+    struct dmabuf_buffer *b;
+    wl_list_for_each(b, &g_deferred_releases, rel_link)
+        if (b->rel_surface == s) b->rel_surface = NULL;
+}
+
+/* vk_present.c: the frame's GPU work is done (or abandoned with the device). Compositor thread, from
+ * vkp_retire_frames or from inside a vkp_render that reused the slot. */
+void banner_frame_retired(uint64_t seq, int64_t in_flight_ns) {
+    struct frame_work *fw, *tmp;
+    wl_list_for_each_safe(fw, tmp, &g_frames_in_flight, link) {
+        if (fw->seq != seq) continue;
+        wl_list_remove(&fw->link);
+        feedback_present_all(&fw->feedback, now_ns());
+        for (int i = 0; i < fw->nbufs; i++) {
+            struct dmabuf_buffer *b = fw->bufs[i];
+            if (--b->reading <= 0) { b->reading = 0; deferred_release_send(b); }
+            dmabuf_buffer_unref(b);
+        }
+        if (in_flight_ns > g_refresh_ns + g_refresh_ns / 2) g_perf.late_frames++;
+        free(fw->bufs);
+        free(fw);
+        return;
+    }
+    /* Unknown: a frame that failed after its submit (never registered), or a plain black frame. */
+}
+
+/* A copy-path frame was just presented: take over its surfaces' feedback and a reference on every
+ * buffer it reads. nbufs is bounded by the surfaces drawn. */
+static void frame_register(uint64_t seq, int64_t submit_ns) {
+    struct surface *s;
+    int drawn = 0;
+    wl_list_for_each(s, &g_surfaces, link) if (s->drawn) drawn++;
+    struct frame_work *fw = calloc(1, sizeof(*fw));
+    struct dmabuf_buffer **bufs = calloc((size_t)(drawn ? drawn : 1), sizeof(*bufs));
+    if (!fw || !bufs) {
+        /* Out of memory: answer the feedback now and hold nothing (the images themselves are still
+         * kept alive by vk_present.c; only a replaced buffer's release is then not deferred). */
+        free(fw); free(bufs);
+        wl_list_for_each(s, &g_surfaces, link) if (s->drawn) feedback_present_all(&s->feedback, submit_ns);
+        return;
+    }
+    fw->seq = seq;
+    fw->submit_ns = submit_ns;
+    fw->bufs = bufs;
+    wl_list_init(&fw->feedback);
+    wl_list_for_each(s, &g_surfaces, link) {
+        if (!s->drawn) continue;
+        wl_list_insert_list(&fw->feedback, &s->feedback);
+        wl_list_init(&s->feedback);
+        struct dmabuf_buffer *b = s->dmabuf_buf;
+        if (!b || !b->img) continue;
+        int seen = 0;
+        for (int i = 0; i < fw->nbufs; i++) if (fw->bufs[i] == b) { seen = 1; break; }
+        if (seen) continue;
+        fw->bufs[fw->nbufs++] = b;
+        b->refs++;
+        b->reading++;
+    }
+    wl_list_insert(g_frames_in_flight.prev, &fw->link);
+}
+
+static int on_frame_fd(int fd, uint32_t mask, void *data) {
+    retire_frames(0);
+    return 0;
+}
+
+/* Watch the oldest in-flight frame's fence (as a sync_file) so its buffers go back - and its
+ * feedback goes out - the moment the GPU is done with it, not at the next vsync tick. Without a
+ * sync_file (an older driver) the tick's retire_frames call sees it instead. */
+static void arm_frame_fd(void) {
+    if (g_frame_fd_src) { wl_event_source_remove(g_frame_fd_src); g_frame_fd_src = NULL; }
+    if (g_frame_fd >= 0) { close(g_frame_fd); g_frame_fd = -1; }
+    if (!g_display || wl_list_empty(&g_frames_in_flight)) return;
+    int fd = vkp_frame_wait_fd();
+    if (fd < 0) return;
+    g_frame_fd_src = wl_event_loop_add_fd(wl_display_get_event_loop(g_display), fd, WL_EVENT_READABLE, on_frame_fd, NULL);
+    if (!g_frame_fd_src) { close(fd); return; }
+    g_frame_fd = fd;
+}
+
+/* Retire what the GPU has finished (all of it when wait_all), then watch the next oldest frame. */
+static void retire_frames(int wait_all) {
+    vkp_retire_frames(wait_all);
+    arm_frame_fd();
+}
+
+/* The 10 s perf line's present-interval statistics: the time between consecutive frames this thread
+ * put on screen, in a 0.25 ms histogram up to 128 ms (p99 is read off it) plus the longest one. An
+ * even cadence shows as p99 close to the refresh interval; jitter as a p99 well above it. */
+#define PI_BUCKET_NS 250000LL
+#define PI_BUCKETS 512
+static unsigned g_pi_hist[PI_BUCKETS + 1]; /* [PI_BUCKETS] = longer than the range */
+static unsigned g_pi_count;
+static int64_t g_pi_max_ns, g_pi_last_ns;
+
+static void note_present_interval(int64_t t) {
+    if (g_pi_last_ns) {
+        int64_t d = t - g_pi_last_ns;
+        if (d < 0) d = 0;
+        int64_t bi = d / PI_BUCKET_NS;
+        g_pi_hist[bi >= PI_BUCKETS ? PI_BUCKETS : (int)bi]++;
+        g_pi_count++;
+        if (d > g_pi_max_ns) g_pi_max_ns = d;
+    }
+    g_pi_last_ns = t;
+}
+
+/* The 99th percentile (upper edge of its bucket), in ms; 0 with no intervals. */
+static double present_interval_p99_ms(void) {
+    if (!g_pi_count) return 0.0;
+    const unsigned target = (unsigned)(((uint64_t)g_pi_count * 99 + 99) / 100);
+    unsigned seen = 0;
+    for (int i = 0; i <= PI_BUCKETS; i++) {
+        seen += g_pi_hist[i];
+        if (seen >= target) return (double)(i >= PI_BUCKETS ? PI_BUCKETS : i + 1) * PI_BUCKET_NS / 1e6;
+    }
+    return (double)PI_BUCKETS * PI_BUCKET_NS / 1e6;
+}
+
+static void present_interval_reset(void) {
+    memset(g_pi_hist, 0, sizeof(g_pi_hist));
+    g_pi_count = 0;
+    g_pi_max_ns = 0;
+}
+
 static void surface_frame(struct wl_client *c, struct wl_resource *r, uint32_t cb) {
     struct surface *s = wl_resource_get_user_data(r);
     struct wl_resource *callback = wl_resource_create(c, &wl_callback_interface, 1, cb);
@@ -1158,6 +1377,7 @@ static void surface_resource_destroy(struct wl_resource *r) {
     }
     if (s->pending_buffer) wl_list_remove(&s->pending_buffer_destroy.link);
     pending_releases_forget_surface(s);
+    deferred_releases_forget_surface(s);
     drop_dmabuf(s, 0);
     ahb_swapchain_surface_gone(s);
     vkp_image_destroy(s->shm_img);
@@ -1582,6 +1802,8 @@ static struct wl_resource *params_do_create(struct wl_client *c, struct wl_resou
     if (!b) return NULL;
     b->n_planes = p->n_planes;
     b->refs = 1; /* the wl_buffer resource's */
+    wl_list_init(&b->rel_link);
+    wl_list_init(&b->rel_destroy.link);
     b->width = w; b->height = h; b->format = format;
     b->modifier = p->modifier[0];
     for (int i = 0; i < MAX_PLANES; i++) b->fd[i] = -1;
@@ -2232,6 +2454,7 @@ static void render_scene(void) {
     const int64_t t_scene = now_ns();
     int copy = 0; /* this scene went through the screen swapchain (the perf line's "copy") */
 
+    retire_frames(0); /* frames the GPU has finished since the last tick: their buffers go back first */
     g_dirty = 0;
     g_hdr_unimported = NULL; /* found again while the scene is built (HDR gate open only) */
     wl_list_for_each(s, &g_surfaces, link) s->drawn = 0;
@@ -2403,15 +2626,21 @@ static void render_scene(void) {
     if (rendered) {
         int64_t t = now_ns();
         g_stat_frames++;
-        /* A surface outside the scene (role-less, not placed yet, a hidden helper window such
+        note_present_interval(t);
+        /* A copy-path frame answers its surfaces' feedback when its GPU work retires (frame_work);
+         * a layer frame is on screen as far as this thread can tell, so its feedback goes now.
+         * A surface outside the scene (role-less, not placed yet, a hidden helper window such
          * as wined3d's device window) was not shown, so its feedback is discarded rather than
          * left pending: a FIFO present waits on it, and a client blocked there never commits
          * again. */
+        const uint64_t seq = copy ? vkp_last_frame_seq() : 0;
+        if (seq) frame_register(seq, t);
         wl_list_for_each(s, &g_surfaces, link) {
-            if (s->drawn) { feedback_present_all(&s->feedback, t); s->dmabuf_shown = 1; }
+            if (s->drawn) { if (!seq) feedback_present_all(&s->feedback, t); s->dmabuf_shown = 1; }
             else feedback_discard_all(&s->feedback);
         }
         fire_all_frames();
+        retire_frames(0); /* a synchronous frame is done already: its feedback and releases go out now */
     } else {
         /* No output surface yet (or it went away): keep clients paced without it, now and on a
          * timer that re-arms itself until a window is back (see pace_without_output). */
@@ -2460,6 +2689,7 @@ static void on_vsync(int64_t frame_time_ns) {
     }
     g_last_vsync_ns = now;
     (void)frame_time_ns;
+    retire_frames(0); /* copy-path frames the GPU finished since the last tick */
     /* The app's surface may have been replaced or taken away since the last frame: apply that now
      * (the app never waits for us), and redraw the scene onto a new one. */
     if (vkp_apply_window_request()) g_dirty = 1;
@@ -3632,12 +3862,18 @@ static int on_stats_timer(void *data) {
         vkp_perf_take(&vp);
         const unsigned drops = sc_layer_drops_take();
 #define PERF_MS(sum, n) ((n) ? (double)(sum) / 1e6 / (double)(n) : 0.0)
+        /* New fields at the end (2026-10-03, the async copy path): the interval between on-screen
+         * frames (p99 / max: even pacing reads as p99 near the refresh interval), the slot waits (a
+         * frame that had to wait for the ring slot: the GPU more than a frame behind), frames whose
+         * GPU work took over 1.5 refresh intervals, frames in flight right now, and the mode. */
         if (g_perf.scenes || vp.presents || g_perf.releases || drops)
             banner_log("perf", "last 10 s: %u ticks, %u scenes, %u on screen (copy %u, zero-copy %u, layer copy %u) | "
                        "render_scene %.2f/%.2f ms | base %u black kept, %u presented | acquire %.2f/%.2f ms | "
                        "present %.2f/%.2f ms (%u) | fence wait %.2f/%.2f ms (%u, %u GPU release waits) | "
                        "release %.2f/%.2f ms (%u, %u held) | %u pool drops | "
-                       "%u replaced unshown, %u refresh-paced | layer in flight max %d",
+                       "%u replaced unshown, %u refresh-paced | layer in flight max %d | "
+                       "present interval p99 %.2f ms, max %.2f ms | slot wait %.2f/%.2f ms (%u) | "
+                       "%u late frames, %d in flight | copy path %s",
                        g_perf.ticks, g_perf.scenes, g_stat_frames, g_perf.copy_scenes, zero_copy, layer_frames,
                        PERF_MS(g_perf.scene_ns, g_perf.scenes), (double)g_perf.scene_max_ns / 1e6,
                        vp.base_kept, vp.base_presents,
@@ -3646,8 +3882,13 @@ static int on_stats_timer(void *data) {
                        PERF_MS(vp.wait_ns, vp.waits), (double)vp.wait_max_ns / 1e6, vp.waits, vp.gpu_release_waits,
                        PERF_MS(g_perf.release_ns, g_perf.releases), (double)g_perf.release_max_ns / 1e6,
                        g_perf.releases, g_perf.releases_held, drops,
-                       g_perf.unshown, g_perf.refresh_paced, g_perf.layer_in_flight_max);
+                       g_perf.unshown, g_perf.refresh_paced, g_perf.layer_in_flight_max,
+                       present_interval_p99_ms(), (double)g_pi_max_ns / 1e6,
+                       PERF_MS(vp.slot_wait_ns, vp.slot_waits), (double)vp.slot_wait_max_ns / 1e6, vp.slot_waits,
+                       g_perf.late_frames, wl_list_length(&g_frames_in_flight),
+                       vkp_async_copy() ? "async" : "sync");
 #undef PERF_MS
+        present_interval_reset();
         memset(&g_perf, 0, sizeof(g_perf));
     }
     g_stat_frames = g_stat_dmabuf = g_stat_shm = 0;
@@ -3806,6 +4047,8 @@ int banner_wayland_run(void) {
                                   * only when it is open (banner_color.h). Before any client can
                                   * bind zwp_linux_dmabuf_v1, whose table it widens. */
     wl_list_init(&g_pending_releases);
+    wl_list_init(&g_frames_in_flight);
+    wl_list_init(&g_deferred_releases);
     g_release_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (g_release_timer_fd >= 0)
         g_release_source = wl_event_loop_add_fd(wl_display_get_event_loop(display), g_release_timer_fd,

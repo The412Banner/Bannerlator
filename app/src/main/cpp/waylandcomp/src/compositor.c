@@ -3861,6 +3861,12 @@ static int on_stats_timer(void *data) {
         struct vkp_perf vp;
         vkp_perf_take(&vp);
         const unsigned drops = sc_layer_drops_take();
+        /* Where the zero-copy frames' acquire fences came from (ahb_swapchain.c): client = attached by the
+         * game's driver (banner_ahb_v1 version 3), exported = from the dma-buf, none = waited for on the CPU. */
+        unsigned zf_client = 0, zf_exported = 0, zf_none = 0, zf_ignored = 0;
+        char zf_ign[40] = "";
+        ahb_swapchain_fence_stats_take(&zf_client, &zf_exported, &zf_none, &zf_ignored);
+        if (zf_ignored) snprintf(zf_ign, sizeof(zf_ign), ", ignored %u", zf_ignored);
 #define PERF_MS(sum, n) ((n) ? (double)(sum) / 1e6 / (double)(n) : 0.0)
         /* New fields at the end (2026-10-03, the async copy path): the interval between on-screen
          * frames (p99 / max: even pacing reads as p99 near the refresh interval), the slot waits (a
@@ -3873,7 +3879,7 @@ static int on_stats_timer(void *data) {
                        "release %.2f/%.2f ms (%u, %u held) | %u pool drops | "
                        "%u replaced unshown, %u refresh-paced | layer in flight max %d | "
                        "present interval p99 %.2f ms, max %.2f ms | slot wait %.2f/%.2f ms (%u) | "
-                       "%u late frames, %d in flight | copy path %s",
+                       "%u late frames, %d in flight | copy path %s | zero-copy fences: client %u, exported %u, none %u%s",
                        g_perf.ticks, g_perf.scenes, g_stat_frames, g_perf.copy_scenes, zero_copy, layer_frames,
                        PERF_MS(g_perf.scene_ns, g_perf.scenes), (double)g_perf.scene_max_ns / 1e6,
                        vp.base_kept, vp.base_presents,
@@ -3886,7 +3892,7 @@ static int on_stats_timer(void *data) {
                        present_interval_p99_ms(), (double)g_pi_max_ns / 1e6,
                        PERF_MS(vp.slot_wait_ns, vp.slot_waits), (double)vp.slot_wait_max_ns / 1e6, vp.slot_waits,
                        g_perf.late_frames, wl_list_length(&g_frames_in_flight),
-                       vkp_async_copy() ? "async" : "sync");
+                       vkp_async_copy() ? "async" : "sync", zf_client, zf_exported, zf_none, zf_ign);
 #undef PERF_MS
         present_interval_reset();
         memset(&g_perf, 0, sizeof(g_perf));

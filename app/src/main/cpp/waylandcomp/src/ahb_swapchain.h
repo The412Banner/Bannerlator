@@ -15,10 +15,18 @@
  * retires it (VK_ERROR_OUT_OF_DATE_KHR) so the program rebuilds it, and until then its buffers keep
  * presenting as before: an attached AHardwareBuffer stays with its wl_buffer whatever the mode is.
  *
- * Fences stay implicit, in the dma-buf itself: Mesa imports the render fence into the dma-buf
- * before it commits, we export it as the layer's acquire fence (DMA_BUF_IOCTL_EXPORT_SYNC_FILE),
+ * Fences are implicit by default, in the dma-buf itself: Mesa imports the render fence into the
+ * dma-buf before it commits, we export it as the layer's acquire fence (DMA_BUF_IOCTL_EXPORT_SYNC_FILE),
  * and import SurfaceFlinger's release fence back (DMA_BUF_IOCTL_IMPORT_SYNC_FILE) before sending
  * wl_buffer.release, so Mesa's acquire (wsi_create_sync_for_dma_buf_wait) waits for the display.
+ * Kernels without those ioctls (ENOTTY; seen on Adreno 7c+ Gen 3 / A6xx "Hot_Ice") leave the EXPORT
+ * with no fence (-1): SurfaceFlinger can scan out a buffer the game is still writing - judder at any
+ * load. banner_ahb_v1 version 3 closes that hole from the client side: the game's driver sends its
+ * render-complete fence as a sync_file (banner_ahb_v1.fence, the SYNC_FD export of the semaphore its
+ * present signals - VK_KHR_external_semaphore_fd needs no dma-buf ioctl) before each commit, and that fd
+ * becomes the layer's acquire fence. A client fence is preferred over the export whenever one was sent;
+ * BANNER_WAYLAND_ZC_CLIENT_FENCE=0 (ahb_swapchain_set_client_fence) ignores them for an A/B. The perf
+ * line counts where each zero-copy frame's fence came from (ahb_swapchain_fence_stats_take).
  *
  * Compositor thread unless noted. Without a usable display layer (sc_layer_available() == 0) the
  * global is not created and nothing here runs.
@@ -52,6 +60,15 @@ int ahb_swapchain_defer_release(struct dmabuf_buffer *b, struct wl_resource *buf
 void ahb_swapchain_surface_gone(struct surface *s);
 /* Zero-copy frames since the last call (the 10 s summary). */
 unsigned ahb_swapchain_stats_take(void);
+/* Where the acquire fence of each zero-copy frame since the last call came from (the 10 s perf line):
+ * client = attached by the game's driver (banner_ahb_v1.fence, version 3), exported = taken from the
+ * dma-buf (DMA_BUF_IOCTL_EXPORT_SYNC_FILE), none = neither (the frame was waited for on the CPU);
+ * ignored = client fences dropped by the kill switch (counted per fence). Any NULL is skipped. */
+void ahb_swapchain_fence_stats_take(unsigned *client, unsigned *exported, unsigned *none, unsigned *ignored);
+/* Honour the render fences clients attach with banner_ahb_v1.fence (default 1). 0 = close them unused
+ * and let the dma-buf export path (and its CPU fallback) decide, exactly as for a version 2 client:
+ * the BANNER_WAYLAND_ZC_CLIENT_FENCE=0 kill switch. Any thread, any time. */
+void ahb_swapchain_set_client_fence(int on);
 /* 1 when the banner_ahb_v1 global exists (a display layer is possible): part of the HDR gate. */
 int ahb_swapchain_advertised(void);
 /* The AHARDWAREBUFFER_FORMAT_* of the game's buffer behind b, 0 when it has none. */

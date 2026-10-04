@@ -20,6 +20,7 @@
 #include "sc_layer.h"
 #include "effects_chain.h"
 #include "banner_color.h"
+#include "driver_probe.h"
 
 extern int banner_wayland_run(void);
 extern void banner_wayland_send_pointer(int action, int x, int y);
@@ -697,4 +698,34 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeTextInputPreedit(JNIEnv *
 JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeTextInputDelete(JNIEnv *env, jclass clazz, jint before, jint after) {
     banner_host_text_delete(before, after);
+}
+
+/* ---- zero-copy client render fences + the driver capability probe ----------------------------- */
+
+/* Render fences the game's driver attaches to its zero-copy buffers (banner_ahb_v1 version 3, for kernels
+ * without the dma-buf sync_file ioctls). Default on; BANNER_WAYLAND_ZC_CLIENT_FENCE=0 = ignore them (the
+ * dma-buf export path and its CPU fallback decide, as for a version 2 driver). Any time. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetZeroCopyClientFence(JNIEnv *env, jclass clazz, jboolean on) {
+    ahb_swapchain_set_client_fence(on ? 1 : 0);
+    __android_log_print(ANDROID_LOG_INFO, TAG, "zero-copy client render fences %s",
+                        on ? "honoured" : "ignored (BANNER_WAYLAND_ZC_CLIENT_FENCE=0)");
+}
+
+/* Driver capability probe (driver_probe.c): its own instance + device on the driver at libPath (null = the
+ * system libvulkan), measured and destroyed before this returns; the running compositor's driver, instance
+ * and device are never touched. Up to ~2 s: call it off the UI thread. Returns one JSON object. */
+JNIEXPORT jstring JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeProbeDriver(JNIEnv *env, jclass clazz, jstring libPath) {
+    char *lp = dup_jstr(env, libPath);
+    char *json = malloc(BANNER_PROBE_JSON_CAP);
+    if (!json) {
+        free(lp);
+        return (*env)->NewStringUTF(env, "{\"ok\":false,\"error\":\"out of memory\"}");
+    }
+    banner_probe_driver(lp && lp[0] ? lp : NULL, json, BANNER_PROBE_JSON_CAP);
+    free(lp);
+    jstring out = (*env)->NewStringUTF(env, json);
+    free(json);
+    return out;
 }

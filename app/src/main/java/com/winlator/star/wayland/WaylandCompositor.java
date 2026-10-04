@@ -246,6 +246,22 @@ public final class WaylandCompositor {
      *  environment variables restores the synchronous path (A/B). Set before the compositor starts. */
     public static native void nativeSetAsyncCopy(boolean on);
 
+    /** Zero-copy acquire fences the game's driver attaches itself (banner_ahb_v1 version 3): on kernels without
+     *  the dma-buf sync_file ioctls the compositor cannot export a fence from the game's buffer and the display
+     *  could show a frame still being drawn; a version 3 driver sends its render-complete fence instead. Default
+     *  on; BANNER_WAYLAND_ZC_CLIENT_FENCE=0 in the container's environment variables makes the compositor ignore
+     *  those fences (A/B; behaves like a version 2 driver). Any time. */
+    public static native void nativeSetZeroCopyClientFence(boolean on);
+
+    /** Driver capability probe (native driver_probe.c). Creates its own Vulkan instance and device on the driver
+     *  at {@code libPath} (a Turnip .so, loaded through adrenotools exactly as the compositor loads its own;
+     *  null = the system libvulkan), measures what the Wayland path depends on - sync_fd fences/semaphores, DRM
+     *  modifiers, global queue priority, the KGSL zero-timeout fence bug, the dma-buf sync_file ioctls, AHB export -
+     *  and destroys everything before returning. Safe before, beside or without a running compositor; takes up to
+     *  about 2 s, so call it off the UI thread. Returns one JSON object (schema in driver_probe.h); on any failure
+     *  {@code ok} is false and {@code error} says why, with whatever was measured before it. */
+    public static native String nativeProbeDriver(String libPath);
+
     /** How a program window the compositor focuses by itself (a new window, or the one left when the
      *  focused window closes) is made Wine's foreground window, so a game that pauses unfocused starts
      *  without a tap: {@link #AUTO_ACTIVATE_BRING_TO_FRONT} (default; {@link BringToFrontListener} →

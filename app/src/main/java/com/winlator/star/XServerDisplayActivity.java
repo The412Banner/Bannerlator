@@ -9049,6 +9049,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean asyncCopy = !(ac != null && (ac.equals("0") || ac.equalsIgnoreCase("false") || ac.equalsIgnoreCase("off")));
             com.winlator.star.wayland.WaylandCompositor.nativeSetAsyncCopy(asyncCopy);
             if (!asyncCopy) Log.i("XServerDisplayActivity", "wayland: asynchronous copy path disabled by BANNER_WAYLAND_ASYNC_COPY");
+            // Zero-copy acquire fences the game's driver attaches itself (banner_ahb_v1 version 3), default on;
+            // BANNER_WAYLAND_ZC_CLIENT_FENCE=0 (or false/off) makes the compositor ignore them for an A/B run.
+            String cf = env != null ? env.get("BANNER_WAYLAND_ZC_CLIENT_FENCE") : null;
+            boolean clientFence = !(cf != null && (cf.equals("0") || cf.equalsIgnoreCase("false") || cf.equalsIgnoreCase("off")));
+            com.winlator.star.wayland.WaylandCompositor.nativeSetZeroCopyClientFence(clientFence);
+            if (!clientFence) Log.i("XServerDisplayActivity", "wayland: zero-copy client render fences ignored by BANNER_WAYLAND_ZC_CLIENT_FENCE");
             // Windows the compositor focuses by itself are made Wine's foreground window: by default
             // through winhandler.exe (the X11 path's DesktopHelper does the same on every map), "click"
             // = one synthetic click instead, 0/false/off = keyboard focus only. Wine sessions only: in a

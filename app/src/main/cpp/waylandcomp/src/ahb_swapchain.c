@@ -48,6 +48,8 @@ struct ahb_buf {
     struct surface *surface;            /* for the paced release; NULL = release at once */
     struct wl_event_source *fence_src;  /* fallback: waiting the release fence in the event loop */
     int fence_fd;
+    int client_fence_fd;                /* banner_ahb_v1.fence (version 3): the game's render-complete sync_file
+                                         * for the buffer's next commit, -1 = none; consumed by the next present */
     struct wl_list link;
 };
 
@@ -57,6 +59,10 @@ static uint64_t g_next_id = 1;
 static struct wl_event_loop *g_loop;
 static unsigned g_stat_zero_copy;
 static int g_export_failed_logged, g_import_failed_logged;
+static volatile int g_client_fence = 1;      /* honour banner_ahb_v1.fence (BANNER_WAYLAND_ZC_CLIENT_FENCE=0 -> 0) */
+static int g_client_fence_announced, g_fence_without_ahb_logged;
+/* Where the zero-copy acquire fences came from in this 10 s interval (the perf line). */
+static unsigned g_stat_fence_client, g_stat_fence_exported, g_stat_fence_none, g_stat_fence_ignored;
 static int g_advertised;                     /* the global exists */
 static int g_mode_sent = -1;                 /* the mode clients were last told (-1 = none yet) */
 static struct surface *g_announced;          /* "presenting X without a copy" said for this surface */
@@ -89,6 +95,7 @@ static void buf_free(struct ahb_buf *ab) {
     if (ab->resource) { wl_list_remove(&ab->resource_destroy.link); ab->resource = NULL; }
     if (ab->fence_src) { wl_event_source_remove(ab->fence_src); ab->fence_src = NULL; }
     if (ab->fence_fd >= 0) { close(ab->fence_fd); ab->fence_fd = -1; }
+    if (ab->client_fence_fd >= 0) { close(ab->client_fence_fd); ab->client_fence_fd = -1; }
     wl_list_remove(&ab->link);
     *banner_dmabuf_ahb_slot(ab->b) = NULL;
     AHardwareBuffer_release(ab->ahb);
@@ -203,21 +210,33 @@ int ahb_swapchain_present(struct dmabuf_buffer *b, struct surface *s, int scene_
     struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot(b) : NULL;
     if (!ab) return -1;
     int dmabuf_fd = banner_dmabuf_fd(b);
-    /* Acquire fence: the game's render fence, which its driver put into the dma-buf before the
-     * commit (Mesa's implicit sync). The display waits on it, not the CPU. */
+    /* Acquire fence, the display waits on it rather than the CPU. Preferred: the render-complete fence
+     * the game's driver attached for this commit (banner_ahb_v1.fence, version 3) - exactly the point
+     * the frame is finished, and available on kernels without the dma-buf sync_file ioctls. Else: the
+     * game's render fence as its driver put it into the dma-buf before the commit (Mesa's implicit
+     * sync), exported from the dma-buf. Else: nothing to hand the display; wait for the writers here. */
     int acquire = -1;
-    struct banner_dma_buf_sync_file exp = {.flags = BANNER_DMA_BUF_SYNC_READ, .fd = -1};
-    if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, BANNER_DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exp) == 0 && exp.fd >= 0) {
-        acquire = exp.fd;
-    } else if (dmabuf_fd >= 0) {
-        if (!g_export_failed_logged) {
-            g_export_failed_logged = 1;
-            banner_log("layer", "zero-copy: DMA_BUF_IOCTL_EXPORT_SYNC_FILE failed (%s): waiting for each frame on the CPU instead",
-                       strerror(errno));
+    enum { FENCE_NONE, FENCE_CLIENT, FENCE_EXPORTED } src = FENCE_NONE;
+    if (ab->client_fence_fd >= 0) {
+        acquire = ab->client_fence_fd;
+        ab->client_fence_fd = -1;
+        src = FENCE_CLIENT;
+    } else {
+        struct banner_dma_buf_sync_file exp = {.flags = BANNER_DMA_BUF_SYNC_READ, .fd = -1};
+        if (dmabuf_fd >= 0 && ioctl(dmabuf_fd, BANNER_DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exp) == 0 && exp.fd >= 0) {
+            acquire = exp.fd;
+            src = FENCE_EXPORTED;
+        } else if (dmabuf_fd >= 0) {
+            if (!g_export_failed_logged) {
+                g_export_failed_logged = 1;
+                banner_log("layer", "zero-copy: DMA_BUF_IOCTL_EXPORT_SYNC_FILE failed (%s): waiting for each frame on the CPU "
+                           "instead (a banner_ahb_v1 version 3 driver attaches its own render fence and avoids this)",
+                           strerror(errno));
+            }
+            struct pollfd p = {.fd = dmabuf_fd, .events = POLLIN}; /* readable = the writers are done */
+            int r;
+            do { r = poll(&p, 1, 100); } while (r < 0 && errno == EINTR);
         }
-        struct pollfd p = {.fd = dmabuf_fd, .events = POLLIN}; /* readable = the writers are done */
-        int r;
-        do { r = poll(&p, 1, 100); } while (r < 0 && errno == EINTR);
     }
     int r = sc_layer_present_ahb(ab->ahb, ab->w, ab->h, acquire, (void *)(uintptr_t)ab->id, scene_w, scene_h,
                                  s ? banner_surface_color(s) : NULL, ab->format);
@@ -227,6 +246,9 @@ int ahb_swapchain_present(struct dmabuf_buffer *b, struct surface *s, int scene_
         ab->on_layer = 1;
         g_stat_zero_copy++;
         g_last_zero_copy_ns = now_ns();
+        if (src == FENCE_CLIENT) g_stat_fence_client++;
+        else if (src == FENCE_EXPORTED) g_stat_fence_exported++;
+        else g_stat_fence_none++;
     }
     if (s && g_announced != s) {
         char name[160];
@@ -246,7 +268,11 @@ int ahb_swapchain_last_frame_age_ms(void) {
 
 int ahb_swapchain_defer_release(struct dmabuf_buffer *b, struct wl_resource *buffer, struct surface *s, int paced) {
     struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot(b) : NULL;
-    if (!ab || !ab->on_layer || !buffer || ab->resource != buffer) return 0;
+    if (!ab) return 0;
+    /* The surface lets go of a commit that never went on the layer (copy path, not fullscreen): a
+     * render fence attached for that commit is stale now; the next commit brings its own. */
+    if (!ab->on_layer && ab->client_fence_fd >= 0) { close(ab->client_fence_fd); ab->client_fence_fd = -1; }
+    if (!ab->on_layer || !buffer || ab->resource != buffer) return 0;
     ab->release_pending = 1;
     ab->deferred_ns = now_ns();
     ab->surface = paced ? s : NULL;
@@ -264,6 +290,16 @@ unsigned ahb_swapchain_stats_take(void) {
     g_stat_zero_copy = 0;
     return n;
 }
+
+void ahb_swapchain_fence_stats_take(unsigned *client, unsigned *exported, unsigned *none, unsigned *ignored) {
+    if (client) *client = g_stat_fence_client;
+    if (exported) *exported = g_stat_fence_exported;
+    if (none) *none = g_stat_fence_none;
+    if (ignored) *ignored = g_stat_fence_ignored;
+    g_stat_fence_client = g_stat_fence_exported = g_stat_fence_none = g_stat_fence_ignored = 0;
+}
+
+void ahb_swapchain_set_client_fence(int on) { g_client_fence = on ? 1 : 0; }
 
 int ahb_swapchain_advertised(void) { return g_advertised; }
 
@@ -329,6 +365,7 @@ static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_res
     ab->resource_destroy.notify = on_buffer_resource_destroyed;
     wl_resource_add_destroy_listener(buffer, &ab->resource_destroy);
     ab->fence_fd = -1;
+    ab->client_fence_fd = -1;
     wl_list_insert(g_bufs.prev, &ab->link);
     *slot = ab;
 
@@ -341,9 +378,39 @@ static void ahb_attach(struct wl_client *c, struct wl_resource *r, struct wl_res
     }
 }
 
+/* banner_ahb_v1.fence (version 3): the game's render-complete sync_file for buffer's next commit. The
+ * fd is ours from here (libwayland hands request fds to the handler). */
+static void ahb_fence(struct wl_client *c, struct wl_resource *r, struct wl_resource *buffer, int32_t fd) {
+    if (fd < 0) return;
+    struct dmabuf_buffer *b = banner_dmabuf_from_resource(buffer);
+    struct ahb_buf *ab = b ? *banner_dmabuf_ahb_slot(b) : NULL;
+    if (!ab) {
+        if (!g_fence_without_ahb_logged) {
+            g_fence_without_ahb_logged = 1;
+            banner_log("layer", "zero-copy: %s sent a render fence for a wl_buffer without an AHardwareBuffer, ignored",
+                       banner_client_name(c));
+        }
+        close(fd);
+        return;
+    }
+    if (!g_client_fence) { /* BANNER_WAYLAND_ZC_CLIENT_FENCE=0: the export path decides, as for a version 2 client */
+        g_stat_fence_ignored++;
+        close(fd);
+        return;
+    }
+    if (ab->client_fence_fd >= 0) close(ab->client_fence_fd); /* replaced before any present used it */
+    ab->client_fence_fd = fd;
+    if (!g_client_fence_announced) {
+        g_client_fence_announced = 1;
+        banner_log("layer", "zero-copy: %s attaches its render fences (banner_ahb_v1 version 3): the display waits on the "
+                   "game's own fence; no dma-buf sync_file export needed", banner_client_name(c));
+    }
+}
+
 static const struct banner_ahb_v1_interface ahb_impl = {
     .destroy = ahb_destroy,
     .attach = ahb_attach,
+    .fence = ahb_fence,
 };
 
 static void on_client_resource_destroyed(struct wl_resource *r) {
@@ -352,7 +419,7 @@ static void on_client_resource_destroyed(struct wl_resource *r) {
 
 static void bind_ahb(struct wl_client *c, void *data, uint32_t ver, uint32_t id) {
     static struct wl_client *last_named;
-    if (ver > 2) ver = 2;
+    if (ver > 3) ver = 3;
     struct wl_resource *r = wl_resource_create(c, &banner_ahb_v1_interface, (int)ver, id);
     if (!r) { wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(r, &ahb_impl, NULL, on_client_resource_destroyed);
@@ -363,8 +430,11 @@ static void bind_ahb(struct wl_client *c, void *data, uint32_t ver, uint32_t id)
     /* One line per program, not per surface-format query (each binds its own). */
     if (last_named != c) {
         last_named = c;
-        banner_log("layer", "zero-copy: %s bound banner_ahb_v1 version %u (%s)", banner_client_name(c), ver,
-                   ver >= 2 ? "follows the live switch" : "version 1: decides from its launch environment only");
+        banner_log("layer", "zero-copy: %s bound banner_ahb_v1 version %u (%s%s)", banner_client_name(c), ver,
+                   ver >= 3 ? "follows the live switch, can attach its render fences"
+                   : ver == 2 ? "follows the live switch; acquire fences come from the dma-buf only"
+                              : "version 1: decides from its launch environment only",
+                   ver >= 3 && !g_client_fence ? " - ignored, BANNER_WAYLAND_ZC_CLIENT_FENCE=0" : "");
     }
 }
 
@@ -416,11 +486,13 @@ void ahb_swapchain_init(struct wl_display *display) {
         return;
     }
     wl_event_loop_add_fd(g_loop, g_rel_pipe[0], WL_EVENT_READABLE, on_release_pipe, NULL);
-    if (!wl_global_create(display, &banner_ahb_v1_interface, 2, NULL, bind_ahb)) {
+    if (!wl_global_create(display, &banner_ahb_v1_interface, 3, NULL, bind_ahb)) {
         banner_log("error", "zero-copy: banner_ahb_v1 global creation failed");
         return;
     }
     g_advertised = 1;
-    banner_log("layer", "zero-copy: banner_ahb_v1 version 2 advertised (games built for it present their own gralloc buffers while the switch is on)");
+    banner_log("layer", "zero-copy: banner_ahb_v1 version 3 advertised (games built for it present their own gralloc buffers while "
+               "the switch is on; version 3 drivers attach their render fences%s)",
+               g_client_fence ? "" : " - ignored, BANNER_WAYLAND_ZC_CLIENT_FENCE=0");
     ahb_swapchain_set_mode(g_zero_copy, 0);
 }

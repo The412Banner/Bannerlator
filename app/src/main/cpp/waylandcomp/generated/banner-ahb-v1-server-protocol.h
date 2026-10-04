@@ -83,11 +83,22 @@ struct wl_buffer;
  * client that does not see the global (or does not want it) allocates
  * swapchain images the standard way; nothing else changes.
  *
- * Synchronisation stays implicit: the dma-buf carries the client's render
- * fence (DMA_BUF_IOCTL_IMPORT_SYNC_FILE by the client's driver), the
+ * Synchronisation is implicit by default: the dma-buf carries the client's
+ * render fence (DMA_BUF_IOCTL_IMPORT_SYNC_FILE by the client's driver), the
  * compositor exports it as the layer's acquire fence, and the compositor
  * imports the display's release fence into the dma-buf before it sends
  * wl_buffer.release, so the client's next acquire waits on it.
+ *
+ * Kernels without the dma-buf sync_file ioctls (ENOTTY on both) break
+ * that chain: the compositor cannot export an acquire fence and the display
+ * may scan out a buffer still being written. Version 3 adds the fence
+ * request for exactly that case: the client hands over its render-complete
+ * fence as a sync_file (the SYNC_FD export of the semaphore or fence its
+ * present signals, VK_KHR_external_semaphore_fd / VK_KHR_external_fence_fd,
+ * which needs no dma-buf ioctl), once per commit, and the compositor uses
+ * it as the layer's acquire fence instead of exporting one. The release
+ * direction is unchanged: when the import of the display's release fence
+ * fails too, the compositor waits for it before wl_buffer.release.
  * @section page_iface_banner_ahb_v1_api API
  * See @ref iface_banner_ahb_v1.
  */
@@ -125,11 +136,22 @@ struct wl_buffer;
  * client that does not see the global (or does not want it) allocates
  * swapchain images the standard way; nothing else changes.
  *
- * Synchronisation stays implicit: the dma-buf carries the client's render
- * fence (DMA_BUF_IOCTL_IMPORT_SYNC_FILE by the client's driver), the
+ * Synchronisation is implicit by default: the dma-buf carries the client's
+ * render fence (DMA_BUF_IOCTL_IMPORT_SYNC_FILE by the client's driver), the
  * compositor exports it as the layer's acquire fence, and the compositor
  * imports the display's release fence into the dma-buf before it sends
  * wl_buffer.release, so the client's next acquire waits on it.
+ *
+ * Kernels without the dma-buf sync_file ioctls (ENOTTY on both) break
+ * that chain: the compositor cannot export an acquire fence and the display
+ * may scan out a buffer still being written. Version 3 adds the fence
+ * request for exactly that case: the client hands over its render-complete
+ * fence as a sync_file (the SYNC_FD export of the semaphore or fence its
+ * present signals, VK_KHR_external_semaphore_fd / VK_KHR_external_fence_fd,
+ * which needs no dma-buf ioctl), once per commit, and the compositor uses
+ * it as the layer's acquire fence instead of exporting one. The release
+ * direction is unchanged: when the import of the display's release fence
+ * fails too, the compositor waits for it before wl_buffer.release.
  */
 extern const struct wl_interface banner_ahb_v1_interface;
 #endif
@@ -177,6 +199,31 @@ struct banner_ahb_v1_interface {
 		       uint32_t modifier_hi,
 		       uint32_t modifier_lo,
 		       uint32_t image_count);
+	/**
+	 * the client's render-complete fence for a buffer's next commit
+	 *
+	 * fd is a sync_file that signals when the client's rendering
+	 * into buffer (a wl_buffer an AHardwareBuffer was attached to) is
+	 * complete; the compositor owns the fd from here. Sent after the
+	 * work that renders the frame is submitted and before the
+	 * wl_surface.commit that shows buffer; it applies to that one
+	 * commit. A fence sent for a buffer without an attached
+	 * AHardwareBuffer is closed and ignored. A second fence for the
+	 * same buffer before the compositor used the first replaces it.
+	 * When the compositor can export the fence from the dma-buf
+	 * itself, a client may still send one: the client's fence is
+	 * preferred, as it is exactly the render-complete point and not
+	 * every fence the dma-buf carries. The compositor never requires
+	 * it: a version 3 client that sends none is treated like a version
+	 * 2 client.
+	 * @param buffer the dma-buf wl_buffer the fence is for
+	 * @param fd sync_file: signals when rendering into buffer is complete
+	 * @since 3
+	 */
+	void (*fence)(struct wl_client *client,
+		      struct wl_resource *resource,
+		      struct wl_resource *buffer,
+		      int32_t fd);
 };
 
 #define BANNER_AHB_V1_MODE 0
@@ -194,6 +241,10 @@ struct banner_ahb_v1_interface {
  * @ingroup iface_banner_ahb_v1
  */
 #define BANNER_AHB_V1_ATTACH_SINCE_VERSION 1
+/**
+ * @ingroup iface_banner_ahb_v1
+ */
+#define BANNER_AHB_V1_FENCE_SINCE_VERSION 3
 
 /**
  * @ingroup iface_banner_ahb_v1

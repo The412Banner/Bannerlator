@@ -13539,10 +13539,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return true;
         // A pad's keys stay away from Android, except a real Back key: handhelds like the Odin 2
         // Portal put the physical Back button on their built-in pad, and without this it never
-        // reached onBackPressed. A fallback Back (Android's stand-in for an unhandled B) still
-        // can't open the menu.
+        // reached onBackPressed. A fallback Back (Android's stand-in for an unhandled B, which is
+        // what a Wayland game's pad leaves behind) still can't open the menu. It keeps B's scan
+        // code, and some vendor dispatchers drop FLAG_FALLBACK, so the scan code decides:
+        // only the KEY_BACK key itself counts.
         boolean padBack = event.getKeyCode() == KeyEvent.KEYCODE_BACK
-                && (event.getFlags() & KeyEvent.FLAG_FALLBACK) == 0;
+                && (event.getFlags() & KeyEvent.FLAG_FALLBACK) == 0
+                && event.getScanCode() == 158 /* KEY_BACK */;
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK)
+            Log.d("PadBack", "back action=" + event.getAction() + " scan=" + event.getScanCode()
+                    + " flags=0x" + Integer.toHexString(event.getFlags()) + " pad=" + padBack);
         return (!ExternalController.isGameController(event.getDevice()) || padBack) && super.dispatchKeyEvent(event);
     }
 

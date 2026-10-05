@@ -13535,8 +13535,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
 
         // Fallback to existing input handling
-        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        if (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event))
+            return true;
+        // A pad's keys stay away from Android, except a real Back key: handhelds like the Odin 2
+        // Portal put the physical Back button on their built-in pad, and without this it never
+        // reached onBackPressed. A fallback Back (Android's stand-in for an unhandled B) still
+        // can't open the menu.
+        boolean padBack = event.getKeyCode() == KeyEvent.KEYCODE_BACK
+                && (event.getFlags() & KeyEvent.FLAG_FALLBACK) == 0;
+        return (!ExternalController.isGameController(event.getDevice()) || padBack) && super.dispatchKeyEvent(event);
     }
 
     /** Map an Android KeyEvent keyCode to a Linux evdev keycode (for wl_keyboard in wayland mode).

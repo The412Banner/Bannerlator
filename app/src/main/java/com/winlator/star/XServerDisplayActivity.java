@@ -7383,6 +7383,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
     }
 
+    private boolean guideOpenedDrawer;
+
+    /** AYANEO Pocket FIT: its built-in pad (which reports as an Xbox 360 pad) has Guide but no Back. */
+    private static boolean isPocketFit() {
+        return "AYANEO".equalsIgnoreCase(android.os.Build.MANUFACTURER)
+                && ("PocketFIT".equalsIgnoreCase(android.os.Build.DEVICE)
+                    || "Pocket FIT".equalsIgnoreCase(android.os.Build.MODEL));
+    }
+
     /** A Linux session running the Steam client, where the Steam button and Quick Access Menu mean something. */
     private boolean isLinuxSteamSession() {
         return gamescopeMode && shortcut != null && com.winlator.star.linux.LinuxRuntime.MODE_STEAM.equals(
@@ -13518,6 +13527,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return super.dispatchKeyEvent(event);
         }
 
+        // The release of a Guide press that opened the menu belongs to nobody else.
+        if (guideOpenedDrawer && event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE
+                && event.getAction() == KeyEvent.ACTION_UP) {
+            guideOpenedDrawer = false;
+            return true;
+        }
+
         // The Home / Steam / Select buttons are kept away from Android's own handling, but they
         // still have to arrive somewhere: in a Linux session the Steam button is how the client
         // opens its in-game menu, and it only gets there as part of the pad state the client
@@ -13528,6 +13544,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (homeKc == KeyEvent.KEYCODE_BUTTON_MODE || homeKc == KeyEvent.KEYCODE_HOME
                     || homeKc == KeyEvent.KEYCODE_BUTTON_SELECT) {
                 boolean handled = inputControlsView != null && inputControlsView.onKeyEvent(event);
+                // The Pocket FIT has no Back key on its pad; its Guide button is the one meant for
+                // the menu. A profile binding still wins, and in a Linux Steam session Guide stays
+                // the Steam button.
+                if (!handled && homeKc == KeyEvent.KEYCODE_BUTTON_MODE && isPocketFit()
+                        && ExternalController.isGameController(event.getDevice()) && !isLinuxSteamSession()) {
+                    guideOpenedDrawer = true;
+                    openXServerDrawer();
+                    return true;
+                }
                 if (!handled && winHandler != null) handled = winHandler.onKeyEvent(event);
                 if (!handled && xServer != null) xServer.keyboard.onKeyEvent(event);
                 return true;

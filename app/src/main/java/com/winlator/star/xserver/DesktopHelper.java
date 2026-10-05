@@ -15,12 +15,10 @@ public abstract class DesktopHelper {
             }
         });
 
-        xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
-            @Override
-            public void onMapWindow(Window window) {
-                setFocusedWindow(xServer, window);
-            }
-        });
+        // No focus / bring-to-front when a window maps or is tapped (Pipetto-crypto/winlator 912d1af):
+        // Wine activates its own windows. bringToFront ends in winhandler.exe's ShowWindow(SW_RESTORE),
+        // which shrinks a window that was created 0x0 and then maximized back to 0x0 (Toy Story 2's
+        // "Screen Mode Select" picker went invisible and the game waited on it forever).
     }
 
     private static void updateFocusedWindow(XServer xServer) {
@@ -30,17 +28,6 @@ public abstract class DesktopHelper {
             if (child == null && focusedWindow != xServer.windowManager.rootWindow) {
                 xServer.windowManager.setFocus(xServer.windowManager.rootWindow, WindowManager.FocusRevertTo.NONE);
             }
-            else if (child != null && child != focusedWindow) {
-                setFocusedWindow(xServer, child);
-            }
-        }
-    }
-
-    private static void setFocusedWindow(XServer xServer, Window window) {
-        if (window.isApplicationWindow()) {
-            boolean parentIsRoot = window.getParent() == xServer.windowManager.rootWindow;
-            xServer.windowManager.setFocus(window, parentIsRoot ? WindowManager.FocusRevertTo.POINTER_ROOT : WindowManager.FocusRevertTo.PARENT);
-            xServer.getWinHandler().bringToFront(window.getClassName(), window.getHandle());
         }
     }
 

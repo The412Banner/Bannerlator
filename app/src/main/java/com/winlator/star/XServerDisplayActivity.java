@@ -8952,7 +8952,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // ends, the X pointer (the absolute input's source) is re-synced to where the compositor's
         // pointer ended up (a SetCursorPos warp, typically), so absolute input resumes from there.
         // The compositor focused a window by itself (new window / the focused one closed): have
-        // winhandler.exe bring it to the front inside Wine, as DesktopHelper does on every X11 map,
+        // winhandler.exe bring it to the front inside Wine (the X11 path no longer does this on map),
         // and once more a second later (idempotent) unless a newer window asked meanwhile.
         com.winlator.star.wayland.WaylandCompositor.setBringToFrontListener((exe, hwnd) -> {
             final int seq = ++waylandBringToFrontSeq;
@@ -9248,7 +9248,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.wayland.WaylandCompositor.nativeSetUbwc(ubwc);
             if (!ubwc) Log.i("XServerDisplayActivity", "wayland: compressed (UBWC) game buffers disabled by BANNER_WAYLAND_UBWC");
             // Windows the compositor focuses by itself are made Wine's foreground window: by default
-            // through winhandler.exe (the X11 path's DesktopHelper does the same on every map), "click"
+            // through winhandler.exe (X11 used to do the same on every map; it no longer does), "click"
             // = one synthetic click instead, 0/false/off = keyboard focus only. Wine sessions only: in a
             // Linux session the window is gamescope and there is no winhandler.
             String aa = env != null ? env.get("BANNER_WAYLAND_AUTO_ACTIVATE") : null;
@@ -16687,7 +16687,7 @@ return true;
         // target Windows pid, set X-server input focus on it, and send bringToFront with the REAL
         // window handle (not 0). On native-rendering Vulkan/ASR a UDP-only restack may have no
         // visible effect, so we also raise + redraw via the host window manager (mirrors
-        // DesktopHelper.setFocusedWindow / GameNative). Falls back to a plain by-name UDP send if
+        // the old DesktopHelper.setFocusedWindow / GameNative). Falls back to a plain by-name UDP send if
         // we can't resolve the window.
         ds.onTmBringToFront = (name, pid) -> {
             if (winHandler == null) return;

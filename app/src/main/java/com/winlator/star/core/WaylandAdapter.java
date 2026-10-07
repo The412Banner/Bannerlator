@@ -90,23 +90,24 @@ public final class WaylandAdapter {
                     // The guest dlopen()s it by absolute path: readable + executable for the app's uid.
                     tmpLib.setReadable(true, false);
                     tmpLib.setExecutable(true, false);
-                    // Same manifest as an imported Wayland game driver (WaylandGameDriverManager), which is
-                    // the form the adapter was device-proven with (JSONObject writes '/' as "\/", so
-                    // winewayland logs "could not pin"; the Vulkan loader reads it fine).
-                    JSONObject body = new JSONObject();
-                    body.put("library_path", lib.getAbsolutePath());
-                    body.put("api_version", "1.3.0");
-                    JSONObject manifest = new JSONObject();
-                    manifest.put("file_format_version", "1.0.0");
-                    manifest.put("ICD", body);
-                    if (!FileUtils.writeString(new File(tmp, ICD_NAME), manifest.toString(2)))
-                        throw new IOException("cannot write icd.json");
+                    writeIcd(new File(tmp, ICD_NAME), lib);
                     FileUtils.delete(dir);
                     if (!tmp.renameTo(dir)) throw new IOException("cannot move into " + dir);
                 } finally {
                     FileUtils.delete(tmp);
                 }
                 Log.i(TAG, "installed the Wayland adapter " + version(context) + " (" + id + ") -> " + dir);
+            } else if (MaliPanvk.isMaliGpu()) {
+                // Mali only: an icd.json written escaped (an older build, same asset hash) is rewritten
+                // plain so winewayland can pin it. Elsewhere an existing icd.json is never touched.
+                try {
+                    if (FileUtils.readString(icd).contains("\\/")) {
+                        writeIcd(icd, lib);
+                        Log.i(TAG, "rewrote " + icd + " with plain slashes");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "could not rewrite " + icd, e);
+                }
             }
             // Only the current build is ever used; older folders are dead weight.
             File[] old = root.listFiles();
@@ -117,6 +118,26 @@ public final class WaylandAdapter {
             Log.e(TAG, "could not install the Wayland adapter", e);
             return null;
         }
+    }
+
+    /**
+     * The adapter's icd.json. JSONObject writes '/' as "\/": the Vulkan loader reads either form, but
+     * winewayland's pin_icd_library does not ("could not pin .../\/data\/..."), and pinning is what
+     * keeps the driver resident in the game. On a Mali GPU (FristOneRR PanVK) the slashes are written
+     * plain, as WaylandGameDriverManager does, so the pin succeeds. Every other GPU keeps the escaped
+     * form the adapter was device-proven with on Adreno (unpinned), so nothing changes there.
+     */
+    private static void writeIcd(File icd, File lib) throws Exception {
+        JSONObject body = new JSONObject();
+        body.put("library_path", lib.getAbsolutePath());
+        body.put("api_version", "1.3.0");
+        JSONObject manifest = new JSONObject();
+        manifest.put("file_format_version", "1.0.0");
+        manifest.put("ICD", body);
+        String json = manifest.toString(2);
+        if (MaliPanvk.isMaliGpu()) json = json.replace("\\/", "/");
+        if (!FileUtils.writeString(icd, json))
+            throw new IOException("cannot write icd.json");
     }
 
     /** First 12 hex of the asset's sha256, or null when the APK has no adapter asset. */

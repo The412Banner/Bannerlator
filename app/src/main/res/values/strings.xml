@@ -598,6 +598,31 @@
         <b>One UI / HyperOS Fix</b><br /><br />
         A compatibility workaround for some Samsung (One UI) and Xiaomi (HyperOS) phones, whose GPU drivers need an extra texture-compression hint to render correctly. Turn it <b>ON</b> only if games show corruption or crash on those devices; leave it <b>OFF</b> otherwise.
     ]]></string>
+    <string name="help_mali_panvk"><![CDATA[
+        <b>Mali (PanVK)</b><br /><br />
+        For FristOneRR\'s PanVK driver on an Arm Mali GPU (github.com/FristOneRR/FristOneRR-Panvk-Driver, MIT licence). Mali mode applies FristOneRR\'s tweaks in the Wayland adapter: it hides VK_KHR_present_id, VK_KHR_present_wait and VK_KHR_dynamic_rendering from the game (also added to the wrapper\'s extension blacklist), and turns on its two sync workarounds for this driver (no submit waits, no acquire signal). It turns on by itself when the driver\'s name contains \'panvk\'; you can switch it either way.<br /><br />
+        <b>BCn textures</b><br />
+        Turning Mali mode on sets BCn texture emulation to <b>none</b>. Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try another setting if a game shows broken or missing textures.<br /><br />
+        <b>Advanced</b><br />
+        The driver variables FristOneRR lists as safe. Left on Auto / Default they are not set at all. PANVK_ATOM_STRIDE is only for when auto-detection fails ([KFAULT] in the log); PANVK_TRACE adds driver tracing to the log.<br /><br />
+        Credit: FristOneRR, for the PanVK driver and these tweaks.
+    ]]></string>
+    <string name="mali_panvk_section">Mali (PanVK)</string>
+    <string name="mali_panvk_mode">Mali (PanVK) mode</string>
+    <string name="mali_panvk_mode_hint">FristOneRR\'s PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver.</string>
+    <string name="mali_panvk_bcn_warning">Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try it if a game shows broken or missing textures.</string>
+    <string name="mali_panvk_advanced">Advanced PanVK settings</string>
+    <string name="mali_panvk_default">Auto / Default</string>
+    <string name="mali_panvk_heap">PANVK_HEAP_MB (256–16384)</string>
+    <string name="mali_panvk_heap_hint">Default: a quarter of RAM, 1024–3072 MB.</string>
+    <string name="mali_panvk_tiler_heap">PANVK_TILER_HEAP_MB (16–2048)</string>
+    <string name="mali_panvk_tiler_heap_hint">Default: 512 MB.</string>
+    <string name="mali_panvk_poly_heap">PANVK_POLY_HEAP_MB (4–512)</string>
+    <string name="mali_panvk_poly_heap_hint">Default: 16 MB.</string>
+    <string name="mali_panvk_atom_stride">PANVK_ATOM_STRIDE</string>
+    <string name="mali_panvk_atom_stride_hint">Only if auto-detection fails ([KFAULT] in the log).</string>
+    <string name="mali_panvk_trace">PANVK_TRACE (driver tracing)</string>
+    <string name="mali_panvk_out_of_range">Out of range: not used.</string>
     <string name="help_bcn_emulation_type"><![CDATA[
         <b>BCn Emulation Type</b><br /><br />
         Chooses HOW compressed game textures (BCn / DXT) are unpacked on GPUs that can\'t read them natively — Mali and other non-Adreno chips. <b>Compute</b> uses a GPU compute-shader layer (usually faster); <b>software</b> uses the wrapper\'s built-in decoder. No effect on Adreno, which reads BCn textures natively. Switch options if textures look wrong or a game runs slowly.

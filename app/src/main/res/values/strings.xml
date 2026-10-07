@@ -600,7 +600,7 @@
     ]]></string>
     <string name="help_mali_panvk"><![CDATA[
         <b>Mali (PanVK)</b><br /><br />
-        For FristOneRR\'s PanVK driver on an Arm Mali GPU (github.com/FristOneRR/FristOneRR-Panvk-Driver, MIT licence). Mali mode applies FristOneRR\'s tweaks in the Wayland adapter: it hides VK_KHR_present_id, VK_KHR_present_wait and VK_KHR_dynamic_rendering from the game (also added to the wrapper\'s extension blacklist), and turns on its two sync workarounds for this driver (no submit waits, no acquire signal). It turns on by itself when the driver\'s name contains \'panvk\'; you can switch it either way.<br /><br />
+        For FristOneRR\'s PanVK driver on an Arm Mali GPU (github.com/FristOneRR/FristOneRR-Panvk-Driver, MIT licence). Mali mode applies FristOneRR\'s tweaks in the Wayland adapter: it hides VK_KHR_present_id, VK_KHR_present_wait and VK_KHR_dynamic_rendering from the game, and turns on its two sync workarounds for this driver (skip GPU submit waits, skip the frame-acquire signal). Each of the three has its own switch under Advanced; the two sync workarounds are for DXVK games, so turn them off if a D3D12 game misbehaves or you see tearing. It turns on by itself when the driver\'s name contains \'panvk\'; you can switch it either way.<br /><br />
         <b>BCn textures</b><br />
         Turning Mali mode on sets BCn texture emulation to <b>none</b>. Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try another setting if a game shows broken or missing textures.<br /><br />
         <b>Advanced</b><br />
@@ -613,6 +613,10 @@
     <string name="mali_panvk_bcn_warning">Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try it if a game shows broken or missing textures.</string>
     <string name="mali_panvk_advanced">Advanced PanVK settings</string>
     <string name="mali_panvk_default">Auto / Default</string>
+    <string name="mali_panvk_hide_exts">Hide present-wait / dynamic-rendering extensions</string>
+    <string name="mali_panvk_no_submit_waits">Skip GPU submit waits</string>
+    <string name="mali_panvk_no_acquire_signal">Skip frame-acquire signal</string>
+    <string name="mali_panvk_sync_hint">The two skips are for DXVK games: turn them off if a D3D12 game misbehaves or you see tearing. The acquire skip needs the submit-wait skip.</string>
     <string name="mali_panvk_heap">PANVK_HEAP_MB (256–16384)</string>
     <string name="mali_panvk_heap_hint">Default: a quarter of RAM, 1024–3072 MB.</string>
     <string name="mali_panvk_tiler_heap">PANVK_TILER_HEAP_MB (16–2048)</string>

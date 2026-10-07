@@ -21,7 +21,8 @@ import com.winlator.star.core.MaliPanvk
 /**
  * The Wayland driver gear's "Mali (PanVK)" section, seeded from one graphicsDriverConfig. The mode
  * switch is stored only once the user touches it (absent = follow the driver's name, see MaliPanvk),
- * and with it bcnEmulation (the same key as the X11 driver configuration's BCn emulation). Empty /
+ * and with it bcnEmulation (the same key as the X11 driver configuration's BCn emulation). The three
+ * adapter sub-switches (on by default) sit under Advanced while the mode is on. Empty /
  * Auto PANVK_* fields are stored empty and not exported; out-of-range input is stored empty too.
  */
 @Stable
@@ -37,6 +38,9 @@ internal class MaliPanvkSettingsState(context: Context, cfg: Map<String, String>
     var polyHeapMb by mutableStateOf(cfg[MaliPanvk.KEY_POLY_HEAP] ?: "")
     var atomStride by mutableStateOf(cfg[MaliPanvk.KEY_ATOM_STRIDE]?.takeIf { it in MaliPanvk.ATOM_STRIDES } ?: "")
     var trace by mutableStateOf(cfg[MaliPanvk.KEY_TRACE] == "1")
+    var hideExts by mutableStateOf(MaliPanvk.subOn(cfg, MaliPanvk.KEY_HIDE_EXTS))
+    var noSubmitWaits by mutableStateOf(MaliPanvk.subOn(cfg, MaliPanvk.KEY_NO_SUBMIT_WAITS))
+    var noAcquireSignal by mutableStateOf(MaliPanvk.subOn(cfg, MaliPanvk.KEY_NO_ACQUIRE_SIGNAL))
 
     fun setMode(on: Boolean) {
         modeOverride = if (on) "1" else "0"
@@ -54,6 +58,9 @@ internal class MaliPanvkSettingsState(context: Context, cfg: Map<String, String>
             put(MaliPanvk.KEY_MODE, it)
             put("bcnEmulation", bcnEmulation)
         }
+        put(MaliPanvk.KEY_HIDE_EXTS, if (hideExts) "1" else "0")
+        put(MaliPanvk.KEY_NO_SUBMIT_WAITS, if (noSubmitWaits) "1" else "0")
+        put(MaliPanvk.KEY_NO_ACQUIRE_SIGNAL, if (noAcquireSignal) "1" else "0")
         put(MaliPanvk.KEY_HEAP, MaliPanvk.validMb(heapMb, MaliPanvk.HEAP_MIN, MaliPanvk.HEAP_MAX) ?: "")
         put(MaliPanvk.KEY_TILER_HEAP, MaliPanvk.validMb(tilerHeapMb, MaliPanvk.TILER_HEAP_MIN, MaliPanvk.TILER_HEAP_MAX) ?: "")
         put(MaliPanvk.KEY_POLY_HEAP, MaliPanvk.validMb(polyHeapMb, MaliPanvk.POLY_HEAP_MIN, MaliPanvk.POLY_HEAP_MAX) ?: "")
@@ -110,6 +117,17 @@ internal fun MaliPanvkSection(state: MaliPanvkSettingsState, onHelp: (Int) -> Un
         Text(stringResource(R.string.mali_panvk_advanced), modifier = Modifier.weight(1f))
     }
     if (advancedOpen) {
+        if (state.modeOn) {
+            PanvkSwitch(stringResource(R.string.mali_panvk_hide_exts), state.hideExts) { state.hideExts = it }
+            PanvkSwitch(stringResource(R.string.mali_panvk_no_submit_waits), state.noSubmitWaits) { state.noSubmitWaits = it }
+            PanvkSwitch(stringResource(R.string.mali_panvk_no_acquire_signal), state.noAcquireSignal && state.noSubmitWaits,
+                enabled = state.noSubmitWaits) { state.noAcquireSignal = it }
+            Text(
+                stringResource(R.string.mali_panvk_sync_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         PanvkMbField(stringResource(R.string.mali_panvk_heap), stringResource(R.string.mali_panvk_heap_hint),
             state.heapMb, MaliPanvk.HEAP_MIN, MaliPanvk.HEAP_MAX) { state.heapMb = it }
         PanvkMbField(stringResource(R.string.mali_panvk_tiler_heap), stringResource(R.string.mali_panvk_tiler_heap_hint),
@@ -135,6 +153,18 @@ internal fun MaliPanvkSection(state: MaliPanvkSettingsState, onHelp: (Int) -> Un
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.mali_panvk_trace), modifier = Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+private fun PanvkSwitch(label: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label, modifier = Modifier.weight(1f),
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

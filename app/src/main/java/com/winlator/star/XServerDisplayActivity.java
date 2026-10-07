@@ -13163,9 +13163,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         envVars.put("MESA_VK_WSI_PRESENT_MODE", presentMode);
     }
 
-    // Mali (PanVK) mode + PANVK_* (the Wayland driver gear's Mali section; Mali GPUs only, a no-op
-    // elsewhere). After the blacklist so its three extensions merge into the user's list, and before
-    // the BCn block so its default bcnEmulation=none is what that block reads.
+    // Mali (PanVK) mode + PANVK_* (the Wayland driver gear's Mali section). Mali GPUs only: elsewhere
+    // it returns at once and stored maliMode/panvk* keys are ignored. Before the BCn block so its
+    // default bcnEmulation=none is what that block reads.
     String maliApplied = com.winlator.star.core.MaliPanvk.applyToLaunchEnv(this, envVars, graphicsDriverConfig,
             adrenoToolsDriverId);
     if (maliApplied != null && wineDebugWriter != null) wineDebugWriter.println("XServerVulkan: " + maliApplied);

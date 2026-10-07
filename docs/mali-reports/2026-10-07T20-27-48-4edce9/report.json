@@ -1,0 +1,31 @@
+{
+  "id": "2026-10-07T20-27-48-4edce9",
+  "created": "2026-10-07T20:27:48.177Z",
+  "ip_hash": "LLA8oD/Gq2",
+  "fields": {
+    "reporter_name": "MR.360",
+    "device_model": "INFINIX GT30 PRO",
+    "soc": "Dimensity 8350 Ultimate",
+    "gpu": "Mali-G615 MC6",
+    "android": "Android 16 / XOS 16.3.0",
+    "ram": "12 GB",
+    "app_version": "3.1.6-pre2",
+    "install_source": "GitHub release",
+    "game_name": "gta4",
+    "steam_appid": "",
+    "store": "",
+    "exe": "gta4.exe",
+    "symptom": "Black screen (no image)",
+    "when": "Fails at the publisher/loading logo",
+    "graphics_driver": "i need the settengs to run the game please",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "please i need the settings to run this game",
+    "tried": ""
+  },
+  "logs": []
+}

@@ -1,5 +1,5 @@
 {
   "name": "Wayland adapter",
-  "version": "pipetto-ahb-tsafe kgslpoll 3af78e4",
-  "source": "The412Banner/bionic-vulkan-wrapper banner/wayland-wsi (Pipetto-crypto wrapper-25 lineage, X11 + Wayland WSI)"
+  "version": "pipetto-ahb-tsafe kgslpoll mali c9a3ab7",
+  "source": "The412Banner/bionic-vulkan-wrapper banner/wayland-mali (Pipetto-crypto wrapper-25 lineage, X11 + Wayland WSI; Mali switches default off)"
 }

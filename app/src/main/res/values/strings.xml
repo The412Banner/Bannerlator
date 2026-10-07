@@ -1499,7 +1499,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="fexcore_config">FEXCore</string>
     <string name="fexcore_preset">FEXCore Preset</string>
     <string name="force_ssbs">Force SSBS (CPU speed fix)</string>
-    <string name="force_ssbs_summary">Keeps the CPU\'s speculative-store fast path on for game threads (arm64ec Proton only). Experimental.</string>
+    <string name="force_ssbs_summary">Keeps the CPU\'s speculative-store fast path on for game threads (arm64ec Proton only). On by default.</string>
     <string name="force_ssbs_container_default">Container default (%1$s)</string>
     <string name="force_ssbs_on">On</string>
     <string name="force_ssbs_off">Off</string>
@@ -1507,11 +1507,11 @@ E.g. <b>META</b> for <i>META key</i>, \n
         <b>Force SSBS (CPU speed fix)</b><br /><br />
         Wine has a bug on ARM devices: every time it handles certain internal events, it switches off a CPU speed feature called SSBS for the game\'s threads. With it off, the CPU uses a slower, extra-safe way of handling memory reads and writes.<br /><br />
         Turning this on keeps SSBS switched on while the game runs:<br />
-        • On Proton builds that include the fix, Wine stops switching it off.<br />
+        • On Proton builds that include the fix (Bannerlator layers, based on the upstream Wine fix MR 12262), Wine stops switching it off and leaves it as Android set it.<br />
         • On older or third-party Proton builds (such as Proton 9 or 10), a small add-on that ships inside Bannerlator switches it back on.<br /><br />
         How much it helps depends on your device and game. The biggest gains are expected on Snapdragon 8 Elite (Oryon) devices in CPU-heavy games; on other chips the difference may be small or none.<br /><br />
         It only applies to arm64ec Proton containers. SSBS is a protection against a Spectre-type attack; switching it on relaxes that protection for the game, which is the trade-off for the extra speed.<br /><br />
-        Experimental — if a game misbehaves, turn it off. \'Container default\' uses the container\'s setting.
+        On by default. If a game misbehaves, turn it off for that game or container. \'Container default\' uses the container\'s setting.
     ]]></string>
     <!-- Preset action row shown under the preset pickers in Container and game-shortcut settings.
          Labels sit under the icons there (unlike App Settings, which is icon-only), so they must

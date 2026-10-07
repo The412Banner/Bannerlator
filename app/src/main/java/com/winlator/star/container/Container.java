@@ -181,9 +181,9 @@ public class Container {
     private String emulator;
     private String emulator64 = DEFAULT_EMULATOR64;
     private String box64ecVersion = "";
-    // Force SSBS (arm64ec only, opt-in): WINE_FORCE_SSBS=1 for rebuilt layers plus libssbs.so preloaded
+    // Force SSBS (arm64ec only, on by default): WINE_FORCE_SSBS=1 for rebuilt layers plus libssbs.so preloaded
     // for the rest, so game threads keep the CPU's speculative-store fast path after signal returns.
-    private boolean forceSsbs = false;
+    private boolean forceSsbs = true;
     private String renderer = "vulkan";
     private boolean exclusiveXInput = true;
     private ContainerManager containerManager;
@@ -1406,7 +1406,8 @@ public class Container {
             // Only written once set away from the defaults, so untouched containers serialize as before.
             if (!DEFAULT_EMULATOR64.equals(emulator64)) data.put("emulator64", emulator64);
             if (!box64ecVersion.isEmpty()) data.put("box64ecVersion", box64ecVersion);
-            if (forceSsbs) data.put("forceSsbs", true);
+            // Always written: the default is on, so an "off" must be stored to survive a reload.
+            data.put("forceSsbs", forceSsbs);
             data.put("fexcorePreset", fexcorePreset);
             data.put("fexcoreVersion", fexcoreVersion);
             data.put("box64Preset", box64Preset);

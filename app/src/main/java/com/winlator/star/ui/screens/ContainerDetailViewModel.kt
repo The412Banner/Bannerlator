@@ -260,7 +260,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var selectedEmulator64 by mutableStateOf("FEXCore")
 
     // Force SSBS (arm64ec only, opt-in): keeps the speculative-store fast path on for game threads.
-    var forceSsbs by mutableStateOf(false)
+    var forceSsbs by mutableStateOf(true)
 
     var midiEntries by mutableStateOf(emptyList<String>()); private set
     var selectedMidiIndex by mutableStateOf(0)
@@ -968,7 +968,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         selectedBox64ECVersion = archSeed?.box64ECVersion
             ?.takeIf { it.isNotEmpty() && box64ECVersionEntries.contains(it) }
             ?: (box64ECVersionEntries.firstOrNull() ?: "")
-        forceSsbs = archSeed?.isForceSsbs ?: false
+        forceSsbs = archSeed?.isForceSsbs ?: true
 
         // FEXCore preset.
         val fexPreset = archSeed?.getFEXCorePreset() ?: prefs.getString("fexcore_preset", FEXCorePreset.INTERMEDIATE) ?: FEXCorePreset.INTERMEDIATE

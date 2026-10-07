@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-10-07T20-27-48-4edce9",
+    "created": "2026-10-07T20:27:48.177Z",
+    "reporter": "MR.360",
+    "device": "INFINIX GT30 PRO",
+    "gpu": "Mali-G615 MC6",
+    "game": "gta4",
+    "symptom": "Black screen (no image)",
+    "logs": 0
+  },
+  {
     "id": "2026-09-27T09-19-49-af6469",
     "created": "2026-09-27T09:19:49.024Z",
     "reporter": "Simon",

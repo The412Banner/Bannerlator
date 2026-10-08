@@ -22,6 +22,7 @@ import com.winlator.star.xenvironment.ImageFs;
 
 import java.util.Arrays;
 
+import com.winlator.star.core.EnvVars;
 import org.json.JSONException;
 import org.json.JSONObject;
 

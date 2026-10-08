@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-10-08 — 🧩 VKD3D_SHADER_MODEL=6_6 becomes a container default (new + existing)
+> Gothic 1 Remake (UE 5.4) refused to start on the Pocket FIT with "DirectX 12 is not supported on your system": VKD3D-Proton only advertises SM 6.6 when the Vulkan driver has 64-bit buffer atomics + compute derivatives + required-subgroup-size control, Turnip through the wrapper stops at 6.5 (no "Enabling support for SM 6.6" in any vkd3d log), and UE 5.3+ SM6 builds reject anything lower. `VKD3D_SHADER_MODEL=6_6` is a ceiling (games asking for 5_1/6_0 still get that; DX11/DX9 never read it), and the game played with it on 2026-10-02.
+> - `Container.DEFAULT_ENV_VARS` gains `VKD3D_SHADER_MODEL=6_6` → every new container.
+> - `ContainerManager.migrateVkd3dShaderModelDefault()`: one-shot (pref `vkd3d_sm66_default_added`) at manager init adds it to every existing container that doesn't mention the variable and to any saved New Container Defaults profile (both arches). Deleting it afterwards sticks.
+> - `env_var_help__vkd3d_shader_model`: "?" text in the Env Vars editor (the variable already had a SELECT row).
+> - Open: today's Gothic run still fails WITH the variable on the VKD3D nightly `3.0.1-31d1f89c` (162 commits past the `d01924b6` build that worked, incl. Turnip-centric UE5 workarounds) → A/B against the installed low-latency 3.0.1-2 build is owed; detection/recommendation (UE5 layout + failure-card signature) not built.
+
 ## 2026-10-07 — 🚀 3.1.6-pre3 released (tag `3.1.6-pre3` = `608b6c1d`, vc 97, pre-release)
 > Release commit `608b6c1d`: `docs/releases/3.1.6-pre3.md` (pre2 layout: new-in-pre3 sections on top, pre2 + pre1 sections carried, validated by `scripts/release_notes.py`), README version row + "Force SSBS, v14 layers & Mali on Wayland (3.1.6-pre3)" section, `versionCode 97`, `versionName 3.1.6-pre3`. Run **37723905276** green, headSha == tag; four APKs + `update.json` (vc 97); Latest stays **3.1.5**. pubg staged `Download/Bannerlator-3.1.6-pre3/` (sha `48e93b98…`). Backup `refs/backup/20261007/main-before-pre3` = `615086a7`.
 > - **Contents since pre2:** Force SSBS toggle (on by default) + v14 layers · Mali (PanVK) Wayland section (other session, `615086a7`) + "System" Wayland driver on Mali (below) · Menu button · winhandler Toy Story 2 fix.

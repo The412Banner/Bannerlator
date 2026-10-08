@@ -54,7 +54,47 @@ public class ContainerManager {
         homeDir = new File(rootDir, "home");
         loadContainers();
         migrateGyroPrefsToContainers();
+        migrateVkd3dShaderModelDefault();
         isInitialized = true;
+    }
+
+    // One-shot: add VKD3D_SHADER_MODEL=6_6 (new in Container.DEFAULT_ENV_VARS, 3.1.6) to every
+    // container that doesn't mention the variable, and to any saved "New Container Defaults" profile,
+    // so an app update covers existing containers the way a fresh install covers new ones. Keyed on
+    // "vkd3d_sm66_default_added" so it fires once per install: a user who deletes the variable
+    // afterwards keeps it deleted. Containers that already carry ANY value for it are left alone.
+    private void migrateVkd3dShaderModelDefault() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        if (prefs.getBoolean("vkd3d_sm66_default_added", false)) return;
+
+        int patched = 0;
+        for (Container container : snapshotContainers()) {
+            EnvVars env = new EnvVars(container.getEnvVars());
+            if (env.has("VKD3D_SHADER_MODEL")) continue;
+            env.put("VKD3D_SHADER_MODEL", "6_6");
+            container.setEnvVars(env.toString());
+            container.saveData();
+            patched++;
+        }
+        for (String arch : new String[]{com.winlator.star.core.NewContainerDefaults.ARCH_ARM64EC,
+                                        com.winlator.star.core.NewContainerDefaults.ARCH_X86_64}) {
+            String json = com.winlator.star.core.NewContainerDefaults.INSTANCE.load(context, arch);
+            if (json == null) continue;
+            try {
+                JSONObject profile = new JSONObject(json);
+                EnvVars env = new EnvVars(profile.optString("envVars", ""));
+                if (env.has("VKD3D_SHADER_MODEL")) continue;
+                env.put("VKD3D_SHADER_MODEL", "6_6");
+                profile.put("envVars", env.toString());
+                com.winlator.star.core.NewContainerDefaults.INSTANCE.save(context, arch, profile.toString());
+                patched++;
+            } catch (JSONException e) {
+                Log.w("ContainerManager", "VKD3D_SHADER_MODEL migration: skipped unreadable defaults profile for " + arch, e);
+            }
+        }
+        if (patched > 0) Log.i("ContainerManager", "Added VKD3D_SHADER_MODEL=6_6 to " + patched + " container(s)/profile(s)");
+
+        prefs.edit().putBoolean("vkd3d_sm66_default_added", true).apply();
     }
 
     // One-shot migration of the old GLOBAL gyro prefs onto every container. The gyro settings used to

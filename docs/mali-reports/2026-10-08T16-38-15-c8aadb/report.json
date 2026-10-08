@@ -1,0 +1,31 @@
+{
+  "id": "2026-10-08T16-38-15-c8aadb",
+  "created": "2026-10-08T16:38:15.100Z",
+  "ip_hash": "JUZN9tqRfU",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Infinix X6858",
+    "soc": "MediaTek MT6789 (Helio G99)",
+    "gpu": "Mali-G57 MC2 (driver r54p1, Vulkan 1.3.303, no BCn, maxImageDimension2D 16384)",
+    "android": "Android 16 (XOS)",
+    "ram": "8 GB",
+    "app_version": "3.1.5 (standard)",
+    "install_source": "GitHub release",
+    "game_name": "Hospital Seduction (Unity 2022.3.25f1, D3D11, URP)",
+    "steam_appid": "",
+    "store": "Other",
+    "exe": "Hospital Seduction.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "Wrapper + bcn_layer (Vulkan 1.3, System driver)",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.7.1.1-sdk36-arm64ec (also tried 1.11.1-sarek), set on container and shortcut, but the game actually runs on WineD3D (see below)",
+    "proton": "Proton-11.0-2-arm64ec (v14); also tried Proton-10.0-arm64ec",
+    "box64": "FEXCore 2609-unix, Intermediate",
+    "resolution": "960x540 (also tried 1280x720)",
+    "framegen": "No",
+    "repro": "1. arm64ec container: Proton-11.0-2-arm64ec (v14), Wrapper + bcn_layer (System, Vulkan 1.3), DXVK 2.7.1.1-sdk36-arm64ec, FEXCore 2609-unix.\n2. Launch Hospital Seduction.exe, play through Night 1.\n3. Sleep in the bed (HeroSleepBed) to start Night 2.\n4. Screen goes black, the game process RSS climbs ~250 MB/s from ~1 GB to ~4.6 GB within ~15 s, then Android's low-memory killer kills it (back to home).\n100% reproducible, always at the Night 1 -> Night 2 transition.",
+    "tried": "KEY FINDING 1 - DXVK never loads in this container. Unity Player.log (via -logFile) always reports WineD3D's fallback card:\n  Direct3D: Version: Direct3D 11.0 [level 10.1]\n  Renderer: NVIDIA GeForce 8800 GTX (ID=0x191), VRAM: 768 MB\neven though DXVK is selected on both the container and the shortcut and Direct3D = Native (Windows). With DXVK_LOG_LEVEL=info no DXVK log files are written. DXVK_CONFIG=d3d11.maxFeatureLevel=11_0 has no effect (DXVK not loaded).\n\nKEY FINDING 2 - right before the crash Unity rejects the Night 2 textures because of the FL 10.1 limit:\n  Texture with ID 764 and with size 15280x1240 was too large for graphics device maximum supported texture size (8192x8192). Falling back to a dummy texture.\n  (5 textures: 13752x1052, 13752x1240 x3, 15280x1240), then \"UnloadTime: ~450 ms\", then the log goes silent while RAM explodes.\nThe GPU itself reports maxImageDimension2D = 16384.\n\nSame crash at the same point in GameHub 6.3.1 and BannerHub 3.8.1 (DXVK does load there), so the texture limit may not be the only factor.\n\nTried, no change to the crash:\n- BCN_TRANSCODE_TO_ASTC=1 (baseline RAM dropped ~1.5 GB -> ~1 GB, spike still happens)\n- Codecs GStreamer and FFmpeg (winedmo) - game has six 1080p H.264 cutscenes\n- WINEDLLOVERRIDES=mfplat=d (Media Foundation off) - same spike, so video is ruled out\n- DXVK 1.11.1-sarek and 2.7.1.1-sdk36-arm64ec, Proton 10.0 and 11.0-2 arm64ec, 960x540 and 1280x720\n- Phantom process killer disabled, battery optimization off, background apps closed\n\nQuestions:\n1) Why does DXVK not load (falls back to WineD3D) in an arm64ec container with Wrapper + bcn_layer on Mali-G57?\n2) Any way to expose D3D11 feature level 11_0 (16384 textures) to a game on this GPU?"
+  },
+  "logs": []
+}

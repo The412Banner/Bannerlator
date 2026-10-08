@@ -1857,16 +1857,6 @@ E.g. <b>META</b> for <i>META key</i>, \n
          env_var_help__<name lowercased>. A variable with no entry here simply shows no "?"
          button. Format matches the preset help: what it is, what each value does, and a
          labelled "When to change" scenario. -->
-    <string name="env_var_help__vkd3d_shader_model"><![CDATA[
-        The highest Shader Model that VKD3D-Proton (the DirectX 12 layer) tells a game it supports.
-It is a ceiling, not a switch: a game built for an older model still asks for, and gets, that older
-model. DirectX 11, 9 and OpenGL games never read it.<br /><br />
-<b>6_6</b> : the default. Unreal Engine 5.3+ games built for Shader Model 6 refuse to start below
-this ("DirectX 12 is not supported on your system"), and Turnip only advertises 6.5 on its own.<br />
-<b>6_5 or lower</b> : what the driver reports natively. Try it only if a DirectX 12 game shows
-broken effects or crashes while building shaders after a launch that got past the start.<br /><br />
-<b>When to change:</b> almost never. Removing it brings back the Unreal Engine 5 refusal.
-        ]]></string>
     <string name="env_var_help__banner_audio_direct_decay"><![CDATA[
         Whether the driver shrinks its buffer back down after a quiet spell, recovering latency it took to
 survive a rough patch.<br /><br />
@@ -2249,11 +2239,15 @@ use it only briefly.
 than falling back. Raise it only if a game refuses to start claiming the hardware is too old.
         ]]></string>
     <string name="env_var_help__vkd3d_shader_model"><![CDATA[
-        The highest D3D12 shader model VKD3D reports to the game.<br /><br />
-<b>6_6</b> down to <b>5_1</b>, newest first.<br /><br />
+        The highest D3D12 shader model VKD3D reports to the game. It is a ceiling, not a switch: a game
+built for an older model still asks for, and gets, that older model. DirectX 11, 9 and OpenGL games never
+read it.<br /><br />
+<b>6_6</b> : the default. Unreal Engine 5.3+ games built for Shader Model 6 refuse to start below it
+("DirectX 12 is not supported on your system"), and Turnip only advertises 6.5 on its own.<br />
+<b>6_5</b> down to <b>5_1</b> : what the driver reports natively, or lower.<br /><br />
 <b>When to change:</b> lower it when a game requests shaders your driver cannot actually compile —
-the symptom is a crash or black rendering shortly after loading. Lowering it makes the game pick a
-simpler path.
+the symptom is a crash or black rendering shortly after loading, never a refusal to start. Removing it
+brings back the Unreal Engine 5 refusal.
         ]]></string>
     <string name="env_var_help__vkd3d_swapchain_latency_frames"><![CDATA[
         How many frames VKD3D lets the game queue ahead of the display.<br /><br />

@@ -79,7 +79,7 @@ Before any **stable release** is published, all changes are **manually debugged 
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) · `Bannerlator Bionic AnTuTu` (antutu) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) · `com.antutu.ABenchMark` (antutu) |
-| **Version** | Bannerlator **V 3.1.6-pre2** — built from Star **marcescence** (`versionName 3.1.6-pre2`, `versionCode 96`) |
+| **Version** | Bannerlator **V 3.1.6-pre3** — built from Star **marcescence** (`versionName 3.1.6-pre3`, `versionCode 97`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
@@ -111,6 +111,7 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [🤖 AI Disclaimer](#-ai-disclaimer)
 - [ℹ️ Information](#ℹ️-information)
 - [🐛 Report a Mali GPU Issue](#-report-a-mali-gpu-game-issue)
+- [⚡ Force SSBS, v14 layers & Mali on Wayland (3.1.6-pre3)](#-force-ssbs-v14-layers--mali-on-wayland-316-pre3)
 - [🆕 SteamLite Steam Input & Wayland xdg-shell v3 (3.1.6-pre2)](#-steamlite-steam-input--wayland-xdg-shell-v3-316-pre2)
 - [🎮 Headless Steam & Server Browser (3.1.6)](#-headless-steam--server-browser-316)
 - [🎬 Cutscenes & Codecs (3.1.5)](#-cutscenes--codecs-315)
@@ -128,6 +129,15 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [📄 License](#-license)
 
 ---
+
+## ⚡ Force SSBS, v14 layers & Mali on Wayland (3.1.6-pre3)
+
+**[3.1.6-pre3](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.6-pre3) adds a CPU speed fix for Wine on ARM, the v14 layers that carry it, and Wayland settings for Mali phones.**
+
+- **Force SSBS** — Wine on ARM kept switching off the CPU's SSBS feature on game threads (the slower, extra-safe way of handling memory). The **v14** layers carry Wine's own fix ([MR 12262](https://gitlab.winehq.org/wine/wine/-/merge_requests/12262)) and the toggle (Advanced tab, container and per game) is **on by default**; older layers get the bit back through a small add-on. Biggest gains expected on Snapdragon 8 Elite (Oryon) in CPU-heavy games.
+- **v14 layers** — all ten Proton layers, both Proton 10 layers included again, in the catalog ([release notes](https://github.com/The412Banner/proton-wine/releases/tag/build-bionic-layers-20261007-v14)).
+- **Mali on Wayland** — a **Mali (PanVK)** section in the Wayland driver settings, and **System** offered as the Wayland driver on Mali (experimental).
+- **Menu button** — Input Controls › Device: pick a controller button that opens the in-game side menu (off by default; B can't be picked). Also a Toy Story 2 window fix.
 
 ## 🆕 SteamLite Steam Input & Wayland xdg-shell v3 (3.1.6-pre2)
 

@@ -907,6 +907,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
         val current = compositorVersion()
         if ((current.isNotEmpty() && current != "System") || compositorFillJob?.isActive == true) return
+        // On Mali "System" is a choice the picker offers (maliSystemChoice): kept, never refilled.
+        if (current == "System" && com.winlator.star.core.MaliPanvk.isMaliGpu()) return
         compositorDriverSearching = true
         val preferred = defaultsProfileCompositorDriver()
         compositorFillJob = viewModelScope.launch {
@@ -915,6 +917,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                        finally { if (compositorFillJob === coroutineContext[Job]) compositorDriverSearching = false }
             val now = compositorVersion()
             if (!isWaylandBackend || (now.isNotEmpty() && now != "System")) return@launch
+            if (now == "System" && com.winlator.star.core.MaliPanvk.isMaliGpu()) return@launch
             if (pick == null) { compositorDriverNoneUsable = true; return@launch }
             versionBeforeCompositorFill = now
             graphicsDriverConfig = withGraphicsDriverVersion(graphicsDriverConfig, pick)

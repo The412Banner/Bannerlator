@@ -1036,6 +1036,11 @@ private fun TopLevelFields(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                compositorDriverMaliSystem(compositorVersion, compositorChoices) -> Text(
+                    MALI_SYSTEM_DRIVER_NOTE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 compositorDriverUnusable(compositorVersion, compositorChoices, compositorChoicesLoaded) -> {
                     Text(
                         if (viewModel.compositorDriverNoneUsable)
@@ -3368,7 +3373,16 @@ internal fun importedDriverVersions(context: Context): List<String> =
  * agree.
  */
 internal suspend fun compositorDriverChoices(context: Context): List<String> =
-    (supportedBundledDriverVersions(context) + importedDriverVersions(context)).distinct()
+    (maliSystemChoice() + supportedBundledDriverVersions(context) + importedDriverVersions(context)).distinct()
+
+/**
+ * On an Arm Mali GPU the picker also offers "System" (the phone's own Mali Vulkan driver): no
+ * bundled Turnip runs there, and with the Mali (PanVK) adapter switches some vendor drivers may
+ * import the game's frames. Picked explicitly, it is kept as-is (never refilled, and the launch
+ * does not swap in a bundled Turnip for it). Everywhere else "System" stays out of the list.
+ */
+internal suspend fun maliSystemChoice(): List<String> =
+    if (withContext(Dispatchers.IO) { com.winlator.star.core.MaliPanvk.isMaliGpu() }) listOf("System") else emptyList()
 
 /**
  * What the Wayland "Compositor driver" field shows for the stored `version`. The picker leaves
@@ -3385,9 +3399,21 @@ internal fun compositorDriverLabel(version: String, choices: List<String>, choic
     else -> version
 }
 
-/** True when [version] cannot drive the Wayland compositor: "System"/empty, or an id the picker doesn't offer. */
+/**
+ * True when [version] cannot drive the Wayland compositor: empty, "System" where the picker does
+ * not offer it (it does only on Mali, see [maliSystemChoice]), or an id the picker doesn't offer.
+ */
 internal fun compositorDriverUnusable(version: String, choices: List<String>, choicesLoaded: Boolean): Boolean =
-    version.isEmpty() || version == "System" || (choicesLoaded && version !in choices)
+    version.isEmpty() || (version == "System" && "System" !in choices) || (choicesLoaded && version !in choices)
+
+/** "System" picked on a Mali GPU, where the picker offers it: experimental, so the form says so. */
+internal fun compositorDriverMaliSystem(version: String, choices: List<String>): Boolean =
+    version == "System" && "System" in choices
+
+internal const val MALI_SYSTEM_DRIVER_NOTE =
+    "\"System\" uses your phone's own Mali Vulkan driver. Experimental on Wayland: it may show a black " +
+        "screen. Try it with the Mali (PanVK) switches in the driver gear; if it stays black, pick a PanVK driver or use X11."
+
 
 /**
  * The dmabuf-import device extensions the Wayland compositor enables at vkCreateDevice
@@ -3428,7 +3454,8 @@ internal suspend fun defaultCompositorDriver(context: Context, preferred: String
         val mgr = AdrenotoolsManager(context)
         val imported = importedDriverVersions(context).toSet()
         graphicsProbeMutex.withLock {
-            val usable = choices.map { it to compositorDriverVerdict(context, mgr, it, it in imported) }
+            // "System" (offered on Mali only) is never auto-picked: it has to be the user's choice.
+            val usable = choices.filter { it != "System" }.map { it to compositorDriverVerdict(context, mgr, it, it in imported) }
                 .filter { it.second.usable }
             val newest = usable
                 .maxWithOrNull(Comparator { a, b -> compareVulkanVersions(a.second.vulkanVersion, b.second.vulkanVersion) })

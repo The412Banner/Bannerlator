@@ -3154,7 +3154,8 @@ internal const val WAYLAND_DRIVER_SETTINGS_HELP =
  * (FD_DEV_FEATURES for the game's Turnip). Same keys as GraphicsDriverConfigDialog, so a choice
  * survives switching backends; OK writes only these back (withGraphicsDriverKeys). The X11 wrapper
  * plumbing (extensions, BCn, resource type, sync/present-wait) and Vulkan version are left out: nothing
- * on the Wayland path reads them, and the Wayland Turnips ignore MESA_VK_VERSION_OVERRIDE.
+ * on the Wayland path reads them, and the Wayland Turnips ignore MESA_VK_VERSION_OVERRIDE. On an Arm
+ * Mali GPU only, a "Mali (PanVK)" section adds maliMode, bcnEmulation and the panvk* keys (MaliPanvk).
  */
 @Composable
 internal fun WaylandDriverSettingsDialog(
@@ -3189,6 +3190,9 @@ internal fun WaylandDriverSettingsDialog(
     // A stored X11-only mode (immediate / relaxed) stays listed, labelled, so OK keeps it for X11.
     val presentValues = WAYLAND_PRESENT_MODES + (if (storedPresent in WAYLAND_PRESENT_MODES) emptyList() else listOf(storedPresent))
     val presentLabels = presentValues.map { if (it in WAYLAND_PRESENT_MODES) it else "$it (X11 only, not used here)" }
+    // Mali (PanVK) section: Arm Mali GPUs only (vendor 0x13B5); every other GPU sees and writes nothing new.
+    val isMali = remember { com.winlator.star.core.MaliPanvk.isMaliGpu() }
+    val mali = remember(initialConfig) { if (isMali) MaliPanvkSettingsState(context, cfg) else null }
 
     var helpRes by remember { mutableStateOf<Int?>(null) }
     helpRes?.let { HelpDialog(it) { helpRes = null } }
@@ -3268,6 +3272,7 @@ internal fun WaylandDriverSettingsDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                mali?.let { MaliPanvkSection(it) { res -> helpRes = res } }
             }
         },
         confirmButton = {
@@ -3280,7 +3285,7 @@ internal fun WaylandDriverSettingsDialog(
                             "maxDeviceMemory" to StringUtils.parseNumber(memoryEntry),
                             "presentMode" to presentMode,
                             "fdDevFeatures" to if (fdDevFeatures) "1" else "0",
-                        )
+                        ) + (mali?.keys() ?: emptyMap())
                     )
                 )
             }) { Text(stringResource(android.R.string.ok)) }
@@ -4262,7 +4267,9 @@ internal fun GraphicsDriverConfigDialog(
                     val v = (detectedValues[key] ?: "").replace(";", "").replace("=", "")
                     ";$key=$v"
                 }
-                onConfirm(config + detectedPart)
+                // The Wayland gear's Mali (PanVK) keys have no control here: carry them through as stored.
+                val maliPart = com.winlator.star.core.MaliPanvk.KEYS.filter { it in cfg }.joinToString("") { ";$it=${cfg[it]}" }
+                onConfirm(config + detectedPart + maliPart)
             }) { Text(stringResource(android.R.string.ok)) }
         },
         dismissButton = {

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-10-09 — 🕹️📉 On-screen sticks: stop redrawing every control (branch `perf/osc-stick-redraw`, `1d778958`)
+> User report: using the virtual joysticks lowers game FPS. Cause (code read): every stick touch move called `invalidate()` on the whole overlay, so every control - each GameHub button with its `setShadowLayer` blur and new `RadialGradient`s - was re-drawn at the display rate, even with a resting thumb (the panel keeps reporting sub-pixel moves). The input path itself (ring writes, delta-only) was already cheap. Reference: Ludashi `40a1c41a` (redraw gating; its dirty-rect part is a no-op on hardware-accelerated views, API 21+ ignores the rect).
+> - `InputControlsView`: static controls recorded once into a cached compositing `RenderNode` (API 29+, hardware canvas, not edit mode / expanded overlay); live elements (dragged STICK/DYNAMIC_STICK, BUTTON_GRID mid-flash) drawn on top each frame. `invalidate()` overridden to dirty the cache; `invalidateLiveStick()` redraws without re-recording; the cache also re-records when the live set changes.
+> - `ControlElement`: STICK / DYNAMIC_STICK redraw only after a ≥1 px thumb move (axis values unchanged); D-pad and button grid redraw only when their pressed state changes; stick ring glass gradient cached.
+> - `handleStickInput`: unchanged value → no rebuild / no send.
+> - CI run 37956581324 (headSha verified). ▶️ Device A/B on the Pocket FIT: FPS with a stick held vs not, before vs after.
+
 ## 2026-10-08 — 🧩 VKD3D_SHADER_MODEL=6_6 becomes a container default (new + existing)
 > Gothic 1 Remake (UE 5.4) refused to start on the Pocket FIT with "DirectX 12 is not supported on your system": VKD3D-Proton only advertises SM 6.6 when the Vulkan driver has 64-bit buffer atomics + compute derivatives + required-subgroup-size control, Turnip through the wrapper stops at 6.5 (no "Enabling support for SM 6.6" in any vkd3d log), and UE 5.3+ SM6 builds reject anything lower. `VKD3D_SHADER_MODEL=6_6` is a ceiling (games asking for 5_1/6_0 still get that; DX11/DX9 never read it), and the game played with it on 2026-10-02.
 > - `Container.DEFAULT_ENV_VARS` gains `VKD3D_SHADER_MODEL=6_6` → every new container.

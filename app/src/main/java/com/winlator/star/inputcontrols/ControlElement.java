@@ -46,6 +46,8 @@ public class ControlElement {
     public static final float MIN_SCALE = 0.5f;
     public static final float MAX_SCALE = 3.0f;
     private static final long GRID_FLASH_DURATION_MS = 150;
+    // A resting thumb keeps reporting sub-pixel moves; redraw a stick only once its thumb moves a pixel.
+    private static final float THUMB_REDRAW_MIN_PX = 1.0f;
     public static final int MAX_EXPANDABLE_CHILDREN = 10;
     public static final int MAX_COMBO_BINDINGS = 10;
     public enum Type {
@@ -1360,6 +1362,20 @@ public class ControlElement {
         canvas.drawRoundRect(iconAspectFitDestinationRect, radius, radius, paint);
     }
 
+    /**
+     * Drawn every frame instead of from InputControlsView's cached layer: a stick being dragged, or a
+     * grid cell still in its press flash (the flash fades by time, so a cached copy would freeze it).
+     */
+    public boolean isDrawnLive(long now) {
+        if (type == Type.STICK || type == Type.DYNAMIC_STICK) return currentPointerId != -1;
+        if (type == Type.BUTTON_GRID && cellPressTimes != null) {
+            for (long pressTime : cellPressTimes) {
+                if (pressTime > 0 && now - pressTime < GRID_FLASH_DURATION_MS) return true;
+            }
+        }
+        return false;
+    }
+
     private boolean isEngaged() {
         return expanded || currentPointerId != -1 || buttonGridTouchState.hasTrackedPointers()
                 || (toggleSwitch && selected);
@@ -1518,10 +1534,7 @@ public class ControlElement {
 
 
                 if (glassEdgeAlpha > 0) {
-                    paint.setShader(new RadialGradient(
-                            cx, cy, ringRadius,
-                            Color.argb(0, 0, 0, 0), Color.argb(glassEdgeAlpha, 0, 0, 0),
-                            Shader.TileMode.CLAMP));
+                    paint.setShader(stickRingGlass(cx, cy, ringRadius, glassEdgeAlpha));
                     paint.setStyle(Paint.Style.FILL);
                     canvas.drawCircle(cx, cy, ringRadius, paint);
                     paint.setShader(null);
@@ -2797,8 +2810,12 @@ public class ControlElement {
 
             if (type == Type.DYNAMIC_STICK) {
                 // Store finger position for thumb animation
-                lastFingerX = x;
-                lastFingerY = y;
+                boolean redraw = Math.abs(lastFingerX - x) >= THUMB_REDRAW_MIN_PX
+                        || Math.abs(lastFingerY - y) >= THUMB_REDRAW_MIN_PX;
+                if (redraw) {
+                    lastFingerX = x;
+                    lastFingerY = y;
+                }
                 // Calculate delta from initial touch position (currentPosition)
                 if (currentPosition == null) currentPosition = new PointF();
                 float stickCx = currentPosition.x;
@@ -2837,7 +2854,7 @@ public class ControlElement {
                         this.states[i] = state;
                     }
                 }
-                inputControlsView.invalidate();
+                if (redraw) inputControlsView.invalidateLiveStick();
                 return true;
             }
 
@@ -2875,15 +2892,19 @@ public class ControlElement {
                         setCellPressTime(newCell, System.currentTimeMillis());
                         pressBindingSlot(newCell);
                     }
+                    inputControlsView.invalidate();
                 }
-                inputControlsView.invalidate();
                 return true;
             }
 
             if (type == Type.STICK) {
                 if (currentPosition == null) currentPosition = new PointF();
-                currentPosition.x = boundingBox.left + deltaX * radius + radius;
-                currentPosition.y = boundingBox.top + deltaY * radius + radius;
+                float thumbX = boundingBox.left + deltaX * radius + radius;
+                float thumbY = boundingBox.top + deltaY * radius + radius;
+                // The axis values below stay exact; only the drawn thumb waits for a whole-pixel move.
+                boolean redraw = Math.abs(currentPosition.x - thumbX) >= THUMB_REDRAW_MIN_PX
+                        || Math.abs(currentPosition.y - thumbY) >= THUMB_REDRAW_MIN_PX;
+                if (redraw) currentPosition.set(thumbX, thumbY);
 
                 // Directional thumb bindings use unified axes; all others dispatch per slot.
                 Binding firstBinding = getBindingAt(0);
@@ -2926,7 +2947,7 @@ public class ControlElement {
                     }
                 }
 
-                inputControlsView.invalidate();
+                if (redraw) inputControlsView.invalidateLiveStick();
             }
             else if (type == Type.TRACKPAD) {
                 // Directional thumb bindings use unified axes; all others dispatch per slot.
@@ -2992,14 +3013,17 @@ public class ControlElement {
             else {
                 final boolean[] states = {deltaY < -deadZone, deltaX > deadZone, deltaY > deadZone, deltaX < -deadZone};
 
+                boolean changed = false;
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     Binding binding = getBindingAt(i);
                     boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
                     handleBindingSlot(i, state, value);
+                    changed |= this.states[i] != state;
                     this.states[i] = state;
                 }
-                inputControlsView.invalidate();
+                // The d-pad art only shows which directions are held.
+                if (changed) inputControlsView.invalidate();
             }
 
             return true;
@@ -3074,6 +3098,24 @@ public class ControlElement {
             return true;
         }
         return false;
+    }
+
+    // The stick ring is redrawn every frame while dragged; reuse its gradient until its geometry changes.
+    private RadialGradient stickRingGlassShader;
+    private float stickRingGlassX, stickRingGlassY, stickRingGlassRadius;
+    private int stickRingGlassAlpha = -1;
+
+    private RadialGradient stickRingGlass(float cx, float cy, float radius, int alpha) {
+        if (stickRingGlassShader == null || stickRingGlassX != cx || stickRingGlassY != cy
+                || stickRingGlassRadius != radius || stickRingGlassAlpha != alpha) {
+            stickRingGlassShader = new RadialGradient(cx, cy, radius,
+                    Color.argb(0, 0, 0, 0), Color.argb(alpha, 0, 0, 0), Shader.TileMode.CLAMP);
+            stickRingGlassX = cx;
+            stickRingGlassY = cy;
+            stickRingGlassRadius = radius;
+            stickRingGlassAlpha = alpha;
+        }
+        return stickRingGlassShader;
     }
 
     public PointF getCurrentPosition() {

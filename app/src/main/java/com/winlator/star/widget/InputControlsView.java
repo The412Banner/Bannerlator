@@ -1,6 +1,7 @@
 package com.winlator.star.widget;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -12,6 +13,9 @@ import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.RecordingCanvas;
+import android.graphics.RenderNode;
+import android.os.Build;
 import android.os.Handler;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -49,6 +53,7 @@ import com.winlator.star.xserver.XServer;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -123,6 +128,13 @@ public class InputControlsView extends View {
     private Runnable showKeyboardCallback;
     private final Map<Binding, Integer> activeVirtualBindings = new HashMap<>();
     private final Map<ControlElement, VirtualStickState> activeVirtualSticks = new HashMap<>();
+    // Controls that aren't moving are recorded once into a GPU-cached layer and reused while a stick
+    // is dragged, so a thumb drag redraws that one stick instead of every control (and every button's
+    // shadow and glass). Re-recorded on any ordinary invalidate() or when the set of live elements changes.
+    private RenderNode staticControlsNode;
+    private boolean staticControlsDirty = true;
+    private final ArrayList<ControlElement> liveElements = new ArrayList<>();
+    private final ArrayList<ControlElement> recordedLiveElements = new ArrayList<>();
     private final Map<VirtualMouseBindingKey, Float> activeVirtualMouseBindings = new HashMap<>();
     private ControlElement expandedElement;
     private final SparseBooleanArray swallowedExpandablePointers = new SparseBooleanArray();
@@ -328,20 +340,26 @@ public class InputControlsView extends View {
 
         if (profile != null && showTouchscreenControls) {
             if (!profile.isElementsLoaded()) profile.loadElements(this);
-            for (ControlElement element : profile.getElements()) {
-                if (isElementHiddenByGroup(element)) continue;
-                element.draw(canvas);
-            }
             if (expandedElement != null && isElementHiddenByGroup(expandedElement)) {
                 expandedElement.setExpanded(false);
                 expandedElement = null;
             }
             ControlElement expandedOverlay = expandedElement != null ? expandedElement : selectedElement;
-            if (expandedOverlay != null && !isElementHiddenByGroup(expandedOverlay)) {
-                expandedOverlay.drawExpandedChildren(canvas);
-            }
-            if (editMode && selectedElement != null && !isElementHiddenByGroup(selectedElement)) {
-                selectedElement.drawEditorSelectionBorder(canvas);
+            boolean drawOverlay = expandedOverlay != null && !isElementHiddenByGroup(expandedOverlay);
+            if (!editMode && !drawOverlay && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    && canvas.isHardwareAccelerated()) {
+                drawControlsCached(canvas, width, height);
+            } else {
+                for (ControlElement element : profile.getElements()) {
+                    if (isElementHiddenByGroup(element)) continue;
+                    element.draw(canvas);
+                }
+                if (drawOverlay) {
+                    expandedOverlay.drawExpandedChildren(canvas);
+                }
+                if (editMode && selectedElement != null && !isElementHiddenByGroup(selectedElement)) {
+                    selectedElement.drawEditorSelectionBorder(canvas);
+                }
             }
         }
 
@@ -351,6 +369,44 @@ public class InputControlsView extends View {
         }
 
         super.onDraw(canvas);
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    private void drawControlsCached(Canvas canvas, int width, int height) {
+        long now = System.currentTimeMillis();
+        liveElements.clear();
+        for (ControlElement element : profile.getElements()) {
+            if (!isElementHiddenByGroup(element) && element.isDrawnLive(now)) liveElements.add(element);
+        }
+
+        if (staticControlsNode == null) {
+            staticControlsNode = new RenderNode("InputControlsStatic");
+            staticControlsNode.setUseCompositingLayer(true, null);
+            staticControlsDirty = true;
+        }
+        if (staticControlsNode.getWidth() != width || staticControlsNode.getHeight() != height) {
+            staticControlsNode.setPosition(0, 0, width, height);
+            staticControlsDirty = true;
+        }
+        if (staticControlsDirty || !staticControlsNode.hasDisplayList()
+                || !liveElements.equals(recordedLiveElements)) {
+            // Cleared before recording so an invalidate() raised while drawing still forces the next pass.
+            staticControlsDirty = false;
+            RecordingCanvas recordingCanvas = staticControlsNode.beginRecording(width, height);
+            try {
+                for (ControlElement element : profile.getElements()) {
+                    if (isElementHiddenByGroup(element) || liveElements.contains(element)) continue;
+                    element.draw(recordingCanvas);
+                }
+            } finally {
+                staticControlsNode.endRecording();
+            }
+            recordedLiveElements.clear();
+            recordedLiveElements.addAll(liveElements);
+        }
+
+        canvas.drawRenderNode(staticControlsNode);
+        for (ControlElement element : liveElements) element.draw(canvas);
     }
 
     private void drawGrid(Canvas canvas) {
@@ -767,8 +823,24 @@ public class InputControlsView extends View {
         return (int)Mathf.roundTo(getWidth(), snappingSize);
     }
 
+    /** Any redraw other than a dragged stick may change how the cached controls look. */
+    @Override
+    public void invalidate() {
+        staticControlsDirty = true;
+        super.invalidate();
+    }
+
+    /** Redraw for a stick thumb that moved: every other control is reused from the cached layer. */
+    public void invalidateLiveStick() {
+        super.invalidate();
+    }
+
     @Override
     protected void onDetachedFromWindow() {
+        if (staticControlsNode != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            staticControlsNode.discardDisplayList();
+            staticControlsDirty = true;
+        }
         cancelEditorLongPress();
         releaseAllInputs();
         stopMouseMoveTimer();
@@ -1632,7 +1704,12 @@ public class InputControlsView extends View {
 
     public void handleStickInput(ControlElement owner, Binding firstBinding, float deltaX, float deltaY) {
         if (!isThumbBinding(firstBinding)) return;
-        if (deltaX == 0 && deltaY == 0) activeVirtualSticks.remove(owner);
+        // A resting thumb still reports moves; skip the rebuild + send when the stick value is unchanged.
+        VirtualStickState previous = activeVirtualSticks.get(owner);
+        boolean neutral = deltaX == 0 && deltaY == 0;
+        if (previous == null ? neutral
+                : previous.binding == firstBinding && previous.x == deltaX && previous.y == deltaY) return;
+        if (neutral) activeVirtualSticks.remove(owner);
         else activeVirtualSticks.put(owner, new VirtualStickState(firstBinding, deltaX, deltaY));
 
         rebuildVirtualStickAxes();

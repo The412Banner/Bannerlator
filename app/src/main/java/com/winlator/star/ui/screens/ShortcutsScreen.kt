@@ -308,6 +308,8 @@ import android.os.Build
 import androidx.documentfile.provider.DocumentFile
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -979,15 +981,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             }
             // Games whose files name no Steam app: look each title up on the Steam store (same title
             // only, remembered per name), so the list shows their art and the import carries the id.
+            // Four at a time, so a big library's list fills in within seconds rather than one by one.
             launch {
-                for (c in found.filter { it.appId == null && !it.alreadyAdded }) {
-                    val id = withContext(Dispatchers.IO) {
-                        runCatching { SteamStoreSearch.findAppIdByName(context, c.name) }.getOrNull()
-                    } ?: continue
-                    folderScanResults = folderScanResults.map {
-                        if (it.exe.absolutePath == c.exe.absolutePath && it.appId == null) {
-                            it.copy(appId = id, coverUrl = SteamStoreSearch.coverUrl(id))
-                        } else it
+                found.filter { it.appId == null && !it.alreadyAdded }.chunked(4).forEach { batch ->
+                    batch.map { c ->
+                        async(Dispatchers.IO) {
+                            c to runCatching { SteamStoreSearch.findAppIdByName(context, c.name) }.getOrNull()
+                        }
+                    }.awaitAll().forEach { (c, id) ->
+                        if (id != null) {
+                            folderScanResults = folderScanResults.map {
+                                if (it.exe.absolutePath == c.exe.absolutePath && it.appId == null) {
+                                    it.copy(appId = id, coverUrl = SteamStoreSearch.coverUrl(id))
+                                } else it
+                            }
+                        }
                     }
                 }
             }
@@ -1643,30 +1651,32 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     }
                                 },
                                 onChangeExe = { exePickerFor = candidate },
+                                footer = {
+                                    val recCount = scanRecCounts[candidate.exe.absolutePath] ?: 0
+                                    val scanContainer = vm.containers().getOrNull(pendingImportContainerIndex)
+                                    if (recCount > 0 && scanContainer != null) {
+                                        val key = candidate.exe.absolutePath
+                                        val open = key in scanRecsOpen
+                                        TextButton(
+                                            onClick = { scanRecsOpen = if (open) scanRecsOpen - key else scanRecsOpen + key },
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(32.dp),
+                                        ) {
+                                            Text(
+                                                (if (open) "▾ " else "▸ ") + "Components ($recCount)",
+                                                fontSize = 13.sp,
+                                            )
+                                        }
+                                        if (open) {
+                                            RecommendedComponentsSection(
+                                                container = scanContainer,
+                                                exeFile = candidate.exe,
+                                                modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
+                                            )
+                                        }
+                                    }
+                                },
                             )
-                            val recCount = scanRecCounts[candidate.exe.absolutePath] ?: 0
-                            val scanContainer = vm.containers().getOrNull(pendingImportContainerIndex)
-                            if (recCount > 0 && scanContainer != null) {
-                                val key = candidate.exe.absolutePath
-                                val open = key in scanRecsOpen
-                                TextButton(
-                                    onClick = { scanRecsOpen = if (open) scanRecsOpen - key else scanRecsOpen + key },
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                    modifier = Modifier.height(32.dp),
-                                ) {
-                                    Text(
-                                        (if (open) "▾ " else "▸ ") + "Components ($recCount)",
-                                        fontSize = 13.sp,
-                                    )
-                                }
-                                if (open) {
-                                    RecommendedComponentsSection(
-                                        container = scanContainer,
-                                        exeFile = candidate.exe,
-                                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -11744,6 +11754,7 @@ private fun ScannedGameRow(
     enabled: Boolean,
     onToggle: () -> Unit,
     onChangeExe: () -> Unit,
+    footer: @Composable () -> Unit = {},
 ) {
     val alpha = if (candidate.alreadyAdded) 0.45f else 1f
     Card(
@@ -11841,6 +11852,7 @@ private fun ScannedGameRow(
             TextButton(onClick = onChangeExe, enabled = enabled) { Text("Change") }
         }
     }
+    footer()
     }
 }
 

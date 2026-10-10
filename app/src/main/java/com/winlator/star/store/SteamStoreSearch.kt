@@ -64,24 +64,27 @@ object SteamStoreSearch {
         }
     }
 
-    private const val LOOKUP_PREFS = "steam_appid_by_name"
+    private const val LOOKUP_PREFS = "steam_appid_by_name_v2"
     private const val RETRY_AFTER_MS = 7L * 24 * 60 * 60 * 1000
-    private val EDITION = Regex("(?i)\\b(complete|definitive|legendary|goty|game of the year|deluxe|ultimate|remastered)( edition)?\\b")
+    /** Edition words a title can carry or drop. Not "Remastered": a remaster is a different game on the store. */
+    private val EDITION = Regex("(?i)\\b(complete|definitive|legendary|goty|game of the year|deluxe|ultimate)( edition)?\\b")
 
     private fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
 
     /**
      * How well a store result's name [got] matches a game's [name] (DroidDeck's rule): 3 the same,
-     * 2 the same once edition words are dropped, 1 one starts with the other; 0 no match.
+     * 2 the same once edition words are dropped from either ("Tomb Raider" is Steam's "Tomb Raider
+     * Game of the Year"), 1 one starts with the other; 0 no match.
      */
     internal fun nameMatch(name: String, got: String): Int {
         val want = normalize(name)
         val wantShort = normalize(name.replace(EDITION, " ").trim().ifEmpty { name })
         val have = normalize(got)
+        val haveShort = normalize(got.replace(EDITION, " ").trim().ifEmpty { got })
         if (have.isEmpty() || wantShort.isEmpty()) return 0
         return when {
             have == want -> 3
-            have == wantShort -> 2
+            have == wantShort || haveShort == wantShort -> 2
             have.startsWith(wantShort) || wantShort.startsWith(have) -> 1
             else -> 0
         }
@@ -101,7 +104,9 @@ object SteamStoreSearch {
             val since = saved.removePrefix("none:").toLongOrNull() ?: 0L
             if (System.currentTimeMillis() - since < RETRY_AFTER_MS) return null
         }
-        val term = name.replace(EDITION, " ").trim().ifEmpty { name }
+        // Steam's search finds nothing for "Serious Sam - Shatterverse": punctuation goes before searching.
+        val term = name.replace(EDITION, " ").replace(Regex("[^\\p{L}\\p{N}' ]+"), " ")
+            .replace(Regex("\\s+"), " ").trim().ifEmpty { name }
         val found = searchByName(term)
             .map { it to nameMatch(name, it.name) }
             .filter { it.second >= 2 }

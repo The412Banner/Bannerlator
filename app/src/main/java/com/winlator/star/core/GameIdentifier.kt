@@ -109,8 +109,13 @@ object GameIdentifier {
     fun gameFolderOf(exe: File): File? {
         var dir = exe.absoluteFile.parentFile
         repeat(3) { if (dir != null && dir!!.name.lowercase() in BUILD_DIRS) dir = dir!!.parentFile }
+        // An Unreal game: <Game>/<Project>/Binaries/Win64, with Engine/ beside the project folder.
+        if (isUnrealShipping(exe) && File(dir?.parentFile, "Engine").isDirectory) dir = dir?.parentFile
         return dir
     }
+
+    private fun isUnrealShipping(exe: File): Boolean =
+        exe.nameWithoutExtension.let { it.endsWith("-Win64-Shipping", true) || it.endsWith("-Win32-Shipping", true) }
 
     /**
      * The name an added game shows (DroidDeck's rule): the game's own title when the disk names
@@ -125,6 +130,16 @@ object GameIdentifier {
         if (trusted != null) {
             if (identity.nameSource != Source.PE_VERSION) return trusted
             val spaced = underscoresToSpaces(trusted)
+            // An Unreal game's version resource names its project, often a codename ("SILAS" for
+            // SPRAWL 0): when it shares nothing with the game folder's name, the folder names the game.
+            if (isUnrealShipping(exe) && folderName != null) {
+                fun key(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
+                val a = key(spaced)
+                val b = key(folderName)
+                if (a.isNotEmpty() && b.isNotEmpty() && a !in b && b !in a) {
+                    cleanName(folderName)?.let(::normalizeName)?.takeIf { it.isNotBlank() }?.let { return it }
+                }
+            }
             return normalizeName(folderName?.let { betterSpelling(spaced, it) } ?: spaced).ifBlank { trusted }
         }
         return folderName?.let { cleanName(it) }?.let(::normalizeName)?.takeIf { it.isNotBlank() }

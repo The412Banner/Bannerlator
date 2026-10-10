@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.winlator.star.container.Container
+import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GameIdentifier
@@ -89,7 +90,9 @@ internal object ExeShortcutImporter {
                 // 2. Steam authoritative name (network) — corrects a launcher/loader PE name.
                 //    renameShortcutFiles moves the cover/icon just written, so the art follows.
                 if (artAppId != null) {
-                    val better = betterSteamName(base, SteamStoreSearch.resolveName(artAppId))
+                    val details = runCatching { SteamStoreSearch.fetchDetails(artAppId) }.getOrNull()
+                    var finalBase = base
+                    val better = betterSteamName(base, details?.name ?: SteamStoreSearch.resolveName(artAppId))
                     // Race guard: only rename while the shortcut is still at its original name.
                     // If the user already Saved a different name via the confirm dialog, the
                     // original .desktop is gone and we leave their choice alone.
@@ -97,7 +100,24 @@ internal object ExeShortcutImporter {
                         File(desktopDir, "$base.desktop").isFile &&
                         renameShortcutFiles(container, base, better)
                     ) {
+                        finalBase = better
                         main.post { onNameResolved(base, better) }
+                    }
+                    // 3. Link the game to its Steam app and fill in its details (genres, description,
+                    //    year, Metacritic) from the store, so its Game Details page comes filled in.
+                    //    Fields the user already set are kept.
+                    val file = File(desktopDir, "$finalBase.desktop")
+                    if (file.isFile) {
+                        val shortcut = Shortcut(container, file)
+                        val current = GameDetails.from(shortcut)
+                        GameDetails(
+                            steamAppId = artAppId,
+                            genres = current.genres.ifEmpty { details?.genres.orEmpty() },
+                            description = current.description ?: details?.shortDescription,
+                            releaseYear = current.releaseYear ?: details?.releaseYear,
+                            metacritic = current.metacritic ?: details?.metacritic,
+                        ).writeTo(shortcut)
+                        onCoverArtReady()
                     }
                 }
             } catch (e: Exception) {

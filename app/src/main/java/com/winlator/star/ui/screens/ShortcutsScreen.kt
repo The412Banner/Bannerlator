@@ -5864,6 +5864,18 @@ private fun GameDetailsSheet(
     var filling by remember(shortcut) { mutableStateOf(false) }
     var saving by remember(shortcut) { mutableStateOf(false) }
 
+    // Game art: an image the user picked (in-app file manager), or a reset back to Steam's. A picked
+    // image is marked on the shortcut (coverSource=user) so later saves don't swap Steam's art over it.
+    val userArt = remember(shortcut) { shortcut.getExtra("coverSource", "") == "user" }
+    val currentArt = remember(shortcut) { shortcut.customCoverArtPath?.takeIf { File(it).isFile } }
+    var pickedArt by remember(shortcut) { mutableStateOf<String?>(null) }
+    var useSteamArt by remember(shortcut) { mutableStateOf(false) }
+    val artPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            InAppFilePicker.pickedPath(result.data)?.let { pickedArt = it; useSteamArt = false }
+        }
+    }
+
     fun doSearch() {
         val query = nameField.trim()
         if (query.isEmpty()) return
@@ -5882,14 +5894,14 @@ private fun GameDetailsSheet(
 
     // Tapping a result auto-fills every field from Steam and links the appId. If the details fetch
     // fails (network), we still link the appId so the cover applies and the user can fill fields by hand.
-    fun fillFromSteam(appId: Int) {
+    fun fillFromSteam(appId: Int, keepName: Boolean = false) {
         filling = true
         searchResults = emptyList()
         scope.launch(Dispatchers.IO) {
             val info = SteamStoreSearch.fetchDetails(appId)
             withContext(Dispatchers.Main) {
                 if (info != null) {
-                    nameField = info.name
+                    if (!keepName) nameField = info.name
                     genresField = info.genres.joinToString(", ")
                     descField = info.shortDescription ?: ""
                     yearField = info.releaseYear ?: ""
@@ -5899,6 +5911,13 @@ private fun GameDetailsSheet(
                 filling = false
             }
         }
+    }
+
+    // A game already linked to a Steam app opens filled in: its empty details come from the store
+    // (the name is left as it is).
+    LaunchedEffect(shortcut) {
+        val id = initial.steamAppId
+        if (id != null && !initial.hasDisplayableDetails()) fillFromSteam(id, keepName = true)
     }
 
     fun save() {
@@ -5930,9 +5949,25 @@ private fun GameDetailsSheet(
                         releaseYear = year,
                         metacritic = metacritic,
                     ).writeTo(Shortcut(container, file))
-                    // 3. Re-apply the Steam cover for the linked appId (re-reads disk, so the detail
-                    //    extras written in step 2 are preserved). No-op / cover untouched when unlinked.
-                    if (appId != null && appId > 0) applySteamCover(container, base, appId)
+                    // 3. Game art: the image the user picked; else the Steam cover for the linked appId
+                    //    (re-reads disk, so the detail extras written in step 2 are preserved) - but
+                    //    not over an image the user picked before, unless they relinked or asked for
+                    //    Steam's art back.
+                    val picked = pickedArt
+                    if (picked != null) {
+                        loadPickedArt(picked)?.let { bmp ->
+                            val sc = Shortcut(container, file)
+                            sc.putExtra("coverSource", "user")
+                            sc.saveCustomCoverArt(bmp)
+                            container.getIconsDir(64)?.let { icons ->
+                                if (!icons.exists()) icons.mkdirs()
+                                FileUtils.saveBitmapToFile(bmp, File(icons, "$base.png"))
+                            }
+                        }
+                    } else if (appId != null && appId > 0 && (!userArt || useSteamArt || appId != initial.steamAppId)) {
+                        Shortcut(container, file).apply { putExtra("coverSource", null); saveData() }
+                        applySteamCover(container, base, appId)
+                    }
                 }
             } catch (_: Exception) {
                 // Best-effort — never crash the shortcuts screen on a save.
@@ -6007,6 +6042,37 @@ private fun GameDetailsSheet(
                         }
                         Divider(color = DividerColor)
                     }
+
+                    // Game art: what the game shows now, or the image just picked.
+                    Text("Game Art", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val shown = pickedArt ?: currentArt.takeIf { !useSteamArt }
+                        if (shown != null) {
+                            SubcomposeAsyncImage(
+                                model = ImageRequest.Builder(context).data(File(shown)).memoryCachePolicy(CachePolicy.DISABLED).build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(width = 60.dp, height = 90.dp).clip(RoundedCornerShape(6.dp)),
+                            )
+                        } else if (linkedAppId != null) {
+                            SteamResultThumbnail(linkedAppId!!)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FilledTonalButton(onClick = {
+                                artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
+                            }) { Text("Choose image…", fontSize = 13.sp) }
+                            if (linkedAppId != null && (pickedArt != null || (userArt && !useSteamArt))) {
+                                TextButton(onClick = { pickedArt = null; useSteamArt = true }) {
+                                    Text("Use Steam art", fontSize = 12.sp)
+                                }
+                            }
+                            when {
+                                pickedArt != null -> Text(File(pickedArt!!).name, fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1)
+                                useSteamArt -> Text("Steam's art is applied on Save", fontSize = 11.sp, color = OnSurfaceVariant)
+                            }
+                        }
+                    }
+                    Divider(color = DividerColor)
 
                     // Game name + Search Steam.
                     Text("Game Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
@@ -11733,4 +11799,18 @@ private fun ScannedGameRow(
         }
     }
     }
+}
+
+/**
+ * A picked image, scaled down to at most 1200 px on its long side (a phone photo would otherwise be
+ * tens of MB in memory and on disk); null when it cannot be read. Blocking - call off the main thread.
+ */
+private fun loadPickedArt(path: String): Bitmap? = try {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1200) sample *= 2
+    BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+} catch (_: Exception) {
+    null
 }

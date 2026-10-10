@@ -224,6 +224,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.winlator.star.container.Container
 import com.winlator.star.container.GameDetails
+import com.winlator.star.components.ComponentCatalog
+import com.winlator.star.components.GameRecommendations
 import com.winlator.star.container.Shortcut
 import com.winlator.star.linux.LinuxRuntimeInstaller
 import com.winlator.star.linux.LinuxRuntimeUpdate
@@ -621,6 +623,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // Manual exe override for a scanned game. The scanner keeps every runner-up, so correcting a
     // pick is a choice from a list rather than a rescan.
     var exePickerFor by remember { mutableStateOf<GameFolderScanner.Candidate?>(null) }
+    // Per scanned game: how many components it needs (by exe path), and which rows show them.
+    var scanRecCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var scanRecsOpen by remember { mutableStateOf<Set<String>>(emptySet()) }
     var exeBrowseForPath by remember { mutableStateOf("") }
     // When checked, the shortcut import uses the system SAF picker instead of the in-app File Manager.
     var importUseSystemPicker by remember { mutableStateOf(false) }
@@ -959,6 +964,19 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             // Pre-select everything importable; duplicates stay off and can't be ticked.
             folderScanSelected = found.filter { !it.alreadyAdded }.map { it.exe.absolutePath }.toSet()
             folderScanRunning = false
+            // What each game needs (its redistributables, what Steam installs with it), counted for
+            // the list; a row's components open as chips to install right from the list.
+            scanRecCounts = emptyMap()
+            scanRecsOpen = emptySet()
+            launch {
+                val counts = withContext(Dispatchers.IO) {
+                    val catalog = runCatching { ComponentCatalog.load() }.getOrDefault(emptyList()).map { it.name }.toSet()
+                    found.associate { c ->
+                        c.exe.absolutePath to GameRecommendations.detect(c.exe, null).count { it.componentName in catalog }
+                    }
+                }
+                scanRecCounts = counts.filterValues { it > 0 }
+            }
             // Games whose files name no Steam app: look each title up on the Steam store (same title
             // only, remembered per name), so the list shows their art and the import carries the id.
             launch {
@@ -1611,20 +1629,45 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             text = {
                 LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
                     items(folderScanResults, key = { it.exe.absolutePath }) { candidate ->
-                        ScannedGameRow(
-                            candidate = candidate,
-                            checked = candidate.exe.absolutePath in folderScanSelected,
-                            enabled = !candidate.alreadyAdded && !folderImportRunning,
-                            onToggle = {
+                        Column(Modifier.fillMaxWidth()) {
+                            ScannedGameRow(
+                                candidate = candidate,
+                                checked = candidate.exe.absolutePath in folderScanSelected,
+                                enabled = !candidate.alreadyAdded && !folderImportRunning,
+                                onToggle = {
+                                    val key = candidate.exe.absolutePath
+                                    folderScanSelected = if (key in folderScanSelected) {
+                                        folderScanSelected - key
+                                    } else {
+                                        folderScanSelected + key
+                                    }
+                                },
+                                onChangeExe = { exePickerFor = candidate },
+                            )
+                            val recCount = scanRecCounts[candidate.exe.absolutePath] ?: 0
+                            val scanContainer = vm.containers().getOrNull(pendingImportContainerIndex)
+                            if (recCount > 0 && scanContainer != null) {
                                 val key = candidate.exe.absolutePath
-                                folderScanSelected = if (key in folderScanSelected) {
-                                    folderScanSelected - key
-                                } else {
-                                    folderScanSelected + key
+                                val open = key in scanRecsOpen
+                                TextButton(
+                                    onClick = { scanRecsOpen = if (open) scanRecsOpen - key else scanRecsOpen + key },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(32.dp),
+                                ) {
+                                    Text(
+                                        (if (open) "▾ " else "▸ ") + "Components ($recCount)",
+                                        fontSize = 13.sp,
+                                    )
                                 }
-                            },
-                            onChangeExe = { exePickerFor = candidate },
-                        )
+                                if (open) {
+                                    RecommendedComponentsSection(
+                                        container = scanContainer,
+                                        exeFile = candidate.exe,
+                                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             },

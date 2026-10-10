@@ -9104,6 +9104,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandCursorView.setVisibility(View.GONE);
         final float[] last = {0f, 0f};
         final float[] moved = {0f};
+        final boolean[] waylandScrcpyGesture = {false};
         final float SENS = 1.4f;
         waylandSurfaceView.setOnTouchListener((v, ev) -> {
             int vw = v.getWidth(), vh = v.getHeight();
@@ -9154,16 +9155,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // X11 touchpad honours; here it was read by nothing, so the chip flipped and changed
             // nothing in a Steam (Linux) session.
             boolean scrcpyMode = preferences != null && preferences.getBoolean("scrcpy_mode", false);
-            boolean cursorToTouch = scrcpyMode
+            boolean cursorToTouch = waylandScrcpyGesture[0] || scrcpyMode
                     || (preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false));
             switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
+                    waylandScrcpyGesture[0] = scrcpyMode;
                     last[0] = ev.getX(); last[1] = ev.getY(); moved[0] = 0f;
                     if (cursorToTouch) {
                         waylandCursorX = Math.max(0f, Math.min(vw, ev.getX()));
                         waylandCursorY = Math.max(0f, Math.min(vh, ev.getY()));
                         updateWaylandCursor(vw, vh, 1); // motion: the client sees the hover before the tap
                     }
+                    if (waylandScrcpyGesture[0]) updateWaylandCursor(vw, vh, 0);
                     break;
                 case android.view.MotionEvent.ACTION_MOVE: {
                     float dx = (ev.getX() - last[0]) * SENS, dy = (ev.getY() - last[1]) * SENS;
@@ -9180,11 +9183,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     break;
                 }
                 case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    if (moved[0] < 14f) { // a tap (not a drag) -> left click at the cursor
+                    if (waylandScrcpyGesture[0]) {
+                        updateWaylandCursor(vw, vh, 2);
+                    } else if (moved[0] < 14f) { // a tap (not a drag) -> left click at the cursor
                         updateWaylandCursor(vw, vh, 0); // button press
                         updateWaylandCursor(vw, vh, 2); // button release
                     }
+                    waylandScrcpyGesture[0] = false;
+                    break;
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (waylandScrcpyGesture[0]) updateWaylandCursor(vw, vh, 2);
+                    waylandScrcpyGesture[0] = false;
                     break;
             }
             return true;
@@ -17040,7 +17049,6 @@ return true;
 
 
 } // Closes the XServerDisplayActivity class
-
 
 
 

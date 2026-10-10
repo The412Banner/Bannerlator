@@ -51,9 +51,9 @@ public class TouchpadView extends View {
     private boolean moveCursorToTouchpoint = false; //
     private boolean simTouchScreen = false;
     private boolean scrcpyMode = false;
-    private float scrcpyDownX;
-    private float scrcpyDownY;
-    private boolean scrcpyMoved;
+    private static final int INVALID_POINTER_ID = -1;
+    private int scrcpyPointerId = INVALID_POINTER_ID;
+    private boolean scrcpyLeftButtonPressed;
     // ── Cursor-to-Touch gestures ──
     // With Cursor to Touch on the pointer is absolutely positioned under the finger, which makes a
     // touchscreen-style gesture set meaningful: drag = band select, hold = right click.
@@ -321,35 +321,45 @@ public class TouchpadView extends View {
     private boolean handleScrcpyEvent(MotionEvent event) {
         int action = event.getActionMasked();
         int pointerIndex = event.getActionIndex();
-        int positionIndex = action == MotionEvent.ACTION_MOVE ? 0 : pointerIndex;
-        float[] transformedPoint = XForm.transformPoint(
-                xform, event.getX(positionIndex), event.getY(positionIndex));
-        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
-
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                scrcpyDownX = event.getX(positionIndex);
-                scrcpyDownY = event.getY(positionIndex);
-                scrcpyMoved = false;
+                scrcpyPointerId = event.getPointerId(pointerIndex);
+                moveScrcpyPointer(event, pointerIndex);
+                if (pointerButtonLeftEnabled) {
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                    scrcpyLeftButtonPressed = true;
+                }
                 break;
             case MotionEvent.ACTION_MOVE:
-                scrcpyMoved |= Math.hypot(event.getX(positionIndex) - scrcpyDownX,
-                        event.getY(positionIndex) - scrcpyDownY) > EFFECTIVE_TOUCH_DISTANCE;
+                int activePointerIndex = event.findPointerIndex(scrcpyPointerId);
+                if (activePointerIndex >= 0) moveScrcpyPointer(event, activePointerIndex);
                 break;
             case MotionEvent.ACTION_UP:
-                if (pointerButtonLeftEnabled
-                        && !scrcpyMoved
-                        && Math.hypot(event.getX(positionIndex) - scrcpyDownX,
-                        event.getY(positionIndex) - scrcpyDownY) <= EFFECTIVE_TOUCH_DISTANCE) {
-                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            case MotionEvent.ACTION_POINTER_UP:
+                if (event.getPointerId(pointerIndex) == scrcpyPointerId) {
+                    moveScrcpyPointer(event, pointerIndex);
+                    releaseScrcpyPointerButton();
+                    scrcpyPointerId = INVALID_POINTER_ID;
                 }
                 break;
             case MotionEvent.ACTION_CANCEL:
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                releaseScrcpyPointerButton();
+                scrcpyPointerId = INVALID_POINTER_ID;
                 break;
         }
         return true;
+    }
+
+    private void moveScrcpyPointer(MotionEvent event, int pointerIndex) {
+        float[] transformedPoint = XForm.transformPoint(
+                xform, event.getX(pointerIndex), event.getY(pointerIndex));
+        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+    }
+
+    private void releaseScrcpyPointerButton() {
+        if (!scrcpyLeftButtonPressed) return;
+        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+        scrcpyLeftButtonPressed = false;
     }
 
     private void resetTouchscreenTimeout() {
@@ -820,6 +830,8 @@ public class TouchpadView extends View {
 
     public void releaseAllInputs() {
         resetGestureState();
+        releaseScrcpyPointerButton();
+        scrcpyPointerId = INVALID_POINTER_ID;
         continueClick = false;
         removeCallbacks(delayedTouchscreenPress);
         for (byte i = 0; i < MAX_FINGERS; i++) fingers[i] = null;

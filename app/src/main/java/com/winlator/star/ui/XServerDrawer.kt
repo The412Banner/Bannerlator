@@ -3855,6 +3855,7 @@ private fun ControlsContent(state: XServerDrawerState) {
     val initHaptics by XServerDialogState.hapticsEnabled.collectAsState()
 
     val moveCursorToTouch by state.moveCursorToTouchpoint.collectAsState()
+    val scrcpyMode by state.scrcpyMode.collectAsState()
     val isRelativeMouse by state.isRelativeMouseMovement.collectAsState()
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val isMouseDisabled by state.isMouseDisabled.collectAsState()
@@ -4005,18 +4006,25 @@ private fun ControlsContent(state: XServerDrawerState) {
 
             // Each of these flips its flag host-side and stays open — like the fullscreen selector, the
             // drawer keeps rendering so the chip's new on/off state is visible where you tapped it.
-            ToggleChipGrid(
-                listOf(
-                    ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
+            val scrcpyLabel = stringResource(R.string.scrcpy_mode)
+            val mouseControls = buildList {
+                add(ToggleChipItem(scrcpyLabel, scrcpyMode) {
+                    state.onScrcpyModeChange?.run()
+                })
+                if (!scrcpyMode) {
+                    add(ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
                         state.onMoveCursorToTouchpoint?.run()
-                    },
-                    ToggleChipItem("Relative Mouse", isRelativeMouse) {
-                        state.onRelativeMouseMovement?.run()
-                    },
-                    ToggleChipItem("Disable Mouse", isMouseDisabled) {
-                        state.onDisableMouse?.run()
-                    },
-                ),
+                    })
+                }
+                add(ToggleChipItem("Relative Mouse", isRelativeMouse) {
+                    state.onRelativeMouseMovement?.run()
+                })
+                add(ToggleChipItem("Disable Mouse", isMouseDisabled) {
+                    state.onDisableMouse?.run()
+                })
+            }
+            ToggleChipGrid(
+                mouseControls,
                 perRow = 3
             )
 
@@ -4033,7 +4041,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             // Tied directly to the toggle: the gestures only exist in absolute-cursor mode, so the
             // pane appears as part of switching Cursor to Touch on and leaves with it. No cog — one
             // less tap, and turning the mode on now shows you exactly what you turned on.
-            if (moveCursorToTouch) TouchGestureSettings(state)
+            if (moveCursorToTouch && !scrcpyMode) TouchGestureSettings(state)
         }
 
         // ── Vibration ──

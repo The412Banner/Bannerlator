@@ -50,6 +50,10 @@ public class TouchpadView extends View {
     private final float[] xform = XForm.getInstance();
     private boolean moveCursorToTouchpoint = false; //
     private boolean simTouchScreen = false;
+    private boolean scrcpyMode = false;
+    private float scrcpyDownX;
+    private float scrcpyDownY;
+    private boolean scrcpyMoved;
     // ── Cursor-to-Touch gestures ──
     // With Cursor to Touch on the pointer is absolutely positioned under the finger, which makes a
     // touchscreen-style gesture set meaningful: drag = band select, hold = right click.
@@ -307,9 +311,45 @@ public class TouchpadView extends View {
             return handleStylusEvent(event);
         } else if (isTouchscreenMode) {
             return handleTouchscreenEvent(event);
+        } else if (scrcpyMode && !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            return handleScrcpyEvent(event);
         } else {
             return handleTouchpadEvent(event);
         }
+    }
+
+    private boolean handleScrcpyEvent(MotionEvent event) {
+        int action = event.getActionMasked();
+        int pointerIndex = event.getActionIndex();
+        int positionIndex = action == MotionEvent.ACTION_MOVE ? 0 : pointerIndex;
+        float[] transformedPoint = XForm.transformPoint(
+                xform, event.getX(positionIndex), event.getY(positionIndex));
+        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                scrcpyDownX = event.getX(positionIndex);
+                scrcpyDownY = event.getY(positionIndex);
+                scrcpyMoved = false;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                scrcpyMoved |= Math.hypot(event.getX(positionIndex) - scrcpyDownX,
+                        event.getY(positionIndex) - scrcpyDownY) > EFFECTIVE_TOUCH_DISTANCE;
+                break;
+            case MotionEvent.ACTION_UP:
+                if (pointerButtonLeftEnabled
+                        && !scrcpyMoved
+                        && Math.hypot(event.getX(positionIndex) - scrcpyDownX,
+                        event.getY(positionIndex) - scrcpyDownY) <= EFFECTIVE_TOUCH_DISTANCE) {
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                }
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                break;
+        }
+        return true;
     }
 
     private void resetTouchscreenTimeout() {
@@ -930,6 +970,12 @@ public class TouchpadView extends View {
         xServer.setSimulateTouchScreen(this.simTouchScreen);
     }
 
+    public void setScrcpyMode(boolean scrcpyMode) {
+        if (this.scrcpyMode == scrcpyMode) return;
+        releaseAllInputs();
+        this.scrcpyMode = scrcpyMode;
+    }
+
     public boolean isSimTouchScreen() {
         return simTouchScreen;
     }
@@ -964,4 +1010,3 @@ public class TouchpadView extends View {
         resetGestureState();
     }
 }
-

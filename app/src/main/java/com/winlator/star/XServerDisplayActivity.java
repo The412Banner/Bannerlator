@@ -2036,6 +2036,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setIsRelativeMouseMovement(isRelativeMouseMovement);
         state.setIsMouseDisabled(isMouseDisabled);
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
+        boolean scrcpyMode = preferences.getBoolean("scrcpy_mode", false);
+        if (scrcpyMode && preferences.getBoolean("touchscreen_toggle", false)) {
+            preferences.edit().putBoolean("scrcpy_mode", false).apply();
+            scrcpyMode = false;
+        }
+        state.setScrcpyMode(scrcpyMode);
         state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
         state.onKeyboard               = this::showGuestKeyboard;
         state.onInputControls          = () -> showInputControlsDialog();
@@ -2398,6 +2404,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // (state.reset() above zeroes it, so this has to come after).
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
         state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
+        state.onScrcpyModeChange = () -> setScrcpyMode(!preferences.getBoolean("scrcpy_mode", false));
         // Per-gesture config shown under the Cursor to Touch toggle. Seed from prefs; the push to the
         // touchpad happens in setupUI, which is where that view is actually built.
         state.setGestureDragSelect(preferences.getBoolean("gesture_drag_select", true));
@@ -9146,7 +9153,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // instead of moving by the drag, so a tap lands where it is made. The same switch the
             // X11 touchpad honours; here it was read by nothing, so the chip flipped and changed
             // nothing in a Steam (Linux) session.
-            boolean cursorToTouch = preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false);
+            boolean scrcpyMode = preferences != null && preferences.getBoolean("scrcpy_mode", false);
+            boolean cursorToTouch = scrcpyMode
+                    || (preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false));
             switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     last[0] = ev.getX(); last[1] = ev.getY(); moved[0] = 0f;
@@ -11564,6 +11573,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The preference persists across launches but was never restored onto the view, so
         // Cursor to Touch silently reverted to off every session until it was toggled again.
         touchpadView.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
+        touchpadView.setScrcpyMode(preferences.getBoolean("scrcpy_mode", false));
         applyGestureConfig(); // wiring ran before this view existed; push the seeded set now
         // A Steam (Linux) session set to Touchscreen: fingers go past this view to the compositor's
         // surface, which hands them to gamescope as real touches (Big Picture scrolls under one).
@@ -16375,6 +16385,16 @@ return true;
         XServerDrawerState.INSTANCE.setMoveCursorToTouchpoint(newValue);
     } // Closes MoveCursorToTouchpoint
 
+    private void setScrcpyMode(boolean enabled) {
+        SharedPreferences.Editor editor = preferences.edit().putBoolean("scrcpy_mode", enabled);
+        if (enabled) editor.putBoolean("touchscreen_toggle", false);
+        editor.apply();
+
+        XServerDrawerState state = XServerDrawerState.INSTANCE;
+        state.setScrcpyMode(enabled);
+        if (touchpadView != null) touchpadView.setScrcpyMode(enabled);
+    }
+
     /** Persist the drawer's gesture settings and apply them to the live touchpad. */
     private void applyGestureConfig() {
         XServerDrawerState state = XServerDrawerState.INSTANCE;
@@ -17020,9 +17040,6 @@ return true;
 
 
 } // Closes the XServerDisplayActivity class
-
-
-
 
 
 

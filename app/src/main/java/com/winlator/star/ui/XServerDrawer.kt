@@ -3088,7 +3088,11 @@ private data class ToggleChipItem(
 // row is where the vertical space comes back — a Switch row costs ~4x the height of a chip.
 // Disabled chips keep ToggleRow's alpha-0.4 grey-out and swallow taps.
 @Composable
-private fun ToggleChipGrid(items: List<ToggleChipItem>, perRow: Int = 3) {
+private fun ToggleChipGrid(
+    items: List<ToggleChipItem>,
+    perRow: Int = 3,
+    centerIncompleteRows: Boolean = true,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -3098,10 +3102,9 @@ private fun ToggleChipGrid(items: List<ToggleChipItem>, perRow: Int = 3) {
                 modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Split the padding for a short final row across both sides so it sits CENTRED,
-                // and every chip in the grid keeps the identical width (no odd-sized leftovers).
+                // Weighted spacers keep short rows aligned as requested without changing chip widths.
                 val missing = perRow - row.size
-                val leading = missing / 2
+                val leading = if (centerIncompleteRows) missing / 2 else 0
                 repeat(leading) { Spacer(Modifier.weight(1f)) }
                 row.forEach { item ->
                     val isOn = item.checked && item.enabled
@@ -4008,24 +4011,23 @@ private fun ControlsContent(state: XServerDrawerState) {
             // drawer keeps rendering so the chip's new on/off state is visible where you tapped it.
             val scrcpyLabel = stringResource(R.string.scrcpy_mode)
             val mouseControls = buildList {
-                add(ToggleChipItem(scrcpyLabel, scrcpyMode) {
-                    state.onScrcpyModeChange?.run()
+                add(ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
+                    state.onMoveCursorToTouchpoint?.run()
                 })
-                if (!scrcpyMode) {
-                    add(ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
-                        state.onMoveCursorToTouchpoint?.run()
-                    })
-                }
                 add(ToggleChipItem("Relative Mouse", isRelativeMouse) {
                     state.onRelativeMouseMovement?.run()
                 })
                 add(ToggleChipItem("Disable Mouse", isMouseDisabled) {
                     state.onDisableMouse?.run()
                 })
+                add(ToggleChipItem(scrcpyLabel, scrcpyMode) {
+                    state.onScrcpyModeChange?.run()
+                })
             }
             ToggleChipGrid(
                 mouseControls,
-                perRow = 3
+                perRow = 3,
+                centerIncompleteRows = false,
             )
 
             if (isWaylandSession) {

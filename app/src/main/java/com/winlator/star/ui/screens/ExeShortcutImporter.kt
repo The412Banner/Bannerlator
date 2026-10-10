@@ -54,15 +54,15 @@ internal object ExeShortcutImporter {
             // Current on-disk base name; may be upgraded to the authoritative Steam name below.
             val base = shortcutFile.nameWithoutExtension
             try {
+                // No appId in the game's files: look the title up on the Steam store (same title only,
+                // remembered per name), so the art and the name come from Steam as for a game that has one.
+                val artAppId = steamAppId?.takeIf { it > 0 }
+                    ?: runCatching { SteamStoreSearch.findAppIdByName(appCtx, base) }.getOrNull()
                 // 1. Cover art keyed to the current name — Steam CDN 600x900 portrait first, then the
                 //    existing SGDB chain (by appid, then by name) inside saveCoverArt. Guarded on the
                 //    .desktop still existing so a user rename-via-dialog can't make saveCoverArt
                 //    recreate a stray shortcut for the old name.
                 if (File(desktopDir, "$base.desktop").isFile) {
-                    // No appId in the game's files: look the title up on the Steam store (same title
-                    // only), so the art comes from Steam's own images too.
-                    val artAppId = steamAppId?.takeIf { it > 0 }
-                        ?: runCatching { SteamStoreSearch.findAppIdByName(appCtx, base) }.getOrNull()
                     val steamCover = artAppId?.let { SteamStoreSearch.coverUrl(it) }
                     StarLaunchBridge.saveCoverArt(
                         appCtx, container, File(desktopDir, "$base.desktop"), base, steamCover, artAppId,
@@ -88,8 +88,8 @@ internal object ExeShortcutImporter {
 
                 // 2. Steam authoritative name (network) — corrects a launcher/loader PE name.
                 //    renameShortcutFiles moves the cover/icon just written, so the art follows.
-                if (steamAppId != null && steamAppId > 0) {
-                    val better = betterSteamName(base, SteamStoreSearch.resolveName(steamAppId))
+                if (artAppId != null) {
+                    val better = betterSteamName(base, SteamStoreSearch.resolveName(artAppId))
                     // Race guard: only rename while the shortcut is still at its original name.
                     // If the user already Saved a different name via the confirm dialog, the
                     // original .desktop is gone and we leave their choice alone.

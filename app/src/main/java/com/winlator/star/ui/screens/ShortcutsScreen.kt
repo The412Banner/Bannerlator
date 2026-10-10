@@ -1800,6 +1800,21 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    // The search runs by itself when the dialog opens, so the game the import matched
+                    // is already listed (and marked) under the name, as if Search Steam had been tapped.
+                    LaunchedEffect(renameDialogName) {
+                        val query = confirmNameField.trim()
+                        if (query.isNotEmpty() && steamSearchResults.isEmpty() && !steamSearching) {
+                            steamSearching = true
+                            steamSearchResults = withContext(Dispatchers.IO) { SteamStoreSearch.searchByName(query) }
+                            steamSearching = false
+                        }
+                    }
+                    // The result this game is linked to: the appId it was given, else the one whose
+                    // title is the game's (the rule the import's own Steam lookup uses).
+                    val linkedHit = confirmAppId ?: steamSearchResults
+                        .map { it to SteamStoreSearch.nameMatch(confirmNameField, it.name) }
+                        .filter { it.second >= 2 }.maxByOrNull { it.second }?.first?.appId
                     OutlinedTextField(
                         value = confirmNameField,
                         onValueChange = { confirmNameField = it; confirmNameEdited = true },
@@ -1882,6 +1897,9 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(hit.name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("App ID: ${hit.appId}", fontSize = 11.sp, color = OnSurfaceVariant)
+                                }
+                                if (hit.appId == linkedHit) {
+                                    Text("✓ Linked", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -6070,98 +6088,99 @@ private fun GameDetailsSheet(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Linked Steam app (cover + appId + Unlink).
-                    linkedAppId?.let { id ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            SteamResultThumbnail(id)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("Linked to Steam App ID:", fontSize = 11.sp, color = OnSurfaceVariant)
-                                Text(
-                                    "$id",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary,
+                    // Header: the game's art beside its name. Tapping the art picks an image (in-app
+                    // file manager); the name field searches Steam from its trailing icon.
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        val shown = pickedArt ?: currentArt.takeIf { !useSteamArt }
+                        Box(
+                            modifier = Modifier
+                                .size(width = 84.dp, height = 120.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceVariant)
+                                .clickable {
+                                    artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val model: Any? = shown?.let { File(it) } ?: linkedAppId?.let { SteamStoreSearch.coverUrl(it) }
+                            if (model != null) {
+                                SubcomposeAsyncImage(
+                                    model = ImageRequest.Builder(context).data(model).memoryCachePolicy(CachePolicy.DISABLED).build(),
+                                    contentDescription = "Game art",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
                                 )
-                                TextButton(
-                                    onClick = { linkedAppId = null },
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.height(28.dp),
-                                ) { Text("Unlink", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+                            } else {
+                                Text("Tap to\nadd art", fontSize = 11.sp, color = OnSurfaceVariant, textAlign = TextAlign.Center)
                             }
                         }
-                        Divider(color = DividerColor)
-                    }
-
-                    // Game art: what the game shows now, or the image just picked.
-                    Text("Game Art", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val shown = pickedArt ?: currentArt.takeIf { !useSteamArt }
-                        if (shown != null) {
-                            SubcomposeAsyncImage(
-                                model = ImageRequest.Builder(context).data(File(shown)).memoryCachePolicy(CachePolicy.DISABLED).build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(width = 60.dp, height = 90.dp).clip(RoundedCornerShape(6.dp)),
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            OutlinedTextField(
+                                value = nameField,
+                                onValueChange = { nameField = it; searchResults = emptyList(); searchError = null },
+                                label = { Text("Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                trailingIcon = {
+                                    if (searching) {
+                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        IconButton(onClick = { doSearch() }, enabled = nameField.isNotBlank()) {
+                                            Icon(Icons.Default.Search, contentDescription = "Search Steam")
+                                        }
+                                    }
+                                },
                             )
-                        } else if (linkedAppId != null) {
-                            SteamResultThumbnail(linkedAppId!!)
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            FilledTonalButton(onClick = {
-                                artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
-                            }) { Text("Choose image…", fontSize = 13.sp) }
-                            if (linkedAppId != null && (pickedArt != null || (userArt && !useSteamArt))) {
-                                TextButton(onClick = { pickedArt = null; useSteamArt = true }) {
-                                    Text("Use Steam art", fontSize = 12.sp)
+                            // Steam link, in one line.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val id = linkedAppId
+                                if (id != null) {
+                                    Text("Steam app $id", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                    Text("  ·  ", fontSize = 12.sp, color = OnSurfaceVariant)
+                                    Text(
+                                        "Unlink",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.clickable { linkedAppId = null },
+                                    )
+                                } else {
+                                    Text("Not linked to Steam", fontSize = 12.sp, color = OnSurfaceVariant)
+                                }
+                                if (filling) {
+                                    Spacer(Modifier.width(8.dp))
+                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+                                }
+                            }
+                            // Art actions, in one line.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Change art",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable {
+                                        artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
+                                    },
+                                )
+                                if (linkedAppId != null && (pickedArt != null || (userArt && !useSteamArt))) {
+                                    Text("  ·  ", fontSize = 12.sp, color = OnSurfaceVariant)
+                                    Text(
+                                        "Use Steam art",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { pickedArt = null; useSteamArt = true },
+                                    )
                                 }
                             }
                             when {
-                                pickedArt != null -> Text(File(pickedArt!!).name, fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1)
+                                pickedArt != null -> Text(File(pickedArt!!).name, fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 useSteamArt -> Text("Steam's art is applied on Save", fontSize = 11.sp, color = OnSurfaceVariant)
                             }
                         }
                     }
-                    Divider(color = DividerColor)
 
-                    // Game name + Search Steam.
-                    Text("Game Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
-                    OutlinedTextField(
-                        value = nameField,
-                        onValueChange = { nameField = it; searchResults = emptyList(); searchError = null },
-                        placeholder = { Text("Enter game name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = {
-                            if (nameField.isNotBlank()) {
-                                IconButton(onClick = { nameField = ""; searchResults = emptyList() }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        },
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(
-                            onClick = { doSearch() },
-                            enabled = nameField.isNotBlank() && !searching,
-                        ) {
-                            if (searching) {
-                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            Text("Search Steam", fontSize = 13.sp)
-                        }
-                        if (filling) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Loading…", fontSize = 12.sp, color = OnSurfaceVariant)
-                        }
-                    }
                     searchError?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
                     if (searchResults.isNotEmpty()) {
                         Text("Tap a result to auto-fill all fields:", fontSize = 11.sp, color = OnSurfaceVariant)
@@ -6186,56 +6205,47 @@ private fun GameDetailsSheet(
 
                     Divider(color = DividerColor)
 
-                    // Genres.
-                    Text("Genres", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Text("DETAILS", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, color = OnSurfaceVariant)
                     OutlinedTextField(
                         value = genresField,
                         onValueChange = { genresField = it },
-                        placeholder = { Text("e.g. Action, RPG, Strategy") },
+                        label = { Text("Genres") },
+                        placeholder = { Text("Action, RPG, Strategy") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        supportingText = { Text("Comma-separated", fontSize = 10.sp) },
                     )
-
-                    // Description.
-                    Text("Description", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = yearField,
+                            onValueChange = { if (it.length <= 4) yearField = it.filter { c -> c.isDigit() } },
+                            label = { Text("Release year") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = metaField,
+                            onValueChange = { if (it.length <= 3) metaField = it.filter { c -> c.isDigit() } },
+                            label = { Text("Metacritic") },
+                            placeholder = { Text("1–100") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     OutlinedTextField(
                         value = descField,
                         onValueChange = { descField = it },
-                        placeholder = { Text("Short description shown on the launch screen") },
+                        label = { Text("Description") },
                         minLines = 3,
-                        maxLines = 5,
+                        maxLines = 6,
                         modifier = Modifier.fillMaxWidth(),
                     )
-
-                    // Release year + Metacritic.
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Release Year", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
-                            Spacer(Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = yearField,
-                                onValueChange = { if (it.length <= 4) yearField = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("e.g. 2023") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Metacritic", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnSurfaceVariant)
-                            Spacer(Modifier.height(4.dp))
-                            OutlinedTextField(
-                                value = metaField,
-                                onValueChange = { if (it.length <= 3) metaField = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("1–100") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                supportingText = { Text("Leave blank to hide", fontSize = 10.sp) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
+                    Text(
+                        "Shown on the game's launch screen. Genres are comma-separated; leave Metacritic blank to hide it.",
+                        fontSize = 11.sp,
+                        color = OnSurfaceVariant,
+                    )
                 }
             }
         }

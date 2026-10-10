@@ -24,8 +24,12 @@ object ComponentInstaller {
     )
     private const val DLL_OVERRIDES = "Software\\Wine\\DllOverrides"
 
-    /** True when every step is a supported file-drop action and the component is mirrored (ready). */
-    fun isInstallable(c: Component): Boolean =
+    /**
+     * True when the component installs without opening the container: anything
+     * [OfflineComponentInstaller] lays out (recordings, packages, cabinets...), or every step a
+     * supported file-drop action on a mirrored (ready) component.
+     */
+    fun isInstallable(c: Component): Boolean = OfflineComponentInstaller.canInstall(c) ||
         c.ready && c.steps.isNotEmpty() && c.steps.all { it.action in FILE_DROP_ACTIONS }
 
     /** Reason a component can't be installed yet (or null if it can). */
@@ -36,8 +40,17 @@ object ComponentInstaller {
         else -> null
     }
 
-    /** Install into [container]'s prefix. [onProgress] gets 0..1. Returns null on success, else an error message. */
-    fun install(context: Context, container: Container, c: Component, onProgress: (Float) -> Unit): String? {
+    /**
+     * Install into [container]'s prefix. [onProgress] gets 0..1, [onStage] what is happening.
+     * Returns null on success, else an error message.
+     */
+    fun install(context: Context, container: Container, c: Component, onProgress: (Float) -> Unit): String? =
+        install(context, container, c, onProgress) {}
+
+    fun install(context: Context, container: Container, c: Component, onProgress: (Float) -> Unit, onStage: (String) -> Unit): String? {
+        if (OfflineComponentInstaller.canInstall(c)) {
+            return OfflineComponentInstaller.install(context, container, c, onProgress = onProgress, onStage = onStage)
+        }
         val root = container.rootDir
         val system32 = File(root, ".wine/drive_c/windows/system32")
         val syswow64 = File(root, ".wine/drive_c/windows/syswow64")

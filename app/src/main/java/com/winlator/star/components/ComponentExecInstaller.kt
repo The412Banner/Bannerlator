@@ -66,8 +66,12 @@ object ComponentExecInstaller {
         data class Error(val message: String) : Result()
     }
 
-    /** True when the component has any installer (`install_exe`/`install_msi`) step. */
-    fun isExecComponent(c: Component): Boolean = c.steps.any { it.action in EXEC_ACTIONS }
+    /**
+     * True when the component has an installer (`install_exe`/`install_msi`) step that still has to
+     * run in a container session: one [OfflineComponentInstaller] can lay out is installed that way.
+     */
+    fun isExecComponent(c: Component): Boolean =
+        c.steps.any { it.action in EXEC_ACTIONS } && !OfflineComponentInstaller.canInstall(c)
 
     /**
      * True when this component must go through this installer rather than the pure file-drop path —
@@ -75,7 +79,7 @@ object ComponentExecInstaller {
      * installer doesn't handle (`set_windows`/`uninstall`). Pure-`set_windows` comps (win7/winXP)
      * run fully inline here with no Wine session.
      */
-    fun handlesComponent(c: Component): Boolean =
+    fun handlesComponent(c: Component): Boolean = !OfflineComponentInstaller.canInstall(c) &&
         c.steps.any { it.action in EXEC_ACTIONS || it.action == "set_windows" || it.action == "uninstall" }
 
     /** True when this is a component we can drive — mirrored and every step supported. */
@@ -334,7 +338,7 @@ object ComponentExecInstaller {
     )
 
     /** Set the prefix's reported Windows version (system.reg), mirroring winecfg's version dropdown. */
-    private fun setWindowsVersion(systemReg: File, version: String) {
+    internal fun setWindowsVersion(systemReg: File, version: String) {
         val v = WIN_VERSIONS[version] ?: return
         if (!systemReg.exists()) return
         WineRegistryEditor(systemReg).use { reg ->

@@ -48,6 +48,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     var query by remember { mutableStateOf("") }
     var installing by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(0f) }
+    var stage by remember { mutableStateOf("") }
     var installed by remember { mutableStateOf<Set<String>>(emptySet()) }
     var message by remember { mutableStateOf<String?>(null) }
     var confirmExec by remember { mutableStateOf<Component?>(null) }
@@ -174,6 +175,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                                     isInstalled = c.name in installed,
                                     isInstalling = installing == c.name,
                                     progress = if (installing == c.name) progress else null,
+                                    stage = if (installing == c.name) stage else "",
                                     enabled = installing == null,
                                     onInstall = {
                                         // Prefer the file-drop `_dll` variant when the catalog carries one:
@@ -190,16 +192,19 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                                             // inline via the exec driver; no session, no confirm needed.
                                             ComponentExecInstaller.handlesComponent(target) -> runExecInstall(target)
                                             else -> {
-                                                installing = c.name; progress = 0f
+                                                installing = c.name; progress = 0f; stage = ""
                                                 scope.launch {
                                                     val err = withContext(Dispatchers.IO) {
-                                                        ComponentInstaller.install(context, container, target) { f ->
-                                                            activity?.runOnUiThread { progress = f }
-                                                        }
+                                                        ComponentInstaller.install(context, container, target,
+                                                            { f -> activity?.runOnUiThread { progress = f } },
+                                                            { t -> activity?.runOnUiThread { stage = t } })
                                                     }
                                                     installing = null
-                                                    if (err == null) markInstalled(c.name)
-                                                    else message = "Couldn't install ${c.name}: $err"
+                                                    if (err == null) {
+                                                        // Components it bundled were recorded as they went in.
+                                                        installed = installed + (installsPrefs.getStringSet(installKey, emptySet()) ?: emptySet())
+                                                        markInstalled(c.name)
+                                                    } else message = "Couldn't install ${c.name}: $err"
                                                 }
                                             }
                                         }
@@ -224,6 +229,7 @@ private fun ComponentRow(
     isInstalled: Boolean,
     isInstalling: Boolean,
     progress: Float?,
+    stage: String,
     enabled: Boolean,
     onInstall: () -> Unit,
 ) {
@@ -239,6 +245,7 @@ private fun ComponentRow(
             Column(Modifier.weight(1f)) {
                 Text(c.name, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                 val sub = when {
+                    isInstalling && stage.isNotEmpty() -> stage
                     isInstalled -> "Installed"
                     !installable -> reason ?: ""
                     c.description.isNotEmpty() -> c.description

@@ -42,7 +42,7 @@ object SevenZip {
      * the app's seccomp-bpf filter and hit a syscall the filter TRAPs. A bionic build integrates with
      * Android's seccomp — the same reason Termux's p7zip runs under an app.)
      */
-    private fun newProcess(context: Context, vararg args: String): ProcessBuilder {
+    internal fun newProcess(context: Context, vararg args: String): ProcessBuilder {
         val libDir = context.applicationInfo.nativeLibraryDir
         return ProcessBuilder(binary(context).absolutePath, *args).apply {
             environment()["LD_LIBRARY_PATH"] = libDir

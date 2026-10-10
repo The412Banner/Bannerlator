@@ -17,6 +17,8 @@ data class Component(
     val status: String,            // ready | needs-upstream | pending-manual
     val dependencies: List<String>,
     val steps: List<ComponentStep>,
+    /** A recording of what the component's own installer leaves in a prefix (component-snapshots release), or "". */
+    val snapshot: String = "",
 ) {
     val ready: Boolean get() = status == "ready"
 }
@@ -27,6 +29,11 @@ data class Component(
  */
 object ComponentCatalog {
     const val URL = "https://raw.githubusercontent.com/The412Banner/winlator-contents/main/components.json"
+
+    /** The last catalog [load] read, by name: what an install looks dependencies up in. */
+    @Volatile
+    var byName: Map<String, Component> = emptyMap()
+        private set
 
     fun load(): List<Component> {
         val json = Downloader.downloadString(URL) ?: return emptyList()
@@ -50,9 +57,11 @@ object ComponentCatalog {
                     status = c.optString("status", "ready"),
                     dependencies = deps,
                     steps = steps,
+                    snapshot = c.optString("snapshot", ""),
                 )
             )
         }
+        if (out.isNotEmpty()) byName = out.associateBy { it.name }
         return out
     }
 }

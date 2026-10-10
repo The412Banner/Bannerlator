@@ -388,6 +388,18 @@ public final class PackageInstaller {
         return chosen;
     }
 
+    /**
+     * Opens an archive a catalog step downloads (DirectX's redistributable, a self-extracting
+     * cabinet) for its files to be picked out: the way DroidDeck's --unpack does - the installer
+     * opened, then the archives inside it, two levels deep.
+     */
+    public void unpackForSteps(File path, File dest, OfflineTools.Progress progress) throws IOException {
+        if (!dest.isDirectory() && !dest.mkdirs()) throw new IOException("could not make " + dest);
+        unpackInstaller(path, dest, progress);
+        progress.report(-1, "opening archives inside " + path.getName());
+        openNested(dest, 0);
+    }
+
     // ---------------------------------------------------------------- recordings
 
     /**

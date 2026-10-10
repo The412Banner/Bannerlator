@@ -6,6 +6,7 @@
 package com.winlator.star.ui.screens
 
 import android.content.Context
+import com.winlator.star.components.GameRecommendations
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -109,13 +110,7 @@ fun RecommendedComponentsSection(
     LaunchedEffect(container.id, exeFile?.path, gameDir?.path) {
         loading = true
         val found = withContext(Dispatchers.IO) {
-            runCatching {
-                when {
-                    exeFile != null -> DependencyDetector.detectForExe(exeFile)
-                    gameDir != null -> DependencyDetector.detect(gameDir)
-                    else -> emptyList()
-                }
-            }.getOrDefault(emptyList())
+            GameRecommendations.detect(exeFile, gameDir)
         }
         if (found.isEmpty()) { recs = emptyList(); loading = false; return@LaunchedEffect }
         val cat = withContext(Dispatchers.IO) {
@@ -247,14 +242,14 @@ fun RecommendedComponentsSection(
     // SHIPPED = loose runtime DLLs that usually already work. When both are present, label the two
     // groups distinctly so the user knows which are actually worth installing; with a single kind,
     // show just that one group (no empty header).
-    val bundled = recs.filter { it.kind == DependencyDetector.Kind.BUNDLED }
+    val bundled = recs.filter { it.kind != DependencyDetector.Kind.SHIPPED }
     val shipped = recs.filter { it.kind == DependencyDetector.Kind.SHIPPED }
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (bundled.isNotEmpty() && shipped.isNotEmpty()) {
             RecommendedChipGroup(
                 title = "Recommended",
-                subtitle = "Redistributables this game bundles.",
+                subtitle = "Redistributables this game bundles or Steam installs with it.",
                 recs = bundled, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )
@@ -275,7 +270,7 @@ fun RecommendedComponentsSection(
         } else {
             RecommendedChipGroup(
                 title = "Recommended components",
-                subtitle = "Redistributables this game bundles — tap to install into its container.",
+                subtitle = "Redistributables this game needs — tap to install into its container.",
                 recs = bundled, catalog = catalog, installed = installed, installing = installing,
                 cs = cs, onChipTap = ::onChipTap,
             )

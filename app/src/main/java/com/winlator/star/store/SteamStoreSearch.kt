@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import android.content.Context
 import android.util.Log
 import com.winlator.star.store.download.MediaImage
 import com.winlator.star.store.download.MediaVideo
@@ -61,6 +62,53 @@ object SteamStoreSearch {
             Log.w(TAG, "searchByName failed for \"$term\": ${e.message}")
             emptyList()
         }
+    }
+
+    private const val LOOKUP_PREFS = "steam_appid_by_name"
+    private const val RETRY_AFTER_MS = 7L * 24 * 60 * 60 * 1000
+    private val EDITION = Regex("(?i)\\b(complete|definitive|legendary|goty|game of the year|deluxe|ultimate|remastered)( edition)?\\b")
+
+    private fun normalize(s: String) = s.lowercase().replace(Regex("[^a-z0-9]"), "")
+
+    /**
+     * How well a store result's name [got] matches a game's [name] (DroidDeck's rule): 3 the same,
+     * 2 the same once edition words are dropped, 1 one starts with the other; 0 no match.
+     */
+    internal fun nameMatch(name: String, got: String): Int {
+        val want = normalize(name)
+        val wantShort = normalize(name.replace(EDITION, " ").trim().ifEmpty { name })
+        val have = normalize(got)
+        if (have.isEmpty() || wantShort.isEmpty()) return 0
+        return when {
+            have == want -> 3
+            have == wantShort -> 2
+            have.startsWith(wantShort) || wantShort.startsWith(have) -> 1
+            else -> 0
+        }
+    }
+
+    /**
+     * The Steam appId of the game called [name], for a game whose files name none: the store result
+     * whose title is the same (edition words aside) - never one taken just for being first, and not
+     * a mere prefix ("Hades" is not "Hades II"). Remembered per name; a miss is retried after a
+     * week. BLOCKING - call off the main thread.
+     */
+    fun findAppIdByName(context: Context, name: String): Int? {
+        val key = normalize(name).ifEmpty { return null }
+        val prefs = context.getSharedPreferences(LOOKUP_PREFS, Context.MODE_PRIVATE)
+        prefs.getString(key, null)?.let { saved ->
+            saved.toIntOrNull()?.let { return it }
+            val since = saved.removePrefix("none:").toLongOrNull() ?: 0L
+            if (System.currentTimeMillis() - since < RETRY_AFTER_MS) return null
+        }
+        val term = name.replace(EDITION, " ").trim().ifEmpty { name }
+        val found = searchByName(term)
+            .map { it to nameMatch(name, it.name) }
+            .filter { it.second >= 2 }
+            .maxByOrNull { it.second }?.first?.appId
+        prefs.edit().putString(key, found?.toString() ?: "none:${System.currentTimeMillis()}").apply()
+        if (found != null) Log.i(TAG, "\"$name\": Steam app $found (by name)")
+        return found
     }
 
     /**

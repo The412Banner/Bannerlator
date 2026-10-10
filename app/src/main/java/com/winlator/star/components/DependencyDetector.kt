@@ -24,6 +24,8 @@ object DependencyDetector {
         /** A runtime DLL the game ships loose — usually already works from the game folder; install
          *  only if the game misbehaves. */
         SHIPPED,
+        /** Steam installs it with the game (the appmanifest's Steamworks Shared depots, [SteamRedists]). */
+        STEAM,
     }
 
     /** A recommended component: the catalog [componentName] to install, a display [label], the on-disk

@@ -2,6 +2,7 @@ package com.winlator.star.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,8 @@ import com.winlator.star.components.ComponentCatalog
 import com.winlator.star.components.ComponentExecInstaller
 import com.winlator.star.components.ComponentInstallReturn
 import com.winlator.star.components.ComponentInstaller
+import com.winlator.star.components.DependencyDetector
+import com.winlator.star.components.GameRecommendations
 import com.winlator.star.components.PrefixInstalledDetector
 import com.winlator.star.container.Container
 import com.winlator.star.ui.findActivity
@@ -28,14 +31,20 @@ import com.winlator.star.ui.theme.Divider as DividerColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Browse + install Wine dependency components (mono, gecko, dotnet, vcredist, d3dx, …) into a
  * container's prefix. Reads the live components.json catalog from winlator-contents.
+ *
+ * Laid out as DroidDeck's components page is: what the game needs first, each with why (when the
+ * sheet is opened for a game: [exeFile] / [gameDir]), then what this container already has, then
+ * everything else, and last - folded away - the few that still open the container to run their
+ * installer. A component shows in one section only.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
+fun ComponentsSheet(container: Container, onDismiss: () -> Unit, exeFile: File? = null, gameDir: File? = null) {
     val context = LocalContext.current
     val activity = context.findActivity()
     val scope = rememberCoroutineScope()
@@ -52,6 +61,8 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
     var installed by remember { mutableStateOf<Set<String>>(emptySet()) }
     var message by remember { mutableStateOf<String?>(null) }
     var confirmExec by remember { mutableStateOf<Component?>(null) }
+    var recs by remember { mutableStateOf<List<DependencyDetector.Recommendation>>(emptyList()) }
+    var showSession by remember { mutableStateOf(false) }
 
     // "Installed" must survive closing/reopening the sheet, so persist it per container
     // (the in-memory set alone reset every time the sheet recomposed).
@@ -95,6 +106,7 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
         installed = recorded + detected
         val list = withContext(Dispatchers.IO) { ComponentCatalog.load() }
         components = list
+        if (exeFile != null || gameDir != null) recs = withContext(Dispatchers.IO) { GameRecommendations.detect(exeFile, gameDir) }
         loadError = list.isEmpty()
         loading = false
     }
@@ -161,56 +173,100 @@ fun ComponentsSheet(container: Container, onDismiss: () -> Unit) {
                     // live when something finishes installing (installed is a key). The file-drop `_dll`
                     // variants are install-implementation (reached via routing in onInstall), so they're
                     // filtered out here — otherwise vcredist2010 AND vcredist2010_dll show as duplicates.
-                    val shown = remember(components, query, installed) {
+                    // The file-drop `_dll` variants are install-implementation (reached via routing in
+                    // install()), so they're hidden - otherwise vcredist2010 AND vcredist2010_dll show twice.
+                    val shown = remember(components, query) {
                         components.filter {
                             !it.name.endsWith("_dll") &&
                                 (query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true))
-                        }.sortedByDescending { it.name in installed }
+                        }
                     }
+                    // What the game needs, by the name the list shows (a `_dll` pick shows as its base).
+                    val reasons = remember(recs, byName) {
+                        recs.associate { r ->
+                            val base = r.componentName.removeSuffix("_dll").takeIf { byName.containsKey(it) } ?: r.componentName
+                            base to GameRecommendations.reason(r)
+                        }
+                    }
+                    val opensContainer: (Component) -> Boolean = { c -> (byName["${c.name}_dll"] ?: c).let { ComponentExecInstaller.isExecComponent(it) } }
+                    val recommended = shown.filter { it.name in reasons }
+                    val have = shown.filter { it.name in installed && it.name !in reasons }
+                    val rest = shown.filter { it.name !in reasons && it.name !in installed }
+                    val others = rest.filterNot(opensContainer)
+                    val session = rest.filter(opensContainer)
+
+                    fun install(c: Component) {
+                        // Prefer the file-drop `_dll` variant when the catalog carries one: it copies DLLs
+                        // straight into the prefix. Installed-state is recorded under the BASE name.
+                        val target = byName["${c.name}_dll"] ?: c
+                        when {
+                            // An installer that must run → confirm, then a container session.
+                            ComponentExecInstaller.isExecComponent(target) -> confirmExec = target
+                            // Local-only steps the exec driver does inline (set_windows/uninstall).
+                            ComponentExecInstaller.handlesComponent(target) -> runExecInstall(target)
+                            else -> {
+                                installing = c.name; progress = 0f; stage = ""
+                                scope.launch {
+                                    val err = withContext(Dispatchers.IO) {
+                                        ComponentInstaller.install(context, container, target,
+                                            { f -> activity?.runOnUiThread { progress = f } },
+                                            { t -> activity?.runOnUiThread { stage = t } })
+                                    }
+                                    installing = null
+                                    if (err == null) {
+                                        // Components it bundled were recorded as they went in.
+                                        installed = installed + (installsPrefs.getStringSet(installKey, emptySet()) ?: emptySet())
+                                        markInstalled(c.name)
+                                    } else message = "Couldn't install ${c.name}: $err"
+                                }
+                            }
+                        }
+                    }
+
                     Box(Modifier.fillMaxWidth().weight(1f)) {
                         LazyColumn(Modifier.fillMaxSize()) {
-                            items(shown, key = { it.name }) { c ->
-                                ComponentRow(
-                                    c = c,
-                                    isInstalled = c.name in installed,
-                                    isInstalling = installing == c.name,
-                                    progress = if (installing == c.name) progress else null,
-                                    stage = if (installing == c.name) stage else "",
-                                    enabled = installing == null,
-                                    onInstall = {
-                                        // Prefer the file-drop `_dll` variant when the catalog carries one:
-                                        // it copies DLLs straight into the prefix (no container session ⇒
-                                        // no black screen / app restart, works on Proton 11). The base
-                                        // component is what's rendered; installed-state is still recorded
-                                        // under the BASE name so the row + prefs stay consistent.
-                                        val target = byName["${c.name}_dll"] ?: c
-                                        when {
-                                            // Has an installer step → confirm, then run a container session.
-                                            // Only the base reaches here; `_dll` variants are file-drop.
-                                            ComponentExecInstaller.isExecComponent(target) -> confirmExec = target
-                                            // Local-only but not pure file-drop (set_windows/uninstall) → run
-                                            // inline via the exec driver; no session, no confirm needed.
-                                            ComponentExecInstaller.handlesComponent(target) -> runExecInstall(target)
-                                            else -> {
-                                                installing = c.name; progress = 0f; stage = ""
-                                                scope.launch {
-                                                    val err = withContext(Dispatchers.IO) {
-                                                        ComponentInstaller.install(context, container, target,
-                                                            { f -> activity?.runOnUiThread { progress = f } },
-                                                            { t -> activity?.runOnUiThread { stage = t } })
-                                                    }
-                                                    installing = null
-                                                    if (err == null) {
-                                                        // Components it bundled were recorded as they went in.
-                                                        installed = installed + (installsPrefs.getStringSet(installKey, emptySet()) ?: emptySet())
-                                                        markInstalled(c.name)
-                                                    } else message = "Couldn't install ${c.name}: $err"
-                                                }
-                                            }
-                                        }
-                                    },
-                                )
-                                Divider(color = DividerColor.copy(alpha = 0.5f))
+                            fun section(title: String, list: List<Component>, note: (Component) -> String? = { null }) {
+                                if (list.isEmpty()) return
+                                item(key = "h-$title") { SectionHeader("$title (${list.size})") }
+                                items(list, key = { it.name }) { c ->
+                                    ComponentRow(
+                                        c = c,
+                                        isInstalled = c.name in installed,
+                                        isInstalling = installing == c.name,
+                                        progress = if (installing == c.name) progress else null,
+                                        stage = if (installing == c.name) stage else "",
+                                        note = note(c),
+                                        enabled = installing == null,
+                                        onInstall = { install(c) },
+                                    )
+                                    Divider(color = DividerColor.copy(alpha = 0.5f))
+                                }
+                            }
+                            section("Recommended for this game", recommended) { reasons[it.name] }
+                            section("Installed in this container", have)
+                            section("All components", others)
+                            if (session.isNotEmpty()) {
+                                item(key = "h-session") {
+                                    SectionHeader(
+                                        (if (showSession) "▾ " else "▸ ") + "Open the container to install (${session.size})",
+                                        Modifier.clickable { showSession = !showSession },
+                                    )
+                                }
+                                if (showSession) {
+                                    items(session, key = { it.name }) { c ->
+                                        ComponentRow(
+                                            c = c,
+                                            isInstalled = c.name in installed,
+                                            isInstalling = installing == c.name,
+                                            progress = if (installing == c.name) progress else null,
+                                            stage = if (installing == c.name) stage else "",
+                                            note = null,
+                                            enabled = installing == null,
+                                            onInstall = { install(c) },
+                                        )
+                                        Divider(color = DividerColor.copy(alpha = 0.5f))
+                                    }
+                                }
                             }
                         }
                     }
@@ -230,6 +286,7 @@ private fun ComponentRow(
     isInstalling: Boolean,
     progress: Float?,
     stage: String,
+    note: String?,
     enabled: Boolean,
     onInstall: () -> Unit,
 ) {
@@ -246,7 +303,9 @@ private fun ComponentRow(
                 Text(c.name, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                 val sub = when {
                     isInstalling && stage.isNotEmpty() -> stage
+                    isInstalled && note != null -> "Installed · $note"
                     isInstalled -> "Installed"
+                    note != null -> note
                     !installable -> reason ?: ""
                     c.description.isNotEmpty() -> c.description
                     else -> c.provider
@@ -276,4 +335,15 @@ private fun ComponentRow(
                 color = cs.primary, trackColor = cs.surfaceContainerHighest)
         }
     }
+}
+
+/** A section's title in the list. */
+@Composable
+private fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
+    )
 }

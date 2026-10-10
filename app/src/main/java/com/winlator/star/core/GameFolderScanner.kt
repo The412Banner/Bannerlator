@@ -17,8 +17,11 @@ import java.io.File
 object GameFolderScanner {
     private const val TAG = "GameFolderScanner"
 
-    /** How far below a game folder to look for its exe. UE puts it 3 down; 4 covers repacks. */
-    private const val MAX_DEPTH = 4
+    /** How far below a game folder to look for its exe. UE puts it 3 down; repacks go deeper. */
+    private const val MAX_DEPTH = 5
+
+    /** Folders and .exe files looked at per game before the walk stops, so a huge game stays quick. */
+    private const val WALK_BUDGET = 400
 
     /** Below this the pick is shown to the user as uncertain rather than trusted silently. */
     private const val CONFIDENT_SCORE = 60
@@ -36,6 +39,15 @@ object GameFolderScanner {
         "installer", "installers", "support", "extras", "docs", "documentation", "manual",
         "soundtrack", "ost", "artbook", "bonus", "dlc", "mods", "saves", "savegames",
         "crashreportclient", "easyanticheat", "battleye", "punkbuster", "steamworks shared",
+        "__installer", ".git",
+    )
+    private val SKIP_DIR_PREFIX = listOf("dotnet", "vcredist", "$")
+    private val SKIP_PATHS = listOf("engine/extras", "engine/binaries/thirdparty")
+
+    /** Where Xbox / Game Pass dumps declare their executable. */
+    private val DECLARED = listOf(
+        "MicrosoftGame.config" to Regex("<Executable\\b[^>]*?\\bName\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE),
+        "appxmanifest.xml" to Regex("<Application\\b[^>]*?\\bExecutable\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE),
     )
 
     /** Exe names that are never the game. */
@@ -95,9 +107,10 @@ object GameFolderScanner {
     }
 
     private fun candidateFor(folder: File, existingExePaths: Set<String>): Candidate? {
-        val scored = collectExes(folder, depth = 0)
-            .map { it to scoreExe(it, folder) }
-            .sortedByDescending { it.second }
+        val declared = declaredExes(folder).map { canonical(it) }.toSet()
+        val scored = collectExes(folder)
+            .map { it to scoreExe(it, folder) + if (canonical(it) in declared) 200 else 0 }
+            .sortedWith(compareByDescending<Pair<File, Int>> { it.second }.thenBy { it.first.path.lowercase() })
         if (scored.isEmpty()) return null
 
         val (bestExe, bestScore) = scored.first()
@@ -107,7 +120,7 @@ object GameFolderScanner {
 
         // Reuse the single-exe identifier so a bulk import names games exactly as the "+" flow does.
         val identity = runCatching { GameIdentifier.identify(bestExe) }.getOrNull()
-        val name = identity?.name?.takeIf { it.isNotBlank() }
+        val name = identity?.let { GameIdentifier.displayName(it, bestExe, folder) }
             ?: GameIdentifier.normalizeName(folder.name).takeIf { it.isNotBlank() }
             ?: bestExe.nameWithoutExtension
 
@@ -123,17 +136,61 @@ object GameFolderScanner {
         )
     }
 
-    /** Every plausible exe under [dir], skipping directories that never hold the game. */
-    private fun collectExes(dir: File, depth: Int): List<File> {
-        if (depth > MAX_DEPTH) return emptyList()
-        val entries = dir.listFiles() ?: return emptyList()
-        val here = entries.filter {
-            it.isFile && it.name.endsWith(".exe", ignoreCase = true) &&
-                !JUNK_EXE_RE.matches(it.nameWithoutExtension)
+    /**
+     * Every plausible exe under [folder]: up to [MAX_DEPTH] folders down, nearest levels first, at
+     * most [WALK_BUDGET] entries, never through a symlink, past folders that never hold the game.
+     */
+    private fun collectExes(folder: File): List<File> {
+        val found = ArrayList<File>()
+        var visited = 0
+        var level = listOf(folder)
+        var depth = 0
+        walk@ while (level.isNotEmpty()) {
+            val next = ArrayList<File>()
+            for (dir in level) {
+                val entries = dir.listFiles()?.sortedBy { it.name.lowercase() } ?: continue
+                for (f in entries) {
+                    if (visited >= WALK_BUDGET) break@walk
+                    if (runCatching { java.nio.file.Files.isSymbolicLink(f.toPath()) }.getOrDefault(false)) continue
+                    if (f.isDirectory) {
+                        visited++
+                        if (depth < MAX_DEPTH && !skipDir(f, f.relativeTo(folder).invariantSeparatorsPath)) next.add(f)
+                    } else if (f.isFile && f.name.endsWith(".exe", ignoreCase = true)) {
+                        visited++
+                        if (!JUNK_EXE_RE.matches(f.nameWithoutExtension)) found.add(f)
+                    }
+                }
+            }
+            level = next
+            depth++
         }
-        val below = entries.filter { it.isDirectory && !isSkippedDir(it.name) }
-            .flatMap { collectExes(it, depth + 1) }
-        return here + below
+        // An exe the folder declares (Xbox / Game Pass) is the game even past the walk's budget.
+        declaredExes(folder).forEach { d -> if (found.none { it.path == d.path }) found.add(d) }
+        return found
+    }
+
+    /** The executables MicrosoftGame.config or appxmanifest.xml declares that exist inside [folder]. */
+    private fun declaredExes(folder: File): List<File> {
+        val names = DECLARED.flatMap { (file, pattern) ->
+            runCatching {
+                File(folder, file).takeIf { it.isFile && it.length() < 1L shl 20 }?.readText()
+                    ?.let { text -> pattern.findAll(text).map { it.groupValues[1] }.toList() }.orEmpty()
+            }.getOrDefault(emptyList())
+        }
+        val root = runCatching { folder.canonicalPath + File.separator }.getOrNull() ?: return emptyList()
+        return names.asSequence()
+            .map { File(folder, it.trim().replace('\\', '/').trimStart('/')) }
+            .filter { it.name.endsWith(".exe", ignoreCase = true) && !JUNK_EXE_RE.matches(it.nameWithoutExtension) && it.isFile }
+            .filter { runCatching { it.canonicalPath.startsWith(root) }.getOrDefault(false) }
+            .distinctBy { it.path }
+            .toList()
+    }
+
+    private fun skipDir(dir: File, relative: String): Boolean {
+        val name = dir.name.lowercase().trim()
+        if (name in SKIP_DIRS || SKIP_DIR_PREFIX.any { name.startsWith(it) }) return true
+        val rel = relative.lowercase()
+        return SKIP_PATHS.any { rel == it || rel.endsWith("/$it") }
     }
 
     /**

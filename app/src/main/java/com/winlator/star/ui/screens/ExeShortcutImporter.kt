@@ -59,9 +59,13 @@ internal object ExeShortcutImporter {
                 //    .desktop still existing so a user rename-via-dialog can't make saveCoverArt
                 //    recreate a stray shortcut for the old name.
                 if (File(desktopDir, "$base.desktop").isFile) {
-                    val steamCover = steamAppId?.takeIf { it > 0 }?.let { SteamStoreSearch.coverUrl(it) }
+                    // No appId in the game's files: look the title up on the Steam store (same title
+                    // only), so the art comes from Steam's own images too.
+                    val artAppId = steamAppId?.takeIf { it > 0 }
+                        ?: runCatching { SteamStoreSearch.findAppIdByName(appCtx, base) }.getOrNull()
+                    val steamCover = artAppId?.let { SteamStoreSearch.coverUrl(it) }
                     StarLaunchBridge.saveCoverArt(
-                        appCtx, container, File(desktopDir, "$base.desktop"), base, steamCover, steamAppId,
+                        appCtx, container, File(desktopDir, "$base.desktop"), base, steamCover, artAppId,
                     )
                     val iconFile = container.getIconsDir(64)?.let { File(it, "$base.png") }
                     if ((iconFile == null || !iconFile.exists()) && File(desktopDir, "$base.desktop").isFile) {

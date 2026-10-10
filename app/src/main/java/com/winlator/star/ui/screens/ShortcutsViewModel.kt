@@ -1086,7 +1086,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         // then what the SGDB cover-art search runs on — instead of the raw exe filename.
         val identity = GameIdentifier.identify(exeFile)
         val fallbackName = sourceName.substringBeforeLast('.', sourceName)
-        val displayName = identity.name?.takeIf { it.isNotBlank() } ?: fallbackName
+        val displayName = GameIdentifier.displayName(identity, exeFile) ?: fallbackName
         Log.d(TAG, "importExe: identified '$displayName' (appId=${identity.appId}, source=${identity.source})")
         return try {
             // Delegate to the shared importer so the "+" flow and the File Manager's

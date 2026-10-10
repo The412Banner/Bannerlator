@@ -9270,6 +9270,20 @@ internal fun ShortcutSettingsDialogScreen(
                                 gameDir = gameDir,
                                 shortcutBaseName = shortcut.name,
                             )
+                            // Every component, with what this game needs at the top, installed into
+                            // the game's container (the same list as the container's Win Components tab).
+                            var showAllComponents by remember { mutableStateOf(false) }
+                            OutlinedButton(onClick = { showAllComponents = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text("All components")
+                            }
+                            if (showAllComponents) {
+                                ComponentsSheet(
+                                    container = shortcut.container,
+                                    onDismiss = { showAllComponents = false },
+                                    exeFile = gameExe,
+                                    gameDir = gameDir,
+                                )
+                            }
                             ScWinComponentsTab(winComponents)
                         }
                             2 -> ScEnvVarsTab(envVarsStr, { envVarsStr = it }, gameDir, isLinuxEntry)

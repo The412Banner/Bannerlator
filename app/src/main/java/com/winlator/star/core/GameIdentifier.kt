@@ -41,6 +41,8 @@ object GameIdentifier {
         val name: String? = null,
         val source: Source = Source.NONE,
         val confidence: Confidence = Confidence.LOW,
+        /** Which signal gave [name]: [Source.FILENAME] means only a cleaned folder or exe name. */
+        val nameSource: Source = Source.NONE,
     ) {
         val hasStrongId: Boolean get() = appId != null
     }
@@ -92,7 +94,64 @@ object GameIdentifier {
             name = nameHit?.first?.let(::normalizeName)?.takeIf { it.isNotBlank() },
             source = primary,
             confidence = confidence,
+            nameSource = nameHit?.second ?: Source.NONE,
         )
+    }
+
+    private val TRUSTED_NAMES = setOf(Source.STEAM_MANIFEST_ACF, Source.GOG_INFO, Source.PE_VERSION)
+    /** Folders an exe sits in below its game folder ("Binaries/Win64"). */
+    private val BUILD_DIRS = setOf("bin", "bin32", "bin64", "binaries", "win32", "win64", "x86", "x64", "x86_64", "amd64", "retail", "shipping", "release")
+    /** Folders that hold games rather than being one. */
+    private val NOT_A_GAME_FOLDER = setOf("games", "game", "download", "downloads", "desktop", "documents", "common", "steamapps",
+        "program files", "program files (x86)", "0", "emulated", "sdcard", "storage", "files")
+
+    /** The folder an exe's game lives in: its own, or above it past build folders such as Binaries/Win64. */
+    fun gameFolderOf(exe: File): File? {
+        var dir = exe.absoluteFile.parentFile
+        repeat(3) { if (dir != null && dir!!.name.lowercase() in BUILD_DIRS) dir = dir!!.parentFile }
+        return dir
+    }
+
+    /**
+     * The name an added game shows (DroidDeck's rule): the game's own title when the disk names
+     * one reliably (a Steam manifest, a GOG info file, the exe's version resource), else the game
+     * folder's name, tidied. A version-resource title gets the folder's spelling when both spell
+     * the same letters ("Insane2" -> "Insane 2", "dirt 3" -> "DiRT 3") and underscores become spaces
+     * ("Watch_Dogs" -> "Watch Dogs"). Null when neither gives anything.
+     */
+    fun displayName(identity: GameIdentity, exe: File, folder: File? = gameFolderOf(exe)): String? {
+        val folderName = folder?.name?.trim()?.takeUnless { it.isEmpty() || it.lowercase() in NOT_A_GAME_FOLDER }
+        val trusted = identity.name?.takeIf { identity.nameSource in TRUSTED_NAMES && it.isNotBlank() }
+        if (trusted != null) {
+            if (identity.nameSource != Source.PE_VERSION) return trusted
+            val spaced = underscoresToSpaces(trusted)
+            return normalizeName(folderName?.let { betterSpelling(spaced, it) } ?: spaced).ifBlank { trusted }
+        }
+        return folderName?.let { cleanName(it) }?.let(::normalizeName)?.takeIf { it.isNotBlank() }
+            ?: identity.name?.takeIf { it.isNotBlank() }
+    }
+
+    /** "Watch_Dogs" -> "Watch Dogs": an underscore in a version-resource title is a programmer's space. */
+    internal fun underscoresToSpaces(name: String): String =
+        name.replace('_', ' ').replace(Regex("\\s+"), " ").trim().ifEmpty { name }
+
+    /**
+     * The exe's version resource often spells the title the way a programmer typed it ("Insane2")
+     * while the folder has the real spacing ("Insane 2"). When both spell the same letters and
+     * digits, the one with more word breaks wins; a tie keeps mixed case over all one case
+     * ("DiRT 3" over "dirt 3"), else the exe's spelling. Different titles keep the exe's.
+     */
+    internal fun betterSpelling(peName: String, folderName: String): String {
+        fun key(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
+        if (key(peName) != key(folderName) || folderName.isBlank()) return peName
+        fun breaks(s: String) = s.count { !it.isLetterOrDigit() }
+        fun mixed(s: String) = s.any { it.isUpperCase() } && s.any { it.isLowerCase() }
+        return when {
+            breaks(folderName) > breaks(peName) -> folderName.trim()
+            breaks(folderName) < breaks(peName) -> peName
+            mixed(folderName) && !mixed(peName) -> folderName.trim()
+            else -> peName
+        }
     }
 
     /**
@@ -172,7 +231,9 @@ object GameIdentifier {
     /**
      * Resolve the Steam appmanifest for this game: find the `common` ancestor on the exe's
      * path, read the sibling `steamapps/appmanifest_*.acf`, and match by installdir == the
-     * game folder under common. Falls back to the sole manifest when there's exactly one.
+     * game folder under common. No match, no manifest: a folder in steamapps/common that no
+     * manifest claims is exactly the kind added games are, and the library's one other game is
+     * not its name.
      */
     private fun resolveSteamManifest(exeFile: File, dirs: List<File>): Acf? {
         val commonIdx = dirs.indexOfFirst { it.name.equals("common", ignoreCase = true) }
@@ -191,7 +252,7 @@ object GameIdentifier {
             val text = readSmallTextFile(m) ?: return@firstOrNull false
             val installdir = vdfValue(text, "installdir")
             gameFolder != null && installdir != null && installdir.equals(gameFolder, ignoreCase = true)
-        } ?: manifests.singleOrNull() ?: return null
+        } ?: return null
 
         val text = readSmallTextFile(match) ?: return null
         val appId = vdfValue(text, "appid")?.toIntOrNull()?.takeIf { it > 0 }

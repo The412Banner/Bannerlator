@@ -959,6 +959,20 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             // Pre-select everything importable; duplicates stay off and can't be ticked.
             folderScanSelected = found.filter { !it.alreadyAdded }.map { it.exe.absolutePath }.toSet()
             folderScanRunning = false
+            // Games whose files name no Steam app: look each title up on the Steam store (same title
+            // only, remembered per name), so the list shows their art and the import carries the id.
+            launch {
+                for (c in found.filter { it.appId == null && !it.alreadyAdded }) {
+                    val id = withContext(Dispatchers.IO) {
+                        runCatching { SteamStoreSearch.findAppIdByName(context, c.name) }.getOrNull()
+                    } ?: continue
+                    folderScanResults = folderScanResults.map {
+                        if (it.exe.absolutePath == c.exe.absolutePath && it.appId == null) {
+                            it.copy(appId = id, coverUrl = SteamStoreSearch.coverUrl(id))
+                        } else it
+                    }
+                }
+            }
             if (found.isEmpty()) {
                 Toast.makeText(context, "No games found in that folder", Toast.LENGTH_LONG).show()
                 pendingImportContainerIndex = -1

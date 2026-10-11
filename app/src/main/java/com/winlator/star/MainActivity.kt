@@ -700,10 +700,9 @@ private fun AppShell(
     }
 
     // The Games tab's XMB view asks for a see-through top bar; the screen is then laid out under the
-    // bar so its backdrop runs to the top. Games route only, and not while the update banner shows
-    // (it sits between the bar and the screen).
-    val barOverlay = currentRoute == Screen.Games.route && topBarTransparentState.value &&
-        !isFullBleed && !(bannerUpdate != null && !bannerDismissed)
+    // bar so its backdrop runs to the top. Games route only. (The update pill floats over the screen
+    // content, so unlike the old banner it never has to switch this off.)
+    val barOverlay = currentRoute == Screen.Games.route && topBarTransparentState.value && !isFullBleed
 
     CompositionLocalProvider(LocalTopBarActions provides topBarActionsState, LocalTopBarTransparent provides topBarTransparentState) {
     ModalNavigationDrawer(

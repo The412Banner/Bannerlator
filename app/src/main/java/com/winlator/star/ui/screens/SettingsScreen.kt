@@ -563,7 +563,22 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     "Update available", color = Color(0xFFFFC107), fontSize = 13.sp, // intentional: amber = update-available status, semantic not themeable
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp)
                 )
-                if (latest.notes.isNotBlank()) {
+                if (latest.highlights.isNotEmpty()) {
+                    // The release's quick highlights (same list as the update pop-up).
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                        latest.highlights.forEach { h ->
+                            Text(
+                                buildString {
+                                    append("• ")
+                                    if (h.title.isNotEmpty()) append(h.title)
+                                    if (h.title.isNotEmpty() && h.text.isNotEmpty()) append(": ")
+                                    append(h.text)
+                                },
+                                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                } else if (latest.notes.isNotBlank()) {
                     Text(
                         latest.notes, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 6.dp)

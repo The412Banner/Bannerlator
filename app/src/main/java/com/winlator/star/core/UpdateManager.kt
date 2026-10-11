@@ -9,8 +9,11 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.preference.PreferenceManager
 import com.winlator.star.BuildConfig
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-app updater for Bannerlator.
@@ -25,6 +28,9 @@ import java.io.File
  *   "versionCode": 26,
  *   "versionName": "1.8",
  *   "notes": "What changed…",
+ *   "highlights": [ {"title": "Small updates", "text": "…"} ],   // optional, up to 5
+ *   "size": { "com.winlator.banner": 557000000, … },            // optional, bytes per flavor
+ *   "publishedAt": "2026-10-10",                                 // optional
  *   "minSupported": 1,
  *   "apk": {
  *     "com.winlator.banner":    "Bannerlator-1.8-standard.apk",
@@ -57,6 +63,9 @@ object UpdateManager {
     private const val PREF_INCLUDE_PRE = "update_include_prereleases"
     private const val CACHE_NAME = "update_latest.json"
 
+    /** One line of the release's quick highlights: a short bold title and one plain sentence. */
+    data class Highlight(val title: String, val text: String)
+
     data class UpdateInfo(
         val versionCode: Int,
         val versionName: String,
@@ -64,9 +73,44 @@ object UpdateManager {
         val apkName: String?,
         /** Resolved download URL for this flavor's APK on the matched release. */
         val apkUrl: String?,
+        /** Up to five quick highlights from the release notes; empty on releases cut before they existed. */
+        val highlights: List<Highlight> = emptyList(),
+        /** Download size of this flavor's APK in bytes, or -1 when the release did not say. */
+        val apkSize: Long = -1L,
+        /** Release date as published, "2026-10-10", or "" when the release did not say. */
+        val publishedAt: String = "",
     ) {
         /** True when the released build is newer than the installed one. */
         val isNewer: Boolean get() = versionCode > BuildConfig.VERSION_CODE
+    }
+
+    // ── Session state the update UI observes ─────────────────────────────
+    /**
+     * Version the user dismissed with the pill this session. Unlike the old banner's Skip it is
+     * not persisted: the pill comes back next launch, and Settings keeps offering the update.
+     */
+    @Volatile var dismissedThisSession: Int = 0
+
+    /** Progress of the one update download that can run at a time; the UI renders it as a card. */
+    sealed class DownloadState {
+        object Idle : DownloadState()
+        data class Downloading(val info: UpdateInfo, val bytes: Long, val total: Long, val bytesPerSec: Long) : DownloadState()
+        data class Failed(val info: UpdateInfo, val reason: String) : DownloadState()
+        /** Handed to the system installer; the card closes. */
+        data class Installing(val info: UpdateInfo) : DownloadState()
+    }
+    private val _download = MutableStateFlow<DownloadState>(DownloadState.Idle)
+    val download: StateFlow<DownloadState> get() = _download
+    private val interrupt = AtomicBoolean()
+
+    fun cancelDownload() {
+        interrupt.set(true)
+        _download.value = DownloadState.Idle
+    }
+
+    /** Clear a Failed or Installing card. */
+    fun clearDownloadState() {
+        if (_download.value !is DownloadState.Downloading) _download.value = DownloadState.Idle
     }
 
     private fun prefs(ctx: Context) = PreferenceManager.getDefaultSharedPreferences(ctx)
@@ -193,12 +237,24 @@ object UpdateManager {
         val apkName = o.optJSONObject("apk")
             ?.optString(BuildConfig.APPLICATION_ID, null)
             ?.takeIf { it.isNotBlank() }
+        val highlights = ArrayList<Highlight>()
+        o.optJSONArray("highlights")?.let { arr ->
+            for (i in 0 until minOf(arr.length(), 5)) {
+                val h = arr.optJSONObject(i) ?: continue
+                val title = h.optString("title", "").trim()
+                val text = h.optString("text", "").trim()
+                if (title.isNotEmpty() || text.isNotEmpty()) highlights.add(Highlight(title, text))
+            }
+        }
         UpdateInfo(
             versionCode = o.getInt("versionCode"),
             versionName = o.optString("versionName", ""),
             notes = o.optString("notes", ""),
             apkName = apkName,
             apkUrl = apkName?.let(resolveApk),
+            highlights = highlights,
+            apkSize = o.optJSONObject("size")?.optLong(BuildConfig.APPLICATION_ID, -1L) ?: -1L,
+            publishedAt = o.optString("publishedAt", ""),
         )
     } catch (_: Exception) {
         null
@@ -234,10 +290,11 @@ object UpdateManager {
 
     // ── Download + install ───────────────────────────────────────────────
     /**
-     * Downloads the flavor-matched APK (shows the app's standard
-     * [DownloadProgressDialog]) and launches the package installer.
-     * If the "install unknown apps" grant is missing, routes the user to that
-     * settings screen first and returns without downloading.
+     * Downloads the flavor-matched APK and launches the package installer. Progress is published
+     * on [download]; the app shell renders it as the update card. This deliberately does NOT use
+     * the dialog-creating HttpUtils.download overload, so the first-launch setup screen can never
+     * appear during an update. If the "install unknown apps" grant is missing, routes the user to
+     * that settings screen first and returns without downloading.
      */
     fun downloadAndInstall(activity: Activity, info: UpdateInfo, onDone: (Boolean) -> Unit) {
         val url = info.apkUrl
@@ -254,6 +311,7 @@ object UpdateManager {
             onDone(false)
             return
         }
+        if (_download.value is DownloadState.Downloading) return  // one at a time; the card is already up
         val dir = File(activity.externalCacheDir, "update").apply { mkdirs() }
         // Prune any previously-downloaded installers before fetching the new one.
         // The installer filename embeds the version, so without this every update
@@ -261,9 +319,32 @@ object UpdateManager {
         // until the OS cache-clears — one user hit ~10 GB of stale APKs this way.
         pruneUpdateDir(dir)
         val apk = File(dir, info.apkName ?: "Bannerlator-update.apk")
-        HttpUtils.download(activity, url, apk) { ok ->
-            if (ok) install(activity, apk) else AppUtils.showToast(activity, "Update download failed")
-            onDone(ok)
+        _download.value = DownloadState.Downloading(info, 0L, info.apkSize, 0L)
+        val startedAt = System.currentTimeMillis()
+        var lastAt = startedAt
+        var lastBytes = 0L
+        var rate = 0L
+        HttpUtils.downloadToFile(url, apk, interrupt, { bytes, total ->
+            val now = System.currentTimeMillis()
+            val dt = now - lastAt
+            if (dt >= 500) {
+                val inst = (bytes - lastBytes) * 1000 / dt
+                // Smooth the readout so it does not flicker with every burst.
+                rate = if (rate == 0L) inst else (rate * 3 + inst) / 4
+                lastAt = now; lastBytes = bytes
+            }
+            if (_download.value is DownloadState.Downloading) {
+                _download.value = DownloadState.Downloading(info, bytes, if (total > 0) total else info.apkSize, rate)
+            }
+        }) { ok ->
+            activity.runOnUiThread {
+                when {
+                    interrupt.get() -> _download.value = DownloadState.Idle
+                    ok -> { _download.value = DownloadState.Installing(info); install(activity, apk) }
+                    else -> _download.value = DownloadState.Failed(info, "The download did not finish. Check the connection and try again.")
+                }
+                onDone(ok && !interrupt.get())
+            }
         }
     }
 

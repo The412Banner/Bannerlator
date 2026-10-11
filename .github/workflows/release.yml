@@ -58,6 +58,7 @@ jobs:
         [ "${{ inputs.make_prerelease }}" = "true" ] && ARGS+=(--prerelease)
         python3 scripts/release_notes.py "${ARGS[@]}"
         { echo "### In-app update line"; echo; cat short-notes.txt; echo;
+          echo "### In-app update highlights"; echo; echo '```json'; cat highlights.json; echo '```'; echo;
           echo "### Release description"; echo; cat release-body.md; } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Keep it for the publish job
@@ -67,6 +68,7 @@ jobs:
         path: |
           release-body.md
           short-notes.txt
+          highlights.json
         retention-days: 7
 
   # Phase 1 — build all 4 flavors in parallel (reusable matrix build).
@@ -114,6 +116,9 @@ jobs:
       # prerelease=false below, only stable cuts ever change it.
       # The short line comes from the notes job (update-summary comment, the release_notes
       # input, or the notes' lead paragraph), read from a file so no quoting can break it.
+      # highlights (five short lines for the update pop-up), size (bytes per flavor, shown on
+      # the pill and the download card) and publishedAt are read by builds from 3.1.6 on;
+      # older builds ignore them.
       env:
         RELEASE_TITLE: ${{ inputs.release_title }}
       run: |
@@ -121,16 +126,23 @@ jobs:
         N="${{ inputs.release_number }}"
         NOTES="$(cat notes/short-notes.txt)"
         [ -z "$NOTES" ] && NOTES="$RELEASE_TITLE"
+        [ -s notes/highlights.json ] || echo '[]' > notes/highlights.json
+        size() { stat -c %s "dist/Bannerlator-${N}-$1.apk" 2>/dev/null || echo 0; }
         jq -n \
           --argjson vc "$VERSION_CODE" \
           --arg vn "$VERSION" \
           --arg notes "$NOTES" \
+          --slurpfile hl notes/highlights.json \
+          --arg date "$(date -u +%Y-%m-%d)" \
+          --argjson sstd "$(size standard)" --argjson slud "$(size ludashi)" \
+          --argjson spbg "$(size pubg)" --argjson satu "$(size antutu)" \
           --arg std "Bannerlator-${N}-standard.apk" \
           --arg lud "Bannerlator-${N}-ludashi.apk" \
           --arg pbg "Bannerlator-${N}-pubg.apk" \
           --arg atu "Bannerlator-${N}-antutu.apk" \
-          '{versionCode:$vc, versionName:$vn, notes:$notes, minSupported:1,
-            apk:{"com.winlator.banner":$std,"com.ludashi.benchmark":$lud,"com.tencent.ig":$pbg,"com.antutu.ABenchMark":$atu}}' \
+          '{versionCode:$vc, versionName:$vn, notes:$notes, highlights:$hl[0], publishedAt:$date, minSupported:1,
+            apk:{"com.winlator.banner":$std,"com.ludashi.benchmark":$lud,"com.tencent.ig":$pbg,"com.antutu.ABenchMark":$atu},
+            size:{"com.winlator.banner":$sstd,"com.ludashi.benchmark":$slud,"com.tencent.ig":$spbg,"com.antutu.ABenchMark":$satu}}' \
           > update.json
         echo "Generated update.json:"; cat update.json
 

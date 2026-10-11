@@ -19,8 +19,14 @@ as before.
 
 The update.json line comes from an optional <!-- update-summary: ... --> comment in the notes
 file, else --fallback, else the notes' bold lead paragraph (plain text, trimmed).
+
+highlights.json (the quick highlights the in-app update pop-up lists, five at most) comes from
+<!-- update-highlight: Title | one sentence --> comments when the notes carry any, else from the
+first bullet list after the lead paragraph: each "- **Title:** sentence" bullet becomes one
+highlight (plain text, links and markup stripped). Pre-releases without a notes file get none.
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -138,8 +144,52 @@ def insert_before_credits(body, section):
 def plain(markdown):
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", markdown)
     text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"[*_`]", "", text)
+    # Markup only: emphasis markers and code ticks, never the underscores inside a word (x86_64).
+    text = re.sub(r"[*`]", "", text)
+    text = re.sub(r"(?<!\w)_|_(?!\w)", "", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+MAX_HIGHLIGHTS = 5
+HIGHLIGHT_COMMENT = re.compile(r"<!--\s*update-highlight:\s*(.*?)\s*-->", re.S)
+BULLET = re.compile(r"^\s*[-*]\s+(.*)$")
+BOLD_LEAD = re.compile(r"^\*\*(.+?)\*\*\s*[:\u2014\u2013-]?\s*(.*)$", re.S)
+
+
+def split_highlight(text):
+    """'**Title:** rest' -> (Title, rest); 'Title | rest' -> (Title, rest); else ('', text)."""
+    m = BOLD_LEAD.match(text.strip())
+    if m:
+        return plain(m.group(1)).rstrip(":").strip(), plain(m.group(2))
+    if "|" in text:
+        title, rest = text.split("|", 1)
+        return plain(title), plain(rest)
+    return "", plain(text)
+
+
+def highlights(body):
+    items = [split_highlight(m) for m in HIGHLIGHT_COMMENT.findall(body)]
+    if not items:
+        # The first bullet list after the bold lead paragraph, before any heading.
+        seen_lead = False
+        for para in re.split(r"\n\s*\n", body):
+            p = para.strip()
+            if not seen_lead:
+                seen_lead = p.startswith("**")
+                continue
+            if p.startswith("#"):
+                break
+            lines = [BULLET.match(l) for l in p.splitlines()]
+            if lines and all(lines):
+                items = [split_highlight(m.group(1)) for m in lines]
+                break
+    out = []
+    for title, text in items:
+        if text:
+            text = text[0].upper() + text[1:]
+        if title or text:
+            out.append({"title": title, "text": text})
+    return out[:MAX_HIGHLIGHTS]
 
 
 def short_notes(body, fallback, title):
@@ -168,6 +218,7 @@ def main():
     ap.add_argument("--title", default="")
     ap.add_argument("--out-body", default="release-body.md")
     ap.add_argument("--out-short", default="short-notes.txt")
+    ap.add_argument("--out-highlights", default="highlights.json")
     a = ap.parse_args()
 
     ver = a.release_number
@@ -210,6 +261,13 @@ def main():
     with open(a.out_short, "w", encoding="utf-8") as f:
         f.write(short + "\n")
     print("update.json notes: " + short)
+    hl = highlights(body) if os.path.isfile(notes_path) else []
+    with open(a.out_highlights, "w", encoding="utf-8") as f:
+        json.dump(hl, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    print("update.json highlights: %d" % len(hl))
+    for h in hl:
+        print("  - %s%s%s" % (h["title"], ": " if h["title"] and h["text"] else "", h["text"]))
 
 
 if __name__ == "__main__":

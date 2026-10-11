@@ -563,7 +563,22 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     "Update available", color = Color(0xFFFFC107), fontSize = 13.sp, // intentional: amber = update-available status, semantic not themeable
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp)
                 )
-                if (latest.notes.isNotBlank()) {
+                if (latest.highlights.isNotEmpty()) {
+                    // The release's quick highlights (same list as the update pop-up).
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                        latest.highlights.forEach { h ->
+                            Text(
+                                buildString {
+                                    append("• ")
+                                    if (h.title.isNotEmpty()) append(h.title)
+                                    if (h.title.isNotEmpty() && h.text.isNotEmpty()) append(": ")
+                                    append(h.text)
+                                },
+                                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                } else if (latest.notes.isNotBlank()) {
                     Text(
                         latest.notes, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 6.dp)
@@ -580,7 +595,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Button(
                 onClick = {
                     checkingUpdate = true
-                    UpdateManager.check(context) { info ->
+                    UpdateManager.check(context, force = true) { info ->
                         activity?.runOnUiThread {
                             updateInfo = info
                             checkingUpdate = false
@@ -608,7 +623,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     UpdateManager.setIncludePrereleases(context, it)
                     // Re-check immediately so the readout reflects the new setting.
                     checkingUpdate = true
-                    UpdateManager.check(context) { info ->
+                    UpdateManager.check(context, force = true) { info ->
                         activity?.runOnUiThread { updateInfo = info; checkingUpdate = false }
                     }
                 })

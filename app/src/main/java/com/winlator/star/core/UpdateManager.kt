@@ -9,8 +9,11 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.preference.PreferenceManager
 import com.winlator.star.BuildConfig
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-app updater for Bannerlator.
@@ -25,7 +28,11 @@ import java.io.File
  *   "versionCode": 26,
  *   "versionName": "1.8",
  *   "notes": "What changed…",
+ *   "highlights": [ {"title": "Small updates", "text": "…"} ],   // optional, up to 5
+ *   "size": { "com.winlator.banner": 557000000, … },            // optional, bytes per flavor
+ *   "publishedAt": "2026-10-10",                                 // optional
  *   "minSupported": 1,
+ *   "apkUrl": { "com.winlator.banner": "https://github.com/…/releases/download/1.8/Bannerlator-1.8-standard.apk", … },  // optional, absolute
  *   "apk": {
  *     "com.winlator.banner":    "Bannerlator-1.8-standard.apk",
  *     "com.ludashi.benchmark":  "Bannerlator-1.8-ludashi.apk",
@@ -37,6 +44,15 @@ import java.io.File
 object UpdateManager {
     private const val REPO = "The412Banner/Bannerlator"
     const val RELEASES_PAGE = "https://github.com/$REPO/releases/latest"
+    // The manifests live on the orphan `manifest` branch, served raw: reading them there counts
+    // nothing (the release-asset URL below bumped update.json's download_count on every check,
+    // which was 85% of the repo's "downloads") and has no per-IP API limit. release.yml writes
+    // update.json on stable cuts and update-pre.json on every cut.
+    private const val MANIFEST_URL =
+        "https://raw.githubusercontent.com/$REPO/manifest/update.json"
+    private const val MANIFEST_PRE_URL =
+        "https://raw.githubusercontent.com/$REPO/manifest/update-pre.json"
+    // Fallbacks for before the manifest branch exists (first release from this code publishes it).
     private const val UPDATE_JSON_URL =
         "https://github.com/$REPO/releases/latest/download/update.json"
     private fun assetUrl(name: String) =
@@ -44,6 +60,8 @@ object UpdateManager {
     // Lists ALL releases newest-first, prereleases included (releases/latest skips them).
     private const val API_RELEASES_URL =
         "https://api.github.com/repos/$REPO/releases?per_page=30"
+    /** Automatic checks (launch, About, opening Settings) reuse the last answer this long. */
+    private const val CHECK_COOLDOWN_MS = 6L * 60 * 60 * 1000
 
     // Reuse the FileProvider already declared in the manifest. The authority is keyed
     // to the per-flavor applicationId (${applicationId}.tileprovider) so the standard,
@@ -55,7 +73,13 @@ object UpdateManager {
     private const val PREF_SKIP = "update_skip_version"
     private const val PREF_LAST_CHECK = "update_last_check"
     private const val PREF_INCLUDE_PRE = "update_include_prereleases"
+    // One cache per channel: stable and prerelease used to share a file, so flipping the toggle
+    // could serve the other channel's answer offline.
     private const val CACHE_NAME = "update_latest.json"
+    private const val CACHE_PRE_NAME = "update_latest_pre.json"
+
+    /** One line of the release's quick highlights: a short bold title and one plain sentence. */
+    data class Highlight(val title: String, val text: String)
 
     data class UpdateInfo(
         val versionCode: Int,
@@ -64,9 +88,44 @@ object UpdateManager {
         val apkName: String?,
         /** Resolved download URL for this flavor's APK on the matched release. */
         val apkUrl: String?,
+        /** Up to five quick highlights from the release notes; empty on releases cut before they existed. */
+        val highlights: List<Highlight> = emptyList(),
+        /** Download size of this flavor's APK in bytes, or -1 when the release did not say. */
+        val apkSize: Long = -1L,
+        /** Release date as published, "2026-10-10", or "" when the release did not say. */
+        val publishedAt: String = "",
     ) {
         /** True when the released build is newer than the installed one. */
         val isNewer: Boolean get() = versionCode > BuildConfig.VERSION_CODE
+    }
+
+    // ── Session state the update UI observes ─────────────────────────────
+    /**
+     * Version the user dismissed with the pill this session. Unlike the old banner's Skip it is
+     * not persisted: the pill comes back next launch, and Settings keeps offering the update.
+     */
+    @Volatile var dismissedThisSession: Int = 0
+
+    /** Progress of the one update download that can run at a time; the UI renders it as a card. */
+    sealed class DownloadState {
+        object Idle : DownloadState()
+        data class Downloading(val info: UpdateInfo, val bytes: Long, val total: Long, val bytesPerSec: Long) : DownloadState()
+        data class Failed(val info: UpdateInfo, val reason: String) : DownloadState()
+        /** Handed to the system installer; the card closes. */
+        data class Installing(val info: UpdateInfo) : DownloadState()
+    }
+    private val _download = MutableStateFlow<DownloadState>(DownloadState.Idle)
+    val download: StateFlow<DownloadState> get() = _download
+    private val interrupt = AtomicBoolean()
+
+    fun cancelDownload() {
+        interrupt.set(true)
+        _download.value = DownloadState.Idle
+    }
+
+    /** Clear a Failed or Installing card. */
+    fun clearDownloadState() {
+        if (_download.value !is DownloadState.Downloading) _download.value = DownloadState.Idle
     }
 
     private fun prefs(ctx: Context) = PreferenceManager.getDefaultSharedPreferences(ctx)
@@ -91,21 +150,56 @@ object UpdateManager {
 
     // ── Network check ────────────────────────────────────────────────────
     /**
-     * Fetch the latest stable metadata off the main thread. [onResult] is
+     * Fetch the latest release metadata off the main thread. [onResult] is
      * invoked on a background thread (callers must marshal to the UI thread).
-     * On network failure, falls back to the last cached result so the banner
-     * still works offline.
+     * Automatic checks ([force] = false: launch, About, opening Settings) reuse
+     * the cached answer for [CHECK_COOLDOWN_MS] after a successful check, so an
+     * app opened twenty times a day asks GitHub once or twice. On network
+     * failure, falls back to the last cached result so the pill still works offline.
      */
-    fun check(ctx: Context, onResult: (UpdateInfo?) -> Unit) {
-        if (isIncludePrereleases(ctx)) checkViaApi(ctx, onResult)
-        else checkStable(ctx, onResult)
+    fun check(ctx: Context, force: Boolean = false, onResult: (UpdateInfo?) -> Unit) {
+        val pre = isIncludePrereleases(ctx)
+        if (!force) {
+            // Cooldown: the last successful check is fresh enough, answer from the cache without
+            // touching the network. Only the Settings button and the prerelease toggle force.
+            val age = System.currentTimeMillis() - lastCheck(ctx)
+            if (age in 0 until CHECK_COOLDOWN_MS) {
+                val cached = loadCached(ctx, pre)
+                if (cached != null) {
+                    onResult(cached)
+                    return
+                }
+            }
+        }
+        if (pre) checkPre(ctx, onResult) else checkStable(ctx, onResult)
     }
 
-    /** Stable-only path: releases/latest only ever resolves to a non-prerelease. */
+    /** Stable channel: the raw manifest, else the release asset until the manifest branch exists. */
     private fun checkStable(ctx: Context, onResult: (UpdateInfo?) -> Unit) {
-        HttpUtils.download(UPDATE_JSON_URL) { body ->
-            val info = body?.let { parseUpdateJson(it) { n -> assetUrl(n) } }
-            finish(ctx, body, info, onResult)
+        HttpUtils.download(MANIFEST_URL) { raw ->
+            val fromRaw = raw?.let { parseUpdateJson(it) { n -> assetUrl(n) } }
+            if (fromRaw != null) {
+                finish(ctx, raw, fromRaw, false, onResult)
+                return@download
+            }
+            HttpUtils.download(UPDATE_JSON_URL) { body ->
+                val info = body?.let { parseUpdateJson(it) { n -> assetUrl(n) } }
+                finish(ctx, body, info, false, onResult)
+            }
+        }
+    }
+
+    /** Prerelease channel: the raw every-cut manifest, else the GitHub API walk. */
+    private fun checkPre(ctx: Context, onResult: (UpdateInfo?) -> Unit) {
+        HttpUtils.download(MANIFEST_PRE_URL) { raw ->
+            // No name→URL fallback here: a prerelease's APK is not under releases/latest, so the
+            // manifest has to carry absolute apkUrl entries (release.yml writes them).
+            val fromRaw = raw?.let { parseUpdateJson(it) { null } }
+            if (fromRaw != null && fromRaw.apkUrl != null) {
+                finish(ctx, raw, fromRaw, true, onResult)
+                return@download
+            }
+            checkViaApi(ctx, onResult)
         }
     }
 
@@ -125,20 +219,21 @@ object UpdateManager {
             }
             HttpUtils.download(picked.updateJsonUrl) { body ->
                 val info = body?.let { uj -> parseUpdateJson(uj) { n -> picked.assets[n] } }
-                finish(ctx, body, info, onResult)
+                finish(ctx, body, info, true, onResult)
             }
         }
     }
 
     private fun finish(
-        ctx: Context, body: String?, info: UpdateInfo?, onResult: (UpdateInfo?) -> Unit,
+        ctx: Context, body: String?, info: UpdateInfo?, pre: Boolean, onResult: (UpdateInfo?) -> Unit,
     ) {
         if (info != null && body != null) {
-            cache(ctx, body)
+            cache(ctx, body, pre)
+            // Only a successful check starts the cooldown; a failed one retries next time.
             prefs(ctx).edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply()
             onResult(info)
         } else {
-            onResult(loadCached(ctx))
+            onResult(loadCached(ctx, pre))
         }
     }
 
@@ -193,25 +288,46 @@ object UpdateManager {
         val apkName = o.optJSONObject("apk")
             ?.optString(BuildConfig.APPLICATION_ID, null)
             ?.takeIf { it.isNotBlank() }
+        // Absolute URL when the manifest carries one (manifest-branch era); else resolve the name.
+        val absoluteUrl = o.optJSONObject("apkUrl")
+            ?.optString(BuildConfig.APPLICATION_ID, null)
+            ?.takeIf { it.isNotBlank() }
+        val highlights = ArrayList<Highlight>()
+        o.optJSONArray("highlights")?.let { arr ->
+            for (i in 0 until minOf(arr.length(), 5)) {
+                val h = arr.optJSONObject(i) ?: continue
+                val title = h.optString("title", "").trim()
+                val text = h.optString("text", "").trim()
+                if (title.isNotEmpty() || text.isNotEmpty()) highlights.add(Highlight(title, text))
+            }
+        }
         UpdateInfo(
             versionCode = o.getInt("versionCode"),
             versionName = o.optString("versionName", ""),
             notes = o.optString("notes", ""),
             apkName = apkName,
-            apkUrl = apkName?.let(resolveApk),
+            apkUrl = absoluteUrl ?: apkName?.let(resolveApk),
+            highlights = highlights,
+            apkSize = o.optJSONObject("size")?.optLong(BuildConfig.APPLICATION_ID, -1L) ?: -1L,
+            publishedAt = o.optString("publishedAt", ""),
         )
     } catch (_: Exception) {
         null
     }
 
-    private fun cache(ctx: Context, body: String) = try {
-        File(ctx.cacheDir, CACHE_NAME).writeText(body)
+    private fun cacheFile(ctx: Context, pre: Boolean) = File(ctx.cacheDir, if (pre) CACHE_PRE_NAME else CACHE_NAME)
+
+    private fun cache(ctx: Context, body: String, pre: Boolean) = try {
+        cacheFile(ctx, pre).writeText(body)
     } catch (_: Exception) { }
 
-    private fun loadCached(ctx: Context): UpdateInfo? = try {
-        val f = File(ctx.cacheDir, CACHE_NAME)
-        // Best-effort offline read; APK download needs network to re-resolve anyway.
-        if (f.isFile) parseUpdateJson(f.readText()) { n -> assetUrl(n) } else null
+    private fun loadCached(ctx: Context, pre: Boolean): UpdateInfo? = try {
+        val f = cacheFile(ctx, pre)
+        // Best-effort offline read; APK download needs network to re-resolve anyway. A cached
+        // prerelease body without absolute URLs cannot resolve its APK (it is not under
+        // releases/latest), so it comes back with apkUrl = null and the button falls back to
+        // the releases page.
+        if (f.isFile) parseUpdateJson(f.readText()) { n -> if (pre) null else assetUrl(n) } else null
     } catch (_: Exception) {
         null
     }
@@ -234,10 +350,11 @@ object UpdateManager {
 
     // ── Download + install ───────────────────────────────────────────────
     /**
-     * Downloads the flavor-matched APK (shows the app's standard
-     * [DownloadProgressDialog]) and launches the package installer.
-     * If the "install unknown apps" grant is missing, routes the user to that
-     * settings screen first and returns without downloading.
+     * Downloads the flavor-matched APK and launches the package installer. Progress is published
+     * on [download]; the app shell renders it as the update card. This deliberately does NOT use
+     * the dialog-creating HttpUtils.download overload, so the first-launch setup screen can never
+     * appear during an update. If the "install unknown apps" grant is missing, routes the user to
+     * that settings screen first and returns without downloading.
      */
     fun downloadAndInstall(activity: Activity, info: UpdateInfo, onDone: (Boolean) -> Unit) {
         val url = info.apkUrl
@@ -254,6 +371,7 @@ object UpdateManager {
             onDone(false)
             return
         }
+        if (_download.value is DownloadState.Downloading) return  // one at a time; the card is already up
         val dir = File(activity.externalCacheDir, "update").apply { mkdirs() }
         // Prune any previously-downloaded installers before fetching the new one.
         // The installer filename embeds the version, so without this every update
@@ -261,9 +379,32 @@ object UpdateManager {
         // until the OS cache-clears — one user hit ~10 GB of stale APKs this way.
         pruneUpdateDir(dir)
         val apk = File(dir, info.apkName ?: "Bannerlator-update.apk")
-        HttpUtils.download(activity, url, apk) { ok ->
-            if (ok) install(activity, apk) else AppUtils.showToast(activity, "Update download failed")
-            onDone(ok)
+        _download.value = DownloadState.Downloading(info, 0L, info.apkSize, 0L)
+        val startedAt = System.currentTimeMillis()
+        var lastAt = startedAt
+        var lastBytes = 0L
+        var rate = 0L
+        HttpUtils.downloadToFile(url, apk, interrupt, { bytes, total ->
+            val now = System.currentTimeMillis()
+            val dt = now - lastAt
+            if (dt >= 500) {
+                val inst = (bytes - lastBytes) * 1000 / dt
+                // Smooth the readout so it does not flicker with every burst.
+                rate = if (rate == 0L) inst else (rate * 3 + inst) / 4
+                lastAt = now; lastBytes = bytes
+            }
+            if (_download.value is DownloadState.Downloading) {
+                _download.value = DownloadState.Downloading(info, bytes, if (total > 0) total else info.apkSize, rate)
+            }
+        }) { ok ->
+            activity.runOnUiThread {
+                when {
+                    interrupt.get() -> _download.value = DownloadState.Idle
+                    ok -> { _download.value = DownloadState.Installing(info); install(activity, apk) }
+                    else -> _download.value = DownloadState.Failed(info, "The download did not finish. Check the connection and try again.")
+                }
+                onDone(ok && !interrupt.get())
+            }
         }
     }
 

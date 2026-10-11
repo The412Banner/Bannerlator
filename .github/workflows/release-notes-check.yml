@@ -48,6 +48,7 @@ jobs:
         [ "$PRE" = "true" ] && ARGS+=(--prerelease)
         python3 scripts/release_notes.py "${ARGS[@]}"
         { echo "### In-app update line"; echo; cat short-notes.txt; echo;
+          echo "### In-app update highlights"; echo; echo '```json'; cat highlights.json; echo '```'; echo;
           echo "### Release description"; echo; cat release-body.md; } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload it
@@ -57,4 +58,5 @@ jobs:
         path: |
           release-body.md
           short-notes.txt
+          highlights.json
         retention-days: 7

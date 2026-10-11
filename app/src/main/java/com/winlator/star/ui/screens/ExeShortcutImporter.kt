@@ -105,26 +105,36 @@ internal object ExeShortcutImporter {
                     }
                     // 3. Link the game to its Steam app and fill in its details (genres, description,
                     //    year, Metacritic) from the store, so its Game Details page comes filled in.
-                    //    Fields the user already set are kept.
-                    val file = File(desktopDir, "$finalBase.desktop")
-                    if (file.isFile) {
-                        val shortcut = Shortcut(container, file)
-                        val current = GameDetails.from(shortcut)
-                        GameDetails(
-                            steamAppId = artAppId,
-                            genres = current.genres.ifEmpty { details?.genres.orEmpty() },
-                            description = current.description ?: details?.shortDescription,
-                            releaseYear = current.releaseYear ?: details?.releaseYear,
-                            metacritic = current.metacritic ?: details?.metacritic,
-                        ).writeTo(shortcut)
-                        onCoverArtReady()
-                    }
+                    if (linkSteamApp(container, finalBase, artAppId, details)) onCoverArtReady()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Name/cover-art resolution failed for $base", e)
             }
         }, "exe-import-cover-art").start()
         return shortcutFile
+    }
+
+    /**
+     * Links the shortcut [base] to Steam app [appId] and fills its Game Details (genres, description,
+     * year, Metacritic) from the store; anything already set is kept. [details] when the caller has
+     * them, else fetched. False when the shortcut is not there. BLOCKING - call off the main thread.
+     */
+    fun linkSteamApp(
+        container: Container, base: String, appId: Int,
+        details: SteamStoreSearch.SteamGameDetails? = runCatching { SteamStoreSearch.fetchDetails(appId) }.getOrNull(),
+    ): Boolean {
+        val file = File(container.getDesktopDir(), "$base.desktop")
+        if (!file.isFile) return false
+        val shortcut = Shortcut(container, file)
+        val current = GameDetails.from(shortcut)
+        GameDetails(
+            steamAppId = appId,
+            genres = current.genres.ifEmpty { details?.genres.orEmpty() },
+            description = current.description ?: details?.shortDescription,
+            releaseYear = current.releaseYear ?: details?.releaseYear,
+            metacritic = current.metacritic ?: details?.metacritic,
+        ).writeTo(shortcut)
+        return true
     }
 
     /**

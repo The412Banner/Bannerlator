@@ -1789,6 +1789,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     // shortcuts + wrong cover art). Reuses the existing rename mechanism on Save.
     if (showRenameDialog) {
         val confirmContainer = vm.containers().getOrNull(renameDialogContainerIndex)
+        // The result this game is linked to: the appId it was given, else the one whose title is
+        // the game's (the rule the import's own Steam lookup uses). Save commits it.
+        val linkedHit = confirmAppId ?: steamSearchResults
+            .map { it to SteamStoreSearch.nameMatch(confirmNameField, it.name) }
+            .filter { it.second >= 2 }.maxByOrNull { it.second }?.first?.appId
         OutlinedAlertDialog(
             onDismissRequest = { showRenameDialog = false },
             title = { Text("Confirm game") },
@@ -1810,11 +1815,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             steamSearching = false
                         }
                     }
-                    // The result this game is linked to: the appId it was given, else the one whose
-                    // title is the game's (the rule the import's own Steam lookup uses).
-                    val linkedHit = confirmAppId ?: steamSearchResults
-                        .map { it to SteamStoreSearch.nameMatch(confirmNameField, it.name) }
-                        .filter { it.second >= 2 }.maxByOrNull { it.second }?.first?.appId
                     OutlinedTextField(
                         value = confirmNameField,
                         onValueChange = { confirmNameField = it; confirmNameEdited = true },
@@ -1864,11 +1864,16 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                             color = OnSurfaceVariant,
                             fontSize = 12.sp,
                         )
-                        steamSearchResults.forEach { hit ->
+                        // The linked result first, tinted, so the match is the first thing seen.
+                        steamSearchResults.sortedByDescending { it.appId == linkedHit }.forEach { hit ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (hit.appId == linkedHit) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                        else androidx.compose.ui.graphics.Color.Transparent
+                                    )
                                     .clickable {
                                         // Set name + record appId; edit-guard off so the async
                                         // auto-rename won't clobber the user's explicit pick.
@@ -1889,7 +1894,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                             }
                                         }
                                     }
-                                    .padding(vertical = 6.dp),
+                                    .padding(horizontal = 6.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
@@ -1937,12 +1942,26 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             confirmButton = {
                 TextButton(onClick = {
                     val name = confirmNameField.trim()
-                    // Record the confirmed appId on the current file first, so it rides through the rename.
-                    confirmAppId?.let { id ->
+                    // The linked game (tapped, or the marked match) is committed by Save itself: its id
+                    // goes on the current file first, so it rides through the rename.
+                    val tapped = confirmAppId != null
+                    val linkId = confirmAppId ?: linkedHit
+                    linkId?.let { id ->
                         confirmContainer?.let { c -> recordSteamAppId(c, renameDialogName, id) }
                     }
+                    val oldBase = renameDialogName
                     if (name.isNotEmpty()) {
                         vm.renameImportedShortcut(renameDialogContainerIndex, renameDialogName, name)
+                    }
+                    if (linkId != null && confirmContainer != null) {
+                        val safe = name.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+                        val base = if (safe.isNotBlank() && File(confirmContainer.getDesktopDir(), "$safe.desktop").isFile) safe else oldBase
+                        scope.launch(Dispatchers.IO) {
+                            // Its Steam cover (unless one was just applied by tapping) and its details.
+                            if (!tapped) applySteamCover(confirmContainer, base, linkId)
+                            ExeShortcutImporter.linkSteamApp(confirmContainer, base, linkId)
+                            withContext(Dispatchers.Main) { vm.refresh() }
+                        }
                     }
                     showRenameDialog = false
                     Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()

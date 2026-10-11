@@ -6071,20 +6071,21 @@ private fun GameDetailsSheet(
         }
     }
 
-    if (showArtPicker) {
-        GameArtPickerSheet(
-            steamAppId = linkedAppId,
-            name = nameField.ifBlank { shortcut.name },
-            onPick = { url -> pickedArt = url; useSteamArt = false; showArtPicker = false },
-            onPickFile = {
-                showArtPicker = false
-                artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
-            },
-            onDismiss = { showArtPicker = false },
-        )
-    }
-
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // The art picker opens from inside this dialog's window: a sheet from outside it would sit
+        // under the full-screen dialog, out of sight.
+        if (showArtPicker) {
+            GameArtPickerSheet(
+                steamAppId = linkedAppId,
+                name = nameField.ifBlank { shortcut.name },
+                onPick = { url -> pickedArt = url; useSteamArt = false; showArtPicker = false },
+                onPickFile = {
+                    showArtPicker = false
+                    artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
+                },
+                onDismiss = { showArtPicker = false },
+            )
+        }
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header: Close · title · Save.

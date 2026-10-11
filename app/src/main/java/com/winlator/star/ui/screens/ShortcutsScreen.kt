@@ -5537,10 +5537,9 @@ private fun ShortcutOverflowButton(
         IconButton(onClick = { menuExpanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Options", tint = OnSurfaceVariant)
         }
-        DropdownMenu(
+        ScrollingDropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
-            modifier = Modifier.outlinedMenuCard(),
         ) {
             if (onSettings != null) {
                 DropdownMenuItem(
@@ -5856,10 +5855,9 @@ private fun ShortcutGridItem(
         }
 
         // Long-press context menu
-        DropdownMenu(
+        ScrollingDropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
-            modifier = Modifier.outlinedMenuCard(),
         ) {
             if (onSettings != null) {
                 DropdownMenuItem(text = { Text("Settings") }, leadingIcon = { Icon(Icons.Filled.Settings, null) }, onClick = { menuExpanded = false; onSettings() })

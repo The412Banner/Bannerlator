@@ -864,10 +864,9 @@ private fun ContainerItem(
                         tint = OnSurfaceVariant,
                     )
                 }
-                DropdownMenu(
+                ScrollingDropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
                 ) {
                     DropdownMenuItem(
                         text = { Text("Edit") },

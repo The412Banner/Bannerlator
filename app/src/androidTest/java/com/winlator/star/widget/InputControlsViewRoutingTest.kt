@@ -15,9 +15,12 @@ import com.winlator.star.R
 import com.winlator.star.inputcontrols.Binding
 import com.winlator.star.inputcontrols.ControlElement
 import com.winlator.star.inputcontrols.ControlsProfile
+import com.winlator.star.math.XForm
 import com.winlator.star.xserver.ScreenInfo
 import com.winlator.star.xserver.XServer
+import com.winlator.star.xserver.Pointer as XPointer
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -222,6 +225,75 @@ class InputControlsViewRoutingTest {
         }
     }
 
+    @Test
+    fun scrcpyModeMovesCursorToTouchPositionWithoutTrackpadTracking() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val fixture = createFixture(includeTargetButton = false)
+            fixture.touchpad.setScrcpyMode(true)
+            send(fixture.view, motionEvent(
+                1L,
+                1L,
+                MotionEvent.ACTION_DOWN,
+                Pointer(0, 100f, 100f),
+            ))
+            assertTrue(fixture.xServer.pointer.isButtonPressed(
+                XPointer.Button.BUTTON_LEFT,
+            ))
+            send(fixture.view, motionEvent(
+                1L,
+                2L,
+                MotionEvent.ACTION_MOVE,
+                Pointer(0, 450f, 600f),
+            ))
+
+            val expected = XForm.transformPoint(XForm.getInstance(), 450f, 600f)
+            assertEquals(expected[0].toInt(), fixture.xServer.pointer.x.toInt())
+            assertEquals(expected[1].toInt(), fixture.xServer.pointer.y.toInt())
+            assertTrue(activeTouchpadFingerCount(fixture.touchpad) == 0)
+            assertTrue(fixture.xServer.pointer.isButtonPressed(
+                XPointer.Button.BUTTON_LEFT,
+            ))
+
+            send(fixture.view, motionEvent(
+                1L,
+                3L,
+                MotionEvent.ACTION_UP,
+                Pointer(0, 450f, 600f),
+            ))
+            assertFalse(fixture.xServer.pointer.isButtonPressed(
+                XPointer.Button.BUTTON_LEFT,
+            ))
+        }
+    }
+
+    @Test
+    fun scrcpyModeCancelReleasesHeldClick() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val fixture = createFixture(includeTargetButton = false)
+            fixture.touchpad.setScrcpyMode(true)
+            send(fixture.view, motionEvent(
+                1L,
+                1L,
+                MotionEvent.ACTION_DOWN,
+                Pointer(0, 100f, 100f),
+            ))
+            assertTrue(fixture.xServer.pointer.isButtonPressed(
+                XPointer.Button.BUTTON_LEFT,
+            ))
+
+            send(fixture.view, motionEvent(
+                1L,
+                2L,
+                MotionEvent.ACTION_CANCEL,
+                Pointer(0, 100f, 100f),
+            ))
+
+            assertFalse(fixture.xServer.pointer.isButtonPressed(
+                XPointer.Button.BUTTON_LEFT,
+            ))
+        }
+    }
+
     private fun createFixture(includeTargetButton: Boolean): Fixture {
         val context = ContextThemeWrapper(
             ApplicationProvider.getApplicationContext(),
@@ -266,7 +338,7 @@ class InputControlsViewRoutingTest {
         view.setTouchpadView(touchpad)
         view.setProfile(profile)
         view.setShowTouchscreenControls(true)
-        return Fixture(view, touchpad, profile, expandable, target)
+        return Fixture(view, touchpad, profile, expandable, target, xServer)
     }
 
     private fun tap(view: InputControlsView, pointerId: Int, element: ControlElement) {
@@ -344,5 +416,6 @@ class InputControlsViewRoutingTest {
         val profile: ControlsProfile,
         val expandable: ControlElement,
         val target: ControlElement?,
+        val xServer: XServer,
     )
 }

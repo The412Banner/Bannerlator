@@ -2036,6 +2036,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setIsRelativeMouseMovement(isRelativeMouseMovement);
         state.setIsMouseDisabled(isMouseDisabled);
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
+        boolean scrcpyMode = preferences.getBoolean("scrcpy_mode", false);
+        if (scrcpyMode && preferences.getBoolean("touchscreen_toggle", false)) {
+            preferences.edit().putBoolean("scrcpy_mode", false).apply();
+            scrcpyMode = false;
+        }
+        state.setScrcpyMode(scrcpyMode);
         state.onClose                  = () -> runOnUiThread(() -> drawerLayout.closeDrawers());
         state.onKeyboard               = this::showGuestKeyboard;
         state.onInputControls          = () -> showInputControlsDialog();
@@ -2398,6 +2404,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // (state.reset() above zeroes it, so this has to come after).
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
         state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
+        state.onScrcpyModeChange = () -> setScrcpyMode(!preferences.getBoolean("scrcpy_mode", false));
         // Per-gesture config shown under the Cursor to Touch toggle. Seed from prefs; the push to the
         // touchpad happens in setupUI, which is where that view is actually built.
         state.setGestureDragSelect(preferences.getBoolean("gesture_drag_select", true));
@@ -9097,6 +9104,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandCursorView.setVisibility(View.GONE);
         final float[] last = {0f, 0f};
         final float[] moved = {0f};
+        final boolean[] waylandScrcpyGesture = {false};
         final float SENS = 1.4f;
         waylandSurfaceView.setOnTouchListener((v, ev) -> {
             int vw = v.getWidth(), vh = v.getHeight();
@@ -9146,15 +9154,19 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // instead of moving by the drag, so a tap lands where it is made. The same switch the
             // X11 touchpad honours; here it was read by nothing, so the chip flipped and changed
             // nothing in a Steam (Linux) session.
-            boolean cursorToTouch = preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false);
+            boolean scrcpyMode = preferences != null && preferences.getBoolean("scrcpy_mode", false);
+            boolean cursorToTouch = waylandScrcpyGesture[0] || scrcpyMode
+                    || (preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false));
             switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
+                    waylandScrcpyGesture[0] = scrcpyMode;
                     last[0] = ev.getX(); last[1] = ev.getY(); moved[0] = 0f;
                     if (cursorToTouch) {
                         waylandCursorX = Math.max(0f, Math.min(vw, ev.getX()));
                         waylandCursorY = Math.max(0f, Math.min(vh, ev.getY()));
                         updateWaylandCursor(vw, vh, 1); // motion: the client sees the hover before the tap
                     }
+                    if (waylandScrcpyGesture[0]) updateWaylandCursor(vw, vh, 0);
                     break;
                 case android.view.MotionEvent.ACTION_MOVE: {
                     float dx = (ev.getX() - last[0]) * SENS, dy = (ev.getY() - last[1]) * SENS;
@@ -9171,11 +9183,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     break;
                 }
                 case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    if (moved[0] < 14f) { // a tap (not a drag) -> left click at the cursor
+                    if (waylandScrcpyGesture[0]) {
+                        updateWaylandCursor(vw, vh, 2);
+                    } else if (moved[0] < 14f) { // a tap (not a drag) -> left click at the cursor
                         updateWaylandCursor(vw, vh, 0); // button press
                         updateWaylandCursor(vw, vh, 2); // button release
                     }
+                    waylandScrcpyGesture[0] = false;
+                    break;
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (waylandScrcpyGesture[0]) updateWaylandCursor(vw, vh, 2);
+                    waylandScrcpyGesture[0] = false;
                     break;
             }
             return true;
@@ -11564,6 +11582,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The preference persists across launches but was never restored onto the view, so
         // Cursor to Touch silently reverted to off every session until it was toggled again.
         touchpadView.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
+        touchpadView.setScrcpyMode(preferences.getBoolean("scrcpy_mode", false));
         applyGestureConfig(); // wiring ran before this view existed; push the seeded set now
         // A Steam (Linux) session set to Touchscreen: fingers go past this view to the compositor's
         // surface, which hands them to gamescope as real touches (Big Picture scrolls under one).
@@ -16375,6 +16394,16 @@ return true;
         XServerDrawerState.INSTANCE.setMoveCursorToTouchpoint(newValue);
     } // Closes MoveCursorToTouchpoint
 
+    private void setScrcpyMode(boolean enabled) {
+        SharedPreferences.Editor editor = preferences.edit().putBoolean("scrcpy_mode", enabled);
+        if (enabled) editor.putBoolean("touchscreen_toggle", false);
+        editor.apply();
+
+        XServerDrawerState state = XServerDrawerState.INSTANCE;
+        state.setScrcpyMode(enabled);
+        if (touchpadView != null) touchpadView.setScrcpyMode(enabled);
+    }
+
     /** Persist the drawer's gesture settings and apply them to the live touchpad. */
     private void applyGestureConfig() {
         XServerDrawerState state = XServerDrawerState.INSTANCE;
@@ -17020,10 +17049,6 @@ return true;
 
 
 } // Closes the XServerDisplayActivity class
-
-
-
-
 
 
 

@@ -131,6 +131,9 @@ object XServerDrawerState {
     private val _moveCursorToTouchpoint  = MutableStateFlow(false)
     val moveCursorToTouchpoint: StateFlow<Boolean> = _moveCursorToTouchpoint
 
+    private val _scrcpyMode = MutableStateFlow(false)
+    val scrcpyMode: StateFlow<Boolean> = _scrcpyMode
+
     // Per-gesture config, shown in the Controls > Mouse pane whenever Cursor to Touch is on. Each
     // gesture is independently switchable because which of them is welcome is per-game: an RTS wants
     // both, a mouse-look shooter wants neither. Seeded from prefs and pushed to TouchpadView live.
@@ -489,6 +492,7 @@ object XServerDrawerState {
     @JvmField var onLogs:                   Runnable? = null
     @JvmField var onExit:                   Runnable? = null
     @JvmField var onMoveCursorToTouchpoint: Runnable? = null
+    @JvmField var onScrcpyModeChange: Runnable? = null
     // Fired when any gesture chip/slider under the Cursor to Touch cog changes; the activity reads
     // the flows above, persists them, and pushes the set to the live TouchpadView.
     @JvmField var onGestureConfigChange:    Runnable? = null
@@ -585,6 +589,7 @@ object XServerDrawerState {
     fun setWaylandHdrScreenCapable(v: Boolean)  { _waylandHdrScreenCapable.value = v }
     fun setIsMouseDisabled(v: Boolean)         { _isMouseDisabled.value = v }
     fun setMoveCursorToTouchpoint(v: Boolean)  { _moveCursorToTouchpoint.value = v }
+    fun setScrcpyMode(v: Boolean)              { _scrcpyMode.value = v }
     fun setGestureDragSelect(v: Boolean)          { _gestureDragSelect.value = v }
     fun setGestureLongPressRightClick(v: Boolean) { _gestureLongPressRightClick.value = v }
     fun setGestureLongPressMs(v: Int)             { _gestureLongPressMs.value = v }
@@ -747,6 +752,7 @@ object XServerDrawerState {
         _waylandHdrScreenCapable.value = true
         _isMouseDisabled.value = false
         _moveCursorToTouchpoint.value = false
+        _scrcpyMode.value = false
         _gestureDragSelect.value = true
         _gestureLongPressRightClick.value = true
         _gestureLongPressMs.value = 300
@@ -805,7 +811,7 @@ object XServerDrawerState {
         onToggleFullscreen = null; onSetFullscreenMode = null; onSetScreenAlignment = null; onPauseResume = null; onPipMode = null
         onSetSwipeButtons = null; onSetSwipeDpad = null; onSetSwipeSticks = null
         onActiveWindows = null; onTaskManager = null; onMagnifier = null
-        onLogs = null; onExit = null; onMoveCursorToTouchpoint = null; onGestureConfigChange = null
+        onLogs = null; onExit = null; onMoveCursorToTouchpoint = null; onScrcpyModeChange = null; onGestureConfigChange = null
         onRelativeMouseMovement = null; onDisableMouse = null
         onNativeRenderingToggle = null; onFpsConfigApply = null
         onWaylandZeroCopyToggle = null; onWaylandZeroCopyPoll = null

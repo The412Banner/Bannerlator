@@ -50,6 +50,10 @@ public class TouchpadView extends View {
     private final float[] xform = XForm.getInstance();
     private boolean moveCursorToTouchpoint = false; //
     private boolean simTouchScreen = false;
+    private boolean scrcpyMode = false;
+    private static final int INVALID_POINTER_ID = -1;
+    private int scrcpyPointerId = INVALID_POINTER_ID;
+    private boolean scrcpyLeftButtonPressed;
     // ── Cursor-to-Touch gestures ──
     // With Cursor to Touch on the pointer is absolutely positioned under the finger, which makes a
     // touchscreen-style gesture set meaningful: drag = band select, hold = right click.
@@ -307,9 +311,55 @@ public class TouchpadView extends View {
             return handleStylusEvent(event);
         } else if (isTouchscreenMode) {
             return handleTouchscreenEvent(event);
+        } else if (scrcpyMode && !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            return handleScrcpyEvent(event);
         } else {
             return handleTouchpadEvent(event);
         }
+    }
+
+    private boolean handleScrcpyEvent(MotionEvent event) {
+        int action = event.getActionMasked();
+        int pointerIndex = event.getActionIndex();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                scrcpyPointerId = event.getPointerId(pointerIndex);
+                moveScrcpyPointer(event, pointerIndex);
+                if (pointerButtonLeftEnabled) {
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                    scrcpyLeftButtonPressed = true;
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int activePointerIndex = event.findPointerIndex(scrcpyPointerId);
+                if (activePointerIndex >= 0) moveScrcpyPointer(event, activePointerIndex);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                if (event.getPointerId(pointerIndex) == scrcpyPointerId) {
+                    moveScrcpyPointer(event, pointerIndex);
+                    releaseScrcpyPointerButton();
+                    scrcpyPointerId = INVALID_POINTER_ID;
+                }
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                releaseScrcpyPointerButton();
+                scrcpyPointerId = INVALID_POINTER_ID;
+                break;
+        }
+        return true;
+    }
+
+    private void moveScrcpyPointer(MotionEvent event, int pointerIndex) {
+        float[] transformedPoint = XForm.transformPoint(
+                xform, event.getX(pointerIndex), event.getY(pointerIndex));
+        xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
+    }
+
+    private void releaseScrcpyPointerButton() {
+        if (!scrcpyLeftButtonPressed) return;
+        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+        scrcpyLeftButtonPressed = false;
     }
 
     private void resetTouchscreenTimeout() {
@@ -780,6 +830,8 @@ public class TouchpadView extends View {
 
     public void releaseAllInputs() {
         resetGestureState();
+        releaseScrcpyPointerButton();
+        scrcpyPointerId = INVALID_POINTER_ID;
         continueClick = false;
         removeCallbacks(delayedTouchscreenPress);
         for (byte i = 0; i < MAX_FINGERS; i++) fingers[i] = null;
@@ -930,6 +982,12 @@ public class TouchpadView extends View {
         xServer.setSimulateTouchScreen(this.simTouchScreen);
     }
 
+    public void setScrcpyMode(boolean scrcpyMode) {
+        if (this.scrcpyMode == scrcpyMode) return;
+        releaseAllInputs();
+        this.scrcpyMode = scrcpyMode;
+    }
+
     public boolean isSimTouchScreen() {
         return simTouchScreen;
     }
@@ -964,4 +1022,3 @@ public class TouchpadView extends View {
         resetGestureState();
     }
 }
-

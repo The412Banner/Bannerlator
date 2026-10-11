@@ -3088,7 +3088,11 @@ private data class ToggleChipItem(
 // row is where the vertical space comes back — a Switch row costs ~4x the height of a chip.
 // Disabled chips keep ToggleRow's alpha-0.4 grey-out and swallow taps.
 @Composable
-private fun ToggleChipGrid(items: List<ToggleChipItem>, perRow: Int = 3) {
+private fun ToggleChipGrid(
+    items: List<ToggleChipItem>,
+    perRow: Int = 3,
+    centerIncompleteRows: Boolean = true,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -3098,10 +3102,9 @@ private fun ToggleChipGrid(items: List<ToggleChipItem>, perRow: Int = 3) {
                 modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Split the padding for a short final row across both sides so it sits CENTRED,
-                // and every chip in the grid keeps the identical width (no odd-sized leftovers).
+                // Weighted spacers keep short rows aligned as requested without changing chip widths.
                 val missing = perRow - row.size
-                val leading = missing / 2
+                val leading = if (centerIncompleteRows) missing / 2 else 0
                 repeat(leading) { Spacer(Modifier.weight(1f)) }
                 row.forEach { item ->
                     val isOn = item.checked && item.enabled
@@ -3855,6 +3858,7 @@ private fun ControlsContent(state: XServerDrawerState) {
     val initHaptics by XServerDialogState.hapticsEnabled.collectAsState()
 
     val moveCursorToTouch by state.moveCursorToTouchpoint.collectAsState()
+    val scrcpyMode by state.scrcpyMode.collectAsState()
     val isRelativeMouse by state.isRelativeMouseMovement.collectAsState()
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val isMouseDisabled by state.isMouseDisabled.collectAsState()
@@ -4005,19 +4009,25 @@ private fun ControlsContent(state: XServerDrawerState) {
 
             // Each of these flips its flag host-side and stays open — like the fullscreen selector, the
             // drawer keeps rendering so the chip's new on/off state is visible where you tapped it.
+            val scrcpyLabel = stringResource(R.string.scrcpy_mode)
+            val mouseControls = buildList {
+                add(ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
+                    state.onMoveCursorToTouchpoint?.run()
+                })
+                add(ToggleChipItem("Relative Mouse", isRelativeMouse) {
+                    state.onRelativeMouseMovement?.run()
+                })
+                add(ToggleChipItem("Disable Mouse", isMouseDisabled) {
+                    state.onDisableMouse?.run()
+                })
+                add(ToggleChipItem(scrcpyLabel, scrcpyMode) {
+                    state.onScrcpyModeChange?.run()
+                })
+            }
             ToggleChipGrid(
-                listOf(
-                    ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
-                        state.onMoveCursorToTouchpoint?.run()
-                    },
-                    ToggleChipItem("Relative Mouse", isRelativeMouse) {
-                        state.onRelativeMouseMovement?.run()
-                    },
-                    ToggleChipItem("Disable Mouse", isMouseDisabled) {
-                        state.onDisableMouse?.run()
-                    },
-                ),
-                perRow = 3
+                mouseControls,
+                perRow = 3,
+                centerIncompleteRows = false,
             )
 
             if (isWaylandSession) {
@@ -4033,7 +4043,7 @@ private fun ControlsContent(state: XServerDrawerState) {
             // Tied directly to the toggle: the gestures only exist in absolute-cursor mode, so the
             // pane appears as part of switching Cursor to Touch on and leaves with it. No cog — one
             // less tap, and turning the mode on now shows you exactly what you turned on.
-            if (moveCursorToTouch) TouchGestureSettings(state)
+            if (moveCursorToTouch && !scrcpyMode) TouchGestureSettings(state)
         }
 
         // ── Vibration ──

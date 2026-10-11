@@ -74,6 +74,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -118,6 +119,7 @@ import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -305,6 +307,8 @@ internal fun DeckHome(
         FilteredEmpty(onClear = { filter = LibraryFilter(sort = filter.sort) }, onAddGame = onAddGame)
     }
 
+    val shelfScroll = rememberScrollState()
+    val heroScope = rememberCoroutineScope()
     if (!hasGames) {
         DeckEmptyLibrary(
             modifier = Modifier.fillMaxSize().padding(gutter),
@@ -315,7 +319,7 @@ internal fun DeckHome(
         LibraryMode.SHELF -> Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(shelfScroll)
                 .padding(horizontal = gutter, vertical = 16.dp),
         ) {
             // The landscape side rails free the top bar's height, so the hero takes a bigger share of it.
@@ -345,6 +349,9 @@ internal fun DeckHome(
                     // An Android game has no per-game settings (see gameMenuOffers).
                     onSettings = if (gameMenuOffers(GameMenuAction.SETTINGS, s)) ({ actions.perform(GameMenuAction.SETTINGS, s) }) else null,
                     onOptions = { menuFor = s },
+                    // Focus bringing the buttons into view stops at their edge and leaves the hero's top cut off;
+                    // the hero is the page's first item, so reaching it means the page is back at the top.
+                    onButtonsFocused = { heroScope.launch { shelfScroll.animateScrollTo(0) } },
                 )
             }
             Spacer(Modifier.height(14.dp))
@@ -621,6 +628,7 @@ private fun DeckHero(
     onGamePage: () -> Unit,
     onSettings: (() -> Unit)?,
     onOptions: () -> Unit,
+    onButtonsFocused: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(24.dp)
@@ -704,6 +712,7 @@ private fun DeckHero(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(top = 8.dp)
+                    .onFocusChanged { if (it.hasFocus) onButtonsFocused() }
                     .horizontalScroll(rememberScrollState())
                     // Room for the focus glow, which a scroll container would otherwise clip.
                     .padding(6.dp),

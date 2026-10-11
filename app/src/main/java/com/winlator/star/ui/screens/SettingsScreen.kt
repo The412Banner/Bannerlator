@@ -595,7 +595,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
             Button(
                 onClick = {
                     checkingUpdate = true
-                    UpdateManager.check(context) { info ->
+                    UpdateManager.check(context, force = true) { info ->
                         activity?.runOnUiThread {
                             updateInfo = info
                             checkingUpdate = false
@@ -623,7 +623,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     UpdateManager.setIncludePrereleases(context, it)
                     // Re-check immediately so the readout reflects the new setting.
                     checkingUpdate = true
-                    UpdateManager.check(context) { info ->
+                    UpdateManager.check(context, force = true) { info ->
                         activity?.runOnUiThread { updateInfo = info; checkingUpdate = false }
                     }
                 })

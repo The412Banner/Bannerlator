@@ -140,8 +140,11 @@ jobs:
           --arg lud "Bannerlator-${N}-ludashi.apk" \
           --arg pbg "Bannerlator-${N}-pubg.apk" \
           --arg atu "Bannerlator-${N}-antutu.apk" \
+          --arg base "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${{ inputs.release_tag }}" \
           '{versionCode:$vc, versionName:$vn, notes:$notes, highlights:$hl[0], publishedAt:$date, minSupported:1,
             apk:{"com.winlator.banner":$std,"com.ludashi.benchmark":$lud,"com.tencent.ig":$pbg,"com.antutu.ABenchMark":$atu},
+            apkUrl:{"com.winlator.banner":($base+"/"+$std),"com.ludashi.benchmark":($base+"/"+$lud),
+                    "com.tencent.ig":($base+"/"+$pbg),"com.antutu.ABenchMark":($base+"/"+$atu)},
             size:{"com.winlator.banner":$sstd,"com.ludashi.benchmark":$slud,"com.tencent.ig":$spbg,"com.antutu.ABenchMark":$satu}}' \
           > update.json
         echo "Generated update.json:"; cat update.json
@@ -165,3 +168,37 @@ jobs:
         # Only a stable cut becomes "latest"; pre-releases never do, so the
         # default (toggle-off) updater keeps pointing at the last stable.
         make_latest: ${{ inputs.make_prerelease != 'true' }}
+
+    - name: Publish the manifest branch
+      # The app (3.1.6 on) reads update.json / update-pre.json raw from the orphan `manifest`
+      # branch: no download counter (the release asset above counted every check as a download)
+      # and no API rate limit. update-pre.json is written on every cut, update.json on stable
+      # cuts only, so the prerelease toggle and the stable channel keep their meaning. The
+      # release asset stays attached for installs older than this code. Runs after the release
+      # exists, so the absolute apkUrl entries never point at a release that is not there yet.
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ inputs.release_tag }}
+        PRE: ${{ inputs.make_prerelease }}
+      run: |
+        set -e
+        mkdir manifest-wt && cd manifest-wt
+        git init -q
+        git config user.name "The412Banner"
+        git config user.email "the412banner@users.noreply.github.com"
+        git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        if git fetch -q --depth 1 origin manifest 2>/dev/null; then
+          git checkout -q -b manifest FETCH_HEAD
+        else
+          git checkout -q --orphan manifest
+          printf '%s\n' "# Bannerlator update manifests" "" \
+            "Written by release.yml on every cut; read raw by the in-app updater." \
+            "- update.json: the latest STABLE release" \
+            "- update-pre.json: the latest release of any kind (prerelease channel)" > README.md
+        fi
+        cp ../update.json update-pre.json
+        [ "$PRE" = "true" ] || cp ../update.json update.json
+        git add -A
+        git commit -q -m "manifest: ${TAG}" || { echo "manifest unchanged"; exit 0; }
+        git push -q origin manifest
+        echo "manifest branch updated for ${TAG}"

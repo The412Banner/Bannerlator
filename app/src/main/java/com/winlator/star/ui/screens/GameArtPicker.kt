@@ -74,20 +74,22 @@ object GameArtSources {
         listOf(steam, grid, shots).awaitAll().filterNotNull().filter { it.choices.isNotEmpty() }
     }
 
-    /** Steam's library art: the portrait cover (and its 2x), the store header, the library hero. */
+    /** Steam's art for the linked app, by the files Steam itself lists (only ones that exist). */
     private fun steamArt(appId: Int?): ArtSource? {
         appId ?: return null
-        val base = "$STEAM_ASSETS/$appId"
-        return ArtSource(
-            "Steam", "Library art for Steam app $appId",
+        val listed = runCatching { SteamStoreSearch.libraryAssets(appId) }.getOrDefault(LinkedHashMap())
+        val choices = if (listed.isNotEmpty()) {
+            listed.map { (label, url) -> ArtChoice(url, url, label) }
+        } else {
+            // The store's list is unavailable: the usual file names, some of which a game may lack.
+            val base = "$STEAM_ASSETS/$appId"
             listOf(
                 ArtChoice(SteamStoreSearch.coverUrl(appId), SteamStoreSearch.coverUrl(appId), "Cover"),
-                ArtChoice("$base/library_600x900_2x.jpg", "$base/library_600x900_2x.jpg", "Cover 2x"),
                 ArtChoice(SteamStoreSearch.headerUrl(appId), SteamStoreSearch.headerUrl(appId), "Header"),
-                ArtChoice("$base/library_hero.jpg", "$base/library_hero.jpg", "Hero"),
                 ArtChoice("$base/capsule_616x353.jpg", "$base/capsule_616x353.jpg", "Capsule"),
-            ),
-        )
+            )
+        }
+        return ArtSource("Steam", "Library and store art for Steam app $appId", choices)
     }
 
     private fun gridArt(context: Context, appId: Int?, name: String): ArtSource? {

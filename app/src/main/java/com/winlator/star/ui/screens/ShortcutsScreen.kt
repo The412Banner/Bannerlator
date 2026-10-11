@@ -10818,7 +10818,11 @@ private fun downloadBitmapOrNull(url: String): Bitmap? = try {
 internal fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
     val shortcutFile = File(container.getDesktopDir(), "$base.desktop")
     if (!shortcutFile.isFile) return null
-    val bmp = downloadBitmapOrNull(SteamStoreSearch.coverUrl(appId))
+    // The tall library cover Steam lists for the app (older games name it differently), else the
+    // usual cover file, else the header.
+    val listed = runCatching { SteamStoreSearch.libraryAssets(appId) }.getOrDefault(LinkedHashMap())
+    val bmp = (listed["Cover"] ?: listed["Store cover"])?.let { downloadBitmapOrNull(it) }
+        ?: downloadBitmapOrNull(SteamStoreSearch.coverUrl(appId))
         ?: downloadBitmapOrNull(SteamStoreSearch.headerUrl(appId))
     return try {
         val shortcut = Shortcut(container, shortcutFile)

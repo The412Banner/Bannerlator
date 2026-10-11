@@ -117,6 +117,37 @@ object SteamStoreSearch {
     }
 
     /**
+     * The art Steam lists for [appId] (IStoreBrowseService assets), as label -> URL in display order:
+     * the library cover (whatever its file is called - older games have "portrait.png" rather than
+     * library_600x900.jpg), its 2x, the store's tall capsule, header, main capsule, library hero.
+     * Only files Steam names, so nothing that 404s. Empty on failure. BLOCKING - call off the main thread.
+     */
+    fun libraryAssets(appId: Int): LinkedHashMap<String, String> {
+        val out = LinkedHashMap<String, String>()
+        if (appId <= 0) return out
+        val input = "{\"ids\":[{\"appid\":$appId}],\"context\":{\"language\":\"english\",\"country_code\":\"US\"}," +
+            "\"data_request\":{\"include_assets\":true}}"
+        val body = httpGet("https://api.steampowered.com/IStoreBrowseService/GetItems/v1?input_json=" + URLEncoder.encode(input, "UTF-8"))
+            ?: return out
+        return try {
+            val item = JSONObject(body).optJSONObject("response")?.optJSONArray("store_items")?.optJSONObject(0) ?: return out
+            val assets = item.optJSONObject("assets") ?: return out
+            val format = assets.optString("asset_url_format").takeIf { it.contains("\${FILENAME}") } ?: return out
+            for ((key, label) in listOf(
+                "library_capsule" to "Cover", "library_capsule_2x" to "Cover 2x", "hero_capsule" to "Store cover",
+                "header" to "Header", "main_capsule" to "Capsule", "library_hero" to "Hero", "library_hero_2x" to "Hero 2x",
+            )) {
+                val file = assets.optString(key).takeIf { it.isNotBlank() } ?: continue
+                out[label] = "https://shared.steamstatic.com/store_item_assets/" + format.replace("\${FILENAME}", file)
+            }
+            out
+        } catch (e: Exception) {
+            Log.w(TAG, "libraryAssets failed for $appId: ${e.message}")
+            out
+        }
+    }
+
+    /**
      * Resolves [appId] to its authoritative Steam store name via the appdetails endpoint, or null
      * if the app is unknown / delisted / the request fails. BLOCKING — call off the main thread.
      */

@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -512,6 +515,32 @@ internal fun DeckStat(value: String, label: String, modifier: Modifier = Modifie
                         .heightIn(min = 6.dp)
                         .background(cs.primary, RoundedCornerShape(3.dp)),
                 )
+            }
+        }
+    }
+}
+
+/** The portrait form of a row of [DeckStat]s: one slim strip of equal cells (value over label), split by hairlines. */
+@Composable
+internal fun DeckStatStrip(stats: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(shape)
+            .background(deckCardFill())
+            .border(1.dp, deckLine(), shape),
+    ) {
+        stats.forEachIndexed { i, (value, label) ->
+            if (i > 0) Box(Modifier.fillMaxHeight().width(1.dp).background(deckLine()))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 10.dp),
+            ) {
+                Text(value, color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(label, color = cs.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

@@ -112,6 +112,14 @@ internal fun overrideCount(s: Shortcut): Int = OVERRIDE_KEYS.count { s.getExtra(
  */
 internal fun setupSummary(s: Shortcut): String {
     AndroidGames.packageOf(s)?.let { return "Android app · $it" }
+    // The Linux Steam client has no Wine driver, DX wrapper or display backend of its own: gamescope on Wayland.
+    if (LinuxShortcuts.isLinuxEntry(s)) {
+        return listOfNotNull(
+            "Linux runtime",
+            s.getExtra("screenSize", "").takeIf { it.isNotBlank() },
+            "gamescope on Wayland",
+        ).joinToString(" · ")
+    }
     val c = s.container
     val driver = s.getExtra("graphicsDriver", c.graphicsDriver)
     val dx = s.getExtra("dxwrapper", c.getDXWrapper())

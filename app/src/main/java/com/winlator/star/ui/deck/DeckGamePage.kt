@@ -153,6 +153,8 @@ internal fun DeckGamePage(
     val s: Shortcut = shortcut
     // An Android game opens as its own app: no container, no Wine setup, no per-game settings.
     val isAndroid = remember(s) { AndroidGames.isAndroidEntry(s) }
+    // The Linux Steam client: no Wine container, DX wrapper or Steam launch method of its own.
+    val isLinux = remember(s) { LinuxShortcuts.isLinuxEntry(s) }
     // Re-read on every refresh: shortcuts is rebuilt by refresh(), so keying on it picks up new playtime and extras.
     val stats = remember(shortcuts) { readPlayStats(context, listOf(s))[s.file.path] ?: PlayStats(0L, 0, 0L) }
     val details = remember(shortcuts) { GameDetails.from(s) }
@@ -170,8 +172,10 @@ internal fun DeckGamePage(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val wide = maxWidth >= 900.dp
-        // Cover art across the top, fading into the page.
-        s.icon?.let { bmp ->
+        // Portrait: the art is a clear banner the page starts under, so the chips and stats never sit on top of it.
+        // Otherwise it runs across the top behind the page, fading into it.
+        val banner = !wide && maxHeight > maxWidth
+        if (!banner) s.icon?.let { bmp ->
             val img = remember(bmp) { bmp.asImageBitmap() }
             Image(
                 bitmap = img,
@@ -191,9 +195,7 @@ internal fun DeckGamePage(
                     },
             )
         }
-        val main: @Composable (Modifier) -> Unit = { mod ->
-            Column(modifier = mod, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        val backButton: @Composable () -> Unit = {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -206,7 +208,14 @@ internal fun DeckGamePage(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onSurface)
                     }
-                    Spacer(Modifier.width(16.dp))
+        }
+        val main: @Composable (Modifier) -> Unit = { mod ->
+            Column(modifier = mod, verticalArrangement = Arrangement.spacedBy(if (banner) 12.dp else 16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!banner) {
+                        backButton()
+                        Spacer(Modifier.width(16.dp))
+                    }
                     Icon(Icons.Filled.Storefront, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -231,6 +240,9 @@ internal fun DeckGamePage(
                 if (isAndroid) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DeckAndroidPill()
                     AndroidGames.packageOf(s)?.let { DeckPill(it) }
+                } else if (isLinux) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeckPill("Linux runtime")
+                    DeckPill("gamescope · Wayland")
                 } else FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // The container chip opens that container's settings.
                     Row(
@@ -255,16 +267,25 @@ internal fun DeckGamePage(
                     if (onSd) DeckPill("SD card")
                 }
                 // Stats: playtime, last played, achievements (Steam, when cached), storage.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val lastPlayed = lastPlayedLabel(context, stats.lastPlayed) ?: if (stats.ms > 0L) "Before tracking" else "Never"
+                if (!banner) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val tile = Modifier.widthIn(min = 150.dp, max = 240.dp)
                     DeckStat(playtimeShort(stats.ms), "Playtime", tile)
-                    DeckStat(lastPlayedLabel(context, stats.lastPlayed) ?: if (stats.ms > 0L) "Before tracking" else "Never", "Last played", tile)
+                    DeckStat(lastPlayed, "Last played", tile)
                     achievements?.let { (got, total) ->
                         DeckStat("$got / $total", "Achievements", tile, progress = got.toFloat() / total.coerceAtLeast(1))
                     }
                     DeckStat(if (stats.count > 0) "${stats.count}" else "—", if (stats.count == 1) "Launch" else "Launches", tile)
                     if (!isAndroid) DeckStat(if (onSd) "SD card" else "Internal", "Storage", tile)
-                }
+                } else DeckStatStrip(
+                    buildList {
+                        add(playtimeShort(stats.ms) to "Playtime")
+                        add(lastPlayed to "Last played")
+                        achievements?.let { (got, total) -> add("$got/$total" to "Achievements") }
+                        add((if (stats.count > 0) "${stats.count}" else "—") to (if (stats.count == 1) "Launch" else "Launches"))
+                        if (!isAndroid) add((if (onSd) "SD card" else "Internal") to "Storage")
+                    },
+                )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -311,8 +332,11 @@ internal fun DeckGamePage(
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (overrides == 0) "Uses its container’s setup"
-                                       else "$overrides setting${if (overrides == 1) "" else "s"} set just for this game",
+                                text = when {
+                                    isLinux -> "Steam (Linux) settings"
+                                    overrides == 0 -> "Uses its container’s setup"
+                                    else -> "$overrides setting${if (overrides == 1) "" else "s"} set just for this game"
+                                },
                                 color = cs.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -374,11 +398,34 @@ internal fun DeckGamePage(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = gutter, vertical = 16.dp),
+                    .padding(top = if (banner) 0.dp else 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                main(Modifier.fillMaxWidth())
-                Column {
+                // Portrait: the art as a banner of its own, with only the back button on it.
+                if (banner) Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                    s.icon?.let { bmp ->
+                        val img = remember(bmp) { bmp.asImageBitmap() }
+                        Image(
+                            bitmap = img,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                .drawWithContent {
+                                    drawContent()
+                                    // Fade only the bottom edge into the page.
+                                    drawRect(
+                                        brush = Brush.verticalGradient(0.7f to Color.Black, 1f to Color.Transparent),
+                                        blendMode = BlendMode.DstIn,
+                                    )
+                                },
+                        )
+                    }
+                    Box(Modifier.padding(start = gutter, top = 16.dp)) { backButton() }
+                }
+                main(Modifier.fillMaxWidth().padding(horizontal = gutter))
+                Column(Modifier.padding(horizontal = gutter)) {
                     DeckSectionLabel("Game menu")
                     DeckGameMenuList(s, onPlay = { launcher.requestLaunch(s) }, onAction = { actions.perform(it, s) }, onContainer = { onOpenContainer(s.container.id) })
                 }
@@ -417,7 +464,11 @@ private fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>
     fun e(a: GameMenuAction, hint: String, danger: Boolean = false) =
         if (gameMenuOffers(a, s)) null as String? to GameMenuEntry(menuTitle(a), hint, a, danger) else null
     return listOf(
-        listOf(ENTRY_PLAY to GameMenuEntry("Play", if (isAndroid) "Opens the app, as Android's own launcher would." else "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync.", null)),
+        listOf(ENTRY_PLAY to GameMenuEntry("Play", when {
+            isAndroid -> "Opens the app, as Android's own launcher would."
+            LinuxShortcuts.isLinuxEntry(s) -> "Starts the Steam client on the Linux runtime."
+            else -> "Same launch path from every view: launch options, Steam pre-flight, Goldberg, cloud-save sync."
+        }, null)),
         listOfNotNull(
             e(GameMenuAction.SETTINGS, "Display, graphics, controls and more, for this game only."),
             // Android games and the Linux Steam entry have no Wine container to open.

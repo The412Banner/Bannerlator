@@ -5960,6 +5960,7 @@ private fun GameDetailsSheet(
     val currentArt = remember(shortcut) { shortcut.customCoverArtPath?.takeIf { File(it).isFile } }
     var pickedArt by remember(shortcut) { mutableStateOf<String?>(null) }
     var useSteamArt by remember(shortcut) { mutableStateOf(false) }
+    var showArtPicker by remember(shortcut) { mutableStateOf(false) }
     val artPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             InAppFilePicker.pickedPath(result.data)?.let { pickedArt = it; useSteamArt = false }
@@ -6070,6 +6071,19 @@ private fun GameDetailsSheet(
         }
     }
 
+    if (showArtPicker) {
+        GameArtPickerSheet(
+            steamAppId = linkedAppId,
+            name = nameField.ifBlank { shortcut.name },
+            onPick = { url -> pickedArt = url; useSteamArt = false; showArtPicker = false },
+            onPickFile = {
+                showArtPicker = false
+                artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
+            },
+            onDismiss = { showArtPicker = false },
+        )
+    }
+
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -6119,12 +6133,11 @@ private fun GameDetailsSheet(
                                 .size(width = 84.dp, height = 120.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(SurfaceVariant)
-                                .clickable {
-                                    artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
-                                },
+                                .clickable { showArtPicker = true },
                             contentAlignment = Alignment.Center,
                         ) {
-                            val model: Any? = shown?.let { File(it) } ?: linkedAppId?.let { SteamStoreSearch.coverUrl(it) }
+                            val model: Any? = shown?.let { if (it.startsWith("http")) it else File(it) }
+                                ?: linkedAppId?.let { SteamStoreSearch.coverUrl(it) }
                             if (model != null) {
                                 SubcomposeAsyncImage(
                                     model = ImageRequest.Builder(context).data(model).memoryCachePolicy(CachePolicy.DISABLED).build(),
@@ -6179,9 +6192,7 @@ private fun GameDetailsSheet(
                                     "Change art",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable {
-                                        artPicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select game art"))
-                                    },
+                                    modifier = Modifier.clickable { showArtPicker = true },
                                 )
                                 if (linkedAppId != null && (pickedArt != null || (userArt && !useSteamArt))) {
                                     Text("  ·  ", fontSize = 12.sp, color = OnSurfaceVariant)
@@ -6194,7 +6205,10 @@ private fun GameDetailsSheet(
                                 }
                             }
                             when {
-                                pickedArt != null -> Text(File(pickedArt!!).name, fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                pickedArt != null -> Text(
+                                    if (pickedArt!!.startsWith("http")) "New art is applied on Save" else File(pickedArt!!).name,
+                                    fontSize = 11.sp, color = OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
                                 useSteamArt -> Text("Steam's art is applied on Save", fontSize = 11.sp, color = OnSurfaceVariant)
                             }
                         }
@@ -11886,10 +11900,10 @@ private fun ScannedGameRow(
 }
 
 /**
- * A picked image, scaled down to at most 1200 px on its long side (a phone photo would otherwise be
+ * A picked image (a file, or an online image the art picker offered), a file scaled down to at most 1200 px on its long side (a phone photo would otherwise be
  * tens of MB in memory and on disk); null when it cannot be read. Blocking - call off the main thread.
  */
-private fun loadPickedArt(path: String): Bitmap? = try {
+private fun loadPickedArt(path: String): Bitmap? = if (path.startsWith("http")) downloadBitmapOrNull(path) else try {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(path, bounds)
     var sample = 1

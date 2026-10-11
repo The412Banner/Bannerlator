@@ -725,6 +725,36 @@ public final class StarLaunchBridge {
     }
 
     /**
+     * Every portrait (600x900) cover SteamGridDB has for Steam {@code appId}, exact game by its
+     * by-platform endpoint, as a JSON array of {thumb, url} objects; "[]" for none or on failure.
+     * BLOCKING - call off the main thread.
+     */
+    public static String sgdbFetchGridsJsonBySteamAppId(Context ctx, int appId) {
+        if (appId <= 0) return "[]";
+        try {
+            String gridsJson = httpGet(
+                    "https://www.steamgriddb.com/api/v2/grids/steam/" + appId
+                            + "?dimensions=600x900&nsfw=false&mimes=image/jpeg,image/png",
+                    sgdbKey(ctx));
+            if (gridsJson == null) return "[]";
+            JSONArray grids = new JSONObject(gridsJson).optJSONArray("data");
+            if (grids == null) return "[]";
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < grids.length(); i++) {
+                JSONObject g = grids.getJSONObject(i);
+                JSONObject entry = new JSONObject();
+                entry.put("thumb", g.optString("thumb", ""));
+                entry.put("url", g.optString("url", ""));
+                out.put(entry);
+            }
+            return out.toString();
+        } catch (Exception e) {
+            Log.w(TAG, "sgdbFetchGridsJsonBySteamAppId failed for " + appId + ": " + e.getMessage());
+            return "[]";
+        }
+    }
+
+    /**
      * Searches SteamGridDB for all available covers matching {@code title}
      * and returns a JSON array of {thumb, url} objects, or "[]" on failure.
      */

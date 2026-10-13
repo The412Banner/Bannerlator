@@ -50,6 +50,8 @@ object DriverSources {
         RemoteDriverSource.json("Banners-Turnip", "$NIGHTLIES/banners-turnip_drivers.json", builtIn = true),
         RemoteDriverSource.json("StevenMXZ", "$NIGHTLIES/stevenmxz_drivers.json", builtIn = true),
         RemoteDriverSource.json("whitebelyash", "$NIGHTLIES/white_drivers.json", builtIn = true),
+        // GameHub's Rutabaga Turnip builds, repackaged as AdrenoTools zips on Nightlies release rutabaga-drivers.
+        RemoteDriverSource.json("Rutabaga", "$NIGHTLIES/rutabaga_drivers.json", builtIn = true),
     )
 
     /**

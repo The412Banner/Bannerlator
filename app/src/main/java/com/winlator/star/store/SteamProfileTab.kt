@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,7 +32,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.winlator.star.R
 import com.winlator.star.store.blsteam.BlPlayerProfile
 import com.winlator.star.store.blsteam.BlSteamEngine
 import com.winlator.star.ui.theme.LocalAccentDim
@@ -93,6 +99,7 @@ fun SteamProfileTab(
     onOpenFriends: () -> Unit,
     onOpenApp: (Int) -> Unit,
     onMessage: (String) -> Unit,
+    onChangeAccount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val self by SteamFriendsStore.self.collectAsState()
@@ -107,7 +114,7 @@ fun SteamProfileTab(
         val repo = runCatching { SteamRepository.getInstance() }.getOrNull()
         val listener = SteamRepository.SteamEventListener { ev ->
             if (ev.startsWith("LoggedIn") || ev.startsWith("SteamStatus:") ||
-                ev == "LoggedOut" || ev == "Connected"
+                ev == "LoggedOut" || ev == "Connected" || ev.startsWith("AccountSwitched:")
             ) {
                 val fresh = readSelfSteamId()
                 if (fresh != steamId) {
@@ -209,6 +216,7 @@ fun SteamProfileTab(
         onOpenFriends = onOpenFriends,
         onOpenApp = onOpenApp,
         onMessage = onMessage,
+        onChangeAccount = onChangeAccount,
     )
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -234,6 +242,7 @@ private data class ProfileTabContent(
     val onOpenFriends: () -> Unit,
     val onOpenApp: (Int) -> Unit,
     val onMessage: (String) -> Unit,
+    val onChangeAccount: () -> Unit,
 )
 
 // ── Layouts ───────────────────────────────────────────────────────────────────────────────────
@@ -437,6 +446,41 @@ private fun IdentityCard(c: ProfileTabContent) {
                 }
             }
         }
+        ChangeAccountButton(c.onChangeAccount)
+    }
+}
+
+/** The identity card's "Change account" entry — a full-width 48dp target that opens the account chooser. */
+@Composable
+private fun ChangeAccountButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        modifier = Modifier
+            .padding(start = 13.dp, end = 13.dp, bottom = 12.dp)
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .steamFocusRing(shape)
+            .clip(shape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Filled.SwitchAccount,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.steam_change_account),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+        )
     }
 }
 

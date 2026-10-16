@@ -318,6 +318,29 @@ object SaveSyncStore {
     private fun cloudSavesRoot(): File =
         File(Environment.getExternalStorageDirectory(), "Bannerlator/SteamCloudSaves")
 
+    /**
+     * Account switch: the status sidecar records per-account cloud state (last up/download, the
+     * cloud manifest hash), so park the leaving account's `_status.json` as `_status_<steamId>.json`
+     * and bring the arriving account's back (none = it starts with no cloud history). The Library
+     * folders themselves are shared by appId and are never touched.
+     */
+    internal fun swapStatusSidecar(fromSid: Long, toSid: Long) {
+        synchronized(lock) {
+            try {
+                val active = statusJsonFile()
+                if (fromSid != 0L && active.isFile) {
+                    val parked = File(active.parentFile, "_status_$fromSid.json")
+                    if (parked.exists()) parked.delete()
+                    active.renameTo(parked)
+                }
+                val incoming = File(active.parentFile, "_status_$toSid.json")
+                if (toSid != 0L && incoming.isFile && !active.exists()) incoming.renameTo(active)
+            } catch (e: Exception) {
+                Log.w(TAG, "status sidecar swap failed: ${e.message}")
+            }
+        }
+    }
+
     private fun loadRoot(): JSONObject {
         val f = statusJsonFile()
         if (!f.isFile) return JSONObject()

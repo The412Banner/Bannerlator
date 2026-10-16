@@ -80,6 +80,8 @@ public final class HeadlessSteamLogCollector {
                         context.getSharedPreferences("steam_prefs", Context.MODE_PRIVATE);
                 SteamLogRedactor.registerSecret(sp.getString("username", ""));
                 SteamLogRedactor.registerSecret(sp.getString("refresh_token", ""));
+                // …and every OTHER saved account's name and token, so they can't end up in a shared log either.
+                com.winlator.star.store.SteamAccountStore.INSTANCE.registerSecrets(context);
             } catch (Throwable ignored) {}
 
             int appId = launch != null ? launch.appId : 0;

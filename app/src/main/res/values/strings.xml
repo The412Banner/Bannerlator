@@ -998,6 +998,41 @@
         itself looks fine.
         ]]></string>
     <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
+    <!-- Steam: change account / saved accounts -->
+    <string name="steam_change_account">Change account</string>
+    <string name="steam_accounts_title">Steam accounts</string>
+    <string name="steam_accounts_use_saved">Use a saved account</string>
+    <string name="steam_account_active">Active</string>
+    <string name="steam_account_expired">Sign-in expired — tap to sign in again</string>
+    <string name="steam_account_add">Add account</string>
+    <string name="steam_account_remove_cd">Remove %1$s</string>
+    <string name="steam_account_remove_title">Remove account?</string>
+    <string name="steam_account_remove_body">%1$s will be removed from this device and its saved login deleted. Installed games and files are not touched. You can add the account again at any time.</string>
+    <string name="steam_account_remove_active_body">%1$s is the account you are signed in to. Removing it signs you out and deletes its saved login. Installed games and files are not touched.</string>
+    <string name="steam_account_remove_confirm">Remove</string>
+    <string name="steam_account_cancel">Cancel</string>
+    <string name="steam_account_close">Close</string>
+    <string name="steam_account_removed">Removed %1$s</string>
+    <string name="steam_account_switched">Switched to %1$s</string>
+    <string name="steam_account_switched_connecting">Switched to %1$s — connecting to Steam…</string>
+    <string name="steam_account_signed_in_elsewhere">Switched to %1$s, but that account is signed in on another device. Tap the status pill to reconnect once it is free.</string>
+    <string name="steam_account_needs_login">The saved sign-in for %1$s has expired. Please sign in again.</string>
+    <string name="steam_account_already_active">%1$s is already the active account.</string>
+    <string name="steam_account_blocked_download">Pause or cancel your downloads before switching accounts — a download belongs to the account that owns the game.</string>
+    <string name="steam_account_blocked_game">A game is using your Steam session. Close it before switching accounts.</string>
+    <string name="steam_account_no_network">No network connection. Connect to the internet to switch accounts.</string>
+    <string name="steam_account_busy">Already switching accounts…</string>
+    <string name="steam_account_failed">Couldn\'t switch accounts. Please try again.</string>
+    <!-- /Steam: change account / saved accounts -->
+    <!-- Steam: launch with a different account than the one the game belongs to -->
+    <string name="steam_launch_mismatch_title">Different Steam account</string>
+    <string name="steam_launch_mismatch_body">This game belongs to %1$s, but you are signed in as %2$s.</string>
+    <string name="steam_launch_mismatch_switch_launch">Switch account and launch</string>
+    <string name="steam_launch_mismatch_switching">Switching…</string>
+    <string name="steam_launch_mismatch_launch_anyway">Launch anyway</string>
+    <string name="steam_launch_no_owner_title">No account owns this game</string>
+    <string name="steam_launch_no_owner_body">None of your saved Steam accounts owns this game, so it can\'t be launched with SteamLite or Headless Steam. Sign in with an account that owns it (Add account).</string>
+    <!-- /Steam: launch with a different account than the one the game belongs to -->
     <string name="fexcore_env_var_help__volatilemetadata"><![CDATA[
         64-bit Windows programs can carry volatile metadata: the compiler marking exactly which
         memory accesses must not be reordered. FEX can read it and apply store ordering only where

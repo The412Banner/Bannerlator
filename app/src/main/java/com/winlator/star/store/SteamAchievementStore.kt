@@ -798,4 +798,27 @@ object SteamAchievementStore {
     }
 
     private fun pendingFile(ctx: Context): File = File(ctx.filesDir, PENDING_FILE)
+
+    /**
+     * Account switch: the pending queue holds unlocks earned under ONE account and sync-back writes
+     * them to whichever account is signed in, so park the leaving account's queue under its SteamID
+     * and bring the arriving account's back. Without it a queued unlock could be pushed to another
+     * account's profile.
+     */
+    internal fun swapPendingQueue(ctx: Context, fromSid: Long, toSid: Long) {
+        synchronized(pendingLock) {
+            try {
+                val active = pendingFile(ctx)
+                if (fromSid != 0L && active.exists()) {
+                    val parked = File(ctx.filesDir, "pending_achievement_sync_$fromSid.txt")
+                    if (parked.exists()) parked.delete()
+                    active.renameTo(parked)
+                }
+                val incoming = File(ctx.filesDir, "pending_achievement_sync_$toSid.txt")
+                if (toSid != 0L && incoming.exists() && !active.exists()) incoming.renameTo(active)
+            } catch (e: Exception) {
+                Log.w(TAG, "swapPendingQueue failed", e)
+            }
+        }
+    }
 }

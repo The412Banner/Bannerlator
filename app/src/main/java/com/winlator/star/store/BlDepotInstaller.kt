@@ -491,6 +491,7 @@ internal object BlDepotInstaller {
                     // the Library section below. Only clear on SUCCESS — paused/failed/cancelled keep
                     // their row (finishPaused/fail/finishCancelled) so Resume/retry still works.
                     db.deleteDownload(appId)
+                    SteamAccountStore.recordInstaller(ctx, appId)   // who downloaded it, for the launch-time account check
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
                     repo.emit("DownloadComplete:$appId")
                     DownloadRegistry.update(dmKey) {

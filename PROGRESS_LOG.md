@@ -1,5 +1,22 @@
 # Star-Compose — Progress Log
 
+## 2026-10-16 — 🎮 Live in-game controller settings: Controls > Pad (branch `feat/live-input-toggles`, not merged)
+> Three people on one branch: BANNERIN control block `b1ab7eae` (builder), live Direct XInput `99159aa7` (XInput DLL), app side `481c79b4`, `e8fa7d07`, `acc6f097`, `5edbebf6`. CI on `5edbebf6`: CI Build (artifacts only) 38982320377, bannerin check 38982322697, BANNERIN-XInput 38982325046, all green (headSha checked). **Staged** `Download/Bannerlator-live-5edbebf6.apk` (pubg) sha256 `c89da278…de8ef49`. **Not device-tested.**
+> - **PlayStation quick fix (`481c79b4`):** winebus `DisableHidraw`=1 in the registry for every launch (winedevice never sees the app's env, so PROTON_DISABLE_HIDRAW alone did not stop winebus dropping the DS4 / DualSense pad).
+> - **Launch (`e8fa7d07`, `acc6f097`):** every identity gets an SDL mapping of our layout (SDL_GAMECONTROLLERCONFIG) and the vendor HIDAPI drivers off; right after the slot files are prepared the launcher writes each slot's identity and the session control (stick pacing, Direct XInput mode + flags from `BannerinXInput.launchControlMode`) into the control block, before the guest starts.
+> - **fakeinput (both builds):** EVIOCGID / EVIOCGNAME / JSIOCGNAME take the slot's identity from `bannerin_identity()` first, then FAKE_EVDEV_IDENTITY / generic on -ENODATA (older app). Identity paths only.
+> - **Reconnect engine (`WinHandler.reconnectSlots`, `SlotReconnector`):** neutral state → block the slots → hold ≥2 frames → unplug → apply the change in the gap → 400 ms → replug → wait for the readers to re-attach (STAT_READER_ATTACHES, 2 s), one retry. Requests during a run coalesce.
+> - **Live registry (`LiveWineRegistry`, `JoystickRegistry`):** DirectInput Joysticks entries rewritten in the running prefix with `regedit /S C:\bljoy.reg` through winhandler EXEC (`execRaw`), finished when regedit has come and gone from the process list (3 s timeout).
+> - **Controls > Pad (drawer + Deck in-game menu, `LiveControllerSession`):**
+>   - Live: Stick updates Auto / Fixed / Unpaced + rate, with "Now: N Hz" (locked when BANNERIN_AXIS_* is in the env vars). Rumble motors stays live as before.
+>   - Reconnects the controller: Controller type (locked when FAKE_EVDEV_IDENTITY is in the env vars); DirectInput Hidden / Visible (locked when passthrough or the Classic pad force it); XInput Direct / Wine when "Allow in-game switching" was on at launch (the DLL's status datagram, request 16, confirms it).
+>   - Restart required: to or from the Classic DirectInput pad (winebus reads Map Controllers once); XInput source without in-game switching.
+>   - Changes are batched: 800 ms after the last one, "Reconnect now", or on closing the menu; "Next launch" saves without touching the session. Saved for the game when it owns the value, else the container.
+> - **Container editor + Deck:** "Allow in-game switching" and "Stick updates" rows with "?" help; `stickPacing` per container / per game / community config.
+> - **Linux runtime session (`5edbebf6`):** the control block lives in the app process and outlives a session, so setupLinuxSession clears it before any node exists (identity and pacing come from its env, as before).
+> - **JVM tests** (ControllerIdentity, JoystickRegistry, StickPacing, SlotReconnector, RegeditWatch): written, **not run** (CI runs no unit tests; no local Gradle).
+> - **Open:** device test of every row (GCT + joy.cpl + a game), PlayStation identities after the hidraw fix, XInput live flip with rumble, Linux session after a Wine game; then decide on merging.
+
 ## 2026-10-16 — 🎮 Controller input chain: BANNERIN transport → Direct XInput → rumble motors → controller identity → phantom-pad fix → switch cleanup (branch `feat/rumble-single-motor`, not merged)
 > Built in steps on `feat/bannerin-input` → `feat/bannerin-xinput` → `feat/rumble-single-motor`. Device = AYANEO Pocket FIT, container p11-2 Arm v14 (Proton-11.0-2-arm64ec-14), Wayland, built-in pad; probe = Game Controller Tester (SDL) plus joy.cpl and Insane 2.
 > - **BANNERIN controller transport (Rust, clean-room, `ec04d749`…`9e82b978`):** one shared-state block per player slot (`dev/bannerin/padN`), the guest diffs state into evdev events; replaces the mmap ring. Self-healing reattach, fork-safe readers. **Device-proven.**

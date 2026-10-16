@@ -312,18 +312,29 @@ public abstract class WineUtils {
     }
 
     /**
-     * winebus "Map Controllers" (HKLM\System\CurrentControlSet\Services\winebus, read by
-     * dlls/winebus.sys/main.c): absent = Wine's default, mapped. Written as 0 only while the Controller
-     * identity wants the pads presented unmapped (the Classic DirectInput pad), and removed again
-     * otherwise so a container goes back to Wine's default as soon as the identity changes back.
+     * winebus options (HKLM\System\CurrentControlSet\Services\winebus, read by
+     * dlls/winebus.sys/main.c), written before every Wine launch:
+     * <ul>
+     *   <li>"Map Controllers": absent = Wine's default, mapped. Written as 0 only while the Controller
+     *       identity wants the pads presented unmapped (the Classic DirectInput pad), removed again
+     *       otherwise so a container goes back to Wine's default as soon as the identity changes back.</li>
+     *   <li>"DisableHidraw" = 1, always. winebus prefers hidraw for some ids (DualShock 4 / DualSense)
+     *       and drops the same pad arriving any other way ("ignoring non-hidraw device"), which made
+     *       the PlayStation identities lose the pad. PROTON_DISABLE_HIDRAW cannot fix that: winebus runs
+     *       in winedevice.exe, whose Windows environment services.exe builds from the registry only
+     *       (CreateEnvironmentBlock(..., FALSE)), and winebus reads it from that environment. The option
+     *       is read per device, so it applies to every pad. No downside: Bannerlator's layers are built
+     *       --with-sdl --without-udev, so there is no hidraw bus to disable; every pad comes through SDL.</li>
+     * </ul>
      */
-    public static void setWinebusMapControllers(Container container, boolean mapControllers) {
+    public static void setWinebusOptions(Container container, boolean mapControllers) {
         File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
             registryEditor.setCreateKeyIfNotExist(false);
             for (String key : new String[]{"System\\CurrentControlSet\\Services\\winebus", "System\\ControlSet001\\Services\\winebus"}) {
                 if (mapControllers) registryEditor.removeValue(key, "Map Controllers");
                 else registryEditor.setDwordValue(key, "Map Controllers", 0);
+                registryEditor.setDwordValue(key, "DisableHidraw", 1);
             }
         }
     }

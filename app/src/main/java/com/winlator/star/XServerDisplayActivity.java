@@ -8140,7 +8140,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         Log.i("XServerDisplayActivity", "DirectInput games can see the controller: "
                 + (dinputVisible ? "on" : "off") + " (" + dinputWhy + ")");
         WineUtils.setJoystickRegistryKeys(container, dinputVisible, padIdentity);
-        WineUtils.setWinebusMapControllers(container, com.winlator.star.core.ControllerIdentity.mapControllers(padIdentity));
+        WineUtils.setWinebusOptions(container, com.winlator.star.core.ControllerIdentity.mapControllers(padIdentity));
 
         String startupServices;
         if (shortcut != null) {

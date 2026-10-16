@@ -150,6 +150,9 @@ object ShortcutExporter {
         put(effective, "scalingMode", orDefault(shortcut, "scalingMode", container?.getExtra("scalingMode")))
         // Force SSBS — effective shortcut-or-container, resolved to 1/0 like the launcher does.
         put(effective, "forceSsbs", orDefault(shortcut, "forceSsbs", container?.let { if (it.isForceSsbs()) "1" else "0" }))
+        // Direct XInput (BANNERIN) + "Allow in-game switching" — effective shortcut-or-container, 1/0.
+        put(effective, "bannerinXInput", orDefault(shortcut, "bannerinXInput", container?.let { if (it.isBannerinXInput()) "1" else "0" }))
+        put(effective, "bannerinXInputSwitching", orDefault(shortcut, "bannerinXInputSwitching", container?.let { if (it.isBannerinXInputSwitching()) "1" else "0" }))
 
         val device = Build.MANUFACTURER + " " + Build.MODEL
         val soc = DeviceIdentity.gpu(context) ?: DeviceIdentity.soc()

@@ -197,6 +197,10 @@ public class Container {
     // "Direct XInput (BANNERIN)": XInput games read the pad straight from the BANNERIN slot files
     // (core/BannerinXInput). Default off; only persisted when on.
     private boolean bannerinXInput = false;
+    // "Allow in-game switching" of Direct XInput: the BANNERIN-XInput DLLs go in for both states and Wine's
+    // own xinput is installed beside them as the forward target, so the mode can flip mid-game
+    // (core/BannerinXInput). Default off until validated; only persisted when on.
+    private boolean bannerinXInputSwitching = false;
     private ContainerManager containerManager;
 
 
@@ -1370,6 +1374,14 @@ public class Container {
         this.bannerinXInput = bannerinXInput;
     }
 
+    public boolean isBannerinXInputSwitching() {
+        return bannerinXInputSwitching;
+    }
+
+    public void setBannerinXInputSwitching(boolean bannerinXInputSwitching) {
+        this.bannerinXInputSwitching = bannerinXInputSwitching;
+    }
+
 
 
     public String getRenderer() { return renderer; }
@@ -1474,6 +1486,7 @@ public class Container {
             data.put("controllerMapping", controllerMapping);
             data.put("exclusiveXInput", exclusiveXInput);
             if (bannerinXInput) data.put("bannerinXInput", true);
+            if (bannerinXInputSwitching) data.put("bannerinXInputSwitching", true);
             data.put("renderer", renderer);
             data.put("rendererNative", rendererNative);
             data.put("rendererNativeBackend", rendererNativeBackend);
@@ -1621,6 +1634,9 @@ public class Container {
                     break;
                 case "bannerinXInput" :
                     setBannerinXInput(data.optBoolean(key, false));
+                    break;
+                case "bannerinXInputSwitching" :
+                    setBannerinXInputSwitching(data.optBoolean(key, false));
                     break;
                 case "renderer" :
                     setRenderer(data.getString(key));

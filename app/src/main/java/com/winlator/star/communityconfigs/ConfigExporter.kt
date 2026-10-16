@@ -85,6 +85,8 @@ object ConfigExporter {
         "sgsrEnabled", "sgsrSharpness", "glUpscaleSharpness", "debandEnabled", "debandStrength",
         // Force SSBS ("1" / "0"); only acted on for arm64ec Wine at launch, inert anywhere else.
         "forceSsbs",
+        // Direct XInput (BANNERIN) and its "Allow in-game switching" ("1" / "0"; core.BannerinXInput).
+        "bannerinXInput", "bannerinXInputSwitching",
     )
 
     /**

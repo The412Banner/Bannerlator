@@ -486,6 +486,73 @@ int main(int argc, char **argv) {
         CloseHandle(th);
     }
 
+    printf("== live mode: control block (identity, direct -> forward -> direct, hidden)\n");
+    {
+        CAPSEX lx;
+        ST ls;
+        VIB lv;
+        step(1300); /* block appears: direct, forward available, identity 054c:09cc */
+        double t0 = now_ms();
+        int vid_ok = 0;
+        while (!vid_ok && now_ms() - t0 < 3000) {
+            memset(&lx, 0, sizeof lx);
+            vid_ok = CAPX(1, 0, 0, &lx) == ERROR_SUCCESS && lx.vid == 0x054c;
+            if (!vid_ok) Sleep(5);
+        }
+        CHECK(vid_ok && lx.pid == 0x09cc, "GetCapabilitiesEx does not follow the control block identity (%04x:%04x)", lx.vid, lx.pid);
+        memset(&ls, 0, sizeof ls);
+        r = GS(0, &ls);
+        CHECK(r == ERROR_SUCCESS, "direct mode with a control block: slot 0 returned %lu", r);
+        DWORD before = ls.packet;
+        lv.l = lv.r = 30000;
+        r = SS(0, &lv);
+        CHECK(r == ERROR_SUCCESS, "direct SetState returned %lu", r);
+        Sleep(30);
+
+        step(1301); /* forward: Wine's xinput, which sees no HID pad on this runner */
+        t = wait_for(GS, 0, ERROR_DEVICE_NOT_CONNECTED, NULL, 4000, &ls);
+        CHECK(t >= 0, "forward mode never took over (Wine's xinput would report slot 0 not connected)");
+        printf("    forward after %.1f ms\n", t);
+        r = GSX(0, &ls);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "forward GetStateEx returned %lu", r);
+        r = CAPX(1, 0, 0, &lx);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "forward GetCapabilitiesEx returned %lu", r);
+        lv.l = lv.r = 1234;
+        r = SS(0, &lv);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "forward SetState returned %lu (Wine's xinput has no pad)", r);
+        Sleep(30);
+
+        step(1302); /* direct again */
+        t = wait_for(GS, 0, ERROR_SUCCESS, &neutral, 4000, &ls);
+        CHECK(t >= 0, "back in direct mode, slot 0 is not connected again");
+        CHECK((LONG)(ls.packet - before) > 0, "dwPacketNumber went backwards across modes (%lu -> %lu)", before, ls.packet);
+        lv.l = 20000;
+        lv.r = 10000;
+        r = SS(0, &lv);
+        CHECK(r == ERROR_SUCCESS, "direct SetState after forward returned %lu", r);
+        Sleep(30);
+
+        step(1303); /* XInput hidden */
+        t = wait_for(GS, 0, ERROR_DEVICE_NOT_CONNECTED, NULL, 4000, &ls);
+        CHECK(t >= 0, "XI_HIDDEN does not hide slot 0");
+        lv.l = lv.r = 5000;
+        r = SS(0, &lv);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "hidden SetState returned %lu", r);
+        r = CAPX(1, 0, 0, &lx);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "hidden GetCapabilitiesEx returned %lu", r);
+        KS lk;
+        r = KEY(0xff, 0, &lk);
+        CHECK(r == ERROR_DEVICE_NOT_CONNECTED, "hidden GetKeystroke(any) returned %lu", r);
+        Sleep(30);
+
+        step(1304); /* visible again, identity no longer valid */
+        t = wait_for(GS, 0, ERROR_SUCCESS, &neutral, 4000, &ls);
+        CHECK(t >= 0, "slot 0 does not come back after XI_HIDDEN is cleared");
+        memset(&lx, 0, sizeof lx);
+        r = CAPX(1, 0, 0, &lx);
+        CHECK(r == ERROR_SUCCESS && lx.vid == 0x045e && lx.pid == 0x028e, "identity not back to 045e:028e (%lu %04x:%04x)", r, lx.vid, lx.pid);
+    }
+
     printf("== every DLL reads the slot\n");
     for (size_t i = 0; i < NSPECS; i++) {
         if (!g_dll[i]) continue;

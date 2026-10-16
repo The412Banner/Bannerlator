@@ -11,17 +11,77 @@
 //!     counter (test/host_test.c checks every snapshot it reads against that rule).
 //! ```
 
+use std::ffi::CString;
 use std::fs::{self, File};
 use std::net::UdpSocket;
 use std::os::unix::fs::FileExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{fence, AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use bannerin_core::abi::*;
 use bannerin_core::pad::PadInput;
+use bannerin_core::sys;
 use bannerin_core::writer::SlotWriter;
+
+// The control block (format minor 5, 0x0B00..0x0BFF), written here the way the app's writer does it
+// (seq odd, Release fence, fields, gen++, seq even with Release). The writer engine in this tree is
+// still minor 4, so the test also raises the header's minor to 5 (test only).
+const CTL: usize = 0xb00;
+const CTL_MAGIC: u32 = u32::from_le_bytes(*b"BCTL");
+const XI_DIRECT: u32 = 1;
+const XI_FORWARD: u32 = 2;
+const XIF_FORWARD_AVAILABLE: u32 = 1;
+const XIF_HIDDEN: u32 = 2;
+const IDENTITY: [u32; 4] = [3, 0x054c, 0x09cc, 0x0100]; // bus, vendor, product, version
+
+fn word(p: *mut u8, off: usize) -> &'static AtomicU32 {
+    unsafe { &*(p.add(off) as *const AtomicU32) }
+}
+
+fn ctl_write(path: &str, mode: u32, flags: u32, id: Option<[u32; 4]>) {
+    let c = CString::new(path).unwrap();
+    let fd = sys::openat(c.as_ptr(), sys::O_RDWR | sys::O_CLOEXEC, 0).expect("open slot file");
+    let p = sys::mmap(4096, sys::PROT_READ | sys::PROT_WRITE, sys::MAP_SHARED, fd).expect("map slot file");
+    sys::close(fd);
+    let minor = word(p, 12);
+    if minor.load(Ordering::Relaxed) < 5 {
+        minor.store(5, Ordering::Release);
+    }
+    let seq = word(p, CTL + 0x08);
+    let s = seq.load(Ordering::Relaxed) & !1;
+    seq.store(s.wrapping_add(1), Ordering::Relaxed);
+    fence(Ordering::Release);
+    word(p, CTL + 0x04).store(256, Ordering::Relaxed);
+    word(p, CTL).store(CTL_MAGIC, Ordering::Relaxed);
+    word(p, CTL + 0x1c).store(mode, Ordering::Relaxed);
+    word(p, CTL + 0x20).store(flags, Ordering::Relaxed);
+    match id {
+        Some([bus, vendor, product, version]) => {
+            word(p, CTL + 0x44).store(bus, Ordering::Relaxed);
+            word(p, CTL + 0x48).store(vendor, Ordering::Relaxed);
+            word(p, CTL + 0x4c).store(product, Ordering::Relaxed);
+            word(p, CTL + 0x50).store(version, Ordering::Relaxed);
+            word(p, CTL + 0x40).store(1, Ordering::Relaxed);
+        }
+        None => word(p, CTL + 0x40).store(0, Ordering::Relaxed),
+    }
+    let gen = word(p, CTL + 0x0c);
+    gen.store(gen.load(Ordering::Relaxed).wrapping_add(1), Ordering::Relaxed);
+    seq.store(s.wrapping_add(2), Ordering::Release);
+    sys::munmap(p, 4096);
+}
+
+/// The same block into every slot file there is.
+fn ctl_all(dir: &str, mode: u32, flags: u32, id: Option<[u32; 4]>) {
+    for slot in 0..4 {
+        let path = format!("{dir}/pad{slot}");
+        if std::path::Path::new(&path).exists() {
+            ctl_write(&path, mode, flags, id);
+        }
+    }
+}
 
 const Z: [i32; AXES] = [0; AXES];
 
@@ -118,6 +178,11 @@ fn script(dir: &str, ctl: &str, port: u16) -> i32 {
                 log("step 999: done");
                 break;
             }
+            1300 => ctl_all(dir, XI_DIRECT, XIF_FORWARD_AVAILABLE, Some(IDENTITY)),
+            1301 => ctl_all(dir, XI_FORWARD, XIF_FORWARD_AVAILABLE, Some(IDENTITY)),
+            1302 => ctl_all(dir, XI_DIRECT, XIF_FORWARD_AVAILABLE, Some(IDENTITY)),
+            1303 => ctl_all(dir, XI_DIRECT, XIF_FORWARD_AVAILABLE | XIF_HIDDEN, Some(IDENTITY)),
+            1304 => ctl_all(dir, XI_DIRECT, XIF_FORWARD_AVAILABLE, None),
             _ => {
                 let w = slot0.last_mut().unwrap();
                 match n {
@@ -175,7 +240,20 @@ fn script(dir: &str, ctl: &str, port: u16) -> i32 {
     let got = packets.lock().unwrap().clone();
     log(&format!("{} rumble datagram(s):", got.len()));
     let mut seq = Vec::new();
+    let mut status = Vec::new();
     for (t, p) in &got {
+        if p.first() == Some(&16) {
+            let u32le = |i: usize| u32::from_le_bytes([p[i], p[i + 1], p[i + 2], p[i + 3]]);
+            if p.len() != 21 || &p[1..5] != b"BXS1" {
+                log(&format!("  {t:.3} s: malformed status {p:?}"));
+                ok = false;
+                continue;
+            }
+            let (req, mode, okb, gen, flags, pid, build) = (p[5], p[6], p[7], u32le(8), u32le(12), u32le(16), p[20]);
+            log(&format!("  {t:.3} s: status: requested {req}, applied {mode}, ok {okb}, gen {gen}, flags {flags:#x}, pid {pid}, build {build}"));
+            status.push((req, mode, okb, gen, flags, pid));
+            continue;
+        }
         let well_formed = p.len() == 12 && p[0] == 14 && &p[1..5] == b"BXR1";
         if !well_formed {
             log(&format!("  {t:.3} s: malformed {p:?}"));
@@ -190,13 +268,30 @@ fn script(dir: &str, ctl: &str, port: u16) -> i32 {
         }
         seq.push((slot, l, r));
     }
-    let want = vec![(0u8, 40000u16, 20000u16), (0, 0, 0), (0, 1000, 2000), (0, 0, 0)];
+    // phase 700 (start, 100 repeats, stop, nothing while disabled, resume, stop), then the live-mode
+    // phases: 30000/30000 in direct, zero on the switch to forward (Wine's xinput gets the game's
+    // SetState there, nothing comes here), 20000/10000 back in direct, zero when XInput is hidden.
+    let want = vec![
+        (0u8, 40000u16, 20000u16), (0, 0, 0), (0, 1000, 2000), (0, 0, 0),
+        (0, 30000, 30000), (0, 0, 0), (0, 20000, 10000), (0, 0, 0),
+    ];
     if seq != want {
         log(&format!("rumble sequence {seq:?}, want {want:?} (start, 100 repeats deduplicated, stop, \
                       nothing while disabled, resume on XInputEnable(TRUE), stop)"));
         ok = false;
     } else {
         log("rumble sequence as expected");
+    }
+    // status datagrams: the test process applied forward (ok), then direct again, then hidden
+    let fwd = status.iter().position(|s| s.1 == 2 && s.2 == 1);
+    let back = fwd.and_then(|i| status[i..].iter().position(|s| s.1 == 1).map(|j| i + j));
+    let hidden = back.and_then(|i| status[i..].iter().position(|s| s.4 & XIF_HIDDEN != 0).map(|j| i + j));
+    let all_ok = status.iter().all(|s| s.2 == 1);
+    if fwd.is_none() || back.is_none() || hidden.is_none() || !all_ok {
+        log(&format!("status datagrams: forward {fwd:?}, back to direct {back:?}, hidden {hidden:?}, all ok {all_ok}"));
+        ok = false;
+    } else {
+        log("status datagrams as expected (forward applied, direct again, hidden)");
     }
     if ok {
         0

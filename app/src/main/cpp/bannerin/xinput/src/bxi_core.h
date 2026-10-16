@@ -234,6 +234,85 @@ static inline void bxi_map(const uint32_t w[BXI_COPY_WORDS], uint16_t buttons, i
     out->ry = bxi_stick_y(bxi_axis(w, BXI_A_RY));
 }
 
+/* CONTROL BLOCK (format minor 5, 0x0B00..0x0BFF; written by the app, read-only here). All u32 LE.
+ * Seqlock: the writer makes ctl_seq odd, writes the fields, bumps ctl_gen, makes ctl_seq even again
+ * (release). A reader checks ctl_gen with one acquire load per call and re-reads the block only when
+ * it changed: ctl_seq even, fence, the fields, fence, ctl_seq unchanged, at most `attempts` times;
+ * when every attempt is overtaken it keeps its last good copy. Used only if the header's minor is at
+ * least 5, the magic is "BCTL" and the size at least 256; otherwise the DLL behaves as before it. */
+#define BXI_CTL_MIN_MINOR 5u
+#define BXI_CTL_OFF 0xb00u
+#define BXI_CTL_MAGIC 0x4c544342u /* "BCTL" */
+#define BXI_CTL_SIZE_MIN 256u
+#define BXI_C_MAGIC 0x00u
+#define BXI_C_SIZE 0x04u
+#define BXI_C_SEQ 0x08u
+#define BXI_C_GEN 0x0cu
+#define BXI_C_AXIS_MODE 0x10u
+#define BXI_C_AXIS_HZ 0x14u
+#define BXI_C_AXIS_AUTO_MAX 0x18u
+#define BXI_C_XI_MODE 0x1cu
+#define BXI_C_XI_FLAGS 0x20u
+#define BXI_C_ID_FLAGS 0x40u
+#define BXI_C_ID_BUS 0x44u
+#define BXI_C_ID_VENDOR 0x48u
+#define BXI_C_ID_PRODUCT 0x4cu
+#define BXI_C_ID_VERSION 0x50u
+
+#define BXI_XI_MODE_UNSET 0u   /* = direct */
+#define BXI_XI_MODE_DIRECT 1u
+#define BXI_XI_MODE_FORWARD 2u
+#define BXI_XIF_FORWARD_AVAILABLE 0x1u
+#define BXI_XIF_HIDDEN 0x2u
+#define BXI_IDF_VALID 0x1u
+
+typedef struct bxi_ctl {
+    uint32_t gen;
+    uint32_t xi_mode, xi_flags;
+    uint32_t id_flags, id_bus, id_vendor, id_product, id_version;
+} bxi_ctl;
+
+/* 1 if the file carries a usable control block. */
+static inline int bxi_ctl_present(const uint8_t *base) {
+    return bxi_ld(base, BXI_H_MINOR) >= BXI_CTL_MIN_MINOR
+        && bxi_ld(base, BXI_CTL_OFF + BXI_C_MAGIC) == BXI_CTL_MAGIC
+        && bxi_ld(base, BXI_CTL_OFF + BXI_C_SIZE) >= BXI_CTL_SIZE_MIN;
+}
+
+/* The change counter: one acquire load, the per-call check. */
+static inline uint32_t bxi_ctl_gen(const uint8_t *base) {
+    return bxi_ld(base, BXI_CTL_OFF + BXI_C_GEN);
+}
+
+/* A consistent copy of the block into *out. Returns 1, or 0 if every attempt was overtaken by the
+ * writer (the caller keeps its last good copy). Never blocks, never writes. */
+static inline int bxi_ctl_read(const uint8_t *base, bxi_ctl *out, unsigned attempts) {
+    for (unsigned i = 0; i < attempts; i++) {
+        uint32_t s1 = bxi_ld(base, BXI_CTL_OFF + BXI_C_SEQ);
+        if (s1 & 1u) {
+            bxi_pause();
+            continue;
+        }
+        bxi_fence();
+        bxi_ctl c;
+        c.gen = bxi_ld(base, BXI_CTL_OFF + BXI_C_GEN);
+        c.xi_mode = bxi_ld(base, BXI_CTL_OFF + BXI_C_XI_MODE);
+        c.xi_flags = bxi_ld(base, BXI_CTL_OFF + BXI_C_XI_FLAGS);
+        c.id_flags = bxi_ld(base, BXI_CTL_OFF + BXI_C_ID_FLAGS);
+        c.id_bus = bxi_ld(base, BXI_CTL_OFF + BXI_C_ID_BUS);
+        c.id_vendor = bxi_ld(base, BXI_CTL_OFF + BXI_C_ID_VENDOR);
+        c.id_product = bxi_ld(base, BXI_CTL_OFF + BXI_C_ID_PRODUCT);
+        c.id_version = bxi_ld(base, BXI_CTL_OFF + BXI_C_ID_VERSION);
+        bxi_fence();
+        if (bxi_ld(base, BXI_CTL_OFF + BXI_C_SEQ) == s1) {
+            *out = c;
+            return 1;
+        }
+        bxi_pause();
+    }
+    return 0;
+}
+
 /* "<slot>=<path>[;<slot>=<path>...]" (FAKE_EVDEV_MEMFD_PATHS, the grammar of core/src/guest.rs:
  * blanks around keys and paths are trimmed, malformed entries skipped, the first entry for a slot
  * wins). Calls fn(ctx, slot, path, len) for each accepted entry; returns the mask of slots. Generic

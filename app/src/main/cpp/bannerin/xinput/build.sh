@@ -227,9 +227,9 @@ for arch in arches:
         files.append({"arch": arch, "name": name + ".dll", "asset": f"{arch}/{name}.dll",
                       "sha256": hashlib.sha256(open(p, "rb").read()).hexdigest()})
 tag = hashlib.sha256("".join(f["sha256"] for f in files).encode()).hexdigest()[:12]
-json.dump({"name": "BANNERIN-XInput", "version": "1.2+" + tag, "dlls": dlls, "arches": arches, "files": files},
+json.dump({"name": "BANNERIN-XInput", "version": "1.3+" + tag, "dlls": dlls, "arches": arches, "files": files},
           open(os.path.join(out, "manifest.json"), "w"), indent=1)
-print(f"== bannerin-xinput: manifest.json: {len(files)} dlls, version 1.2+{tag}")
+print(f"== bannerin-xinput: manifest.json: {len(files)} dlls, version 1.3+{tag}")
 PY
 }
 

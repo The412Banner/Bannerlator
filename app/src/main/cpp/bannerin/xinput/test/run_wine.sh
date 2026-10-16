@@ -28,6 +28,25 @@ if [ ! -f "$WINEPREFIX/system.reg" ]; then
 fi
 "$WINE" --version
 
+# The forward target for the live-mode phases: this Wine's own builtin xinput1_4.dll, renamed, where the
+# app puts it (system32 for the 64-bit / ARM64X build, syswow64 for i386).
+fwd=0
+for root in /usr/lib /usr/lib64 /usr/local/lib /opt; do
+  [ -d "$root" ] || continue
+  while IFS= read -r d; do
+    case "$(basename "$d")" in
+      x86_64-windows|aarch64-windows) dst="$WINEPREFIX/drive_c/windows/system32" ;;
+      i386-windows) dst="$WINEPREFIX/drive_c/windows/syswow64" ;;
+      *) continue ;;
+    esac
+    [ -f "$d/xinput1_4.dll" ] && [ -d "$dst" ] || continue
+    cp "$d/xinput1_4.dll" "$dst/bannerin_wine_xinput.dll"
+    echo "forward copy: $d/xinput1_4.dll -> $dst/bannerin_wine_xinput.dll"
+    fwd=$((fwd + 1))
+  done < <(find "$root" -maxdepth 5 -type d -name '*-windows' -path '*wine*' 2>/dev/null)
+done
+[ "$fwd" -gt 0 ] || { echo "no Wine builtin xinput1_4.dll found for the forward copy"; exit 1; }
+
 fails=0
 run_case() { # run_case <dll dir> <test dir> <path mode>
   local arch="$1" tarch="$2" mode="$3" d port rc frc via
@@ -62,7 +81,7 @@ run_case() { # run_case <dll dir> <test dir> <path mode>
     fi
   done
   echo "---- rumble diagnostics"
-  for pat in 'rumble: winsock loaded for the first rumble' \
+  for pat in 'winsock loaded for the first rumble or mode status' \
              'slot 0: first XInputSetState in this process .*low 40000, high 20000 -> ERROR_SUCCESS' \
              'slot 0: motors ON (low 40000, high 20000): datagram sent' \
              'slot 1: first XInputSetState in this process .*ERROR_DEVICE_NOT_CONNECTED'; do

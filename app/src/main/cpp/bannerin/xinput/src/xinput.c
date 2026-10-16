@@ -30,6 +30,19 @@
  *   of 3 s: if the game dies mid-rumble, the motor stops by itself. Winsock is loaded on the first
  *   rumble only; a game that never rumbles never touches it.
  *
+ * MODES (live, from the slot files' control block; format minor 5, see bxi_core.h)
+ *   The app writes xinput_mode / xinput_flags into the control block of every slot file; this DLL
+ *   reads slot 0's. DIRECT (unset or 1): the above. FORWARD (2, only with FORWARD_AVAILABLE): every
+ *   call goes to Wine's own xinput, a renamed copy of its builtin xinput1_4.dll the app installs as
+ *   system32\bannerin_wine_xinput.dll (loaded on the first forward request, never in DllMain;
+ *   GetAudioDeviceIds / DSound GUIDs stay local, 101-103 are built on its GetStateEx). XI_HIDDEN (any
+ *   mode): every user is not connected and rumble is dropped. Every call checks ctl_gen (one acquire
+ *   load); a change is applied under an exclusive lock: the motors stop on the old path, the copy is
+ *   told the game's XInputEnable (entering forward) or XInputEnable(FALSE) (leaving it), per-slot state
+ *   resets, dwPacketNumber stays monotonic, one log line, and a 21-byte status datagram (code 16,
+ *   "BXS1") tells the app the change is applied. GetCapabilitiesEx reports the slot's identity from
+ *   its control block when the app marked it valid. Without a usable block: exactly as before.
+ *
  * DIAGNOSTICS
  *   One line when a process loads the DLL (DllMain: process image, DLL name, which build, version),
  *   one per slot attach / loss. Under Wine they go through ntdll's __wine_dbg_output, which writes to
@@ -60,7 +73,7 @@
 #include "bxi_core.h"
 
 #ifndef BXI_VERSION
-#define BXI_VERSION "1.2"
+#define BXI_VERSION "1.3"
 #endif
 
 #if defined(__arm64ec__) || defined(_M_ARM64EC)
@@ -203,6 +216,9 @@ typedef struct bxi_slot {
     int set_logged, logged_on;
     DWORD motor_log_tick, nc_log_tick;
     unsigned motor_suppressed, nc_suppressed;
+    /* forward mode: the copy's last packet number (ours stays monotonic across modes) */
+    DWORD fwd_packet;
+    int fwd_valid;
     volatile LONG guide_cancel;
 } bxi_slot;
 
@@ -407,8 +423,9 @@ static WCHAR *dos_path(const char *u, int mode) {
     return NULL;
 }
 
-/* 1 = mapped and valid, 0 = could not open/map it, -1 = there but not a live slot file. */
-static int try_open(bxi_slot *s, const WCHAR *path) {
+/* Map `path` read-only as slot `slot`'s file: 1 = *view is a valid live slot file, 0 = could not
+ * open/map it, -1 = there but not a live slot file. */
+static int map_path(const WCHAR *path, uint32_t slot, const uint8_t **view) {
     HANDLE f = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) return 0;
@@ -423,14 +440,39 @@ static int try_open(bxi_slot *s, const WCHAR *path) {
     const uint8_t *v = MapViewOfFile(m, FILE_MAP_READ, 0, 0, BXI_FILE_SIZE);
     CloseHandle(m); /* the view keeps the section alive */
     if (!v) return 0;
-    if (!bxi_valid(v, s->index) || bxi_retired(v)) {
+    if (!bxi_valid(v, slot) || bxi_retired(v)) {
         UnmapViewOfFile(v);
         return -1;
     }
+    *view = v;
+    return 1;
+}
+
+/* 1 = mapped and valid, 0 = could not open/map it, -1 = there but not a live slot file. */
+static int try_open(bxi_slot *s, const WCHAR *path) {
+    const uint8_t *v = NULL;
+    int r = map_path(path, s->index, &v);
+    if (r != 1) return r;
     s->view = v;
     s->instance = bxi_instance(v);
     s->have_words = 0;
     return 1;
+}
+
+/* A separate read-only view of slot `s`'s current file (the control block's anchor), or NULL. */
+static const uint8_t *map_slot_view(const bxi_slot *s) {
+    static const int order[] = {PATH_WINE, PATH_UNIX, PATH_Z};
+    for (int i = 0; i < 3; i++) {
+        if (g_pathmode != PATH_AUTO && order[i] != g_pathmode) continue;
+        WCHAR *p = dos_path(s->unix_path, order[i]);
+        if (!p) continue;
+        const uint8_t *v = NULL;
+        int r = map_path(p, s->index, &v);
+        HeapFree(GetProcessHeap(), 0, p);
+        if (r == 1) return v;
+        if (r < 0) break;
+    }
+    return NULL;
 }
 
 static int slot_open(bxi_slot *s) {
@@ -540,8 +582,8 @@ static BOOL CALLBACK net_once(PINIT_ONCE once, PVOID param, PVOID *ctx) {
     g_dst.sin_addr.s_addr = 0x0100007fu; /* 127.0.0.1, network order */
     g_sendto = sendto_p;
     g_sock = s;
-    bxi_log("rumble: winsock loaded for the first rumble (%s, %s), datagrams to 127.0.0.1:%u", g_dllname, BXI_BUILD,
-            g_rumble_port);
+    bxi_log("winsock loaded for the first rumble or mode status (%s, %s), datagrams to 127.0.0.1:%u", g_dllname,
+            BXI_BUILD, g_rumble_port);
     return TRUE;
 }
 
@@ -690,19 +732,9 @@ static int connected(DWORD idx) {
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-/* the API */
+/* the direct path (BANNERIN slot files); the exports below pick it or the forward path */
 
-DWORD WINAPI XInputGetState(DWORD dwUserIndex, BXI_STATE *pState) {
-    return get_state(dwUserIndex, pState, 0);
-}
-
-DWORD WINAPI XInputGetStateEx(DWORD dwUserIndex, BXI_STATE *pState) {
-    return get_state(dwUserIndex, pState, 1);
-}
-
-DWORD WINAPI XInputSetState(DWORD dwUserIndex, BXI_VIBRATION *pVibration) {
-    if (dwUserIndex >= BXI_SLOTS || !pVibration) return ERROR_BAD_ARGUMENTS;
-    bxi_init();
+static DWORD direct_set_state(DWORD dwUserIndex, BXI_VIBRATION *pVibration) {
     bxi_slot *s = &g_slots[dwUserIndex];
     uint32_t w[BXI_COPY_WORDS];
     WORD vl = pVibration->wLeftMotorSpeed, vr = pVibration->wRightMotorSpeed;
@@ -750,9 +782,8 @@ DWORD WINAPI XInputSetState(DWORD dwUserIndex, BXI_VIBRATION *pVibration) {
     return ret;
 }
 
-void WINAPI XInputEnable(BOOL enable) {
-    bxi_init();
-    __atomic_store_n(&g_enabled, enable ? 1 : 0, __ATOMIC_RELEASE);
+/* After an XInputEnable change in direct mode: hold the motors off, or resume what the game set. */
+static void direct_enable(void) {
     for (uint32_t i = 0; i < BXI_SLOTS; i++) {
         bxi_slot *s = &g_slots[i];
         if (!s->configured) continue;
@@ -780,29 +811,43 @@ static void fill_caps(BXI_CAPABILITIES *c) {
     c->Vibration.wRightMotorSpeed = 0xffff;
 }
 
-DWORD WINAPI XInputGetCapabilities(DWORD dwUserIndex, DWORD dwFlags, BXI_CAPABILITIES *pCapabilities) {
-    if (dwUserIndex >= BXI_SLOTS || !pCapabilities || (dwFlags & ~BXI_FLAG_GAMEPAD)) return ERROR_BAD_ARGUMENTS;
+static DWORD direct_caps(DWORD dwUserIndex, BXI_CAPABILITIES *pCapabilities) {
     if (!connected(dwUserIndex)) return ERROR_DEVICE_NOT_CONNECTED;
     fill_caps(pCapabilities);
     return ERROR_SUCCESS;
 }
 
-DWORD WINAPI XInputGetCapabilitiesEx(DWORD dwReserved, DWORD dwUserIndex, DWORD dwFlags, BXI_CAPABILITIES_EX *pCapabilities) {
-    if (dwReserved != 1 || dwUserIndex >= BXI_SLOTS || !pCapabilities || (dwFlags & ~BXI_FLAG_GAMEPAD))
-        return ERROR_BAD_ARGUMENTS;
+/* The identity XInputGetCapabilitiesEx reports for slot `idx`: the slot file's control-block identity
+ * when the app marked it valid, else the Xbox 360 pad. */
+static void slot_identity(DWORD idx, WORD *vid, WORD *pid, WORD *ver) {
+    *vid = BXI_VID;
+    *pid = BXI_PID;
+    *ver = BXI_PVER;
+    bxi_slot *s = &g_slots[idx];
+    uint32_t w[BXI_COPY_WORDS];
+    AcquireSRWLockExclusive(&s->lock);
+    if (slot_read(s, w) && s->view && bxi_ctl_present(s->view)) {
+        bxi_ctl c;
+        if (bxi_ctl_read(s->view, &c, BXI_SNAP_ATTEMPTS) && (c.id_flags & BXI_IDF_VALID)) {
+            *vid = (WORD)c.id_vendor;
+            *pid = (WORD)c.id_product;
+            *ver = (WORD)c.id_version;
+        }
+    }
+    ReleaseSRWLockExclusive(&s->lock);
+}
+
+static DWORD direct_caps_ex(DWORD dwUserIndex, BXI_CAPABILITIES_EX *pCapabilities) {
     if (!connected(dwUserIndex)) return ERROR_DEVICE_NOT_CONNECTED;
     memset(pCapabilities, 0, sizeof *pCapabilities);
     fill_caps(&pCapabilities->Capabilities);
-    pCapabilities->VendorId = BXI_VID;
-    pCapabilities->ProductId = BXI_PID;
-    pCapabilities->VersionNumber = BXI_PVER;
+    slot_identity(dwUserIndex, &pCapabilities->VendorId, &pCapabilities->ProductId, &pCapabilities->VersionNumber);
     return ERROR_SUCCESS;
 }
 
-DWORD WINAPI XInputGetBatteryInformation(DWORD dwUserIndex, BYTE devType, BXI_BATTERY_INFORMATION *pInfo) {
-    if (dwUserIndex >= BXI_SLOTS || !pInfo) return ERROR_BAD_ARGUMENTS;
-    if (devType != BXI_BATTERY_DEVTYPE_GAMEPAD && devType != BXI_BATTERY_DEVTYPE_HEADSET) return ERROR_BAD_ARGUMENTS;
-    if (!connected(dwUserIndex)) return ERROR_DEVICE_NOT_CONNECTED;
+/* Battery for a pad `conn` says is connected or not (both modes). */
+static DWORD battery_for(int conn, BYTE devType, BXI_BATTERY_INFORMATION *pInfo) {
+    if (!conn) return ERROR_DEVICE_NOT_CONNECTED;
     if (devType == BXI_BATTERY_DEVTYPE_GAMEPAD) {
         pInfo->BatteryType = BXI_BATTERY_TYPE_WIRED;
         pInfo->BatteryLevel = BXI_BATTERY_LEVEL_FULL;
@@ -813,18 +858,16 @@ DWORD WINAPI XInputGetBatteryInformation(DWORD dwUserIndex, BYTE devType, BXI_BA
     return ERROR_SUCCESS;
 }
 
-DWORD WINAPI XInputGetDSoundAudioDeviceGuids(DWORD dwUserIndex, GUID *pRender, GUID *pCapture) {
-    if (dwUserIndex >= BXI_SLOTS || !pRender || !pCapture) return ERROR_BAD_ARGUMENTS;
-    if (!connected(dwUserIndex)) return ERROR_DEVICE_NOT_CONNECTED;
+static DWORD dsound_for(int conn, GUID *pRender, GUID *pCapture) {
+    if (!conn) return ERROR_DEVICE_NOT_CONNECTED;
     memset(pRender, 0, sizeof *pRender); /* GUID_NULL: no headset */
     memset(pCapture, 0, sizeof *pCapture);
     return ERROR_SUCCESS;
 }
 
-DWORD WINAPI XInputGetAudioDeviceIds(DWORD dwUserIndex, LPWSTR pRenderDeviceId, UINT *pRenderCount,
-                                     LPWSTR pCaptureDeviceId, UINT *pCaptureCount) {
-    if (dwUserIndex >= BXI_SLOTS) return ERROR_BAD_ARGUMENTS;
-    if (!connected(dwUserIndex)) return ERROR_DEVICE_NOT_CONNECTED;
+static DWORD audio_ids_for(int conn, LPWSTR pRenderDeviceId, UINT *pRenderCount, LPWSTR pCaptureDeviceId,
+                           UINT *pCaptureCount) {
+    if (!conn) return ERROR_DEVICE_NOT_CONNECTED;
     if (pRenderCount) {
         if (pRenderDeviceId && *pRenderCount) pRenderDeviceId[0] = 0;
         *pRenderCount = 0;
@@ -938,10 +981,7 @@ static DWORD keystroke_one(DWORD idx, BXI_KEYSTROKE *k) {
     return ret;
 }
 
-DWORD WINAPI XInputGetKeystroke(DWORD dwUserIndex, DWORD dwReserved, BXI_KEYSTROKE *pKeystroke) {
-    (void)dwReserved;
-    if (!pKeystroke) return ERROR_BAD_ARGUMENTS;
-    bxi_init();
+static DWORD direct_keystroke(DWORD dwUserIndex, BXI_KEYSTROKE *pKeystroke) {
     if (dwUserIndex == BXI_USER_ANY) {
         int any = 0;
         for (DWORD i = 0; i < BXI_SLOTS; i++) {
@@ -951,12 +991,450 @@ DWORD WINAPI XInputGetKeystroke(DWORD dwUserIndex, DWORD dwReserved, BXI_KEYSTRO
         }
         return any ? ERROR_EMPTY : ERROR_DEVICE_NOT_CONNECTED;
     }
-    if (dwUserIndex >= BXI_SLOTS) return ERROR_BAD_ARGUMENTS;
     return keystroke_one(dwUserIndex, pKeystroke);
 }
 
-/* Ordinal 101. dwFlag 0 waits (polling every 8 ms) until Guide is pressed, the slot disconnects or
- * XInputCancelGuideButtonWait is called; the asynchronous form is not supported. */
+/* ---------------------------------------------------------------------------------------------- */
+/* live mode: the control block, Wine's own xinput as the forward target, switching */
+
+enum { MODE_DIRECT = 1, MODE_FORWARD = 2 };
+#define BXI_STATUS_CODE 16
+#define BXI_CTL_ATTEMPTS 64u
+#define BXI_CTL_ABSENT_RECHECK_MS 1000u
+
+/* Wine's xinput (a renamed copy of its builtin xinput1_4.dll the app puts next to ours). */
+typedef DWORD(WINAPI *fx_state_fn)(DWORD, void *);
+typedef DWORD(WINAPI *fx_set_fn)(DWORD, BXI_VIBRATION *);
+typedef DWORD(WINAPI *fx_caps_fn)(DWORD, DWORD, BXI_CAPABILITIES *);
+typedef DWORD(WINAPI *fx_caps_ex_fn)(DWORD, DWORD, DWORD, BXI_CAPABILITIES_EX *);
+typedef void(WINAPI *fx_enable_fn)(BOOL);
+typedef DWORD(WINAPI *fx_battery_fn)(DWORD, BYTE, BXI_BATTERY_INFORMATION *);
+typedef DWORD(WINAPI *fx_keystroke_fn)(DWORD, DWORD, BXI_KEYSTROKE *);
+
+static struct {
+    INIT_ONCE once;    /* zero = INIT_ONCE_STATIC_INIT */
+    volatile LONG tried;
+    int ok;
+    HMODULE h;
+    fx_state_fn get_state, get_state_ex;
+    fx_set_fn set_state;
+    fx_caps_fn caps;
+    fx_caps_ex_fn caps_ex;
+    fx_enable_fn enable;
+    fx_battery_fn battery;
+    fx_keystroke_fn keystroke;
+} g_fwd;
+
+/* SHARED for every API call, EXCLUSIVE while a control change is applied: a switch never runs while
+ * a call is inside either path, and a call never sees a half-switched DLL. Order: g_mode_lock, then
+ * a slot lock. */
+static SRWLOCK g_mode_lock = SRWLOCK_INIT;
+static LONG g_mode = MODE_DIRECT; /* written under the exclusive lock (and with release) */
+static LONG g_hidden;
+
+static struct {
+    const uint8_t *view;        /* own read-only view of slot 0's file: the control anchor */
+    ULONGLONG next_open;        /* earliest (re)open of the anchor */
+    ULONGLONG next_absent_check;
+    int present;                /* -1 unknown, 0 no usable block (pre-minor-5 file), 1 block */
+    uint32_t gen;               /* gen of the last applied block */
+    int applied;                /* applied at least once in this process */
+    bxi_ctl last;               /* last good copy */
+} g_ctl;
+
+/* 1 if the file at `path` is one of our own DLLs (it carries our marker). */
+static int file_is_ours(const WCHAR *path) {
+    HANDLE f = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) return 0;
+    static const char marker[] = "BANNERIN-XInput";
+    char *buf = HeapAlloc(GetProcessHeap(), 0, 65536 + sizeof marker);
+    if (!buf) {
+        CloseHandle(f);
+        return 0;
+    }
+    size_t keep = 0;
+    int found = 0;
+    for (;;) {
+        DWORD got = 0;
+        if (!ReadFile(f, buf + keep, 65536, &got, NULL) || !got) break;
+        size_t n = keep + got;
+        for (size_t i = 0; i + sizeof marker - 1 <= n && !found; i++)
+            if (buf[i] == 'B' && !memcmp(buf + i, marker, sizeof marker - 1)) found = 1;
+        if (found) break;
+        keep = sizeof marker - 1 < n ? sizeof marker - 1 : n;
+        memmove(buf, buf + n - keep, keep);
+    }
+    HeapFree(GetProcessHeap(), 0, buf);
+    CloseHandle(f);
+    return found;
+}
+
+/* Load and resolve the forward target (never from DllMain: the first forward-mode request does it,
+ * with no lock of ours held). */
+static void fwd_load(void) {
+    HMODULE h = LoadLibraryExW(L"bannerin_wine_xinput.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!h) {
+        bxi_log("forward: bannerin_wine_xinput.dll does not load from system32 (error %lu); staying direct",
+                (unsigned long)GetLastError());
+        return;
+    }
+    WCHAR path[MAX_PATH];
+    char shown[MAX_PATH * 3] = "?";
+    DWORD n = GetModuleFileNameW(h, path, MAX_PATH);
+    if (n && n < MAX_PATH) WideCharToMultiByte(CP_UTF8, 0, path, -1, shown, (int)sizeof shown, NULL, NULL);
+    shown[sizeof shown - 1] = 0;
+    if (h == g_module || (n && n < MAX_PATH && file_is_ours(path))) {
+        bxi_log("forward: %s is one of our own DLLs, not Wine's xinput; staying direct", shown);
+        FreeLibrary(h);
+        return;
+    }
+    g_fwd.get_state = (fx_state_fn)(void (*)(void))GetProcAddress(h, "XInputGetState");
+    g_fwd.set_state = (fx_set_fn)(void (*)(void))GetProcAddress(h, "XInputSetState");
+    g_fwd.caps = (fx_caps_fn)(void (*)(void))GetProcAddress(h, "XInputGetCapabilities");
+    g_fwd.enable = (fx_enable_fn)(void (*)(void))GetProcAddress(h, "XInputEnable");
+    g_fwd.battery = (fx_battery_fn)(void (*)(void))GetProcAddress(h, "XInputGetBatteryInformation");
+    g_fwd.keystroke = (fx_keystroke_fn)(void (*)(void))GetProcAddress(h, "XInputGetKeystroke");
+    g_fwd.get_state_ex = (fx_state_fn)(void (*)(void))GetProcAddress(h, (LPCSTR)(ULONG_PTR)100);
+    g_fwd.caps_ex = (fx_caps_ex_fn)(void (*)(void))GetProcAddress(h, (LPCSTR)(ULONG_PTR)108);
+    if (!g_fwd.get_state || !g_fwd.set_state || !g_fwd.caps || !g_fwd.enable || !g_fwd.get_state_ex) {
+        bxi_log("forward: %s lacks XInputGetState/SetState/GetCapabilities/Enable/#100; staying direct", shown);
+        FreeLibrary(h);
+        return;
+    }
+    g_fwd.h = h;
+    g_fwd.ok = 1;
+    bxi_log("forward: Wine's xinput loaded from %s (#108 %s, battery %s, keystroke %s)", shown,
+            g_fwd.caps_ex ? "yes" : "no", g_fwd.battery ? "yes" : "no", g_fwd.keystroke ? "yes" : "no");
+}
+
+static BOOL CALLBACK fwd_once(PINIT_ONCE once, PVOID param, PVOID *ctx) {
+    (void)once; (void)param; (void)ctx;
+    fwd_load();
+    __atomic_store_n(&g_fwd.tried, 1, __ATOMIC_RELEASE);
+    return TRUE;
+}
+
+static int fwd_tried(void) {
+    return __atomic_load_n(&g_fwd.tried, __ATOMIC_ACQUIRE) != 0;
+}
+
+/* What api_enter does once it has dropped the exclusive lock. */
+typedef struct {
+    int load_fwd;
+    int status, log, switched;
+    uint32_t req_mode, flags, gen;
+    int mode, hidden, ok, old_mode, old_hidden;
+    int zero[BXI_SLOTS];
+} ctl_job;
+
+/* Under the shared (or exclusive) lock: does a control change wait to be applied? The common case is
+ * one acquire load of ctl_gen plus one of the retired flag. */
+static int ctl_dirty(void) {
+    if (!g_slots[0].configured) return 0;
+    const uint8_t *v = g_ctl.view;
+    if (!v) return GetTickCount64() >= g_ctl.next_open;
+    if (bxi_retired(v)) return 1;
+    if (g_ctl.present == 1) return bxi_ctl_gen(v) != g_ctl.gen;
+    if (g_ctl.present < 0) return 1;
+    return GetTickCount64() >= g_ctl.next_absent_check; /* no block yet: look again once a second */
+}
+
+/* Exclusive lock held. Stop the motors on the old path, re-arm the new one, swap. */
+static void switch_mode(int new_mode, int new_hidden, ctl_job *job) {
+    int old_mode = g_mode;
+    for (uint32_t i = 0; i < BXI_SLOTS; i++) {
+        bxi_slot *s = &g_slots[i];
+        AcquireSRWLockExclusive(&s->lock);
+        if (old_mode == MODE_DIRECT && s->sent_valid && (s->sent_l || s->sent_r)) job->zero[i] = 1;
+        s->want_l = s->want_r = 0;
+        s->sent_l = s->sent_r = 0;
+        s->sent_valid = 0;
+        s->seen_valid = 0;
+        s->key_valid = 0;   /* the next direct read is a new packet */
+        s->ks_valid = 0;
+        s->fwd_valid = 0;
+        s->packet++;        /* never repeats: monotonic across modes */
+        ReleaseSRWLockExclusive(&s->lock);
+    }
+    if (old_mode == MODE_FORWARD && g_fwd.ok) {
+        BXI_VIBRATION z = {0, 0};
+        for (uint32_t i = 0; i < BXI_SLOTS; i++) g_fwd.set_state(i, &z);
+    }
+    if (g_fwd.ok) {
+        if (new_mode == MODE_FORWARD && old_mode != MODE_FORWARD)
+            g_fwd.enable(__atomic_load_n(&g_enabled, __ATOMIC_ACQUIRE) ? TRUE : FALSE); /* the game's last value */
+        else if (new_mode == MODE_DIRECT && old_mode == MODE_FORWARD)
+            g_fwd.enable(FALSE); /* it stops reading its HID devices */
+    }
+    __atomic_store_n(&g_mode, new_mode, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_hidden, new_hidden, __ATOMIC_RELEASE);
+}
+
+/* Exclusive lock held: (re)open the anchor, read the block, decide, switch. */
+static void ctl_apply(ctl_job *job) {
+    ULONGLONG now = GetTickCount64();
+    if (g_ctl.view && bxi_retired(g_ctl.view)) {
+        UnmapViewOfFile(g_ctl.view);
+        g_ctl.view = NULL;
+        g_ctl.next_open = 0;
+    }
+    if (!g_ctl.view) {
+        if (now < g_ctl.next_open) return;
+        g_ctl.next_open = now + BXI_REOPEN_MS;
+        g_ctl.view = map_slot_view(&g_slots[0]);
+        if (!g_ctl.view) return; /* keep the mode we have */
+        g_ctl.present = -1;
+    }
+    int present = bxi_ctl_present(g_ctl.view);
+    bxi_ctl c;
+    memset(&c, 0, sizeof c);
+    if (present) {
+        if (g_ctl.present == 1 && bxi_ctl_gen(g_ctl.view) == g_ctl.gen) return;
+        if (!bxi_ctl_read(g_ctl.view, &c, BXI_CTL_ATTEMPTS)) return; /* overtaken: last good copy stays */
+    } else {
+        g_ctl.next_absent_check = now + BXI_CTL_ABSENT_RECHECK_MS;
+        if (g_ctl.present == 0) return;
+    }
+    int want_fwd = present && c.xi_mode == BXI_XI_MODE_FORWARD;
+    int fwd_allowed = want_fwd && (c.xi_flags & BXI_XIF_FORWARD_AVAILABLE);
+    if (fwd_allowed && !fwd_tried()) {
+        job->load_fwd = 1; /* loaded with no lock held, then applied */
+        return;
+    }
+    int new_mode = fwd_allowed && g_fwd.ok ? MODE_FORWARD : MODE_DIRECT;
+    int new_hidden = present && (c.xi_flags & BXI_XIF_HIDDEN) ? 1 : 0;
+    int first = !g_ctl.applied;
+    g_ctl.present = present;
+    g_ctl.gen = c.gen;
+    g_ctl.last = c;
+    g_ctl.applied = 1;
+    job->old_mode = g_mode;
+    job->old_hidden = g_hidden;
+    if (new_mode != g_mode || new_hidden != g_hidden) {
+        switch_mode(new_mode, new_hidden, job);
+        job->switched = 1;
+    }
+    job->mode = new_mode;
+    job->hidden = new_hidden;
+    job->req_mode = c.xi_mode;
+    job->flags = c.xi_flags;
+    job->gen = c.gen;
+    job->ok = !want_fwd || new_mode == MODE_FORWARD;
+    job->log = present && (!first || job->switched || c.xi_mode || c.xi_flags || (c.id_flags & BXI_IDF_VALID));
+    job->status = !first && present; /* a change during the session: tell the app it is applied */
+}
+
+static void send_status(const ctl_job *j) {
+    InitOnceExecuteOnce(&g_net_init, net_once, NULL, NULL);
+    if (g_sock == INVALID_SOCKET) return;
+    DWORD pid = GetCurrentProcessId();
+    unsigned char build =
+#if defined(BXI_HYBRID) && BXI_HYBRID && (defined(__arm64ec__) || defined(_M_ARM64EC))
+        3;
+#elif defined(BXI_HYBRID) && BXI_HYBRID
+        4;
+#elif defined(__x86_64__)
+        1;
+#else
+        2;
+#endif
+    unsigned char p[21] = {
+        BXI_STATUS_CODE, 'B', 'X', 'S', '1', (unsigned char)j->req_mode, (unsigned char)j->mode, (unsigned char)j->ok,
+        (unsigned char)j->gen, (unsigned char)(j->gen >> 8), (unsigned char)(j->gen >> 16), (unsigned char)(j->gen >> 24),
+        (unsigned char)j->flags, (unsigned char)(j->flags >> 8), (unsigned char)(j->flags >> 16), (unsigned char)(j->flags >> 24),
+        (unsigned char)pid, (unsigned char)(pid >> 8), (unsigned char)(pid >> 16), (unsigned char)(pid >> 24), build,
+    };
+    if (g_sendto(g_sock, (const char *)p, (int)sizeof p, 0, (const struct sockaddr *)&g_dst, (int)sizeof g_dst) == SOCKET_ERROR)
+        bxi_log("status: sendto failed, WSAGetLastError %d", g_wsaerror ? g_wsaerror() : -1);
+}
+
+static const char *mode_name(int m) {
+    return m == MODE_FORWARD ? "forward (Wine's xinput)" : "direct";
+}
+
+/* No lock held: the work a control change asks for outside the lock. */
+static void ctl_after(const ctl_job *j) {
+    if (j->load_fwd) {
+        InitOnceExecuteOnce(&g_fwd.once, fwd_once, NULL, NULL);
+        return;
+    }
+    for (uint32_t i = 0; i < BXI_SLOTS; i++)
+        if (j->zero[i]) rumble_send(i, 0, 0); /* the motors the direct path had running */
+    if (j->log)
+        bxi_log("control gen %u: mode %s%s%s (requested %u, flags 0x%x)%s", j->gen, mode_name(j->mode),
+                j->hidden ? ", XInput hidden" : "", j->switched ? " [switched]" : "", j->req_mode, j->flags,
+                j->ok ? "" : " - forward requested but Wine's xinput is unavailable");
+    if (j->status) send_status(j);
+}
+
+/* Every exported call: apply a pending control change, then hold the mode lock shared. */
+static void api_enter(void) {
+    bxi_init();
+    for (int round = 0; round < 3; round++) {
+        AcquireSRWLockShared(&g_mode_lock);
+        if (!ctl_dirty()) return;
+        ReleaseSRWLockShared(&g_mode_lock);
+        ctl_job job;
+        memset(&job, 0, sizeof job);
+        AcquireSRWLockExclusive(&g_mode_lock);
+        ctl_apply(&job);
+        ReleaseSRWLockExclusive(&g_mode_lock);
+        ctl_after(&job);
+        if (!job.load_fwd) break;
+    }
+    AcquireSRWLockShared(&g_mode_lock);
+}
+
+static void api_leave(void) {
+    ReleaseSRWLockShared(&g_mode_lock);
+}
+
+/* Forward mode: Wine's state, with our own (monotonic) packet number. */
+static DWORD fwd_state(DWORD idx, BXI_STATE *st, int guide) {
+    struct { BXI_STATE s; DWORD pad[4]; } t; /* GetStateEx may write XINPUT_STATE_EX */
+    memset(&t, 0, sizeof t);
+    DWORD r = guide ? g_fwd.get_state_ex(idx, &t) : g_fwd.get_state(idx, &t);
+    if (r != ERROR_SUCCESS) return r;
+    if (!guide) t.s.Gamepad.wButtons &= (WORD)~BXI_XI_GUIDE;
+    bxi_slot *s = &g_slots[idx];
+    AcquireSRWLockExclusive(&s->lock);
+    if (!s->fwd_valid || s->fwd_packet != t.s.dwPacketNumber) {
+        s->packet++;
+        s->fwd_packet = t.s.dwPacketNumber;
+        s->fwd_valid = 1;
+    }
+    st->dwPacketNumber = s->packet;
+    ReleaseSRWLockExclusive(&s->lock);
+    st->Gamepad = t.s.Gamepad;
+    return ERROR_SUCCESS;
+}
+
+static int fwd_connected(DWORD idx) {
+    struct { BXI_STATE s; DWORD pad[4]; } t;
+    return g_fwd.get_state(idx, &t) == ERROR_SUCCESS;
+}
+
+/* Connected in the current mode (mode lock held shared). */
+static int mode_connected(DWORD idx) {
+    if (g_hidden) return 0;
+    return g_mode == MODE_FORWARD ? fwd_connected(idx) : connected(idx);
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* the exports */
+
+static DWORD api_state(DWORD idx, BXI_STATE *st, int guide) {
+    if (idx >= BXI_SLOTS || !st) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = g_hidden ? ERROR_DEVICE_NOT_CONNECTED
+            : g_mode == MODE_FORWARD ? fwd_state(idx, st, guide)
+            : get_state(idx, st, guide);
+    api_leave();
+    return r;
+}
+
+DWORD WINAPI XInputGetState(DWORD dwUserIndex, BXI_STATE *pState) {
+    return api_state(dwUserIndex, pState, 0);
+}
+
+DWORD WINAPI XInputGetStateEx(DWORD dwUserIndex, BXI_STATE *pState) {
+    return api_state(dwUserIndex, pState, 1);
+}
+
+DWORD WINAPI XInputSetState(DWORD dwUserIndex, BXI_VIBRATION *pVibration) {
+    if (dwUserIndex >= BXI_SLOTS || !pVibration) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = g_hidden ? ERROR_DEVICE_NOT_CONNECTED /* rumble dropped */
+            : g_mode == MODE_FORWARD ? g_fwd.set_state(dwUserIndex, pVibration)
+            : direct_set_state(dwUserIndex, pVibration);
+    api_leave();
+    return r;
+}
+
+void WINAPI XInputEnable(BOOL enable) {
+    api_enter();
+    __atomic_store_n(&g_enabled, enable ? 1 : 0, __ATOMIC_RELEASE);
+    if (g_mode == MODE_FORWARD) g_fwd.enable(enable ? TRUE : FALSE);
+    else if (!g_hidden) direct_enable();
+    api_leave();
+}
+
+DWORD WINAPI XInputGetCapabilities(DWORD dwUserIndex, DWORD dwFlags, BXI_CAPABILITIES *pCapabilities) {
+    if (dwUserIndex >= BXI_SLOTS || !pCapabilities || (dwFlags & ~BXI_FLAG_GAMEPAD)) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = g_hidden ? ERROR_DEVICE_NOT_CONNECTED
+            : g_mode == MODE_FORWARD ? g_fwd.caps(dwUserIndex, dwFlags, pCapabilities)
+            : direct_caps(dwUserIndex, pCapabilities);
+    api_leave();
+    return r;
+}
+
+DWORD WINAPI XInputGetCapabilitiesEx(DWORD dwReserved, DWORD dwUserIndex, DWORD dwFlags, BXI_CAPABILITIES_EX *pCapabilities) {
+    if (dwReserved != 1 || dwUserIndex >= BXI_SLOTS || !pCapabilities || (dwFlags & ~BXI_FLAG_GAMEPAD))
+        return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r;
+    if (g_hidden) {
+        r = ERROR_DEVICE_NOT_CONNECTED;
+    } else if (g_mode == MODE_FORWARD) {
+        if (g_fwd.caps_ex) {
+            r = g_fwd.caps_ex(dwReserved, dwUserIndex, dwFlags, pCapabilities);
+        } else { /* a Wine without #108: its capabilities plus the slot's identity */
+            memset(pCapabilities, 0, sizeof *pCapabilities);
+            r = g_fwd.caps(dwUserIndex, dwFlags, &pCapabilities->Capabilities);
+            if (r == ERROR_SUCCESS)
+                slot_identity(dwUserIndex, &pCapabilities->VendorId, &pCapabilities->ProductId, &pCapabilities->VersionNumber);
+        }
+    } else {
+        r = direct_caps_ex(dwUserIndex, pCapabilities);
+    }
+    api_leave();
+    return r;
+}
+
+DWORD WINAPI XInputGetBatteryInformation(DWORD dwUserIndex, BYTE devType, BXI_BATTERY_INFORMATION *pInfo) {
+    if (dwUserIndex >= BXI_SLOTS || !pInfo) return ERROR_BAD_ARGUMENTS;
+    if (devType != BXI_BATTERY_DEVTYPE_GAMEPAD && devType != BXI_BATTERY_DEVTYPE_HEADSET) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = !g_hidden && g_mode == MODE_FORWARD && g_fwd.battery ? g_fwd.battery(dwUserIndex, devType, pInfo)
+            : battery_for(mode_connected(dwUserIndex), devType, pInfo);
+    api_leave();
+    return r;
+}
+
+/* Never forwarded (Wine's xinput1_4 has no #6, and its #10 is a stub that raises). */
+DWORD WINAPI XInputGetDSoundAudioDeviceGuids(DWORD dwUserIndex, GUID *pRender, GUID *pCapture) {
+    if (dwUserIndex >= BXI_SLOTS || !pRender || !pCapture) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = dsound_for(mode_connected(dwUserIndex), pRender, pCapture);
+    api_leave();
+    return r;
+}
+
+DWORD WINAPI XInputGetAudioDeviceIds(DWORD dwUserIndex, LPWSTR pRenderDeviceId, UINT *pRenderCount,
+                                     LPWSTR pCaptureDeviceId, UINT *pCaptureCount) {
+    if (dwUserIndex >= BXI_SLOTS) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = audio_ids_for(mode_connected(dwUserIndex), pRenderDeviceId, pRenderCount, pCaptureDeviceId, pCaptureCount);
+    api_leave();
+    return r;
+}
+
+DWORD WINAPI XInputGetKeystroke(DWORD dwUserIndex, DWORD dwReserved, BXI_KEYSTROKE *pKeystroke) {
+    if (!pKeystroke) return ERROR_BAD_ARGUMENTS;
+    if (dwUserIndex >= BXI_SLOTS && dwUserIndex != BXI_USER_ANY) return ERROR_BAD_ARGUMENTS;
+    api_enter();
+    DWORD r = g_hidden ? ERROR_DEVICE_NOT_CONNECTED
+            : g_mode == MODE_FORWARD ? (g_fwd.keystroke ? g_fwd.keystroke(dwUserIndex, dwReserved, pKeystroke) : ERROR_EMPTY)
+            : direct_keystroke(dwUserIndex, pKeystroke);
+    api_leave();
+    return r;
+}
+
+/* Ordinal 101. dwFlag 0 waits (polling every 8 ms, in whichever mode is current) until Guide is
+ * pressed, the slot disconnects or XInputCancelGuideButtonWait is called; the asynchronous form is
+ * not supported. The mode lock is never held across the sleep. */
 DWORD WINAPI XInputWaitForGuideButton(DWORD dwUserIndex, DWORD dwFlag, LPVOID pVoid) {
     (void)pVoid;
     if (dwUserIndex >= BXI_SLOTS) return ERROR_BAD_ARGUMENTS;
@@ -965,12 +1443,26 @@ DWORD WINAPI XInputWaitForGuideButton(DWORD dwUserIndex, DWORD dwFlag, LPVOID pV
     bxi_slot *s = &g_slots[dwUserIndex];
     LONG gen = __atomic_load_n(&s->guide_cancel, __ATOMIC_ACQUIRE);
     for (;;) {
-        uint32_t w[BXI_COPY_WORDS];
-        AcquireSRWLockExclusive(&s->lock);
-        int c = slot_read(s, w);
-        ReleaseSRWLockExclusive(&s->lock);
-        if (!c) return ERROR_DEVICE_NOT_CONNECTED;
-        if (bxi_pressed(w) & (1u << BXI_B_MODE)) return ERROR_SUCCESS;
+        int pressed = 0;
+        DWORD r = ERROR_SUCCESS;
+        api_enter();
+        if (g_hidden) {
+            r = ERROR_DEVICE_NOT_CONNECTED;
+        } else if (g_mode == MODE_FORWARD) {
+            BXI_STATE st;
+            r = fwd_state(dwUserIndex, &st, 1);
+            pressed = r == ERROR_SUCCESS && (st.Gamepad.wButtons & BXI_XI_GUIDE);
+        } else {
+            uint32_t w[BXI_COPY_WORDS];
+            AcquireSRWLockExclusive(&s->lock);
+            int c = slot_read(s, w);
+            ReleaseSRWLockExclusive(&s->lock);
+            if (!c) r = ERROR_DEVICE_NOT_CONNECTED;
+            pressed = c && (bxi_pressed(w) & (1u << BXI_B_MODE));
+        }
+        api_leave();
+        if (r != ERROR_SUCCESS) return r;
+        if (pressed) return ERROR_SUCCESS;
         if (__atomic_load_n(&s->guide_cancel, __ATOMIC_ACQUIRE) != gen) return ERROR_SUCCESS;
         Sleep(8);
     }
@@ -987,7 +1479,10 @@ DWORD WINAPI XInputCancelGuideButtonWait(DWORD dwUserIndex) {
 /* Ordinal 103. The pad is the device's own (or the app's); there is nothing to power off. */
 DWORD WINAPI XInputPowerOffController(DWORD dwUserIndex) {
     if (dwUserIndex >= BXI_SLOTS) return ERROR_BAD_ARGUMENTS;
-    return connected(dwUserIndex) ? ERROR_SUCCESS : ERROR_DEVICE_NOT_CONNECTED;
+    api_enter();
+    DWORD r = mode_connected(dwUserIndex) ? ERROR_SUCCESS : ERROR_DEVICE_NOT_CONNECTED;
+    api_leave();
+    return r;
 }
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {

@@ -153,59 +153,222 @@ public final class BannerinXInput {
         return b;
     }
 
+    // ── Live mode (the BANNERIN control block) ────────────────────────────────────────────────────
+
+    /** "Allow in-game switching": per-game extra ("1"/"0", empty = the container's), container setting. */
+    public static final String EXTRA_SWITCHING = "bannerinXInputSwitching";
+    /** Wine's own xinput, renamed, beside our DLLs: the target of forward mode. */
+    public static final String FORWARD_DLL = "bannerin_wine_xinput.dll";
+
+    /** Control block xinput_mode (BannerinWriter.setSessionControl). */
+    public static final int XINPUT_MODE_UNSET = 0;
+    public static final int XINPUT_MODE_DIRECT = 1;
+    public static final int XINPUT_MODE_FORWARD = 2;
+    /** Control block xinput_flags. */
+    public static final int XINPUT_FLAG_FORWARD_AVAILABLE = 1;
+    public static final int XINPUT_FLAG_HIDDEN = 2;
+
+    /** "Allow in-game switching" for this launch: game extra > container. Default off. */
+    public static boolean switchingEffective(Container container, Shortcut shortcut) {
+        if (shortcut != null) {
+            String extra = shortcut.getExtra(EXTRA_SWITCHING);
+            if ("1".equals(extra)) return true;
+            if ("0".equals(extra)) return false;
+        }
+        return container != null && container.isBannerinXInputSwitching();
+    }
+
+    /** The control-block values a launch writes (xinputMode, xinputFlags of setSessionControl). */
+    public static final class LaunchControl {
+        public final int xinputMode;
+        public final int xinputFlags;
+
+        LaunchControl(int xinputMode, int xinputFlags) {
+            this.xinputMode = xinputMode;
+            this.xinputFlags = xinputFlags;
+        }
+    }
+
+    /**
+     * What to write into the control block at env prep for the result of {@link #syncForLaunch}:
+     * without our DLLs in place, nothing (UNSET, 0); otherwise FORWARD_AVAILABLE when Wine's xinput sits
+     * beside them, XI_HIDDEN when the controller should be invisible to XInput (DirectInput only), and the
+     * mode: direct when Direct XInput is on (or nothing else is possible), forward when it is off.
+     */
+    public static LaunchControl launchControlMode(Result sync, boolean xinputHidden) {
+        if (sync == null || !sync.installed) return new LaunchControl(XINPUT_MODE_UNSET, 0);
+        int flags = (sync.forwardAvailable ? XINPUT_FLAG_FORWARD_AVAILABLE : 0) | (xinputHidden ? XINPUT_FLAG_HIDDEN : 0);
+        int mode = sync.directOn || !sync.forwardAvailable ? XINPUT_MODE_DIRECT : XINPUT_MODE_FORWARD;
+        return new LaunchControl(mode, flags);
+    }
+
+    /** The xinput_mode for a live flip of Direct XInput (only meaningful when {@code sync.forwardAvailable}). */
+    public static int liveMode(boolean directOn) {
+        return directOn ? XINPUT_MODE_DIRECT : XINPUT_MODE_FORWARD;
+    }
+
     // ── The prefix ───────────────────────────────────────────────────────────────────────────────
 
-    /** What {@link #sync} did, for the session log. */
+    /** What {@link #sync} / {@link #syncForLaunch} did, for the session log and the control block. */
     public static final class Result {
+        /** Our DLLs are wanted for this launch (Direct XInput on, or in-game switching possible). */
         public final boolean on;
-        /** On: the DLLs are in place, so the override may be set. */
+        /** Our DLLs are in place, so the override may be set. */
         public final boolean installed;
         /** One line for the session log, or null when there is nothing to say (off, never on). */
         public final String detail;
+        /** Direct XInput (the setting) for this launch. */
+        public final boolean directOn;
+        /** "Allow in-game switching" for this launch. */
+        public final boolean switching;
+        /** Wine's own xinput is in place as {@value #FORWARD_DLL}: forward mode is possible. */
+        public final boolean forwardAvailable;
 
         Result(boolean on, boolean installed, String detail) {
+            this(on, installed, detail, on, false, false);
+        }
+
+        Result(boolean on, boolean installed, String detail, boolean directOn, boolean switching, boolean forwardAvailable) {
             this.on = on;
             this.installed = installed;
             this.detail = detail;
+            this.directOn = directOn;
+            this.switching = switching;
+            this.forwardAvailable = forwardAvailable;
         }
     }
 
     /**
      * Bring the prefix at {@code prefixDir} (the .wine folder) in line with the setting. Safe on every
-     * launch and after an interrupted one. Never throws.
+     * launch and after an interrupted one. Never throws. (Without in-game switching; see
+     * {@link #syncForLaunch}.)
      *
-     * @param arm64ec the container's Wine is arm64ec (system32 then gets the arm64ec build)
+     * @param arm64ec the container's Wine is arm64ec (system32 then gets the ARM64X build)
      * @param arch    {@value #ENV_ARCH} ("x86_64" forces the x64 build into an arm64ec prefix), or null
      */
     public static Result sync(Context context, File prefixDir, boolean on, boolean arm64ec, String arch) {
+        return syncImpl(context, prefixDir, on, on, false, arm64ec, arch, null);
+    }
+
+    /**
+     * The launch entry point: Direct XInput and "Allow in-game switching" resolved for this game.
+     * With switching on, our DLLs go in whether Direct XInput is on or off, and Wine's own xinput1_4
+     * from the container's Wine layer ({@code wineRoot}: the layer folder holding lib/wine) is put beside
+     * them as {@value #FORWARD_DLL} (system32: x86_64-windows, or aarch64-windows when it is an ARM64X
+     * image, for arm64ec layers; syswow64: i386-windows), so the mode can change mid-game. If Wine's xinput
+     * cannot be used, switching is off for this launch (and with Direct XInput off, nothing of ours is
+     * installed). Then call {@link #launchControlMode} and hand its values to
+     * {@code BannerinWriter.setSessionControl}.
+     */
+    public static Result syncForLaunch(Context context, File prefixDir, Container container, Shortcut shortcut,
+                                       boolean arm64ec, File wineRoot) {
+        boolean direct = effective(container, shortcut);
+        boolean switching = switchingEffective(container, shortcut);
+        String arch = archOverride(container, shortcut);
+        Forward fwd = null;
+        String why = null;
+        if (switching) {
+            fwd = forwardSources(wineRoot, arm64ec);
+            if (fwd.sys32 == null) {
+                why = fwd.problem;
+                fwd = null;
+            }
+        }
+        Result r = syncImpl(context, prefixDir, direct || fwd != null, direct, switching, arm64ec, arch, fwd);
+        if (why == null) return r;
+        String detail = (r.detail != null ? r.detail + "; " : "") + "in-game switching unavailable: " + why;
+        return new Result(r.on, r.installed, detail, direct, false, false);
+    }
+
+    private static Result syncImpl(Context context, File prefixDir, boolean on, boolean direct, boolean switching,
+                                   boolean arm64ec, String arch, Forward fwd) {
         File windows = new File(prefixDir, "drive_c/windows");
         File state = new File(prefixDir, STATE_DIR);
         File marker = new File(state, MARKER);
         try {
-            return on ? install(context, windows, state, marker, arm64ec, arch)
+            return on ? install(context, windows, state, marker, arm64ec, arch, direct, switching, fwd)
                       : restore(windows, state, marker);
         } catch (Throwable t) {
             Log.w(TAG, "sync failed", t);
-            return new Result(on, false, (on ? "could not install BANNERIN-XInput: " : "could not restore the prefix's xinput dlls: ") + t);
+            return new Result(on, false, (on ? "could not install BANNERIN-XInput: " : "could not restore the prefix's xinput dlls: ") + t,
+                    direct, false, false);
         }
     }
 
-    private static Result install(Context context, File windows, File state, File marker, boolean arm64ec, String archOverride) throws Exception {
+    /** Wine's builtin xinput1_4 for each side of the prefix, or why it can't be the forward target. */
+    static final class Forward {
+        File sys32, wow64;
+        String problem;
+    }
+
+    static Forward forwardSources(File wineRoot, boolean arm64ec) {
+        Forward f = new Forward();
+        if (wineRoot == null) {
+            f.problem = "the Wine layer folder is unknown";
+            return f;
+        }
+        File lib = new File(wineRoot, "lib/wine");
+        if (!lib.isDirectory()) lib = new File(wineRoot, "lib64/wine");
+        if (!lib.isDirectory()) lib = wineRoot;
+        File sys = new File(lib, (arm64ec ? "aarch64-windows" : "x86_64-windows") + "/xinput1_4.dll");
+        if (!sys.isFile()) {
+            f.problem = "no " + sys.getParentFile().getName() + "/xinput1_4.dll in " + lib;
+            return f;
+        }
+        try {
+            int machine = peMachine(sys);
+            if (arm64ec) {
+                // Native ARM64 processes load its ARM64 view, x64 games its ARM64EC view: it must be ARM64X.
+                if (machine != 0xaa64 || !hasChpe(sys)) {
+                    f.problem = sys + " is not an ARM64X image (machine 0x" + Integer.toHexString(machine) + ")";
+                    return f;
+                }
+            } else if (machine != 0x8664) {
+                f.problem = sys + " is not an x86_64 image (machine 0x" + Integer.toHexString(machine) + ")";
+                return f;
+            }
+        } catch (Exception e) {
+            f.problem = "cannot read " + sys + ": " + e;
+            return f;
+        }
+        f.sys32 = sys;
+        File wow = new File(lib, "i386-windows/xinput1_4.dll");
+        try {
+            if (wow.isFile() && peMachine(wow) == 0x14c) f.wow64 = wow;
+        } catch (Exception ignored) {
+        }
+        return f;
+    }
+
+    /** One file this sync puts at {@code slot} (relative to drive_c/windows): an APK asset or a file. */
+    private static final class Item {
+        final String slot, asset, sha;
+        final File file;
+
+        Item(String slot, String asset, File file, String sha) {
+            this.slot = slot;
+            this.asset = asset;
+            this.file = file;
+            this.sha = sha;
+        }
+    }
+
+    private static Result install(Context context, File windows, File state, File marker, boolean arm64ec, String archOverride,
+                                  boolean direct, boolean switching, Forward fwd) throws Exception {
         Bundle b = bundle(context);
-        if (b == null) return new Result(true, false, "not in this build (no bundled BANNERIN-XInput), nothing installed");
+        if (b == null)
+            return new Result(true, false, "not in this build (no bundled BANNERIN-XInput), nothing installed", direct, false, false);
         // x86_64 prefix: x86_64. arm64ec prefix: ARM64X (see the class comment), unless forced to x86_64.
         boolean forceX64 = "x86_64".equalsIgnoreCase(archOverride != null ? archOverride.trim() : "");
         String sys64 = arm64ec && !forceX64 ? "arm64x" : "x86_64";
-        if (!b.has(sys64)) return new Result(true, false, "the bundle has no " + sys64 + " build, nothing installed");
-        Properties m = load(marker);
-        List<String> did = new ArrayList<>();
+        if (!b.has(sys64))
+            return new Result(true, false, "the bundle has no " + sys64 + " build, nothing installed", direct, false, false);
+        List<Item> items = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
-        int placed = 0;
         String[][] dirs = {{"system32", sys64}, {"syswow64", "i386"}};
         for (String[] dir : dirs) {
-            File folder = new File(windows, dir[0]);
-            // A prefix without the folder (no syswow64 = no 32-bit side) doesn't get one made for us.
-            if (!folder.isDirectory()) {
+            if (!new File(windows, dir[0]).isDirectory()) {
+                // A prefix without the folder (no syswow64 = no 32-bit side) doesn't get one made for us.
                 skipped.add(dir[0] + " (not in this prefix)");
                 continue;
             }
@@ -213,55 +376,100 @@ public final class BannerinXInput {
                 skipped.add(dir[0] + " (no " + dir[1] + " build bundled)");
                 continue;
             }
-            int changed = 0;
             for (String dll : DLLS) {
-                String slot = dir[0] + "/" + dll + ".dll";
                 String asset = dir[1] + "/" + dll + ".dll";
-                String want = b.files.get(asset);
-                File target = new File(windows, slot);
-                File backup = new File(state, "backup/" + slot);
-                String have = target.isFile() ? sha256(target) : null;
-                boolean ours = have != null && isOurs(have, slot, m);
-                // An original we haven't kept yet: keep it before anything overwrites it (once).
-                if (have != null && !ours && !backup.isFile()) {
-                    copyAtomically(new FileInputStream(target), backup);
-                    m.setProperty(slot, "backup");
-                    store(m, marker);
-                } else if (m.getProperty(slot) == null) {
-                    m.setProperty(slot, backup.isFile() ? "backup" : "absent");
-                    store(m, marker);
-                }
-                placed++;
-                if (want.equals(have)) continue;
-                File tmp = new File(folder, "." + target.getName() + ".bannerlator-tmp");
-                String sha;
-                try (InputStream in = context.getAssets().open(ASSET_DIR + "/" + asset)) {
-                    sha = copyTo(in, tmp);
-                }
-                if (!want.equals(sha)) {
-                    tmp.delete();
-                    throw new IllegalStateException(asset + " in the APK does not match its manifest hash");
-                }
-                addSha(m, slot, sha);
-                store(m, marker);
-                if (!tmp.renameTo(target)) {
-                    tmp.delete();
-                    throw new java.io.IOException("could not put " + slot + " in place");
-                }
-                changed++;
+                items.add(new Item(dir[0] + "/" + dll + ".dll", asset, null, b.files.get(asset)));
             }
-            if (changed > 0) did.add(dir[0] + " (" + dir[1] + ", " + changed + " dll" + (changed == 1 ? "" : "s") + ")");
+            File src = fwd == null ? null : "system32".equals(dir[0]) ? fwd.sys32 : fwd.wow64;
+            if (src != null) items.add(new Item(dir[0] + "/" + FORWARD_DLL, null, src, sha256(src)));
         }
-        if (placed == 0) return new Result(true, false, "nothing installed: " + String.join(", ", skipped));
+        if (items.isEmpty())
+            return new Result(true, false, "nothing installed: " + String.join(", ", skipped), direct, false, false);
+        Properties m = load(marker);
+        List<String> did = new ArrayList<>();
+        boolean forwardPlaced = false;
+        Set<String> wanted = new LinkedHashSet<>();
+        for (Item it : items) {
+            wanted.add(it.slot);
+            File target = new File(windows, it.slot);
+            File folder = target.getParentFile();
+            File backup = new File(state, "backup/" + it.slot);
+            String have = target.isFile() ? sha256(target) : null;
+            boolean ours = have != null && isOurs(have, it.slot, m);
+            // An original we haven't kept yet: keep it before anything overwrites it (once).
+            if (have != null && !ours && !backup.isFile()) {
+                copyAtomically(new FileInputStream(target), backup);
+                m.setProperty(it.slot, "backup");
+                store(m, marker);
+            } else if (m.getProperty(it.slot) == null) {
+                m.setProperty(it.slot, backup.isFile() ? "backup" : "absent");
+                store(m, marker);
+            }
+            if (it.file != null && it.slot.startsWith("system32/")) forwardPlaced = true;
+            if (it.sha.equals(have)) continue;
+            File tmp = new File(folder, "." + target.getName() + ".bannerlator-tmp");
+            String sha;
+            try (InputStream in = it.asset != null ? context.getAssets().open(ASSET_DIR + "/" + it.asset) : new FileInputStream(it.file)) {
+                sha = copyTo(in, tmp);
+            }
+            if (!it.sha.equals(sha)) {
+                tmp.delete();
+                throw new IllegalStateException((it.asset != null ? it.asset + " in the APK" : it.file.toString())
+                        + " does not match its expected hash");
+            }
+            addSha(m, it.slot, sha);
+            store(m, marker);
+            if (!tmp.renameTo(target)) {
+                tmp.delete();
+                throw new java.io.IOException("could not put " + it.slot + " in place");
+            }
+            did.add(it.slot);
+        }
+        // Slots we installed before but don't want now (Wine's xinput after switching was turned off):
+        // the prefix's own file back, or none.
+        List<String> removed = new ArrayList<>();
+        for (String slot : slotPaths(m)) {
+            if (wanted.contains(slot)) continue;
+            restoreSlot(windows, state, marker, m, slot);
+            removed.add(slot);
+        }
         m.setProperty("version", b.version);
         m.setProperty("system32", sys64);
         store(m, marker);
-        String detail = "BANNERIN-XInput " + b.version + (did.isEmpty()
-                ? " in place (system32 " + sys64 + (new File(windows, "syswow64").isDirectory() ? " + syswow64 i386" : "") + ")"
-                : " installed: " + String.join(", ", did))
+        String detail = "BANNERIN-XInput " + b.version + " (system32 " + sys64 + "): "
+                + (did.isEmpty() ? "in place" : "installed " + did.size() + " file(s)")
+                + (forwardPlaced ? "; Wine's xinput beside it as " + FORWARD_DLL + " (in-game switching, launch mode "
+                        + (direct ? "direct" : "forward") + ")" : "")
+                + (removed.isEmpty() ? "" : "; removed " + String.join(", ", removed))
                 + (skipped.isEmpty() ? "" : "; skipped " + String.join(", ", skipped));
         Log.i(TAG, detail);
-        return new Result(true, true, detail);
+        return new Result(true, true, detail, direct, switching && forwardPlaced, forwardPlaced);
+    }
+
+    /** One slot back to the prefix's own file (or none), unless something else replaced ours since. */
+    private static boolean restoreSlot(File windows, File state, File marker, Properties m, String slot) throws Exception {
+        File target = new File(windows, slot);
+        File backup = new File(state, "backup/" + slot);
+        boolean back;
+        if (target.isFile() && !isOurs(sha256(target), slot, m)) {
+            // Not ours: the original is already back (an interrupted restore) or something replaced
+            // our dll since (a Wine update). Leave it; the backup is older than what is there.
+            if (backup.isFile()) backup.delete();
+            back = false;
+        } else {
+            if (target.isFile() && !target.delete()) throw new java.io.IOException("could not remove " + slot);
+            if (backup.isFile()) {
+                if (!backup.renameTo(target)) {
+                    copyAtomically(new FileInputStream(backup), target);
+                    backup.delete();
+                }
+            }
+            back = true;
+        }
+        m.remove(slot);
+        m.remove(slot + ".sha256");
+        store(m, marker);
+        return back;
     }
 
     private static Result restore(File windows, File state, File marker) throws Exception {
@@ -270,31 +478,13 @@ public final class BannerinXInput {
         List<String> back = new ArrayList<>();
         List<String> kept = new ArrayList<>();
         for (String slot : slotPaths(m)) {
-            File target = new File(windows, slot);
-            File backup = new File(state, "backup/" + slot);
-            if (target.isFile() && !isOurs(sha256(target), slot, m)) {
-                // Not ours: the original is already back (an interrupted restore) or something replaced
-                // our dll since (a Wine update). Leave it; the backup is older than what is there.
-                if (backup.isFile()) backup.delete();
-                kept.add(slot);
-            } else {
-                if (target.isFile() && !target.delete()) throw new java.io.IOException("could not remove " + slot);
-                if (backup.isFile()) {
-                    if (!backup.renameTo(target)) {
-                        copyAtomically(new FileInputStream(backup), target);
-                        backup.delete();
-                    }
-                }
-                back.add(slot);
-            }
-            m.remove(slot);
-            m.remove(slot + ".sha256");
-            store(m, marker);
+            if (restoreSlot(windows, state, marker, m, slot)) back.add(slot);
+            else kept.add(slot);
         }
         marker.delete();
         deleteEmptyDirs(new File(state, "backup"));
         state.delete(); // only if empty
-        String detail = "BANNERIN-XInput removed: " + back.size() + " dll(s) back to the prefix's own (Wine's builtin xinput)"
+        String detail = "BANNERIN-XInput removed: " + back.size() + " file(s) back to the prefix's own (Wine's builtin xinput)"
                 + (kept.isEmpty() ? "" : "; left as is (not ours): " + String.join(", ", kept));
         Log.i(TAG, detail);
         return new Result(false, false, detail);
@@ -317,6 +507,55 @@ public final class BannerinXInput {
         List<String> r = new ArrayList<>();
         for (String k : m.stringPropertyNames()) if (k.endsWith(".dll")) r.add(k);
         return r;
+    }
+
+    // ── PE headers (is Wine's xinput an ARM64X image?) ───────────────────────────────────────────
+
+    private static byte[] head(File f, int max) throws Exception {
+        try (InputStream in = new FileInputStream(f)) {
+            byte[] b = new byte[(int) Math.min(f.length(), max)];
+            int n = 0;
+            while (n < b.length) {
+                int r = in.read(b, n, b.length - n);
+                if (r < 0) break;
+                n += r;
+            }
+            return b;
+        }
+    }
+
+    /** The PE header's machine (0x8664 x86_64, 0x14c i386, 0xaa64 ARM64 incl. ARM64X), or -1. */
+    static int peMachine(File f) throws Exception {
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.wrap(head(f, 4096)).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        if (b.limit() < 0x40) return -1;
+        int pe = b.getInt(0x3c);
+        if (pe < 0 || pe + 6 > b.limit() || b.getInt(pe) != 0x00004550) return -1;
+        return b.getShort(pe + 4) & 0xffff;
+    }
+
+    /** True if the image's load config carries a CHPE metadata pointer (ARM64EC code: with machine
+     *  0xaa64 that makes it an ARM64X image, loadable by native ARM64 and by x64 processes). */
+    static boolean hasChpe(File f) throws Exception {
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.wrap(head(f, 16 << 20)).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        int pe = b.getInt(0x3c);
+        int nsec = b.getShort(pe + 6) & 0xffff;
+        int optSize = b.getShort(pe + 20) & 0xffff;
+        int opt = pe + 24;
+        if ((b.getShort(opt) & 0xffff) != 0x20b) return false; // PE32+
+        int lcRva = b.getInt(opt + 112 + 10 * 8);
+        if (lcRva == 0) return false;
+        int sec = opt + optSize;
+        for (int i = 0; i < nsec; i++) {
+            int h = sec + i * 40;
+            int va = b.getInt(h + 12), vsize = b.getInt(h + 8), raw = b.getInt(h + 20), rawSize = b.getInt(h + 16);
+            if (lcRva >= va && lcRva < va + Math.max(vsize, rawSize)) {
+                int off = raw + (lcRva - va);
+                if (off + 0xd0 > b.limit()) return false;
+                int size = b.getInt(off);
+                return size >= 0xd0 && b.getLong(off + 0xc8) != 0;
+            }
+        }
+        return false;
     }
 
     // ── Environment ──────────────────────────────────────────────────────────────────────────────

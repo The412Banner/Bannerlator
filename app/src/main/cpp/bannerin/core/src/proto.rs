@@ -119,6 +119,69 @@ pub fn snapshot<T: Word32, const W: usize>(
     false
 }
 
+/// A memory fence (real, or loom's in the model).
+pub trait Fence {
+    fn fence(o: Ordering);
+}
+
+pub struct NativeFence;
+
+impl Fence for NativeFence {
+    #[inline(always)]
+    fn fence(o: Ordering) {
+        core::sync::atomic::fence(o)
+    }
+}
+
+/// Control block, writer side (one writer): `seq` odd, Release fence, the record words, `gen`
+/// + 1 (never 0), `seq` even with Release. Returns the new gen. This is the classic fence-based
+/// seqlock, the form a 32-bit reader without 64-bit atomics can mirror exactly (the XInput DLL).
+pub fn ctl_write<T: Word32, F: Fence>(seq: &T, gen: &T, words: &[T], data: &[u32]) -> u32 {
+    let s = seq.ld(Relaxed) & !1;
+    seq.st(s.wrapping_add(1), Relaxed);
+    F::fence(Release);
+    for (w, v) in words.iter().zip(data.iter()) {
+        w.st(*v, Relaxed);
+    }
+    let g = match gen.ld(Relaxed).wrapping_add(1) {
+        0 => 1,
+        g => g,
+    };
+    gen.st(g, Relaxed);
+    seq.st(s.wrapping_add(2), Release);
+    g
+}
+
+/// Control block, reader side: copy the record and its gen into `out`, consistently. `seq` with
+/// Acquire, the words (and gen) Relaxed, an Acquire fence, `seq` again: equal and even means no
+/// write overlapped (if one had, the writer's Release fence before its words synchronises with our
+/// Acquire fence and the second load sees the odd value or later). At most `attempts` tries,
+/// `pause(i)` between them; None if the writer kept it busy that long: never blocks.
+pub fn ctl_read<T: Word32, F: Fence>(
+    seq: &T,
+    gen: &T,
+    words: &[T],
+    out: &mut [u32],
+    attempts: u32,
+    mut pause: impl FnMut(u32),
+) -> Option<u32> {
+    for i in 0..attempts {
+        let s1 = seq.ld(Acquire);
+        if s1 & 1 == 0 {
+            for (o, w) in out.iter_mut().zip(words.iter()) {
+                *o = w.ld(Relaxed);
+            }
+            let g = gen.ld(Relaxed);
+            F::fence(Acquire);
+            if seq.ld(Relaxed) == s1 {
+                return Some(g);
+            }
+        }
+        pause(i);
+    }
+    None
+}
+
 /// Writer side: record journal entry `idx`.
 #[inline]
 pub fn journal_put<T: Word64>(ring: &[T], idx: u32, payload: u32) {
@@ -200,6 +263,37 @@ mod tests {
         }
         stop.store(true, Relaxed);
         assert!(w.join().unwrap() > 0);
+    }
+
+    #[test]
+    fn control_seqlock_is_never_torn_under_contention() {
+        let seq = Arc::new(AtomicU32::new(0));
+        let gen = Arc::new(AtomicU32::new(0));
+        let words: Arc<[AtomicU32; 8]> = Arc::new(core::array::from_fn(|_| AtomicU32::new(0)));
+        let stop = Arc::new(AtomicBool::new(false));
+        let w = {
+            let (seq, gen, words, stop) = (seq.clone(), gen.clone(), words.clone(), stop.clone());
+            std::thread::spawn(move || {
+                let mut n = 0u32;
+                while !stop.load(Relaxed) {
+                    n = n.wrapping_add(1);
+                    let g = ctl_write::<_, NativeFence>(&*seq, &*gen, &words[..], &[n; 8]);
+                    assert_eq!(g, n);
+                }
+            })
+        };
+        let mut out = [0u32; 8];
+        let mut ok = 0;
+        for _ in 0..200_000 {
+            if let Some(g) = ctl_read::<_, NativeFence>(&*seq, &*gen, &words[..], &mut out, 64, |_| core::hint::spin_loop()) {
+                assert!(out.iter().all(|v| *v == out[0]), "torn control record {:?}", out);
+                assert_eq!(g, out[0], "gen read with its record");
+                ok += 1;
+            }
+        }
+        stop.store(true, Relaxed);
+        w.join().unwrap();
+        assert!(ok > 0);
     }
 
     #[test]

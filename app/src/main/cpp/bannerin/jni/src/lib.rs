@@ -8,6 +8,7 @@
 use std::ffi::{c_char, c_void};
 use std::sync::{Mutex, MutexGuard};
 
+use bannerin_core::layout::{Identity, ID_KEY_LEN, ID_NAME_LEN};
 use bannerin_core::pad::{overlay_from_bits, PadInput};
 use bannerin_core::writer::SlotWriter;
 
@@ -20,8 +21,10 @@ type JLong = i64;
 type JFloat = f32;
 
 // Indices into the JNINativeInterface function table (stable JNI ABI).
+const JNI_GET_STRING_LENGTH: usize = 164;
 const JNI_GET_STRING_UTF_CHARS: usize = 169;
 const JNI_RELEASE_STRING_UTF_CHARS: usize = 170;
+const JNI_GET_STRING_REGION: usize = 220;
 
 static SLOTS: [Mutex<SlotWriter>; 4] = [
     Mutex::new(SlotWriter::new(0)),
@@ -61,6 +64,94 @@ unsafe fn jstring(env: JEnv, s: JString, out: &mut [u8; 1024]) -> Option<usize> 
     } else {
         None
     }
+}
+
+/// UTF-16 to UTF-8, whole characters only, as many as fit in `out` (a lone surrogate becomes
+/// U+FFFD). Returns the bytes written.
+fn utf16_to_utf8(src: &[u16], out: &mut [u8]) -> usize {
+    let mut n = 0;
+    let mut i = 0;
+    while i < src.len() {
+        let u = src[i] as u32;
+        i += 1;
+        let c = if (0xD800..0xDC00).contains(&u) && i < src.len() && (0xDC00..0xE000).contains(&(src[i] as u32)) {
+            let lo = src[i] as u32;
+            i += 1;
+            0x10000 + ((u - 0xD800) << 10) + (lo - 0xDC00)
+        } else if (0xD800..0xE000).contains(&u) {
+            0xFFFD
+        } else {
+            u
+        };
+        let mut b = [0u8; 4];
+        let len = match c {
+            0..=0x7F => {
+                b[0] = c as u8;
+                1
+            }
+            0x80..=0x7FF => {
+                b[0] = 0xC0 | (c >> 6) as u8;
+                b[1] = 0x80 | (c & 0x3F) as u8;
+                2
+            }
+            0x800..=0xFFFF => {
+                b[0] = 0xE0 | (c >> 12) as u8;
+                b[1] = 0x80 | ((c >> 6) & 0x3F) as u8;
+                b[2] = 0x80 | (c & 0x3F) as u8;
+                3
+            }
+            _ => {
+                b[0] = 0xF0 | (c >> 18) as u8;
+                b[1] = 0x80 | ((c >> 12) & 0x3F) as u8;
+                b[2] = 0x80 | ((c >> 6) & 0x3F) as u8;
+                b[3] = 0x80 | (c & 0x3F) as u8;
+                4
+            }
+        };
+        if c == 0 || n + len > out.len() {
+            break;
+        }
+        out[n..n + len].copy_from_slice(&b[..len]);
+        n += len;
+    }
+    n
+}
+
+/// A Java string as UTF-8 (proper UTF-8, not JNI's modified form), cut to whole characters that
+/// fit in `out`. Null is the empty string. Reads at most out.len() UTF-16 units; no allocation.
+unsafe fn jstring_utf8<const N: usize>(env: JEnv, s: JString, out: &mut [u8; N]) -> usize {
+    if env.is_null() || s.is_null() {
+        return 0;
+    }
+    let fns = *env;
+    let len: unsafe extern "system" fn(JEnv, JString) -> JInt = std::mem::transmute(*fns.add(JNI_GET_STRING_LENGTH));
+    let region: unsafe extern "system" fn(JEnv, JString, JInt, JInt, *mut u16) =
+        std::mem::transmute(*fns.add(JNI_GET_STRING_REGION));
+    let mut units = [0u16; 128];
+    let n = (len(env, s).max(0) as usize).min(units.len()).min(N);
+    region(env, s, 0, n as JInt, units.as_mut_ptr());
+    utf16_to_utf8(&units[..n], out)
+}
+
+/// An identity key: printable ASCII only (anything else becomes '_').
+fn ascii_key(b: &[u8]) -> [u8; ID_KEY_LEN] {
+    let mut k = [0u8; ID_KEY_LEN];
+    let mut n = 0;
+    let mut i = 0;
+    while i < b.len() && n < ID_KEY_LEN - 1 {
+        let c = b[i];
+        // skip a whole multi-byte character as one '_'
+        let w = match c {
+            0..=0x7F => 1,
+            0xC0..=0xDF => 2,
+            0xE0..=0xEF => 3,
+            _ => 4,
+        };
+        k[n] = if (0x21..=0x7E).contains(&c) { c } else { b'_' };
+        n += 1;
+        i += w;
+    }
+    k
 }
 
 fn jbool(b: bool) -> JBoolean {
@@ -198,6 +289,91 @@ pub extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativ
     bannerin_core::writer::game_frame(bannerin_core::sys::mono_ns());
 }
 
+/// `static native boolean nativeSetSlotIdentity(int slot, int bustype, int vendor, int product,
+/// int version, String key, String name)`: the controller identity readers of this slot report
+/// from their next attach on (ids are cut to 16 bits; key: ASCII, at most 15 characters; name:
+/// UTF-8, at most 63 bytes, cut at a character boundary). Stored for files created later too.
+/// Must have returned before the slot's discovery node is created. False for a bad slot.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativeSetSlotIdentity(
+    env: JEnv,
+    _cls: JClass,
+    s: JInt,
+    bustype: JInt,
+    vendor: JInt,
+    product: JInt,
+    version: JInt,
+    key: JString,
+    name: JString,
+) -> JBoolean {
+    let mut kb = [0u8; ID_KEY_LEN * 4];
+    let kn = jstring_utf8(env, key, &mut kb);
+    let mut nb = [0u8; ID_NAME_LEN];
+    let nn = jstring_utf8(env, name, &mut nb);
+    let k = ascii_key(&kb[..kn]);
+    let id = Identity::new(bustype as u16, vendor as u16, product as u16, version as u16, &k, &nb[..nn]);
+    match slot(s) {
+        Some(mut w) => {
+            w.set_identity(Some(id));
+            1
+        }
+        None => 0,
+    }
+}
+
+/// `static native boolean nativeClearSlotIdentity(int slot)`: no identity (readers use their own
+/// default from their next attach on). False for a bad slot.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativeClearSlotIdentity(
+    _env: JEnv,
+    _cls: JClass,
+    s: JInt,
+) -> JBoolean {
+    match slot(s) {
+        Some(mut w) => {
+            w.set_identity(None);
+            1
+        }
+        None => 0,
+    }
+}
+
+/// `static native void nativeSetSessionControl(int axisMode, int axisHz, int autoMax,
+/// int xinputMode, int xinputFlags)`: session settings, written into all four slots (live files
+/// now, later files when they are created). Readers apply pacing at their next decision.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativeSetSessionControl(
+    _env: JEnv,
+    _cls: JClass,
+    axis_mode: JInt,
+    axis_hz: JInt,
+    auto_max: JInt,
+    xinput_mode: JInt,
+    xinput_flags: JInt,
+) {
+    let u = |v: JInt| v.max(0) as u32;
+    for i in 0..SLOTS.len() as JInt {
+        if let Some(mut w) = slot(i) {
+            w.set_session(u(axis_mode), u(axis_hz), u(auto_max), u(xinput_mode), xinput_flags as u32);
+        }
+    }
+}
+
+/// `static native long nativeGetControlGen(int slot)`: the slot's control gen (bumped by every
+/// change to its control record), 0 for a bad slot.
+#[no_mangle]
+pub extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativeGetControlGen(
+    _env: JEnv,
+    _cls: JClass,
+    s: JInt,
+) -> JLong {
+    match slot(s) {
+        Some(w) => w.control().0 as JLong,
+        None => 0,
+    }
+}
+
 /// `static native long nativeStat(int slot, int which)`: see `bannerin_core::writer::STAT_*`.
 #[no_mangle]
 pub extern "system" fn Java_com_winlator_star_inputcontrols_BannerinWriter_nativeStat(
@@ -223,6 +399,43 @@ mod tests {
         assert!(slot(0).is_some());
         assert_eq!(Java_com_winlator_star_inputcontrols_BannerinWriter_nativeReset(std::ptr::null_mut(), std::ptr::null_mut(), 7), 0);
         assert_eq!(Java_com_winlator_star_inputcontrols_BannerinWriter_nativeStat(std::ptr::null_mut(), std::ptr::null_mut(), 9, 0), 0);
+    }
+
+    #[test]
+    fn utf16_conversion_and_key_filter() {
+        let enc = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+        let mut out = [0u8; 64];
+        let n = utf16_to_utf8(&enc("Xbox 360 Controller (0)"), &mut out);
+        assert_eq!(&out[..n], b"Xbox 360 Controller (0)");
+        let s = "Pad \u{e9}\u{4e2d}\u{1F3AE}";
+        let n = utf16_to_utf8(&enc(s), &mut out);
+        assert_eq!(&out[..n], s.as_bytes(), "BMP and supplementary characters as real UTF-8");
+        let n = utf16_to_utf8(&[0x41, 0xD800, 0x42], &mut out);
+        assert_eq!(&out[..n], "A\u{FFFD}B".as_bytes(), "lone surrogate");
+        let mut small = [0u8; 5];
+        let n = utf16_to_utf8(&enc("ab\u{4e2d}\u{4e2d}"), &mut small);
+        assert_eq!(&small[..n], "ab\u{4e2d}".as_bytes(), "whole characters only");
+        assert_eq!(Identity::text(&ascii_key(b"xbox360")), b"xbox360");
+        assert_eq!(Identity::text(&ascii_key("a b\u{e9}c".as_bytes())), b"a_b_c");
+    }
+
+    #[test]
+    fn control_entry_points_refuse_bad_slots_and_bump_gens() {
+        fn z<T>() -> *mut T {
+            std::ptr::null_mut()
+        }
+        assert_eq!(Java_com_winlator_star_inputcontrols_BannerinWriter_nativeClearSlotIdentity(z(), z(), 9), 0);
+        assert_eq!(Java_com_winlator_star_inputcontrols_BannerinWriter_nativeGetControlGen(z(), z(), -1), 0);
+        let g0 = Java_com_winlator_star_inputcontrols_BannerinWriter_nativeGetControlGen(z(), z(), 2);
+        assert!(g0 >= 1);
+        Java_com_winlator_star_inputcontrols_BannerinWriter_nativeSetSessionControl(z(), z(), 2, 30, 0, 1, 0);
+        let g1 = Java_com_winlator_star_inputcontrols_BannerinWriter_nativeGetControlGen(z(), z(), 2);
+        assert_eq!(g1, g0 + 1);
+        // the same settings again change nothing
+        Java_com_winlator_star_inputcontrols_BannerinWriter_nativeSetSessionControl(z(), z(), 2, 30, 0, 1, 0);
+        assert_eq!(Java_com_winlator_star_inputcontrols_BannerinWriter_nativeGetControlGen(z(), z(), 2), g1);
+        let (_, st) = slot(1).unwrap().control();
+        assert_eq!((st.axis_mode, st.axis_hz, st.xinput_mode), (2, 30, 1), "session settings reach every slot");
     }
 
     #[test]

@@ -9,7 +9,7 @@
 use core::ffi::{c_int, c_short, c_void};
 
 use bannerin_core::abi::{AXES, BUTTONS};
-use bannerin_core::guest::{self, LogFn, SlotStatsView, StatsView};
+use bannerin_core::guest::{self, IdentityView, LogFn, SlotStatsView, StatsView};
 use bannerin_core::sys;
 
 /// `struct bannerin_state`.
@@ -127,6 +127,36 @@ pub unsafe extern "C" fn bannerin_slot_stats(slot: c_int, out: *mut SlotStatsVie
         return neg(sys::EINVAL);
     }
     match guest::slot_stats(slot) {
+        Ok(v) => {
+            copy_out(&v, out, size);
+            0
+        }
+        Err(e) => neg(e),
+    }
+}
+
+/// `int bannerin_identity(bannerin_handle h, struct bannerin_identity *out, size_t size)`
+#[no_mangle]
+pub unsafe extern "C" fn bannerin_identity(h: u32, out: *mut IdentityView, size: usize) -> c_int {
+    if out.is_null() {
+        return neg(sys::EINVAL);
+    }
+    match guest::identity(h) {
+        Ok(v) => {
+            copy_out(&v, out, size);
+            0
+        }
+        Err(e) => neg(e),
+    }
+}
+
+/// `int bannerin_slot_identity(int slot, struct bannerin_identity *out, size_t size)`
+#[no_mangle]
+pub unsafe extern "C" fn bannerin_slot_identity(slot: c_int, out: *mut IdentityView, size: usize) -> c_int {
+    if out.is_null() {
+        return neg(sys::EINVAL);
+    }
+    match guest::slot_identity(slot) {
         Ok(v) => {
             copy_out(&v, out, size);
             0

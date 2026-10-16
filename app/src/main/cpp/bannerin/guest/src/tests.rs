@@ -1852,3 +1852,370 @@ fn idle_slots_barely_wake_and_a_publish_at_the_idle_edge_is_not_lost() {
         Ok(())
     });
 }
+
+// ---------------------------------------------------------------------------------------------
+// control block (format 1.5): live pacing and controller identity
+
+use bannerin_core::layout::{
+    Identity, Shared, CTL_AXIS_FIXED, CTL_AXIS_UNPACED, CTL_AXIS_UNSET, FILE_SIZE, ID_KEY_LEN, ID_NAME_LEN,
+};
+
+const NO_ID: IdentityView =
+    IdentityView { gen: 0, bustype: 0, vendor: 0, product: 0, version: 0, key: [0; ID_KEY_LEN], name: [0; ID_NAME_LEN] };
+
+fn ident(h: u32) -> Result<IdentityView, i32> {
+    let mut v = NO_ID;
+    let r = unsafe { bannerin_identity(h, &mut v, core::mem::size_of::<IdentityView>()) };
+    if r < 0 {
+        Err(-r)
+    } else {
+        Ok(v)
+    }
+}
+
+fn slot_ident(slot: i32) -> Result<IdentityView, i32> {
+    let mut v = NO_ID;
+    let r = unsafe { bannerin_slot_identity(slot, &mut v, core::mem::size_of::<IdentityView>()) };
+    if r < 0 {
+        Err(-r)
+    } else {
+        Ok(v)
+    }
+}
+
+fn text(b: &[u8]) -> Result<String, String> {
+    let n = b.iter().position(|c| *c == 0).ok_or("string field not NUL-terminated")?;
+    String::from_utf8(b[..n].to_vec()).map_err(|_| format!("not UTF-8: {:?}", &b[..n]))
+}
+
+fn id_name(v: &IdentityView) -> String {
+    text(&v.name).unwrap_or_else(|e| e)
+}
+
+fn slot_view(slot: i32) -> SlotStatsView {
+    let mut st = SlotStatsView::default();
+    unsafe { bannerin_slot_stats(slot, &mut st, core::mem::size_of::<SlotStatsView>()) };
+    st
+}
+
+/// Map a slot file read-write (to play an older or damaged writer in a test).
+fn map_shared(path: &std::path::Path) -> &'static Shared {
+    let mut p = sys::PathBuf::new();
+    assert!(p.push(path.to_str().unwrap().as_bytes()));
+    let fd = sys::openat(p.as_ptr(), sys::O_RDWR | sys::O_CLOEXEC, 0).unwrap();
+    let m = sys::mmap(FILE_SIZE, sys::PROT_READ | sys::PROT_WRITE, sys::MAP_SHARED, fd).unwrap();
+    sys::close(fd);
+    unsafe { Shared::at(m) }
+}
+
+#[test]
+fn identity_is_taken_at_attach_and_never_changes_under_an_open_handle() {
+    let sc = Scene::new("ident");
+    let shm = Shm::new();
+    // shm: 0 writer ready (identity A), 1 reader holds h1, 2 identity B set, 3 reader checked B,
+    //      4 file recreated, 5 reader saw the re-attach, 6 identity cleared, 7 reader done
+    let xbox = || Identity::new(3, 0x045e, 0x028e, 0x0114, b"xbox360", b"Xbox 360 Controller (0)");
+    let ds = || Identity::new(3, 0x054c, 0x0ce6, 0x8111, b"ds5", "DualSense Wireless Controller \u{2013} P1".as_bytes());
+    let wpid = spawn("ident-writer", || {
+        let mut w = SlotWriter::new(0);
+        w.set_identity(Some(xbox())); // before the file exists, as the app does
+        w.prepare(sc.backing().as_bytes()).map_err(|e| format!("prepare {}", e))?;
+        w.open();
+        shm.set(0, 1);
+        shm.wait(1, 1, 30)?;
+        w.set_identity(Some(ds()));
+        shm.set(2, 1);
+        shm.wait(3, 1, 30)?;
+        w.release(); // session end, then a new session: a new file
+        w.prepare(sc.backing().as_bytes()).map_err(|e| format!("prepare {}", e))?;
+        shm.set(4, 1);
+        shm.wait(5, 1, 30)?;
+        w.set_identity(None);
+        shm.set(6, 1);
+        shm.wait(7, 1, 30)?;
+        Ok(())
+    });
+    let rpid = spawn("ident-reader", || {
+        shm.wait(0, 1, 30)?;
+        sc.enter();
+        ensure!(bannerin_api_version() == 2, "api version {}", bannerin_api_version());
+        let s0 = slot_ident(0).map_err(|e| format!("slot identity errno {}", e))?;
+        ensure!(
+            id_name(&s0) == "Xbox 360 Controller (0)"
+                && text(&s0.key)? == "xbox360"
+                && (s0.bustype, s0.vendor, s0.product, s0.version) == (3, 0x045e, 0x028e, 0x0114),
+            "slot identity {:?}",
+            s0
+        );
+        ensure!(slot_ident(1).err() == Some(sys::ENODEV), "no file for slot 1: {:?}", slot_ident(1));
+        ensure!(slot_ident(7).err() == Some(sys::ENODEV), "slot out of range");
+        let mut h1 = Rd::attach(0, sys::O_NONBLOCK)?;
+        ensure!(is_full(&h1.frame(1000)?), "full first");
+        let a = ident(h1.h).map_err(|e| format!("identity errno {}", e))?;
+        ensure!(id_name(&a) == "Xbox 360 Controller (0)" && a.gen == s0.gen, "h1 identity {:?}", a);
+        shm.set(1, 1);
+        shm.wait(2, 1, 30)?;
+        let b = slot_ident(0).map_err(|e| format!("slot identity errno {}", e))?;
+        ensure!(id_name(&b) == "DualSense Wireless Controller \u{2013} P1" && b.gen > a.gen, "slot identity B {:?}", b);
+        // the open handle keeps A, through reads and refreshes
+        for _ in 0..5 {
+            h1.drain()?;
+            let v = ident(h1.h).map_err(|e| format!("identity errno {}", e))?;
+            ensure!(id_name(&v) == "Xbox 360 Controller (0)" && v.gen == a.gen, "h1 changed under the open handle: {:?}", v);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        // a new attach takes B
+        let h2 = Rd::attach(0, sys::O_NONBLOCK)?;
+        let v2 = ident(h2.h).map_err(|e| format!("identity errno {}", e))?;
+        ensure!(id_name(&v2) == id_name(&b) && v2.product == 0x0ce6 && text(&v2.key)? == "ds5", "h2 identity {:?}", v2);
+        // a forked child keeps each handle's identity
+        let (h1h, h2h) = (h1.h, h2.h);
+        let child = spawn("ident-child", move || {
+            ensure!(id_name(&ident(h1h).map_err(|e| format!("errno {}", e))?) == "Xbox 360 Controller (0)", "child h1");
+            ensure!(id_name(&ident(h2h).map_err(|e| format!("errno {}", e))?).starts_with("DualSense"), "child h2");
+            Ok(())
+        });
+        ensure!(wait_pid(child) == 0, "forked child saw other identities");
+        shm.set(3, 1);
+        shm.wait(4, 1, 30)?;
+        // h1 re-attaches to the new file: that, and only that, takes the current identity
+        let end = Instant::now() + Duration::from_secs(5);
+        loop {
+            let _ = h1.drain();
+            let v = ident(h1.h).map_err(|e| format!("identity errno {}", e))?;
+            if id_name(&v) == id_name(&b) {
+                ensure!(v.gen == b.gen, "re-attached identity gen {} (file {})", v.gen, b.gen);
+                break;
+            }
+            ensure!(id_name(&v) == "Xbox 360 Controller (0)", "h1 identity {:?}", v);
+            ensure!(Instant::now() < end, "h1 never re-attached to the new file");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        shm.set(5, 1);
+        shm.wait(6, 1, 30)?;
+        ensure!(slot_ident(0).err() == Some(sys::ENODATA), "cleared identity: {:?}", slot_ident(0));
+        ensure!(id_name(&ident(h1.h).map_err(|e| format!("errno {}", e))?) == id_name(&b), "h1 keeps B after the clear");
+        let h3 = Rd::attach(0, sys::O_NONBLOCK)?;
+        ensure!(ident(h3.h).err() == Some(sys::ENODATA), "a new attach after the clear has no identity");
+        ensure!(bannerin_detach(h3.h) == 0, "detach");
+        ensure!(ident(h3.h).err() == Some(sys::EBADF), "stale handle");
+        let st = slot_view(0);
+        let s = stats();
+        say(&format!(
+            "[ident] file: control gen {} applied {} id gen attached {} identity reads {}; process: applied {} busy {} reads {}\n",
+            st.control_gen, st.reader_ctl_gen_applied, st.reader_id_gen_attached, st.reader_identity_reads, s.ctl_applied, s.ctl_busy, s.identity_reads
+        ));
+        ensure!(st.control_gen > b.gen as u64 && st.reader_id_gen_attached == st.control_gen, "stats {:?}", st);
+        ensure!(st.reader_identity_reads > 0 && s.identity_reads > 0, "identity reads counted");
+        shm.set(7, 1);
+        Ok(())
+    });
+    assert_eq!((wait_pid(wpid), wait_pid(rpid)), (0, 0));
+}
+
+#[test]
+fn the_app_changes_stick_pacing_live() {
+    let sc = Scene::new("live");
+    let shm = Shm::new();
+    // shm: 0 writer ready, 1 reader ready, 2 -> unpaced at (ns), 3 -> environment at (ns),
+    //      4 spam start, 5 spam end, 6 reader done
+    let wpid = spawn("live-writer", || {
+        let mut w = SlotWriter::new(0);
+        w.set_session(CTL_AXIS_FIXED, 30, 0, 0, 0);
+        w.prepare(sc.backing().as_bytes()).map_err(|e| format!("prepare {}", e))?;
+        w.open();
+        shm.set(0, 1);
+        shm.wait(1, 1, 30)?;
+        let start = Instant::now();
+        shm.set(4, sys::mono_ns());
+        for i in 0..1500u32 {
+            sleep_until(start + Duration::from_micros(2000 * i as u64)); // 500 Hz for 3 s
+            if i == 500 {
+                w.set_session(CTL_AXIS_UNPACED, 0, 0, 0, 0);
+                shm.set(2, sys::mono_ns());
+            }
+            if i == 1000 {
+                w.set_session(CTL_AXIS_UNSET, 0, 0, 0, 0);
+                shm.set(3, sys::mono_ns());
+            }
+            w.set_pad(pad_axes(0, stick(i)));
+        }
+        shm.set(5, sys::mono_ns());
+        shm.wait(6, 1, 30)?;
+        Ok(())
+    });
+    let rpid = spawn("live-reader", || {
+        shm.wait(0, 1, 30)?;
+        sc.enter();
+        std::env::set_var("BANNERIN_AXIS_HZ", "125"); // what mode 0 hands back to
+        let mut r = Rd::attach(0, sys::O_NONBLOCK)?;
+        ensure!(is_full(&r.frame(1000)?), "full first");
+        ensure!(bannerin_axis_hz() == 30 && bannerin_axis_auto() == 0, "the app's fixed 30 Hz: {}", bannerin_axis_hz());
+        shm.set(1, 1);
+        let mut stamps = Vec::new();
+        let (mut hz_unpaced, mut hz_env) = (None, None);
+        let end = Instant::now() + Duration::from_secs(30);
+        while shm.get(5) == 0 || r.poll(60) != 0 {
+            ensure!(Instant::now() < end, "writer never finished");
+            r.poll(20);
+            match r.read_nb() {
+                Ok(_) | Err(sys::EAGAIN) => {}
+                Err(e) => return Err(format!("read errno {}", e)),
+            }
+            while let Some(f) = r.take_frame() {
+                ensure!(is_axis_only(&f), "only stick frames expected: {:?}", f);
+                stamps.push(sys::mono_ns());
+            }
+            let now = sys::mono_ns();
+            if hz_unpaced.is_none() && shm.get(2) != 0 && now > shm.get(2) + 100_000_000 {
+                hz_unpaced = Some(bannerin_axis_hz());
+            }
+            if hz_env.is_none() && shm.get(3) != 0 && now > shm.get(3) + 100_000_000 {
+                hz_env = Some(bannerin_axis_hz());
+            }
+        }
+        shm.set(6, 1);
+        let (t0, c1, c2, t1) = (shm.get(4), shm.get(2), shm.get(3), shm.get(5));
+        let rate = |a: u64, b: u64| stamps.iter().filter(|t| **t >= a && **t < b).count() as f64 / ((b - a) as f64 / 1e9);
+        let settle = 50_000_000;
+        let (fixed, unpaced, env) = (rate(t0 + settle, c1), rate(c1 + settle, c2), rate(c2 + settle, t1));
+        let first_after = stamps.iter().find(|t| **t > c1).map(|t| (t - c1) as f64 / 1e6).unwrap_or(f64::MAX);
+        let s = stats();
+        say(&format!(
+            "[live] fixed 30: {:.1}/s; unpaced: {:.1}/s (first frame {:.2} ms after the change); env 125: {:.1}/s; applied {} busy {}\n",
+            fixed, unpaced, first_after, env, s.ctl_applied, s.ctl_busy
+        ));
+        ensure!(fixed <= 33.0 && fixed >= 20.0, "fixed 30 Hz phase ran at {:.1}/s", fixed);
+        ensure!(unpaced >= 200.0, "unpaced phase only {:.1}/s", unpaced);
+        ensure!(first_after < 15.0, "the change took {:.2} ms to apply (old 33 ms deadline?)", first_after);
+        ensure!(env <= 125.0 * 1.1 && env >= 125.0 * 0.7, "mode 0 should hand back BANNERIN_AXIS_HZ=125: {:.1}/s", env);
+        ensure!(hz_unpaced == Some(0) && hz_env == Some(125), "effective rate reported {:?} / {:?}", hz_unpaced, hz_env);
+        ensure!(s.ctl_applied >= 3, "control gens applied: {}", s.ctl_applied);
+        Ok(())
+    });
+    assert_eq!((wait_pid(wpid), wait_pid(rpid)), (0, 0));
+}
+
+#[test]
+fn an_old_format_file_keeps_the_environment_and_has_no_identity() {
+    let sc = Scene::new("old");
+    run("old-format", || {
+        let mut w = SlotWriter::new(0);
+        w.set_session(CTL_AXIS_FIXED, 30, 0, 0, 0);
+        w.set_identity(Some(Identity::new(3, 1, 2, 3, b"key", b"name")));
+        w.prepare(sc.backing().as_bytes()).map_err(|e| format!("prepare {}", e))?;
+        w.open();
+        // play a format 1.4 writer: same bytes, older minor
+        map_shared(&sc.pad(0)).header.minor.store(4, Relaxed);
+        sc.enter();
+        std::env::set_var("BANNERIN_AXIS_HZ", "125");
+        let applied = stats().ctl_applied;
+        let mut r = Rd::attach(0, sys::O_NONBLOCK)?;
+        ensure!(is_full(&r.frame(1000)?), "full first");
+        w.set_pad(pad_axes(0, stick(3)));
+        r.frame(1000)?;
+        ensure!(bannerin_axis_hz() == 125, "environment pacing expected, got {}", bannerin_axis_hz());
+        ensure!(ident(r.h).err() == Some(sys::ENODATA), "no identity from a 1.4 file");
+        ensure!(slot_ident(0).err() == Some(sys::ENODATA), "no slot identity from a 1.4 file");
+        let st = slot_view(0);
+        ensure!(st.control_gen == 0 && st.reader_ctl_gen_applied == 0, "no control stats from a 1.4 file: {:?}", st);
+        ensure!(stats().ctl_applied == applied, "nothing applied");
+        Ok(())
+    });
+}
+
+fn churn_id(i: u32) -> Identity {
+    let name = format!("Pad {:06} {}", i, "\u{e9}".repeat((i % 25) as usize));
+    let key = format!("k{}", i % 100_000);
+    Identity::new(3, i as u16, (i >> 16) as u16, name.len() as u16, key.as_bytes(), name.as_bytes())
+}
+
+/// The identity a view claims to be must be exactly the one the writer stored under its numbers.
+fn churn_check(v: &IdentityView) -> Result<(), String> {
+    let i = v.vendor as u32 | ((v.product as u32) << 16);
+    let want = churn_id(i);
+    let name = text(&v.name)?;
+    let key = text(&v.key)?;
+    ensure!(
+        name.as_bytes() == Identity::text(&want.name) && key.as_bytes() == Identity::text(&want.key) && v.version == want.version,
+        "torn identity: #{} name {:?} key {:?} version {}",
+        i,
+        name,
+        key,
+        v.version
+    );
+    Ok(())
+}
+
+#[test]
+fn identity_churn_never_tears_a_name() {
+    const CHANGES: u32 = 100_000;
+    let sc = Scene::new("churn");
+    let shm = Shm::new();
+    // shm: 0 writer ready, 1 reader ready, 2 writer done, 3 reader checks so far, 4 reader done
+    let wpid = spawn("churn-writer", || {
+        let mut w = SlotWriter::new(0);
+        w.set_identity(Some(churn_id(0)));
+        w.prepare(sc.backing().as_bytes()).map_err(|e| format!("prepare {}", e))?;
+        w.open();
+        shm.set(0, 1);
+        shm.wait(1, 1, 30)?;
+        let end = Instant::now() + Duration::from_secs(120);
+        let mut seen = 0;
+        for i in 1..=CHANGES {
+            w.set_identity(Some(churn_id(i)));
+            // interleave: every 250 changes, let the reader finish at least one more check
+            if i % 250 == 0 {
+                while shm.get(3) <= seen {
+                    ensure!(Instant::now() < end, "reader stalled");
+                    std::thread::yield_now();
+                }
+                seen = shm.get(3);
+            }
+        }
+        shm.set(2, 1);
+        shm.wait(4, 1, 120)?;
+        Ok(())
+    });
+    let rpid = spawn("churn-reader", || {
+        shm.wait(0, 1, 30)?;
+        sc.enter();
+        let keeper = Rd::attach(0, sys::O_NONBLOCK)?;
+        let kept = ident(keeper.h).map_err(|e| format!("errno {}", e))?;
+        churn_check(&kept)?;
+        shm.set(1, 1);
+        let (mut attaches, mut slot_reads, mut last_gen) = (0u64, 0u64, 0u32);
+        while shm.get(2) == 0 {
+            let r = Rd::attach(0, sys::O_NONBLOCK)?;
+            let v = ident(r.h).map_err(|e| format!("identity errno {}", e))?;
+            churn_check(&v)?;
+            ensure!(v.gen >= last_gen, "identity gen went backwards: {} after {}", v.gen, last_gen);
+            last_gen = v.gen;
+            ensure!(bannerin_detach(r.h) == 0, "detach");
+            attaches += 1;
+            match slot_ident(0) {
+                Ok(v) => {
+                    churn_check(&v)?;
+                    slot_reads += 1;
+                }
+                Err(sys::EAGAIN) => {}
+                Err(e) => return Err(format!("slot identity errno {}", e)),
+            }
+            shm.set(3, attaches);
+        }
+        let k = ident(keeper.h).map_err(|e| format!("errno {}", e))?;
+        ensure!(k.gen == kept.gen && k.name == kept.name, "the long-lived handle's identity changed");
+        let last = slot_ident(0).map_err(|e| format!("errno {}", e))?;
+        churn_check(&last)?;
+        ensure!(last.vendor as u32 | ((last.product as u32) << 16) == CHANGES, "final identity #{}", last.vendor);
+        shm.set(4, 1);
+        let s = stats();
+        say(&format!(
+            "[churn] {} changes; {} attaches + {} slot reads checked, none torn; control reads busy {}\n",
+            CHANGES, attaches, slot_reads, s.ctl_busy
+        ));
+        ensure!(attaches >= (CHANGES / 250) as u64, "only {} attaches interleaved", attaches);
+        Ok(())
+    });
+    assert_eq!((wait_pid(wpid), wait_pid(rpid)), (0, 0));
+}

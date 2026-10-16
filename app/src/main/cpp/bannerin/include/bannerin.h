@@ -44,6 +44,25 @@
  *     N (30..1000)     a fixed N Hz (T = 1/N between stick-only frames).
  *     0                unpaced: one frame per stick update.
  *
+ * LIVE CONTROL (API 2, slot files of format 1.5)
+ *   The app can change the pacing during a session through the slot file's control block (session
+ *   settings, the same in every slot): its axis_mode (1 auto, 2 fixed N, 3 unpaced), N and the auto
+ *   ceiling override the environment above; axis_mode 0 leaves the environment in force. A change
+ *   applies at the handle's next pacing decision (within the 4 ms re-check while input flows, even
+ *   if a stick frame was held under a longer interval), is logged once per slot, and is read
+ *   without ever blocking (a record caught mid-update is retried at the next decision; the last
+ *   good one stays in force). bannerin_axis_hz() / bannerin_axis_auto() report the effective
+ *   values. A file of format <= 1.4 (or with no valid control block) behaves exactly as above.
+ *
+ * CONTROLLER IDENTITY (API 2)
+ *   The control block may also carry the identity the evdev layer should present for the slot
+ *   (bus type, vendor, product, version, a short key and the device name). A handle captures it
+ *   when it attaches, and again only when it re-attaches to a new slot file; it never changes
+ *   under an open handle. bannerin_identity() returns a handle's, bannerin_slot_identity() the
+ *   slot file's current one (e.g. to name a device node before any open). The app sets it before
+ *   it creates the slot's discovery node. -ENODATA from either means "no identity": use your
+ *   own default.
+ *
  *   Canonical codes are delivered (triggers as ABS_BRAKE / ABS_GAS); any re-presentation (e.g. the
  *   Steam-virtual ABS_Z / ABS_RZ identity) is the evdev layer's job. Values are always inside the
  *   advertised ranges: sticks -32768..32767, triggers 0..255, hats -1..1.
@@ -89,7 +108,7 @@
 extern "C" {
 #endif
 
-#define BANNERIN_API_VERSION 1u
+#define BANNERIN_API_VERSION 2u
 #define BANNERIN_MAX_SLOTS 4
 #define BANNERIN_BUTTONS 11
 #define BANNERIN_AXES 8
@@ -114,6 +133,17 @@ extern "C" {
 
 /* Opaque, never 0. A stale handle (after detach) is always refused with -EBADF. */
 typedef uint32_t bannerin_handle;
+
+/* A controller identity (API 2). Strings are always NUL-terminated. 92 bytes, 4-byte aligned. */
+struct bannerin_identity {
+    uint32_t gen;        /* the control gen it came from (changes when the app changes it) */
+    uint16_t bustype;    /* evdev input_id: BUS_* */
+    uint16_t vendor;
+    uint16_t product;
+    uint16_t version;
+    char key[16];        /* short ASCII tag, e.g. "xbox360" */
+    char name[64];       /* UTF-8 device name, e.g. "Xbox 360 Controller (0)" */
+};
 
 /* The slot's current state in canonical order (buttons 0/1). */
 struct bannerin_state {
@@ -147,6 +177,9 @@ struct bannerin_stats {
     uint64_t axis_hz;                /* the rate last paced to (credits: the game's frame rate) */
     uint64_t auto_fallbacks;         /* auto mode: times the frame feed went stale (fixed 60 Hz) */
     uint64_t axis_mode;              /* BANNERIN_AXIS_MODE_* last in force (0 = none yet) */
+    uint64_t ctl_applied;            /* API 2: control records applied (live pacing changes) */
+    uint64_t ctl_busy;               /* control reads that found the record mid-update (retried) */
+    uint64_t identity_reads;         /* bannerin_identity / bannerin_slot_identity calls answered */
 };
 
 /* Counters stored in a slot file: its writer's and the sum over all of its readers. */
@@ -178,6 +211,10 @@ struct bannerin_slot_stats {
     uint64_t frame_waiters;                 /* wake threads waiting for the next game frame */
     uint64_t reader_helper_wakes;           /* wake-thread wake-ups, all reader processes */
     uint64_t reader_auto_max;               /* format 1.4: the auto ceiling in force (Hz) */
+    uint64_t control_gen;                   /* format 1.5: the file's control gen (0 = no block) */
+    uint64_t reader_ctl_gen_applied;        /* the control gen a reader last applied */
+    uint64_t reader_id_gen_attached;        /* the gen whose identity the last attach took */
+    uint64_t reader_identity_reads;         /* identity queries readers answered from this file */
 };
 
 /* level 0 = info, 1 = warning; line is NUL-terminated, valid only during the call. */
@@ -248,15 +285,29 @@ int bannerin_slot_stats(int slot, struct bannerin_slot_stats *out, size_t size);
  * coalesced taps) to fn; NULL silences them. Never called with any library lock held. */
 void bannerin_set_logger(bannerin_log_fn fn);
 
+/* The controller identity this handle presents: the one its slot file carried when the handle
+ * attached to it (or re-attached to a new file). Copies at most `size` bytes (pass
+ * sizeof(struct bannerin_identity)). Returns 0, -ENODATA (no identity: use your default),
+ * -EBADF (bad handle), -EINVAL (out is NULL). */
+int bannerin_identity(bannerin_handle h, struct bannerin_identity *out, size_t size);
+
+/* The identity `slot`'s current file carries right now, for naming a device before any open.
+ * Returns 0, -ENODATA (the file has no identity, or predates control blocks: use your default),
+ * -ENODEV (slot not configured, or no live file for it), -EINVAL (out is NULL), or -EAGAIN if the
+ * app kept the record mid-update through every attempt (practically never; try again). */
+int bannerin_slot_identity(int slot, struct bannerin_identity *out, size_t size);
+
 /* BANNERIN_API_VERSION of the linked library. */
 uint32_t bannerin_api_version(void);
 
-/* The stick-frame rate in force: the fixed BANNERIN_AXIS_HZ, 0 when unpaced, or in auto mode the
- * rate a reader in this process last paced to (the game's frame rate under credits; 60 before any
- * or without a fresh frame feed). */
+/* The stick-frame rate in force: the fixed rate, 0 when unpaced, or in auto mode the rate a reader
+ * in this process last paced to (the game's frame rate under credits; 60 before any or without a
+ * fresh frame feed). Effective value: the app's control block when it sets the pacing, else
+ * BANNERIN_AXIS_HZ. */
 uint32_t bannerin_axis_hz(void);
 
-/* 1 if stick frames are paced by game frame credits (BANNERIN_AXIS_HZ unset or "auto"), else 0. */
+/* 1 if stick frames are paced by game frame credits (auto: from the control block, or
+ * BANNERIN_AXIS_HZ unset / "auto" when the control block leaves it to the environment), else 0. */
 int bannerin_axis_auto(void);
 
 #ifdef __cplusplus

@@ -1,8 +1,8 @@
 //! Exhaustive interleaving checks (within loom's preemption bound) of the exact publish / read
 //! code the transport uses, instantiated over loom's atomics.
 
-use bannerin_core::proto::{journal_get, journal_put, publish, snapshot, StateCopy, Word32, Word64};
-use bannerin_loom::{L32, L64};
+use bannerin_core::proto::{ctl_read, ctl_write, journal_get, journal_put, publish, snapshot, StateCopy, Word32, Word64};
+use bannerin_loom::{LoomFence, L32, L64};
 use loom::sync::Arc;
 use loom::thread;
 use std::sync::atomic::Ordering::{Acquire, Release};
@@ -104,5 +104,37 @@ fn journal_entries_are_visible_once_counted_and_laps_are_detected() {
             }
         }
         w.join().unwrap();
+    });
+}
+
+/// The control block's fence-based seqlock: a reader racing two updates either gets a whole record
+/// with the gen that wrote it, or gives up (and keeps its last good copy); never a mix of two
+/// records. Once the writer is done the reader sees the last record.
+#[test]
+fn control_record_is_never_torn() {
+    loom::model(|| {
+        struct Ctl {
+            seq: L32,
+            gen: L32,
+            words: [L32; 3],
+        }
+        let c = Arc::new(Ctl { seq: L32::new(0), gen: L32::new(0), words: [L32::new(0), L32::new(0), L32::new(0)] });
+        let w = {
+            let c = c.clone();
+            thread::spawn(move || {
+                for n in 1..=2u32 {
+                    let g = ctl_write::<_, LoomFence>(&c.seq, &c.gen, &c.words, &[n, n * 10, n * 100]);
+                    assert_eq!(g, n);
+                }
+            })
+        };
+        let mut out = [0u32; 3];
+        if let Some(g) = ctl_read::<_, LoomFence>(&c.seq, &c.gen, &c.words, &mut out, 2, |_| thread::yield_now()) {
+            assert_eq!(out, [g, g * 10, g * 100], "torn control record (gen {})", g);
+        }
+        w.join().unwrap();
+        let g = ctl_read::<_, LoomFence>(&c.seq, &c.gen, &c.words, &mut out, 1, |_| {});
+        assert_eq!(g, Some(2), "quiescent read must succeed");
+        assert_eq!(out, [2, 20, 200]);
     });
 }

@@ -1,6 +1,6 @@
 //! loom adapters for the generic protocol in `bannerin_core::proto` (see tests/protocol.rs).
 
-use bannerin_core::proto::{Word32, Word64};
+use bannerin_core::proto::{Fence, Word32, Word64};
 use loom::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::atomic::Ordering;
 
@@ -34,5 +34,14 @@ impl Word64 for L64 {
     }
     fn st(&self, v: u64, o: Ordering) {
         self.0.store(v, o)
+    }
+}
+
+/// loom's fence, so the control seqlock's explicit fences are part of the model.
+pub struct LoomFence;
+
+impl Fence for LoomFence {
+    fn fence(o: Ordering) {
+        loom::sync::atomic::fence(o)
     }
 }

@@ -36,7 +36,7 @@ use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize};
 
 use crate::abi::*;
 use crate::frame::{Cursor, Due, Ev, Frame, FrameStats, Journal, NoJournal};
-use crate::layout::{self, Shared, Snapshot, FILE_SIZE};
+use crate::layout::{self, ControlState, Identity, Shared, Snapshot, FILE_SIZE};
 use crate::msg::Msg;
 use crate::sys;
 
@@ -65,7 +65,8 @@ pub const AUTO_STALE_NS: u64 = 250_000_000;
 /// A change held for a frame credit goes out anyway after max(2 frame intervals, this): a game
 /// that freezes still gets the rest position.
 pub const AUTO_STALL_MIN_NS: u64 = 50_000_000;
-pub const API_VERSION: u32 = 1;
+/// 2: the control block (live pacing, controller identity: `identity`, `slot_identity`).
+pub const API_VERSION: u32 = 2;
 
 /// Upper bound on how long a missed wake could delay input while a slot is active (the
 /// fallback re-check).
@@ -220,10 +221,117 @@ static AXIS_HZ: AtomicU32 = AtomicU32::new(AXIS_AUTO);
 static AXIS_NS: AtomicU64 = AtomicU64::new(0);
 static CONFIG_LOGGED: AtomicU32 = AtomicU32::new(0);
 
-/// The configured BANNERIN_AXIS_HZ: 0 = unpaced, AXIS_AUTO, or a fixed rate.
+/// The pacing a control block last set in this process (EFF_SET = 0: none, the env is in force).
+/// The app writes the same session settings into every slot, so the last one applied is the
+/// session's.
+static EFF_SET: AtomicU32 = AtomicU32::new(0);
+static EFF_HZ: AtomicU32 = AtomicU32::new(AXIS_AUTO);
+static EFF_AUTO_MAX: AtomicU32 = AtomicU32::new(AUTO_MAX_DEFAULT);
+
+/// The stick pacing in force: 0 = unpaced, AXIS_AUTO, or a fixed rate. The app's control block
+/// when it sets one, else BANNERIN_AXIS_HZ.
 pub fn axis_config() -> u32 {
     init();
-    AXIS_HZ.load(Relaxed)
+    if EFF_SET.load(Acquire) != 0 {
+        EFF_HZ.load(Relaxed)
+    } else {
+        AXIS_HZ.load(Relaxed)
+    }
+}
+
+/// The auto ceiling in force (control block, else BANNERIN_AXIS_AUTO_MAX).
+pub fn auto_max() -> u32 {
+    init();
+    if EFF_SET.load(Acquire) != 0 {
+        EFF_AUTO_MAX.load(Relaxed)
+    } else {
+        AUTO_MAX.load(Relaxed)
+    }
+}
+
+/// Pacing from a control record: (axis config as in `axis_config`, auto ceiling), or None for
+/// axis_mode 0 / unknown (the environment decides, exactly as without a control block). Every
+/// value is clamped: the file is not trusted.
+pub fn control_pacing(st: &ControlState) -> Option<(u32, u32)> {
+    let max = match st.axis_auto_max {
+        0 => AUTO_MAX_DEFAULT,
+        m => m.clamp(AUTO_MAX_MIN, AUTO_MAX_MAX),
+    };
+    match st.axis_mode {
+        layout::CTL_AXIS_AUTO => Some((AXIS_AUTO, max)),
+        layout::CTL_AXIS_FIXED => Some((st.axis_hz.clamp(AXIS_HZ_MIN, AXIS_HZ_MAX), max)),
+        layout::CTL_AXIS_UNPACED => Some((0, max)),
+        _ => None,
+    }
+}
+
+fn axis_ns(hz: u32) -> u64 {
+    if hz == 0 || hz == AXIS_AUTO {
+        0
+    } else {
+        1_000_000_000 / hz as u64
+    }
+}
+
+/// A handle's pacing back to the environment's (attach, or a new file before its control block
+/// is read).
+fn env_cfg(d: &mut Data) {
+    d.cfg_hz = AXIS_HZ.load(Relaxed);
+    d.cfg_ns = AXIS_NS.load(Relaxed);
+    d.cfg_auto_max = AUTO_MAX.load(Relaxed);
+}
+
+/// Pick up a changed control record (one atomic load when nothing changed). Called before every
+/// pacing decision; never blocks: a record the writer keeps busy is skipped (the last good one, or
+/// the environment, stays in force) and retried at the next decision.
+fn apply_control(d: &mut Data, notes: &mut Notes) {
+    let sh = match shared(d) {
+        Some(sh) => sh,
+        None => return,
+    };
+    if d.ctl_inst != d.instance {
+        // Another file (re-attach): its gens are its own. Start from the environment.
+        d.ctl_inst = d.instance;
+        d.ctl_gen = 0;
+        env_cfg(d);
+    }
+    if !sh.control_present() {
+        return; // format <= 1.4, or no valid block: behave exactly as before control blocks
+    }
+    if sh.ctl.gen.load(Acquire) == d.ctl_gen {
+        return;
+    }
+    let (gen, st) = match sh.read_control() {
+        Some(r) => r,
+        None => {
+            STATS.ctl_busy.fetch_add(1, Relaxed);
+            return;
+        }
+    };
+    d.ctl_gen = gen;
+    match control_pacing(&st) {
+        Some((hz, max)) => {
+            d.cfg_hz = hz;
+            d.cfg_ns = axis_ns(hz);
+            d.cfg_auto_max = max;
+            EFF_HZ.store(hz, Relaxed);
+            EFF_AUTO_MAX.store(max, Relaxed);
+            EFF_SET.store(1, Release);
+        }
+        None => {
+            env_cfg(d);
+            EFF_SET.store(0, Release);
+        }
+    }
+    STATS.ctl_applied.fetch_add(1, Relaxed);
+    if d.writable {
+        sh.ctl.r_ctl_gen_applied.store(gen, Relaxed);
+    }
+    // One log line per gen per slot and file (not one per handle).
+    let key = d.instance.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ gen as u64;
+    if SLOTS.s[d.slot].ctl_logged.swap(key, AcqRel) != key {
+        notes.ctl = Some((gen, st.axis_mode, d.cfg_hz, d.cfg_auto_max));
+    }
 }
 
 /// The stick-frame rate in force: the fixed rate, 0 when unpaced, or in auto mode the rate a
@@ -260,26 +368,28 @@ fn note_mode(d: &mut Data, sh: Option<&Shared>, mode: u32, hz: u32) {
         }
     }
     // The frame rate jitters by a hertz or so; do not rewrite the shared line for that.
-    if mode == d.pace_mode && hz.abs_diff(d.pace_hz) <= 1 {
+    if mode == d.pace_mode && hz.abs_diff(d.pace_hz) <= 1 && d.pace_max == d.cfg_auto_max {
         return;
     }
     d.pace_mode = mode;
     d.pace_hz = hz;
+    d.pace_max = d.cfg_auto_max;
     STATS.axis_mode.store(mode as u64, Relaxed);
     STATS.axis_hz.store(hz as u64, Relaxed);
     if d.writable {
         if let Some(sh) = sh {
             sh.header.r_axis_mode.store(mode, Relaxed);
             sh.header.r_axis_hz.store(hz, Relaxed);
-            sh.header.r_auto_max.store(AUTO_MAX.load(Relaxed), Relaxed);
+            sh.header.r_auto_max.store(d.cfg_auto_max, Relaxed);
         }
     }
 }
 
 /// This handle's pacing at `now`: the configured fixed rate, or in auto mode frame credits from
-/// the slot file's feed while it is fresh, else the fixed fallback.
+/// the slot file's feed while it is fresh, else the fixed fallback. "Configured" = the control
+/// block's setting when it has one (applied by `refresh` before each decision), else the env.
 fn pacing(d: &mut Data, now: u64) -> Pace {
-    let cfg = AXIS_HZ.load(Relaxed);
+    let cfg = d.cfg_hz;
     let sh = match shared(d) {
         Some(sh) if !d.dead => Some(sh),
         _ => None,
@@ -287,7 +397,7 @@ fn pacing(d: &mut Data, now: u64) -> Pace {
     if cfg != AXIS_AUTO {
         let mode = if cfg == 0 { layout::AXIS_MODE_UNPACED } else { layout::AXIS_MODE_FIXED };
         note_mode(d, sh, mode, cfg);
-        return Pace::Interval(AXIS_NS.load(Relaxed));
+        return Pace::Interval(d.cfg_ns);
     }
     let feed = sh.and_then(|sh| {
         let h = &sh.header;
@@ -297,7 +407,7 @@ fn pacing(d: &mut Data, now: u64) -> Pace {
     });
     match feed {
         Some(((count, stall), interval)) => {
-            let max = AUTO_MAX.load(Relaxed);
+            let max = d.cfg_auto_max.clamp(AUTO_MAX_MIN, AUTO_MAX_MAX);
             let min = 1_000_000_000 / max as u64;
             // Which limit governs: the game's frames (credits), or the ceiling when it presents
             // faster than that.
@@ -401,6 +511,9 @@ pub struct Stats {
     pub axis_hz: AtomicU64,
     pub auto_fallbacks: AtomicU64,
     pub axis_mode: AtomicU64,
+    pub ctl_applied: AtomicU64,
+    pub ctl_busy: AtomicU64,
+    pub identity_reads: AtomicU64,
 }
 
 const Z: AtomicU64 = AtomicU64::new(0);
@@ -429,6 +542,9 @@ pub static STATS: Stats = Stats {
     axis_hz: Z,
     auto_fallbacks: Z,
     axis_mode: Z,
+    ctl_applied: Z,
+    ctl_busy: Z,
+    identity_reads: Z,
 };
 
 /// Process-wide reader statistics (`struct bannerin_stats`).
@@ -465,6 +581,12 @@ pub struct StatsView {
     pub auto_fallbacks: u64,
     /// How a reader last paced (AXIS_MODE_*: 1 credits, 2 fallback, 3 fixed, 4 unpaced).
     pub axis_mode: u64,
+    /// API 2: control block records applied (pacing changes the app made live).
+    pub ctl_applied: u64,
+    /// Control reads that found the writer mid-update 64 times running (retried next decision).
+    pub ctl_busy: u64,
+    /// bannerin_identity / bannerin_slot_identity calls answered.
+    pub identity_reads: u64,
 }
 
 pub fn stats() -> StatsView {
@@ -494,6 +616,9 @@ pub fn stats() -> StatsView {
         axis_hz: s.axis_hz.load(Relaxed),
         auto_fallbacks: s.auto_fallbacks.load(Relaxed),
         axis_mode: s.axis_mode.load(Relaxed),
+        ctl_applied: s.ctl_applied.load(Relaxed),
+        ctl_busy: s.ctl_busy.load(Relaxed),
+        identity_reads: s.identity_reads.load(Relaxed),
     }
 }
 
@@ -528,6 +653,11 @@ pub struct SlotStatsView {
     pub frame_waiters: u64,
     pub reader_helper_wakes: u64,
     pub reader_auto_max: u64,
+    /// Format 1.5 (zero in older files): the file's control gen, and the reader stats beside it.
+    pub control_gen: u64,
+    pub reader_ctl_gen_applied: u64,
+    pub reader_id_gen_attached: u64,
+    pub reader_identity_reads: u64,
 }
 
 pub type LogFn = unsafe extern "C" fn(level: c_int, line: *const c_char);
@@ -635,6 +765,8 @@ struct SlotRt {
     dead_votes: AtomicU32,
     /// This process's helper counts itself in hm's frame_waiters (helper-owned).
     frame_reg: AtomicU32,
+    /// The (file, control gen) last logged for this slot: one line per applied gen.
+    ctl_logged: AtomicU64,
     hm: UnsafeCell<Mapped>, // owned by the slot's helper thread
 }
 
@@ -653,6 +785,7 @@ const SLOT_RT: SlotRt = SlotRt {
     kick: AtomicU32::new(0),
     dead_votes: AtomicU32::new(0),
     frame_reg: AtomicU32::new(0),
+    ctl_logged: AtomicU64::new(0),
     hm: UnsafeCell::new(Mapped::NONE),
 };
 static SLOTS: SlotTable = SlotTable { s: [SLOT_RT; MAX_SLOTS] };
@@ -700,6 +833,20 @@ struct Data {
     hold_since: u64,
     /// When this handle last sent a stick-only frame under frame credits (the ceiling's clock).
     last_axis_emit: u64,
+    /// The auto ceiling last recorded by note_mode.
+    pace_max: u32,
+    /// Pacing in force for this handle: the axis config (as `axis_config`), its interval, and the
+    /// auto ceiling. The environment's, or the control block's once one is applied.
+    cfg_hz: u32,
+    cfg_ns: u64,
+    cfg_auto_max: u32,
+    /// The file instance and control gen those came from (0 = none read yet).
+    ctl_inst: u64,
+    ctl_gen: u32,
+    /// The controller identity this handle reports, captured when it attached to its current
+    /// file (never changed under the open handle), and the control gen it came from.
+    id: Option<Identity>,
+    id_gen: u32,
 }
 
 impl Data {
@@ -729,6 +876,14 @@ impl Data {
         credit_count: 0,
         hold_since: 0,
         last_axis_emit: 0,
+        pace_max: 0,
+        cfg_hz: AXIS_AUTO,
+        cfg_ns: 0,
+        cfg_auto_max: AUTO_MAX_DEFAULT,
+        ctl_inst: 0,
+        ctl_gen: 0,
+        id: None,
+        id_gen: 0,
     };
 }
 
@@ -853,6 +1008,8 @@ struct Notes {
     dead: bool,
     resyncs: u64,
     coalesced: u64,
+    /// A control gen applied: (gen, axis_mode as written, axis config now in force, auto ceiling).
+    ctl: Option<(u32, u32, u32, u32)>,
 }
 
 struct ShJournal<'a>(&'a Shared);
@@ -863,10 +1020,34 @@ impl Journal for ShJournal<'_> {
     }
 }
 
+/// The identity a new attachment to `sh` reports: the file's, if its control block has a valid
+/// one. A record the writer keeps busy through every attempt leaves `prev` (the identity this
+/// handle had on its previous file, None for a new handle).
+fn capture_identity(sh: &Shared, prev: (Option<Identity>, u32)) -> (Option<Identity>, u32) {
+    if !sh.control_present() {
+        return (None, 0);
+    }
+    for _ in 0..4 {
+        if let Some((gen, st)) = sh.read_control() {
+            return (st.id, gen);
+        }
+        STATS.ctl_busy.fetch_add(1, Relaxed);
+    }
+    prev
+}
+
 fn install(d: &mut Data, m: Mapped, first: bool) {
     d.map = m.ptr;
     d.writable = m.writable;
     d.instance = m.instance;
+    if let Some(sh) = shared(d) {
+        let (id, gen) = capture_identity(sh, (d.id, d.id_gen));
+        d.id = id;
+        d.id_gen = gen;
+        if d.writable && sh.control_present() {
+            sh.ctl.r_id_gen_attached.store(gen, Relaxed);
+        }
+    }
     d.base_pending = true;
     d.dead = SLOTS.s[d.slot].dead_instance.load(Acquire) == m.instance;
     d.cursor.force_full();
@@ -911,6 +1092,11 @@ fn refresh(d: &mut Data, now: u64, notes: &mut Notes) {
     if d.removed {
         return;
     }
+    follow(d, now, notes);
+    apply_control(d, notes);
+}
+
+fn follow(d: &mut Data, now: u64, notes: &mut Notes) {
     let rt = &SLOTS.s[d.slot];
     let gen = rt.file_gen.load(Acquire);
     match shared(d) {
@@ -1186,6 +1372,23 @@ fn emit_notes(slot: usize, fd: i32, n: &Notes) {
         let mut m = Msg::new();
         head(&mut m);
         log(1, m.s(b"reader fell behind, taps coalesced: ").u(n.coalesced));
+    }
+    if let Some((gen, mode, hz, max)) = n.ctl {
+        let mut m = Msg::new();
+        m.s(b"bannerin: slot ").u(slot as u64).s(b": control gen ").u(gen as u64).s(b" applied, stick pacing ");
+        if mode == layout::CTL_AXIS_UNSET || mode > layout::CTL_AXIS_UNPACED {
+            m.s(b"from the environment (");
+        } else {
+            m.s(b"set by the app (");
+        }
+        if hz == AXIS_AUTO {
+            m.s(b"auto, at most ").u(max as u64).s(b"/s)");
+        } else if hz == 0 {
+            m.s(b"unpaced)");
+        } else {
+            m.s(b"fixed ").u(hz as u64).s(b" Hz)");
+        }
+        log(0, &mut m);
     }
 }
 
@@ -1560,6 +1763,7 @@ pub fn attach(slot: i32, open_flags: i32) -> Result<(i32, u32), i32> {
     let mut notes = Notes::default();
     let d = unsafe { data(e) };
     *d = Data::EMPTY;
+    env_cfg(d);
     d.slot = slot;
     d.guest_fd = guest;
     d.drain_fd = drain;
@@ -1570,6 +1774,7 @@ pub fn attach(slot: i32, open_flags: i32) -> Result<(i32, u32), i32> {
         Ok(m) => install(d, m, true),
         Err(_) => notes.orphaned = true,
     }
+    apply_control(d, &mut notes);
     d.cursor = Cursor::new(); // the first thing this handle delivers is the full state
     if sys::send_byte(wake).is_ok() {
         d.ready = true;
@@ -1593,6 +1798,9 @@ pub fn attach(slot: i32, open_flags: i32) -> Result<(i32, u32), i32> {
             m.s(b": attached");
         }
         log(0, &mut m);
+        if notes.ctl.is_some() {
+            emit_notes(slot, guest, &Notes { ctl: notes.ctl, ..Notes::default() });
+        }
     }
     Ok((guest, (gen << 8) | idx as u32))
 }
@@ -1768,6 +1976,91 @@ pub fn current_state(h: u32, buttons: &mut [i32; BUTTONS], axes: &mut [i32; AXES
     })?
 }
 
+/// `struct bannerin_identity`: a controller identity and the control gen it came from.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct IdentityView {
+    pub gen: u32,
+    pub bustype: u16,
+    pub vendor: u16,
+    pub product: u16,
+    pub version: u16,
+    pub key: [u8; layout::ID_KEY_LEN],
+    pub name: [u8; layout::ID_NAME_LEN],
+}
+
+const _: () = {
+    use core::mem::{offset_of, size_of};
+    assert!(size_of::<IdentityView>() == 92);
+    assert!(offset_of!(IdentityView, bustype) == 4);
+    assert!(offset_of!(IdentityView, version) == 10);
+    assert!(offset_of!(IdentityView, key) == 12);
+    assert!(offset_of!(IdentityView, name) == 28);
+};
+
+impl IdentityView {
+    fn of(id: &Identity, gen: u32) -> IdentityView {
+        IdentityView {
+            gen,
+            bustype: id.bustype,
+            vendor: id.vendor,
+            product: id.product,
+            version: id.version,
+            key: id.key,
+            name: id.name,
+        }
+    }
+}
+
+/// The identity this handle reports: the one its current file carried when the handle attached
+/// to it. ENODATA when that file had none (or predates control blocks): use your default.
+pub fn identity(h: u32) -> Result<IdentityView, i32> {
+    with_handle(h, |d, _| {
+        STATS.identity_reads.fetch_add(1, Relaxed);
+        if d.writable {
+            if let Some(sh) = shared(d) {
+                if sh.control_present() {
+                    sh.ctl.r_identity_reads.fetch_add(1, Relaxed);
+                }
+            }
+        }
+        match &d.id {
+            Some(id) => Ok(IdentityView::of(id, d.id_gen)),
+            None => Err(sys::ENODATA),
+        }
+    })?
+}
+
+/// The identity `slot`'s current file carries right now (for naming a device before any open).
+/// ENODEV: slot not configured, or no live file for it; ENODATA: the file has no identity;
+/// EAGAIN: the writer kept the record busy through every attempt (practically never).
+pub fn slot_identity(slot: i32) -> Result<IdentityView, i32> {
+    if !(0..MAX_SLOTS as i32).contains(&slot) || init() & (1 << slot) == 0 {
+        return Err(sys::ENODEV);
+    }
+    let mut m = map_slot(slot as usize, false).map_err(|_| sys::ENODEV)?;
+    let r = match m.shared() {
+        Some(sh) if sh.control_present() => {
+            let mut r = Err(sys::EAGAIN);
+            for _ in 0..8 {
+                if let Some((gen, st)) = sh.read_control() {
+                    r = st.id.map(|id| IdentityView::of(&id, gen)).ok_or(sys::ENODATA);
+                    break;
+                }
+                STATS.ctl_busy.fetch_add(1, Relaxed);
+            }
+            if m.writable {
+                sh.ctl.r_identity_reads.fetch_add(1, Relaxed);
+            }
+            r
+        }
+        _ => Err(sys::ENODATA),
+    };
+    STATS.identity_reads.fetch_add(1, Relaxed);
+    m.release();
+    r
+}
+
 /// Counters from the slot's current file.
 pub fn slot_stats(slot: i32) -> Result<SlotStatsView, i32> {
     if !(0..MAX_SLOTS as i32).contains(&slot) || init() & (1 << slot) == 0 {
@@ -1804,6 +2097,13 @@ pub fn slot_stats(slot: i32) -> Result<SlotStatsView, i32> {
         v.frame_waiters = h.frame_waiters.load(Relaxed) as u64;
         v.reader_helper_wakes = h.r_helper_wakes.load(Relaxed);
         v.reader_auto_max = h.r_auto_max.load(Relaxed) as u64;
+        if sh.control_present() {
+            let c = &sh.ctl;
+            v.control_gen = c.gen.load(Acquire) as u64;
+            v.reader_ctl_gen_applied = c.r_ctl_gen_applied.load(Relaxed) as u64;
+            v.reader_id_gen_attached = c.r_id_gen_attached.load(Relaxed) as u64;
+            v.reader_identity_reads = c.r_identity_reads.load(Relaxed) as u64;
+        }
     }
     m.release();
     Ok(v)
@@ -1812,6 +2112,147 @@ pub fn slot_stats(slot: i32) -> Result<SlotStatsView, i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::{CTL_AXIS_AUTO, CTL_AXIS_FIXED, CTL_AXIS_UNPACED, CTL_AXIS_UNSET, CTL_MAGIC, CTL_SIZE};
+    use crate::pad::PadInput;
+    use crate::writer::SlotWriter;
+
+    fn tmpdir(tag: &str) -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static N: AtomicU32 = AtomicU32::new(0);
+        let d = std::env::temp_dir().join(format!(
+            "bannerin-c-{}-{}-{}",
+            tag,
+            std::process::id(),
+            N.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    /// A writer for `slot` in a fresh directory, and a handle's Data mapped onto its file the way
+    /// install() maps it (writable, so the reader stats land in the file).
+    fn rig(tag: &str, slot: u32, setup: impl FnOnce(&mut SlotWriter)) -> (SlotWriter, std::path::PathBuf, Data) {
+        let dir = tmpdir(tag);
+        let mut w = SlotWriter::new(slot);
+        setup(&mut w);
+        w.prepare(dir.to_str().unwrap().as_bytes()).unwrap();
+        w.open();
+        let d = attach_data(&dir, slot);
+        (w, dir, d)
+    }
+
+    fn attach_data(dir: &std::path::Path, slot: u32) -> Data {
+        let mut p = sys::PathBuf::new();
+        assert!(p.push(dir.join(format!("pad{}", slot)).to_str().unwrap().as_bytes()));
+        let fd = sys::openat(p.as_ptr(), sys::O_RDWR | sys::O_CLOEXEC, 0).unwrap();
+        let ptr = sys::mmap(FILE_SIZE, sys::PROT_READ | sys::PROT_WRITE, sys::MAP_SHARED, fd).unwrap();
+        sys::close(fd);
+        let instance = unsafe { Shared::at(ptr) }.header.instance.load(Relaxed);
+        let mut d = Data::EMPTY;
+        env_cfg(&mut d);
+        d.slot = slot as usize;
+        install(&mut d, Mapped { ptr, fd: -1, dev: 0, ino: 0, instance, writable: true }, true);
+        d.cursor = Cursor::new();
+        d
+    }
+
+    #[test]
+    fn a_pacing_change_applies_at_the_next_decision_not_the_old_deadline() {
+        let (mut w, _dir, mut d) = rig("ctl-pace", 2, |w| w.set_session(CTL_AXIS_FIXED, 30, 0, 0, 0));
+        let mut notes = Notes::default();
+        apply_control(&mut d, &mut notes);
+        assert_eq!(d.cfg_hz, 30);
+        assert!(notes.ctl.is_some(), "an applied gen is logged");
+        let sh = shared(&d).unwrap();
+        assert_eq!(sh.ctl.r_ctl_gen_applied.load(Relaxed), w.control().0);
+        // fake clock: the full-state frame at t0
+        let t0 = 50_000_000_000u64;
+        let mut buf = [0u8; EVENT_SIZE * 64];
+        let mut fs = FrameStats::default();
+        let snap = sh.snapshot(64).unwrap();
+        assert_eq!(unsafe { deliver(&mut d, &snap, buf.as_mut_ptr(), 64, &mut fs, t0) }, 20);
+        // a stick move 5 ms later is held to the 30 Hz grid
+        w.set_pad(PadInput { buttons: 0, axes: [9000, 0, 0, 0, 0, 0, 0, 0] });
+        let snap = sh.snapshot(64).unwrap();
+        let t1 = t0 + 5_000_000;
+        assert_eq!(due(&mut d, &snap, t1), Due::At(t0 + 1_000_000_000 / 30));
+        // the app goes unpaced; the very next decision (1 ms on) sends it, 27 ms before the old
+        // deadline
+        w.set_session(CTL_AXIS_UNPACED, 0, 0, 0, 0);
+        let t2 = t1 + 1_000_000;
+        let mut notes = Notes::default();
+        refresh(&mut d, t2, &mut notes);
+        assert_eq!(d.cfg_hz, 0);
+        assert!(notes.ctl.is_some());
+        assert_eq!(due(&mut d, &snap, t2), Due::Now);
+        let n = unsafe { deliver(&mut d, &snap, buf.as_mut_ptr(), 64, &mut fs, t2) };
+        assert_eq!(n, 2, "ABS_X + SYN_REPORT");
+        assert_eq!(axis_config(), 0, "the accessors report the effective setting");
+        // no change: one atomic load, nothing re-read or logged
+        let applied = STATS.ctl_applied.load(Relaxed);
+        let mut notes = Notes::default();
+        refresh(&mut d, t2 + 1, &mut notes);
+        assert!(notes.ctl.is_none());
+        assert_eq!(STATS.ctl_applied.load(Relaxed), applied);
+        // fixed 1000 Hz, then back to the environment (mode 0)
+        w.set_session(CTL_AXIS_FIXED, 1000, 0, 0, 0);
+        refresh(&mut d, t2 + 2, &mut Notes::default());
+        assert_eq!((d.cfg_hz, d.cfg_ns), (1000, 1_000_000));
+        w.set_session(CTL_AXIS_UNSET, 0, 0, 0, 0);
+        refresh(&mut d, t2 + 3, &mut Notes::default());
+        assert_eq!((d.cfg_hz, d.cfg_auto_max), (AXIS_HZ.load(Relaxed), AUTO_MAX.load(Relaxed)));
+        assert_eq!(sh.ctl.r_ctl_gen_applied.load(Relaxed), w.control().0);
+    }
+
+    #[test]
+    fn an_old_or_garbage_control_block_leaves_the_environment_in_force() {
+        let id = Identity::new(3, 1, 2, 3, b"k", b"n");
+        let (mut w, dir, _) = rig("ctl-old", 3, |w| {
+            w.set_session(CTL_AXIS_FIXED, 30, 0, 0, 0);
+            w.set_identity(Some(id));
+        });
+        let env = (AXIS_HZ.load(Relaxed), AUTO_MAX.load(Relaxed));
+        let check_env = |what: &str| {
+            let mut d = attach_data(&dir, 3);
+            apply_control(&mut d, &mut Notes::default());
+            assert_eq!((d.cfg_hz, d.cfg_auto_max), env, "{}: environment pacing", what);
+            assert!(d.id.is_none(), "{}: no identity", what);
+            d
+        };
+        let d = attach_data(&dir, 3);
+        let sh = shared(&d).unwrap();
+        // a format 1.4 file (whatever bytes sit at 0xB00)
+        sh.header.minor.store(4, Relaxed);
+        check_env("minor 4");
+        sh.header.minor.store(5, Relaxed);
+        // garbage magic, then a wrong size
+        sh.ctl.magic.store(0xDEAD_BEEF, Relaxed);
+        check_env("bad magic");
+        sh.ctl.magic.store(CTL_MAGIC, Relaxed);
+        sh.ctl.size.store(128, Relaxed);
+        check_env("bad size");
+        sh.ctl.size.store(CTL_SIZE as u32, Relaxed);
+        // a writer stuck mid-update (odd seq): never blocks, keeps the environment / last good
+        sh.ctl.seq.fetch_add(1, Relaxed);
+        let busy = STATS.ctl_busy.load(Relaxed);
+        let d2 = check_env("stuck seqlock");
+        assert!(STATS.ctl_busy.load(Relaxed) > busy);
+        sh.ctl.seq.fetch_add(1, Relaxed);
+        // intact again: the same handle picks it up at its next decision
+        let mut d2 = d2;
+        apply_control(&mut d2, &mut Notes::default());
+        assert_eq!(d2.cfg_hz, 30);
+        // out-of-range values in the file are clamped
+        let st = |mode, hz, max| ControlState { axis_mode: mode, axis_hz: hz, axis_auto_max: max, ..ControlState::DEFAULT };
+        assert_eq!(control_pacing(&st(CTL_AXIS_FIXED, 5, 0)), Some((AXIS_HZ_MIN, AUTO_MAX_DEFAULT)));
+        assert_eq!(control_pacing(&st(CTL_AXIS_FIXED, 99_999, 0)), Some((AXIS_HZ_MAX, AUTO_MAX_DEFAULT)));
+        assert_eq!(control_pacing(&st(CTL_AXIS_AUTO, 0, 1)), Some((AXIS_AUTO, AUTO_MAX_MIN)));
+        assert_eq!(control_pacing(&st(CTL_AXIS_AUTO, 0, 9999)), Some((AXIS_AUTO, AUTO_MAX_MAX)));
+        assert_eq!(control_pacing(&st(CTL_AXIS_UNPACED, 77, 0)).map(|p| p.0), Some(0));
+        assert_eq!(control_pacing(&st(9, 60, 60)), None, "unknown mode = the environment");
+        assert_eq!(control_pacing(&st(CTL_AXIS_UNSET, 60, 60)), None);
+        w.set_identity(None);
+    }
 
     #[test]
     fn env_grammar() {

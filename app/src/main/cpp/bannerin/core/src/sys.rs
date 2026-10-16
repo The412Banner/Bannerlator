@@ -81,6 +81,7 @@ pub const ENODEV: i32 = 19;
 pub const EINVAL: i32 = 22;
 pub const EMFILE: i32 = 24;
 pub const ENAMETOOLONG: i32 = 36;
+pub const ENODATA: i32 = 61;
 pub const ETIMEDOUT: i32 = 110;
 
 pub const O_RDONLY: i32 = 0;

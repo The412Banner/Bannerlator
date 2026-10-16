@@ -77,7 +77,33 @@ public final class BannerinWriter {
     public static final int STAT_READER_HELPER_WAKES = 24;
     /** The auto-mode ceiling (Hz, BANNERIN_AXIS_AUTO_MAX) the readers pace under. */
     public static final int STAT_READER_AUTO_MAX = 25;
-    private static final int STAT_COUNT = 26;
+    /** Control block (format 1.5): the control gen a reader last applied (0 = none yet). */
+    public static final int STAT_READER_CTL_GEN_APPLIED = 26;
+    /** The control gen whose controller identity the last reader attach took. */
+    public static final int STAT_READER_ID_GEN_ATTACHED = 27;
+    /** Identity queries (bannerin_identity / bannerin_slot_identity) readers answered. */
+    public static final int STAT_READER_IDENTITY_READS = 28;
+    /** This slot's own control gen (what the readers' applied gen converges to). */
+    public static final int STAT_CONTROL_GEN = 29;
+    private static final int STAT_COUNT = 30;
+
+    // Values for setSessionControl (match bannerin_core::layout::CTL_*).
+    /** Stick pacing: leave it to the guest environment (BANNERIN_AXIS_HZ / _AUTO_MAX). */
+    public static final int AXIS_MODE_UNSET = 0;
+    /** Stick pacing: one stick update per game frame, at most {@code autoMax} per second. */
+    public static final int AXIS_MODE_AUTO = 1;
+    /** Stick pacing: a fixed {@code axisHz} (30..1000). */
+    public static final int AXIS_MODE_FIXED = 2;
+    /** Stick pacing: every stick change goes out at once. */
+    public static final int AXIS_MODE_UNPACED = 3;
+    /** XInput DLL: unset (= direct). */
+    public static final int XINPUT_MODE_UNSET = 0;
+    public static final int XINPUT_MODE_DIRECT = 1;
+    public static final int XINPUT_MODE_FORWARD = 2;
+    /** xinputFlags bit: forwarding to the next XInput implementation is available. */
+    public static final int XINPUT_FLAG_FORWARD_AVAILABLE = 1;
+    /** xinputFlags bit: hide the pads from XInput. */
+    public static final int XINPUT_FLAG_HIDDEN = 2;
 
     // Each slot's counters as they stood when releaseAllRingSlots() retired its file, for the
     // session-end diagnostics that may run after the release.
@@ -106,6 +132,12 @@ public final class BannerinWriter {
     private static native boolean nativeUnplug(int slot);
     private static native long nativeStat(int slot, int which);
     private static native void nativeGameFrame();
+    private static native boolean nativeSetSlotIdentity(int slot, int bustype, int vendor, int product,
+                                                        int version, String key, String name);
+    private static native boolean nativeClearSlotIdentity(int slot);
+    private static native void nativeSetSessionControl(int axisMode, int axisHz, int autoMax,
+                                                       int xinputMode, int xinputFlags);
+    private static native long nativeGetControlGen(int slot);
 
     // ------------------------------------------------------------------------------------------
     // static (process-wide)
@@ -194,6 +226,48 @@ public final class BannerinWriter {
      */
     public static void onGameFrame() {
         if (NATIVE_OK) nativeGameFrame();
+    }
+
+    /**
+     * The controller identity the guest reports for {@code slot} (evdev bus type, vendor, product,
+     * version; {@code key} a short ASCII tag such as "xbox360", at most 15 characters; {@code name}
+     * the device name, at most 63 UTF-8 bytes, cut at a character boundary). Kept for the session
+     * and written into every file the slot gets, so it survives file recreation.
+     *
+     * <p><b>Ordering contract:</b> call it, and let it return, BEFORE the slot's discovery node is
+     * created. A reader captures the identity when it attaches and never changes it under an open
+     * handle, so a node made first can be opened with the previous identity. Changing it later
+     * affects the next attach only. Returns false for a bad slot or without the native library.
+     */
+    public static boolean setSlotIdentity(int slot, int bustype, int vendor, int product, int version,
+                                          String key, String name) {
+        if (!NATIVE_OK || !validSlot(slot)) return false;
+        return nativeSetSlotIdentity(slot, bustype, vendor, product, version, key, name);
+    }
+
+    /** No identity for {@code slot}: readers fall back to their own default (same ordering rule). */
+    public static boolean clearSlotIdentity(int slot) {
+        if (!NATIVE_OK || !validSlot(slot)) return false;
+        return nativeClearSlotIdentity(slot);
+    }
+
+    /**
+     * Session settings for all four slots, applied live: readers pick up a stick-pacing change at
+     * their next pacing decision (within a few milliseconds; no input is lost or replayed), and
+     * the XInput DLL reads its mode and flags. {@code axisMode} is one of AXIS_MODE_*; AXIS_MODE_UNSET
+     * keeps the guest environment's pacing. {@code axisHz}: the fixed rate (30..1000).
+     * {@code autoMax}: the auto ceiling (20..240, 0 = 60). {@code xinputMode}: XINPUT_MODE_*;
+     * {@code xinputFlags}: XINPUT_FLAG_* bits. Out-of-range values are clamped.
+     */
+    public static void setSessionControl(int axisMode, int axisHz, int autoMax, int xinputMode,
+                                         int xinputFlags) {
+        if (NATIVE_OK) nativeSetSessionControl(axisMode, axisHz, autoMax, xinputMode, xinputFlags);
+    }
+
+    /** The slot's control gen: bumped by every identity or session-control change; 0 if unavailable. */
+    public static long getControlGen(int slot) {
+        if (!NATIVE_OK || !validSlot(slot)) return 0;
+        return nativeGetControlGen(slot);
     }
 
     /** A counter for diagnostics (see the STAT_* constants), or 0. */

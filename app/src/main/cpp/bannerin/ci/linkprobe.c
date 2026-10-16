@@ -13,6 +13,11 @@ extern "C" {
 
 __attribute__((visibility("default"))) long bannerin_linkprobe_entry(int slot);
 
+/* struct bannerin_identity must match the library's layout (core/src/guest.rs IdentityView). */
+typedef char bannerin_identity_size_check[(sizeof(struct bannerin_identity) == 92) ? 1 : -1];
+typedef char bannerin_identity_key_check[(offsetof(struct bannerin_identity, key) == 12) ? 1 : -1];
+typedef char bannerin_identity_name_check[(offsetof(struct bannerin_identity, name) == 28) ? 1 : -1];
+
 static void probe_log(int level, const char *line)
 {
     (void)level;
@@ -25,6 +30,7 @@ long bannerin_linkprobe_entry(int slot)
     struct bannerin_state st;
     struct bannerin_stats gs;
     struct bannerin_slot_stats ss;
+    struct bannerin_identity id;
     unsigned char buf[BANNERIN_EVENT_SIZE * 4];
     long acc = 0;
     int fd;
@@ -37,10 +43,12 @@ long bannerin_linkprobe_entry(int slot)
         acc += bannerin_poll_revents(h, 1);
         acc += (long)bannerin_read(h, buf, sizeof buf, 1);
         acc += bannerin_current_state(h, &st);
+        acc += bannerin_identity(h, &id, sizeof id);
         acc += bannerin_detach(h);
     }
     acc += bannerin_get_stats(&gs, sizeof gs);
     acc += bannerin_slot_stats(slot, &ss, sizeof ss);
+    acc += bannerin_slot_identity(slot, &id, sizeof id);
     acc += (long)bannerin_api_version();
     acc += (long)bannerin_axis_hz() + bannerin_axis_auto();
     bannerin_set_logger(0);

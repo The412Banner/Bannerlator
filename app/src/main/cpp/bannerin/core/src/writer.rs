@@ -13,6 +13,12 @@
 //!   renamed over the path, so a reader can never see a half-built file. The file it replaces (an
 //!   older one of ours, or one left by an earlier app process) is marked retired and its sleepers
 //!   are woken, which makes every reader re-attach to the new file.
+//! * Control block (format minor 5): the writer keeps the slot's control record (session pacing,
+//!   XInput DLL mode, controller identity) in process memory too, and every file it creates gets
+//!   that record and its gen BEFORE the file's magic is published, so a reader can never attach to
+//!   a new or healed file and see a default identity first. Ordering contract for the app: a
+//!   `set_identity` must have returned before the slot's discovery node is created (before the
+//!   game can enumerate the device), or the first attach may still see the previous identity.
 //! * `release` retires the file and unlinks it. Readers keep their mapping (an unlinked file stays
 //!   valid while mapped), show a neutral pad, and re-attach when the next `prepare` creates a new
 //!   file. Files are never truncated while in use, so a reader's mapping can never fault.
@@ -56,6 +62,14 @@ pub const STAT_READER_AXIS_MODE: u32 = 22;
 pub const STAT_FRAME_WAKES: u32 = 23;
 pub const STAT_READER_HELPER_WAKES: u32 = 24;
 pub const STAT_READER_AUTO_MAX: u32 = 25;
+/// Control block (format 1.5): the control gen a reader last applied (0 = none / older reader).
+pub const STAT_READER_CTL_GEN_APPLIED: u32 = 26;
+/// The control gen whose identity the last reader attach took.
+pub const STAT_READER_ID_GEN_ATTACHED: u32 = 27;
+/// Identity queries readers answered from this file.
+pub const STAT_READER_IDENTITY_READS: u32 = 28;
+/// The writer's own control gen (what readers converge to).
+pub const STAT_CONTROL_GEN: u32 = 29;
 
 // ---------------------------------------------------------------------------------------------
 // Game frame feed: the app's present threads report every frame the game presents. Each one is
@@ -247,6 +261,9 @@ pub struct SlotWriter {
     last_heal: u64,
     nonce: u32,
     failures: u64,
+    /// The control record every file of this slot carries, and its gen (1 = the initial record).
+    ctl: ControlState,
+    ctl_gen: u32,
 }
 
 // The raw pointer is to a MAP_SHARED mapping owned by this writer; moving the writer between
@@ -275,6 +292,8 @@ impl SlotWriter {
             last_heal: 0,
             nonce: 0,
             failures: 0,
+            ctl: ControlState::DEFAULT,
+            ctl_gen: 1,
         }
     }
 
@@ -382,6 +401,16 @@ impl SlotWriter {
         let sh = unsafe { Shared::at(p) };
         let instance = make_instance(self.slot, self.nonce);
         init_header(sh, self.slot, instance);
+        // The control record, complete, before anything is published: nobody can map this file
+        // yet, so plain stores do; the Release stores of the two magics order them for readers.
+        let c = &sh.ctl;
+        c.size.store(CTL_SIZE as u32, Relaxed);
+        c.seq.store(0, Relaxed);
+        for (w, v) in c.rec.iter().zip(self.ctl.encode().iter()) {
+            w.store(*v, Relaxed);
+        }
+        c.gen.store(self.ctl_gen, Relaxed);
+        c.magic.store(CTL_MAGIC, Release);
         let (iv, ft, fc) = frame_info();
         sh.header.frame_interval_ns.store(iv, Relaxed);
         sh.header.frame_time_ns.store(ft, Relaxed);
@@ -459,6 +488,50 @@ impl SlotWriter {
         h.w_wake_calls.fetch_add(1, Relaxed);
         h.w_woken.fetch_add(woken as u64, Relaxed);
         h.w_edges.store(self.edges as u64, Relaxed);
+    }
+
+    /// Store a changed control record: into the live file if there is one (seqlock, no bell:
+    /// readers pick it up at their next decision), and in any case into every file created later.
+    fn update_control(&mut self, st: ControlState) {
+        if st == self.ctl {
+            return;
+        }
+        self.ctl = st;
+        let next = match self.ctl_gen.wrapping_add(1) {
+            0 => 1,
+            g => g,
+        };
+        if let Some(b) = &self.backing {
+            let c = &b.shared().ctl;
+            let g = proto::ctl_write::<_, proto::NativeFence>(&c.seq, &c.gen, &c.rec, &st.encode());
+            debug_assert_eq!(g, next);
+        }
+        self.ctl_gen = next;
+    }
+
+    /// The controller identity readers of this slot report from their next attach on (None = no
+    /// identity: readers use their own default). Call it before the slot's device node is made.
+    pub fn set_identity(&mut self, id: Option<Identity>) {
+        let mut st = self.ctl;
+        st.id = id;
+        self.update_control(st);
+    }
+
+    /// Session settings (`CTL_AXIS_*` mode, fixed rate, auto ceiling, XInput DLL mode and flags).
+    /// Out-of-range values are normalised here; readers clamp again whatever they read.
+    pub fn set_session(&mut self, axis_mode: u32, axis_hz: u32, auto_max: u32, xinput_mode: u32, xinput_flags: u32) {
+        let mut st = self.ctl;
+        st.axis_mode = if axis_mode <= CTL_AXIS_UNPACED { axis_mode } else { CTL_AXIS_UNSET };
+        use crate::guest::{AUTO_MAX_MAX, AUTO_MAX_MIN, AXIS_HZ_MAX, AXIS_HZ_MIN};
+        st.axis_hz = if axis_hz == 0 { 0 } else { axis_hz.clamp(AXIS_HZ_MIN, AXIS_HZ_MAX) };
+        st.axis_auto_max = if auto_max == 0 { 0 } else { auto_max.clamp(AUTO_MAX_MIN, AUTO_MAX_MAX) };
+        st.xinput_mode = if xinput_mode <= CTL_XINPUT_FORWARD { xinput_mode } else { CTL_XINPUT_UNSET };
+        st.xinput_flags = xinput_flags & CTL_XI_FLAGS_KNOWN;
+        self.update_control(st);
+    }
+
+    pub fn control(&self) -> (u32, ControlState) {
+        (self.ctl_gen, self.ctl)
     }
 
     fn try_heal(&mut self) {
@@ -583,12 +656,14 @@ impl SlotWriter {
             STAT_FRAME_INTERVAL_NS => return FRAME_FEED.gap.load(Relaxed),
             STAT_GAME_FRAMES => return FRAME_FEED.count.load(Relaxed),
             STAT_FRAME_WAKES => return FRAME_FEED.wakes.load(Relaxed),
+            STAT_CONTROL_GEN => return self.ctl_gen as u64,
             _ => {}
         }
-        let h = match &self.backing {
-            Some(b) => &b.shared().header,
+        let sh = match &self.backing {
+            Some(b) => b.shared(),
             None => return 0,
         };
+        let h = &sh.header;
         let v = match which {
             STAT_PUBLISHES => &h.w_publishes,
             STAT_WAKE_CALLS => &h.w_wake_calls,
@@ -609,6 +684,9 @@ impl SlotWriter {
             STAT_READER_AXIS_HZ => return h.r_axis_hz.load(Relaxed) as u64,
             STAT_READER_AXIS_MODE => return h.r_axis_mode.load(Relaxed) as u64,
             STAT_READER_AUTO_MAX => return h.r_auto_max.load(Relaxed) as u64,
+            STAT_READER_CTL_GEN_APPLIED => return sh.ctl.r_ctl_gen_applied.load(Relaxed) as u64,
+            STAT_READER_ID_GEN_ATTACHED => return sh.ctl.r_id_gen_attached.load(Relaxed) as u64,
+            STAT_READER_IDENTITY_READS => return sh.ctl.r_identity_reads.load(Relaxed) as u64,
             _ => return 0,
         };
         v.load(Relaxed)
@@ -656,6 +734,67 @@ mod tests {
 
     fn pad(buttons: u16) -> PadInput {
         PadInput { buttons, axes: [0; AXES] }
+    }
+
+    #[test]
+    fn the_control_record_is_in_every_file_the_slot_gets() {
+        let dir = tmpdir("ctl");
+        let ds = dir.to_str().unwrap().as_bytes().to_vec();
+        let mut w = SlotWriter::new(1);
+        assert_eq!(w.control().0, 1, "the initial record is gen 1");
+        // set before any file exists: kept in process memory
+        let id = Identity::new(3, 0x045e, 0x028e, 0x0114, b"xbox360", b"Xbox 360 Controller (1)");
+        w.set_identity(Some(id));
+        w.set_session(CTL_AXIS_FIXED, 90, 0, CTL_XINPUT_FORWARD, CTL_XI_FORWARD_AVAILABLE | 0x80);
+        let (gen, st) = w.control();
+        assert_eq!(gen, 3);
+        assert_eq!(st.xinput_flags, CTL_XI_FORWARD_AVAILABLE, "unknown flag bits dropped");
+        w.prepare(&ds).unwrap();
+        let m = Map::open(&dir.join("pad1"));
+        let sh = m.sh();
+        assert!(sh.control_present());
+        assert_eq!(sh.header.minor.load(Relaxed), 5);
+        assert_eq!(sh.read_control(), Some((gen, st)), "a new file starts with the full record");
+        assert_eq!(sh.ctl.seq.load(Relaxed) & 1, 0);
+
+        // an update reaches the live file, gen + 1, without ringing the bell
+        let bell = sh.header.bell.load(Relaxed);
+        w.set_identity(None);
+        assert_eq!(sh.read_control().map(|(g, s)| (g, s.id)), Some((gen + 1, None)));
+        assert_eq!(sh.header.bell.load(Relaxed), bell, "control updates never ring the bell");
+        // an identical update is not a change
+        w.set_identity(None);
+        assert_eq!(w.control().0, gen + 1);
+        assert_eq!(w.stat(STAT_CONTROL_GEN), (gen + 1) as u64);
+
+        // a recreated file (session end, then a new session) carries the same record and gen
+        let id2 = Identity::new(3, 0x054c, 0x0ce6, 0x8111, b"ds5", "DualSense \u{2013} P2".as_bytes());
+        w.set_identity(Some(id2));
+        let expect = w.control();
+        w.release();
+        w.prepare(&ds).unwrap();
+        let m2 = Map::open(&dir.join("pad1"));
+        assert_ne!(m2.sh().header.instance.load(Relaxed), sh.header.instance.load(Relaxed));
+        assert_eq!(m2.sh().read_control(), Some(expect));
+        assert_eq!(m2.sh().read_control().unwrap().1.id, Some(id2));
+        // and so does a replacement made while the old file is still mapped (the heal path:
+        // the file vanished behind the writer's back)
+        std::fs::remove_file(dir.join("pad1")).unwrap();
+        w.prepare(&ds).unwrap();
+        let m3 = Map::open(&dir.join("pad1"));
+        assert_ne!(m3.sh().header.instance.load(Relaxed), m2.sh().header.instance.load(Relaxed));
+        assert_eq!(m3.sh().read_control(), Some(expect));
+    }
+
+    #[test]
+    fn session_values_are_normalised() {
+        let mut w = SlotWriter::new(2);
+        w.set_session(7, 5, 1000, 9, u32::MAX);
+        let (_, st) = w.control();
+        assert_eq!((st.axis_mode, st.axis_hz, st.axis_auto_max, st.xinput_mode, st.xinput_flags), (CTL_AXIS_UNSET, 30, 240, CTL_XINPUT_UNSET, CTL_XI_FLAGS_KNOWN));
+        w.set_session(CTL_AXIS_AUTO, 0, 0, CTL_XINPUT_DIRECT, 0);
+        let (_, st) = w.control();
+        assert_eq!((st.axis_mode, st.axis_hz, st.axis_auto_max, st.xinput_mode), (CTL_AXIS_AUTO, 0, 0, CTL_XINPUT_DIRECT));
     }
 
     #[test]

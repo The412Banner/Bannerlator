@@ -10323,6 +10323,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // The pads' own event nodes are what the client sees: the directory is bound in as
             // /dev/input itself (see gameBinds below), so an unhooked opendir/readdir lists it and
             // no js* node or classic-scan hint is needed. Verified on device with the runtime's proot.
+            // Identity (xbox360 below) and pacing come from this env, not from a Wine game's settings
+            // still held in the control block; cleared before any node exists.
+            com.winlator.star.core.BannerinSessionControl.resetForEnv();
             com.winlator.star.inputcontrols.BannerinWriter.prepareRingSlots(fakeInputDir, 4);
             // The client sees one controller per event node in this directory, so a node with no device behind it is a pad that never moves.
             // Four were always listed, one per slot, while one real pad fed slot 0 and the other three slots were never written.

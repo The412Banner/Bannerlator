@@ -47,6 +47,21 @@ public final class BannerinSessionControl {
                 + ", xinput mode " + xinputMode + " flags " + xinputFlags);
     }
 
+    /**
+     * No identity and no session settings: the readers go by their environment (FAKE_EVDEV_IDENTITY,
+     * BANNERIN_AXIS_*). For the Linux runtime session, which sets its own env. The record outlives a
+     * session in this process, so without this a Linux launch after a Wine game would present that
+     * game's identity and pacing. Call it before the slots' discovery nodes are made.
+     */
+    public static void resetForEnv() {
+        for (int slot = 0; slot < BannerinWriter.MAX_SLOTS; slot++) {
+            BannerinWriter.clearSlotIdentity(slot);
+        }
+        BannerinWriter.setSessionControl(BannerinWriter.AXIS_MODE_UNSET, 0, 0,
+                BannerinWriter.XINPUT_MODE_UNSET, 0);
+        Log.i(TAG, "control block cleared: identity and pacing from the env vars");
+    }
+
     /** The XInput mode for a live Direct/Wine choice, when the session can switch. */
     public static int xinputModeFor(boolean direct) {
         return BannerinXInput.liveMode(direct);

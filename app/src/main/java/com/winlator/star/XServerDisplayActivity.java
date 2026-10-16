@@ -7520,6 +7520,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } else if (isRelativeMouseMovement && !pointerCaptureRequested) {
             drawerLayout.postDelayed(() -> ensurePointerCapture("in-game-menu-closed"), 2000);
         }
+        // A controller change waiting to reconnect goes now rather than after its batching delay.
+        if (!open && liveControllerSession != null) liveControllerSession.onMenuClosed();
     }
 
     /**
@@ -8087,10 +8089,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // the prefix's own xinput dlls back when the setting is off (core.BannerinXInput). Every launch,
         // idempotent, finishes or undoes an interrupted one; setupXEnvironment adds the
         // WINEDLLOVERRIDES entry and writes the session log line.
-        bxinputSync = com.winlator.star.core.BannerinXInput.sync(this, new File(imageFs.getRootDir(), ImageFs.WINEPREFIX),
-                com.winlator.star.core.BannerinXInput.effective(container, shortcut),
-                wineInfo != null && wineInfo.isArm64EC(),
-                com.winlator.star.core.BannerinXInput.archOverride(container, shortcut));
+        // With "Allow in-game switching", our DLLs go in either way plus Wine's own xinput1_4 beside them
+        // (the forward target), so the XInput source can change mid-game (Controls › Pad).
+        String bxinputWineRoot = null;
+        try { bxinputWineRoot = imageFs.getWinePath(); } catch (Throwable ignored) {}
+        bxinputSync = com.winlator.star.core.BannerinXInput.syncForLaunch(this, new File(imageFs.getRootDir(), ImageFs.WINEPREFIX),
+                container, shortcut, wineInfo != null && wineInfo.isArm64EC(),
+                bxinputWineRoot != null ? new File(bxinputWineRoot) : null);
 
         String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
         if (!wincomponents.equals(container.getExtra("wincomponents"))) {
@@ -8139,6 +8144,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         Log.i("XServerDisplayActivity", "DirectInput games can see the controller: "
                 + (dinputVisible ? "on" : "off") + " (" + dinputWhy + ")");
+        // What the in-game controller settings (Controls › Pad) start from.
+        launchPadIdentity = padIdentity;
+        launchDInputVisible = dinputVisible;
+        launchDInputForcedWhy = dinputWhy.equals("settings") ? null
+                : (dinputWhy.startsWith("forced on by ") ? dinputWhy.substring("forced on by ".length()) : dinputWhy);
         WineUtils.setJoystickRegistryKeys(container, dinputVisible, padIdentity);
         WineUtils.setWinebusOptions(container, com.winlator.star.core.ControllerIdentity.mapControllers(padIdentity));
 
@@ -8401,6 +8411,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String unrealHdrMode = com.winlator.star.core.UnrealHdr.OFF;
     private com.winlator.star.core.DxvkNvapi.Result nvapiSync;
     private com.winlator.star.core.BannerinXInput.Result bxinputSync;
+    private com.winlator.star.core.BannerinXInput.LaunchControl bannerinLaunchControl;
+    // In-game controller settings (Controls › Pad) of a Wine session, and what the launch set them to.
+    private LiveControllerSession liveControllerSession;
+    private String launchPadIdentity = com.winlator.star.core.ControllerIdentity.GENERIC;
+    private boolean launchDInputVisible;
+    private String launchDInputForcedWhy;
 
     /** One line for this session's log under {@code area}: the Wayland session log (Download/Wayland-logs)
      *  on Wayland, the Wine debug log on X11 when the Log Manager has it open; logcat always. */
@@ -11333,6 +11349,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Pass final envVars to the launcher
         guestProgramLauncherComponent.setEnvVars(envVars);
+        // Direct XInput's mode/flags for BANNERIN's control block (the launcher writes it with the slots'
+        // identity before the guest starts). No "DirectInput only" hiding from XInput in this build.
+        com.winlator.star.core.BannerinXInput.LaunchControl bxControl =
+                com.winlator.star.core.BannerinXInput.launchControlMode(bxinputSync, false);
+        guestProgramLauncherComponent.setBannerinLaunchControl(bxControl.xinputMode, bxControl.xinputFlags);
+        bannerinLaunchControl = bxControl;
         final boolean launchLoggingEnabled = isLaunchLoggingEnabled();
         guestProgramLauncherComponent.setTerminationCallback((status) -> {
             // The guest process died. If it never rendered a window, this is a launch failure — show
@@ -11426,6 +11448,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Start all environment components (XServer, Audio, Wine, etc.)
         preloaderDialog.step(4, "Launching Windows…");
         environment.startEnvironmentComponents();
+        runOnUiThread(this::startLiveControllerSession);
 
         // Guest is now booting — the tail is unmeasurable, so switch to the indeterminate spinner and
         // arm the not-frozen reassurance timers (cancelled on first render or termination).
@@ -15382,6 +15405,48 @@ return true;
     // fireControllerToast field initializer) to avoid an illegal forward reference to winHandler.
     private void refreshInGamePlayerSlotList() {
         if (winHandler != null) XServerDialogState.INSTANCE.setPlayerSlots(buildPlayerSlotRows());
+    }
+
+    /**
+     * Controls › Pad for a Wine session: the controller settings that change while the game runs
+     * (LiveControllerSession), started once the launch has written their starting values.
+     */
+    private void startLiveControllerSession() {
+        if (gamescopeMode || winHandler == null || container == null || liveControllerSession != null) return;
+        com.winlator.star.core.BannerinXInput.Result sync = bxinputSync;
+        boolean direct = sync != null ? sync.directOn
+                : com.winlator.star.core.BannerinXInput.effective(container, shortcut);
+        boolean switchable = sync != null && sync.installed && sync.switching && sync.forwardAvailable;
+        int mode = bannerinLaunchControl != null ? bannerinLaunchControl.xinputMode : 0;
+        int flags = bannerinLaunchControl != null ? bannerinLaunchControl.xinputFlags : 0;
+        winHandler.setReconnectGapMs(preferences.getInt("live_reconnect_gap_ms", (int) com.winlator.star.winhandler.SlotReconnector.GAP_MS_DEFAULT));
+        liveControllerSession = new LiveControllerSession(container, shortcut, winHandler, new LiveControllerSession.Host() {
+            @Override public void onReconnecting() {
+                XServerDialogState.INSTANCE.showInfoToast("CONTROLLER RECONNECTING…", "just now", null);
+            }
+
+            @Override public void onReconnected(boolean ok, String identityLabel) {
+                refreshInGamePlayerSlotList();
+                updateAutoHideForControllers();
+                if (ok) {
+                    XServerDialogState.INSTANCE.showControllerToastFor("reconnected", buildPlayerSlotRows(), null, identityLabel);
+                } else {
+                    XServerDialogState.INSTANCE.showInfoToast("CONTROLLER NOT BACK YET", "",
+                            "If the game lost the controller: Controls › Players › Reset Input, or restart the game.");
+                }
+            }
+
+            @Override public void onXInputApplied(boolean direct, boolean ok) {
+                if (ok) {
+                    XServerDialogState.INSTANCE.showInfoToast("XINPUT SOURCE", "applied in game",
+                            direct ? "Direct XInput (Bannerlator)" : "Wine's XInput");
+                } else {
+                    XServerDialogState.INSTANCE.showInfoToast("XINPUT SOURCE", "",
+                            "Wine's XInput isn't available in this game; it stays on Direct XInput.");
+                }
+            }
+        }, launchPadIdentity, launchDInputVisible, launchDInputForcedWhy, direct, switchable, mode, flags);
+        liveControllerSession.attach();
     }
 
     private void updateAutoHideForControllers() {

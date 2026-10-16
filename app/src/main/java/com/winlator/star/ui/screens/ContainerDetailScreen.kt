@@ -71,6 +71,7 @@ import com.winlator.star.contents.WrapperSettingsDictionary
 import com.winlator.star.core.AppUtils
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.RumbleMotors
+import com.winlator.star.core.StickPacing
 import com.winlator.star.core.DefaultVersion
 import com.winlator.star.core.MediaDecoder
 import com.winlator.star.core.FileUtils
@@ -2590,6 +2591,60 @@ private fun AdvancedTab(
                 IconButton(onClick = { helpRes = R.string.help_bannerin_xinput }) {
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
+            }
+            // "Allow in-game switching" of Direct XInput (core.BannerinXInput): both DLL sets go in, so
+            // Controls › Pad can flip it while the game runs.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = viewModel.bannerinXInputSwitching,
+                    onCheckedChange = { viewModel.bannerinXInputSwitching = it }
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.bannerin_xinput_switching))
+                    Text(
+                        stringResource(R.string.bannerin_xinput_switching_summary),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.5.sp
+                    )
+                }
+                IconButton(onClick = { helpRes = R.string.help_bannerin_xinput_switching }) {
+                    Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            }
+            // Stick updates (core.StickPacing): Auto (frame-matched, up to N/s) / Fixed N/s / Unpaced.
+            val pacing = StickPacing.parse(viewModel.stickPacing) ?: StickPacing.DEFAULT
+            val pacingLabels = listOf("Auto", "Fixed", "Unpaced")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabeledDropdown(
+                    label = stringResource(R.string.stick_pacing_label),
+                    options = pacingLabels,
+                    selectedOption = pacingLabels[pacing.mode - 1],
+                    onSelect = { opt ->
+                        viewModel.stickPacing = when (pacingLabels.indexOf(opt)) {
+                            1 -> StickPacing(StickPacing.MODE_FIXED, StickPacing.FIXED_DEFAULT)
+                            2 -> StickPacing(StickPacing.MODE_OFF, 0)
+                            else -> StickPacing.DEFAULT
+                        }.format()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { helpRes = R.string.help_stick_pacing }) {
+                    Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            }
+            if (pacing.mode != StickPacing.MODE_OFF) {
+                val auto = pacing.mode == StickPacing.MODE_AUTO
+                Text(
+                    (if (auto) "Up to ${pacing.hz} per second" else "${pacing.hz} per second"),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Slider(
+                    value = pacing.hz.toFloat(),
+                    onValueChange = { viewModel.stickPacing = StickPacing(pacing.mode, it.toInt()).format() },
+                    valueRange = if (auto) StickPacing.AUTO_MIN.toFloat()..StickPacing.AUTO_MAX.toFloat()
+                                 else StickPacing.FIXED_MIN.toFloat()..StickPacing.FIXED_MAX.toFloat()
+                )
             }
             // Controller identity (core.ControllerIdentity): what the virtual pads say they are to the
             // game (FAKE_EVDEV_IDENTITY at launch). Applies the next time the game starts.

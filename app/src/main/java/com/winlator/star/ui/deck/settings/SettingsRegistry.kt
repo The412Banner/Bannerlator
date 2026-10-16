@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Widgets
 import com.winlator.star.FeatureFlags
 import com.winlator.star.container.Container
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
+import com.winlator.star.core.BannerinXInput
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.DirectAudioSupport
@@ -25,6 +26,7 @@ import com.winlator.star.core.KeyValueSet
 import com.winlator.star.core.LinuxVulkanDriver
 import com.winlator.star.core.MediaDecoder
 import com.winlator.star.core.RumbleMotors
+import com.winlator.star.core.StickPacing
 import com.winlator.star.core.StringUtils
 import com.winlator.star.core.SyncMode
 import com.winlator.star.core.SyncSupport
@@ -1091,8 +1093,40 @@ internal object SettingsRegistry {
             game = key10("bannerinXInput"),
         ),
         SettingDef(
+            id = "input.bannerinXInputSwitching", category = "input", group = "Controllers", level = ADVANCED,
+            label = "Allow in-game switching", hint = "Switch Direct XInput on or off from the in-game menu without restarting.",
+            help = "Installs Bannerlator's XInput DLLs whether Direct XInput is on or off, with Wine's own XInput beside them, so Controls › Pad in the in-game menu can switch between them while the game runs (the controller reconnects). Off: changing Direct XInput needs a restart. Off by default.",
+            tech = BannerinXInput.EXTRA_SWITCHING,
+            control = { _, _ -> Control.Toggle },
+            vm = vmBool({ it.bannerinXInputSwitching }, { vm, v -> vm.bannerinXInputSwitching = v }),
+            game = key10(BannerinXInput.EXTRA_SWITCHING),
+        ),
+        SettingDef(
+            id = "input.stickPacing", category = "input", group = "Controllers", level = ADVANCED,
+            label = "Stick updates", hint = "How often stick movement reaches the game. Also changeable in-game.",
+            help = "Auto (default): one stick update per frame the game draws, up to the limit set (60 per second by default), so a game that draws faster than it reads input never falls behind. Fixed: that many updates per second. Unpaced: every change goes out at once. Applies at once, also in-game (Controls › Pad). BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX in the env vars win over this setting.",
+            tech = StickPacing.EXTRA,
+            control = { _, _ ->
+                Control.Select(
+                    listOf(
+                        Opt("auto:60", "Auto (up to 60/s)"), Opt("auto:120", "Auto (up to 120/s)"), Opt("auto:30", "Auto (up to 30/s)"),
+                        Opt("fixed:60", "Fixed 60/s"), Opt("fixed:125", "Fixed 125/s"), Opt("fixed:250", "Fixed 250/s"),
+                        Opt("off", "Unpaced"),
+                    ),
+                    customLabel = "Custom…", customHint = "auto:N (20–240), fixed:N (30–1000) or off",
+                    validateCustom = { v -> if (StickPacing.parse(v) == null) "Use auto:N, fixed:N or off" else null },
+                    normalizeCustom = { v -> StickPacing.parse(v)?.format() ?: v.trim() },
+                )
+            },
+            vm = vmString({ it.stickPacing }, { vm, v -> vm.stickPacing = StickPacing.parse(v)?.format() ?: StickPacing.DEFAULT.format() }),
+            game = key(StickPacing.EXTRA) { v -> StickPacing.parse(v)?.format() },
+            disabled = { env, _ ->
+                if (StickPacing.envOverrides(env.vm?.container, env.shortcut)) "Set by BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX in the env vars." else null
+            },
+        ),
+        SettingDef(
             id = "input.controllerIdentity", category = "input", group = "Controllers", level = ADVANCED,
-            label = "Controller identity", hint = "Which controller the game sees. Applies the next time the game starts.",
+            label = "Controller identity", hint = "Which controller the game sees. Also changeable in-game (the controller reconnects).",
             help = "Generic (default): works with everything, same as before. Xbox 360 / One / Series: games treat the pad as an Xbox controller; best paired with Direct XInput for live input and rumble. Classic DirectInput pad: for old games that don't accept Xbox pads; it always lets DirectInput games see the controller. PlayStation / Nintendo / Joy-Con / Steam Deck (experimental): games may show those button icons; no gyro, touchpad, light bar or trackpads, and a few games may not detect the pad. Switch back to Generic or Xbox if so.\n\nIf the controller disappears in a game, switch back to Generic.",
             tech = ControllerIdentity.ENV,
             control = { _, _ -> Control.Select(ControllerIdentity.wineChoices().map { Opt(it.value, it.label) }) },

@@ -19,4 +19,8 @@ abstract class RequestCodes {
      *  (raw XInput 0..65535), duration ms u16 LE; 12 bytes with the code. Sent by the guest DLL
      *  (app/src/main/cpp/bannerin/xinput) only when the motors change, plus a refresh while running. */
     public static final byte XINPUT_RUMBLE = 14;
+    /** BANNERIN-XInput status: "BXS1", requested mode u8, mode now u8, ok u8, control gen u32 LE,
+     *  flags u32 LE, pid u32 LE, build u8; 21 bytes with the code. Sent when a control-block change
+     *  (Direct / forward / hidden) has been applied in a process. */
+    public static final byte XINPUT_STATUS = 16;
 }

@@ -176,6 +176,13 @@ public final class ControllerIdentity {
         return id != null ? id.label : TABLE[0].label;
     }
 
+    /** The label without the experimental note, for toasts and the log. */
+    public static String shortLabel(String value) {
+        String label = label(value);
+        int note = label.indexOf(" (experimental");
+        return note > 0 ? label.substring(0, note) : label;
+    }
+
     /** A Wine-pickable value for anything stored (unknown or Linux-only = Generic). */
     public static String forWine(String value) {
         Identity id = find(value);

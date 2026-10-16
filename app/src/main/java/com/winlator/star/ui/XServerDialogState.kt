@@ -362,6 +362,54 @@ object XServerDialogState {
     fun interface RumbleMotorsCallback { fun invoke(motors: Int) }
     @JvmField var onRumbleMotorsChanged: RumbleMotorsCallback? = null
 
+    // ── Controls › Pad: live controller settings (LiveControllerSession owns the logic) ──
+    /** What the Pad sub-tab shows. The activity republishes it after every change and reconnect. */
+    data class PadState(
+        /** Wine session, not gamescope / the Linux runtime: the sub-tab exists at all. */
+        val supported: Boolean = false,
+        /** ControllerIdentity value the setting holds now. */
+        val identity: String = "generic",
+        /** Non-null: why the identity can't change here (e.g. FAKE_EVDEV_IDENTITY in the env vars). */
+        val identityLockedReason: String? = null,
+        /** Direct XInput is installed for this session (the XInput source row exists). */
+        val xinputAvailable: Boolean = false,
+        /** XInput source wanted: true = Direct (BANNERIN), false = Wine's own. */
+        val xinputDirect: Boolean = true,
+        /** The source can switch in-game ("Allow in-game switching" was on at launch). */
+        val xinputSwitchable: Boolean = false,
+        val dinputVisible: Boolean = false,
+        /** Non-null: why DirectInput visibility is fixed for this launch (passthrough, DirectInput pad). */
+        val dinputLockedReason: String? = null,
+        /** StickPacing format: auto:N / fixed:N / off. */
+        val pacing: String = "auto:60",
+        /** Non-null: why the pacing can't change here (BANNERIN_AXIS_* env vars). */
+        val pacingLockedReason: String? = null,
+        /** The stick-frame rate the game gets right now (0 = unknown). */
+        val nowHz: Int = 0,
+        /** Changes saved but waiting for the controller to reconnect. */
+        val pendingReconnect: Boolean = false,
+        val reconnecting: Boolean = false,
+        /** Settings saved that take effect only on the next launch (shown as a note). */
+        val nextLaunchOnly: List<String> = emptyList(),
+        /** "this game" or "this container": where changes are saved. */
+        val savedFor: String = "this container",
+    )
+
+    private val _pad = MutableStateFlow(PadState())
+    val pad: StateFlow<PadState> = _pad
+    fun setPad(state: PadState) { _pad.value = state }
+
+    fun interface PadStringCallback { fun invoke(value: String) }
+    fun interface PadBoolCallback { fun invoke(value: Boolean) }
+    @JvmField var onPadIdentity: PadStringCallback? = null
+    @JvmField var onPadXInputDirect: PadBoolCallback? = null
+    @JvmField var onPadDInputVisible: PadBoolCallback? = null
+    @JvmField var onPadPacing: PadStringCallback? = null
+    @JvmField var onPadReconnectNow: Runnable? = null
+    @JvmField var onPadNextLaunch: Runnable? = null
+    /** The sub-tab is showing: refresh "Now: N Hz" (called about once a second). */
+    @JvmField var onPadRefresh: Runnable? = null
+
     // -------------------------------------------------------------------------
     // Player Slots (manual per-device slot assignment) — Controls > Players sub-tab. One row per
     // detected input device (plus the on-screen pad). `override` is the user's choice: SLOT_AUTO
@@ -502,7 +550,8 @@ object XServerDialogState {
      * @param slots  the SAME PlayerSlotRow list the Players sub-tab renders (OSC first, then devices).
      * @param changedDescriptor descriptor of a just-hot-plugged device (marks its row NEW); may be null.
      */
-    fun showControllerToastFor(reason: String, slots: List<PlayerSlotRow>, changedDescriptor: String?) {
+    @JvmOverloads
+    fun showControllerToastFor(reason: String, slots: List<PlayerSlotRow>, changedDescriptor: String?, subOverride: String? = null) {
         // OSC only appears as a row when it is actually seated as a player (has a slot); physical
         // controllers + any slot-holder always appear (getPlayerSlotAssignments already filtered those).
         val visible = slots.filter { !it.isOnScreen || it.currentSlot >= 0 }
@@ -548,6 +597,7 @@ object XServerDialogState {
             "connected"    -> "CONTROLLER CONNECTED" to "just now"
             "disconnected" -> "CONTROLLER DISCONNECTED" to "just now"
             "reset"        -> "INPUT RESET" to "just now"
+            "reconnected"  -> "CONTROLLER RECONNECTED" to (subOverride ?: "just now")
             "reassign"     ->
                 if (hasShare) "PLAYER ${sharedSlot + 1} · SHARED" to "updated"
                 else "INPUT UPDATED" to "updated"
@@ -965,6 +1015,7 @@ object XServerDialogState {
         _vibrationMode.value   = 1
         _vibrationIntensity.value = 100
         _rumbleMotors.value    = 0
+        _pad.value             = PadState()
         _playerSlots.value     = emptyList()
         _gyroSupported.value   = false
         _gyroOrientationSupported.value = false
@@ -1013,6 +1064,8 @@ object XServerDialogState {
         onRequestResume = null
         onVibrationSlotChanged = null
         onVibrationModeChanged = null; onVibrationIntensityChanged = null; onRumbleMotorsChanged = null
+        onPadIdentity = null; onPadXInputDirect = null; onPadDInputVisible = null; onPadPacing = null
+        onPadReconnectNow = null; onPadNextLaunch = null; onPadRefresh = null
         onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null
         onGyroEnabledChanged = null; onGyroTargetChanged = null
         onGyroSensitivityChanged = null; onGyroDeadzoneChanged = null; onGyroSmoothingChanged = null

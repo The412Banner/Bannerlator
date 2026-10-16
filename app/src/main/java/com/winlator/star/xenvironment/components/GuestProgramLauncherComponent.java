@@ -20,6 +20,7 @@ import com.winlator.star.container.Container;
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.contents.ContentProfile;
 import com.winlator.star.contents.ContentsManager;
+import com.winlator.star.core.BannerinSessionControl;
 import com.winlator.star.core.Callback;
 import com.winlator.star.core.ControllerIdentity;
 import com.winlator.star.core.EnvVars;
@@ -27,6 +28,7 @@ import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.GPUInformation;
 import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.ProcessHelper;
+import com.winlator.star.core.StickPacing;
 import com.winlator.star.store.SteamLogRedactor;
 import com.winlator.star.core.TarCompressorUtils;
 import com.winlator.star.core.WineInfo;
@@ -77,6 +79,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     }
 
     public Container getContainer() { return this.container; }
+
+    // Direct XInput's control-block values for this launch (BannerinXInput.launchControlMode), set by
+    // the activity before start; 0/0 = no Direct XInput (the DLLs read "unset").
+    private int bannerinXInputMode = 0;
+    private int bannerinXInputFlags = 0;
+
+    public void setBannerinLaunchControl(int xinputMode, int xinputFlags) {
+        this.bannerinXInputMode = xinputMode;
+        this.bannerinXInputFlags = xinputFlags;
+    }
     public void setContainer(Container container) { this.container = container; }
 
     // When true, the guest uses the Wayland display path (winewayland.drv → embedded compositor)
@@ -665,6 +677,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (padPaths != null && !padPaths.isEmpty()) {
             envVars.put("FAKE_EVDEV_MEMFD_PATHS", padPaths);
         }
+        // BANNERIN control block, written before the guest starts: every slot's identity (the evdev
+        // layer reads it when a reader attaches, ahead of FAKE_EVDEV_IDENTITY, so a reconnect presents a
+        // changed one) and the session control (stick pacing; Direct XInput's mode and flags).
+        BannerinSessionControl.writeSlotIdentities(padIdentity);
+        BannerinSessionControl.writeSessionControl(StickPacing.forGame(container, shortcut),
+                bannerinXInputMode, bannerinXInputFlags, StickPacing.envOverrides(container, shortcut));
 
         Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         // winewayland.so (unixlib) dlopens libwayland-client/-egl/xkbcommon/xkbregistry. These resolve

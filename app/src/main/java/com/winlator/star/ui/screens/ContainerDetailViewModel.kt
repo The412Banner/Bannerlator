@@ -30,6 +30,7 @@ import com.winlator.star.core.NewContainerDefaults
 import com.winlator.star.core.PreloaderState
 import com.winlator.star.core.RumbleMotors
 import com.winlator.star.core.StorageRoots
+import com.winlator.star.core.StickPacing
 import com.winlator.star.core.StringUtils
 import com.winlator.star.ui.screens.contents.SetAsDefault
 import com.winlator.star.core.SyncCaps
@@ -379,6 +380,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var dinputVisible by mutableStateOf(false)
     // Direct XInput (BANNERIN): XInput games read the BANNERIN slot files directly (core/BannerinXInput).
     var bannerinXInput by mutableStateOf(false)
+    // "Allow in-game switching" of Direct XInput (core/BannerinXInput.switchingEffective).
+    var bannerinXInputSwitching by mutableStateOf(false)
+    // "Stick updates" (core.StickPacing format: auto:N / fixed:N / off).
+    var stickPacing by mutableStateOf(StickPacing.DEFAULT.format())
 
     // Controller vibration (PC-accurate dual-motor rumble), per-container. Mode: 0=Off 1=Controller
     // 2=Device(phone) 3=Both (Container.VIBRATION_MODE_*). Intensity 0..100 scales amplitude. Both
@@ -742,6 +747,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // DirectInput visibility, read from the stored inputType / exclusiveXInput (old values included)
         dinputVisible  = DInputVisibility.forContainer(seed)
         bannerinXInput = seed?.isBannerinXInput ?: false
+        bannerinXInputSwitching = seed?.isBannerinXInputSwitching ?: false
+        stickPacing    = StickPacing.forContainer(seed).format()
         vibrationMode      = seed?.getVibrationMode() ?: Container.VIBRATION_MODE_DEFAULT
         vibrationIntensity = seed?.getVibrationIntensity() ?: Container.VIBRATION_INTENSITY_DEFAULT
         rumbleMotors       = seed?.getRumbleMotors() ?: RumbleMotors.deviceDefault()
@@ -1367,6 +1374,9 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         c.setReshadeEffect(reshadeLoadout.firstEffectName())
         DInputVisibility.writeTo(c, dinputVisible)   // inputType + exclusiveXInput, as older builds read them
         c.setBannerinXInput(bannerinXInput)
+        c.setBannerinXInputSwitching(bannerinXInputSwitching)
+        // Only stored when it differs from the default, so an untouched container's data doesn't change.
+        c.putExtra(StickPacing.EXTRA, StickPacing.parse(stickPacing)?.takeIf { it != StickPacing.DEFAULT }?.format())
         c.setVibrationMode(vibrationMode)
         c.setVibrationIntensity(vibrationIntensity)
         if (rumbleMotorsWasExplicit || rumbleMotors != RumbleMotors.deviceDefault()) c.setRumbleMotors(rumbleMotors)

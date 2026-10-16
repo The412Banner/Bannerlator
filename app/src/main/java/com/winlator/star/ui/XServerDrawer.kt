@@ -119,7 +119,9 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import com.winlator.star.R
+import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.RumbleMotors
+import com.winlator.star.core.StickPacing
 import com.winlator.star.container.Container
 import com.winlator.star.perf.PerfGpuTurbo
 import com.winlator.star.perf.PerfRevertRegistry
@@ -3996,9 +3998,12 @@ internal fun ControlsContent(
     // exactly one renders at a time. ModeChipGrid is already the drawer's segmented-control language
     // (equal-width accent-filled chips), so the bar reads as native here instead of a new widget.
     val subTab by state.controlsSubTab.collectAsState()
+    // "Pad" (live controller settings) exists only where LiveControllerSession runs: a Wine session.
+    val padSupported = XServerDialogState.pad.collectAsState().value.supported
     val subTabs = listOf(
         0 to "Touch", 1 to "Mouse", 2 to "Vibration", 3 to "Gyro", 4 to "Players", 5 to stringResource(R.string.swipe_tab),
-    ).filter { (i, _) -> (pointerAndTouch || i !in setOf(0, 1, 5)) && (playerSlots || i != 4) }
+        6 to "Pad",
+    ).filter { (i, _) -> (pointerAndTouch || i !in setOf(0, 1, 5)) && (playerSlots || i != 4) && (padSupported || i != 6) }
     // A sub-tab this session doesn't offer falls back to the first one it does.
     LaunchedEffect(subTab, subTabs.size) {
         if (subTabs.none { it.first == subTab }) state.setControlsSubTab(subTabs.first().first)
@@ -4255,6 +4260,9 @@ internal fun ControlsContent(
         // is unrelated to rumble and must render whether or not vibration is switched on.
         3 -> GyroSection()
 
+        // ── Pad ── live controller settings (identity, XInput source, DirectInput, stick updates).
+        6 -> PadSection()
+
         // ── Players ── manual per-device slot assignment (override when auto-assignment guesses wrong).
         4 -> PlayersSection()
 
@@ -4445,6 +4453,181 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             }
         }
     }
+}
+
+// ───── Controls > Pad — live controller settings (LiveControllerSession in the activity) ─────
+
+// How a change reaches the game: "Live" (at once), "Reconnects controller" (the pad leaves and comes
+// back with the change) or "Restart required" (the next launch).
+private enum class PadApply(val label: String) { LIVE("Live"), RECONNECT("Reconnects controller"), RESTART("Restart required") }
+
+@Composable
+private fun PadRowHeader(title: String, apply: PadApply, helpRes: Int) {
+    var showHelp by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f))
+        Text(
+            apply.label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (apply == PadApply.RESTART) MaterialTheme.colorScheme.error else LocalAccentDim.current,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .border(1.dp, if (apply == PadApply.RESTART) MaterialTheme.colorScheme.error else LocalAccentDim.current, RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+        IconButton(onClick = { showHelp = true }, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Help, contentDescription = "What is this?",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        }
+    }
+    if (showHelp) HelpDialog(helpRes) { showHelp = false }
+}
+
+@Composable
+private fun PadNote(text: String) {
+    Text(text, fontSize = 11.sp, lineHeight = 13.sp, color = LocalAccentDim.current)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PadSection() {
+    val accent = MaterialTheme.colorScheme.primary
+    val pad by XServerDialogState.pad.collectAsState()
+    // "Now: N Hz" follows the game while the sub-tab is open.
+    LaunchedEffect(Unit) {
+        while (true) {
+            XServerDialogState.onPadRefresh?.run()
+            delay(1000)
+        }
+    }
+
+    Text("Controller", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Spacer(Modifier.height(4.dp))
+
+    // Controller type. The Classic DirectInput pad changes how winebus presents every pad, which it
+    // reads once: switching to or from it applies on the next launch.
+    val choices = remember { ControllerIdentity.wineChoices() }
+    val identityApply = if (pad.nextLaunchOnly.contains("identity")) PadApply.RESTART else PadApply.RECONNECT
+    PadRowHeader("Controller type", identityApply, R.string.help_controller_identity)
+    var identityExpanded by remember { mutableStateOf(false) }
+    val identityLocked = pad.identityLockedReason != null
+    ExposedDropdownMenuBox(expanded = identityExpanded && !identityLocked,
+        onExpandedChange = { if (!identityLocked) identityExpanded = it }) {
+        OutlinedTextField(
+            value = ControllerIdentity.label(pad.identity),
+            onValueChange = {}, readOnly = true, enabled = !identityLocked,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = identityExpanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { if (!identityLocked) identityExpanded = true },
+            singleLine = true,
+        )
+        ExposedDropdownMenu(expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
+            modifier = Modifier.outlinedMenuCard()) {
+            choices.forEachIndexed { index, id ->
+                if (index > 0) MenuItemDivider()
+                DropdownMenuItem(text = { Text(id.label) }, onClick = {
+                    identityExpanded = false
+                    if (id.value != pad.identity) XServerDialogState.onPadIdentity?.invoke(id.value)
+                })
+            }
+        }
+    }
+    pad.identityLockedReason?.let { PadNote(it) }
+    if (pad.nextLaunchOnly.contains("identity")) PadNote("The Classic DirectInput pad switches in or out on the next launch.")
+
+    // XInput source: Direct (BANNERIN) or Wine's own. Live only when the session was started with
+    // in-game switching allowed (the forwarding copy is installed then).
+    if (pad.xinputAvailable) {
+        Spacer(Modifier.height(8.dp))
+        PadRowHeader("XInput source", if (pad.xinputSwitchable) PadApply.RECONNECT else PadApply.RESTART, R.string.help_bannerin_xinput)
+        ModeChipGrid(
+            listOf(
+                Triple<String, Boolean, () -> Unit>("Direct", pad.xinputDirect) { if (!pad.xinputDirect) XServerDialogState.onPadXInputDirect?.invoke(true) },
+                Triple<String, Boolean, () -> Unit>("Wine", !pad.xinputDirect) { if (pad.xinputDirect) XServerDialogState.onPadXInputDirect?.invoke(false) },
+            ),
+            perRow = 2
+        )
+        if (!pad.xinputSwitchable) PadNote("Restart to apply. Turn on \"Allow in-game switching\" to switch without restarting.")
+    }
+
+    // DirectInput visibility.
+    Spacer(Modifier.height(8.dp))
+    PadRowHeader(stringResource(R.string.dinput_visible), PadApply.RECONNECT, R.string.help_dinput_visible)
+    ModeChipGrid(
+        listOf(
+            Triple<String, Boolean, () -> Unit>("Hidden", !pad.dinputVisible) { if (pad.dinputVisible) XServerDialogState.onPadDInputVisible?.invoke(false) },
+            Triple<String, Boolean, () -> Unit>("Visible", pad.dinputVisible) { if (!pad.dinputVisible) XServerDialogState.onPadDInputVisible?.invoke(true) },
+        ),
+        perRow = 2,
+        enabled = pad.dinputLockedReason == null
+    )
+    pad.dinputLockedReason?.let { PadNote(it) }
+
+    // Stick updates: BANNERIN's pacing, live.
+    Spacer(Modifier.height(8.dp))
+    PadRowHeader("Stick updates", PadApply.LIVE, R.string.help_stick_pacing)
+    val pacing = StickPacing.parse(pad.pacing) ?: StickPacing.DEFAULT
+    val pacingLocked = pad.pacingLockedReason != null
+    ModeChipGrid(
+        listOf(
+            Triple<String, Boolean, () -> Unit>("Auto", pacing.mode == StickPacing.MODE_AUTO) {
+                XServerDialogState.onPadPacing?.invoke(StickPacing(StickPacing.MODE_AUTO, StickPacing.AUTO_DEFAULT).format())
+            },
+            Triple<String, Boolean, () -> Unit>("Fixed", pacing.mode == StickPacing.MODE_FIXED) {
+                XServerDialogState.onPadPacing?.invoke(StickPacing(StickPacing.MODE_FIXED, StickPacing.FIXED_DEFAULT).format())
+            },
+            Triple<String, Boolean, () -> Unit>("Unpaced", pacing.mode == StickPacing.MODE_OFF) {
+                XServerDialogState.onPadPacing?.invoke(StickPacing(StickPacing.MODE_OFF, 0).format())
+            },
+        ),
+        perRow = 3,
+        enabled = !pacingLocked
+    )
+    if (pacing.mode != StickPacing.MODE_OFF) {
+        val range = if (pacing.mode == StickPacing.MODE_AUTO) StickPacing.AUTO_MIN..StickPacing.AUTO_MAX
+                    else StickPacing.FIXED_MIN..StickPacing.FIXED_MAX
+        var hz by remember(pad.pacing) { mutableIntStateOf(pacing.hz) }
+        IntSlider(if (pacing.mode == StickPacing.MODE_AUTO) "Up to (per second)" else "Per second", hz, range,
+            onValueChange = { hz = it },
+            onValueChangeFinished = { XServerDialogState.onPadPacing?.invoke(StickPacing(pacing.mode, hz).format()) },
+            enabled = !pacingLocked)
+    }
+    PadNote(if (pad.nowHz > 0) "Now: ${pad.nowHz} Hz" else "Now: no game reading the pad yet")
+    pad.pacingLockedReason?.let { PadNote(it) }
+
+    // Pending bar: changes wait for the controller to reconnect (automatically shortly after the last
+    // change, or when the menu closes), or keep the session as it is and apply on the next launch.
+    if (pad.pendingReconnect || pad.reconnecting) {
+        Spacer(Modifier.height(10.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, accent, RoundedCornerShape(8.dp))
+                .padding(8.dp)
+        ) {
+            Text(
+                if (pad.reconnecting) "Reconnecting the controller…" else "The controller reconnects to apply this.",
+                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface
+            )
+            if (!pad.reconnecting) {
+                Spacer(Modifier.height(6.dp))
+                ModeChipGrid(
+                    listOf(
+                        Triple<String, Boolean, () -> Unit>("Reconnect now", true) { XServerDialogState.onPadReconnectNow?.run() },
+                        Triple<String, Boolean, () -> Unit>("Next launch", false) { XServerDialogState.onPadNextLaunch?.run() },
+                    ),
+                    perRow = 2
+                )
+            }
+        }
+    }
+    pad.nextLaunchOnly.filter { it != "identity" && it != "xinput" }.forEach { PadNote(it) }
+    if (pad.nextLaunchOnly.contains("xinput") && pad.xinputSwitchable) PadNote("XInput source applies on the next launch.")
+
+    Spacer(Modifier.height(8.dp))
+    PadNote("Saved for ${pad.savedFor}")
 }
 
 // ───── Touch gesture settings — Controls > Mouse, shown while Cursor to Touch is on ─────

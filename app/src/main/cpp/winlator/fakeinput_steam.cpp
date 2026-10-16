@@ -95,6 +95,21 @@ static const PadIdentity *find_pad_identity(const char *value) {
       return &entry;
   return nullptr;
 }
+
+// The slot's identity from BANNERIN's control block. The app sets it for every slot and can change
+// it in-game; the pad then reconnects and the new attach takes the new identity. False when the slot
+// file carries none (-ENODATA, an older app): FAKE_EVDEV_IDENTITY / the generic identity apply.
+static bool live_pad_identity(bannerin_handle handle, struct bannerin_identity *out) {
+  return handle && bannerin_identity(handle, out, sizeof(*out)) == 0;
+}
+
+// The live identity's name into an EVIOCGNAME / JSIOCGNAME buffer (copied as text, never as a format).
+static void copy_live_name(int op, void *argp, const struct bannerin_identity &live) {
+  size_t size = _IOC_SIZE(op);
+  if (!argp || size == 0)
+    return;
+  snprintf(static_cast<char *>(argp), size, "%.*s", static_cast<int>(sizeof(live.name)), live.name);
+}
 static constexpr const char *GAMEPAD_PHYS_TEMPLATE = "usb-fakeinput/input%d";
 static constexpr const char *GAMEPAD_UNIQ_TEMPLATE = "0000000000%02d";
 static constexpr uint8_t GAMEPAD_AXIS_COUNT = 8;
@@ -786,9 +801,14 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     struct input_id id;
     memset(&id, 0, sizeof(id));
     id.bustype = 0x03;
+    struct bannerin_identity live;
     if (presents_steam_virtual()) {
       id.vendor = STEAM_VIRTUAL_VENDOR_ID;
       id.product = STEAM_VIRTUAL_PRODUCT_ID;
+    } else if (live_pad_identity(controller->second->handle, &live)) {
+      id.bustype = live.bustype;
+      id.vendor = live.vendor;
+      id.product = live.product;
     } else if (const PadIdentity *identity = fake_identity()) {
       id.vendor = identity->vendor;
       id.product = identity->product;
@@ -801,6 +821,11 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     return 0;
   } else if (type == 0x45 && number == 0x6) {
     Logger::log("Hooking ioctl EVIOCGNAME for event %s\n", event);
+    struct bannerin_identity live;
+    if (!presents_steam_virtual() && live_pad_identity(controller->second->handle, &live)) {
+      copy_live_name(op, argp, live);
+      return 0;
+    }
     copy_slot_ioctl_string(op, argp,
                            presents_steam_virtual() ? STEAM_VIRTUAL_NAME_TEMPLATE
                            : (fake_identity() ? fake_identity()->name_template : GAMEPAD_NAME_TEMPLATE),
@@ -949,6 +974,11 @@ EXPORT int ioctl(int fd, ioctl_request_t op, ...) {
     return 0;
   } else if (type == 0x6A && number == 0x13) {
     Logger::log("Hooking ioctl JSIOCGNAME(len) for event %s\n", event);
+    struct bannerin_identity live;
+    if (!presents_steam_virtual() && live_pad_identity(controller->second->handle, &live)) {
+      copy_live_name(op, argp, live);
+      return 0;
+    }
     copy_slot_ioctl_string(op, argp,
                            presents_steam_virtual() ? STEAM_VIRTUAL_NAME_TEMPLATE
                            : (fake_identity() ? fake_identity()->name_template : GAMEPAD_NAME_TEMPLATE),

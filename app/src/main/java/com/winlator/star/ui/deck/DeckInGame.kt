@@ -1218,6 +1218,7 @@ private fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
                 "Deadzone and smoothing" to listOf(SaveScope.CONTAINER),
             )
             4 -> SaveNotes("Player slot for each controller" to listOf(game))
+            6 -> SaveNotes("Controller type, XInput source, DirectInput, stick updates (this game when its settings carry them)" to listOf(SaveScope.CONTAINER))
             5 -> SaveNotes("Swipe between buttons" to listOf(SaveScope.ALL))
         }
     }

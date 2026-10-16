@@ -184,6 +184,18 @@ public class WinHandler {
     private int reconnectBlockedMask = 0;
     private SlotReconnector reconnector;
     private volatile SlotReconnector.Listener reconnectListener;
+
+    /** Direct XInput applied a control-block change in a guest process (status datagram, code 16). */
+    public interface XInputStatusListener {
+        /** Receive thread. {@code mode}: 1 direct, 2 forward; {@code ok} false = forward unavailable, stayed direct. */
+        void onXInputStatus(int requestedMode, int mode, boolean ok, int gen, int pid);
+    }
+
+    private volatile XInputStatusListener xinputStatusListener;
+
+    public void setXInputStatusListener(XInputStatusListener listener) {
+        xinputStatusListener = listener;
+    }
     private final Handler inputHandler = new Handler(Looper.getMainLooper());
     private final Map<Integer, Runnable> pendingDeviceReleases = new HashMap<>();
     private LocalServerSocket vibrationServer;
@@ -1250,6 +1262,23 @@ public class WinHandler {
                 int weak = receiveData.getShort() & 0xFFFF;
                 int durationMs = receiveData.getShort() & 0xFFFF;
                 triggerVibration(strong, weak, durationMs, slot);
+                break;
+            }
+            case RequestCodes.XINPUT_STATUS: {
+                // Direct XInput applied a control-block change (Direct / forward / hidden) in a process.
+                if (receivePacket.getLength() < 21) break;
+                if (receiveData.get() != 'B' || receiveData.get() != 'X' || receiveData.get() != 'S'
+                        || receiveData.get() != '1') break;
+                int requested = receiveData.get() & 0xFF;
+                int mode = receiveData.get() & 0xFF;
+                boolean ok = receiveData.get() != 0;
+                int gen = receiveData.getInt();
+                int flags = receiveData.getInt();
+                int pid = receiveData.getInt();
+                Log.i("WinHandler", "Direct XInput in pid " + pid + ": mode " + mode + " (asked " + requested + ")"
+                        + (ok ? "" : " NOT applied") + ", flags " + flags + ", control gen " + gen);
+                XInputStatusListener statusListener = xinputStatusListener;
+                if (statusListener != null) statusListener.onXInputStatus(requested, mode, ok, gen, pid);
                 break;
             }
             default: {

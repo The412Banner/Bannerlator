@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -299,15 +300,13 @@ public abstract class WineUtils {
      */
     public static void setJoystickRegistryKeys(Container container, boolean dinputVisible, String identity) {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
-        final String joysticksKey = "Software\\Wine\\DirectInput\\Joysticks";
-        final String value = dinputVisible ? "override" : "disabled";
-        final List<String> names = ControllerIdentity.dinputNames(identity);
-
+        // The same builder the in-game change uses (LiveWineRegistry), so launch and live never disagree.
+        JoystickRegistry.Desired desired = JoystickRegistry.desired(identity, dinputVisible);
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-            for (String stale : ControllerIdentity.allDinputNames()) {
-                if (!names.contains(stale)) registryEditor.removeValue(joysticksKey, stale);
+            for (String stale : desired.delete) registryEditor.removeValue(JoystickRegistry.KEY, stale);
+            for (Map.Entry<String, String> e : desired.set.entrySet()) {
+                registryEditor.setStringValue(JoystickRegistry.KEY, e.getKey(), e.getValue());
             }
-            for (String name : names) registryEditor.setStringValue(joysticksKey, name, value);
         }
     }
 

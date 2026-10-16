@@ -69,6 +69,9 @@ public class WinHandler {
     private boolean initReceived = false;
     private boolean running = false;
     private OnGetProcessInfoListener onGetProcessInfoListener;
+    // Extra process-list listeners that sit beside the single owner above (the Task Manager, the
+    // installer/game-exit watchers swap that one), e.g. LiveWineRegistry waiting for regedit to finish.
+    private final CopyOnWriteArrayList<OnGetProcessInfoListener> extraProcessInfoListeners = new CopyOnWriteArrayList<>();
     // Task Manager "Processor Affinity": the last mask the user applied per (guest) pid. The guest's
     // GetProcessAffinityMask readback is unreliable under wow64/FEX (it keeps reporting the full mask
     // even after SetProcessAffinityMask has moved the live threads), so we remember what the user
@@ -176,6 +179,11 @@ public class WinHandler {
     // Linux session: the Steam client reads player 1, so slot 0's node stays listed even while
     // nothing holds it (the on-screen pad's release there stays a soft release, as before).
     private volatile boolean keepPlayerOneNode = false;
+    // Live reconnect (SlotReconnector): bit N set = slot N is being reconnected; nothing writes to it or
+    // creates its writer until the replug. Main thread.
+    private int reconnectBlockedMask = 0;
+    private SlotReconnector reconnector;
+    private volatile SlotReconnector.Listener reconnectListener;
     private final Handler inputHandler = new Handler(Looper.getMainLooper());
     private final Map<Integer, Runnable> pendingDeviceReleases = new HashMap<>();
     private LocalServerSocket vibrationServer;
@@ -484,6 +492,33 @@ public class WinHandler {
         });
     }
 
+    /** Largest filename + parameters winhandler.exe takes in one EXEC: its receive buffer is 64 bytes,
+     *  minus the code byte and three ints. */
+    public static final int EXEC_RAW_MAX = 51;
+
+    /**
+     * EXEC without {@link #exec}'s quote parsing: the filename and parameters go to ShellExecute as
+     * given. False (nothing sent) when they don't fit winhandler.exe's buffer ({@link #EXEC_RAW_MAX}).
+     * winhandler.exe sends nothing back; watch the process list to know when the program is done.
+     */
+    public boolean execRaw(String filename, String parameters) {
+        final byte[] filenameBytes = filename.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        final byte[] parametersBytes = (parameters != null ? parameters : "").getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        if (filenameBytes.length + parametersBytes.length > EXEC_RAW_MAX)
+            return false;
+        addAction(() -> {
+            sendData.rewind();
+            sendData.put(RequestCodes.EXEC);
+            sendData.putInt(filenameBytes.length + parametersBytes.length + 8);
+            sendData.putInt(filenameBytes.length);
+            sendData.putInt(parametersBytes.length);
+            sendData.put(filenameBytes);
+            sendData.put(parametersBytes);
+            sendPacket(CLIENT_PORT);
+        });
+        return true;
+    }
+
     public void killProcess(final String processName) {
         addAction(() -> {
             sendData.rewind();
@@ -503,8 +538,9 @@ public class WinHandler {
 
             boolean sentLP = sendPacket(CLIENT_PORT);
             Log.d("WinHandlerTM", "listProcesses sent=" + sentLP + " initReceived=" + initReceived + " listener=" + (onGetProcessInfoListener != null));
-            if (!sentLP && onGetProcessInfoListener != null) {
-                onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
+            if (!sentLP) {
+                if (onGetProcessInfoListener != null) onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
+                for (OnGetProcessInfoListener extra : extraProcessInfoListeners) extra.onGetProcessInfo(0, 0, null);
             }
         });
     }
@@ -676,6 +712,16 @@ public class WinHandler {
         synchronized (actions) {
             this.onGetProcessInfoListener = onGetProcessInfoListener;
         }
+    }
+
+    /** Adds a process-list listener beside the owner set with setOnGetProcessInfoListener. Called on
+     *  the receive thread, like the owner. */
+    public void addProcessInfoListener(OnGetProcessInfoListener listener) {
+        if (listener != null) extraProcessInfoListeners.addIfAbsent(listener);
+    }
+
+    public void removeProcessInfoListener(OnGetProcessInfoListener listener) {
+        extraProcessInfoListeners.remove(listener);
     }
 
     private void startSendThread() {
@@ -1151,7 +1197,7 @@ public class WinHandler {
             }
 
             case RequestCodes.GET_PROCESS: {
-                if (onGetProcessInfoListener == null)
+                if (onGetProcessInfoListener == null && extraProcessInfoListeners.isEmpty())
                     return;
                 receiveData.position(receiveData.position() + 4);
                 int numProcesses = receiveData.getShort();
@@ -1166,8 +1212,11 @@ public class WinHandler {
                 String name = StringUtils.fromANSIString(bytes);
 
                 Log.d("WinHandlerTM", "GET_PROCESS idx=" + index + "/" + numProcesses + " name=" + name);
-                onGetProcessInfoListener.onGetProcessInfo(index, numProcesses,
-                        new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process));
+                ProcessInfo processInfo = new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process);
+                OnGetProcessInfoListener owner = onGetProcessInfoListener;
+                if (owner != null) owner.onGetProcessInfo(index, numProcesses, processInfo);
+                for (OnGetProcessInfoListener extra : extraProcessInfoListeners)
+                    extra.onGetProcessInfo(index, numProcesses, processInfo);
                 break;
             }
             case RequestCodes.GET_GAMEPAD: {
@@ -1368,6 +1417,8 @@ public class WinHandler {
     private void writeSlotState(int slot, int deviceId, GamepadState state) {
         if (slot < 0 || slot >= MAX_CONTROLLERS || writers[slot] == null || state == null)
             return;
+        if ((reconnectBlockedMask & (1 << slot)) != 0)
+            return; // held neutral while it reconnects; the replug republishes the current state
 
         if (!slotShared[slot]) {
             writers[slot].writeGamepadState(state);
@@ -2232,6 +2283,8 @@ public class WinHandler {
      * with no Steam button of its own.
      */
     public void setSystemButtons(boolean guide, boolean a) {
+        if ((reconnectBlockedMask & 1) != 0)
+            return;
         ensureWriterForSlot(0);
         if (writers[0] != null) writers[0].setSystemButtons(guide, a);
     }
@@ -2244,6 +2297,9 @@ public class WinHandler {
         // Whoever claims the slot keeps it listed: a soft-released on-screen slot waiting to be
         // unplugged is reused (its writer reopens on the next publish) instead of flapping.
         cancelSlotUnplug(slot);
+        // Mid-reconnect: the replug creates it.
+        if ((reconnectBlockedMask & (1 << slot)) != 0)
+            return;
         if (writers[slot] == null) {
             writers[slot] = new BannerinWriter(fakeInputBasePath, slot);
             writers[slot].open();
@@ -2305,6 +2361,124 @@ public class WinHandler {
         for (Integer s : deviceToSlot.values())
             if (s != null && s >= 0 && s < MAX_CONTROLLERS) held.add(s);
         return new java.util.ArrayList<>(held);
+    }
+
+    // ---- Live reconnect (in-game controller settings) ----
+
+    /** Receives "reconnecting" / "reconnected" for the toasts. Main thread. */
+    public void setReconnectListener(SlotReconnector.Listener listener) {
+        reconnectListener = listener;
+    }
+
+    /** The unplug gap for {@link #reconnectSlots} (250..1000 ms; hidden preference). */
+    public void setReconnectGapMs(long gapMs) {
+        reconnector().setGapMs(gapMs);
+    }
+
+    /**
+     * Unplugs and replugs every held slot so the game sees a changed setting (SlotReconnector has the
+     * sequence). Requests while one runs coalesce into one more. Main thread.
+     */
+    public void reconnectSlots(SlotReconnector.Job job) {
+        reconnector().request(job);
+    }
+
+    public boolean isReconnecting() {
+        return reconnector != null && reconnector.isRunning();
+    }
+
+    private SlotReconnector reconnector() {
+        if (reconnector == null) {
+            reconnector = new SlotReconnector(new SlotReconnector.Scheduler() {
+                @Override public void post(Runnable task, long delayMs) { inputHandler.postDelayed(task, delayMs); }
+                @Override public long now() { return android.os.SystemClock.uptimeMillis(); }
+            }, new ReconnectTarget(), new SlotReconnector.Listener() {
+                @Override public void onReconnecting(int[] slots) {
+                    Log.i("WinHandler", "Reconnecting slots " + Arrays.toString(slots));
+                    SlotReconnector.Listener l = reconnectListener;
+                    if (l != null) l.onReconnecting(slots);
+                }
+                @Override public void onReconnected(boolean ok, int[] slots, int attempts) {
+                    Log.i("WinHandler", "Reconnect of slots " + Arrays.toString(slots) + (ok ? " confirmed" : " NOT confirmed")
+                            + " after " + attempts + " attempt(s)");
+                    SlotReconnector.Listener l = reconnectListener;
+                    if (l != null) l.onReconnected(ok, slots, attempts);
+                }
+            });
+        }
+        return reconnector;
+    }
+
+    /** SlotReconnector's view of the slots. Main thread. */
+    private final class ReconnectTarget implements SlotReconnector.Target {
+        @Override public int[] heldSlots() {
+            java.util.List<Integer> held = getUsedSlotsSnapshot();
+            int[] out = new int[held.size()];
+            for (int i = 0; i < out.length; i++) out[i] = held.get(i);
+            return out;
+        }
+
+        @Override public void neutralise(int[] slots) {
+            stopPhysicalRumble();
+            for (int slot : slots) {
+                BannerinWriter w = writers[slot];
+                if (w == null || !w.isOpen()) continue;
+                if (slot == 0) w.setSystemButtons(false, false);
+                w.reset();
+            }
+        }
+
+        @Override public void block(int[] slots) {
+            for (int slot : slots) reconnectBlockedMask |= 1 << slot;
+        }
+
+        @Override public long frameIntervalMs() {
+            long ns = 0;
+            for (int slot = 0; slot < MAX_CONTROLLERS; slot++)
+                ns = Math.max(ns, BannerinWriter.getSlotStat(slot, BannerinWriter.STAT_FRAME_INTERVAL_NS));
+            return ns / 1_000_000L;
+        }
+
+        @Override public void unplug(int slot) {
+            cancelSlotUnplug(slot);
+            BannerinWriter w = writers[slot];
+            if (w != null) {
+                w.destroy();
+                writers[slot] = null;
+            }
+        }
+
+        @Override public void replug(int[] slots) {
+            for (int slot : slots) reconnectBlockedMask &= ~(1 << slot);
+            // Anything still blocked (a slot left behind by a pad unplugged meanwhile) is released too.
+            reconnectBlockedMask = 0;
+            for (int slot : slots) {
+                if (writers[slot] == null && fakeInputBasePath != null) {
+                    writers[slot] = new BannerinWriter(fakeInputBasePath, slot);
+                    writers[slot].open();
+                }
+            }
+            // Republish what each contributor holds right now (a button still held comes back held).
+            for (ExternalController controller : controllers.values()) {
+                Integer s = deviceToSlot.get(controller.getDeviceId());
+                if (s != null && contains(slots, s)) sendGamepadState(controller);
+            }
+            for (ExternalController pad : sdlPads.values()) {
+                Integer s = deviceToSlot.get(pad.getDeviceId());
+                if (s != null && contains(slots, s)) sendGamepadState(pad);
+            }
+            Integer osc = deviceToSlot.get(OSC_DEVICE_ID);
+            if (osc != null && contains(slots, osc)) sendGamepadState();
+        }
+
+        @Override public long readerAttaches(int slot) {
+            return BannerinWriter.getSlotStat(slot, BannerinWriter.STAT_READER_ATTACHES);
+        }
+
+        private boolean contains(int[] slots, int slot) {
+            for (int s : slots) if (s == slot) return true;
+            return false;
+        }
     }
 
     private void releaseSlot(int deviceId) {
@@ -2748,6 +2922,7 @@ public class WinHandler {
         // 1) Tear down all writers + slot bookkeeping (overrides preserved so we re-seat the same pins).
         cancelAllPendingDeviceReleases();
         cancelAllSlotUnplugs();
+        reconnectBlockedMask = 0;
         for (int i = 0; i < MAX_CONTROLLERS; i++) {
             if (writers[i] != null) {
                 writers[i].destroy();

@@ -27,8 +27,8 @@ import java.util.Set;
  *   <li>bus_sdl.c is_sdl_ignored_device() drops 28DE:11FF ("handled with evdev"), and evdev is
  *       compiled out: the Steam virtual gamepad is never offered for Wine ({@link Identity#wine}).
  *   <li>main.c is_hidraw_enabled() prefers hidraw for 054C:09CC / 054C:0CE6 and the bus drops a
- *       non-hidraw device that conflicts ("ignoring non-hidraw device"). PROTON_DISABLE_HIDRAW lifts
- *       that per VID/PID; see {@link #launchEnv}.
+ *       non-hidraw device that conflicts ("ignoring non-hidraw device"). The winebus registry option
+ *       DisableHidraw lifts that (WineUtils.setWinebusOptions, every Wine launch).
  *   <li>Switch Pro, the Joy-Con pair and the Steam Deck are on neither list.
  * </ul>
  *
@@ -36,7 +36,7 @@ import java.util.Set;
  * non-generic identity has an entry there describing the REAL device's evdev layout (xpad puts the
  * triggers on ABS_Z/ABS_RZ, ours are ABS_BRAKE/ABS_GAS like Android). Applied to our pad that would
  * put the right stick on a trigger, so {@link #launchEnv} hands SDL a mapping of our own layout for
- * the identity's GUID (SDL_GAMECONTROLLERCONFIG, user priority, replaces the database entry). It is
+ * every identity's GUID (SDL_GAMECONTROLLERCONFIG, user priority, replaces the database entry). It is
  * exactly what SDL generates automatically for the generic pad.
  *
  * <p>Per container in extraData under {@link #EXTRA}, with a per-game shortcut override of the same
@@ -78,14 +78,11 @@ public final class ControllerIdentity {
         public final boolean wine;
         /** Fixed names Wine may give the pad in DirectInput besides the per-slot one (see dinputNames). */
         final String[] busNames;
-        /** SDL hints that keep SDL off the vendor's private HID protocol (it would talk it to our pad). */
-        final String[] sdlHints;
         /** winebus prefers hidraw for this VID/PID: needs PROTON_DISABLE_HIDRAW or the pad is dropped. */
         final boolean hidrawPreferred;
 
         Identity(String value, String label, int vendor, int product, String nameTemplate,
-                 boolean experimental, boolean wine, String[] busNames, String[] sdlHints,
-                 boolean hidrawPreferred) {
+                 boolean experimental, boolean wine, String[] busNames, boolean hidrawPreferred) {
             this.value = value;
             this.label = label;
             this.vendor = vendor;
@@ -94,7 +91,6 @@ public final class ControllerIdentity {
             this.experimental = experimental;
             this.wine = wine;
             this.busNames = busNames;
-            this.sdlHints = sdlHints;
             this.hidrawPreferred = hidrawPreferred;
         }
 
@@ -105,36 +101,38 @@ public final class ControllerIdentity {
     }
 
     private static final String[] NONE = {};
-    private static final String HIDAPI_OFF = "SDL_JOYSTICK_HIDAPI=0";
+    /** SDL's vendor HIDAPI drivers, which would talk a vendor's private protocol to our pad. Always off
+     *  (a value the user set wins), so an identity switched in mid-session finds SDL ready for it. */
+    private static final String[] VENDOR_HIDAPI = {
+            "SDL_JOYSTICK_HIDAPI_PS4", "SDL_JOYSTICK_HIDAPI_PS5", "SDL_JOYSTICK_HIDAPI_SWITCH",
+            "SDL_JOYSTICK_HIDAPI_JOY_CONS", "SDL_JOYSTICK_HIDAPI_STEAMDECK"};
 
     // Order = the order the pickers show. Names after the template are what SDL calls the pad when
     // it knows the id (SDL_CreateJoystickName's custom name) and what Proton's hidclass reports as
     // the product string for it (dlls/hidclass.sys/device.c device_strings[]).
     private static final Identity[] TABLE = {
-            new Identity(GENERIC, "Generic", 0, 0, null, false, true, NONE, NONE, false),
+            new Identity(GENERIC, "Generic", 0, 0, null, false, true, NONE, false),
             new Identity(XBOX_360, "Xbox 360", 0x045E, 0x028E, "Xbox 360 Controller (%d)", false, true,
-                    new String[]{"Xbox 360 Controller", "Controller (XBOX 360 For Windows)"}, NONE, false),
+                    new String[]{"Xbox 360 Controller", "Controller (XBOX 360 For Windows)"}, false),
             new Identity(XBOX_ONE, "Xbox One", 0x045E, 0x02EA, "Xbox One S Controller (%d)", false, true,
-                    new String[]{"Xbox One S Controller", "Controller (Xbox One For Windows)"}, NONE, false),
+                    new String[]{"Xbox One S Controller", "Controller (Xbox One For Windows)"}, false),
             new Identity(XBOX_SERIES, "Xbox Series X|S", 0x045E, 0x0B12, "Xbox Series X Controller (%d)", false, true,
-                    new String[]{"Xbox Series X Controller", "Controller (Xbox One For Windows)"}, NONE, false),
+                    new String[]{"Xbox Series X Controller", "Controller (Xbox One For Windows)"}, false),
             new Identity(DINPUT_PAD, "Classic DirectInput pad", 0x1209, 0x0001, "USB Gamepad (%d)", false, true,
-                    NONE, NONE, false),
+                    NONE, false),
             new Identity(DS4, "PlayStation DualShock 4" + EXPERIMENTAL, 0x054C, 0x09CC, "Wireless Controller (%d)", true, true,
-                    new String[]{"Wireless Controller"},
-                    new String[]{HIDAPI_OFF, "SDL_JOYSTICK_HIDAPI_PS4=0"}, true),
+                    new String[]{"Wireless Controller"}, true),
             new Identity(DUALSENSE, "PlayStation DualSense" + EXPERIMENTAL, 0x054C, 0x0CE6, "DualSense Wireless Controller (%d)", true, true,
-                    new String[]{"Wireless Controller"},
-                    new String[]{HIDAPI_OFF, "SDL_JOYSTICK_HIDAPI_PS5=0"}, true),
+                    new String[]{"Wireless Controller"}, true),
             new Identity(SWITCH_PRO, "Nintendo Switch Pro" + EXPERIMENTAL, 0x057E, 0x2009, "Pro Controller (%d)", true, true,
-                    NONE, new String[]{HIDAPI_OFF, "SDL_JOYSTICK_HIDAPI_SWITCH=0"}, false),
+                    NONE, false),
             new Identity(JOYCON_PAIR, "Joy-Con pair (L+R)" + EXPERIMENTAL, 0x057E, 0x2008, "Nintendo Switch Combined Joy-Cons (%d)", true, true,
-                    NONE, new String[]{HIDAPI_OFF, "SDL_JOYSTICK_HIDAPI_JOY_CONS=0", "SDL_JOYSTICK_HIDAPI_SWITCH=0"}, false),
+                    NONE, false),
             new Identity(STEAM_DECK, "Steam Deck" + EXPERIMENTAL, 0x28DE, 0x1205, "Steam Deck Controller (%d)", true, true,
-                    NONE, new String[]{HIDAPI_OFF, "SDL_JOYSTICK_HIDAPI_STEAMDECK=0"}, false),
+                    NONE, false),
             // Linux/Steam runtime only: winebus' SDL bus ignores 28DE:11FF and its evdev bus is not built.
             new Identity(STEAM_VIRTUAL, "Steam Virtual Gamepad (Linux/Steam runtime only)", 0x28DE, 0x11FF, "Microsoft X-Box 360 pad %d", false, false,
-                    new String[]{"Controller (XBOX 360 For Windows)"}, NONE, false),
+                    new String[]{"Controller (XBOX 360 For Windows)"}, false),
     };
 
     // Our pad as SDL's Linux joystick driver numbers it: buttons in key-code order BTN_A, BTN_B,
@@ -214,34 +212,84 @@ public final class ControllerIdentity {
     }
 
     /**
-     * The guest env this identity needs, in insertion order. The caller puts each entry before the
-     * container's and the game's own env vars are merged, so an explicit value there still wins;
-     * PROTON_DISABLE_HIDRAW* and SDL_GAMECONTROLLERCONFIG are merged with an existing value instead
-     * (see {@link #mergeEnv}). Generic adds nothing: the variable stays unset, as before.
-     *
-     * <p>PROTON_DISABLE_HIDRAW: main.c accepts "1" (all devices) or a list containing "0x%04X/0x%04X"
-     * (case-insensitive substring match). Some Proton 10 builds look the variable up with a length
-     * of 20, i.e. as "PROTON_DISABLE_HIDRA", so both spellings are set.
+     * The guest env for a Wine launch with this identity, in insertion order. The caller puts each
+     * entry before the container's and the game's own env vars are merged, so an explicit value there
+     * still wins; PROTON_DISABLE_HIDRAW* and SDL_GAMECONTROLLERCONFIG are merged with an existing value
+     * instead (see {@link #mergeEnv}).
+     * <ul>
+     *   <li>FAKE_EVDEV_IDENTITY: the launch identity; unset for Generic, as before. The pads' identity
+     *       can change mid-session through BANNERIN's per-slot identity, which the evdev layer reads
+     *       first; this is what it falls back to.</li>
+     *   <li>The vendor HIDAPI hints, always, and SDL_JOYSTICK_HIDAPI=0 for an experimental launch identity.</li>
+     *   <li>SDL_GAMECONTROLLERCONFIG: our layout for EVERY Wine identity ({@link #allSdlMappings}),
+     *       so SDL (read once, at start) is ready for an identity switched in mid-session.</li>
+     *   <li>PROTON_DISABLE_HIDRAW for the identities winebus prefers hidraw for. It cannot reach
+     *       winebus (winedevice.exe gets a registry-only environment); WineUtils.setWinebusOptions
+     *       writes the registry option that does. Kept: harmless. Some Proton 10 builds look the name
+     *       up with a length of 20, i.e. as "PROTON_DISABLE_HIDRA", so both spellings are set.</li>
+     * </ul>
      */
     public static Map<String, String> launchEnv(String value) {
         Map<String, String> env = new LinkedHashMap<>();
         Identity id = find(value);
-        if (id == null || id.vendor == 0) return env;
-        env.put(ENV, id.value);
-        for (String hint : id.sdlHints) {
-            int eq = hint.indexOf('=');
-            env.put(hint.substring(0, eq), hint.substring(eq + 1));
-        }
-        if (id.hidrawPreferred) {
+        if (id != null && id.vendor != 0) env.put(ENV, id.value);
+        for (String hint : VENDOR_HIDAPI) env.put(hint, "0");
+        if (id != null && id.experimental) env.put("SDL_JOYSTICK_HIDAPI", "0");
+        if (id != null && id.hidrawPreferred) {
             String vidPid = String.format(Locale.ROOT, "0x%04X/0x%04X", id.vendor, id.product);
             env.put("PROTON_DISABLE_HIDRAW", vidPid);
             env.put("PROTON_DISABLE_HIDRA", vidPid);
         }
-        if (id.wine && !DINPUT_PAD.equals(id.value)) {
-            env.put("SDL_GAMECONTROLLERCONFIG", sdlGuid(id) + "," + PAD_MAPPING);
-        }
+        env.put("SDL_GAMECONTROLLERCONFIG", allSdlMappings());
         return env;
     }
+
+    /**
+     * One SDL_GAMECONTROLLERCONFIG line per Wine identity SDL keeps a database entry for (every one
+     * but Generic, which SDL maps from the pad itself, and the Classic DirectInput pad, which must stay
+     * a plain DirectInput joystick), describing our layout. Newline-separated.
+     */
+    public static String allSdlMappings() {
+        StringBuilder out = new StringBuilder();
+        for (Identity id : TABLE) {
+            if (!id.wine || id.vendor == 0 || DINPUT_PAD.equals(id.value)) continue;
+            if (out.length() > 0) out.append('\n');
+            out.append(sdlGuid(id)).append(',').append(PAD_MAPPING);
+        }
+        return out.toString();
+    }
+
+    /** True for a value SDL_GAMECONTROLLERCONFIG carries a line for (see {@link #allSdlMappings}). */
+    public static boolean hasSdlMapping(String value) {
+        Identity id = find(value);
+        return id != null && id.wine && id.vendor != 0 && !DINPUT_PAD.equals(id.value);
+    }
+
+    // ── Per-slot identity (BANNERIN control block) ──────────────────────────────────────────────
+
+    /** USB vendor id the pad in {@code slot} reports with this identity (Generic: 0x1234 + slot). */
+    public static int slotVendor(String value, int slot) {
+        Identity id = find(value);
+        return id != null && id.vendor != 0 ? id.vendor : 0x1234 + slot;
+    }
+
+    /** USB product id the pad in {@code slot} reports with this identity (Generic: 0x5678 + slot). */
+    public static int slotProduct(String value, int slot) {
+        Identity id = find(value);
+        return id != null && id.vendor != 0 ? id.product : 0x5678 + slot;
+    }
+
+    /** The name the pad in {@code slot} reports (EVIOCGNAME / JSIOCGNAME), as the evdev layer formats it. */
+    public static String slotName(String value, int slot) {
+        Identity id = find(value);
+        String template = id != null && id.nameTemplate != null ? id.nameTemplate : GENERIC_NAME_TEMPLATE;
+        return String.format(Locale.ROOT, template, slot);
+    }
+
+    /** USB bus (BUS_USB), the same for every identity. */
+    public static final int SLOT_BUSTYPE = 0x03;
+    /** fakeinput.cpp GAMEPAD_VERSION, the same for every identity. */
+    public static final int SLOT_VERSION = 0x0110;
 
     /**
      * Combines one of {@link #launchEnv}'s values with a value the user already set. A hidraw list

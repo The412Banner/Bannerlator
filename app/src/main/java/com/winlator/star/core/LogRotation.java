@@ -125,6 +125,8 @@ public final class LogRotation {
         if (n.equals(com.winlator.star.core.SteamLiteLogCollector.OUTPUT_NAME)) return true;
         if (n.equals(com.winlator.star.core.HeadlessSteamLogCollector.OUTPUT_NAME)) return true;
         if (n.equals(com.winlator.star.core.ControllerLog.OUTPUT_NAME)) return true;
+        // Goldberg launch report: a fixed name WE write on every Goldberg launch (see GoldbergDiag).
+        if (n.equals(com.winlator.star.store.GoldbergDiag.OUTPUT_NAME)) return true;
         if (!n.endsWith(".log")) return false;              // never .txt — that is other people's
         return n.equals("wine_debug.log")
                 || n.equals("logcat.log")

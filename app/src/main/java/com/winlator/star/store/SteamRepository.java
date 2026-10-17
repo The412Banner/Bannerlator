@@ -220,7 +220,9 @@ public final class SteamRepository {
                 if (steamId64 != 0L) {
                     pPut("steam_id_64", steamId64);
                     pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
+                    sessionSteamId = steamId64;
                 }
+                syncAccountStore(false);
                 rustReconnectAttempts = 0;
                 rustSignedInElsewhere = false;
                 logoffRecoveryAttempts = 0;
@@ -298,6 +300,7 @@ public final class SteamRepository {
         @Override public void onRefreshTokenRotated(String refreshToken) {
             SteamLogRedactor.registerSecret(refreshToken);
             pPut("refresh_token", refreshToken);
+            syncAccountStore(false);   // the saved copy of this account must carry the rotated token
             slog("rust engine: refresh token rotated");
             BlSteamEngineLog.log("AUTH", "refresh token rotated (persisted)");
         }
@@ -309,7 +312,10 @@ public final class SteamRepository {
         @Override public void onAccountInfo(String personaName) {
             // ClientAccountInfo → the account's persona (display) name, the value getDisplayName()
             // serves and RealSteamLauncher hands to the in-container client.
-            if (personaName != null && !personaName.isEmpty()) pPut("display_name", personaName);
+            if (personaName != null && !personaName.isEmpty()) {
+                pPut("display_name", personaName);
+                syncAccountStore(false);
+            }
         }
         @Override public void onEngineFailure(String reason) {
             Log.w(RUST_TAG, "engine failure: " + reason);
@@ -330,6 +336,12 @@ public final class SteamRepository {
      */
     private void rustConnect(String source) {
         if (appContext == null) { Log.e(RUST_TAG, "rustConnect before initialize()"); return; }
+        if (accountSwitching) {
+            // The prefs still hold the account being left until the switch commits — a connect now
+            // would log THAT one back on. startSessionForActiveAccount() drives the real connect.
+            Log.i(RUST_TAG, "rustConnect skipped — account switch in progress (" + source + ")");
+            return;
+        }
         if (realSteamSuspended) {
             Log.i(REALSTEAM_TAG, "rustConnect skipped — app session suspended for in-game real-Steam session (" + source + ")");
             return;
@@ -589,6 +601,7 @@ public final class SteamRepository {
                         Log.i(RUST_TAG, "PICS packages resolved " + uniqueAppIds.size() + " unique app IDs (rust)");
                         emit("LibraryProgress:1:" + uniqueAppIds.size());
                         licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
+                        recordOwnedApps(licensedApps);
                     }
                     @Override public void onAppBatch(List<kotlin.Pair<Integer, JSONObject>> apps, int processed, int total) {
                         if (licensedApps == null) licensedApps = new java.util.HashSet<>(db.getLicensedAppIds());
@@ -834,6 +847,18 @@ public final class SteamRepository {
         List<SteamDatabase.GameRow> rows = cachedGameRows;
         if (rows != null) return rows;
         rows = getDatabase().getAllGames();
+        // The DB is shared by every saved account (installed games stay installed); the list shows
+        // only what the ACTIVE account owns. null = no filtering applies (single account).
+        java.util.Set<Integer> visible = null;
+        if (appContext != null) {
+            try { visible = SteamAccountStore.INSTANCE.visibleAppIds(appContext); }
+            catch (Throwable t) { Log.w(TAG, "owned-library filter unavailable — showing every cached row", t); }
+        }
+        if (visible != null) {
+            List<SteamDatabase.GameRow> owned = new ArrayList<>(rows.size());
+            for (SteamDatabase.GameRow g : rows) if (visible.contains(g.appId)) owned.add(g);
+            rows = owned;
+        }
         cachedGameRows = rows;
         return rows;
     }
@@ -952,6 +977,9 @@ public final class SteamRepository {
         SteamLogRedactor.registerSecret(pGet("username", ""));
         SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
         SteamDatabase.getInstance(appContext);
+        // Saved-accounts list: migrates a 3.1.6 single-account install into it on first run.
+        try { SteamAccountStore.INSTANCE.init(appContext); }
+        catch (Throwable t) { Log.w(TAG, "saved-accounts init failed", t); }
         // Hidden dev flag, read once per process so a live session is never swapped mid-flight.
         rustEngine = BlSteamEngineFlag.isEnabled(appContext);
         if (rustEngine) {
@@ -1575,6 +1603,8 @@ public final class SteamRepository {
         long sid64 = cb.getClientSteamID().convertToUInt64();
         pPut("steam_id_64", sid64);
         pPut("account_id", (int)(sid64 & 0xFFFFFFFFL));
+        sessionSteamId = sid64;
+        syncAccountStore(false);
 
         loggedIn = true;
         logoffRecoveryAttempts = 0;   // fresh session established — reset involuntary-logoff recovery budget
@@ -1853,6 +1883,7 @@ public final class SteamRepository {
             }
         }
         Log.i(TAG, "PICS packages resolved " + appIds.size() + " unique app IDs");
+        recordOwnedApps(db.getLicensedAppIds());
         emit("LibraryProgress:1:" + appIds.size());
         syncApps(appIds);
     }
@@ -2374,6 +2405,10 @@ public final class SteamRepository {
             Log.i(REALSTEAM_TAG, "loginWithToken skipped — app session suspended for in-game real-Steam session");
             return;
         }
+        if (accountSwitching) {
+            Log.i(TAG, "loginWithToken skipped — account switch in progress");
+            return;
+        }
         if (rustEngine) {
             // The login screens call this right after saveSession(); the engine logs on to the
             // channel the auth session ran on (or connects fresh). Credentials come from prefs.
@@ -2544,6 +2579,7 @@ public final class SteamRepository {
             pPut("steam_id_64", steamId64);
             pPut("account_id", (int) (steamId64 & 0xFFFFFFFFL));
         }
+        syncAccountStore(true);   // a new / re-entered login joins (or refreshes) the saved-accounts list
     }
 
     /**
@@ -2556,10 +2592,164 @@ public final class SteamRepository {
     }
 
     // -------------------------------------------------------------------------
+    // Account switching ("Change account") — driven by SteamAccountStore.switchTo()
+    // -------------------------------------------------------------------------
+    // The switch reuses the proven teardown/relogin machinery instead of inventing a second one: the
+    // session is torn down the way reconnectAndRelogin() does it (engine stop() / CM disconnect), the
+    // active-account prefs are swapped to the target's saved login, and the logon is the normal token
+    // logon (onConnected auto-login on JavaSteam, rustConnect on the engine) — single-flight guards,
+    // dead-token detection and the involuntary-logoff recovery all apply to it unchanged.
+
+    /** True from {@link #endSessionForSwitch} until {@link #startSessionForActiveAccount}: the prefs
+     *  still describe the account being LEFT, so no reconnect path may log them back on. */
+    private volatile boolean accountSwitching = false;
+    /** SteamID64 the CM reported for the CURRENT session (0 = none). The library-ownership snapshot is
+     *  attributed to this, never to the prefs, which a switch rewrites before the old callbacks drain. */
+    private volatile long sessionSteamId = 0L;
+    /** How long endSessionForSwitch() waits for the old CM socket to close. */
+    private static final long SWITCH_DISCONNECT_WAIT_MS = 6_000L;
+
+    /** How a switch's logon resolved. */
+    public enum SwitchOutcome { LOGGED_ON, PENDING, TOKEN_REJECTED, SIGNED_IN_ELSEWHERE }
+
+    /** Mirror the active-account prefs into the saved-accounts list. Never throws. */
+    private void syncAccountStore(boolean touch) {
+        Context c = appContext;
+        if (c == null || accountSwitching) return;
+        try {
+            if (touch) SteamAccountStore.INSTANCE.touchActive(c);
+            else SteamAccountStore.INSTANCE.syncActive(c);
+        } catch (Throwable t) {
+            Log.w(TAG, "saved-accounts sync failed", t);
+        }
+    }
+
+    /** Record which apps the signed-in account owns, so the Library can show only those. */
+    private void recordOwnedApps(java.util.Collection<Integer> appIds) {
+        Context c = appContext;
+        long sid = sessionSteamId != 0L ? sessionSteamId : pGet("steam_id_64", 0L);
+        if (c == null || sid == 0L || accountSwitching) return;
+        try {
+            SteamAccountStore.INSTANCE.recordOwnedApps(c, sid, appIds);
+        } catch (Throwable t) {
+            Log.w(TAG, "owned-library snapshot failed", t);
+        }
+    }
+
+    /**
+     * Step 1 of a switch: end the current CM session WITHOUT signing anyone out of the saved list.
+     * Engine: {@code stop()} (ClientLogOff + disconnect). JavaSteam: a client disconnect, waited for
+     * (bounded) so no late callback of the old session can land after the prefs change. Blocks — call
+     * off the main thread. The caller MUST follow with {@link #startSessionForActiveAccount} (or
+     * {@link #cancelAccountSwitch} on failure).
+     */
+    public void endSessionForSwitch() {
+        accountSwitching = true;      // FIRST: every reconnect path now refuses to log the old prefs back on
+        loggingOut = true;            // the logoff/disconnect below is ours — not a drop to recover from
+        logoffRecoveryAttempts = 0;
+        forceReconnect = false;
+        loggingOn.set(false);
+        rustTokenRejected = false;
+        rustSignedInElsewhere = false;
+        if (rustEngine) BlSteamEngineLog.log("AUTH", "account switch: ending the session");
+        setStatus(SteamStatus.CONNECTING, "switching account");
+        if (rustEngine) {
+            BlSteamEngine.INSTANCE.stop();   // detaches the engine's observer: no callbacks follow
+        } else {
+            final SteamClient sc = steamClient;
+            if (sc != null && connected) {
+                Runnable disconnect = () -> { try { sc.disconnect(); } catch (Throwable ignored) {} };
+                if (pumpHandler != null) pumpHandler.post(disconnect);
+                else new Thread(disconnect, "SteamSwitchDisconnect").start();
+                long deadline = System.currentTimeMillis() + SWITCH_DISCONNECT_WAIT_MS;
+                while (connected && System.currentTimeMillis() < deadline) {
+                    try { Thread.sleep(100); }
+                    catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+                }
+            }
+            loggedIn = false;
+        }
+        sessionSteamId = 0L;
+    }
+
+    /**
+     * Step 2 of a switch, after the active-account prefs hold the TARGET's saved login: drop the
+     * previous account's in-memory session data, log the target on and wait (bounded) for the result.
+     * A rejected token comes back as {@link SwitchOutcome#TOKEN_REJECTED} (the engine / JavaSteam
+     * already flagged it as SIGNED_OUT); the caller decides what to do with it. Blocks.
+     */
+    public SwitchOutcome startSessionForActiveAccount(long timeoutMs) {
+        try {
+            synchronized (licenses) { licenses.clear(); }
+            cachedGameRows = null;
+            depotKeys.clear();
+            pPut("last_sync_time", 0L);   // the new account's library has never been synced
+            lastSessionStatus = "none";
+            SteamLogRedactor.registerSecret(pGet("username", ""));
+            SteamLogRedactor.registerSecret(pGet("refresh_token", ""));
+            loggingOut = false;
+            forceReconnect = false;
+            loggingOn.set(false);
+            reconnectAttempts = 0;
+            logoffRecoveryAttempts = 0;
+            rustReconnectAttempts = 0;
+            rustTokenRejected = false;
+            rustSignedInElsewhere = false;
+            loggedIn = false;
+            setStatus(SteamStatus.CONNECTING, "account switch");
+        } finally {
+            accountSwitching = false;
+        }
+        registerNetworkCallback();
+        if (rustEngine) {
+            rustConnect("switchAccount");
+        } else {
+            connect();   // onConnected logs on from the (now swapped) prefs
+            // Socket still up after all (the disconnect wait ran out): log on over it. Single-flight guarded.
+            if (connected && !loggedIn) loginWithToken(pGet("username", ""), pGet("refresh_token", ""));
+        }
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            if (isLoggedIn()) return SwitchOutcome.LOGGED_ON;
+            SteamStatus st = status;
+            if (st == SteamStatus.SIGNED_OUT) return SwitchOutcome.TOKEN_REJECTED;
+            if (st == SteamStatus.SIGNED_IN_ELSEWHERE) return SwitchOutcome.SIGNED_IN_ELSEWHERE;
+            try { Thread.sleep(150); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+        }
+        return SwitchOutcome.PENDING;
+    }
+
+    /** A switch failed before it could commit: release the guard and bring the previous session back. */
+    public void cancelAccountSwitch() {
+        accountSwitching = false;
+        loggingOut = false;
+        reconnectNow();
+    }
+
+    // -------------------------------------------------------------------------
     // Logout
     // -------------------------------------------------------------------------
 
+    /**
+     * Explicit sign-out of the ACTIVE account: ends its session, clears the active-account prefs AND
+     * forgets this account's saved login (the sign-out dialog says "your saved login will be
+     * removed"). Every OTHER saved account keeps its token ({@link SteamAccountStore}).
+     */
     public void logout() {
+        signOut(true);
+    }
+
+    /**
+     * End the active session and clear the active-account prefs but KEEP the account in the saved
+     * list: "Add account" (the login screen then starts from a clean slate, as the real Steam client
+     * does) and the dead-token fallback of an account switch.
+     */
+    public void endSessionKeepSaved() {
+        signOut(false);
+    }
+
+    private void signOut(boolean forgetAccount) {
         loggingOut = true;            // suppress involuntary-logoff recovery for this intentional sign-out
         if (rustEngine) BlSteamEngineLog.log("AUTH", "sign-out requested");
         logoffRecoveryAttempts = 0;
@@ -2571,6 +2761,14 @@ public final class SteamRepository {
         rustSignedInElsewhere = false;
         if (rustEngine) BlSteamEngine.INSTANCE.stop();   // ClientLogOff + disconnect (the session ends server-side)
         if (steamUser != null) steamUser.logOff();
+        // Saved-accounts list, while the active prefs still say who is signed in: keep the leaving
+        // account's latest token (Add account), or drop its entry (explicit sign-out).
+        if (appContext != null) {
+            try {
+                if (forgetAccount) SteamAccountStore.INSTANCE.forgetActive(appContext);
+                else SteamAccountStore.INSTANCE.syncActive(appContext);
+            } catch (Throwable t) { Log.w(TAG, "saved-accounts update on sign-out failed", t); }
+        }
         if (prefs != null) {
             prefs.edit()
                 .remove("username").remove("refresh_token")
@@ -2578,9 +2776,14 @@ public final class SteamRepository {
                 .remove("display_name").remove("last_pics_change")
                 .apply();
         }
+        sessionSteamId = 0L;
         synchronized (licenses) { licenses.clear(); }
         cachedGameRows = null;
         SteamLogRedactor.clearSecrets();   // creds are being removed; forget them from the redactor too
+        if (appContext != null) {
+            // …but the other saved accounts' tokens are still on disk: keep them out of the logs.
+            try { SteamAccountStore.INSTANCE.registerSecrets(appContext); } catch (Throwable ignored) {}
+        }
         setStatus(SteamStatus.SIGNED_OUT, "user logout");
         Log.i(TAG, "Logged out");
         emit("LoggedOut");
@@ -2741,6 +2944,7 @@ public final class SteamRepository {
     public void emit(String event) {
         // Invalidate the in-memory game list on events that change DB state
         if (event.startsWith("LibrarySynced:") ||
+            event.startsWith("AccountSwitched:") ||
             event.startsWith("DownloadComplete:") ||
             event.startsWith("DownloadCancelled:")) {
             cachedGameRows = null;

@@ -704,6 +704,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         cv.put("is_installed", 0);
         cv.put("install_dir",  "");
         db.update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+        SteamAccountStore.INSTANCE.clearInstaller(appId);   // forget which account downloaded it
         // Invalidate in-memory cache so the library list reflects the new state immediately
         SteamRepository.getInstance().invalidateGameCache();
     }
@@ -1048,6 +1049,12 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     // =========================================================================
     // steam_achievements
     // =========================================================================
+
+    /** Drop every cached achievement row. Earned state is per account, so an account switch clears
+     *  it (the next fetch refills it); the icons on disk are per app and stay. */
+    public void clearAchievements() {
+        getWritableDatabase().delete("steam_achievements", null, null);
+    }
 
     /** Insert or replace one achievement's schema + earned state (icon/iconGray are raw filenames). */
     public void upsertAchievement(int appId, String apiName, String displayName, String description,

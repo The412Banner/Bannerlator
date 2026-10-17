@@ -36,14 +36,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.winlator.star.R
 import com.winlator.star.ui.theme.WinlatorTheme
 
 class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
+
+    companion object {
+        /** Intent extra: pre-fill the username (an account whose saved sign-in expired). */
+        const val EXTRA_USERNAME = "steam_username"
+    }
 
     private var username by mutableStateOf("")
     private var password by mutableStateOf("")
@@ -51,6 +58,8 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
     private var statusText by mutableStateOf("")
     private var isStatusError by mutableStateOf(false)
     private var guardDialog by mutableStateOf<GuardDialogData?>(null)
+    private var showAccounts by mutableStateOf(false)
+    private var savedAccountCount by mutableStateOf(0)
 
     private var connectWaitListener: SteamRepository.SteamEventListener? = null
     private var pendingUsername: String? = null
@@ -77,6 +86,8 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         // manifest and never asked. Applied before any content so the first frame is already in the
         // requested orientation. The game's XServerDisplayActivity is deliberately NOT touched.
         com.winlator.star.core.AppOrientation.apply(this)
+        intent?.getStringExtra(EXTRA_USERNAME)?.takeIf { it.isNotBlank() }?.let { username = it }
+        refreshSavedAccountCount()
         setContent {
             WinlatorTheme {
                 SteamLoginScreen(
@@ -91,7 +102,19 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
                     onQrClick = {
                         startActivity(Intent(this@SteamLoginActivity, QrLoginActivity::class.java))
                     },
+                    onSavedAccountsClick = if (savedAccountCount > 0) ({ showAccounts = true }) else null,
                 )
+                if (showAccounts) {
+                    SteamAccountsDialog(
+                        onDismiss = { showAccounts = false; refreshSavedAccountCount() },
+                        // Already on the sign-in form: "Add account" just closes the chooser.
+                        onAddAccount = { showAccounts = false },
+                        onSwitchResult = { result, account -> onAccountSwitchResult(result, account) },
+                        // Nothing is signed in on this screen, so no row is the active account.
+                        onSignOutActive = { showAccounts = false },
+                        onMessage = { statusText = it; isStatusError = false },
+                    )
+                }
                 guardDialog?.let { data ->
                     SteamGuardDialog(
                         title = data.title,
@@ -130,6 +153,38 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         val signedIn = try { SteamPrefs.isLoggedIn } catch (t: Throwable) { false }
         if (isFinishing && !isChangingConfigurations && !signedIn) {
             SteamForegroundService.stopIfIdle(applicationContext)
+        }
+    }
+
+    private fun refreshSavedAccountCount() {
+        savedAccountCount = try { SteamAccountStore.list(this).size } catch (t: Throwable) { 0 }
+    }
+
+    /** A saved account was picked on the sign-in screen (see [SteamAccountStore.switchTo]). */
+    private fun onAccountSwitchResult(result: SteamAccountStore.SwitchResult, account: SteamAccountStore.Account) {
+        if (result == SteamAccountStore.SwitchResult.BUSY) return
+        showAccounts = false
+        refreshSavedAccountCount()
+        when (result) {
+            SteamAccountStore.SwitchResult.SWITCHED,
+            SteamAccountStore.SwitchResult.SWITCHED_CONNECTING,
+            SteamAccountStore.SwitchResult.SIGNED_IN_ELSEWHERE,
+            SteamAccountStore.SwitchResult.ALREADY_ACTIVE -> {
+                // Signed in as the chosen account: same hand-off as a fresh sign-in.
+                startActivity(
+                    Intent(this, SteamMainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+                finish()
+            }
+            else -> {
+                if (result == SteamAccountStore.SwitchResult.NEEDS_LOGIN) {
+                    username = account.username
+                    password = ""
+                }
+                statusText = steamSwitchMessage(this, result, account)
+                isStatusError = true
+            }
         }
     }
 
@@ -314,6 +369,7 @@ private fun SteamLoginScreen(
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
     onQrClick: () -> Unit,
+    onSavedAccountsClick: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier
@@ -377,6 +433,12 @@ private fun SteamLoginScreen(
         // session keep dropping after signing in this way.
         TextButton(onClick = onQrClick) {
             Text("Sign in with QR Code")
+        }
+        if (onSavedAccountsClick != null) {
+            // Accounts signed in to before: pick one to switch without typing the password again.
+            TextButton(onClick = onSavedAccountsClick) {
+                Text(stringResource(R.string.steam_accounts_use_saved))
+            }
         }
         Spacer(Modifier.height(16.dp))
 

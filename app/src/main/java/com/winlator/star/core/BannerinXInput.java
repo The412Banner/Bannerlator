@@ -168,7 +168,7 @@ public final class BannerinXInput {
     public static final int XINPUT_FLAG_FORWARD_AVAILABLE = 1;
     public static final int XINPUT_FLAG_HIDDEN = 2;
 
-    /** "Allow in-game switching" for this launch: game extra > container. Default off. */
+    /** "Allow in-game switching" for this launch: game extra > container. Default on. */
     public static boolean switchingEffective(Container container, Shortcut shortcut) {
         if (shortcut != null) {
             String extra = shortcut.getExtra(EXTRA_SWITCHING);

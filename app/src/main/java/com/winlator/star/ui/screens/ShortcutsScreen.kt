@@ -242,8 +242,11 @@ import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.screens.adrenodownload.AdrenoDriverDownloadSheet
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverEntry
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
+import com.winlator.star.core.BannerinXInput
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVisibility
+import com.winlator.star.core.RumbleMotors
+import com.winlator.star.core.StickPacing
 import com.winlator.star.core.CopyGameToDriveC
 import com.winlator.star.core.DefaultVersion
 import com.winlator.star.core.MediaDecoder
@@ -5126,6 +5129,31 @@ private fun DpDrop(
     )
 }
 
+// A per-game override row: "Use container default (<its value>)" first, then [labels] (index-matched
+// with [values]); picking the first clears the game's own value (""), so the game follows its container.
+@Composable
+private fun OverrideDrop(
+    dp: SettingsDpad, id: String, label: String, containerLabel: String,
+    values: List<String>, labels: List<String>, selected: String, onSelect: (String) -> Unit,
+    helpRes: Int, onHelp: (Int) -> Unit,
+) {
+    val allValues = listOf("") + values
+    val allLabels = listOf("Use container default ($containerLabel)") + labels
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        DpDrop(
+            dp, id,
+            label = label,
+            options = allLabels,
+            selected = allLabels[allValues.indexOf(selected).coerceAtLeast(0)],
+            onSelect = { opt -> onSelect(allValues[allLabels.indexOf(opt).coerceAtLeast(0)]) },
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = { onHelp(helpRes) }) {
+            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
 @Composable
 private fun DpSwitch(dp: SettingsDpad, id: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
     SideEffect { dp.actions[id] = ControlActions(activate = { if (enabled) onCheckedChange(!checked) }) }
@@ -5728,22 +5756,33 @@ internal fun ShortcutSettingsDialogScreen(
     var autoCloseOnExit by remember {
         mutableStateOf(shortcut.getExtra("autoCloseOnExit", shortcut.container.getExtra("autoCloseOnExit", "1")) == "1")
     }
-    // "DirectInput games can see the controller" (core.DInputVisibility): this game's own value (its
-    // inputType / exclusiveXInput extras, old values included), else the container's. Saved only when
-    // the game owns it or differs from the container, like the identity below.
+    // The container editor's Game Controller and Vibration settings as per-game overrides, tri-state:
+    // "" = use the container's setting, else this game's own value under the extra key the container
+    // uses. The launch resolvers read the game's value first (DInputVisibility, BannerinXInput,
+    // StickPacing, ControllerIdentity, and the activity's resolvedVibrationMode / -Intensity /
+    // resolvedRumbleMotors).
+    fun ownOnOff(raw: String) = raw.takeIf { it == "1" || it == "0" } ?: ""
+    // DirectInput visibility: "1" / "0", stored in the inputType / exclusiveXInput extras older builds read.
     val containerDInputVisible = remember { DInputVisibility.forContainer(shortcut.container) }
-    val dinputWasOwn = remember { DInputVisibility.gameOwns(shortcut) }
-    var dinputVisible by remember { mutableStateOf(DInputVisibility.forGame(shortcut.container, shortcut)) }
-    var disabledXInput by remember { mutableStateOf(shortcut.getExtra("disableXinput", "0") == "1") }
-    // Controller identity (core.ControllerIdentity): this game's own value, else the container's. Saved
-    // only when the game owns it or picks something other than the container's, so an untouched game
-    // keeps following its container.
-    val containerIdentity = remember { ControllerIdentity.forWine(shortcut.container.getControllerIdentity()) }
-    val identityWasOwn = remember { ControllerIdentity.normalize(shortcut.getExtra(ControllerIdentity.EXTRA)) != null }
-    var controllerIdentity by remember {
-        mutableStateOf(ControllerIdentity.normalize(shortcut.getExtra(ControllerIdentity.EXTRA))
-            ?.let { ControllerIdentity.forWine(it) } ?: containerIdentity)
+    var dinputOwn by remember {
+        mutableStateOf(if (!DInputVisibility.gameOwns(shortcut)) ""
+                       else if (DInputVisibility.forGame(shortcut.container, shortcut)) "1" else "0")
     }
+    var bannerinXInputOwn by remember { mutableStateOf(ownOnOff(shortcut.getExtra(BannerinXInput.EXTRA_KEY))) }
+    var xinputSwitchingOwn by remember { mutableStateOf(ownOnOff(shortcut.getExtra(BannerinXInput.EXTRA_SWITCHING))) }
+    var stickPacingOwn by remember { mutableStateOf(StickPacing.parse(shortcut.getExtra(StickPacing.EXTRA))?.format() ?: "") }
+    // Controller identity: kept as stored (a Linux-only value on a Linux entry survives a save).
+    val containerIdentity = remember { ControllerIdentity.forWine(shortcut.container.getControllerIdentity()) }
+    var identityOwn by remember { mutableStateOf(ControllerIdentity.normalize(shortcut.getExtra(ControllerIdentity.EXTRA)) ?: "") }
+    var disabledXInput by remember { mutableStateOf(shortcut.getExtra("disableXinput", "0") == "1") }
+    var vibrationModeOwn by remember {
+        mutableStateOf(shortcut.getExtra("vibrationMode").toIntOrNull()
+            ?.takeIf { it in Container.VIBRATION_MODE_OFF..Container.VIBRATION_MODE_BOTH }?.toString() ?: "")
+    }
+    var vibrationIntensityOwn by remember {
+        mutableStateOf(shortcut.getExtra("vibrationIntensity").toIntOrNull()?.takeIf { it in 0..100 }?.toString() ?: "")
+    }
+    var rumbleMotorsOwn by remember { mutableStateOf(RumbleMotors.parse(shortcut.getExtra(RumbleMotors.EXTRA))?.toString() ?: "") }
     var simTouchScreen by remember { mutableStateOf(shortcut.getExtra("simTouchScreen", "0") == "1") }
 
     // Per-game controller->player-slot pins. EMPTY string = no shortcut override (inherit the container's
@@ -6128,14 +6167,19 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fullscreenMode", if (fullscreenModeOverride < 0) null else fullscreenModeOverride.toString())
             putExtra("fullscreenStretched", null)
             putExtra("autoCloseOnExit", if (autoCloseOnExit) "1" else "0")
-            // DirectInput visibility, in the inputType / exclusiveXInput extras older builds read
-            // (DInputVisibility); cleared when the game simply follows its container.
-            val ownDInput: Boolean? = if (dinputWasOwn || dinputVisible != containerDInputVisible) dinputVisible else null
+            // Controller and rumble overrides: "" clears the game's own value, so it follows the container.
+            // DirectInput visibility goes in the inputType / exclusiveXInput extras older builds read.
+            val ownDInput: Boolean? = dinputOwn.ifEmpty { null }?.let { it == "1" }
             putExtra(DInputVisibility.EXTRA_EXCLUSIVE, ownDInput?.let { "1" })
             putExtra(DInputVisibility.EXTRA_INPUT_TYPE, ownDInput?.let { DInputVisibility.inputTypeFor(it).toString() })
+            putExtra(BannerinXInput.EXTRA_KEY, bannerinXInputOwn.ifEmpty { null })
+            putExtra(BannerinXInput.EXTRA_SWITCHING, xinputSwitchingOwn.ifEmpty { null })
+            putExtra(StickPacing.EXTRA, stickPacingOwn.ifEmpty { null })
+            putExtra(ControllerIdentity.EXTRA, identityOwn.ifEmpty { null })
             putExtra("disableXinput", if (disabledXInput) "1" else null)
-            putExtra(ControllerIdentity.EXTRA,
-                if (identityWasOwn || controllerIdentity != containerIdentity) controllerIdentity else null)
+            putExtra("vibrationMode", vibrationModeOwn.ifEmpty { null })
+            putExtra("vibrationIntensity", vibrationIntensityOwn.ifEmpty { null })
+            putExtra(RumbleMotors.EXTRA, rumbleMotorsOwn.ifEmpty { null })
             putExtra("simTouchScreen", if (simTouchScreen) "1" else "0")
             // Empty = clear the extra so the game re-inherits the container's Player Slots.
             putExtra("controllerSlotOverrides", controllerSlotOverridesJson.ifEmpty { null })
@@ -6314,7 +6358,18 @@ internal fun ShortcutSettingsDialogScreen(
                 if (!isLinuxEntry) add("autoClose")
             }
             4 -> { // Controller
-                if (!isLinuxEntry) { add("dinputVisible"); add("disableXInput"); add("controllerIdentity") }
+                if (!isLinuxEntry) {
+                    add("dinputVisible"); add("bannerinXInput"); add("bannerinXInputSwitching"); add("stickPacing")
+                    if (StickPacing.parse(stickPacingOwn)?.let { it.mode != StickPacing.MODE_OFF } == true) add("stickPacingHz")
+                    add("controllerIdentity"); add("disableXInput")
+                }
+                val vibMode = vibrationModeOwn.toIntOrNull() ?: shortcut.container.getVibrationMode()
+                add("vibrationMode")
+                if (vibMode != Container.VIBRATION_MODE_OFF) {
+                    add("vibrationIntensity")
+                    if (vibrationIntensityOwn.isNotEmpty()) add("vibrationIntensityValue")
+                }
+                if (vibMode == Container.VIBRATION_MODE_CONTROLLER || vibMode == Container.VIBRATION_MODE_BOTH) add("rumbleMotors")
                 add("simTouch")
                 if (!isLinuxEntry) add("numControllers")
                 add("gyroEnabled")
@@ -7917,49 +7972,140 @@ internal fun ShortcutSettingsDialogScreen(
                         }
                                 }
                                 4 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Input section
-                        SectionBox(title = "Input") {
-                            // DirectInput visibility, the identity and the controller count are how pads are
-                            // presented to a Wine game and what is written into the prefix's joystick
-                            // registry keys. A Linux session's pads arrive as fake-evdev devices instead,
-                            // so those rows are conditioned off and the ones that still act on the host
-                            // side (touchscreen mode, on-screen-control auto-hide, player slots, gyro) stay.
-                            if (!isLinuxEntry) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                DpSwitch(
-                                    dp, "dinputVisible",
-                                    checked = dinputVisible,
-                                    onCheckedChange = { dinputVisible = it }
+                        // Game Controller and Vibration: the container editor's sections in the same order
+                        // and with the same help, each a per-game override whose first choice, "Use
+                        // container default (<its value>)", follows the container. The Game Controller rows
+                        // are how pads are presented to a Wine game (and its joystick registry keys); a
+                        // Linux session's pads arrive as fake-evdev devices, so it shows Vibration only.
+                        if (!isLinuxEntry) {
+                        SectionBox(title = stringResource(R.string.game_controller)) {
+                            val onOffValues = listOf("1", "0")
+                            val onOffLabels = listOf("On", "Off")
+                            fun onOff(on: Boolean) = if (on) "On" else "Off"
+                            OverrideDrop(
+                                dp, "dinputVisible", stringResource(R.string.dinput_visible), onOff(containerDInputVisible),
+                                onOffValues, onOffLabels, dinputOwn, { dinputOwn = it },
+                                R.string.help_dinput_visible_game
+                            ) { helpRes = it }
+                            OverrideDrop(
+                                dp, "bannerinXInput", stringResource(R.string.bannerin_xinput), onOff(shortcut.container.isBannerinXInput()),
+                                onOffValues, onOffLabels, bannerinXInputOwn, { bannerinXInputOwn = it },
+                                R.string.help_bannerin_xinput_game
+                            ) { helpRes = it }
+                            OverrideDrop(
+                                dp, "bannerinXInputSwitching", stringResource(R.string.bannerin_xinput_switching),
+                                onOff(shortcut.container.isBannerinXInputSwitching()),
+                                onOffValues, onOffLabels, xinputSwitchingOwn, { xinputSwitchingOwn = it },
+                                R.string.help_bannerin_xinput_switching_game
+                            ) { helpRes = it }
+                            // Stick updates (core.StickPacing): the mode here, this game's rate on the slider.
+                            val ownPacing = StickPacing.parse(stickPacingOwn)
+                            OverrideDrop(
+                                dp, "stickPacing", stringResource(R.string.stick_pacing_label),
+                                StickPacing.forContainer(shortcut.container).describe(),
+                                listOf("auto", "fixed", "off"), listOf("Auto", "Fixed", "Unpaced"),
+                                when (ownPacing?.mode) {
+                                    StickPacing.MODE_AUTO -> "auto"; StickPacing.MODE_FIXED -> "fixed"; StickPacing.MODE_OFF -> "off"; else -> ""
+                                },
+                                { v ->
+                                    stickPacingOwn = when (v) {
+                                        "auto" -> (ownPacing?.takeIf { it.mode == StickPacing.MODE_AUTO } ?: StickPacing.DEFAULT).format()
+                                        "fixed" -> (ownPacing?.takeIf { it.mode == StickPacing.MODE_FIXED }
+                                            ?: StickPacing(StickPacing.MODE_FIXED, StickPacing.FIXED_DEFAULT)).format()
+                                        "off" -> StickPacing(StickPacing.MODE_OFF, 0).format()
+                                        else -> ""
+                                    }
+                                },
+                                R.string.help_stick_pacing_game
+                            ) { helpRes = it }
+                            if (ownPacing != null && ownPacing.mode != StickPacing.MODE_OFF) {
+                                val auto = ownPacing.mode == StickPacing.MODE_AUTO
+                                Text(
+                                    if (auto) "Up to ${ownPacing.hz} per second" else "${ownPacing.hz} per second",
+                                    style = MaterialTheme.typography.bodySmall
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.dinput_visible), modifier = Modifier.weight(1f))
-                                IconButton(onClick = { helpRes = R.string.help_dinput_visible_game }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
-                                }
+                                DpSlider(
+                                    dp, "stickPacingHz",
+                                    value = ownPacing.hz.toFloat(),
+                                    onValueChange = { stickPacingOwn = StickPacing(ownPacing.mode, it.toInt()).format() },
+                                    valueRange = if (auto) StickPacing.AUTO_MIN.toFloat()..StickPacing.AUTO_MAX.toFloat()
+                                                 else StickPacing.FIXED_MIN.toFloat()..StickPacing.FIXED_MAX.toFloat(),
+                                    step = if (auto) 10f else 25f,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
+                            // Controller identity: what the virtual pads say they are to this game.
+                            val identityChoices = remember { ControllerIdentity.wineChoices() }
+                            OverrideDrop(
+                                dp, "controllerIdentity", stringResource(R.string.controller_identity_label),
+                                ControllerIdentity.label(containerIdentity),
+                                identityChoices.map { it.value }, identityChoices.map { it.label },
+                                identityOwn.ifEmpty { null }?.let { ControllerIdentity.forWine(it) } ?: "",
+                                { identityOwn = it },
+                                R.string.help_controller_identity_game
+                            ) { helpRes = it }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 DpCheck(dp, "disableXInput", checked = disabledXInput, onCheckedChange = { disabledXInput = it })
                                 Text("Disable XInput")
                             }
-                            // Controller identity: what the virtual pads say they are to this game.
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val identityChoices = remember { ControllerIdentity.wineChoices() }
-                                val identityLabels = remember(identityChoices) { identityChoices.map { it.label } }
-                                DpDrop(
-                                    dp, "controllerIdentity",
-                                    label = stringResource(R.string.controller_identity_label),
-                                    options = identityLabels,
-                                    selected = ControllerIdentity.label(controllerIdentity),
-                                    onSelect = { opt ->
-                                        identityChoices.getOrNull(identityLabels.indexOf(opt))?.let { controllerIdentity = it.value }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(onClick = { helpRes = R.string.help_controller_identity_game }) {
-                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        }
+                        }
+
+                        // Vibration: rumble target, intensity and motors, as in the container editor.
+                        SectionBox(title = stringResource(R.string.vibration)) {
+                            val c = shortcut.container
+                            val modeLabels = listOf(
+                                stringResource(R.string.vibration_mode_off),
+                                stringResource(R.string.vibration_mode_controller),
+                                stringResource(R.string.vibration_mode_device),
+                                stringResource(R.string.vibration_mode_both),
+                            )
+                            OverrideDrop(
+                                dp, "vibrationMode", stringResource(R.string.vibration_mode_label),
+                                modeLabels.getOrElse(c.getVibrationMode()) { modeLabels[Container.VIBRATION_MODE_DEFAULT] },
+                                listOf("0", "1", "2", "3"), modeLabels, vibrationModeOwn, { vibrationModeOwn = it },
+                                R.string.help_vibration_mode_game
+                            ) { helpRes = it }
+                            val vibMode = vibrationModeOwn.toIntOrNull() ?: c.getVibrationMode()
+                            if (vibMode != Container.VIBRATION_MODE_OFF) {
+                                OverrideDrop(
+                                    dp, "vibrationIntensity", stringResource(R.string.vibration_intensity_label),
+                                    "${c.getVibrationIntensity()}%",
+                                    listOf("own"), listOf("Set for this game"),
+                                    if (vibrationIntensityOwn.isEmpty()) "" else "own",
+                                    { v -> vibrationIntensityOwn = if (v.isEmpty()) "" else vibrationIntensityOwn.ifEmpty { c.getVibrationIntensity().toString() } },
+                                    R.string.help_vibration_intensity_game
+                                ) { helpRes = it }
+                                vibrationIntensityOwn.toIntOrNull()?.let { pct ->
+                                    Text("$pct%", style = MaterialTheme.typography.bodySmall)
+                                    DpSlider(
+                                        dp, "vibrationIntensityValue",
+                                        value = pct.toFloat(),
+                                        onValueChange = { vibrationIntensityOwn = it.toInt().coerceIn(0, 100).toString() },
+                                        valueRange = 0f..100f,
+                                        step = 5f,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
+                            // Rumble motors: only a controller has two motors (the phone's vibrator is one).
+                            if (vibMode == Container.VIBRATION_MODE_CONTROLLER || vibMode == Container.VIBRATION_MODE_BOTH) {
+                                OverrideDrop(
+                                    dp, "rumbleMotors", stringResource(R.string.rumble_motors_label),
+                                    if (c.getRumbleMotors() == RumbleMotors.SINGLE) stringResource(R.string.rumble_motors_single)
+                                    else stringResource(R.string.rumble_motors_both),
+                                    listOf(RumbleMotors.BOTH.toString(), RumbleMotors.SINGLE.toString()),
+                                    listOf(stringResource(R.string.rumble_motors_both), stringResource(R.string.rumble_motors_single)),
+                                    rumbleMotorsOwn, { rumbleMotorsOwn = it },
+                                    R.string.help_rumble_motors_game
+                                ) { helpRes = it }
                             }
+                        }
+
+                        // Input section: the rows that still act on the host side in a Linux session too
+                        // (touchscreen mode, on-screen-control auto-hide, player slots, gyro); the
+                        // controller count is Wine-only.
+                        SectionBox(title = "Input") {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 DpCheck(dp, "simTouch", checked = simTouchScreen, onCheckedChange = { simTouchScreen = it })
                                 Text("Touchscreen Mode")

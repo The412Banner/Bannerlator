@@ -381,7 +381,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     // Direct XInput (BANNERIN): XInput games read the BANNERIN slot files directly (core/BannerinXInput).
     var bannerinXInput by mutableStateOf(false)
     // "Allow in-game switching" of Direct XInput (core/BannerinXInput.switchingEffective).
-    var bannerinXInputSwitching by mutableStateOf(false)
+    var bannerinXInputSwitching by mutableStateOf(true)
     // "Stick updates" (core.StickPacing format: auto:N / fixed:N / off).
     var stickPacing by mutableStateOf(StickPacing.DEFAULT.format())
 
@@ -747,7 +747,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // DirectInput visibility, read from the stored inputType / exclusiveXInput (old values included)
         dinputVisible  = DInputVisibility.forContainer(seed)
         bannerinXInput = seed?.isBannerinXInput ?: false
-        bannerinXInputSwitching = seed?.isBannerinXInputSwitching ?: false
+        bannerinXInputSwitching = seed?.isBannerinXInputSwitching ?: true
         stickPacing    = StickPacing.forContainer(seed).format()
         vibrationMode      = seed?.getVibrationMode() ?: Container.VIBRATION_MODE_DEFAULT
         vibrationIntensity = seed?.getVibrationIntensity() ?: Container.VIBRATION_INTENSITY_DEFAULT

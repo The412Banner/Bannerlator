@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VolumeUp
@@ -53,8 +54,11 @@ import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.WrapperManager
+import com.winlator.star.core.BannerinXInput
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVisibility
+import com.winlator.star.core.RumbleMotors
+import com.winlator.star.core.StickPacing
 import com.winlator.star.core.DirectAudioSupport
 import com.winlator.star.core.SyncMode
 import com.winlator.star.core.SyncSupport
@@ -740,35 +744,111 @@ private fun controllerRows(xmb: XmbScope, p: XmbPrefs): List<XmbRow> {
     val s = p.shortcut
     val c = p.c
     val rows = mutableListOf<XmbRow>()
-    rows += XmbRow.Header("hInput", "Input")
-    // DirectInput visibility (core.DInputVisibility): written to this game's inputType / exclusiveXInput
-    // extras, the values older builds read.
-    rows += XmbRow.Toggle("dinputVisible", "DirectInput games can see the controller", Icons.Filled.Gamepad,
-        DInputVisibility.forGame(c, s)) { on ->
-        DInputVisibility.writeTo(s, on); xmb.saved(); s.saveData(); xmb.refresh()
+    // Game controller and Vibration: the container editor's settings in its order, each a per-game
+    // override whose first choice, "Use container default (<its value>)", clears the game's own value
+    // (the shortcut editor's Controller tab does the same). The Game controller rows are Wine-only.
+    fun inherit(containerLabel: String) = "Use container default ($containerLabel)"
+    fun onOff(on: Boolean) = if (on) "On" else "Off"
+    // A "1" / "0" extra: Use container default / On / Off.
+    fun onOffRow(key: String, extra: String, label: String, containerOn: Boolean, subtitle: String) {
+        val labels = listOf(inherit(onOff(containerOn)), "On", "Off")
+        val values = listOf("", "1", "0")
+        val own = p.ex(extra, "").takeIf { it == "1" || it == "0" } ?: ""
+        rows += XmbRow.Choice(key, label, Icons.Filled.Gamepad, labels, labels[values.indexOf(own)], subtitle = subtitle) { v ->
+            xmb.set(p, extra, values[labels.indexOf(v).coerceAtLeast(0)].ifEmpty { null })
+        }
     }
-    rows += XmbRow.Toggle("disableX", "Disable XInput", Icons.Filled.Gamepad, p.ex("disableXinput", "0") == "1") { xmb.set(p, "disableXinput", if (it) "1" else null) }
-    // The pop-up editors' "?" for the DirectInput switch, as its own column.
-    rows += XmbRow.Link("inputHelp", "What does the DirectInput switch do?", Icons.Filled.HelpOutline, subtitle = "DirectInput games and the controller") {
-        xmbHelpMenu(p.context, xmb.scope, "DirectInput", R.string.help_dinput_visible_game)
+    fun helpRow(key: String, label: String, title: String, res: Int) {
+        rows += XmbRow.Link(key, label, Icons.Filled.HelpOutline) { xmbHelpMenu(p.context, xmb.scope, title, res) }
     }
     if (!com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(s)) {
-        // Controller identity: this game's own value, else the container's. Picking the container's
-        // value clears the game's own, so it keeps following its container.
-        val containerIdentity = ControllerIdentity.forWine(c.getControllerIdentity())
-        val identity = ControllerIdentity.normalize(p.ex(ControllerIdentity.EXTRA, ""))?.let { ControllerIdentity.forWine(it) } ?: containerIdentity
-        val identityChoices = ControllerIdentity.wineChoices()
-        val identityLabels = identityChoices.map { it.label }
-        rows += XmbRow.Choice("controllerIdentity", "Controller identity", Icons.Filled.Gamepad, identityLabels,
-            ControllerIdentity.label(identity), subtitle = "Which controller the game sees") { v ->
-            identityChoices.getOrNull(identityLabels.indexOf(v))?.let { picked ->
-                xmb.set(p, ControllerIdentity.EXTRA, picked.value.takeIf { it != containerIdentity })
+        rows += XmbRow.Header("hController", "Game controller")
+        // DirectInput visibility (core.DInputVisibility): written to this game's inputType / exclusiveXInput
+        // extras, the values older builds read.
+        run {
+            val labels = listOf(inherit(onOff(DInputVisibility.forContainer(c))), "On", "Off")
+            val own = if (!DInputVisibility.gameOwns(s)) 0 else if (DInputVisibility.forGame(c, s)) 1 else 2
+            rows += XmbRow.Choice("dinputVisible", "DirectInput games can see the controller", Icons.Filled.Gamepad, labels, labels[own],
+                subtitle = "DirectInput games and the controller") { v ->
+                DInputVisibility.writeTo(s, when (labels.indexOf(v)) { 1 -> true; 2 -> false; else -> null })
+                xmb.saved(); s.saveData(); xmb.refresh()
+            }
+            helpRow("inputHelp", "What does the DirectInput switch do?", "DirectInput", R.string.help_dinput_visible_game)
+        }
+        onOffRow("bannerinXInput", BannerinXInput.EXTRA_KEY, "Direct XInput (BANNERIN)", c.isBannerinXInput(), "XInput games read the controller directly")
+        helpRow("bannerinXInputHelp", "What is Direct XInput?", "Direct XInput", R.string.help_bannerin_xinput_game)
+        onOffRow("bannerinXInputSwitching", BannerinXInput.EXTRA_SWITCHING, "Allow in-game switching", c.isBannerinXInputSwitching(),
+            "Switch Direct XInput in the in-game menu")
+        helpRow("bannerinXInputSwitchingHelp", "What is in-game switching?", "Allow in-game switching", R.string.help_bannerin_xinput_switching_game)
+        // Stick updates (core.StickPacing): the Deck's presets, plus this game's own value if it is another.
+        run {
+            val presets = listOf("auto:60", "auto:120", "auto:30", "fixed:60", "fixed:125", "fixed:250", "off")
+            val own = StickPacing.parse(p.ex(StickPacing.EXTRA, ""))?.format() ?: ""
+            val values = listOf("") + presets + (if (own.isNotEmpty() && own !in presets) listOf(own) else emptyList())
+            val labels = values.map { v -> if (v.isEmpty()) inherit(StickPacing.forContainer(c).describe()) else StickPacing.parse(v)!!.describe() }
+            rows += XmbRow.Choice("stickPacing", "Stick updates", Icons.Filled.Gamepad, labels, labels[values.indexOf(own)],
+                subtitle = "How often stick movement reaches the game") { v ->
+                xmb.set(p, StickPacing.EXTRA, values[labels.indexOf(v).coerceAtLeast(0)].ifEmpty { null })
+            }
+            helpRow("stickPacingHelp", "What are stick updates?", "Stick updates", R.string.help_stick_pacing_game)
+        }
+        // Controller identity: this game's own value, else the container's.
+        run {
+            val containerIdentity = ControllerIdentity.forWine(c.getControllerIdentity())
+            val own = ControllerIdentity.normalize(p.ex(ControllerIdentity.EXTRA, ""))?.let { ControllerIdentity.forWine(it) } ?: ""
+            val choices = ControllerIdentity.wineChoices()
+            val values = listOf("") + choices.map { it.value }
+            val labels = listOf(inherit(ControllerIdentity.label(containerIdentity))) + choices.map { it.label }
+            rows += XmbRow.Choice("controllerIdentity", "Controller identity", Icons.Filled.Gamepad, labels,
+                labels[values.indexOf(own).coerceAtLeast(0)], subtitle = "Which controller the game sees") { v ->
+                xmb.set(p, ControllerIdentity.EXTRA, values[labels.indexOf(v).coerceAtLeast(0)].ifEmpty { null })
+            }
+            rows += XmbRow.Link("controllerIdentityHelp", "What is Controller identity?", Icons.Filled.HelpOutline, subtitle = "Generic, Xbox, DirectInput and the experimental ones") {
+                xmbHelpMenu(p.context, xmb.scope, "Controller identity", R.string.help_controller_identity_game)
             }
         }
-        rows += XmbRow.Link("controllerIdentityHelp", "What is Controller identity?", Icons.Filled.HelpOutline, subtitle = "Generic, Xbox, DirectInput and the experimental ones") {
-            xmbHelpMenu(p.context, xmb.scope, "Controller identity", R.string.help_controller_identity_game)
+        rows += XmbRow.Toggle("disableX", "Disable XInput", Icons.Filled.Gamepad, p.ex("disableXinput", "0") == "1") { xmb.set(p, "disableXinput", if (it) "1" else null) }
+    }
+
+    rows += XmbRow.Header("hVibration", p.str(R.string.vibration))
+    run {
+        val modeLabels = listOf(p.str(R.string.vibration_mode_off), p.str(R.string.vibration_mode_controller),
+            p.str(R.string.vibration_mode_device), p.str(R.string.vibration_mode_both))
+        val ownMode = p.ex("vibrationMode", "").toIntOrNull()?.takeIf { it in Container.VIBRATION_MODE_OFF..Container.VIBRATION_MODE_BOTH }
+        val labels = listOf(inherit(modeLabels.getOrElse(c.getVibrationMode()) { modeLabels[Container.VIBRATION_MODE_DEFAULT] })) + modeLabels
+        rows += XmbRow.Choice("vibrationMode", p.str(R.string.vibration_mode_label), Icons.Filled.Vibration, labels,
+            labels[(ownMode ?: -1) + 1]) { v ->
+            val idx = labels.indexOf(v)
+            xmb.set(p, "vibrationMode", if (idx <= 0) null else (idx - 1).toString())
+        }
+        helpRow("vibrationModeHelp", "What is Rumble target?", p.str(R.string.vibration_mode_label), R.string.help_vibration_mode_game)
+        val mode = ownMode ?: c.getVibrationMode()
+        if (mode != Container.VIBRATION_MODE_OFF) {
+            val own = p.ex("vibrationIntensity", "").toIntOrNull()?.takeIf { it in 0..100 }
+            val steps = (0..100 step 10).toList() + (if (own != null && own % 10 != 0) listOf(own) else emptyList())
+            val values = listOf<Int?>(null) + steps.sorted()
+            val labels = values.map { v -> if (v == null) inherit("${c.getVibrationIntensity()}%") else "$v%" }
+            rows += XmbRow.Choice("vibrationIntensity", p.str(R.string.vibration_intensity_label), Icons.Filled.Vibration, labels,
+                labels[values.indexOf(own).coerceAtLeast(0)]) { v ->
+                xmb.set(p, "vibrationIntensity", values.getOrNull(labels.indexOf(v))?.toString())
+            }
+            helpRow("vibrationIntensityHelp", "What is Intensity?", p.str(R.string.vibration_intensity_label), R.string.help_vibration_intensity_game)
+        }
+        // Rumble motors: only a controller has two motors (the phone's vibrator is one).
+        if (mode == Container.VIBRATION_MODE_CONTROLLER || mode == Container.VIBRATION_MODE_BOTH) {
+            val motorLabels = listOf(p.str(R.string.rumble_motors_both), p.str(R.string.rumble_motors_single))
+            val own = RumbleMotors.parse(p.ex(RumbleMotors.EXTRA, ""))
+            val labels = listOf(inherit(motorLabels[RumbleMotors.sanitize(c.getRumbleMotors())])) + motorLabels
+            rows += XmbRow.Choice("rumbleMotors", p.str(R.string.rumble_motors_label), Icons.Filled.Vibration, labels,
+                labels[(own ?: -1) + 1]) { v ->
+                val idx = labels.indexOf(v)
+                xmb.set(p, RumbleMotors.EXTRA, if (idx <= 0) null else (idx - 1).toString())
+            }
+            helpRow("rumbleMotorsHelp", "What are Rumble motors?", p.str(R.string.rumble_motors_label), R.string.help_rumble_motors_game)
         }
     }
+
+    rows += XmbRow.Header("hInput", "Input")
     rows += XmbRow.Toggle("simTouch", "Touchscreen mode", Icons.Filled.TouchApp, p.ex("simTouchScreen", "0") == "1") { xmb.set(p, "simTouchScreen", if (it) "1" else "0") }
     val nc = p.arr(R.array.num_controllers_entries)
     val ncIdx = ((p.ex("numControllers", "1").toIntOrNull() ?: 1).coerceIn(1, nc.size)) - 1

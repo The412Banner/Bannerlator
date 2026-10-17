@@ -8414,6 +8414,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private com.winlator.star.core.BannerinXInput.LaunchControl bannerinLaunchControl;
     // In-game controller settings (Controls › Pad) of a Wine session, and what the launch set them to.
     private LiveControllerSession liveControllerSession;
+    /** Where in-game rumble and Controls › Pad changes are saved (made in setupUI). */
+    private ControllerSaveTarget controllerSaveTarget;
     private String launchPadIdentity = com.winlator.star.core.ControllerIdentity.GENERIC;
     private boolean launchDInputVisible;
     private String launchDInputForcedWhy;
@@ -12650,11 +12652,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // sessions/editor); this is called AFTER `container` is assigned (setupUI, not onCreate),
             // so it's safe to read here — mirrors the ReShade/lsfg seed-after-container pattern.
             // Resolve per-game override (shortcut extra, e.g. an imported community config) else the
-            // container value; write live edits back to the same owner (shortcut only when it already
-            // owns the extra, else container — so per-container behavior is untouched otherwise).
+            // container value. Live edits are saved for this game or for the container, as the drawer's
+            // "Save for" footer says (ControllerSaveTarget, below).
             int vibMode = resolvedVibrationMode();
             int vibIntensity = resolvedVibrationIntensity();
             winHandler.setVibrationTuning(vibMode, vibIntensity);
+            // In-game rumble and Controls › Pad changes save for this game when it was launched from one,
+            // or for every game in the container, as the footer's "Save for" says (ControllerSaveTarget).
+            controllerSaveTarget = new ControllerSaveTarget(preferences, container, shortcut);
+            controllerSaveTarget.attach();
 
             // On-screen-controls priority (KEEP/YIELD/SHARE), same seed-after-container discipline as the
             // vibration tuning above: resolve per-game override else the container value and push it in.
@@ -12668,22 +12674,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ds.setVibrationIntensity(vibIntensity);
             ds.onVibrationModeChanged = (mode) -> {
                 winHandler.setVibrationTuning(mode, winHandler.getVibrationIntensity());
-                if (shortcut != null && shortcut.hasExtra("vibrationMode")) {
-                    shortcut.putExtra("vibrationMode", String.valueOf(mode));
-                    shortcut.saveData();
-                } else if (container != null) {
-                    container.setVibrationMode(mode);
-                    container.saveData();
+                if (container != null) {
+                    controllerSaveTarget.save("vibrationMode", String.valueOf(mode), () -> container.setVibrationMode(mode));
                 }
             };
             ds.onVibrationIntensityChanged = (pct) -> {
                 winHandler.setVibrationTuning(winHandler.getVibrationMode(), pct);
-                if (shortcut != null && shortcut.hasExtra("vibrationIntensity")) {
-                    shortcut.putExtra("vibrationIntensity", String.valueOf(pct));
-                    shortcut.saveData();
-                } else if (container != null) {
-                    container.setVibrationIntensity(pct);
-                    container.saveData();
+                if (container != null) {
+                    controllerSaveTarget.save("vibrationIntensity", String.valueOf(pct), () -> container.setVibrationIntensity(pct));
                 }
             };
 
@@ -12698,12 +12696,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
             ds.setRumbleMotors(rumbleMotors);
             ds.onRumbleMotorsChanged = (motors) -> {
                 winHandler.setRumbleMotors(motors);
-                if (shortcut != null && shortcut.hasExtra(com.winlator.star.core.RumbleMotors.EXTRA)) {
-                    shortcut.putExtra(com.winlator.star.core.RumbleMotors.EXTRA, String.valueOf(winHandler.getRumbleMotors()));
-                    shortcut.saveData();
-                } else if (container != null) {
-                    container.setRumbleMotors(motors);
-                    container.saveData();
+                if (container != null) {
+                    int applied = winHandler.getRumbleMotors();
+                    controllerSaveTarget.save(com.winlator.star.core.RumbleMotors.EXTRA, String.valueOf(applied),
+                            () -> container.setRumbleMotors(applied));
                 }
                 Log.i("XServerDisplayActivity", "Rumble motors: "
                         + com.winlator.star.core.RumbleMotors.label(winHandler.getRumbleMotors()) + " (changed in-game)");
@@ -15422,6 +15418,10 @@ return true;
         boolean switchable = sync != null && sync.installed && sync.switching && sync.forwardAvailable;
         int mode = bannerinLaunchControl != null ? bannerinLaunchControl.xinputMode : 0;
         int flags = bannerinLaunchControl != null ? bannerinLaunchControl.xinputFlags : 0;
+        if (controllerSaveTarget == null) {
+            controllerSaveTarget = new ControllerSaveTarget(preferences, container, shortcut);
+            controllerSaveTarget.attach();
+        }
         winHandler.setReconnectGapMs(preferences.getInt("live_reconnect_gap_ms", (int) com.winlator.star.winhandler.SlotReconnector.GAP_MS_DEFAULT));
         liveControllerSession = new LiveControllerSession(container, shortcut, winHandler, new LiveControllerSession.Host() {
             @Override public void onReconnecting() {
@@ -15448,7 +15448,7 @@ return true;
                             "Wine's XInput isn't available in this game; it stays on Direct XInput.");
                 }
             }
-        }, launchPadIdentity, launchDInputVisible, launchDInputForcedWhy, direct, switchable, mode, flags);
+        }, controllerSaveTarget, launchPadIdentity, launchDInputVisible, launchDInputForcedWhy, direct, switchable, mode, flags);
         liveControllerSession.attach();
     }
 

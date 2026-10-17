@@ -4240,6 +4240,10 @@ internal fun ControlsContent(
                         perRow = 2
                     )
                 }
+                // Target, intensity and motors save like Controls › Pad (the on/off and per-slot switches
+                // above are app-wide).
+                Spacer(Modifier.height(8.dp))
+                SaveScopeFooter()
             }
             val vibrationSlots by XServerDialogState.vibrationSlots.collectAsState()
             if (vibrationMasterOn && vibrationSlots.isNotEmpty()) {
@@ -4627,7 +4631,32 @@ private fun PadSection() {
     if (pad.nextLaunchOnly.contains("xinput") && pad.xinputSwitchable) PadNote("XInput source applies on the next launch.")
 
     Spacer(Modifier.height(8.dp))
-    PadNote("Saved for ${pad.savedFor}")
+    SaveScopeFooter()
+}
+
+// "Save for: This game / All games in container" under Controls › Pad and the rumble rows
+// (ControllerSaveTarget in the activity; the choice is kept for the app). A desktop / container launch
+// has no game, so its changes go to the container and only the note shows.
+@Composable
+private fun SaveScopeFooter() {
+    val scope by XServerDialogState.controllerSaveScope.collectAsState()
+    if (scope.gameName != null) {
+        Text("Save for", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        ModeChipGrid(
+            listOf(
+                Triple<String, Boolean, () -> Unit>("This game", scope.toGame) { XServerDialogState.onControllerSaveScope?.invoke(true) },
+                Triple<String, Boolean, () -> Unit>("All games in container", !scope.toGame) { XServerDialogState.onControllerSaveScope?.invoke(false) },
+            ),
+            perRow = 2
+        )
+        Spacer(Modifier.height(4.dp))
+    }
+    PadNote(scope.lastSaved ?: when {
+        scope.gameName == null -> "Changes are saved for every game in ${scope.containerName}."
+        scope.toGame -> "Changes are saved for ${scope.gameName} only."
+        else -> "Changes are saved for every game in ${scope.containerName}."
+    })
 }
 
 // ───── Touch gesture settings — Controls > Mouse, shown while Cursor to Touch is on ─────

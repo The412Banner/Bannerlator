@@ -199,8 +199,9 @@ public class Container {
     private boolean bannerinXInput = false;
     // "Allow in-game switching" of Direct XInput: the BANNERIN-XInput DLLs go in for both states and Wine's
     // own xinput is installed beside them as the forward target, so the mode can flip mid-game
-    // (core/BannerinXInput). Default off until validated; only persisted when on.
-    private boolean bannerinXInputSwitching = false;
+    // (core/BannerinXInput). Default on (device-proven 2026-10-17: DiRT Showdown flipped Direct <-> Wine
+    // live with rumble in both); always persisted, so an explicit off stays off.
+    private boolean bannerinXInputSwitching = true;
     private ContainerManager containerManager;
 
 
@@ -1486,7 +1487,7 @@ public class Container {
             data.put("controllerMapping", controllerMapping);
             data.put("exclusiveXInput", exclusiveXInput);
             if (bannerinXInput) data.put("bannerinXInput", true);
-            if (bannerinXInputSwitching) data.put("bannerinXInputSwitching", true);
+            data.put("bannerinXInputSwitching", bannerinXInputSwitching);
             data.put("renderer", renderer);
             data.put("rendererNative", rendererNative);
             data.put("rendererNativeBackend", rendererNativeBackend);
@@ -1636,7 +1637,7 @@ public class Container {
                     setBannerinXInput(data.optBoolean(key, false));
                     break;
                 case "bannerinXInputSwitching" :
-                    setBannerinXInputSwitching(data.optBoolean(key, false));
+                    setBannerinXInputSwitching(data.optBoolean(key, true));
                     break;
                 case "renderer" :
                     setRenderer(data.getString(key));

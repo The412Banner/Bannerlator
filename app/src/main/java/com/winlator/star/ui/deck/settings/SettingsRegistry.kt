@@ -1095,7 +1095,7 @@ internal object SettingsRegistry {
         SettingDef(
             id = "input.bannerinXInputSwitching", category = "input", group = "Controllers", level = ADVANCED,
             label = "Allow in-game switching", hint = "Switch Direct XInput on or off from the in-game menu without restarting.",
-            help = "Installs Bannerlator's XInput DLLs whether Direct XInput is on or off, with Wine's own XInput beside them, so Controls › Pad in the in-game menu can switch between them while the game runs (the controller reconnects). Off: changing Direct XInput needs a restart. Off by default.",
+            help = "Installs Bannerlator's XInput DLLs whether Direct XInput is on or off, with Wine's own XInput beside them, so Controls › Pad in the in-game menu can switch between them while the game runs (the controller reconnects). On by default. Off: Direct XInput stays as the game started, and changing it needs a restart.",
             tech = BannerinXInput.EXTRA_SWITCHING,
             control = { _, _ -> Control.Toggle },
             vm = vmBool({ it.bannerinXInputSwitching }, { vm, v -> vm.bannerinXInputSwitching = v }),

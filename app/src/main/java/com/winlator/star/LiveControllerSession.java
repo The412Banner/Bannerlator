@@ -9,7 +9,6 @@ import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.BannerinSessionControl;
 import com.winlator.star.core.BannerinXInput;
 import com.winlator.star.core.ControllerIdentity;
-import com.winlator.star.core.DInputVisibility;
 import com.winlator.star.core.JoystickRegistry;
 import com.winlator.star.core.StickPacing;
 import com.winlator.star.inputcontrols.BannerinWriter;
@@ -24,8 +23,9 @@ import java.util.List;
 
 /**
  * The in-game controller settings (Controls › Pad) of a Wine session: Controller type, XInput source,
- * DirectInput visibility and stick updates. Every change is saved where the setting lives (the game
- * when it owns the value, else the container) and reaches the running game in one of three ways:
+ * DirectInput visibility and stick updates. Every change is saved through {@link ControllerSaveTarget}
+ * (this game, or all games in the container, as the footer says) and reaches the running game in one
+ * of three ways:
  * <ul>
  *   <li>live: stick updates (BANNERIN session control, read by the readers at once)</li>
  *   <li>by reconnecting the controller (WinHandler.reconnectSlots): the identity, DirectInput
@@ -56,6 +56,7 @@ final class LiveControllerSession {
     private final WinHandler winHandler;
     private final File driveC;
     private final Host host;
+    private final ControllerSaveTarget saveTarget;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable autoReconnect = this::reconnectNow;
 
@@ -95,12 +96,13 @@ final class LiveControllerSession {
      * @param xinputFlags      control block xinput_flags written at launch
      */
     LiveControllerSession(Container container, Shortcut shortcut, WinHandler winHandler, Host host,
-                          String launchIdentity, boolean launchDInput, String dinputForcedWhy,
+                          ControllerSaveTarget saveTarget, String launchIdentity, boolean launchDInput, String dinputForcedWhy,
                           boolean xinputDirect, boolean xinputSwitchable, int xinputMode, int xinputFlags) {
         this.container = container;
         this.shortcut = shortcut;
         this.winHandler = winHandler;
         this.host = host;
+        this.saveTarget = saveTarget;
         this.driveC = new File(container.getRootDir(), ".wine/drive_c");
         this.launchIdentity = launchIdentity;
         this.identity = launchIdentity;
@@ -315,59 +317,24 @@ final class LiveControllerSession {
                 nowHz,
                 pending,
                 reconnecting,
-                new ArrayList<>(nextLaunchOnly),
-                savedFor()));
+                new ArrayList<>(nextLaunchOnly)));
     }
 
-    // ── Saving: the game when it owns the value, else the container (the Rumble motors rule) ─────
-
-    private boolean gameOwns(String key) {
-        return shortcut != null && !shortcut.getExtra(key).isEmpty();
-    }
-
-    private String savedFor() {
-        boolean game = shortcut != null && (gameOwns(ControllerIdentity.EXTRA) || DInputVisibility.gameOwns(shortcut)
-                || gameOwns(StickPacing.EXTRA) || gameOwns(BannerinXInput.EXTRA_KEY));
-        return game ? "this game" : "this container";
-    }
+    // ── Saving: this game or the container, as the footer's "Save for" says (ControllerSaveTarget) ──
 
     private void saveIdentity(String value) {
-        if (gameOwns(ControllerIdentity.EXTRA)) {
-            shortcut.putExtra(ControllerIdentity.EXTRA, value);
-            shortcut.saveData();
-        } else {
-            container.setControllerIdentity(value);
-            container.saveData();
-        }
+        saveTarget.save(ControllerIdentity.EXTRA, value, () -> container.setControllerIdentity(value));
     }
 
     private void saveDInput(boolean visible) {
-        if (DInputVisibility.gameOwns(shortcut)) {
-            DInputVisibility.writeTo(shortcut, visible);
-            shortcut.saveData();
-        } else {
-            DInputVisibility.writeTo(container, visible);
-            container.saveData();
-        }
+        saveTarget.saveDInput(visible);
     }
 
     private void saveXInput(boolean direct) {
-        if (gameOwns(BannerinXInput.EXTRA_KEY)) {
-            shortcut.putExtra(BannerinXInput.EXTRA_KEY, direct ? "1" : "0");
-            shortcut.saveData();
-        } else {
-            container.setBannerinXInput(direct);
-            container.saveData();
-        }
+        saveTarget.save(BannerinXInput.EXTRA_KEY, direct ? "1" : "0", () -> container.setBannerinXInput(direct));
     }
 
     private void savePacing(StickPacing value) {
-        if (gameOwns(StickPacing.EXTRA)) {
-            shortcut.putExtra(StickPacing.EXTRA, value.format());
-            shortcut.saveData();
-        } else {
-            container.putExtra(StickPacing.EXTRA, value.format());
-            container.saveData();
-        }
+        saveTarget.save(StickPacing.EXTRA, value.format(), () -> container.putExtra(StickPacing.EXTRA, value.format()));
     }
 }

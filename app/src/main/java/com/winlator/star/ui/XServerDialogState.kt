@@ -391,8 +391,6 @@ object XServerDialogState {
         val reconnecting: Boolean = false,
         /** Settings saved that take effect only on the next launch (shown as a note). */
         val nextLaunchOnly: List<String> = emptyList(),
-        /** "this game" or "this container": where changes are saved. */
-        val savedFor: String = "this container",
     )
 
     private val _pad = MutableStateFlow(PadState())
@@ -409,6 +407,24 @@ object XServerDialogState {
     @JvmField var onPadNextLaunch: Runnable? = null
     /** The sub-tab is showing: refresh "Now: N Hz" (called about once a second). */
     @JvmField var onPadRefresh: Runnable? = null
+
+    // ── Where Controls › Pad and the rumble rows save (ControllerSaveTarget in the activity) ──
+    data class ControllerSaveScope(
+        /** The game the session runs; null for a desktop / container launch (container only). */
+        val gameName: String? = null,
+        val containerName: String = "",
+        /** Changes go to this game; false = to the container, for all of its games. */
+        val toGame: Boolean = false,
+        /** Where the last change went, e.g. "Saved for NINJA GAIDEN only."; null before any change. */
+        val lastSaved: String? = null,
+    )
+
+    private val _controllerSaveScope = MutableStateFlow(ControllerSaveScope())
+    val controllerSaveScope: StateFlow<ControllerSaveScope> = _controllerSaveScope
+    fun setControllerSaveScope(scope: ControllerSaveScope) { _controllerSaveScope.value = scope }
+
+    /** The footer's "Save for" choice: true = this game, false = all games in the container. */
+    @JvmField var onControllerSaveScope: PadBoolCallback? = null
 
     // -------------------------------------------------------------------------
     // Player Slots (manual per-device slot assignment) — Controls > Players sub-tab. One row per
@@ -1016,6 +1032,7 @@ object XServerDialogState {
         _vibrationIntensity.value = 100
         _rumbleMotors.value    = 0
         _pad.value             = PadState()
+        _controllerSaveScope.value = ControllerSaveScope()
         _playerSlots.value     = emptyList()
         _gyroSupported.value   = false
         _gyroOrientationSupported.value = false
@@ -1066,6 +1083,7 @@ object XServerDialogState {
         onVibrationModeChanged = null; onVibrationIntensityChanged = null; onRumbleMotorsChanged = null
         onPadIdentity = null; onPadXInputDirect = null; onPadDInputVisible = null; onPadPacing = null
         onPadReconnectNow = null; onPadNextLaunch = null; onPadRefresh = null
+        onControllerSaveScope = null
         onPlayerSlotChanged = null; onPlayerSlotsRefresh = null; onResetInput = null
         onGyroEnabledChanged = null; onGyroTargetChanged = null
         onGyroSensitivityChanged = null; onGyroDeadzoneChanged = null; onGyroSmoothingChanged = null

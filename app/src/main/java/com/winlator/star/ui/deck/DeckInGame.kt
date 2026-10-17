@@ -1195,6 +1195,9 @@ private fun OverlayPage(state: XServerDrawerState) {
 private fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     val sub by state.controlsSubTab.collectAsState()
     val game = igGameScope()
+    // Pad and the rumble rows follow the drawer's "Save for" footer (ControllerSaveTarget).
+    val saveScope by XServerDialogState.controllerSaveScope.collectAsState()
+    val padScope = if (saveScope.gameName != null && saveScope.toGame) SaveScope.GAME else SaveScope.CONTAINER
     IgHostedCard {
         // Player slots are Wine's XInput slots; the Linux Steam client keeps its own touch choice (its Steam page).
         ControlsContent(state, playerSlots = kind.isWine, pointerAndTouch = kind != InGameSessionKind.LINUX_STEAM)
@@ -1211,14 +1214,14 @@ private fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
             )
             2 -> SaveNotes(
                 "Rumble on / off and per-slot switches" to listOf(SaveScope.ALL),
-                "Rumble target, intensity and motors (this game when its settings carry them)" to listOf(SaveScope.CONTAINER),
+                "Rumble target, intensity and motors (Save for, below)" to listOf(padScope),
             )
             3 -> SaveNotes(
                 "Motion aim settings" to listOf(game),
                 "Deadzone and smoothing" to listOf(SaveScope.CONTAINER),
             )
             4 -> SaveNotes("Player slot for each controller" to listOf(game))
-            6 -> SaveNotes("Controller type, XInput source, DirectInput, stick updates (this game when its settings carry them)" to listOf(SaveScope.CONTAINER))
+            6 -> SaveNotes("Controller type, XInput source, DirectInput, stick updates (Save for, below)" to listOf(padScope))
             5 -> SaveNotes("Swipe between buttons" to listOf(SaveScope.ALL))
         }
     }

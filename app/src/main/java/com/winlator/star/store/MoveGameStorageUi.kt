@@ -1,13 +1,17 @@
 package com.winlator.star.store
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,11 +19,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.winlator.star.R
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import com.winlator.star.ui.screens.OutlinedAlertDialog
@@ -43,14 +49,22 @@ internal fun MoveStorageDialog(
     onDismiss: () -> Unit,
 ) {
     val toSd = plan.to.place == MoveGameStorage.Place.SD
-    val fromLabel = if (plan.from == MoveGameStorage.Place.INTERNAL) "Internal storage" else "SD card"
+    val toLibrary = plan.to.place == MoveGameStorage.Place.LIBRARY
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (toSd) "Move to SD card" else "Move to internal storage") },
+        title = {
+            Text(
+                when {
+                    toSd -> "Move to SD card"
+                    toLibrary -> "Move to ${plan.to.label}"
+                    else -> "Move to internal storage"
+                }
+            )
+        },
         text = {
             Column {
                 Text(
-                    text = "${plan.gameName}\n$fromLabel  →  ${plan.to.label}",
+                    text = "${plan.gameName}\n${plan.fromLabel}  →  ${plan.to.label}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -85,12 +99,18 @@ internal fun MoveStorageDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                if (toSd) {
+                if (toSd || toLibrary) {
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "⚠️ The SD card is slower than internal storage. Some games stall while " +
-                            "loading from a card — if that happens, move it back, or use Copy game to " +
-                            "Drive C from the shortcut editor.",
+                        text = if (toSd) {
+                            "⚠️ The SD card is slower than internal storage. Some games stall while " +
+                                "loading from a card — if that happens, move it back, or use Copy game to " +
+                                "Drive C from the shortcut editor."
+                        } else {
+                            "⚠️ Shared storage and SD cards are slower than internal storage. Some games " +
+                                "stall while loading from there — if that happens, move it back, or use " +
+                                "Copy game to Drive C from the shortcut editor."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -114,10 +134,71 @@ internal fun MoveStorageDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = plan.fitsOnTarget) {
-                Text(if (toSd) "Move to SD card" else "Move to internal")
+                Text(if (toSd) "Move to SD card" else if (toLibrary) "Move here" else "Move to internal")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/**
+ * "Move to…" chooser, shown when more than one place is on offer (extra library folders exist): each
+ * row names a location with its folder and free space; tapping one plans the move there and opens the
+ * usual [MoveStorageDialog] confirm with the size/space check.
+ */
+@Composable
+internal fun MoveTargetDialog(
+    gameName: String,
+    targets: List<SteamLibraryLocations.Location>,
+    onPick: (SteamLibraryLocations.Location) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.steam_lib_move_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.steam_lib_move_hint, gameName),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                targets.forEach { loc ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable { onPick(loc) }
+                            .padding(vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = loc.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = locationDescription(loc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = stringResource(R.string.steam_lib_free, SteamSdInstall.fmtBytes(loc.freeBytes)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.steam_lib_cancel))
+            }
+        },
     )
 }
 

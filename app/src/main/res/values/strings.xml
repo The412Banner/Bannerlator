@@ -2646,4 +2646,45 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
         <b>Microphone</b><br /><br />
         Lets a game use the microphone for voice chat. It is meant for the <b>games the client launches</b>, not for the Steam client. It does nothing in a Linux session yet: the switch is wired for the Windows side, and the Linux side that would carry the sound in is not in place.
     ]]></string>
+    <!-- Steam library locations: extra install folders (store/SteamLibraryLocations). -->
+    <string name="steam_lib_title">Steam library locations</string>
+    <string name="steam_lib_settings_subtitle">Games folders on shared storage or an SD card, set up as regular Steam libraries (a steamapps folder), so other Steam clients and emulators can use the same games. You choose the location each time you install a game.</string>
+    <string name="steam_lib_intro">Games install to the app\'s own storage by default. Add a \"Games\" folder on shared storage or an SD card and the app creates (or reuses) a regular Steam steamapps folder inside it — games go to steamapps/common with their appmanifest files, the same layout every Steam client uses, so other launchers and emulators can open them without a re-download. An existing steamapps folder is built upon, never reset, and games already installed in it are picked up. Removing a location only forgets it — no files are ever deleted.</string>
+    <string name="steam_lib_manage">Manage locations</string>
+    <string name="steam_lib_manage_ellipsis">Manage locations…</string>
+    <string name="steam_lib_add">Add folder…</string>
+    <string name="steam_lib_done">Done</string>
+    <string name="steam_lib_cancel">Cancel</string>
+    <string name="steam_lib_pick_title">Choose a library folder</string>
+    <string name="steam_lib_internal_label">Internal storage</string>
+    <string name="steam_lib_internal_desc">App storage — fastest</string>
+    <string name="steam_lib_default_badge">Default</string>
+    <string name="steam_lib_make_default">Make default</string>
+    <string name="steam_lib_remove">Remove</string>
+    <string name="steam_lib_loading">Checking locations…</string>
+    <string name="steam_lib_free">%1$s free</string>
+    <string name="steam_lib_unavailable">Not available — card removed or folder missing</string>
+    <string name="steam_lib_games_none">No games installed</string>
+    <string name="steam_lib_games_list">Installed: %1$s</string>
+    <string name="steam_lib_game_downloading">%1$s (downloading)</string>
+    <string name="steam_lib_added">Added \"%1$s\"</string>
+    <string name="steam_lib_added_found">Added \"%1$s\" — found %2$d installed game(s) already in it.</string>
+    <string name="steam_lib_removed">Removed \"%1$s\" from the list. Your files were not touched.</string>
+    <string name="steam_lib_remove_confirm_title">Remove this location?</string>
+    <string name="steam_lib_remove_confirm_body">\"%1$s\" will be removed from the list. Nothing on the disk is deleted, and you can add the folder again later.</string>
+    <string name="steam_lib_remove_blocked">Can\'t remove \"%1$s\": %2$s still installed or downloading there. Move or uninstall them first.</string>
+    <string name="steam_lib_err_missing">That folder doesn\'t exist.</string>
+    <string name="steam_lib_err_volume">Pick a folder on internal storage or an SD card — Wine can only reach games there.</string>
+    <string name="steam_lib_err_name">That folder\'s path contains \"steam_games\", which would confuse game detection. Pick or rename another folder.</string>
+    <string name="steam_lib_err_duplicate">That location is already in the list.</string>
+    <string name="steam_lib_err_write">Couldn\'t write to that folder. Check that it isn\'t read-only and that the app has storage access.</string>
+    <string name="steam_lib_low_space">Little free space is left there, so new installs may not fit. Launching and importing games already in it still works.</string>
+    <string name="steam_lib_install_location">INSTALL LOCATION</string>
+    <string name="steam_lib_install_size">This game needs about %1$s on disk.</string>
+    <string name="steam_lib_no_room">⛔ Not enough free space here: this game needs about %1$s and only %2$s is free. Pick another location.</string>
+    <string name="steam_lib_sd_warning">⚠️ The SD card is slower than internal storage. Some games stall on intro movies or asset loads from the card — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
+    <string name="steam_lib_slow_warning">⚠️ Shared storage and SD cards are slower than internal storage. Some games stall on intro movies or asset loads from there — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
+    <string name="steam_lib_move_another">Move to another location…</string>
+    <string name="steam_lib_move_title">Move to…</string>
+    <string name="steam_lib_move_hint">Pick where %1$s should live. The files are copied first and the old copy is only deleted once the new one checks out.</string>
 </resources>

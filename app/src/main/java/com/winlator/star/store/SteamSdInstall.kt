@@ -18,6 +18,10 @@ import java.io.File
  * way shared storage does — the same reason "Copy game to Drive C" exists ([CopyGameToDriveC]). So
  * this is an explicit, off-by-default opt-in surfaced with a warning, never the default.
  *
+ * [SteamLibraryLocations] generalises this: the detected card is one entry in its list of install
+ * targets, next to any folders the user adds. The card keeps the `bannerlator/steam_games` layout
+ * defined here ([SD_SUBDIR]); a folder the user adds becomes a regular `steamapps` library.
+ *
  * The install still runs through Wine via a drive letter: an SD install dir is mapped to a container
  * drive by [WinePath.resolveWindowsPath] at shortcut-creation time, exactly like the "+" add-game
  * importer, so no launch/mount code changes.

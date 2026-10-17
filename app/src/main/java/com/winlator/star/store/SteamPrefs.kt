@@ -208,6 +208,46 @@ object SteamPrefs {
         prefs.edit().putString(K_LIBRARY_TYPE_FILTER, v).apply()
     }
 
+    // ── Extra Steam library locations (store/SteamLibraryLocations owns the logic) ──
+    // The user's extra install folders as a JSON array of {id,label,path}, plus the id of the location
+    // the install dialog pre-selects ("" = the internal default). Preferences, not credentials — NOT
+    // cleared on logout, since the folders (and the games in them) outlive a Steam sign-out.
+    private const val K_LIBRARY_LOCATIONS        = "steam_library_locations"
+    private const val K_DEFAULT_INSTALL_LOCATION = "steam_default_install_location"
+
+    fun getLibraryLocationsJson(ctx: Context): String {
+        init(ctx)
+        return prefs.getString(K_LIBRARY_LOCATIONS, "") ?: ""
+    }
+
+    fun setLibraryLocationsJson(ctx: Context, v: String) {
+        init(ctx)
+        prefs.edit().putString(K_LIBRARY_LOCATIONS, v).apply()
+    }
+
+    fun getDefaultInstallLocation(ctx: Context): String {
+        init(ctx)
+        return prefs.getString(K_DEFAULT_INSTALL_LOCATION, "") ?: ""
+    }
+
+    fun setDefaultInstallLocation(ctx: Context, id: String) {
+        init(ctx)
+        prefs.edit().putString(K_DEFAULT_INSTALL_LOCATION, id).apply()
+    }
+
+    // ── PICS config.installdir per app ───────────────────────────────────────
+    // Valve's folder name under steamapps/common — the one every Steam client (and the appmanifest's
+    // "installdir") uses. Written by the library sync (SteamRepository.processAppKv, straight into this
+    // same prefs file under the same key) and read when a game is installed into a steamapps library,
+    // so other clients find it by that exact name. Kept here rather than as a steam.db column so no
+    // schema change is needed and an older build can still open the database. Not credentials — NOT
+    // cleared on logout.
+    const val K_PICS_INSTALLDIR_PREFIX = "pics_installdir_"
+
+    /** The PICS `config.installdir` recorded for [appId], or "" when it has not been seen yet. */
+    fun getPicsInstallDir(appId: Int): String =
+        prefs.getString(K_PICS_INSTALLDIR_PREFIX + appId, "") ?: ""
+
     // ── Master opt-in for the whole friends/chat feature (default OFF) ────────
     // The friends list, presence sharing and chat are OFF until the user opts in. Default FALSE so a
     // brand-new sign-in shows the store working with the social side dormant (no online status shared)

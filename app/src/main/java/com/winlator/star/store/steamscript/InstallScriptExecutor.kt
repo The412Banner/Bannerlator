@@ -7,6 +7,7 @@ import com.winlator.star.XServerDisplayActivity
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.store.EaSupport
+import com.winlator.star.store.SteamInstallPaths
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.WinePath
 import com.winlator.star.core.WineRegistryEditor
@@ -279,12 +280,15 @@ object InstallScriptExecutor {
 
     // ---- Script / install-dir location -----------------------------------------------------------
 
-    /** The depot's install directory (`steam_games/<name>`) that [exeOrDir] lives under, or null. */
+    /**
+     * The depot's install directory (`steam_games/<name>` or `steamapps/common/<name>`) that
+     * [exeOrDir] lives under, or null.
+     */
     fun locateInstallDir(exeOrDir: File): File? {
         val parts = exeOrDir.absolutePath.split('/')
-        val idx = parts.indexOf("steam_games")
-        if (idx < 0 || idx + 1 >= parts.size) return null
-        return File(parts.subList(0, idx + 2).joinToString("/"))
+        val folderIdx = SteamInstallPaths.gameFolderIndex(parts)
+        if (folderIdx < 0) return null
+        return File(parts.subList(0, folderIdx + 1).joinToString("/"))
     }
 
     /** Finds the game's main installScript.vdf under [installDir] (excludes `*_installScript.vdf`). */

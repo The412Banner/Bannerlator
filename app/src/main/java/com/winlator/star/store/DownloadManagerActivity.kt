@@ -306,8 +306,18 @@ class DownloadManagerActivity : ComponentActivity() {
             installDir = entry.installPath,
             mark = {
                 if (entry.store == Store.STEAM) {
-                    entry.id.toIntOrNull()?.let { SteamRepository.getInstance().database.markUninstalled(it) }
+                    entry.id.toIntOrNull()?.let {
+                        SteamAppManifest.removeFor(entry.installPath, it)
+                        SteamRepository.getInstance().database.markUninstalled(it)
+                    }
                 }
+            },
+            // A Steam game whose folder another game (a demo / server) also uses is kept.
+            keepFolder = {
+                val steamId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() else null
+                val path = entry.installPath
+                steamId != null && !path.isNullOrEmpty() &&
+                    SteamInstallPaths.folderSharedWithOtherGame(this, File(path), steamId)
             },
         ) { ok ->
             // Clear the durable-library row (also drops the live registry entry) AND the store's

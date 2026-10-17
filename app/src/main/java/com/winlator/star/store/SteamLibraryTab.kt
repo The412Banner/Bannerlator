@@ -222,6 +222,9 @@ fun rememberSteamLibrary(): SteamLibraryState {
                     // walk over every owned app, so it goes on a worker rather than the event thread.
                     Thread({ SteamLibraryArt.refreshFromSnapshot(appCtx) }, "SteamArtRefresh")
                         .apply { isDaemon = true }.start()
+                    // Games another Steam client installed into a library folder become "installed"
+                    // here once the library rows exist (off-thread; re-reads when it found any).
+                    SteamLibraryImport.importInstalledAsync(appCtx) { load() }
                     load()
                 }
                 event.startsWith("SteamStatus:") -> {
@@ -248,7 +251,11 @@ fun rememberSteamLibrary(): SteamLibraryState {
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) load()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                load()
+                // Cheap (nothing to scan without a library folder) and single-flight; re-reads on a find.
+                SteamLibraryImport.importInstalledAsync(appCtx) { load() }
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -370,7 +377,12 @@ fun SteamLibraryTab(
         uninstallingName = game.name
         StoreUninstaller.run(
             installDir = game.installDir,
-            mark = { runCatching { SteamRepository.getInstance().database.markUninstalled(game.appId) } },
+            mark = {
+                SteamAppManifest.removeFor(game.installDir, game.appId)
+                runCatching { SteamRepository.getInstance().database.markUninstalled(game.appId) }
+            },
+            // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
+            keepFolder = { SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
         ) { ok ->
             uninstallingName = null
             if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})")

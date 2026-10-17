@@ -388,7 +388,7 @@ object SteamAchievementStore {
             // 1) Real earned state — prefer the offline cache (the detail page usually populated it),
             //    else a bounded best-effort online fetch. Empty from BOTH ⇒ we know nothing real ⇒ skip.
             var real = cached(ctx, appId)
-            if (real.isEmpty()) real = fetch(ctx, appId)
+            if (real.isEmpty()) real = fetchOrPrefetch(ctx, appId)
             if (real.isEmpty()) {
                 Log.i(TAG, "seedGse($appId): no real achievement state available — skip (GSE untouched)")
                 return
@@ -514,7 +514,7 @@ object SteamAchievementStore {
         return try {
             // Ensure the achievements cache is populated: offline DB first, bounded online fallback.
             // (fetch() upserts into the same steam_achievements table cached()/getAchievements() read.)
-            if (cached(ctx, appId).isEmpty() && fetch(ctx, appId).isEmpty()) {
+            if (cached(ctx, appId).isEmpty() && fetchOrPrefetch(ctx, appId).isEmpty()) {
                 Log.i(TAG, "writeGbeAchievementSchema($appId): no achievement defs available — no-op")
                 return 0
             }
@@ -608,7 +608,14 @@ object SteamAchievementStore {
      * live-account test with sync-back enabled confirms it. It is fully guarded and cannot crash.
      */
     @JvmStatic
-    fun flushPendingSyncBack(ctx: Context) {
+    fun flushPendingSyncBack(ctx: Context) = flushPendingSyncBack(ctx, 0)
+
+    /**
+     * As [flushPendingSyncBack], but with [onlyAppId] > 0 only that game's queued unlocks are pushed; every
+     * other game's stay queued. 0 = every game (the original behaviour).
+     */
+    @JvmStatic
+    fun flushPendingSyncBack(ctx: Context, onlyAppId: Int) {
         try {
             // THE SAFETY GATE. Default OFF → return immediately; the queue is untouched, no network,
             // no write to the real profile. Test builds cannot mutate a live account without opt-in.
@@ -619,7 +626,9 @@ object SteamAchievementStore {
 
             val lines = synchronized(pendingLock) {
                 if (!file.exists()) return
-                file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+                file.readLines().map { it.trim() }.filter {
+                    it.isNotEmpty() && (onlyAppId <= 0 || it.startsWith("$onlyAppId:"))
+                }
             }
             if (lines.isEmpty()) return
 
@@ -795,6 +804,34 @@ object SteamAchievementStore {
         } finally {
             try { conn?.disconnect() } catch (_: Exception) {}
         }
+    }
+
+    // ── Goldberg and the Steam network ─────────────────────────────────────────────────────────
+
+    /**
+     * Goldberg is an offline mode: unless the user switched "sync with Steam Cloud during Goldberg launches"
+     * on (Save Manager, `goldberg_cloud_sync`, off by default), setting Goldberg up never waits on Steam.
+     */
+    private fun goldbergMayUseSteam(ctx: Context): Boolean =
+        ctx.applicationContext.getSharedPreferences("save_manager_prefs", Context.MODE_PRIVATE)
+            .getBoolean("goldberg_cloud_sync", false)
+
+    private val prefetching = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+
+    /**
+     * The achievement list from Steam when Goldberg may use Steam ([fetch], as before). When it may not, nothing
+     * is fetched here and the result is empty; the list is fetched in the background instead, so the NEXT
+     * launch finds it saved.
+     */
+    private fun fetchOrPrefetch(ctx: Context, appId: Int): List<SteamAchievement> {
+        if (goldbergMayUseSteam(ctx)) return fetch(ctx, appId)
+        if (prefetching.add(appId)) {
+            val app = ctx.applicationContext
+            Thread({
+                try { fetch(app, appId) } catch (_: Throwable) {} finally { prefetching.remove(appId) }
+            }, "BH-AchvPrefetch").apply { isDaemon = true }.start()
+        }
+        return emptyList()
     }
 
     private fun pendingFile(ctx: Context): File = File(ctx.filesDir, PENDING_FILE)

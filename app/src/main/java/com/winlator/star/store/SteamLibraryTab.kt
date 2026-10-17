@@ -323,10 +323,10 @@ fun SteamLibraryTab(
     var addResult by remember { mutableStateOf<AddShortcutResult?>(null) }
     var uninstallingName by remember { mutableStateOf<String?>(null) }
 
-    fun startAddToShortcuts(gameName: String, exePath: String, coverUrl: String?) {
+    fun startAddToShortcuts(appId: Int, gameName: String, exePath: String, coverUrl: String?) {
         val a = activity ?: return
         StarLaunchBridge.loadContainers(a) { containers ->
-            addToShortcuts = AddToShortcutsRequest(gameName, exePath, coverUrl, containers)
+            addToShortcuts = AddToShortcutsRequest(gameName, exePath, coverUrl, containers, appId)
         }
     }
 
@@ -358,9 +358,9 @@ fun SteamLibraryTab(
                         )
                         onMessage("No .exe found in install directory")
                     }
-                    exeFiles.size == 1 -> startAddToShortcuts(game.name, exeFiles[0].absolutePath, coverUrl)
+                    exeFiles.size == 1 -> startAddToShortcuts(game.appId, game.name, exeFiles[0].absolutePath, coverUrl)
                     else -> showExePicker =
-                        SteamExePickerData(game.name, exeFiles.map { it.absolutePath }, coverUrl)
+                        SteamExePickerData(game.name, exeFiles.map { it.absolutePath }, coverUrl, game.appId)
                 }
             }
         }.start()
@@ -480,7 +480,7 @@ fun SteamLibraryTab(
                     onDismiss = { showExePicker = null },
                     onSelected = { chosen ->
                         showExePicker = null
-                        startAddToShortcuts(data.gameName, chosen, data.coverUrl)
+                        startAddToShortcuts(data.appId, data.gameName, chosen, data.coverUrl)
                     },
                 )
             }
@@ -494,7 +494,7 @@ fun SteamLibraryTab(
                         addToShortcuts = null
                         val a = activity ?: return@ContainerPickerDialog
                         StarLaunchBridge.writeShortcutAsync(
-                            a, container, req.gameName, req.exePath, req.coverUrl,
+                            a, container, req.gameName, req.exePath, req.coverUrl, req.appId,
                         ) { success, message ->
                             addResult = AddShortcutResult(req.gameName, success, message)
                         }
@@ -678,6 +678,7 @@ internal data class SteamExePickerData(
     val gameName: String,
     val candidates: List<String>,
     val coverUrl: String,
+    val appId: Int = 0,
 )
 
 @Composable

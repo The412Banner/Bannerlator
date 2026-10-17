@@ -158,7 +158,7 @@ class DownloadManagerActivity : ComponentActivity() {
                             addToShortcuts = null
                             StarLaunchBridge.writeShortcutAsync(
                                 this@DownloadManagerActivity, container,
-                                req.gameName, req.exePath, req.coverUrl,
+                                req.gameName, req.exePath, req.coverUrl, req.appId,
                             ) { success, message ->
                                 addResult = AddShortcutResult(req.gameName, success, message)
                             }
@@ -263,7 +263,8 @@ class DownloadManagerActivity : ComponentActivity() {
             uninstallResult = "Install directory not set"
             return
         }
-        val appId = entry.id.toIntOrNull() ?: 0
+        // Only a Steam entry's id is a Steam app ID; GOG ids are numeric too and must not be stamped as Steam.
+        val appId = if (entry.store == Store.STEAM) entry.id.toIntOrNull() ?: 0 else 0
         val installDir = File(dir)
         Thread {
             val exeFiles = mutableListOf<File>()
@@ -293,7 +294,7 @@ class DownloadManagerActivity : ComponentActivity() {
     private fun startAddToShortcuts(appId: Int, gameName: String, exePath: String, coverUrl: String?) {
         val launchExe = GoldbergPatcher.resolveLaunchExe(this, appId, exePath)
         StarLaunchBridge.loadContainers(this) { containers ->
-            addToShortcuts = AddToShortcutsRequest(gameName, launchExe, coverUrl, containers)
+            addToShortcuts = AddToShortcutsRequest(gameName, launchExe, coverUrl, containers, appId)
         }
     }
 

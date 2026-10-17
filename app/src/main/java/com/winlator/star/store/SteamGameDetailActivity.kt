@@ -2948,8 +2948,9 @@ private fun GoldbergSection(
     onDownloadClick: () -> Unit,
     onModeSelected: (GoldbergMode) -> Unit,
 ) {
+    // No "Off" entry: launching the game with SteamLite or Headless Steam puts its original files back
+    // automatically (GoldbergPatcher.restoreOriginalForRealSteam), so Goldberg never needs switching off by hand.
     val options = listOf(
-        GoldbergMode.OFF to "Off",
         GoldbergMode.REGULAR to "Regular",
         GoldbergMode.EXPERIMENTAL to "Experimental",
         GoldbergMode.COLDCLIENT to "Cold Client Loader",
@@ -3023,7 +3024,8 @@ private fun GoldbergSection(
         Spacer(Modifier.height(if (showDownloadButton) 12.dp else 2.dp))
         Text(
             text = "Regular works for most games; try Experimental, then " +
-                "Cold Client Loader if a game still won't start.",
+                "Cold Client Loader if a game still won't start. Launching the game with SteamLite or " +
+                "Headless Steam restores its original files automatically.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

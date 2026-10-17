@@ -78,6 +78,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.winlator.star.container.Shortcut
 import com.winlator.star.store.GoldbergMode
+import com.winlator.star.store.GoldbergPatcher
 import com.winlator.star.store.SteamGameDetailActivity
 import com.winlator.star.store.SteamHostComponent
 import com.winlator.star.store.SteamLiteComponent
@@ -253,7 +254,7 @@ fun LaunchMethodSheet(
         )
     }
     var goldbergMode by remember(shortcut) {
-        mutableStateOf(SteamPrefs.getGoldbergMode(appId).let { if (it == GoldbergMode.OFF) GoldbergMode.REGULAR else it })
+        mutableStateOf(GoldbergPatcher.resumeTier(context, appId))
     }
     var rememberChoice by remember(shortcut) { mutableStateOf(shortcut.getExtra("launchModeRemembered", "") == "1") }
     var controllerPassthrough by remember(shortcut) { mutableStateOf(shortcut.getExtra("controllerPassthrough", "") == "1") }

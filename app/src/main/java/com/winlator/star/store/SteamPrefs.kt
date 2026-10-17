@@ -191,6 +191,23 @@ object SteamPrefs {
         prefs.edit().putBoolean(K_CHAT_SOUND, v).apply()
     }
 
+    // ── Library sort (A-Z / Steam rating) ─────────────────────────────────────
+    private const val K_LIBRARY_SORT = "steam_library_sort"
+
+    /**
+     * The Library tab's sort, as a [LibrarySort] name. Default "NAME" (A-Z), which is how the
+     * library has always been ordered, so an update never reshuffles anyone's library.
+     */
+    fun getLibrarySort(ctx: Context): String {
+        init(ctx)
+        return prefs.getString(K_LIBRARY_SORT, "NAME") ?: "NAME"
+    }
+
+    fun setLibrarySort(ctx: Context, v: String) {
+        init(ctx)
+        prefs.edit().putString(K_LIBRARY_SORT, v).apply()
+    }
+
     // ── Library type filter (All / Games / Demos) ─────────────────────────────
     private const val K_LIBRARY_TYPE_FILTER = "steam_library_type_filter"
 

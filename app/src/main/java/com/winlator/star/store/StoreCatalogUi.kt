@@ -694,6 +694,11 @@ fun CatalogSearchField(
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
     onSearch: () -> Unit,
+    // The default is the full-width padded form every store tab uses; the Steam Library passes its
+    // own so the field can sit beside the sort button.
+    modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 14.dp, vertical = 10.dp),
 ) {
     OutlinedTextField(
         value = query,
@@ -736,8 +741,6 @@ fun CatalogSearchField(
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
         ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier = modifier,
     )
 }

@@ -16463,25 +16463,27 @@ return true;
         String className = window.getClassName();
         int processAffinity = window.isWoW64() ? taskAffinityMaskWoW64 : taskAffinityMask;
 
+        // A mask naming every core is no restriction: the game already starts on all of them, so nothing is sent.
+        // Sending it is not a no-op, because wine applies SetProcessAffinityMask to every thread of the process.
+        // That wipes affinities the game set on its own threads (the BLACK Xbox port keeps its game threads on one core and livelocks once they are spread out).
+        boolean restrict = Integer.bitCount(processAffinity & 0xff) < Runtime.getRuntime().availableProcessors();
+        if (!restrict) return;
+
         // Apply immediately via winhandler so the cores take effect right now (by pid when known, else by
         // class name — _NET_WM_PID often arrives after the window maps).
         if (processId > 0) winHandler.setProcessAffinity(processId, processAffinity);
         else if (!className.isEmpty()) winHandler.setProcessAffinity(className, processAffinity);
 
-        // Arm the drift checker — but only for a genuine restriction (fewer cores than available); no point
-        // maintaining an "all cores" default. The checker resolves the game's real LINUX pid by exe name and
+        // Arm the drift checker. The checker resolves the game's real LINUX pid by exe name and
         // re-pins HOST-SIDE, so it no longer depends on the winhandler Windows-pid (which isn't a /proc pid).
         if (!className.isEmpty()) {
-            boolean restrict = Integer.bitCount(processAffinity & 0xff) < Runtime.getRuntime().availableProcessors();
-            if (restrict) {
-                String exe = className.toLowerCase();
-                int slash = Math.max(exe.lastIndexOf('/'), exe.lastIndexOf('\\'));
-                if (slash >= 0) exe = exe.substring(slash + 1);
-                if (!exe.equals(affinityTargetExe)) affinityLinuxPid = -1; // new target -> re-resolve
-                affinityTargetExe = exe;
-                affinityTargetMask = processAffinity & 0xff;
-                startAffinityReapply();
-            }
+            String exe = className.toLowerCase();
+            int slash = Math.max(exe.lastIndexOf('/'), exe.lastIndexOf('\\'));
+            if (slash >= 0) exe = exe.substring(slash + 1);
+            if (!exe.equals(affinityTargetExe)) affinityLinuxPid = -1; // new target -> re-resolve
+            affinityTargetExe = exe;
+            affinityTargetMask = processAffinity & 0xff;
+            startAffinityReapply();
         }
     }
 
@@ -16491,7 +16493,7 @@ return true;
      * was never applied there — only the in-game toggle and the Task Manager armed anything. The
      * compositor reports the program behind the first game window that presents GPU frames: its Linux
      * pid (the Wayland client's credentials, i.e. the real /proc pid, no exe scan needed) and its
-     * executable name. The mask goes Windows-side by name, as X11's class-name path does, and the
+     * executable name. A mask that restricts cores goes Windows-side by name, as X11's class-name path does, and the
      * host-side drift checker is armed on the pid. The compositor cannot tell a WoW64 program apart,
      * so the 64-bit mask applies. UI thread.
      */
@@ -16501,11 +16503,13 @@ return true;
         String exe = program != null ? program.trim().toLowerCase(java.util.Locale.ROOT) : "";
         int slash = Math.max(exe.lastIndexOf('/'), exe.lastIndexOf('\\'));
         if (slash >= 0) exe = exe.substring(slash + 1);
-        if (!exe.isEmpty() && winHandler != null) winHandler.setProcessAffinity(exe, processAffinity);
         boolean restrict = Integer.bitCount(processAffinity & 0xff) < Runtime.getRuntime().availableProcessors();
+        // Every core is no restriction, so nothing is sent: the send would wipe the game's own thread affinities (see assignTaskAffinity).
+        if (restrict && !exe.isEmpty() && winHandler != null) winHandler.setProcessAffinity(exe, processAffinity);
         String msg = "launch CPU affinity for " + (exe.isEmpty() ? "an unnamed program" : exe) + " (pid " + pid
                 + "): mask 0x" + Integer.toHexString(processAffinity & 0xffff)
-                + (restrict ? ", kept on those cores by the drift checker" : " (every core: nothing to enforce)");
+                + (restrict ? ", kept on those cores by the drift checker"
+                            : " (every core: nothing sent, the game keeps its own thread affinities)");
         Log.i("XServerDisplayActivity", "wayland: " + msg);
         try { com.winlator.star.wayland.WaylandCompositor.nativeLogPerf(msg); } catch (Throwable ignored) {}
         if (!restrict) return;

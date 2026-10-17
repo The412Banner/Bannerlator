@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-10-17 — 🧪 Live controller settings: device test round 1 (branch `feat/live-input-toggles`, not merged)
+> Installed `Bannerlator-live-5edbebf6.apk` (sha256 `c89da278…`, verified on the device). AYANEO Pocket FIT, container p11-2 Arm v14, Wayland, FEX, built-in pad.
+> - **DirectInput Hidden ↔ Visible, live — proven** in NINJA GAIDEN Σ (DirectInput-only game): at "Please connect a controller", Visible → "Controller reconnecting…" → "reconnected" → intro and main menu with the pad; Hidden → the prompt comes back mid-game; Visible again works. Log per switch: regedit done ~0.6 s, reconnect confirmed after 1 attempt, ~1.1–1.9 s total.
+> - **Direct XInput input + rumble in a real game — proven** in DiRT Showdown (32-bit, XINPUT1_3 i386): varying motor levels forwarded to the app.
+> - **Stick updates, live — writes proven** (fixed / auto:60 / off applied through the control block, no reconnect). DiRT reads through Direct XInput, which is never paced, so the visible effect still needs a Wine-path game (e.g. NINJA GAIDEN, DirectInput).
+> - **NINJA GAIDEN start-up crash (`steam_api64.dll` c0000005):** the game was set to Box64 instead of FEX by mistake. Under FEX it starts. Not related to the controller work.
+> - **To do, in order:** (1) XInput Wine ↔ Direct live switch in DiRT with "Allow in-game switching" on, rumble in both modes; (2) live Controller type Generic ↔ Xbox 360 ↔ Xbox Series; (3) DualShock 4 identity keeps the pad (DisableHidraw fix); (4) Direct XInput in a 64-bit game under FEX; (5) NINJA GAIDEN rumble in combat (DirectInput force feedback); (6) visible Stick-updates effect on a Wine-path game (Fixed ~30); then default "Allow in-game switching" on if (1) passes, then merge to main.
+
 ## 2026-10-16 — 🎮 Live in-game controller settings: Controls > Pad (branch `feat/live-input-toggles`, not merged)
 > Three people on one branch: BANNERIN control block `b1ab7eae` (builder), live Direct XInput `99159aa7` (XInput DLL), app side `481c79b4`, `e8fa7d07`, `acc6f097`, `5edbebf6`. CI on `5edbebf6`: CI Build (artifacts only) 38982320377, bannerin check 38982322697, BANNERIN-XInput 38982325046, all green (headSha checked). **Staged** `Download/Bannerlator-live-5edbebf6.apk` (pubg) sha256 `c89da278…de8ef49`. **Not device-tested.**
 > - **PlayStation quick fix (`481c79b4`):** winebus `DisableHidraw`=1 in the registry for every launch (winedevice never sees the app's env, so PROTON_DISABLE_HIDRAW alone did not stop winebus dropping the DS4 / DualSense pad).

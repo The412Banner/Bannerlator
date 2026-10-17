@@ -164,6 +164,13 @@ final class LiveControllerSession {
         publish();
     }
 
+    /** The game ships its own XInput DLL ({@code names}), served by Wine's builtin this launch: say so on Pad. */
+    void noteGameShipsXInput(String names) {
+        addNote("This game ships its own " + names + ": Wine's XInput serves it, so the XInput source doesn't change it. "
+                + "Game settings › Controller: Use Direct XInput over the game's own XInput DLL.");
+        publish();
+    }
+
     /** The in-game menu closed: a pending change reconnects now rather than waiting. */
     void onMenuClosed() {
         if (pending) reconnectNow();

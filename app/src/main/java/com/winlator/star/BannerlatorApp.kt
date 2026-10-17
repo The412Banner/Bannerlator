@@ -53,6 +53,17 @@ class BannerlatorApp : Application() {
             Log.w("BannerlatorApp", "exit-reason autosave not scheduled", t)
         }
 
+        // Game xinput DLLs a session moved aside for Direct XInput and never put back (the process died
+        // mid-game): back under their own names (core.GameXInputDlls). No session runs in a new process.
+        Thread {
+            try {
+                val manifest = java.io.File(filesDir, com.winlator.star.core.GameXInputDlls.MANIFEST_NAME)
+                for (line in com.winlator.star.core.GameXInputDlls.restoreAtAppStart(manifest)) Log.i("BannerlatorApp", "Game xinput DLL: $line")
+            } catch (t: Throwable) {
+                Log.w("BannerlatorApp", "game xinput DLL restore failed", t)
+            }
+        }.start()
+
         // Reclaim stale update installers from the external cache. On a fresh cold start there is
         // never a legitimate in-flight download, so clearing here is safe; it also recovers space
         // left by pre-prune builds (their update never cleaned up) and sweeps OS-killed partials.

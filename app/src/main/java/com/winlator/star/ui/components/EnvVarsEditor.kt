@@ -531,7 +531,8 @@ internal fun EnvVarsEditor(
                     Text(
                         "Loads the game's own copies of " + DllOverrides.PREFER_GAME_FOLDER.joinToString(", ") +
                             " instead of Wine's. Needed by many wrappers and mod loaders. Graphics DLLs are " +
-                            "never included — DXVK/VKD3D own those.",
+                            "never included — DXVK/VKD3D own those. A Microsoft xinput DLL in a game folder " +
+                            "does not work under Wine (it needs a Windows-only driver); leave it off.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

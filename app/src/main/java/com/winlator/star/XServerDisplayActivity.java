@@ -7319,6 +7319,14 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // exit (no-op unless a root toggle wrote something this session).
         com.winlator.star.perf.TempWatchdog.INSTANCE.stop();
         com.winlator.star.perf.PerfRevertRegistry.INSTANCE.revertAll();
+        // Game xinput DLLs moved aside for Direct XInput this session go back under their own names
+        // (core.GameXInputDlls; the next app start or launch catches a session that never got here).
+        try {
+            for (String line : com.winlator.star.core.GameXInputDlls.restoreAll(gameXInputManifest()))
+                Log.i("XServerDisplayActivity", "Game xinput DLL: " + line);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "game xinput DLL restore", t);
+        }
         // Release the no-root Samsung Galaxy performance boost on game exit (no-op off Samsung).
         com.winlator.star.perf.galaxy.GalaxyPerfManager.stop();
         // Clear the cross-vendor "game is running" signal.
@@ -8091,6 +8099,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // WINEDLLOVERRIDES entry and writes the session log line.
         // With "Allow in-game switching", our DLLs go in either way plus Wine's own xinput1_4 beside them
         // (the forward target), so the XInput source can change mid-game (Controls › Pad).
+        // A game xinput DLL an earlier session moved aside and never put back (it ended uncleanly) goes
+        // back first (core.GameXInputDlls); applyBannerinXInputEnv decides this launch's.
+        for (String line : com.winlator.star.core.GameXInputDlls.restoreAll(gameXInputManifest()))
+            Log.i("XServerDisplayActivity", "Game xinput DLL: " + line);
         String bxinputWineRoot = null;
         try { bxinputWineRoot = imageFs.getWinePath(); } catch (Throwable ignored) {}
         bxinputSync = com.winlator.star.core.BannerinXInput.syncForLaunch(this, new File(imageFs.getRootDir(), ImageFs.WINEPREFIX),
@@ -8411,6 +8423,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String unrealHdrMode = com.winlator.star.core.UnrealHdr.OFF;
     private com.winlator.star.core.DxvkNvapi.Result nvapiSync;
     private com.winlator.star.core.BannerinXInput.Result bxinputSync;
+    /** XInput DLL names this game ships that Wine's builtin serves this launch (=b), for the toast and Pad. */
+    private final java.util.List<String> bxinputGameBuiltin = new ArrayList<>();
     private com.winlator.star.core.BannerinXInput.LaunchControl bannerinLaunchControl;
     // In-game controller settings (Controls › Pad) of a Wine session, and what the launch set them to.
     private LiveControllerSession liveControllerSession;
@@ -8447,12 +8461,43 @@ public class XServerDisplayActivity extends AppCompatActivity {
             StringBuilder line = new StringBuilder("Direct XInput (BANNERIN) on: ")
                     .append(sync.detail != null ? sync.detail : "dlls not installed");
             if (sync.installed) {
-                java.util.List<String> kept = new ArrayList<>();
                 String before = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
-                String after = com.winlator.star.core.BannerinXInput.withDllOverrides(before, kept);
-                if (!after.equals(before)) envVars.put("WINEDLLOVERRIDES", after);
-                line.append("; WINEDLLOVERRIDES=").append(after);
-                if (!kept.isEmpty()) line.append(" (yours kept for ").append(String.join(",", kept)).append(")");
+                // The game's own xinput DLLs (core.GameXInputDlls): Wine looks in the game's folder before
+                // system32, so a copy there would load instead of ours (Microsoft's needs a driver Wine
+                // lacks: no pads). A name the user's overrides set stays theirs; with "Use Direct XInput
+                // over the game's own XInput DLL" the copy is moved aside for the session; otherwise that
+                // name gets Wine's builtin (=b), as before Direct XInput.
+                java.util.Map<String, String> userNamed = com.winlator.star.core.GameXInputDlls.named(before);
+                java.util.Map<String, File> shipped = com.winlator.star.core.GameXInputDlls.findShipped(
+                        gameExeFolders(), com.winlator.star.core.BannerinXInput.bundledShas(this));
+                boolean overGame = shortcut != null
+                        && "1".equals(shortcut.getExtra(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME));
+                java.util.Set<String> builtin = new java.util.LinkedHashSet<>();
+                java.util.List<String> notes = new ArrayList<>();
+                for (java.util.Map.Entry<String, File> e : shipped.entrySet()) {
+                    String dll = e.getKey();
+                    if (userNamed.containsKey(dll)) {
+                        String order = userNamed.get(dll);
+                        notes.add("the game ships " + e.getValue().getName() + "; yours kept (" + dll + "=" + order + ")"
+                                + (com.winlator.star.core.GameXInputDlls.nativeFirst(order)
+                                        ? ", so the game's own copy loads (Prefer game-folder DLLs)" : ""));
+                        continue;
+                    }
+                    if (overGame && com.winlator.star.core.GameXInputDlls.moveAside(gameXInputManifest(), e.getValue(), notes))
+                        continue;
+                    builtin.add(dll);
+                    notes.add("the game ships " + e.getValue().getName() + ": Wine's builtin " + dll + " for it (=b)");
+                }
+                com.winlator.star.core.GameXInputDlls.Overrides o =
+                        com.winlator.star.core.GameXInputDlls.overrides(before, builtin);
+                if (!o.value.equals(before)) envVars.put("WINEDLLOVERRIDES", o.value);
+                synchronized (bxinputGameBuiltin) {
+                    bxinputGameBuiltin.clear();
+                    bxinputGameBuiltin.addAll(o.builtin);
+                }
+                line.append("; WINEDLLOVERRIDES=").append(o.value);
+                if (!o.kept.isEmpty()) line.append(" (yours kept for ").append(String.join(",", o.kept)).append(")");
+                for (String n : notes) line.append("; ").append(n);
             } else {
                 line.append("; no override, Wine's builtin xinput stays in use");
             }
@@ -8460,6 +8505,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
         } catch (Throwable t) {
             Log.w("XServerDisplayActivity", "Direct XInput (BANNERIN) environment failed", t);
         }
+    }
+
+    /** Where GameXInputDlls records the game xinput DLLs it moved aside (app files, survives the session). */
+    private File gameXInputManifest() {
+        return new File(getFilesDir(), com.winlator.star.core.GameXInputDlls.MANIFEST_NAME);
+    }
+
+    /** The game EXE's folder on the Android side (also its working directory: the launch passes /dir of
+     *  it), or none for a desktop launch, a .lnk or an unmapped drive. */
+    private java.util.List<File> gameExeFolders() {
+        java.util.List<File> dirs = new ArrayList<>();
+        try {
+            if (shortcut == null || container == null || shortcut.path == null || shortcut.path.endsWith(".lnk")) return dirs;
+            File dir = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, FileUtils.getDirname(shortcut.path));
+            if (dir != null && dir.isDirectory()) dirs.add(dir);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "game folder for the xinput check", t);
+        }
+        return dirs;
     }
 
     /** {@code key=value} into the launch env unless the user's own env vars set {@code key} (theirs wins);
@@ -15450,6 +15514,24 @@ return true;
             }
         }, controllerSaveTarget, launchPadIdentity, launchDInputVisible, launchDInputForcedWhy, direct, switchable, mode, flags);
         liveControllerSession.attach();
+        noteGameShipsXInput();
+    }
+
+    /** The game ships its own xinput DLL and Wine's builtin serves it (applyBannerinXInputEnv): a note on
+     *  Controls › Pad, and once per game a toast saying how to use Direct XInput there. */
+    private void noteGameShipsXInput() {
+        String names;
+        synchronized (bxinputGameBuiltin) {
+            if (bxinputGameBuiltin.isEmpty()) return;
+            names = String.join(", ", bxinputGameBuiltin);
+        }
+        if (liveControllerSession != null) liveControllerSession.noteGameShipsXInput(names);
+        String key = "bxinput_game_dll_toast:" + (shortcut != null ? shortcut.file.getAbsolutePath() : "") + ":" + names;
+        if (preferences.getBoolean(key, false)) return;
+        preferences.edit().putBoolean(key, true).apply();
+        XServerDialogState.INSTANCE.showInfoToast("DIRECT XINPUT", "",
+                "This game ships its own XInput DLL (" + names + "). Using Wine's XInput for it; Direct XInput can't be "
+                        + "used unless you enable 'Use Direct XInput over the game's own XInput DLL' in its Controller settings.");
     }
 
     private void updateAutoHideForControllers() {

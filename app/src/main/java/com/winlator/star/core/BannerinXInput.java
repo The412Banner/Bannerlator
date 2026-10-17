@@ -207,6 +207,12 @@ public final class BannerinXInput {
         return directOn ? XINPUT_MODE_DIRECT : XINPUT_MODE_FORWARD;
     }
 
+    /** The sha256 of every DLL in this build's bundle (to tell our own files from a game's copy). */
+    public static Set<String> bundledShas(Context context) {
+        Bundle b = bundle(context);
+        return b != null ? new java.util.HashSet<>(b.files.values()) : java.util.Collections.emptySet();
+    }
+
     // ── The prefix ───────────────────────────────────────────────────────────────────────────────
 
     /** What {@link #sync} / {@link #syncForLaunch} did, for the session log and the control block. */

@@ -245,6 +245,7 @@ import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
 import com.winlator.star.core.BannerinXInput
 import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVisibility
+import com.winlator.star.core.GameXInputDlls
 import com.winlator.star.core.RumbleMotors
 import com.winlator.star.core.StickPacing
 import com.winlator.star.core.CopyGameToDriveC
@@ -5770,6 +5771,8 @@ internal fun ShortcutSettingsDialogScreen(
     }
     var bannerinXInputOwn by remember { mutableStateOf(ownOnOff(shortcut.getExtra(BannerinXInput.EXTRA_KEY))) }
     var xinputSwitchingOwn by remember { mutableStateOf(ownOnOff(shortcut.getExtra(BannerinXInput.EXTRA_SWITCHING))) }
+    // This game only, off by default: move the game's own xinput DLLs aside for the session (GameXInputDlls).
+    var xinputOverGameDll by remember { mutableStateOf(shortcut.getExtra(GameXInputDlls.EXTRA_OVER_GAME) == "1") }
     var stickPacingOwn by remember { mutableStateOf(StickPacing.parse(shortcut.getExtra(StickPacing.EXTRA))?.format() ?: "") }
     // Controller identity: kept as stored (a Linux-only value on a Linux entry survives a save).
     val containerIdentity = remember { ControllerIdentity.forWine(shortcut.container.getControllerIdentity()) }
@@ -6174,6 +6177,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra(DInputVisibility.EXTRA_INPUT_TYPE, ownDInput?.let { DInputVisibility.inputTypeFor(it).toString() })
             putExtra(BannerinXInput.EXTRA_KEY, bannerinXInputOwn.ifEmpty { null })
             putExtra(BannerinXInput.EXTRA_SWITCHING, xinputSwitchingOwn.ifEmpty { null })
+            putExtra(GameXInputDlls.EXTRA_OVER_GAME, if (xinputOverGameDll) "1" else null)
             putExtra(StickPacing.EXTRA, stickPacingOwn.ifEmpty { null })
             putExtra(ControllerIdentity.EXTRA, identityOwn.ifEmpty { null })
             putExtra("disableXinput", if (disabledXInput) "1" else null)
@@ -6359,7 +6363,7 @@ internal fun ShortcutSettingsDialogScreen(
             }
             4 -> { // Controller
                 if (!isLinuxEntry) {
-                    add("dinputVisible"); add("bannerinXInput"); add("bannerinXInputSwitching"); add("stickPacing")
+                    add("dinputVisible"); add("bannerinXInput"); add("bannerinXInputSwitching"); add("xinputOverGameDll"); add("stickPacing")
                     if (StickPacing.parse(stickPacingOwn)?.let { it.mode != StickPacing.MODE_OFF } == true) add("stickPacingHz")
                     add("controllerIdentity"); add("disableXInput")
                 }
@@ -7998,6 +8002,16 @@ internal fun ShortcutSettingsDialogScreen(
                                 onOffValues, onOffLabels, xinputSwitchingOwn, { xinputSwitchingOwn = it },
                                 R.string.help_bannerin_xinput_switching_game
                             ) { helpRes = it }
+                            // A game that ships its own xinput DLL gets Wine's for that name unless this is on
+                            // (core.GameXInputDlls): its copy is then moved aside while the game runs.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                DpSwitch(dp, "xinputOverGameDll", checked = xinputOverGameDll, onCheckedChange = { xinputOverGameDll = it })
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.bannerin_xinput_over_game_dll), modifier = Modifier.weight(1f))
+                                IconButton(onClick = { helpRes = R.string.help_bannerin_xinput_over_game_dll }) {
+                                    Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                                }
+                            }
                             // Stick updates (core.StickPacing): the mode here, this game's rate on the slider.
                             val ownPacing = StickPacing.parse(stickPacingOwn)
                             OverrideDrop(

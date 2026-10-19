@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-10-19 — 🌊 Wayland adapter v2: parked work ported onto main + one combined adapter build (branch `feat/wayland-adapter-v2-port`, not merged)
+> Port of the parked `feat/wayland-adapter-v2` (10-03, 286 behind main) onto main `117f8b5`, plus a new adapter asset that carries everything the two adapter builds had separately.
+> - **Ported (cherry-picked):** async copy path + high-priority compositor queue + present-interval stats (`316d3e2e`); client render fences for zero-copy buffers (banner_ahb_v1 v3) + native driver probe (`e7f7269c`); Auto → adapter, adapter settings with Profiles (Auto/Smooth/Fast/Compatibility) + tri-state switches, driver report (`013cee27`); longer perf log line (`d35efbaf`).
+> - **Hand-merged:** the Wayland driver settings dialog keeps main's Mali (PanVK) section next to the adapter settings (OK writes the adapter keys + the Mali keys); the per-game Wayland game driver row re-applied on main's newer shortcut editor layout.
+> - **Not taken:** `1ec212e7` (plain-slash icd.json for every GPU). Main writes plain slashes on Mali only and keeps the escaped form the adapter was device-proven with on Adreno.
+> - **Adapter asset:** bionic-vulkan-wrapper `banner/wayland-adapter-v2` @ `d2094e8` (CI 39342745466, pipetto-ahb leg, sha256 `0f510867…`) = Mali switches (c9a3ab7) + pass-through dispatch + client render fences (db0156d) + KGSL poll fix + tear-safe AHB zero-copy. Pass-through keeps full wrapping when `BANNER_MALI_NO_SUBMIT_WAITS` is on.
+> - **A/B switches:** `BANNER_WAYLAND_ASYNC_COPY=0`, `BANNER_WAYLAND_ZC_CLIENT_FENCE=0`, `BANNER_WRAPPER_PASSTHROUGH=0`, `BANNER_WSI_NO_CLIENT_FENCE=1`.
+> - **Open:** XMB and Deck graphics settings still show only the present mode for Wayland (no profiles). NOT device-tested.
+
 ## 2026-10-19 — ✅ Controller input log + DirectInput visible = no entry merged to main (`3d0aacb`)
 > `feat/controller-log` fast-forwarded onto main (`5865486d` → `3d0aacb`, 3 commits; backup `refs/backup/20261019/main-before-controller-log`). In: Log Manager › "Controller input" (off by default) writing `controller.txt` per Wine game at exit (checklist per player, setup, controllers, session events, BANNERIN counters, guest controller lines); "DirectInput games can see the controller" On writes no Joysticks entry again (the old Exclusive Input off; "override" only when forced), which fixed Watch Dogs 2's controls. Device-proven on the Pocket FIT: Watch Dogs 2 controls with the switch On (`707fb16`), and `3d0aacb`'s controller.txt (only player 1, 5 pass / 0 warn, in-game DirectInput off → on reconnects logged). CI Build (artifacts only) 39269018185 green on `3d0aacb`. Not yet tested: other games / controller types with the no-entry change, and whether pre3's known issue (Wine XInput + DirectInput visible) still happens without "override". No release until the user says so.
 

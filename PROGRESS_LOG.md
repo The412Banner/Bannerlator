@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-10-21 — ▶️ Adapter v2 A/B "before" test started on the installed build (branch `feat/wayland-adapter-v2-port`, not merged)
+> - After the reboot, re-checked live: installed base.apk `7f650842…6d9f08c` (main `117f8b5`, CI 39285181118), staged v2 `f1e6c9f0…484dd1` unchanged, container 1 `.container` unchanged since 10-20 18:13 (Wayland, game driver adapter, Turnip r4, DXVK 2.4.1-gplasync, VKD3D 3.0.1, Proton-11.0-9.1-arm64ec-14, FEXCore, 1280×720, sync esync). AC powered, 97 %.
+> - User: charger in, fan on full (fixed), hands off; **user asked me to run both the AIO set and the DiRT Showdown benchmark** (instead of the user driving).
+> - Resume: if the session dies, the device may still have `ZZ AIO *` shortcuts on container 1's Desktop — delete them; results so far are in this entry once logged. v2 stays NOT installed.
+
 ## 2026-10-21 — ⏸️ Adapter v2 A/B: re-staged after the device wipe, "before" test planned, paused for a reboot (branch `feat/wayland-adapter-v2-port`, not merged)
 > - **Installed = main `117f8b5`** (pubg `com.tencent.ig`, shows 3.1.7-pre3 vc101, installed 2026-10-20 18:07): base.apk sha256 `7f650842…6d9f08c` == CI 39285181118 artifact `Bannerlator-main-117f8b5-pubg`. Not the pre3 release (size 553,112,227 vs 553,128,272). So before/after differ only by this branch's 5 code commits.
 > - **Re-staged** (the wipe removed the 10-20 copy): `/sdcard/Download/Bannerlator-adapter-v2-607f969a-pubg.apk` from CI 39343716800, sha256 `f1e6c9f0…484dd1` on host and device (same as 10-20); bundled `assets/wayland/adapter/libvulkan_wrapper.so` `0f510867…`. Not installed. That run's antutu failure was the random CI pipefail flake, fixed on `fix/ci-grep-pipefail` (`37cd31de`, CI 39528853825 green ×4, not merged).

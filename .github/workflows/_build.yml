@@ -602,7 +602,7 @@ jobs:
       # ONE flavor per job → only one ~588MB APK packages here, so the old
       # `--no-parallel --max-workers=1` OOM-guard is dropped; full workers now.
       # org.gradle.caching=true (gradle.properties) reuses task outputs across runs.
-      run: ./gradlew ${{ matrix.flavor.task }} -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g"
+      run: ./gradlew ${{ matrix.flavor.task }} -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g" -Pkotlin.compiler.execution.strategy=in-process
 
     # The bionic libfakeinput.so now links libbannerin_guest.a: it must not gain a dependency or
     # export any symbol of the transport (it is preloaded into every Wine process).

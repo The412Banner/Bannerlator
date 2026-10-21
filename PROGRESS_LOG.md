@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-10-21 — ✅ Adapter v2 A/B: "before" pass 3 done, current adapter fully measured; next = ask to install v2 (branch `feat/wayland-adapter-v2-port`, not merged)
+> - **Pass 3** on the installed main `117f8b5` (base.apk sha `7f650842…6d9f08c`, re-checked), AIO **2.2.0** 64-bit from `C:\AIO Graphics Test 2.2.0\`, `aio1.sh <api> before3` (aio1.sh sha `ccaeccfc…`), one standalone `--cube <api> --bench 15` launch per API, waited for ThermalStatus 0 before each. Fan was on full (pwm1 255). Results in `perf-harness/results/before3/` (csv, meta, logcat, png per API).
+> - **avg / 1% low fps (pass 3 vs mean of passes 1–2):** Vk 2848/1119 (2877, −1.0 %) · GL 2976/1204 (2985, −0.3 %) · D12 5273/1440 (5319, −0.9 %) · D11 4394/1012 (4398, −0.1 %) · D10 4413/953 (4340, +1.7 %) · D9 4622/1314 (4613, +0.2 %) · D8 4531/1323 (4554, −0.5 %) · DD 3558/1402 (3616, −1.6 %). All within 1.7 % → done-criterion met. Vk 1% low is lower than the two MAILBOX-build runs (1285/1302); avg is in line.
+> - All 8: result_ok=1, `fatal_lines=0`, ThermalStatus 0 before and after, screenshot shows the results popup; NewTermux in front afterwards (`topResumedActivity=com.termux/.app.TermuxActivity`).
+> - Side note from the screenshots: the Fusion HUD labels the D3D8 run "D3D9 · DXVK" and the DirectDraw run "OpenGL" (what the container actually loads for those APIs); not investigated.
+> - **Resume:** re-verify v2 APK hashes (`/sdcard/Download/Bannerlator-adapter-v2-607f969a-pubg.apk`, sha `f1e6c9f0…484dd1`, CI 39343716800), ASK before `pm install`; then "after" set: AIO 2.2.0 ×2–3 passes + DiRT ×3; compare DXVK present mode; clean temp AIO folders, fan to normal, log, ask about merging.
+
 ## 2026-10-21 — ⏸️ Adapter v2 A/B "before" test mostly done on the installed build; AIO 2.2.0 stable released; paused for the night (branch `feat/wayland-adapter-v2-port`, not merged)
 > - After the reboot, re-checked live: installed base.apk `7f650842…6d9f08c` (main `117f8b5`, CI 39285181118), staged v2 `f1e6c9f0…484dd1` unchanged, container 1 `.container` unchanged since 10-20 18:13 (Wayland, game driver adapter, Turnip r4, DXVK 2.4.1-gplasync, VKD3D 3.0.1, Proton-11.0-9.1-arm64ec-14, FEXCore, 1280×720, sync esync). AC powered, 97 %.
 > - User: charger in, fan on full (fixed), hands off; **user asked me to run both the AIO set and the DiRT Showdown benchmark** (instead of the user driving).

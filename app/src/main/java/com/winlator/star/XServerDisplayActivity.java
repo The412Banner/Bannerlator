@@ -1,3 +1,4 @@
+// CI timing test (comment only, not for merge)
 package com.winlator.star;
 
 import static com.winlator.star.core.AppUtils.showToast;

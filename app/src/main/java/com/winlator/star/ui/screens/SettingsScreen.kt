@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,6 +54,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
@@ -90,6 +92,7 @@ import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.midi.MidiManager
 import com.winlator.star.store.NetworkProbe
+import com.winlator.star.store.SteamLibraryManagerDialog
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamRegion
 import com.winlator.star.xenvironment.ImageFsInstaller
@@ -147,6 +150,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     // "Test network" (store/NetworkProbe): the same NAT / UDP verdict the SteamLite pre-flight shows.
     var steamNetResult by remember { mutableStateOf(NetworkProbe.cached()) }
     var steamNetProbing by remember { mutableStateOf(false) }
+    // "Steam library locations" manager dialog (store/SteamLibraryLocationsUi).
+    var showSteamLibraries by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         UpdateManager.check(context) { info -> activity?.runOnUiThread { updateInfo = info } }
     }
@@ -679,6 +684,24 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
                 modifier = Modifier.padding(start = 12.dp),
             )
+            Spacer(Modifier.height(12.dp))
+            // ── Steam library locations (store/SteamLibraryLocations) — extra install folders on shared
+            //    storage / SD; the download dialog asks which one to use every time there is more than one.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.steam_lib_title), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                Button(onClick = { showSteamLibraries = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.steam_lib_manage), color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            Text(
+                stringResource(R.string.steam_lib_settings_subtitle),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+            if (showSteamLibraries) SteamLibraryManagerDialog(onDismiss = { showSteamLibraries = false })
             Spacer(Modifier.height(12.dp))
             // ── Steam connection region (store/SteamRegion) — written immediately; consumed by the
             //    Rust engine's CM pick, JavaSteam's CM pick (next app start), the download CDN

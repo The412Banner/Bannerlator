@@ -171,6 +171,42 @@ public final class SteamRepository {
     private void    pPut(String key, long v)    { if (prefs != null) prefs.edit().putLong(key, v).apply(); }
     private void    pPut(String key, int v)     { if (prefs != null) prefs.edit().putInt(key, v).apply(); }
 
+    // Valve's installdir per app (pics_installdir_<appId>) is learned for thousands of apps on the first
+    // library sync. One prefs edit per app would rewrite the whole file (which also holds the login) thousands of
+    // times, so the values are collected and written in a single edit: when enough are pending, when the sync
+    // finishes, and (for a lone single-app refresh) shortly after the last one was queued.
+    private final Map<String, String> picsDirPending = new java.util.HashMap<>();
+    private boolean picsDirFlushScheduled = false;
+
+    private void queuePicsInstallDir(String key, String value) {
+        boolean flushNow;
+        boolean schedule = false;
+        synchronized (picsDirPending) {
+            picsDirPending.put(key, value);
+            flushNow = picsDirPending.size() >= 500;
+            if (!flushNow && !picsDirFlushScheduled) { picsDirFlushScheduled = true; schedule = true; }
+        }
+        if (flushNow) flushPicsInstallDirs();
+        else if (schedule) {
+            new Handler(android.os.Looper.getMainLooper()).postDelayed(this::flushPicsInstallDirs, 3000L);
+        }
+    }
+
+    /** Writes every pending installdir value in ONE prefs edit. Safe to call from any thread, any time. */
+    public void flushPicsInstallDirs() {
+        Map<String, String> batch;
+        synchronized (picsDirPending) {
+            picsDirFlushScheduled = false;
+            if (picsDirPending.isEmpty()) return;
+            batch = new java.util.HashMap<>(picsDirPending);
+            picsDirPending.clear();
+        }
+        if (prefs == null) return;
+        SharedPreferences.Editor ed = prefs.edit();
+        for (Map.Entry<String, String> e : batch.entrySet()) ed.putString(e.getKey(), e.getValue());
+        ed.apply();
+    }
+
     private boolean isLoggedInPrefs() {
         return !pGet("refresh_token", "").isEmpty() && !pGet("username", "").isEmpty();
     }
@@ -846,7 +882,10 @@ public final class SteamRepository {
     /** Seconds since epoch of last successful PICS library sync. 0 = never. */
     public long getLastSyncTime() { return pGet("last_sync_time", 0L); }
 
-    private void recordSyncTime() { pPut("last_sync_time", System.currentTimeMillis() / 1000L); }
+    private void recordSyncTime() {
+        flushPicsInstallDirs();   // the sync is done: persist the installdir values it collected
+        pPut("last_sync_time", System.currentTimeMillis() / 1000L);
+    }
 
     // -------------------------------------------------------------------------
     // Pluvia handlers: SteamCloud + SteamUserStats (exposed for SteamCloudSync
@@ -2151,6 +2190,17 @@ public final class SteamRepository {
                         // vacmacmodulecache); Brawlhalla (291550) has neither. There is no literal "vac"
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
+                        // Valve's own folder name under steamapps/common (PICS config/installdir) — what
+                        // every Steam client and the appmanifest's "installdir" use. Recorded so a game
+                        // installed into a steamapps library lands where other clients look for it.
+                        // Same prefs file the SteamPrefs object reads; written only when it changed.
+                        try {
+                            String picsInstallDir = kvStr(root.get("config").get("installdir")).trim();
+                            String picsKey = SteamPrefs.K_PICS_INSTALLDIR_PREFIX + appId;
+                            if (!picsInstallDir.isEmpty() && !picsInstallDir.equals(pGet(picsKey, ""))) {
+                                queuePicsInstallDir(picsKey, picsInstallDir);
+                            }
+                        } catch (Throwable ignored) {}
                         // Broadened DLC CATALOGUE for the detail-page DLC TAB: EVERY DLC the game
                         // lists in extended/listofdlc, split owned/unowned. included_dlc above stays
                         // the depot-bundled owned subset that drives the download picker/size — this

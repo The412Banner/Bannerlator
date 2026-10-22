@@ -622,6 +622,23 @@ object SteamGameUpdater {
     }
 
     /**
+     * The `(branch, build)` this install was stamped with by [recordInstalledBuild] /
+     * [recordKnownBuild], or null when there is no readable stamp. Used to write the game's
+     * `appmanifest_<appid>.acf` ([SteamAppManifest]) with the build that is really on disk.
+     */
+    internal fun readInstalledStamp(installDir: File): Pair<String, Long>? {
+        return try {
+            val f = File(installDir, BUILD_MARKER_REL)
+            if (!f.isFile) return null
+            val txt = f.readText().trim()
+            val sep = txt.indexOf('|')
+            if (sep <= 0) return null
+            val build = txt.substring(sep + 1).trim().toLongOrNull() ?: return null
+            txt.substring(0, sep) to build
+        } catch (_: Throwable) { null }
+    }
+
+    /**
      * Stamp the install dir with the branch's current live build. Called after any completed install
      * (here after an update pass, and from [SteamDepotDownloader] after a normal install) so the cheap
      * build-id compare works on the next launch. Best-effort; a failure just means the next launch

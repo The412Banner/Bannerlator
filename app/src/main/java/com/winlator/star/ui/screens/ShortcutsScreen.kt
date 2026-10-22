@@ -4017,7 +4017,7 @@ private fun CommunityConfigDetailDialog(
 // and appId reader as the phone UI — the launch-method popup fires on the same set of games on both.
 internal fun isSteamOriginShortcut(shortcut: Shortcut): Boolean {
     if (shortcut.getExtra("storeSource") == "steam") return true
-    return shortcut.path.contains("steam_games", ignoreCase = true)
+    return com.winlator.star.store.SteamInstallPaths.isUnderInstallRoot(shortcut.path, shortcut.getExtra("storeSource"))
 }
 
 internal fun steamAppIdOf(shortcut: Shortcut): Int =

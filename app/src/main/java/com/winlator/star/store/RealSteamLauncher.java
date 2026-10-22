@@ -789,15 +789,16 @@ public final class RealSteamLauncher {
      * The game exe path relative to its install dir, in Windows form, derived from the shortcut's guest
      * exe path (e.g. {@code Z:\steam_games\<folder>\left4dead2.exe} → {@code left4dead2.exe}, and a nested
      * {@code ...\<folder>\bin\x64\game.exe} → {@code bin\x64\game.exe}). Falls back to the exe basename
-     * when the path carries no {@code steam_games/} segment (e.g. a Copy-to-C game). Never null.
+     * when the path carries no {@code steam_games/} or {@code steamapps/common/} segment (e.g. a Copy-to-C
+     * game). Never null.
      */
     static String exeRelativeToInstall(String guestExePath) {
         if (guestExePath == null || guestExePath.isEmpty()) return "";
         String norm = guestExePath.replace('\\', '/');
-        int idx = norm.toLowerCase().indexOf("steam_games/");
+        // Text after the install root (steam_games/ or steamapps/common/): "<folder>/rel/exe".
+        String after = SteamInstallPaths.afterInstallRoot(guestExePath);
         String rel;
-        if (idx >= 0) {
-            String after = norm.substring(idx + "steam_games/".length()); // "<folder>/rel/exe"
+        if (after != null) {
             int slash = after.indexOf('/');
             rel = (slash >= 0) ? after.substring(slash + 1) : after;       // strip the "<folder>/"
         } else {

@@ -307,10 +307,13 @@ object SteamDepotDownloader {
      *   fed to [DownloadSpeedConfig] to derive maxDownloads/maxDecompress.
      * @param debugLog when true (or in a debug build) writes the verbose steam_debug.txt firehose +
      *   JavaSteam-internal bridge for this download. Off = logcat-only; failures still leave a trace.
-     * @param installRoot when non-null, the `steam_games` base a fresh install lands in instead of the
-     *   internal `imagefs/steam_games` default — used by the "Install to SD card" toggle, which passes
-     *   `<sd>/bannerlator/steam_games` ([SteamSdInstall.SdTarget.steamGamesBase]). Ignored for a resume
-     *   or an update/verify of an already-installed game, which stay in their existing directory.
+     * @param installRoot when non-null, the base a fresh install lands in instead of the internal
+     *   `imagefs/steam_games` default — the install dialog's chosen location, i.e.
+     *   `<sd>/bannerlator/steam_games` ([SteamSdInstall.SdTarget.steamGamesBase]) or a user library's
+     *   `<folder>/steamapps/common` ([SteamLibraryLocations.Location.installRoot]; the game folder there is
+     *   named by [SteamInstallPaths.freshInstallDir] and gets an appmanifest, see [SteamAppManifest]).
+     *   Ignored for a resume or an update/verify of an already-installed game, which stay in their
+     *   existing directory.
      * @param verify "verify integrity" pass: re-validate EVERY on-disk file against the live manifest
      *   and re-fetch what is missing or corrupt. Consumed by the Rust-engine path only (it selects the
      *   engine's fresh/verify mode); the JavaSteam engine ignores it — there the caller clears the
@@ -325,8 +328,11 @@ object SteamDepotDownloader {
         debugLog: Boolean = false,
         installRoot: String? = null,
         verify: Boolean = false,
-    ): DownloadControl =
-        buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
+    ): DownloadControl {
+        // The user is installing this game on purpose again: library import may pick it up once it is done.
+        SteamLibraryImport.clearIgnore(ctx, appId)
+        return buildControl(appId, ctx, speedTier, debugLog, isResume = false, installRoot = installRoot, verify = verify)
+    }
 
     /**
      * Resume a previously paused install. Keeps the existing DB row (bytes intact).
@@ -502,7 +508,7 @@ object SteamDepotDownloader {
         } catch (_: Throwable) {}
 
         // Sanitise game name for directory usage
-        val safeName = row.name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
+        val safeName = SteamInstallPaths.safeGameFolderName(row.name, appId)
         // Where this app's files go. installApp always installs a game to where it ALREADY lives when
         // it lives somewhere, and only a brand-new install picks a fresh location:
         //   • a resume returns to the directory the in-progress download already chose (persisted on
@@ -513,14 +519,17 @@ object SteamDepotDownloader {
         //     installed game) — so updating an SD game updates the SD copy in place, never a stray
         //     internal one.
         //   • a fresh install honours the SD toggle (installRoot = <sd>/bannerlator/steam_games) when
-        //     set, else the internal imagefs default (the fast path — unchanged from before).
+        //     set, else the internal imagefs default (the fast path — unchanged from before). A user
+        //     library's installRoot is its steamapps/common: the game folder there takes Valve's
+        //     installdir name, or the name an existing appmanifest already records, and a folder that
+        //     already exists is built on, never reset (see SteamInstallPaths.freshInstallDir).
         val internalBase = File(ctx.filesDir, "imagefs/steam_games")
         val resumeDir   = if (isResume) db.getDownload(appId)?.installDir?.takeIf { it.isNotBlank() } else null
         val existingDir = row.installDir.takeIf { it.isNotBlank() }
         val installDir = when {
             resumeDir   != null -> File(resumeDir)
             existingDir != null -> File(existingDir)
-            installRoot != null -> File(File(installRoot), safeName)
+            installRoot != null -> SteamInstallPaths.freshInstallDir(File(installRoot), appId, safeName)
             else                -> File(internalBase, safeName)
         }
         // A brand-new install steered onto the SD card (or any off-imagefs root) by the toggle. Update
@@ -571,21 +580,41 @@ object SteamDepotDownloader {
         // root before its bannerlator/ tree is created). Requiring the FULL install size up front
         // (best-effort — this is the manifest-true total when resolved, else the PICS estimate) stops
         // an SD download from filling the card and stranding a half-install. Only a genuine fresh SD
-        // install is checked; a resume/update reuses files already on the card.
+        // install is checked; a resume/update reuses files already on the card. A game folder that
+        // already exists (a steamapps library another client filled) counts for what it holds: only the
+        // part still missing has to fit.
         if (isFreshSdInstall && installTotal > 1L) {
             var probe = installDir
             while (!probe.exists() && probe.parentFile != null) probe = probe.parentFile!!
             val free = SteamSdInstall.freeBytes(probe)
-            if (free < installTotal + SteamSdInstall.FREE_SPACE_MARGIN) {
-                dlog("SD free-space guard FAILED: need ${fmtSize(installTotal)} + margin " +
+            val alreadyOnDisk = if (installDir.isDirectory) dirSizeBytes(installDir) else 0L
+            val needed = (installTotal - alreadyOnDisk).coerceAtLeast(0L)
+            if (free < needed + SteamSdInstall.FREE_SPACE_MARGIN) {
+                dlog("SD free-space guard FAILED: need ${fmtSize(needed)} + margin " +
                         "${fmtSize(SteamSdInstall.FREE_SPACE_MARGIN)}, only ${fmtSize(free)} free on " +
                         probe.absolutePath)
-                emitFailed(appId, "Not enough space on the SD card — need about ${fmtSize(installTotal)}, " +
-                        "${fmtSize(free)} free. Free some space or install to internal storage.")
+                emitFailed(appId, "Not enough space at the chosen install location — need about " +
+                        "${fmtSize(needed)}, ${fmtSize(free)} free. Free some space or pick another location.")
                 return
             }
             dlog("SD free-space guard OK: ${fmtSize(free)} free on ${probe.absolutePath} for a " +
-                    "${fmtSize(installTotal)} install")
+                    "${fmtSize(needed)} install (${fmtSize(alreadyOnDisk)} already there)")
+        }
+
+        // A steamapps library: make sure it is a complete Steam library (idempotent — creates only what
+        // is missing, never rewrites an existing libraryfolders.vdf) and mark the game folder as this
+        // app's own when this install is the one creating it. A folder that already holds files stays
+        // unmarked, so nothing here can later be mistaken for something this app may wipe.
+        if (isFreshSdInstall) {
+            SteamInstallPaths.steamappsOfInstallDir(installDir)?.let { steamapps ->
+                SteamAppManifest.ensureLibrary(steamapps)
+                SteamInstallPaths.claimIfNew(installDir)
+                // A folder another client installed (no marker of ours): flag its manifest "update required"
+                // until this install finishes, so a cancel or failure can't leave a mix under a "healthy" manifest.
+                if (!File(installDir, SteamInstallPaths.OWNED_MARKER).exists()) {
+                    SteamAppManifest.markUpdateRequired(installDir, appId)
+                }
+            }
         }
 
         // Queue in DB so UI shows progress (skip reset on resume — keep existing bytes).
@@ -1020,6 +1049,10 @@ object SteamDepotDownloader {
                     val stampBranch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
                     SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, stampBranch)
                 } catch (_: Throwable) {}
+                // A game in a steamapps library gets (or has merged into) its appmanifest_<appid>.acf so
+                // every other Steam client sees the install. No-op for every other layout; never throws.
+                SteamAppManifest.recordInstall(ctx, appId, installDir,
+                    if (finalInstall > 0L) finalInstall else iTotal, null)
                 repo.emit("DownloadComplete:$appId")
                 // Terminal success → INSTALLED. The registry persists INSTALLED rows to the
                 // durable library, so this game survives process death in the Library section.

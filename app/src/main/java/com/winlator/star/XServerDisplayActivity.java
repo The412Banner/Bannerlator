@@ -68,6 +68,7 @@ import com.winlator.star.store.GoldbergMode;
 import com.winlator.star.store.GoldbergPatcher;
 import com.winlator.star.store.SteamAchievementStore;
 import com.winlator.star.store.SteamPrefs;
+import com.winlator.star.store.SteamInstallPaths;
 import com.winlator.star.store.SteamCloudSaveManager;
 import com.winlator.star.store.SteamDatabase;
 import com.winlator.star.store.SteamRepository;
@@ -5732,8 +5733,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean isGenuineSteamShortcut() {
         if (shortcut == null) return false;
         if ("steam".equals(shortcut.getExtra("storeSource"))) return true;
-        String p = shortcut.path;
-        return p != null && p.toLowerCase().contains("steam_games");
+        return SteamInstallPaths.isUnderInstallRoot(shortcut.path, shortcut.getExtra("storeSource"));
     }
 
     /**
@@ -5783,8 +5783,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // Steam install root (steam_games/, where the in-app store installs; imports don't). This
             // prevents a cover-linked custom import from being mis-filed under a Steam appId's Library.
             String storeSource = sc.getExtra("storeSource", "");
-            String path = sc.path != null ? sc.path.toLowerCase() : "";
-            boolean genuineSteam = "steam".equals(storeSource) || path.contains("steam_games");
+            boolean genuineSteam = "steam".equals(storeSource)
+                    || SteamInstallPaths.isUnderInstallRoot(sc.path, storeSource);
             if (!genuineSteam) return;
 
             // Tagged appId is the fast path; 0/missing (a PRE-TAGGING shortcut like an older Half-Life 2
@@ -5871,14 +5871,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * "Half-Life 2".
      */
     private static String steamGamesFolderOf(String rawPath) {
-        if (rawPath == null) return null;
-        String norm = rawPath.replace('\\', '/');
-        int idx = norm.toLowerCase().indexOf("steam_games/");
-        if (idx < 0) return null;
-        String after = norm.substring(idx + "steam_games/".length());
-        int slash = after.indexOf('/');
-        String folder = (slash >= 0 ? after.substring(0, slash) : after).trim();
-        return folder.isEmpty() ? null : folder;
+        // Both layouts: steam_games/<folder> (as before) and steamapps/common/<folder>.
+        return SteamInstallPaths.gameFolderOf(rawPath);
     }
 
     /**
@@ -5887,14 +5881,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * normalized) so "Half-Life" can't false-match "Half-Life 2".
      */
     private static boolean installDirMatchesFolder(String installDir, String folder) {
-        if (installDir == null || folder == null) return false;
-        String norm = installDir.replace('\\', '/');
-        while (norm.endsWith("/")) norm = norm.substring(0, norm.length() - 1);
-        String[] segs = norm.split("/");
-        for (int i = 0; i + 1 < segs.length; i++) {
-            if (segs[i].equalsIgnoreCase("steam_games") && segs[i + 1].equalsIgnoreCase(folder)) return true;
-        }
-        return false;
+        // Adjacent segments steam_games/<folder> or steamapps/common/<folder>.
+        return SteamInstallPaths.installDirMatchesFolder(installDir, folder);
     }
 
     /** Resolved [appId, installDir] for a genuine Steam-library shortcut. */
@@ -6608,8 +6596,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * MUST be called off the main thread (queries Room).
      */
     private SteamAppRef resolveSteamAppRefFrom(String execPath, String storeSource, int taggedAppId) {
-        String pathLower = execPath != null ? execPath.toLowerCase() : "";
-        boolean genuineSteam = "steam".equals(storeSource) || pathLower.contains("steam_games");
+        // legacyGate = the old gate (tagged steam, or a steam_games path). A steamapps/common path alone
+        // also passes (SteamInstallPaths), but only the legacy gate may use the "exactly one installed
+        // game" guess below — a path in someone else's Steam library must not be pinned on it.
+        boolean legacyGate = "steam".equals(storeSource) || SteamInstallPaths.isLegacyRootPath(execPath);
+        boolean genuineSteam = legacyGate || SteamInstallPaths.isUnderInstallRoot(execPath, storeSource);
         if (!genuineSteam) {
             logResolveSteamAppRefFailure("not genuine-Steam", execPath, storeSource, taggedAppId);
             return null;
@@ -6671,7 +6662,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
             // (4) NEW last-ditch: genuine-Steam exec path but still unresolved and EXACTLY ONE steam game is
             //     installed → it can only be that one.
-            if (appId <= 0 || installDir.isEmpty()) {
+            if (legacyGate && (appId <= 0 || installDir.isEmpty())) {
                 if (installed == null) installed = db.getInstalledGames();
                 if (installed != null && installed.size() == 1) {
                     SteamDatabase.GameRow only = installed.get(0);
@@ -6746,7 +6737,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         /** Mirrors {@link #isGenuineSteamShortcut()} but off raw signals (survives a null shortcut). */
         boolean isGenuineSteam() {
             if ("steam".equals(storeSource)) return true;
-            return execPath != null && execPath.toLowerCase().contains("steam_games");
+            return SteamInstallPaths.isUnderInstallRoot(execPath, storeSource);
         }
     }
 

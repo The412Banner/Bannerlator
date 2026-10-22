@@ -40,12 +40,20 @@ object StoreUninstaller {
      * @param installDir the game's install directory (may be null/empty → nothing to delete).
      * @param mark store-specific DB bookkeeping (e.g. markUninstalled); runs on the worker thread.
      * @param onResult invoked on the MAIN thread; `true` = dir fully removed (or nothing to remove).
+     * @param keepFolder asked on the worker thread; `true` = another game uses this folder, so it is NOT
+     *   deleted (the result still counts as success: this game's own record and manifest are gone).
      */
-    fun run(installDir: String?, mark: () -> Unit, onResult: (Boolean) -> Unit) {
+    fun run(installDir: String?, mark: () -> Unit, keepFolder: (() -> Boolean)? = null, onResult: (Boolean) -> Unit) {
         Thread {
             mark()
             val dir = installDir?.takeIf { it.isNotEmpty() }?.let { File(it) }
-            val ok = if (dir != null && dir.exists()) {
+            // Never delete a folder that holds games (steamapps, steamapps/common, steam_games), only a game's own.
+            val keep = try {
+                dir != null && (SteamInstallPaths.isLibraryContainer(dir) || keepFolder?.invoke() == true)
+            } catch (_: Throwable) { false }
+            val ok = if (keep) {
+                true
+            } else if (dir != null && dir.exists()) {
                 dir.deleteRecursively()
                 !dir.exists()
             } else {

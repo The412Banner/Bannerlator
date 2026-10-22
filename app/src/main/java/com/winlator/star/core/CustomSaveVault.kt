@@ -127,7 +127,7 @@ object CustomSaveVault {
             "steam", "epic", "gog", "android" -> return false
         }
         val p = shortcut.path ?: return true
-        return !p.contains("steam_games", ignoreCase = true) &&
+        return !com.winlator.star.store.SteamInstallPaths.isUnderInstallRoot(p, shortcut.getExtra("storeSource")) &&
             !p.contains("epic_games", ignoreCase = true) &&
             !p.contains("gog_games", ignoreCase = true)
     }

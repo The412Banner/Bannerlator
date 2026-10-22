@@ -74,6 +74,21 @@ object SteamPrefs {
     val isLoggedIn: Boolean
         get() = refreshToken.isNotEmpty() && username.isNotEmpty()
 
+    /**
+     * Replace the whole active-account view in ONE write (account switch — see [SteamAccountStore]).
+     * The other keys of the old account that are per-account (`last_pics_change`) are dropped with it.
+     */
+    fun setActiveAccount(username: String, refreshToken: String, steamId64: Long, accountId: Int, displayName: String) {
+        prefs.edit()
+            .putString(K_USERNAME, username)
+            .putString(K_REFRESH_TOKEN, refreshToken)
+            .putLong(K_STEAM_ID_64, steamId64)
+            .putInt(K_ACCOUNT_ID, accountId)
+            .putString(K_DISPLAY_NAME, displayName)
+            .remove(K_LAST_PICS_CHANGE)
+            .apply()
+    }
+
     // ── Goldberg (gbe_fork) per-game emulator mode ───────────────────────────
     // Keyed by appId so it survives uninstall/reinstall of the app's session.
     // Stored here (not in SteamDatabase) to avoid a Room migration + versionCode

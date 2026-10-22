@@ -547,6 +547,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // empty Wine desktop (black screen) after quitting the game. Mirrors the installer auto-exit above.
     // Gated to shortcut launches only and to the per-game/-container "autoCloseOnExit" setting.
     private boolean autoCloseOnExitEnabled = false;
+    /** True between onCreate and onDestroy, so the open game screen is counted exactly once. */
+    private boolean accountGameSessionCounted = false;
     private String autoCloseExeName;          // lowercased basename of the launched game exe
     private boolean gameProcSeen = false;
     private int gameGoneTicks = 0;
@@ -2000,6 +2002,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // A game screen is open: Steam account switching is refused until it closes (see onDestroy).
+        com.winlator.star.store.SteamAccountStore.INSTANCE.gameSessionOpened();
+        accountGameSessionCounted = true;
         // A cold start straight into the game (home-screen pinned shortcut, ACTION_VIEW, adb) never ran
         // MainActivity, so the theme/prefs singleton was uninitialised → default theme in the in-game UI.
         try { com.winlator.star.ui.theme.AppThemeState.INSTANCE.init(this); } catch (Throwable ignored) {}
@@ -7316,6 +7321,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         sessionInForeground = false;
+        if (accountGameSessionCounted) {
+            accountGameSessionCounted = false;
+            com.winlator.star.store.SteamAccountStore.INSTANCE.gameSessionClosed();
+        }
         // The last word on the handheld's companion screen, whatever took this session down (Exit, the
         // game's own watcher, a recents swipe, the system). Every other dismissal is about telling the
         // user something sooner; this one is the guarantee that nothing is left on the handheld

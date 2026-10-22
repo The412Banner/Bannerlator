@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -376,6 +377,13 @@ fun rememberSteamLibrary(): SteamLibraryState {
                     // Games another Steam client installed into a library folder become "installed"
                     // here once the library rows exist (off-thread; re-reads when it found any).
                     SteamLibraryImport.importInstalledAsync(appCtx) { load() }
+                    load()
+                }
+                event.startsWith("AccountSwitched:") -> {
+                    // A different account is active: show what IT owns (the cached rows are filtered
+                    // per account) until its own library sync lands.
+                    StorefrontLog.i(StorefrontLog.LIBRARY, "account switched — re-reading cached rows")
+                    statusText = "Syncing library…"
                     load()
                 }
                 event.startsWith("SteamStatus:") -> {
@@ -1142,13 +1150,23 @@ internal fun fmtLibrarySize(bytes: Long): String = when {
 
 /** Sign-out confirmation, moved with the rest of the library chrome. */
 @Composable
-internal fun SteamSignOutDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+internal fun SteamSignOutDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    onChangeAccount: () -> Unit,
+) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Sign out of Steam?") },
         text = { Text("Your saved login will be removed. You will need to sign in again.") },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Sign Out") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        // "Change account" is the non-destructive way out: it keeps every saved login (this one too).
+        dismissButton = {
+            Row {
+                TextButton(onClick = onChangeAccount) { Text(stringResource(R.string.steam_change_account)) }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
     )
 }
 

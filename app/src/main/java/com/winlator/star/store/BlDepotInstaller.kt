@@ -517,6 +517,7 @@ internal object BlDepotInstaller {
                     // the Library section below. Only clear on SUCCESS — paused/failed/cancelled keep
                     // their row (finishPaused/fail/finishCancelled) so Resume/retry still works.
                     db.deleteDownload(appId)
+                    SteamAccountStore.recordInstaller(ctx, appId)   // who downloaded it, for the launch-time account check
                     try { SteamGameUpdater.recordInstalledBuild(ctx, appId, installDir, selectedBranch) } catch (_: Throwable) {}
                     // A game in a steamapps library gets (or has merged into) its appmanifest_<appid>.acf
                     // with the depots just validated at their manifest ids, so every other Steam client

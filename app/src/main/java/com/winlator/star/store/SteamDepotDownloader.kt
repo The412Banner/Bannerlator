@@ -1041,6 +1041,7 @@ object SteamDepotDownloader {
                 // the Library section. Only clear on SUCCESS — paused/failed/cancelled keep their
                 // row (finishPaused/fail/finishCancelled) so Resume/retry still works.
                 db.deleteDownload(appId)
+                SteamAccountStore.recordInstaller(ctx, appId)   // who downloaded it, for the launch-time account check
                 // Stamp the build we just installed so the RealSteam update-on-launch gate
                 // (SteamGameUpdater) can cheaply detect this game is current next time — it compares
                 // this marker against the live steam_branches build id. Resolved independently of the

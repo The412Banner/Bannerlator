@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.CircularProgressIndicator
@@ -274,6 +275,26 @@ fun SteamStorefrontHost(
     }
     var message by remember { mutableStateOf<String?>(null) }
     var showSignOut by remember { mutableStateOf(false) }
+    var showAccounts by remember { mutableStateOf(false) }
+
+    // Explicit sign-out of the active account (its saved login is dropped; other saved accounts stay).
+    val signOutNow: () -> Unit = {
+        StorefrontLog.i(StorefrontLog.HOST, "sign-out confirmed — clearing the saved session")
+        Thread { runCatching { SteamRepository.getInstance().logout() } }.start()
+        onSignedOut()
+    }
+    // End the session (saved logins kept) and open the login screen, optionally pre-filled.
+    val openLoginKeepingAccounts: (String?) -> Unit = { prefill ->
+        SteamAccountStore.beginAddAccount(ctx) {
+            runCatching {
+                ctx.startActivity(
+                    Intent(ctx, SteamLoginActivity::class.java)
+                        .putExtra(SteamLoginActivity.EXTRA_USERNAME, prefill),
+                )
+            }
+            onSignedOut()
+        }
+    }
 
     // The rail's RIGHT target: focus lands in the content pane rather than wrapping around the
     // rail, so a D-pad user goes rail → content in one press.
@@ -339,6 +360,7 @@ fun SteamStorefrontHost(
                 onOpenFriends = { tab = SteamTab.FRIENDS },
                 onOpenApp = { openSteamGameDetail(ctx, it) },
                 onMessage = { message = it },
+                onChangeAccount = { showAccounts = true },
                 modifier = mod,
             )
         }
@@ -363,6 +385,7 @@ fun SteamStorefrontHost(
                     viewMode = libraryViewMode,
                     onToggleView = { libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
                     onSignOut = { showSignOut = true },
+                    onChangeAccount = { showAccounts = true },
                     contentFocus = contentFocus,
                 )
                 Box(
@@ -400,10 +423,42 @@ fun SteamStorefrontHost(
                 onDismiss = { showSignOut = false },
                 onConfirm = {
                     showSignOut = false
-                    StorefrontLog.i(StorefrontLog.HOST, "sign-out confirmed — clearing the saved session")
-                    Thread { runCatching { SteamRepository.getInstance().logout() } }.start()
-                    onSignedOut()
+                    signOutNow()
                 },
+                onChangeAccount = { showSignOut = false; showAccounts = true },
+            )
+        }
+
+        if (showAccounts) {
+            SteamAccountsDialog(
+                onDismiss = { showAccounts = false },
+                onAddAccount = {
+                    showAccounts = false
+                    val blocker = SteamAccountStore.sessionSwapBlocker(ctx)
+                    if (blocker != null) {
+                        message = steamSwitchMessage(ctx, blocker, null)
+                    } else {
+                        StorefrontLog.i(StorefrontLog.HOST, "add account — ending the session, keeping saved logins")
+                        openLoginKeepingAccounts(null)
+                    }
+                },
+                onSwitchResult = { result, account ->
+                    if (result != SteamAccountStore.SwitchResult.BUSY) showAccounts = false
+                    StorefrontLog.i(StorefrontLog.HOST, "account switch -> ${result.name}")
+                    if (result == SteamAccountStore.SwitchResult.NEEDS_LOGIN) {
+                        // Expired / rejected saved sign-in: login screen pre-filled with that username.
+                        // The other saved accounts are untouched.
+                        message = steamSwitchMessage(ctx, result, account)
+                        openLoginKeepingAccounts(account.username)
+                    } else {
+                        message = steamSwitchMessage(ctx, result, account)
+                    }
+                },
+                onSignOutActive = {
+                    showAccounts = false
+                    signOutNow()
+                },
+                onMessage = { message = it },
             )
         }
 
@@ -485,6 +540,7 @@ private fun StorefrontRail(
     viewMode: String,
     onToggleView: () -> Unit,
     onSignOut: () -> Unit,
+    onChangeAccount: () -> Unit,
     contentFocus: FocusRequester,
 ) {
     Column(
@@ -556,6 +612,7 @@ private fun StorefrontRail(
             viewMode = viewMode,
             onToggleView = onToggleView,
             onSignOut = onSignOut,
+            onChangeAccount = onChangeAccount,
         )
         Spacer(Modifier.height(8.dp))
     }
@@ -648,6 +705,7 @@ private fun RailOverflow(
     viewMode: String,
     onToggleView: () -> Unit,
     onSignOut: () -> Unit,
+    onChangeAccount: () -> Unit,
 ) {
     val ctx = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
@@ -697,6 +755,13 @@ private fun RailOverflow(
                     Icon(Icons.Filled.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 },
                 onClick = { expanded = false; showSocialSettings = true },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.steam_change_account)) },
+                leadingIcon = {
+                    Icon(Icons.Filled.SwitchAccount, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                },
+                onClick = { expanded = false; onChangeAccount() },
             )
             HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
             DropdownMenuItem(

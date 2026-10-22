@@ -39,6 +39,21 @@ data class SteamGame(
 
     /** Comma-separated genre names from PICS common.genres. Empty if not available. */
     val genres: String = "",
+
+    /**
+     * Steam USER-review percent positive, 0-100, from the store's appreviews summary
+     * ([SteamReviewScores]). -1 = no rating (not fetched yet, or too few reviews to rate).
+     */
+    val reviewPercent: Int = -1,
+
+    /** Positive + negative review votes behind [reviewPercent]; 0 when unrated. */
+    val reviewTotal: Int = 0,
+
+    /** Steam's own label for the score ("Very Positive"). Empty when unrated or unknown. */
+    val reviewDesc: String = "",
+
+    /** Epoch seconds of the last review fetch; 0 = never fetched. */
+    val reviewUpdated: Long = 0L,
 ) {
     /** Store header image URL — available for all apps, no hash needed. */
     val headerUrl: String

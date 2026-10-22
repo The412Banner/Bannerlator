@@ -87,6 +87,15 @@ private fun SteamLibraryScreen(onBack: () -> Unit) {
                 .getOrDefault(LibraryTypeFilter.GAMES),
         )
     }
+    // Search text (this screen has no tab switching, and the Activity handles rotation itself) and the
+    // persisted sort, shared with the storefront's Library tab.
+    var query by remember { mutableStateOf("") }
+    var sort by remember {
+        mutableStateOf(
+            runCatching { LibrarySort.fromName(SteamPrefs.getLibrarySort(ctx)) }
+                .getOrDefault(LibrarySort.NAME),
+        )
+    }
     var message by remember { mutableStateOf<String?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -153,6 +162,13 @@ private fun SteamLibraryScreen(onBack: () -> Unit) {
                 onTypeFilter = { f ->
                     typeFilter = f
                     runCatching { SteamPrefs.setLibraryTypeFilter(ctx, f.name) }
+                },
+                query = query,
+                onQuery = { query = it },
+                sort = sort,
+                onSort = { s ->
+                    sort = s
+                    runCatching { SteamPrefs.setLibrarySort(ctx, s.name) }
                 },
                 onOpenApp = { openSteamGameDetail(ctx, it) },
                 onMessage = { message = it },

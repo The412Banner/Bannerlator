@@ -58,6 +58,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -257,6 +258,17 @@ fun SteamStorefrontHost(
                 .getOrDefault(LibraryTypeFilter.GAMES),
         )
     }
+    // Library search text and sort, hoisted here like the chip so they outlive the Library tab leaving
+    // composition (switching to Store and back keeps the query). The query is rememberSaveable so a
+    // recreate (not just the configChanges rotation path) keeps it too; it is not persisted across
+    // launches. The sort IS persisted, and defaults to A-Z, the order the tab always had.
+    var libraryQuery by rememberSaveable { mutableStateOf("") }
+    var librarySort by remember {
+        mutableStateOf(
+            runCatching { LibrarySort.fromName(SteamPrefs.getLibrarySort(ctx)) }
+                .getOrDefault(LibrarySort.NAME),
+        )
+    }
     var message by remember { mutableStateOf<String?>(null) }
     var showSignOut by remember { mutableStateOf(false) }
 
@@ -300,6 +312,14 @@ fun SteamStorefrontHost(
                     libraryTypeFilter = f
                     runCatching { SteamPrefs.setLibraryTypeFilter(ctx, f.name) }
                     StorefrontLog.i(StorefrontLog.LIBRARY, "library type filter -> ${f.name}")
+                },
+                query = libraryQuery,
+                onQuery = { libraryQuery = it },
+                sort = librarySort,
+                onSort = { s ->
+                    librarySort = s
+                    runCatching { SteamPrefs.setLibrarySort(ctx, s.name) }
+                    StorefrontLog.i(StorefrontLog.LIBRARY, "library sort -> ${s.name}")
                 },
                 onOpenApp = { openSteamGameDetail(ctx, it) },
                 onMessage = { message = it },

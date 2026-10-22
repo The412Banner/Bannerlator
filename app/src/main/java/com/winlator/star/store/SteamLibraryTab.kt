@@ -600,19 +600,26 @@ fun SteamLibraryTab(
 
     fun uninstall(game: SteamGame) {
         uninstallingName = game.name
+        // Found in another Steam client's library: those files and that manifest are the client's.
+        val imported = SteamLibraryImport.isImported(ctx, game.appId)
         StoreUninstaller.run(
             installDir = game.installDir,
             mark = {
-                SteamAppManifest.removeFor(game.installDir, game.appId)
+                if (imported) SteamLibraryImport.releaseImported(ctx, game.appId)
+                else SteamAppManifest.removeFor(game.installDir, game.appId)
                 runCatching { SteamRepository.getInstance().database.markUninstalled(game.appId) }
             },
             // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
-            keepFolder = { SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
+            keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(ctx.applicationContext, java.io.File(game.installDir), game.appId) },
         ) { ok ->
             uninstallingName = null
-            if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})")
+            if (ok) StorefrontLog.i(StorefrontLog.LIBRARY, "uninstalled app ${game.appId} (${game.name})" + if (imported) ", files kept (another client's library)" else "")
             else StorefrontLog.w(StorefrontLog.LIBRARY, "uninstall INCOMPLETE for app ${game.appId} (${game.name}) — files remain at ${game.installDir}")
-            onMessage(if (ok) "${game.name} uninstalled" else "Couldn't fully remove ${game.name}")
+            onMessage(when {
+                imported -> ctx.getString(R.string.steam_lib_uninstall_kept, game.name)
+                ok -> "${game.name} uninstalled"
+                else -> "Couldn't fully remove ${game.name}"
+            })
             state.reload()
         }
     }

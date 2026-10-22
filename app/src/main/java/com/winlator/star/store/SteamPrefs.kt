@@ -22,10 +22,14 @@ object SteamPrefs {
     private const val K_LAST_PICS_CHANGE = "last_pics_change"
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var picsPrefs: SharedPreferences
 
     fun init(ctx: Context) {
         if (!::prefs.isInitialized) {
             prefs = ctx.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        }
+        if (!::picsPrefs.isInitialized) {
+            picsPrefs = ctx.applicationContext.getSharedPreferences(PICS_INSTALLDIR_PREFS, Context.MODE_PRIVATE)
         }
     }
 
@@ -269,16 +273,36 @@ object SteamPrefs {
 
     // ── PICS config.installdir per app ───────────────────────────────────────
     // Valve's folder name under steamapps/common — the one every Steam client (and the appmanifest's
-    // "installdir") uses. Written by the library sync (SteamRepository.processAppKv, straight into this
-    // same prefs file under the same key) and read when a game is installed into a steamapps library,
-    // so other clients find it by that exact name. Kept here rather than as a steam.db column so no
-    // schema change is needed and an older build can still open the database. Not credentials — NOT
-    // cleared on logout.
+    // "installdir") uses. Written by the library sync (SteamRepository.processAppKv) and read when a game
+    // is installed into a steamapps library, so other clients find it by that exact name. One entry per
+    // owned app, so they live in their own prefs file ([PICS_INSTALLDIR_PREFS]) rather than beside the
+    // login, and not as a steam.db column so no schema change is needed. Not credentials — NOT cleared on
+    // logout.
+    const val PICS_INSTALLDIR_PREFS = "steam_pics_installdirs"
     const val K_PICS_INSTALLDIR_PREFIX = "pics_installdir_"
 
     /** The PICS `config.installdir` recorded for [appId], or "" when it has not been seen yet. */
     fun getPicsInstallDir(appId: Int): String =
-        prefs.getString(K_PICS_INSTALLDIR_PREFIX + appId, "") ?: ""
+        picsPrefs.getString(K_PICS_INSTALLDIR_PREFIX + appId, "") ?: ""
+
+    /**
+     * Moves installdir entries a test build wrote into the login prefs over to [PICS_INSTALLDIR_PREFS], in
+     * one edit each. Cheap when there is nothing to move. Never throws.
+     */
+    @JvmStatic
+    fun movePicsInstallDirs(ctx: Context) {
+        try {
+            init(ctx)
+            val old = prefs.all.filterKeys { it.startsWith(K_PICS_INSTALLDIR_PREFIX) }
+            if (old.isEmpty()) return
+            val add = picsPrefs.edit()
+            for ((k, v) in old) if (v is String) add.putString(k, v)
+            add.apply()
+            val drop = prefs.edit()
+            for (k in old.keys) drop.remove(k)
+            drop.apply()
+        } catch (_: Throwable) {}
+    }
 
     // ── Master opt-in for the whole friends/chat feature (default OFF) ────────
     // The friends list, presence sharing and chat are OFF until the user opts in. Default FALSE so a

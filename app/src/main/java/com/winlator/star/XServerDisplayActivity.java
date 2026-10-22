@@ -2730,6 +2730,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
+        // Fix the Goldberg cloud-sync decision now, for the whole session (see skipCloudForGoldberg()).
+        skipCloudForGoldberg();
 
         // Display backend: the game's override, else the container's. Resolved here so every launch
         // path (shortcut list, Games tab, Big Picture, pinned shortcuts, container Run) honours it,
@@ -5563,6 +5565,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             // A SteamLite launch's genuine client already uploaded on exit — don't race it.
                             if (realSteamPlan != null)
                                 Log.i("BH_SAVE_SYNC", "auto-upload Steam: SteamLite launch — the Steam client syncs cloud saves itself, skip");
+                            else if (skipCloudForGoldberg())
+                                Log.i("BH_SAVE_SYNC", "auto-upload Steam: Goldberg launch — Steam Cloud sync is off for Goldberg (Save Manager setting), skip");
                             else if (cloudDisclaimerOk && savePrefs.getBoolean("auto_upload_steam_on_exit", true))
                                 autoUploadSteamSavesBlocking();
                         } else {
@@ -5576,10 +5580,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         }
                         // Flush any queued achievement unlocks back to the user's Steam profile. Safe
                         // no-op unless the default-OFF "sync unlocks" toggle is on (guarded inside).
-                        try {
-                            SteamAchievementStore.flushPendingSyncBack(getApplicationContext());
-                        } catch (Throwable t) {
-                            Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
+                        // Goldberg is an offline mode: unlocks earned there are queued locally per game
+                        // (AchievementWatcher -> queueUnlock). They are pushed only for THIS game, and only
+                        // when it ran through SteamLite / Headless Steam (or Goldberg with the cloud option
+                        // on); every other game's queue is left alone.
+                        int syncBackAppId = 0;
+                        if (appSteamPlan != null) syncBackAppId = appSteamPlan.appId;
+                        else if (realSteamPlan != null) syncBackAppId = realSteamPlan.appId;
+                        else if (isGoldbergLaunchMode() && !skipCloudForGoldberg()) {
+                            SteamAppRef syncRef = resolveSteamAppRef();
+                            if (syncRef != null) syncBackAppId = syncRef.appId;
+                        }
+                        if (syncBackAppId <= 0) {
+                            Log.i("BH_STEAM_ACHV", "achievement sync-back skipped (not a SteamLite / Headless Steam launch, or Goldberg cloud sync is off), unlocks stay queued");
+                        } else {
+                            try {
+                                SteamAchievementStore.flushPendingSyncBack(getApplicationContext(), syncBackAppId);
+                            } catch (Throwable t) {
+                                Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
+                            }
                         }
                         // SteamLite (Steam client) logs — fold the genuine client's own logs from this
                         // container's prefix into a single shareable steamlite.txt beside wine_debug.log,
@@ -6777,6 +6796,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return new SteamIdentity(null, "", 0);
     }
 
+    /** True when this session was launched in Goldberg mode (an emulated Steam session, no Steam Cloud). */
+    private boolean isGoldbergLaunchMode() {
+        return shortcut != null && "Goldberg".equals(shortcut.getExtra("launchMode"));
+    }
+
+    /**
+     * Goldberg is an emulated (offline) Steam session, so by default a Goldberg launch does no Steam Cloud
+     * save pull/push and no achievement upload. Save Manager "sync with Steam Cloud during Goldberg
+     * launches" ({@code goldberg_cloud_sync}, off by default) turns that sync back on.
+     * Decided once, at the first call during launch, so flipping the switch mid-game can't make the exit
+     * upload run for a session that never pulled from the cloud.
+     */
+    private boolean skipCloudForGoldberg() {
+        if (goldbergCloudSkip == null) {
+            goldbergCloudSkip = isGoldbergLaunchMode()
+                    && !getSharedPreferences("save_manager_prefs", MODE_PRIVATE).getBoolean("goldberg_cloud_sync", false);
+        }
+        return goldbergCloudSkip;
+    }
+
+    private Boolean goldbergCloudSkip = null;
+
     /**
      * On game exit, push a genuine Steam-library game's saves UP to Steam Cloud (local → cloud) — the
      * Steam-parity mirror of {@link #autoUploadGogSavesBlocking()}. Additive to the unconditional local
@@ -6838,6 +6879,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             final Shortcut sc = shortcut;
             if (sc == null) return;
             if (!isGenuineSteamShortcut()) return;
+
+            // Goldberg launch: an emulated Steam session, so don't pull saves from the real Steam Cloud
+            // unless the user switched Goldberg cloud sync on.
+            if (skipCloudForGoldberg()) {
+                Log.i("BH_SAVE_SYNC", "auto-download Steam: Goldberg launch — Steam Cloud sync is off for Goldberg (Save Manager setting), skip");
+                return;
+            }
 
             // SteamLite launch (genuine client in the prefix, armed by maybeStageRealSteam() earlier in
             // setupXEnvironment): the client syncs Steam Cloud itself at launch — writing the same save

@@ -222,25 +222,16 @@ fun BigPictureScreen(navController: NavController) {
     var componentDownloadProgress by remember { mutableFloatStateOf(0f) }
     // Goldberg launch (persist sub-mode → component on demand → patch → launch); shared by the popup's
     // Goldberg pick and the pre-flight's "Launch with Goldberg" fallback. Mirrors ShortcutsScreen.
-    fun launchWithGoldberg(s: Shortcut, gm: GoldbergMode) {
-        val appId = steamAppIdOf(s)
+    // gm == null means "the tier saved for this game", looked up with the app id resolved from the shortcut.
+    fun launchWithGoldberg(s: Shortcut, gm: GoldbergMode?) {
         SteamPrefs.init(context)
-        SteamPrefs.setGoldbergMode(appId, gm)
+        // Resolve appId / install dir / exe from the shortcut, stamp launchMode=Goldberg, apply the tier
+        // and report the real result (a failure is toasted; the game still launches, unpatched).
         val applyThenLaunch = {
-            Thread({
-                val installDir = runCatching {
-                    SteamDatabase.getInstance(context).getGame(appId)?.installDir
-                }.getOrNull().orEmpty()
-                activity.runOnUiThread {
-                    if (installDir.isEmpty()) {
-                        launchShortcut(activity, s)
-                    } else {
-                        GoldbergPatcher.applyModeAsync(context, appId, installDir, s.name, gm) { _, _ ->
-                            launchShortcut(activity, s)
-                        }
-                    }
-                }
-            }, "goldberg-apply-launch").start()
+            GoldbergPatcher.applyForShortcutAsync(context, s, gm) { ok, msg ->
+                if (!ok) Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                launchShortcut(activity, s)
+            }
         }
         if (!GoldbergComponent.isInstalled(context)) {
             componentDownloadFor = s
@@ -505,6 +496,10 @@ fun BigPictureScreen(navController: NavController) {
                     launchWithSteamLite(sc)
                 remembered && sc.getExtra("launchMode", "") == "AppSteam" && isSteamOriginShortcut(sc) ->
                     launchWithAppSteam(sc)
+                // A remembered Goldberg pick re-applies the (idempotent) patch each launch.
+                remembered && sc.getExtra("launchMode", "") == "Goldberg" && isSteamOriginShortcut(sc) -> {
+                    launchWithGoldberg(sc, null)
+                }
                 remembered -> launchShortcut(activity, sc)
                 else -> launchChoiceFor = sc
             }
@@ -1119,8 +1114,7 @@ fun BigPictureScreen(navController: NavController) {
             },
             onGoldberg = {
                 preflightFor = null
-                SteamPrefs.init(context)
-                launchWithGoldberg(s, SteamPrefs.getGoldbergMode(appId).let { if (it == GoldbergMode.OFF) GoldbergMode.REGULAR else it })
+                launchWithGoldberg(s, null)
             },
             onUpdate = { preflightFor = null; runSteamMaintenance(s, verify = false) },
         )

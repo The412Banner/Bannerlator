@@ -45,6 +45,8 @@ data class AddToShortcutsRequest(
     val exePath: String,
     val coverUrl: String?,
     val containers: List<Container>,
+    /** Steam appId stamped on the shortcut (0 = none). Without it Goldberg/SteamLite/cloud saves can't find the game. */
+    val appId: Int = 0,
 )
 
 /** Outcome of writeShortcutAsync, held in a mutableStateOf by the caller. */

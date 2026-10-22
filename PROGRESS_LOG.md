@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-10-22 — Community PRs #613–#617 combined test build (feat/community-prs-613-617, built, NOT device-tested)
+> - **Why:** user: "merge 613 to 617 into a branch and build it" (after the read-only review; findings in memory bannerlator-project). Test branch only — nothing merged to main, nothing posted on the PRs.
+> - **Built:** off main 031e8b3d, --no-ff merges in order #614, #617, #616, #615, #613 (PR heads 7766eabe / 617 / 616 / 615 / 099c70fd). One conflict, DownloadManagerActivity.kt add-to-shortcuts: kept main's Xbox block + #613's Steam-only appId line (GOG ids no longer stamped as Steam app IDs). Merge commit cd72366e.
+> - **Known review issues still in it (not fixed):** #615 'owned by nobody' launch dialog with only Close; #616 uninstall deletes another client's imported game, pics_installdir_* in steam_prefs; #617 DB reads on the main thread; #613 Headless Steam + old Cold Client shortcut may run a deleted loader, 'Off' removed, diag on every launch; #614 cloud sync off by default. PR commits 615–617 carry Co-Authored-By Claude (contributor commits) — squash with rewritten message before any main merge.
+
 ## 2026-10-22 — DirectAudio auto-detect + driver 1.4.0 (MERGED to main `edba3616`, fast-forward; device-proven on 11.0-9.1)
 > - **Why:** user: DirectAudio greyed out on new layers; "instead of keeping a list can we make some sort of Auto detection"; then "yes Auto detection and latest version of the driver always wins" and "should be 1.4.0 right?" (yes: directaudio-v1.4.0, 2026-10-08).
 > - **Found:** `DirectAudioSupport.isSupported` matched 8 name tokens; 11.0-9.1 (ships its own driver = the 1.3.2 wine11 sdk35 build, byte-identical unixlib) was greyed. App bundled 1.3.2 (matches the 1.3.2 release). Launch overlay copied the wine11 set over ANY 11.0-x layer, incl. ones with their own driver and Proton-CachyOS (system-thread interface → silence per the 1.4.0 notes).

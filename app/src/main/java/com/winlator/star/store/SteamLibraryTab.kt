@@ -48,6 +48,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +66,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -324,30 +326,46 @@ fun rememberSteamLibrary(): SteamLibraryState {
 
     val appCtx = LocalContext.current.applicationContext
 
-    fun loadRows(quiet: Boolean) {
-        val repo = runCatching { SteamRepository.getInstance() }.getOrNull() ?: return
-        val rows = runCatching { repo.getCachedGameRows() }.getOrDefault(emptyList())
-        val reviews = SteamReviewStore.all(appCtx)
-        // The FULL launchable set — games (plus allowlisted appIds) AND demos. The type chip narrows
-        // what is DISPLAYED; it must never narrow what is OWNED. Everything past this point,
-        // ownedAppIds especially, is computed from this list.
-        //
-        // Demos have always arrived here with type == "demo" (the engine parses common.type from
-        // appinfo); the old filter simply discarded them on this line.
-        games = rows
-            .map { SteamReviewStore.withReview(SteamGame.fromGameRow(it), reviews) }
-            .filter { LibraryTypeFilter.ALL.accepts(it) }
-            .sortedBy { it.name.lowercase() }
+    val loadScope = rememberCoroutineScope()
+    val loadGeneration = remember { java.util.concurrent.atomic.AtomicInteger() }
+
+    fun showRows(loaded: List<SteamGame>, rowCount: Int, quiet: Boolean) {
+        games = loaded
         isLoading = false
         if (quiet) return
         val demoCount = games.count { it.type == LibraryTypeFilter.TYPE_DEMO }
         if (games.isNotEmpty()) statusText = "${games.size - demoCount} games in library"
         StorefrontLog.i(
             StorefrontLog.LIBRARY,
-            "loaded ${games.size} entry(s) from ${rows.size} cached row(s) — " +
+            "loaded ${games.size} entry(s) from $rowCount cached row(s) — " +
                 "${games.size - demoCount} game(s), $demoCount demo(s), " +
                 "${games.count { it.isInstalled }} installed",
         )
+    }
+
+    // The cached rows and the review scores are database reads, and the ratings backfill repeats this
+    // about every 1.5 s, so the rows are built off the main thread. A newer load supersedes an older one.
+    fun loadRows(quiet: Boolean) {
+        val repo = runCatching { SteamRepository.getInstance() }.getOrNull() ?: return
+        val generation = loadGeneration.incrementAndGet()
+        loadScope.launch {
+            val loaded = withContext(Dispatchers.IO) {
+                val rows = runCatching { repo.getCachedGameRows() }.getOrDefault(emptyList())
+                val reviews = SteamReviewStore.all(appCtx)
+                // The FULL launchable set — games (plus allowlisted appIds) AND demos. The type chip narrows
+                // what is DISPLAYED; it must never narrow what is OWNED. Everything past this point,
+                // ownedAppIds especially, is computed from this list.
+                //
+                // Demos have always arrived here with type == "demo" (the engine parses common.type from
+                // appinfo); the old filter simply discarded them on this line.
+                rows.size to rows
+                    .map { SteamReviewStore.withReview(SteamGame.fromGameRow(it), reviews) }
+                    .filter { LibraryTypeFilter.ALL.accepts(it) }
+                    .sortedBy { it.name.lowercase() }
+            }
+            if (generation != loadGeneration.get()) return@launch
+            showRows(loaded.second, loaded.first, quiet)
+        }
     }
 
     val load: () -> Unit = { loadRows(quiet = false) }

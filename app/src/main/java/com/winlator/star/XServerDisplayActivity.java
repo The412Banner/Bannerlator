@@ -328,6 +328,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // getWineStartCommand() to rewrite the launch target to run our agent (steam.exe) with the per-game
     // spec. Null ⇒ every non-RealSteam (or failed-prep) launch is byte-for-byte unchanged.
     private RealSteamLauncher.Plan realSteamPlan;
+    // Xbox store game (shortcut storeSource=xbox): the licensed launch prepared before Wine starts
+    // (XboxRuntime.prepare) — the materialised exe to run, its environment, and the lease/bridge to close.
+    private com.winlator.star.store.xbox.XboxRuntime.Launch xboxLaunch;
     /** EA launcher-chain title (EA Desktop) — set by maybeStageRealSteam(); drives the FEX preset clamp + overlay hints. */
     private boolean realSteamEaChain = false;
     // True while THIS activity has the app's own Steam CM session suspended for the in-container
@@ -2732,6 +2735,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (shortcutPath != null && !shortcutPath.isEmpty()) {
             shortcut = new Shortcut(container, new File(shortcutPath));
         }
+        // Fix the Goldberg cloud-sync decision now, for the whole session (see skipCloudForGoldberg()).
+        skipCloudForGoldberg();
 
         // Display backend: the game's override, else the container's. Resolved here so every launch
         // path (shortcut list, Games tab, Big Picture, pinned shortcuts, container Run) honours it,
@@ -2965,8 +2970,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
         }
 
-        // DirectAudio's winedirectaudio.drv only loads on the arm64ec Proton builds listed in
-        // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (8 tokens as of driver v1.3.2); on
+        // DirectAudio's winedirectaudio.drv only loads on layers DirectAudioSupport.isSupported accepts; on
         // any other layer it does nothing / breaks audio. The editors grey it out and coerce it on save,
         // but a container/shortcut written before this gate (or whose layer was swapped elsewhere) can
         // still arrive here as "directaudio" — the last place it could be applied to the guest registry.
@@ -3306,6 +3310,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         applyGameRefreshRateUnlock();
                         applyColorCursorRegistry();
                         provisionEpicOverlay();
+                        stage[0] = "Preparing the Xbox game";
+                        prepareXboxLaunch();
                     } else {
                         preloaderDialog.step(2, "Preparing the Linux runtime…");
                     }
@@ -4991,83 +4997,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return false;
     }
 
-    // Map a Proton layer name to the bundled DirectAudio asset set, or null if the build is unsupported.
-    // The driver is BUILD-SPECIFIC (a driver built against Wine major X only initializes on Wine X), but
-    // device-proven interchangeable WITHIN the Wine-11 point-release family (11.0-1/-3/-5): the same
-    // complete 3-file set drives any arm64ec 11.0-x layer. Wine 10 (10.0-4/10.0-34) has its own ABI, its own set.
-    private static String directAudioAssetDir(String layerName) {
-        if (layerName == null) return null;
-        if (layerName.contains("11.0-")) return "wine11";   // any arm64ec Wine-11 point release
-        if (layerName.contains("10.0-4")) return "wine10";  // the arm64ec Wine-10 build we ship for
-        if (layerName.contains("10.0-34")) return "wine10"; // Wine-10 family (same major as 10.0-4) -> same set
-        return null;                                         // not a supported build -> leave its own driver
-    }
-
-    // Deliver the bundled, BUILD-MATCHED DirectAudio driver into the shared Proton layer at launch, so a
-    // user's dormant/old winedirectaudio.drv auto-upgrades to the APK's bundled driver before the guest
-    // loads it (version = assets/directaudio/<build>/version.txt, v1.3.2 at time of writing).
-    // The shared-layer copy is the one Wine actually loads, so overlaying it upgrades EVERY container on
-    // that layer. Per-build dispatch (wine11 for any 11.0-x, wine10 for 10.0-4; arm64ec only), version-gated
-    // by a per-layer marker, page-size aware (4KB -> sdk28, 16KB -> sdk35). Copies the COMPLETE 3-file set -
-    // BOTH PE arches (aarch64-windows + i386-windows) plus the shared aarch64-unix unixlib - because which
-    // PE actually loads is decided by the GUEST GAME's bitness (64-bit -> aarch64, 32-bit/wow64 -> i386),
-    // not the Proton build; shipping both closes the latent 32-bit gap the old aarch64-only overlay left.
-    // Idempotent + best-effort (any failure just leaves the existing driver); metadata only, no GPU probing.
-    private void overlayDirectAudioDriver() {
-        try {
-            if (container == null) return;
-            com.winlator.star.contents.ContentProfile prof =
-                    contentsManager.getProfileByEntryName(container.getWineVersion());
-            if (prof == null) return;
-            java.io.File layer = com.winlator.star.contents.ContentsManager.getInstallDir(this, prof);
-            java.io.File unixDir  = new java.io.File(layer, "lib/wine/aarch64-unix");     // shared unixlib
-            java.io.File winDir   = new java.io.File(layer, "lib/wine/aarch64-windows");  // 64-bit (arm64ec) guest PE
-            java.io.File win32Dir = new java.io.File(layer, "lib/wine/i386-windows");     // 32-bit (wow64) guest PE
-            // ABI gate: these two dirs exist only on an arm64ec Proton layer, and the name carries the build.
-            if (!unixDir.isDirectory() || !winDir.isDirectory()) return;
-            String build = directAudioAssetDir(layer.getName());
-            if (build == null) return;   // not one of the supported builds -> leave its own driver
-
-            String base = "directaudio/" + build + "/";
-            String want = FileUtils.readString(this, base + "version.txt");
-            if (want == null) return;
-            want = want.trim();
-            // Per-layer marker records "<build> <version>"; re-overlay if either changes. The pre-existing
-            // bare-version marker (old aarch64-only overlay, e.g. "1.3.1") can never match the newer
-            // "<build> <version>" tag, so those layers get a one-time re-overlay that finally
-            // delivers the i386 PE.
-            java.io.File marker = new java.io.File(unixDir, ".directaudio_bundled");
-            String tag = build + " " + want;
-            String have = marker.isFile() ? FileUtils.readString(marker) : null;
-            if (have != null && tag.equals(have.trim())) return;   // already current for this build
-
-            String sdk = (android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE) >= 16384)
-                    ? "sdk35" : "sdk28";
-            String src = base + sdk + "/";
-            // Complete set: unixlib + both PE arches. The i386 PE goes to i386-windows/ if the layer has it.
-            assetToFile(src + "winedirectaudio.so",          new java.io.File(unixDir,  "winedirectaudio.so"));
-            assetToFile(src + "winedirectaudio-aarch64.drv", new java.io.File(winDir,   "winedirectaudio.drv"));
-            if (win32Dir.isDirectory())
-                assetToFile(src + "winedirectaudio-i386.drv", new java.io.File(win32Dir, "winedirectaudio.drv"));
-            FileUtils.writeString(marker, tag);
-            android.util.Log.i("DirectAudio", "overlaid bundled driver v" + want + " (" + build + "/" + sdk + ") -> " + layer.getName());
-        } catch (Throwable t) {
-            android.util.Log.w("DirectAudio", "driver overlay failed (keeping existing)", t);
-        }
-    }
-
-    // Copy an APK asset to a file, then make it readable+executable (Wine dlopen's the .so). Overwrites.
-    private void assetToFile(String assetPath, java.io.File dst) throws java.io.IOException {
-        try (java.io.InputStream in = getAssets().open(assetPath);
-             java.io.FileOutputStream out = new java.io.FileOutputStream(dst)) {
-            byte[] buf = new byte[65536];
-            int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        }
-        dst.setReadable(true, false);
-        dst.setExecutable(true, false);
-    }
-
     // Write the live-config "mailbox" the winedirectaudio.drv watcher polls, so an in-game cog SAVE
     // reaches the running driver (which otherwise only reads config at stream open). Same resolution as
     // applyDirectAudioConfig, emitted as the mailbox's ms/perf keys (it takes milliseconds, not frames;
@@ -5496,6 +5425,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // one exit). Latch the first call; ignore the rest. exit() is always on the main thread.
     private volatile boolean exiting = false;
 
+    /** Ends the Xbox lease (removes the launch view) and the bridge, then the account service, and puts the
+     *  container's own system32 modules back. No-op when this is not an Xbox session. */
+    private void closeXboxSession() {
+        if (xboxLaunch == null) return;
+        xboxLaunch.close();
+        xboxLaunch = null;
+        com.winlator.star.store.xbox.XboxRuntime.INSTANCE.stop();
+        com.winlator.star.store.xbox.XboxRuntime.restoreSystem32(new File(imageFs.wineprefix, "drive_c/windows/system32"));
+    }
+
     private void exit() {
         eaRefusalHandler.removeCallbacks(eaRefusalWatchRunnable);
         if (exiting) return;
@@ -5515,8 +5454,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         ProcessHelper.resumeAllWineProcesses();
         // Epic EOS Phase 2: remove this game's short-lived Denuvo ownership token (.ovt)
         // from the wine prefix now that the session is ending. No-op for non-Epic games.
+        // Xbox with cloud saves on: the save helper's final upload needs the game ended first and our bridge and
+        // account service still up, so that session is closed after the sync, just before the teardown (below).
+        final boolean xboxSaveSync = xboxLaunch != null && com.winlator.star.store.xbox.XboxMainActivity.Companion.cloudSaves(this);
         try {
             if (shortcut != null) com.winlator.star.store.EpicLaunchArgs.cleanupOwnershipToken(this, shortcut);
+            if (!xboxSaveSync) closeXboxSession();
         } catch (Throwable ignored) {}
         installerWatchHandler.removeCallbacks(installerWatchRunnable);
         gameExitWatchHandler.removeCallbacks(gameExitWatchRunnable);
@@ -5627,6 +5570,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             // A SteamLite launch's genuine client already uploaded on exit — don't race it.
                             if (realSteamPlan != null)
                                 Log.i("BH_SAVE_SYNC", "auto-upload Steam: SteamLite launch — the Steam client syncs cloud saves itself, skip");
+                            else if (skipCloudForGoldberg())
+                                Log.i("BH_SAVE_SYNC", "auto-upload Steam: Goldberg launch — Steam Cloud sync is off for Goldberg (Save Manager setting), skip");
                             else if (cloudDisclaimerOk && savePrefs.getBoolean("auto_upload_steam_on_exit", true))
                                 autoUploadSteamSavesBlocking();
                         } else {
@@ -5640,10 +5585,25 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         }
                         // Flush any queued achievement unlocks back to the user's Steam profile. Safe
                         // no-op unless the default-OFF "sync unlocks" toggle is on (guarded inside).
-                        try {
-                            SteamAchievementStore.flushPendingSyncBack(getApplicationContext());
-                        } catch (Throwable t) {
-                            Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
+                        // Goldberg is an offline mode: unlocks earned there are queued locally per game
+                        // (AchievementWatcher -> queueUnlock). They are pushed only for THIS game, and only
+                        // when it ran through SteamLite / Headless Steam (or Goldberg with the cloud option
+                        // on); every other game's queue is left alone.
+                        int syncBackAppId = 0;
+                        if (appSteamPlan != null) syncBackAppId = appSteamPlan.appId;
+                        else if (realSteamPlan != null) syncBackAppId = realSteamPlan.appId;
+                        else if (isGoldbergLaunchMode() && !skipCloudForGoldberg()) {
+                            SteamAppRef syncRef = resolveSteamAppRef();
+                            if (syncRef != null) syncBackAppId = syncRef.appId;
+                        }
+                        if (syncBackAppId <= 0) {
+                            Log.i("BH_STEAM_ACHV", "achievement sync-back skipped (not a SteamLite / Headless Steam launch, or Goldberg cloud sync is off), unlocks stay queued");
+                        } else {
+                            try {
+                                SteamAchievementStore.flushPendingSyncBack(getApplicationContext(), syncBackAppId);
+                            } catch (Throwable t) {
+                                Log.w("BH_STEAM_ACHV", "flushPendingSyncBack on exit errored", t);
+                            }
                         }
                         // SteamLite (Steam client) logs — fold the genuine client's own logs from this
                         // container's prefix into a single shareable steamlite.txt beside wine_debug.log,
@@ -5724,7 +5684,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
         final com.winlator.star.linux.LinuxProgramLauncherComponent linuxLauncher = gamescopeMode && environment != null
                 ? environment.getComponent(com.winlator.star.linux.LinuxProgramLauncherComponent.class) : null;
         final File steamStopDir = linuxLiveDir;
-        if (linuxLauncher != null && steamStopDir != null && linuxLauncher.steamStopArmed(steamStopDir)) {
+        if (xboxSaveSync) {
+            final long teardownAt = android.os.SystemClock.uptimeMillis() + 1000;
+            final String exeName = xboxLaunch.getExe().getName();
+            preloaderDialog.hint(getString(R.string.xbox_saving_on_exit));
+            new Thread(() -> {
+                try {
+                    com.winlator.star.store.xbox.XboxSaveSync.finish(getApplicationContext(), exeName, 25000L);
+                } catch (Throwable t) {
+                    Log.w("XServerDisplayActivity", "Xbox save sync on exit failed", t);
+                } finally {
+                    try { closeXboxSession(); } catch (Throwable ignored) {}
+                    handler.postAtTime(teardown, teardownAt);
+                }
+            }, "xbox-save-sync").start();
+        } else if (linuxLauncher != null && steamStopDir != null && linuxLauncher.steamStopArmed(steamStopDir)) {
             final long teardownAt = android.os.SystemClock.uptimeMillis() + 1000;
             preloaderDialog.hint(getString(R.string.linux_steam_closing_saving_hint));
             new Thread(() -> {
@@ -6827,6 +6801,28 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return new SteamIdentity(null, "", 0);
     }
 
+    /** True when this session was launched in Goldberg mode (an emulated Steam session, no Steam Cloud). */
+    private boolean isGoldbergLaunchMode() {
+        return shortcut != null && "Goldberg".equals(shortcut.getExtra("launchMode"));
+    }
+
+    /**
+     * Goldberg is an emulated (offline) Steam session; a Goldberg launch does no Steam Cloud
+     * save pull/push and no achievement upload when Save Manager "sync with Steam Cloud during Goldberg
+     * launches" ({@code goldberg_cloud_sync}, on by default) is switched off.
+     * Decided once, at the first call during launch, so flipping the switch mid-game can't make the exit
+     * upload run for a session that never pulled from the cloud.
+     */
+    private boolean skipCloudForGoldberg() {
+        if (goldbergCloudSkip == null) {
+            goldbergCloudSkip = isGoldbergLaunchMode()
+                    && !getSharedPreferences("save_manager_prefs", MODE_PRIVATE).getBoolean("goldberg_cloud_sync", true);
+        }
+        return goldbergCloudSkip;
+    }
+
+    private Boolean goldbergCloudSkip = null;
+
     /**
      * On game exit, push a genuine Steam-library game's saves UP to Steam Cloud (local → cloud) — the
      * Steam-parity mirror of {@link #autoUploadGogSavesBlocking()}. Additive to the unconditional local
@@ -6888,6 +6884,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             final Shortcut sc = shortcut;
             if (sc == null) return;
             if (!isGenuineSteamShortcut()) return;
+
+            // Goldberg launch: an emulated Steam session, so don't pull saves from the real Steam Cloud
+            // unless the user switched Goldberg cloud sync on.
+            if (skipCloudForGoldberg()) {
+                Log.i("BH_SAVE_SYNC", "auto-download Steam: Goldberg launch — Steam Cloud sync is off for Goldberg (Save Manager setting), skip");
+                return;
+            }
 
             // SteamLite launch (genuine client in the prefix, armed by maybeStageRealSteam() earlier in
             // setupXEnvironment): the client syncs Steam Cloud itself at launch — writing the same save
@@ -11390,6 +11393,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 com.winlator.star.store.EpicGameFixes.applyPreLaunch(this, shortcut);
             }
 
+            // Xbox store game: the bridge port/key, service socket, save-sync mode and PlayFab token for the
+            // game's Xbox runtime modules, and those modules forced native (they sit next to the exe).
+            if (xboxLaunch != null) {
+                for (java.util.Map.Entry<String, String> e : xboxLaunch.getEnv().entrySet()) envVars.put(e.getKey(), e.getValue());
+                String overrides = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
+                String xbox = xboxLaunch.getOverrides();
+                envVars.put("WINEDLLOVERRIDES", overrides.isEmpty() ? xbox : xbox + ";" + overrides);
+            }
+
             // Real-Steam (VAC) launch (feature M3) — ENV injection. The staging + plan was built above by
             // maybeStageRealSteam() (before getWineStartCommand()). Merge the plan's WN_STEAM_* +
             // PROTON_DISABLE_LSTEAMCLIENT env HERE — after the container (5288) and shortcut/Epic env merges
@@ -11550,7 +11562,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // stream open. Resolve the cog preset to concrete env here (LOW_LATENCY + a real per-preset
             // buffer) so the menu actually controls the driver. The Wine "Audio" registry driver is set
             // by changeWineAudioDriver(); route changes are handled inside the driver.
-            overlayDirectAudioDriver();   // ensure a supported layer (any 11.0-x / 10.0-4) has the bundled driver before the guest loads it
+            DirectAudioSupport.installDriver(this, container.getWineVersion());   // newest driver build on the layer before the guest loads it
             applyDirectAudioConfig(envVars);
         }
 
@@ -15028,7 +15040,19 @@ return true;
             String execArgs = shortcut.getExtra("execArgs");
             execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
 
-            if (shortcut.path.endsWith(".lnk")) {
+            if (xboxLaunch != null) {
+                // Xbox: run the licensed launch view's executable (inside imagefs, so on Z:), not the
+                // encrypted package file the shortcut points at.
+                String rel;
+                try {
+                    rel = imageFs.getRootDir().getCanonicalFile().toPath().relativize(xboxLaunch.getExe().getCanonicalFile().toPath()).toString();
+                } catch (java.io.IOException e) {
+                    rel = imageFs.getRootDir().toPath().relativize(xboxLaunch.getExe().toPath()).toString();
+                }
+                String win = "Z:\\" + rel.replace('/', '\\');
+                Log.i("BannerXbox", "start command exe: " + win + " (exists=" + xboxLaunch.getExe().isFile() + ")");
+                args += "/dir " + StringUtils.escapeDOSPath(FileUtils.getDirname(win)) + " \"" + FileUtils.getName(win) + "\"" + execArgs;
+            } else if (shortcut.path.endsWith(".lnk")) {
                 args += "\"" + shortcut.path + "\"" + execArgs;
             } else {
                 String exeDir = FileUtils.getDirname(shortcut.path);
@@ -16457,6 +16481,34 @@ return true;
     // Install the overlay component (idempotent CDN download) and write the OverlayPath pointer when
     // the toggle is on; strip the pointer when it's off so a disabled overlay leaves no stale key.
     // Runs on the background launch worker (sync file/reg/network I/O is ANR-safe there). Never throws.
+    /**
+     * Xbox store game (shortcut storeSource=xbox, xboxProductId=…): before Wine starts, sign the launch with
+     * the account service and materialise the licensed launch view inside imagefs (XboxRuntime.prepare).
+     * Runs on the launch worker; a failure stops the launch with the reason on the loading card.
+     */
+    private void prepareXboxLaunch() throws Exception {
+        File system32 = new File(imageFs.wineprefix, "drive_c/windows/system32");
+        if (shortcut == null || !"xbox".equals(shortcut.getExtra("storeSource"))) {
+            // An Xbox session that did not end cleanly may have left its modules in this container.
+            com.winlator.star.store.xbox.XboxRuntime.restoreSystem32(system32);
+            return;
+        }
+        String id = shortcut.getExtra("xboxProductId");
+        if (id == null || id.isEmpty()) throw new IllegalStateException("This Xbox shortcut has no product id; add the game again from the Xbox store.");
+        // Windows Runtime classes only the 32-bit registry view has (PropertySet: Xbox sign-in), added to the 64-bit view.
+        com.winlator.star.store.xbox.XboxWinRt.ensure(getApplicationContext(), new File(imageFs.wineprefix));
+        // What the game's MicrosoftGame.config declares (VC14), installed offline when this container lacks it.
+        com.winlator.star.store.xbox.XboxDependencies.ensure(getApplicationContext(), container, id, label -> {
+            preloaderDialog.step(2, label);
+            return kotlin.Unit.INSTANCE;
+        });
+        preloaderDialog.step(2, "Checking the Xbox license…");
+        xboxLaunch = com.winlator.star.store.xbox.XboxRuntime.INSTANCE.prepare(getApplicationContext(), id,
+                java.util.UUID.randomUUID().toString(), imageFs.getRootDir(),
+                system32,
+                com.winlator.star.store.xbox.XboxMainActivity.Companion.cloudSaves(this));
+    }
+
     private void provisionEpicOverlay() {
         if (shortcut == null || !"epic".equals(shortcut.getExtra("storeSource"))) return;
         File prefixDir = new File(ImageFs.find(this).wineprefix);

@@ -653,6 +653,8 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
     var steamOn by remember { mutableStateOf(prefs.getBoolean("auto_collect_steam_on_exit", true)) }
     var steamUpOn by remember { mutableStateOf(prefs.getBoolean("auto_upload_steam_on_exit", true)) }
     var steamDlOn by remember { mutableStateOf(prefs.getBoolean("auto_download_steam_on_launch", true)) }
+    // Goldberg is an offline (emulated) Steam session, so cloud sync during Goldberg launches is OFF by default.
+    var goldbergCloudOn by remember { mutableStateOf(prefs.getBoolean("goldberg_cloud_sync", true)) }
     var gogOn by remember { mutableStateOf(prefs.getBoolean("auto_upload_gog_on_exit", true)) }
     var gogDlOn by remember { mutableStateOf(prefs.getBoolean("auto_download_gog_on_launch", true)) }
     var customOn by remember { mutableStateOf(prefs.getBoolean("auto_backup_custom_on_exit", true)) }
@@ -683,6 +685,16 @@ private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
             subtitle = "Pull the latest Steam Cloud saves into the game before it starts (newest-wins — never overwrites a newer local save).",
             checked = steamDlOn,
             onCheckedChange = { pendingToggle = TogglePrompt(ToggleKind.STEAM_DL, it) },
+        )
+        Spacer(Modifier.height(16.dp))
+        SettingsToggleRow(
+            title = "Steam games: sync with Steam Cloud during Goldberg launches",
+            subtitle = "On by default — games launched with Goldberg pull/push cloud saves and upload achievements like other launches (needs the toggles above and your Steam login). Turn off to keep Goldberg fully offline.",
+            checked = goldbergCloudOn,
+            onCheckedChange = {
+                goldbergCloudOn = it
+                prefs.edit().putBoolean("goldberg_cloud_sync", it).apply()
+            },
         )
         Spacer(Modifier.height(16.dp))
         SettingsToggleRow(

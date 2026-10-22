@@ -4157,6 +4157,7 @@ private fun ShortcutItemLayoutL(
                     showEos = rememberEosBadge(shortcut),
                     showGog = remember(shortcut) { isGogShortcut(shortcut) },
                     showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
+                    showXbox = remember(shortcut) { isXboxShortcut(shortcut) },
                     showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                                     showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
                                     showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
@@ -4436,6 +4437,7 @@ private fun ShortcutGridItem(
             showEos = rememberEosBadge(shortcut),
             showGog = remember(shortcut) { isGogShortcut(shortcut) },
             showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
+            showXbox = remember(shortcut) { isXboxShortcut(shortcut) },
             showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
             showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
             showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
@@ -5716,8 +5718,7 @@ internal fun ShortcutSettingsDialogScreen(
     // The 9 power-user perf toggles live in a collapsed "Performance" section to keep this dialog short.
     var perfExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Audio driver. DirectAudio only loads on the arm64ec Proton builds in
-    // DirectAudioSupport.SUPPORTED_BUILD_TOKENS (8 tokens as of driver v1.3.2); a shortcut
+    // Audio driver. DirectAudio only loads on layers DirectAudioSupport.isSupported accepts; a shortcut
     // can't override the Wine version (container-only), so support is fixed by the container's layer.
     // Grey the option out off those layers and coerce a stale saved pick back to the default so the
     // dropdown never shows an unselectable value as selected.
@@ -7845,7 +7846,7 @@ internal fun ShortcutSettingsDialogScreen(
                         }
                         if (!directAudioSupported && directAudioEntry != null) {
                             Text(
-                                "DirectAudio requires Proton ${com.winlator.star.core.DirectAudioSupport.SUPPORTED_LABEL}",
+                                com.winlator.star.core.DirectAudioSupport.UNSUPPORTED_NOTE,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.5.sp,
                                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)
@@ -10063,6 +10064,24 @@ private fun SteamBadge(modifier: Modifier = Modifier) {
     }
 }
 
+/** Xbox store pill (Xbox green), sized like the other store pills. */
+@Composable
+private fun XboxBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF107C10))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "XBOX",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
 /**
  * Marks a user-added game — imported via the "+" button or File Manager → Add as shortcut — as
  * distinct from a store-library game. Teal pill, sized like the STEAM/EPIC/EOS/GOG pills. See
@@ -10176,6 +10195,9 @@ internal fun isCustomOriginShortcut(shortcut: Shortcut): Boolean {
  * `storeSource=amazon` (StarLaunchBridge store overload); pre-tagging ones are recognised by the exec
  * path living under the Amazon install root (`imagefs/Amazon/<title>/…` → `Z:\Amazon\…`).
  */
+/** Xbox store games: tagged storeSource=xbox (with xboxProductId) by StarLaunchBridge. */
+internal fun isXboxShortcut(shortcut: Shortcut): Boolean = shortcut.getExtra("storeSource") == "xbox"
+
 internal fun isAmazonShortcut(shortcut: Shortcut): Boolean {
     if (shortcut.getExtra("storeSource") == "amazon") return true
     val p = shortcut.path ?: return false
@@ -10626,6 +10648,7 @@ internal fun ShortcutBadgeOverlay(
     showEos: Boolean,
     showGog: Boolean,
     showAmazon: Boolean = false,
+    showXbox: Boolean = false,
     showCustom: Boolean = false,
     showEa: Boolean = false,
     showLinux: Boolean = false,
@@ -10638,7 +10661,7 @@ internal fun ShortcutBadgeOverlay(
         Row(modifier = modifier) { AndroidBadge() }
         return
     }
-    if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showCustom && !showEa
+    if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showXbox && !showCustom && !showEa
         && !showLinux) return
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showSteam) SteamBadge()
@@ -10647,6 +10670,7 @@ internal fun ShortcutBadgeOverlay(
         if (showEos) EosBadge()
         if (showGog) GogBadge()
         if (showAmazon) AmazonBadge()
+        if (showXbox) XboxBadge()
         if (showCustom) CustomBadge()
         if (showLinux) LinuxBadge()
     }

@@ -646,6 +646,42 @@ jobs:
         echo "== -sys crates =="
         cargo tree --locked --target aarch64-linux-android -e normal,build --prefix none --format '{p}' | sort -u | grep -- '-sys' || echo "(none)"
 
+    # --- Xbox store backend (tools/xbox): Xodus built for Android ---------------------------------------
+    # xodus-cli / xodus-service for aarch64-linux-android (tools/xbox/build-android.sh: DroidDeck's
+    # recipe, pinned sources and patches) as jniLibs, plus the five Xodus Nexus Windows modules and the
+    # licences as assets/xbox. Keyed on tools/xbox; build-xbox-android.yml saves the same key, so this
+    # normally restores (~40 MB). Small enough to save on any branch.
+    - name: Restore the Xbox backend (keyed on tools/xbox)
+      id: xbox-backend
+      uses: actions/cache/restore@v4
+      with:
+        path: build-xbox/out
+        key: xbox-out-${{ hashFiles('tools/xbox/**') }}
+
+    - name: Build the Xbox backend (only if not cached)
+      if: steps.xbox-backend.outputs.cache-hit != 'true'
+      timeout-minutes: 60
+      run: bash tools/xbox/build-android.sh build-xbox/out
+
+    - name: Save the Xbox backend
+      if: steps.xbox-backend.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: build-xbox/out
+        key: xbox-out-${{ hashFiles('tools/xbox/**') }}
+
+    - name: Stage the Xbox backend into the APK
+      run: |
+        set -euo pipefail
+        O=build-xbox/out
+        install -D -m755 "$O/bin/libxodus_cli.so" app/src/main/jniLibs/arm64-v8a/libxodus_cli.so
+        install -D -m755 "$O/bin/libxodus_service.so" app/src/main/jniLibs/arm64-v8a/libxodus_service.so
+        rm -rf app/src/main/assets/xbox && mkdir -p app/src/main/assets/xbox/windows
+        cp "$O"/windows/*.dll app/src/main/assets/xbox/windows/
+        cp "$O"/version "$O"/LICENSE.* "$O"/*.lock.json app/src/main/assets/xbox/
+        test "$(ls app/src/main/assets/xbox/windows/*.dll | wc -l)" = 6
+        ls -l app/src/main/jniLibs/arm64-v8a/libxodus_*.so app/src/main/assets/xbox app/src/main/assets/xbox/windows
+
     - name: Restore Galaxy Performance SDK jar (optional, from secret)
       # Decodes the proprietary Samsung jar from the encrypted secret into the git-ignored
       # drop-point so app/build.gradle bundles it. No secret => no jar => feature dormant.

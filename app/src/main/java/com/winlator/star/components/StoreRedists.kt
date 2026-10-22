@@ -14,6 +14,7 @@ import java.util.Locale
  * - **Epic Games**: the manifest's prerequisite (usually Unreal's prerequisite setup: VC++ and the
  *   DirectX June 2010 runtime), kept at install by EpicDownloadManager ([rememberEpicPrereq]).
  * - **Amazon Games**: fuel.json's PostInstall installers, read from the game's folder.
+ * - **Xbox**: MicrosoftGame.config's KnownDependency entries (VC14), see XboxDependencies.
  *
  * Steam's own list is [SteamRedists]. Each store entry maps to catalog names here; one that maps to
  * nothing is left out. Never throws; filesystem and SharedPreferences only.
@@ -73,7 +74,7 @@ object StoreRedists {
     /** What the store the game in [folder] (or above [exe]) came from lists; empty when it isn't a store install we know. */
     fun detect(context: Context?, folder: File?, exe: File?): List<DependencyDetector.Recommendation> = try {
         val dirs = ancestors(exe?.parentFile ?: folder)
-        gogList(context, dirs).ifEmpty { epicList(context, dirs) }.ifEmpty { amazonList(dirs) }
+        gogList(context, dirs).ifEmpty { epicList(context, dirs) }.ifEmpty { amazonList(dirs) }.ifEmpty { xboxList(dirs) }
     } catch (_: Throwable) {
         emptyList()
     }
@@ -111,6 +112,12 @@ object StoreRedists {
                 val what = command.replace('\\', '/').substringAfterLast('/')
                 installer(command).map { rec(it, "Amazon installs $what with this game") }
             }
+    }
+
+    private fun xboxList(dirs: List<File>): List<DependencyDetector.Recommendation> {
+        val game = dirs.firstOrNull { com.winlator.star.store.xbox.XboxDependencies.configFile(it) != null } ?: return emptyList()
+        return com.winlator.star.store.xbox.XboxDependencies.components(game)
+            .map { (dependency, component) -> rec(component, "The Microsoft Store installs $dependency with this game") }
     }
 
     private fun rec(component: String, reason: String) =

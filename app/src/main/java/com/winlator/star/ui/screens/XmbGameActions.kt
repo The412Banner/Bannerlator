@@ -99,6 +99,7 @@ internal fun XmbStoreBadges(shortcut: Shortcut) {
         showEos = rememberEosBadge(shortcut),
         showGog = remember(shortcut) { isGogShortcut(shortcut) },
         showAmazon = remember(shortcut) { isAmazonShortcut(shortcut) },
+        showXbox = remember(shortcut) { isXboxShortcut(shortcut) },
         showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
         showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
         showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },

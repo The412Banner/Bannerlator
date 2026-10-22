@@ -121,12 +121,13 @@ private fun notificationsGranted(context: Context): Boolean =
     Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-/** Sign-in state of the four stores, read the same way each store's own screen reads it. */
+/** Sign-in state of the five stores, read the same way each store's own screen reads it. */
 private fun storeSignIns(context: Context): Map<Screen, Boolean> = mapOf(
     Screen.Steam to runCatching { SteamPrefs.init(context); SteamPrefs.isLoggedIn }.getOrDefault(false),
     Screen.Epic to runCatching { EpicCredentialStore.isLoggedIn(context) }.getOrDefault(false),
     Screen.Gog to runCatching { context.getSharedPreferences("bh_gog_prefs", 0).getString("access_token", null) != null }.getOrDefault(false),
     Screen.Amazon to runCatching { AmazonCredentialStore.isLoggedIn(context) }.getOrDefault(false),
+    Screen.Xbox to runCatching { com.winlator.star.store.xbox.XboxAccountStore.signedInAs(context) != null }.getOrDefault(false),
 )
 
 /**
@@ -515,7 +516,7 @@ private fun StepBody(
         5 -> {
             val showStores by AppThemeState.showStores.collectAsState()
             DeckCard {
-                listOf(Screen.Steam, Screen.Epic, Screen.Gog, Screen.Amazon).forEachIndexed { i, store ->
+                listOf(Screen.Steam, Screen.Epic, Screen.Gog, Screen.Amazon, Screen.Xbox).forEachIndexed { i, store ->
                     if (i > 0) DeckRowDivider()
                     val signedIn = stores[store] == true
                     DeckRow(

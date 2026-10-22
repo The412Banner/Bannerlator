@@ -1479,7 +1479,7 @@ private fun TopLevelFields(
         }
         if (!directAudioSupported && directAudioEntry != null) {
             Text(
-                "DirectAudio requires Proton ${com.winlator.star.core.DirectAudioSupport.SUPPORTED_LABEL}",
+                com.winlator.star.core.DirectAudioSupport.UNSUPPORTED_NOTE,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.5.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp)

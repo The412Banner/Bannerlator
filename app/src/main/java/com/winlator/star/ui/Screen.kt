@@ -16,6 +16,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
     object Gog    : Screen("gog",    "GOG",          "storefront")
     object Epic   : Screen("epic",   "Epic Games",   "storefront")
     object Amazon : Screen("amazon", "Amazon Games", "storefront")
+    object Xbox   : Screen("xbox",   "Xbox",         "storefront")
     object Steam  : Screen("steam",  "Steam",        "storefront")
 
     object ContainerDetail : Screen("container_detail?id={id}", "Container", "")
@@ -31,7 +32,7 @@ sealed class Screen(val route: String, val label: String, val iconName: String) 
             listOf(Games, Containers, FileManager, Settings, Appearance, InputControls, Contents, Saves)
         }
         val storeItems by lazy {
-            listOf(Gog, Epic, Amazon, Steam)
+            listOf(Gog, Epic, Amazon, Xbox, Steam)
         }
     }
 }

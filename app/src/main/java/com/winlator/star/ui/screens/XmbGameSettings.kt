@@ -650,7 +650,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     if (audioId == "directaudio" && !daSupported) audioId = Container.DEFAULT_AUDIO_DRIVER
     val daEntry = audioEntries.firstOrNull { StringUtils.parseIdentifier(it) == "directaudio" }
     rows += XmbRow.Choice("audio", p.str(R.string.audio_driver), Icons.Filled.VolumeUp, audioEntries, p.labelFor(audioEntries, audioId),
-        subtitle = if (!daSupported && daEntry != null) "DirectAudio requires Proton ${DirectAudioSupport.SUPPORTED_LABEL}" else null,
+        subtitle = if (!daSupported && daEntry != null) DirectAudioSupport.UNSUPPORTED_NOTE else null,
         disabledOptions = if (!daSupported && daEntry != null) setOf(daEntry) else emptySet(),
         confirm = { v -> if (StringUtils.parseIdentifier(v) == "directaudio") XmbConfirm("DirectAudio", "DirectAudio is experimental. Use it for this game?", "Use DirectAudio") else null }) { v ->
         xmb.set(p, "audioDriver", StringUtils.parseIdentifier(v))

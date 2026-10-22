@@ -61,6 +61,8 @@ fun ContainerPickerDialog(
     containers: List<Container>,
     onDismiss: () -> Unit,
     onSelected: (Container) -> Unit,
+    /** An optional per-container note under its subtitle (e.g. the Xbox store's Proton advice); null = none. */
+    note: (Container) -> String? = { null },
 ) {
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
@@ -107,6 +109,9 @@ fun ContainerPickerDialog(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                }
+                                note(container)?.let {
+                                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                                 }
                             }
                         }

@@ -117,6 +117,7 @@ class DownloadManagerActivity : ComponentActivity() {
         AmazonLibrarySync.seed(this)
         GogLibrarySync.seed(this)
         EpicLibrarySync.seed(this)
+        com.winlator.star.store.xbox.XboxDownloads.seed(this)
 
         setContent {
             WinlatorTheme {
@@ -235,6 +236,13 @@ class DownloadManagerActivity : ComponentActivity() {
                     },
                 )
             }
+            Store.XBOX -> {
+                // Installed record first (title, art, market), then the entry's own fields.
+                val g = com.winlator.star.store.xbox.XboxInstallState.get(this, entry.id)
+                startActivity(com.winlator.star.store.xbox.XboxMainActivity.detailIntent(this,
+                    com.winlator.star.store.xbox.XboxGame(entry.id, g?.title ?: entry.name, g?.heroUrl, g?.posterUrl ?: entry.cover,
+                        market = g?.market ?: com.winlator.star.store.xbox.Xodus.market(), access = g?.access ?: "")))
+            }
             Store.EPIC -> {
                 // Hydrate the detail extras from epic_cache; fall back to the entry's own fields so
                 // the page still opens even if the cache is unavailable.
@@ -261,6 +269,13 @@ class DownloadManagerActivity : ComponentActivity() {
         val dir = entry.installPath
         if (dir.isNullOrEmpty()) {
             uninstallResult = "Install directory not set"
+            return
+        }
+        if (entry.store == Store.XBOX) {
+            // Xbox: the launch exe comes from MicrosoftGame.config and the shortcut carries the product id.
+            val g = com.winlator.star.store.xbox.XboxInstallState.get(this, entry.id)
+            if (g == null) { uninstallResult = "This Xbox game is not installed"; return }
+            StarLaunchBridge.addToLauncher(this, g.title, File(g.folder, g.exe).path, g.posterUrl ?: g.heroUrl, "xbox:${g.id}", false)
             return
         }
         val appId = entry.id.toIntOrNull() ?: 0
@@ -331,6 +346,7 @@ class DownloadManagerActivity : ComponentActivity() {
             Store.AMAZON -> AmazonInstallState.purge(this, entry.id)
             Store.GOG -> GogInstallState.purge(this, entry.id)
             Store.EPIC -> EpicInstallState.purge(this, entry.id)
+            Store.XBOX -> com.winlator.star.store.xbox.XboxInstallState.remove(this, entry.id)
             Store.STEAM -> Unit   // handled via SteamRepository.markUninstalled in `mark`
         }
     }

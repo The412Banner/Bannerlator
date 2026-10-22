@@ -89,14 +89,16 @@ import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.isAmazonShortcut
 import com.winlator.star.ui.screens.isGogShortcut
 import com.winlator.star.ui.screens.isSteamOriginShortcut
+import com.winlator.star.ui.screens.isXboxShortcut
 import com.winlator.star.ui.theme.AppThemeState
 
-/** The four storefronts, in the order the drawer lists them. [screen] is what MainActivity.launchStore takes. */
+/** The five storefronts, in the order the drawer lists them. [screen] is what MainActivity.launchStore takes. */
 private enum class DeckStore(val label: String, val screen: Screen, val owns: (Shortcut) -> Boolean) {
     STEAM("Steam", Screen.Steam, { s -> isSteamOriginShortcut(s) && !LinuxShortcuts.isLinuxEntry(s) }),
     EPIC("Epic Games", Screen.Epic, { s -> s.getExtra("storeSource") == "epic" }),
     GOG("GOG", Screen.Gog, { s -> isGogShortcut(s) }),
     AMAZON("Amazon Games", Screen.Amazon, { s -> isAmazonShortcut(s) }),
+    XBOX("Xbox", Screen.Xbox, { s -> isXboxShortcut(s) }),
 }
 
 /** A store's second-level tabs. Friends is Steam-only. */
@@ -117,6 +119,7 @@ private fun isSignedIn(context: Context, store: DeckStore): Boolean = runCatchin
         DeckStore.EPIC -> EpicCredentialStore.isLoggedIn(context)
         DeckStore.GOG -> context.getSharedPreferences("bh_gog_prefs", 0).getString("access_token", null) != null
         DeckStore.AMAZON -> AmazonCredentialStore.isLoggedIn(context)
+        DeckStore.XBOX -> com.winlator.star.store.xbox.XboxAccountStore.signedInAs(context) != null
     }
 }.getOrDefault(false)
 
@@ -141,6 +144,8 @@ private fun storeIntent(context: Context, store: DeckStore, tab: StoreTab): Inte
         DeckStore.EPIC -> Intent(context, EpicMainActivity::class.java).putExtra(EpicMainActivity.EXTRA_TAB, index)
         DeckStore.GOG -> Intent(context, GogMainActivity::class.java).putExtra(GogMainActivity.EXTRA_TAB, index)
         DeckStore.AMAZON -> Intent(context, AmazonMainActivity::class.java).putExtra(AmazonMainActivity.EXTRA_TAB, index)
+        DeckStore.XBOX -> Intent(context, com.winlator.star.store.xbox.XboxMainActivity::class.java)
+            .putExtra(com.winlator.star.store.xbox.XboxMainActivity.EXTRA_TAB, index)
     }
 }
 

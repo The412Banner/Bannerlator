@@ -50,11 +50,14 @@ static const struct wl_interface *banner_ahb_v1_types[] = {
 	NULL,
 	NULL,
 	NULL,
+	&wl_buffer_interface,
+	NULL,
 };
 
 static const struct wl_message banner_ahb_v1_requests[] = {
 	{ "destroy", "", banner_ahb_v1_types + 0 },
 	{ "attach", "ohuuuuuu", banner_ahb_v1_types + 1 },
+	{ "fence", "3oh", banner_ahb_v1_types + 9 },
 };
 
 static const struct wl_message banner_ahb_v1_events[] = {
@@ -62,8 +65,8 @@ static const struct wl_message banner_ahb_v1_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface banner_ahb_v1_interface = {
-	"banner_ahb_v1", 2,
-	2, banner_ahb_v1_requests,
+	"banner_ahb_v1", 3,
+	3, banner_ahb_v1_requests,
 	1, banner_ahb_v1_events,
 };
 

@@ -92,11 +92,12 @@ private data class SearchDestination(
 /** Everything the search lists besides games. Keywords widen the match beyond the title. */
 private val DESTINATIONS = listOf(
     SearchDestination("Home", "Library", Icons.Filled.SportsEsports, "library games shelf continue playing all games shortcuts add game import folder", route = DeckRoutes.HOME),
-    SearchDestination("Stores", "Steam, Epic, GOG, Amazon", Icons.Filled.Storefront, "store sign in library download", route = DeckRoutes.STORES),
+    SearchDestination("Stores", "Steam, Epic, GOG, Amazon, Xbox", Icons.Filled.Storefront, "store sign in library download", route = DeckRoutes.STORES),
     SearchDestination("Steam", "Stores › Steam", Icons.Filled.Storefront, "steam valve store friends", store = Screen.Steam),
     SearchDestination("Epic Games", "Stores › Epic Games", Icons.Filled.Storefront, "epic store free games", store = Screen.Epic),
     SearchDestination("GOG", "Stores › GOG", Icons.Filled.Storefront, "gog galaxy store", store = Screen.Gog),
     SearchDestination("Amazon Games", "Stores › Amazon Games", Icons.Filled.Storefront, "amazon prime store", store = Screen.Amazon),
+    SearchDestination("Xbox", "Stores › Xbox", Icons.Filled.Storefront, "xbox microsoft store game pass pc", store = Screen.Xbox),
     SearchDestination("Containers", "Wine prefixes and their settings", Icons.Filled.Inventory2, "container wine prefix drive c new container", route = Screen.Containers.route),
     SearchDestination("Components", "Wine, Proton, DXVK, VKD3D, Box64, FEX, drivers", Icons.Filled.Extension, "components contents dxvk vkd3d proton wine box64 fex fexcore wowbox64 d7vk wcp driver turnip install", route = DeckRoutes.COMPONENTS),
     SearchDestination("Controls", "On-screen profiles, bindings, controller test", Icons.Filled.SportsEsports, "controls input controller gamepad bindings on-screen touch profile test", route = DeckRoutes.CONTROLS),

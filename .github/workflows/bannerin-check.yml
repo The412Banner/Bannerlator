@@ -2,7 +2,8 @@ name: bannerin check
 
 # Fast feedback for the controller-input transport crate (app/src/main/cpp/bannerin): host tests,
 # the loom model check, and both device builds with their link probes. The full APK build
-# (_build.yml) runs the same app/src/main/cpp/bannerin/ci/build.sh before Gradle.
+# (_build.yml) runs the same app/src/main/cpp/bannerin/ci/build.sh for the device builds only; the host
+# tests and the loom check run here alone.
 on:
   push:
     paths:

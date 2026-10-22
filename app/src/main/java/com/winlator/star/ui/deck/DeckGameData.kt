@@ -10,6 +10,7 @@ import com.winlator.star.ui.screens.EXTRA_LAST_PLAYED
 import com.winlator.star.ui.screens.isAmazonShortcut
 import com.winlator.star.ui.screens.isCustomOriginShortcut
 import com.winlator.star.ui.screens.isGogShortcut
+import com.winlator.star.ui.screens.isXboxShortcut
 import com.winlator.star.ui.screens.isSteamOriginShortcut
 
 /*
@@ -84,6 +85,7 @@ internal val STORE_SHELVES: List<Pair<String, (Shortcut) -> Boolean>> = listOf(
     "Epic Games" to { s: Shortcut -> s.getExtra("storeSource") == "epic" },
     "GOG" to { s: Shortcut -> isGogShortcut(s) },
     "Amazon Games" to { s: Shortcut -> isAmazonShortcut(s) },
+    "Xbox" to { s: Shortcut -> isXboxShortcut(s) },
     "Android" to { s: Shortcut -> AndroidGames.isAndroidEntry(s) },
     "Added by me" to { s: Shortcut -> isCustomOriginShortcut(s) },
 )

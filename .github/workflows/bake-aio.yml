@@ -3,9 +3,11 @@
 # New containers get their Windows tools from app/src/main/assets/container_pattern_common.tzst
 # (84 MB, in git). This swaps the two v2 exes under drive_c/AIO Graphics Test v2/ for the ones
 # attached to an AIO-Graphics-Test release and commits the re-baked template to a branch, so the
-# 84 MB upload happens on the runner instead of from a phone. Only the two exes change: every other
-# entry stays byte-identical, the swapped exes carry their siblings' owner and mode, and the entry
-# count must not change. Existing containers keep the exe they were created with.
+# 84 MB upload happens on the runner instead of from a phone. Only the AIO entries change: every other
+# entry stays byte-identical, and new exes carry their siblings' owner and mode. with_cursortest adds
+# the release's CursorTest.exe next to them; drop_classic removes the old drive_c/AIO Graphics Test/
+# (v1) folder. The entry count must match what was added and removed. Existing containers get the new
+# files only when PATTERN_CONTENT_VERSION in XServerDisplayActivity is bumped.
 name: Bake AIO Graphics Test into the container template
 
 on:
@@ -17,6 +19,14 @@ on:
       target_branch:
         description: 'Branch to commit the re-baked template to (must be the branch this runs on)'
         required: true
+      with_cursortest:
+        description: 'Also add the release CursorTest.exe to drive_c/AIO Graphics Test v2/'
+        type: boolean
+        default: true
+      drop_classic:
+        description: 'Remove the old drive_c/AIO Graphics Test/ (v1) folder from the template'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -34,36 +44,60 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         TAG: ${{ inputs.aio_tag }}
+        WITH_CURSORTEST: ${{ inputs.with_cursortest }}
+        DROP_CLASSIC: ${{ inputs.drop_classic }}
       run: |
         set -euo pipefail
         T=app/src/main/assets/container_pattern_common.tzst
         D="home/xuser/.wine/drive_c/AIO Graphics Test v2"
+        C="home/xuser/.wine/drive_c/AIO Graphics Test"
+        EXES="AIO-Graphics-Test-32bit.exe AIO-Graphics-Test-64bit.exe"
+        [ "$WITH_CURSORTEST" = "true" ] && EXES="$EXES CursorTest.exe"
         mkdir -p dl "stage/$D"
-        gh release download "$TAG" -R The412Banner/AIO-Graphics-Test \
-          -p 'AIO-Graphics-Test-32bit.exe' -p 'AIO-Graphics-Test-64bit.exe' -D dl
+        for e in $EXES; do
+          gh release download "$TAG" -R The412Banner/AIO-Graphics-Test -p "$e" -D dl
+        done
         ls -l dl
         sha256sum dl/*.exe
         MT=$(gh release view "$TAG" -R The412Banner/AIO-Graphics-Test --json publishedAt --jq .publishedAt)
         zstd -dc "$T" > pattern.tar
         before=$(tar tf pattern.tar | wc -l)
-        echo "before:"; tar tvf pattern.tar --numeric-owner | grep "AIO Graphics Test v2/"
-        tar --delete -f pattern.tar "$D/AIO-Graphics-Test-32bit.exe" "$D/AIO-Graphics-Test-64bit.exe"
-        cp dl/AIO-Graphics-Test-32bit.exe dl/AIO-Graphics-Test-64bit.exe "stage/$D/"
-        tar --append -f pattern.tar --format=gnu -C stage \
-          --owner=10250 --group=10250 --numeric-owner --mode=0640 --mtime="$MT" \
-          "$D/AIO-Graphics-Test-32bit.exe" "$D/AIO-Graphics-Test-64bit.exe"
-        after=$(tar tf pattern.tar | wc -l)
-        echo "after:"; tar tvf pattern.tar --numeric-owner | grep "AIO Graphics Test v2/"
-        [ "$before" = "$after" ] || { echo "entry count changed: $before -> $after"; exit 1; }
-        for b in 32 64; do
-          got=$(tar xOf pattern.tar "$D/AIO-Graphics-Test-${b}bit.exe" | sha256sum | cut -c1-64)
-          want=$(sha256sum "dl/AIO-Graphics-Test-${b}bit.exe" | cut -c1-64)
-          [ "$got" = "$want" ] || { echo "${b}-bit exe in the template does not match the release"; exit 1; }
+        echo "before:"; tar tvf pattern.tar --numeric-owner | grep "AIO Graphics Test" || true
+        added=0; removed=0
+        for e in $EXES; do
+          if tar tf pattern.tar "$D/$e" >/dev/null 2>&1; then
+            tar --delete -f pattern.tar "$D/$e"
+          else
+            added=$((added + 1))
+          fi
+          cp "dl/$e" "stage/$D/"
         done
+        if [ "$DROP_CLASSIC" = "true" ]; then
+          mapfile -t old < <(tar tf pattern.tar | grep -F "$C/" || true)
+          if [ "${#old[@]}" -gt 0 ]; then
+            tar --delete -f pattern.tar "$C"   # takes the folder's entries with it
+            removed=${#old[@]}
+          fi
+        fi
+        (cd stage && for e in $EXES; do printf '%s\n' "$D/$e"; done) > list.txt
+        tar --append -f pattern.tar --format=gnu -C stage \
+          --owner=10250 --group=10250 --numeric-owner --mode=0640 --mtime="$MT" -T list.txt
+        after=$(tar tf pattern.tar | wc -l)
+        echo "after:"; tar tvf pattern.tar --numeric-owner | grep "AIO Graphics Test" || true
+        want_count=$((before + added - removed))
+        [ "$after" = "$want_count" ] || { echo "entry count $before -> $after, expected $want_count (+$added -$removed)"; exit 1; }
+        for e in $EXES; do
+          got=$(tar xOf pattern.tar "$D/$e" | sha256sum | cut -c1-64)
+          want=$(sha256sum "dl/$e" | cut -c1-64)
+          [ "$got" = "$want" ] || { echo "$e in the template does not match the release"; exit 1; }
+        done
+        if [ "$DROP_CLASSIC" = "true" ] && tar tf pattern.tar | grep -qF "$C/"; then
+          echo "the v1 folder is still in the template"; exit 1
+        fi
         zstd -19 -T0 -q -f pattern.tar -o "$T"
         zstd -lv "$T" | head -8
         ls -l "$T"
-        echo "entries: $after"
+        echo "entries: $after (+$added -$removed)"
 
     - name: Commit the re-baked template
       env:
@@ -74,6 +108,9 @@ jobs:
         git config user.name "The412Banner"
         git config user.email "the412banner@users.noreply.github.com"
         git add app/src/main/assets/container_pattern_common.tzst
-        git commit -m "Bake AIO Graphics Test ${TAG} into the container pattern (drive_c/AIO Graphics Test v2)"
+        msg="Bake AIO Graphics Test ${TAG} into the container pattern (drive_c/AIO Graphics Test v2)"
+        [ "${{ inputs.with_cursortest }}" = "true" ] && msg="$msg, add CursorTest"
+        [ "${{ inputs.drop_classic }}" = "true" ] && msg="$msg, drop the v1 folder"
+        git commit -m "$msg"
         git push origin "HEAD:${BRANCH}"
         git log --oneline -1

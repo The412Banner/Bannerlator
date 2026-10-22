@@ -8,6 +8,10 @@
         {
             "name" : "AIO Graphics Test (64-bit)",
             "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-64bit.exe"
+        },
+        {
+            "name" : "Cursor Test",
+            "path" : "C:/AIO Graphics Test v2/CursorTest.exe"
         }
         ]
     },
@@ -38,19 +42,6 @@
             "name" : "AIO Graphics Test HDR (64-bit)",
             "path" : "C:/AIO Graphics Test v2/AIO-Graphics-Test-64bit.exe",
             "cmdArgs" : "--hdr"
-        }
-        ]
-    },
-    {
-    "name" : "AIO Graphics Test (Classic)",
-    "children" : [
-        {
-            "name" : "AIO Graphics Test Classic (32-bit)",
-            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-32bit.exe"
-        },
-        {
-            "name" : "AIO Graphics Test Classic (64-bit)",
-            "path" : "C:/AIO Graphics Test/AIO-Graphics-Test-64bit.exe"
         }
         ]
     },

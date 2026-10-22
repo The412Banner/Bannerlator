@@ -31,7 +31,10 @@ import java.util.List;
  * {@code adapter} = the bundled {@link WaylandAdapter} as the game's ICD ({@link #ENV_ICD}); it
  * runs on the container's own AdrenoTools graphics driver, so one pick drives compositor and game.
  * It needs a Mesa AdrenoTools driver underneath ({@link WaylandAdapter#unusableReason}); on
- * "System", a Qualcomm blob or a missing driver it resolves to Auto instead (logged).
+ * "System", a Qualcomm blob or a missing driver it resolves to a bundled variant by GPU instead
+ * (logged). {@code auto} resolves exactly like {@code adapter} once the launch knows the graphics
+ * driver, so every container that never chose is on the adapter too — at resolution time only, the
+ * stored value is never rewritten.
  */
 public final class WaylandGameDriver {
     private WaylandGameDriver() {}
@@ -54,9 +57,17 @@ public final class WaylandGameDriver {
     /** Shared editor help text (container, shortcut and XMB editors show the same line). */
     public static final String HELP_TEXT =
             "The Vulkan driver the game renders on when the display backend is Wayland. Adapter = your " +
-            "graphics driver above, through the app's Wayland adapter (one pick for everything). Bundled = " +
-            "the Wayland Turnips inside the Proton; Auto picks one by your GPU. Imported drivers must be " +
+            "graphics driver above, through the app's Wayland adapter (one pick for everything; the normal " +
+            "path). Bundled = the Wayland Turnips inside the Proton, by GPU. Imported drivers must be " +
             "Wayland/Linux builds (a Turnip zip made for Android will not work here).";
+
+    /** The one sentence over the fallback choices in the editors' expander. */
+    public static final String FALLBACK_HINT =
+            "These are a fallback for a game the adapter cannot run on your graphics driver; the adapter is " +
+            "the normal path and is used automatically when nothing else is chosen.";
+
+    /** The editors' expander title for the fallback choices. */
+    public static final String FALLBACK_EXPANDER = "Advanced: use a layer-bundled or imported Wayland driver instead";
 
     /** Editor label of the adapter choice. */
     public static final String ADAPTER_LABEL = "Adapter (uses your graphics driver)";
@@ -148,13 +159,18 @@ public final class WaylandGameDriver {
      */
     public static Resolution resolve(Context context, String choice, String graphicsDriverId) {
         if (choice == null || choice.isEmpty()) choice = Container.WAYLAND_GAME_DRIVER_AUTO;
-        if (Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(choice)) {
+        // Auto (= every container that never chose) is the adapter too whenever the launch knows the
+        // graphics driver and it is a Turnip; only when the adapter cannot be used does Auto keep its old
+        // meaning, a bundled Wayland Turnip by GPU. Resolution-time only: nothing stored is rewritten.
+        boolean autoChoice = Container.WAYLAND_GAME_DRIVER_AUTO.equals(choice);
+        if (Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(choice) || (autoChoice && graphicsDriverId != null)) {
             String why = graphicsDriverId == null ? "the graphics driver is unknown"
                     : WaylandAdapter.unusableReason(context, graphicsDriverId);
             String icd = why == null ? WaylandAdapter.ensureInstalled(context) : null;
-            if (icd != null) return new Resolution(choice, VARIANT_PLAIN, icd, true);
+            if (icd != null) return new Resolution(Container.WAYLAND_GAME_DRIVER_ADAPTER, VARIANT_PLAIN, icd, true);
             if (why == null) why = "the bundled adapter could not be installed";
-            Log.w(TAG, "Wayland adapter not used: " + why + "; falling back to auto");
+            Log.w(TAG, "Wayland adapter not used" + (autoChoice ? " (auto)" : "") + ": " + why
+                    + "; falling back to a bundled Wayland Turnip by GPU");
             choice = Container.WAYLAND_GAME_DRIVER_AUTO;
         }
         if (isImported(choice)) {
@@ -224,11 +240,14 @@ public final class WaylandGameDriver {
         return "Bundled";
     }
 
-    /** Stored values in editor order: adapter, auto, the eight bundled variants, then each imported driver. */
+    /**
+     * Stored values in editor order: adapter (or, in an APK without one, Auto = bundled by GPU), the eight
+     * bundled variants, then each imported driver. Auto and adapter resolve the same way whenever the APK
+     * carries the adapter ({@link #resolve}), so the editors list one of them: see {@link #editorChoice}.
+     */
     public static List<String> optionValues(Context context) {
         ArrayList<String> values = new ArrayList<>();
-        if (WaylandAdapter.isBundled(context)) values.add(Container.WAYLAND_GAME_DRIVER_ADAPTER);
-        values.add(Container.WAYLAND_GAME_DRIVER_AUTO);
+        values.add(WaylandAdapter.isBundled(context) ? Container.WAYLAND_GAME_DRIVER_ADAPTER : Container.WAYLAND_GAME_DRIVER_AUTO);
         values.add(Container.WAYLAND_GAME_DRIVER_BUNDLED);
         values.add(Container.WAYLAND_GAME_DRIVER_BUNDLED_A7XX);
         values.add(Container.WAYLAND_GAME_DRIVER_BUNDLED_A8XX);
@@ -248,8 +267,11 @@ public final class WaylandGameDriver {
      * back to Auto for it.
      */
     public static String optionLabel(Context context, String value, String autoVariant) {
-        if (value == null || value.isEmpty() || Container.WAYLAND_GAME_DRIVER_AUTO.equals(value))
+        if (value == null || value.isEmpty() || Container.WAYLAND_GAME_DRIVER_AUTO.equals(value)) {
+            // Auto is the adapter on a Turnip; the bundled-by-GPU name is what it falls back to.
+            if (WaylandAdapter.isBundled(context)) return ADAPTER_LABEL;
             return autoVariant == null ? "Auto (by GPU)" : "Auto (by GPU: " + variantShortName(autoVariant) + ")";
+        }
         if (Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(value)) return ADAPTER_LABEL;
         switch (value) {
             case Container.WAYLAND_GAME_DRIVER_BUNDLED:      return variantLabel(VARIANT_PLAIN);
@@ -271,9 +293,26 @@ public final class WaylandGameDriver {
         return value;
     }
 
-    /** True when {@code choice} is the adapter AND it can sit on {@code graphicsDriverId} (editor hint). */
+    /** True for the stored values that resolve to the adapter first: adapter, auto and "" (never chosen). */
+    public static boolean isAdapterChoice(String choice) {
+        return choice == null || choice.isEmpty()
+                || Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(choice)
+                || Container.WAYLAND_GAME_DRIVER_AUTO.equals(choice);
+    }
+
+    /**
+     * The entry of {@link #optionValues} an editor selects for a stored value: auto/"" show as the adapter
+     * when the APK carries one (they resolve to it), everything else as itself.
+     */
+    public static String editorChoice(Context context, String stored) {
+        if (isAdapterChoice(stored))
+            return WaylandAdapter.isBundled(context) ? Container.WAYLAND_GAME_DRIVER_ADAPTER : Container.WAYLAND_GAME_DRIVER_AUTO;
+        return stored;
+    }
+
+    /** True when {@code choice} resolves to the adapter AND it can sit on {@code graphicsDriverId} (editor hint). */
     public static boolean adapterActive(Context context, String choice, String graphicsDriverId) {
-        return Container.WAYLAND_GAME_DRIVER_ADAPTER.equals(choice)
+        return isAdapterChoice(choice)
                 && WaylandAdapter.isBundled(context)
                 && WaylandAdapter.unusableReason(context, graphicsDriverId) == null;
     }

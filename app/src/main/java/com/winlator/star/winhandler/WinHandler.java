@@ -181,6 +181,8 @@ public class WinHandler {
     // Linux session: the Steam client reads player 1, so slot 0's node stays listed even while
     // nothing holds it (the on-screen pad's release there stays a soft release, as before).
     private volatile boolean keepPlayerOneNode = false;
+    // Set by seatOnScreenPadAtBoot. Until then a newly loaded on-screen profile does not publish by itself.
+    private boolean onScreenBootSeated = false;
     // Live reconnect (SlotReconnector): bit N set = slot N is being reconnected; nothing writes to it or
     // creates its writer until the replug. Main thread.
     private int reconnectBlockedMask = 0;
@@ -2666,6 +2668,25 @@ public class WinHandler {
         }
         Log.d("WinHandler", "Pre-assigned " + assignedCount + " controller(s) before Wine startup.");
         return assignedCount;
+    }
+
+    /**
+     * Seats the on-screen pad before Wine boots, after preAssignConnectedControllers, so a game that
+     * looks for controllers only at startup finds it. Without this it took its slot on the first touch:
+     * isVirtualGamepad() is false until the overlay's first draw loads the profile, and nothing
+     * published after that. Main thread.
+     */
+    public void seatOnScreenPadAtBoot() {
+        onScreenBootSeated = true;
+        sendGamepadState();
+        Log.d("WinHandler", "On-screen pad at boot: slot " + deviceToSlot.get(OSC_DEVICE_ID));
+    }
+
+    /** The overlay loaded its profile's elements. After the boot seating, publish so a virtual-gamepad
+     *  profile takes its slot now; before it, wait, so physical pads pre-assigned at boot keep the slots
+     *  they had. Main thread. */
+    public void onScreenProfileLoaded() {
+        if (onScreenBootSeated) sendGamepadState();
     }
 
     /** Pass-1 helper for pre-assignment: assigns a device to its manually PINNED slot if it has one

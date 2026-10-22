@@ -11,6 +11,7 @@ add_library(bannerwayland SHARED
         src/vk_loader.c
         src/sc_layer.c
         src/ahb_swapchain.c
+        src/driver_probe.c
         src/waylandcomp_jni.c
         src/banner_ext.c
         src/wl_clipboard.c

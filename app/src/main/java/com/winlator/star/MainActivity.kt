@@ -335,6 +335,7 @@ class MainActivity : AppCompatActivity() {
             Screen.Gog    -> GogMainActivity::class.java
             Screen.Epic   -> EpicMainActivity::class.java
             Screen.Amazon -> AmazonMainActivity::class.java
+            Screen.Xbox   -> com.winlator.star.store.xbox.XboxMainActivity::class.java
             Screen.Steam  -> SteamMainActivity::class.java
             else          -> return
         }

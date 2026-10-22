@@ -467,7 +467,11 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
                 xmb.refresh()
             }
         }
-        val wgdOverride = p.ex("waylandGameDriver", "")
+        // A stored auto shows as the adapter it resolves to (WaylandGameDriver.editorChoice), so the list
+        // never carries two entries with the adapter's label.
+        val wgdOverride = p.ex("waylandGameDriver", "").let {
+            if (it.isEmpty()) "" else com.winlator.star.core.WaylandGameDriver.editorChoice(p.context, it)
+        }
         val wgdInstalled = com.winlator.star.core.WaylandGameDriver.optionValues(p.context)
         val wgdValues = listOf("") + (if (wgdOverride.isEmpty() || wgdOverride in wgdInstalled) wgdInstalled else wgdInstalled + wgdOverride)
         val wgdLabels = wgdValues.map {
@@ -646,7 +650,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     if (audioId == "directaudio" && !daSupported) audioId = Container.DEFAULT_AUDIO_DRIVER
     val daEntry = audioEntries.firstOrNull { StringUtils.parseIdentifier(it) == "directaudio" }
     rows += XmbRow.Choice("audio", p.str(R.string.audio_driver), Icons.Filled.VolumeUp, audioEntries, p.labelFor(audioEntries, audioId),
-        subtitle = if (!daSupported && daEntry != null) "DirectAudio requires Proton ${DirectAudioSupport.SUPPORTED_LABEL}" else null,
+        subtitle = if (!daSupported && daEntry != null) DirectAudioSupport.UNSUPPORTED_NOTE else null,
         disabledOptions = if (!daSupported && daEntry != null) setOf(daEntry) else emptySet(),
         confirm = { v -> if (StringUtils.parseIdentifier(v) == "directaudio") XmbConfirm("DirectAudio", "DirectAudio is experimental. Use it for this game?", "Use DirectAudio") else null }) { v ->
         xmb.set(p, "audioDriver", StringUtils.parseIdentifier(v))

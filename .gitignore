@@ -45,3 +45,9 @@ app/src/main/assets/linuxfs/libfakeinput.so
 app/src/main/assets/linuxfs/libblsession.so
 app/src/main/assets/linuxfs/usr/local/bin/
 art*/
+
+# Xbox backend build cache and CI-built outputs (tools/xbox/build-android.sh) — never commit.
+/build-xbox/
+/app/src/main/assets/xbox/
+/app/src/main/jniLibs/arm64-v8a/libxodus_cli.so
+/app/src/main/jniLibs/arm64-v8a/libxodus_service.so

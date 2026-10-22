@@ -1015,7 +1015,7 @@ internal object SettingsRegistry {
                 Control.Segmented((env.vm?.audioDriverEntries ?: emptyList()).map { entry ->
                     val id = idOf(entry)
                     Opt(id, labels[id] ?: entry,
-                        disabledReason = if (id == "directaudio" && !supported) "Needs Proton ${DirectAudioSupport.SUPPORTED_LABEL}." else null)
+                        disabledReason = if (id == "directaudio" && !supported) "${DirectAudioSupport.UNSUPPORTED_NOTE}." else null)
                 })
             },
             vm = VmBinding(get = { _, vm -> idOf(vm.selectedAudioDriver) }, set = { _, vm, v -> vm.selectedAudioDriver = displayFor(v, vm.audioDriverEntries) }),

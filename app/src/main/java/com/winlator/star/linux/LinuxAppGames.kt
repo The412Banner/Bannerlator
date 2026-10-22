@@ -136,7 +136,7 @@ object LinuxAppGames {
             // The client already has Steam's own games as the real thing; the other stores'
             // games need their store's sign-in, which only the app's own launch provides.
             val store = shortcut.getExtra("storeSource", "")
-            if (store == "steam" || store == "epic" || store == "amazon") continue
+            if (store == "steam" || store == "epic" || store == "amazon" || store == "xbox") continue
             val exe = runCatching { WinePath.resolveAndroidPath(container, shortcut.path) }.getOrNull()
             if (exe == null || !exe.isFile) {
                 Log.w(TAG, "${shortcut.name}: ${shortcut.path} is not a file this app can see; skipped")

@@ -5,6 +5,13 @@ name: CI Build (artifacts only)
 # the SAME reusable build, so the build logic lives in exactly one place.
 
 on:
+  # Every push to main builds too (log-only "[skip ci]" commits and docs don't), so main's caches
+  # stay fresh: branches can only restore main's caches, and setup-gradle writes only on main.
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'PROGRESS_LOG.md'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       release_number:
@@ -15,11 +22,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # A newer push to main replaces a main build still running; manual builds never cancel.
+  group: ${{ github.event_name == 'push' && 'ci-main' || format('ci-{0}', github.run_id) }}
+  cancel-in-progress: true
+
 jobs:
   build:
     uses: ./.github/workflows/_build.yml
     with:
-      release_number: ${{ inputs.release_number }}
+      release_number: ${{ inputs.release_number || 'main' }}
     secrets:
       # Test builds bundle the Samsung Galaxy Performance SDK when the secret is present
       # (empty otherwise). release.yml deliberately does NOT pass this, so public release

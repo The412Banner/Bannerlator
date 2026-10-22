@@ -390,6 +390,28 @@
             android:theme="@style/AppTheme"/>
         <activity
             android:exported="false"
+            android:name="com.winlator.star.store.xbox.XboxMainActivity"
+            android:screenOrientation="sensor"
+            android:launchMode="singleTop"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
+            android:name="com.winlator.star.store.xbox.XboxGameDetailActivity"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/AppTheme"/>
+        <!-- Microsoft sign-in: its own process, so its WebView data (cleared on every attempt) never
+             touches the other stores' web logins. -->
+        <activity
+            android:exported="false"
+            android:name="com.winlator.star.store.xbox.XboxLoginActivity"
+            android:process=":xboxlogin"
+            android:screenOrientation="fullSensor"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:theme="@style/AppTheme"/>
+        <activity
+            android:exported="false"
             android:name="com.winlator.star.store.FolderPickerActivity"
             android:screenOrientation="fullSensor"
             android:theme="@style/AppTheme"/>

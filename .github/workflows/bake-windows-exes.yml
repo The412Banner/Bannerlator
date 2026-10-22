@@ -1,0 +1,75 @@
+# Bake the app's bundled Windows exes into the container template, server-side.
+#
+# winhandler.exe and wfm.exe ship in app/src/main/assets and are staged into every container's
+# drive_c\windows at launch (stageBundledWindowsExe in XServerDisplayActivity). The template
+# app/src/main/assets/container_pattern_common.tzst (84 MB, in git) carries its own older copies, and
+# applyGeneralPatches extracts it over existing containers whenever PATTERN_CONTENT_VERSION changes.
+# This replaces the template's copies with the asset files from the branch, so the template and the
+# assets agree, and commits the re-baked template to the branch (the 84 MB upload happens on the
+# runner instead of from a phone). Only these entries change: every other entry stays byte-identical,
+# the entry count stays the same, and the new entries keep the old ones' owner and mode.
+name: Bake the bundled Windows exes into the container template
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to commit the re-baked template to (must be the branch this runs on)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  bake:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.target_branch }}
+        fetch-depth: 1
+
+    - name: Replace the exes inside the template
+      run: |
+        set -euo pipefail
+        T=app/src/main/assets/container_pattern_common.tzst
+        D="home/xuser/.wine/drive_c/windows"
+        EXES="winhandler.exe wfm.exe"
+        MT=$(git log -1 --format=%cI)
+        mkdir -p "stage/$D"
+        zstd -dc "$T" > pattern.tar
+        before=$(tar tf pattern.tar | wc -l)
+        echo "before:"; tar tvf pattern.tar --numeric-owner | grep -E "drive_c/windows/(winhandler|wfm)\.exe"
+        for e in $EXES; do
+          tar tf pattern.tar "$D/$e" >/dev/null || { echo "$D/$e is not in the template"; exit 1; }
+          echo "$e: template $(tar xOf pattern.tar "$D/$e" | md5sum | cut -c1-32), asset $(md5sum "app/src/main/assets/$e" | cut -c1-32)"
+          tar --delete -f pattern.tar "$D/$e"
+          cp "app/src/main/assets/$e" "stage/$D/"
+        done
+        (cd stage && for e in $EXES; do printf '%s\n' "$D/$e"; done) > list.txt
+        tar --append -f pattern.tar --format=gnu -C stage \
+          --owner=10250 --group=10250 --numeric-owner --mode=0640 --mtime="$MT" -T list.txt
+        after=$(tar tf pattern.tar | wc -l)
+        echo "after:"; tar tvf pattern.tar --numeric-owner | grep -E "drive_c/windows/(winhandler|wfm)\.exe"
+        [ "$after" = "$before" ] || { echo "entry count $before -> $after, expected $before"; exit 1; }
+        for e in $EXES; do
+          got=$(tar xOf pattern.tar "$D/$e" | sha256sum | cut -c1-64)
+          want=$(sha256sum "app/src/main/assets/$e" | cut -c1-64)
+          [ "$got" = "$want" ] || { echo "$e in the template does not match the asset"; exit 1; }
+        done
+        zstd -19 -T0 -q -f pattern.tar -o "$T"
+        zstd -lv "$T" | head -8
+        ls -l "$T"
+        echo "entries: $after"
+
+    - name: Commit the re-baked template
+      env:
+        BRANCH: ${{ inputs.target_branch }}
+      run: |
+        set -euo pipefail
+        git config user.name "The412Banner"
+        git config user.email "the412banner@users.noreply.github.com"
+        git add app/src/main/assets/container_pattern_common.tzst
+        git commit -m "Container pattern: winhandler.exe and wfm.exe = the bundled assets"
+        git push origin "HEAD:${BRANCH}"
+        git log --oneline -1

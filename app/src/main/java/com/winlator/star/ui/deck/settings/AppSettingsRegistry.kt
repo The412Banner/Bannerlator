@@ -310,14 +310,14 @@ internal object AppSettingsRegistry {
         saveToggle("app.saves.steamDownload", "Steam games", "Auto-download from Steam Cloud on launch", "Newest wins: never overwrites a newer local save.",
             "auto_download_steam_on_launch",
             "Automatic cloud download on launch will be OFF for your Steam library games. The latest cloud saves won't be pulled in before a game starts — you'll need to download them yourself from the game's detail page Cloud Saves section. Continue?"),
-        // Off by default (the other save switches default on), so it can't go through saveToggle.
+        // Not a saveToggle: that asks "Turn off auto-backup?", and this switch leaves local backups alone.
         SettingDef(
             id = "app.saves.goldbergCloud", category = "app.saves", group = "Steam games",
             label = "Sync with Steam Cloud during Goldberg launches", level = ADVANCED, tech = "goldberg_cloud_sync",
             hint = "Off: Goldberg is fully offline, with no cloud pull, push or achievement upload. On: those run for Goldberg launches too.",
             control = { _, _ -> Control.Toggle },
             app = AppBinding(
-                get = { c -> onOff(saveManagerPrefs(c).getBoolean("goldberg_cloud_sync", false)) },
+                get = { c -> onOff(saveManagerPrefs(c).getBoolean("goldberg_cloud_sync", true)) },
                 set = { c, v -> saveManagerPrefs(c).edit().putBoolean("goldberg_cloud_sync", v == "1").apply() },
             ),
         ),

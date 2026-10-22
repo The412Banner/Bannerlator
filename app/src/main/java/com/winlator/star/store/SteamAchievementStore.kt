@@ -809,12 +809,12 @@ object SteamAchievementStore {
     // ── Goldberg and the Steam network ─────────────────────────────────────────────────────────
 
     /**
-     * Goldberg is an offline mode: unless the user switched "sync with Steam Cloud during Goldberg launches"
-     * on (Save Manager, `goldberg_cloud_sync`, off by default), setting Goldberg up never waits on Steam.
+     * Goldberg is an offline mode: when the user switched "sync with Steam Cloud during Goldberg launches"
+     * off (Save Manager, `goldberg_cloud_sync`, on by default), setting Goldberg up never waits on Steam.
      */
     private fun goldbergMayUseSteam(ctx: Context): Boolean =
         ctx.applicationContext.getSharedPreferences("save_manager_prefs", Context.MODE_PRIVATE)
-            .getBoolean("goldberg_cloud_sync", false)
+            .getBoolean("goldberg_cloud_sync", true)
 
     private val prefetching = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
 

@@ -6741,16 +6741,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
-     * Goldberg is an emulated (offline) Steam session, so by default a Goldberg launch does no Steam Cloud
-     * save pull/push and no achievement upload. Save Manager "sync with Steam Cloud during Goldberg
-     * launches" ({@code goldberg_cloud_sync}, off by default) turns that sync back on.
+     * Goldberg is an emulated (offline) Steam session; a Goldberg launch does no Steam Cloud
+     * save pull/push and no achievement upload when Save Manager "sync with Steam Cloud during Goldberg
+     * launches" ({@code goldberg_cloud_sync}, on by default) is switched off.
      * Decided once, at the first call during launch, so flipping the switch mid-game can't make the exit
      * upload run for a session that never pulled from the cloud.
      */
     private boolean skipCloudForGoldberg() {
         if (goldbergCloudSkip == null) {
             goldbergCloudSkip = isGoldbergLaunchMode()
-                    && !getSharedPreferences("save_manager_prefs", MODE_PRIVATE).getBoolean("goldberg_cloud_sync", false);
+                    && !getSharedPreferences("save_manager_prefs", MODE_PRIVATE).getBoolean("goldberg_cloud_sync", true);
         }
         return goldbergCloudSkip;
     }

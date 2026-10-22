@@ -189,7 +189,6 @@ private fun SteamAccountRow(
     val shape = RoundedCornerShape(10.dp)
     val subtitle = when {
         account.needsLogin -> stringResource(R.string.steam_account_expired)
-        account.label != account.username -> account.username
         else -> null
     }
     Row(
@@ -306,7 +305,7 @@ private fun SteamAccountActionRow(label: String, enabled: Boolean, onClick: () -
 /**
  * The dialog for a SteamLite / Headless Steam launch held back by [SteamAccountStore.launchAccountCheck]:
  * [SteamAccountMismatchDialog] or [SteamNoOwnerDialog]. [onLaunchAnyway] and [onSwitchedLaunch] go on
- * with the launch, [onClose] cancels it; the no-owner dialog only ever closes.
+ * with the launch, [onClose] cancels it.
  */
 @Composable
 fun SteamAccountLaunchDialog(
@@ -318,13 +317,17 @@ fun SteamAccountLaunchDialog(
     when (check) {
         is SteamAccountStore.LaunchCheck.Mismatch ->
             SteamAccountMismatchDialog(check, onLaunchAnyway, onSwitchedLaunch, onClose)
-        SteamAccountStore.LaunchCheck.NoOwner -> SteamNoOwnerDialog(onClose)
+        SteamAccountStore.LaunchCheck.NoOwner -> SteamNoOwnerDialog(onLaunchAnyway, onClose)
     }
 }
 
-/** Shown instead of a launch when none of the saved accounts owns the game. Nothing is launched. */
+/**
+ * Shown before a launch when none of the saved accounts' owned-game lists has the game. Those lists can miss
+ * games that are still playable (installed before accounts were tracked, family sharing, free licenses), so
+ * "Launch anyway" goes on with the signed-in account; "Close" cancels.
+ */
 @Composable
-private fun SteamNoOwnerDialog(onClose: () -> Unit) {
+private fun SteamNoOwnerDialog(onLaunchAnyway: () -> Unit, onClose: () -> Unit) {
     OutlinedAlertDialog(
         onDismissRequest = onClose,
         title = {
@@ -336,6 +339,12 @@ private fun SteamNoOwnerDialog(onClose: () -> Unit) {
         },
         text = { Text(stringResource(R.string.steam_launch_no_owner_body)) },
         confirmButton = {
+            TextButton(
+                onClick = onLaunchAnyway,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.steam_launch_mismatch_launch_anyway)) }
+        },
+        dismissButton = {
             TextButton(
                 onClick = onClose,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),

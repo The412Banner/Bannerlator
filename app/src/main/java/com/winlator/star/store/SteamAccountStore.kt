@@ -67,6 +67,9 @@ object SteamAccountStore {
     private const val SESSION_WAIT_MS = 25_000L
 
     /** One saved login. [refreshToken] is empty when Steam rejected it ("sign-in expired"). */
+    /** A name for an account whose Steam profile name isn't known yet; never the sign-in name. */
+    fun unnamedLabel(steamId64: Long): String = "Steam account …" + steamId64.toString().takeLast(4)
+
     data class Account(
         val steamId64: Long,
         val username: String,
@@ -77,8 +80,11 @@ object SteamAccountStore {
         val lastUsed: Long,
     ) {
         val needsLogin: Boolean get() = refreshToken.isEmpty()
-        /** What the account chooser shows as the main line. */
-        val label: String get() = if (isRealSteamName(displayName)) displayName else username
+        /**
+         * What the account chooser shows: the Steam profile name. The sign-in name is never shown (it is often
+         * an e-mail address); before the profile name is known the account is named by the end of its Steam ID.
+         */
+        val label: String get() = if (isRealSteamName(displayName)) displayName else unnamedLabel(steamId64)
 
         /** Never prints the login token or the username (a data class would otherwise print every field). */
         override fun toString(): String = "Account(steamId64=$steamId64, needsLogin=$needsLogin)"
@@ -552,7 +558,7 @@ object SteamAccountStore {
         if (owner == active) return LaunchCheck.Proceed
         val ownerName = saved.first { it.steamId64 == owner }.label
         val activeName = saved.firstOrNull { it.steamId64 == active }?.label
-            ?: SteamPrefs.displayName.takeIf { isRealSteamName(it) } ?: SteamPrefs.username
+            ?: SteamPrefs.displayName.takeIf { isRealSteamName(it) } ?: unnamedLabel(active)
         return LaunchCheck.Mismatch(owner, ownerName, activeName)
     }
 

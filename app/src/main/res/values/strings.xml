@@ -1031,7 +1031,7 @@
     <string name="steam_launch_mismatch_switching">Switching…</string>
     <string name="steam_launch_mismatch_launch_anyway">Launch anyway</string>
     <string name="steam_launch_no_owner_title">No account owns this game</string>
-    <string name="steam_launch_no_owner_body">None of your saved Steam accounts owns this game, so it can\'t be launched with SteamLite or Headless Steam. Sign in with an account that owns it (Add account).</string>
+    <string name="steam_launch_no_owner_body">None of your saved Steam accounts lists this game as owned. If it\'s yours (installed earlier, family shared or free), launch it anyway; otherwise add the account that owns it.</string>
     <!-- /Steam: launch with a different account than the one the game belongs to -->
     <string name="fexcore_env_var_help__volatilemetadata"><![CDATA[
         64-bit Windows programs can carry volatile metadata: the compiler marking exactly which

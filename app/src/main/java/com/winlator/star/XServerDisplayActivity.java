@@ -15127,6 +15127,28 @@ return true;
     }
 
     /**
+     * The exe to run instead of a loader shortcut whose loader no longer exists, by the same rule a Goldberg
+     * launch uses ({@link GoldbergPatcher#resolveLaunch}); null when the loader is still there or nothing in
+     * its folder can replace it. Runs on the launch worker thread. Never throws.
+     */
+    private String missingLoaderReplacement(String winFilename) {
+        try {
+            java.io.File host = GoldbergPatcher.hostExeOf(shortcut);
+            if (host == null || host.isFile()) return null;
+            GoldbergPatcher.LaunchResolution r = GoldbergPatcher.resolveLaunch(this, 0, host.getAbsolutePath());
+            if (r.exe.equals(host) || !r.exe.isFile()) return null;
+            java.io.File hostDir = host.getParentFile();
+            if (hostDir == null || !hostDir.equals(r.exe.getParentFile())) return null;
+            gbLaunchNote = r.note;
+            Log.i("BH_GOLDBERG", "real-Steam launch of a loader shortcut (" + winFilename + "): " + r.note);
+            return r.exe.getName();
+        } catch (Throwable t) {
+            Log.w("BH_GOLDBERG", "missingLoaderReplacement failed — launching the shortcut as-is", t);
+            return null;
+        }
+    }
+
+    /**
      * For a Goldberg launch, the file name Wine should execute in the shortcut's folder instead of
      * {@code winFilename}: the ColdClient loader when the game's tier is COLDCLIENT, or a replacement
      * for a baked-in loader shortcut whose loader no longer exists. Null = leave the shortcut alone
@@ -15135,10 +15157,15 @@ return true;
      */
     private String resolveGoldbergLaunchName(String winFilename) {
         try {
-            if (shortcut == null || container == null || appSteamPlan != null || realSteamPlan != null) return null;
+            if (shortcut == null || container == null) return null;
             String lm = shortcut.getExtra("launchMode");
-            if ("Raw".equals(lm) || "RealSteam".equals(lm) || "AppSteam".equals(lm)) return null;
             boolean loaderShortcut = winFilename != null && winFilename.toLowerCase().startsWith("steamclient_loader");
+            boolean realSteam = appSteamPlan != null || realSteamPlan != null
+                    || "RealSteam".equals(lm) || "AppSteam".equals(lm);
+            // A shortcut made while Cold Client was selected points at the loader, which the restore before a
+            // SteamLite / Headless Steam launch removes: run the game exe beside it instead.
+            if (realSteam && loaderShortcut) return missingLoaderReplacement(winFilename);
+            if (realSteam || "Raw".equals(lm)) return null;
             int appId = 0;
             try { appId = Integer.parseInt(shortcut.getExtra("steamAppId", "0").trim()); }
             catch (NumberFormatException ignored) {}

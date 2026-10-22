@@ -1193,19 +1193,26 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             // Then delete the game's files. Split out so the pre-uninstall save backup can run first
             // and this proceeds regardless of whether that backup succeeded.
             val proceedUninstall = {
+                // Found in another Steam client's library: those files and that manifest are the client's.
+                val imported = SteamLibraryImport.isImported(this, appId)
                 StoreUninstaller.run(
                     installDir = installDir,
                     mark = {
                         // The game folder is about to be deleted: drop its appmanifest too (only the one
                         // that names this folder, only for a steamapps library), then the DB state.
-                        SteamAppManifest.removeFor(installDir, appId)
+                        if (imported) SteamLibraryImport.releaseImported(this, appId)
+                        else SteamAppManifest.removeFor(installDir, appId)
                         SteamRepository.getInstance().database.markUninstalled(appId)
                     },
                     // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
-                    keepFolder = { SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },
+                    keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },
                 ) { ok ->
                     uninstallingName = null
-                    uninstallResult = if (ok) "${g.name} uninstalled" else "Couldn't fully remove ${g.name}"
+                    uninstallResult = when {
+                        imported -> getString(R.string.steam_lib_uninstall_kept, g.name)
+                        ok -> "${g.name} uninstalled"
+                        else -> "Couldn't fully remove ${g.name}"
+                    }
                     loadGame()
                 }
             }

@@ -29,6 +29,7 @@ object SteamLibraryImport {
 
     private const val IGNORE_PREFS = "steam_library_import_ignore"
     private const val IGNORE_KEY = "app_ids"
+    private const val IMPORTED_KEY = "imported_app_ids"
 
     /**
      * Stops the import from marking [appId] installed again. Called when the user cancels and deletes a
@@ -43,23 +44,44 @@ object SteamLibraryImport {
     @JvmStatic
     fun clearIgnore(ctx: Context, appId: Int) = editIgnored(ctx) { it.remove(appId.toString()) }
 
-    private fun ignoredIds(ctx: Context): Set<String> = try {
+    /**
+     * True when [appId] was marked installed by this import — its files are another Steam client's, not a
+     * download made here — so uninstalling it must leave the folder and the appmanifest alone. Never throws.
+     */
+    @JvmStatic
+    fun isImported(ctx: Context, appId: Int): Boolean = idSet(ctx, IMPORTED_KEY).contains(appId.toString())
+
+    /**
+     * Uninstall bookkeeping for an imported game: forgets that it was imported and keeps the import from
+     * marking it installed again (the folder stays on disk). The caller still marks it uninstalled. Never throws.
+     */
+    @JvmStatic
+    fun releaseImported(ctx: Context, appId: Int) {
+        editSet(ctx, IMPORTED_KEY) { it.remove(appId.toString()) }
+        ignore(ctx, appId)
+    }
+
+    private fun ignoredIds(ctx: Context): Set<String> = idSet(ctx, IGNORE_KEY)
+
+    private fun editIgnored(ctx: Context, change: (MutableSet<String>) -> Unit) = editSet(ctx, IGNORE_KEY, change)
+
+    private fun idSet(ctx: Context, key: String): Set<String> = try {
         ctx.applicationContext.getSharedPreferences(IGNORE_PREFS, Context.MODE_PRIVATE)
-            .getStringSet(IGNORE_KEY, emptySet()) ?: emptySet()
+            .getStringSet(key, emptySet()) ?: emptySet()
     } catch (_: Throwable) {
         emptySet()
     }
 
-    private fun editIgnored(ctx: Context, change: (MutableSet<String>) -> Unit) {
+    private fun editSet(ctx: Context, key: String, change: (MutableSet<String>) -> Unit) {
         try {
             val sp = ctx.applicationContext.getSharedPreferences(IGNORE_PREFS, Context.MODE_PRIVATE)
             // A StringSet returned by getStringSet must be copied before it is changed.
-            val set = HashSet(sp.getStringSet(IGNORE_KEY, emptySet()) ?: emptySet())
+            val set = HashSet(sp.getStringSet(key, emptySet()) ?: emptySet())
             val before = set.size
             change(set)
-            if (set.size != before) sp.edit().putStringSet(IGNORE_KEY, set).apply()
+            if (set.size != before) sp.edit().putStringSet(key, set).apply()
         } catch (t: Throwable) {
-            Log.w(TAG, "import-ignore list update failed: ${t.message}")
+            Log.w(TAG, "import list update failed ($key): ${t.message}")
         }
     }
 
@@ -144,6 +166,7 @@ object SteamLibraryImport {
         // size_bytes means the Steam manifest install size everywhere else: keep the synced one.
         val size = if (row.sizeBytes > 0L) row.sizeBytes else info.sizeOnDisk
         db.markInstalled(appId, folder.absolutePath, size)
+        editSet(app, IMPORTED_KEY) { it.add(appId.toString()) }
         // The update check compares the folder's build stamp with the live build; stamp it from the
         // manifest, but only when the folder has no stamp of its own.
         if (info.buildId > 0L && !File(folder, BUILD_MARKER).exists()) {

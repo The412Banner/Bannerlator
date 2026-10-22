@@ -162,6 +162,7 @@ public final class SteamRepository {
 
     private Context appContext = null;
     private SharedPreferences prefs = null;
+    private SharedPreferences picsPrefs = null;   // SteamPrefs.PICS_INSTALLDIR_PREFS
 
     private String  pGet(String key, String  def) { return prefs != null ? prefs.getString(key, def)  : def; }
     private long    pGet(String key, long    def) { return prefs != null ? prefs.getLong(key, def)    : def; }
@@ -172,8 +173,8 @@ public final class SteamRepository {
     private void    pPut(String key, int v)     { if (prefs != null) prefs.edit().putInt(key, v).apply(); }
 
     // Valve's installdir per app (pics_installdir_<appId>) is learned for thousands of apps on the first
-    // library sync. One prefs edit per app would rewrite the whole file (which also holds the login) thousands of
-    // times, so the values are collected and written in a single edit: when enough are pending, when the sync
+    // library sync. They go to their own prefs file, and one edit per app would rewrite it thousands of times,
+    // so the values are collected and written in a single edit: when enough are pending, when the sync
     // finishes, and (for a lone single-app refresh) shortly after the last one was queued.
     private final Map<String, String> picsDirPending = new java.util.HashMap<>();
     private boolean picsDirFlushScheduled = false;
@@ -201,8 +202,8 @@ public final class SteamRepository {
             batch = new java.util.HashMap<>(picsDirPending);
             picsDirPending.clear();
         }
-        if (prefs == null) return;
-        SharedPreferences.Editor ed = prefs.edit();
+        if (picsPrefs == null) return;
+        SharedPreferences.Editor ed = picsPrefs.edit();
         for (Map.Entry<String, String> e : batch.entrySet()) ed.putString(e.getKey(), e.getValue());
         ed.apply();
     }
@@ -985,6 +986,10 @@ public final class SteamRepository {
         }
         if (prefs == null) {
             prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        }
+        if (picsPrefs == null) {
+            SteamPrefs.movePicsInstallDirs(appContext);
+            picsPrefs = appContext.getSharedPreferences(SteamPrefs.PICS_INSTALLDIR_PREFS, Context.MODE_PRIVATE);
         }
         // Register the persisted username + refresh token so the log redactor strips them from every
         // diagnostic line, even before this session performs a login.
@@ -2197,7 +2202,8 @@ public final class SteamRepository {
                         try {
                             String picsInstallDir = kvStr(root.get("config").get("installdir")).trim();
                             String picsKey = SteamPrefs.K_PICS_INSTALLDIR_PREFIX + appId;
-                            if (!picsInstallDir.isEmpty() && !picsInstallDir.equals(pGet(picsKey, ""))) {
+                            String known = picsPrefs != null ? picsPrefs.getString(picsKey, "") : "";
+                            if (!picsInstallDir.isEmpty() && !picsInstallDir.equals(known)) {
                                 queuePicsInstallDir(picsKey, picsInstallDir);
                             }
                         } catch (Throwable ignored) {}

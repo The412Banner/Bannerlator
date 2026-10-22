@@ -2640,6 +2640,7 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     ]]></string>
     <!-- Steam library locations: extra install folders (store/SteamLibraryLocations). -->
     <string name="steam_lib_title">Steam library locations</string>
+    <string name="steam_lib_uninstall_kept">%1$s removed from Bannerlator. Its files belong to another Steam client and were kept.</string>
     <string name="steam_lib_settings_subtitle">Games folders on shared storage or an SD card, set up as regular Steam libraries (a steamapps folder), so other Steam clients and emulators can use the same games. You choose the location each time you install a game.</string>
     <string name="steam_lib_intro">Games install to the app\'s own storage by default. Add a \"Games\" folder on shared storage or an SD card and the app creates (or reuses) a regular Steam steamapps folder inside it — games go to steamapps/common with their appmanifest files, the same layout every Steam client uses, so other launchers and emulators can open them without a re-download. An existing steamapps folder is built upon, never reset, and games already installed in it are picked up. Removing a location only forgets it — no files are ever deleted.</string>
     <string name="steam_lib_manage">Manage locations</string>

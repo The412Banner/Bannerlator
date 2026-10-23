@@ -16697,7 +16697,7 @@ return true;
         // Windows Runtime classes only the 32-bit registry view has (PropertySet: Xbox sign-in), added to the 64-bit view.
         com.winlator.star.store.xbox.XboxWinRt.ensure(getApplicationContext(), new File(imageFs.wineprefix));
         // What the game's MicrosoftGame.config declares (VC14), installed offline when this container lacks it.
-        com.winlator.star.store.xbox.XboxDependencies.ensure(getApplicationContext(), container, id, label -> {
+        com.winlator.star.store.xbox.XboxDependencies.ensure(getApplicationContext(), container, id, wineInfo != null && wineInfo.isArm64EC(), label -> {
             preloaderDialog.step(2, label);
             return kotlin.Unit.INSTANCE;
         });

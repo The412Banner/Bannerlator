@@ -28,7 +28,9 @@ data class Component(
  * Same source BannerHub's Component Manager uses.
  */
 object ComponentCatalog {
-    const val URL = "https://raw.githubusercontent.com/The412Banner/winlator-contents/main/components.json"
+    // TEST BUILD ONLY (fix/xbox-vc14-arm64-test): winlator-contents PR #28 (vcredist2022_arm64) pinned at its commit, so PR #627
+    // can be tried before the catalog PR is merged. Never merge this commit.
+    const val URL = "https://raw.githubusercontent.com/MGamer404/winlator-contents/df63b233bb581f7167890e4a43da0431443a27ba/components.json"
 
     /** The last catalog [load] read, by name: what an install looks dependencies up in. */
     @Volatile

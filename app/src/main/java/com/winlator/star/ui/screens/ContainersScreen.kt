@@ -1110,7 +1110,7 @@ private fun GameSavesDialog(
     LaunchedEffect(gameKey, rescan) {
         loading = true
         val (list, sidecar) = withContext(Dispatchers.IO) {
-            val saved = if (rescan == 0) SaveLocator.loadMap(container, gameKey) else null
+            val saved = if (rescan == 0) SaveLocator.loadMap(container, gameKey, gameName) else null
             if (saved != null && saved.roots.isNotEmpty()) {
                 saved.roots.map { rel ->
                     SaveLocator.Candidate(rel, rel.substringAfterLast('/'), 100, SaveLocator.sizeOf(container, rel))

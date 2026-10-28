@@ -34,6 +34,16 @@ object SaveLocator {
     /** Keep candidates scoring at least this; below it the name match is too weak to trust. */
     private const val KEEP_THRESHOLD = 50
 
+    /** Same name, or one name inside the other. Below this a candidate only shares words. */
+    private const val NAME_MATCH = 70
+
+    /** The window class every app-made Wine shortcut gets; it names no game. */
+    private const val GENERIC_WMCLASS = "explorer"
+
+    /** Words that don't tell two games apart: "the" etc. (shorter ones are skipped by length). */
+    private val FILLER_WORDS = setOf("the", "and", "for")
+    private val ROMAN_NUMERAL = Regex("[ivx]+")
+
     /** A discovered (or remembered) save-folder candidate. [relPath] is relative to the xuser profile. */
     data class Candidate(
         val relPath: String,
@@ -65,7 +75,7 @@ object SaveLocator {
         val profile = profileDir(container)
         if (!profile.isDirectory) return emptyList()
 
-        val ids = listOf(name, basename(exePath), wmClass)
+        val ids = listOf(name, basename(exePath), wmClass.takeUnless { isGenericWmClass(it) } ?: "")
             .map { ident(it) }
             .filter { it.norm.isNotEmpty() }
         if (ids.isEmpty()) return emptyList()
@@ -90,6 +100,9 @@ object SaveLocator {
         for (c in ranked) {
             if (kept.none { anc -> isDescendant(c.relPath, anc.relPath) }) kept.add(c)
         }
+        // A folder named after the game beats ones that only share words with it (DiRT Showdown's
+        // own folder vs DiRT Rally 2.0's): those belong to other games.
+        if ((kept.firstOrNull()?.score ?: 0) >= NAME_MATCH) kept.removeAll { it.score < NAME_MATCH }
 
         // Attach real byte sizes only to survivors (cheap recursive sum), then re-rank.
         return kept
@@ -109,16 +122,20 @@ object SaveLocator {
         }
     }
 
-    /** exact = 100; one contains the other = 70; token overlap ≥50% = 50; Levenshtein ratio ≥0.85 = 40. */
+    /**
+     * exact = 100; one contains the other = 70; token overlap ≥50% with two shared naming words = 50;
+     * Levenshtein ratio ≥0.85 = 40. One shared word or a shared number is how series and sequels
+     * look alike ("DiRT Showdown" / "DiRT Rally 2.0", "Titanfall 2" / "Risk of Rain 2").
+     */
     private fun score(a: Ident, b: Ident): Int {
         if (a.norm.isEmpty() || b.norm.isEmpty()) return 0
         if (a.norm == b.norm) return 100
-        if (a.norm.contains(b.norm) || b.norm.contains(a.norm)) return 70
+        if (a.norm.contains(b.norm) || b.norm.contains(a.norm)) return NAME_MATCH
         var best = 0
         if (a.tokens.isNotEmpty() && b.tokens.isNotEmpty()) {
-            val overlap = a.tokens.intersect(b.tokens).size.toDouble() /
-                minOf(a.tokens.size, b.tokens.size)
-            if (overlap >= 0.5) best = 50
+            val shared = a.tokens.intersect(b.tokens)
+            val overlap = shared.size.toDouble() / minOf(a.tokens.size, b.tokens.size)
+            if (overlap >= 0.5 && shared.count { isNamingWord(it) } >= 2) best = 50
         }
         if (best < 50 && levenshteinRatio(a.norm, b.norm) >= 0.85) best = 40
         return best
@@ -148,16 +165,25 @@ object SaveLocator {
     private fun sidecarFile(container: Container): File =
         File(container.rootDir, "app_data/save_maps.json")
 
-    /** Stable per-shortcut key: wmClass when present, else the .lnk/.desktop filename. */
+    /**
+     * Stable per-shortcut key: a game's own wmClass when it has one, else the .lnk/.desktop
+     * filename. "explorer" is on every app-made Wine shortcut, so it would make all games one key.
+     */
     fun gameKey(wmClass: String?, shortcutFileName: String): String =
-        if (!wmClass.isNullOrBlank()) wmClass else shortcutFileName
+        if (!wmClass.isNullOrBlank() && !isGenericWmClass(wmClass)) wmClass else shortcutFileName
 
-    /** Remembered mapping for [gameKey], or null if this game hasn't been taught yet. */
-    fun loadMap(container: Container, gameKey: String): SaveMap? {
+    /**
+     * Remembered mapping for [gameKey], or null if this game hasn't been taught yet. Older builds
+     * stored every Wine game under "explorer"; that entry counts only when it names [gameName].
+     */
+    fun loadMap(container: Container, gameKey: String, gameName: String?): SaveMap? {
         val f = sidecarFile(container)
         if (!f.isFile) return null
         return try {
-            val obj = JSONObject(f.readText()).optJSONObject(gameKey) ?: return null
+            val all = JSONObject(f.readText())
+            val obj = all.optJSONObject(gameKey)
+                ?: all.optJSONObject(GENERIC_WMCLASS)?.takeIf { gameName != null && it.optString("name") == gameName }
+                ?: return null
             val arr = obj.optJSONArray("roots") ?: JSONArray()
             SaveMap(obj.optString("name"), (0 until arr.length()).map { arr.getString(it) })
         } catch (e: Exception) {
@@ -187,6 +213,12 @@ object SaveLocator {
         val tokens = cleaned.split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }.toSet()
         return Ident(norm, tokens)
     }
+
+    private fun isGenericWmClass(wmClass: String): Boolean = wmClass.trim().equals(GENERIC_WMCLASS, ignoreCase = true)
+
+    /** A word that can name a game: 3+ letters, not "the"/"and"/"for", not a number or numeral. */
+    private fun isNamingWord(token: String): Boolean =
+        token.length >= 3 && token !in FILLER_WORDS && !token.all { it.isDigit() } && !ROMAN_NUMERAL.matches(token)
 
     private fun basename(path: String): String {
         val cut = path.replace('\\', '/').substringAfterLast('/')

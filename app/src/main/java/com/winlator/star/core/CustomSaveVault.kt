@@ -146,7 +146,7 @@ object CustomSaveVault {
         return try {
             val gameKey = SaveLocator.gameKey(shortcut.wmClass, shortcut.file.name)
             val roots: List<String> = run {
-                val saved = SaveLocator.loadMap(container, gameKey)
+                val saved = SaveLocator.loadMap(container, gameKey, shortcut.name)
                 if (saved != null && saved.roots.isNotEmpty()) saved.roots
                 else SaveLocator.discover(container, shortcut.name, shortcut.path ?: "", shortcut.wmClass ?: "")
                     .map { it.relPath }
@@ -218,7 +218,7 @@ object CustomSaveVault {
         Thread {
             val res = try {
                 val gameKey = SaveLocator.gameKey(shortcut.wmClass, shortcut.file.name)
-                val saved = SaveLocator.loadMap(container, gameKey)
+                val saved = SaveLocator.loadMap(container, gameKey, shortcut.name)
                 val roots = if (saved != null && saved.roots.isNotEmpty()) saved.roots
                     else SaveLocator.discover(container, shortcut.name, shortcut.path ?: "", shortcut.wmClass ?: "")
                         .map { it.relPath }

@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-10-28 — 💾 Save backups stop grabbing other games' save folders (branch `fix/save-folder-match`, built, CI pending, NOT device-tested)
+
+> **Why.** Move-game device test 2 (branch `feat/move-game-container`) copied DiRT Rally 2.0's save folder along with DiRT Showdown. Same matcher (`SaveLocator.discover`) feeds the save vault (`CustomSaveVault.kt:151`, `:223`), the save picker (`ContainersScreen.kt:1119`, all candidates pre-ticked) and the Steam local-save pass (`SteamCloudSaveManager.kt:859`). User: "yes fix the save backup too".
+>
+> **Found (device data, both containers, 31 Wine entries, 124 save-root folders; Python port of the matcher).** Old rule = token overlap ≥ 50 % → score 50 = keep. Wrong matches today: DiRT 3 → DiRT Showdown + DiRT Rally 2.0 + `AppData/Local/Temp/msibe20.tmp-3`; DiRT Rally 2.0 ↔ DiRT Showdown; Risk of Rain 2 ↔ SpeedRunners 2; Titanfall 2 and Insane 2 → DiRT Rally 2.0, SpeedRunners 2, Risk of Rain 2, msi temp (shared "2" only). Restoring such a backup overwrites the other games' saves. **Also:** all 31 entries have `StartupWMClass=explorer` (the app writes it for every Wine shortcut), and `gameKey` used wmClass first → every game shared the key "explorer" in `save_maps.json`: teaching one game's folders would apply them to every game (no `save_maps.json` on this device yet, so not hit here).
+>
+> **Built (`c40620df`).** `SaveLocator`: word match needs ≥ 2 shared naming words (3+ letters, not digits, not i/v/x numerals, not the/and/for); when the best candidate is a name match (≥ 70), word-only matches are dropped; wmClass "explorer" is not used as an identifier or as the game key (key = shortcut file name); `loadMap(container, key, gameName)` still reads an old "explorer" entry when its stored name is this game. Callers updated (vault ×2, picker).
+>
+> **Simulated on device data (new rule).** DiRT 3 → DiRT3 only; DiRT Rally 2.0 / DiRT Showdown → own folder only; Risk of Rain 2 / SpeedRunners 2 → own folders only; Titanfall 2, Insane 2 → none (vault snapshot: "no saves" unless an emulator app id; manual per-game backup falls back to whole-container, existing behaviour); BALL x PIT, Cyberpunk 2077, GTA IV, High On Life, Valor Mortis unchanged.
+>
+> **Merge note.** `feat/move-game-container` calls `loadMap(source, key)` (2 args) in `MoveGameToContainer.kt` → must pass the game name after this lands; its own ≥ 70 filter can stay.
+>
+> **Resume point.** Branch `fix/save-folder-match` (worktree `/root/src/Bannerlator-wt/save-folder-match`) off main `b74261e6`. Next: CI → stage APK → ask before install → device test (save picker for DiRT Showdown lists only its folder; per-game backup of DiRT 3 has no Showdown/Rally files).
+>
+> **Proof level:** compiled not yet; NOT device-tested.
+
 ## 2026-10-27 — 🏷️ 3.1.7 stable RELEASED (tag `3.1.7` @ `14615841`, Latest)
 
 > **Why.** User: "prep 3.1.7 stable, make sure it covers all new work since 3.1.6 and pre releases" (2026-10-27; first asked for "3.2.0", then corrected to 3.1.7; "make it stable"). No tag, release or asset until the user says cut.

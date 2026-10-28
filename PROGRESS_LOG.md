@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-10-28 — 💾 Save backups stop grabbing other games' save folders (branch `fix/save-folder-match`, built, CI pending, NOT device-tested)
+## 2026-10-28 — 💾 Save backups stop grabbing other games' save folders (branch `fix/save-folder-match`, CI-green, NOT device-tested)
 
 > **Why.** Move-game device test 2 (branch `feat/move-game-container`) copied DiRT Rally 2.0's save folder along with DiRT Showdown. Same matcher (`SaveLocator.discover`) feeds the save vault (`CustomSaveVault.kt:151`, `:223`), the save picker (`ContainersScreen.kt:1119`, all candidates pre-ticked) and the Steam local-save pass (`SteamCloudSaveManager.kt:859`). User: "yes fix the save backup too".
 >
@@ -10,11 +10,13 @@
 >
 > **Simulated on device data (new rule).** DiRT 3 → DiRT3 only; DiRT Rally 2.0 / DiRT Showdown → own folder only; Risk of Rain 2 / SpeedRunners 2 → own folders only; Titanfall 2, Insane 2 → none (vault snapshot: "no saves" unless an emulator app id; manual per-game backup falls back to whole-container, existing behaviour); BALL x PIT, Cyberpunk 2077, GTA IV, High On Life, Valor Mortis unchanged.
 >
+> **CI.** Run 40777517665 (headSha `3356b2f4` = pushed head): pubg/standard/ludashi/antutu success, pubg `BUILD SUCCESSFUL in 4m 22s`; no warnings in the changed files. APK not downloaded yet (user away from Wi-Fi: "I'll download later when I get home").
+>
 > **Merge note.** `feat/move-game-container` calls `loadMap(source, key)` (2 args) in `MoveGameToContainer.kt` → must pass the game name after this lands; its own ≥ 70 filter can stay.
 >
 > **Resume point.** Branch `fix/save-folder-match` (worktree `/root/src/Bannerlator-wt/save-folder-match`) off main `b74261e6`. Next: CI → stage APK → ask before install → device test (save picker for DiRT Showdown lists only its folder; per-game backup of DiRT 3 has no Showdown/Rally files).
 >
-> **Proof level:** compiled not yet; NOT device-tested.
+> **Proof level:** CI-green; NOT device-tested.
 
 ## 2026-10-27 — 🏷️ 3.1.7 stable RELEASED (tag `3.1.7` @ `14615841`, Latest)
 

@@ -1,0 +1,37 @@
+name: tmp 3.1.8 update size
+# Temporary: measures the in-app update patches from 3.1.7 / 3.1.6 to the 3.1.8 RC build, on
+# GitHub. Builds and publishes nothing. Deleted after the release.
+on:
+  push:
+    branches: [ 'tmp/size-3.1.8' ]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  size:
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN: "41138267330"
+      SHA: bee2a7bcf2de6320e78d73f67fe3ed848125584e
+    steps:
+      - name: Measure
+        run: |
+          set -euo pipefail
+          curl -fsSL -o apk_delta.py "https://raw.githubusercontent.com/$REPO/$SHA/scripts/apk_delta.py"
+          for F in pubg standard; do
+            n=$(gh api repos/$REPO/actions/runs/$RUN/artifacts --jq ".artifacts[]|select(.name|test(\"$F\"))|.name" | head -1)
+            gh run download "$RUN" -R "$REPO" -n "$n" -D "new-$F"
+            NEW=$(ls new-$F/*.apk)
+            for FROM in 3.1.7 3.1.6; do
+              rm -rf old
+              gh release download "$FROM" -R "$REPO" -p "Bannerlator-*-${F}.apk" -D old
+              OLD=$(ls old/*.apk)
+              python3 -I apk_delta.py make "$OLD" "$NEW" p.bldp
+              python3 -I apk_delta.py apply "$OLD" p.bldp r.apk
+              cmp r.apk "$NEW"
+              echo "SIZE $F $FROM->3.1.8 patch $(stat -c %s p.bldp) bytes, full $(stat -c %s "$NEW") bytes, rebuild byte-exact" | tee -a "$GITHUB_STEP_SUMMARY"
+              rm -f p.bldp r.apk
+            done
+          done

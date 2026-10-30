@@ -30,6 +30,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.theme.LocalAccentDim
 
 /**
@@ -83,29 +85,35 @@ fun StoreSectionHost(
 ) {
     val layout = rememberStorefrontLayout()
     val contentFocus = remember { FocusRequester() }
+    // XMB home: StoreXmbScreen already lays the screen out edge to edge in its frame, with the bars hidden.
+    val xmb = LocalStoreXmb.current
 
     BackHandler(enabled = true) {
         if (selected == 0) onClose() else onSelect(0)
     }
 
+    // XMB home: L2 / R2 step through the rail's tabs and then its end actions (wrapping) from anywhere on the screen.
+    val railStops = rememberXmbRailCycle(xmb && tabs.isNotEmpty(), tabs.size, selected, contentFocus, onSelect)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .systemBarsPadding()
-            .displayCutoutPadding(),
+            .then(if (xmb) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
     ) {
         if (layout.wide) {
             Row(modifier = Modifier.fillMaxSize()) {
-                SectionRail(
-                    tabs = tabs,
-                    selected = selected,
-                    counts = counts,
-                    onSelect = onSelect,
-                    contentFocus = contentFocus,
-                    statusSlot = railStatusSlot,
-                    actions = railActions,
-                )
+                CompositionLocalProvider(LocalXmbRailStops provides if (xmb) railStops else null) {
+                    SectionRail(
+                        tabs = tabs,
+                        selected = selected,
+                        counts = counts,
+                        onSelect = onSelect,
+                        contentFocus = contentFocus,
+                        statusSlot = railStatusSlot,
+                        actions = railActions,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -202,10 +210,13 @@ private fun SectionRail(
     statusSlot: @Composable ColumnScope.() -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
+    // XMB home: a slim rail, just wide enough for an icon over a short label.
+    val xmb = LocalStoreXmb.current
+    val railWidth = if (xmb) rememberScreenScale().xmbRailWidth() else RAIL_WIDTH
     Column(
         modifier = Modifier
             // EXACT width. Do not replace with widthIn/wrapContentWidth.
-            .width(RAIL_WIDTH)
+            .width(railWidth)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
@@ -213,12 +224,17 @@ private fun SectionRail(
             .focusProperties { right = contentFocus },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(if (xmb) 2.dp else 6.dp))
+        if (xmb) XmbRailBumpers()
         statusSlot()
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (xmb) 4.dp else 8.dp))
 
         tabs.forEachIndexed { index, t ->
             val n = counts[t.key]?.takeIf { it > 0 }
+            if (xmb) {
+                XmbRailItem(t.label, t.icon, selected = selected == index, count = n, onClick = { onSelect(index) })
+                return@forEachIndexed
+            }
             NavigationRailItem(
                 selected = selected == index,
                 onClick = { onSelect(index) },
@@ -246,7 +262,7 @@ private fun SectionRail(
 
         Spacer(Modifier.height(8.dp))
         HorizontalDivider(
-            modifier = Modifier.width(RAIL_WIDTH - 24.dp),
+            modifier = Modifier.width(if (xmb) railWidth - 16.dp else RAIL_WIDTH - 24.dp),
             thickness = 1.dp,
             color = MaterialTheme.colorScheme.outline,
         )

@@ -73,6 +73,8 @@ import com.winlator.star.reshade.ReshadeLoadout
 import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
 import com.winlator.star.ui.deck.deckFocusRing
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.ReshadeLoadoutState
@@ -561,15 +563,18 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        placeholder = { Text("Search effects…") },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    XmbTapToEdit(Modifier.fillMaxWidth(), RoundedCornerShape(14.dp)) { fieldModifier, stopEditing ->
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            singleLine = true,
+                            placeholder = { Text("Search effects…") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = fieldModifier,
+                            keyboardActions = xmbDoneActions(stopEditing),
+                        )
+                    }
                     sec.error?.let { Text(it, color = cs.error, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
                     Spacer(Modifier.height(8.dp))
                     if (sec.catalogLoading) {

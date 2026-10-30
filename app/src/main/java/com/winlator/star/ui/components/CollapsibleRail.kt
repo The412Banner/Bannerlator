@@ -46,6 +46,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -175,11 +176,13 @@ fun CollapsibleRail(
     // border + accent-dim fill), matching the File Manager's "New Folder" button. Off by default so
     // the container/save rails keep their lighter flat rows (5 stacked outlined tabs read too heavy).
     outlinedItems: Boolean = false,
+    // The open width. The File Manager narrows it to its labels in the Deck XMB home; everyone else keeps 190dp.
+    expandedWidth: Dp = 190.dp,
 ) {
     // Inside the Deck shell this rail is the page's own side list, so the Deck page-tab rail goes icon-only beside it.
     com.winlator.star.ui.ReportSideListToDeck()
     val collapsed = state.collapsed
-    val width by animateDpAsState(if (collapsed) 58.dp else 190.dp, label = "railWidth")
+    val width by animateDpAsState(if (collapsed) 58.dp else expandedWidth, label = "railWidth")
 
     Column(
         modifier = modifier

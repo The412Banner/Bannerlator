@@ -20,6 +20,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.winlator.star.ui.deck.XmbKeyboardWindow
 import java.lang.ref.WeakReference
 
 // What a Classic screen needs to know when the Deck shell hosts it. Kept out of ui/deck so the
@@ -71,6 +72,16 @@ object DeckWindow {
 
     /** Whether [activity] is the one whose navigation bar the Deck shell hides (its dialogs follow it). */
     fun hidesNavBarIn(activity: Activity?): Boolean = activity != null && hiddenIn?.get() === activity
+
+    private var statusHidden by mutableStateOf(false)
+
+    /** True while the Deck shell hides the status bar too (the XMB home); its dialogs then hide both bars. */
+    val statusBarHidden: Boolean get() = statusHidden && navBarHidden
+
+    /** Set by the Deck shell alongside [setNavBarHidden]. */
+    fun setStatusBarHidden(hidden: Boolean) {
+        statusHidden = hidden
+    }
 }
 
 /**
@@ -83,18 +94,20 @@ fun DeckDialogBars() {
     // Only dialogs of the Deck shell's own activity: a store or game activity keeps its own bars.
     val view = LocalView.current
     val hidden = DeckWindow.hidesNavBarIn(view.context.findActivity())
+    // The XMB home hides the status bar as well, so a dialog over it must not bring that one back either.
+    val both = hidden && DeckWindow.statusBarHidden
     val dialogWindow = (view.parent as? DialogWindowProvider)?.window
-    DisposableEffect(hidden, dialogWindow, view) {
+    DisposableEffect(hidden, both, dialogWindow, view) {
         if (hidden) {
             if (dialogWindow != null) {
                 val controller = WindowCompat.getInsetsController(dialogWindow, dialogWindow.decorView)
                 controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                controller.hide(WindowInsetsCompat.Type.navigationBars())
+                controller.hide(if (both) WindowInsetsCompat.Type.systemBars() else WindowInsetsCompat.Type.navigationBars())
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 // A bottom sheet's window has no Window object; its view's own controller reaches it.
                 view.windowInsetsController?.let {
                     it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                    it.hide(WindowInsets.Type.navigationBars())
+                    it.hide(if (both) WindowInsets.Type.systemBars() else WindowInsets.Type.navigationBars())
                 }
             }
         }
@@ -108,9 +121,14 @@ fun DeckDialogBars() {
  */
 val LocalDeckDensity = staticCompositionLocalOf<Density?> { null }
 
-/** Wraps a dialog's or sheet's content so it is drawn at the Deck style's size; does nothing in Classic. */
+/**
+ * Wraps a dialog's or sheet's content so it is drawn at the Deck style's size; does nothing in Classic. In the XMB mode it
+ * also brings the XMB keyboard into the window, whose text input service does not come from the screen below.
+ */
 @Composable
 fun DeckDialogScaled(content: @Composable () -> Unit) {
     val deck = LocalDeckDensity.current
-    if (deck == null) content() else CompositionLocalProvider(LocalDensity provides deck, content = content)
+    XmbKeyboardWindow {
+        if (deck == null) content() else CompositionLocalProvider(LocalDensity provides deck, content = content)
+    }
 }

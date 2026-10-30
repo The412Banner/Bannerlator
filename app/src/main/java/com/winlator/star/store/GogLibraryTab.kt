@@ -144,27 +144,30 @@ fun GogLibraryTab(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        CatalogSearchField(
-            query = query,
-            placeholder = "Search your GOG library…",
-            onQueryChange = { query = it },
-            onClear = { query = ""; focusManager.clearFocus() },
-            onSearch = { focusManager.clearFocus() },
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            StoreFilterChip("All", !installedOnly) { installedOnly = false }
-            StoreFilterChip("Installed", installedOnly) { installedOnly = true }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = state.statusText,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+        val header = rememberXmbHeader()
+        header.Header {
+            CatalogSearchField(
+                query = query,
+                placeholder = "Search your GOG library…",
+                onQueryChange = { query = it },
+                onClear = { query = ""; focusManager.clearFocus() },
+                onSearch = { focusManager.clearFocus() },
             )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StoreFilterChip("All", !installedOnly) { installedOnly = false }
+                StoreFilterChip("Installed", installedOnly) { installedOnly = true }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = state.statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
 
         when {
@@ -189,7 +192,8 @@ fun GogLibraryTab(
             }
 
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(if (wide) 132.dp else 118.dp),
+                state = header.trackedGridState(),
+                columns = GridCells.Adaptive(storeGridCell(wide)),
                 modifier = Modifier.fillMaxSize().focusGroup(),
                 contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

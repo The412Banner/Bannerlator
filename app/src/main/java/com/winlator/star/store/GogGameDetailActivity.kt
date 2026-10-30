@@ -65,7 +65,6 @@ import com.winlator.star.store.download.StoreStatusText
 import com.winlator.star.store.download.StoreDetailScaffold
 import com.winlator.star.store.download.StoreGearItem
 import com.winlator.star.store.download.StorePrimaryAction
-import com.winlator.star.ui.theme.WinlatorTheme
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
@@ -194,6 +193,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (com.winlator.star.ui.deck.isXmbHome(this)) com.winlator.star.core.AppOrientation.apply(this)
         prefs = getSharedPreferences("bh_gog_prefs", 0)
 
         // Cross-store Download Manager (Phase B): GOG can download without the Steam foreground
@@ -242,7 +242,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         loadMedia()
 
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 GogGameDetailScreen(
                     headerBitmap = headerBitmap,
                     title = title,

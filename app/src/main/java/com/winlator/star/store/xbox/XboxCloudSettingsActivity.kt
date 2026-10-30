@@ -20,10 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.winlator.star.core.AppOrientation
+import com.winlator.star.store.StoreKeyboardTheme
 import com.winlator.star.store.download.StoreBadge
 import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.StoreDetailHeader
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,7 +33,7 @@ class XboxCloudSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppOrientation.apply(this)
         setContent {
-            WinlatorTheme {
+            StoreKeyboardTheme {
                 var settings by remember { mutableStateOf(XboxCloudSettings.load(this)) }
                 var regions by remember { mutableStateOf(emptyList<String>()) }
                 // The region names come from the cloud sign-in (the store account; no web sign-in).

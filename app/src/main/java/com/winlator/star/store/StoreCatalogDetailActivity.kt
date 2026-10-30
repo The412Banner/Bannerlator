@@ -43,7 +43,6 @@ import com.winlator.star.store.download.StoreGearItem
 import com.winlator.star.store.download.StorePrimaryAction
 import com.winlator.star.store.download.StoreSection
 import com.winlator.star.store.download.StoreStatusText
-import com.winlator.star.ui.theme.WinlatorTheme
 import org.json.JSONObject
 
 /**
@@ -95,7 +94,7 @@ class StoreCatalogDetailActivity : ComponentActivity() {
         val item = intent.getStringExtra(EXTRA_ITEM)?.let { fromJson(it) }
         if (item == null || item.id.isBlank()) { finish(); return }
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 CatalogDetailScreen(
                     item = item,
                     onBack = { finish() },

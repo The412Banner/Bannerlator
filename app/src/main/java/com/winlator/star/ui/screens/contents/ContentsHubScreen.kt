@@ -115,6 +115,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.R
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.WaylandGameDriverManager
 import com.winlator.star.contents.ContentProfile
@@ -338,37 +341,100 @@ private fun SourceListPane(
     onMenu: (HubSource) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val xmbHome = rememberXmbHome()
+
+    val searchField: @Composable () -> Unit = {
+        // XMB home: tap-to-edit (A or a tap starts typing, Done / B ends it), so passing over it opens no keyboard.
+        XmbTapToEdit(Modifier.fillMaxWidth()) { fieldModifier, stopEditing ->
+            OutlinedTextField(
+                value = query,
+                onValueChange = { vm.setQuery(it) },
+                modifier = fieldModifier,
+                placeholder = { Text("Search all repositories…") },
+                leadingIcon = { Icon(Icons.Filled.Search, null, tint = cs.onSurfaceVariant) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { vm.setQuery("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant)
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardActions = xmbDoneActions(stopEditing),
+            )
+        }
+    }
+    val listHeader: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("Select Online Repository", style = MaterialTheme.typography.titleMedium,
+                color = cs.onSurface, modifier = Modifier.weight(1f))
+            IconButton(onClick = { vm.reloadSources(); vm.refreshSelected() }) {
+                Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary)
+            }
+            IconButton(onClick = onImport) { Icon(Icons.Filled.FileDownload, "Import list", tint = cs.primary) }
+            IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings", tint = cs.primary) }
+            IconButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add repository", tint = cs.primary) }
+        }
+    }
+
+    // XMB home with results inline: the results are items of the same list as the search field, so typing the first
+    // letter does not move the field to another place in the layout (which would drop its focus and the typing).
+    val inlineResults = xmbHome && showInlineResults
+    val searchResults = if (inlineResults) vm.searchResults.collectAsState().value else emptyList()
+    val searching = if (inlineResults) vm.searching.collectAsState().value else false
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = { vm.setQuery(it) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search all repositories…") },
-            leadingIcon = { Icon(Icons.Filled.Search, null, tint = cs.onSurfaceVariant) },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { vm.setQuery("") }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant)
+        if (xmbHome) {
+            // XMB home: the search field and the header are the list's first items, so they scroll away with the
+            // repositories and come back when you scroll up.
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                item(key = "search") {
+                    Spacer(Modifier.height(12.dp))
+                    searchField()
+                    Spacer(Modifier.height(12.dp))
+                }
+                if (query.isBlank() || !showInlineResults) {
+                    item(key = "header") {
+                        listHeader()
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.driverOnly}" }) { _, source ->
+                        RepoCard(source, isSelected = selected == source,
+                            onClick = { vm.selectSource(source) }, onMenu = { onMenu(source) })
+                        Spacer(Modifier.height(10.dp))
+                    }
+                } else if (searching) {
+                    item(key = "searching") {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = cs.primary)
+                        }
+                    }
+                } else {
+                    item(key = "results-count") {
+                        Text("${searchResults.size} result${if (searchResults.size != 1) "s" else ""}",
+                            style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    if (searchResults.isEmpty()) {
+                        item(key = "results-none") {
+                            Text("No components match “$query”.", color = cs.onSurfaceVariant, modifier = Modifier.padding(vertical = 24.dp))
+                        }
+                    } else {
+                        itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
+                            ComponentRow(vm, item, showSource = true)
+                            Spacer(Modifier.height(10.dp))
+                        }
                     }
                 }
-            },
-            singleLine = true,
-        )
+            }
+            return@Column
+        }
+        Spacer(Modifier.height(12.dp))
+        searchField()
         Spacer(Modifier.height(12.dp))
 
         if (query.isBlank() || !showInlineResults) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Select Online Repository", style = MaterialTheme.typography.titleMedium,
-                    color = cs.onSurface, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.reloadSources(); vm.refreshSelected() }) {
-                    Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary)
-                }
-                IconButton(onClick = onImport) { Icon(Icons.Filled.FileDownload, "Import list", tint = cs.primary) }
-                IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings", tint = cs.primary) }
-                IconButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add repository", tint = cs.primary) }
-            }
+            listHeader()
             Spacer(Modifier.height(6.dp))
             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.driverOnly}" }) { _, source ->

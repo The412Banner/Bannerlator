@@ -191,6 +191,10 @@ public class HudMetrics {
             }
         }
 
+        for (String p : GPU_USAGE_LATE_PATHS) {
+            if (new File(p).canRead()) candidates.add(p);
+        }
+
         gpuUsagePathsCache = new ArrayList<>(candidates);
         return gpuUsagePathsCache;
     }
@@ -217,6 +221,13 @@ public class HudMetrics {
         //    misses, so a device that already resolves — e.g. Adreno kgsl — never reaches these). ──
         "/sys/kernel/ged/hal/gpu_utilization",       // MediaTek GED: "<loading> <block> <idle>" → loading%
         "/sys/module/ged/parameters/gpu_loading",    // MediaTek GED module param, plain percent
+    };
+    // Tried after every path above AND the platform/devfreq scans, so a GPU that already resolves keeps
+    // its node. From WinlatorMali's HUD (GunaCharanTeja), for MediaTek Mali phones whose mali0 and
+    // platform nodes are blocked.
+    private static final String[] GPU_USAGE_LATE_PATHS = {
+        "/sys/class/devfreq/mtk-dvfs-gpu/gpu_loading",            // MediaTek GPU devfreq, plain percent
+        "/sys/module/mali_kbase/parameters/mali_gpu_utilization", // MediaTek kbase module param, percent
     };
     // Percent-bearing filenames scanned under each devfreq / platform GPU node.
     private static final String[] GPU_USAGE_FILES = {
@@ -637,6 +648,7 @@ public class HudMetrics {
         "/sys/class/power_supply/battery/voltage_now",
         "/sys/class/power_supply/bms/voltage_now",
         "/sys/class/power_supply/main/voltage_now",
+        "/sys/class/power_supply/maxfg/voltage_now",   // Pixel / Tensor fuel gauge (from WinlatorMali)
     };
     /** power_supply power_now channels (µW) — last-resort direct power reading when neither the
      *  BatteryManager voltage nor {@code voltage_now} is available. */

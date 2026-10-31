@@ -1,5 +1,24 @@
 # Star-Compose — Progress Log
 
+## 2026-10-31 — 🟣 Mali support from WinlatorMali, tier 1 + W3 (`feat/mali-support`, CI running, NOT device-tested)
+
+> **Why:** user asked for a recon of GunaCharanTeja/WinlatorMali (bionic-mali-1.2 @428bd945, release 1.2.1) and to bring over as much Mali support as possible, with two hard rules: nothing may conflict with existing systems or regress Adreno (every change Mali-gated via `MaliPanvk.isMaliGpu()` or opt-in), and ideas for Mali on Wayland are wanted. Audit delivered in-session (memory `bannerlator-mali-port-audit`); user go: "tier 1 plus W3 on a new mali branch off main, tier 2 after if possible ... so I can post it to testers in the morning".
+>
+> **Built (branch `feat/mali-support` off main 53b44908, worktree `/root/src/Bannerlator-wt/mali-support`):**
+> - `0d5a44fa` registry: null-safe when `createKey` fails (WinlatorMali 6e3f4c0) — BL had the same NPE path (`WineRegistryEditor.java:367`).
+> - `b2596619` drivers: on Mali only, three PanVK sources first in the driver download list — zenithblue-oss/panvk-kbase-android (`-bannerlator.zip` only), FristOneRR/FristOneRR-Panvk-Driver, GunaCharanTeja/panvk-kbase-android (`-adrenotools.zip`, G615). `GithubReleases` feed got an optional asset pattern; Adreno list == `BUILT_IN` unchanged.
+> - `0b83d707` mali compat: leegao compat_layer b249686 → 22960fb3 (leegao CI run 39279856819; YCbCr fallback for Mali, fake maintenance5, calibrated timestamps). Only the .so changed in extra_libs.tzst; EXTRA_LIBS_VERSION 4→5 (one-time re-extract on all devices). Layer loads only for Wrapper+compat+bcn on Valhall Mali.
+> - `19e3e8db` fex: presets Unreal Engine 3 + Performance (full x87) (WinlatorMali), appended at the end.
+> - `1b0ecf9f` hud: MediaTek Mali GPU-load files (`mtk-dvfs-gpu/gpu_loading`, `mali_kbase/parameters/mali_gpu_utilization`) tried after every existing path + scan; Tensor `maxfg/voltage_now` last voltage fallback.
+> - `1de7991a` community configs: "· N Mali" on the counts line, only when the user's GPU string is Mali (+ `CanonicalGameMaliTest`).
+> - Dropped: WOWBox64 0.4.3 bundle — 0.4.3/0.4.4/0.4.5 already downloadable from built-in Contents sources (Nightlies, StevenMXZ).
+>
+> **CI:** CI Build (artifacts only) run **41173314488** (headSha 1de7991a == pushed) — running.
+>
+> **Next:** tier 2 on the same branch (newer Fcharan BCn layer as a Mali option, Mali GPU counters in the HUD with CSF-only + JM model gate, high-priority queue + AHB import fix for the X11 renderer on Mali), CI, stage APK, tester notes. Author permission asks still open (GunaCharanTeja, hy300leosquizz-ctrl, brunodev85) — user's call before posting.
+>
+> **Resume point:** branch pushed (local == remote 1de7991a). Check `gh run view 41173314488 --json conclusion,jobs`. Nothing installed, nothing running on the device.
+
 ## 2026-10-31 — 🔧 Turnip GMEM: Auto keeps sysmem on 710/720/722 driver builds + GMEM switch on Wayland (`fix/turnip-gmem-710-720`, CI green, INSTALLED on the Duo, NOT device-tested)
 
 > **Why:** the green blocks on the Duo (entry below) went away with GMEM Force Off. User asked for the two proposed changes ("add the setting to the Wayland adapter and auto configuration for the driver to force off gmem").

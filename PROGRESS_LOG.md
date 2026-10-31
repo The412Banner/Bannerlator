@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-10-31 — 🟣 Mali test build ready for testers (`feat/mali-support` fb78b77a, CI green ×4, staged, NOT device-tested)
+
+> **CI:** CI Build (artifacts only) run **41173840853**, headSha fb78b77a98ec833fb8955f6aa2caa7589962b41e == pushed: **success** ×4 (standard, pubg, ludashi, antutu); no failed steps, skipped = cache hits / main-only saves.
+>
+> **APK checked (standard):** `assets/graphics_driver/bcn_layer_fast.tzst` (sha 9faa2324…) and `extra_libs.tzst` (dc354391…) == branch files; `libwinlator.so` exports the 3 `MaliGpuCounters` JNI symbols; `libvulkan_renderer.so` carries the Mali high-priority log strings; dex has `ENABLE_BCN_FAST`. APK 580.9 MB. Signing cert SHA-256 A4:0D:A8:0A… == installed pubg on the Pocket FIT (installs over, data kept).
+>
+> **Staged (hash host == device):** `/sdcard/Download/Bannerlator-mali-support-fb78b77a-standard.apk` sha256 `c6c8210a8f565270…`, `/sdcard/Download/Bannerlator-mali-support-fb78b77a-pubg.apk` `69525bb43bc307c7…`, tester notes `/sdcard/Download/Bannerlator-mali-support-fb78b77a-NOTES.md`. ludashi/antutu only in the Actions run.
+>
+> **Not done (user's call):** no prerelease/tag/draft (publishing = user's word; if wanted: `gh release create <tag> --prerelease --target fb78b77a98ec833fb8955f6aa2caa7589962b41e`, never Latest); no install (Pocket FIT pubg Adreno no-regression run needs the user's yes); author permission asks (GunaCharanTeja for the BCn binary + counter reader + presets) before a public post; branch not merged.
+>
+> **Resume point:** nothing installed or running. Worktree `/root/src/Bannerlator-wt/mali-support` == origin fb78b77a. Next: user decides publish / install / permission ask; Adreno no-regression on the Pocket FIT (container with X11 Vulkan renderer + HUD + a BCn game) before any merge.
+
 ## 2026-10-31 — 🟣 Mali support tier 2 (`feat/mali-support` fb78b77a, CI running, NOT device-tested)
 
 > **Built on top of tier 1 (1de7991a, CI 41173314488 green ×4, skipped steps = cache hits / main-only saves):**

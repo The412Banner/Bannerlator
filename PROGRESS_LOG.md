@@ -18,6 +18,8 @@
 >
 > **Vulkan baseline before the install (user screenshot 23:29:58):** standalone Vulkan cube window (real present, not the shell) on 3.1.8 + 710-720-Test + GMEM Force Off: HUD 1460.0 fps / 0.7 ms, AIO counter 1424 FPS. The in-shell Vulkan figure from 23:06 (HUD 184.9) was the shell's readback path.
 >
+> **AIO standalone benchmark (user, 10-31):** each API with the release-notes command `--cube <api> --bench 15 --autoclose 5` through the user's `aio.desktop` shortcut (its own driver config: 710-720-Test, GMEM off), launched by root, results + per-frame stats + GPU/battery samples → `/sdcard/Download/aio-bench/duo-pass1|duo-pass2/` (harness `/sdcard/Download/perf-harness/aio-duo.sh`). If the session is lost mid-run: let the BL session close itself, restore the shortcut's execArgs from `aio.desktop.orig` in the tag folder.
+>
 > **Resume point:** d4fd644d INSTALLED, NOT device-tested; container 1 still GMEM Force Off; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
 
 ## 2026-10-31 — 🔍 Green blocks in AIO on the Retroid Pocket Duo (Adreno 722), Wayland (diagnosis, no code change)

@@ -16,6 +16,8 @@
 >
 > **Set (10-31 ~03:05 UTC, verified by root in the container file):** `turnipGmem=off`, no extra tokens, backend back on Wayland + adapter, env still `TU_DEBUG=noconform,sysmem` → the game now gets `noconform,sysmem`. The other keys the X11 dialog wrote (bcn*, compatUseGamenative) equal the launch defaults and only matter for the bcn_layer/compat drivers, so GMEM is the only change. Retest = AIO + recording, compare with 246/2322.
 >
+> **Result (10-31, run 23:05-23:07 local):** user: "no more green artifacts"; 8 screenshots (Vulkan, OpenGL, D3D12/11/10/9/8, DDraw) all clean; same driver, same copy path, no errors in the Wayland log, crash buffer empty, no new tombstones. Caveats: the AIO's own present mode was Uncapped this time (FIFO in the first run) and there's no recording, so this isn't a measured count. Proof: device-tested by the user (visual). Proposed fix, awaiting the user's go: GMEM Auto leaves 710-720-Test builds on sysmem, and the GMEM row shows in the Wayland adapter settings.
+>
 > **Next:** user sets container 1 → Turnip GMEM = Force Off (keeps `noconform,sysmem`), runs the same AIO pass with a recording; same frame scan compares the green-frame count. If it stays, next try `noubwc`. Possible fix after proof: Auto should not add gmem on the 710-720-Test builds (user decides).
 
 ## 2026-10-30 — 🚀 Cutting 3.1.8 stable (user: "let's just release 3.1.8")

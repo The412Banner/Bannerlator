@@ -41,6 +41,7 @@ add_library(winlator SHARED
         winlator/alsa_client.c
         winlator/vulkan.c
         winlator/perf_turbo.c
+        winlator/mali_counters.cpp
 )
 
 target_compile_options(winlator PRIVATE -Wall -Wextra)

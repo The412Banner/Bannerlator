@@ -130,7 +130,8 @@ public class HudMetrics {
             Integer p = readGpuUsageSample(path);
             if (p != null) return p;
         }
-        return null;
+        // Every sysfs node failed: on a CSF-generation Mali, read the GPU's hardware counters instead.
+        return MaliGpuCounters.usagePercent();
     }
 
     /** Legacy non-null accessor (0 when unavailable). Kept for {@code PerfHudView}. */
@@ -935,7 +936,8 @@ public class HudMetrics {
             else mhz = raw;                                      // already MHz
             if (mhz >= 1 && mhz <= 3000) return (int) mhz;
         }
-        return null;
+        // No readable clock node: on a CSF-generation Mali, the hardware counters' cycle counter.
+        return MaliGpuCounters.clockMhz();
     }
 
     // =======================================================================

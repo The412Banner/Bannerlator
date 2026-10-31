@@ -14189,6 +14189,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
         }
     }
+
+    // "BCn layer: Fast" (Mali only): after every block above has set the BCn env, swap the bundled
+    // leegao layer for Fcharan's build when it is about to run. No-op unless picked on a Mali GPU.
+    String bcnFastApplied = com.winlator.star.core.BcnFastLayer.applyToLaunchEnv(this, rootDir, envVars,
+            graphicsDriverConfig);
+    if (bcnFastApplied != null && wineDebugWriter != null) wineDebugWriter.println("XServerVulkan: " + bcnFastApplied);
 }
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {

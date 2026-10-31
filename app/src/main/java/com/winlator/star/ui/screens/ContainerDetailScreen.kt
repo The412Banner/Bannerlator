@@ -4005,6 +4005,10 @@ internal fun GraphicsDriverConfigDialog(
     // Storage image path -> BCN_COMPUTE_IMAGE_VIEW=1. Default ON.
     var bcnImageView      by remember { mutableStateOf(cfg["bcnImageView"]?.let { it == "1" } ?: true) }
     var bcnDebugLog       by remember { mutableStateOf(cfg["bcnDebugLog"] == "1") }
+    // "BCn layer: Fast" (BcnFastLayer): Fcharan's faster build of the layer, Mali only. Seeded from the
+    // stored key on every GPU so OK keeps it; the row itself is shown only on a Mali GPU.
+    val isMaliGpu = remember { com.winlator.star.core.MaliPanvk.isMaliGpu() }
+    var bcnLayerFast      by remember { mutableStateOf(com.winlator.star.core.BcnFastLayer.isPicked(cfg)) }
     // compat_layer: emulate D3D12 tiled/sparse resources (COMPAT_EMULATE_SPARSE_BINDING). Opt-in,
     // only honored by the "Wrapper + compat + bcn" driver on a Valhall Mali. Default OFF.
     var bcnCompatSparse   by remember { mutableStateOf(cfg["bcnCompatSparse"] == "1") }
@@ -4337,6 +4341,18 @@ internal fun GraphicsDriverConfigDialog(
                         )
                     }
                 }
+                // Mali only: pick Fcharan's faster BCn layer build wherever the layer runs (the
+                // compute type on this driver, or a driver that carries the layer).
+                if (isMaliGpu && (showBcnLayerSettings || (!isBcnLayer && bcnEmulationType == "compute" &&
+                        (bcnEmulation == "auto" || bcnEmulation == "full")))) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = bcnLayerFast, onCheckedChange = { bcnLayerFast = it })
+                        Text(stringResource(R.string.bcn_layer_fast), modifier = Modifier.weight(1f))
+                        IconButton(onClick = { helpRes = R.string.help_bcn_layer_fast }) {
+                            Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = syncFrame, onCheckedChange = { syncFrame = it })
                     Text(stringResource(R.string.graphics_driver_sync_frame), modifier = Modifier.weight(1f))
@@ -4664,6 +4680,7 @@ internal fun GraphicsDriverConfigDialog(
                     "bcnDebugLog=${if (bcnDebugLog) "1" else "0"};" +
                     "bcnCompatSparse=${if (bcnCompatSparse) "1" else "0"};" +
                     "compatUseGamenative=${if (compatUseGamenative) "1" else "0"};" +
+                    (if (bcnLayerFast) "${com.winlator.star.core.BcnFastLayer.KEY}=${com.winlator.star.core.BcnFastLayer.FAST};" else "") +
                     "gpuName=$gpuName" +
                     ";fdDevFeatures=${if (fdDevFeatures) "1" else "0"}" +
                     ";turnipGmem=$turnipGmem" +

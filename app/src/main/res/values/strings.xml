@@ -611,6 +611,13 @@
     ]]></string>
     <string name="mali_panvk_section">Mali (PanVK)</string>
     <string name="mali_panvk_mode">Mali (PanVK) mode</string>
+    <string name="bcn_layer_fast">Faster BCn layer (Fcharan build)</string>
+    <string name="help_bcn_layer_fast"><![CDATA[
+        <b>Faster BCn layer</b><br /><br />
+        Uses Fcharan\'s build of leegao\'s BCn texture layer (from WinlatorMali 1.2, 2026-10-22) instead of the bundled one. Its author says it loads textures faster with the same memory use.<br /><br />
+        Try it on a Mali GPU when textures take long to appear or a game stutters while loading. If textures break or the game crashes, turn it off again. The ETC2 / ASTC transcode choices are not used by this build. Mali GPUs only; nothing changes on other GPUs.<br /><br />
+        Credit: Fcharan (GunaCharanTeja, WinlatorMali) and leegao (bcn_layer, MIT).
+    ]]></string>
     <string name="mali_panvk_mode_hint">FristOneRR\'s PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver.</string>
     <string name="mali_panvk_bcn_warning">Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try it if a game shows broken or missing textures.</string>
     <string name="mali_panvk_advanced">Advanced PanVK settings</string>

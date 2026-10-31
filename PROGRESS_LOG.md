@@ -20,6 +20,8 @@
 >
 > **AIO standalone benchmark (user, 10-31):** each API with the release-notes command `--cube <api> --bench 15 --autoclose 5` through the user's `aio.desktop` shortcut (its own driver config: 710-720-Test, GMEM off), launched by root, results + per-frame stats + GPU/battery samples → `/sdcard/Download/aio-bench/duo-pass1|duo-pass2/` (harness `/sdcard/Download/perf-harness/aio-duo.sh`). If the session is lost mid-run: let the BL session close itself, restore the shortcut's execArgs from `aio.desktop.orig` in the tag folder.
 >
+> **AIO results (03:44-04:01 UTC, d4fd644d, 710-720-Test, GMEM off, 15 s each, 2 passes + 2 DirectDraw reruns; 18/18 closed by themselves, 0 crash/FATAL lines, TU_DEBUG=noconform,sysmem in every run):** best avg / 1% low — Vulkan 1491.7 / 397.0 · OpenGL 1237.6 / 338.0 · D3D12 1449.8 / 269.6 · D3D11 1641.7 / 295.3 · D3D10 1634.7 / 297.2 · D3D9 1836.1 / 344.0 · D3D8 1825.8 / 349.5 · DirectDraw 1239.8 / 323.5. Pass spread ≤1.7 % except one DirectDraw run (1029.7, excluded; reruns 1224.2 / 1218.1). Full stats `/sdcard/Download/aio-bench/duo-summary-20261031.md`. Shortcut restored to `--cube vk …`, NewTermux back on top. These say nothing yet about GMEM Auto (the shortcut has GMEM off).
+>
 > **Resume point:** d4fd644d INSTALLED, NOT device-tested; container 1 still GMEM Force Off; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
 
 ## 2026-10-31 — 🔍 Green blocks in AIO on the Retroid Pocket Duo (Adreno 722), Wayland (diagnosis, no code change)

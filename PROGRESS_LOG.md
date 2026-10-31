@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-10-31 — 🔍 Green blocks in AIO on the Retroid Pocket Duo (Adreno 722), Wayland (diagnosis, no code change)
+
+> **User:** recorded the AIO Graphics Test in a container on the Duo (Bannerlator 3.1.8 standard, `com.winlator.banner`, installed 10-30 21:55) and asked whether X11 wrapper settings need adding to the Wayland adapter for this driver.
+>
+> **Setup (read live):** container 1 = Wayland, `waylandGameDriver=adapter`, graphics driver `wrapper-original` + **Mesa Turnip v27.0.0-20261031-710-720-Test** (its meta.json: "EXPERIMENTAL … A722 with hardware-captured registers … Unverified on real hardware — use sysmem mode"), env `TU_DEBUG=noconform,sysmem`, no `turnipGmem` key (= Auto). Wayland log: compositor on the same Turnip, copy path (0 zero-copy frames), game swapchain linear XB24.
+>
+> **Video (screen-20261030-220110.mp4, 26.6 s, 2322 frames):** 246 frames (≈11 %) show green 16×16-px blocks (game pixels; 4 bands of 16×4 inside each) over the top part of the game image, in every API (Vulkan, OpenGL/Zink, D3D12/11/10/9/8, DDraw). Only blocks with edges/text break; flat-colour blocks stay right; Wine title bar and HUD stay clean → the game's GPU image is wrong, not the Wayland display path.
+>
+> **Code (main 51f3903e):** Wayland Wine sessions run the same driver setup as X11 (`extractGraphicsDriverFiles` XServerDisplayActivity.java:3327, `applyTurnipTuDebug` :11629, the adapter loads the same adrenotools driver :13865-13872) → no X11 setting is missing on Wayland. But `applyTurnipTuDebug` with GMEM **Auto** adds `gmem` on Adreno 710/720/722 (`GPUInformation.isAutoGmemGpu` :103-115) and strips `sysmem` (:15380) → the game ran with `TU_DEBUG=noconform,gmem`, the opposite of the driver's own advice and of the Linux session's rule (`LinuxTuning.turnipSysmem` :163-168 forces sysmem for 710/720/722 builds). Suspected cause, NOT proven.
+>
+> **Next:** user sets container 1 → Turnip GMEM = Force Off (keeps `noconform,sysmem`), runs the same AIO pass with a recording; same frame scan compares the green-frame count. If it stays, next try `noubwc`. Possible fix after proof: Auto should not add gmem on the 710-720-Test builds (user decides).
+
 ## 2026-10-30 — 🚀 Cutting 3.1.8 stable (user: "let's just release 3.1.8")
 
 > Release commit bee2a7bc (versionCode 104 / 3.1.8, `docs/releases/3.1.8.md` in the 3.1.7 layout with the badges under the title, README version row / contents / section) + notes sizes 2670dfe4. RC CI 41138267330 green ×4; notes dry run 41138272582 green (local: "stable 3.1.8: layout OK"). Update size measured on GitHub (temp branch `tmp/size-3.1.8`, run 41139193559): 3.1.7 → 3.1.8 about 27 MB, 3.1.6 → 3.1.8 about 139 MB, full APK about 578 MB, rebuilds byte-exact. App code == main 3be00eff (device-tested 4119eb6b) + version; no separate RC device smoke test. Backup `refs/backup/20261030/main-before-3.1.8` = 361f4f28; main fast-forwards to this commit; release.yml next. Not device-tested in this release: GOG download bar, GOG sign-in check (in the notes).

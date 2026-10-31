@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-10-31 — 🔧 Turnip GMEM: Auto keeps sysmem on 710/720/722 driver builds + GMEM switch on Wayland (`fix/turnip-gmem-710-720`, CI green, APK staged, NOT device-tested)
+## 2026-10-31 — 🔧 Turnip GMEM: Auto keeps sysmem on 710/720/722 driver builds + GMEM switch on Wayland (`fix/turnip-gmem-710-720`, CI green, INSTALLED on the Duo, NOT device-tested)
 
 > **Why:** the green blocks on the Duo (entry below) went away with GMEM Force Off. User asked for the two proposed changes ("add the setting to the Wayland adapter and auto configuration for the driver to force off gmem").
 >
@@ -14,7 +14,11 @@
 >
 > **Device test plan (needs the user's yes to install):** stage pubg APK to `/sdcard/Download/Bannerlator-turnip-gmem-<sha8>.apk` with sha256. Test: set container 1 GMEM back to **Auto** from the new Wayland adapter gear → run AIO → check by root that the game process env has `TU_DEBUG=noconform,sysmem` (`/proc/<pid>/environ`), no green blocks, logcat no FATAL. Also check the GMEM row shows in deck settings on Wayland.
 >
-> **Resume point:** APK staged, NOT installed; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
+> **Installed (user: "yes install it"):** `pm install -r` → Success; installed base.apk sha256 `84783bac…` == staged; updated 2026-10-30 23:33:19 local (Duo clock), vc 104.
+>
+> **Vulkan baseline before the install (user screenshot 23:29:58):** standalone Vulkan cube window (real present, not the shell) on 3.1.8 + 710-720-Test + GMEM Force Off: HUD 1460.0 fps / 0.7 ms, AIO counter 1424 FPS. The in-shell Vulkan figure from 23:06 (HUD 184.9) was the shell's readback path.
+>
+> **Resume point:** d4fd644d INSTALLED, NOT device-tested; container 1 still GMEM Force Off; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
 
 ## 2026-10-31 — 🔍 Green blocks in AIO on the Retroid Pocket Duo (Adreno 722), Wayland (diagnosis, no code change)
 

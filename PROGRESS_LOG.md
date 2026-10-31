@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-10-31 — 🟣 Mali support tier 2 (`feat/mali-support` fb78b77a, CI running, NOT device-tested)
+
+> **Built on top of tier 1 (1de7991a, CI 41173314488 green ×4, skipped steps = cache hits / main-only saves):**
+> - `8bec94c0` bcn: "Faster BCn layer (Fcharan build)" — WinlatorMali's 10-22 libbcn_layer.so shipped as `graphics_driver/bcn_layer_fast.tzst`, renamed `libbcn_layer_fast.so` (soname patched with patchelf 0.18) + own manifest `VK_LAYER_BCN_BCnLayerFast` / `ENABLE_BCN_FAST`. `core/BcnFastLayer` swaps the env at the end of `extractGraphicsDriverFiles` only when `bcnLayerBuild=fast`, Mali, and `ENABLE_BCN_COMPUTE=1` already (sets `DISABLE_BCN_COMPUTE=1`, so only one decoder). Checkbox in the X11 driver dialog, Mali only.
+> - `71872e3c` hud: WinlatorMali `mali_counters.cpp` (+JNI rename) in libwinlator; `widget/MaliGpuCounters` = one reader per process, used only after every sysfs path failed, only on Mali + CSF-generation name (3-digit Mali-G or Immortalis; JM G31-G78 never open /dev/mali0 — WinlatorMali 82fada3 reboot fix). Gate checked locally with javac + stubs: 13/13, non-Mali returns null without native calls.
+> - `fb78b77a` x11 renderer (Mali, vendorID 0x13B5): HIGH global-priority queue (one extra CreateDevice try, refusal falls through unchanged); `VkExternalFormatANDROID.externalFormat` = 0 on Mali (was a VkFormat number = invalid usage; Adreno keeps the old value).
+> - Deferred: #12 PresentConfigureNotify/ReparentNotify (general X11, needs an Adreno A/B first), per-frame FOREIGN queue ownership transfer for AHB textures (needs a Mali device).
+>
+> **CI:** CI Build (artifacts only) run **41173840853** (headSha fb78b77a == pushed) — running.
+>
+> **Tester notes** drafted (scratchpad `Bannerlator-mali-test-notes.md`, will be staged next to the APK). Mali report board live (https://the412banner.github.io/Bannerlator/mali-reports/, HTTP 200).
+>
+> **Mistake (logged per rules):** one shell command in this session ran a filesystem-wide `find /` (header lookup) under proot. It finished without visible harm. Lesson: search only inside known dirs (NDK sysroot path), never `/`.
+>
+> **Resume point:** branch local == remote fb78b77a. Pocket FIT has the pubg flavor (`com.tencent.ig`, versionName 3.1.7, updated 10-30 15:11) → stage `Bannerlator-mali-support-fb78b77a-pubg.apk` for an Adreno no-regression run (install needs the user's yes). No prerelease/tag/draft created; publishing is the user's call.
+
 ## 2026-10-31 — 🟣 Mali support from WinlatorMali, tier 1 + W3 (`feat/mali-support`, CI running, NOT device-tested)
 
 > **Why:** user asked for a recon of GunaCharanTeja/WinlatorMali (bionic-mali-1.2 @428bd945, release 1.2.1) and to bring over as much Mali support as possible, with two hard rules: nothing may conflict with existing systems or regress Adreno (every change Mali-gated via `MaliPanvk.isMaliGpu()` or opt-in), and ideas for Mali on Wayland are wanted. Audit delivered in-session (memory `bannerlator-mali-port-audit`); user go: "tier 1 plus W3 on a new mali branch off main, tier 2 after if possible ... so I can post it to testers in the morning".

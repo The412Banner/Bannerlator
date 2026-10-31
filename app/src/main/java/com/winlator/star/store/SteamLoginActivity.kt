@@ -43,7 +43,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.winlator.star.R
-import com.winlator.star.ui.theme.WinlatorTheme
+import com.winlator.star.ui.deck.XmbKeyboardWindow
 
 class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
 
@@ -89,7 +89,7 @@ class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
         intent?.getStringExtra(EXTRA_USERNAME)?.takeIf { it.isNotBlank() }?.let { username = it }
         refreshSavedAccountCount()
         setContent {
-            WinlatorTheme {
+            StoreKeyboardTheme {
                 SteamLoginScreen(
                     username = username,
                     password = password,
@@ -304,7 +304,8 @@ private fun SteamGuardDialog(
     onCancel: () -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
-    Dialog(onDismissRequest = onDismiss) {
+    // The dialog is a window of its own, so it takes the XMB keyboard hook itself.
+    Dialog(onDismissRequest = onDismiss) { XmbKeyboardWindow {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -355,7 +356,7 @@ private fun SteamGuardDialog(
                 }
             }
         }
-    }
+    } }
 }
 
 @Composable

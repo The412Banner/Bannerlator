@@ -63,7 +63,6 @@ import com.winlator.star.store.download.StoreStatusText
 import com.winlator.star.store.download.StoreDetailScaffold
 import com.winlator.star.store.download.StoreGearItem
 import com.winlator.star.store.download.StorePrimaryAction
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -127,6 +126,7 @@ class EpicGameDetailActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (com.winlator.star.ui.deck.isXmbHome(this)) com.winlator.star.core.AppOrientation.apply(this)
         prefs = getSharedPreferences("bh_epic_prefs", 0)
 
         // Cross-store Download Manager (Phase C): Epic can download without the Steam foreground
@@ -158,7 +158,7 @@ class EpicGameDetailActivity : ComponentActivity() {
         dlcJson = catalogItemId?.let { prefs!!.getString("epic_dlcs_$it", null) }
 
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 EpicGameDetailScreen(
                     appName = appName!!,
                     title = title ?: "",

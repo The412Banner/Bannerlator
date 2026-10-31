@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -68,7 +70,6 @@ import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.StoreDownloadHooks
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,7 +126,7 @@ class AmazonGamesActivity : ComponentActivity() {
         AmazonLibrarySync.seed(this)
 
         setContent {
-            WinlatorTheme {
+            StoreKeyboardTheme {
                 AmazonGamesScreen(
                     games = allGames,
                     searchQuery = searchQuery,
@@ -837,24 +838,27 @@ private fun AmazonGamesScreen(
         }
 
         // Search bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(0.dp),
-            textStyle = androidx.compose.ui.text.TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 14.sp,
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            ),
-        )
+        XmbTapToEdit(Modifier.fillMaxWidth().padding(0.dp)) { fieldModifier, stopEditing ->
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                singleLine = true,
+                modifier = fieldModifier,
+                keyboardActions = xmbDoneActions(stopEditing),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 14.sp,
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        }
 
         // Status bar
         val statusColor = when {

@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
@@ -633,6 +634,15 @@ fun StoreRailCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // XMB home: Steam's 600x900 cover; its page carries the action.
+    if (LocalStoreXmb.current) {
+        XmbStoreCover(
+            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name, onClick = onOpen,
+            modifier = modifier.width(rememberScreenScale().xmbCoverWidth()),
+            footer = { StorePriceRow(item) },
+        )
+        return
+    }
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier = modifier
@@ -686,6 +696,15 @@ fun StoreResultRow(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // XMB home: a small portrait cover beside the name and price.
+    if (LocalStoreXmb.current) {
+        XmbFeatureCard(
+            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name, eyebrow = item.tags,
+            onClick = onOpen, modifier = modifier, compact = true,
+            footer = { StorePriceRow(item) },
+        )
+        return
+    }
     val shape = RoundedCornerShape(10.dp)
     Row(
         modifier = modifier
@@ -751,6 +770,15 @@ fun StoreHeroCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // XMB home: the 600x900 cover beside the name and price.
+    if (LocalStoreXmb.current) {
+        XmbFeatureCard(
+            art = listOfNotNull(steamTallArt(item.appId), item.artUrl), title = item.name,
+            eyebrow = "FEATURED & RECOMMENDED", onClick = onOpen, modifier = modifier,
+            footer = { StorePriceRow(item) },
+        )
+        return
+    }
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = modifier

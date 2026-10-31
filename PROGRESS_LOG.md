@@ -12,6 +12,8 @@
 >
 > **Driver repo check (Banners-Turnip A8xx 7b9031c1, release v27.0.0-20261031):** README:67 asks for `TU_DEBUG=sysmem` and, on Winlator, `WRAPPER_BLIT=1` for the 710/720/722 build. The app sets neither on its own for Wine sessions (GMEM Auto removes sysmem; WRAPPER_BLIT is only a manual wrapper setting, WrapperSettingsDictionary.kt:122). The Wayland adapter .so contains the `WRAPPER_BLIT` string, but it is not in the adapter source (bionic-vulkan-wrapper `banner/wayland-wsi-bgra-native` f970b6c), so whether the adapter acts on it is unverified. Loading is correct: compositor and game both run the 710-720-Test AdrenoTools driver through the adapter (Wayland log + DXVK "Wrapper(Turnip Adreno (TM) 722)").
 >
+> **Correction (user screenshots 22:47):** the GMEM switch can't be reached on Wayland. The container editor hides the graphics-driver gear in the Wayland layout (ContainerDetailScreen.kt:1052-1061), the deck settings show the GMEM row on X11 only (GraphicsSettings.kt:519/:698), and the Wayland adapter settings dialog has no GMEM row. But the GMEM rule still runs on Wayland launches (setupXEnvironment :11356 → :11629), and a TU_DEBUG typed under Environment can't bring sysmem back while Auto adds gmem (:15364-15381). Test path for now: Display backend → X11, driver gear → Turnip GMEM = Force Off, back to Wayland, save.
+>
 > **Next:** user sets container 1 → Turnip GMEM = Force Off (keeps `noconform,sysmem`), runs the same AIO pass with a recording; same frame scan compares the green-frame count. If it stays, next try `noubwc`. Possible fix after proof: Auto should not add gmem on the 710-720-Test builds (user decides).
 
 ## 2026-10-30 — 🚀 Cutting 3.1.8 stable (user: "let's just release 3.1.8")

@@ -14,6 +14,8 @@
 >
 > **Correction (user screenshots 22:47):** the GMEM switch can't be reached on Wayland. The container editor hides the graphics-driver gear in the Wayland layout (ContainerDetailScreen.kt:1052-1061), the deck settings show the GMEM row on X11 only (GraphicsSettings.kt:519/:698), and the Wayland adapter settings dialog has no GMEM row. But the GMEM rule still runs on Wayland launches (setupXEnvironment :11356 → :11629), and a TU_DEBUG typed under Environment can't bring sysmem back while Auto adds gmem (:15364-15381). Test path for now: Display backend → X11, driver gear → Turnip GMEM = Force Off, back to Wayland, save.
 >
+> **Set (10-31 ~03:05 UTC, verified by root in the container file):** `turnipGmem=off`, no extra tokens, backend back on Wayland + adapter, env still `TU_DEBUG=noconform,sysmem` → the game now gets `noconform,sysmem`. The other keys the X11 dialog wrote (bcn*, compatUseGamenative) equal the launch defaults and only matter for the bcn_layer/compat drivers, so GMEM is the only change. Retest = AIO + recording, compare with 246/2322.
+>
 > **Next:** user sets container 1 → Turnip GMEM = Force Off (keeps `noconform,sysmem`), runs the same AIO pass with a recording; same frame scan compares the green-frame count. If it stays, next try `noubwc`. Possible fix after proof: Auto should not add gmem on the 710-720-Test builds (user decides).
 
 ## 2026-10-30 — 🚀 Cutting 3.1.8 stable (user: "let's just release 3.1.8")

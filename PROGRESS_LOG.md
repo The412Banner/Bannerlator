@@ -10,6 +10,8 @@
 >
 > **Code (main 51f3903e):** Wayland Wine sessions run the same driver setup as X11 (`extractGraphicsDriverFiles` XServerDisplayActivity.java:3327, `applyTurnipTuDebug` :11629, the adapter loads the same adrenotools driver :13865-13872) → no X11 setting is missing on Wayland. But `applyTurnipTuDebug` with GMEM **Auto** adds `gmem` on Adreno 710/720/722 (`GPUInformation.isAutoGmemGpu` :103-115) and strips `sysmem` (:15380) → the game ran with `TU_DEBUG=noconform,gmem`, the opposite of the driver's own advice and of the Linux session's rule (`LinuxTuning.turnipSysmem` :163-168 forces sysmem for 710/720/722 builds). Suspected cause, NOT proven.
 >
+> **Driver repo check (Banners-Turnip A8xx 7b9031c1, release v27.0.0-20261031):** README:67 asks for `TU_DEBUG=sysmem` and, on Winlator, `WRAPPER_BLIT=1` for the 710/720/722 build. The app sets neither on its own for Wine sessions (GMEM Auto removes sysmem; WRAPPER_BLIT is only a manual wrapper setting, WrapperSettingsDictionary.kt:122). The Wayland adapter .so contains the `WRAPPER_BLIT` string, but it is not in the adapter source (bionic-vulkan-wrapper `banner/wayland-wsi-bgra-native` f970b6c), so whether the adapter acts on it is unverified. Loading is correct: compositor and game both run the 710-720-Test AdrenoTools driver through the adapter (Wayland log + DXVK "Wrapper(Turnip Adreno (TM) 722)").
+>
 > **Next:** user sets container 1 → Turnip GMEM = Force Off (keeps `noconform,sysmem`), runs the same AIO pass with a recording; same frame scan compares the green-frame count. If it stays, next try `noubwc`. Possible fix after proof: Auto should not add gmem on the 710-720-Test builds (user decides).
 
 ## 2026-10-30 — 🚀 Cutting 3.1.8 stable (user: "let's just release 3.1.8")

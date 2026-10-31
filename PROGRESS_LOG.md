@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-10-31 — 🟣 Mali test build posted to testers (prerelease `3.1.8-mali-pre1` = fb78b77a, Discord card, NOT device-tested)
+
+> **Why:** user (10-31): "I don't have mali, can you post what we did/added to bannerlator in this thread with the bot … and the raw apk files for direct testing?" → BannerHub & Emulation Support guild, #general-mali-and-support (channel 1530604459330113649). Then "just upload the apk files with the bot with the post" → not possible: guild premium_tier 1 → bot upload limit 10 MB, APKs 580.9 MB each. Showed the exact card text + the link-instead plan; user: "make the post, and stage apk files in my downloads folder and I will upload them".
+>
+> **Prerelease (user's go):** `3.1.8-mali-pre1`, title "Bannerlator 3.1.8 Mali test build (fb78b77a)", prerelease, NOT Latest (releases/latest still `3.1.8`). Tag `refs/tags/3.1.8-mali-pre1` == fb78b77a98ec833fb8955f6aa2caa7589962b41e (ls-remote). Made by hand (`gh release create --draft`, then `gh release edit --draft=false`), NOT by release.yml: no update.json, no patches, manifest branch untouched → the in-app updater never offers it (it reads manifest update*.json; its API fallback needs an update.json asset). Assets: 4 APKs (`Bannerlator-3.1.8-mali-pre1-<flavor>.apk`, the CI 41173840853 artifacts) + SHA256SUMS; public URLs 200, sizes == files, SHA256SUMS == local; og:description starts with the intro line. Note: the next release.yml cut lists the last 40 releases and makes small-update patches from the newest 8 with a `Bannerlator-*-<flavor>.apk` asset, so it will make one from this build too (Mali testers get small updates; takes one of the 8 slots).
+>
+> **Discord:** BannerBot card msg **1566111235886416094** (15:26:55 UTC), title "Bannerlator Mali test build (3.1.8-mali-pre1)", url = release page, description 1876 chars, no pings (verified via dget). Draft on VM `/var/lib/bannerbot/claude/posts/bl-mali-1.txt` (sha dd6c1e5f…).
+>
+> **Staged for the user (hash host == device, all 4):** `/sdcard/Download/Bannerlator-mali-support-fb78b77a-{standard,pubg,antutu,ludashi}.apk` (c6c8210a… / 69525bb4… / 973639d3… / d73a951c…).
+>
+> **Not asked:** GunaCharanTeja permission (user told twice; "post" given knowing it). **Open:** Adreno no-regression install on the Pocket FIT (needs yes); tester reports; merge only after device proof + user's go.
+>
+> **Resume point:** nothing installed or running. Watch #general-mali-and-support for reports (`ssh bannerbot '~/bin/dget "/channels/1530604459330113649/messages?limit=50"'`).
+
 ## 2026-10-31 — 🟣 Mali test build ready for testers (`feat/mali-support` fb78b77a, CI green ×4, staged, NOT device-tested)
 
 > **CI:** CI Build (artifacts only) run **41173840853**, headSha fb78b77a98ec833fb8955f6aa2caa7589962b41e == pushed: **success** ×4 (standard, pubg, ludashi, antutu); no failed steps, skipped = cache hits / main-only saves.

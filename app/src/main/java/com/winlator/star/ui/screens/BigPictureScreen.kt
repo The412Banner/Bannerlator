@@ -1736,9 +1736,7 @@ private fun GameCommunitySheet(
                             )
                             CommunityStoreBadge(isSteam = game.isSteam)
                         }
-                        val devWord = if (game.devices.size == 1) "device" else "devices"
-                        val cfgWord = if (game.configCount == 1) "config" else "configs"
-                        Text("${game.configCount} $cfgWord · ${game.devices.size} $devWord", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Text(CanonicalGame.countsLine(game, match?.userGpu), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Text("Your device: ${deviceHeaderLabel(DeviceIdentity.deviceModel(), match?.userHardwareLabel)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Spacer(Modifier.height(6.dp))
                         FilterChip(

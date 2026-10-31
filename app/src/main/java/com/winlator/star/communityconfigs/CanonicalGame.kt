@@ -38,7 +38,28 @@ data class CanonicalGame(
     val steamAppId: String?
         get() = if (isSteam) identity else null
 
+    /** Devices on file with an Arm Mali / Immortalis GPU (the GPU name can sit in any of the three fields). */
+    val maliDeviceCount: Int
+        get() = devices.count { d -> isMaliName(d.gpu) || isMaliName(d.soc) || isMaliName(d.model) }
+
     companion object {
+        fun isMaliName(s: String?): Boolean =
+            s != null && (s.contains("mali", ignoreCase = true) || s.contains("immortalis", ignoreCase = true))
+
+        /**
+         * The "N configs · M devices" line of the community lists. When the user's own GPU ([userGpu],
+         * the renderer string the lists already carry) is a Mali, " · K Mali" is added for K > 0 Mali
+         * devices on file; on any other GPU the line is unchanged.
+         */
+        fun countsLine(game: CanonicalGame, userGpu: String?): String {
+            val cfgWord = if (game.configCount == 1) "config" else "configs"
+            val devWord = if (game.devices.size == 1) "device" else "devices"
+            val base = "${game.configCount} $cfgWord · ${game.devices.size} $devWord"
+            if (!isMaliName(userGpu)) return base
+            val mali = game.maliDeviceCount
+            return if (mali > 0) "$base · $mali Mali" else base
+        }
+
         /**
          * Parses the whole {@code games_canonical.json} object into a list of games. The file is a
          * map of {@code "<identity>" -> {name, folders, devices, config_count}}; malformed entries

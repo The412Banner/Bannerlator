@@ -1449,10 +1449,8 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
                                 )
                                 CommunityStoreBadge(isSteam = game.isSteam)
                             }
-                            val devWord = if (game.devices.size == 1) "device" else "devices"
-                            val cfgWord = if (game.configCount == 1) "config" else "configs"
                             Text(
-                                text = "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                                text = CanonicalGame.countsLine(game, result?.userGpu),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = OnSurfaceVariant,
                             )
@@ -3209,7 +3207,7 @@ internal fun CommunityCatalogBrowser(
                                 // shown while the RIGHT (list) zone is active, so focus reads as being in one
                                 // place at a time. A tap also snaps the cursor back to the list.
                                 DpadHighlight(focused = !leftZone && index == gameFocus) {
-                                    CommunityGameRow(game = g, onClick = { leftZone = false; gameFocus = index; selectedIdentity = g.identity })
+                                    CommunityGameRow(game = g, userGpu = userGpu, onClick = { leftZone = false; gameFocus = index; selectedIdentity = g.identity })
                                 }
                             }
                         }
@@ -3448,7 +3446,7 @@ internal fun CommunityConfigEntryCard(entry: WorkerConfigEntry, isMatch: Boolean
 
 // One game card in the catalog browser: name, Steam/Title badge, config + device counts.
 @Composable
-private fun CommunityGameRow(game: CanonicalGame, onClick: () -> Unit) {
+private fun CommunityGameRow(game: CanonicalGame, userGpu: String? = null, onClick: () -> Unit) {
     CommunityCard(onClick = onClick) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -3458,10 +3456,8 @@ private fun CommunityGameRow(game: CanonicalGame, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val cfgWord = if (game.configCount == 1) "config" else "configs"
-            val devWord = if (game.devices.size == 1) "device" else "devices"
             Text(
-                text = "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                text = CanonicalGame.countsLine(game, userGpu),
                 style = MaterialTheme.typography.labelSmall,
                 color = OnSurfaceVariant,
             )
@@ -3539,10 +3535,8 @@ private fun CommunityDevicePanel(
     @Composable
     fun Header() {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val cfgWord = if (game.configCount == 1) "config" else "configs"
-            val devWord = if (game.devices.size == 1) "device" else "devices"
             Text(
-                "${game.configCount} $cfgWord · ${game.devices.size} $devWord",
+                CanonicalGame.countsLine(game, userGpu),
                 style = MaterialTheme.typography.bodySmall,
                 color = OnSurfaceVariant,
                 modifier = Modifier.weight(1f),

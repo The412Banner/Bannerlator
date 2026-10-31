@@ -307,6 +307,8 @@
     <string name="fex_extreme_wn">Extreme-wn</string>
     <string name="fex_extreme_tso_wn">Extreme (TSO)-wn</string>
     <string name="fex_extreme_gn">Extreme-gn</string>
+    <string name="fex_performance_x87_full">Performance (full x87)</string>
+    <string name="fex_unreal_engine_3">Unreal Engine 3</string>
 
     <!-- Help for the Box64 variables added alongside the 19 -> 32 expansion. Wording follows
          WinNative, which has shipped these knobs longest. Without these the "?" button had

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-10-31 — 🔧 Turnip GMEM: Auto keeps sysmem on 710/720/722 driver builds + GMEM switch on Wayland (`fix/turnip-gmem-710-720`, CI running, NOT device-tested)
+## 2026-10-31 — 🔧 Turnip GMEM: Auto keeps sysmem on 710/720/722 driver builds + GMEM switch on Wayland (`fix/turnip-gmem-710-720`, CI green, APK staged, NOT device-tested)
 
 > **Why:** the green blocks on the Duo (entry below) went away with GMEM Force Off. User asked for the two proposed changes ("add the setting to the Wayland adapter and auto configuration for the driver to force off gmem").
 >
@@ -8,11 +8,13 @@
 > - `GPUInformation.isSysmemDriverBuild(driverId)`: true when the driver name has 710, 720 or 722 as a number on its own (`(?<!\d)(710|720|722)(?!\d)`; a date like 20260720 doesn't match). `applyTurnipTuDebug`: Auto adds `gmem` only on Adreno 710/720/722 **and** when the driver is not such a build → with 710-720-Test the env stays `noconform,sysmem` (same as the Force Off state the user tested). Matches `LinuxTuning.turnipSysmem` (which uses a plain `contains`). Checked the pattern on the Duo's installed drivers: `Mesa Turnip v27.0.0-20261031-710-720-Test` → match; `turnip-sdk36`, `v819` → no match.
 > - GMEM switch on Wayland: Wayland adapter settings dialog (bottom, beside GPU name / memory / UBWC hint; the help line says when the driver is a 710/720/722 build), deck settings GMEM row now `wayland = true`, XMB "Wayland driver settings" menu. A pick writes only `turnipGmem` (+ `turnipTokens` without sysmem on Force on, like the X11 dialog); unchanged = nothing written. X11 dialog / deck / XMB / help text updated for the new Auto rule.
 >
-> **CI:** CI Build (artifacts only) run **41164026966** (headSha d4fd644d == pushed), running.
+> **CI:** CI Build (artifacts only) run **41164026966** (headSha d4fd644d == pushed): **success** ×4 (standard, pubg, ludashi, antutu); skipped steps = cache hits / main-only saves.
+>
+> **Staged:** standard flavor (the Duo runs `com.winlator.banner`) → `/sdcard/Download/Bannerlator-turnip-gmem-d4fd644d.apk`, sha256 `84783bacfd009347…` host == device. Same signing cert as the installed 3.1.8 (SHA-256 `a40da80a…`), installed base.apk = `b9cdde6d…` (3.1.8 standard) → in-place update. Install waits for the user's yes.
 >
 > **Device test plan (needs the user's yes to install):** stage pubg APK to `/sdcard/Download/Bannerlator-turnip-gmem-<sha8>.apk` with sha256. Test: set container 1 GMEM back to **Auto** from the new Wayland adapter gear → run AIO → check by root that the game process env has `TU_DEBUG=noconform,sysmem` (`/proc/<pid>/environ`), no green blocks, logcat no FATAL. Also check the GMEM row shows in deck settings on Wayland.
 >
-> **Resume point:** nothing installed from this branch; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
+> **Resume point:** APK staged, NOT installed; Duo still on 3.1.8 standard with container 1 `turnipGmem=off`. Worktree `/root/src/Bannerlator-wt/turnip-gmem`. Next: watch run 41164026966 (`gh run view 41164026966 --json conclusion,jobs`), stage APK, ask before install.
 
 ## 2026-10-31 — 🔍 Green blocks in AIO on the Retroid Pocket Duo (Adreno 722), Wayland (diagnosis, no code change)
 

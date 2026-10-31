@@ -696,7 +696,8 @@ internal object GraphicsRows {
         // Turnip (TU_DEBUG)
         gdcRow(
             ID_GMEM, "turnipGmem", "Turnip", "GMEM tiled rendering", ADVANCED,
-            hint = "Auto uses it on Adreno 710, 720 and 722 only. Change it only if a game misbehaves.",
+            hint = "Auto uses it on Adreno 710, 720 and 722 only, and not with a driver built for them (such as " +
+                "710-720-Test), which keeps sysmem. Change it only if a game misbehaves.",
             control = { _, _ -> seg("auto" to "Auto", "on" to "Force on", "off" to "Force off") },
             decode = { _, r -> r?.takeIf { it == "on" || it == "off" } ?: "auto" },
             // Force on overrides sysmem, so the classic dialog doesn't keep that token with it.
@@ -704,6 +705,8 @@ internal object GraphicsRows {
                 val tokens = DRIVER_CFG.raw(cfg, "turnipTokens")
                 if (v == "on" && "sysmem" in tokensOf(tokens)) mapOf("turnipTokens" to tokensWith(tokens, "sysmem", false)) else emptyMap()
             },
+            // Wayland launches compose TU_DEBUG the same way (applyTurnipTuDebug), and the gear has it too.
+            wayland = true,
         ),
         tokenRow("forcecb", "Force concurrent binning (forcecb)", null),
         tokenRow("nocb", "No concurrent binning (nocb)", null),

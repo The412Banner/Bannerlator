@@ -15321,7 +15321,9 @@ return true;
     // Turnip TU_DEBUG assembly. Two contributors, both resolved through the already per-game-merged
     // graphicsDriverConfig map (shortcut override won over container at parse time, line ~1521):
     //   • Task #1 — "turnipGmem" tri-state: auto | on | off (default auto). Auto adds the `gmem`
-    //     token ONLY on Adreno 710/720/722 (the parts that need it on a STOCK driver); On always
+    //     token ONLY on Adreno 710/720/722 (the parts that need it on a STOCK driver), and not when
+    //     the driver is a build for those GPUs (GPUInformation.isSysmemDriverBuild, e.g. 710-720-Test:
+    //     its authors advise sysmem, and gmem showed green blocks on the Retroid Pocket Duo); On always
     //     adds it; Off never does (the escape hatch — Off means "don't add gmem", it does NOT force
     //     sysmem).
     //   • Task #2 — "turnipTokens": opt-in advanced tokens from a fixed allowlist (forcecb, nocb,
@@ -15340,7 +15342,8 @@ return true;
         String gmemMode = graphicsDriverConfig.get("turnipGmem");
         if (gmemMode == null || gmemMode.isEmpty()) gmemMode = "auto";
         boolean addGmem = "on".equals(gmemMode)
-                || ("auto".equals(gmemMode) && GPUInformation.isAutoGmemGpu(this));
+                || ("auto".equals(gmemMode) && GPUInformation.isAutoGmemGpu(this)
+                    && !GPUInformation.isSysmemDriverBuild(graphicsDriverConfig.get("version")));
         if (addGmem) add.add("gmem");
 
         // Task #2 — advanced opt-in tokens (allowlist only; gmem/sysmem-vs-gmem collision avoided by

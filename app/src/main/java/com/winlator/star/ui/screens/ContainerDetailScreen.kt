@@ -1049,9 +1049,10 @@ private fun TopLevelFields(
             IconButton(onClick = { helpRes = R.string.help_graphics_driver }) {
                 Icon(Icons.Default.Help, contentDescription = "What is this?", modifier = Modifier.size(18.dp))
             }
-            // Wrappers are X11 game-driver shims and driver configuration is X11 tuning (its only
-            // live field, the Turnip version, is the Compositor driver dropdown), so both entry
-            // points are left out of the Wayland layout; the "?" stays.
+            // Wrappers are X11 game-driver shims and driver configuration is X11 tuning (the Turnip
+            // version is the Compositor driver dropdown; GPU name, memory, UBWC hint and Turnip GMEM
+            // are in the Wayland adapter gear), so both entry points are left out of the Wayland
+            // layout; the "?" stays.
             if (!compositorDriverOnly) {
                 IconButton(onClick = { showWrapperManager = true }) {
                     Icon(Icons.Default.CloudDownload, contentDescription = stringResource(R.string.wrapper_manager_open))
@@ -3269,10 +3270,27 @@ internal fun withGraphicsDriverKeys(config: String, values: Map<String, String>)
  */
 internal val WAYLAND_PRESENT_MODES = listOf("mailbox", "fifo")
 
+/** The stored Turnip GMEM choice of a parsed graphicsDriverConfig: "auto" (also for a missing key), "on" or "off". */
+internal fun storedGmemOf(cfg: Map<String, String>): String =
+    cfg["turnipGmem"]?.takeIf { it == "on" || it == "off" } ?: "auto"
+
+/**
+ * The keys a Turnip GMEM pick on Wayland writes into [cfg]'s string: nothing when unchanged (the stored
+ * string stays as it was), else turnipGmem, and with Force on also turnipTokens without sysmem, which
+ * gmem overrides, as the X11 dialog stores it.
+ */
+internal fun gmemKeys(cfg: Map<String, String>, picked: String): Map<String, String> {
+    if (picked == storedGmemOf(cfg)) return emptyMap()
+    val tokens = (cfg["turnipTokens"] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    return if (picked == "on" && "sysmem" in tokens)
+        mapOf("turnipGmem" to picked, "turnipTokens" to tokens.filter { it != "sysmem" }.joinToString(","))
+    else mapOf("turnipGmem" to picked)
+}
+
 internal const val WAYLAND_DRIVER_SETTINGS_HELP =
     "How the Wayland adapter puts the game's frames on screen. The report says what your graphics driver " +
         "can do; the profile picks sensible switches from it (Auto) or forces a known set. The GPU name, " +
-        "memory and UBWC-hint settings at the bottom are the X11 driver configuration's, so they follow the " +
+        "memory, UBWC-hint and Turnip GMEM settings at the bottom are the X11 driver configuration's, so they follow the " +
         "game across backends (an NVIDIA name can make a game try NVAPI, DLSS or Reflex; go back to Device " +
         "if a game misbehaves)."
 
@@ -3285,7 +3303,8 @@ internal const val WAYLAND_DRIVER_SETTINGS_HELP =
  *    graphicsDriverConfig keys core.WaylandAdapterSettings owns ("" = Default = inject nothing) and
  *    resolved at launch shortcut > container > profile, with the user's env vars over all of them;
  *  - the per-game driver settings that were here before: gpuName (the spoof, handed to DXVK through
- *    DXVK_CONFIG), maxDeviceMemory (dxgi.maxDeviceMemory) and fdDevFeatures (FD_DEV_FEATURES).
+ *    DXVK_CONFIG), maxDeviceMemory (dxgi.maxDeviceMemory) and fdDevFeatures (FD_DEV_FEATURES), plus
+ *    turnipGmem (TU_DEBUG gmem, see gmemKeys).
  * Same keys as GraphicsDriverConfigDialog, so a choice survives switching backends; OK writes only these
  * back (withGraphicsDriverKeys). [containerConfig] non-null = a shortcut's override: every adapter key
  * offers "Inherit" (= "") and the preview resolves against the container's config.
@@ -3310,6 +3329,8 @@ internal fun WaylandDriverSettingsDialog(
     // The X11 presentMode key is what the launch exports when no Wayland present mode is decided here.
     val storedPresent = cfg["presentMode"]?.ifEmpty { null } ?: "mailbox"
     var fdDevFeatures by remember(initialConfig) { mutableStateOf(cfg["fdDevFeatures"] == "1") }
+    // Turnip GMEM: Wayland launches compose TU_DEBUG the same way as X11 (applyTurnipTuDebug).
+    var turnipGmem by remember(initialConfig) { mutableStateOf(storedGmemOf(cfg)) }
     val deviceMemoryEntries = remember { context.resources.getStringArray(R.array.device_memory_entries).toList() }
     var memoryEntry by remember(initialConfig) {
         val stored = cfg["maxDeviceMemory"] ?: "0"
@@ -3570,6 +3591,17 @@ internal fun WaylandDriverSettingsDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(Modifier.height(8.dp))
+                WaylandTriStateRow(
+                    label = "Turnip GMEM (tiled rendering)",
+                    help = if (com.winlator.star.core.GPUInformation.isSysmemDriverBuild(driverId))
+                        "This driver is a build for Adreno 710/720/722, so Auto keeps sysmem (TU_DEBUG without gmem)."
+                    else "Auto adds TU_DEBUG=gmem on Adreno 710, 720 and 722 only. Force Off never adds it. " +
+                        "Change it only if a game shows glitches.",
+                    options = listOf("auto" to "Auto", "on" to "Force on", "off" to "Force off"),
+                    value = turnipGmem,
+                    onChange = { turnipGmem = it }
+                )
                 mali?.let { MaliPanvkSection(it) { res -> helpRes = res } }
             }
         },
@@ -3582,7 +3614,7 @@ internal fun WaylandDriverSettingsDialog(
                             "gpuName" to gpuName,
                             "maxDeviceMemory" to StringUtils.parseNumber(memoryEntry),
                             "fdDevFeatures" to if (fdDevFeatures) "1" else "0",
-                        ) + adapter + (mali?.keys() ?: emptyMap())
+                        ) + gmemKeys(cfg, turnipGmem) + adapter + (mali?.keys() ?: emptyMap())
                     )
                 )
             }) { Text(stringResource(android.R.string.ok)) }
@@ -3946,8 +3978,9 @@ internal fun GraphicsDriverConfigDialog(
 
     // --- Turnip GMEM tri-state (task #1) + advanced TU_DEBUG tokens (task #2) ---
     // turnipGmem: "auto" (default) | "on" | "off". Auto adds the `gmem` token only on Adreno
-    // 710/720/722 at launch (resolved in XServerDisplayActivity). turnip* token flags map to the
-    // opt-in advanced TU_DEBUG tokens, stored comma-joined under "turnipTokens".
+    // 710/720/722 at launch, not with a driver built for them (resolved in XServerDisplayActivity).
+    // turnip* token flags map to the opt-in advanced TU_DEBUG tokens, stored comma-joined under
+    // "turnipTokens".
     var turnipGmem       by remember { mutableStateOf(cfg["turnipGmem"] ?: "auto") }
     val initialTurnipTokens = remember(initialConfig) {
         (cfg["turnipTokens"] ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
@@ -4379,7 +4412,8 @@ internal fun GraphicsDriverConfigDialog(
                     }
                 }
                 Text(
-                    "Auto forces GMEM tiled rendering (TU_DEBUG=gmem) only on Adreno 710/720/722; " +
+                    "Auto forces GMEM tiled rendering (TU_DEBUG=gmem) only on Adreno 710/720/722, and " +
+                        "not with a driver built for those GPUs (such as 710-720-Test), which keeps sysmem; " +
                         "Force On applies it on any GPU; Force Off never applies it. Leave on Auto unless a " +
                         "game misbehaves.",
                     style = MaterialTheme.typography.bodySmall,

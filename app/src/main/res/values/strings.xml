@@ -572,7 +572,7 @@
     <string name="help_turnip_gmem"><![CDATA[
         <b>GMEM (tiled rendering)</b><br /><br />
         How the GPU draws each frame. GMEM (tiled) rendering splits the screen into small tiles and draws them in ultra-fast on-chip memory — the efficient, mobile-native way.<br /><br />
-        <b>Auto</b> turns it on only for Adreno 710/720/722 (which need it to avoid glitches); <b>Force On</b> applies it to any GPU; <b>Force Off</b> never does. Leave on Auto unless a game misbehaves. Its opposite is \'sysmem\'.
+        <b>Auto</b> turns it on only for Adreno 710/720/722 (which need it to avoid glitches on a stock driver), and not with a driver built for those GPUs (such as 710-720-Test), whose authors advise sysmem; <b>Force On</b> applies it to any GPU; <b>Force Off</b> never does. Leave on Auto unless a game misbehaves. Its opposite is \'sysmem\'.
     ]]></string>
     <string name="help_turnip_sysmem"><![CDATA[
         <b>sysmem</b><br /><br />

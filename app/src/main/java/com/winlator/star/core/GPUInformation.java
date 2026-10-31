@@ -114,6 +114,19 @@ public abstract class GPUInformation {
         }
     }
 
+    private static final java.util.regex.Pattern SYSMEM_DRIVER_BUILD =
+            java.util.regex.Pattern.compile("(?<!\\d)(710|720|722)(?!\\d)");
+
+    /**
+     * Whether a Turnip driver's name marks it as a build for Adreno 710 / 720 / 722 (Banners-Turnip's
+     * 710-720-Test and the like). Their authors advise sysmem on those GPUs, so "Turnip GMEM = Auto" does
+     * not add {@code gmem} for them, as the Linux session already does (LinuxTuning.turnipSysmem). The
+     * numbers count only on their own, so a date such as 20260720 in the name does not match.
+     */
+    public static boolean isSysmemDriverBuild(String driverId) {
+        return driverId != null && SYSMEM_DRIVER_BUILD.matcher(driverId).find();
+    }
+
     public native static String getVulkanVersion(String driverName, Context context);
     public native static int getVendorID(String driverName, Context context);
     public native static String getRenderer(String driverName, Context context);

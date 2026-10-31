@@ -361,7 +361,7 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         val gmemValues = listOf("auto", "on", "off")
         rows += XmbRow.Choice("gmem", "GMEM (tiled rendering)", Icons.Filled.Memory, gmemLabels,
             gmemLabels[gmemValues.indexOf(cfg.turnipGmem).coerceAtLeast(0)],
-            subtitle = "Auto uses TU_DEBUG=gmem only on Adreno 710/720/722") { v ->
+            subtitle = "Auto uses TU_DEBUG=gmem only on Adreno 710/720/722, not with a driver built for them") { v ->
             write { it.turnipGmem = gmemValues[gmemLabels.indexOf(v).coerceAtLeast(0)] }
         }
         rows += XmbRow.Link("turnipTokens", "Advanced Turnip (TU_DEBUG)", Icons.Filled.Science,
@@ -378,7 +378,7 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 
 /**
  * The Wayland game driver's settings (the pop-up editors' gear, WaylandDriverSettingsDialog): GPU name
- * spoof, max device memory, present mode (mailbox / fifo) and the OneUI / HyperOS UBWC hint. Each change
+ * spoof, max device memory, present mode (mailbox / fifo), the OneUI / HyperOS UBWC hint and Turnip GMEM. Each change
  * writes ONLY its own key back into the shortcut's graphicsDriverConfig (withGraphicsDriverKeys), so the
  * X11 driver configuration kept in the same string is untouched.
  */
@@ -421,6 +421,18 @@ internal fun xmbWaylandDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbM
         rows += XmbRow.Toggle("fdDev", "OneUI / HyperOS Fix (UBWC flag hint)", Icons.Filled.Tune, cfg["fdDevFeatures"] == "1",
             subtitle = "FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1: corrupt textures on Samsung / Xiaomi") { on ->
             write("fdDevFeatures", if (on) "1" else "0")
+        }
+        val gmemLabels = listOf("Auto (Adreno 710/720/722)", "Force On", "Force Off")
+        val gmemValues = listOf("auto", "on", "off")
+        rows += XmbRow.Choice("gmem", "Turnip GMEM (tiled rendering)", Icons.Filled.Memory, gmemLabels,
+            gmemLabels[gmemValues.indexOf(storedGmemOf(cfg))],
+            subtitle = if (com.winlator.star.core.GPUInformation.isSysmemDriverBuild(cfg["version"]))
+                "This driver is a build for Adreno 710/720/722: Auto keeps sysmem"
+            else "Auto uses TU_DEBUG=gmem only on Adreno 710/720/722") { v ->
+            val picked = gmemValues[gmemLabels.indexOf(v).coerceAtLeast(0)]
+            val now = rawCfg()
+            val keys = gmemKeys(com.winlator.star.contentdialog.GraphicsDriverConfigDialog.parseGraphicsDriverConfig(now), picked)
+            if (keys.isNotEmpty()) p2Put(xmb, shortcut, "graphicsDriverConfig", withGraphicsDriverKeys(now, keys))
         }
         if (MaliPanvk.isMaliGpu()) rows += xmbMaliPanvkRows(xmb, cfg, { rawCfg() }) { values ->
             p2Put(xmb, shortcut, "graphicsDriverConfig", withGraphicsDriverKeys(rawCfg(), values))

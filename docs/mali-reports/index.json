@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-01T02-41-20-06a422",
+    "created": "2026-11-01T02:41:20.425Z",
+    "reporter": "Kai",
+    "device": "Poco x6 5g",
+    "gpu": "Snapdragon 7 gen 2s",
+    "game": "Dmc5",
+    "symptom": "Outro",
+    "logs": 0
+  },
+  {
     "id": "2026-10-27T14-52-46-713a77",
     "created": "2026-10-27T14:52:46.388Z",
     "reporter": "Igor franco",

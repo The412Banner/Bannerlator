@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-01T02-41-20-06a422",
+  "created": "2026-11-01T02:41:20.425Z",
+  "ip_hash": "FVaaTea6f4",
+  "fields": {
+    "reporter_name": "Kai",
+    "device_model": "Poco x6 5g",
+    "soc": "",
+    "gpu": "Snapdragon 7 gen 2s",
+    "android": "",
+    "ram": "12",
+    "app_version": "2.8.2",
+    "install_source": "",
+    "game_name": "Dmc5",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Outro",
+    "when": "",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

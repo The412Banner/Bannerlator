@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI running, NOT device-tested)
+## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI green ×4, installing on the Duo, NOT device-tested)
 
 > **Why:** on the Retroid Pocket Duo (Adreno 722) the HUD shows "GPU –%" and no GPU clock: SELinux blocks apps from `/sys/class/kgsl/kgsl-3d0/*` (every AIO screenshot of the 11-02 driver head-to-head shows "GPU –%"). `HudMetrics` reads only sysfs. DroidDeck fixed the same problem (PR #1969 for the Duo, PR #1981 for Adreno 8xx / hardware-scheduled kernels; #1981 tester-confirmed on a OnePlus 13). User: "can we port those fixes over to bannerlator as well?" → plan → "do it".
 >
@@ -10,7 +10,13 @@
 > - `HudMetrics`: `getGpuUsagePercent()` / `getGpuClockMhz()` use the fallback only when no sysfs node gave a value AND the kgsl load/clock nodes are unreadable; diagnostics export names the source + "GPU readers without root:" line, waits 1.2 s instead of 0.35 s when the fallback is in use.
 > - Not ported: DroidDeck's backup-of-the-backup (guest Vulkan timing layer + compositor timing) — only needed where the memstore stamps never move.
 >
-> **CI:** CI Build (artifacts only) run **41451074858** (headSha 0ab04731 == pushed) — running.
+> **CI:** CI Build (artifacts only) run **41451074858** (headSha 0ab04731 == pushed) — **success** ×4 (standard, pubg, ludashi, antutu). https://github.com/The412Banner/Bannerlator/actions/runs/41451074858 (artifacts expire 2026-11-09).
+>
+> **8xx check (11-02):** source DroidDeck 55362d68 contains #1981 (55da0afd is 2 commits behind it); native files identical except JNI names/guards/credit line; A8xx layout `kgsl_layout.h:15-23`, per-context mode `kgsl_busy.c:20-117`. 8xx NOT device-tested here (no A8xx device).
+>
+> **Staged (user: "install it"):** `/sdcard/Download/Bannerlator-hud-gpu-noroot-0ab04731.apk` (standard, com.winlator.banner vc 104), sha256 `be337c7ab275b837…` host == device; signer a40da80a… == installed build. Replaces on the Duo: fix/turnip-gmem-710-720 d4fd644d (installed 10-30 23:33; APK kept at `/sdcard/Download/Bannerlator-turnip-gmem-d4fd644d.apk` to go back).
+>
+> **Resume point:** if the session dies during install: check `dumpsys package com.winlator.banner | grep lastUpdateTime` and the installed base.apk sha256 == be337c7a…; nothing else running, no background jobs.
 >
 > **Test plan:** stage standard APK → ask user → install on the Duo → game with HUD: HUD GPU % / MHz vs root `gpu_busy_percentage` / `gpuclk` each second (same method as DroidDeck #1969) + HUD diagnostics export + logcat FATAL check. Pocket FIT: sysfs readable → old path unchanged (check only). A8xx: no device here.
 

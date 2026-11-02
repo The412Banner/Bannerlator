@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI running, NOT device-tested)
+
+> **Why:** on the Retroid Pocket Duo (Adreno 722) the HUD shows "GPU –%" and no GPU clock: SELinux blocks apps from `/sys/class/kgsl/kgsl-3d0/*` (every AIO screenshot of the 11-02 driver head-to-head shows "GPU –%"). `HudMetrics` reads only sysfs. DroidDeck fixed the same problem (PR #1969 for the Duo, PR #1981 for Adreno 8xx / hardware-scheduled kernels; #1981 tester-confirmed on a OnePlus 13). User: "can we port those fixes over to bannerlator as well?" → plan → "do it".
+>
+> **Built (`0ab04731` on `fix/hud-gpu-noroot`, off main 82529d5):**
+> - `app/src/main/cpp/gpuclock/` (new `libgpuclock.so`): DroidDeck's `kgsl_busy.c/.h`, `kgsl_clock.c`, `kgsl_layout.h` (DroidDeck main 55362d68), only JNI names (`com.winlator.star.widget.gpu.*`) and header guards changed. Uses BL's own `adrenotools/src/hook/kgsl.h` (all needed structs/ioctls present; syntax-checked with bionic clang).
+> - `widget/gpu/`: `KgslBusy.kt`, `KgslClock.kt`, `KgslErrors.kt` (ported), `MemstoreLoad.java` (busy share over ~1 s, time-based window because several HUDs ask at different rates; logic checked locally with 13 cases, all pass), `KgslGpuFallback.kt` (one shared reader for every HUD; samples only while asked, closes 5 s after the last request; clock samples on a worker thread so no caller waits for a GPU job; retries 30 s after a failed open or stamps that never move).
+> - `HudMetrics`: `getGpuUsagePercent()` / `getGpuClockMhz()` use the fallback only when no sysfs node gave a value AND the kgsl load/clock nodes are unreadable; diagnostics export names the source + "GPU readers without root:" line, waits 1.2 s instead of 0.35 s when the fallback is in use.
+> - Not ported: DroidDeck's backup-of-the-backup (guest Vulkan timing layer + compositor timing) — only needed where the memstore stamps never move.
+>
+> **CI:** CI Build (artifacts only) run **41451074858** (headSha 0ab04731 == pushed) — running.
+>
+> **Test plan:** stage standard APK → ask user → install on the Duo → game with HUD: HUD GPU % / MHz vs root `gpu_busy_percentage` / `gpuclk` each second (same method as DroidDeck #1969) + HUD diagnostics export + logcat FATAL check. Pocket FIT: sysfs readable → old path unchanged (check only). A8xx: no device here.
+
 ## 2026-10-31 — 🟣 Mali test build posted to testers (prerelease `3.1.8-mali-pre1` = fb78b77a, Discord card, NOT device-tested)
 
 > **Why:** user (10-31): "I don't have mali, can you post what we did/added to bannerlator in this thread with the bot … and the raw apk files for direct testing?" → BannerHub & Emulation Support guild, #general-mali-and-support (channel 1530604459330113649). Then "just upload the apk files with the bot with the post" → not possible: guild premium_tier 1 → bot upload limit 10 MB, APKs 580.9 MB each. Showed the exact card text + the link-instead plan; user: "make the post, and stage apk files in my downloads folder and I will upload them".

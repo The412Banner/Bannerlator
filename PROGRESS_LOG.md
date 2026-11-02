@@ -18,6 +18,8 @@
 >
 > **Duo result (11-02 08:39 install, user test 08:40):** installed base.apk sha256 == be337c7a…, `libgpuclock.so` present. User screenshot `Screenshot_20261102-084047.png` (AIO, D3D11 spin, Proton 11.0, Wayland): HUD **GPU 96 % 59 °C 1150 MHz** (before: "GPU –%", no clock). Root sysfs at 08:43 (game closed): gpuclk 1150 MHz (same as HUD; the kernel held max even at idle), busy 2-3 %. Load NOT compared second by second against root yet; diagnostics export not taken. Logs: no Bannerlator crash in the crash buffer; the only FATAL entries were Google Play Services SecurityException (08:14/08:26/08:40, also before the install) and the 08:23 tombstone, which is before the install.
 >
+> **Duo diagnostics (user export `Download/bannerlator-hud-diag-20261102_084634.txt`):** GPU % 97 % source "kgsl memstore ringbuffer timestamps (all GPU work, no root)"; GPU clock 1150 MHz source "GPU cycle counter, own GPU job (no root)", "GPU cycle counter working (1076 MHz at start)"; `/sys/class/kgsl/kgsl-3d0` unreadable, `/dev/kgsl-3d0` O_RDWR OK. → the ported readers are the ones in use. Root sample 08:47:13-21 came after the game had closed (busy 2-8 %, 1150 MHz) → load vs kernel under load still not compared at the same moment. No Bannerlator crash.
+>
 > **8xx:** user is waiting on an Adreno 830 tester's results.
 >
 > **Resume point:** if the session dies during install: check `dumpsys package com.winlator.banner | grep lastUpdateTime` and the installed base.apk sha256 == be337c7a…; nothing else running, no background jobs.

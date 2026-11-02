@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-02T18-25-02-ad98a3",
+    "created": "2026-11-02T18:25:02.273Z",
+    "reporter": "Sully",
+    "device": "Samsung a55",
+    "gpu": "Xclipse 530",
+    "game": "WitheringRealms",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
     "id": "2026-11-01T09-19-33-2183ab",
     "created": "2026-11-01T09:19:33.344Z",
     "reporter": "",

@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI green ×4, installing on the Duo, NOT device-tested)
+## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI green ×4, Duo: HUD shows GPU % + MHz, side-by-side check open; 8xx tester pending)
 
 > **Why:** on the Retroid Pocket Duo (Adreno 722) the HUD shows "GPU –%" and no GPU clock: SELinux blocks apps from `/sys/class/kgsl/kgsl-3d0/*` (every AIO screenshot of the 11-02 driver head-to-head shows "GPU –%"). `HudMetrics` reads only sysfs. DroidDeck fixed the same problem (PR #1969 for the Duo, PR #1981 for Adreno 8xx / hardware-scheduled kernels; #1981 tester-confirmed on a OnePlus 13). User: "can we port those fixes over to bannerlator as well?" → plan → "do it".
 >
@@ -15,6 +15,10 @@
 > **8xx check (11-02):** source DroidDeck 55362d68 contains #1981 (55da0afd is 2 commits behind it); native files identical except JNI names/guards/credit line; A8xx layout `kgsl_layout.h:15-23`, per-context mode `kgsl_busy.c:20-117`. 8xx NOT device-tested here (no A8xx device).
 >
 > **Staged (user: "install it"):** `/sdcard/Download/Bannerlator-hud-gpu-noroot-0ab04731.apk` (standard, com.winlator.banner vc 104), sha256 `be337c7ab275b837…` host == device; signer a40da80a… == installed build. Replaces on the Duo: fix/turnip-gmem-710-720 d4fd644d (installed 10-30 23:33; APK kept at `/sdcard/Download/Bannerlator-turnip-gmem-d4fd644d.apk` to go back).
+>
+> **Duo result (11-02 08:39 install, user test 08:40):** installed base.apk sha256 == be337c7a…, `libgpuclock.so` present. User screenshot `Screenshot_20261102-084047.png` (AIO, D3D11 spin, Proton 11.0, Wayland): HUD **GPU 96 % 59 °C 1150 MHz** (before: "GPU –%", no clock). Root sysfs at 08:43 (game closed): gpuclk 1150 MHz (same as HUD; the kernel held max even at idle), busy 2-3 %. Load NOT compared second by second against root yet; diagnostics export not taken. Logs: no Bannerlator crash in the crash buffer; the only FATAL entries were Google Play Services SecurityException (08:14/08:26/08:40, also before the install) and the 08:23 tombstone, which is before the install.
+>
+> **8xx:** user is waiting on an Adreno 830 tester's results.
 >
 > **Resume point:** if the session dies during install: check `dumpsys package com.winlator.banner | grep lastUpdateTime` and the installed base.apk sha256 == be337c7a…; nothing else running, no background jobs.
 >

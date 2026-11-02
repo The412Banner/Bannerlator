@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-02 — ✅ HUD GPU % + clock without root MERGED to main (`fix/hud-gpu-noroot`, fast-forward, Duo device-proven; Adreno 8xx NOT device-tested)
+
+> **User decision (11-02 ~09:20 local):** "merge it to main".
+>
+> **Merge:** fast-forward main `82529d53` → `91d525a9` (no merge commit). Backup ref `refs/backup/20261102/main-before-hud-gpu-noroot` = 82529d53. Code on main == the tested build `0ab04731` (`git diff 0ab04731 main` outside PROGRESS_LOG.md is empty); the commits after it only change this log.
+>
+> **Proof at merge:** CI 41451074858 green ×4. Duo (Adreno 722): HUD shows GPU % + MHz (was "GPU –%"); diagnostics name the no-root readers (memstore ringbuffer stamps, own-GPU-job cycle counter); clock == kernel gpuclk 1150 MHz; no Bannerlator crash. Not done: HUD load vs kernel at the same moment under load; Adreno 8xx (per-context mode, A8xx layout) — waiting on an Adreno 830 tester. Pocket FIT (sysfs readable → old path) not checked.
+>
+> **Main build:** CI Build (artifacts only) run 41460968206 (headSha 91d525a9) started on the push.
+>
+> **Duo:** still runs the branch build 0ab04731 (same code as main). Branch `fix/hud-gpu-noroot` kept (deleting = user's word).
+
 ## 2026-11-02 — 🔧 HUD GPU % and GPU clock without root where Android blocks kgsl (`fix/hud-gpu-noroot`, CI green ×4, Duo: HUD shows GPU % + MHz, side-by-side check open; 8xx tester pending)
 
 > **Why:** on the Retroid Pocket Duo (Adreno 722) the HUD shows "GPU –%" and no GPU clock: SELinux blocks apps from `/sys/class/kgsl/kgsl-3d0/*` (every AIO screenshot of the 11-02 driver head-to-head shows "GPU –%"). `HudMetrics` reads only sysfs. DroidDeck fixed the same problem (PR #1969 for the Duo, PR #1981 for Adreno 8xx / hardware-scheduled kernels; #1981 tester-confirmed on a OnePlus 13). User: "can we port those fixes over to bannerlator as well?" → plan → "do it".

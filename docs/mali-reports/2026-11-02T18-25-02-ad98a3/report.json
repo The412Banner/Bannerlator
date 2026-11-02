@@ -1,0 +1,35 @@
+{
+  "id": "2026-11-02T18-25-02-ad98a3",
+  "created": "2026-11-02T18:25:02.273Z",
+  "ip_hash": "zDXUqZC/GZ",
+  "fields": {
+    "reporter_name": "Sully",
+    "device_model": "Samsung a55",
+    "soc": "Exynos 1480",
+    "gpu": "Xclipse 530",
+    "android": "Android 16",
+    "ram": "8",
+    "app_version": "3.8.1",
+    "install_source": "GitHub release",
+    "game_name": "WitheringRealms",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "Witheringrealms.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Crashes in the main menu",
+    "graphics_driver": "Radv Xclipse by jimvulkan also tried system",
+    "dx_wrapper": "DXVK",
+    "dxvk": "2.5.11",
+    "proton": "Ge-Proton11.0-9 arm64 layer16",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "Open game \nMain menu (loads with no texturebut working 3d models)\nNew game\nCrashes on shaders compilation",
+    "tried": "Switching to x11 and using all available wrapper and system driver all crashes instantly without reaching main menu\nChanging fex preset doesn't seem to change anything"
+  },
+  "logs": [
+    {
+      "name": "Withering_realms.zip"
+    }
+  ]
+}

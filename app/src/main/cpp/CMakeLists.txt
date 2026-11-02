@@ -301,6 +301,13 @@ target_link_libraries(steamctrl
         log
 )
 
+# HUD GPU load and clock without root on Adreno devices whose kgsl sysfs is blocked for apps
+# (widget/gpu/KgslGpuFallback.kt). Ported from DroidDeck.
+add_library(gpuclock SHARED
+        gpuclock/kgsl_clock.c
+        gpuclock/kgsl_busy.c
+)
+
 # Embedded Wayland compositor (experimental parallel runtime) — see waylandcomp/CMakeLists.txt.
 add_subdirectory(waylandcomp)
 

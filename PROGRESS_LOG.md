@@ -13,6 +13,9 @@
 >
 > **Staged:** `/sdcard/Download/Bannerlator-wayland-cursor-touch-fc021e29.apk` (pubg, artifact 13203257288), sha256 `e60542d8ed5822ae…` host == device (`sha256sum -c` OK). New code in the dex (" cursor auto-hide: " ×1, old "x11 cursor auto-hide: " ×0). Signer cert sha256 `a40da80a…` (AOSP testkey) == the installed com.tencent.ig 3.1.8 (vc 104, base.apk sha256 5c4b0b22…), so it installs over without losing data. Waiting for the user's yes before `pm install` (RE2 still running → close it first).
 >
+> **Installed by the user 2026-11-02 23:01:51 local** (exit-reasons: PACKAGE_UPDATED). Installed base.apk sha256 `e60542d8…` == staged (checked live). User relaunched RE2 at 23:02 (re2.exe running). The `cursor auto-hide: on/off` Log.i line does not show in this device's logcat (no app Info lines from XServerDisplayActivity at all) → proof has to come from the user's touch + pad test.
+> **Also seen:** the RE2 session before the install died at 22:57:29 local with exit reason **LOW_MEMORY, importance 100 (foreground)** — RE2 DX12 + REFramework on the 8 GB Elite, HUD RAM 92–93 %. Before this build; not caused by it.
+>
 > **Device test (to do, Elite, pubg flavor):** RE2 in Wayland: hold the pad, move the pointer by touch → pointer stays visible; pad only → hides; idle 2.5 s → hides; `BANNER_CURSOR_AUTOHIDE=0` in the game's Env Vars → stays up. Logcat line `wayland cursor auto-hide: on/off`.
 >
 > **Resume point:** branch pushed (ls-remote == local fc021e29). After CI: stage `/sdcard/Download/Bannerlator-wayland-cursor-touch-<sha8>.apk` (pubg) with sha256, ask before `pm install`.

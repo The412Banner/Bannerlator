@@ -36,6 +36,7 @@
 - SK batch both883 run 5: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
 - both883 batch 5/5 RUN (rf_first=1, sk_d3d12=1, no SK crash each). Visual run 6 now (screenshots + held Insert).
 - MOD MANAGER: CI 41721617488 GREEN ×4 (9e99f0a7; skipped steps = cache, same as before). pubg APK 577,583,882 B (was 591 MB: REFramework no longer bundled; no assets/reframework), sha256 0783110c…, signer a40da80a == installed, contains SpecialK release URL. Staged /sdcard/Download/Bannerlator-mod-manager-9e99f0a7.apk. Installing now (user: "finished building everything and testing it then report back. devices yours using root"). UNDO = reinstall /sdcard/Download/Bannerlator-reframework-786fe72c.apk (main bde0b477 build).
+- Mod manager 9e99f0a7 INSTALLED 16:39:25 (installed sha 0783110c == staged; closed my old RE2 test session from 15:37 first). Test 1 RE2: shortcut back to pre-sk (reframework=1, envVars dinput8=n,b) + specialk=1 (setextra.sh); RE2 folder has release-identical SK dxgi.dll (a3a7991f) without SK marker → expect adoption, no download.
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

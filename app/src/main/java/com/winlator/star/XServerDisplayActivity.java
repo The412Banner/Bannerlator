@@ -8708,18 +8708,20 @@ public class XServerDisplayActivity extends AppCompatActivity {
      *  release when this device does not have it yet, placed next to the EXE, and gets its
      *  WINEDLLOVERRIDES entry (a user's own entry for that DLL is kept); REFramework's menu is set to start
      *  closed. A mod switched off has only the file we placed removed. One "mods" line per mod in the
-     *  session log; the drawer's Mods button lists the mods in place. */
+     *  session log; the drawer's Mods tab gets one card per mod this EXE can take (on, off or not loaded). */
     private void applyGameModsEnv(EnvVars envVars) {
-        java.util.List<String> active = new ArrayList<>();
+        java.util.List<com.winlator.star.ui.DrawerMod> cards = new ArrayList<>();
         try {
             if (shortcut == null || gamescopeMode) return;
             java.util.List<File> dirs = gameExeFolders();
             File exe = gameExeFile();
             int machine = com.winlator.star.core.GameMods.peMachine(exe);
             java.util.Set<String> imports = null;
+            String bits = machine == com.winlator.star.core.GameMods.MACHINE_X86 ? "32-bit" : "64-bit";
             for (com.winlator.star.core.GameMods.Mod mod : com.winlator.star.core.GameMods.ALL) {
                 boolean on = "1".equals(shortcut.getExtra(mod.extra));
                 boolean available = com.winlator.star.core.GameMods.supports(mod, shortcut.path, machine);
+                if (available && !on) cards.add(new com.winlator.star.ui.DrawerMod(mod.id, mod.name, false, false, "", "", bits));
                 if (!on || !available) {
                     for (File dir : dirs) {
                         String note = com.winlator.star.core.GameMods.remove(dir, mod);
@@ -8731,6 +8733,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 }
                 if (dirs.isEmpty()) {
                     logSessionLine("mods", mod.name + " on, but the game's folder could not be found: not loaded");
+                    cards.add(new com.winlator.star.ui.DrawerMod(mod.id, mod.name, true, false, "", "", bits));
                     continue;
                 }
                 File dir = dirs.get(0);
@@ -8738,8 +8741,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (imports == null) imports = com.winlator.star.core.GameMods.peImports(exe);
                 String dll = com.winlator.star.core.GameMods.targetDll(mod,
                         shortcut.getExtra(com.winlator.star.core.GameMods.EXTRA_SPECIALK_DLL), imports, machine);
-                StringBuilder line = new StringBuilder(mod.name).append(" on (")
-                        .append(machine == com.winlator.star.core.GameMods.MACHINE_X86 ? "32-bit" : "64-bit").append("): ");
+                StringBuilder line = new StringBuilder(mod.name).append(" on (").append(bits).append("): ");
                 File source = null;
                 if (!com.winlator.star.core.GameMods.inPlace(dir, dll, asset.sha256)) {
                     try {
@@ -8768,14 +8770,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     }
                 }
                 logSessionLine("mods", line.toString());
-                if (r.ours) active.add(mod.id);
+                cards.add(new com.winlator.star.ui.DrawerMod(mod.id, mod.name, true, r.present,
+                        r.ours ? asset.tag() : "", r.present ? dll : "", bits));
             }
         } catch (Throwable t) {
             Log.w("XServerDisplayActivity", "game mods setup failed", t);
             logSessionLine("mods", "setup failed: " + t.getMessage());
         } finally {
-            final java.util.List<String> ids = active;
-            runOnUiThread(() -> XServerDrawerState.INSTANCE.setActiveMods(ids));
+            final java.util.List<com.winlator.star.ui.DrawerMod> list = cards;
+            runOnUiThread(() -> XServerDrawerState.INSTANCE.setMods(list));
         }
     }
 

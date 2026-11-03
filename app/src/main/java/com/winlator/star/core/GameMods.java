@@ -47,6 +47,16 @@ public final class GameMods {
             this.sha256 = sha256;
             this.size = size;
         }
+
+        /** The release tag in {@link #url} (".../releases/download/<tag>/file"), or "" when it has none. */
+        public String tag() {
+            String key = "/releases/download/";
+            int i = url.indexOf(key);
+            if (i < 0) return "";
+            int start = i + key.length();
+            int end = url.indexOf('/', start);
+            return end > start ? url.substring(start, end) : "";
+        }
     }
 
     public static final class Mod {

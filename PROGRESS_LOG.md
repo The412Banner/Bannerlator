@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ✅ Pointer auto-hide switch + Wayland touch fix MERGED to main (`fix/wayland-cursor-touch`, fast-forward, user device-proven on the Elite)
+
+> **User decision (11-03 ~23:30 local):** "installed and works, merge to main".
+>
+> **Proof at merge:** CI 41577375212 green ×4 on 3295e73c. Pocket FIT Elite (Adreno 830, pubg flavor): installed base.apk sha256 `05aa531d…` == staged build (checked live, installed 23:29:45 local); user tested and reported it works (AIO Graphics Test session right after the install); crash buffer empty. RE2 in DX11 with REFramework not launched on this build yet.
+>
+> **Merge:** fast-forward main `4d0affb3` → `855a3b85` (no merge commit). Backup ref `refs/backup/20261103/main-before-wayland-cursor-touch` = 4d0affb3. Code on main == the tested build 3295e73c (GitHub compare 3295e73c...main: only PROGRESS_LOG.md).
+>
+> **Main build:** CI Build (artifacts only) run 41578596739 (headSha 855a3b85) started on the push.
+>
+> **Branch `fix/wayland-cursor-touch` kept** (deleting = user's word).
+
 ## 2026-11-03 — 🖱️ Drawer "Auto-hide Cursor" switch + "Hide After (ms)"; off ignores the game's hide in Wayland (`fix/wayland-cursor-touch` 3295e73c, CI green ×4, staged, NOT device-tested)
 
 > **Why:** the user's test of fc021e29 failed — in RE2 (Wayland, REFramework menu open, pad + touch) the pointer still disappeared and touching never brought it back. Most likely the game itself asks for no cursor once the pad is used (RE Engine switches its prompts A ↔ Space), and Wayland treated that as final; fc021e29 only changed the controller timer. User: "in the side menu under the mouse tab can we put a toggle there to autohide the mouse or not … along with ms settings on the delay"; decision: "yes go ahead, also ignore the game's hide".

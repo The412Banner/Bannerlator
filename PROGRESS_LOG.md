@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-03 — ⏱️ Wayland: draw a new frame when it arrives + screen tick on its own thread (`feat/wayland-draw-on-arrival` cc3d685, CI green ×4, installed on the Elite, device test running)
+## 2026-11-03 — ⏱️ Wayland: draw a new frame when it arrives + screen tick on its own thread (`feat/wayland-draw-on-arrival` cc3d685, CI green ×4, DEVICE-TESTED on the Elite (AIO): works, no fps change, worst late tick 13–25 → ≤2.5 ms)
 
 > **Why (user 11-03: "make the fixes on a new branch off main", after asking which DroidDeck performance work could help Bannerlator):** Bannerlator's compositor works like DroidDeck's did before DroidDeck #1678 and #1707: it draws only on the screen tick (compositor.c schedule_render / on_vsync), and the ticks come from the main thread (XServerDisplayActivity startWaylandVsync, posted from surfaceCreated). AIO 2.2.0 on the Pocket FIT Elite the same morning (wx-1103, 144 Hz, D3D11 ~5,600 fps): the perf line showed 1,436–1,440 ticks per 10 s but only 964–1,215 scenes drawn (`copy path async`), and the game's slowest frames came once per refresh (gaps between them = whole 144 Hz intervals 83–88 % of the time on gl/dx12/dx9/dx8/dx7). Whether these changes fix either is not proven.
 >
@@ -18,11 +18,17 @@
 >
 > **Installed (user: "yes install it and run the tests"):** Pocket FIT Elite 13:59:08 EST, `pm install -r` Success, installed base.apk sha256 `45d4acd4…` == staged (replaced the feat/reframework test build `0c193b5a…`).
 >
-> **Device test (running):** `/sdcard/Download/aio-bench/aio-ab.sh` — AIO 2.2.0 standalone per API on Wayland, ON (defaults) vs OFF (shortcut envVars `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 BANNER_WAYLAND_TICK_THREAD=0`), alternating order; warm-up dx11, then tag `ab-1103` (8 APIs), then `ab-vsync-1103` (vk + dx11 with `--vsync`, FIFO guard). Resume: read `<tag>/run.log`; if interrupted restore `<tag>/aio.desktop.orig` into the shortcut, bring Termux back.
+> **Device test (done 14:03–14:25 EST, 22 launches, all closed by themselves, 0 crash/FATAL, crash buffer empty, every screenshot shows the cube):** `aio-ab.sh` ON (defaults) vs OFF (shortcut envVars `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 BANNER_WAYLAND_TICK_THREAD=0`), alternating order, mode proven per run from the log ("screen tick runs on its own display-priority thread" / "on the main thread"; "drawing new frames on arrival on/off").
+> - Average fps ON/OFF: vk 3565/3611, gl 6199/6210, dx12 7773/7856, dx11 5517/5584, dx10 5644/5657, dx9 6488/6545, dx8 6469/6511, dx7 7989/8057 — ON 0.2–1.3 % lower on all 8 (single runs, within noise; maybe ~1 %). 1 % lows mixed (−6 % … +2 %; a 2nd dx11 sample was +12 % ON) = noise.
+> - Ticks: average lateness 0.14–0.23 ms ON vs 0.19–0.29 ms OFF, but the WORST tick per 10 s was 1.0–2.5 ms ON vs 12.9–24.6 ms OFF in every API — the tick thread works.
+> - Draw on arrival active: ~1,130–1,170 of ~1,210–1,270 scenes per 10 s drawn on arrival. Its latency gain cannot show in a 5,000+ fps test (a fresh frame is always there at the tick); the `pacing` "new frames wait" counter measures the OLDEST undrawn commit, so it reads ~6.7 ms for any uncapped game.
+> - Not fixed by either change: only ~1,205–1,271 new frames on screen per 10 s of 1,440 refreshes in both modes (so not late ticks; cause unknown), and the once-per-refresh slow game frames (refresh-locked share ~85 % on gl/dx12/dx9 in both modes).
+> - Vsync games (`MESA_VK_WSI_PRESENT_MODE=fifo` + AIO `--vsync`, aio-ab2.sh, tag ab-fifo-1103): vk 144.01/143.99 fps, 1 % low 121.4/120.6; dx11 144.00/144.00, 122.8/122.4; ON held only 1–4 ticks per 10 s → the frame-callback guard works, no regression. (AIO `--vsync` alone stays uncapped on Wayland: the adapter exports MESA_VK_WSI_PRESENT_MODE=mailbox from the stored present mode.)
+> - Files: /sdcard/Download/aio-bench/{ab-warmup-1103,ab-1103,ab-vsync-1103,ab-fifo-1103}/.
 >
-> **Open / Next:** push + CI build (workflow_dispatch, assert headSha) → stage APK → ask before install → A/B on the Elite with aio-wx.sh-style runs: on vs `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0` + `BANNER_WAYLAND_TICK_THREAD=0` (pacing + perf lines: scenes per 10 s vs ticks, tick lateness, frame wait; AIO avg/1 % low; once-per-refresh check scratchpad lows/period.py) + a vsync-on game for the FIFO guard.
+> **Open / Next (user decision):** merge or not; a game below 144 fps (DiRT Showdown benchmark) to see the draw-on-arrival delay gain (would need a newest-frame-age counter); separately, why only ~85 % of refreshes get a new frame.
 >
-> **Resume point:** worktree /root/src/Bannerlator-wt/wayland-draw-on-arrival (sparse), branch `feat/wayland-draw-on-arrival`. Nothing installed or running from this branch.
+> **Resume point:** worktree /root/src/Bannerlator-wt/wayland-draw-on-arrival (sparse), branch `feat/wayland-draw-on-arrival`. The Elite runs this build (installed 13:59:08, base.apk `45d4acd4…`); nothing running; AIO shortcut restored.
 
 ## 2026-11-03 — ✅ REFramework feature MERGED to main (`feat/reframework` → main, fast-forward)
 - **Why:** per-game REFramework switch for RE Engine games on ARM64EC Wine, now with a working menu toggle and without the startup hang. User go: "if successful and tested with success merge it to main after".

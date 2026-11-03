@@ -7,6 +7,7 @@
 - **Device test (Pocket FIT, pubg flavor, installed base.apk sha256 c5197194… == staged, 12:47:59):** RE2 6/6 clean starts, file adopted (marker → fcfa693d, "reframework on: dinput8.dll already in place"), menu starts closed, Insert 4/4 after the display reset (open/close twice). Before the hook fix: ~10 of 21 startups stuck. L3 + R3 and the drawer button were user-tested on the previous build (0f1c07d9) — same code paths, not re-tested by hand on this one.
 - **Merge:** backup `refs/backup/20261103/main-before-reframework` → 7f9dbe80; main fast-forwarded to this branch (only PROGRESS_LOG.md changed after the tested commit). Branch kept.
 - **Open:** first key press can be ignored while REFramework re-initializes after the game's display reset (~14 s after the first frame); direct safetyhook create_inline/create_mid calls in some mods (newer games) still use the shared trampoline memory; Special K recon in session memory.
+- SK test: W3 og dxgi.ini now has EnableDirectInput8=false + EnableDirectInput7=false (CRLF file; inserted via awk script /sdcard/Download/sk-test/nodinput.awk). Launching W3 + SK fix 30b28cff again (+seh).
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

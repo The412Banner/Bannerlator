@@ -69,6 +69,7 @@
 - Bannerlator 786fe72c CI-GREEN ×4 (run 41682647131; pubg skipped steps identical to earlier green run = cache steps). Staged /sdcard/Download/Bannerlator-reframework-786fe72c.apk sha256 c5197194… (host == device), signer a40da80a… == installed, assets/reframework/dinput8.dll = fcfa693d (REFramework 37831bfc). Installed now: 0f1c07d9 (e52be41d). WAITING for user yes to install. UNDO = reinstall /sdcard/Download/Bannerlator-reframework-0f1c07d9.apk.
 - INSTALLED 11-03 12:47:59 local (user: "yes install it, device is yours"): Bannerlator 786fe72c pubg, installed base.apk sha256 c5197194… == staged. Now device test: batch F-786fe72c-installed runs 1-5 (adoption marker → fcfa693d, clean starts, Insert); then merge to main per user.
 - batch 786fe72c-installed run 1: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
+- batch 786fe72c-installed run 2: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

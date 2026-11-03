@@ -131,6 +131,7 @@ import com.winlator.star.reshade.ReshadeLoadout
 import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.ui.components.ColorPicker
 import com.winlator.star.ui.screens.HelpDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.WatchdogSection
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -177,7 +178,15 @@ fun XServerDrawer() {
     val linuxSteamSession by state.linuxSteamSession.collectAsState()
     // Wine-only tabs (ReShade, Task Manager) stay out of any Linux-runtime session.
     val linuxRuntimeSession by state.linuxRuntimeSession.collectAsState()
-    val reframeworkActive by state.reframeworkActive.collectAsState()
+    val activeMods by state.activeMods.collectAsState()
+    var showModsMenu by remember { mutableStateOf(false) }
+    if (showModsMenu) {
+        DrawerModsDialog(activeMods, onDismiss = { showModsMenu = false }) { id ->
+            showModsMenu = false
+            state.onClose?.run()
+            state.onModMenu?.accept(id)
+        }
+    }
     // Re-check the friends source on every drawer open (its liveness isn't all flow-driven).
     val menuOpen by XServerDialogState.menuOpen.collectAsState()
     LaunchedEffect(menuOpen) { if (menuOpen) com.winlator.star.store.InGameFriendsSource.poke() }
@@ -286,10 +295,8 @@ fun XServerDrawer() {
 
                         Spacer(Modifier.height(10.dp))
 
-                        if (reframeworkActive) {
-                            TabIconButton(R.drawable.ic_sidebar_tools, isSelected = false) {
-                                state.onClose?.run(); state.onReFrameworkMenu?.run()
-                            }
+                        if (activeMods.isNotEmpty()) {
+                            TabIconButton(R.drawable.ic_sidebar_tools, isSelected = false) { showModsMenu = true }
                             Spacer(Modifier.height(6.dp))
                         }
                         if (!linuxRuntimeSession) {
@@ -5852,3 +5859,21 @@ private fun prettyRenderer(raw: String): String = when (raw.trim().lowercase()) 
 /** Tidy the device line: "8 cores" -> "8c" so it fits the narrow value column without wrapping to a
  *  dangling separator. */
 private fun tidyDevice(raw: String): String = raw.replace(" cores", "c")
+
+/** Rail > Mods: one button per mod placed for this game; a tap shows or hides that mod's in-game menu. */
+@Composable
+private fun DrawerModsDialog(ids: List<String>, onDismiss: () -> Unit, onMenu: (String) -> Unit) {
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Mods") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (id in ids) {
+                    val mod = com.winlator.star.core.GameMods.byId(id) ?: continue
+                    TextButton(onClick = { onMenu(id) }) { Text(mod.name) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}

@@ -72,6 +72,7 @@
 - batch 786fe72c-installed run 2: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
 - batch 786fe72c-installed run 3: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
 - batch 786fe72c-installed run 4: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
+- batch 786fe72c-installed run 5: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-786fe72c-installed/summary.txt)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

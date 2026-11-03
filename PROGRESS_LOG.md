@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-03 — 🖱️ Drawer "Auto-hide Cursor" switch + "Hide After (ms)"; off ignores the game's hide in Wayland (`fix/wayland-cursor-touch` 3295e73c, CI running, NOT device-tested)
+## 2026-11-03 — 🖱️ Drawer "Auto-hide Cursor" switch + "Hide After (ms)"; off ignores the game's hide in Wayland (`fix/wayland-cursor-touch` 3295e73c, CI green ×4, staged, NOT device-tested)
 
 > **Why:** the user's test of fc021e29 failed — in RE2 (Wayland, REFramework menu open, pad + touch) the pointer still disappeared and touching never brought it back. Most likely the game itself asks for no cursor once the pad is used (RE Engine switches its prompts A ↔ Space), and Wayland treated that as final; fc021e29 only changed the controller timer. User: "in the side menu under the mouse tab can we put a toggle there to autohide the mouse or not … along with ms settings on the delay"; decision: "yes go ahead, also ignore the game's hide".
 >
@@ -11,7 +11,9 @@
 > - `BANNER_CURSOR_AUTOHIDE=0` still forces off. Idle delay is now the field `cursorIdleMs` for both modes.
 > - Files: XServerDisplayActivity.java, ui/XServerDrawer.kt, ui/XServerDrawerState.kt.
 >
-> **CI:** CI Build (artifacts only) run **41577375212** (headSha 3295e73c == pushed) — running.
+> **CI:** CI Build (artifacts only) run **41577375212** (headSha 3295e73c == pushed) — **success** ×4; pubg log: compilePubgReleaseKotlin + JavaWithJavac → `BUILD SUCCESSFUL in 6m 8s`.
+>
+> **Staged:** `/sdcard/Download/Bannerlator-wayland-cursor-touch-3295e73c.apk` (pubg, artifact 13204017399), sha256 `05aa531dd32db01b…` host == device. Dex has "Auto-hide Cursor", "Hide After (ms)", "cursor_autohide_ms", "off (drawer)". Signer a40da80a… (testkey) == installed. Waiting for the user's yes before install.
 >
 > **Device test (Elite, RE2 Wayland):** drawer → Controls → Mouse → Auto-hide Cursor off → pad + touch: pointer stays; on + slider: hides after the set time.
 

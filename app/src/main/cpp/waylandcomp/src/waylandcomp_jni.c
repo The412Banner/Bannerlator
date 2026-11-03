@@ -34,6 +34,7 @@ extern volatile int g_hide_shell;
 extern volatile int g_zero_copy;
 extern volatile unsigned g_zero_copy_last;
 extern volatile int g_ubwc;
+extern volatile int g_draw_on_arrival;
 extern volatile int g_auto_activate;
 extern volatile int g_no_render_node;
 extern volatile int g_output_refresh_mhz;
@@ -380,6 +381,14 @@ JNIEXPORT void JNICALL
 Java_com_winlator_star_wayland_WaylandCompositor_nativeSetUbwc(JNIEnv *env, jclass clazz, jboolean on) {
     g_ubwc = on ? 1 : 0;
     __android_log_print(ANDROID_LOG_INFO, TAG, "compressed (UBWC) game buffers %s", on ? "on" : "off");
+}
+
+/* Drawing a new frame when it arrives instead of at the next screen tick (compositor.c
+ * g_draw_on_arrival; default on; BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 = off). Set before the compositor starts. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetDrawOnArrival(JNIEnv *env, jclass clazz, jboolean on) {
+    g_draw_on_arrival = on ? 1 : 0;
+    __android_log_print(ANDROID_LOG_INFO, TAG, "drawing new frames on arrival %s", on ? "on" : "off");
 }
 
 /* The copy path's frame ring (vk_present.c): frames stay in flight and the compositor thread never

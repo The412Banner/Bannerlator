@@ -319,6 +319,30 @@ static int64_t g_refresh_ns = 16666667;     /* measured tick interval (pacing on
 static struct wl_event_source *g_fallback_timer;
 static int g_fallback_armed;
 
+/* Drawing on arrival (default on; BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 = off; DroidDeck #1707): a new frame
+ * is drawn when it arrives instead of at the next tick, at most once per refresh, while replaced
+ * buffers go straight back to the game (no FPS limit) and frame generation is off. A frame that
+ * arrives after this refresh's scene is left for the next arrival, which is drawn when it comes; the
+ * tick draws it only when none came (a client that draws again only after its frame callback), and
+ * then draws every frame for a second before holding one again. Set from the app thread before the
+ * compositor starts; read here. */
+volatile int g_draw_on_arrival = 1;
+static int64_t g_tick_ns;                   /* the last tick's frame time (Choreographer, CLOCK_MONOTONIC) */
+static int64_t g_drawn_tick_ns;             /* the tick of the refresh the last scene was drawn in */
+static int64_t g_dirty_since_ns;            /* when the oldest change not drawn yet came in, 0 = none */
+static int g_tick_held;                     /* the last tick left a new frame for its next arrival */
+static int64_t g_hold_missed_ns;            /* when a held frame was still waiting at the next tick */
+#define HOLD_RETRY_NS 1000000000LL
+
+/* The 10 s `pacing` line: how late the ticks reach this thread (the app's Choreographer thread hands
+ * them over) and how long a new frame waits before a scene shows it. Compositor thread only. */
+static struct {
+    unsigned ticks, ticks_late_2ms, held;    /* ticks with a frame time; over 2 ms late; held for an arrival */
+    int64_t late_ns, late_max_ns;
+    unsigned drawn, on_arrival;              /* scenes that showed a new change; of those, drawn on arrival */
+    int64_t wait_ns, wait_max_ns;            /* change came in -> scene drawn */
+} g_pace;
+
 /* FPS limiter (the in-game drawer's): frames per second, 0 = unlimited. Set from the app thread,
  * read here. Like the X11 path, which delays the "your buffer is free" notice, the limit paces
  * when a replaced buffer is released to its client, so the game itself slows to the cap. */
@@ -2810,6 +2834,15 @@ static void render_scene(void) {
     int copy = 0; /* this scene went through the screen swapchain (the perf line's "copy") */
 
     retire_frames(0); /* frames the GPU has finished since the last tick: their buffers go back first */
+    if (g_dirty_since_ns) {
+        const int64_t wait = t_scene - g_dirty_since_ns;
+        g_pace.wait_ns += wait;
+        if (wait > g_pace.wait_max_ns) g_pace.wait_max_ns = wait;
+        g_pace.drawn++;
+        g_dirty_since_ns = 0;
+    }
+    g_drawn_tick_ns = g_tick_ns;
+    g_tick_held = 0;
     g_dirty = 0;
     g_hdr_unimported = NULL; /* found again while the scene is built (HDR gate open only) */
     wl_list_for_each(s, &g_surfaces, link) s->drawn = 0;
@@ -3021,11 +3054,41 @@ static int on_fallback_timer(void *data) {
     return 0;
 }
 
+/* A client asked to hear when its last frame is shown (wl_surface.frame) and may wait for that before
+ * it draws again, as a FIFO swapchain does: no arrival comes until a scene is drawn, so the tick must
+ * not hold its frame. A mailbox swapchain (DXVK, VKD3D) asks for none. */
+static int frames_awaited(void) {
+    struct surface *s;
+    wl_list_for_each(s, &g_surfaces, link)
+        if (!wl_list_empty(&s->frames)) return 1;
+    return 0;
+}
+
+/* Frames are drawn on arrival right now (see g_draw_on_arrival). */
+static int arrivals_draw(void) {
+    return g_draw_on_arrival && g_fps_limit <= 0 && !vkp_framegen_active();
+}
+
+/* The event loop ran out of work after a commit: draw it, unless this refresh already has its scene. */
+static void on_arrival_idle(void *data) {
+    (void)data;
+    g_render_idle = NULL;
+    if (!g_dirty || !arrivals_draw() || g_drawn_tick_ns == g_tick_ns) return;
+    g_pace.on_arrival++;
+    render_scene();
+}
+
 static void schedule_render(void) {
+    if (!g_dirty && !g_dirty_since_ns) g_dirty_since_ns = now_ns();
     g_dirty = 1;
     if (!g_display) return;
-    /* With vsync ticks flowing the next tick renders; otherwise render on a timer. */
-    if (g_last_vsync_ns && now_ns() - g_last_vsync_ns < 100000000LL) return;
+    /* With vsync ticks flowing the next tick renders - or, drawing on arrival, this arrival does once
+     * the event loop has nothing else to do; otherwise render on a timer. */
+    if (g_last_vsync_ns && now_ns() - g_last_vsync_ns < 100000000LL) {
+        if (arrivals_draw() && !g_render_idle && g_drawn_tick_ns != g_tick_ns)
+            g_render_idle = wl_event_loop_add_idle(wl_display_get_event_loop(g_display), on_arrival_idle, NULL);
+        return;
+    }
     if (g_fallback_armed) return;
     if (!g_fallback_timer)
         g_fallback_timer = wl_event_loop_add_timer(wl_display_get_event_loop(g_display),
@@ -3039,18 +3102,39 @@ static void schedule_render(void) {
 static void on_vsync(int64_t frame_time_ns) {
     int64_t now = now_ns();
     g_perf.ticks++;
+    if (frame_time_ns > 0 && now >= frame_time_ns) {
+        const int64_t late = now - frame_time_ns;
+        g_pace.ticks++;
+        g_pace.late_ns += late;
+        if (late > g_pace.late_max_ns) g_pace.late_max_ns = late;
+        if (late > 2000000LL) g_pace.ticks_late_2ms++;
+    }
     if (g_last_vsync_ns) {
         int64_t d = now - g_last_vsync_ns;
         if (d > 3000000LL && d < 40000000LL) g_refresh_ns = (g_refresh_ns * 7 + d) / 8;
     }
     g_last_vsync_ns = now;
-    (void)frame_time_ns;
+    g_tick_ns = frame_time_ns > 0 ? frame_time_ns : now; /* one value per tick, never 0 */
     retire_frames(0); /* copy-path frames the GPU finished since the last tick */
     /* The app's surface may have been replaced or taken away since the last frame: apply that now
      * (the app never waits for us), and redraw the scene onto a new one. */
-    if (vkp_apply_window_request()) g_dirty = 1;
+    int tick_change = 0;
+    if (vkp_apply_window_request()) tick_change = 1;
     /* A screen-effect setting changed (JNI, any thread): redraw so it shows on a static scene too. */
-    if (vkp_effects_sync()) g_dirty = 1;
+    if (vkp_effects_sync()) tick_change = 1;
+    if (tick_change) g_dirty = 1;
+    /* Drawing on arrival: a frame that came in during the last refresh is left for the next arrival
+     * (drawing it here would make that arrival wait for the next tick, and so every frame after it) -
+     * unless a client waits for its frame callback (frames_awaited). A held frame still waiting at the
+     * next tick means no arrival came: the tick then draws every frame for a second. */
+    if (g_tick_held && g_dirty) g_hold_missed_ns = now;
+    g_tick_held = 0;
+    if (!tick_change && arrivals_draw() && g_dirty_since_ns && now - g_dirty_since_ns < g_refresh_ns &&
+        now - g_hold_missed_ns >= HOLD_RETRY_NS && !frames_awaited()) {
+        g_tick_held = 1;
+        g_pace.held++;
+        return;
+    }
     if (g_dirty) render_scene();
 }
 
@@ -4253,6 +4337,18 @@ static int on_stats_timer(void *data) {
         present_interval_reset();
         memset(&g_perf, 0, sizeof(g_perf));
     }
+    /* The pacing line: how late the screen ticks reach this thread and how long a new frame waited for
+     * the scene that showed it, with how many scenes were drawn on arrival and how many ticks held. */
+    if (g_pace.ticks || g_pace.drawn)
+        banner_log("pacing", "last 10 s: ticks reach the compositor %.2f/%.2f ms late (%u ticks, %u over 2 ms) | "
+                   "new frames wait %.2f/%.2f ms to be drawn (%u scenes, %u on arrival, %u ticks held) | "
+                   "drawing on arrival %s",
+                   g_pace.ticks ? (double)g_pace.late_ns / 1e6 / g_pace.ticks : 0.0, (double)g_pace.late_max_ns / 1e6,
+                   g_pace.ticks, g_pace.ticks_late_2ms,
+                   g_pace.drawn ? (double)g_pace.wait_ns / 1e6 / g_pace.drawn : 0.0, (double)g_pace.wait_max_ns / 1e6,
+                   g_pace.drawn, g_pace.on_arrival, g_pace.held,
+                   !g_draw_on_arrival ? "off" : arrivals_draw() ? "on" : "paused (FPS limit or frame generation)");
+    memset(&g_pace, 0, sizeof(g_pace));
     g_stat_frames = g_stat_dmabuf = g_stat_shm = 0;
     banner_color_stats_tick(); /* HDR evidence for the same window (nothing when the HDR gate is closed) */
     /* A program that asked for dma-buf feedback (EGL's GPU path does, first thing) but has drawn

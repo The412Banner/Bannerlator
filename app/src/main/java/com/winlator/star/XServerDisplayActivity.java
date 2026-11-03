@@ -10021,6 +10021,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             boolean ubwc = !Boolean.FALSE.equals(adapterCfg.ubwc);
             com.winlator.star.wayland.WaylandCompositor.nativeSetUbwc(ubwc);
             if (!ubwc) Log.i("XServerDisplayActivity", "wayland: compressed (UBWC) game buffers disabled");
+            // A new frame is drawn when it arrives instead of at the next screen tick, default on
+            // (BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 = off, A/B).
+            boolean drawOnArrival = !waylandEnvOff("BANNER_WAYLAND_DRAW_ON_ARRIVAL");
+            com.winlator.star.wayland.WaylandCompositor.nativeSetDrawOnArrival(drawOnArrival);
+            if (!drawOnArrival) Log.i("XServerDisplayActivity", "wayland: drawing new frames on arrival disabled (BANNER_WAYLAND_DRAW_ON_ARRIVAL=0)");
             // The compositor's asynchronous copy path (frames in flight; the compositor thread no longer
             // waits for its own screen blit), default on; off restores the synchronous path.
             boolean asyncCopy = !Boolean.FALSE.equals(adapterCfg.asyncCopy);

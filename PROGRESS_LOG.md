@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ✅ REFramework feature MERGED to main (`feat/reframework` → main, fast-forward)
+- **Why:** per-game REFramework switch for RE Engine games on ARM64EC Wine, now with a working menu toggle and without the startup hang. User go: "if successful and tested with success merge it to main after".
+- **What's in it:** bundled dinput8.dll = The412Banner/REFramework `fix/arm64ec-hook-freeze` 37831bfc (sha256 fcfa693d…) = praydog master f9cb2ac3 (our ARM64EC fix, upstream #1887 merged) + L3 + R3 menu toggle + menu key fallback for games that block key messages (RE2's exclusive DirectInput keyboard under Wine) + polling after game data init + own trampoline memory per inline hook under ARM64 emulation (fixes the "initializing" hang); per-game switch (off by default), menu starts closed, drawer rail button sends Insert (150 ms).
+- **Built:** 786fe72c (= aa25bc11 + merge of main's 3 docs-only mali-report commits). CI Build (artifacts only) run 41682647131 green ×4.
+- **Device test (Pocket FIT, pubg flavor, installed base.apk sha256 c5197194… == staged, 12:47:59):** RE2 6/6 clean starts, file adopted (marker → fcfa693d, "reframework on: dinput8.dll already in place"), menu starts closed, Insert 4/4 after the display reset (open/close twice). Before the hook fix: ~10 of 21 startups stuck. L3 + R3 and the drawer button were user-tested on the previous build (0f1c07d9) — same code paths, not re-tested by hand on this one.
+- **Merge:** backup `refs/backup/20261103/main-before-reframework` → 7f9dbe80; main fast-forwarded to this branch (only PROGRESS_LOG.md changed after the tested commit). Branch kept.
+- **Open:** first key press can be ignored while REFramework re-initializes after the game's display reset (~14 s after the first frame); direct safetyhook create_inline/create_mid calls in some mods (newer games) still use the shared trampoline memory; Special K recon in session memory.
+
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).
 - **Upstream:** praydog merged our PR praydog/REFramework#1887 on 11-03 (master f9cb2ac3, with his extra commit 6cc79e8b that moves the MinHook check before MH_CreateHook); #1807 closed; official nightly-01437 has the fix. The DLL bundled in 6ae5d6eb is still c675c1f2 (without 6cc79e8b).

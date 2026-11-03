@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-03 — 🖱️ Wayland pointer: a finger always shows it, 250 ms pad window, BANNER_CURSOR_AUTOHIDE=0 (`fix/wayland-cursor-touch`, CI running, NOT device-tested)
+## 2026-11-03 — 🖱️ Wayland pointer: a finger always shows it, 250 ms pad window, BANNER_CURSOR_AUTOHIDE=0 (`fix/wayland-cursor-touch`, CI green ×4, staged, NOT device-tested)
 
 > **Why:** on the Pocket FIT Elite (RE2 DX12 + REFramework test build, Wayland session) the user moved the pointer by touch while also using the controller and the pointer kept vanishing. In Wayland mode `waylandCursorPoke` hid the overlay whenever pad input came in the last `WAYLAND_CURSOR_PAD_MS` = 1200 ms; X11 already used 250 ms and has a `BANNER_CURSOR_AUTOHIDE=0` off switch, Wayland had neither. User: "go ahead with the bannerlator cursor fix".
 >
@@ -9,7 +9,9 @@
 > - `WAYLAND_CURSOR_PAD_MS` 1200 → 250 ms (the X11 value).
 > - `BANNER_CURSOR_AUTOHIDE=0` works in Wayland too: `applyCursorAutoHide` (was `applyX11CursorAutoHide`) runs in both modes; field `x11CursorAutoHide` → `cursorAutoHide`; with it off the Wayland poke arms no idle hide and skips the pad rule.
 >
-> **CI:** CI Build (artifacts only) run **41574579598** (workflow_dispatch, headSha fc021e29 == pushed) — running.
+> **CI:** CI Build (artifacts only) run **41574579598** (workflow_dispatch, headSha fc021e29 == pushed) — **success** ×4 (standard, pubg, ludashi, antutu). pubg log: `compilePubgReleaseJavaWithJavac` → `BUILD SUCCESSFUL in 5m 54s`; skipped steps = cache hits / main-only saves.
+>
+> **Staged:** `/sdcard/Download/Bannerlator-wayland-cursor-touch-fc021e29.apk` (pubg, artifact 13203257288), sha256 `e60542d8ed5822ae…` host == device (`sha256sum -c` OK). New code in the dex (" cursor auto-hide: " ×1, old "x11 cursor auto-hide: " ×0). Signer cert sha256 `a40da80a…` (AOSP testkey) == the installed com.tencent.ig 3.1.8 (vc 104, base.apk sha256 5c4b0b22…), so it installs over without losing data. Waiting for the user's yes before `pm install` (RE2 still running → close it first).
 >
 > **Device test (to do, Elite, pubg flavor):** RE2 in Wayland: hold the pad, move the pointer by touch → pointer stays visible; pad only → hides; idle 2.5 s → hides; `BANNER_CURSOR_AUTOHIDE=0` in the game's Env Vars → stays up. Logcat line `wayland cursor auto-hide: on/off`.
 >

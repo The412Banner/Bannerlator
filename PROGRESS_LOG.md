@@ -26,7 +26,10 @@
 > - Vsync games (`MESA_VK_WSI_PRESENT_MODE=fifo` + AIO `--vsync`, aio-ab2.sh, tag ab-fifo-1103): vk 144.01/143.99 fps, 1 % low 121.4/120.6; dx11 144.00/144.00, 122.8/122.4; ON held only 1–4 ticks per 10 s → the frame-callback guard works, no regression. (AIO `--vsync` alone stays uncapped on Wayland: the adapter exports MESA_VK_WSI_PRESENT_MODE=mailbox from the stored present mode.)
 > - Files: /sdcard/Download/aio-bench/{ab-warmup-1103,ab-1103,ab-vsync-1103,ab-fifo-1103}/.
 >
-> **DiRT Showdown A/B (running, user: "run the dirt benchmark on and off and compare them"):** `/sdcard/Download/aio-bench/dirt-ab.sh dirt-ab-1103 warm on off off on` — built-in benchmark (example_benchmark.xml, 1280x720 vsync off 8xMSAA), cooled to thermal 0 + GPU <45 °C before each run, warm-up (cold shader cache) not counted. Resume: read `dirt-ab-1103/run.log`; if interrupted restore `dirt-ab-1103/dirt.desktop.orig` into the DiRT shortcut, bring Termux back.
+> **DiRT Showdown A/B (done 14:31–14:41 EST, user: "run the dirt benchmark on and off and compare them"):** `dirt-ab.sh dirt-ab-1103 warm on off off on` — built-in benchmark (Nevada, 8 cars, 1280x720 vsync off 8xMSAA; the game goes zero-copy here), cooled to thermal 0 + GPU <45 °C before each run; all 5 self-exited, 0 crash/FATAL, race screenshots valid.
+> - DiRT score avg/min fps: warm 120.6/76.1 · on 105.2/66.7 · off 107.4/65.8 · off 106.7/66.8 · on 98.9/67.5 → ON 102.0/67.1 vs OFF 107.0/66.3. Not attributable to the change: the GPU sat at 525 MHz for 67–75 % of every race (thermal status ~1.8; run 5 had the lowest clock and the lowest score); 2 runs each.
+> - Compositor during the race: a new frame waited 1.57 / 1.18 ms ON vs 3.77 / 3.68 ms OFF before being shown (≈2.3 ms sooner), 76–82 % of scenes drawn on arrival; worst late tick 2.6 / 2.2 ms ON vs 5.8 / 4.1 ms OFF; frames on screen and on-screen gap p99 (~20 ms) the same.
+> - Side finding: under DiRT the Elite caps the GPU at 525 MHz most of the time (thermal) — a bigger fps factor than the compositor.
 >
 > **Open / Next (user decision):** merge or not; a game below 144 fps (DiRT Showdown benchmark) to see the draw-on-arrival delay gain (would need a newest-frame-age counter); separately, why only ~85 % of refreshes get a new frame.
 >

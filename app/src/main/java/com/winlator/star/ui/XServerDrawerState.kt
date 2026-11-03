@@ -17,8 +17,26 @@ enum class TabType {
     FRIENDS,
     // FEX / DXVK / VKD3D-Proton per Proton of the Linux Steam client. Only in the rail during a
     // Steam (Linux) session (linuxSteamSession), like the Graphics tab's Steam client section.
-    COMPONENTS
+    COMPONENTS,
+    // Game mods (core.GameMods). Only in the rail while this game's EXE can take a mod (mods non-empty).
+    MODS
 }
+
+/**
+ * One card in the drawer's Mods tab, built at launch (XServerDisplayActivity.applyGameModsEnv) for each
+ * mod this game's EXE can take. [loaded]: its DLL is in place for this session; [version] is the release
+ * tag of our file ("" for a file the game already had); [file] the DLL name it loads as; [bits] "64-bit"
+ * or "32-bit".
+ */
+data class DrawerMod(
+    val id: String,
+    val name: String,
+    val on: Boolean,
+    val loaded: Boolean,
+    val version: String,
+    val file: String,
+    val bits: String,
+)
 
 /** A swap from the drawer's Components tab: [value] is "orig:<build>" or a stored package file. */
 fun interface LinuxComponentSwap {
@@ -142,9 +160,9 @@ object XServerDrawerState {
     private val _cursorAutoHideMs = MutableStateFlow(2500)
     val cursorAutoHideMs: StateFlow<Int> = _cursorAutoHideMs
 
-    // Mods (core.GameMods ids) placed for this session's game: the rail's Mods button lists them.
-    private val _activeMods = MutableStateFlow<List<String>>(emptyList())
-    val activeMods: StateFlow<List<String>> = _activeMods
+    // Mods this session's game can take, on or off (Mods tab; the tab is in the rail while non-empty).
+    private val _mods = MutableStateFlow<List<DrawerMod>>(emptyList())
+    val mods: StateFlow<List<DrawerMod>> = _mods
 
     // Per-gesture config, shown in the Controls > Mouse pane whenever Cursor to Touch is on. Each
     // gesture is independently switchable because which of them is welcome is per-game: an RTS wants
@@ -507,7 +525,7 @@ object XServerDrawerState {
     // Fired when the Auto-hide Cursor chip or its delay slider changes; the activity reads the flows,
     // persists them and applies them to the live pointer.
     @JvmField var onCursorAutoHideChange:   Runnable? = null
-    // Rail > Mods: shows / hides the in-game menu of the mod with this id (the activity sends its menu key).
+    // Mods tab: shows / hides the in-game menu of the mod with this id (the activity sends its menu key).
     @JvmField var onModMenu:                java.util.function.Consumer<String>? = null
     // Fired when any gesture chip/slider under the Cursor to Touch cog changes; the activity reads
     // the flows above, persists them, and pushes the set to the live TouchpadView.
@@ -610,7 +628,7 @@ object XServerDrawerState {
     fun setCursorAutoHideMs(v: Int)            { _cursorAutoHideMs.value = v }
     fun getCursorAutoHideValue(): Boolean      = _cursorAutoHide.value
     fun getCursorAutoHideMsValue(): Int        = _cursorAutoHideMs.value
-    fun setActiveMods(ids: List<String>)       { _activeMods.value = ids }
+    fun setMods(list: List<DrawerMod>)         { _mods.value = list }
     fun setGestureDragSelect(v: Boolean)          { _gestureDragSelect.value = v }
     fun setGestureLongPressRightClick(v: Boolean) { _gestureLongPressRightClick.value = v }
     fun setGestureLongPressMs(v: Int)             { _gestureLongPressMs.value = v }
@@ -776,7 +794,7 @@ object XServerDrawerState {
         _moveCursorToTouchpoint.value = false
         _cursorAutoHide.value = true
         _cursorAutoHideMs.value = 2500
-        _activeMods.value = emptyList()
+        _mods.value = emptyList()
         _gestureDragSelect.value = true
         _gestureLongPressRightClick.value = true
         _gestureLongPressMs.value = 300

@@ -142,9 +142,9 @@ object XServerDrawerState {
     private val _cursorAutoHideMs = MutableStateFlow(2500)
     val cursorAutoHideMs: StateFlow<Int> = _cursorAutoHideMs
 
-    // REFramework (core.ReFramework) is on for this session's game: the rail shows its menu button.
-    private val _reframeworkActive = MutableStateFlow(false)
-    val reframeworkActive: StateFlow<Boolean> = _reframeworkActive
+    // Mods (core.GameMods ids) placed for this session's game: the rail's Mods button lists them.
+    private val _activeMods = MutableStateFlow<List<String>>(emptyList())
+    val activeMods: StateFlow<List<String>> = _activeMods
 
     // Per-gesture config, shown in the Controls > Mouse pane whenever Cursor to Touch is on. Each
     // gesture is independently switchable because which of them is welcome is per-game: an RTS wants
@@ -507,8 +507,8 @@ object XServerDrawerState {
     // Fired when the Auto-hide Cursor chip or its delay slider changes; the activity reads the flows,
     // persists them and applies them to the live pointer.
     @JvmField var onCursorAutoHideChange:   Runnable? = null
-    // Rail button: shows / hides REFramework's in-game menu (the activity sends its menu key, Insert).
-    @JvmField var onReFrameworkMenu:        Runnable? = null
+    // Rail > Mods: shows / hides the in-game menu of the mod with this id (the activity sends its menu key).
+    @JvmField var onModMenu:                java.util.function.Consumer<String>? = null
     // Fired when any gesture chip/slider under the Cursor to Touch cog changes; the activity reads
     // the flows above, persists them, and pushes the set to the live TouchpadView.
     @JvmField var onGestureConfigChange:    Runnable? = null
@@ -610,7 +610,7 @@ object XServerDrawerState {
     fun setCursorAutoHideMs(v: Int)            { _cursorAutoHideMs.value = v }
     fun getCursorAutoHideValue(): Boolean      = _cursorAutoHide.value
     fun getCursorAutoHideMsValue(): Int        = _cursorAutoHideMs.value
-    fun setReFrameworkActive(v: Boolean)       { _reframeworkActive.value = v }
+    fun setActiveMods(ids: List<String>)       { _activeMods.value = ids }
     fun setGestureDragSelect(v: Boolean)          { _gestureDragSelect.value = v }
     fun setGestureLongPressRightClick(v: Boolean) { _gestureLongPressRightClick.value = v }
     fun setGestureLongPressMs(v: Int)             { _gestureLongPressMs.value = v }
@@ -776,7 +776,7 @@ object XServerDrawerState {
         _moveCursorToTouchpoint.value = false
         _cursorAutoHide.value = true
         _cursorAutoHideMs.value = 2500
-        _reframeworkActive.value = false
+        _activeMods.value = emptyList()
         _gestureDragSelect.value = true
         _gestureLongPressRightClick.value = true
         _gestureLongPressMs.value = 300

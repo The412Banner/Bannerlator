@@ -249,7 +249,8 @@ import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVibration
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.GameXInputDlls
-import com.winlator.star.core.ReFramework
+import com.winlator.star.core.GameModCache
+import com.winlator.star.core.GameMods
 import com.winlator.star.core.RumbleMotors
 import com.winlator.star.core.StickPacing
 import com.winlator.star.core.CopyGameToDriveC
@@ -5212,25 +5213,109 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
     DpadHighlight(focused = dp.isFocused(id), modifier = Modifier.dpadBringIntoView(dp, id)) { Checkbox(checked = checked, onCheckedChange = onCheckedChange) }
 }
 
-/** Game settings > General: the per-game REFramework switch (core.ReFramework), off by default. */
-private class ReFrameworkGameSetting(val supported: Boolean, initial: Boolean) {
-    var on by mutableStateOf(initial)
+/**
+ * Game settings > General > Mods (core.GameMods): the mods this game's EXE can take, each one's per-game
+ * switch (off by default) and Special K's DLL name ("" = picked from the EXE). Switching a mod on
+ * downloads it from its release if this device does not have it yet. Lives outside the settings screen
+ * (D8 8.8.18 crashed dexing it with state inline).
+ */
+private class GameModsSetting(
+    val mods: List<GameMods.Mod>, val machine: Int, val imports: Set<String>,
+    initialOn: Map<String, Boolean>, initialSkDll: String,
+) {
+    val on = mutableStateMapOf<String, Boolean>().apply { putAll(initialOn) }
+    var skDll by mutableStateOf(initialSkDll)
+    /** Per mod id: "" or a short download state ("40 %", "ready", "download failed"). */
+    val status = mutableStateMapOf<String, String>()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
     fun write(putExtra: (String, String?) -> Unit) {
-        if (supported) putExtra(ReFramework.EXTRA, if (on) "1" else null)
+        for (m in mods) putExtra(m.extra, if (on[m.id] == true) "1" else null)
+        if (GameMods.SPECIAL_K in mods) putExtra(GameMods.EXTRA_SPECIALK_DLL, skDll.ifEmpty { null })
+    }
+
+    fun nextSkDll() {
+        val names = listOf("") + GameMods.SPECIALK_DLLS
+        skDll = names[(names.indexOf(skDll).coerceAtLeast(0) + 1) % names.size]
+    }
+
+    fun download(filesDir: File, mod: GameMods.Mod) {
+        val asset = GameMods.asset(mod, machine) ?: return
+        if (GameModCache.cached(filesDir, asset) != null) { status[mod.id] = ""; return }
+        status[mod.id] = "0 %"
+        Thread {
+            val done = try {
+                GameModCache.get(filesDir, asset) { f -> main.post { status[mod.id] = "${(f * 100).toInt()} %" } }
+                "ready"
+            } catch (e: Exception) {
+                "download failed"
+            }
+            main.post { status[mod.id] = done }
+        }.apply { isDaemon = true }.start()
     }
 }
 
 @Composable
-private fun rememberReFrameworkGameSetting(shortcut: Shortcut): ReFrameworkGameSetting = remember(shortcut) {
-    ReFrameworkGameSetting(ReFramework.isSupportedExe(shortcut.path), shortcut.getExtra(ReFramework.EXTRA) == "1")
+private fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remember(shortcut) {
+    val exe = runCatching { WinePath.resolveAndroidPath(shortcut.container, shortcut.path) }.getOrNull()
+    val machine = GameMods.peMachine(exe)
+    val mods = GameMods.ALL.filter { GameMods.supports(it, shortcut.path, machine) }
+    val imports = if (GameMods.SPECIAL_K in mods) GameMods.peImports(exe) else emptySet()
+    GameModsSetting(
+        mods, machine, imports,
+        GameMods.ALL.associate { it.id to (shortcut.getExtra(it.extra) == "1") },
+        shortcut.getExtra(GameMods.EXTRA_SPECIALK_DLL) ?: "",
+    )
 }
 
 @Composable
-private fun ReFrameworkGameRow(dp: SettingsDpad, setting: ReFrameworkGameSetting) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        DpCheck(dp, "reframework", checked = setting.on, onCheckedChange = { setting.on = it })
-        Text("REFramework")
+private fun GameModsRow(dp: SettingsDpad, setting: GameModsSetting) {
+    var open by remember { mutableStateOf(false) }
+    val enabled = setting.mods.filter { setting.on[it.id] == true }.joinToString { it.name }
+    DpButton(dp, "mods", onActivate = { open = true }) {
+        OutlinedButton(onClick = { open = true }) { Text(if (enabled.isEmpty()) "Mods" else "Mods: $enabled") }
     }
+    if (open) GameModsDialog(setting) { open = false }
+}
+
+@Composable
+private fun GameModsDialog(setting: GameModsSetting, onDismiss: () -> Unit) {
+    val filesDir = LocalContext.current.filesDir
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Mods") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (mod in setting.mods) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = setting.on[mod.id] == true,
+                            onCheckedChange = { checked ->
+                                setting.on[mod.id] = checked
+                                if (checked) setting.download(filesDir, mod)
+                            },
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(mod.name, modifier = Modifier.weight(1f))
+                        val state = setting.status[mod.id].orEmpty()
+                        if (state.isNotEmpty()) {
+                            Text(
+                                state, style = MaterialTheme.typography.bodySmall,
+                                color = if (state == "download failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (mod === GameMods.SPECIAL_K && setting.on[mod.id] == true) {
+                        val auto = GameMods.targetDll(mod, "", setting.imports, setting.machine)
+                        TextButton(onClick = { setting.nextSkDll() }) {
+                            Text(if (setting.skDll.isEmpty()) "$auto (auto)" else setting.skDll)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
 }
 
 // Labels for the six root perf keys (extraData name -> display label), matching PerfRootApplier.KEY_*.
@@ -5859,9 +5944,9 @@ internal fun ShortcutSettingsDialogScreen(
     var autoCloseOnExit by remember {
         mutableStateOf(shortcut.getExtra("autoCloseOnExit", shortcut.container.getExtra("autoCloseOnExit", "1")) == "1")
     }
-    // REFramework (core.ReFramework): only for the RE Engine EXEs it supports, off by default. Its state
-    // and row live outside this function (D8 8.8.18 crashed dexing it with them inline).
-    val reframework = rememberReFrameworkGameSetting(shortcut)
+    // Mods (core.GameMods: REFramework, Special K): the ones this game's EXE can take, off by default. Their
+    // state and row live outside this function (D8 8.8.18 crashed dexing it with them inline).
+    val gameMods = rememberGameModsSetting(shortcut)
     // The container editor's Game Controller and Vibration settings as per-game overrides, tri-state:
     // "" = use the container's setting, else this game's own value under the extra key the container
     // uses. The launch resolvers read the game's value first (DInputVisibility, BannerinXInput,
@@ -6278,7 +6363,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fullscreenMode", if (fullscreenModeOverride < 0) null else fullscreenModeOverride.toString())
             putExtra("fullscreenStretched", null)
             putExtra("autoCloseOnExit", if (autoCloseOnExit) "1" else "0")
-            reframework.write(putExtra)
+            gameMods.write(putExtra)
             // Controller and rumble overrides: "" clears the game's own value, so it follows the container.
             // DirectInput visibility goes in the inputType / exclusiveXInput extras older builds read.
             val ownDInput: Boolean? = dinputOwn.ifEmpty { null }?.let { it == "1" }
@@ -6478,7 +6563,7 @@ internal fun ShortcutSettingsDialogScreen(
                 }
                 add("fullscreen")
                 if (!isLinuxEntry) add("autoClose")
-                if (!isLinuxEntry && reframework.supported) add("reframework")
+                if (!isLinuxEntry && gameMods.mods.isNotEmpty()) add("mods")
             }
             4 -> { // Controller
                 if (!isLinuxEntry) {
@@ -8015,7 +8100,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 Text("Close when game exits")
                             }
                         }
-                        if (!isLinuxEntry && reframework.supported) ReFrameworkGameRow(dp, reframework)
+                        if (!isLinuxEntry && gameMods.mods.isNotEmpty()) GameModsRow(dp, gameMods)
                                 }
                                 4 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Game Controller and Vibration: the container editor's sections in the same order

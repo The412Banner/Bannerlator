@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — 🧰 REFramework for RE Engine games: bundled DLL, per-game switch, drawer menu button (`feat/reframework` 5a9605f0, CI running, NOT device-tested)
+
+> **Why / user decisions (11-03):** REFramework crashed on ARM64EC layers (x86 hook in Wine's ARM64EC dinput8); our fix (The412Banner/REFramework `c675c1f2`, upstream PR praydog/REFramework#1887) was A/B device-proven on the Elite with RE2 (official crashes c000001d, ours runs). User: "build the reframework idea on a new branch, package the file into the apk so the toggle always works … in game side drawer button to toggle the in game reframework menu"; decisions: menu starts **closed**, per-game switch **off by default**.
+>
+> **Built (`5a9605f0`, off main 636a66ed):**
+> - `assets/reframework/`: `dinput8.dll` (c675c1f2, sha256 7625c5a3…, 23 MB), `LICENSE.txt` (MIT, praydog), `SOURCE.txt` (source, commit, PR, CI run 41568743267).
+> - `core/ReFramework.java`: supported EXEs = REFramework's own GameIdentity table (re2 re3 re4 re7 re8 re9, devilmaycry5/dmc5, monsterhunterrise/mhrise(+sunbreakdemo), streetfighter6/sf6, dd2, makaimura(_gg_re), onimusha2, monsterhunterwilds/mhwilds, monster_hunter_stories_3_twisted_reflection(_trial), pragmata, onimushawots(_demo)); install/remove with a sha256 marker `.bannerlator-reframework` (only our file is replaced/removed; a game's own dinput8.dll is never touched); `overrides()` adds `dinput8=n,b` unless the user names dinput8; `menuStartsClosed()` sets `REFrameworkConfig_RememberMenuState=true` + `REFrameworkConfig_MenuOpen=false` in `re2_fw_config.txt`. `ReFrameworkTest.kt` (JUnit; CI does not run unit tests — the same 39 cases were run locally with javac 17 against the real ReFramework.java: all pass).
+> - Game settings > General: "REFramework" checkbox, only for supported EXEs, off by default (extra `reframework`).
+> - Launch `applyReFrameworkEnv` (after the user env merges, Wine sessions): on → bundled DLL (copied out of the APK once per install, sha cached) placed next to the EXE, menu closed, override; off → our file removed. One `reframework` session-log line.
+> - In-game drawer rail: tools-icon button above Task Manager while REFramework is on for the session; closes the drawer and sends Insert (XKeycode.KEY_INSERT press, 60 ms, release) via `xServer.injectKeyPress` (reaches Wayland through the X server's InputSink).
+> - README credits praydog.
+>
+> **CI:** CI Build (artifacts only) run **41579661852** (headSha 5a9605f0 == pushed) — running.
+>
+> **Device test (Elite, RE2):** switch on → launch → session log line, DLL + marker in the game folder, menu closed at start, drawer button opens/closes it; switch off → our DLL removed. Note: RE2's folder already holds our DLL from the manual test (same sha) with no marker → install adopts it ("already in place") and writes the marker; the manual `envVars=WINEDLLOVERRIDES=dinput8=n,b` in the RE2 shortcut stays the user's entry (kept).
+
 ## 2026-11-03 — ✅ Pointer auto-hide switch + Wayland touch fix MERGED to main (`fix/wayland-cursor-touch`, fast-forward, user device-proven on the Elite)
 
 > **User decision (11-03 ~23:30 local):** "installed and works, merge to main".

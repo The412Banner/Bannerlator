@@ -1,10 +1,13 @@
 REFramework by praydog - https://github.com/praydog/REFramework (MIT license, see LICENSE.txt)
 
 dinput8.dll here is built from https://github.com/The412Banner/REFramework
-branch feat/pad-menu-combo, commit b0b03908a8d4a21b07429e4ff262969d8ec4f02e
+branch fix/arm64ec-hook-freeze, commit 37831bfc512a9a2d2c7d834526944c1defd5ba79
 = praydog/REFramework master f9cb2ac3 (includes our ARM64EC fix, upstream pull request
-https://github.com/praydog/REFramework/pull/1887) + two changes:
+https://github.com/praydog/REFramework/pull/1887) + four changes:
 - L3 + R3 on a controller opens/closes the menu (option "Gamepad Menu Combo (L3 + R3)", on by default)
 - the menu key also works when the game blocks key messages (DirectInput exclusive keyboard under Wine)
-Built by GitHub Actions run 41649096921 (build-pr.yml, target REFramework).
-sha256 da62ce7fd03ce0fa4a4728ad5b334bd8b1dd9026551a44c17cd385607aa25594
+- that polling starts only after the game data is initialized
+- under x86-64 emulation on ARM64 each inline hook gets its own trampoline memory (fixes the startup
+  hang where REFramework stayed on "initializing")
+Built by GitHub Actions run 41677506877 (build-pr.yml, target REFramework).
+sha256 fcfa693d349c4e750c2aab8650fb23c5a5a6aad178ae0fb570b23a856b4987e4

@@ -1699,9 +1699,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // deciding when it should go away: any injected motion made it visible and only a pointer lock
     // ever hid it again. It now hides on its own when idle, and stays hidden while a controller is
     // the thing driving - physical pad or on-screen controls - because then the pointer is not what
-    // the player is looking at.
+    // the player is looking at. A finger moving the pointer always shows it: with a pad in hand
+    // (a menu by touch while the game takes the pad) the pad rule kept it hidden. The pad window
+    // is the X11 one (250 ms; 1.2 s left the pointer hidden for a second after the pad).
     private static final long WAYLAND_CURSOR_IDLE_MS = 2500L;   // no pointer motion -> hide
-    private static final long WAYLAND_CURSOR_PAD_MS  = 1200L;   // recent pad input -> keep hidden
+    private static final long WAYLAND_CURSOR_PAD_MS  = 250L;    // recent pad input -> keep hidden
     /** Session-scoped: on-screen controls live in InputControlsView, which has no activity handle. */
     public static volatile long waylandLastPadInputMs = 0L;
     private final android.os.Handler waylandCursorIdle =
@@ -1753,14 +1755,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /**
      * Pointer motion happened. Show the overlay and re-arm the idle hide - unless a controller is
-     * driving, in which case keep it hidden. Main thread only.
+     * driving, in which case keep it hidden. {@code finger}: the motion came from a finger on the
+     * screen, which shows the pointer even while a pad is in use. BANNER_CURSOR_AUTOHIDE=0 turns
+     * the idle and pad rules off. Main thread only.
      */
-    private void waylandCursorPoke() {
+    private void waylandCursorPoke(boolean finger) {
         if (waylandCursorView == null) return;
         waylandSyncGuestCursor();
         waylandCursorIdle.removeCallbacks(waylandCursorHideRunnable);
-        boolean padDriving =
-                android.os.SystemClock.uptimeMillis() - waylandLastPadInputMs < WAYLAND_CURSOR_PAD_MS;
+        boolean padDriving = cursorAutoHide && !finger
+                && android.os.SystemClock.uptimeMillis() - waylandLastPadInputMs < WAYLAND_CURSOR_PAD_MS;
         // The guest asking for no pointer is authoritative - it is what X11 always had and Wayland
         // never did. The idle/controller rules below are only a fallback for when it wants one.
         if (waylandGuestHidesCursor || padDriving || waylandPointerLocked) {
@@ -1770,21 +1774,22 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         if (waylandCursorView.getVisibility() != View.VISIBLE)
             waylandCursorView.setVisibility(View.VISIBLE);
-        waylandCursorIdle.postDelayed(waylandCursorHideRunnable, WAYLAND_CURSOR_IDLE_MS);
+        if (cursorAutoHide) waylandCursorIdle.postDelayed(waylandCursorHideRunnable, WAYLAND_CURSOR_IDLE_MS);
     }
 
     // The X11 pointer gets the same idle / controller rules as the Wayland overlay above. X11 already
     // honours the game's own hide (ASurfaceRenderer.gameCursorVisible); nothing hid it when it was
     // just sitting there or while a controller was driving. The renderer's setCursorVisible is the
     // launch gate (hidden until the first game frame); these rules sit on top of it, so the effective
-    // state is wanted && !autoHidden. BANNER_CURSOR_AUTOHIDE=0 keeps the pointer up as before.
+    // state is wanted && !autoHidden. BANNER_CURSOR_AUTOHIDE=0 keeps the pointer up as before
+    // (Wayland too: see waylandCursorPoke).
     // A held stick marks controller input every tick of the virtual-mouse loop, so a short window
-    // still keeps the pointer hidden while it moves; 1.2 s (the Wayland value) made a touch right
+    // still keeps the pointer hidden while it moves; 1.2 s (the old Wayland value) made a touch right
     // after using the pad wait about a second for the pointer to come back.
     private static final long X11_CURSOR_PAD_MS = 250L;
     private volatile boolean x11CursorWanted = false;   // launch gate
     private boolean x11CursorAutoHidden = false;         // main thread only
-    private volatile boolean x11CursorAutoHide = true;
+    private volatile boolean cursorAutoHide = true;
     private final java.util.concurrent.atomic.AtomicBoolean x11CursorPokePending =
             new java.util.concurrent.atomic.AtomicBoolean();
     private final Runnable x11CursorHideRunnable = () -> setX11CursorAutoHidden(true);
@@ -1805,7 +1810,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /** X11: the player moved the pointer or pressed a button. Main thread only. */
     private void x11CursorPoke() {
-        if (waylandMode || !x11CursorAutoHide) return;
+        if (waylandMode || !cursorAutoHide) return;
         waylandCursorIdle.removeCallbacks(x11CursorHideRunnable);
         boolean padDriving =
                 android.os.SystemClock.uptimeMillis() - waylandLastPadInputMs < X11_CURSOR_PAD_MS;
@@ -1825,7 +1830,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * real click). Main thread only.
      */
     private boolean x11TouchOnlyWakesCursor() {
-        if (waylandMode || gamescopeMode || !x11CursorAutoHide || !x11CursorWanted || !x11CursorAutoHidden) {
+        if (waylandMode || gamescopeMode || !cursorAutoHide || !x11CursorWanted || !x11CursorAutoHidden) {
             return false;
         }
         Window pw = xServer != null ? xServer.inputDeviceManager.getPointWindow() : null;
@@ -1835,7 +1840,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     /** X11: a physical pad produced input - hide the pointer now rather than at the idle timeout. */
     private void x11CursorPadInput() {
-        if (waylandMode || !x11CursorAutoHide || x11CursorAutoHidden) return;
+        if (waylandMode || !cursorAutoHide || x11CursorAutoHidden) return;
         waylandCursorIdle.removeCallbacks(x11CursorHideRunnable);
         waylandCursorIdle.post(x11CursorHideRunnable);
     }
@@ -9627,7 +9632,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                     waylandCursorY = pos[1];
                     waylandCursorView.setX(waylandCursorX - waylandCursorHotX);
                     waylandCursorView.setY(waylandCursorY - waylandCursorHotY);
-                    waylandCursorPoke();
+                    waylandCursorPoke(false);
                 });
             }
             @Override public void onPointerButton(com.winlator.star.xserver.Pointer.Button button, boolean pressed) {
@@ -10020,7 +10025,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (waylandCursorView != null) {
             waylandCursorView.setX(waylandCursorX - waylandCursorHotX);
             waylandCursorView.setY(waylandCursorY - waylandCursorHotY);
-            waylandCursorPoke();
+            waylandCursorPoke(true);   // only the touchpad finger handler calls this
         }
         int ox = (int) (waylandCursorX / vw * 1920f);
         int oy = (int) (waylandCursorY / vh * 1080f);
@@ -11418,7 +11423,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             if (!gamescopeMode && !waylandMode) applyColorCursors();
             // Raw mouse on X11 (XInput 2), same placement rule. BANNER_X11_XINPUT2=0 turns it off.
             if (!gamescopeMode && !waylandMode) applyXInput2();
-            if (!gamescopeMode && !waylandMode) applyX11CursorAutoHide();
+            if (!gamescopeMode) applyCursorAutoHide();
 
             // Keep the lsfg-vk Vulkan layer INERT unless lsfg-vk is actually the engine.
             // Placed AFTER both user env merges (container above, shortcut just here) so
@@ -11840,7 +11845,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         renderer.setCursorVisible(false);
         x11CursorWanted = false;
         if (!waylandMode) {
-            // On/off is decided later, once the user's env vars are merged (applyX11CursorAutoHide);
+            // On/off is decided later, once the user's env vars are merged (applyCursorAutoHide);
             // x11CursorPoke checks it on every call.
             // Called on whichever thread injected the input; coalesce to one UI-thread poke.
             xServer.setPointerActivityListener(() -> {
@@ -16611,11 +16616,11 @@ return true;
     }
 
     // After both user env merges (container + shortcut), unlike the renderer setup, which runs first.
-    private void applyX11CursorAutoHide() {
+    private void applyCursorAutoHide() {
         String v = envVars.has("BANNER_CURSOR_AUTOHIDE") ? envVars.get("BANNER_CURSOR_AUTOHIDE").trim() : "";
         boolean on = !(v.equals("0") || v.equalsIgnoreCase("false"));
-        x11CursorAutoHide = on;
-        Log.i("XServerDisplayActivity", "x11 cursor auto-hide: " + (on ? "on" : "off (BANNER_CURSOR_AUTOHIDE=" + v + ")"));
+        cursorAutoHide = on;
+        Log.i("XServerDisplayActivity", (waylandMode ? "wayland" : "x11") + " cursor auto-hide: " + (on ? "on" : "off (BANNER_CURSOR_AUTOHIDE=" + v + ")"));
         if (!on) {
             runOnUiThread(() -> {
                 waylandCursorIdle.removeCallbacks(x11CursorHideRunnable);

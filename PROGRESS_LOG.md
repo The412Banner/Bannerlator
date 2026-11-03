@@ -8,6 +8,7 @@
 - **Merge:** backup `refs/backup/20261103/main-before-reframework` → 7f9dbe80; main fast-forwarded to this branch (only PROGRESS_LOG.md changed after the tested commit). Branch kept.
 - **Open:** first key press can be ignored while REFramework re-initializes after the game's display reset (~14 s after the first frame); direct safetyhook create_inline/create_mid calls in some mods (newer games) still use the shared trampoline memory; Special K recon in session memory.
 - SK test: W3 og dxgi.ini now has EnableDirectInput8=false + EnableDirectInput7=false (CRLF file; inserted via awk script /sdcard/Download/sk-test/nodinput.awk). Launching W3 + SK fix 30b28cff again (+seh).
+- Special K fix 420e754f CI-GREEN (run 41695874938): artifacts 13261391701/13261606598; SpecialK64.dll sha256 a54f5041…, GUID 2AA3EB65-4695-4922-AACD-17B059D8B452 age 1 == pdb; contains IsWow64Process2 + RtlIsEcCode. Staged /sdcard/Download/sk-test/fix-420e754f/. W3 og test set up again (temp shortcut +seh, dll as dxgi.dll, fresh dxgi.ini). UNDO: delete shortcut + dxgi.dll/dxgi.ini/logs.
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-03T15-17-51-3eed33",
+    "created": "2026-11-03T15:17:51.586Z",
+    "reporter": "Leon",
+    "device": "Samsung s26 ultra",
+    "gpu": "Adreno 840",
+    "game": "Resident evil 4",
+    "symptom": "Çalışıyor ama FPS çok düşük.",
+    "logs": 0
+  },
+  {
     "id": "2026-11-02T18-25-02-ad98a3",
     "created": "2026-11-02T18:25:02.273Z",
     "reporter": "Sully",

@@ -26,6 +26,8 @@
 > - Vsync games (`MESA_VK_WSI_PRESENT_MODE=fifo` + AIO `--vsync`, aio-ab2.sh, tag ab-fifo-1103): vk 144.01/143.99 fps, 1 % low 121.4/120.6; dx11 144.00/144.00, 122.8/122.4; ON held only 1–4 ticks per 10 s → the frame-callback guard works, no regression. (AIO `--vsync` alone stays uncapped on Wayland: the adapter exports MESA_VK_WSI_PRESENT_MODE=mailbox from the stored present mode.)
 > - Files: /sdcard/Download/aio-bench/{ab-warmup-1103,ab-1103,ab-vsync-1103,ab-fifo-1103}/.
 >
+> **DiRT Showdown A/B (running, user: "run the dirt benchmark on and off and compare them"):** `/sdcard/Download/aio-bench/dirt-ab.sh dirt-ab-1103 warm on off off on` — built-in benchmark (example_benchmark.xml, 1280x720 vsync off 8xMSAA), cooled to thermal 0 + GPU <45 °C before each run, warm-up (cold shader cache) not counted. Resume: read `dirt-ab-1103/run.log`; if interrupted restore `dirt-ab-1103/dirt.desktop.orig` into the DiRT shortcut, bring Termux back.
+>
 > **Open / Next (user decision):** merge or not; a game below 144 fps (DiRT Showdown benchmark) to see the draw-on-arrival delay gain (would need a newest-frame-age counter); separately, why only ~85 % of refreshes get a new frame.
 >
 > **Resume point:** worktree /root/src/Bannerlator-wt/wayland-draw-on-arrival (sparse), branch `feat/wayland-draw-on-arrival`. The Elite runs this build (installed 13:59:08, base.apk `45d4acd4…`); nothing running; AIO shortcut restored.

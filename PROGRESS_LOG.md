@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-03 — 🧰 REFramework for RE Engine games: bundled DLL, per-game switch, drawer menu button (`feat/reframework` 5a9605f0, CI running, NOT device-tested)
+## 2026-11-03 — 🧰 REFramework for RE Engine games: bundled DLL, per-game switch, drawer menu button (`feat/reframework` 6ae5d6eb, CI green ×4, staged, NOT device-tested)
 
 > **Why / user decisions (11-03):** REFramework crashed on ARM64EC layers (x86 hook in Wine's ARM64EC dinput8); our fix (The412Banner/REFramework `c675c1f2`, upstream PR praydog/REFramework#1887) was A/B device-proven on the Elite with RE2 (official crashes c000001d, ours runs). User: "build the reframework idea on a new branch, package the file into the apk so the toggle always works … in game side drawer button to toggle the in game reframework menu"; decisions: menu starts **closed**, per-game switch **off by default**.
 >
@@ -13,7 +13,9 @@
 > - README credits praydog.
 >
 > **CI:** CI Build (artifacts only) run **41579661852** (headSha 5a9605f0) — **FAILED** ×4 at dexing: D8 (R8 8.8.18) `NullPointerException: Cannot read field "b"…` in DexArchiveBuilder while processing `ShortcutsScreenKt.ShortcutSettingsDialogScreen` (Kotlin + Java compiled fine). Cause: the giant settings composable with the switch's remember'd state / writer / row inline.
-> **Fix `6ae5d6eb`:** state = small holder `ReFrameworkGameSetting` (+ `rememberReFrameworkGameSetting`), row = own composable `ReFrameworkGameRow`; the big function gains three calls. CI run **41580538662** (headSha 6ae5d6eb == pushed) — running.
+> **Fix `6ae5d6eb`:** state = small holder `ReFrameworkGameSetting` (+ `rememberReFrameworkGameSetting`), row = own composable `ReFrameworkGameRow`; the big function gains three calls. CI run **41580538662** (headSha 6ae5d6eb == pushed) — **success** ×4 (pubg `BUILD SUCCESSFUL in 5m 58s`).
+>
+> **Staged:** `/sdcard/Download/Bannerlator-reframework-6ae5d6eb.apk` (pubg, 591 MB = +13.4 MB for the DLL), sha256 `0c193b5a292780db…` host == device. Checked inside: `assets/reframework/dinput8.dll` sha256 7625c5a3… (23,087,616 B, 13.4 MB compressed) + LICENSE.txt + SOURCE.txt; dex has core/ReFramework, the marker name, REFrameworkConfig_MenuOpen, ReFrameworkGameSetting, and the merged Auto-hide Cursor. Signer a40da80a… == installed. Waiting for the user's yes before install.
 >
 > **Device test (Elite, RE2):** switch on → launch → session log line, DLL + marker in the game folder, menu closed at start, drawer button opens/closes it; switch off → our DLL removed. Note: RE2's folder already holds our DLL from the manual test (same sha) with no marker → install adopts it ("already in place") and writes the marker; the manual `envVars=WINEDLLOVERRIDES=dinput8=n,b` in the RE2 shortcut stays the user's entry (kept).
 

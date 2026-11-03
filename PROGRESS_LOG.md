@@ -13,6 +13,7 @@
 - RE2 SK-only test: RE2 shortcut reframework=0 (Bannerlator removes our dinput8.dll at launch; reframework=1 later reinstalls bundled fcfa693d); envVars still dinput8=n,b;dxgi=n,b + WINEDEBUG=+seh; SK dxgi.dll in RE2 folder. Backup of the shortcut: /sdcard/Download/sk-test/backup/Resident-Evil-2.desktop.pre-sk.
 - SK OPTION 1 (user 11-03: "start with option 1, device is yours") = RE Engine loader-lock deadlock. Diagnostic run: RE2 SK-only (reframework=0, Bannerlator removes our dinput8 at launch), envVars WINEDLLOVERRIDES=dinput8=n,b;dxgi=n,b WINEDEBUG=+debugstr,+loaddll, SK 420e754f as RE2 dxgi.dll. Goal: map Wine thread ids of FreezeEx "Deep Freeze" OutputDebugString lines + loaddll to the err:sync deadlock owners. RESTORE after: cat /sdcard/Download/sk-test/backup/Resident-Evil-2.desktop.pre-sk back, delete RE2 dxgi.dll/dxgi.ini/logs, put REFramework dinput8.dll (/sdcard/Download/REFramework-hook-freeze-37831bfc/) + marker fcfa693d… back.
 - SK batch base420 run 1: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-base420/summary.txt)
+- SK batch base420 run 2: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-base420/summary.txt)
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

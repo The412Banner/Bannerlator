@@ -46,6 +46,7 @@
 - freeze catch launch 1 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
 - Freeze catch #1 (11:32): stuck at last hook "Attempting to hook 0x141163f60->0x665b0000" (no Hooked), then "Hooked DirectX 12" every 11 s (REFramework d3d monitor re-hooking because presents stopped → render thread blocked). Threads: 1 running (tid 24167, state R) caught inside the signal path (libssbs.so sigaction+580 → wine ntdll.so+0xe3454); ~15 threads in NtWaitForAlertByThreadId (SRW/CS waits, guest frames not unwound by debuggerd), rest in ppoll/futex/cond waits. Evidence /sdcard/Download/re2-test/G-freeze-1/. Hypothesis: fault loop on the RW (non-exec) trapped page. Catch #2 adds per-thread CPU/ctx-switch deltas over 3 s + 2 debuggerd snapshots.
 - freeze catch launch 1 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
+- freeze catch launch 2 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

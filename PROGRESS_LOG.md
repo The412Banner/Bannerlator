@@ -31,6 +31,8 @@
 > - Compositor during the race: a new frame waited 1.57 / 1.18 ms ON vs 3.77 / 3.68 ms OFF before being shown (≈2.3 ms sooner), 76–82 % of scenes drawn on arrival; worst late tick 2.6 / 2.2 ms ON vs 5.8 / 4.1 ms OFF; frames on screen and on-screen gap p99 (~20 ms) the same.
 > - Side finding: under DiRT the Elite caps the GPU at 525 MHz most of the time (thermal) — a bigger fps factor than the compositor.
 >
+> **DiRT reruns with the fan at max (11-03 15:15–15:42, fan 255/255 ≈ 7,450 rpm, set by the user):** ON 119.8 / OFF 114.7 avg fps (min 72.6 / 69.6), GPU at 525 MHz 17 % / 30 % of the race (vs 67–75 % at the stock 25 % fan), frame wait ON 0.5–1.5 ms vs OFF 3.4–4.8 ms. The second run of a pair always throttles more, so ON/OFF fps stays confounded with heat. Cause of the throttling (device, not this branch): Qualcomm thermal-engine-v2 cuts the GPU to 525 MHz (cooling device "gpu" level 8) at skin 49 °C, releases at 47 °C. Two more runs (ON) tested AYANEO CPU sliders, not this branch: CPU(6-7) at 3072 → 123.2 fps; user sliders 2918/3801 → 111.0 but the device was charging (warm start).
+>
 > **Open / Next (user decision):** merge or not; a game below 144 fps (DiRT Showdown benchmark) to see the draw-on-arrival delay gain (would need a newest-frame-age counter); separately, why only ~85 % of refreshes get a new frame.
 >
 > **Resume point:** worktree /root/src/Bannerlator-wt/wayland-draw-on-arrival (sparse), branch `feat/wayland-draw-on-arrival`. The Elite runs this build (installed 13:59:08, base.apk `45d4acd4…`); nothing running; AIO shortcut restored.

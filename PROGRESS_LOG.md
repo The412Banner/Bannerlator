@@ -35,6 +35,7 @@
 - FREEZE-FIX build 2ee55772 CI-GREEN (run 41669651225, all steps success, no warnings in REFramework.cpp/hpp). DLL sha256 64c0f798… staged /sdcard/Download/REFramework-pad-combo-2ee55772/; hand-placed in RE2 folder (marker = bundled da62ce7f ≠ new sha → Bannerlator leaves it); previous b0b03908 DLL backed up /sdcard/Download/bannerlator-backup-20261103/dinput8.dll.b0b03908-pocketfit. UNDO = copy that back. Running batch F-2ee55772 runs 1-8 (scratchpad rftest/batch.sh), evidence /sdcard/Download/re2-test/F-2ee55772/summary.txt.
 - batch 2ee55772 run 1: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-2ee55772/summary.txt)
 - batch 2ee55772 run 2: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-2ee55772/summary.txt)
+- batch 2ee55772 run 3: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-2ee55772/summary.txt)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

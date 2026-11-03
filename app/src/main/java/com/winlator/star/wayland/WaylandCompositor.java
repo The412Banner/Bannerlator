@@ -263,6 +263,11 @@ public final class WaylandCompositor {
      *  Set before the compositor starts. */
     public static native void nativeSetUbwc(boolean on);
 
+    /** Draw a new frame when it arrives instead of at the next screen tick, at most once per refresh
+     *  (no FPS limit, no frame generation). Default on; BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 in the container's
+     *  or the shortcut's environment variables turns it off (A/B). Set before the compositor starts. */
+    public static native void nativeSetDrawOnArrival(boolean on);
+
     /** The compositor's asynchronous copy path: a presented frame stays in flight on the GPU and the
      *  compositor thread no longer waits for its own screen blit (which queued behind the game's work
      *  and paced every game to that wait). Default on; BANNER_WAYLAND_ASYNC_COPY=0 in the container's

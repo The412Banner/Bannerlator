@@ -64,6 +64,7 @@
 - batch 37831bfc run 8: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
 - batch 37831bfc run 9: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
 - batch 37831bfc run 10: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
+- FREEZE FIX DEVICE-PROVEN (Pocket FIT, RE2 DX12, Bannerlator 0f1c07d9 + hand-placed REFramework 37831bfc fcfa693d): batch F-37831bfc 10/10 CLEAN starts (12:04–12:13 EST) vs before ~10/21 stuck across c675c1f2/b0b03908/2ee55772 (P(10/10 clean | p_stuck 0.48) ≈ 0.1 %). Log has "x86-64 emulation on ARM64: each inline hook gets its own trampoline memory". Insert fallback: 18/20 held presses toggled; the 2 misses (run1 12:04:53, run4 12:07:27) coincided with REFramework re-initializing ("REFramework initialized" again = D3D reset after startup) → press during re-init ignored (m_initialized false), not the fix. Evidence /sdcard/Download/re2-test/F-37831bfc/summary.txt. Bannerlator stopped, Termux front. NEXT (await user): bundle 37831bfc into Bannerlator feat/reframework (CI, stage, ask install); merge decision; optional upstream PR of the freeze fix to praydog.
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

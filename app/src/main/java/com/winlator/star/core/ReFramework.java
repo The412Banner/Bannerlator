@@ -21,7 +21,7 @@ import java.util.Set;
  * DirectInput keyboard blocks key messages under Wine (RE2), and gives each inline hook its own trampoline
  * memory under ARM64 emulation (startup otherwise hung about half the time).
  *
- * <p>When it is on, its config is set so the menu starts closed (the in-game drawer's Mods button opens it).
+ * <p>When it is on, its config is set so the menu starts closed (the in-game drawer's Mods tab opens it).
  * Pure Java (no Android calls), so it is unit-tested.
  */
 public final class ReFramework {

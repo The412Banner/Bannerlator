@@ -1,9 +1,10 @@
 REFramework by praydog - https://github.com/praydog/REFramework (MIT license, see LICENSE.txt)
 
 dinput8.dll here is built from https://github.com/The412Banner/REFramework
-branch fix/arm64ec-skip-ec-hooks, commit c675c1f2469ad74df2da71918bd56dcf41763896
-= praydog/REFramework master 1813bf34 + one change: x86-64 inline hooks are skipped on
-ARM64EC code (the "illegal instruction" crash on ARM64EC Wine). Upstream pull request:
-https://github.com/praydog/REFramework/pull/1887
-Built by GitHub Actions run 41568743267 (build-pr.yml, target REFramework).
-sha256 7625c5a30261e24b569b7bae0e5c481401cdb2f77922eacb9056d0c620f1dbca
+branch feat/pad-menu-combo, commit b0b03908a8d4a21b07429e4ff262969d8ec4f02e
+= praydog/REFramework master f9cb2ac3 (includes our ARM64EC fix, upstream pull request
+https://github.com/praydog/REFramework/pull/1887) + two changes:
+- L3 + R3 on a controller opens/closes the menu (option "Gamepad Menu Combo (L3 + R3)", on by default)
+- the menu key also works when the game blocks key messages (DirectInput exclusive keyboard under Wine)
+Built by GitHub Actions run 41649096921 (build-pr.yml, target REFramework).
+sha256 da62ce7fd03ce0fa4a4728ad5b334bd8b1dd9026551a44c17cd385607aa25594

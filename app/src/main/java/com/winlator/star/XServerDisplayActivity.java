@@ -8789,7 +8789,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /** Drawer rail button: REFramework's menu key (Insert, its default) into the game, which shows or
-     *  hides the menu. Sent after the drawer has closed, as a press and a release. */
+     *  hides the menu. Sent after the drawer has closed, as a press and a release 150 ms later: our
+     *  REFramework build reads the key's state once per frame when the game blocks key messages, so the
+     *  press has to outlast a frame. */
     private void toggleReFrameworkMenu() {
         reframeworkKeyHandler.postDelayed(() -> {
             if (xServer == null) return;
@@ -8802,7 +8804,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             reframeworkKeyHandler.postDelayed(() -> {
                 try { if (xServer != null) xServer.injectKeyRelease(XKeycode.KEY_INSERT); }
                 catch (Throwable t) { Log.w("XServerDisplayActivity", "REFramework menu key release", t); }
-            }, 60);
+            }, 150);
         }, 200);
     }
 

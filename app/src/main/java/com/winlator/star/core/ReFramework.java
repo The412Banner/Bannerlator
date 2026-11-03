@@ -16,7 +16,9 @@ import java.util.Set;
 /**
  * REFramework (praydog, MIT, github.com/praydog/REFramework) for RE Engine games, bundled in the APK
  * (assets/reframework). Our build skips x86-64 inline hooks on ARM64EC code (praydog/REFramework#1887),
- * which is what crashed it on ARM64EC Wine ("illegal instruction" in Wine's ARM64EC dinput8).
+ * which is what crashed it on ARM64EC Wine ("illegal instruction" in Wine's ARM64EC dinput8); it also
+ * opens the menu with L3 + R3 on a controller, and sees the menu key in games whose DirectInput keyboard
+ * blocks key messages under Wine (RE2). See assets/reframework/SOURCE.txt.
  *
  * <p>Per game, off by default ({@value #EXTRA} = "1" turns it on), only for the EXEs REFramework knows.
  * On: the bundled {@code dinput8.dll} goes next to the game EXE, {@value #MARKER} records its sha256 so

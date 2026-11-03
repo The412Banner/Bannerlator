@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
+- **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.
+- **State:** code 6ae5d6eb, CI 41580538662 green ×4 (4 flavors). Device-tested on the Elite only: FAILED (entries below).
+- **Open:** (1) REFramework's startup sometimes stays stuck on a hook of a per-frame game function — seen with the feature on and off; cause unknown (hook-writing race under the emulator, the merged cursor change, or memory pressure). (2) Keyboard keys (Insert, Down) never reached RE2's window by either route; a valid Insert test after a clean start is still missing. (3) RE2's pointer lock blocks taps on REFramework's box.
+- **Next (on the 16 GB device):** stage the matching flavor of 6ae5d6eb (ask before install), RE2 with REFramework on; ≥5 launches counting stuck starts; valid Insert test with hands off; if stuck starts persist, compare main 855a3b85 and the 3.1.8 release; then fix in our REFramework build (hook writing under emulation and/or a keyboard-free toggle).
+- **Resume point:** Elite left with 6ae5d6eb installed and RE2 as the user had it (REFramework on, DX12). Full handoff + test tools in the session memory (reframework-arm64ec, HANDOFF).
+
 ## 2026-11-03 — ❌ REFramework build 6ae5d6eb: user device test FAILED on RE2 (`feat/reframework`, installed on the Elite, investigating)
 - **Device test (user, Pocket FIT Elite, pubg flavor, installed sha256 0c193b5a… == staged):** RE2 DX12, REFramework checkbox on. Our DLL adopted (marker written, sha 7625c5a3), config set to MenuOpen=false + RememberMenuState=true. Result: the REFramework box is there from the start, taps don't work, the drawer button doesn't hide/show it. User videos /sdcard/Movies/screen-20261103-042202.mp4 + -042512.mp4.
 - **Cause 1 (verified, log + source):** REFramework's own startup hung in that run at `Attempting to hook 0x142855f00` (via.render.layer.Scene.Draw, inline hook) — no mods init, no config load. While it is initializing REFramework always draws its "currently initializing" box (m_draw_ui starts true; MenuOpen/RememberMenuState only applied in REFrameworkConfig::on_config_load after init). Same DLL passed that hook in the 22:32 and 23:02 runs → intermittent (1 of 3). Exact deadlock mechanism not proven.

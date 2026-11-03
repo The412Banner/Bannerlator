@@ -5212,6 +5212,27 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
     DpadHighlight(focused = dp.isFocused(id), modifier = Modifier.dpadBringIntoView(dp, id)) { Checkbox(checked = checked, onCheckedChange = onCheckedChange) }
 }
 
+/** Game settings > General: the per-game REFramework switch (core.ReFramework), off by default. */
+private class ReFrameworkGameSetting(val supported: Boolean, initial: Boolean) {
+    var on by mutableStateOf(initial)
+    fun write(putExtra: (String, String?) -> Unit) {
+        if (supported) putExtra(ReFramework.EXTRA, if (on) "1" else null)
+    }
+}
+
+@Composable
+private fun rememberReFrameworkGameSetting(shortcut: Shortcut): ReFrameworkGameSetting = remember(shortcut) {
+    ReFrameworkGameSetting(ReFramework.isSupportedExe(shortcut.path), shortcut.getExtra(ReFramework.EXTRA) == "1")
+}
+
+@Composable
+private fun ReFrameworkGameRow(dp: SettingsDpad, setting: ReFrameworkGameSetting) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        DpCheck(dp, "reframework", checked = setting.on, onCheckedChange = { setting.on = it })
+        Text("REFramework")
+    }
+}
+
 // Labels for the six root perf keys (extraData name -> display label), matching PerfRootApplier.KEY_*.
 private val ROOT_PERF_LABELS = mapOf(
     "rootCpuGovernorPerf" to "CPU governor → performance",
@@ -5838,9 +5859,9 @@ internal fun ShortcutSettingsDialogScreen(
     var autoCloseOnExit by remember {
         mutableStateOf(shortcut.getExtra("autoCloseOnExit", shortcut.container.getExtra("autoCloseOnExit", "1")) == "1")
     }
-    // REFramework (core.ReFramework): only for the RE Engine EXEs it supports, off by default.
-    val reframeworkSupported = remember { ReFramework.isSupportedExe(shortcut.path) }
-    var reframeworkOn by remember { mutableStateOf(shortcut.getExtra(ReFramework.EXTRA) == "1") }
+    // REFramework (core.ReFramework): only for the RE Engine EXEs it supports, off by default. Its state
+    // and row live outside this function (D8 8.8.18 crashed dexing it with them inline).
+    val reframework = rememberReFrameworkGameSetting(shortcut)
     // The container editor's Game Controller and Vibration settings as per-game overrides, tri-state:
     // "" = use the container's setting, else this game's own value under the extra key the container
     // uses. The launch resolvers read the game's value first (DInputVisibility, BannerinXInput,
@@ -6257,7 +6278,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fullscreenMode", if (fullscreenModeOverride < 0) null else fullscreenModeOverride.toString())
             putExtra("fullscreenStretched", null)
             putExtra("autoCloseOnExit", if (autoCloseOnExit) "1" else "0")
-            if (reframeworkSupported) putExtra(ReFramework.EXTRA, if (reframeworkOn) "1" else null)
+            reframework.write(putExtra)
             // Controller and rumble overrides: "" clears the game's own value, so it follows the container.
             // DirectInput visibility goes in the inputType / exclusiveXInput extras older builds read.
             val ownDInput: Boolean? = dinputOwn.ifEmpty { null }?.let { it == "1" }
@@ -6457,7 +6478,7 @@ internal fun ShortcutSettingsDialogScreen(
                 }
                 add("fullscreen")
                 if (!isLinuxEntry) add("autoClose")
-                if (!isLinuxEntry && reframeworkSupported) add("reframework")
+                if (!isLinuxEntry && reframework.supported) add("reframework")
             }
             4 -> { // Controller
                 if (!isLinuxEntry) {
@@ -7994,12 +8015,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 Text("Close when game exits")
                             }
                         }
-                        if (!isLinuxEntry && reframeworkSupported) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                DpCheck(dp, "reframework", checked = reframeworkOn, onCheckedChange = { reframeworkOn = it })
-                                Text("REFramework")
-                            }
-                        }
+                        if (!isLinuxEntry && reframework.supported) ReFrameworkGameRow(dp, reframework)
                                 }
                                 4 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Game Controller and Vibration: the container editor's sections in the same order

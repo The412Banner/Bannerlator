@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
+- **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).
+- **Upstream:** praydog merged our PR praydog/REFramework#1887 on 11-03 (master f9cb2ac3, with his extra commit 6cc79e8b that moves the MinHook check before MH_CreateHook); #1807 closed; official nightly-01437 has the fix. The DLL bundled in 6ae5d6eb is still c675c1f2 (without 6cc79e8b).
+- **Installed (user, 07:07 local):** pubg flavor of 6ae5d6eb, installed base.apk sha256 0c193b5a… == staged /sdcard/Download/Bannerlator-reframework-6ae5d6eb.apk; signer a40da80a… == the 3.1.8 it replaced.
+- **Setup:** RE2 at /storage/emulated/0/Winlator/games/RESIDENT EVIL 2 DX12 (copied from the Elite, still has our dll + marker + MenuOpen=false config); shortcut "Resident Evil 2" (container 1) reframework=1, envVars dinput8=n,b.
+- **Plan (user: "device is yours, drive it"):** ~5 root-driven launches, count stuck REFramework starts; one Insert test after a clean start (user hands off); evidence → /sdcard/Download/re2-test/E-pocketfit/.
+- **Resume point:** if the session dies mid-run: kill the `E:\…\re2.exe` process, `am force-stop com.tencent.ig`, bring Termux back, read re2_framework_log*.txt + /sdcard/Download/re2-test/E-pocketfit/.
+
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.
 - **State:** code 6ae5d6eb, CI 41580538662 green ×4 (4 flavors). Device-tested on the Elite only: FAILED (entries below).

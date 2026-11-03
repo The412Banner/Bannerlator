@@ -49,6 +49,7 @@
 - freeze catch launch 2 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
 - Freeze catch #2 (11:36): same stuck hook "0x141163f60->0x665b0000" (HookManager hook ID 2, last of the startup hooks), 16 Hooked lines before; tid 1592 used ~5.7 s CPU in the sample window (100 % core) and was inside the signal path (libssbs sigaction+580 → wine ntdll.so+0xe3454) in BOTH debuggerd snapshots; all other threads idle → endless FAULT LOOP during the patch. Two candidates: (a) game thread re-faulting on the RW trap page (safetyhook trap_handler returns CONTINUE_EXECUTION for page hits outside [from,len) and the patch never completes) vs (b) patching thread itself in a host SMC write-fault loop inside FEX. Catch #3 with WINEDEBUG=+seh on the RE2 shortcut (backup /sdcard/Download/bannerlator-backup-20261103/Resident-Evil-2.desktop.pre-seh; UNDO = cat it back) — flood of c0000005 = (a), silence = (b). Evidence G-freeze-2/.
 - freeze catch launch 1 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
+- freeze catch launch 2 (RESUME: endrun.sh + Termux front; dumps in /sdcard/Download/re2-test/G-freeze)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

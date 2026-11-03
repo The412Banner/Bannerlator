@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-03 — ⏱️ Wayland: draw a new frame when it arrives + screen tick on its own thread (`feat/wayland-draw-on-arrival` cc3d685, CI green ×4, staged, NOT device-tested)
+## 2026-11-03 — ⏱️ Wayland: draw a new frame when it arrives + screen tick on its own thread (`feat/wayland-draw-on-arrival` cc3d685, CI green ×4, installed on the Elite, device test running)
 
 > **Why (user 11-03: "make the fixes on a new branch off main", after asking which DroidDeck performance work could help Bannerlator):** Bannerlator's compositor works like DroidDeck's did before DroidDeck #1678 and #1707: it draws only on the screen tick (compositor.c schedule_render / on_vsync), and the ticks come from the main thread (XServerDisplayActivity startWaylandVsync, posted from surfaceCreated). AIO 2.2.0 on the Pocket FIT Elite the same morning (wx-1103, 144 Hz, D3D11 ~5,600 fps): the perf line showed 1,436–1,440 ticks per 10 s but only 964–1,215 scenes drawn (`copy path async`), and the game's slowest frames came once per refresh (gaps between them = whole 144 Hz intervals 83–88 % of the time on gl/dx12/dx9/dx8/dx7). Whether these changes fix either is not proven.
 >
@@ -15,6 +15,10 @@
 > **CI:** CI Build (artifacts only) run **41695122689** (workflow_dispatch, headSha 6e9409b == pushed) — success ×4 (standard, pubg, ludashi, antutu). pubg log: buildCMakeRelWithDebInfo[arm64-v8a] + compilePubgReleaseKotlin + JavaWithJavac → `BUILD SUCCESSFUL in 5m 14s`; no warning/error for compositor.c / waylandcomp_jni.c. APK check: libbannerwayland.so has `nativeSetDrawOnArrival` + the pacing text; dex has BANNER_WAYLAND_TICK_THREAD / BANNER_WAYLAND_DRAW_ON_ARRIVAL / "wayland-vsync"; REFramework assets present (main bde0b47).
 >
 > **Staged:** `/sdcard/Download/Bannerlator-wayland-draw-on-arrival-6e9409b1-pubg.apk` sha256 `45d4acd4…a2a3` (host == device, .sha256 beside it). Installed on the Elite now: 3.1.8 base.apk `0c193b5a…` (feat/reframework build, lastUpdate 04:20). Asking before install.
+>
+> **Installed (user: "yes install it and run the tests"):** Pocket FIT Elite 13:59:08 EST, `pm install -r` Success, installed base.apk sha256 `45d4acd4…` == staged (replaced the feat/reframework test build `0c193b5a…`).
+>
+> **Device test (running):** `/sdcard/Download/aio-bench/aio-ab.sh` — AIO 2.2.0 standalone per API on Wayland, ON (defaults) vs OFF (shortcut envVars `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0 BANNER_WAYLAND_TICK_THREAD=0`), alternating order; warm-up dx11, then tag `ab-1103` (8 APIs), then `ab-vsync-1103` (vk + dx11 with `--vsync`, FIFO guard). Resume: read `<tag>/run.log`; if interrupted restore `<tag>/aio.desktop.orig` into the shortcut, bring Termux back.
 >
 > **Open / Next:** push + CI build (workflow_dispatch, assert headSha) → stage APK → ask before install → A/B on the Elite with aio-wx.sh-style runs: on vs `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0` + `BANNER_WAYLAND_TICK_THREAD=0` (pacing + perf lines: scenes per 10 s vs ticks, tick lateness, frame wait; AIO avg/1 % low; once-per-refresh check scratchpad lows/period.py) + a vsync-on game for the FIFO guard.
 >

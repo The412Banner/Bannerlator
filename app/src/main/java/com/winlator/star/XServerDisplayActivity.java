@@ -7411,6 +7411,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             inGameControlsEditor = null;
         }
         waylandVsyncRunning = false;
+        if (waylandVsyncThread != null) { waylandVsyncThread.quitSafely(); waylandVsyncThread = null; }
         if (waylandHudThread != null) { waylandHudThread.quitSafely(); waylandHudThread = null; waylandHudSampler = null; }
         if (waylandClipboard != null) { waylandClipboard.stop(); waylandClipboard = null; }
         if (waylandTextInput != null) { waylandTextInput.stop(); waylandTextInput = null; }
@@ -9993,8 +9994,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
      *  event mapped to the 1920x1080 output space. action: 0=press, 1=motion, 2=release. */
     // The compositor draws once per screen refresh: feed it the Choreographer's vsync ticks for as
     // long as this activity lives (the tick is a cheap JNI call; the compositor ignores it while
-    // it has nothing new to draw or no window).
-    private boolean waylandVsyncRunning = false;
+    // it has nothing new to draw or no window). The ticks come from a thread of their own at display
+    // priority, so a busy main thread (menus, touch, the drawer) cannot make them late (DroidDeck
+    // #1678); BANNER_WAYLAND_TICK_THREAD=0 in the container's or the shortcut's environment variables
+    // keeps them on the main thread (A/B). The callback re-posts itself to the Choreographer of the
+    // thread it runs on.
+    private volatile boolean waylandVsyncRunning = false;
+    private android.os.HandlerThread waylandVsyncThread;
     private final android.view.Choreographer.FrameCallback waylandVsyncCallback = new android.view.Choreographer.FrameCallback() {
         @Override public void doFrame(long frameTimeNanos) {
             if (!waylandVsyncRunning) return;
@@ -10006,7 +10012,26 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private void startWaylandVsync() {
         if (waylandVsyncRunning) return;
         waylandVsyncRunning = true;
-        android.view.Choreographer.getInstance().postFrameCallback(waylandVsyncCallback);
+        if (waylandEnvOff("BANNER_WAYLAND_TICK_THREAD")) {
+            Log.i("XServerDisplayActivity", "wayland: screen tick runs on the main thread (BANNER_WAYLAND_TICK_THREAD=0)");
+            android.view.Choreographer.getInstance().postFrameCallback(waylandVsyncCallback);
+            return;
+        }
+        waylandVsyncThread = new android.os.HandlerThread("wayland-vsync", android.os.Process.THREAD_PRIORITY_DISPLAY);
+        waylandVsyncThread.start();
+        new android.os.Handler(waylandVsyncThread.getLooper()).post(() ->
+                android.view.Choreographer.getInstance().postFrameCallback(waylandVsyncCallback));
+        Log.i("XServerDisplayActivity", "wayland: screen tick runs on its own display-priority thread");
+    }
+
+    /** A BANNER_WAYLAND_* switch set to 0 or false in the container's or the shortcut's environment
+     *  variables (the shortcut's wins). Read from both directly, so it works before the launch
+     *  environment is put together. */
+    private boolean waylandEnvOff(String name) {
+        EnvVars env = new EnvVars(container != null ? container.getEnvVars() : null);
+        if (shortcut != null) env.putAll(shortcut.getExtra("envVars"));
+        String v = env.get(name).trim();
+        return v.equals("0") || v.equalsIgnoreCase("false");
     }
 
     /**

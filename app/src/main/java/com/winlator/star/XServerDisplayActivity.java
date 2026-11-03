@@ -2506,7 +2506,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setCursorAutoHideMs(Math.max(500, Math.min(10000,
                 preferences.getInt("cursor_autohide_ms", (int) WAYLAND_CURSOR_IDLE_MS))));
         state.onCursorAutoHideChange = this::onDrawerCursorAutoHideChange;
-        state.onReFrameworkMenu = this::toggleReFrameworkMenu;
+        state.onModMenu = this::toggleModMenu;
         // Per-gesture config shown under the Cursor to Touch toggle. Seed from prefs; the push to the
         // touchpad happens in setupUI, which is where that view is actually built.
         state.setGestureDragSelect(preferences.getBoolean("gesture_drag_select", true));
@@ -8699,113 +8699,121 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return new File(getFilesDir(), com.winlator.star.core.GameXInputDlls.MANIFEST_NAME);
     }
 
-    // ── REFramework (core.ReFramework) ───────────────────────────────────────────────────────────
+    // ── Game mods (core.GameMods: REFramework, Special K) ────────────────────────────────────────
 
-    private final Handler reframeworkKeyHandler = new Handler(Looper.getMainLooper());
+    private final Handler modKeyHandler = new Handler(Looper.getMainLooper());
 
-    /** The bundled dinput8.dll copied out of the APK once per app install (keyed on lastUpdateTime) and
-     *  its sha256, or null when the asset is missing. */
-    private Object[] bundledReFramework() {
+    /** Game mods (launch worker thread, after the user's env vars are merged; Wine sessions): every mod
+     *  switched on for this game (game settings > Mods) and available for its EXE is downloaded from its
+     *  release when this device does not have it yet, placed next to the EXE, and gets its
+     *  WINEDLLOVERRIDES entry (a user's own entry for that DLL is kept); REFramework's menu is set to start
+     *  closed. A mod switched off has only the file we placed removed. One "mods" line per mod in the
+     *  session log; the drawer's Mods button lists the mods in place. */
+    private void applyGameModsEnv(EnvVars envVars) {
+        java.util.List<String> active = new ArrayList<>();
         try {
-            long stamp = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
-            File dir = new File(getFilesDir(), com.winlator.star.core.ReFramework.ASSET_DIR);
-            File dll = new File(dir, com.winlator.star.core.ReFramework.DLL);
-            File shaFile = new File(dir, "dinput8.dll.sha256-" + stamp);
-            if (dll.isFile() && shaFile.isFile()) {
-                String sha = new String(java.nio.file.Files.readAllBytes(shaFile.toPath()),
-                        java.nio.charset.StandardCharsets.UTF_8).trim();
-                if (!sha.isEmpty()) return new Object[]{dll, sha};
-            }
-            FileUtils.delete(dir);
-            if (!dir.mkdirs() && !dir.isDirectory()) return null;
-            File tmp = new File(dir, "dinput8.dll.tmp");
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-            try (java.io.InputStream in = getAssets().open(com.winlator.star.core.ReFramework.ASSET_DIR + "/"
-                    + com.winlator.star.core.ReFramework.DLL);
-                 java.io.OutputStream out = new java.io.FileOutputStream(tmp)) {
-                byte[] buf = new byte[256 * 1024];
-                int n;
-                while ((n = in.read(buf)) > 0) { md.update(buf, 0, n); out.write(buf, 0, n); }
-            }
-            if (!tmp.renameTo(dll)) return null;
-            StringBuilder sb = new StringBuilder();
-            for (byte b : md.digest()) sb.append(String.format(java.util.Locale.ROOT, "%02x", b));
-            try (java.io.OutputStream os = new java.io.FileOutputStream(shaFile)) {
-                os.write(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            }
-            return new Object[]{dll, sb.toString()};
-        } catch (Throwable t) {
-            Log.w("XServerDisplayActivity", "REFramework asset", t);
-            return null;
-        }
-    }
-
-    /** REFramework (launch worker thread, after the user's env vars are merged; Wine sessions): for a
-     *  supported game with the per-game switch on, our dinput8.dll goes next to the EXE, its menu is set
-     *  to start closed, and WINEDLLOVERRIDES gains dinput8=n,b (a user's own dinput8 entry is kept). Off
-     *  removes only the file we placed. One "reframework" line in the session log. */
-    private void applyReFrameworkEnv(EnvVars envVars) {
-        try {
-            if (shortcut == null || gamescopeMode
-                    || !com.winlator.star.core.ReFramework.isSupportedExe(shortcut.path)) return;
-            boolean on = "1".equals(shortcut.getExtra(com.winlator.star.core.ReFramework.EXTRA));
+            if (shortcut == null || gamescopeMode) return;
             java.util.List<File> dirs = gameExeFolders();
-            if (!on) {
-                for (File dir : dirs) {
-                    String note = com.winlator.star.core.ReFramework.remove(dir);
-                    if (note != null) logSessionLine("reframework", "off: " + note);
+            File exe = gameExeFile();
+            int machine = com.winlator.star.core.GameMods.peMachine(exe);
+            java.util.Set<String> imports = null;
+            for (com.winlator.star.core.GameMods.Mod mod : com.winlator.star.core.GameMods.ALL) {
+                boolean on = "1".equals(shortcut.getExtra(mod.extra));
+                boolean available = com.winlator.star.core.GameMods.supports(mod, shortcut.path, machine);
+                if (!on || !available) {
+                    for (File dir : dirs) {
+                        String note = com.winlator.star.core.GameMods.remove(dir, mod);
+                        if (note != null) logSessionLine("mods", mod.name + " off: " + note);
+                    }
+                    if (on) logSessionLine("mods", mod.name + " on, but not available for this EXE"
+                            + (machine == 0 ? " (EXE not readable)" : "") + ": not loaded");
+                    continue;
                 }
-                return;
+                if (dirs.isEmpty()) {
+                    logSessionLine("mods", mod.name + " on, but the game's folder could not be found: not loaded");
+                    continue;
+                }
+                File dir = dirs.get(0);
+                com.winlator.star.core.GameMods.Asset asset = com.winlator.star.core.GameMods.asset(mod, machine);
+                if (imports == null) imports = com.winlator.star.core.GameMods.peImports(exe);
+                String dll = com.winlator.star.core.GameMods.targetDll(mod,
+                        shortcut.getExtra(com.winlator.star.core.GameMods.EXTRA_SPECIALK_DLL), imports, machine);
+                StringBuilder line = new StringBuilder(mod.name).append(" on (")
+                        .append(machine == com.winlator.star.core.GameMods.MACHINE_X86 ? "32-bit" : "64-bit").append("): ");
+                File source = null;
+                if (!com.winlator.star.core.GameMods.inPlace(dir, dll, asset.sha256)) {
+                    try {
+                        boolean had = com.winlator.star.core.GameModCache.cached(getFilesDir(), asset) != null;
+                        source = com.winlator.star.core.GameModCache.get(getFilesDir(), asset, null);
+                        if (!had) line.append("downloaded; ");
+                    } catch (Throwable t) {
+                        line.append("download failed (").append(t.getMessage()).append("); ");
+                    }
+                }
+                com.winlator.star.core.GameMods.Result r =
+                        com.winlator.star.core.GameMods.install(dir, mod, dll, source, asset.sha256);
+                line.append(r.note);
+                if (r.present) {
+                    String before = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
+                    String after = com.winlator.star.core.GameMods.overrides(before, dll);
+                    if (!after.equals(before)) envVars.put("WINEDLLOVERRIDES", after);
+                    line.append("; WINEDLLOVERRIDES=").append(after);
+                    if (after.equals(before)) line.append(" (yours kept)");
+                }
+                if (mod == com.winlator.star.core.GameMods.REFRAMEWORK && r.ours) {
+                    try {
+                        if (com.winlator.star.core.ReFramework.applyMenuStartsClosed(dir)) line.append("; menu starts closed");
+                    } catch (Throwable t) {
+                        line.append("; menu state not set (").append(t.getMessage()).append(")");
+                    }
+                }
+                logSessionLine("mods", line.toString());
+                if (r.ours) active.add(mod.id);
             }
-            if (dirs.isEmpty()) {
-                logSessionLine("reframework", "on, but the game's folder could not be found: not loaded");
-                return;
-            }
-            Object[] bundled = bundledReFramework();
-            if (bundled == null) {
-                logSessionLine("reframework", "on, but the bundled dinput8.dll is missing: not loaded");
-                return;
-            }
-            File dir = dirs.get(0);
-            com.winlator.star.core.ReFramework.Result r =
-                    com.winlator.star.core.ReFramework.install(dir, (File) bundled[0], (String) bundled[1]);
-            StringBuilder line = new StringBuilder("on: ").append(r.note);
-            try {
-                if (com.winlator.star.core.ReFramework.applyMenuStartsClosed(dir)) line.append("; menu starts closed");
-            } catch (Throwable t) {
-                line.append("; menu state not set (").append(t.getMessage()).append(")");
-            }
-            String before = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
-            String after = com.winlator.star.core.ReFramework.overrides(before);
-            if (!after.equals(before)) envVars.put("WINEDLLOVERRIDES", after);
-            line.append("; WINEDLLOVERRIDES=").append(after);
-            if (after.equals(before)) line.append(" (yours kept)");
-            logSessionLine("reframework", line.toString());
-            if (r.loaded) runOnUiThread(() -> XServerDrawerState.INSTANCE.setReFrameworkActive(true));
         } catch (Throwable t) {
-            Log.w("XServerDisplayActivity", "REFramework setup failed", t);
-            logSessionLine("reframework", "setup failed: " + t.getMessage());
+            Log.w("XServerDisplayActivity", "game mods setup failed", t);
+            logSessionLine("mods", "setup failed: " + t.getMessage());
+        } finally {
+            final java.util.List<String> ids = active;
+            runOnUiThread(() -> XServerDrawerState.INSTANCE.setActiveMods(ids));
         }
     }
 
-    /** Drawer rail button: REFramework's menu key (Insert, its default) into the game, which shows or
-     *  hides the menu. Sent after the drawer has closed, as a press and a release 150 ms later: our
-     *  REFramework build reads the key's state once per frame when the game blocks key messages, so the
-     *  press has to outlast a frame. */
-    private void toggleReFrameworkMenu() {
-        reframeworkKeyHandler.postDelayed(() -> {
+    /** Drawer > Mods: shows or hides a mod's in-game menu by sending its menu key after the drawer has
+     *  closed, as a press and a release 150 ms later (our REFramework build reads the key's state once
+     *  per frame when the game blocks key messages, so the press has to outlast a frame). REFramework:
+     *  Insert; Special K: Ctrl + Shift + Backspace. */
+    private void toggleModMenu(String id) {
+        final XKeycode[] keys = com.winlator.star.core.GameMods.SPECIAL_K.id.equals(id)
+                ? new XKeycode[]{XKeycode.KEY_CTRL_L, XKeycode.KEY_SHIFT_L, XKeycode.KEY_BKSP}
+                : new XKeycode[]{XKeycode.KEY_INSERT};
+        modKeyHandler.postDelayed(() -> {
             if (xServer == null) return;
             try {
-                xServer.injectKeyPress(XKeycode.KEY_INSERT);
+                for (XKeycode k : keys) xServer.injectKeyPress(k);
             } catch (Throwable t) {
-                Log.w("XServerDisplayActivity", "REFramework menu key", t);
+                Log.w("XServerDisplayActivity", "mod menu key", t);
                 return;
             }
-            reframeworkKeyHandler.postDelayed(() -> {
-                try { if (xServer != null) xServer.injectKeyRelease(XKeycode.KEY_INSERT); }
-                catch (Throwable t) { Log.w("XServerDisplayActivity", "REFramework menu key release", t); }
+            modKeyHandler.postDelayed(() -> {
+                try {
+                    if (xServer != null) for (int i = keys.length - 1; i >= 0; i--) xServer.injectKeyRelease(keys[i]);
+                } catch (Throwable t) {
+                    Log.w("XServerDisplayActivity", "mod menu key release", t);
+                }
             }, 150);
         }, 200);
+    }
+
+    /** The game EXE on the Android side, or null for a desktop launch, a .lnk or an unmapped drive. */
+    private File gameExeFile() {
+        try {
+            if (shortcut == null || container == null || shortcut.path == null || shortcut.path.endsWith(".lnk")) return null;
+            File f = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+            return f != null && f.isFile() ? f : null;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     /** The game EXE's folder on the Android side (also its working directory: the launch passes /dir of
@@ -11499,7 +11507,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             applyUnrealHdrEnv(envVars);
             applyBannerinXInputEnv(envVars);
             applyControllerLogEnv(envVars);
-            applyReFrameworkEnv(envVars);
+            applyGameModsEnv(envVars);
             if (waylandMode) applyWaylandGpuSpoofEnv(envVars);
 
             // OpenGL safe mode (Wayland only, default ON): GALLIUM_THREAD=0 removes Mesa's

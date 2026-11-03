@@ -14,28 +14,23 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * REFramework (praydog, MIT, github.com/praydog/REFramework) for RE Engine games, bundled in the APK
- * (assets/reframework). Our build skips x86-64 inline hooks on ARM64EC code (praydog/REFramework#1887),
- * which is what crashed it on ARM64EC Wine ("illegal instruction" in Wine's ARM64EC dinput8); it also
- * opens the menu with L3 + R3 on a controller, and sees the menu key in games whose DirectInput keyboard
- * blocks key messages under Wine (RE2), and gives each inline hook its own trampoline memory under ARM64
- * emulation (startup otherwise hung about half the time). See assets/reframework/SOURCE.txt.
+ * REFramework (praydog, MIT, github.com/praydog/REFramework) for RE Engine games: which EXEs it supports and
+ * its config. The DLL itself is downloaded from The412Banner/REFramework release arm64ec-r1 and placed by
+ * core.GameMods (game settings > Mods). Our build skips x86-64 inline hooks on ARM64EC code
+ * (praydog/REFramework#1887), opens the menu with L3 + R3 on a controller, sees the menu key in games whose
+ * DirectInput keyboard blocks key messages under Wine (RE2), and gives each inline hook its own trampoline
+ * memory under ARM64 emulation (startup otherwise hung about half the time).
  *
- * <p>Per game, off by default ({@value #EXTRA} = "1" turns it on), only for the EXEs REFramework knows.
- * On: the bundled {@code dinput8.dll} goes next to the game EXE, {@value #MARKER} records its sha256 so
- * only a file we placed is ever replaced or removed, {@code dinput8=n,b} joins WINEDLLOVERRIDES (a user's
- * own dinput8 entry is kept), and REFramework's config is set so its menu starts closed (the in-game
- * drawer's REFramework button opens it). Off: our file is removed; a game folder's own dinput8.dll is
- * never touched. Pure Java (no Android calls), so it is unit-tested; callers log the lines it returns.
+ * <p>When it is on, its config is set so the menu starts closed (the in-game drawer's Mods button opens it).
+ * Pure Java (no Android calls), so it is unit-tested.
  */
 public final class ReFramework {
     private ReFramework() {}
 
     /** Per-game extra: "1" = REFramework on for this game. */
     public static final String EXTRA = "reframework";
-    public static final String ASSET_DIR = "reframework";
     public static final String DLL = "dinput8.dll";
-    /** In the game folder: the sha256 of the dinput8.dll we placed. */
+    /** In the game folder: the sha256 of the dinput8.dll we placed (core.GameMods). */
     public static final String MARKER = ".bannerlator-reframework";
     /** REFramework's config file name, the same for every game (REFrameworkConfig.hpp). */
     public static final String CONFIG = "re2_fw_config.txt";
@@ -68,15 +63,6 @@ public final class ReFramework {
 
     public static boolean isSupportedExe(String path) {
         return STEMS.contains(stem(path));
-    }
-
-    // ── WINEDLLOVERRIDES ─────────────────────────────────────────────────────────────────────────
-
-    /** {@code existing} plus {@code dinput8=n,b}, unless it already names dinput8 (then unchanged). */
-    public static String overrides(String existing) {
-        String e = existing == null ? "" : existing.trim();
-        if (GameXInputDlls.named(e).containsKey("dinput8")) return e;
-        return e.isEmpty() ? "dinput8=n,b" : e + ";dinput8=n,b";
     }
 
     // ── REFramework config: menu starts closed ───────────────────────────────────────────────────
@@ -112,78 +98,7 @@ public final class ReFramework {
         return true;
     }
 
-    // ── The DLL in the game folder ───────────────────────────────────────────────────────────────
-
-    /** What {@link #install} found and did. */
-    public static final class Result {
-        /** Our dinput8.dll (or the game folder's own one) is in place, so the override applies. */
-        public final boolean loaded;
-        public final String note;
-        Result(boolean loaded, String note) { this.loaded = loaded; this.note = note; }
-    }
-
-    /** dinput8.dll in {@code dir}, any letter case, or null. */
-    static File findDll(File dir) {
-        File[] files = dir != null ? dir.listFiles() : null;
-        if (files == null) return null;
-        for (File f : files) if (f.isFile() && f.getName().equalsIgnoreCase(DLL)) return f;
-        return null;
-    }
-
-    static String readMarker(File dir) {
-        try {
-            File m = new File(dir, MARKER);
-            return m.isFile() ? new String(Files.readAllBytes(m.toPath()), StandardCharsets.UTF_8).trim() : null;
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    /**
-     * Puts {@code bundled} (sha256 {@code bundledSha}) into {@code dir} as dinput8.dll. A dinput8.dll that
-     * is not ours (no marker, or a different sha256) is left alone and used as it is.
-     */
-    public static Result install(File dir, File bundled, String bundledSha) throws Exception {
-        File dll = findDll(dir);
-        String marker = readMarker(dir);
-        if (dll != null) {
-            String sha = GameXInputDlls.sha256(dll);
-            if (sha.equals(bundledSha)) {
-                if (!bundledSha.equals(marker)) writeMarker(dir, bundledSha);
-                return new Result(true, "dinput8.dll already in place");
-            }
-            if (marker == null || !sha.equals(marker))
-                return new Result(true, "the game folder has its own " + dll.getName() + " (not ours): left as it is");
-            copy(bundled, dll);   // ours from an older app build: update it
-            writeMarker(dir, bundledSha);
-            return new Result(true, "dinput8.dll updated");
-        }
-        copy(bundled, new File(dir, DLL));
-        writeMarker(dir, bundledSha);
-        return new Result(true, "dinput8.dll placed");
-    }
-
-    /** Removes the dinput8.dll we placed (sha256 == marker); returns a note, or null when nothing to do. */
-    public static String remove(File dir) throws Exception {
-        File dll = findDll(dir);
-        String marker = readMarker(dir);
-        if (marker == null) return null;
-        File m = new File(dir, MARKER);
-        if (dll != null && GameXInputDlls.sha256(dll).equals(marker)) {
-            if (!dll.delete()) return "could not remove " + dll.getName();
-            m.delete();
-            return "removed our dinput8.dll";
-        }
-        m.delete();
-        return dll != null ? "the game folder's own " + dll.getName() + " left as it is" : null;
-    }
-
-    private static void writeMarker(File dir, String sha) throws IOException {
-        try (OutputStream os = new FileOutputStream(new File(dir, MARKER))) {
-            os.write(sha.getBytes(StandardCharsets.UTF_8));
-        }
-    }
-
+    /** Copies {@code from} over {@code to} through a temporary file next to it. */
     static void copy(File from, File to) throws IOException {
         File tmp = new File(to.getParentFile(), to.getName() + ".bannerlator-tmp");
         try (InputStream in = new FileInputStream(from); OutputStream out = new FileOutputStream(tmp)) {

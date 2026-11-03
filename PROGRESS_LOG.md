@@ -18,6 +18,7 @@
 - SK batch base420 run 4: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-base420/summary.txt)
 - SK batch base420 run 5: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-base420/summary.txt)
 - Loader-lock fix build 8c523312 CI-GREEN (run 41706464713): artifacts 13266080617/13267085303; SpecialK64.dll sha256 6e756f35…, GUID 12C8FADE-EC58-4B60-905D-16766247DCC1 == pdb; staged /sdcard/Download/sk-test/fix-8c523312/; installed as RE2 dxgi.dll (RE2 still SK-only test mode). Running skbatch fix8c5 runs 1-10 (MEMDUMP=1).
+- SK batch fix8c5 run 1: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-fix8c5/summary.txt)
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

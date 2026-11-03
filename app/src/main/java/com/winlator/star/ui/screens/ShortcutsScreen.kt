@@ -249,6 +249,7 @@ import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVibration
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.GameXInputDlls
+import com.winlator.star.core.ReFramework
 import com.winlator.star.core.RumbleMotors
 import com.winlator.star.core.StickPacing
 import com.winlator.star.core.CopyGameToDriveC
@@ -5837,6 +5838,9 @@ internal fun ShortcutSettingsDialogScreen(
     var autoCloseOnExit by remember {
         mutableStateOf(shortcut.getExtra("autoCloseOnExit", shortcut.container.getExtra("autoCloseOnExit", "1")) == "1")
     }
+    // REFramework (core.ReFramework): only for the RE Engine EXEs it supports, off by default.
+    val reframeworkSupported = remember { ReFramework.isSupportedExe(shortcut.path) }
+    var reframeworkOn by remember { mutableStateOf(shortcut.getExtra(ReFramework.EXTRA) == "1") }
     // The container editor's Game Controller and Vibration settings as per-game overrides, tri-state:
     // "" = use the container's setting, else this game's own value under the extra key the container
     // uses. The launch resolvers read the game's value first (DInputVisibility, BannerinXInput,
@@ -6253,6 +6257,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fullscreenMode", if (fullscreenModeOverride < 0) null else fullscreenModeOverride.toString())
             putExtra("fullscreenStretched", null)
             putExtra("autoCloseOnExit", if (autoCloseOnExit) "1" else "0")
+            if (reframeworkSupported) putExtra(ReFramework.EXTRA, if (reframeworkOn) "1" else null)
             // Controller and rumble overrides: "" clears the game's own value, so it follows the container.
             // DirectInput visibility goes in the inputType / exclusiveXInput extras older builds read.
             val ownDInput: Boolean? = dinputOwn.ifEmpty { null }?.let { it == "1" }
@@ -6452,6 +6457,7 @@ internal fun ShortcutSettingsDialogScreen(
                 }
                 add("fullscreen")
                 if (!isLinuxEntry) add("autoClose")
+                if (!isLinuxEntry && reframeworkSupported) add("reframework")
             }
             4 -> { // Controller
                 if (!isLinuxEntry) {
@@ -7986,6 +7992,12 @@ internal fun ShortcutSettingsDialogScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 DpCheck(dp, "autoClose", checked = autoCloseOnExit, onCheckedChange = { autoCloseOnExit = it })
                                 Text("Close when game exits")
+                            }
+                        }
+                        if (!isLinuxEntry && reframeworkSupported) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                DpCheck(dp, "reframework", checked = reframeworkOn, onCheckedChange = { reframeworkOn = it })
+                                Text("REFramework")
                             }
                         }
                                 }

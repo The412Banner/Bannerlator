@@ -1,0 +1,9 @@
+REFramework by praydog - https://github.com/praydog/REFramework (MIT license, see LICENSE.txt)
+
+dinput8.dll here is built from https://github.com/The412Banner/REFramework
+branch fix/arm64ec-skip-ec-hooks, commit c675c1f2469ad74df2da71918bd56dcf41763896
+= praydog/REFramework master 1813bf34 + one change: x86-64 inline hooks are skipped on
+ARM64EC code (the "illegal instruction" crash on ARM64EC Wine). Upstream pull request:
+https://github.com/praydog/REFramework/pull/1887
+Built by GitHub Actions run 41568743267 (build-pr.yml, target REFramework).
+sha256 7625c5a30261e24b569b7bae0e5c481401cdb2f77922eacb9056d0c620f1dbca

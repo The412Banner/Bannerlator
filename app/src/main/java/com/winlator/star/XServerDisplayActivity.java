@@ -2506,6 +2506,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setCursorAutoHideMs(Math.max(500, Math.min(10000,
                 preferences.getInt("cursor_autohide_ms", (int) WAYLAND_CURSOR_IDLE_MS))));
         state.onCursorAutoHideChange = this::onDrawerCursorAutoHideChange;
+        state.onReFrameworkMenu = this::toggleReFrameworkMenu;
         // Per-gesture config shown under the Cursor to Touch toggle. Seed from prefs; the push to the
         // touchpad happens in setupUI, which is where that view is actually built.
         state.setGestureDragSelect(preferences.getBoolean("gesture_drag_select", true));
@@ -8698,6 +8699,113 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return new File(getFilesDir(), com.winlator.star.core.GameXInputDlls.MANIFEST_NAME);
     }
 
+    // ── REFramework (core.ReFramework) ───────────────────────────────────────────────────────────
+
+    private final Handler reframeworkKeyHandler = new Handler(Looper.getMainLooper());
+
+    /** The bundled dinput8.dll copied out of the APK once per app install (keyed on lastUpdateTime) and
+     *  its sha256, or null when the asset is missing. */
+    private Object[] bundledReFramework() {
+        try {
+            long stamp = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+            File dir = new File(getFilesDir(), com.winlator.star.core.ReFramework.ASSET_DIR);
+            File dll = new File(dir, com.winlator.star.core.ReFramework.DLL);
+            File shaFile = new File(dir, "dinput8.dll.sha256-" + stamp);
+            if (dll.isFile() && shaFile.isFile()) {
+                String sha = new String(java.nio.file.Files.readAllBytes(shaFile.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8).trim();
+                if (!sha.isEmpty()) return new Object[]{dll, sha};
+            }
+            FileUtils.delete(dir);
+            if (!dir.mkdirs() && !dir.isDirectory()) return null;
+            File tmp = new File(dir, "dinput8.dll.tmp");
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            try (java.io.InputStream in = getAssets().open(com.winlator.star.core.ReFramework.ASSET_DIR + "/"
+                    + com.winlator.star.core.ReFramework.DLL);
+                 java.io.OutputStream out = new java.io.FileOutputStream(tmp)) {
+                byte[] buf = new byte[256 * 1024];
+                int n;
+                while ((n = in.read(buf)) > 0) { md.update(buf, 0, n); out.write(buf, 0, n); }
+            }
+            if (!tmp.renameTo(dll)) return null;
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) sb.append(String.format(java.util.Locale.ROOT, "%02x", b));
+            try (java.io.OutputStream os = new java.io.FileOutputStream(shaFile)) {
+                os.write(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            return new Object[]{dll, sb.toString()};
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "REFramework asset", t);
+            return null;
+        }
+    }
+
+    /** REFramework (launch worker thread, after the user's env vars are merged; Wine sessions): for a
+     *  supported game with the per-game switch on, our dinput8.dll goes next to the EXE, its menu is set
+     *  to start closed, and WINEDLLOVERRIDES gains dinput8=n,b (a user's own dinput8 entry is kept). Off
+     *  removes only the file we placed. One "reframework" line in the session log. */
+    private void applyReFrameworkEnv(EnvVars envVars) {
+        try {
+            if (shortcut == null || gamescopeMode
+                    || !com.winlator.star.core.ReFramework.isSupportedExe(shortcut.path)) return;
+            boolean on = "1".equals(shortcut.getExtra(com.winlator.star.core.ReFramework.EXTRA));
+            java.util.List<File> dirs = gameExeFolders();
+            if (!on) {
+                for (File dir : dirs) {
+                    String note = com.winlator.star.core.ReFramework.remove(dir);
+                    if (note != null) logSessionLine("reframework", "off: " + note);
+                }
+                return;
+            }
+            if (dirs.isEmpty()) {
+                logSessionLine("reframework", "on, but the game's folder could not be found: not loaded");
+                return;
+            }
+            Object[] bundled = bundledReFramework();
+            if (bundled == null) {
+                logSessionLine("reframework", "on, but the bundled dinput8.dll is missing: not loaded");
+                return;
+            }
+            File dir = dirs.get(0);
+            com.winlator.star.core.ReFramework.Result r =
+                    com.winlator.star.core.ReFramework.install(dir, (File) bundled[0], (String) bundled[1]);
+            StringBuilder line = new StringBuilder("on: ").append(r.note);
+            try {
+                if (com.winlator.star.core.ReFramework.applyMenuStartsClosed(dir)) line.append("; menu starts closed");
+            } catch (Throwable t) {
+                line.append("; menu state not set (").append(t.getMessage()).append(")");
+            }
+            String before = envVars.has("WINEDLLOVERRIDES") ? envVars.get("WINEDLLOVERRIDES") : "";
+            String after = com.winlator.star.core.ReFramework.overrides(before);
+            if (!after.equals(before)) envVars.put("WINEDLLOVERRIDES", after);
+            line.append("; WINEDLLOVERRIDES=").append(after);
+            if (after.equals(before)) line.append(" (yours kept)");
+            logSessionLine("reframework", line.toString());
+            if (r.loaded) runOnUiThread(() -> XServerDrawerState.INSTANCE.setReFrameworkActive(true));
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "REFramework setup failed", t);
+            logSessionLine("reframework", "setup failed: " + t.getMessage());
+        }
+    }
+
+    /** Drawer rail button: REFramework's menu key (Insert, its default) into the game, which shows or
+     *  hides the menu. Sent after the drawer has closed, as a press and a release. */
+    private void toggleReFrameworkMenu() {
+        reframeworkKeyHandler.postDelayed(() -> {
+            if (xServer == null) return;
+            try {
+                xServer.injectKeyPress(XKeycode.KEY_INSERT);
+            } catch (Throwable t) {
+                Log.w("XServerDisplayActivity", "REFramework menu key", t);
+                return;
+            }
+            reframeworkKeyHandler.postDelayed(() -> {
+                try { if (xServer != null) xServer.injectKeyRelease(XKeycode.KEY_INSERT); }
+                catch (Throwable t) { Log.w("XServerDisplayActivity", "REFramework menu key release", t); }
+            }, 60);
+        }, 200);
+    }
+
     /** The game EXE's folder on the Android side (also its working directory: the launch passes /dir of
      *  it), or none for a desktop launch, a .lnk or an unmapped drive. */
     private java.util.List<File> gameExeFolders() {
@@ -11389,6 +11497,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             applyUnrealHdrEnv(envVars);
             applyBannerinXInputEnv(envVars);
             applyControllerLogEnv(envVars);
+            applyReFrameworkEnv(envVars);
             if (waylandMode) applyWaylandGpuSpoofEnv(envVars);
 
             // OpenGL safe mode (Wayland only, default ON): GALLIUM_THREAD=0 removes Mesa's

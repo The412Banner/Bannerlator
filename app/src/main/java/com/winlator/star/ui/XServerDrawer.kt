@@ -177,6 +177,7 @@ fun XServerDrawer() {
     val linuxSteamSession by state.linuxSteamSession.collectAsState()
     // Wine-only tabs (ReShade, Task Manager) stay out of any Linux-runtime session.
     val linuxRuntimeSession by state.linuxRuntimeSession.collectAsState()
+    val reframeworkActive by state.reframeworkActive.collectAsState()
     // Re-check the friends source on every drawer open (its liveness isn't all flow-driven).
     val menuOpen by XServerDialogState.menuOpen.collectAsState()
     LaunchedEffect(menuOpen) { if (menuOpen) com.winlator.star.store.InGameFriendsSource.poke() }
@@ -285,6 +286,12 @@ fun XServerDrawer() {
 
                         Spacer(Modifier.height(10.dp))
 
+                        if (reframeworkActive) {
+                            TabIconButton(R.drawable.ic_sidebar_tools, isSelected = false) {
+                                state.onClose?.run(); state.onReFrameworkMenu?.run()
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
                         if (!linuxRuntimeSession) {
                             TabIconButton(R.drawable.icon_task_manager, selectedTab == TabType.TASK_MANAGER) {
                                 state.selectTab(TabType.TASK_MANAGER)

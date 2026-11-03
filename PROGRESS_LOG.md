@@ -29,6 +29,7 @@
 - SK batch fix8c5 run 9: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-fix8c5/summary.txt)
 - SK batch fix8c5 run 10: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-fix8c5/summary.txt)
 - SK stale-swapchain fix 883779be CI-GREEN (run 41711487334): dll a3a7991f…, GUID E8E81D1F-… == pdb, staged /sdcard/Download/sk-test/fix-883779be/. RE2 now reframework=1 + envVars WINEDLLOVERRIDES=dinput8=n,b;dxgi=n,b WINEDEBUG=+loaddll + SK as dxgi.dll (REFramework fcfa693d). Batch both883 runs 1-5. RESTORE after: pre-sk shortcut backup, delete RE2 dxgi.dll/dxgi.ini/logs.
+- SK batch both883 run 1: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

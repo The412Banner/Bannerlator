@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — 🖱️ Wayland pointer: a finger always shows it, 250 ms pad window, BANNER_CURSOR_AUTOHIDE=0 (`fix/wayland-cursor-touch`, CI running, NOT device-tested)
+
+> **Why:** on the Pocket FIT Elite (RE2 DX12 + REFramework test build, Wayland session) the user moved the pointer by touch while also using the controller and the pointer kept vanishing. In Wayland mode `waylandCursorPoke` hid the overlay whenever pad input came in the last `WAYLAND_CURSOR_PAD_MS` = 1200 ms; X11 already used 250 ms and has a `BANNER_CURSOR_AUTOHIDE=0` off switch, Wayland had neither. User: "go ahead with the bannerlator cursor fix".
+>
+> **Built (`fc021e29` on `fix/wayland-cursor-touch`, off main 4d0affb3), `XServerDisplayActivity.java` only:**
+> - `waylandCursorPoke(boolean finger)`: the touchpad finger handler (`updateWaylandCursor`) passes true → the pad rule is skipped and the pointer shows. The game hiding its cursor and pointer lock still win. `InputSink.onPointerMove` (mouse, on-screen controls, mapped keys) passes false.
+> - `WAYLAND_CURSOR_PAD_MS` 1200 → 250 ms (the X11 value).
+> - `BANNER_CURSOR_AUTOHIDE=0` works in Wayland too: `applyCursorAutoHide` (was `applyX11CursorAutoHide`) runs in both modes; field `x11CursorAutoHide` → `cursorAutoHide`; with it off the Wayland poke arms no idle hide and skips the pad rule.
+>
+> **CI:** CI Build (artifacts only) run **41574579598** (workflow_dispatch, headSha fc021e29 == pushed) — running.
+>
+> **Device test (to do, Elite, pubg flavor):** RE2 in Wayland: hold the pad, move the pointer by touch → pointer stays visible; pad only → hides; idle 2.5 s → hides; `BANNER_CURSOR_AUTOHIDE=0` in the game's Env Vars → stays up. Logcat line `wayland cursor auto-hide: on/off`.
+>
+> **Resume point:** branch pushed (ls-remote == local fc021e29). After CI: stage `/sdcard/Download/Bannerlator-wayland-cursor-touch-<sha8>.apk` (pubg) with sha256, ask before `pm install`.
+
 ## 2026-11-02 — ✅ HUD GPU % + clock without root MERGED to main (`fix/hud-gpu-noroot`, fast-forward, Duo device-proven; Adreno 8xx NOT device-tested)
 
 > **User decision (11-02 ~09:20 local):** "merge it to main".

@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ⏱️ Wayland: draw a new frame when it arrives + screen tick on its own thread (`feat/wayland-draw-on-arrival` 222b5ca, compiled locally (syntax) + host test, CI pending, NOT device-tested)
+
+> **Why (user 11-03: "make the fixes on a new branch off main", after asking which DroidDeck performance work could help Bannerlator):** Bannerlator's compositor works like DroidDeck's did before DroidDeck #1678 and #1707: it draws only on the screen tick (compositor.c schedule_render / on_vsync), and the ticks come from the main thread (XServerDisplayActivity startWaylandVsync, posted from surfaceCreated). AIO 2.2.0 on the Pocket FIT Elite the same morning (wx-1103, 144 Hz, D3D11 ~5,600 fps): the perf line showed 1,436–1,440 ticks per 10 s but only 964–1,215 scenes drawn (`copy path async`), and the game's slowest frames came once per refresh (gaps between them = whole 144 Hz intervals 83–88 % of the time on gl/dx12/dx9/dx8/dx7). Whether these changes fix either is not proven.
+>
+> **Built (two commits off main 7f9dbe8):**
+> - `fca02e4` tick thread: `HandlerThread("wayland-vsync", THREAD_PRIORITY_DISPLAY)`; the Choreographer callback re-posts on its own thread; thread quit in onDestroy. `BANNER_WAYLAND_TICK_THREAD=0` (container or shortcut env) keeps the main thread. Log: "wayland: screen tick runs on its own display-priority thread".
+> - `222b5ca` draw on arrival: `schedule_render` adds an idle source that draws the new frame once the event loop is idle, at most once per refresh (`g_drawn_tick_ns != g_tick_ns`); `on_vsync` holds a frame younger than one refresh for its next arrival, draws it at the next tick when none came, then draws every frame for 1 s (`HOLD_RETRY_NS`). Bannerlator-only addition: never hold while any surface has frame callbacks pending (`frames_awaited`: a FIFO client waits for one before drawing again; mailbox DXVK/VKD3D asks for none). Only without FPS limit and frame generation. `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0` = off. New 10 s `pacing` log line (tick lateness avg/max + over 2 ms, new-frame wait avg/max, scenes, on arrival, ticks held, state). JNI `nativeSetDrawOnArrival`, set next to `nativeSetUbwc`; helper `waylandEnvOff(name)` reads container + shortcut env.
+>
+> **Checked locally:** host test `app/src/main/cpp/waylandcomp/tests/test_draw_on_arrival.py` (real arrivals_draw/on_arrival_idle/schedule_render/on_vsync + stand-ins; gcc 15 in the proot — the Termux clang on PATH fails inside proot with "unknown option -cc1"): PASS; it FAILS when the hold step or the frame-callback guard is removed (mutation checks). `gcc -fsyntax-only` of compositor.c with stub Android headers: 0 errors, 0 warnings; waylandcomp_jni.c only pre-existing errors from desktop jni.h/glibc. CI does not run the test.
+>
+> **Open / Next:** push + CI build (workflow_dispatch, assert headSha) → stage APK → ask before install → A/B on the Elite with aio-wx.sh-style runs: on vs `BANNER_WAYLAND_DRAW_ON_ARRIVAL=0` + `BANNER_WAYLAND_TICK_THREAD=0` (pacing + perf lines: scenes per 10 s vs ticks, tick lateness, frame wait; AIO avg/1 % low; once-per-refresh check scratchpad lows/period.py) + a vsync-on game for the FIFO guard.
+>
+> **Resume point:** worktree /root/src/Bannerlator-wt/wayland-draw-on-arrival (sparse), branch `feat/wayland-draw-on-arrival`. Nothing installed or running from this branch.
+
 ## 2026-11-03 — ✅ Pointer auto-hide switch + Wayland touch fix MERGED to main (`fix/wayland-cursor-touch`, fast-forward, user device-proven on the Elite)
 
 > **User decision (11-03 ~23:30 local):** "installed and works, merge to main".

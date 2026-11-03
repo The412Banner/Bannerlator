@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — 🧩 Mod manager: REFramework + Special K per game, downloaded from our releases (`feat/mod-manager`, building)
+- **Why / user decisions (11-03):** instead of one checkbox per mod, a Mods button in game settings opens a small dialog to switch REFramework and Special K (and later mods) per game; the in-game drawer's REFramework button becomes Mods to show/hide each mod's menu. Special K is downloaded from our fork's release, and REFramework too (no longer bundled). Special K for 64-bit and 32-bit games.
+- **Releases used:** The412Banner/REFramework `arm64ec-r1` (dinput8.dll fcfa693d…) and The412Banner/SpecialK `arm64ec-r1` (SpecialK64.dll a3a7991f…, SpecialK32.dll 7b2b7274…; tag → 883779be, published + verified 11-03).
+- **Built:** ce4aeef1 — core.GameMods (mods, release URLs + sha256, supported EXEs, PE machine + imports, DLL name, marker-based place/remove), core.GameModCache (download + size/sha256 check, cached by sha256), settings Mods button + dialog (ShortcutsScreen, outside the giant composable per the D8 lesson), drawer Mods dialog (XServerDrawer/State: activeMods, onModMenu), activity applyGameModsEnv + toggleModMenu (Insert / Ctrl+Shift+Backspace). assets/reframework removed; README credits Special K.
+- **Local checks:** core classes compile with javac -Xlint:all; 49/49 harness checks (DLL name choice, overrides, supports, PE machine/imports incl. real re2.exe → x64/dxgi.dll and prototypef.exe → x86/d3d9.dll, place/update/rename/remove, game's own file untouched, REFramework one-field marker). Kotlin tests updated (GameModsTest new, ReFrameworkTest trimmed); CI does not run them.
+- **Next:** CI → stage pubg APK → install (user: "finish building everything and testing it … device is yours") → device tests: settings dialog, downloads, RE2 (REFramework + Special K), W3 og (Special K), Prototype (32-bit Special K as d3d9.dll), drawer Mods menu toggles.
+
 ## 2026-11-04 — ✅ UNCHARTED SSBO emulation MERGED to main (`fix/uncharted-ssbo-emulation` → main, fast-forward)
 - **User go:** "if bannerlator builds green merge to main" (no device test of this build first; the user proved the variable on the Pocket FIT A750, and the same code path logged and fixed MIO in run G).
 - **CI:** "CI Build (artifacts only)" run 41757948647 GREEN ×4 (headSha 0a00399e); skipped steps identical to the MIO build 41744421724 (cache hits, main-only saves).
@@ -1494,7 +1501,6 @@
 > - **Device:** fresh install on the `f3d3e4f4` main build, one container "p11-2 Arm v12" with God of War and DiRT Showdown; saves restored from the backup (GoW 7 slots, DiRT `ProgramData\Steam\elamigos\201700`) and confirmed in-game; the backup folders, old APK folders and today's scratch files were then deleted from Downloads (~2.7 GB). Kept: `Bannerlator-3.1.5/`, `Proton-Layers-Latest/`, `ngs-shots/`.
 > - **Open:** ptitSeb/box64#4528 (upstream); in-app updater should offer 3.1.5 over the installed vc 93 build.
 
-
 ## 2026-10-02 — 🖱️ X11 raw mouse through XInput 2 (`feat/x11-xinput2`, not merged)
 > Every Wine log on X11 says `x11drv_xinput2_init XInput 2.0 not available`: the Java X server had no XInputExtension, so games reading the mouse through raw input (WM_INPUT, usually mouse-look) got no movement. Wayland already sends relative motion for every pointer move. GameNative (PR #1084, #1354) and WinNative (a decompiled copy of an older GameNative) both have it; ported from GameNative (GPL-3.0).
 > - **`XInput2Extension`** (XI 2.2, opcode -109, events from 80, errors from MIN+40): GetExtensionVersion, XIGetClientPointer, XISelectEvents, XIQueryVersion, XIQueryDevice; BadImplementation for anything else. One master pointer, 7 buttons, two relative axes.
@@ -1655,7 +1661,6 @@
 > - **Steam updates past read-only files.** `preload/perms.c` + `opens.c` hooks: a refused write-open from the client's own processes gets the owner write bit and one retry (the client runs as the app's uid under proot `-i`, not root). Device-proven in DroidDeck 2026-09-26 (2,471 locked files, update finished No Error).
 > - **Compositor guards.** Cursor `w*h` in 64 bits; shm stride must cover `w*4`.
 > - Built by CI only; NOT device-tested here yet. Test: touchscreen on → Big Picture rows scroll under a finger; touchpad → hover + tap clicks; force a Steam app update over locked files; end a session mid-game and check no leftover `linuxfs` processes.
-
 
 ## 2026-09-25 — 🅿️🎮 **App Steam (second headless Steam launch option) — RECON DONE, PARKED by the user for another time**
 > Trigger: Discord said GameNative has a working "bionic Steam client". Checked their live repo (`utkarshdalal/GameNative` master `8ceac9b`): it is **headless** — Valve's Android-arm64 `libsteamclient.so`, logged in by their **closed-source** `libsteambootstrap.so` (source withheld, see their THIRD_PARTY_NOTICES), games reach it through Proton `lsteamclient` (one archive per Proton) + a `steam.exe` stand-in. First commit 2026-05-13; nothing taken from us there. (They did port our Rust depot download engine + DownloadSpeedConfig ratios on 2026-09-22, credited, GPL-3 — fine by us.)
@@ -2040,7 +2045,6 @@
 > - `PROOT_NO_SECCOMP` disables the accelerator, which otherwise hides syscalls from the tracer while debugging.
 >
 > CI run `35261996392`, headSha verified `ba0a5786`. This gate is *compiles*, nothing more — no rootfs exists yet, so nothing has been run on device.
-
 
 ## 2026-09-16 — Fix: a physical stick bound to mouse movement now moves the cursor (branch `fix/physical-lane-mouse-move`)
 
@@ -2796,7 +2800,6 @@
 > ```
 > i.e. a v3 client still gets the identical four formats and twelve modifiers (LINEAR, QCOM_COMPRESSED, INVALID) it got before, and a v4 client gets none of them and uses feedback instead.
 
-
 ## 2026-09-13 (later) — 🌊🖥️ **Wayland VRR: the refresh-rate vote now rides the surface that presents, plus a frame-rate hint on the zero-copy game layer** (`feat/wayland-vrr` `60c61b55`)
 > **The premise I was given did not hold, and the honest version is below.** The brief said `applyVrr()` returns early on Wayland because `xServerView == null`. It is not null: `setupUI()` builds an `XServerView` and `rootView.addView(xServerView)` runs in a Wayland session too (the compositor's SurfaceView is overlaid on top of it). So `applyVrr` never early-returned, `applyWindowPreferredRefreshRate()` and the drawer's `displayTargetHz` were already running, and on the Pocket FIT **refresh-rate matching on Wayland was already moving the panel**. Measured on the installed pre-release 4 (`abbe1028…`) before touching anything, container 7 + Half-Life 2 + Wayland, all foregrounded:
 > - 20:11:32 Auto + 60 cap → `refreshRate=60.000004`, `setFrameRate=(uid, frameRate)={10249, 60.00 Hz}`
@@ -3352,7 +3355,6 @@
 > - ⏭️ **To prove it on hardware:** DiRT Showdown capped to 30, LSFG Native at 3× or 4×, and watch the moment frame gen is switched on — the ghost/warp burst should be gone. `logcat` should show one `priming the input ring` line per arm and no more. The freeze fix cannot be provoked on demand; it is insurance, and its two log lines say when it fired.
 > - 📋 The same read-through produced a ranked backlog that is **not** built: the DLL's higher-quality shader chain is never loaded (we only ever use the performance one, with no switch), the adaptive "fill the panel" pacing is fully implemented and never turned on, the locked FPS cap defaults to 30 instead of panel ÷ multiplier, and Win-FG Native — the engine that needs no purchased DLL — is built and CI-green on its own branch but was never device-tested or merged.
 
-
 ## 2026-09-09 — 💾 **Save backups now carry the emulator's account id** (branch `feat/save-backup-emu-id` off main `366ff1ce`, CI run 34349693937)
 > Found by a user restore that "wasn't applying": the God of War save was in the container, byte-identical to the backup (md5 `0ffca462ac65` in the zip and on disk), and the game still offered only New Game. A cracked game's Steam emulator invents an account id and keeps it **in the prefix**; God of War names its save folder after that id and stamps the owning id INTO the save — uint32 LE at offset `0x20`, verified against all six folders on the device, where the dword matches the folder name every time — then refuses a save whose embedded id differs from the running one. Every emulator here rolls a **fresh random id when its file is missing**, which is what a rebuilt prefix looks like. That prefix had been rebuilt on 09-07, FLT rolled `76561199620875946`, and the game read an empty folder next to a perfect save. A scoped save backup was therefore only half a backup — and that is how one of the user's saves (`247303192`) became permanently unrecoverable.
 > - **One choke point, four surfaces.** Every backup path funnels into `GameSaveBackup.backupToFile`: the container ⋮ scope picker, the game ⋮ menu, the Save Manager's Custom tab, and `CustomSaveVault.snapshot` — the auto-backup on game exit, the one that runs unattended. Unscoped (`roots == null`) already swept identity by walking the whole profile; only the SCOPED paths missed it, which is all four per-game ones. So the fix is one line in the walk, not four screens.
@@ -3364,7 +3366,6 @@
 > - 🐞 Known cosmetic leftover: discarding a conflict deletes the staged `…/FLT` but leaves `AppData/Roaming` behind — two empty dirs, 14 KB, in `cacheDir`, swept by the next restore. No save data involved.
 > - ⏭️ Not closed: God of War was not launched after the test, so "the save appears in Load Game" still rests on this morning's manual run under the same id and the same save md5. One launch closes it end to end.
 
-
 ## 2026-09-08 — 🧭 **CHECKPOINT — session close. main `6d6c8898`, two features merged and device-proven**
 > Main build **34285033003 GREEN** (all 3 flavors, artifacts only) → staged `Bannerlator-main-presets-pubg.apk` sha `47b16b0d…`. `versionCode` still FROZEN at 82.
 > - **Merged today, newest first:** `6d6c8898` scoped preset editing (Container + shortcut preset editor rows, edits scoped to where you make them, ✎ CUSTOM badge) · `3bfcf374` move an installed Steam game between internal storage and the SD card. Revert either with `git revert -m 1 <sha>`.
@@ -3372,7 +3373,6 @@
 > - **Four bugs found by testing, not review:** `size_bytes` overwritten with the on-disk total (caught across three DB snapshots); Import sitting lower than its five neighbours (an `IconButton`'s 48dp touch target vs a bare `Icon`); a scoped edit reaching only memory while the badge claimed it was saved; and my own unproven claim that Verify re-downloads everything — corrected in this log to an open question.
 > - 🔎 **Housekeeping:** 6.5 GB of `wine_debug.log` cleared (39→45 GB free) after finding one Brawlhalla session had written 1.5 GB — 99 % of it a single repeated `RtlInitializeExtendedContext2` trace line. It scales with how many exceptions a title throws, so Source games log 1-7 MB while Brawlhalla and the Denuvo titles log gigabytes. Same setting, thousandfold difference. A known-good `Lossless.dll` was backed up to `Downloads/BL-fg-dll/` ahead of the announced Lossless Scaling algorithm rewrite (our LSFG Native reads its shaders out of that file).
 > - ⏭️ **Open, none blocking:** (1) does Verify really re-download everything on an old install, or only rewrite files — settle it by verifying intact Brawlhalla on a fast connection and watching actual transfer; (2) no cap on log size — one session can write a gigabyte; (3) community configs export presets **by name**, so a shared config silently loses a customisation — part of the wider pass over what config export records before the next stable.
-
 
 ## 2026-09-08 — 🎛️ **Preset editing in Container & game-shortcut settings, scoped to where you edit** (branch `feat/scoped-preset-editing`, CI run 34282194369)
 > App Settings has had the six preset actions since `4e105be8`; the Container and shortcut screens only offered a dropdown, so changing a preset meant backing all the way out. Both screens now carry the full row — **add · edit · duplicate · delete · export · import** — with labels under the icons, since those screens are busier than Settings and are reached while configuring one specific game.
@@ -3384,7 +3384,6 @@
 > - ✅ **DEVICE-PROVEN end to end** (driven over the root bridge, user state backed up and md5-verified restored). Badge, per-scope wording and Reset offered correctly; **inheritance** — a game with no copy of its own showed the container's value; **isolation** — a game edit left the container at `CALLRET=1` and a sibling game with no copy at all; **persistence** — value survived backing out without the screen's OK; and **the launch**: baseline `BOX64_DYNAREC_FASTNAN=1` from the live process, then after a UI edit `FASTNAN=0` with every other variable unchanged, game running at 408 MB resident.
 > - ⏭️ Owed before the next stable: community configs export presets **by name**, so a shared config would silently lose a customisation — part of the wider pass over what config export records.
 
-
 ## 2026-09-08 — 📦 **Move an installed Steam game between internal storage and the SD card** (branch `feat/move-game-storage` off main `8f4cff74`, CI run 34225201748)
 > The SD option only existed at download time; a game already on disk could not change sides without a full re-download. New gear-menu action on the Steam detail page moves it **either way** — "Move to SD card" / "Move to internal storage", whichever side it isn't on — keeping everything that hangs off the install location.
 > - **What actually points at the folder** is only two things: the `steam_games.install_dir` column and each shortcut's `Exec=` line. `SteamCloudSavePaths.resolveContainer` resolves a game's container by matching one against the other, so they have to move together or cloud saves break (the class of bug `595f1c89` fixed for SD downloads). `MoveGameStorage` rewrites both, or neither.
@@ -3395,7 +3394,6 @@
 > - ✅ **DEVICE-PROVEN BOTH DIRECTIONS 2026-09-08, then MERGED.** Counter-Strike: Source internal→SD (3,174 files exact) launched **secure/VAC** through SteamLite from the card — the `steamapps\common` symlink re-pointed itself on launch as designed — rendered 1280x720@144 and wrote its config back to the card; a Verify-integrity on the SD-resident install worked too. Brawlhalla did the full round trip internal→SD→internal **byte-perfect** (7,646 files / 1,552,614,379 B each way), came back with its `Exec=` line byte-identical to the original `Z:\steam_games\…`, launched secure and played **online**. Across five moves the container drive map never changed (`D:` `E:` `F:`) — an existing volume mapping is reused, never a fresh letter — and the app-side achievement cache was untouched (65 rows / 1 unlocked, before and after).
 > - Two fixes landed after that first pass and were re-proven on device: verify now compares **per file** (path→size) instead of totals, and `size_bytes` keeps the row's manifest value instead of being overwritten with the folder-walk total — caught in the act across three DB snapshots (1,520,730,194 → 1,552,614,379 → corrected), then confirmed fixed (r3 wrote 1,520,730,194).
 > - Unrelated finds during testing, both owed their own fix: **a Verify on CS:S rewrote ~4.89 GB to repair a ~1 GB gap — cause UNPROVEN** (a fresh mtime shows a file was written, not transferred; `clearDepotResumeState` documents the opposite intent, keeping good files. Network bytes were never measured. To settle: Verify intact Brawlhalla, 7,646 files / 1,552,614,379 B, and watch actual transfer), and the **wine-debug `+seh` log storm** (one Brawlhalla session wrote 1.5 GB; 99 % of it a single repeated `RtlInitializeExtendedContext2` trace line — it scales with how many exceptions a title throws, so Source games log 1-7 MB while Brawlhalla/Denuvo titles log gigabytes). 6.5 GB of logs cleared; the app-side per-class size cap is still unbuilt.
-
 
 ## 2026-09-07 — 🎨 **Screen Effect "Looks" — one-tap presets in the in-game drawer** (branch `feat/screen-effect-looks` off main `c0dd2ee5`)
 > A row of named chips heading the Graphics tab's **Screen Effects** section on BOTH renderer paths, driven by one shared table (`ui/ScreenEffectLooks.kt`): Off · Game Clarity · Vivid · Cinematic · Competitive · Adaptive Sharpen · Filmic · Arcade · Retro CRT · Upscale Sharp · Pixel Clean · Anime Edge. One tap fans out to every applier the values belong to — the screen-effects callback, the sharpening callback (`pushSgsrUpdate` on GL / `onCasApply` on Vulkan), `onDebandApply`, and the scaling picker only for the two Looks that name a mode — and moves the sliders/toggles with it. Nothing new is rendered; a Look is just named values for controls the compositor already has.
@@ -4770,8 +4768,6 @@
 
 > Cutting current `main` as **2.9.3 stable** (feature release over 2.9.2). Headline = **Save Manager v2** (three-tier Cloud/Library/Container, auto-Collect on exit + before uninstall, cloud honesty, universal custom-game vault, LOCAL_ONLY visibility, Steam badge/auto-connect). Plus **lsfg-vk GameNative-parity defaults** (perf_mode ON, flow_scale 0.80, per-container Auto-enable at launch ON) and the **perf-HUD dual-API** hardening. All app-side, no ImageFS reinstall; signed with the committed testkey (in-place update safe). Version bump `build.gradle` 54→55 / 2.9.2→2.9.3; README updated (version table, contents, "What's New in 2.9.3"); NEW in-depth user doc `docs/save-manager-guide.md` (305 lines, verified against code) linked from the release + README. Release notes open with a milestone banner (2,000 Discord members + 400k downloads). Cut via `release.yml` (Nightly Manual Release Build) → all 3 flavors + auto-`update.json`, make_latest. ⚠️ Corrected a wrong "App Settings/in-game drawer" entry-point claim before publish (real entries: side menu Library, Steam store, game ⋮/detail).
 
-
-
 ## 2026-08-01 — 🎞️🏁 **lsfg-vk: adopt GameNative's proven defaults — MERGED to main** (`--no-ff` merge `62935d89`; built commit `fe19fd0a`; main build run `30730493963` @ `62935d89` green, APK `bannerlator-main-lsfg-defaults-62935d8-standard.apk` sha256 `d0f52139`)
 
 > **MERGED to main by explicit user directive (revert point: tag `checkpoint-pre-lsfg-gamenative-defaults-20260801` → `b7ac9af8`; `git revert -m 1 62935d89` to undo). ⚠️ Merged WITHOUT an on-device pass — recommendation was to device-test first; user chose to merge. Compiles-green only.** Companion audit (`reference_bannerlator_lsfg_hook_and_interference`): our layer injection/hook is correct + right-timed (== GameNative, different mechanism), gestures/HUDs do NOT interfere; smoothness levers are compositor resample (renderer choice + VRR match) + not stacking ReShade with lsfg. The separate 1-commit branch `feat/lsfg-perf-mode-under-multiplier` (`d62f4f0`, in-game toggle relocation) was DELETED at user request (recoverable from that SHA).
@@ -4792,8 +4788,6 @@
 > **Checklist results (all ✅):** §1 cloud core (Download→Apply→load in-game, Sync-to-Cloud combo, incremental) · §2 cloud honesty (HL2 retains; FlatOut 2 "backed up locally") · §3 status states · §4 auto-collect on exit + toggle actually gates it · §5 custom vault (manual both layouts + auto-snapshot on exit, verified xuser vs steamuser layouts) · §6 Custom tab + restore-into-picked-container ("Restored 2 files to P11 GE Arm", files written to the container) · §7 drawer · §8 path separation (Steam appId `SteamCloudSaves/<id>` vs custom name `game saves/<Game>/`, no overlap) · §9 toggle alerts · §10 badge/auto-connect. Revert if ever needed: `git revert -m 1 96239931`. ⚠️ Known cosmetic (not a blocker): HL2 Sync-to-Cloud re-uploads 2 `config.cfg` path-variants each time (the round-trip path-format quirk; real saves skip correctly as up-to-date).
 >
 > ✅ **Build-from-main GREEN** (run `30727170203`, all 3 flavors) — the merge compiles + packages clean from main. 📄 Feature-guide doc page published (app-styled artifact + saved to device as `Bannerlator-Save-Manager-Guide.html`). Clean stopping point — nothing pending. Optional next: cut a versioned release (vc bump + tag + update.json), or tidy the config-round-trip cosmetic.
-
-
 
 > A large save-management arc, built + device-proven in pieces on ONE branch, held for a full on-device sweep before merging to main. The Steam Cloud save engine itself already merged earlier (three-tier Cloud/Library/Container, incremental additive upload, parallel transfer, the 2-combo Sync-from/to-Cloud UI, the Save Manager screen + two entry points). THIS branch adds the rest:
 >
@@ -5338,7 +5332,6 @@
 >
 > **Ready to merge to `main`. vc stays 49, no release cut.** Existing containers keep their per-game `G:`/`I:`/`J:` drives by design — growth stops, no migration.
 
-
 > **Bug:** every game imported from SD/USB claimed its own drive letter, and the pool is ~24, so a large SD library eventually could not import at all. `resolveWindowsPath` mounted the exe's **own parent folder**, and `bestDriveMatch` only reuses a drive that is an **ancestor** of the new path — one game's folder is never an ancestor of the next game's sibling folder.
 >
 > **🔑 DEVICE-PROVEN SCOPE CORRECTION (2026-07-24, from user screenshots + live dumps): internal storage was NEVER affected, and the user's "it happens on internal too" report did not hold up.** Container-6 dump: `F:`→`/storage/emulated/0` shared by **five** internal games (GTA V, Titanfall 2, The Crew 2, FlatOut 2, God of War — every `Exec` line reads `F:\Winlator\Games\…`), with per-game drives existing **only** for the two SD games. God of War was added live mid-session as the test and correctly reused `F:`, creating nothing. Why it looked otherwise: Container-6 happens to show **5 games and 5 drive rows**, and the Drives tab truncates `G:` and `I:` to the same `…/Winlator/Games/` text, so it reads as one-per-game when it isn't.
@@ -5386,7 +5379,6 @@
 >
 > **Built + staged, NOT device-verified.** CI green ×3 flavours (`29965841707`). Staged `/sdcard/Download/bannerlator-randr-ui-vc49-e11b0dd-e11b0dd-standard.apk`, sha256 `61232619…` host/device match, `versionCode='49'` confirmed by aapt in the APK. Next: launch a game with a refresh toggle, confirm the dropdown lists 144/120/90/60, then set a per-game cap and confirm it truncates (relaunch — engines read modes only at startup). Watch logcat for `RandR advertising refresh rates [...]`.
 
-
 ## 2026-07-22 — ⏱️ Frame-gen **present-path stall removed** — wait on the dispatch's own fence, not the whole queue (branch `feat/model3.1-layer`, vc stays 48)
 
 > **The layer called `vkQueueWaitIdle(computeQueue())` once per presented frame.** In single-device mode that queue is also the *application's* render queue on any GPU exposing a single universal queue family — the normal mobile/Adreno layout — so every present was draining the game's own in-flight work, not just the interpolation dispatch. **This is the last piece of clintOnSky's PR #96 still wanted;** its Xiaomi/HyperOS half already landed separately as `24d64ea0`, and its flow-preset chips were declined in favour of the continuous slider.
@@ -5400,7 +5392,6 @@
 > **⚠️ Every frame-gen number recorded so far was measured with this stall in place** — the whole parked 4-model sweep (Default 92.7 / Traced 97.5 / V2 96.5 / FSR3 134.7 fps). All four models are expected to move. **If FSR3 rises the least, part of its +45% lead was simply spending less time in the shared stall.** ⚠️ Precision caveat: the old wait drained `computeQueue()`, and whether that *is* the game's queue depends on the single-universal-queue-family assumption — normal on Adreno, still unconfirmed on this device.
 >
 > **Built:** fork `The412Banner/bionic-fg` `35e39f3` on `feat/model3.1-block-flow`, layer CI `29950660966` green, `.so` md5 `2aae71fe` / 6,573,808 B (was `238d2f45` / 6,572,168). App `d6838323`, CI `29950801448` green ×3 flavours; the size change moves the `versionCode:size` staging stamp, so the layer re-stages on device. Bundled layer **verified md5 `2aae71fe` inside the staged APK**, closing the "bundled layer never reached the device" failure mode. ⚠️ **NOT yet device-verified.** Next: re-run the parked sweep against the with-stall table, then the lateral-motion quality test neither model 3 nor model 4 has had.
-
 
 ## 2026-07-22 — 🎞️ bionic-fg **model 4 "FSR3+"** — block-grid optical flow, sub-pixel, true bidirectional (branch `feat/model3.1-layer`, vc stays 48)
 
@@ -5421,7 +5412,6 @@
 > **App side:** 5th chip **"FSR3+"** in the in-game Controls drawer (`FgModelButtons`), new `frame_generation_model_fsr3_v2` string + entry in the container-detail dropdown. Registry grew 70 → 72 blobs (`shader_70` = `of3_flow_m4`, `shader_71` = `of3_expand_m4`); shaders 66-69 byte-identical. `tools/splice_spv.py` added to the fork so regenerating embedded SPIR-V is reproducible instead of a scratch script.
 >
 > **Verified:** all six model-3/4 shaders glslang-clean (Vulkan 1.1 / SPIR-V 1.3), all 72 blobs parse to an exact `OpFunctionEnd`, `framegen_context`/`session`/`vk_impl` pass `g++ -fsyntax-only` against real Vulkan headers, layer CI green (`.so` md5 `238d2f45`, 6,572,168 B, model-4 strings confirmed present in the binary). ⚠️ **NOT yet device-verified — no visual or perf result exists for model 4 yet.** The test that matters is the one model 3 never had: **fast lateral motion (tight corner, trackside fencing/posts) and occlusion edges**, model 3 vs model 4 back-to-back in the same scene.
-
 
 ## 2026-07-21 — 📖 Graphics wrapper & driver selection guide `docs/graphics-wrappers-guide.md` (`41d5c706`)
 
@@ -7476,9 +7466,7 @@ auto-VRR and a future manual refresh-rate picker will work here.
 'Auto (match FPS)' + manual snap-to-supported-modes (60/90/120/144 auto-detected via getSupportedModes); Auto
 greys the slider; whole control greys on single-mode/pre-A11 devices. Same `preferredRefreshRate` lever.
 
-
 **Clear-path verified (test #3b):** toggling "Match refresh rate to FPS" OFF returned the panel 144 Hz (activeMode 60→144, both votes restored to 144). So VRR does the full round trip — drops to the cap when on, restores max when off. Also verified the cap-dependency: limiter OFF + match ON (uncapped) → panel returns to 144 (VRR only acts while capping). All 4 states confirmed {ON+match→60, ON+nomatch→144, OFF+match→144, incapable→greyed}. **VRR comprehensively verified and ready to merge.**
-
 
 ---
 
@@ -9858,7 +9846,6 @@ Resume state:
 
 Resume recipe: launch GL container xuser-3 -> AIO DX11 cube -> enable perf HUD -> State A Native OFF (dwell ~30s, 3+ samples) -> State B Native ON (toggle in drawer, dwell ~30s, same samples). Sample {`/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage`, `gpuclk`, `/sys/class/power_supply/battery/current_now` uA, thermal_zone temp, displayed FPS}. Confirm overlay via dumpsys SDE pipe table (ON: game AHB DEVICE/DEVICE on SDE pipe + GPU_TARGET empty; OFF: base SurfaceView DEVICE/DEVICE, no game AHB). VERDICT: ON lower GPU% AND power at equal FPS -> portrait worth productionizing; flat/worse -> drop portrait, headline the free landscape-native win.
 
-
 ## 🔴 STEAM DOWNLOAD FIX (2026-07-03) — LogonSessionReplaced regression on rebuilt stack (#1+#2+#4). Branch `feat/steam-goldberg-patcher`.
 **Symptom:** After a successful sign-in, Steam game downloads fail on the detail page: "Download failed: Steam session not ready — sign in again or retry in a moment" (device: HL2 appId 220, davidroethlein@comcast.net). Foreground-service notification stuck at "Connecting to Steam…".
 
@@ -9884,7 +9871,6 @@ Resume recipe: launch GL container xuser-3 -> AIO DX11 cube -> enable perf HUD -
 
 **Status:** ✅ implemented + committed `c72d943` (The412Banner) + pushed `feat/steam-goldberg-patcher`. CI is `workflow_dispatch` (not on-push) → manually dispatched **CI Build (artifacts only) run `28685150972`** on sha c72d943 (building, ~16min). Key files: `SteamRepository.java` (single-flight guard `loggingOn`/`logonStartedAt`/`lastSelfLogonAt`, self-replace branch in onLoggedOn/onLoggedOff/onDisconnected, `getLastSessionStatus()`), `SteamDepotDownloader.kt` (dlog `lastSessionStatus` on ensureLoggedIn-fail).
 **NEXT (device-test once green):** install APK, download HL2 (appId 220) end-to-end. Pass = NO `Logged off: LogonSessionReplaced` teardown in logcat + download proceeds past manifest. If it still fails, `steam_debug.txt` now prints `Session status at failure: <reason>`. Deferred #3 (library sync off pump thread) + #5 (FGS notification) remain.
-
 
 ## 🛡️ STEAM SESSION HARDENING PLAN (2026-07-03) — adopt 5 GameNative/Pluvia patterns
 **Why:** ~7 distinct root causes for "downloads fail after login" in ~2wk = architectural, not one bug. Our rebuilt `SteamRepository` models session state as hand-flipped volatile booleans + runs heavy work on the callback pump → every new path is a new race. Today's fix (`c72d943`) plugs ONE hole; it does NOT give us the properties that make GameNative solid.
@@ -9944,7 +9930,6 @@ wlroots-on-Android spike = **GO** (device-proven: wlroots + deps cross-compile, 
 
 **Status:** code complete, inspection-only — pushing to CI now. **NEXT (device-test once green):** verify the chip lights up, then drag-select in an RTS, long-press RMB, pinch-zoom. Highest-risk untested area = drag-select vs the InputControls overlay pointer-id case.
 
-
 ## 🎞️ BIONIC-FG SHADER POOL + MODELS 2/3 BUNDLED (2026-07-22) — built off latest main, NOT device-tested
 **Why:** the frame-gen layer we ship has been `9136405c` (2026-06-21) — pre-dating every model built since. Models 1, 2 and 3 have never been in a shipped `.so`; the pooled GameScopeVK/V2 shaders have never reached a device.
 
@@ -9965,7 +9950,6 @@ wlroots-on-Android spike = **GO** (device-proven: wlroots + deps cross-compile, 
 4. **model 3** — known deviations (subgroup-free GLSL, 3×3/±3 search, no sub-pixel): perf is the risk, not correctness.
 
 Select via `conf.toml` or `BIONIC_FG_MODEL`. Bundling (rather than hand-injecting) sidesteps the `ImageFsInstaller.installBionicFgLayer` clobber, which re-copies the bundled asset over any manual drop whenever sizes differ.
-
 
 ## 🎞️ BIONIC-FG SHADER POOL + 4 MODELS — ✅ MERGED TO MAIN `763f46ed` (2026-07-22), DEVICE-PROVEN
 **versionCode STAYS 48.** Default behaviour unchanged (model 0). Branch `feat/bionic-fg-pool-on-main` merged --no-ff; final CI `29889458926` green on all 3 flavours.
@@ -10037,7 +10021,6 @@ A volume reported by *any* source is **always** emitted. When its root is unread
 
 **▶️ NEXT SESSION (user asked to discuss at work): the other 12 SAF call sites.** `FileUtils.getFilePathFromUriUsingSAF:583` still hardcodes `/mnt/media_rw/<uuid>/` for every non-primary volume. Container drives no longer reaches it, but these still do: Winlator-folder setting (`SettingsFragment.java:176,192,765,788`, `SettingsScreen.kt:146,155,259,269`), box64 presets (`Box64PresetManager.java:330`), FEXCore presets (`FEXCorePresetManager.java:218`), input-control profiles (`InputControlsManager.java:194`), shortcuts folder (`ShortcutsScreen.kt:5119`), log dir (`LogView.java:199`), CDS payload (`ui/cds/payload:533`). **Two candidate directions to weigh:** (A) fix the helper itself — resolve the SAF volume id via `StorageManager` to its real directory, fall back to `/storage/<id>`, handle an empty relpath so there's no trailing slash; one function, fixes every caller at once. (B) migrate the remaining call sites to `InAppFilePicker` like drives, retiring the helper — more churn, but removes the URI→path mapping entirely and makes every picker consistent. (A) and (B) aren't exclusive: (A) is the cheap safety net, (B) the end state.
 
-
 ## 📱 XIAOMI/HYPEROS FRAME-GEN FIX — ✅ MERGED TO MAIN `6d66a9b2` (2026-07-22), COMMUNITY-CONFIRMED
 **versionCode stays 48.** Gated to Xiaomi only; every other device is untouched (verified no-op on AYANEO).
 
@@ -10050,7 +10033,6 @@ A volume reported by *any* source is **always** emitted. When its root is unread
 **✅ CONFIRMED ON REAL HARDWARE by @Devaspe (HyperOS device): bionic-fg works, then lsfg-vk confirmed after.** Both layers load. This validates clintOnSky's entire diagnosis.
 
 **Credits (for the release notes):** **@clintOnSky** — diagnosis + fix, PR #96, code contributor (his PR also carries a native present-path fix, not yet landed). **@Shalaykin1** — issue **#40 "Fix framegeneration on HyperOS 3"** ("HyperOS 2 works normally, HyperOS 3 not working, works only in GameHub app" — GameHub ships its own imagefs, hence no symlink). **@Devaspe** — device confirmation on HyperOS. ⚠️ #40 is still CLOSED and its reporter has not been told it's fixed. Also possibly the same bug: **@EddyGameDev** #58 ("tried bionic and LSFG, neither want to work" = the exact both-layers signature, device unstated). **NOT this bug:** @132edsaz #43 (Galaxy A14 / Dimensity 700 — MediaTek/Mali, no libjpeg-hyper).
-
 
 ---
 

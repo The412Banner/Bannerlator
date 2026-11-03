@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — 🖱️ Drawer "Auto-hide Cursor" switch + "Hide After (ms)"; off ignores the game's hide in Wayland (`fix/wayland-cursor-touch` 3295e73c, CI running, NOT device-tested)
+
+> **Why:** the user's test of fc021e29 failed — in RE2 (Wayland, REFramework menu open, pad + touch) the pointer still disappeared and touching never brought it back. Most likely the game itself asks for no cursor once the pad is used (RE Engine switches its prompts A ↔ Space), and Wayland treated that as final; fc021e29 only changed the controller timer. User: "in the side menu under the mouse tab can we put a toggle there to autohide the mouse or not … along with ms settings on the delay"; decision: "yes go ahead, also ignore the game's hide".
+>
+> **Built (`3295e73c`):**
+> - Drawer Controls > Mouse > Mouse & Cursor: chip **"Auto-hide Cursor"** (default on, global pref `cursor_autohide`); while on, slider **"Hide After (ms)"** 500–10000, 500 ms steps (`cursor_autohide_ms`, default 2500 = old fixed delay). No help text added. Live + persisted (`onCursorAutoHideChange` → `onDrawerCursorAutoHideChange` → `applyCursorAutoHidePrefs(true)`).
+> - Off: no idle hide, no controller rule, and in **Wayland** the pointer also stays up when the game hides its cursor (`guestHides = waylandGuestHidesCursor && cursorAutoHide`). Pointer lock still hides it.
+> - **X11 not changed for the game's own hide** (the three renderers draw the guest cursor and skip it when invisible; overriding needs renderer + native work). In X11, off only stops the idle/controller hiding.
+> - `BANNER_CURSOR_AUTOHIDE=0` still forces off. Idle delay is now the field `cursorIdleMs` for both modes.
+> - Files: XServerDisplayActivity.java, ui/XServerDrawer.kt, ui/XServerDrawerState.kt.
+>
+> **CI:** CI Build (artifacts only) run **41577375212** (headSha 3295e73c == pushed) — running.
+>
+> **Device test (Elite, RE2 Wayland):** drawer → Controls → Mouse → Auto-hide Cursor off → pad + touch: pointer stays; on + slider: hides after the set time.
+
 ## 2026-11-03 — 🖱️ Wayland pointer: a finger always shows it, 250 ms pad window, BANNER_CURSOR_AUTOHIDE=0 (`fix/wayland-cursor-touch`, CI green ×4, staged, NOT device-tested)
 
 > **Why:** on the Pocket FIT Elite (RE2 DX12 + REFramework test build, Wayland session) the user moved the pointer by touch while also using the controller and the pointer kept vanishing. In Wayland mode `waylandCursorPoke` hid the overlay whenever pad input came in the last `WAYLAND_CURSOR_PAD_MS` = 1200 ms; X11 already used 250 ms and has a `BANNER_CURSOR_AUTOHIDE=0` off switch, Wayland had neither. User: "go ahead with the bannerlator cursor fix".

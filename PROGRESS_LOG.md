@@ -12,7 +12,8 @@
 > - In-game drawer rail: tools-icon button above Task Manager while REFramework is on for the session; closes the drawer and sends Insert (XKeycode.KEY_INSERT press, 60 ms, release) via `xServer.injectKeyPress` (reaches Wayland through the X server's InputSink).
 > - README credits praydog.
 >
-> **CI:** CI Build (artifacts only) run **41579661852** (headSha 5a9605f0 == pushed) — running.
+> **CI:** CI Build (artifacts only) run **41579661852** (headSha 5a9605f0) — **FAILED** ×4 at dexing: D8 (R8 8.8.18) `NullPointerException: Cannot read field "b"…` in DexArchiveBuilder while processing `ShortcutsScreenKt.ShortcutSettingsDialogScreen` (Kotlin + Java compiled fine). Cause: the giant settings composable with the switch's remember'd state / writer / row inline.
+> **Fix `6ae5d6eb`:** state = small holder `ReFrameworkGameSetting` (+ `rememberReFrameworkGameSetting`), row = own composable `ReFrameworkGameRow`; the big function gains three calls. CI run **41580538662** (headSha 6ae5d6eb == pushed) — running.
 >
 > **Device test (Elite, RE2):** switch on → launch → session log line, DLL + marker in the game folder, menu closed at start, drawer button opens/closes it; switch off → our DLL removed. Note: RE2's folder already holds our DLL from the manual test (same sha) with no marker → install adopts it ("already in place") and writes the marker; the manual `envVars=WINEDLLOVERRIDES=dinput8=n,b` in the RE2 shortcut stays the user's entry (kept).
 

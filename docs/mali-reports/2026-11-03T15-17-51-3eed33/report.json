@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-03T15-17-51-3eed33",
+  "created": "2026-11-03T15:17:51.586Z",
+  "ip_hash": "MNeTC3vBHn",
+  "fields": {
+    "reporter_name": "Leon",
+    "device_model": "Samsung s26 ultra",
+    "soc": "Snapdragon 8 Elite Gen 5",
+    "gpu": "Adreno 840",
+    "android": "Android 16 / One UI 9.0",
+    "ram": "12",
+    "app_version": "6.3.1",
+    "install_source": "GitHub sürümü",
+    "game_name": "Resident evil 4",
+    "steam_appid": "",
+    "store": "Diğer",
+    "exe": "",
+    "symptom": "Çalışıyor ama FPS çok düşük.",
+    "when": "Sadece belirli bir alanda/sahnede",
+    "graphics_driver": "",
+    "dx_wrapper": "",
+    "dxvk": "",
+    "proton": "",
+    "box64": "",
+    "resolution": "",
+    "framegen": "",
+    "repro": "",
+    "tried": ""
+  },
+  "logs": []
+}

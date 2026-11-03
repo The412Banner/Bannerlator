@@ -12,6 +12,7 @@
 - Run 2 (07:15:36): STUCK — `Attempting to hook 0x141f87710` (via.Camera.get_ViewMatrix) never logged "Hooked"; no first frame in 77 s; MemAvailable 4.9 GB → NOT memory pressure. Run 1 hooked the same address in <1 ms. Evidence run2-log.txt/run2-end.png. Launching run 3.
 - Run 3 (07:17:48): STUCK at `Attempting to hook 0x142881230` (via.render.layer.Overlay.Update, 2nd hook), MemAvailable 5.1 GB. Tally Pocket FIT: clean 1, stuck 2. All stuck hooks ever = per-frame render functions. Launching run 4.
 - Run 4 (07:19:43): CLEAN (first frame 07:19:54.96, 19 hooks). Tally: clean 2, stuck 2. Launching run 5.
+- Run 5 (07:20:22): CLEAN. FINAL Pocket FIT (16 GB, 6ae5d6eb, feature ON, same DLL c675c1f2): 5 launches = 3 clean (1,4,5) + 2 stuck (2 get_ViewMatrix, 3 Overlay.Update); RAM 4.9–7 GB free during stuck runs → memory NOT the cause. Insert/Down via Android key and winhandler never reach the game window after a clean start (run 1). Test over 07:21, Bannerlator stopped, Termux in front. Next: read safetyhook InlineHook/trap_threads in the fork to propose the hang fix; keyboard path = separate Bannerlator Wayland issue.
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

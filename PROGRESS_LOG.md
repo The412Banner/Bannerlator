@@ -56,6 +56,7 @@
 - Freeze-fix build 37831bfc CI-GREEN (run 41677506877, all steps success, no warnings in FunctionHook.cpp/Arm64EC.hpp). DLL sha256 fcfa693d… (has "each inline hook gets its own trampoline memory", combo + key fallback strings) staged /sdcard/Download/REFramework-hook-freeze-37831bfc/; hand-placed in RE2 folder; previous 2ee55772 DLL backed up bannerlator-backup-20261103/dinput8.dll.2ee55772-pocketfit. Running batch F-37831bfc runs 1-10.
 - batch 37831bfc run 1: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
 - batch 37831bfc run 2: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
+- batch 37831bfc run 3: launching (RESUME: endrun.sh + Termux front; results so far in /sdcard/Download/re2-test/F-37831bfc/summary.txt)
 
 ## 2026-11-03 — ⏸️ REFramework work moves to the 16 GB handheld (`feat/reframework` 6ae5d6eb, NOT merged)
 - **Why:** on the 8 GB Pocket FIT Elite every RE2 launch pushes RAM to 91–93 % and Android closes Termux; the user is moving the game to a 16 GB handheld to continue.

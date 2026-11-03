@@ -33,6 +33,7 @@
 - SK batch both883 run 2: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
 - SK batch both883 run 3: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
 - SK batch both883 run 4: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
+- SK batch both883 run 5: launching (RESUME: endrun.sh + Termux front; restore RE2 per specialk-arm64ec memory; results /sdcard/Download/sk-test/batch-both883/summary.txt)
 
 ## 2026-11-03 — ▶️ REFramework test resumes on the 16 GB Pocket FIT (`feat/reframework` 6ae5d6eb, testing)
 - **Why:** continue the Elite tests with enough RAM (Pocket FIT MemTotal 15.6 GB, ~9.9 GB free before the run).

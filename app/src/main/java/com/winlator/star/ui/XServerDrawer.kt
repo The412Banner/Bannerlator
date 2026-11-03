@@ -3985,6 +3985,7 @@ internal fun ControlsContent(
     val initHaptics by XServerDialogState.hapticsEnabled.collectAsState()
 
     val moveCursorToTouch by state.moveCursorToTouchpoint.collectAsState()
+    val cursorAutoHide by state.cursorAutoHide.collectAsState()
     val isRelativeMouse by state.isRelativeMouseMovement.collectAsState()
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val isMouseDisabled by state.isMouseDisabled.collectAsState()
@@ -4149,9 +4150,24 @@ internal fun ControlsContent(
                     ToggleChipItem("Disable Mouse", isMouseDisabled) {
                         state.onDisableMouse?.run()
                     },
+                    ToggleChipItem("Auto-hide Cursor", cursorAutoHide) {
+                        state.setCursorAutoHide(it); state.onCursorAutoHideChange?.run()
+                    },
                 ),
                 perRow = 3
             )
+
+            if (cursorAutoHide) {
+                val initHideMs by state.cursorAutoHideMs.collectAsState()
+                var hideMs by remember(initHideMs) { mutableIntStateOf(initHideMs) }
+                IntSlider("Hide After (ms)", hideMs, 500..10000,
+                    onValueChange = { hideMs = it },
+                    onValueChangeFinished = {
+                        state.setCursorAutoHideMs(hideMs); state.onCursorAutoHideChange?.run()
+                    },
+                    steps = 18
+                )
+            }
 
             if (isWaylandSession) {
                 Spacer(Modifier.height(4.dp))

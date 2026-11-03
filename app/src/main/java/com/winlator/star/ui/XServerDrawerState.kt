@@ -135,6 +135,13 @@ object XServerDrawerState {
     private val _moveCursorToTouchpoint  = MutableStateFlow(false)
     val moveCursorToTouchpoint: StateFlow<Boolean> = _moveCursorToTouchpoint
 
+    // Controls > Mouse: pointer auto-hide (idle / controller) and its idle delay. Off also shows the
+    // Wayland pointer when the game hides its cursor. Seeded from prefs, applied live.
+    private val _cursorAutoHide = MutableStateFlow(true)
+    val cursorAutoHide: StateFlow<Boolean> = _cursorAutoHide
+    private val _cursorAutoHideMs = MutableStateFlow(2500)
+    val cursorAutoHideMs: StateFlow<Int> = _cursorAutoHideMs
+
     // Per-gesture config, shown in the Controls > Mouse pane whenever Cursor to Touch is on. Each
     // gesture is independently switchable because which of them is welcome is per-game: an RTS wants
     // both, a mouse-look shooter wants neither. Seeded from prefs and pushed to TouchpadView live.
@@ -493,6 +500,9 @@ object XServerDrawerState {
     @JvmField var onLogs:                   Runnable? = null
     @JvmField var onExit:                   Runnable? = null
     @JvmField var onMoveCursorToTouchpoint: Runnable? = null
+    // Fired when the Auto-hide Cursor chip or its delay slider changes; the activity reads the flows,
+    // persists them and applies them to the live pointer.
+    @JvmField var onCursorAutoHideChange:   Runnable? = null
     // Fired when any gesture chip/slider under the Cursor to Touch cog changes; the activity reads
     // the flows above, persists them, and pushes the set to the live TouchpadView.
     @JvmField var onGestureConfigChange:    Runnable? = null
@@ -590,6 +600,10 @@ object XServerDrawerState {
     fun setWaylandHdrScreenCapable(v: Boolean)  { _waylandHdrScreenCapable.value = v }
     fun setIsMouseDisabled(v: Boolean)         { _isMouseDisabled.value = v }
     fun setMoveCursorToTouchpoint(v: Boolean)  { _moveCursorToTouchpoint.value = v }
+    fun setCursorAutoHide(v: Boolean)          { _cursorAutoHide.value = v }
+    fun setCursorAutoHideMs(v: Int)            { _cursorAutoHideMs.value = v }
+    fun getCursorAutoHideValue(): Boolean      = _cursorAutoHide.value
+    fun getCursorAutoHideMsValue(): Int        = _cursorAutoHideMs.value
     fun setGestureDragSelect(v: Boolean)          { _gestureDragSelect.value = v }
     fun setGestureLongPressRightClick(v: Boolean) { _gestureLongPressRightClick.value = v }
     fun setGestureLongPressMs(v: Int)             { _gestureLongPressMs.value = v }
@@ -753,6 +767,8 @@ object XServerDrawerState {
         _waylandHdrScreenCapable.value = true
         _isMouseDisabled.value = false
         _moveCursorToTouchpoint.value = false
+        _cursorAutoHide.value = true
+        _cursorAutoHideMs.value = 2500
         _gestureDragSelect.value = true
         _gestureLongPressRightClick.value = true
         _gestureLongPressMs.value = 300

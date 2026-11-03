@@ -1702,7 +1702,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // the player is looking at. A finger moving the pointer always shows it: with a pad in hand
     // (a menu by touch while the game takes the pad) the pad rule kept it hidden. The pad window
     // is the X11 one (250 ms; 1.2 s left the pointer hidden for a second after the pad).
-    private static final long WAYLAND_CURSOR_IDLE_MS = 2500L;   // no pointer motion -> hide
+    private static final long WAYLAND_CURSOR_IDLE_MS = 2500L;   // no pointer motion -> hide (default)
+    private volatile long cursorIdleMs = WAYLAND_CURSOR_IDLE_MS; // drawer: Controls > Mouse > Hide After
     private static final long WAYLAND_CURSOR_PAD_MS  = 250L;    // recent pad input -> keep hidden
     /** Session-scoped: on-screen controls live in InputControlsView, which has no activity handle. */
     public static volatile long waylandLastPadInputMs = 0L;
@@ -1756,8 +1757,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /**
      * Pointer motion happened. Show the overlay and re-arm the idle hide - unless a controller is
      * driving, in which case keep it hidden. {@code finger}: the motion came from a finger on the
-     * screen, which shows the pointer even while a pad is in use. BANNER_CURSOR_AUTOHIDE=0 turns
-     * the idle and pad rules off. Main thread only.
+     * screen, which shows the pointer even while a pad is in use. Auto-hide off (drawer Controls >
+     * Mouse, or BANNER_CURSOR_AUTOHIDE=0) turns the idle and pad rules off and keeps the pointer up
+     * when the game hides its cursor; only a pointer lock still hides it. Main thread only.
      */
     private void waylandCursorPoke(boolean finger) {
         if (waylandCursorView == null) return;
@@ -1767,14 +1769,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 && android.os.SystemClock.uptimeMillis() - waylandLastPadInputMs < WAYLAND_CURSOR_PAD_MS;
         // The guest asking for no pointer is authoritative - it is what X11 always had and Wayland
         // never did. The idle/controller rules below are only a fallback for when it wants one.
-        if (waylandGuestHidesCursor || padDriving || waylandPointerLocked) {
+        boolean guestHides = waylandGuestHidesCursor && cursorAutoHide;
+        if (guestHides || padDriving || waylandPointerLocked) {
             if (waylandCursorView.getVisibility() != View.GONE)
                 waylandCursorView.setVisibility(View.GONE);
             return;
         }
         if (waylandCursorView.getVisibility() != View.VISIBLE)
             waylandCursorView.setVisibility(View.VISIBLE);
-        if (cursorAutoHide) waylandCursorIdle.postDelayed(waylandCursorHideRunnable, WAYLAND_CURSOR_IDLE_MS);
+        if (cursorAutoHide) waylandCursorIdle.postDelayed(waylandCursorHideRunnable, cursorIdleMs);
     }
 
     // The X11 pointer gets the same idle / controller rules as the Wayland overlay above. X11 already
@@ -1819,7 +1822,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             return;
         }
         setX11CursorAutoHidden(false);
-        waylandCursorIdle.postDelayed(x11CursorHideRunnable, WAYLAND_CURSOR_IDLE_MS);
+        waylandCursorIdle.postDelayed(x11CursorHideRunnable, cursorIdleMs);
     }
 
     /**
@@ -2499,6 +2502,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // (state.reset() above zeroes it, so this has to come after).
         state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
         state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
+        state.setCursorAutoHide(preferences.getBoolean("cursor_autohide", true));
+        state.setCursorAutoHideMs(Math.max(500, Math.min(10000,
+                preferences.getInt("cursor_autohide_ms", (int) WAYLAND_CURSOR_IDLE_MS))));
+        state.onCursorAutoHideChange = this::onDrawerCursorAutoHideChange;
         // Per-gesture config shown under the Cursor to Touch toggle. Seed from prefs; the push to the
         // touchpad happens in setupUI, which is where that view is actually built.
         state.setGestureDragSelect(preferences.getBoolean("gesture_drag_select", true));
@@ -16616,17 +16623,51 @@ return true;
     }
 
     // After both user env merges (container + shortcut), unlike the renderer setup, which runs first.
+    private volatile boolean cursorAutoHideEnvOff;   // BANNER_CURSOR_AUTOHIDE=0 beats the drawer setting
     private void applyCursorAutoHide() {
         String v = envVars.has("BANNER_CURSOR_AUTOHIDE") ? envVars.get("BANNER_CURSOR_AUTOHIDE").trim() : "";
-        boolean on = !(v.equals("0") || v.equalsIgnoreCase("false"));
+        cursorAutoHideEnvOff = v.equals("0") || v.equalsIgnoreCase("false");
+        applyCursorAutoHidePrefs(false);
+    }
+
+    /**
+     * Drawer Controls > Mouse: "Auto-hide Cursor" + "Hide After (ms)", global prefs. Any thread.
+     * {@code live}: changed from the drawer mid-game, so the pointer follows right away.
+     */
+    private void applyCursorAutoHidePrefs(boolean live) {
+        boolean pref = preferences == null || preferences.getBoolean("cursor_autohide", true);
+        int ms = preferences != null ? preferences.getInt("cursor_autohide_ms", (int) WAYLAND_CURSOR_IDLE_MS)
+                : (int) WAYLAND_CURSOR_IDLE_MS;
+        cursorIdleMs = Math.max(500, Math.min(10000, ms));
+        boolean on = pref && !cursorAutoHideEnvOff;
         cursorAutoHide = on;
-        Log.i("XServerDisplayActivity", (waylandMode ? "wayland" : "x11") + " cursor auto-hide: " + (on ? "on" : "off (BANNER_CURSOR_AUTOHIDE=" + v + ")"));
-        if (!on) {
-            runOnUiThread(() -> {
-                waylandCursorIdle.removeCallbacks(x11CursorHideRunnable);
+        Log.i("XServerDisplayActivity", (waylandMode ? "wayland" : "x11") + " cursor auto-hide: "
+                + (on ? "on, " + cursorIdleMs + " ms" : (cursorAutoHideEnvOff ? "off (BANNER_CURSOR_AUTOHIDE=0)" : "off (drawer)")));
+        if (!live && on) return;
+        runOnUiThread(() -> {
+            waylandCursorIdle.removeCallbacks(x11CursorHideRunnable);
+            if (waylandMode) {
+                // Only once the pointer has a place (a finger has moved it); shows it and re-arms
+                // the idle hide with the new delay.
+                if (waylandCursorX >= 0) waylandCursorPoke(true);
+            } else if (on) {
+                x11CursorPoke();
+            } else {
                 setX11CursorAutoHidden(false);
-            });
+            }
+        });
+    }
+
+    /** Drawer chip / slider changed: persist, then apply to the live pointer. */
+    private void onDrawerCursorAutoHideChange() {
+        XServerDrawerState st = XServerDrawerState.INSTANCE;
+        if (preferences != null) {
+            preferences.edit()
+                    .putBoolean("cursor_autohide", st.getCursorAutoHideValue())
+                    .putInt("cursor_autohide_ms", st.getCursorAutoHideMsValue())
+                    .apply();
         }
+        applyCursorAutoHidePrefs(true);
     }
 
     // Raw mouse for Wine on X11: games that read the mouse through raw input (usually mouse-look)

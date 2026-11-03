@@ -12,6 +12,7 @@
   - DiRT Showdown (32-bit, 16:50): showdown.exe is x86 + d3d11 → SK32 placed as dxgi.dll; ~110 fps; Special K Control Panel shows "[32-bit]"; drawer button toggles it. The user was using SK in DiRT at the same time; my drawer taps closed their panel twice.
   - Mistake: the test bullets during this run were appended to the feat/reframework PROGRESS_LOG by an old save script (wrong worktree); this entry is the correct record.
   - Prototype cpuList=7 (16:56) still froze: Wayland applies the per-game core mask only when the first game window presents GPU frames (XServerDisplayActivity assignWaylandTaskAffinity), Prototype hangs before that → threads stayed on 0-7 (Cpus_allowed_list ×9). Proton 11.0-11.9-arm64ec-16 ntdll.so has WINE_CPU_TOPOLOGY → retest with envVars WINE_CPU_TOPOLOGY=1:7 + specialk=1. User sees the black screen too.
+  - Prototype RUNS (17:00:17 launch): envVars WINE_CPU_TOPOLOGY=1:7 from the start + user set cpuList=1 in settings (16:59 user try with cpuList=0 = black screen). Log: "Special K on (32-bit): d3d9.dll already in place", "launch CPU affinity for prototypef.exe (pid 21398): mask 0x2" (applied after first frame), 37 fps at 17:00:37. Bringing Bannerlator task 124 to front for the user to test Special K (drawer Mods → Special K).
 - **Next:** Prototype on one core with Special K; settings Mods dialog check; then report to the user. Not merged.
 
 ## 2026-11-04 — ✅ UNCHARTED SSBO emulation MERGED to main (`fix/uncharted-ssbo-emulation` → main, fast-forward)

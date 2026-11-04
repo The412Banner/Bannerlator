@@ -11750,6 +11750,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // environment byte-for-byte unchanged) when the resolved contribution is empty, i.e. the
         // default Auto/no-tokens config on a non-710/720/722 GPU.
         applyTurnipTuDebug();
+        java.util.List<String> turnipGameOpts =
+                com.winlator.star.core.TurnipGameOptions.applyToEnv(envVars, shortcutExeBasename());
+        if (!turnipGameOpts.isEmpty()) {
+            Log.i("XServerDisplayActivity", "Turnip game options: " + String.join(" ", turnipGameOpts));
+        }
 
         // Pass final envVars to the launcher
         guestProgramLauncherComponent.setEnvVars(envVars);

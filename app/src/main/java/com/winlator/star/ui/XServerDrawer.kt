@@ -5901,13 +5901,13 @@ private fun ModCard(mod: DrawerMod, onMenu: () -> Unit) {
             }
             if (mod.loaded) {
                 Text(
-                    "${mod.file} \u00b7 ${mod.bits}",
+                    if (mod.bits.isEmpty()) mod.file else "${mod.file} \u00b7 ${mod.bits}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     modifier = Modifier.padding(top = 2.dp),
                 )
                 Spacer(Modifier.height(10.dp))
-                AccentButton("Show / hide menu", onClick = onMenu)
+                AccentButton(mod.button, onClick = onMenu)
             }
         }
     }

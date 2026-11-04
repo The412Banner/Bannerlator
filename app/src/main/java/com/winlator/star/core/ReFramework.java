@@ -15,11 +15,12 @@ import java.util.Set;
 
 /**
  * REFramework (praydog, MIT, github.com/praydog/REFramework) for RE Engine games: which EXEs it supports and
- * its config. The DLL itself is downloaded from The412Banner/REFramework release arm64ec-r1 and placed by
+ * its config. The DLL itself is downloaded from The412Banner/REFramework release arm64ec-r2 and placed by
  * core.GameMods (game settings > Mods). Our build skips x86-64 inline hooks on ARM64EC code
  * (praydog/REFramework#1887), opens the menu with L3 + R3 on a controller, sees the menu key in games whose
- * DirectInput keyboard blocks key messages under Wine (RE2), and gives each inline hook its own trampoline
- * memory under ARM64 emulation (startup otherwise hung about half the time).
+ * DirectInput keyboard blocks key messages under Wine (RE2), gives each inline hook its own trampoline
+ * memory under ARM64 emulation (startup otherwise hung about half the time), and keeps the game's cursor
+ * hidden while it draws its own (one cursor instead of two with "Draw Cursor With Menu Open").
  *
  * <p>When it is on, its config is set so the menu starts closed (the in-game drawer's Mods tab opens it).
  * Pure Java (no Android calls), so it is unit-tested.

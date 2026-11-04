@@ -19,10 +19,10 @@ import java.util.Set;
  * GitHub releases (core.GameModCache) and places next to the game EXE at launch.
  *
  * <ul>
- * <li>REFramework (praydog, MIT): The412Banner/REFramework release arm64ec-r1, as dinput8.dll, only for the
+ * <li>REFramework (praydog, MIT): The412Banner/REFramework release arm64ec-r2, as dinput8.dll, only for the
  * RE Engine EXEs REFramework knows (core.ReFramework), 64-bit.</li>
  * <li>Special K (Kaldaien / Andon M. Coleman and contributors, SpecialKO, GPL-3.0): The412Banner/SpecialK
- * release arm64ec-r1, SpecialK64.dll or SpecialK32.dll by the EXE's machine type, as dxgi.dll / d3d11.dll /
+ * release arm64ec-r2, SpecialK64.dll or SpecialK32.dll by the EXE's machine type, as dxgi.dll / d3d11.dll /
  * d3d9.dll / d3d8.dll / opengl32.dll (picked from the EXE's imports, or chosen per game).</li>
  * </ul>
  *
@@ -84,16 +84,16 @@ public final class GameMods {
 
     public static final Mod REFRAMEWORK = new Mod(
             "reframework", "REFramework", ReFramework.EXTRA, ReFramework.MARKER,
-            new Asset("https://github.com/The412Banner/REFramework/releases/download/arm64ec-r1/dinput8.dll",
-                    "fcfa693d349c4e750c2aab8650fb23c5a5a6aad178ae0fb570b23a856b4987e4", 23091712L),
+            new Asset("https://github.com/The412Banner/REFramework/releases/download/arm64ec-r2/dinput8.dll",
+                    "636e819dd0a0dd7664a26f1c1a2b4ca268222155e92cd79679b84d36f3f18930", 23091712L),
             null, ReFramework.DLL);
 
     public static final Mod SPECIAL_K = new Mod(
             "specialk", "Special K", "specialk", ".bannerlator-specialk",
-            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r1/SpecialK64.dll",
-                    "a3a7991fbad13ce910a8fde56c3ce72a2fc70e9ab1a3af8d6fd204c78c1ece41", 15882752L),
-            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r1/SpecialK32.dll",
-                    "7b2b7274156b04e4e99e677174a367d83a8f4b964029fbb31f9bf94404629e89", 13350400L),
+            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r2/SpecialK64.dll",
+                    "831e4f190fb37988335413b5079d8c43dffe02bb298f1cf1cd91b252e41d50b8", 15884800L),
+            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r2/SpecialK32.dll",
+                    "05dcaf51f2b4de1645569c495849946e7c9483826af507510ddfc9dcbf40420d", 13351424L),
             null);
 
     public static final List<Mod> ALL = Collections.unmodifiableList(Arrays.asList(REFRAMEWORK, SPECIAL_K));

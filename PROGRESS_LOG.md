@@ -6,6 +6,8 @@
 - **REFramework arm64ec-r2** (The412Banner/REFramework `fix/own-cursor-only` 102155d8, Latest; dinput8 636e819d): with "Draw Cursor With Menu Open" the game's cursor stays hidden → one cursor (was two; under Bannerlator they were not even in the same place).
 - **Device (Pocket FIT, DLLs placed by hand, BL 1d40ae6a):** RE2 REFramework alone: download from release, L3+R3, Insert, drawer button (user screenshots); RE2 both: Special K banner + panel next to REFramework's menu (user screenshot 23:09:09, 144-199 fps), one moving cursor with REFramework's menu, 9 starts / 75 REFramework key presses + 15 Special K toggles with the final DLLs without a hang; W3 (Special K 64-bit) Mods tab card + panel (user).
 - **Code:** core.GameMods pins arm64ec-r2 (URLs, sha256, sizes); ReFramework.java + README credits + GameModsTest tags → r2. Files of ours from r1 (marker) are updated on the next launch.
+- **CI:** "CI Build (artifacts only)" 41779110161 GREEN ×4 (headSha 260aee9a); skipped steps identical to 41763138374. **Staged (NOT installed, NOT merged):** /sdcard/Download/Bannerlator-mods-r2-260aee9a.apk sha256 129cf377… (host == device); dex has the r2 URLs + sha256 for both mods, no r1 left, Uncharted names, Mods tab.
+- **DiRT Showdown (32-bit) with Special K r2 placed by hand:** panel opens/closes (D3D11.4 [32-bit]) with the held-key fallback, intro keeps 30 fps; folder put back to r1 for the update test.
 - **Known, not fixed:** Special K's panel alone can show a second (host) cursor; BANNERIN forward mode passes XInputEnable to Wine, so a game that toggles XInputEnable itself could hit the same Wine race.
 
 ## 2026-11-04 — 🧪 Mod manager: finishing (`feat/mod-manager`, device tests running, NOT merged)

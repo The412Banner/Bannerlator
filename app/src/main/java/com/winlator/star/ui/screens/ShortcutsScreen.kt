@@ -5215,16 +5215,18 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
 
 /**
  * Game settings > General > Mods (core.GameMods): the mods this game's EXE can take, each one's per-game
- * switch (off by default) and Special K's DLL name ("" = picked from the EXE). Switching a mod on
+ * switch (off by default), Special K's DLL name ("" = picked from the EXE) and a program to start with the
+ * game (GameMods.EXTRA_START_WITH, a Windows path; "" = none). Switching a mod on
  * downloads it from its release if this device does not have it yet. Lives outside the settings screen
  * (D8 8.8.18 crashed dexing it with state inline).
  */
 private class GameModsSetting(
     val mods: List<GameMods.Mod>, val machine: Int, val imports: Set<String>,
-    initialOn: Map<String, Boolean>, initialSkDll: String,
+    initialOn: Map<String, Boolean>, initialSkDll: String, initialStartWith: String,
 ) {
     val on = mutableStateMapOf<String, Boolean>().apply { putAll(initialOn) }
     var skDll by mutableStateOf(initialSkDll)
+    var startWith by mutableStateOf(initialStartWith)
     /** Per mod id: "" or a short download state ("40 %", "ready", "download failed"). */
     val status = mutableStateMapOf<String, String>()
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
@@ -5232,6 +5234,7 @@ private class GameModsSetting(
     fun write(putExtra: (String, String?) -> Unit) {
         for (m in mods) putExtra(m.extra, if (on[m.id] == true) "1" else null)
         if (GameMods.SPECIAL_K in mods) putExtra(GameMods.EXTRA_SPECIALK_DLL, skDll.ifEmpty { null })
+        putExtra(GameMods.EXTRA_START_WITH, startWith.trim().ifEmpty { null })
     }
 
     fun nextSkDll() {
@@ -5265,13 +5268,15 @@ private fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remem
         mods, machine, imports,
         GameMods.ALL.associate { it.id to (shortcut.getExtra(it.extra) == "1") },
         shortcut.getExtra(GameMods.EXTRA_SPECIALK_DLL) ?: "",
+        shortcut.getExtra(GameMods.EXTRA_START_WITH) ?: "",
     )
 }
 
 @Composable
 private fun GameModsRow(dp: SettingsDpad, setting: GameModsSetting) {
     var open by remember { mutableStateOf(false) }
-    val enabled = setting.mods.filter { setting.on[it.id] == true }.joinToString { it.name }
+    val enabled = (setting.mods.filter { setting.on[it.id] == true }.map { it.name } +
+        listOfNotNull(setting.startWith.trim().substringAfterLast('\\').ifEmpty { null })).joinToString()
     DpButton(dp, "mods", onActivate = { open = true }) {
         OutlinedButton(onClick = { open = true }) { Text(if (enabled.isEmpty()) "Mods" else "Mods: $enabled") }
     }
@@ -5312,6 +5317,14 @@ private fun GameModsDialog(setting: GameModsSetting, onDismiss: () -> Unit) {
                         }
                     }
                 }
+                OutlinedTextField(
+                    value = setting.startWith,
+                    onValueChange = { setting.startWith = it },
+                    label = { Text("Start with the game") },
+                    placeholder = { Text("F:\\Trainers\\Trainer.exe") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
@@ -8100,7 +8113,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 Text("Close when game exits")
                             }
                         }
-                        if (!isLinuxEntry && gameMods.mods.isNotEmpty()) GameModsRow(dp, gameMods)
+                        if (!isLinuxEntry) GameModsRow(dp, gameMods)
                                 }
                                 4 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Game Controller and Vibration: the container editor's sections in the same order

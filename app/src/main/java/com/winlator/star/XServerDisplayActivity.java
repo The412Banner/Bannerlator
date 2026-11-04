@@ -8777,9 +8777,46 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.w("XServerDisplayActivity", "game mods setup failed", t);
             logSessionLine("mods", "setup failed: " + t.getMessage());
         } finally {
+            String startWith = startWithGamePath();
+            if (!startWith.isEmpty()) {
+                cards.add(new com.winlator.star.ui.DrawerMod(START_WITH_GAME_ID, "Start with the game", true, true,
+                        "", startWith.substring(startWith.lastIndexOf('\\') + 1), "", "Start"));
+            }
             final java.util.List<com.winlator.star.ui.DrawerMod> list = cards;
             runOnUiThread(() -> XServerDrawerState.INSTANCE.setMods(list));
         }
+    }
+
+    // ── Game settings > Mods > Start with the game (a trainer, Cheat Engine) ─────────────────────────────
+
+    private static final String START_WITH_GAME_ID = "startwith";
+    private static final long START_WITH_GAME_DELAY_MS = 10_000L;
+
+    /** The program this game starts with (a Windows path), or "". */
+    private String startWithGamePath() {
+        return shortcut != null ? shortcut.getExtra(com.winlator.star.core.GameMods.EXTRA_START_WITH, "").trim() : "";
+    }
+
+    /** Wine sessions: once winhandler.exe is up (it starts the game), start the program 10 s later. Most
+     *  trainers wait for the game's process themselves. */
+    private void scheduleStartWithGame() {
+        if (startWithGamePath().isEmpty()) return;
+        modKeyHandler.postDelayed(this::startWithGame, START_WITH_GAME_DELAY_MS);
+    }
+
+    /** Starts the program in its own folder (WinHandler.execInFolder: the path may be longer than an EXEC
+     *  takes). Also the drawer card's Start button. */
+    private void startWithGame() {
+        String path = startWithGamePath();
+        if (path.isEmpty() || winHandler == null) return;
+        boolean ok = winHandler.execInFolder(path, "");
+        logSessionLine("mods", "Start with the game: " + path + (ok ? "" : " (not started: the batch file could not be written)"));
+    }
+
+    /** The prefix's C: drive (the container's .wine/drive_c), or null without a container. */
+    public File getWineDriveC() {
+        if (container != null) return new File(container.getRootDir(), ".wine/drive_c");
+        return imageFs != null && imageFs.wineprefix != null ? new File(imageFs.wineprefix, "drive_c") : null;
     }
 
     /** Drawer > Mods: shows or hides a mod's in-game menu by sending its menu key after the drawer has
@@ -8787,6 +8824,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
      *  per frame when the game blocks key messages, so the press has to outlast a frame). REFramework:
      *  Insert; Special K: Ctrl + Shift + Backspace. */
     private void toggleModMenu(String id) {
+        if (START_WITH_GAME_ID.equals(id)) { startWithGame(); return; }
         final XKeycode[] keys = com.winlator.star.core.GameMods.SPECIAL_K.id.equals(id)
                 ? new XKeycode[]{XKeycode.KEY_CTRL_L, XKeycode.KEY_SHIFT_L, XKeycode.KEY_BKSP}
                 : new XKeycode[]{XKeycode.KEY_INSERT};
@@ -11897,6 +11935,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Start the WinHandler (writes events to the file)
         winHandler.start();
+        scheduleStartWithGame();
         // Steam Controller support (no-op unless the setting is on) — after WinHandler so pads that
         // are already paired seat straight into its slots.
         runOnUiThread(this::startSteamControllerSupport);

@@ -26,9 +26,9 @@ enum class TabType {
  * One card in the drawer's Mods tab, built at launch (XServerDisplayActivity.applyGameModsEnv) for each
  * mod this game's EXE can take. [loaded]: its DLL is in place for this session; [version] is the release
  * tag of our file ("" for a file the game already had); [file] the DLL name it loads as; [bits] "64-bit"
- * or "32-bit".
+ * or "32-bit" ("" for none); [button] the card's button.
  */
-data class DrawerMod(
+data class DrawerMod @JvmOverloads constructor(
     val id: String,
     val name: String,
     val on: Boolean,
@@ -36,6 +36,7 @@ data class DrawerMod(
     val version: String,
     val file: String,
     val bits: String,
+    val button: String = "Show / hide menu",
 )
 
 /** A swap from the drawer's Components tab: [value] is "orig:<build>" or a stored package file. */

@@ -98,6 +98,9 @@ public final class GameMods {
 
     public static final List<Mod> ALL = Collections.unmodifiableList(Arrays.asList(REFRAMEWORK, SPECIAL_K));
 
+    /** Shortcut extra: a program started with the game (a trainer, Cheat Engine), as a Windows path. */
+    public static final String EXTRA_START_WITH = "startWithGame";
+
     /** Shortcut extra: Special K's DLL name for this game ("" or absent = picked from the EXE). */
     public static final String EXTRA_SPECIALK_DLL = "specialkDll";
     /** The names Special K can be loaded as. */

@@ -7,11 +7,18 @@ package com.winlator.star.core
  */
 object TurnipGameOptions {
 
+    private val ssboEmulation = listOf("tu_enable_ssbo_emulation" to "true")
+
     /** Lowercase exe basename -> driconf options. */
     private val byExe: Map<String, List<Pair<String, String>>> = mapOf(
         // MIO: Memories in Orbit keeps a 650 MB mesh buffer read through 512 MiB + 138 MiB views;
         // A7xx Turnip limits SSBO ranges to 128 MiB without this option, so most level geometry is missing.
-        "mio.exe" to listOf("tu_enable_ssbo_emulation" to "true"),
+        "mio.exe" to ssboEmulation,
+        // UNCHARTED: Legacy of Thieves Collection (both games and their -l builds) needs the same option on A7xx.
+        "u4.exe" to ssboEmulation,
+        "tll.exe" to ssboEmulation,
+        "u4-l.exe" to ssboEmulation,
+        "tll-l.exe" to ssboEmulation,
     )
 
     fun forExe(exeBasename: String?): List<Pair<String, String>> {

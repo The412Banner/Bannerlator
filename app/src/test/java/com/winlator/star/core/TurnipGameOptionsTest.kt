@@ -14,6 +14,12 @@ class TurnipGameOptionsTest {
         assertEquals("noconform,sysmem", env.get("TU_DEBUG"))
     }
 
+    @Test fun uncharted_allFourExes_getSsboEmulation() {
+        for (exe in listOf("u4.exe", "tll.exe", "u4-l.exe", "tll-l.exe")) {
+            assertEquals(exe, listOf("tu_enable_ssbo_emulation" to "true"), TurnipGameOptions.forExe(exe))
+        }
+    }
+
     @Test fun exeMatch_ignoresCase() {
         assertEquals(1, TurnipGameOptions.forExe("MIO.EXE").size)
     }

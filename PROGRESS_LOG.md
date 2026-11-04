@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — 🔧 UNCHARTED: Legacy of Thieves Collection on Adreno 7xx: same per-game SSBO emulation (`fix/uncharted-ssbo-emulation`, CI pending, NOT device-tested as a build)
+- **Why:** user, Pocket FIT (Adreno 750, pubg flavor): Uncharted shortcut (u4.exe, container "DD P11-11.9 Arm") with Turnip v27.0.0-20261104 + envVars `tu_enable_ssbo_emulation=true` fixed the game, same as MIO. User: add all four exes (the install has u4.exe, tll.exe, u4-l.exe, tll-l.exe) and add it to Bannerlator as for MIO.
+- **Change (832636b3):** core/TurnipGameOptions.kt maps the four exe names to `tu_enable_ssbo_emulation=true` (shared list with mio.exe); a value set on the shortcut still wins. Test `uncharted_allFourExes_getSsboEmulation` added (CI runs no unit tests, so not run).
+- **Driver side:** Banners-Turnip A8xx 6b6cf287 has the same games in 00-turnip-defaults.conf (`^(u4|tll)(-l)?[.]exe$`); release build run 41757601413 running.
+- **Next:** CI Build (artifacts only) → stage pubg APK in /sdcard/Download with sha256 → install only on the user's yes → merge only on the user's go.
+
 ## 2026-11-03 — ✅ MIO A7xx fix MERGED to main (`fix/a7xx-ssbo-emulation` → main, fast-forward)
 - **User go:** "yes install it on the pocket fit and test it", then "merge it to main if it works correctly".
 - **Device test (Pocket FIT, Adreno 750, pubg flavor of 30dbd35f, installed base.apk sha256 81d23712… == staged, 19:23:47 local):** MIO shortcut original (no envVars), stock driver Mesa Turnip v27.0.0-20261029-r2. Logcat `XServerDisplayActivity: Turnip game options: tu_enable_ssbo_emulation=true`; the mio.exe process environment has tu_enable_ssbo_emulation=true; Continue on the user's save = full scene at 120 fps (same scene as the Elite A830 reference). Logcat FATAL 0, crash buffer empty since launch, no new tombstone.

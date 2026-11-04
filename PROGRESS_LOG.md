@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — ✅ UNCHARTED SSBO emulation MERGED to main (`fix/uncharted-ssbo-emulation` → main, fast-forward)
+- **User go:** "if bannerlator builds green merge to main" (no device test of this build first; the user proved the variable on the Pocket FIT A750, and the same code path logged and fixed MIO in run G).
+- **CI:** "CI Build (artifacts only)" run 41757948647 GREEN ×4 (headSha 0a00399e); skipped steps identical to the MIO build 41744421724 (cache hits, main-only saves).
+- **Merge:** backup `refs/backup/20261104/main-before-uncharted-ssbo-emulation` → 47e31014; main fast-forwarded to this branch. Code identical to the CI-tested 0a00399e (only PROGRESS_LOG.md after it).
+- **Proof level:** CI-green; NOT device-tested as a build. Driver side: Banners-Turnip v27.0.0-20261104-r2 has the same four exe names built in.
+
 ## 2026-11-04 — 🔧 UNCHARTED: Legacy of Thieves Collection on Adreno 7xx: same per-game SSBO emulation (`fix/uncharted-ssbo-emulation`, CI pending, NOT device-tested as a build)
 - **Why:** user, Pocket FIT (Adreno 750, pubg flavor): Uncharted shortcut (u4.exe, container "DD P11-11.9 Arm") with Turnip v27.0.0-20261104 + envVars `tu_enable_ssbo_emulation=true` fixed the game, same as MIO. User: add all four exes (the install has u4.exe, tll.exe, u4-l.exe, tll-l.exe) and add it to Bannerlator as for MIO.
 - **Change (832636b3):** core/TurnipGameOptions.kt maps the four exe names to `tu_enable_ssbo_emulation=true` (shared list with mio.exe); a value set on the shortcut still wins. Test `uncharted_allFourExes_getSsboEmulation` added (CI runs no unit tests, so not run).

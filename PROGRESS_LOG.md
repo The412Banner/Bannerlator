@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — ✅ Start with the game MERGED to main (`97237105`, --no-ff)
+- **User:** "merge it" after the DiRT Showdown test (test program started with the game and from the drawer Start button, 4/4; Special K r2 32-bit downloaded and replaced r1, control panel works). Backup ref refs/backup/20261104/main-before-mod-start-with → 8d24ee26. Code == tested build 032c8b13 (only PROGRESS_LOG.md differs).
+- **CI:** "CI Build (artifacts only)" 41822262403 success ×4 (headSha 97237105); skipped steps identical to 41820149817. pubg APK staged as Bannerlator-main-97237105.apk (sha256 900ecf9e…), not installed.
+- **Open:** RE2 on this build (REFramework r2 download + Special K together); RE2 in DroidDeck stops with "Interface not found: SteamUser023" because Special K's dxgi.dll is in the shared game folder.
+
 ## 2026-11-04 — ✅ Mod manager MERGED to main (`2915e6ac`, fast-forward)
 - **User:** "merge apk 1". Backup ref refs/backup/20261104/main-before-mod-manager → 6a66b1b8. Main == feat/mod-manager 2915e6ac; code == tested build 260aee9a (only PROGRESS_LOG.md differs).
 - **CI:** main push "CI Build (artifacts only)" 41820149817 success ×4 (headSha 2915e6ac).

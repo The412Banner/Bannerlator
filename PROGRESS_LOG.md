@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — 📲 Mod manager r2 build installed for the user's test (`feat/mod-manager`, NOT merged)
+- **User:** "yes install it on the pocket fit".
+- **Installed 04:14:09 EST on the Pocket FIT:** Bannerlator-mods-r2-260aee9a.apk; installed base.apk sha256 129cf377… == staged (before: 1d40ae6a = 63d5a4ed build); no FATAL lines after the install. The mod cache still holds the r1 files, so the r2 files download on the first launch with mods on.
+- **User test:** RE2 with REFramework + Special K (drawer Show / hide menu, one cursor with REFramework's menu, no freeze when the panel closes); Witcher 3 + DiRT Showdown must replace their r1 files with r2 on the first launch.
+- **Next:** after the user's OK, backup ref, then merge to main (tree == tested 260aee9a code).
+- **Undo:** reinstall /sdcard/Download/Bannerlator-mods-tab-63d5a4ed.apk (1d40ae6a).
+
 ## 2026-11-04 — 🧩 Mod manager: REFramework + Special K arm64ec-r2 pinned (`feat/mod-manager`, CI pending, NOT merged)
 - **User (11-04 ~04:00 UTC, going to bed):** keep working with root until it works, have a working APK ready to test in the morning before merging; releases approved as Latest after device proof.
 - **Special K arm64ec-r2** (The412Banner/SpecialK `fix/arm64ec-panel-key` 057cd0b4, Latest; SpecialK64 831e4f19, SpecialK32 05dcaf51): (1) REFramework's `REFRAMEWORK_DX12_DUMMY` window is a dummy window for Special K (d63f2f3f) — before, its SwapChain made Special K reset and never draw its overlay with REFramework loaded (no banner, no panel); plus guards d0d96145; (2) Ctrl+Shift+Backspace also read from the held key state under ARM64 emulation (4212508e) — the drawer button now opens the panel in RE2; (3) no XInputEnable from Special K's own housekeeping under ARM64 emulation (057cd0b4) — Wine's XInputEnable(0/1) restarts the controller read and Wine's XInput thread then waited for the next controller input inside its lock: RE2 froze on every panel close without controller input (6/6), 0/3 after (15 + 15 toggles).

@@ -3,7 +3,9 @@
 ## 2026-11-04 — 🔁 Mod manager rebased onto main 6a66b1b8 (Uncharted SSBO emulation) (`feat/mod-manager`, NOT merged)
 - **Why:** user: "bring that branch up to date with main since new work was merged to it" (main gained 832636b3 Uncharted TurnipGameOptions + 2 log commits).
 - **How:** backup `refs/backup/20261104/feat-mod-manager-before-rebase-6a66b1b8` → ce78d89c; `git rebase origin/main`; only PROGRESS_LOG.md conflicted (first log commit) → kept both (branch entries, then main's Uncharted entries; blank-line runs collapsed). Code diff vs main identical to before the rebase (1452 lines, cmp). Pushed with --force-with-lease.
-- **Proof level:** needs a new CI build (the staged APK e7119ef1 does not have the Uncharted names); NOT device-tested.
+- **CI:** "CI Build (artifacts only)" 41763138374 GREEN ×4 (headSha 63d5a4ed); skipped steps identical to the e7119ef1 run 41747824698 (15 kinds: cache hits, main-only saves, informational).
+- **Staged (NOT installed):** pubg APK /sdcard/Download/Bannerlator-mods-tab-63d5a4ed.apk sha256 1d40ae6a… (host == device); dex has "Show / hide menu", GameModCache and the Uncharted exe names. Supersedes Bannerlator-mods-tab-e7119ef1.apk. Install waits for the user's yes.
+- **Proof level:** CI-green; NOT device-tested.
 
 ## 2026-11-03 — 🧩 Mod manager: REFramework + Special K per game, downloaded from our releases (`feat/mod-manager`, device-testing)
 - **Why / user decisions (11-03):** instead of one checkbox per mod, a Mods button in game settings opens a small dialog to switch REFramework and Special K (and later mods) per game; the in-game drawer's REFramework button becomes Mods to show/hide each mod's menu. Special K is downloaded from our fork's release, and REFramework too (no longer bundled). Special K for 64-bit and 32-bit games.

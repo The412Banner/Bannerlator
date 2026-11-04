@@ -22,7 +22,7 @@ import java.util.Set;
  * <li>REFramework (praydog, MIT): The412Banner/REFramework release arm64ec-r2, as dinput8.dll, only for the
  * RE Engine EXEs REFramework knows (core.ReFramework), 64-bit.</li>
  * <li>Special K (Kaldaien / Andon M. Coleman and contributors, SpecialKO, GPL-3.0): The412Banner/SpecialK
- * release arm64ec-r2, SpecialK64.dll or SpecialK32.dll by the EXE's machine type, as dxgi.dll / d3d11.dll /
+ * release arm64ec-r3, SpecialK64.dll or SpecialK32.dll by the EXE's machine type, as dxgi.dll / d3d11.dll /
  * d3d9.dll / d3d8.dll / opengl32.dll (picked from the EXE's imports, or chosen per game).</li>
  * </ul>
  *
@@ -90,10 +90,10 @@ public final class GameMods {
 
     public static final Mod SPECIAL_K = new Mod(
             "specialk", "Special K", "specialk", ".bannerlator-specialk",
-            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r2/SpecialK64.dll",
-                    "831e4f190fb37988335413b5079d8c43dffe02bb298f1cf1cd91b252e41d50b8", 15884800L),
-            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r2/SpecialK32.dll",
-                    "05dcaf51f2b4de1645569c495849946e7c9483826af507510ddfc9dcbf40420d", 13351424L),
+            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r3/SpecialK64.dll",
+                    "84354b458ffaeeb6f61ced7b5dc8cf2ec5c51098b0e1caf445661e97b1419d86", 15888896L),
+            new Asset("https://github.com/The412Banner/SpecialK/releases/download/arm64ec-r3/SpecialK32.dll",
+                    "bf9101fcf49120510c59acb1f1e3c89357782f47ad3b5d13af85ef99cd0c99a2", 13355520L),
             null);
 
     public static final List<Mod> ALL = Collections.unmodifiableList(Arrays.asList(REFRAMEWORK, SPECIAL_K));

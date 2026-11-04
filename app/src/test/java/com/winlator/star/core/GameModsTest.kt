@@ -74,7 +74,7 @@ class GameModsTest {
         assertFalse(GameMods.supports(GameMods.SPECIAL_K, "E:\\games\\x.exe", 0))
         assertTrue(GameMods.asset(GameMods.SPECIAL_K, GameMods.MACHINE_X86)!!.url.endsWith("/SpecialK32.dll"))
         assertEquals(GameMods.SPECIAL_K, GameMods.byId("specialk"))
-        assertEquals("arm64ec-r2", GameMods.asset(GameMods.SPECIAL_K, GameMods.MACHINE_X64)!!.tag())
+        assertEquals("arm64ec-r3", GameMods.asset(GameMods.SPECIAL_K, GameMods.MACHINE_X64)!!.tag())
         assertEquals("arm64ec-r2", GameMods.asset(GameMods.REFRAMEWORK, GameMods.MACHINE_X64)!!.tag())
     }
 

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — 📲 Start with the game: build installed for the user's test (`feat/mod-start-with`, NOT merged)
+- **User:** "install apk 2 and tell me how to test", then "merge apk 1" → feat/mod-manager is now main (2915e6ac, fast-forward; backup refs/backup/20261104/main-before-mod-manager → 6a66b1b8).
+- **Installed 06:21:17 EST on the Pocket FIT:** Bannerlator-mods-startwith-032c8b13.apk; installed base.apk sha256 1f0b994e… == staged.
+- **Test program:** F:\Trainers\Trainer.exe (copy of "FLiNG Trainer Test.exe", sha256 e8defe94…); it only writes C:\bl_started.txt.
+- **Test:** DiRT Showdown → settings → General → Mods → "Start with the game" = F:\Trainers\Trainer.exe → launch → C:\bl_started.txt after ~10 s + session log "mods" line; drawer Mods tab "Start with the game" card, Start button.
+- **Undo:** reinstall /sdcard/Download/Bannerlator-mods-r2-260aee9a.apk (129cf377).
+
 ## 2026-11-04 — 🎯 Mods: Start with the game (trainers, Cheat Engine) + long Task Manager commands (`feat/mod-start-with`, stacked on `feat/mod-manager`, NOT merged)
 - **Why:** user: after REFramework + Special K, work through the Discord thread "Debugging mods and trainers for some games." (#winlator-general) and add what it asks for to the mod manager. Its list: FLiNG/WeMod trainers and Cheat Engine (external programs that must run next to the game), REFramework + Special K (done), BepInEx (Unity), Mod Organizer 2 / Vortex. Dante: "the new task opener cannot open apps from a specific path".
 - **Cause found:** winhandler.exe takes at most 51 bytes of filename + parameters per EXEC (64-byte buffer, `cpp/winlator/winhandler.c` BUFFER_SIZE 64) and starts programs with no working folder; WinHandler's 64-byte send buffer also overflowed on longer commands. The shipped winhandler.exe is Winlator's prebuilt binary with a 2-byte patch (d672c29cd), so it is not rebuilt.

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — ✅ Mod manager MERGED to main (`2915e6ac`, fast-forward)
+- **User:** "merge apk 1". Backup ref refs/backup/20261104/main-before-mod-manager → 6a66b1b8. Main == feat/mod-manager 2915e6ac; code == tested build 260aee9a (only PROGRESS_LOG.md differs).
+- **CI:** main push "CI Build (artifacts only)" 41820149817 success ×4 (headSha 2915e6ac).
+- **Device (user, 11-04, on the start-with build that contains this code):** DiRT Showdown downloaded Special K arm64ec-r2 32-bit, replaced the r1 file in the game folder, banner + control panel work (D3D11.4 [32-bit], 60 fps). RE2 with REFramework r2 + Special K on this build: not yet tested by the user (proven before with the same DLLs placed by hand).
+- **Known:** the mod DLLs live in the game folder, so other launchers that use the same folder (DroidDeck) load them too; RE2 in DroidDeck stopped with "Interface not found: SteamUser023" from Special K's Steam part.
+
 ## 2026-11-04 — 📲 Mod manager r2 build installed for the user's test (`feat/mod-manager`, NOT merged)
 - **User:** "yes install it on the pocket fit".
 - **Installed 04:14:09 EST on the Pocket FIT:** Bannerlator-mods-r2-260aee9a.apk; installed base.apk sha256 129cf377… == staged (before: 1d40ae6a = 63d5a4ed build); no FATAL lines after the install. The mod cache still holds the r1 files, so the r2 files download on the first launch with mods on.

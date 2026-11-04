@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — ✅ Special K arm64ec-r3 pin MERGED to main (`e5a7d1a5`, fast-forward)
+- **User:** "I'm home, finish special k" (go to install and finish). Backup ref refs/backup/20261104/main-before-specialk-r3 → 5b31a3cf. Main == fix/specialk-r3 e5a7d1a5; code == tested build 9ca310f8 (only PROGRESS_LOG.md differs).
+- **Installed 18:17:25 EST on the Pocket FIT:** Bannerlator-specialk-r3-9ca310f8.apk; installed base.apk sha256 6d70078f… == staged (before: 900ecf9e = main 97237105 build); no FATAL lines.
+- **Device test on the installed build:** Ninja Gaiden Sigma 60 fps, full screen (its ini has Special K Borderless + Fullscreen), marker → r3 ("already in place"); The Witcher 3: r1 → r3 replaced by the mod manager, 60 fps; DiRT Showdown: r2 → r3 (32-bit) replaced, first start hung (known, pre-existing), second 134–138 fps; Resident Evil 2 + REFramework r2: 118–142 fps, Initial Settings menu — its dxgi.dll stays r2 because it was placed by hand (no marker), as designed.
+- **Undo:** reinstall /sdcard/Download/Bannerlator-main-97237105.apk (900ecf9e); main back to refs/backup/20261104/main-before-specialk-r3.
+
 ## 2026-11-04 — 🎯 Special K arm64ec-r3 pin: Ninja Gaiden Sigma works with Special K (`fix/specialk-r3`, NOT installed, NOT merged)
 - **Why:** user: "I keep trying to launch Ninja gaiden sigma but it's not working correctly" (Special K on: game closed, then black screen); then "we need special k to work correctly with Ninja gaiden and if it requires a rebuild and re-release do it".
 - **Causes (all in Special K, none in Bannerlator):** (1) the game counts modules loaded from its own folder (`K32EnumProcessModulesEx`) and closes if there are not exactly 2 — Special K's dxgi.dll was the third; (2) Special K always dropped `WM_GETMINMAXINFO`, so Wine kept the window at 1280x694; (3) Special K upgraded the SwapChain to the flip model, which squashed the picture; (4) Special K's Steam part asked gbe_fork for `SteamInput007` → "Missing interface" box + exit; (5) "DXVK (D3D9) Detected" question (gbe overlay loads d3d9).

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-04 — 🧪 Mod manager: finishing (`feat/mod-manager`, device tests running, NOT merged)
+- **User:** "you have root, finish it to make sure both work and together until finished then merge to main"; the simple Special K toggle = drawer Mods tab "Show / hide menu".
+- **RE2 Special K panel (code-level cause):** Special K reads Ctrl/Shift from GetAsyncKeyState but the Backspace of its Ctrl+Shift+Backspace only from ImGui's message-fed key state (include/imgui/imgui_user.inl:1870-1900 @883779be); RE2 gets no key messages here (same as REFramework's Insert). Fix in The412Banner/SpecialK `fix/arm64ec-panel-key` 4212508e (under ARM64 emulation the key's held state counts too, one log line), CI run 41766527869.
+- **Device:** installed 1d40ae6a (63d5a4ed). Tests: W3 Mods tab + Special K toggle; RE2 REFramework alone (download path); RE2 both (release SK, then fixed SK); DiRT Showdown 32-bit; settings Mods dialog. Backups in /sdcard/Download/mm-final/backup/.
+- **Next:** Special K release arm64ec-r2 with the fix only after the user's OK → pin in core.GameMods → CI → install → retest → merge.
+
 ## 2026-11-04 — 🔁 Mod manager rebased onto main 6a66b1b8 (Uncharted SSBO emulation) (`feat/mod-manager`, NOT merged)
 - **Why:** user: "bring that branch up to date with main since new work was merged to it" (main gained 832636b3 Uncharted TurnipGameOptions + 2 log commits).
 - **How:** backup `refs/backup/20261104/feat-mod-manager-before-rebase-6a66b1b8` → ce78d89c; `git rebase origin/main`; only PROGRESS_LOG.md conflicted (first log commit) → kept both (branch entries, then main's Uncharted entries; blank-line runs collapsed). Code diff vs main identical to before the rebase (1452 lines, cmp). Pushed with --force-with-lease.

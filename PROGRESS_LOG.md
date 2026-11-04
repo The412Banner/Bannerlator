@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-03 — ✅ MIO A7xx fix MERGED to main (`fix/a7xx-ssbo-emulation` → main, fast-forward)
+- **User go:** "yes install it on the pocket fit and test it", then "merge it to main if it works correctly".
+- **Device test (Pocket FIT, Adreno 750, pubg flavor of 30dbd35f, installed base.apk sha256 81d23712… == staged, 19:23:47 local):** MIO shortcut original (no envVars), stock driver Mesa Turnip v27.0.0-20261029-r2. Logcat `XServerDisplayActivity: Turnip game options: tu_enable_ssbo_emulation=true`; the mio.exe process environment has tu_enable_ssbo_emulation=true; Continue on the user's save = full scene at 120 fps (same scene as the Elite A830 reference). Logcat FATAL 0, crash buffer empty since launch, no new tombstone.
+- **Merge:** backup `refs/backup/20261104/main-before-a7xx-ssbo-emulation` → bde0b477; main fast-forwarded to this branch. Code identical to the tested build 30dbd35f (only PROGRESS_LOG.md after it).
+- **Open:** TurnipGameOptionsTest has not run (no CI workflow runs unit tests). Banners-Turnip `fix/mio-ssbo-emulation` (driver-side entry, device-proven E/F) not merged: merging it publishes a public release (user decides). Upstream Mesa entry: user decides.
+
 ## 2026-11-03 — 🔧 MIO: Memories in Orbit on Adreno 7xx: Turnip SSBO emulation per game (`fix/a7xx-ssbo-emulation`, CI pending, NOT device-tested as a build)
 - **Why:** MIO only rendered fully on Adreno 8xx; on A7xx most level geometry is missing (user's Reddit thread r/EmulationOnAndroid 1qjufro, other reports). User: "drive this device and that one over SSH until you figure out how to make the game work on other devices than a8xx".
 - **Cause (evidence):** MIO's own log on the Pocket FIT A750 (Logs/2026_11_3_18_37.txt): `[assets] initializing global mesh buffers: 650 MB`, views of 134217728 x 4 B (512 MiB) and 36175872 x 4 B (138 MiB). Turnip caps SSBO ranges at 1<<27 bytes (128 MiB) on A7xx (src/freedreno/common/freedreno_devices.py a7xx base) and 2 GiB on A8xx; Mesa 2026-06-10 (9b322347, Job Noorman) added drirc `tu_enable_ssbo_emulation` (A7xx only, default off, enabled per game in 00-turnip-defaults.conf, e.g. DOOMEternal "All enemies are invisible without tu_enable_ssbo_emulation"). MIO is not on Mesa's list. Mesa reads driconf options from env vars (src/util/xmlconfig.c).

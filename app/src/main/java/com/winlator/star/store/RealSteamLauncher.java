@@ -167,12 +167,12 @@ public final class RealSteamLauncher {
                                boolean eaChain) {
         try {
             // ── 0. Validate prerequisites ────────────────────────────────────────────────────────
-            if (driveC == null) { Log.w(TAG, "prepare: null driveC — fallback"); return null; }
-            if (shortcut == null) { Log.w(TAG, "prepare: null shortcut — fallback"); return null; }
-            if (appId <= 0) { Log.w(TAG, "prepare: no appId — fallback"); return null; }
+            if (driveC == null) { Log.w(TAG, "prepare: null driveC - fallback"); return null; }
+            if (shortcut == null) { Log.w(TAG, "prepare: null shortcut - fallback"); return null; }
+            if (appId <= 0) { Log.w(TAG, "prepare: no appId - fallback"); return null; }
             if (steamLiteInstallDir == null
                     || !new File(steamLiteInstallDir, STEAM_EXE_NAME).isFile()) {
-                Log.w(TAG, "prepare: SteamLite package not installed (no agent steam.exe) — fallback");
+                Log.w(TAG, "prepare: SteamLite package not installed (no agent steam.exe) - fallback");
                 return null;
             }
             if (hostInstallDir == null || hostInstallDir.isEmpty()
@@ -188,7 +188,7 @@ public final class RealSteamLauncher {
             String username = repo.getUsername();
             long steamId64 = repo.getSteamId64();
             if (token == null || token.isEmpty()) {
-                Log.w(TAG, "prepare: no Steam refresh token (not logged in?) — fallback");
+                Log.w(TAG, "prepare: no Steam refresh token (not logged in?) - fallback");
                 return null;
             }
             // Presence-only breadcrumb — LENGTH only, never the value.
@@ -225,7 +225,7 @@ public final class RealSteamLauncher {
 
             // ── 3a. Stage SteamLite client + agent into the prefix ───────────────────────────────
             if (!stageSteamLite(steamLiteInstallDir, steamDir, commonFilesSteamDir)) {
-                Log.w(TAG, "prepare: SteamLite staging failed — fallback");
+                Log.w(TAG, "prepare: SteamLite staging failed - fallback");
                 return null;
             }
 
@@ -258,7 +258,7 @@ public final class RealSteamLauncher {
                         Log.i(TAG, "prepare: steam input layout = " + pick.getSource() + " (" + pick.getVdf().length() + " chars)");
                     } else {
                         if (layout.exists() && !layout.delete()) Log.w(TAG, "prepare: stale layout not removed");
-                        Log.w(TAG, "prepare: steam input ON but no layout available — agent activates the client's own choice");
+                        Log.w(TAG, "prepare: steam input ON but no layout available - agent activates the client's own choice");
                     }
                 } catch (Throwable t) {
                     Log.w(TAG, "prepare: steam input layout skipped: " + t.getMessage());
@@ -288,7 +288,7 @@ public final class RealSteamLauncher {
             //        + write appmanifest_<appid>.acf (StateFlags=4 = installed). The real game dir may
             //        have an odd name, so the symlink NAME is the canonical name, TARGET the real dir.
             if (!commonDir.exists() && !commonDir.mkdirs()) {
-                Log.w(TAG, "prepare: could not create steamapps/common — fallback");
+                Log.w(TAG, "prepare: could not create steamapps/common - fallback");
                 return null;
             }
             if (FileUtils.isSymlink(link)) {
@@ -302,7 +302,7 @@ public final class RealSteamLauncher {
             if (!FileUtils.isSymlink(link) && !link.exists()) {
                 FileUtils.symlink(hostInstallDir, link.getAbsolutePath());
                 if (!FileUtils.isSymlink(link)) {
-                    Log.w(TAG, "prepare: failed to create steamapps/common symlink — fallback");
+                    Log.w(TAG, "prepare: failed to create steamapps/common symlink - fallback");
                     return null;
                 }
             }
@@ -319,7 +319,7 @@ public final class RealSteamLauncher {
             relExe = preferLauncherExe(relExe, hostInstallDir);
             String specExeWin = STEAM_DIR_WIN + "\\steamapps\\common\\" + canonicalName + "\\" + relExe;
             if (!FileUtils.writeString(spec, specExeWin + "\n" + appId + "\n")) {
-                Log.w(TAG, "prepare: failed to write spec file — fallback");
+                Log.w(TAG, "prepare: failed to write spec file - fallback");
                 return null;
             }
 
@@ -378,7 +378,16 @@ public final class RealSteamLauncher {
             }
             // EA launcher chain (agent p5): without this the agent treats the stub exe's exit during the
             // Link2EA → EADesktop → EASteamProxy hand-off as "game exited" and tears the session down.
-            if (eaChain) env.put(EaSupport.CHAIN_ENV, EaSupport.CHAIN_VALUE);
+            if (eaChain) {
+                env.put(EaSupport.CHAIN_ENV, EaSupport.CHAIN_VALUE);
+            } else if (UbisoftSupport.hasLauncherFiles(new File(hostInstallDir))) {
+                // Ubisoft launcher chain (same agent feature): <game>.exe -uplay_steam_mode → UbisoftGameLauncher.exe
+                // → upc.exe → the real game. The stub exits during the hand-off, so the agent must keep waiting.
+                // Armed on the depot's launcher files (a loader in its root or a bundled installer), not on an
+                // install script that merely mentions Ubisoft.
+                env.put(EaSupport.CHAIN_ENV, UbisoftSupport.CHAIN_VALUE);
+                Log.i(TAG, "prepare: Ubisoft launcher chain armed for appId=" + appId);
+            }
             // Agent appmanifest contract: InstalledDepots (depot:manifest:size,…) so the genuine client
             // sees a complete install (the agent writes appmanifest_<id>.acf from these).
             try {
@@ -393,7 +402,7 @@ public final class RealSteamLauncher {
                     + " from " + vacSource + ")");
             return new Plan(env, STEAM_DIR_WIN, STEAM_EXE_NAME, specArgWin, canonicalName, appId, eaChain);
         } catch (Throwable t) {
-            Log.w(TAG, "prepare: errored — fallback", t);
+            Log.w(TAG, "prepare: errored - fallback", t);
             return null;
         }
     }
@@ -477,7 +486,7 @@ public final class RealSteamLauncher {
                 if (r > 0) Log.i(TAG, "passthrough: Steam Input controller support disabled in localconfig.vdf");
                 else if (r == 0) Log.i(TAG, "passthrough: Steam Input already disabled (localconfig.vdf unchanged)");
             } else {
-                Log.w(TAG, "passthrough: no localconfig.vdf resolvable — Steam Input keys skipped");
+                Log.w(TAG, "passthrough: no localconfig.vdf resolvable - Steam Input keys skipped");
             }
         } catch (Throwable t) {
             Log.w(TAG, "passthrough: apply failed (non-fatal): " + t.getMessage());
@@ -501,7 +510,7 @@ public final class RealSteamLauncher {
             for (File u : users) {
                 File cfg = new File(u, "config/localconfig.vdf");
                 if (cfg.isFile()) {
-                    Log.i(TAG, "passthrough: accountId unresolved — using globbed " + u.getName());
+                    Log.i(TAG, "passthrough: accountId unresolved - using globbed " + u.getName());
                     return cfg;
                 }
             }
@@ -550,7 +559,7 @@ public final class RealSteamLauncher {
         try {
             File localConfig = resolveLocalConfig(steamDir, repo);
             if (localConfig == null) {
-                Log.w(TAG, "overlay: no localconfig.vdf resolvable (account id unknown, none on disk) — "
+                Log.w(TAG, "overlay: no localconfig.vdf resolvable (account id unknown, none on disk) - "
                         + "overlay injection NOT disabled");
                 return;
             }
@@ -570,7 +579,7 @@ public final class RealSteamLauncher {
                         + (r > 0 ? ", written" : ", already set") + ")");
             }
         } catch (Throwable t) {
-            Log.w(TAG, "overlay: localconfig.vdf edit failed (non-fatal) — overlay injection NOT disabled: "
+            Log.w(TAG, "overlay: localconfig.vdf edit failed (non-fatal) - overlay injection NOT disabled: "
                     + t.getMessage());
         }
     }
@@ -597,7 +606,7 @@ public final class RealSteamLauncher {
     private static int editLocalConfig(File localConfig, String what, VdfEdit... edits) {
         File dir = localConfig.getParentFile();
         if (dir != null && !dir.exists() && !dir.mkdirs()) {
-            Log.w(TAG, what + ": could not create localconfig dir — keys skipped");
+            Log.w(TAG, what + ": could not create localconfig dir - keys skipped");
             return -1;
         }
         String content = localConfig.isFile() ? FileUtils.readString(localConfig) : null;
@@ -605,7 +614,7 @@ public final class RealSteamLauncher {
         for (VdfEdit e : edits) {
             String next = injectVdfKeys(updated, e.path, e.keys);
             if (next == null) {
-                Log.w(TAG, what + ": localconfig.vdf shape unexpected (no UserLocalConfigStore root) — keys left as-is");
+                Log.w(TAG, what + ": localconfig.vdf shape unexpected (no UserLocalConfigStore root) - keys left as-is");
                 return -1;
             }
             updated = next;

@@ -71,6 +71,8 @@ import com.winlator.star.core.ExitReasonReporter
 import com.winlator.star.core.LogInventory
 import com.winlator.star.core.LogLocation
 import com.winlator.star.core.LogcatCapture
+import com.winlator.star.R
+import com.winlator.star.store.UbisoftDiag
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import com.winlator.star.ui.theme.DangerRed
@@ -104,6 +106,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
     }
     var steamLite by remember { mutableStateOf(prefs.getBoolean("enable_steamlite_logs", false)) }
     var headlessSteam by remember { mutableStateOf(prefs.getBoolean("enable_headless_steam_logs", false)) }
+    var ubisoftReport by remember { mutableStateOf(prefs.getBoolean(UbisoftDiag.PREF_REPORT, false)) }
+    var ubisoftDeep by remember { mutableStateOf(prefs.getBoolean(UbisoftDiag.PREF_DEEP_TRACE, false)) }
     var logcat by remember { mutableStateOf(prefs.getBoolean("enable_logcat", true)) }
     var crashReports by remember { mutableStateOf(prefs.getBoolean("enable_crash_reports", true)) }
     var exitAutosave by remember { mutableStateOf(prefs.getBoolean(ExitReasonReporter.PREF_AUTOSAVE, false)) }
@@ -288,6 +292,18 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     hint = "Only when a game launches through Headless Steam",
                     onInfo = { info = "Headless Steam (app session host)" to LogCopy.HEADLESS_STEAM }) {
                     headlessSteam = it; putBool("enable_headless_steam_logs", it)
+                }
+                LogToggle(context.getString(R.string.ubisoft_diag_report_title), ubisoftReport,
+                    hint = context.getString(R.string.ubisoft_diag_report_hint),
+                    onInfo = { info = context.getString(R.string.ubisoft_diag_report_title) to
+                        context.getString(R.string.ubisoft_diag_report_info) }) {
+                    ubisoftReport = it; putBool(UbisoftDiag.PREF_REPORT, it)
+                }
+                LogToggle(context.getString(R.string.ubisoft_deep_trace_title), ubisoftDeep,
+                    hint = context.getString(R.string.ubisoft_deep_trace_hint),
+                    onInfo = { info = context.getString(R.string.ubisoft_deep_trace_title) to
+                        context.getString(R.string.ubisoft_deep_trace_info) }) {
+                    ubisoftDeep = it; putBool(UbisoftDiag.PREF_DEEP_TRACE, it)
                 }
                 LogToggle("Android logcat", logcat,
                     hint = "Bannerlator's own output only",

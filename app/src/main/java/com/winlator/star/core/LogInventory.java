@@ -144,6 +144,8 @@ public final class LogInventory {
                         File[] runs = f.listFiles(File::isDirectory);
                         archives = runs == null ? 0 : runs.length;
                         bytes += sizeOfTree(f);
+                    } else if (isUbisoftSideFolder(f.getName())) {
+                        bytes += sizeOfTree(f);
                     }
                     continue;
                 }
@@ -236,6 +238,7 @@ public final class LogInventory {
                 if (f.isDirectory()) {
                     // Only our own archive folder, never an arbitrary subdirectory.
                     if (LogRotation.ARCHIVE_DIR.equals(f.getName())) deleted += deleteTree(f);
+                    else if (isUbisoftSideFolder(f.getName())) deleted += deleteTree(f);   // the Ubisoft report's own folder
                     continue;
                 }
                 if (isOurs(f.getName()) && f.delete()) deleted++;
@@ -258,7 +261,7 @@ public final class LogInventory {
         if (files != null) {
             for (File f : files) {
                 if (f.isDirectory()) {
-                    if (LogRotation.ARCHIVE_DIR.equals(f.getName())) n += countTree(f);
+                    if (LogRotation.ARCHIVE_DIR.equals(f.getName()) || isUbisoftSideFolder(f.getName())) n += countTree(f);
                 } else if (isOurs(f.getName())) n++;
             }
         }
@@ -284,8 +287,23 @@ public final class LogInventory {
         return n.startsWith("crash_") && n.endsWith(".txt");
     }
 
+    /** The folder the Ubisoft launch report keeps its bigger files in (see UbisoftDiag), or one waiting to be removed. */
+    private static boolean isUbisoftSideFolder(String name) {
+        return com.winlator.star.store.UbisoftDiag.FILES_DIR.equals(name)
+                || name.startsWith(com.winlator.star.store.UbisoftDiag.FILES_DIR + ".deleting-");
+    }
+
+    /**
+     * A link is never followed: the diagnostics folders hold files a game or an installer could have planted, and a
+     * link in there must not lead the delete (or the size count) out of the folder. A link is removed itself.
+     */
+    private static boolean isLink(File f) {
+        return java.nio.file.Files.isSymbolicLink(f.toPath());
+    }
+
     private static int deleteTree(File f) {
         if (f == null) return 0;
+        if (isLink(f)) return f.delete() ? 1 : 0;
         int n = 0;
         File[] kids = f.listFiles();
         if (kids != null) for (File k : kids) n += deleteTree(k);
@@ -297,7 +315,7 @@ public final class LogInventory {
 
     private static int countTree(File f) {
         if (f == null) return 0;
-        if (f.isFile()) return 1;
+        if (isLink(f) || f.isFile()) return 1;
         int n = 0;
         File[] kids = f.listFiles();
         if (kids != null) for (File k : kids) n += countTree(k);
@@ -318,7 +336,7 @@ public final class LogInventory {
     }
 
     private static long sizeOfTree(File f) {
-        if (f == null) return 0;
+        if (f == null || isLink(f)) return 0;
         if (f.isFile()) return f.length();
         File[] kids = f.listFiles();
         long t = 0;

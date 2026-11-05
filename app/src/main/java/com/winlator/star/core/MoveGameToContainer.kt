@@ -18,6 +18,7 @@ import com.winlator.star.container.ContainerLayerUpdater
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.linux.LinuxShortcuts
+import com.winlator.star.store.UbisoftSupport
 import com.winlator.star.store.xbox.XboxCloudShortcuts
 import java.io.File
 import java.io.FileInputStream
@@ -182,7 +183,8 @@ object MoveGameToContainer {
 
         onStage("Writing the game's entry…")
         val newFile = File(destDir, shortcut.file.name)
-        if (!FileUtils.writeString(newFile, text)) {
+        // A "not Ubisoft" stamp is not carried over: the target works it out again (it may have been stamped on a partial folder).
+        if (!FileUtils.writeString(newFile, UbisoftSupport.dropStaleStamp(text))) {
             undoFolder()
             return Result.Refused("Couldn't write to \"${target.name}\".")
         }

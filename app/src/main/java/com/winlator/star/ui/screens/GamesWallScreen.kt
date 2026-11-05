@@ -167,6 +167,10 @@ fun GamesWallScreen(navController: NavController) {
     val manager = remember { ContainerManager(context) }
     var shortcuts by remember { mutableStateOf<List<Shortcut>>(manager.loadShortcuts()) }
 
+    // The wall starts a game without ShortcutLauncher.requestLaunch, so it asks the same Ubisoft Connect setup question
+    // itself before launching (launchWithUbisoftGate; its dialog is drawn at the bottom of this screen).
+    val launcher = remember(context) { ShortcutLauncher(context, activity, scope) }
+
     // Community configs reuse the phone browser + account dialogs (both internal); applied to the
     // currently selected game via the shared ShortcutsViewModel apply methods.
     val vm: ShortcutsViewModel = viewModel()
@@ -246,8 +250,9 @@ fun GamesWallScreen(navController: NavController) {
     }
 
     LaunchedEffect(Unit) { grabFocus() }
-    LaunchedEffect(activeSheet, editShortcut, showCommunity, showAccount, applyResult) {
-        if (activeSheet == null && !editShortcut && !showCommunity && !showAccount && applyResult == null) grabFocus()
+    LaunchedEffect(activeSheet, editShortcut, showCommunity, showAccount, applyResult, launcher.ubisoftSetupFor) {
+        if (activeSheet == null && !editShortcut && !showCommunity && !showAccount && applyResult == null &&
+            launcher.ubisoftSetupFor == null) grabFocus()
     }
     LaunchedEffect(selectedIndex, visible) { selected?.let { ensureCover(it) } }
 
@@ -261,7 +266,7 @@ fun GamesWallScreen(navController: NavController) {
         }
     }
 
-    val onLaunch: () -> Unit = { selected?.let { launchShortcut(activity, it) } }
+    val onLaunch: () -> Unit = { selected?.let { sc -> launcher.launchWithUbisoftGate(sc) { launchShortcut(activity, sc) } } }
 
     val applyPick: (CommunityPick) -> Unit = { pick ->
         val target = selected
@@ -526,6 +531,8 @@ fun GamesWallScreen(navController: NavController) {
             confirmButton = { DeckDialogBars(); TextButton(onClick = { applyResult = null }) { Text("Done") } },
         )
     }
+    // Only the Ubisoft Connect setup dialog of the gate above ever opens from here.
+    ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
 }
 
 // ── Rail header ───────────────────────────────────────────────────────────

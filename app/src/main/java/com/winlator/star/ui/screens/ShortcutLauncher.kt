@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,13 +18,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.winlator.star.R
 import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.WinePath
@@ -41,14 +45,26 @@ import com.winlator.star.store.SteamLiteComponent
 import com.winlator.star.store.SteamLoginActivity
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamSessionManager
+import com.winlator.star.store.UbisoftInstallerDownload
+import com.winlator.star.store.UbisoftPendingLaunch
+import com.winlator.star.store.UbisoftSupport
 import com.winlator.star.store.steamscript.InstallScriptExecutor
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+
+/** How long the shared Ubisoft check ([ShortcutLauncher.launchWithUbisoftGate]) may take before the game just launches. */
+private const val UBISOFT_GATE_WAIT_MS = 4_000L
+
+/** The download dialog's progress is redrawn at most this often (about four times a second). */
+private const val UBISOFT_PROGRESS_STEP_MS = 250L
 
 /**
  * A SteamLite (or Headless Steam when [appSteam]) launch held back by the Steam account check: [shortcut]
@@ -83,6 +99,25 @@ class ShortcutLauncher internal constructor(
     internal var eaSetupFor by mutableStateOf<Shortcut?>(null)
     internal var eaUnsupportedFor by mutableStateOf<Shortcut?>(null)
     internal var eaSetupBusy by mutableStateOf(false)
+    // Ubisoft support (see UbisoftSupport): a Ubisoft title whose container has no Ubisoft Connect yet.
+    internal var ubisoftSetupFor by mutableStateOf<Shortcut?>(null)
+    internal var ubisoftSetupBusy by mutableStateOf(false)
+    // The "download" variant of that dialog (a game, Epic or Steam, that bundles no installer or only a legacy one):
+    // Ubisoft's own installer is fetched first. Progress in bytes (total 0 = connecting), a Cancel in flight, the last
+    // failure to show, and the handle that aborts the transfer. The decision says why so the dialog can word it.
+    internal var ubisoftSetupDownload by mutableStateOf(false)
+    internal var ubisoftSetupDecision by mutableStateOf<UbisoftSupport.EpicDecision?>(null)
+    internal var ubisoftDownloadDone by mutableLongStateOf(0L)
+    internal var ubisoftDownloadTotal by mutableLongStateOf(0L)
+    internal var ubisoftSetupCancelling by mutableStateOf(false)
+    internal var ubisoftSetupError by mutableStateOf<String?>(null)
+    private var ubisoftDownloadHandle: UbisoftInstallerDownload.Handle? = null
+    // Who is waiting on this dialog when it was opened by [launchWithUbisoftGate] (a screen without its own launch flow):
+    // what "Launch anyway" runs, and the screen's "I am done with this game" call. Both null for the Games tab's own flow.
+    private var ubisoftProceed: (() -> Unit)? = null
+    private var ubisoftOnClosed: (() -> Unit)? = null
+    // A gate check is deciding (a second tap on the same screen must not start another one).
+    private var ubisoftGateBusy = false
     // SteamLite launch pre-flight (session → network → cloud saves → update check, BEFORE the container opens):
     // the RealSteam game whose "Getting Steam ready" dialog is up (null = none). Every RealSteam
     // launch — the popup pick and a remembered pick — routes through it; Goldberg/Raw never do.
@@ -277,6 +312,8 @@ class ShortcutLauncher internal constructor(
     }
 
     fun requestLaunch(shortcut: Shortcut) {
+        // A tap on Play takes over from a game still waiting for its Ubisoft Connect setup to start it (see UbisoftPendingLaunch).
+        UbisoftPendingLaunch.clear(context)
         // Nothing about the launch-method popup (SteamLite/Goldberg/Raw) applies to an Android app.
         if (AndroidGames.isAndroidEntry(shortcut)) { launchAndroidGame(shortcut); return }
         // EA-published Steam titles have exactly one working path: the genuine client (SteamLite) via
@@ -302,6 +339,165 @@ class ShortcutLauncher internal constructor(
                 return
             }
         }
+        // Epic titles that need Ubisoft Connect (Assassin's Creed Syndicate...) and Ubisoft-published Steam titles
+        // (Assassin's Creed IV...) start Ubisoft Connect themselves, so it has to be in the prefix first: the shared gate
+        // offers the one-time setup, otherwise the normal launch flow carries on. A game stamped "not Ubisoft" (nearly
+        // all Epic games) skips the gate without touching the disk once that stamp was re-checked in this app run; the
+        // gate answers within a few seconds at most and a double tap does not open it twice.
+        launchWithUbisoftGate(shortcut) { launchPastSetupChecks(shortcut) }
+    }
+
+    /**
+     * Opens the Ubisoft Connect setup dialog for [shortcut]; [download] = Ubisoft's own current installer is fetched first
+     * (the game has no installer, or only a legacy one), [decision] = why, for the wording.
+     */
+    private fun offerUbisoftSetup(
+        shortcut: Shortcut, download: Boolean, decision: UbisoftSupport.EpicDecision? = null,
+        proceed: (() -> Unit)? = null, onClosed: (() -> Unit)? = null,
+    ) {
+        ubisoftProceed = proceed
+        ubisoftOnClosed = onClosed
+        ubisoftSetupDownload = download
+        ubisoftSetupDecision = decision
+        ubisoftSetupError = null
+        ubisoftSetupCancelling = false
+        ubisoftDownloadDone = 0L
+        ubisoftDownloadTotal = 0L
+        ubisoftSetupFor = shortcut
+    }
+
+    /**
+     * The Ubisoft Connect setup check, shared by [requestLaunch] and the screens that start a game without it (the Games
+     * wall, "Open with" > Play from library): one check, one dialog, then [proceed] launches the game. Only a Ubisoft
+     * candidate ([UbisoftSupport.gateKind], string tests) is looked at, off the main thread and for at most a few seconds;
+     * every other game just gets [proceed] straight away, as it always did. FAIL-OPEN: an exception, a timeout, an
+     * unanswerable check all mean [proceed]; the dialog's "Launch anyway" and a finished setup's automatic launch call
+     * the raw launch, never this check again (the gate is this wrapper, not part of the launch itself). The screen must
+     * also draw [ShortcutLaunchDialogs]; [onDone] is called once when the gate is finished with the game, whichever way
+     * (launched, set up started, cancelled). A dialog-less entry (a pinned home-screen icon opening the session
+     * directly) has no way to ask and is left alone.
+     */
+    fun launchWithUbisoftGate(shortcut: Shortcut, onDone: () -> Unit = {}, proceed: () -> Unit) {
+        val kind = try {
+            UbisoftPendingLaunch.clear(context)
+            UbisoftSupport.gateKind(
+                AndroidGames.isAndroidEntry(shortcut), UbisoftSupport.isEpicShortcut(shortcut), UbisoftSupport.epicStamp(shortcut),
+                UbisoftSupport.epicStampRechecked(shortcut), isSteamOriginShortcut(shortcut),
+            )
+        } catch (t: Throwable) {
+            UbisoftSupport.GateKind.NONE
+        }
+        if (kind == UbisoftSupport.GateKind.NONE) { proceed(); onDone(); return }
+        if (ubisoftGateBusy || ubisoftSetupFor != null) return
+        ubisoftGateBusy = true
+        eaScope.launch {
+            try {
+                val decision = ubisoftGateDecision(shortcut, kind)
+                if (decision.setup == UbisoftSupport.EpicSetup.NONE) { proceed(); onDone() }
+                else offerUbisoftSetup(
+                    shortcut, download = decision.setup == UbisoftSupport.EpicSetup.DOWNLOAD, decision = decision,
+                    proceed = proceed, onClosed = onDone,
+                )
+            } finally {
+                ubisoftGateBusy = false
+            }
+        }
+    }
+
+    /** [UbisoftSupport.epicSetupFor] / [UbisoftSupport.steamSetupFor] for [shortcut] off the main thread; no answer within [UBISOFT_GATE_WAIT_MS] (or a failure) = nothing to set up. */
+    private suspend fun ubisoftGateDecision(shortcut: Shortcut, kind: UbisoftSupport.GateKind): UbisoftSupport.EpicDecision {
+        val work = eaScope.async(Dispatchers.IO) {
+            runCatching {
+                if (kind == UbisoftSupport.GateKind.EPIC) UbisoftSupport.epicSetupFor(context, shortcut)
+                else UbisoftSupport.steamSetupFor(shortcut)
+            }.getOrDefault(UbisoftSupport.EpicDecision.NOT_APPLICABLE)
+        }
+        return withTimeoutOrNull(UBISOFT_GATE_WAIT_MS) { work.await() } ?: UbisoftSupport.EpicDecision.NOT_APPLICABLE
+    }
+
+    /** Closes the setup dialog and tells the screen that opened it through [launchWithUbisoftGate] (once). */
+    internal fun closeUbisoftSetup() {
+        val closed = ubisoftOnClosed
+        ubisoftSetupFor = null
+        ubisoftProceed = null
+        ubisoftOnClosed = null
+        closed?.invoke()
+    }
+
+    /**
+     * The dialog's "Launch anyway": the opening screen's own launch when the dialog came from [launchWithUbisoftGate],
+     * otherwise the Games tab flow's launch-method step. Neither goes through the setup check again.
+     */
+    internal fun ubisoftLaunchAnyway(s: Shortcut) {
+        val proceed = ubisoftProceed
+        val closed = ubisoftOnClosed
+        ubisoftSetupFor = null
+        ubisoftProceed = null
+        ubisoftOnClosed = null
+        if (proceed != null) proceed() else launchPastSetupChecks(s)
+        closed?.invoke()
+    }
+
+    /**
+     * The setup session for [s] was launched: remember the game so the app, once the session has ended and it is back,
+     * starts it by itself ([resumePendingRelaunch]). Not called when the session did not start or the download was cancelled.
+     */
+    internal fun ubisoftSetupStarted(s: Shortcut) {
+        UbisoftPendingLaunch.record(context, s.file.path)
+    }
+
+    /**
+     * The dialog's "Download and set up": fetches Ubisoft's installer (off the main thread) and hands it to the setup
+     * stage. A failure stays on the dialog so the user can retry or launch anyway; [cancelUbisoftDownload] aborts.
+     */
+    internal fun runUbisoftDownloadSetup(s: Shortcut) {
+        val handle = UbisoftInstallerDownload.Handle()
+        ubisoftDownloadHandle = handle
+        ubisoftSetupBusy = true
+        ubisoftSetupCancelling = false
+        ubisoftSetupError = null
+        ubisoftDownloadDone = 0L
+        ubisoftDownloadTotal = 0L
+        eaScope.launch {
+            val problem = withContext(Dispatchers.IO) {
+                var lastWriteMs = 0L
+                try {
+                    val failure = UbisoftSupport.startSetupWithDownload(context, s.container, handle) { done, total ->
+                        // The state is read by the dialog on the main thread: a few updates a second are plenty.
+                        val now = System.currentTimeMillis()
+                        if (now - lastWriteMs >= UBISOFT_PROGRESS_STEP_MS || done == total) {
+                            lastWriteMs = now
+                            ubisoftDownloadDone = done
+                            ubisoftDownloadTotal = total
+                        }
+                        // The screen went away mid-download: stop the transfer instead of finishing it unseen.
+                        if (!isActive) handle.cancel()
+                    }
+                    // A null answer that was not a Cancel means the setup session was launched: the game starts when it is
+                    // done. Recorded here, in the same block, so leaving the screen right after the launch cannot skip it.
+                    if (failure == null && !handle.cancelled) ubisoftSetupStarted(s)
+                    failure
+                } catch (t: Throwable) {
+                    android.util.Log.w("ShortcutsScreen", "Ubisoft download setup failed", t)
+                    context.getString(R.string.ubisoft_setup_failed)
+                }
+            }
+            ubisoftDownloadHandle = null
+            ubisoftSetupBusy = false
+            ubisoftSetupCancelling = false
+            if (problem != null && !handle.cancelled) ubisoftSetupError = problem
+            else closeUbisoftSetup()
+        }
+    }
+
+    /** Cancel on the download dialog: aborts the transfer (the partial file is deleted); the dialog closes once it has stopped. */
+    internal fun cancelUbisoftDownload() {
+        ubisoftSetupCancelling = true
+        ubisoftDownloadHandle?.cancel()
+    }
+
+    /** The rest of [requestLaunch] once EA / Ubisoft have had their say: the launch-method popup or the remembered pick. */
+    internal fun launchPastSetupChecks(shortcut: Shortcut) {
         // The Linux runtime's own entry is not a Windows game: SteamLite, Goldberg and "Raw .exe"
         // all mean nothing for it, and the sheet was an extra tap on every single launch.
         if (LinuxShortcuts.isLinuxEntry(shortcut)) { launchShortcutNow(activity, shortcut); return }
@@ -329,6 +525,7 @@ class ShortcutLauncher internal constructor(
     // The library screen calls this once its list is loaded to re-enter the matching flow.
     fun resumePendingRelaunch(shortcuts: List<Shortcut>) {
         if (shortcuts.isEmpty()) return
+        if (resumeUbisoftLaunch(shortcuts)) return
         val pending = SteamSessionManager.takePendingRelaunch(context) ?: return
         val s = shortcuts.firstOrNull { it.file.path == pending.shortcutPath } ?: return
         when (pending.mode) {
@@ -339,6 +536,34 @@ class ShortcutLauncher internal constructor(
             SteamSessionManager.RelaunchMode.APPSTEAM -> launchWithAppSteam(s)
             SteamSessionManager.RelaunchMode.GOLDBERG -> launchWithGoldberg(s, null)
         }
+    }
+
+    /**
+     * The Ubisoft Connect setup this app started from the dialog is over (its session ended and the app restarted, which
+     * is how this runs): start the game it was for. The marker is read once and deleted first, so nothing starts twice.
+     * Only when Connect is in the prefix now does the game go through [launchPastSetupChecks] (the launch-method popup, a
+     * remembered mode, the SteamLite pre-flight; that entry skips the setup check, so it cannot ask again or loop);
+     * otherwise nothing starts and the user is told. A marker from this same process (a session that may still be
+     * running) or for a game not in [shortcuts] is left alone. Returns true when it took the marker.
+     */
+    private fun resumeUbisoftLaunch(shortcuts: List<Shortcut>): Boolean {
+        val pending = UbisoftPendingLaunch.peek(context) ?: return false
+        if (UbisoftPendingLaunch.recordedInThisProcess()) return false
+        val s = shortcuts.firstOrNull { it.file.path == pending.shortcutPath } ?: return false
+        UbisoftPendingLaunch.clear(context)
+        val ageMs = System.currentTimeMillis() - pending.startedAt
+        eaScope.launch {
+            val installed = withContext(Dispatchers.IO) {
+                runCatching { UbisoftSupport.launcherInstalled(s.container) }.getOrDefault(false)
+            }
+            when (UbisoftPendingLaunch.verdict(false, ageMs, installed)) {
+                UbisoftPendingLaunch.Verdict.LAUNCH -> launchPastSetupChecks(s)
+                UbisoftPendingLaunch.Verdict.NOT_FINISHED ->
+                    Toast.makeText(context, context.getString(R.string.ubisoft_setup_unfinished, s.name ?: ""), Toast.LENGTH_LONG).show()
+                UbisoftPendingLaunch.Verdict.WAIT, UbisoftPendingLaunch.Verdict.EXPIRED -> Unit
+            }
+        }
+        return true
     }
 }
 
@@ -450,6 +675,96 @@ fun ShortcutLaunchDialogs(launcher: ShortcutLauncher, onRemove: (Shortcut) -> Bo
                 }
             },
             dismissButton = { TextButton(enabled = !launcher.eaSetupBusy, onClick = { launcher.eaSetupFor = null }) { Text("Cancel") } },
+        )
+    }
+    launcher.ubisoftSetupFor?.let { s ->
+        val download = launcher.ubisoftSetupDownload
+        val busy = launcher.ubisoftSetupBusy
+        AlertDialog(
+            onDismissRequest = { if (!busy) launcher.closeUbisoftSetup() },
+            title = { Text(stringResource(R.string.ubisoft_setup_title)) },
+            text = {
+                Column {
+                    val decision = launcher.ubisoftSetupDecision
+                    if (download) Text(when (decision?.reason) {
+                        UbisoftSupport.EpicSetupReason.LEGACY_BUNDLED ->
+                            stringResource(R.string.ubisoft_download_legacy_message, s.name ?: "", UbisoftInstallerDownload.APPROX_MB)
+                        else -> stringResource(R.string.ubisoft_download_message, s.name ?: "", UbisoftInstallerDownload.APPROX_MB)
+                    })
+                    else Text(stringResource(R.string.ubisoft_setup_message, s.name ?: ""))
+                    if (download && busy) {
+                        val done = launcher.ubisoftDownloadDone
+                        val total = launcher.ubisoftDownloadTotal
+                        Spacer(Modifier.height(12.dp))
+                        if (total > 0L) {
+                            LinearProgressIndicator(
+                                progress = { (done.toFloat() / total).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (total > 0L) stringResource(
+                                R.string.ubisoft_download_progress,
+                                (done / (1024 * 1024)).toInt(), (total / (1024 * 1024)).toInt(), (done * 100 / total).toInt(),
+                            ) else stringResource(R.string.ubisoft_download_connecting),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    launcher.ubisoftSetupError?.let { error ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                DeckDialogBars()
+                DeckDialogScaled {
+                    TextButton(enabled = !busy, onClick = {
+                        if (download) {
+                            launcher.runUbisoftDownloadSetup(s)
+                        } else {
+                            launcher.ubisoftSetupBusy = true
+                            launcher.eaScope.launch {
+                                val problem = withContext(Dispatchers.IO) {
+                                    try { UbisoftSupport.startSetup(context, s) }
+                                    catch (t: Throwable) {
+                                        android.util.Log.w("ShortcutsScreen", "Ubisoft setup failed", t)
+                                        context.getString(R.string.ubisoft_setup_failed)
+                                    }
+                                }
+                                // Launched: the game starts by itself once the setup session is over and the app is back.
+                                if (problem != null) Toast.makeText(context, problem, Toast.LENGTH_LONG).show()
+                                else launcher.ubisoftSetupStarted(s)
+                                launcher.ubisoftSetupBusy = false
+                                launcher.closeUbisoftSetup()
+                            }
+                        }
+                    }) {
+                        Text(stringResource(when {
+                            !busy -> if (download) R.string.ubisoft_download_confirm else R.string.ubisoft_setup_confirm
+                            download -> R.string.ubisoft_download_downloading
+                            else -> R.string.ubisoft_setup_starting
+                        }))
+                    }
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(enabled = !busy, onClick = {
+                        launcher.ubisoftLaunchAnyway(s)
+                    }) { Text(stringResource(R.string.ubisoft_setup_launch_anyway)) }
+                    // While the installer downloads, Cancel aborts the transfer; the dialog closes once it has stopped.
+                    TextButton(enabled = !busy || (download && !launcher.ubisoftSetupCancelling), onClick = {
+                        if (busy) launcher.cancelUbisoftDownload() else launcher.closeUbisoftSetup()
+                    }) {
+                        Text(stringResource(if (launcher.ubisoftSetupCancelling) R.string.ubisoft_download_cancelling else android.R.string.cancel))
+                    }
+                }
+            },
         )
     }
     launcher.launchChoiceFor?.let { s ->

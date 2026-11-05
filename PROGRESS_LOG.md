@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — ✅ File manager revamp MERGED to main (fast-forward to `feat/file-manager-revamp`), installed, NOT device-tested
+- **User:** "merge to main". Backup ref refs/backup/20261105/main-before-file-manager-revamp → 2e587ae8 (pushed). Main fast-forwarded to the branch (includes the merged `feat/fm-revamp-unpack`). Code == CI-built and installed 02e0e813 (CI 42089315475, APK sha256 7e57c25c…); only PROGRESS_LOG.md differs.
+- **In it:** the new file manager (Home tiles, panes, optional second pane, archives as folders, copy/move/compress/extract/share/open with/properties, Run and Add to Games), the text viewer/editor for txt/log/cfg/ini and similar, the picker in the same look, and BFE's extraction engines and tools (credit: ported from BFE, The412Banner; third-party tool authors credited in THIRD-PARTY-LICENSES.md and the NOTICE files).
+- **Proof:** CI-green ×4 and installed on the Pocket FIT (no FATAL at install). No screen or feature checked on the device yet: NOT device-tested. The unit tests were added, not run.
+- **Not merged:** `feat/fm-revamp-uicheck` (throwaway compile check with a stand-in API; never merge). Branches kept until the user says.
+- **Undo:** main back to refs/backup/20261105/main-before-file-manager-revamp; reinstall /sdcard/Download/Bannerlator-mgamer404-combo-3d0cf4eb.apk.
+
 ## 2026-11-05 — 🗂️ File manager revamp: CI green, installed on the Pocket FIT (`feat/file-manager-revamp`, NOT device-tested, NOT merged)
 - **Merged in:** `feat/fm-revamp-unpack` (f07238f2, its CI 42086453182 green ×4) → merge 39874166. Then 02e0e813: archives 7-Zip can't list (raw .bin/.img) go to the Unpack screen; the ⋮ Unpack items show for every format an engine handles (ArchiveBrowse.canUnpack).
 - **Early compile check of the screens:** throwaway branch `feat/fm-revamp-uicheck` (screens + a stand-in of the archive API, never to be merged) CI 42087874067 green ×4 on f86396be.

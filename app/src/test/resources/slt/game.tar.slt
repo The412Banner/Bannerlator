@@ -1,0 +1,246 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 317440 bytes (310 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/game.tar
+
+--
+Path = /sdcard/Download/bfe-browse-test/game.tar
+Type = tar
+Physical Size = 317440
+Headers Size = 14848
+Code Page = UTF-8
+Characteristics = GNU UTF8 MaxUnicode=26412
+
+----------
+Path = Game
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Data
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Data/Sub
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Data/Sub/conf.ini
+Folder = -
+Size = 4
+Packed Size = 512
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Data/big.bin
+Folder = -
+Size = 300000
+Packed Size = 300032
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Spaced Dir
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/Spaced Dir/a b.txt
+Folder = -
+Size = 2
+Packed Size = 512
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/émoji
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU UTF8 MaxUnicode=233
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/émoji/файл 日本.txt
+Folder = -
+Size = 2
+Packed Size = 512
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU UTF8 MaxUnicode=26412
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/readme.txt
+Folder = -
+Size = 6
+Packed Size = 512
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/.hidden
+Folder = -
+Size = 2
+Packed Size = 512
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = -rw-r--r--
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 0 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+
+Path = Game/EmptyDir
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Mode = drwxr-xr-x
+User = user
+Group = user
+User ID = 10250
+Group ID = 10250
+Symbolic Link = 
+Hard Link = 
+Characteristics = 5 GNU ASCII
+Comment = 
+Device Major = 
+Device Minor = 
+

@@ -1,0 +1,139 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 300354 bytes (294 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/plain.7z
+
+--
+Path = /sdcard/Download/bfe-browse-test/plain.7z
+Type = 7z
+Physical Size = 300354
+Headers Size = 319
+Method = LZMA2:384k
+Solid = +
+Blocks = 1
+
+----------
+Path = Game
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/Data
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/Data/Sub
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/EmptyDir
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/Spaced Dir
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/émoji
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = D drwxr-xr-x
+CRC = 
+Encrypted = -
+Method = 
+Block = 
+
+Path = Game/.hidden
+Size = 2
+Packed Size = 300035
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = 0C281A4E
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+
+Path = Game/Data/Sub/conf.ini
+Size = 4
+Packed Size = 
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = 8EE4241D
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+
+Path = Game/Data/big.bin
+Size = 300000
+Packed Size = 
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = 35FEF7CB
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+
+Path = Game/Spaced Dir/a b.txt
+Size = 2
+Packed Size = 
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = 46EA081F
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+
+Path = Game/readme.txt
+Size = 6
+Packed Size = 
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = 363A3020
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+
+Path = Game/émoji/файл 日本.txt
+Size = 2
+Packed Size = 
+Modified = 2026-10-16 17:19:10.0000000
+Attributes = A -rw-r--r--
+CRC = F3447652
+Encrypted = -
+Method = LZMA2:384k
+Block = 0
+

@@ -1,0 +1,22 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 34 bytes (1 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/note.txt.gz
+
+--
+Path = /sdcard/Download/bfe-browse-test/note.txt.gz
+Type = gzip
+Headers Size = 19
+
+----------
+Path = note.txt
+Size = 5
+Packed Size = 34
+Modified = 2026-10-16 17:19:10
+Host OS = Unix
+CRC = 37ECDA27
+

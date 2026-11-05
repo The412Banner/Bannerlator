@@ -1,0 +1,69 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 601457 bytes (588 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/nested.zip
+
+--
+Path = /sdcard/Download/bfe-browse-test/nested.zip
+Type = zip
+Physical Size = 601457
+
+----------
+Path = inner/plain.7z
+Folder = -
+Size = 300354
+Packed Size = 300354
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = D80D7E57
+Method = Store
+Characteristics = 
+Host OS = Unix
+Version = 20
+Volume Index = 0
+Offset = 0
+
+Path = inner/game.tar.gz
+Folder = -
+Size = 300770
+Packed Size = 300770
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = A2BBBEC0
+Method = Store
+Characteristics = 
+Host OS = Unix
+Version = 20
+Volume Index = 0
+Offset = 300398
+
+Path = note.txt
+Folder = -
+Size = 5
+Packed Size = 5
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 37ECDA27
+Method = Store
+Characteristics = 
+Host OS = Unix
+Version = 20
+Volume Index = 0
+Offset = 601215
+

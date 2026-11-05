@@ -1,0 +1,18 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 300513 bytes (294 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/game.wcp
+
+--
+Path = /sdcard/Download/bfe-browse-test/game.wcp
+Type = zstd
+Method = header-open-only: XXH64 single-segments wnd-MAX:310KiB content-size-frame-max:317440 content-size-total:317440
+
+----------
+Size = 
+Packed Size = 
+

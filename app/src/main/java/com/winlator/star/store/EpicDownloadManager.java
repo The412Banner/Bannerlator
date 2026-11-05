@@ -21,6 +21,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Base64;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.Inflater;
 
 /**
@@ -42,7 +45,7 @@ import java.util.zip.Inflater;
  * Critical notes (from GameNative EpicDownloadManager):
  *   - Skip cloudflare.epicgamescdn.com CDN — 403 on chunks
  *   - Chunk subfolder = DECIMAL groupNum "%02d" (NOT hex)
- *   - NO auth tokens on chunk URLs — only on manifest binary download
+ *   - Auth tokens (signed query) go on the manifest binary download only; chunk URLs are unsigned
  *   - Binary manifest magic = 0x44BEC00C; JSON manifest if magic doesn't match
  *
  * Selective install tags (language filtering), full-file SHA-1 delta/resume and
@@ -58,6 +61,19 @@ public class EpicDownloadManager {
 
     private static final String TAG = "BH_EPIC";
     private static final String UA  = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit";
+
+    /**
+     * Short reason for the last failed {@link #install} (e.g. "manifest refused by CDN (HTTP 403)"),
+     * null when it did not fail or was cancelled. Never holds URLs or tokens. Static, so it is only
+     * meaningful right after {@code install()} returns false (latest install wins).
+     */
+    public static volatile String lastFailureReason = null;
+
+    /** {@code base}, plus ": reason" when the last install recorded one. */
+    public static String withFailureReason(String base) {
+        String why = lastFailureReason;
+        return (why == null || why.isEmpty()) ? base : base + ": " + why;
+    }
 
     // ── Public interface ──────────────────────────────────────────────────────
 
@@ -88,17 +104,97 @@ public class EpicDownloadManager {
         public int    groupNum;          // uint8 subfolder (DECIMAL)
         public int    windowSize;        // uncompressed size
         public long   fileSize;          // compressed download size
+        /** Feature level 22+ (ChunksV5): 4 uint32 secret GUID; null or all-zero = "plain" (unencrypted). */
+        public int[]  secretGuid;
 
         public String guidStr() {
             return String.format("%08X%08X%08X%08X", guid[0], guid[1], guid[2], guid[3]);
         }
 
-        /** Full chunk path: "ChunksV4/94/HASH_GUID.chunk" */
+        /** Full chunk path: "ChunksV4/94/HASH_GUID.chunk" (see {@link #buildChunkPath} for ChunksV5). */
         public String getPath(String chunkDir) {
-            String sub     = String.format("%02d", groupNum);  // DECIMAL — critical!
-            String hashHex = String.format("%016X", hash);
-            return chunkDir + "/" + sub + "/" + hashHex + "_" + guidStr() + ".chunk";
+            return buildChunkPath(chunkDir, groupNum, hash, guid, secretGuid);
         }
+    }
+
+    // ── Chunk path / URL helpers (pure — unit-tested in EpicChunkUrlTest) ─────
+
+    private static final String CHUNKS_V5 = "ChunksV5";
+
+    /** Chunk directory for a manifest feature level, as Legendary's get_chunk_dir. */
+    static String chunkDirForVersion(int version) {
+        if (version >= 22) return CHUNKS_V5;
+        if (version >= 15) return "ChunksV4";
+        if (version >= 6)  return "ChunksV3";
+        if (version >= 3)  return "ChunksV2";
+        return "Chunks";
+    }
+
+    /** URL-safe base64 without padding of little-endian ints (Legendary: struct '<IIII' / '<Q'). */
+    private static String b64(ByteBuffer b) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(b.array());
+    }
+
+    private static String b64(int[] ints) {
+        ByteBuffer b = ByteBuffer.allocate(ints.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        for (int v : ints) b.putInt(v);
+        return b64(b);
+    }
+
+    /**
+     * Relative chunk path under the CDN cloud dir (Legendary models/manifest.py ChunkInfo.path).
+     * ChunksV4 and older: {@code dir/%02d(group)/%016X(hash)_%032X(guid).chunk}.
+     * ChunksV5: {@code dir/<secret|plain>/%02d(group)/<hash>_<guid>.chunk}, each part URL-safe base64
+     * of its little-endian bytes without padding; "plain" stands in for a zero/absent secret GUID.
+     */
+    static String buildChunkPath(String chunkDir, int groupNum, long hash, int[] guid, int[] secretGuid) {
+        String sub = String.format("%02d", groupNum);  // DECIMAL — critical!
+        if (CHUNKS_V5.equals(chunkDir)) {
+            boolean plain = secretGuid == null
+                    || (secretGuid[0] | secretGuid[1] | secretGuid[2] | secretGuid[3]) == 0;
+            String hashB64 = b64(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(hash));
+            return chunkDir + "/" + (plain ? "plain" : b64(secretGuid)) + "/" + sub + "/"
+                    + hashB64 + "_" + b64(guid) + ".chunk";
+        }
+        String hashHex = String.format("%016X", hash);
+        String guidHex = String.format("%08X%08X%08X%08X", guid[0], guid[1], guid[2], guid[3]);
+        return chunkDir + "/" + sub + "/" + hashHex + "_" + guidHex + ".chunk";
+    }
+
+    private static final Pattern ENGINE_HTTP_STATUS = Pattern.compile("HTTP status \\((\\d{3})\\)");
+
+    /** HTTP status out of a Rust engine error such as "... unexpected HTTP status (404)", else null. */
+    static Integer httpStatusFromEngineError(String err) {
+        if (err == null) return null;
+        Matcher m = ENGINE_HTTP_STATUS.matcher(err);
+        return m.find() ? Integer.valueOf(m.group(1)) : null;
+    }
+
+    /** "<what> refused by CDN (HTTP 403, 404)" from the non-200 statuses, or null when there are none. */
+    private static String refusedByCdn(String what, java.util.Collection<Integer> statuses) {
+        Set<Integer> refused = new LinkedHashSet<>();
+        for (int s : statuses) if (s > 0 && s != 200) refused.add(s);
+        if (refused.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder(what).append(" refused by CDN (HTTP ");
+        String sep = "";
+        for (int s : refused) { sb.append(sep).append(s); sep = ", "; }
+        return sb.append(")").toString();
+    }
+
+    /**
+     * Reason for a failed chunk phase. HTTP statuses (from the Java pool and/or the native engine's
+     * error) win: "chunk download refused by CDN (HTTP 404)".
+     */
+    static String chunkFailureReason(java.util.Collection<Integer> statuses, String engineError,
+                                     int failCount, int encryptedChunks) {
+        if (encryptedChunks > 0) return "this game uses encrypted chunks, not supported yet";
+        List<Integer> all = new ArrayList<>(statuses);
+        Integer engineStatus = httpStatusFromEngineError(engineError);
+        if (engineStatus != null) all.add(engineStatus);
+        String refused = refusedByCdn("chunk download", all);
+        if (refused != null) return refused;
+        if (engineError != null) return "chunk download failed (native engine)";
+        return failCount + " chunk(s) could not be downloaded from any CDN";
     }
 
     /** One file part referencing a specific chunk. */
@@ -133,6 +229,8 @@ public class EpicDownloadManager {
 
     public static class EpicManifest {
         public String          chunkDir     = "ChunksV4";
+        /** Binary manifest stored_as bit 0x2: the file names (and launch info) are AES-GCM encrypted. */
+        public boolean         encrypted    = false;
         public List<ChunkInfo> uniqueChunks = new ArrayList<>();
         public List<FileInfo>  files        = new ArrayList<>();
 
@@ -248,6 +346,7 @@ public class EpicDownloadManager {
             List<String> installTags,
             AtomicBoolean cancelFlag,
             ProgressCallback progressCallback) {
+        lastFailureReason = null;
         StringBuilder dbg = new StringBuilder();
         dbg.append("=== BH Epic Debug ===\n");
         dbg.append("installDirPath=").append(installDirPath).append("\n");
@@ -260,6 +359,7 @@ public class EpicDownloadManager {
                 dbg.append("ERROR: No CDN URLs in manifest API response\n");
                 writeDebug(ctx, dbg);
                 Log.e(TAG, "No CDN URLs in manifest API response");
+                lastFailureReason = "no CDN URLs in manifest response";
                 return false;
             }
             for (CdnUrl c : cdnUrls) {
@@ -271,11 +371,13 @@ public class EpicDownloadManager {
 
             if (isCancelled(cancelFlag)) return cancelOut(ctx, dbg, "after CDN parse");
             progress(progressCallback, "Downloading manifest...", 0);
-            byte[] manifestBytes = downloadManifest(manifestApiJson, cdnUrls);
+            List<Integer> manifestStatuses = new ArrayList<>();
+            byte[] manifestBytes = downloadManifest(manifestApiJson, cdnUrls, manifestStatuses);
             if (manifestBytes == null) {
-                dbg.append("ERROR: Manifest binary download failed\n");
+                lastFailureReason = manifestFailureReason(manifestStatuses);
+                dbg.append("ERROR: Manifest binary download failed: ").append(lastFailureReason).append("\n");
                 writeDebug(ctx, dbg);
-                Log.e(TAG, "Manifest binary download failed");
+                Log.e(TAG, "Manifest binary download failed: " + lastFailureReason);
                 return false;
             }
             dbg.append("manifestBytes=").append(manifestBytes.length).append("\n");
@@ -288,6 +390,7 @@ public class EpicDownloadManager {
                 dbg.append("ERROR: Manifest parse failed\n");
                 writeDebug(ctx, dbg);
                 Log.e(TAG, "Manifest parse failed");
+                lastFailureReason = "manifest could not be parsed";
                 return false;
             }
             manifest.cdnUrls = cdnUrls;
@@ -297,6 +400,17 @@ public class EpicDownloadManager {
             Log.i(TAG, "Manifest: chunkDir=" + manifest.chunkDir
                     + " chunks=" + manifest.uniqueChunks.size()
                     + " files=" + manifest.files.size());
+            if (manifest.encrypted) {
+                // The file names sit in an AES-GCM block (Legendary Manifest.decrypt). Not decoded
+                // here, and installing with the names missing would be worse than stopping.
+                dbg.append("ERROR: manifest is encrypted - not supported yet\n");
+                writeDebug(ctx, dbg);
+                Log.e(TAG, "Manifest is encrypted (stored_as & 2), not supported yet");
+                lastFailureReason = "this game's manifest is encrypted, not supported yet";
+                return false;
+            }
+            final Set<Integer> chunkStatuses = java.util.Collections.synchronizedSet(new LinkedHashSet<Integer>());
+            final AtomicInteger encryptedChunks = new AtomicInteger(0);
 
             File installDir  = new File(installDirPath);
             installDir.mkdirs();
@@ -384,7 +498,16 @@ public class EpicDownloadManager {
             // OFF or the engine could not start (library missing, plan cross-check failed) —
             // nothing has been fetched in that case, so falling through is safe.
             boolean useJavaPool = true;
-            if (com.winlator.star.store.blsteam.BlStoreEngineFlag.isEpicEnabled(ctx)) {
+            String engineError = null;
+            boolean tryRust = com.winlator.star.store.blsteam.BlStoreEngineFlag.isEpicEnabled(ctx);
+            if (tryRust && CHUNKS_V5.equals(manifest.chunkDir)) {
+                // The native engine only knows the ChunksV4-and-older path layout, so ChunksV5 manifests
+                // go through the Java pool.
+                tryRust = false;
+                dbg.append("rust engine skipped (ChunksV5 manifest) -> Java chunk pool\n");
+                Log.i(TAG, "Rust Epic engine skipped: ChunksV5 manifest");
+            }
+            if (tryRust) {
                 RustPoolResult rr = runRustChunkPool(ctx, dbg, manifestBytes, manifest, pendingFiles,
                         neededChunks, fTotalBytes, installDirPath, cdnUrls, cancelFlag, progressCallback,
                         completedBytes, completedCount, lastSpeedMs, lastSpeedBytes, currentSpeedBps);
@@ -399,10 +522,22 @@ public class EpicDownloadManager {
                         return false;
                     }
                     if (!rr.success) {
-                        // Surfaces through the shared "N chunks failed" exit below, like a Java
-                        // chunk that exhausted every CDN.
-                        chunkLog.add("FAIL engine=rust " + rr.error);
-                        failCount.incrementAndGet();
+                        Integer rustStatus = httpStatusFromEngineError(rr.error);
+                        if (rustStatus != null && (rustStatus == 401 || rustStatus == 403 || rustStatus == 404)
+                                && completedCount.get() == 0 && !neededChunks.isEmpty()) {
+                            // The CDN refused the engine's URLs before a single chunk landed: let the
+                            // Java pool have a go instead of failing the install.
+                            dbg.append("rust engine refused by CDN (HTTP ").append(rustStatus)
+                               .append(") before any chunk -> Java chunk pool\n");
+                            Log.w(TAG, "Rust Epic engine refused by CDN (HTTP " + rustStatus + "), using Java chunk pool");
+                            useJavaPool = true;
+                        } else {
+                            // Surfaces through the shared "N chunks failed" exit below, like a Java
+                            // chunk that exhausted every CDN.
+                            chunkLog.add("FAIL engine=rust " + rr.error);
+                            engineError = rr.error;
+                            failCount.incrementAndGet();
+                        }
                     }
                 } else {
                     dbg.append("rust engine not started (").append(rr.error)
@@ -420,7 +555,8 @@ public class EpicDownloadManager {
                         if (cancelFlag != null && cancelFlag.get()) return;
                         File cachedFile = new File(chunkCacheDir, fc.guidStr());
                         if (!cachedFile.exists()) {
-                            if (!downloadChunkStreaming(fc, manifest.chunkDir, cdnUrls, cachedFile)) {
+                            if (!downloadChunkStreaming(fc, manifest.chunkDir, cdnUrls, cachedFile,
+                                    chunkStatuses, encryptedChunks)) {
                                 Log.e(TAG, "Chunk download failed: " + fc.guidStr());
                                 chunkLog.add("FAIL chunk=" + fc.guidStr());
                                 failCount.incrementAndGet();
@@ -468,6 +604,7 @@ public class EpicDownloadManager {
                     pool.shutdownNow();
                     dbg.append("ERROR: chunk pool interrupted\n");
                     writeDebug(ctx, dbg);
+                    lastFailureReason = "download interrupted";
                     return false;
                 }
             }
@@ -484,9 +621,12 @@ public class EpicDownloadManager {
             for (String line : chunkLog) dbg.append(line).append("\n");
 
             if (failCount.get() > 0) {
-                dbg.append("ERROR: ").append(failCount.get()).append(" chunks failed\n");
+                lastFailureReason = chunkFailureReason(new ArrayList<>(chunkStatuses), engineError,
+                        failCount.get(), encryptedChunks.get());
+                dbg.append("ERROR: ").append(failCount.get()).append(" chunks failed: ")
+                   .append(lastFailureReason).append("\n");
                 writeDebug(ctx, dbg);
-                Log.e(TAG, failCount.get() + " chunks failed to download");
+                Log.e(TAG, failCount.get() + " chunks failed to download: " + lastFailureReason);
                 return false;
             }
             dbg.append("chunksOK=").append(completedCount.get()).append("\n");
@@ -522,6 +662,7 @@ public class EpicDownloadManager {
                                .append(" for ").append(relPath).append("\n");
                             writeDebug(ctx, dbg);
                             Log.e(TAG, "Missing cached chunk " + part.guidStr() + " for " + relPath);
+                            lastFailureReason = "missing downloaded chunk while writing " + displayName;
                             return false;
                         }
                         byte[] chunkData = readFile(cachedChunk);
@@ -542,6 +683,7 @@ public class EpicDownloadManager {
             dbg.append("EXCEPTION: ").append(e).append("\n");
             writeDebug(ctx, dbg);
             Log.e(TAG, "Epic install failed", e);
+            lastFailureReason = "unexpected error (" + e.getClass().getSimpleName() + ")";
             return false;
         }
     }
@@ -684,28 +826,21 @@ public class EpicDownloadManager {
     /**
      * Extract all CDN entries from the manifest API JSON.
      * Skips cloudflare.epicgamescdn.com.
+     *
+     * The wrapper is read with org.json: EpicApiClient re-serializes the API response with org.json,
+     * which escapes every "/" as "\/", so slicing the raw text leaves literal backslashes in the CDN
+     * URLs and in the signed query values (the manifest request is then refused).
      */
     public static List<CdnUrl> parseCdnUrls(String json) {
         List<CdnUrl> result = new ArrayList<>();
         try {
-            int manifestsIdx = json.indexOf("\"manifests\"");
-            if (manifestsIdx < 0) return result;
-            int arrStart = json.indexOf("[", manifestsIdx);
-            if (arrStart < 0) return result;
+            JSONArray manifests = manifestsArray(json);
+            if (manifests == null) return result;
 
-            int cursor = arrStart + 1;
-            while (true) {
-                int uriKeyIdx = json.indexOf("\"uri\"", cursor);
-                if (uriKeyIdx < 0) break;
-
-                int colon = json.indexOf(":", uriKeyIdx + 5);
-                if (colon < 0) break;
-                int q1 = json.indexOf("\"", colon + 1);
-                if (q1 < 0) break;
-                int q2 = json.indexOf("\"", q1 + 1);
-                if (q2 < 0) break;
-                String uri = json.substring(q1 + 1, q2);
-                cursor = q2 + 1;
+            for (int i = 0; i < manifests.length(); i++) {
+                JSONObject m = manifests.optJSONObject(i);
+                if (m == null) continue;
+                String uri = m.optString("uri", "");
 
                 int buildsIdx = uri.indexOf("/Builds");
                 if (buildsIdx < 0) continue;
@@ -721,7 +856,7 @@ public class EpicDownloadManager {
                 if (lastSlash < 0) continue;
                 String cloudDir = afterBase.substring(0, lastSlash);
 
-                String authParams = extractQueryParams(json, uriKeyIdx);
+                String authParams = buildAuthParams(m.optJSONArray("queryParams"));
                 result.add(new CdnUrl(baseUrl, cloudDir, authParams));
             }
         } catch (Exception e) {
@@ -730,72 +865,52 @@ public class EpicDownloadManager {
         return result;
     }
 
-    private static String extractQueryParams(String json, int nearPos) {
-        try {
-            int end    = Math.min(json.length(), nearPos + 2000);
-            int qpIdx  = json.indexOf("\"queryParams\"", nearPos);
-            if (qpIdx < 0 || qpIdx > end) return "";
-            int arrOpen  = json.indexOf("[", qpIdx);
-            if (arrOpen < 0) return "";
-            int arrClose = json.indexOf("]", arrOpen);
-            if (arrClose < 0) return "";
-            String arrContent = json.substring(arrOpen + 1, arrClose).trim();
-            if (arrContent.isEmpty()) return "";
+    /** The wrapper's top-level "manifests" array, or null when absent. Throws on malformed JSON. */
+    private static JSONArray manifestsArray(String json) throws org.json.JSONException {
+        if (json == null) return null;
+        return new JSONObject(json).optJSONArray("manifests");
+    }
 
-            StringBuilder sb = new StringBuilder("?");
-            boolean first = true;
-            int pos = 0;
-            while (pos < arrContent.length()) {
-                int nameIdx = arrContent.indexOf("\"name\"", pos);
-                if (nameIdx < 0) break;
-                int nColon = arrContent.indexOf(":", nameIdx + 6);
-                if (nColon < 0) break;
-                int nq1 = arrContent.indexOf("\"", nColon + 1);
-                if (nq1 < 0) break;
-                int nq2 = arrContent.indexOf("\"", nq1 + 1);
-                if (nq2 < 0) break;
-                String name = arrContent.substring(nq1 + 1, nq2);
-
-                int valIdx = arrContent.indexOf("\"value\"", nq2);
-                if (valIdx < 0) break;
-                int vColon = arrContent.indexOf(":", valIdx + 7);
-                if (vColon < 0) break;
-                int vq1 = arrContent.indexOf("\"", vColon + 1);
-                if (vq1 < 0) break;
-                int vq2 = arrContent.indexOf("\"", vq1 + 1);
-                if (vq2 < 0) break;
-                String value = arrContent.substring(vq1 + 1, vq2);
-
-                if (!first) sb.append("&");
-                sb.append(name).append("=").append(value);
-                first = false;
-                pos = vq2 + 1;
-            }
-            return first ? "" : sb.toString();
-        } catch (Exception e) {
-            return "";
+    /** "?name=value&name2=value2" from a queryParams array of {name,value}, or "" when empty. */
+    private static String buildAuthParams(JSONArray queryParams) {
+        if (queryParams == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < queryParams.length(); i++) {
+            JSONObject p = queryParams.optJSONObject(i);
+            if (p == null) continue;
+            String name = p.optString("name", "");
+            if (name.isEmpty()) continue;
+            sb.append(sb.length() == 0 ? "?" : "&").append(name).append("=").append(p.optString("value", ""));
         }
+        return sb.toString();
     }
 
     // ── Manifest download ─────────────────────────────────────────────────────
 
     /**
      * Download the manifest binary, trying each CDN in order.
-     * Auth tokens (queryParams) are appended to the manifest URL — but NOT to chunk URLs.
+     * Auth tokens (queryParams) are appended to the manifest URL only; chunk URLs are unsigned.
      */
     public static byte[] downloadManifest(String json, List<CdnUrl> cdnUrls) {
+        return downloadManifest(json, cdnUrls, null);
+    }
+
+    /**
+     * As above; when {@code statusOut} is non-null it receives the HTTP status of every CDN attempt
+     * (-1 = no response), for the failure reason.
+     */
+    public static byte[] downloadManifest(String json, List<CdnUrl> cdnUrls, List<Integer> statusOut) {
         try {
-            int manifestsIdx = json.indexOf("\"manifests\"");
-            if (manifestsIdx < 0) return null;
-            int uriIdx = json.indexOf("\"uri\"", manifestsIdx);
-            if (uriIdx < 0) return null;
-            int colon = json.indexOf(":", uriIdx + 5);
-            if (colon < 0) return null;
-            int q1 = json.indexOf("\"", colon + 1);
-            if (q1 < 0) return null;
-            int q2 = json.indexOf("\"", q1 + 1);
-            if (q2 < 0) return null;
-            String firstUri = json.substring(q1 + 1, q2);
+            JSONArray manifests = manifestsArray(json);
+            if (manifests == null) return null;
+            String firstUri = null;
+            for (int i = 0; i < manifests.length(); i++) {
+                JSONObject m = manifests.optJSONObject(i);
+                if (m == null) continue;
+                String u = m.optString("uri", "");
+                if (!u.isEmpty()) { firstUri = u; break; }
+            }
+            if (firstUri == null) return null;
 
             String uriPath = firstUri.contains("?") ? firstUri.substring(0, firstUri.indexOf("?")) : firstUri;
             int lastSlash = uriPath.lastIndexOf("/");
@@ -806,7 +921,9 @@ public class EpicDownloadManager {
             for (CdnUrl cdn : cdnUrls) {
                 String url = cdn.baseUrl + cdn.cloudDir + "/" + manifestFilename + cdn.authParams;
                 Log.i(TAG, "Trying manifest CDN: " + cdn.baseUrl);
-                byte[] bytes = downloadBytes(url, null);
+                HttpResult res = fetch(url, null);
+                if (statusOut != null) statusOut.add(res.status);
+                byte[] bytes = res.body;
                 if (bytes != null && bytes.length > 4) {
                     Log.i(TAG, "Manifest OK (" + bytes.length + " bytes) from " + cdn.baseUrl);
                     return bytes;
@@ -816,6 +933,15 @@ public class EpicDownloadManager {
             Log.e(TAG, "downloadManifest error: " + e.getClass().getSimpleName());
         }
         return null;
+    }
+
+    /** Reason for a failed manifest download, from the per-CDN HTTP statuses (-1 = no response). */
+    private static String manifestFailureReason(List<Integer> statuses) {
+        String refused = refusedByCdn("manifest", statuses);
+        if (refused != null) return refused;
+        if (statuses.isEmpty()) return "manifest URL could not be read";
+        return statuses.contains(200) ? "manifest response was empty or truncated"
+                : "manifest download failed (network error)";
     }
 
     // ── Manifest parsing ──────────────────────────────────────────────────────
@@ -836,12 +962,6 @@ public class EpicDownloadManager {
             buf.position(buf.position() + 20); // skip SHA-1
             int storedAs = buf.get() & 0xFF;
             int version  = buf.getInt();
-
-            String chunkDir;
-            if      (version >= 15) chunkDir = "ChunksV4";
-            else if (version >= 6)  chunkDir = "ChunksV3";
-            else if (version >= 3)  chunkDir = "ChunksV2";
-            else                    chunkDir = "Chunks";
 
             buf.position(headerSize);
             byte[] bodyBytes = new byte[buf.remaining()];
@@ -866,6 +986,11 @@ public class EpicDownloadManager {
             int metaStart = body.position();
             int metaSize = body.getInt();
             String[] prereq = readMetaPrereq(body);
+            // Like Legendary, the chunk directory follows the META feature level (the uint32 after
+            // meta_size and data_version); the header version is only the fallback.
+            int featureLevel = body.getInt(metaStart + 5);
+            int chunkVersion = featureLevel > 0 ? featureLevel : version;
+            String chunkDir = chunkDirForVersion(chunkVersion);
             body.position(metaStart + metaSize);
 
             // ChunkDataList section
@@ -888,6 +1013,14 @@ public class EpicDownloadManager {
             for (ChunkInfo c : chunks) c.groupNum   = body.get() & 0xFF;
             for (ChunkInfo c : chunks) c.windowSize = body.getInt();
             for (ChunkInfo c : chunks) c.fileSize   = body.getLong();
+            // ChunksV5 (feature level 22+) adds the secret GUIDs here (then window_size_compressed and
+            // the GCM tags, which are skipped with the rest of the section below). The secret GUID is
+            // part of the chunk's path.
+            if (chunkVersion >= 22 && body.position() + (long) chunkCount * 16 <= cdlStart + cdlSize) {
+                for (ChunkInfo c : chunks) {
+                    c.secretGuid = new int[] { body.getInt(), body.getInt(), body.getInt(), body.getInt() };
+                }
+            }
 
             body.position(cdlStart + cdlSize);
 
@@ -938,6 +1071,7 @@ public class EpicDownloadManager {
 
             EpicManifest.ParsedManifest result = new EpicManifest.ParsedManifest();
             result.chunkDir     = chunkDir;
+            result.encrypted    = (storedAs & 2) != 0;
             result.uniqueChunks = new ArrayList<>(seenMap.values());
             result.files        = files;
             result.prereqName   = prereq[0];
@@ -1146,7 +1280,18 @@ public class EpicDownloadManager {
 
     // ── HTTP ──────────────────────────────────────────────────────────────────
 
+    /** Outcome of one GET: HTTP status (-1 = no response) and the body (null unless 200 and fully read). */
+    private static final class HttpResult {
+        int    status = -1;
+        byte[] body   = null;
+    }
+
     public static byte[] downloadBytes(String urlStr, String bearerToken) {
+        return fetch(urlStr, bearerToken).body;
+    }
+
+    private static HttpResult fetch(String urlStr, String bearerToken) {
+        HttpResult res = new HttpResult();
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(urlStr).openConnection();
@@ -1157,9 +1302,10 @@ public class EpicDownloadManager {
             if (bearerToken != null && !bearerToken.isEmpty())
                 conn.setRequestProperty("Authorization", bearerToken);
             int code = conn.getResponseCode();
+            res.status = code;
             if (code != 200) {
                 Log.w(TAG, "HTTP " + code + " for " + StoreLog.redactUrl(urlStr));
-                return null;
+                return res;
             }
             int contentLength = conn.getContentLength();
             ByteArrayOutputStream out = contentLength > 0
@@ -1170,10 +1316,11 @@ public class EpicDownloadManager {
             int n;
             while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
             in.close();
-            return out.toByteArray();
+            res.body = out.toByteArray();
+            return res;
         } catch (Exception e) {
             Log.w(TAG, "downloadBytes error [" + StoreLog.redactUrl(urlStr) + "]: " + e.getClass().getSimpleName());
-            return null;
+            return res;
         } finally {
             if (conn != null) conn.disconnect();
         }
@@ -1185,7 +1332,9 @@ public class EpicDownloadManager {
      * Reads HTTP stream → parses chunk header → inflates/copies payload → writes to file.
      */
     private static boolean downloadChunkStreaming(ChunkInfo chunk, String chunkDir,
-                                                   List<CdnUrl> cdnUrls, File outFile) {
+                                                   List<CdnUrl> cdnUrls, File outFile,
+                                                   Set<Integer> refusedStatuses,
+                                                   AtomicInteger encryptedChunks) {
         String chunkPath = chunk.getPath(chunkDir);
         // Write to a .part temp and only rename into the final cache name AFTER the SHA-1 check
         // passes. A cached chunk therefore exists in its final name ONLY if it fully downloaded and
@@ -1194,6 +1343,7 @@ public class EpicDownloadManager {
         File tmp = new File(outFile.getPath() + ".part");
         tmp.delete(); // clear any stale partial from a prior interrupted attempt
         for (CdnUrl cdn : cdnUrls) {
+            // Chunk URLs are unsigned (like Legendary); only the manifest request carries the query.
             String url = cdn.baseUrl + cdn.cloudDir + "/" + chunkPath;
             HttpURLConnection conn = null;
             try {
@@ -1201,7 +1351,12 @@ public class EpicDownloadManager {
                 conn.setConnectTimeout(30000);
                 conn.setReadTimeout(60000);
                 conn.setRequestProperty("User-Agent", UA);
-                if (conn.getResponseCode() != 200) { conn.disconnect(); continue; }
+                int code = conn.getResponseCode();
+                if (code != 200) {
+                    refusedStatuses.add(code);  // for the failure reason
+                    conn.disconnect();
+                    continue;
+                }
 
                 // Verify the DECOMPRESSED chunk against the manifest's per-chunk SHA-1 when present
                 // (binary manifests). null/all-zero → skip verification (JSON manifests). This makes
@@ -1231,6 +1386,16 @@ public class EpicDownloadManager {
                     int compressedSize = hdr.getInt();
                     hdr.position(hdr.position() + 24); // skip GUID(16) + hash(8)
                     int storedAs = hdr.get() & 0xFF;
+
+                    if ((storedAs & 2) != 0) {
+                        // AES-GCM encrypted chunk (ChunksV5 with a secret GUID, see Legendary's
+                        // Chunk.data). Not supported yet: say so instead of writing ciphertext.
+                        encryptedChunks.incrementAndGet();
+                        Log.w(TAG, "Encrypted chunk, not supported yet: " + chunk.guidStr());
+                        tmp.delete();
+                        conn.disconnect();
+                        return false;
+                    }
 
                     // Skip any extra header bytes beyond the 41 we already read
                     if (headerSize > 41) skipFully(in, headerSize - 41);

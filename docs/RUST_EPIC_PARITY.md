@@ -224,5 +224,24 @@ with an immediate 4xx, while Fastly/Akamai normalize them — hence one bad host
 demoted and re-probed every 5 s. Fix (adapter only, `plan.rs::normalize_prefix`, unit-tested):
 `\/` → `/`, stray `\` dropped, trailing `/` trimmed, so the Rust URL is the one Java intended
 (`https://host/Builds/Org/…/default/ChunksV4/NN/HASH_GUID.chunk`). The hosts are now logged one
-per line (`host[i]=…`) after the `plan` line. The Java scanner itself is untouched (the Java pool
-still works through OkHttp's tolerance). Chunk URLs remain unsigned, as in Java.
+per line (`host[i]=…`) after the `plan` line. The Java scanner was left alone here (the Java pool
+still worked through OkHttp's tolerance); 6.2 replaces it with a real JSON parse. Chunk URLs remain unsigned, as in Java.
+
+### 6.2 ChunksV5 manifests (device finding: every chunk 404)
+
+Device run on Agent A (fastly + akamai, every item `unexpected HTTP status (404)`, 0/653 ok).
+Legendary (`models/manifest.py` `get_chunk_dir` / `ChunkInfo.path`) serves manifests with feature
+level >= 22 from `ChunksV5/<secret|plain>/NN/<b64 hash>_<b64 guid>.chunk` (URL-safe base64 of the
+little-endian uint64 / 4 x uint32, `=` stripped), not the `ChunksV4/NN/%016X_%032X.chunk` layout the
+engine builds, and the engine's manifest parser does not read the V5 secret GUIDs. Adapter-only
+decision, no JNI change:
+
+- `EpicDownloadManager.install` skips the engine for a `ChunksV5` manifest (`rust engine skipped
+  (ChunksV5 manifest)` in `bh_epic_debug.txt`); the Java pool builds the V5 path. Chunk URLs stay
+  unsigned, like Legendary (`base_url + "/" + chunk.path`); the signed query is for the manifest only.
+- For older manifests the engine stays the default; a native run that dies with HTTP 401/403/404
+  before the first chunk falls back to the Java pool.
+- Encrypted manifests / chunks (Legendary `Manifest.decrypt`, `Chunk.data`) are not supported: the
+  install stops with a "not supported yet" reason instead of writing garbage.
+- `parseCdnUrls` now reads the manifest wrapper with `org.json`, so the prefixes handed to the engine
+  are no longer `\/`-escaped (6.1); `normalize_prefix` stays as a harmless safety net.

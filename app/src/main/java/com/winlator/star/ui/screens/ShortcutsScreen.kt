@@ -5217,12 +5217,14 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
  * Game settings > General > Mods (core.GameMods): the mods this game's EXE can take, each one's per-game
  * switch (off by default), Special K's DLL name ("" = picked from the EXE) and a program to start with the
  * game (GameMods.EXTRA_START_WITH, a Windows path; "" = none). Switching a mod on
- * downloads it from its release if this device does not have it yet. Lives outside the settings screen
- * (D8 8.8.18 crashed dexing it with state inline).
+ * downloads it from its release if this device does not have it yet; switching it off removes the file we
+ * placed in the game folder right away (GameMods.remove, for Special K also its logs; the launch does the
+ * same). Lives outside the settings screen (D8 8.8.18 crashed dexing it with state inline).
  */
 private class GameModsSetting(
     val mods: List<GameMods.Mod>, val machine: Int, val imports: Set<String>,
     initialOn: Map<String, Boolean>, initialSkDll: String, initialStartWith: String,
+    private val gameDir: File?,
 ) {
     val on = mutableStateMapOf<String, Boolean>().apply { putAll(initialOn) }
     var skDll by mutableStateOf(initialSkDll)
@@ -5240,6 +5242,17 @@ private class GameModsSetting(
     fun nextSkDll() {
         val names = listOf("") + GameMods.SPECIALK_DLLS
         skDll = names[(names.indexOf(skDll).coerceAtLeast(0) + 1) % names.size]
+    }
+
+    fun removeNow(mod: GameMods.Mod) {
+        val dir = gameDir ?: return
+        Thread {
+            try {
+                GameMods.remove(dir, mod)?.let { android.util.Log.i("GameMods", "${mod.name} off: $it") }
+            } catch (e: Exception) {
+                android.util.Log.w("GameMods", "${mod.name} off: remove failed", e)
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     fun download(filesDir: File, mod: GameMods.Mod) {
@@ -5264,11 +5277,16 @@ private fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remem
     val machine = GameMods.peMachine(exe)
     val mods = GameMods.ALL.filter { GameMods.supports(it, shortcut.path, machine) }
     val imports = if (GameMods.SPECIAL_K in mods) GameMods.peImports(exe) else emptySet()
+    // Same folder the launch uses (XServerDisplayActivity.gameExeFolders).
+    val dir = if (shortcut.path == null || shortcut.path.endsWith(".lnk")) null else runCatching {
+        WinePath.resolveAndroidPath(shortcut.container, FileUtils.getDirname(shortcut.path))
+    }.getOrNull()?.takeIf { it.isDirectory }
     GameModsSetting(
         mods, machine, imports,
         GameMods.ALL.associate { it.id to (shortcut.getExtra(it.extra) == "1") },
         shortcut.getExtra(GameMods.EXTRA_SPECIALK_DLL) ?: "",
         shortcut.getExtra(GameMods.EXTRA_START_WITH) ?: "",
+        dir,
     )
 }
 
@@ -5297,7 +5315,7 @@ private fun GameModsDialog(setting: GameModsSetting, onDismiss: () -> Unit) {
                             checked = setting.on[mod.id] == true,
                             onCheckedChange = { checked ->
                                 setting.on[mod.id] = checked
-                                if (checked) setting.download(filesDir, mod)
+                                if (checked) setting.download(filesDir, mod) else setting.removeNow(mod)
                             },
                         )
                         Spacer(Modifier.width(12.dp))

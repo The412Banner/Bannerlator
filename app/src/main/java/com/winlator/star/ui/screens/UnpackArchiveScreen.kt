@@ -31,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,6 +45,8 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -53,6 +56,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,15 +70,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
 import com.winlator.star.core.StringUtils
+import com.winlator.star.core.unpack.ExtraFormats
 import com.winlator.star.core.unpack.Innoextract
 import com.winlator.star.core.unpack.PowerMode
 import com.winlator.star.core.unpack.ReadBuffer
+import com.winlator.star.core.unpack.RepackLayers
 import com.winlator.star.core.unpack.SevenZip
+import com.winlator.star.core.unpack.SpaceSaver
 import com.winlator.star.core.unpack.Unarc
 import com.winlator.star.core.unpack.UnpackManager
 import com.winlator.star.core.unpack.UnpackPhase
 import com.winlator.star.core.unpack.UnpackService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -123,6 +131,11 @@ fun UnpackArchiveScreen(
     // reveals the "also extract DLC" toggle below. Default the toggle on — auto-batch is the ask.
     var dlcInstallers by remember(archivePath) { mutableStateOf<List<File>>(emptyList()) }
     var alsoExtractDlc by remember(archivePath) { mutableStateOf(true) }
+    // lzip / lzop / LZ4 / ECM / ALZ / EGG / ACE / Amiga LZX / OTA payload: recognised by header and handled
+    // by ExtraFormats instead of 7-Zip (which can't open them, so `7zz l` would say "nothing to unpack").
+    var extraProbe by remember(archivePath) { mutableStateOf<ExtraFormats.Probe?>(null) }
+    // OTA payload: the partitions to write out — every one that can be extracted, until the user narrows it.
+    var chosenParts by remember(archivePath) { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(archivePath) {
         typeLoading = true
         if (isInno) {
@@ -131,8 +144,15 @@ fun UnpackArchiveScreen(
                 dlcInstallers = withContext(Dispatchers.IO) { SevenZip.siblingInnoInstallers(archive) }
             }
         } else {
-            val info = withContext(Dispatchers.IO) { SevenZip.list(context, archive) }
-            detectedType = info?.type
+            val probe = withContext(Dispatchers.IO) { ExtraFormats.probe(context, archive) }
+            if (probe != null) {
+                extraProbe = probe
+                detectedType = probe.typeLabel
+                chosenParts = probe.partitions.filter { !it.incremental }.map { it.name }.toSet()
+            } else {
+                val info = withContext(Dispatchers.IO) { SevenZip.list(context, archive) }
+                detectedType = info?.type
+            }
         }
         typeLoading = false
     }
@@ -170,7 +190,11 @@ fun UnpackArchiveScreen(
     // available (or srep) → run Setup.exe in a container.
     val innoContainerOnly = innoClass?.route == SevenZip.InnoRoute.CONTAINER_ONLY
     val innoExtract = innoClass?.route == SevenZip.InnoRoute.INNOEXTRACT
-    val innoFreeArc = innoClass?.route == SevenZip.InnoRoute.FREEARC_NATIVE
+    val innoFreeArcBuiltin = innoClass?.route == SevenZip.InnoRoute.FREEARC_NATIVE
+    // FreeArc with external layers (precomp, …): the layered unarc engine + libbfeext.
+    val innoLayers = innoClass?.route == SevenZip.InnoRoute.FREEARC_LAYERS
+    val innoFreeArc = innoFreeArcBuiltin || innoLayers
+    val layerInfo = innoClass?.layers
     // The path actually handed to the service (its job key): FreeArc runs on the first Setup-*.bin
     // volume; everything else on `archive` (the resolved Setup.exe or the plain file).
     val jobArchive = if (innoFreeArc) (innoClass?.freeArcArchive ?: archive) else archive
@@ -180,7 +204,10 @@ fun UnpackArchiveScreen(
 
     // For display + honest speed/ETA: the payload data. For InnoSetup that's the Setup-*.bin total,
     // not the tiny Setup.exe.
-    val sourceSize = remember(archivePath) {
+    // Bumped after "Put back what's left" (space-saving unpack) so the plan and sizes are re-read.
+    var planTick by remember { mutableIntStateOf(0) }
+    // Re-read after a job ends: a space-saving unpack shrinks or removes the archive.
+    val sourceSize = remember(archivePath, state.phase, planTick) {
         if (isInno) {
             archive.parentFile?.listFiles()
                 ?.filter { it.isFile && (it.extension.equals("bin", true) || it == archive) }
@@ -193,12 +220,80 @@ fun UnpackArchiveScreen(
 
     // Content pre-flight (not extension): a plain file is judged by whether `7zz l` could open it as
     // an archive / disc image. No recognisable container (e.g. raw .bin data) → nothing to unpack.
-    val notAnArchive = !isInno && !typeLoading && detectedType == null
+    // A plain program (`Type = PE`/ELF…) opens in 7-Zip too, but only as its code sections — not a payload.
+    // ExtraFormats files are judged by their own probe instead (it explains anything it can't do).
+    val isExtra = !isInno && extraProbe != null
+    val extraProblem = extraProbe?.problem
+    val extraAllowed = isExtra && !typeLoading && extraProblem == null
+    val isPayload = extraProbe?.format == ExtraFormats.Format.PAYLOAD
+    val isProgram = !isInno && !isExtra && !typeLoading && detectedType in SevenZip.EXECUTABLE_TYPES
+    val notAnArchive = !isInno && !isExtra && !typeLoading && (detectedType == null || isProgram)
     // Are we still deciding what this file is? (InnoSetup pre-flight, or the plain content-sniff.)
     val checking = if (isInno) innoClassifying else typeLoading
     // The 7-Zip extract path is for plain (non-Inno) archives only, once the sniff confirms it opens.
-    val sevenZipAllowed = !isInno && !typeLoading && detectedType != null
+    val sevenZipAllowed = !isInno && !isExtra && !typeLoading && detectedType != null && !isProgram
     val engineMissingInno = innoExtract && !Innoextract.isAvailable(context)
+
+    val canUnarc = innoFreeArc && !gatedByPermission && jobArchive.isFile && !otherJobRunning
+    val startUnarc = {
+        UnpackManager.clearIfTerminal()
+        UnpackService.start(context, jobArchive.absolutePath, destPath, 1, buffer.bytes, true, sourceSize,
+            if (innoLayers) Unarc.ENGINE_LAYERS else Unarc.ENGINE)
+    }
+    val canSevenZip = sevenZipAllowed && !gatedByPermission && !engineMissing && archive.isFile && !otherJobRunning
+    val startSevenZip = {
+        UnpackManager.clearIfTerminal()
+        val mmt = UnpackManager.mmtFor(powerMode, manualCores)
+        UnpackService.start(context, archive.absolutePath, destPath, mmt, buffer.bytes, false, sourceSize)
+    }
+    val canExtra = extraAllowed && !gatedByPermission && archive.isFile && !otherJobRunning &&
+        (!isPayload || chosenParts.isNotEmpty())
+    val startExtra = {
+        UnpackManager.clearIfTerminal()
+        val parts = if (isPayload) extraProbe?.partitions?.map { it.name }?.filter { it in chosenParts } else null
+        UnpackService.start(context, archive.absolutePath, destPath, 1, buffer.bytes, false, sourceSize, ExtraFormats.ENGINE, parts)
+    }
+
+    // ── Space-saving unpack ("unpack and delete the download as it goes", SpaceSaver / bfecut) ──
+    // Plain archives and native FreeArc repacks on a real path, with All Files access. The engine's
+    // plan decides the rest.
+    val spaceTarget = if (innoFreeArcBuiltin) jobArchive else archive
+    val spaceEngine = remember { SpaceSaver.isAvailable(context) }
+    val spaceEligible = spaceEngine && (sevenZipAllowed || innoFreeArcBuiltin) && !gatedByPermission
+    var spacePlan by remember(archivePath) { mutableStateOf<SpaceSaver.Plan?>(null) }
+    var spaceMode by remember(archivePath) { mutableStateOf(false) }
+    // ZIP/tar/RAR free space only once it runs out, unless this is ticked (7z/FreeArc free each block anyway).
+    var spaceEager by remember(archivePath) { mutableStateOf(false) }
+    var confirmSpace by remember { mutableStateOf(false) }
+    var abandoning by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(spaceEligible, destPath, state.phase, planTick) {
+        if (!spaceEligible || state.isRunning) return@LaunchedEffect
+        spacePlan = withContext(Dispatchers.IO) {
+            if (spaceTarget.isFile) SpaceSaver.plan(context, spaceTarget, File(destPath)) else null
+        }
+        if (spacePlan?.let { it.usable && !it.resume } != true) spaceMode = false
+    }
+    val spaceResume = spacePlan?.let { it.supported && it.resume } == true
+    val canSpace = spacePlan?.usable == true && spaceTarget.isFile && !otherJobRunning && !gatedByPermission
+    val startSpace = {
+        UnpackManager.clearIfTerminal()
+        UnpackService.start(context, spaceTarget.absolutePath, destPath, 1, buffer.bytes, false, spaceTarget.length(), SpaceSaver.ENGINE,
+            spaceEager = spaceEager && spacePlan?.eagerMatters == true)
+    }
+    val putBack: () -> Unit = {
+        abandoning = true
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { SpaceSaver.abandon(context, spaceTarget, File(destPath)) }
+            abandoning = false
+            android.widget.Toast.makeText(
+                context,
+                if (r.exitCode == 0) "Put back: ${spaceTarget.name} holds the rest again" else SpaceSaver.explain(r.errorCode, r.message),
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            planTick++
+        }
+    }
 
     // Battery-optimisation exemption, refreshed on resume so returning from Settings re-checks it.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -276,10 +371,15 @@ fun UnpackArchiveScreen(
                 if (innoFreeArc) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "unarc will decode the FreeArc data (${jobArchive.name} + its Setup-*.bin volumes) directly.",
+                        if (innoLayers) "unarc will decode the FreeArc data in ${jobArchive.name}, with the bundled decoders for its extra layers."
+                        else "unarc will decode the FreeArc data (${jobArchive.name} + its Setup-*.bin volumes) directly.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
+                }
+                if (extraAllowed) extraProbe?.engineNote?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
 
@@ -287,7 +387,7 @@ fun UnpackArchiveScreen(
 
             // Destination applies to the 7-Zip, innoextract AND FreeArc/unarc paths; Power (below) is
             // 7-Zip-only. All hidden while still deciding, for the container-only route, and non-archives.
-            if (sevenZipAllowed || innoExtract || innoFreeArc) {
+            if (sevenZipAllowed || innoExtract || innoFreeArc || extraAllowed) {
             // ── Destination ──
             SectionCard {
                 Text("Extract to", style = sectionTitle())
@@ -498,13 +598,25 @@ fun UnpackArchiveScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
+            // ── A format known but not unpackable this time (ACE 2.0, encrypted EGG, incremental OTA…) ──
+            if (!running && isExtra && !typeLoading && extraProblem != null) {
+                WarnCard {
+                    Text("Can't extract this file", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(extraProblem, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
             // ── Not a recognized archive (judged by content, not extension) ──
             if (!running && notAnArchive) {
                 WarnCard {
                     Text("Nothing to unpack", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "This file isn't a recognized archive or disc image — it looks like raw data, " +
+                        if (isProgram) "This is a program, not an installer or self-extracting archive — " +
+                            "there's no packed content inside it to unpack."
+                        else "This file isn't a recognized archive or disc image — it looks like raw data, " +
                             "nothing to unpack.",
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
@@ -514,6 +626,22 @@ fun UnpackArchiveScreen(
 
             // ── FreeArc repack → native unarc (primary) ──
             if (!running && innoFreeArc) {
+                if (layerInfo != null && layerInfo.layers.isNotEmpty()) {
+                    SectionCard {
+                        Text("Layers in this archive", style = sectionTitle())
+                        Spacer(Modifier.height(6.dp))
+                        LayerList(layerInfo)
+                        if (innoLayers) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Extra layers are decoded into a temporary folder next to the destination, so " +
+                                    "leave free space of about twice the game's size until it finishes.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
                 SectionCard {
                     Text(
                         "FreeArc decompression is I/O-bound: unarc already auto-parallelizes (4x4), so the " +
@@ -523,17 +651,19 @@ fun UnpackArchiveScreen(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        UnpackManager.clearIfTerminal()
-                        UnpackService.start(context, jobArchive.absolutePath, destPath, 1, buffer.bytes, true, sourceSize, "unarc")
-                    },
-                    enabled = !gatedByPermission && jobArchive.isFile && !otherJobRunning,
+                SpaceSaverCard(spacePlan, spaceMode, { spaceMode = it }, spaceEager, { spaceEager = it }, abandoning,
+                    onContinue = startSpace, canContinue = canSpace, onPutBack = putBack)
+                if (!spaceResume) Button(
+                    onClick = if (spaceMode) ({ confirmSpace = true }) else startUnarc,
+                    enabled = if (spaceMode) canSpace else canUnarc,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
                     Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Unpack game natively (unarc)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (innoLayers) "Unpack game natively (unarc + layers)" else "Unpack game natively (unarc)",
+                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    )
                 }
                 // No dead-ends: also offer the container route (e.g. srep, or if unarc fails at runtime).
                 Spacer(Modifier.height(8.dp))
@@ -544,12 +674,22 @@ fun UnpackArchiveScreen(
             // ── Can't unpack in-app (unarc unavailable / srep) → container-only route ──
             if (!running && innoContainerOnly) {
                 val comp = innoClass?.compression ?: "FreeArc"
+                val missing = layerInfo?.missing.orEmpty()
                 WarnCard {
                     Text("Can't unpack this repack in-app", color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "This is a $comp repack whose data can't be decoded in-app (it may use SREP). Install it " +
-                            "by running ${archive.name} inside a Winlator container, or unpack it on a PC.",
+                        if (missing.isNotEmpty()) "This $comp archive uses a layer that can't be decoded in-app:"
+                        else "This is a $comp repack whose data can't be decoded in-app.",
+                        color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+                    )
+                    if (layerInfo != null && layerInfo.layers.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        LayerList(layerInfo)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Install it by running ${archive.name} inside a container, or unpack it on a PC.",
                         color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -615,21 +755,85 @@ fun UnpackArchiveScreen(
                 }
             }
 
-            // ── Extract button (plain, non-Inno archives) ──
-            if (!running && sevenZipAllowed) {
+            // ── ExtraFormats (lzip/lzop/LZ4/ECM/ALZ/EGG/ACE/LZX/OTA payload) ──
+            if (!running && extraAllowed) {
+                val probe = extraProbe
+                if (isPayload && probe != null) {
+                    SectionCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Partitions", style = sectionTitle(), modifier = Modifier.weight(1f))
+                            val extractable = probe.partitions.filter { !it.incremental }.map { it.name }.toSet()
+                            OutlinedButton(
+                                onClick = { chosenParts = if (chosenParts.size == extractable.size) emptySet() else extractable },
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            ) {
+                                Text(if (chosenParts.size == extractable.size) "None" else "All", color = MaterialTheme.colorScheme.onBackground)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        for (part in probe.partitions) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Checkbox(
+                                    checked = part.name in chosenParts,
+                                    enabled = !part.incremental,
+                                    onCheckedChange = { on -> chosenParts = if (on) chosenParts + part.name else chosenParts - part.name },
+                                )
+                                Text(
+                                    "${part.name}.img",
+                                    color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    if (part.incremental) "incremental — needs the phone's image" else StringUtils.formatBytes(part.size),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
                 Button(
-                    onClick = {
-                        UnpackManager.clearIfTerminal()
-                        val mmt = UnpackManager.mmtFor(powerMode, manualCores)
-                        UnpackService.start(context, archive.absolutePath, destPath, mmt, buffer.bytes, false, sourceSize)
-                    },
-                    enabled = !gatedByPermission && !engineMissing && archive.isFile && !otherJobRunning,
+                    onClick = startExtra,
+                    enabled = canExtra,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
                     Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Extract", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (isPayload) "Extract ${chosenParts.size} partition image${if (chosenParts.size == 1) "" else "s"}" else "Extract",
+                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                    )
                 }
+            }
+
+            // ── Extract button (plain, non-Inno archives) ──
+            if (!running && sevenZipAllowed) {
+                SpaceSaverCard(spacePlan, spaceMode, { spaceMode = it }, spaceEager, { spaceEager = it }, abandoning,
+                    onContinue = startSpace, canContinue = canSpace, onPutBack = putBack)
+                if (!spaceResume) Button(
+                    onClick = if (spaceMode) ({ confirmSpace = true }) else startSevenZip,
+                    enabled = if (spaceMode) canSpace else canSevenZip,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                ) {
+                    Icon(Icons.Filled.Unarchive, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (spaceMode) "Extract and delete the download" else "Extract", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (confirmSpace) {
+                AlertDialog(
+                    onDismissRequest = { confirmSpace = false },
+                    title = { Text("Delete the download while unpacking?") },
+                    text = {
+                        Text(
+                            "${spaceTarget.name} will be deleted bit by bit while it unpacks, and is gone at the end. " +
+                                "If it stops (cancel, no space, phone restart), open it here again to continue" +
+                                (if (spacePlan?.stream == true) "." else ", or to put what's left back as a smaller archive."),
+                        )
+                    },
+                    confirmButton = { TextButton(onClick = { confirmSpace = false; startSpace() }) { Text("Unpack and delete") } },
+                    dismissButton = { TextButton(onClick = { confirmSpace = false }) { Text("Keep it") } },
+                )
             }
 
             // ── Progress ──
@@ -699,6 +903,10 @@ fun UnpackArchiveScreen(
                                 "${state.filesExtracted} files • ${StringUtils.formatBytes(state.archiveSize)} in ${humanDuration(state.elapsedMs)}",
                                 color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
                             )
+                            if (state.engine == SpaceSaver.ENGINE) {
+                                Spacer(Modifier.height(2.dp))
+                                Text("The download was deleted as it unpacked.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            }
                             Spacer(Modifier.height(2.dp))
                             Text(state.destPath, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
@@ -709,7 +917,7 @@ fun UnpackArchiveScreen(
                             if (state.isInno) {
                                 // The honest fallback for any InnoSetup/repack failure is to run the
                                 // real installer inside a container. FreeArc failures may be SREP.
-                                val freeArc = state.engine == "unarc"
+                                val freeArc = state.engine == Unarc.ENGINE || state.engine == Unarc.ENGINE_LAYERS
                                 Text(
                                     if (freeArc) "Couldn't decode this FreeArc repack" else "Couldn't unpack this InnoSetup repack",
                                     color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
@@ -717,7 +925,7 @@ fun UnpackArchiveScreen(
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     if (freeArc)
-                                        "It may use SREP or a codec this build can't decode. Install it by running " +
+                                        "It may use a layer this build can't decode. Install it by running " +
                                             "Setup.exe inside a Winlator container, or unpack it on a PC."
                                     else
                                         "This InnoSetup repack must be installed by running Setup.exe inside a Winlator container.",
@@ -778,6 +986,114 @@ private fun RunSetupInContainer(exe: File) {
             }
         }
     }
+}
+
+/** One line per FreeArc layer: ✓ decoded in unarc, ↻ the bundled decoders try it, ✕ can't be decoded. */
+@Composable
+private fun LayerList(analysis: RepackLayers.Analysis) {
+    analysis.layers.forEach { l ->
+        val (mark, color) = when (l.kind) {
+            RepackLayers.Kind.BUILTIN -> "✓" to MaterialTheme.colorScheme.primary
+            RepackLayers.Kind.EXTERNAL -> "↻" to MaterialTheme.colorScheme.tertiary
+            RepackLayers.Kind.MISSING -> "✕" to MaterialTheme.colorScheme.error
+        }
+        Row(modifier = Modifier.padding(vertical = 2.dp)) {
+            Text(mark, color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(18.dp))
+            Text(
+                "${l.name} — ${l.note}",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+            )
+        }
+    }
+}
+
+/**
+ * The space-saving option: a switch while nothing has started; "Continue" / "Put back" once a run
+ * stopped part-way (its journal sits in the destination). Hidden when the engine can't do this archive.
+ */
+@Composable
+private fun SpaceSaverCard(
+    plan: SpaceSaver.Plan?,
+    on: Boolean,
+    onToggle: (Boolean) -> Unit,
+    eager: Boolean,
+    onEager: (Boolean) -> Unit,
+    abandoning: Boolean,
+    onContinue: () -> Unit,
+    canContinue: Boolean,
+    onPutBack: () -> Unit,
+) {
+    if (plan == null) return
+    val small = MaterialTheme.colorScheme.onSurfaceVariant
+    if (plan.supported && plan.resume) {
+        WarnCard {
+            Text("Space-saving unpack stopped part-way", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (plan.stream) "Part of the download is already freed, so it can only be continued."
+                else "${plan.done} of ${plan.pieces} pieces are unpacked and their part of the download is freed. " +
+                    "Continue, or put what's left back as a smaller archive (the unpacked files stay).",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row {
+                Button(onClick = onContinue, enabled = canContinue && !abandoning) { Text("Continue") }
+                if (!plan.stream) {
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = onPutBack, enabled = !abandoning) { Text(if (abandoning) "Putting back…" else "Put back what's left") }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        return
+    }
+    if (!plan.supported) return
+    SectionCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Unpack and delete the download as it goes",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(checked = on, onCheckedChange = onToggle, enabled = plan.usable)
+        }
+        Spacer(Modifier.height(4.dp))
+        val need = if (plan.totalOut >= 0) StringUtils.formatBytes(plan.totalOut + SpaceSaver.KEEP_FREE) else null
+        if (!plan.fitsNormal && need != null) {
+            Text(
+                "Not enough space to unpack normally: that needs about $need free (with 2 GB spare), ${StringUtils.formatBytes(plan.free)} is free.",
+                color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        Text(
+            when {
+                !plan.sameStorage -> plan.reason ?: "Only works when the files land on the same storage as the download."
+                plan.stream -> "The download is read from the start and what has been read is freed, so it needs much less free space. The download is gone at the end."
+                plan.shrinks && plan.format in setOf("7z", "freearc") ->
+                    "The download is unpacked block by block and each block's space is freed as soon as it's unpacked, so it needs much less free space. The download is gone at the end."
+                plan.shrinks -> "The download is unpacked piece by piece and, once space gets tight, the part already unpacked is freed, so it needs much less free space. The download is gone at the end."
+                else -> "This archive is one solid block: it still needs the full space, and the download is only deleted at the end."
+            },
+            color = small, fontSize = 11.sp,
+        )
+        if (on && plan.usable && plan.eagerMatters) {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = eager, onCheckedChange = onEager)
+                Text(
+                    "Delete as it goes even while there's room",
+                    color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        if (plan.sameStorage && !plan.fits) {
+            Spacer(Modifier.height(4.dp))
+            Text("Even this way it's ${StringUtils.formatBytes(plan.short)} short. Free some space first.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+    Spacer(Modifier.height(12.dp))
 }
 
 @Composable

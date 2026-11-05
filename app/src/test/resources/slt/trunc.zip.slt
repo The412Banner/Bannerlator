@@ -1,0 +1,56 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 1000 bytes (1 KiB)
+
+Listing archive: /data/local/tmp/trunc.zip
+
+--
+Path = /data/local/tmp/trunc.zip
+Type = zip
+ERRORS:
+Unexpected end of archive
+Physical Size = 1000
+Characteristics = Local
+
+----------
+Path = Game/Data/Sub/conf.ini
+Folder = -
+Size = 4
+Packed Size = 4
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 2026-10-16 17:19:10
+Attributes = 
+Encrypted = -
+Comment = 
+CRC = 8EE4241D
+Method = Store
+Characteristics = Local UT:MA:2 ux
+Host OS = 
+Version = 10
+Volume Index = 0
+Offset = 0
+
+Path = Game/Data/big.bin
+Folder = -
+Size = 300000
+Packed Size = 300050
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 2026-10-16 17:19:10
+Attributes = 
+Encrypted = -
+Comment = 
+CRC = 35FEF7CB
+Method = Deflate
+Characteristics = Local UT:MA:2 ux
+Host OS = 
+Version = 20
+Volume Index = 0
+Offset = 84
+
+
+Errors: 1

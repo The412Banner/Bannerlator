@@ -1,0 +1,28 @@
+FreeArc unarc (rebuilt) bundled as libunarcx.so, and libbfeext.so
+=================================================================
+
+Purpose
+-------
+libunarcx.so decodes FreeArc archives whose blocks use external layers (precomp, …). It is the same
+FreeArc 0.67-alpha unpacker as libunarc.so, built from source by BFE's CI with two patches:
+- 0001: GRZip LZP context table sized for 64-bit pointers (same fix as libunarc.so).
+- 0002: worker threads get a 16 MB stack. FreeArc's external-layer code keeps three large file objects
+  on the stack, which overflows Android's default thread stack (~1 MB): the stock build crashed in
+  about 1 of 15 runs on archives with external layers.
+Codecs: LZMA, BCJ, Delta, REP, GRZip, Tornado, 4x4 and external layers (from a per-job arc.ini).
+
+libbfeext.so (native/bfeext, part of BFE, GPL-3.0-or-later) is the program those external layers run:
+it recognises the layer by its data header and hands it to the bundled decoder (precomp), handling
+FreeArc's optional marker byte. SREP, lolz and Oodle layers are reported, not decoded.
+
+Product & licence
+-----------------
+FreeArc by Bulat Ziganshin - source mirror https://github.com/mirror/freearc
+(commit 71f3ab36df26401fff4301b4c8600a31a90d8da9). Licence: GNU GPL.
+BFE's patches: native/patches/unarc/. Build recipe: native/unarc/build.sh.
+
+Build
+-----
+.github/workflows/build-repack-tools.yml: source pinned by SHA-256, Android NDK r29,
+aarch64-linux-android26, fully static, decompress-only (-DFREEARC_DECOMPRESS_ONLY -DUNARC).
+Invocation: libunarcx.so x -o+ -ld- -cfg<arc.ini> -w<temp dir> -dp<destination> <archive>

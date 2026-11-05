@@ -1,0 +1,231 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 302006 bytes (295 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/withdirs.zip
+
+--
+Path = /sdcard/Download/bfe-browse-test/withdirs.zip
+Type = zip
+Physical Size = 302006
+
+----------
+Path = Game
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 0
+
+Path = Game/Data
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 63
+
+Path = Game/Data/Sub
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 131
+
+Path = Game/Data/Sub/conf.ini
+Folder = -
+Size = 4
+Packed Size = 4
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 8EE4241D
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 203
+
+Path = Game/Data/big.bin
+Folder = -
+Size = 300000
+Packed Size = 300050
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 35FEF7CB
+Method = Deflate
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 20
+Volume Index = 0
+Offset = 287
+
+Path = Game/Spaced Dir
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300412
+
+Path = Game/Spaced Dir/a b.txt
+Folder = -
+Size = 2
+Packed Size = 2
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 46EA081F
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300486
+
+Path = Game/émoji
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux : UTF8
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300569
+
+Path = Game/émoji/файл 日本.txt
+Folder = -
+Size = 2
+Packed Size = 2
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = F3447652
+Method = Store
+Characteristics = UT:MA:1 ux : UTF8
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300639
+
+Path = Game/readme.txt
+Folder = -
+Size = 6
+Packed Size = 6
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 363A3020
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300730
+
+Path = Game/.hidden
+Folder = -
+Size = 2
+Packed Size = 2
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes =  -rw-r--r--
+Encrypted = -
+Comment = 
+CRC = 0C281A4E
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300809
+
+Path = Game/EmptyDir
+Folder = +
+Size = 0
+Packed Size = 0
+Modified = 2026-10-16 17:19:10
+Created = 
+Accessed = 
+Attributes = D drwxr-xr-x
+Encrypted = -
+Comment = 
+CRC = 
+Method = Store
+Characteristics = UT:MA:1 ux
+Host OS = Unix
+Version = 10
+Volume Index = 0
+Offset = 300881
+

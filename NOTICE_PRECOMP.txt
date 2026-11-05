@@ -1,0 +1,42 @@
+precomp bundled as libprecomp044.so … libprecomp048.so
+=======================================================
+
+Purpose
+-------
+Some FreeArc archives run their data through precomp before compressing it. precomp expands the
+zlib/deflate, JPG, MP3, GIF, bzip2 and lzma streams inside a file so the outer compressor can do
+better, and restores the original bytes exactly ("precomp -r"). A precomp file (PCF) can only be
+restored by the precomp version that wrote it, so BFE ships one binary per open-source release.
+libbfeext.so (part of BFE) reads the version from the PCF header and runs the matching binary.
+
+Product & licence
+-----------------
+precomp by Christian Schneider - https://github.com/schnaader/precomp-cpp
+Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0).
+Copyright 2006-2021 Christian Schneider.
+
+  libprecomp044.so  v0.4.4 (tag v0.4.4)
+  libprecomp045.so  v0.4.5 (tag v0.4.5)
+  libprecomp046.so  v0.4.6 (tag v0.4.6)
+  libprecomp047.so  v0.4.7 (tag v0.4.7)
+  libprecomp048.so  v0.4.8 development (master a11b077425fb6f6c22fc39c3265a2c1af7333665)
+
+Versions before 0.4.4 were never released as source code and can't be included.
+
+precomp includes, per its README:
+- preflate v0.3.5 by Dirk Steinke - Apache License 2.0
+- packJPG v2.5k and packMP3 v1.0g by Matthias Stirner - GNU LGPL v3 (with special permissions)
+- brunsli by Google LLC - MIT License
+- brotli by the Brotli Authors - MIT License
+- bzip2 1.0.6 by Julian Seward - bzip2 licence (BSD-style)
+- zlib 1.2.11 by Jean-loup Gailly and Mark Adler - zlib licence
+- GIFLIB 4.1.4, Copyright (c) 1997 Eric S. Raymond - MIT License
+- liblzma from XZ Utils 5.2.3 - public domain
+(Not every version contains all of them; v0.4.4 has no liblzma or packMP3.)
+
+Build
+-----
+.github/workflows/build-repack-tools.yml: sources pinned by SHA-256, cross-compiled with the Android
+NDK r29 for aarch64-linux-android26, linked fully static. Recipe: native/precomp/build.sh (reads the
+source lists from each release's own Makefile; v0.4.8 uses its CMakeLists). No functional changes;
+the build only adds compiler flags so the 2016-2021 C code compiles with current clang and bionic.

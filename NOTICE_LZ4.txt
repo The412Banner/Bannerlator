@@ -1,0 +1,52 @@
+lz4 command-line tool bundled as liblz4.so
+==========================================
+
+Purpose
+-------
+Decompresses LZ4 files (.lz4, .tar.lz4 — LZ4 frame format, concatenated frames, and the legacy
+format) for BFE's Unpack screen (ExtraFormats engine), fed on stdin; a resulting .tar is then
+unpacked by the bundled 7-Zip.
+
+File in this APK (app/src/main/jniLibs/arm64-v8a/)
+  liblz4.so     lz4 v1.10.0 CLI, fully STATIC aarch64 Android (bionic) executable, stripped.
+                642,944 bytes, sha256 b31a5fc2145db99687ed4568ce204c364dbab2437048e644523248b79a5c41ba
+
+Products and licences
+---------------------
+LZ4 v1.10.0     https://github.com/lz4/lz4  (Yann Collet)
+  Source: https://github.com/lz4/lz4/archive/refs/tags/v1.10.0.tar.gz
+          sha256 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b   (unmodified)
+  The command-line program (programs/) is Copyright (C) Yann Collet 2011-2023 and licensed under
+  the GNU General Public License, version 2 or (at your option) any later version. BFE is
+  GPL-3.0, which is compatible.
+  The LZ4 library it links (lib/, including xxHash) is under the BSD 2-Clause licence:
+
+    LZ4 Library
+    Copyright (c) 2011-2020, Yann Collet
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this
+      list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright notice, this
+      list of conditions and the following disclaimer in the documentation and/or
+      other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Build
+-----
+.github/workflows/build-extract-tools.yml (Android NDK r29, aarch64-linux-android26):
+make -C programs lz4 CC=<ndk clang> CFLAGS=-O2 LDFLAGS=-static (multithreaded build).

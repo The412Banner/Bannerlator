@@ -87,6 +87,30 @@ SOFTWARE.
 
 ---
 
+## 3b. Archive engines (Unpack and the file manager)
+
+Ported from [BFE (Banners File Explorer)](https://github.com/The412Banner/BFE), The412Banner, GPL-3.0. Each tool is an executable in `app/src/main/jniLibs/arm64-v8a/` with its notice file at the repository root (`NOTICE_*.txt`).
+
+| Component | Author | License | Used for |
+|---|---|---|---|
+| [7-Zip](https://www.7-zip.org) 24.08 (`lib7zz.so`) | Igor Pavlov | LGPL-2.1 + unRAR restriction | Extraction and archive browsing (`NOTICE_7ZIP.txt`, `License_7zip.txt`) |
+| [innoextract](https://github.com/dscharrer/innoextract) 1.9 (`libinnoextract.so`) + Boost, zlib, bzip2, liblzma, GNU libiconv | Daniel Scharrer; Boost, Jean-loup Gailly & Mark Adler, Julian Seward, Lasse Collin, GNU | zlib; BSL-1.0, zlib, bzip2, 0BSD / public domain, LGPL-2.1+ | Inno Setup / GOG installers (`NOTICE_INNOEXTRACT.txt`) |
+| [FreeArc unarc](https://github.com/mirror/freearc) 0.67 (`libunarc.so`, rebuilt `libunarcx.so`) | Bulat Ziganshin | GPL | FreeArc / ISDone repacks, incl. archives with extra layers (`NOTICE_UNARC.txt`, `NOTICE_UNARCX.txt`) |
+| `libbfeext.so`, `libbfecut.so` (BFE `native/bfeext`, `native/bfecut`) | The412Banner | GPL-3.0-or-later | External FreeArc layers; unpack-and-delete-as-it-goes |
+| [precomp](https://github.com/schnaader/precomp-cpp) 0.4.4 - 0.4.8 (`libprecomp044.so` … `libprecomp048.so`) | Christian Schneider (with preflate by Dirk Steinke, packJPG / packMP3 by Matthias Stirner) | Apache-2.0 (packJPG / packMP3: LGPL-3.0) | precomp layers in FreeArc archives (`NOTICE_PRECOMP.txt`) |
+| [lunzip](https://www.nongnu.org/lzip/lunzip.html) 1.15 (`liblunzip.so`) | Antonio Diaz Diaz | GPL-2.0+ | lzip (`NOTICE_LUNZIP.txt`) |
+| [lzop](https://www.lzop.org) 1.04 + LZO 2.10 (`liblzop.so`) | Markus F.X.J. Oberhumer | GPL-2.0+ | lzop (`NOTICE_LZOP.txt`) |
+| [LZ4](https://github.com/lz4/lz4) 1.10.0 (`liblz4.so`) | Yann Collet | GPL-2.0+ (CLI), BSD-2 (library) | LZ4 (`NOTICE_LZ4.txt`) |
+| [ecm-tools](https://github.com/alucryd/ecm-tools) 1.0.3 (`libunecm.so`) | Neill Corlett, alucryd | GPL-3.0+ | ECM CD images (`NOTICE_UNECM.txt`) |
+| [unalz](https://github.com/kippler/unalz) 0.65 (`libunalz.so`) | kippler (+ Debian patches) | zlib | ALZ (`NOTICE_UNALZ.txt`) |
+| UNACE 1.2b (`libunace.so`) | Marcel Lemke (+ Debian patches) | GPL-2.0+ | ACE 1.x (`NOTICE_UNACE.txt`) |
+| [amiga-lzx](https://crates.io/crates/amiga-lzx) 0.1.5 (`liblzx.so`) | Gareth Davidson | WTFPL | Amiga LZX (`NOTICE_LZX.txt`) |
+| EGG / AZO reader (in-app Kotlin) | after [EggDotNet](https://www.nuget.org/packages/EggDotNet) by Andrew Kolman (MIT) and ESTsoft's EGG specification; **xunazo** by kippler / Bandisoft (zlib), with Project Nayuki's Reference-arithmetic-coding (MIT) | MIT / zlib | ALZip EGG archives (`NOTICE_EGG.txt`) |
+| OTA `payload.bin` reader (in-app Kotlin) | after AOSP update_engine `update_metadata.proto` | Apache-2.0 | Android OTA payloads (`NOTICE_OTA_PAYLOAD.txt`) |
+| [XZ for Java](https://tukaani.org/xz/java.html) 1.9 | Lasse Collin and contributors | Public domain | FreeArc table of contents, EGG LZMA, OTA XZ |
+
+---
+
 ## 4. Shaders & upscaling algorithms
 
 | Component | Author(s) | License |

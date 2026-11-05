@@ -75,6 +75,7 @@ object Innoextract {
                             val line = seg.toByteArray().toString(Charsets.UTF_8)
                             seg.reset()
                             if (line.isNotBlank()) {
+                                FullUnpackLog.line(line)
                                 tail.append(line).append('\n')
                                 if (tail.length > 4096) tail.delete(0, tail.length - 4096)
                             }

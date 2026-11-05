@@ -1,0 +1,69 @@
+
+7-Zip (z) 24.08 (arm64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-08-11
+ 64-bit arm_v:8-A locale=C.UTF-8 Threads:8 OPEN_MAX:32768 temp_path:./
+
+Scanning the drive for archives:
+1 file, 327 bytes (1 KiB)
+
+Listing archive: /sdcard/Download/bfe-browse-test/backslash.zip
+
+--
+Path = /sdcard/Download/bfe-browse-test/backslash.zip
+Type = zip
+Physical Size = 327
+
+----------
+Path = Win\Dir\file1.txt
+Folder = -
+Size = 1
+Packed Size = 1
+Modified = 2020-05-06 07:08:10
+Created = 
+Accessed = 
+Attributes = A
+Encrypted = -
+Comment = 
+CRC = E8B7BE43
+Method = Store
+Characteristics = 
+Host OS = FAT
+Version = 20
+Volume Index = 0
+Offset = 0
+
+Path = Win\file2.txt
+Folder = -
+Size = 1
+Packed Size = 1
+Modified = 2020-05-06 07:08:10
+Created = 
+Accessed = 
+Attributes = A
+Encrypted = -
+Comment = 
+CRC = 71BEEFF9
+Method = Store
+Characteristics = 
+Host OS = FAT
+Version = 20
+Volume Index = 0
+Offset = 48
+
+Path = top.txt
+Folder = -
+Size = 1
+Packed Size = 1
+Modified = 2020-05-06 07:08:10
+Created = 
+Accessed = 
+Attributes = A
+Encrypted = -
+Comment = 
+CRC = 06B9DF6F
+Method = Store
+Characteristics = 
+Host OS = FAT
+Version = 20
+Volume Index = 0
+Offset = 92
+

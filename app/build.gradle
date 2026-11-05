@@ -235,7 +235,7 @@ dependencies {
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
-    implementation 'org.tukaani:xz:1.7'
+    implementation 'org.tukaani:xz:1.9'
     implementation 'org.apache.commons:commons-compress:1.20'
     implementation 'androidx.activity:activity-ktx:1.8.2'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'

@@ -116,6 +116,7 @@ import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GameIdentifier
 import com.winlator.star.core.StorageRoots
 import com.winlator.star.core.StringUtils
+import com.winlator.star.core.unpack.ArchiveBrowse
 import com.winlator.star.core.unpack.ArchiveExtract
 import com.winlator.star.core.unpack.ArchivePasswords
 import com.winlator.star.core.unpack.FastExtract
@@ -551,7 +552,7 @@ fun FileManagerRoot(
         val dir = item.isDir
         val isArchive = !dir && isBrowsableArchive(f)
         val inno = !dir && runCatching { SevenZip.isInnoSetup(f) }.getOrDefault(false)
-        val unpackable = !dir && (inno || runCatching { SevenZip.looksLikeArchive(f) }.getOrDefault(false))
+        val unpackable = !dir && (inno || runCatching { ArchiveBrowse.canUnpack(f) || SevenZip.looksLikeArchive(f) }.getOrDefault(false))
         return buildList {
             if (dir) add(FmMenuEntry("Open", Icons.Filled.FolderOpen) { p.openDir(f) })
             if (isArchive) add(FmMenuEntry("Browse", Icons.Filled.FolderZip) { p.open(FmLoc.InArchive(f, "")) })
@@ -707,6 +708,14 @@ fun FileManagerRoot(
     runChoice?.let { f -> ContainerChoiceDialog("Run in which container?", containers, { runChoice = null }) { c -> runChoice = null; runIn(f, c) } }
     shortcutChoice?.let { f -> ContainerChoiceDialog("Add to which container?", containers, { shortcutChoice = null }) { c -> shortcutChoice = null; addShortcutIn(f, c) } }
     panes.forEach { p ->
+        val unlistable = p.unlistable
+        LaunchedEffect(unlistable) {
+            if (unlistable != null) {
+                p.unlistable = null
+                if (p.loc is FmLoc.InArchive) p.goBack() || p.up()
+                context.startActivity(UnpackArchiveActivity.intent(context, unlistable.absolutePath))
+            }
+        }
         p.passwordFor?.let { arc ->
             PasswordDialog(arc.name, p.passwordWrong, { p.passwordFor = null; if (p.loc is FmLoc.InArchive && p.index == null) p.up() }) { pw ->
                 ArchivePasswords.set(arc, pw)

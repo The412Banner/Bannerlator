@@ -56,6 +56,8 @@ class FmPane(
     /** An archive waiting for its password; [passwordWrong] when the last one failed. */
     var passwordFor by mutableStateOf<File?>(null)
     var passwordWrong by mutableStateOf(false)
+    /** An archive 7-Zip can't list (a raw .bin/.img): the file manager sends it to the Unpack screen. */
+    var unlistable by mutableStateOf<File?>(null)
 
     var selectionMode by mutableStateOf(false)
     var selected by mutableStateOf<Set<String>>(emptySet())
@@ -287,6 +289,10 @@ class FmPane(
                                 passwordWrong = t.wrong
                                 passwordFor = target.archive
                                 error = if (t.wrong) "Wrong password" else "This archive is password-protected"
+                            }
+                            is ArchiveException.NotArchive -> {
+                                error = t.message ?: "7-Zip can't list this file"
+                                unlistable = target.archive
                             }
                             else -> error = t.message ?: "Couldn't open ${target.archive.name}"
                         }

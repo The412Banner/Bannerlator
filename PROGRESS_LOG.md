@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — ✅ Special K switch-off cleanup + GPU labels MERGED to main (`da39b098`, fast-forward)
+- **User:** "merge it to main". Backup ref refs/backup/20261105/main-before-specialk-off-logs → 03181f6b. Main == fix/specialk-off-logs da39b098; code == tested build 7e131272 (only PROGRESS_LOG.md differs).
+- **In it:** Mods switch off → our Special K DLL, marker and Special K's logs leave the game folder at once (and again at launch); .ini settings stay. Contents → Download Components driver cards show which Adreno GPUs each driver is for (from the name; no badge when the name does not say).
+- **Proof:** CI 42024918357 success ×4 (7e131272). Installed on the Pocket FIT (base.apk e467aaa6…). Special K switch-off device-proven on Ninja Gaiden Sigma (files gone at switch-off, .ini kept; switched on again → placed from the cache, 60 fps full screen). GPU labels: on the installed build, not checked on screen yet.
+- **Undo:** main back to refs/backup/20261105/main-before-specialk-off-logs; reinstall /sdcard/Download/Bannerlator-specialk-r3-9ca310f8.apk.
+
 ## 2026-11-05 — 🏷️ GPU label on Contents driver cards (`fix/specialk-off-logs`, same branch as the Special K change on the user's request; CI green, NOT device-tested, NOT merged)
 - **Why:** user screenshot (Contents → Download Components → Banners-Turnip, 763 drivers): cards don't say which SoC/GPU a driver is for. The Nightlies driver feeds carry only `{type, verName, verCode, remoteUrl}`. User: "yes build it and check the AIO list too, add it to the same special k branch so this all stays together and merges simple when done".
 - **Change (`7e131272`):** new `contents/DriverGpuLabel.java` (pure Java) reads the name: Banners-Turnip variants per its README table (plain = Adreno 6xx/7xx, A8xx, 710-720-Test = 710/720/722, 8G2-OneUI = 740 One UI, Banners-AIO = All Adreno; `-Linux`/`-Wayland` ignored); other names only with a GPU model as its own word (`a[678]NN`, optional P: a735, A830, A840P) or a6xx/a7xx/a8xx, Turnip `Gen8`, `8 Elite`; else no badge. `adrenoNNN` / bare numbers are Qualcomm driver versions in Kimchi/StevenMXZ → never read. `ContentsHubScreen.ComponentRow`: badge (Memory icon, primary tint) after the type badge; badge row is now a FlowRow so 4 badges wrap. `DriverGpuLabelTest.kt` added.

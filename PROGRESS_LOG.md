@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — ✅ MGamer404 PRs #657, #658, #638 MERGED to main (fast-forward to `feat/mgamer404-combo`), installed, NOT device-tested
+- **User:** "merge it to main". Backup ref refs/backup/20261105/main-before-mgamer404-combo → d1380b2f (pushed). Main fast-forwarded to the combo branch: merge commits b4c3364d (#657), e1ba1381 (#658), ccd47f2e (#638 head 72ee87af) plus PROGRESS_LOG commits. Code == CI-built and installed 3d0cf4eb (CI 42072393669, APK sha256 b43468cd…); only PROGRESS_LOG.md differs.
+- **In it (credit: MGamer404):** #657 Epic downloads no longer fail with "Download failed" on every game; #658 automatic Ubisoft Connect setup for Ubisoft games from Steam and Epic; #638 XMB as a third Interface Style (Classic / Deck / XMB) with an on-screen keyboard made for controllers, also usable inside games (Select + X). Classic and Deck unchanged per the PR.
+- **Proof:** CI-green ×4 and installed on the Pocket FIT (no FATAL at install). No game launched and none of the three features checked on screen yet: NOT device-tested.
+- **Undo:** main back to refs/backup/20261105/main-before-mgamer404-combo; reinstall /sdcard/Download/Bannerlator-specialk-off-logs-labels-7e131272.apk.
+
 ## 2026-11-05 — 🧪 MGamer404 combo rebuilt with the updated #638 (`feat/mgamer404-combo`, CI green, installed on the Pocket FIT, NOT device-tested, NOT merged)
 - **Why:** MGamer404 force-pushed #638 at ~16:58 UTC (head 3e39a7c0 → 72ee87af, base now 03181f6b). Its own change grew from 61 files / +4814 to 115 files / +9247: All Games page with grid/list/big-art views and sort, row of the 6 most recent games, your own covers, store icons on covers, the controller keyboard inside games (Select + X), frosted-glass look. The first combo build (313dc051) had the old #638. User: "yes rebuild the combo with the new 638".
 - **Rebuilt:** backup ref refs/backup/20261105/feat-mgamer404-combo-before-638-update → 84857453 (pushed). Branch reset to e1ba1381 (main d1380b2f + #657 2c341c36 + #658 c90bd8e5, both unchanged), then merge of #638 72ee87af → ccd47f2e. Branch force-pushed with lease (own feature branch).

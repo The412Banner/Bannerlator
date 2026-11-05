@@ -1,5 +1,45 @@
 [
   {
+    "id": "2026-11-03T15-17-51-3eed33",
+    "created": "2026-11-03T15:17:51.586Z",
+    "reporter": "Leon",
+    "device": "Samsung s26 ultra",
+    "gpu": "Adreno 840",
+    "game": "Resident evil 4",
+    "symptom": "Çalışıyor ama FPS çok düşük.",
+    "logs": 0
+  },
+  {
+    "id": "2026-11-02T18-25-02-ad98a3",
+    "created": "2026-11-02T18:25:02.273Z",
+    "reporter": "Sully",
+    "device": "Samsung a55",
+    "gpu": "Xclipse 530",
+    "game": "WitheringRealms",
+    "symptom": "Crashes / closes to home",
+    "logs": 1
+  },
+  {
+    "id": "2026-11-01T09-19-33-2183ab",
+    "created": "2026-11-01T09:19:33.344Z",
+    "reporter": "",
+    "device": "Infinix gt 30",
+    "gpu": "G615 mc2",
+    "game": "Miside",
+    "symptom": "Runs but very low FPS",
+    "logs": 0
+  },
+  {
+    "id": "2026-11-01T02-41-20-06a422",
+    "created": "2026-11-01T02:41:20.425Z",
+    "reporter": "Kai",
+    "device": "Poco x6 5g",
+    "gpu": "Snapdragon 7 gen 2s",
+    "game": "Dmc5",
+    "symptom": "Outro",
+    "logs": 0
+  },
+  {
     "id": "2026-10-27T14-52-46-713a77",
     "created": "2026-10-27T14:52:46.388Z",
     "reporter": "Igor franco",

@@ -249,6 +249,8 @@ import com.winlator.star.core.ControllerIdentity
 import com.winlator.star.core.DInputVibration
 import com.winlator.star.core.DInputVisibility
 import com.winlator.star.core.GameXInputDlls
+import com.winlator.star.core.GameModCache
+import com.winlator.star.core.GameMods
 import com.winlator.star.core.RumbleMotors
 import com.winlator.star.core.StickPacing
 import com.winlator.star.core.CopyGameToDriveC
@@ -5205,6 +5207,142 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
     DpadHighlight(focused = dp.isFocused(id), modifier = Modifier.dpadBringIntoView(dp, id)) { Checkbox(checked = checked, onCheckedChange = onCheckedChange) }
 }
 
+/**
+ * Game settings > General > Mods (core.GameMods): the mods this game's EXE can take, each one's per-game
+ * switch (off by default), Special K's DLL name ("" = picked from the EXE) and a program to start with the
+ * game (GameMods.EXTRA_START_WITH, a Windows path; "" = none). Switching a mod on
+ * downloads it from its release if this device does not have it yet; switching it off removes the file we
+ * placed in the game folder right away (GameMods.remove, for Special K also its logs; the launch does the
+ * same). Lives outside the settings screen (D8 8.8.18 crashed dexing it with state inline).
+ */
+private class GameModsSetting(
+    val mods: List<GameMods.Mod>, val machine: Int, val imports: Set<String>,
+    initialOn: Map<String, Boolean>, initialSkDll: String, initialStartWith: String,
+    private val gameDir: File?,
+) {
+    val on = mutableStateMapOf<String, Boolean>().apply { putAll(initialOn) }
+    var skDll by mutableStateOf(initialSkDll)
+    var startWith by mutableStateOf(initialStartWith)
+    /** Per mod id: "" or a short download state ("40 %", "ready", "download failed"). */
+    val status = mutableStateMapOf<String, String>()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
+    fun write(putExtra: (String, String?) -> Unit) {
+        for (m in mods) putExtra(m.extra, if (on[m.id] == true) "1" else null)
+        if (GameMods.SPECIAL_K in mods) putExtra(GameMods.EXTRA_SPECIALK_DLL, skDll.ifEmpty { null })
+        putExtra(GameMods.EXTRA_START_WITH, startWith.trim().ifEmpty { null })
+    }
+
+    fun nextSkDll() {
+        val names = listOf("") + GameMods.SPECIALK_DLLS
+        skDll = names[(names.indexOf(skDll).coerceAtLeast(0) + 1) % names.size]
+    }
+
+    fun removeNow(mod: GameMods.Mod) {
+        val dir = gameDir ?: return
+        Thread {
+            try {
+                GameMods.remove(dir, mod)?.let { android.util.Log.i("GameMods", "${mod.name} off: $it") }
+            } catch (e: Exception) {
+                android.util.Log.w("GameMods", "${mod.name} off: remove failed", e)
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    fun download(filesDir: File, mod: GameMods.Mod) {
+        val asset = GameMods.asset(mod, machine) ?: return
+        if (GameModCache.cached(filesDir, asset) != null) { status[mod.id] = ""; return }
+        status[mod.id] = "0 %"
+        Thread {
+            val done = try {
+                GameModCache.get(filesDir, asset) { f -> main.post { status[mod.id] = "${(f * 100).toInt()} %" } }
+                "ready"
+            } catch (e: Exception) {
+                "download failed"
+            }
+            main.post { status[mod.id] = done }
+        }.apply { isDaemon = true }.start()
+    }
+}
+
+@Composable
+private fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remember(shortcut) {
+    val exe = runCatching { WinePath.resolveAndroidPath(shortcut.container, shortcut.path) }.getOrNull()
+    val machine = GameMods.peMachine(exe)
+    val mods = GameMods.ALL.filter { GameMods.supports(it, shortcut.path, machine) }
+    val imports = if (GameMods.SPECIAL_K in mods) GameMods.peImports(exe) else emptySet()
+    // Same folder the launch uses (XServerDisplayActivity.gameExeFolders).
+    val dir = if (shortcut.path == null || shortcut.path.endsWith(".lnk")) null else runCatching {
+        WinePath.resolveAndroidPath(shortcut.container, FileUtils.getDirname(shortcut.path))
+    }.getOrNull()?.takeIf { it.isDirectory }
+    GameModsSetting(
+        mods, machine, imports,
+        GameMods.ALL.associate { it.id to (shortcut.getExtra(it.extra) == "1") },
+        shortcut.getExtra(GameMods.EXTRA_SPECIALK_DLL) ?: "",
+        shortcut.getExtra(GameMods.EXTRA_START_WITH) ?: "",
+        dir,
+    )
+}
+
+@Composable
+private fun GameModsRow(dp: SettingsDpad, setting: GameModsSetting) {
+    var open by remember { mutableStateOf(false) }
+    val enabled = (setting.mods.filter { setting.on[it.id] == true }.map { it.name } +
+        listOfNotNull(setting.startWith.trim().substringAfterLast('\\').ifEmpty { null })).joinToString()
+    DpButton(dp, "mods", onActivate = { open = true }) {
+        OutlinedButton(onClick = { open = true }) { Text(if (enabled.isEmpty()) "Mods" else "Mods: $enabled") }
+    }
+    if (open) GameModsDialog(setting) { open = false }
+}
+
+@Composable
+private fun GameModsDialog(setting: GameModsSetting, onDismiss: () -> Unit) {
+    val filesDir = LocalContext.current.filesDir
+    OutlinedAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Mods") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (mod in setting.mods) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = setting.on[mod.id] == true,
+                            onCheckedChange = { checked ->
+                                setting.on[mod.id] = checked
+                                if (checked) setting.download(filesDir, mod) else setting.removeNow(mod)
+                            },
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(mod.name, modifier = Modifier.weight(1f))
+                        val state = setting.status[mod.id].orEmpty()
+                        if (state.isNotEmpty()) {
+                            Text(
+                                state, style = MaterialTheme.typography.bodySmall,
+                                color = if (state == "download failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (mod === GameMods.SPECIAL_K && setting.on[mod.id] == true) {
+                        val auto = GameMods.targetDll(mod, "", setting.imports, setting.machine)
+                        TextButton(onClick = { setting.nextSkDll() }) {
+                            Text(if (setting.skDll.isEmpty()) "$auto (auto)" else setting.skDll)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = setting.startWith,
+                    onValueChange = { setting.startWith = it },
+                    label = { Text("Start with the game") },
+                    placeholder = { Text("F:\\Trainers\\Trainer.exe") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
 // Labels for the six root perf keys (extraData name -> display label), matching PerfRootApplier.KEY_*.
 private val ROOT_PERF_LABELS = mapOf(
     "rootCpuGovernorPerf" to "CPU governor → performance",
@@ -5831,6 +5969,9 @@ internal fun ShortcutSettingsDialogScreen(
     var autoCloseOnExit by remember {
         mutableStateOf(shortcut.getExtra("autoCloseOnExit", shortcut.container.getExtra("autoCloseOnExit", "1")) == "1")
     }
+    // Mods (core.GameMods: REFramework, Special K): the ones this game's EXE can take, off by default. Their
+    // state and row live outside this function (D8 8.8.18 crashed dexing it with them inline).
+    val gameMods = rememberGameModsSetting(shortcut)
     // The container editor's Game Controller and Vibration settings as per-game overrides, tri-state:
     // "" = use the container's setting, else this game's own value under the extra key the container
     // uses. The launch resolvers read the game's value first (DInputVisibility, BannerinXInput,
@@ -6247,6 +6388,7 @@ internal fun ShortcutSettingsDialogScreen(
             putExtra("fullscreenMode", if (fullscreenModeOverride < 0) null else fullscreenModeOverride.toString())
             putExtra("fullscreenStretched", null)
             putExtra("autoCloseOnExit", if (autoCloseOnExit) "1" else "0")
+            gameMods.write(putExtra)
             // Controller and rumble overrides: "" clears the game's own value, so it follows the container.
             // DirectInput visibility goes in the inputType / exclusiveXInput extras older builds read.
             val ownDInput: Boolean? = dinputOwn.ifEmpty { null }?.let { it == "1" }
@@ -6446,6 +6588,7 @@ internal fun ShortcutSettingsDialogScreen(
                 }
                 add("fullscreen")
                 if (!isLinuxEntry) add("autoClose")
+                if (!isLinuxEntry && gameMods.mods.isNotEmpty()) add("mods")
             }
             4 -> { // Controller
                 if (!isLinuxEntry) {
@@ -7982,6 +8125,7 @@ internal fun ShortcutSettingsDialogScreen(
                                 Text("Close when game exits")
                             }
                         }
+                        if (!isLinuxEntry) GameModsRow(dp, gameMods)
                                 }
                                 4 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Game Controller and Vibration: the container editor's sections in the same order

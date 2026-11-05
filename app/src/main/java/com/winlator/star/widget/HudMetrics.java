@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.SystemClock;
 
 import com.winlator.star.core.GPUInformation;
+import com.winlator.star.widget.gpu.KgslGpuFallback;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -130,6 +131,8 @@ public class HudMetrics {
             Integer p = readGpuUsageSample(path);
             if (p != null) return p;
         }
+        // Adreno with its kgsl load nodes SELinux-blocked for apps (e.g. Retroid Pocket Duo).
+        if (KgslGpuFallback.loadBlocked()) return KgslGpuFallback.busyPercent();
         // Every sysfs node failed: on a CSF-generation Mali, read the GPU's hardware counters instead.
         return MaliGpuCounters.usagePercent();
     }
@@ -936,6 +939,8 @@ public class HudMetrics {
             else mhz = raw;                                      // already MHz
             if (mhz >= 1 && mhz <= 3000) return (int) mhz;
         }
+        // Adreno with its kgsl clock nodes SELinux-blocked for apps.
+        if (KgslGpuFallback.clockBlocked()) return KgslGpuFallback.clockMhz();
         // No readable clock node: on a CSF-generation Mali, the hardware counters' cycle counter.
         return MaliGpuCounters.clockMhz();
     }
@@ -1246,7 +1251,9 @@ public class HudMetrics {
         final Context ctx = ctxIn != null ? ctxIn : this.context;
         // Prime the delta-based readers, wait, then take a live sample.
         snapshot();
-        try { Thread.sleep(350L); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+        // The no-root GPU readers need about a second of samples before their first value.
+        long primeMs = KgslGpuFallback.loadBlocked() || KgslGpuFallback.clockBlocked() ? 1200L : 350L;
+        try { Thread.sleep(primeMs); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
         Snapshot s = snapshot();
 
         StringBuilder sb = new StringBuilder();
@@ -1312,14 +1319,21 @@ public class HudMetrics {
         String gpuUsagePath = firstReadableGpuUsagePath();
         if (s.gpuPercent != null && gpuUsagePath != null)
             metricHit(sb, "GPU %", s.gpuPercent + "%", gpuUsagePath);
+        else if (s.gpuPercent != null && KgslGpuFallback.loadBlocked())
+            metricHit(sb, "GPU %", s.gpuPercent + "%", KgslGpuFallback.loadSource());
         else
             metricMissList(sb, "GPU %", discoverGpuUsagePaths(), GPU_USAGE_STATIC_PATHS);
 
         String gpuClockPath = firstReadableGpuClockPath();
         if (s.gpuClockMhz != null && gpuClockPath != null)
             metricHit(sb, "GPU clock", s.gpuClockMhz + "MHz", gpuClockPath);
+        else if (s.gpuClockMhz != null && KgslGpuFallback.clockBlocked())
+            metricHit(sb, "GPU clock", s.gpuClockMhz + "MHz", KgslGpuFallback.clockSource());
         else
             metricMissList(sb, "GPU clock", discoverGpuClockPaths(), GPU_CLOCK_PATHS);
+
+        String noRootGpu = KgslGpuFallback.status();
+        if (!noRootGpu.isEmpty()) sb.append("GPU readers without root: ").append(noRootGpu).append('\n');
 
         String gpuTempPath = resolveTempPath(discoverPrioritizedGpuTempPaths());
         if (s.gpuTempC != null)

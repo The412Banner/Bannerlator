@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-01T09-19-33-2183ab",
+  "created": "2026-11-01T09:19:33.344Z",
+  "ip_hash": "fu83L19CxV",
+  "fields": {
+    "reporter_name": "",
+    "device_model": "Infinix gt 30",
+    "soc": "7400",
+    "gpu": "G615 mc2",
+    "android": "Android 16",
+    "ram": "8gb",
+    "app_version": "3.1.8 mali",
+    "install_source": "GitHub release",
+    "game_name": "Miside",
+    "steam_appid": "",
+    "store": "",
+    "exe": "Miside.exe",
+    "symptom": "Runs but very low FPS",
+    "when": "",
+    "graphics_driver": "Panvk g615",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.7.2",
+    "proton": "Ge proton 11.0.6",
+    "box64": "Pendormance",
+    "resolution": "720p",
+    "framegen": "No",
+    "repro": "Hmm I think you need add fg (zero fg) for OpenGL rendered like winlator mali, because when I use win fg in vulkan rendered it's so very lag and not playable",
+    "tried": ""
+  },
+  "logs": []
+}

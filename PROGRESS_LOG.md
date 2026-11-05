@@ -1,11 +1,11 @@
 # Star-Compose — Progress Log
 
-## 2026-11-05 — 🧪 MGamer404 combo rebuilt with the updated #638 (`feat/mgamer404-combo`, CI running, NOT device-tested, NOT merged)
+## 2026-11-05 — 🧪 MGamer404 combo rebuilt with the updated #638 (`feat/mgamer404-combo`, CI green, NOT device-tested, NOT merged)
 - **Why:** MGamer404 force-pushed #638 at ~16:58 UTC (head 3e39a7c0 → 72ee87af, base now 03181f6b). Its own change grew from 61 files / +4814 to 115 files / +9247: All Games page with grid/list/big-art views and sort, row of the 6 most recent games, your own covers, store icons on covers, the controller keyboard inside games (Select + X), frosted-glass look. The first combo build (313dc051) had the old #638. User: "yes rebuild the combo with the new 638".
 - **Rebuilt:** backup ref refs/backup/20261105/feat-mgamer404-combo-before-638-update → 84857453 (pushed). Branch reset to e1ba1381 (main d1380b2f + #657 2c341c36 + #658 c90bd8e5, both unchanged), then merge of #638 72ee87af → ccd47f2e. Branch force-pushed with lease (own feature branch).
 - **Conflicts (both with #658, both sides kept):** ShortcutsViewModel.importShortcutFile, where an imported .desktop now gets #658's Ubisoft stale-stamp drop and then #638's added-at time (both String → String); strings.xml, where #658's Ubisoft strings and #638's cover/keyboard strings sit one after the other (no duplicate names, XML parses). New #638 alone merges onto main with no conflicts.
 - **Checked:** the new #638 still touches no .github/, Gradle, scripts, manifest or native libraries.
-- **CI:** build-artifacts (release_number mgamer404-combo-test2) dispatched on ccd47f2e. Run ID in the next log update.
+- **CI:** build-artifacts 42072393669 (dispatch, headSha 3d0cf4eb; code == ccd47f2e, only PROGRESS_LOG.md differs) success ×4, 0 failed steps, 15 skipped each (same count as the main build d1380b2f). Artifacts Bannerlator-mgamer404-combo-test2-{standard,pubg,ludashi,antutu}, ~579 MB each, expire 2026-11-12.
 - **Open:** CI result; device test only if the user asks; merging each PR is the user's call. Undo: branch back to the backup ref.
 
 ## 2026-11-05 — 🧪 MGamer404's three open PRs built together (`feat/mgamer404-combo`, first build, superseded by the entry above)

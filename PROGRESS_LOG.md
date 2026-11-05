@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — 🧪 MGamer404's three open PRs built together (`feat/mgamer404-combo`, CI running, NOT device-tested, NOT merged)
+- **User:** "3 from MGamer404, build all 3 together off main in a new branch". Off main d1380b2f: merge #657 (Epic downloads "Download failed" fix, head 2c341c36) → b4c3364d; #658 (Ubisoft Connect setup for Steam/Epic games, head c90bd8e5) → e1ba1381; #638 (XMB interface + controller keyboard, head 3e39a7c0, based on a main 198 commits old) → 313dc051. No conflicts. Commits keep MGamer404 as author; the PRs themselves are unchanged and still open.
+- **Checked before building:** none of the three touch .github/, Gradle or build scripts, or add native libraries (#638 adds 5 store-logo PNGs, #658 one test data file), so running them in CI does not expose repo secrets to new build code.
+- **CI:** build-artifacts 42059886628 (dispatch, headSha 313dc051) running.
+- **Open:** CI result; device test only if the user asks; merging each PR is the user's call.
+
 ## 2026-11-05 — ✅ Mali support MERGED to main (`8640bf1b`, fast-forward), NOT device-tested
 - **User:** "merge it and build main as artifacts only". Backup ref refs/backup/20261105/main-before-mali-support → 4bfc0036. Main == feat/mali-support 8640bf1b; code == CI-built 9c6e7f1e (only PROGRESS_LOG.md differs).
 - **In it (Mali only or opt-in, from the 3.1.8-mali-pre1 work + today's fix):** PanVK driver sources on Mali; leegao compat_layer 22960fb3 (EXTRA_LIBS_VERSION 4 → 5, so every container re-extracts extra_libs once); FEX UE3 + full-x87 presets; HUD MediaTek/Tensor fallbacks + Mali hardware counters (CSF Mali only); community configs Mali device count; Faster BCn layer (Fcharan) on Mali, now with the GameNative wrapper when the default wrapper is picked; X11 renderer Mali high-priority queue + AHB import format; registry NPE fix.

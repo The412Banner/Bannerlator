@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -116,6 +118,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
+import com.winlator.star.contents.DriverGpuLabel
 import com.winlator.star.contents.WaylandGameDriverManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
@@ -572,6 +575,7 @@ private fun FilterPill(label: String, active: Boolean, onClick: () -> Unit) {
 }
 
 // ── Component / driver row ─────────────────────────────────────────────────────
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.CatalogItem, showSource: Boolean) {
     val cs = MaterialTheme.colorScheme
@@ -618,8 +622,13 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
                     item.publishedAt?.let { MetaBit(Icons.Filled.Event, it) }
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Which Adreno GPUs a driver is for, from its name (null when the name does not say).
+                val gpu = remember(item.displayName, item.fileName) {
+                    if (item.isDriver) DriverGpuLabel.of(item.displayName, item.fileName) else null
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     StatusBadge(item.type, cs.onSurface.copy(alpha = 0.08f), cs.onSurfaceVariant, typeIcon(item.type))
+                    if (gpu != null) StatusBadge(gpu, cs.primary.copy(alpha = 0.14f), cs.primary, Icons.Filled.Memory)
                     if (installed) StatusBadge("Installed", InstalledGreen.copy(alpha = 0.16f), InstalledGreen, Icons.Filled.CheckCircle)
                     if (saved) StatusBadge("Saved", SavedBlue.copy(alpha = 0.16f), SavedBlue, Icons.Filled.Save)
                 }

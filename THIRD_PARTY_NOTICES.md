@@ -18,3 +18,14 @@ CPU / GPU / RAM-bus performance levels on Samsung Galaxy devices.
 - Source: https://developer.samsung.com/galaxy-performance
 - If you redistribute a build that bundles this SDK, verify your right to redistribute it under
   the license you accepted.
+
+## Store logos
+
+The Deck interface's XMB home labels its store cards with the stores' own logos
+(`app/src/main/res/drawable-nodpi/store_logo_*.png`), rendered from these Wikimedia Commons files:
+`Steam_icon_logo.svg`, `Epic_Games_logo.svg`, `GOG.com_logo.svg`, `Amazon_Games_logo.svg` and
+`Xbox_one_logo.svg` (the GOG and Amazon images were later replaced with versions supplied by the
+project owner).
+
+- Steam, Epic Games, GOG, Amazon Games and Xbox are trademarks of their respective owners.
+- The logos are used only to identify each store and imply no endorsement.

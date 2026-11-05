@@ -64,7 +64,6 @@ import com.winlator.star.store.download.StoreStatusText
 import com.winlator.star.store.download.StoreDetailScaffold
 import com.winlator.star.store.download.StoreGearItem
 import com.winlator.star.store.download.StorePrimaryAction
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -129,6 +128,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (com.winlator.star.ui.deck.isXmbHome(this)) com.winlator.star.core.AppOrientation.apply(this)
         prefs = getSharedPreferences("bh_amazon_prefs", 0)
 
         val i = intent
@@ -159,7 +159,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
         loadUpdateStatus()
 
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 Box(Modifier.fillMaxSize()) {
                 AmazonGameDetailScreen(
                     artUrl = artUrl,

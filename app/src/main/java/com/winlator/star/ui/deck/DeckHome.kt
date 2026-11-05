@@ -1,6 +1,7 @@
 package com.winlator.star.ui.deck
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -47,6 +48,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridView
@@ -54,6 +56,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Schedule
@@ -72,6 +75,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -111,11 +115,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager
+import com.winlator.star.R
 import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
+import com.winlator.star.store.DownloadManagerActivity
 import com.winlator.star.store.SteamFriendsAction
+import com.winlator.star.store.SteamFriendsActivity
+import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.ui.DeckDialogBars
+import com.winlator.star.ui.Screen
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.gameMenuOffers
 import com.winlator.star.ui.screens.ShortcutActionDialogs
@@ -125,6 +135,7 @@ import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.ShortcutsXmbView
 import com.winlator.star.ui.screens.WrapperManagerDialog
 import com.winlator.star.ui.screens.XmbAction
+import com.winlator.star.ui.screens.XmbCardArt
 import com.winlator.star.ui.screens.XmbGameHost
 import com.winlator.star.ui.screens.XmbSdBadge
 import com.winlator.star.ui.screens.XmbStoreBadges
@@ -157,6 +168,11 @@ private enum class PlayedFilter(val label: String) { ANY("Any"), PLAYED("Played"
 
 private const val PREF_MODE = "deck_library_mode"
 private const val PREF_SORT = "deck_library_sort"
+
+// XMB home only. The store sign-in states last read, kept for the process so coming back to Home shows them at once, and the
+// ViewModel Home last opened with, to tell a brand new one (it loads the library in its init) from one that was kept.
+private var lastSignedIn: Map<DeckStore, Boolean>? = null
+private var lastHomeVm: java.lang.ref.WeakReference<ShortcutsViewModel>? = null
 
 /** Filter & sort state. Mode and sort persist; the filters last for the session. */
 private data class LibraryFilter(
@@ -222,6 +238,8 @@ internal fun DeckHome(
     onOpenContainer: (Int) -> Unit,
     onAddGame: () -> Unit,
     onBigPicture: () -> Unit,
+    /** The XMB home's store cards open a store's own screen (its sign-in while signed out). */
+    onLaunchStore: (Screen) -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
     val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
@@ -235,20 +253,50 @@ internal fun DeckHome(
     // The Deck home is the library this shell lands on, so it picks that up the same way the Games screen does.
     LaunchedEffect(shortcuts) { launcher.resumePendingRelaunch(shortcuts) }
 
+    // XMB mode (Appearance > Interface Style > XMB): Home is the XMB, whatever view was last picked. The picked view is kept for turning it off.
+    val xmbHome by AppThemeState.deckXmbHome.collectAsState()
+    // The XMB home's store cards say whether each store is signed in, and the Friends card shows only while signed in
+    // to Steam; re-read on resume, so coming back from a store's sign-in updates them. Read only in that mode, and off the
+    // main thread (it reads each store's credentials): Home starts from the last result, so nothing waits on the read.
+    val readSignedIn = { DeckStore.entries.associateWith { isSignedIn(context, it) } }
+    var signedIn by remember {
+        mutableStateOf<Map<DeckStore, Boolean>>(
+            if (!xmbHome) emptyMap() else lastSignedIn ?: readSignedIn().also { lastSignedIn = it },
+        )
+    }
+    // Counts the app's resumes while Home is up (not the first one, replayed as Home opens: its read is the one above).
+    var resumes by remember { mutableIntStateOf(0) }
+    val xmbNow by rememberUpdatedState(xmbHome)
+    LaunchedEffect(xmbHome, resumes) {
+        if (!xmbHome) { signedIn = emptyMap(); return@LaunchedEffect }
+        val read = withContext(Dispatchers.IO) { readSignedIn() }
+        lastSignedIn = read
+        signedIn = read
+    }
     // Refresh whenever the app resumes, as the Games screen does, so playtime and new games show up.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
+        // A ViewModel Home has just made has already loaded the library in its init. The ON_RESUME replayed to an observer
+        // as it attaches would load it all again on the main thread as Home opens, so the XMB home skips that one.
+        val justCreated = xmbHome && lastHomeVm?.get() !== vm
+        lastHomeVm = java.lang.ref.WeakReference(vm)
+        var attaching = true
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) vm.refresh()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (!(attaching && justCreated)) vm.refresh()
+                if (!attaching && xmbNow) resumes++
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        attaching = false
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
-    var mode by remember {
+    var savedMode by remember {
         mutableStateOf(runCatching { LibraryMode.valueOf(prefs.getString(PREF_MODE, null) ?: "") }.getOrDefault(LibraryMode.SHELF))
     }
+    val mode = if (xmbHome) LibraryMode.XMB else savedMode
     var filter by remember {
         mutableStateOf(LibraryFilter(sort = runCatching { LibrarySort.valueOf(prefs.getString(PREF_SORT, null) ?: "") }.getOrDefault(LibrarySort.NAME)))
     }
@@ -259,7 +307,11 @@ internal fun DeckHome(
     val recentlyAdded = remember(shortcuts) {
         shortcuts.sortedByDescending { runCatching { it.file.lastModified() }.getOrDefault(0L) }.take(12)
     }
-    val visible = remember(shortcuts, stats, filter) { applyFilter(shortcuts, filter, stats) }
+    // The XMB home always runs from the last game played (far left) back; never-played games follow by name.
+    // The saved sort is left alone for the other views.
+    val visible = remember(shortcuts, stats, filter, xmbHome) {
+        applyFilter(shortcuts, if (xmbHome) filter.copy(sort = LibrarySort.RECENT) else filter, stats)
+    }
     val storeShelves = remember(visible) {
         STORE_SHELVES.map { (label, test) -> label to visible.filter(test) }
             .filter { (_, list) -> list.isNotEmpty() && list.size < visible.size }
@@ -271,10 +323,11 @@ internal fun DeckHome(
         ?: shortcuts.firstOrNull()
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
 
-    // X / Start on this page = the focused game's menu.
+    // X / Start on this page = the focused game's menu. The XMB home has none: every game option is in its own column.
     val deckActions = LocalDeckActions.current
     val focusedNow by rememberUpdatedState(focused)
-    DisposableEffect(deckActions) {
+    DisposableEffect(deckActions, xmbHome) {
+        if (xmbHome) return@DisposableEffect onDispose {}
         val open: () -> Unit = { focusedNow?.let { menuFor = it } }
         deckActions.options.value = open
         deckActions.optionsLabel.value = "Game options"
@@ -305,12 +358,13 @@ internal fun DeckHome(
     var beforeXmb by remember { mutableStateOf(LibraryMode.SHELF) }
     val setMode: (LibraryMode) -> Unit = { m ->
         if (m == LibraryMode.XMB && mode != LibraryMode.XMB) beforeXmb = mode
-        mode = m
+        savedMode = m
         prefs.edit().putString(PREF_MODE, m.name).apply()
     }
     // The XMB is full screen, like the Classic one: the shell hides its rails, bars and legend while it shows.
-    // Back (or B on the XMB's first option) leaves it for the previous view.
-    val xmbFull = mode == LibraryMode.XMB && visible.isNotEmpty()
+    // Back (or B on the XMB's first option) leaves it for the previous view. The XMB home is not this full-screen view:
+    // it is Home itself, with the shell's floating tab bar over it.
+    val xmbFull = mode == LibraryMode.XMB && visible.isNotEmpty() && !xmbHome
     DisposableEffect(xmbFull, deckActions) {
         deckActions.fullscreen.value = xmbFull
         onDispose { deckActions.fullscreen.value = false }
@@ -319,6 +373,7 @@ internal fun DeckHome(
     val toolbar: @Composable () -> Unit = {
         LibraryToolbar(
             mode = mode,
+            showModes = !xmbHome,
             filterCount = filter.activeCount,
             onMode = setMode,
             onBigPicture = onBigPicture,
@@ -342,6 +397,40 @@ internal fun DeckHome(
         // The full-screen XMB keeps a game's settings inside it, as nested columns like the Classic XMB; only the
         // Steam (Linux) entry, whose settings aren't XMB rows, opens the Deck editor.
         xmbGameActions(context, s, xmbHost, openSettings = { actions.perform(GameMenuAction.SETTINGS, it) }, settingsAsColumns = true)
+    }
+    // XMB home: Up from a game lifts the row of cards above the games: the five stores (they replace the Stores tab),
+    // then Downloads and what the shelf toolbar offers elsewhere.
+    val downloads by DownloadRegistry.activeCount.collectAsState()
+    // Built once per change of what it shows, not on every recomposition (it counts each store's games); the callbacks it
+    // calls are tracked separately so the remembered cards never hold a stale one.
+    val launchStore by rememberUpdatedState(onLaunchStore)
+    val addGame by rememberUpdatedState(onAddGame)
+    val xmbUpperRow: List<XmbAction> = remember(xmbHome, shortcuts, signedIn, downloads) {
+        if (!xmbHome) emptyList() else buildList {
+            DeckStore.entries.forEach { store ->
+                val owned = shortcuts.count(store.owns)
+                val games = when (owned) { 0 -> "no games yet"; 1 -> "1 game"; else -> "$owned games" }
+                val details = if (signedIn[store] == true) "Signed in · $games" else "Not signed in · A to sign in"
+                add(XmbAction(store.label, Icons.Filled.Storefront, details, art = storeCardArt(store)) { launchStore(store.screen) })
+            }
+            // The icon cards get dark gradients of their own, each softly tinted, so they sit with the store cards.
+            add(XmbAction("Downloads", Icons.Filled.Download, if (downloads > 0) "$downloads active" else "No downloads",
+                art = XmbCardArt(null, listOf(Color(0xFF1E3A5F), Color(0xFF0F1F33)))) {
+                runCatching { context.startActivity(Intent(context, DownloadManagerActivity::class.java)) }
+            })
+            if (signedIn[DeckStore.STEAM] == true) add(XmbAction("Friends", Icons.Filled.People, "Steam friends and chat",
+                art = XmbCardArt(null, listOf(Color(0xFF134E4A), Color(0xFF0A2B29)))) {
+                runCatching { context.startActivity(Intent(context, SteamFriendsActivity::class.java)) }
+            })
+            add(XmbAction("Community configs", Icons.Filled.Public, "Shared settings for your games",
+                art = XmbCardArt(null, listOf(Color(0xFF2E2A6B), Color(0xFF17153A)))) { actions.showCommunityBrowser = true })
+            add(XmbAction("Add game", Icons.Filled.Add, "Add games to your library",
+                art = XmbCardArt(null, listOf(Color(0xFF2A2D33), Color(0xFF16181C)))) { addGame() })
+        }
+    }
+    // The store logos are big PNGs: decode them now, off the main thread, so the first frame finds them ready.
+    LaunchedEffect(xmbHome) {
+        if (xmbHome) warmXmbLogos(context, DeckStore.entries.mapNotNull { storeCardArt(it).logo })
     }
 
     val shelfScroll = rememberScrollState()
@@ -484,7 +573,17 @@ internal fun DeckHome(
                     onReloadGames = { vm.refresh() },
                     onFocusedChange = onFocus,
                     // Full screen: the XMB hides the system bars in landscape and keeps L1/R1 for its jumps.
-                    inDeckShell = false,
+                    // The XMB home sits inside the shell instead: the shell keeps the bars hidden, takes L1/R1 for its tabs
+                    // and floats its own tabs, status and Search over the XMB, so the XMB drops its hints and clock.
+                    // The games rest centred with the library cards (upperRow) peeking above; A opens a game's options,
+                    // Up lifts the cards fully into view.
+                    inDeckShell = xmbHome,
+                    showClock = !xmbHome,
+                    showHints = !xmbHome,
+                    upperRow = xmbUpperRow,
+                    centeredHome = xmbHome,
+                    takeFocus = { !xmbHome || !deckActions.navHold.value },
+                    focusTick = if (xmbHome) deckActions.enterTick.intValue else 0,
                 )
             }
         }
@@ -522,6 +621,7 @@ internal fun DeckHome(
 @Composable
 private fun LibraryToolbar(
     mode: LibraryMode,
+    showModes: Boolean,
     filterCount: Int,
     onMode: (LibraryMode) -> Unit,
     onBigPicture: () -> Unit,
@@ -536,19 +636,21 @@ private fun LibraryToolbar(
         // Padding inside the scroll keeps the focus glow from being clipped.
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp, horizontal = 4.dp),
     ) {
-        // View modes. Big Picture has its own tile at the end of the row.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(RoundedCornerShape(18.dp))
-                .background(deckCardFill())
-                .border(1.dp, deckLine(), RoundedCornerShape(18.dp))
-                .padding(5.dp),
-        ) {
-            LibraryMode.entries.forEach { m -> ModeButton(m.label, m.icon, selected = m == mode) { onMode(m) } }
+        // View modes. Big Picture has its own tile at the end of the row. The XMB home has no choice to make.
+        if (showModes) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(deckCardFill())
+                    .border(1.dp, deckLine(), RoundedCornerShape(18.dp))
+                    .padding(5.dp),
+            ) {
+                LibraryMode.entries.forEach { m -> ModeButton(m.label, m.icon, selected = m == mode) { onMode(m) } }
+            }
+            Spacer(Modifier.width(8.dp))
         }
-        Spacer(Modifier.width(8.dp))
         DeckButton(if (filterCount > 0) "Filters · $filterCount" else "Filter & sort", Icons.Filled.FilterList, onFilter)
         DeckButton("Add games", Icons.Filled.Add, onAddGame)
         IconTile(Icons.Filled.Public, "Community configs", onCommunity)
@@ -1074,4 +1176,13 @@ internal fun DeckButton(
             )
         }
     }
+}
+
+/** A store's card on the XMB home: its logo on its brand colours (Xbox's mark drawn white, as on its own green). */
+private fun storeCardArt(store: DeckStore): XmbCardArt = when (store) {
+    DeckStore.STEAM -> XmbCardArt(R.drawable.store_logo_steam, listOf(Color(0xFF171A21), Color(0xFF1B2838)))
+    DeckStore.EPIC -> XmbCardArt(R.drawable.store_logo_epic, listOf(Color(0xFF121212), Color(0xFF202020)))
+    DeckStore.GOG -> XmbCardArt(R.drawable.store_logo_gog, listOf(Color(0xFF5C2D91), Color(0xFF3B1C60)))
+    DeckStore.AMAZON -> XmbCardArt(R.drawable.store_logo_amazon, listOf(Color(0xFF232F3E), Color(0xFF131A22)))
+    DeckStore.XBOX -> XmbCardArt(R.drawable.store_logo_xbox, listOf(Color(0xFF107C10), Color(0xFF0B5A0B)), tintWhite = true)
 }

@@ -23,9 +23,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -47,18 +53,24 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -76,6 +88,13 @@ import com.winlator.star.store.download.StoreStyle
 import com.winlator.star.store.download.formatDownloadSize
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
+import com.winlator.star.core.AppOrientation
+import com.winlator.star.ui.deck.ScreenScale
+import com.winlator.star.ui.deck.XmbScreenWindow
+import com.winlator.star.ui.deck.deckFocusRing
+import com.winlator.star.ui.deck.isXmbHome
+import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.xmbFrame
 import com.winlator.star.ui.theme.LocalAccentDim
 import com.winlator.star.ui.theme.WinlatorTheme
 import java.io.File
@@ -119,10 +138,14 @@ class DownloadManagerActivity : ComponentActivity() {
         GogLibrarySync.seed(this)
         EpicLibrarySync.seed(this)
         com.winlator.star.store.xbox.XboxDownloads.seed(this)
+        // Deck XMB home: this screen follows the Deck's orientation lock like the store screens do.
+        val xmbHome = isXmbHome(this)
+        if (xmbHome) AppOrientation.apply(this)
 
         setContent {
             WinlatorTheme {
                 DownloadManagerScreen(
+                    xmbHome = xmbHome,
                     onBack = { finish() },
                     onClear = { clearTerminalAndLibrary() },
                     onEntryClick = { openDetail(it) },
@@ -408,9 +431,66 @@ private data class ExePickerDataDm(
 
 // --- Composable screen ---
 
+/**
+ * Three sections, top to bottom: the ACTIVE download (downloading/paused), the managed QUEUE (waiting
+ * downloads, in FIFO/position order), then the installed Library (+ any failed/cancelled rows). Headers
+ * only appear when a later group follows, so a pure library list stays header-less.
+ */
+private class DmSections(entries: List<DownloadEntry>) {
+    val downloading = entries.filter { it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PAUSED }
+    // Registry's default sort is by name; a FIFO must order by queue position instead.
+    val queued = entries.filter { it.state == DownloadState.QUEUED }.sortedBy { it.queuePosition }
+    val rest = entries.filterNot { it.isActive }
+    val hasHeaders = downloading.isNotEmpty() || queued.isNotEmpty()
+}
+
+/**
+ * Card sizes: the fixed ones of the classic list, or (Deck XMB home) shares of the screen within limits, with the
+ * Deck focus ring. Text follows the same screen factor through the density the XMB layout provides.
+ */
+private class DmLook(
+    val coverW: Dp,
+    val coverH: Dp,
+    val cardPadH: Dp,
+    val cardPadV: Dp,
+    val inner: Dp,
+    val gap: Dp,
+    val buttonH: Dp,
+    val buttonPadH: Dp,
+    val focus: Boolean,
+)
+
+private val CLASSIC_LOOK = DmLook(60.dp, 80.dp, 16.dp, 6.dp, 12.dp, 12.dp, 32.dp, 12.dp, focus = false)
+
+private fun xmbLook(s: ScreenScale): DmLook {
+    val coverH = s.h(0.22f, min = 96.dp, max = 180.dp)
+    return DmLook(
+        coverW = coverH * 0.75f,
+        coverH = coverH,
+        cardPadH = s.dp(8f),
+        cardPadV = s.dp(6f),
+        inner = s.dp(12f),
+        gap = s.dp(12f),
+        // Never under a comfortable touch target, however small the screen.
+        buttonH = maxOf(s.dp(34f), 36.dp),
+        buttonPadH = s.dp(12f),
+        focus = true,
+    )
+}
+
+/** The Deck focus ring with a slight pop, only in the XMB-home look. Put it before the clickable. */
+@Composable
+private fun Modifier.dmFocus(look: DmLook, shape: Shape): Modifier =
+    if (look.focus) deckFocusRing(shape, scaleTo = 1.03f) else this
+
+/** A card button's size (and, in the XMB-home look, its focus ring). */
+@Composable
+private fun Modifier.dmButton(look: DmLook): Modifier = dmFocus(look, RoundedCornerShape(8.dp)).height(look.buttonH)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DownloadManagerScreen(
+    xmbHome: Boolean,
     onBack: () -> Unit,
     onClear: () -> Unit,
     onEntryClick: (DownloadEntry) -> Unit,
@@ -423,6 +503,65 @@ private fun DownloadManagerScreen(
     onMoveToTop: (DownloadEntry) -> Unit,
 ) {
     val entries by DownloadRegistry.entries.collectAsStateWithLifecycle()
+
+    if (xmbHome) {
+        // Deck XMB home: edge to edge under the camera with no system bars, the page in the Deck's even frame, two
+        // cards per row in landscape, every size a share of the screen.
+        XmbScreenWindow(true)
+        val scale = rememberScreenScale()
+        val look = remember(scale) { xmbLook(scale) }
+        val frame = xmbFrame()
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * scale.factor)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(start = frame, end = frame, top = scale.dp(6f)),
+            ) {
+                XmbDownloadsBar(onBack, onClear, look)
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    if (entries.isEmpty()) {
+                        Text(
+                            text = "No downloads or installed games yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                        )
+                    } else {
+                        val sections = DmSections(entries)
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(if (scale.widthDp > scale.heightDp) 2 else 1),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = look.cardPadV * 2),
+                        ) {
+                            if (sections.downloading.isNotEmpty()) {
+                                item(key = "hdr_downloading", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Downloading", look) }
+                                items(sections.downloading, key = { it.key }) { entry ->
+                                    DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+                                }
+                            }
+                            if (sections.queued.isNotEmpty()) {
+                                item(key = "hdr_queued", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Queued", look) }
+                                itemsIndexed(sections.queued, key = { _, e -> e.key }) { idx, entry ->
+                                    QueuedCard(entry, idx + 1, idx > 0, onEntryClick, onCancel, onMoveUp, onMoveToTop, look)
+                                }
+                            }
+                            if (sections.rest.isNotEmpty()) {
+                                if (sections.hasHeaders) {
+                                    item(key = "hdr_library", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Library", look) }
+                                }
+                                items(sections.rest, key = { it.key }) { entry ->
+                                    DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -462,31 +601,20 @@ private fun DownloadManagerScreen(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
             } else {
-                // Three sections, top to bottom: the ACTIVE download (downloading/paused), the
-                // managed QUEUE (waiting downloads, in FIFO/position order), then the installed
-                // Library (+ any failed/cancelled rows). Headers only appear when a later group
-                // follows, so a pure library list stays header-less.
-                val downloading = entries.filter {
-                    it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PAUSED
-                }
-                // Registry's default sort is by name; a FIFO must order by queue position instead.
-                val queued = entries.filter { it.state == DownloadState.QUEUED }
-                    .sortedBy { it.queuePosition }
-                val rest = entries.filterNot { it.isActive }
-                val hasHeaders = downloading.isNotEmpty() || queued.isNotEmpty()
+                val sections = DmSections(entries)
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 6.dp),
                 ) {
-                    if (downloading.isNotEmpty()) {
+                    if (sections.downloading.isNotEmpty()) {
                         item(key = "hdr_downloading") { SectionHeader("Downloading") }
-                        items(downloading, key = { it.key }) { entry ->
+                        items(sections.downloading, key = { it.key }) { entry ->
                             DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
                         }
                     }
-                    if (queued.isNotEmpty()) {
+                    if (sections.queued.isNotEmpty()) {
                         item(key = "hdr_queued") { SectionHeader("Queued") }
-                        itemsIndexed(queued, key = { _, e -> e.key }) { idx, entry ->
+                        itemsIndexed(sections.queued, key = { _, e -> e.key }) { idx, entry ->
                             QueuedCard(
                                 entry = entry,
                                 position = idx + 1,
@@ -498,9 +626,9 @@ private fun DownloadManagerScreen(
                             )
                         }
                     }
-                    if (rest.isNotEmpty()) {
-                        if (hasHeaders) item(key = "hdr_library") { SectionHeader("Library") }
-                        items(rest, key = { it.key }) { entry ->
+                    if (sections.rest.isNotEmpty()) {
+                        if (sections.hasHeaders) item(key = "hdr_library") { SectionHeader("Library") }
+                        items(sections.rest, key = { it.key }) { entry ->
                             DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss)
                         }
                     }
@@ -511,13 +639,41 @@ private fun DownloadManagerScreen(
 }
 
 @Composable
-private fun SectionHeader(label: String) {
+private fun SectionHeader(label: String, look: DmLook = CLASSIC_LOOK) {
     Text(
         text = label,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
+        modifier = Modifier.padding(start = look.cardPadH, end = look.cardPadH, top = 8.dp, bottom = 2.dp),
     )
+}
+
+/** The XMB-home header: back, title and Clear on one slim line over the page background, no app-bar block. */
+@Composable
+private fun XmbDownloadsBar(onBack: () -> Unit, onClear: () -> Unit, look: DmLook) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = look.cardPadH),
+    ) {
+        IconButton(onClick = onBack, modifier = Modifier.dmFocus(look, CircleShape)) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Spacer(Modifier.width(look.gap / 2))
+        Text(
+            text = "Downloads & Library",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onClear, modifier = Modifier.dmFocus(look, RoundedCornerShape(8.dp))) { Text("Clear ✓") }
+    }
 }
 
 @Composable
@@ -529,6 +685,7 @@ private fun DownloadCard(
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
     onDismiss: (DownloadEntry) -> Unit,
+    look: DmLook = CLASSIC_LOOK,
 ) {
     // Same floating card as SteamGamesActivity.GameListItem: rounded surfaceVariant panel,
     // outline border, side margins, tall poster + info column.
@@ -536,7 +693,8 @@ private fun DownloadCard(
         onClick = { onClick(entry) },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = look.cardPadH, vertical = look.cardPadV)
+            .dmFocus(look, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -547,15 +705,15 @@ private fun DownloadCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(look.inner),
         ) {
             DownloadCoverArt(
                 entry = entry,
                 modifier = Modifier
-                    .size(width = 60.dp, height = 80.dp)
+                    .size(width = look.coverW, height = look.coverH)
                     .clip(RoundedCornerShape(6.dp)),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(look.gap))
 
             Column(modifier = Modifier.weight(1f)) {
                 StoreBadge(entry.store)
@@ -571,7 +729,7 @@ private fun DownloadCard(
 
                 when (entry.state) {
                     DownloadState.DOWNLOADING, DownloadState.PAUSED, DownloadState.QUEUED ->
-                        ActiveContent(entry, onCancel, onPauseResume)
+                        ActiveContent(entry, onCancel, onPauseResume, look)
 
                     DownloadState.INSTALLED -> {
                         // Amber "Update available" mirrors the store list's own language
@@ -596,8 +754,8 @@ private fun DownloadCard(
                             Button(
                                 onClick = { onLaunch(entry) },
                                 shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(32.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                                modifier = Modifier.dmButton(look),
+                                contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                             ) { Text("Launch", style = MaterialTheme.typography.labelSmall) }
                             OutlinedButton(
                                 onClick = { onUninstall(entry) },
@@ -605,8 +763,8 @@ private fun DownloadCard(
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error,
                                 ),
-                                modifier = Modifier.height(32.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                                modifier = Modifier.dmButton(look),
+                                contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                             ) { Text("Uninstall", style = MaterialTheme.typography.labelSmall) }
                         }
                     }
@@ -623,8 +781,8 @@ private fun DownloadCard(
                         OutlinedButton(
                             onClick = { onDismiss(entry) },
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            modifier = Modifier.dmButton(look),
+                            contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
                     }
 
@@ -638,8 +796,8 @@ private fun DownloadCard(
                         OutlinedButton(
                             onClick = { onDismiss(entry) },
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            modifier = Modifier.dmButton(look),
+                            contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
                     }
                 }
@@ -654,6 +812,7 @@ private fun ActiveContent(
     entry: DownloadEntry,
     onCancel: (DownloadEntry) -> Unit,
     onPauseResume: (DownloadEntry) -> Unit,
+    look: DmLook,
 ) {
     // Byte-driven fraction only when the store actually feeds byte progress (installDone > 0);
     // pct-only stores (GOG reports pct with no byte pairs) fall back to entry.pct so the bar
@@ -717,8 +876,8 @@ private fun ActiveContent(
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error,
             ),
-            modifier = Modifier.height(32.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+            modifier = Modifier.dmButton(look),
+            contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
         ) { Text("✕ Cancel", style = MaterialTheme.typography.labelSmall) }
 
         if (entry.supportsPause) {
@@ -733,8 +892,8 @@ private fun ActiveContent(
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     )
                 },
-                modifier = Modifier.height(32.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                modifier = Modifier.dmButton(look),
+                contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
             ) {
                 Text(
                     text = if (entry.state == DownloadState.PAUSED) "Resume" else "Pause",
@@ -759,12 +918,14 @@ private fun QueuedCard(
     onCancel: (DownloadEntry) -> Unit,
     onMoveUp: (DownloadEntry) -> Unit,
     onMoveToTop: (DownloadEntry) -> Unit,
+    look: DmLook = CLASSIC_LOOK,
 ) {
     Card(
         onClick = { onClick(entry) },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = look.cardPadH, vertical = look.cardPadV)
+            .dmFocus(look, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -775,15 +936,15 @@ private fun QueuedCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(look.inner),
         ) {
             DownloadCoverArt(
                 entry = entry,
                 modifier = Modifier
-                    .size(width = 60.dp, height = 80.dp)
+                    .size(width = look.coverW, height = look.coverH)
                     .clip(RoundedCornerShape(6.dp)),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(look.gap))
 
             Column(modifier = Modifier.weight(1f)) {
                 StoreBadge(entry.store)
@@ -807,14 +968,14 @@ private fun QueuedCard(
                         OutlinedButton(
                             onClick = { onMoveToTop(entry) },
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            modifier = Modifier.dmButton(look),
+                            contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Start next", style = MaterialTheme.typography.labelSmall) }
                         OutlinedButton(
                             onClick = { onMoveUp(entry) },
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            modifier = Modifier.dmButton(look),
+                            contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("↑ Up", style = MaterialTheme.typography.labelSmall) }
                     }
                     OutlinedButton(
@@ -823,8 +984,8 @@ private fun QueuedCard(
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error,
                         ),
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                        modifier = Modifier.dmButton(look),
+                        contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                     ) { Text("✕ Cancel", style = MaterialTheme.typography.labelSmall) }
                 }
             }

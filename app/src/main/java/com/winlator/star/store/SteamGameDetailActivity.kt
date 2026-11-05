@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Help
 import com.winlator.star.R
 import com.winlator.star.core.CopyGameToDriveC
+import com.winlator.star.ui.deck.XmbKeyboardWindow
 import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
@@ -102,7 +103,6 @@ import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.StoreMedia
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
-import com.winlator.star.ui.theme.WinlatorTheme
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -325,7 +325,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (SteamPrefs.isLoggedIn) SteamForegroundService.start(this)
 
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 SteamGameDetailScreen(
                     appId = appId,
                     signedIn = SteamPrefs.isLoggedIn,
@@ -2404,16 +2404,19 @@ private fun SteamGameDetailScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     var code by remember { mutableStateOf("") }
-                    OutlinedTextField(
-                        value = code,
-                        onValueChange = { code = it },
-                        singleLine = true,
-                        enabled = !branchCheckBusy,
-                        label = { Text("Beta access code") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
-                    )
+                    // The sheet is a window of its own, so its field takes the XMB keyboard hook here.
+                    XmbKeyboardWindow {
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = { code = it },
+                            singleLine = true,
+                            enabled = !branchCheckBusy,
+                            label = { Text("Beta access code") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp),
+                        )
+                    }
                     branchCheckMessage?.let { msg ->
                         Text(
                             text = msg,

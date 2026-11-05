@@ -92,8 +92,8 @@ import com.winlator.star.ui.screens.isSteamOriginShortcut
 import com.winlator.star.ui.screens.isXboxShortcut
 import com.winlator.star.ui.theme.AppThemeState
 
-/** The five storefronts, in the order the drawer lists them. [screen] is what MainActivity.launchStore takes. */
-private enum class DeckStore(val label: String, val screen: Screen, val owns: (Shortcut) -> Boolean) {
+/** The five storefronts, in the order the drawer lists them. [screen] is what MainActivity.launchStore takes. The XMB home's store cards use them too. */
+internal enum class DeckStore(val label: String, val screen: Screen, val owns: (Shortcut) -> Boolean) {
     STEAM("Steam", Screen.Steam, { s -> isSteamOriginShortcut(s) && !LinuxShortcuts.isLinuxEntry(s) }),
     EPIC("Epic Games", Screen.Epic, { s -> s.getExtra("storeSource") == "epic" }),
     GOG("GOG", Screen.Gog, { s -> isGogShortcut(s) }),
@@ -113,7 +113,7 @@ private enum class StoreTab(val label: String, val icon: ImageVector) {
 private fun tabsOf(store: DeckStore): List<StoreTab> =
     if (store == DeckStore.STEAM) StoreTab.entries else StoreTab.entries.filter { it != StoreTab.FRIENDS }
 
-private fun isSignedIn(context: Context, store: DeckStore): Boolean = runCatching {
+internal fun isSignedIn(context: Context, store: DeckStore): Boolean = runCatching {
     when (store) {
         DeckStore.STEAM -> { SteamPrefs.init(context); SteamPrefs.isLoggedIn }
         DeckStore.EPIC -> EpicCredentialStore.isLoggedIn(context)

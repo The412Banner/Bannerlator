@@ -2,7 +2,9 @@ package com.winlator.star.ui.deck
 
 import android.content.Context
 import android.os.BatteryManager
+import android.os.Build
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.animateColorAsState
@@ -41,6 +43,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
@@ -57,6 +60,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -66,6 +71,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -78,6 +84,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
@@ -116,12 +123,16 @@ import com.winlator.star.ui.screens.ContainerDetailViewModel
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.DeckGameActionsHost
 import com.winlator.star.ui.screens.GamesScreenRequests
+import com.winlator.star.core.AppOrientation
+import com.winlator.star.ui.findActivity
+import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.topBarActionsState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.union
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -203,8 +214,12 @@ internal fun DeckShell(
     onAbout: () -> Unit,
     onLaunchStore: (Screen) -> Unit,
 ) {
+    // The XMB mode can be switched on and off while the shell is up, so the keyboard host follows the live setting.
+    val xmbHome by AppThemeState.deckXmbHome.collectAsState()
     DeckTheme {
-        DeckShellContent(startRoute, pendingRoute, onPendingRouteConsumed, onAbout, onLaunchStore)
+        XmbKeyboardHost(xmbHome) {
+            DeckShellContent(startRoute, pendingRoute, onPendingRouteConsumed, onAbout, onLaunchStore)
+        }
     }
 }
 
@@ -224,6 +239,10 @@ private fun DeckShellContent(
     // Landscape: side rails instead of the top bar (deckRails).
     val rails = deckRails()
     val railsNow by rememberUpdatedState(rails)
+    // XMB home: the main tabs run across a top bar in landscape too, instead of down a side rail. The page's own tab rail stays.
+    val xmbHome by AppThemeState.deckXmbHome.collectAsState()
+    val topTabs = rails && xmbHome
+    val xmbHomeNow by rememberUpdatedState(xmbHome)
     val sideLists = remember { DeckSideLists() }
     val topBarActionsState = remember { topBarActionsState() }
     val topBarTransparentState = remember { mutableStateOf(false) }
@@ -236,16 +255,25 @@ private fun DeckShellContent(
     val tab = deckTabOf(currentRoute)
 
     val nav = remember(navController) { DeckNav(navController) }
+    // XMB mode: no Stores tab; the stores are cards in Home's upper row. Its route stays for search and the other modes.
+    val tabs = remember(xmbHome) { if (xmbHome) DeckTab.entries - DeckTab.STORES else DeckTab.entries }
+    SideEffect { nav.tabs = tabs }
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val tabRequesters = remember { DeckTab.entries.associateWith { FocusRequester() } }
     val tabsFocused = remember { mutableStateOf(false) }
     // L1/R1: next menu, with focus on its tab, so the bumpers keep moving across menus until Down (Right on the side rail) enters one.
     // No top bar or rail (phone layout): the requester is not attached, so focus stays where it is.
+    // XMB home: the tabs take no D-pad focus at all, so the new page takes its own first focus straight away.
     val switchMenu: (Int) -> Unit = { delta ->
         val t = nav.cycle(delta)
-        deckActions.navHold.value = true
-        if (runCatching { tabRequesters.getValue(t).requestFocus() }.isFailure) deckActions.navHold.value = false
+        if (xmbHomeNow) {
+            deckActions.navHold.value = false
+            deckActions.enterTick.intValue++
+        } else {
+            deckActions.navHold.value = true
+            if (runCatching { tabRequesters.getValue(t).requestFocus() }.isFailure) deckActions.navHold.value = false
+        }
     }
     // Down from the top bar (Right from the side rail): the page takes its own first focus; a page without one (a classic screen) gets the nearest control below (to the right).
     val enterContent: () -> Unit = {
@@ -318,19 +346,29 @@ private fun DeckShellContent(
 
     // Landscape hides Android's navigation bar; a swipe in from the edge shows it for a moment, as in a game.
     // It comes back on leaving the Deck style or turning to portrait. Games and stores are other activities with their own windows,
-    // and it is hidden again whenever this one resumes. The status bar stays.
+    // and it is hidden again whenever this one resumes. The status bar stays (except in the XMB mode, below).
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
+    // The XMB mode locks the app to its own orientation (AppOrientation.deckMode). Turning it off, or switching back to
+    // Classic, disposes this after the pref has changed, so applying again hands the window back to the Appearance setting.
+    DisposableEffect(activity, xmbHome) {
+        if (!xmbHome || activity == null) return@DisposableEffect onDispose {}
+        AppOrientation.apply(activity)
+        onDispose { AppOrientation.apply(activity) }
+    }
     // Re-run when the full-screen XMB closes: it shows the system bars again on its way out.
     val xmbShown = deckActions.fullscreen.value
-    DisposableEffect(rails, activity, lifecycleOwner, xmbShown) {
+    // XMB mode: the status bar goes too, on every tab and in both orientations, like a console.
+    DisposableEffect(rails, xmbHome, activity, lifecycleOwner, xmbShown) {
         val window = activity?.window
-        if (!rails || window == null) return@DisposableEffect onDispose {}
+        if (!(rails || xmbHome) || window == null) return@DisposableEffect onDispose {}
         val controller = WindowCompat.getInsetsController(window, window.decorView)
+        val bars = if (xmbHome) WindowInsetsCompat.Type.systemBars() else WindowInsetsCompat.Type.navigationBars()
         val hide = {
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.navigationBars())
+            controller.hide(bars)
             DeckWindow.setNavBarHidden(activity)
+            DeckWindow.setStatusBarHidden(xmbHome)
         }
         hide()
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) hide() }
@@ -338,9 +376,33 @@ private fun DeckShellContent(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             DeckWindow.setNavBarHidden(null)
-            controller.show(WindowInsetsCompat.Type.navigationBars())
+            DeckWindow.setStatusBarHidden(false)
+            controller.show(bars)
         }
     }
+    // XMB mode: the shell lays itself out edge to edge (the window no longer pads for the bars) and reaches under the
+    // camera hole on every tab, so Android never adds its own black strip and switching tabs doesn't resize the screen.
+    // Only Home draws its content into the hole; every other page keeps clear of it through the insets below.
+    DisposableEffect(xmbHome, activity) {
+        val window = activity?.window
+        if (!xmbHome || window == null) return@DisposableEffect onDispose {}
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val cutoutBefore = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) window.attributes.layoutInDisplayCutoutMode else 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.also {
+                it.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        onDispose {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.attributes = window.attributes.also { it.layoutInDisplayCutoutMode = cutoutBefore }
+            }
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+        }
+    }
+    val homeBleed = xmbHome && currentRoute == DeckRoutes.HOME && !compact
+    // XMB mode: Home's floating tab bar on every tab, except the phone layout, too narrow for it (it keeps its bars).
+    val floatTabs = xmbHome && !compact
 
     // Settings and Appearance are the Settings tab's two pages: in landscape they sit on the page-tab rail, and L2/R2 swap them.
     val settingsPages = rails && (currentRoute == Screen.Settings.route || currentRoute == Screen.Appearance.route)
@@ -427,11 +489,18 @@ private fun DeckShellContent(
             // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
             val dir = LocalLayoutDirection.current
             val cutout = WindowInsets.displayCutout.asPaddingValues()
-            val cutoutStart = if (rails) cutout.calculateStartPadding(dir) else 0.dp
-            val cutoutEnd = if (rails) cutout.calculateEndPadding(dir) else 0.dp
-            val insets = if (rails) WindowInsets.systemBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Vertical))
+            // XMB home, landscape, any tab but Home: the page sits in an even frame, as wide as the camera strip on both
+            // sides, filled with the backdrop, so the strip reads as a margin rather than a wall beside the panels.
+            val framed = topTabs && !homeBleed
+            val frame = if (framed) maxOf(cutout.calculateStartPadding(dir), cutout.calculateEndPadding(dir)) else 0.dp
+            val cutoutStart = if (rails && !framed) cutout.calculateStartPadding(dir) else 0.dp
+            val cutoutEnd = if (rails && !framed) cutout.calculateEndPadding(dir) else 0.dp
+            val baseInsets = if (rails) WindowInsets.systemBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Vertical))
                 else WindowInsets.systemBars.union(WindowInsets.displayCutout)
-            Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(insets)) {
+            // Edge to edge (XMB home) the window no longer makes room for the keyboard, so the pages do.
+            val insets = if (xmbHome) baseInsets.union(WindowInsets.ime) else baseInsets
+            // Home's XMB takes the whole screen, under the camera hole too; the shell floats its tabs and Search over it.
+            Column(modifier = Modifier.fillMaxSize().then(if (homeBleed) Modifier else Modifier.windowInsetsPadding(insets))) {
                 // The My-account sheet opens over the current page (DeckGameActionsHost).
                 val onAccount = { AccountUiBus.requestMyAccount() }
                 val onTabsFocus: (Boolean) -> Unit = { focused ->
@@ -441,21 +510,40 @@ private fun DeckShellContent(
                 val goBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() }
                 // Home's XMB view takes the whole screen; the XMB has its own hints, menus and game row.
                 val full = deckActions.fullscreen.value && currentRoute == DeckRoutes.HOME
-                // Landscape is rails | content; portrait keeps the top bar over the content. The NavHost stays in one slot either way.
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                // XMB mode, every tab but Home (which floats it over the XMB) and the phone layout: the same floating bar as
+                // Home, at the same place, with the page starting right under it.
+                if (floatTabs && !full && !homeBleed) {
+                    DeckFloatingBar(
+                        current = tab,
+                        tabs = tabs,
+                        avatarUrl = account?.displayAvatarUrl,
+                        portrait = !rails,
+                        startInset = if (rails) cutout.calculateStartPadding(dir) else 0.dp,
+                        endInset = if (rails) cutout.calculateEndPadding(dir) else 0.dp,
+                        onTab = { nav.goTab(it) },
+                        onCycle = { switchMenu(it) },
+                        onAccount = onAccount,
+                    )
+                }
+                // Landscape is rails | content (in the XMB mode: the page's own tab rail | content, under the floating tab bar);
+                // portrait keeps the top bar over the content. The NavHost stays in one slot either way.
+                // Framed (XMB mode, tabs other than Home), only this middle part sits inside the even camera frame.
+                Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = frame)) {
                     if (rails && !full) {
-                        DeckSideRail(
-                            cutoutStart = cutoutStart,
-                            current = tab,
-                            tabRequesters = tabRequesters,
-                            avatarUrl = account?.displayAvatarUrl,
-                            onTab = { nav.goTab(it) },
-                            onCycle = { nav.cycle(it) },
-                            onTabsFocus = onTabsFocus,
-                            onEnterContent = enterContent,
-                            onAccount = onAccount,
-                            onSearch = openSearch,
-                        )
+                        if (!topTabs) {
+                            DeckSideRail(
+                                cutoutStart = cutoutStart,
+                                current = tab,
+                                tabRequesters = tabRequesters,
+                                avatarUrl = account?.displayAvatarUrl,
+                                onTab = { nav.goTab(it) },
+                                onCycle = { nav.cycle(it) },
+                                onTabsFocus = onTabsFocus,
+                                onEnterContent = enterContent,
+                                onAccount = onAccount,
+                                onSearch = openSearch,
+                            )
+                        }
                         val pageTabs = deckActions.pageTabs.value
                         if (settingsPages) {
                             val pages = listOf(Screen.Settings.route to DeckTabItem("Settings", Icons.Filled.Settings), Screen.Appearance.route to DeckTabItem("Appearance", Icons.Filled.Palette))
@@ -465,6 +553,7 @@ private fun DeckShellContent(
                                 compact = false,
                                 onSelect = { i -> if (pages[i].first != currentRoute) nav.open(pages[i].first) },
                                 onFocus = { deckActions.stripFocused.value = it },
+                                glass = !framed,
                             )
                         } else if (pageTabs != null && isDeckPage(currentRoute) && pageTabs.tabs.isNotEmpty()) {
                             DeckPageTabRail(
@@ -473,14 +562,15 @@ private fun DeckShellContent(
                                 compact = pageTabs.compact || sideLists.count.intValue > 0,
                                 onSelect = { i -> pageTabs.onSelect(i) },
                                 onFocus = { deckActions.stripFocused.value = it },
+                                glass = !framed,
                             )
                         }
                     }
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        if (full) {
-                            // No top bar over the XMB.
+                        if (full || homeBleed || floatTabs) {
+                            // No top bar here: none over the XMB, and the XMB home floats its own (above, or over Home).
                         } else if (compact) {
-                            DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch)
+                            DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch, dpad = !xmbHome)
                         } else if (!rails) {
                             DeckTopBar(
                                 current = tab,
@@ -534,7 +624,7 @@ private fun DeckShellContent(
                             )
                         }
 
-                        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(end = cutoutEnd)) {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(end = if (homeBleed) 0.dp else cutoutEnd)) {
                             CompositionLocalProvider(
                                 LocalHostedInDeck provides rails,
                                 LocalDeckSideLists provides sideLists,
@@ -544,6 +634,7 @@ private fun DeckShellContent(
                                     startRoute = DeckRoutes.HOME,
                                     modifier = Modifier.fillMaxSize(),
                                     containerEditorRoute = DeckSettingsRoutes::containerEditorFor,
+                                    instantPages = xmbHome,
                                     extraRoutes = {
                                         composable(DeckRoutes.HOME) {
                                             DeckHome(
@@ -554,6 +645,7 @@ private fun DeckShellContent(
                                                     GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME)
                                                 },
                                                 onBigPicture = { nav.open(Screen.BigPicture.route) },
+                                                onLaunchStore = onLaunchStore,
                                             )
                                         }
                                         composable(
@@ -606,14 +698,16 @@ private fun DeckShellContent(
                                             highlightsFor = upd
                                         }
                                     },
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 12.dp),
+                                    // On the XMB home it sits under the floating status line instead of on it.
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(top = if (homeBleed) 52.dp else 8.dp, end = 12.dp),
                                 )
                             }
                         }
                         // App-wide minimized progress pill for a running archive unpack (renders nothing when idle).
                         com.winlator.star.ui.UnpackProgressPill()
 
-                        if (!compact && !full) {
+                        // XMB mode: no legend on any tab, only the floating Search below.
+                        if (!compact && !full && !xmbHome) {
                             DeckLegend(
                                 thin = rails,
                                 endInset = cutoutEnd,
@@ -630,8 +724,39 @@ private fun DeckShellContent(
                     }
                 }
                 if (compact && !full) {
-                    DeckBottomBar(current = tab, onTab = { nav.goTab(it) })
+                    DeckBottomBar(current = tab, tabs = tabs, onTab = { nav.goTab(it) }, dpad = !xmbHome)
                 }
+            }
+
+            // XMB home: the tabs and status float over the XMB's own space above its game row, clear of the camera hole.
+            // No backgrounds, so the XMB's backdrop shows through.
+            if (homeBleed) {
+                DeckFloatingBar(
+                    current = tab,
+                    tabs = tabs,
+                    avatarUrl = account?.displayAvatarUrl,
+                    portrait = !rails,
+                    startInset = cutout.calculateStartPadding(dir),
+                    endInset = cutout.calculateEndPadding(dir),
+                    onTab = { nav.goTab(it) },
+                    onCycle = { switchMenu(it) },
+                    onAccount = { AccountUiBus.requestMyAccount() },
+                    modifier = Modifier.align(Alignment.TopStart).padding(top = cutout.calculateTopPadding()),
+                )
+            }
+            // XMB home, every tab but the phone layout (which has its bars): the only hint is a muted Search bottom right,
+            // clear of the camera frame. It may sit over a page's corner.
+            if (xmbHome && !compact) {
+                val ss = rememberScreenScale()
+                DeckFloatingSearch(
+                    onSearch = { (deckActions.search.value ?: openSearch)() },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(
+                            end = ss.dp(16f) + maxOf(frame, cutout.calculateEndPadding(dir)),
+                            bottom = ss.dp(12f) + cutout.calculateBottomPadding(),
+                        ),
+                )
             }
 
             if (searchOpen) {
@@ -680,11 +805,18 @@ private class DeckNav(private val navController: NavHostController) {
         }
     }
 
-    /** Move [delta] tabs along, wrapping; returns the tab now shown. */
+    /** The tabs L1/R1 move through (the XMB mode has no Stores tab: its stores are cards on Home). */
+    var tabs: List<DeckTab> = DeckTab.entries
+
+    /**
+     * Move one tab along ([delta] is 1 or -1), wrapping; returns the tab now shown. Steps through the full tab order and
+     * skips any tab not in [tabs], so it also works from a tab the bar doesn't list (Stores, reached from search).
+     */
     fun cycle(delta: Int): DeckTab {
-        val tabs = DeckTab.entries
-        val i = tabs.indexOf(deckTabOf(currentRoute()))
-        val t = tabs[(i + delta + tabs.size) % tabs.size]
+        val all = DeckTab.entries
+        var i = all.indexOf(deckTabOf(currentRoute()))
+        do { i = (i + delta + all.size) % all.size } while (all[i] !in tabs)
+        val t = all[i]
         goTab(t)
         return t
     }
@@ -785,8 +917,11 @@ private fun DeckTopBar(
     }
 }
 
+/** XMB home: the tab bars take touch and L1/R1 only, never D-pad focus. */
+private fun Modifier.dpadFocus(enabled: Boolean): Modifier = if (enabled) this else focusProperties { canFocus = false }
+
 @Composable
-private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () -> Unit, onSearch: () -> Unit) {
+private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () -> Unit, onSearch: () -> Unit, dpad: Boolean = true) {
     val line = deckLine()
     val showBattery = LocalConfiguration.current.screenWidthDp >= 420
     Row(
@@ -810,23 +945,47 @@ private fun DeckCompactTopBar(tab: DeckTab, avatarUrl: String?, onAccount: () ->
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        DeckSearchButton(onSearch)
-        DeckStatus(avatarUrl = avatarUrl, showBattery = showBattery, onAccount = onAccount)
+        DeckSearchButton(onSearch, dpad)
+        DeckRotateButton()
+        DeckStatus(avatarUrl = avatarUrl, showBattery = showBattery, onAccount = onAccount, dpad = dpad)
     }
 }
 
 /** The top bar's magnifier: opens the same search overlay as Y. */
 @Composable
-private fun DeckSearchButton(onSearch: () -> Unit) {
+private fun DeckSearchButton(onSearch: () -> Unit, dpad: Boolean = true) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .deckFocusRing(CircleShape, scaleTo = 1f)
             .clip(CircleShape)
+            .dpadFocus(dpad)
             .clickable(onClick = onSearch)
             .size(40.dp),
     ) {
         Icon(Icons.Filled.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+    }
+}
+
+/**
+ * Flips the XMB home's orientation lock (landscape by default, portrait after a tap) and applies it at once. Shown only
+ * in that mode; the others rotate with the device as set in Appearance. Touch only: it never takes D-pad focus, on any
+ * bar. [tint] and [size] let the XMB home's floating bar mute it.
+ */
+@Composable
+private fun DeckRotateButton(tint: Color = MaterialTheme.colorScheme.onSurface, size: Dp = 40.dp, iconSize: Dp = 24.dp) {
+    val xmbHome by AppThemeState.deckXmbHome.collectAsState()
+    if (!xmbHome) return
+    val context = LocalContext.current
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(CircleShape)
+            .dpadFocus(false)
+            .clickable { context.findActivity()?.let { AppOrientation.toggleDeck(it) } }
+            .size(size),
+    ) {
+        Icon(Icons.Filled.ScreenRotation, contentDescription = "Rotate screen", tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -900,7 +1059,7 @@ private fun DeckMark() {
 }
 
 @Composable
-private fun DeckStatus(avatarUrl: String?, showBattery: Boolean, onAccount: () -> Unit) {
+private fun DeckStatus(avatarUrl: String?, showBattery: Boolean, onAccount: () -> Unit, dpad: Boolean = true) {
     val cs = MaterialTheme.colorScheme
     val clock = rememberDeckClock()
     val battery = rememberDeckBattery()
@@ -930,11 +1089,145 @@ private fun DeckStatus(avatarUrl: String?, showBattery: Boolean, onAccount: () -
             modifier = Modifier
                 .deckFocusRing(CircleShape, scaleTo = 1f)
                 .clip(CircleShape)
+                .dpadFocus(dpad)
                 .clickable(onClick = onAccount)
                 .padding(2.dp),
         ) {
             AccountAvatar(avatarUrl = avatarUrl, size = 30.dp, fallbackTint = cs.primary)
         }
+    }
+}
+
+// ── Floating bar (XMB home) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * The XMB home's tab line, floating over the XMB in the space it leaves above its game row, like the old XMB's clock
+ * line: L1, the tab icons (the current one with its label and a thin accent underline), R1, and on the right the Steam
+ * pill, clock, battery and account, small and muted. No background. Touch and L1/R1 only: none of it takes D-pad focus.
+ * The other tabs show the same bar at the same place, with their page starting right under it.
+ */
+@Composable
+private fun DeckFloatingBar(
+    current: DeckTab,
+    tabs: List<DeckTab>,
+    avatarUrl: String?,
+    portrait: Boolean,
+    startInset: Dp,
+    endInset: Dp,
+    onTab: (DeckTab) -> Unit,
+    onCycle: (Int) -> Unit,
+    onAccount: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    val clock = rememberDeckClock()
+    val battery = rememberDeckBattery()
+    // Sized with the screen, as the XMB's own clear space above its game row is (its peek clip is 50 of the same units):
+    // portrait leaves 34 there, landscape a good deal more.
+    val ss = rememberScreenScale()
+    val k = if (portrait) 0.8f else 1f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = ss.dp(16f) + startInset, end = ss.dp(16f) + endInset, top = ss.dp(if (portrait) 2f else 6f))
+            .height(ss.dp(40f * k)),
+    ) {
+        FloatingBumper("L1") { onCycle(-1) }
+        tabs.forEach { t ->
+            val selected = t == current
+            val ink = if (selected) Color.White else Color.White.copy(alpha = 0.55f)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(10.dp))
+                    .dpadFocus(false)
+                    .clickable { onTab(t) }
+                    .drawBehind {
+                        if (selected) {
+                            val barH = 2.dp.toPx()
+                            val inset = 8.dp.toPx()
+                            drawRoundRect(
+                                color = accent,
+                                topLeft = Offset(inset, size.height - barH - 2.dp.toPx()),
+                                size = Size((size.width - inset * 2).coerceAtLeast(barH), barH),
+                                cornerRadius = CornerRadius(barH, barH),
+                            )
+                        }
+                    }
+                    .padding(horizontal = ss.dp(8f)),
+            ) {
+                Icon(t.icon, contentDescription = t.label, tint = ink, modifier = Modifier.size(ss.dp(18f * k)))
+                if (selected) {
+                    Text(t.label, color = ink, fontSize = ss.sp(15f * k), fontWeight = FontWeight.Light, maxLines = 1)
+                }
+            }
+        }
+        FloatingBumper("R1") { onCycle(1) }
+        Spacer(Modifier.weight(1f))
+        DeckRotateButton(tint = Color(0xFFAAAAAA), size = ss.dp(34f * k), iconSize = ss.dp(18f * k))
+        Box(modifier = Modifier.alpha(0.75f)) { com.winlator.star.store.SteamConnectionPill(compact = true) }
+        Text(clock, color = Color(0xFFDDDDDD), fontSize = ss.sp(15f * k), fontWeight = FontWeight.Light, maxLines = 1)
+        if (battery >= 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (battery <= 20) Icons.Filled.BatteryAlert else Icons.Filled.BatteryFull,
+                    contentDescription = null,
+                    tint = Color(0xFFAAAAAA),
+                    modifier = Modifier.size(ss.dp(14f)),
+                )
+                Text("$battery%", color = Color(0xFFAAAAAA), fontSize = ss.sp(13f * k), fontWeight = FontWeight.Light, maxLines = 1)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .dpadFocus(false)
+                .clickable(onClick = onAccount)
+                .padding(2.dp)
+                .alpha(0.85f),
+        ) {
+            AccountAvatar(avatarUrl = avatarUrl, size = ss.dp(26f * k), fallbackTint = Color(0xFFDDDDDD))
+        }
+    }
+}
+
+/** An L1/R1 glyph on the floating bar: tapping it moves the tabs as the bumpers do. */
+@Composable
+private fun FloatingBumper(text: String, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(10.dp))
+            .dpadFocus(false)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp)
+            .alpha(0.6f),
+    ) {
+        DeckGlyph(text, GlyphKind.BUMPER)
+    }
+}
+
+/** The XMB home's only hint, on every tab: a muted "Y Search" in the bottom-right corner, tappable like the button. */
+@Composable
+private fun DeckFloatingSearch(onSearch: () -> Unit, modifier: Modifier = Modifier) {
+    val ss = rememberScreenScale()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .dpadFocus(false)
+            .clickable(onClick = onSearch)
+            .padding(horizontal = ss.dp(8f), vertical = ss.dp(4f))
+            .alpha(0.75f),
+    ) {
+        DeckGlyph("Y", GlyphKind.Y)
+        Text("Search", color = Color(0xFFDDDDDD), fontSize = ss.sp(14f), fontWeight = FontWeight.Light, maxLines = 1)
     }
 }
 
@@ -1171,6 +1464,8 @@ private fun DeckPageTabRail(
     compact: Boolean,
     onSelect: (Int) -> Unit,
     onFocus: (Boolean) -> Unit,
+    // false: no fill of its own, so only its divider line separates it from the page (the framed XMB-home layout).
+    glass: Boolean = true,
 ) {
     val cs = MaterialTheme.colorScheme
     val line = deckLine()
@@ -1182,7 +1477,7 @@ private fun DeckPageTabRail(
         modifier = Modifier
             .width(width)
             .fillMaxHeight()
-            .background(deckGlass().copy(alpha = 0.45f))
+            .then(if (glass) Modifier.background(deckGlass().copy(alpha = 0.45f)) else Modifier)
             .drawBehind { drawRect(line, topLeft = Offset(size.width - 1f, 0f), size = Size(1f, size.height)) }
             .onFocusChanged { onFocus(it.hasFocus) }
             .verticalScroll(rememberScrollState())
@@ -1454,11 +1749,12 @@ private fun LegendItem(glyphs: List<Pair<String, GlyphKind>>, label: String, thi
 }
 
 @Composable
-private fun DeckBottomBar(current: DeckTab, onTab: (DeckTab) -> Unit) {
+private fun DeckBottomBar(current: DeckTab, tabs: List<DeckTab>, onTab: (DeckTab) -> Unit, dpad: Boolean = true) {
     val cs = MaterialTheme.colorScheme
     val line = deckLine()
     var moreOpen by remember { mutableStateOf(false) }
-    val moreTabs = DeckTab.entries.filter { it !in PORTRAIT_MAIN }
+    val mainTabs = PORTRAIT_MAIN.filter { it in tabs }
+    val moreTabs = tabs.filter { it !in PORTRAIT_MAIN }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1468,11 +1764,11 @@ private fun DeckBottomBar(current: DeckTab, onTab: (DeckTab) -> Unit) {
             .drawBehind { drawRect(line, topLeft = Offset.Zero, size = Size(size.width, 1f)) }
             .padding(horizontal = 6.dp),
     ) {
-        PORTRAIT_MAIN.forEach { t ->
-            BottomBarItem(t.icon, t.label, selected = t == current, modifier = Modifier.weight(1f)) { onTab(t) }
+        mainTabs.forEach { t ->
+            BottomBarItem(t.icon, t.label, selected = t == current, modifier = Modifier.weight(1f), dpad = dpad) { onTab(t) }
         }
         Box(modifier = Modifier.weight(1f)) {
-            BottomBarItem(Icons.Filled.GridView, "More", selected = current in moreTabs, modifier = Modifier.fillMaxWidth()) {
+            BottomBarItem(Icons.Filled.GridView, "More", selected = current in moreTabs, modifier = Modifier.fillMaxWidth(), dpad = dpad) {
                 moreOpen = true
             }
             DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
@@ -1489,7 +1785,7 @@ private fun DeckBottomBar(current: DeckTab, onTab: (DeckTab) -> Unit) {
 }
 
 @Composable
-private fun BottomBarItem(icon: ImageVector, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun BottomBarItem(icon: ImageVector, label: String, selected: Boolean, modifier: Modifier, dpad: Boolean = true, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(14.dp)
     Column(
@@ -1500,6 +1796,7 @@ private fun BottomBarItem(icon: ImageVector, label: String, selected: Boolean, m
             .padding(vertical = 6.dp)
             .deckFocusRing(shape, scaleTo = 1f)
             .clip(shape)
+            .dpadFocus(dpad)
             .clickable(onClick = onClick),
     ) {
         Icon(icon, contentDescription = null, tint = if (selected) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(22.dp))

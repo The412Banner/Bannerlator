@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.winlator.star.R
+import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -502,6 +503,7 @@ fun SteamLibraryTab(
     modifier: Modifier = Modifier,
 ) {
     val ctx = LocalContext.current
+    val xmb = LocalStoreXmb.current
     val focusManager = LocalFocusManager.current
     // The chip narrows by type, the search by name, the sort orders what is left. All three only
     // affect what is drawn — state.ownedAppIds stays the full set, see its doc. [query] and [sort]
@@ -624,61 +626,64 @@ fun SteamLibraryTab(
     }
 
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Search + sort + type chips. Landscape ("wide") has width to spare and height to save, so the
-        // three share one row; portrait stacks the search row above the chips.
-        val searchField: @Composable (Modifier) -> Unit = { fieldModifier ->
-            CatalogSearchField(
-                query = query,
-                placeholder = stringResource(R.string.steam_libsearch_hint),
-                onQueryChange = onQuery,
-                onClear = { onQuery(""); focusManager.clearFocus() },
-                onSearch = { focusManager.clearFocus() },
-                modifier = fieldModifier,
-            )
-        }
-        if (wide) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
-                    .focusGroup(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                LibraryTypeChips(typeFilter, onTypeFilter)
-                searchField(Modifier.weight(1f))
-                LibrarySortButton(sort, onSort)
+        val header = rememberXmbHeader()
+        header.Header {
+            // Search + sort + type chips. Landscape ("wide") has width to spare and height to save, so the
+            // three share one row; portrait stacks the search row above the chips.
+            val searchField: @Composable (Modifier) -> Unit = { fieldModifier ->
+                CatalogSearchField(
+                    query = query,
+                    placeholder = stringResource(R.string.steam_libsearch_hint),
+                    onQueryChange = onQuery,
+                    onClear = { onQuery(""); focusManager.clearFocus() },
+                    onSearch = { focusManager.clearFocus() },
+                    modifier = fieldModifier,
+                )
             }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 14.dp, end = 8.dp, top = 6.dp)
-                    .focusGroup(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                searchField(Modifier.weight(1f))
-                LibrarySortButton(sort, onSort)
+            if (wide) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
+                        .focusGroup(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LibraryTypeChips(typeFilter, onTypeFilter)
+                    searchField(Modifier.weight(1f))
+                    LibrarySortButton(sort, onSort)
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 8.dp, top = 6.dp)
+                        .focusGroup(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    searchField(Modifier.weight(1f))
+                    LibrarySortButton(sort, onSort)
+                }
+                // The chips are one short line, so they keep the same single row as before.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                        .focusGroup(),
+                ) { LibraryTypeChips(typeFilter, onTypeFilter) }
             }
-            // The chips are one short line, so they keep the same single row as before.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                    .focusGroup(),
-            ) { LibraryTypeChips(typeFilter, onTypeFilter) }
-        }
 
-        // The rating sort is only as complete as the backfill: say so while it is still working,
-        // so the unrated games sitting at the bottom don't read as a bug.
-        if (sort == LibrarySort.RATING && ratingsLeft > 0) {
-            Text(
-                text = stringResource(R.string.steam_libreview_loading, ratingsLeft),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
-            )
+            // The rating sort is only as complete as the backfill: say so while it is still working,
+            // so the unrated games sitting at the bottom don't read as a bug.
+            if (sort == LibrarySort.RATING && ratingsLeft > 0) {
+                Text(
+                    text = stringResource(R.string.steam_libreview_loading, ratingsLeft),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -729,6 +734,7 @@ fun SteamLibraryTab(
                 )
 
                 viewMode == "list" -> LazyColumn(
+                    state = header.trackedListState(),
                     modifier = Modifier.fillMaxSize().focusGroup(),
                     contentPadding = PaddingValues(vertical = 4.dp),
                 ) {
@@ -753,13 +759,17 @@ fun SteamLibraryTab(
                 }
 
                 else -> LazyVerticalGrid(
+                    state = header.trackedGridState(),
                     // Adaptive rather than a fixed count: 2 columns on a portrait phone, 4-6 across a
                     // handheld in landscape, from one declaration.
-                    columns = GridCells.Adaptive(minSize = if (wide) 190.dp else 165.dp),
+                    // XMB home: portrait covers, a bit smaller, with room for the focused one's pop.
+                    columns = GridCells.Adaptive(
+                        minSize = if (xmb) rememberScreenScale().xmbCoverWidth() else if (wide) 190.dp else 165.dp,
+                    ),
                     modifier = Modifier.fillMaxSize().focusGroup(),
                     contentPadding = PaddingValues(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(11.dp),
-                    verticalArrangement = Arrangement.spacedBy(11.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (xmb) 12.dp else 11.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (xmb) 14.dp else 11.dp),
                 ) {
                     val card: @Composable (SteamGame) -> Unit = { game ->
                         LibraryCapsuleCard(
@@ -980,6 +990,22 @@ private fun LibraryCapsuleCard(
     onOpen: () -> Unit,
     onAction: () -> Unit,
 ) {
+    // XMB home: the 600x900 cover, name at its bottom; the review score shows only while it's focused.
+    // Long-press plays an installed game, as the Play button does.
+    if (LocalStoreXmb.current) {
+        XmbStoreCover(
+            art = listOfNotNull(steamTallArt(game.appId), game.headerUrl),
+            title = game.name.ifEmpty { "App ${game.appId}" },
+            onClick = onOpen,
+            onLongClick = if (game.isInstalled) onAction else null,
+            modifier = Modifier.fillMaxWidth(),
+            status = if (game.isInstalled) "Installed" else null,
+            focusDetail = if (game.reviewPercent < 0) null
+                else if (game.reviewDesc.isNotEmpty()) stringResource(R.string.steam_libreview_label, game.reviewDesc, game.reviewPercent)
+                else stringResource(R.string.steam_libreview_pct_only, game.reviewPercent),
+        )
+        return
+    }
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier = Modifier

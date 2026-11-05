@@ -1,5 +1,18 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — 🧪 MGamer404 combo rebuilt with the updated #638 (`feat/mgamer404-combo`, CI running, NOT device-tested, NOT merged)
+- **Why:** MGamer404 force-pushed #638 at ~16:58 UTC (head 3e39a7c0 → 72ee87af, base now 03181f6b). Its own change grew from 61 files / +4814 to 115 files / +9247: All Games page with grid/list/big-art views and sort, row of the 6 most recent games, your own covers, store icons on covers, the controller keyboard inside games (Select + X), frosted-glass look. The first combo build (313dc051) had the old #638. User: "yes rebuild the combo with the new 638".
+- **Rebuilt:** backup ref refs/backup/20261105/feat-mgamer404-combo-before-638-update → 84857453 (pushed). Branch reset to e1ba1381 (main d1380b2f + #657 2c341c36 + #658 c90bd8e5, both unchanged), then merge of #638 72ee87af → ccd47f2e. Branch force-pushed with lease (own feature branch).
+- **Conflicts (both with #658, both sides kept):** ShortcutsViewModel.importShortcutFile, where an imported .desktop now gets #658's Ubisoft stale-stamp drop and then #638's added-at time (both String → String); strings.xml, where #658's Ubisoft strings and #638's cover/keyboard strings sit one after the other (no duplicate names, XML parses). New #638 alone merges onto main with no conflicts.
+- **Checked:** the new #638 still touches no .github/, Gradle, scripts, manifest or native libraries.
+- **CI:** build-artifacts (release_number mgamer404-combo-test2) dispatched on ccd47f2e. Run ID in the next log update.
+- **Open:** CI result; device test only if the user asks; merging each PR is the user's call. Undo: branch back to the backup ref.
+
+## 2026-11-05 — 🧪 MGamer404's three open PRs built together (`feat/mgamer404-combo`, first build, superseded by the entry above)
+- **User:** "3 from MGamer404, build all 3 together off main in a new branch". Off main d1380b2f: merge #657 (Epic downloads "Download failed" fix, head 2c341c36) → b4c3364d; #658 (Ubisoft Connect setup for Steam/Epic games, head c90bd8e5) → e1ba1381; #638 (XMB interface + controller keyboard, head 3e39a7c0, based on a main 198 commits old) → 313dc051. No conflicts. Commits keep MGamer404 as author; the PRs themselves are unchanged and still open.
+- **Checked before building:** none of the three touch .github/, Gradle or build scripts, or add native libraries (#638 adds 5 store-logo PNGs, #658 one test data file), so running them in CI does not expose repo secrets to new build code.
+- **CI:** build-artifacts 42059886628 (dispatch, headSha 313dc051) success ×4, 0 failed steps. Artifacts Bannerlator-mgamer404-combo-test-* (old #638). Not installed.
+
 ## 2026-11-05 — ✅ Mali support MERGED to main (`8640bf1b`, fast-forward), NOT device-tested
 - **User:** "merge it and build main as artifacts only". Backup ref refs/backup/20261105/main-before-mali-support → 4bfc0036. Main == feat/mali-support 8640bf1b; code == CI-built 9c6e7f1e (only PROGRESS_LOG.md differs).
 - **In it (Mali only or opt-in, from the 3.1.8-mali-pre1 work + today's fix):** PanVK driver sources on Mali; leegao compat_layer 22960fb3 (EXTRA_LIBS_VERSION 4 → 5, so every container re-extracts extra_libs once); FEX UE3 + full-x87 presets; HUD MediaTek/Tensor fallbacks + Mali hardware counters (CSF Mali only); community configs Mali device count; Faster BCn layer (Fcharan) on Mali, now with the GameNative wrapper when the default wrapper is picked; X11 renderer Mali high-priority queue + AHB import format; registry NPE fix.

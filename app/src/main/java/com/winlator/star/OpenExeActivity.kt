@@ -56,6 +56,8 @@ import com.winlator.star.ui.deck.DeckTheme
 import com.winlator.star.ui.screens.ExeQuickRun
 import com.winlator.star.ui.screens.ExeShortcutImporter
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.screens.ShortcutLaunchDialogs
+import com.winlator.star.ui.screens.ShortcutLauncher
 import com.winlator.star.ui.screens.isSteamOriginShortcut
 import com.winlator.star.ui.screens.launchShortcutNow
 import com.winlator.star.ui.theme.AppThemeState
@@ -134,6 +136,9 @@ private fun OpenExeFlow(uri: Uri?, onDone: () -> Unit) {
     val context = currentActivity()
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<OpenExeState>(OpenExeState.Working) }
+    // A library game (Play from library, Add to library and run) is started without the Games tab's launch flow, so the
+    // Ubisoft Connect setup question is asked here before it starts (launchWithUbisoftGate; fail-open, other games start at once).
+    val launcher = remember(context) { ShortcutLauncher(context, context, scope) }
 
     LaunchedEffect(uri) {
         state = withContext(Dispatchers.IO) { prepare(context, uri) }
@@ -189,8 +194,8 @@ private fun OpenExeFlow(uri: Uri?, onDone: () -> Unit) {
             when {
                 shortcut != null -> {
                     Toast.makeText(context, "Added \"${shortcut.name}\" to Shortcuts", Toast.LENGTH_SHORT).show()
-                    launchShortcutNow(context, shortcut)
-                    onDone()
+                    state = OpenExeState.Working   // nothing over the setup question, if there is one
+                    launcher.launchWithUbisoftGate(shortcut, onDone = onDone) { launchShortcutNow(context, shortcut) }
                 }
                 finished == false -> {
                     Toast.makeText(context, "Couldn't add ${exe.name} to Shortcuts", Toast.LENGTH_SHORT).show()
@@ -237,8 +242,8 @@ private fun OpenExeFlow(uri: Uri?, onDone: () -> Unit) {
             },
             onPlayFromLibrary = { shortcut, keep ->
                 rememberContainer(context, shortcut.container, keep)
-                launchShortcutNow(context, shortcut)
-                onDone()
+                state = OpenExeState.Working   // the choice is made; nothing over the setup question, if there is one
+                launcher.launchWithUbisoftGate(shortcut, onDone = onDone) { launchShortcutNow(context, shortcut) }
             },
         )
         is OpenExeState.Adding -> OutlinedAlertDialog(
@@ -254,6 +259,8 @@ private fun OpenExeFlow(uri: Uri?, onDone: () -> Unit) {
             confirmButton = {},
         )
     }
+    // Only the Ubisoft Connect setup dialog of the gate above ever opens from here.
+    ShortcutLaunchDialogs(launcher, onRemove = { false })
 }
 
 @Composable

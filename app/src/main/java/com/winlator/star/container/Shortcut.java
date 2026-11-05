@@ -293,7 +293,8 @@ import java.nio.file.Files;
                 }
 
                 // Write the updated content to the new .desktop file; callers delete the original on true
-                if (!FileUtils.writeString(newShortcutFile, updatedContent.toString())) return false;
+                // (a stale "not Ubisoft" stamp is dropped so the new container works it out again)
+                if (!FileUtils.writeString(newShortcutFile, com.winlator.star.store.UbisoftSupport.dropStaleStamp(updatedContent.toString()))) return false;
 
                 // Optionally copy the icon if it exists
                 if (this.iconFile != null && this.iconFile.isFile()) {

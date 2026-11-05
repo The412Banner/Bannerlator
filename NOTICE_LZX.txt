@@ -1,0 +1,45 @@
+lzx (amiga-lzx) bundled as liblzx.so
+====================================
+
+Purpose
+-------
+Extracts Amiga LZX archives (.lzx — Jonathan Forbes' Amiga archiver, not Microsoft's CAB LZX)
+for BFE's Unpack screen. It refuses absolute paths, ".." components and symlinks in archive
+names, so nothing lands outside the chosen folder.
+
+Why not unlzx.c: the classic unlzx.c carries no licence statement anywhere (distributions list it
+as "unknown"), so BFE doesn't ship it. amiga-lzx is an independent reimplementation under a free
+licence.
+
+File in this APK (app/src/main/jniLibs/arm64-v8a/)
+  liblzx.so     the `lzx` command-line tool from amiga-lzx 0.1.5, a Rust PIE for Android/bionic
+                (needs only the system libc.so / libdl.so), stripped.
+                857,808 bytes, sha256 b6735f598cabcbc0279027b56f7541b9e37fd73df62e1f474c3ceffb887e5863
+
+Product and licence
+-------------------
+amiga-lzx 0.1.5 (crates amiga-lzx + amiga-lzx-cli), by Gareth Davidson <gaz@bitplane.net>
+  https://github.com/bitplane/amiga-lzx
+  Source: https://github.com/bitplane/amiga-lzx/archive/refs/tags/v0.1.5.tar.gz
+          sha256 1097a6334e555dbf74aed1777afa1ce3613a5a4572b608aa303a071b3c6f0664   (unmodified)
+  Licence (the project's LICENSE file, WTFPL — a free, GPL-compatible licence):
+
+    Licensed under the WTFPL with one additional clause
+
+    1. Don't blame me.
+
+    Do whatever you like, but everything's your fault not mine.
+
+Rust crates compiled into the binary (versions from the project's Cargo.lock, all permissive):
+  ambient-authority, cap-primitives, cap-std, fs-set-times, io-extras, io-lifetimes,
+  linux-raw-sys, rustix, rustix-linux-procfs (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT);
+  anstream, anstyle, anstyle-parse, anstyle-query, bitflags, clap, clap_builder, clap_lex,
+  colorchoice, errno, ipnet, is_terminal_polyfill, libc, maybe-owned, once_cell, once_cell_polyfill,
+  thiserror, utf8parse (MIT OR Apache-2.0); strsim (MIT); same-file (Unlicense OR MIT).
+  Build-time only: clap_derive, heck, proc-macro2, quote, syn, thiserror-impl, unicode-ident.
+  Plus the Rust standard library (MIT OR Apache-2.0).
+
+Build
+-----
+.github/workflows/build-extract-tools.yml: rustup target aarch64-linux-android, linked with the
+NDK r29 clang for API 26: cargo build --release --locked -p amiga-lzx-cli.

@@ -60,13 +60,25 @@ object SevenZip {
         ".gz", ".xz", ".bz2", ".zst", ".tgz", ".txz", ".tbz2", ".tzst",
         // Winlator Component Package = a tar.zst; 7-Zip opens it as zstd.
         ".wcp",
+        // Everything else the bundled 7-Zip decodes (`7zz i`), matching what ZArchiver / MT Manager open:
+        // zip-based packages, old compressors, Unix/Mac packages, help files, installers, VM/disk images.
+        ".zipx", ".jar", ".xapk", ".apks", ".apkm", ".mtz", ".z01",
+        ".lzma", ".z", ".taz", ".tbz", ".tpz", ".lzh", ".lha", ".arj",
+        ".cpio", ".deb", ".udeb", ".rpm", ".xar", ".chm", ".msi", ".esd", ".swm",
+        ".squashfs", ".cramfs", ".vmdk", ".vdi", ".qcow", ".qcow2", ".simg",
     )
 
-    /** True when [file]'s extension marks it as something the 7-Zip engine can be pointed at. */
+    /** `7zz l` types that are just a program, not a container: opening one would only dump its sections. */
+    val EXECUTABLE_TYPES = setOf("PE", "ELF", "MachO", "COFF", "TE", "Mub")
+
+    /**
+     * True when [file]'s extension marks it as something the Unpack screen can be pointed at: 7-Zip's
+     * formats plus the ones [ExtraFormats] handles (lzip, lzop, LZ4, ECM, ALZ/EGG, ACE, Amiga LZX).
+     */
     fun isSupported(file: File): Boolean {
         if (file.isDirectory) return false
         val name = file.name.lowercase()
-        return SUPPORTED.any { name.endsWith(it) }
+        return SUPPORTED.any { name.endsWith(it) } || ExtraFormats.hasExtension(name)
     }
 
     /**
@@ -102,7 +114,20 @@ object SevenZip {
                         sig(head, 0x50, 0x4B, 0x05, 0x06) ||             // zip (empty)
                         sig(head, 0x50, 0x4B, 0x07, 0x08) ||             // zip (spanned)
                         sig(head, 0x52, 0x61, 0x72, 0x21) ||             // rar
-                        sig(head, 0x42, 0x5A, 0x68)                      // bzip2
+                        sig(head, 0x42, 0x5A, 0x68) ||                   // bzip2
+                        sig(head, 0x4D, 0x53, 0x43, 0x46) ||             // cab "MSCF"
+                        sig(head, 0x49, 0x54, 0x53, 0x46) ||             // chm "ITSF"
+                        sig(head, 0xED, 0xAB, 0xEE, 0xDB) ||             // rpm
+                        sig(head, 0x21, 0x3C, 0x61, 0x72, 0x63, 0x68, 0x3E) || // ar/deb "!<arch>"
+                        sig(head, 0x78, 0x61, 0x72, 0x21) ||             // xar "xar!"
+                        sig(head, 0x4D, 0x53, 0x57, 0x49, 0x4D, 0x00) || // wim "MSWIM"
+                        sig(head, 0x68, 0x73, 0x71, 0x73) ||             // squashfs "hsqs"
+                        sig(head, 0x30, 0x37, 0x30, 0x37, 0x30) ||       // cpio "07070"
+                        sig(head, 0x1F, 0x9D) ||                         // Unix compress (.Z)
+                        (n >= 7 && head[2] == '-'.code.toByte() && head[3] == 'l'.code.toByte() &&
+                            head[6] == '-'.code.toByte()) ||             // lzh/lha "-lh5-"
+                        // lzip, lzop, LZ4, ECM, ALZ, EGG, ACE, Amiga LZX, OTA payload (non-7-Zip engines)
+                        ExtraFormats.detect(head, n) != null
                     )
                 ) return true
                 // tar: "ustar" at offset 257
@@ -120,6 +145,17 @@ object SevenZip {
         } catch (e: Exception) {
             false
         }
+    }
+
+    /** "ustar" at offset 257 — a POSIX/GNU tar, whatever the file is called. */
+    fun isTar(file: File): Boolean {
+        if (!file.isFile || file.length() <= 262L) return false
+        return runCatching {
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                raf.seek(257); val t = ByteArray(5)
+                raf.read(t) == 5 && String(t, Charsets.US_ASCII) == "ustar"
+            }
+        }.getOrDefault(false)
     }
 
     // A Setup-1.bin / game-2.bin style InnoSetup data volume.
@@ -188,7 +224,9 @@ object SevenZip {
         INNOEXTRACT,
         /** FreeArc/ISDone repack — decode the Setup-*.bin FreeArc volumes in-app with unarc. */
         FREEARC_NATIVE,
-        /** Can't be unpacked in-app (unarc unavailable, or srep-layered) — run Setup.exe in a container. */
+        /** FreeArc with external layers (precomp, …) — the layered unarc engine + libbfeext. */
+        FREEARC_LAYERS,
+        /** Can't be unpacked in-app (a layer BFE can't decode, or no engine) — run Setup.exe (Bannerlator / PC). */
         CONTAINER_ONLY,
     }
 
@@ -199,8 +237,10 @@ object SevenZip {
         val compression: String?,
         /** Declared payload size from Records.ini (already human-formatted), when known. */
         val declaredSize: String?,
-        /** For FREEARC_NATIVE: the first Setup-*.bin FreeArc volume to hand to unarc. */
+        /** For FREEARC_NATIVE / FREEARC_LAYERS: the first Setup-*.bin FreeArc volume to hand to unarc. */
         val freeArcArchive: File? = null,
+        /** The FreeArc layers found in [freeArcArchive] (null when its table of contents couldn't be read). */
+        val layers: RepackLayers.Analysis? = null,
     )
 
     /** The lowest-numbered `Setup-N.bin` FreeArc data volume next to [installer] (the unarc entry point). */
@@ -213,33 +253,42 @@ object SevenZip {
      * Decides how an InnoSetup [installer] must be unpacked. Standard InnoSetup / GOG installers are
      * read directly by innoextract (7-Zip only sees them as a PE and cannot decompress the game).
      * The exception is a FreeArc/ISDone repack (FitGirl/DODI/…): its game data is FreeArc-compressed,
-     * which neither innoextract nor 7-Zip can unpack — the only way in is to run Setup.exe in a Wine
-     * container so the repack's own installer decompresses it.
+     * which neither innoextract nor 7-Zip can unpack — unarc decodes it when every layer is one BFE can
+     * handle; otherwise the repack's own Setup.exe has to run (Bannerlator, or a PC).
      *
-     * Discriminator: a sibling `Records.ini` whose `Type=` starts with "Freearc" → CONTAINER_ONLY
-     * (authoritative; its `Type`/`Size` are surfaced for the UI). Everything else → INNOEXTRACT.
+     * FreeArc is recognised by the first `Setup-N.bin` volume's own table of contents ([FreeArcInfo]) or a
+     * sibling `Records.ini` `Type=FreeArc`. Its layers ([RepackLayers]) pick the engine: built-in only →
+     * FREEARC_NATIVE, external layers → FREEARC_LAYERS, a layer BFE can't decode → CONTAINER_ONLY.
+     * Everything else → INNOEXTRACT.
      *
      * Reads a sibling file, so call it off the main thread.
      */
     fun classifyInno(context: Context, installer: File): InnoClassification {
         val records = readRecordsIni(installer.parentFile)
         val rawType = records?.first
-        val freeArc = rawType?.trim()?.startsWith("freearc", ignoreCase = true) == true
-        // FreeArc → decode the Setup-*.bin volumes natively with unarc when it's available; otherwise
-        // fall back to the container installer. (A srep-layered repack that unarc can't decode fails at
-        // runtime, and the UI turns that into the honest container/PC message — no proactive probe.)
-        val firstBin = if (freeArc) firstFreeArcVolume(installer) else null
+        val bin = firstFreeArcVolume(installer)
+        // The data volume's own table of contents decides when it can be read (it also catches FreeArc
+        // data without a Records.ini); Records.ini `Type=FreeArc` is the fallback signal.
+        val info = bin?.let { FreeArcInfo.read(it) }
+        val freeArc = info != null || rawType?.trim()?.startsWith("freearc", ignoreCase = true) == true
+        val firstBin = if (freeArc) bin else null
+        val layers = info?.let { RepackLayers.analyze(it) }
         val route = when {
             !freeArc -> InnoRoute.INNOEXTRACT
-            firstBin != null && Unarc.isAvailable(context) -> InnoRoute.FREEARC_NATIVE
-            else -> InnoRoute.CONTAINER_ONLY
+            firstBin == null || !Unarc.isAvailable(context) -> InnoRoute.CONTAINER_ONLY
+            // Unreadable table of contents: try unarc as before; a failure offers Bannerlator.
+            layers == null -> InnoRoute.FREEARC_NATIVE
+            layers.missing.isNotEmpty() -> InnoRoute.CONTAINER_ONLY
+            layers.needsExternal -> if (Unarc.layersAvailable(context)) InnoRoute.FREEARC_LAYERS else InnoRoute.CONTAINER_ONLY
+            else -> InnoRoute.FREEARC_NATIVE
         }
         return InnoClassification(
             installer = installer,
             route = route,
-            compression = rawType?.let { prettyCompression(it) },
+            compression = rawType?.let { prettyCompression(it) } ?: if (info != null) "FreeArc" else null,
             declaredSize = records?.second?.let { prettySize(it) },
             freeArcArchive = firstBin,
+            layers = layers,
         )
     }
 
@@ -293,7 +342,10 @@ object SevenZip {
         val name = archive.name
         val lower = name.lowercase()
         // Handle multi-part markers so "Game.part1.rar" -> "Game", "disc.001" -> "disc".
-        for (suffix in listOf(".part1.rar", ".part01.rar", ".tar.gz", ".tar.xz", ".tar.bz2")) {
+        for (suffix in listOf(
+            ".part1.rar", ".part01.rar", ".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tar.lzma", ".tar.z",
+            ".tar.lz", ".tar.lzo", ".tar.lz4", ".bin.ecm", ".img.ecm", ".iso.ecm",
+        )) {
             if (lower.endsWith(suffix)) return name.dropLast(suffix.length).ifBlank { name }
         }
         val dot = name.lastIndexOf('.')
@@ -377,27 +429,47 @@ object SevenZip {
 
         // stderr collected on its own thread for the failure tail.
         val stderr = StringBuilder()
-        val errThread = Thread {
-            runCatching {
-                proc.errorStream.bufferedReader().forEachLine { line ->
-                    synchronized(stderr) {
-                        stderr.append(line).append('\n')
-                        // Keep only a tail so a pathological archive can't balloon memory.
-                        if (stderr.length > 8192) stderr.delete(0, stderr.length - 8192)
-                    }
+        val errThread = collectStderr(proc.errorStream, stderr)
+
+        pumpProgress(proc.inputStream, bufferBytes, listener)
+
+        val exit = proc.waitFor()
+        runCatching { errThread.join(500) }
+        // Push a final 100% so a clean finish never leaves the bar short of the end.
+        if (exit <= 1) listener.onProgress(100, null)
+        return Result(exit, synchronized(stderr) { stderr.toString().trim() })
+    }
+
+    /**
+     * Drains a 7zz stderr on its own thread into [sink], keeping only a tail so a pathological run
+     * can't balloon memory. Shared by extraction and archive creation (BFE).
+     */
+    internal fun collectStderr(stream: java.io.InputStream, sink: StringBuilder): Thread = Thread {
+        runCatching {
+            stream.bufferedReader().forEachLine { line ->
+                FullUnpackLog.line(line)
+                synchronized(sink) {
+                    sink.append(line).append('\n')
+                    if (sink.length > 8192) sink.delete(0, sink.length - 8192)
                 }
             }
-        }.also { it.start() }
+        }
+    }.also { it.start() }
 
-        // Device-verified stream shape (7-Zip 24.08, -bsp1 -bb1): the percentage is redrawn IN PLACE
-        // with BACKSPACES, not carriage returns/newlines — e.g. "  0%\b\b\b\b 50%\b\b\b\b100%…". So a
-        // flush-on-newline parser would erase every intermediate percent before it saw it and jump
-        // 0→100. Instead we parse the percentage inline the instant a '%' byte arrives (its digits are
-        // whatever precedes it in the buffer), and use \n-delimited segments only for the "- path"
-        // processed-file lines (-bb1). Backspaces edit the buffer; \r/\n flush it.
+    /**
+     * Pumps a 7zz progress stream ([input] = whichever of stdout/stderr `-bsp1`/`-bsp2` routed it to)
+     * into [listener] until EOF.
+     *
+     * Device-verified stream shape (7-Zip 24.08, -bsp1 -bb1): the percentage is redrawn IN PLACE
+     * with BACKSPACES, not carriage returns/newlines — e.g. "  0%\b\b\b\b 50%\b\b\b\b100%…". So a
+     * flush-on-newline parser would erase every intermediate percent before it saw it and jump
+     * 0→100. Instead we parse the percentage inline the instant a '%' byte arrives (its digits are
+     * whatever precedes it in the buffer), and use \n-delimited segments only for the "- path" /
+     * "+ path" processed-file lines (-bb1). Backspaces edit the buffer; \r/\n flush it.
+     */
+    internal fun pumpProgress(input: java.io.InputStream, bufferBytes: Int, listener: Listener) {
         val seg = ByteArrayOutputStream(256)
         val buf = ByteArray(bufferBytes.coerceAtLeast(64 * 1024))
-        val input = proc.inputStream
         while (true) {
             val n = input.read(buf)
             if (n < 0) break
@@ -419,12 +491,6 @@ object SevenZip {
             }
         }
         flushSegment(seg, listener)
-
-        val exit = proc.waitFor()
-        runCatching { errThread.join(500) }
-        // Push a final 100% so a clean finish never leaves the bar short of the end.
-        if (exit <= 1) listener.onProgress(100, null)
-        return Result(exit, synchronized(stderr) { stderr.toString().trim() })
     }
 
     /**
@@ -442,13 +508,19 @@ object SevenZip {
         onProcess: (Process) -> Unit,
     ): Boolean {
         val files = destDir.listFiles()?.toList() ?: return false
-        val tar = files.singleOrNull { it.isFile && it.extension.equals("tar", ignoreCase = true) } ?: return false
         if (files.size != 1) return false   // only unwrap when the tar is the sole product
+        // 7zz names the inner member by stripping ONE extension, so "game.tar.zst" → "game.tar" but a
+        // ".wcp"/".tzst" → a bare "game" with no extension; judge by the ustar magic, not the name.
+        val tar = files.single().takeIf { it.isFile && (it.extension.equals("tar", ignoreCase = true) || isTar(it)) } ?: return false
         val r = extract(context, tar, destDir, mmt, bufferBytes, listener, onProcess)
         return if (r.exitCode <= 1) { tar.delete(); true } else false
     }
 
-    /** A \n/\r-delimited segment: used for the -bb1 "- path" processed-file lines (not percentages). */
+    /**
+     * A \n/\r-delimited segment: used for the -bb1 processed-file lines (not percentages) — "- path"
+     * when extracting, "+ path" when adding to an archive (the in-place percent prefix, e.g.
+     * " 12% 5", precedes it on the same segment).
+     */
     private fun flushSegment(seg: ByteArrayOutputStream, listener: Listener) {
         if (seg.size() == 0) return
         val text = seg.toByteArray().toString(Charsets.UTF_8)
@@ -458,6 +530,8 @@ object SevenZip {
         val fileName = when {
             text.contains(" - ") -> text.substringAfterLast(" - ").trim().ifBlank { null }
             text.startsWith("- ") -> text.substring(2).trim().ifBlank { null }
+            text.contains(" + ") -> text.substringAfterLast(" + ").trim().ifBlank { null }
+            text.startsWith("+ ") -> text.substring(2).trim().ifBlank { null }
             else -> null
         }
         if (fileName != null) listener.onFile(fileName)

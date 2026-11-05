@@ -45,7 +45,7 @@ data class UnpackState(
     val errorTail: String? = null,
     /** True when the source is an InnoSetup installer/repack (not a plain archive). */
     val isInno: Boolean = false,
-    /** Which engine ran: "7z" | "inno" | "unarc". Lets the error UI tailor its guidance. */
+    /** Which engine ran: "7z" | "inno" | "unarc" | "unarc-layers" | "extra". Lets the error UI tailor its guidance. */
     val engine: String = "7z",
     /**
      * GOG multi-installer batch: how many InnoSetup installers this job runs (base game + any
@@ -56,6 +56,8 @@ data class UnpackState(
     val batchIndex: Int = 0,
     /** How many DLC installers in the batch failed (base-game failure is fatal, not counted here). */
     val batchFailed: Int = 0,
+    /** Space-saving unpack ([SpaceSaver]): bytes of the download already freed. */
+    val freedBytes: Long = 0L,
 ) {
     val isRunning: Boolean get() = phase == UnpackPhase.LISTING || phase == UnpackPhase.EXTRACTING
 }

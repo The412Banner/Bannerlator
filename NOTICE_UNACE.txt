@@ -1,0 +1,38 @@
+unace bundled as libunace.so
+============================
+
+Purpose
+-------
+Extracts ACE 1.x archives (.ace) for BFE's Unpack screen. Public unace 1.2b cannot decode ACE 2.0
+compression or encrypted archives; BFE reads the archive headers first and says so instead of
+starting (ACE 2.0 needs WinACE's own unpacker; no free decoder ships with BFE).
+
+File in this APK (app/src/main/jniLibs/arm64-v8a/)
+  libunace.so   UNACE v1.2b public version, fully STATIC aarch64 Android (bionic) executable,
+                stripped. 436,416 bytes, sha256 09f8dcb01c416b6b187e4e2ffaf68d5505c96658c586bb692ca5cffa8be44ccd
+
+Product and licence
+-------------------
+UNACE v1.2b, Copyright (C) 1998, 2004 Marcel Lemke <mlemke@winace.com>.
+  Licensed under the GNU General Public License, version 2 or (at your option) any later version
+  (as distributed by Debian, package unace in main). BFE is GPL-3.0, which is compatible.
+  Source: https://deb.debian.org/debian/pool/main/u/unace/unace_1.2b.orig.tar.gz
+          sha256 a5f3b7d0994b2c6aa3b95ac1196ee18605d8dbd0660f978f8d64b8583fb55490
+
+Modifications (all in native/patches/unace/, applied in the order of its `series` file)
+  001-009  Debian 1.2b-27's patches (Guillem Jover, Ulf Harnhammar and others): 64-bit cleanup,
+           warnings, format-string and buffer-overflow security fixes (incl. CVE-2015-2063),
+           cross-compiling, comment parsing, header-search overread.
+  010      by The412Banner: Debian's CVE-2015-2063 bounds check counted the PSIZE field twice, so
+           every file header was rejected and unace (Debian's own 1.2b-24..27 builds included)
+           extracted nothing. The check is kept, the double count removed.
+  011      by The412Banner: reject a 4-bit tree size of 15 in read_wd(), which wrote one byte past
+           wd_svwd[15] on corrupt or crafted archives (found with AddressSanitizer).
+  Build-time: -include limits.h, so every file sees the same PATH_MAX (bionic headers otherwise
+  gave unace.c 4096 and globals.c the 512 fallback for the same arrays); S_IREAD/S_IWRITE mapped
+  to S_IRUSR/S_IWUSR, which bionic lacks.
+
+Build
+-----
+.github/workflows/build-extract-tools.yml (Android NDK r29, aarch64-linux-android26): patches,
+then <ndk clang> -O2 -DUNIX -DCASEINSENSE -DLO_HI_BYTE_ORDER -static over the seven unace sources.

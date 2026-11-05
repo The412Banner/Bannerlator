@@ -1,0 +1,14 @@
+Android OTA payload.bin support (in-app, no native engine)
+==========================================================
+
+BFE extracts the partition images from full Android A/B OTA payloads (payload.bin, "CrAU" format)
+with its own Kotlin code (unpack/OtaPayload.kt, part of BFE, GPL-3.0). No AOSP code is included:
+the DeltaArchiveManifest protobuf is parsed by hand using the message and field numbers defined in
+AOSP's update_engine (system/update_engine/update_metadata.proto,
+https://android.googlesource.com/platform/system/update_engine/ — Copyright (C) The Android Open
+Source Project / The Chromium OS Authors, Apache License 2.0).
+
+Supported operations: REPLACE, REPLACE_BZ (Apache Commons Compress), REPLACE_XZ (XZ for Java),
+ZERO, DISCARD; each operation's data is checked against its SHA-256 from the manifest.
+Incremental OTAs (SOURCE_COPY, SOURCE_BSDIFF, PUFFDIFF, BROTLI_BSDIFF, ZUCCHINI, LZ4DIFF_*) need
+the phone's current images and are not supported.

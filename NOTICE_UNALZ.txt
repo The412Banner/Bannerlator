@@ -1,0 +1,54 @@
+unalz bundled as libunalz.so
+============================
+
+Purpose
+-------
+Extracts ALZip .alz archives (Korean ALZip's older format) for BFE's Unpack screen, converting the
+CP949 file names to UTF-8.
+
+File in this APK (app/src/main/jniLibs/arm64-v8a/)
+  libunalz.so   unalz 0.65 statically linked with GNU libiconv 1.17 and the NDK's zlib, fully STATIC
+                aarch64 Android (bionic) executable, stripped. 1,684,912 bytes,
+                sha256 b9324d089d9835a8c8d0bf419365e5e89206d0599b8e15b2f82c0d605c81b073
+
+Products and licences
+---------------------
+unalz 0.65      https://kippler.com/win/unalz/
+  Copyright (C) 2004-2009 kippler@gmail.com. zlib licence:
+
+    This software is provided 'as-is', without any express or implied
+    warranty.  In no event will the authors be held liable for any damages
+    arising from the use of this software.
+
+    Permission is granted to anyone to use this software for any purpose,
+    including commercial applications, and to alter it and redistribute it
+    freely, subject to the following restrictions:
+
+    1. The origin of this software must not be misrepresented; you must not
+       claim that you wrote the original software. If you use this software
+       in a product, an acknowledgment in the product documentation would be
+       appreciated but is not required.
+    2. Altered source versions must be plainly marked as such, and must not be
+       misrepresented as being the original software.
+    3. This notice may not be removed or altered from any source distribution.
+
+  Source: Debian's unalz_0.65.orig.tar.gz
+          (https://deb.debian.org/debian/pool/main/u/unalz/unalz_0.65.orig.tar.gz)
+          sha256 4c26699eb7545072de2ef7de79b4fff1f01c4db09cebff2d8d50ec03d5d74db0
+  Altered: Debian's 0.65-9 patches by Changwoo Ryu (in native/patches/unalz/): use the system
+  zlib, z_crc_t build fix, pipe-mode fixes, file-name length check, offset-overflow fix.
+  unalz carries a modified copy of parts of bzip2 (Copyright (C) 1996-2002 Julian R Seward,
+  bzip2 licence, a BSD-style licence — see https://sourceware.org/bzip2/).
+GNU libiconv 1.17   https://www.gnu.org/software/libiconv/
+  Copyright (C) 1999-2022 Free Software Foundation, Inc. The library is licensed under the GNU
+  Lesser General Public License, version 2.1 or (at your option) any later version; linked
+  statically here, its unmodified source and the build recipe are given below so it can be
+  relinked. Source: https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
+  sha256 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313
+zlib            from the Android NDK r29 sysroot (libz.a) — zlib licence (as above), Copyright (C)
+  1995-2024 Jean-loup Gailly and Mark Adler.
+
+Build
+-----
+.github/workflows/build-extract-tools.yml (Android NDK r29, aarch64-linux-android26): libiconv
+static; unalz compiled with -D_UNALZ_ICONV -D_UNALZ_UTF8 (C++ as gnu++14) and linked -static.

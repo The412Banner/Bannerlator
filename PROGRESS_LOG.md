@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — 🧹 Special K off also deletes its logs (`fix/specialk-off-logs`, CI running, NOT device-tested, NOT merged)
+- **Why:** user asked whether switching Special K off removes its files → answer: only our DLL + `.bannerlator-specialk` marker, on the next launch (`GameMods.remove`, called from `applyGameModsEnv`); Special K's `.ini` files and `logs\` stay. User: "yes delete the logs folder but keep the ini files".
+- **Change (`75e76538`, off main `03181f6b`):** `GameMods.remove` for Special K also runs `removeSpecialKLogs`: deletes known Special K log names in `logs\` (per-DLL `<dll>.log`, `specialk.log`, `dxgi_budget.log`, `crash.log`, `game_output.log`, `modules.log`, `platform.log`, `steam_api.log`, `eos.log`, `galaxy.log`, `installer.log`, `textures.log`, `file_reads.log`, `file_writes.log` — names from SpecialK fork 52e779c9 core.cpp:2072-2075/2114, config.cpp:6185, crash_handler.cpp:1929-1954) and `logs\crash\<%Y-%m-%d__%H'%M'%S>\` folders, then `crash\` and `logs\` if empty. Other files in `logs\` (the game's) stay; symlinks never followed. Also runs when our DLL is already gone but the marker is there. Not run when the DLL there is not ours. `.ini` kept. Session log note: "removed our dxgi.dll and Special K's logs".
+- **Tests:** 4 new GameModsTest cases + 1 extended. Kotlin tests not compiled here (no kotlinc; CI runs no unit tests); the same cases run through a Java harness against the real GameMods.java with javac 21: 21/21 pass (scratchpad gmtest).
+- **CI:** build-artifacts 42021543947 (dispatch, headSha 75e76538) — running.
+- **Device test:** NOT done. Plan: stage pubg APK (hash host + device) → ask before install → Ninja Gaiden Sigma: Special K off → launch → `logs\` gone, `dxgi.ini`/`d3d11.ini`/`d3d9.ini` kept, session log line; then Special K back on → r3 placed again, ini settings still used (Borderless/Fullscreen). Back up NGS `logs\` first.
+- **Note:** games switched off before this build have no marker left, so their old logs stay.
+
 ## 2026-11-04 — ✅ Special K arm64ec-r3 pin MERGED to main (`e5a7d1a5`, fast-forward)
 - **User:** "I'm home, finish special k" (go to install and finish). Backup ref refs/backup/20261104/main-before-specialk-r3 → 5b31a3cf. Main == fix/specialk-r3 e5a7d1a5; code == tested build 9ca310f8 (only PROGRESS_LOG.md differs).
 - **Installed 18:17:25 EST on the Pocket FIT:** Bannerlator-specialk-r3-9ca310f8.apk; installed base.apk sha256 6d70078f… == staged (before: 900ecf9e = main 97237105 build); no FATAL lines.

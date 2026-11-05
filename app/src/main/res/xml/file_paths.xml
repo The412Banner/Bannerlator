@@ -7,4 +7,9 @@
     <!-- Log Manager copies a log here before sharing it, so a chooser never gets access to the
          user's own log folder (which can be anywhere they picked). -->
     <cache-path name="log_share" path="logs/share/" />
+    <!-- File manager "Open with" / "Share": SD cards (/storage/XXXX-XXXX), the containers' drives (app files),
+         and files opened from inside an archive (cache/archive-view). -->
+    <root-path name="storage" path="storage/" />
+    <files-path name="app_files" path="." />
+    <cache-path name="archive_view" path="archive-view/" />
 </paths>

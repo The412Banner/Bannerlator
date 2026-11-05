@@ -193,6 +193,13 @@
             android:exported="false" />
 
         <activity
+            android:name="com.winlator.star.ui.files.TextEditorActivity"
+            android:theme="@style/AppTheme.Dark"
+            android:screenOrientation="sensor"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
+        <activity
             android:name="com.winlator.star.ShortcutPickerActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"

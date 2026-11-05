@@ -41,6 +41,25 @@ public final class BcnFastLayer {
         return cfg != null && FAST.equals(cfg.get(KEY));
     }
 
+    /** The default wrapper slot (Winlator base) and the GameNative wrapper slot. */
+    public static final String DEFAULT_WRAPPER = "wrapper";
+    public static final String GAMENATIVE_WRAPPER = "wrapper-gamenative";
+
+    /**
+     * True when this launch would run the Fast layer on the default wrapper slot. That pair never gets
+     * past device creation on Mali (tester logs end right after the layer's "native transcode enabled"
+     * line; issue #642). WinlatorMali ships the layer with the GameNative wrapper, so the launch uses
+     * {@link #GAMENATIVE_WRAPPER} instead. The layer runs only with BCn emulation auto/full + type compute
+     * (the ENABLE_BCN_COMPUTE path). A user's own file in the default slot is left alone.
+     */
+    public static boolean needsGamenativeWrapper(boolean isMali, String graphicsDriver, Map<String, String> cfg,
+                                                 boolean defaultSlotOverridden) {
+        if (!isMali || !isPicked(cfg) || defaultSlotOverridden) return false;
+        if (!DEFAULT_WRAPPER.equals(graphicsDriver)) return false;
+        String mode = cfg.get("bcnEmulation");
+        return "compute".equals(cfg.get("bcnEmulationType")) && ("auto".equals(mode) || "full".equals(mode));
+    }
+
     /**
      * Switches the launch env from the bundled BCn layer to the Fast one when it applies. Returns a
      * line for the Wine debug log, or null when nothing changed.

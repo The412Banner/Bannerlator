@@ -357,6 +357,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // support the surface, so it's opt-in. Applied via VulkanRenderer.setDriverInfo before nativeInit.
     private String rendererDriverId = "system";
     private HashMap<String, String> graphicsDriverConfig;
+    /** This launch switched the default wrapper to the GameNative one for Faster BCn on Mali. */
+    private boolean fasterBcnWrapperSwap = false;
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
     // Best-effort RECORD_AUDIO request when a mic-enabled DirectAudio game launches (see onCreate).
     private static final int RECORD_AUDIO_REQUEST_CODE = 0xADD;
@@ -3081,6 +3083,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         this.graphicsDriverConfig = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
         this.dxwrapperConfig = DXVKConfigDialog.parseConfig(dxwrapperConfig);
+
+        // Faster BCn on Mali crashes with the default wrapper; use the GameNative wrapper for this launch
+        // only (nothing is saved). See BcnFastLayer.needsGamenativeWrapper.
+        if (com.winlator.star.core.BcnFastLayer.needsGamenativeWrapper(com.winlator.star.core.MaliPanvk.isMaliGpu(),
+                graphicsDriver, this.graphicsDriverConfig,
+                new File(getFilesDir(), "graphics_driver/" + graphicsDriver + ".tzst").isFile())) {
+            graphicsDriver = com.winlator.star.core.BcnFastLayer.GAMENATIVE_WRAPPER;
+            fasterBcnWrapperSwap = true;
+            Log.i("XServerDisplayActivity", "Faster BCn on Mali: Wrapper (GameNative) for this launch");
+        }
 
         if (!wineInfo.isWin64()) {
             onExtractFileListener = (file, size) -> {
@@ -14374,6 +14386,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     String bcnFastApplied = com.winlator.star.core.BcnFastLayer.applyToLaunchEnv(this, rootDir, envVars,
             graphicsDriverConfig);
     if (bcnFastApplied != null && wineDebugWriter != null) wineDebugWriter.println("XServerVulkan: " + bcnFastApplied);
+    if (fasterBcnWrapperSwap && wineDebugWriter != null)
+        wineDebugWriter.println("XServerVulkan: Faster BCn on Mali: Wrapper (GameNative) used for this launch instead of the default wrapper");
 }
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {

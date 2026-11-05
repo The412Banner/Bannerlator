@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — 🛠️ Mali branch up to date with main + Faster BCn wrapper fix (`feat/mali-support`, CI running, NOT device-tested, NOT merged)
+- **Why:** user: "plan the pre2" → "bring the pre release up to date with main" → "yes do the wrapper fix and the adreno test". Prerelease 3.1.8-mali-pre1 (tag fb78b77a) had three reports of Faster BCn + default wrapper never starting the container on Mali (two testers 10-31, issue #642, whose log shows the Fast layer's "native transcode enabled" line before the failure).
+- **Merge:** backup refs/backup/20261105/feat-mali-support-before-main-merge → fb78b77a; merge commit 425f041d (main 4bfc0036). One conflict, HudMetrics.java: kept main's KGSL fallback for Adreno, then the Mali counters.
+- **Fix (9c6e7f1e):** Faster BCn on Mali with the default wrapper slot → this launch uses Wrapper (GameNative) (BcnFastLayer.needsGamenativeWrapper; Wine log line says so). Not saved; non-Mali, other wrappers and a user's own default-slot file unchanged. BcnFastLayerTest (3 cases) passes locally (javac + stubs); CI runs no unit tests.
+- **CI:** build-artifacts 42045189728 (headSha 9c6e7f1e) running.
+- **Adreno check:** only a baseline on the current main build was run (Pocket FIT, AIO r3 driver: vk 2719, dx11 4241, dx12 4925, gl 2827; plus a Standard-driver comparison that came out inconclusive: run-to-run spread larger than the driver gap). The user then stopped testing, so this branch build is NOT installed and NOT device-tested on any GPU. No Mali device here.
+- **Open:** Adreno no-regression run of this build; then the user's call on merging to main and cutting 3.1.9-pre1 (release.yml make_prerelease, versionCode bump in the cut commit). Discord post / #642 reply only with the user's OK.
+
 ## 2026-11-05 — ✅ Special K switch-off cleanup + GPU labels MERGED to main (`da39b098`, fast-forward)
 - **User:** "merge it to main". Backup ref refs/backup/20261105/main-before-specialk-off-logs → 03181f6b. Main == fix/specialk-off-logs da39b098; code == tested build 7e131272 (only PROGRESS_LOG.md differs).
 - **In it:** Mods switch off → our Special K DLL, marker and Special K's logs leave the game folder at once (and again at launch); .ini settings stay. Contents → Download Components driver cards show which Adreno GPUs each driver is for (from the name; no badge when the name does not say).

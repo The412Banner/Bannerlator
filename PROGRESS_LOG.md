@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — ✅ 3.1.9-pre1 PUBLISHED (pre-release, vc 105, tag 3.1.9-pre1 = ba688620)
+- **release.yml run 42105796560** (headSha ba688620): notes, 4 builds, 4 patch jobs and release all success; 8 patches per flavor.
+- **Verified:** tag 3.1.9-pre1 → ba688620 (commit) = main; prerelease true, Latest still 3.1.8; assets: 4 APKs (pubg 589,292,659 B) + update.json (vc 105, 5 highlights, 32 patches keyed by old APK sha256). Manifest: update-pre.json = 3.1.9-pre1 vc 105, update.json still 3.1.8 vc 104 (stable channel unchanged). Bannerlator-updates 3.1.9-pre1: 32 assets. pubg patch sizes: 3.1.8 → 65,263,421 B, 3.1.8-mali-pre1 → 37,381,301 B, 3.1.7 → 81.9 MB (notes say about 65 / 37 MB: matches).
+- **Proof:** CI-built release; not installed or run on a device as the release build.
+- **Kept:** branches release/3.1.9-pre1, tmp/size-3.1.9-pre1 (temporary size workflow), feat/file-manager-revamp, feat/fm-revamp-unpack, feat/fm-revamp-uicheck; delete on the user's word.
+
 ## 2026-11-05 — 🚀 3.1.9-pre1 cut (pre-release, vc 105)
 - **User:** "build main as artifacts only then prep for 3.1.9 pre release 1" → "release it when done". Main artifacts build 42102606425 green ×4 (90e3adf9).
 - **Release commit** d30f15c8 on `release/3.1.9-pre1` (off main 90e3adf9): versionCode 105 / versionName 3.1.9-pre1, docs/releases/3.1.9-pre1.md, README (version row, 3.1.9-pre1 section, MGamer404 row, extraction tool credits). RC build 42103424873 green ×4; notes dry run 42103430244 green.

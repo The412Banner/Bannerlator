@@ -6,6 +6,7 @@ import android.util.Log;
 
 import com.winlator.star.container.Container;
 import com.winlator.star.container.Shortcut;
+import com.winlator.star.container.ShortcutOrder;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.ImageUtils;
 
@@ -124,6 +125,7 @@ public final class LinuxShortcuts {
                 + "Type=Application\n"
                 + "StartupWMClass=gamescope\n\n"
                 + "[Extra Data]\n"
+                + ShortcutOrder.addedAtLine(System.currentTimeMillis())
                 + Container.EXTRA_RUNTIME + "=" + Container.RUNTIME_GAMESCOPE + "\n"
                 + LinuxRuntime.EXTRA_LINUX_MODE + "=" + LinuxRuntime.MODE_STEAM + "\n"
                 + "app_id=" + appId + "\n"
@@ -151,6 +153,7 @@ public final class LinuxShortcuts {
                 + "StartupWMClass=gamescope\n"
                 + "\n"
                 + "[Extra Data]\n"
+                + ShortcutOrder.addedAtLine(System.currentTimeMillis())
                 + Container.EXTRA_RUNTIME + "=" + Container.RUNTIME_GAMESCOPE + "\n"
                 + LinuxRuntime.EXTRA_LINUX_MODE + "=" + LinuxRuntime.MODE_STEAM + "\n"
                 // gamescope is a Wayland client; the launch path would pin this anyway.

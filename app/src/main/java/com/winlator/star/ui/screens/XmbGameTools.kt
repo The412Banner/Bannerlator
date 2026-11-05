@@ -743,6 +743,8 @@ internal fun xmbScrapeCoverMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
                 runCatching {
                     val bmp = xmbDownloadBitmap(url, 15000, 20000)
                     if (bmp != null) {
+                        // Picking a scraped cover replaces one the user added; saveCustomCoverArt saves the change.
+                        CustomCover.forget(shortcut)
                         shortcut.saveCustomCoverArt(bmp)
                         val iconsDir = shortcut.container.getIconsDir(64)
                         if (iconsDir != null) {

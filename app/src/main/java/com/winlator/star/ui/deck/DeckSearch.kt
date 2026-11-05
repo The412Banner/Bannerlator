@@ -125,6 +125,19 @@ internal fun DeckSearchOverlay(
     onAbout: () -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
+    // XMB mode: the panel is frosted glass over its own glow, so its text is the lifted colour the glow was tuned for, also over Home.
+    XmbPanelTheme { DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm) }
+}
+
+@Composable
+private fun DeckSearchPanel(
+    onDismiss: () -> Unit,
+    onOpenGame: (String) -> Unit,
+    onOpenRoute: (String) -> Unit,
+    onLaunchStore: (Screen) -> Unit,
+    onAbout: () -> Unit,
+    vm: ShortcutsViewModel,
+) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
     val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
@@ -163,9 +176,7 @@ internal fun DeckSearchOverlay(
                     modifier = Modifier
                         .widthIn(max = 900.dp)
                         .fillMaxWidth()
-                        .clip(shape)
-                        .background(cs.surfaceContainerHigh)
-                        .border(1.dp, deckLine(), shape)
+                        .xmbPanel(shape, cs.surfaceContainerHigh)
                         .clickable(onClick = {}, indication = null, interactionSource = remember { MutableInteractionSource() })
                         .padding(if (compact) 16.dp else 24.dp),
                 ) {

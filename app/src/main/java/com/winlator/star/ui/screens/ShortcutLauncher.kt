@@ -307,6 +307,8 @@ class ShortcutLauncher internal constructor(
 
     /** Launch method "Stream" on an Xbox shortcut: Xbox Cloud Gaming, nothing starts in Wine. */
     fun streamXbox(shortcut: Shortcut) {
+        // Streaming is playing: the game moves to the top of the recent order like any other launch.
+        recordLastPlayed(shortcut)
         activity.startActivity(com.winlator.star.store.xbox.XboxCloudPlayerActivity.intent(activity,
             shortcut.getExtra("xboxProductId", ""), shortcut.name ?: ""))
     }

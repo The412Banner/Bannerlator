@@ -49,6 +49,13 @@ object AppThemeState {
     private val _uiStyle = MutableStateFlow(UI_STYLE_CLASSIC)
     val uiStyle: StateFlow<String> = _uiStyle
 
+    /**
+     * The XMB interface style is Deck style with this on (Appearance > Interface Style > XMB): Home is the XMB and the
+     * tabs float over every page. Only ever true together with [UI_STYLE_DECK]; off by default.
+     */
+    private val _deckXmbHome = MutableStateFlow(false)
+    val deckXmbHome: StateFlow<Boolean> = _deckXmbHome
+
     // The preset whose background/surface colors back the custom accent
     private val _customBaseIndex = MutableStateFlow(0)
 
@@ -103,13 +110,21 @@ object AppThemeState {
         _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
         _uiStyle.value = if (themePrefs.getString("ui_style", UI_STYLE_CLASSIC) == UI_STYLE_DECK) UI_STYLE_DECK
                          else UI_STYLE_CLASSIC
+        _deckXmbHome.value = _uiStyle.value == UI_STYLE_DECK && themePrefs.getBoolean("deck_xmb_home", false)
     }
 
-    /** Switch the app shell between Classic and Deck. Takes effect immediately, no restart. */
+    /** Turn the XMB mode (Deck style with the XMB home) on or off. Takes effect immediately, no restart. */
+    fun setDeckXmbHome(on: Boolean) {
+        _deckXmbHome.value = on
+        themePrefs.edit().putBoolean("deck_xmb_home", on).apply()
+    }
+
+    /** Switch the app shell between Classic and Deck. Takes effect immediately, no restart. Leaving Deck leaves the XMB home too. */
     fun setUiStyle(style: String) {
         val v = if (style == UI_STYLE_DECK) UI_STYLE_DECK else UI_STYLE_CLASSIC
         _uiStyle.value = v
         themePrefs.edit().putString("ui_style", v).apply()
+        if (v != UI_STYLE_DECK) setDeckXmbHome(false)
     }
 
     /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */

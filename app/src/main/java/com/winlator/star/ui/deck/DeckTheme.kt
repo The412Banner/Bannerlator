@@ -104,17 +104,20 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
 
+// On an XMB glow page (see XmbBackdrop.kt) the three below turn to frosted glass: a thin light fill and hairline over the
+// glow, and a veil of the glow's base for the bars. Everywhere else, including Home and the dialogs, they are as they were.
+
 /** Translucent bar fill (top strip, legend, bottom bar): the theme background at 72%. */
 @Composable
-internal fun deckGlass(): Color = MaterialTheme.colorScheme.background.copy(alpha = 0.72f)
+internal fun deckGlass(): Color = xmbPageFrost()?.bar ?: MaterialTheme.colorScheme.background.copy(alpha = 0.72f)
 
 /** Card fill used by shelves and hub tiles: the theme surface at 90%. */
 @Composable
-internal fun deckCardFill(): Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+internal fun deckCardFill(): Color = xmbPageFrost()?.card ?: MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
 
 /** Hairline around cards and bars. */
 @Composable
-internal fun deckLine(): Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
+internal fun deckLine(): Color = xmbPageFrost()?.line ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
 
 /**
  * The Deck focus treatment: the focused element scales up and gets an accent outline with a soft

@@ -236,6 +236,14 @@ import java.nio.file.Files;
 
 
 
+        // Where the original of an image is kept while a custom cover stands in for it: "<name>.orig.png"
+        // beside the image (see CustomCover). Not a shortcut icon, so nothing resolves Icon= to it.
+        public static File originalOf(File image) {
+            String fileName = image.getName();
+            int dot = fileName.lastIndexOf('.');
+            return new File(image.getParentFile(), (dot > 0 ? fileName.substring(0, dot) : fileName) + ".orig.png");
+        }
+
         public void removeCustomCoverArt() {
             if (customCoverArtPath != null && !customCoverArtPath.isEmpty()) {
                 File customCoverArtFile = new File(customCoverArtPath);
@@ -300,6 +308,9 @@ import java.nio.file.Files;
                 if (this.iconFile != null && this.iconFile.isFile()) {
                     File newIconFile = new File(newContainer.getIconsDir(64), this.iconFile.getName());
                     FileUtils.copy(this.iconFile, newIconFile);
+                    // The icon a custom cover replaced goes with it, so Remove still works over there.
+                    File originalIcon = originalOf(this.iconFile);
+                    if (originalIcon.isFile()) FileUtils.copy(originalIcon, originalOf(newIconFile));
                 }
 
                 return true;

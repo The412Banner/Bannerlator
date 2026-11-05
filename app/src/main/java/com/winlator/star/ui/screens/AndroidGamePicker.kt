@@ -3,6 +3,8 @@
 package com.winlator.star.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -94,13 +96,16 @@ internal fun AndroidGamePickerDialog(
         title = { Text("Add Android game") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text("Search installed apps") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                XmbTapToEdit(Modifier.fillMaxWidth()) { fieldModifier, stopEditing ->
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = { Text("Search installed apps") },
+                        singleLine = true,
+                        modifier = fieldModifier,
+                        keyboardActions = xmbDoneActions(stopEditing),
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = gamesOnly, onClick = { gamesOnly = true }, label = { Text("Games") })
                     FilterChip(selected = !gamesOnly, onClick = { gamesOnly = false }, label = { Text("All apps") })

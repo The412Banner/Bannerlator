@@ -587,9 +587,7 @@ internal fun DeckGameMenuSheet(
                 Column(
                     modifier = Modifier
                         .then(if (compact) Modifier.fillMaxWidth().fillMaxHeight(0.9f) else Modifier.fillMaxHeight().widthIn(max = 520.dp).fillMaxWidth(0.5f))
-                        .clip(shape)
-                        .background(cs.surfaceContainerHigh)
-                        .border(1.dp, deckLine(), shape)
+                        .xmbPanel(shape, cs.surfaceContainerHigh)
                         // Swallow taps so they don't reach the dismiss scrim behind the sheet.
                         .clickable(onClick = {}, indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() })
                         .padding(horizontal = 20.dp, vertical = 18.dp),

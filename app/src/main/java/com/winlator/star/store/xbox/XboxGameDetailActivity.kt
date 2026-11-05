@@ -40,7 +40,6 @@ import com.winlator.star.store.download.StoreStatusText
 import com.winlator.star.store.download.formatDownloadSize
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,7 +84,7 @@ class XboxGameDetailActivity : ComponentActivity() {
             StarLaunchBridge.loadContainers(this) { containers -> if (!containers.isNullOrEmpty()) downloadPicker = containers }
         }
         setContent {
-            WinlatorTheme {
+            com.winlator.star.store.StoreXmbTheme {
                 var tab by androidx.compose.runtime.remember { mutableStateOf(0) }
                 val inst = installed
                 val primary = when {

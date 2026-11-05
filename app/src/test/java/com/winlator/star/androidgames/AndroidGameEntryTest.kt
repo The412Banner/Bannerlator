@@ -34,6 +34,14 @@ class AndroidGameEntryTest {
         assertEquals("com.playdigious.deadcells.mobile", AndroidGameEntry.packageOf(text))
     }
 
+    @Test fun desktopEntry_stampsAddedAtOnlyWhenGiven() {
+        val stamped = AndroidGameEntry.desktopEntry("Minecraft", "com.mojang.minecraftpe", null, null, 1_700_000_000_000L)
+        assertEquals("1700000000000", AndroidGameEntry.extraOf(stamped, "addedAt"))
+        // Being added is not being played.
+        assertNull(AndroidGameEntry.extraOf(stamped, "lastPlayed"))
+        assertNull(AndroidGameEntry.extraOf(AndroidGameEntry.desktopEntry("Minecraft", "com.mojang.minecraftpe", null, null), "addedAt"))
+    }
+
     @Test fun packageOf_ignoresOtherShortcuts() {
         val wineGame = """
             [Desktop Entry]

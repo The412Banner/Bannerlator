@@ -65,6 +65,10 @@ import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.SportsEsports
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
+import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.components.CollapsibleRail
 import com.winlator.star.ui.components.RailItem
 import com.winlator.star.ui.components.RailSection
@@ -376,6 +380,9 @@ fun FileManagerScreen(
     val activity = context as? Activity
     val mainActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
+    // Deck XMB home: a slimmer locations rail and smaller folder tiles, sized as a share of the screen.
+    val xmbHome = rememberXmbHome()
+    val screen = rememberScreenScale()
 
     val containerManager = mainActivity?.containerManager
     val containers = remember { containerManager?.getContainers()?.toList() ?: emptyList<Container>() }
@@ -1306,13 +1313,16 @@ fun FileManagerScreen(
 
         // ── Search field ── filters the current folder only; it is not a recursive search.
         if (showSearch && !showFavorites) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                singleLine = true,
-                placeholder = { Text("Filter this folder", fontSize = 13.sp) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            )
+            XmbTapToEdit(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) { fieldModifier, stopEditing ->
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    singleLine = true,
+                    placeholder = { Text("Filter this folder", fontSize = 13.sp) },
+                    modifier = fieldModifier,
+                    keyboardActions = xmbDoneActions(stopEditing),
+                )
+            }
         }
 
         // Free space on the volume being browsed — worth knowing before starting a 60 GB copy.
@@ -1529,7 +1539,11 @@ fun FileManagerScreen(
             // the exception — it shows the rail so the "Drive C:" location item is reachable. Pickers
             // that don't pass driveCPath keep the rail hidden exactly as before.
             if (!pickMode || driveCPath != null) {
-                CollapsibleRail(state = fmRailState, title = "Files", sections = locationSections, outlinedItems = true)
+                CollapsibleRail(
+                    state = fmRailState, title = "Files", sections = locationSections, outlinedItems = true,
+                    // XMB home: just wide enough for "Downloads" and its icon; the grid gets the rest.
+                    expandedWidth = if (xmbHome) screen.w(0.155f, min = 136.dp, max = 170.dp) else 190.dp,
+                )
             }
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
         // ── Favorites list OR file list ──
@@ -1567,7 +1581,8 @@ fun FileManagerScreen(
 
             if (showGrid && entries.isNotEmpty()) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 104.dp),
+                    // XMB home: a tenth of the screen per tile, so a landscape phone fits six folders a row.
+                    columns = GridCells.Adaptive(minSize = if (xmbHome) screen.w(0.1f, min = 88.dp, max = 120.dp) else 104.dp),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
                 ) {

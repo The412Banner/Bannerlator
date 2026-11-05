@@ -115,6 +115,7 @@ object DeckInput {
         if ((ev.source and InputDevice.SOURCE_JOYSTICK) != InputDevice.SOURCE_JOYSTICK) return
         val l = maxOf(ev.getAxisValue(MotionEvent.AXIS_LTRIGGER), ev.getAxisValue(MotionEvent.AXIS_BRAKE))
         val r = maxOf(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER), ev.getAxisValue(MotionEvent.AXIS_GAS))
+        if (XmbTriggerGuard.holding(l, r)) return
         l2Down = trigger(h, ev, l, l2Down, KeyEvent.KEYCODE_BUTTON_L2)
         r2Down = trigger(h, ev, r, r2Down, KeyEvent.KEYCODE_BUTTON_R2)
     }

@@ -1309,13 +1309,15 @@ private fun TvPage(state: XServerDrawerState) {
 private fun ToolsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     val closeThen: (Runnable?) -> Unit = { r -> DeckInGameState.close(); r?.run() }
     var perfDialog by remember { mutableStateOf(false) }
+    // The XMB style types on its own panel, which a controller opens and closes with Select + X; every other style keeps Android's keyboard.
+    val xmbKeyboard = isXmbHome(LocalContext.current)
     IgSectionLabel("View")
     IgCard {
         IgRow("Magnifier", hint = "Zoom into part of the screen.") { IgButton("Magnifier", Icons.Outlined.ZoomIn, { closeThen(state.onMagnifier) }) }
         IgDivider()
         IgRow("Picture-in-picture", hint = "Shrink the game into a floating window.") { IgButton("Picture-in-picture", Icons.Outlined.PictureInPictureAlt, { closeThen(state.onPipMode) }) }
         IgDivider()
-        IgRow("Show keyboard", hint = "The Android keyboard, typing into the game.") { IgButton("Show keyboard", Icons.Outlined.Keyboard, { closeThen(state.onKeyboard) }) }
+        IgRow("Show keyboard", hint = stringResource(if (xmbKeyboard) R.string.ig_keyboard_hint_xmb else R.string.ig_keyboard_hint_android)) { IgButton("Show keyboard", Icons.Outlined.Keyboard, { closeThen(state.onKeyboard) }) }
     }
 
     IgSectionLabel(if (kind.isWine) "Windows & logs" else "Performance")

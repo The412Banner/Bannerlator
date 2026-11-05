@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — ✅ Mali support MERGED to main (`8640bf1b`, fast-forward), NOT device-tested
+- **User:** "merge it and build main as artifacts only". Backup ref refs/backup/20261105/main-before-mali-support → 4bfc0036. Main == feat/mali-support 8640bf1b; code == CI-built 9c6e7f1e (only PROGRESS_LOG.md differs).
+- **In it (Mali only or opt-in, from the 3.1.8-mali-pre1 work + today's fix):** PanVK driver sources on Mali; leegao compat_layer 22960fb3 (EXTRA_LIBS_VERSION 4 → 5, so every container re-extracts extra_libs once); FEX UE3 + full-x87 presets; HUD MediaTek/Tensor fallbacks + Mali hardware counters (CSF Mali only); community configs Mali device count; Faster BCn layer (Fcharan) on Mali, now with the GameNative wrapper when the default wrapper is picked; X11 renderer Mali high-priority queue + AHB import format; registry NPE fix.
+- **Proof:** CI-green only (42045189728 on 9c6e7f1e). Not installed or run on any device; no Mali device here. Adreno baseline numbers from the main build before the merge are in the feat/mali-support entry below.
+- **Build:** main build-artifacts dispatched as artifacts only (no release, nothing published).
+- **Undo:** main back to refs/backup/20261105/main-before-mali-support.
+
 ## 2026-11-05 — 🛠️ Mali branch up to date with main + Faster BCn wrapper fix (`feat/mali-support`, CI running, NOT device-tested, NOT merged)
 - **Why:** user: "plan the pre2" → "bring the pre release up to date with main" → "yes do the wrapper fix and the adreno test". Prerelease 3.1.8-mali-pre1 (tag fb78b77a) had three reports of Faster BCn + default wrapper never starting the container on Mali (two testers 10-31, issue #642, whose log shows the Fast layer's "native transcode enabled" line before the failure).
 - **Merge:** backup refs/backup/20261105/feat-mali-support-before-main-merge → fb78b77a; merge commit 425f041d (main 4bfc0036). One conflict, HudMetrics.java: kept main's KGSL fallback for Adreno, then the Mali counters.

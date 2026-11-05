@@ -1,9 +1,9 @@
 # Star-Compose — Progress Log
 
-## 2026-11-05 — 🗂️ File manager revamp: parts merged, full build running (`feat/file-manager-revamp`, NOT device-tested, NOT merged)
+## 2026-11-05 — 🗂️ File manager revamp: parts merged, CI green (`feat/file-manager-revamp`, NOT device-tested, NOT merged)
 - **Merged in:** `feat/fm-revamp-unpack` (f07238f2, its CI 42086453182 green ×4) → merge 39874166. Then 02e0e813: archives 7-Zip can't list (raw .bin/.img) go to the Unpack screen; the ⋮ Unpack items show for every format an engine handles (ArchiveBrowse.canUnpack).
 - **Early compile check of the screens:** throwaway branch `feat/fm-revamp-uicheck` (screens + a stand-in of the archive API, never to be merged) CI 42087874067 green ×4 on f86396be.
-- **CI:** build-artifacts 42089315475 (release_number fm-revamp-test) on 02e0e813, running.
+- **CI:** build-artifacts 42089315475 (release_number fm-revamp-test) on 02e0e813: success ×4, 0 failed steps, 15 skipped each (same as main). Artifacts Bannerlator-fm-revamp-test-* ~587 MB, expire 2026-11-12.
 - **Open:** CI result; stage the pubg APK in Downloads (hash-checked) for the user to test; nothing installed without the user's yes.
 
 ## 2026-11-05 — 📦 File manager revamp, part 1: BFE's extraction engines (`feat/fm-revamp-unpack`, CI green, NOT device-tested, NOT merged)

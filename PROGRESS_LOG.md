@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-05 — 🚀 3.1.9-pre1 cut (pre-release, vc 105)
+- **User:** "build main as artifacts only then prep for 3.1.9 pre release 1" → "release it when done". Main artifacts build 42102606425 green ×4 (90e3adf9).
+- **Release commit** d30f15c8 on `release/3.1.9-pre1` (off main 90e3adf9): versionCode 105 / versionName 3.1.9-pre1, docs/releases/3.1.9-pre1.md, README (version row, 3.1.9-pre1 section, MGamer404 row, extraction tool credits). RC build 42103424873 green ×4; notes dry run 42103430244 green.
+- **Update size** (temporary workflow on `tmp/size-3.1.9-pre1`, run 42104967135, nothing published): pubg 3.1.8 → 3.1.9-pre1 65,272,765 bytes, 3.1.8-mali-pre1 → 37,391,065 bytes, full 589,299,607 bytes (standard within 2 kB); every patch rebuilt the APK byte-exact. Filled into the notes.
+- **Cut:** backup ref refs/backup/20261105/main-before-3.1.9-pre1 → 90e3adf9; main fast-forwarded to this branch; release.yml (tag 3.1.9-pre1, title "Bannerlator 3.1.9-pre1", pre-release, not Latest). Run ID and verification in the next entry.
+- **Proof:** CI-green; not device-tested as a release build (the file manager, text editor, unpack formats, XMB and Mali parts are marked untested in the notes).
+
 ## 2026-11-05 — ✅ File manager revamp MERGED to main (fast-forward to `feat/file-manager-revamp`), installed, NOT device-tested
 - **User:** "merge to main". Backup ref refs/backup/20261105/main-before-file-manager-revamp → 2e587ae8 (pushed). Main fast-forwarded to the branch (includes the merged `feat/fm-revamp-unpack`). Code == CI-built and installed 02e0e813 (CI 42089315475, APK sha256 7e57c25c…); only PROGRESS_LOG.md differs.
 - **In it:** the new file manager (Home tiles, panes, optional second pane, archives as folders, copy/move/compress/extract/share/open with/properties, Run and Add to Games), the text viewer/editor for txt/log/cfg/ini and similar, the picker in the same look, and BFE's extraction engines and tools (credit: ported from BFE, The412Banner; third-party tool authors credited in THIRD-PARTY-LICENSES.md and the NOTICE files).

@@ -8707,8 +8707,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
      *  switched on for this game (game settings > Mods) and available for its EXE is downloaded from its
      *  release when this device does not have it yet, placed next to the EXE, and gets its
      *  WINEDLLOVERRIDES entry (a user's own entry for that DLL is kept); REFramework's menu is set to start
-     *  closed. A mod switched off has only the file we placed removed. One "mods" line per mod in the
-     *  session log; the drawer's Mods tab gets one card per mod this EXE can take (on, off or not loaded). */
+     *  closed. A mod switched off has only the file we placed removed (for Special K also its logs; its
+     *  .ini settings stay). One "mods" line per mod in the session log; the drawer's Mods tab gets one
+     *  card per mod this EXE can take (on, off or not loaded). */
     private void applyGameModsEnv(EnvVars envVars) {
         java.util.List<com.winlator.star.ui.DrawerMod> cards = new ArrayList<>();
         try {

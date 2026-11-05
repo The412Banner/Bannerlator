@@ -114,7 +114,9 @@ class GameModsTest {
         val r = GameMods.install(dir, GameMods.SPECIAL_K, "dxgi.dll", v1, s1)
         assertFalse(r.ours); assertTrue(r.present)
         assertEquals("reshade", File(dir, "dxgi.dll").readText())
+        val log = File(dir, "logs/dxgi.log").apply { parentFile!!.mkdirs(); writeText("not ours to delete") }
         assertNull(GameMods.remove(dir, GameMods.SPECIAL_K))
+        assertTrue(log.exists())
         val empty = tmp.newFolder("empty")
         val none = GameMods.install(empty, GameMods.SPECIAL_K, "dxgi.dll", null, s1)
         assertFalse(none.ours); assertFalse(none.present)
@@ -130,5 +132,56 @@ class GameModsTest {
         assertEquals("removed our dxgi.dll", GameMods.remove(dir, GameMods.SPECIAL_K))
         assertTrue(File(dir, "dinput8.dll").exists())
         assertEquals("removed our dinput8.dll", GameMods.remove(dir, GameMods.REFRAMEWORK))
+    }
+
+    @Test fun specialKOffDeletesItsLogsAndKeepsItsIni() {
+        val dir = tmp.newFolder("game")
+        val (v1, s1) = dll("v1.dll", "Special K one")
+        GameMods.install(dir, GameMods.SPECIAL_K, "dxgi.dll", v1, s1)
+        val ini = File(dir, "dxgi.ini").apply { writeText("[Window.System]\nBorderless=true") }
+        File(dir, "d3d11.ini").writeText("from an earlier DLL name")
+        val logs = File(dir, "logs").apply { mkdir() }
+        for (n in listOf("dxgi.log", "d3d11.log", "dxgi_budget.log", "crash.log", "game_output.log", "modules.log"))
+            File(logs, n).writeText("x")
+        File(logs, "crash/2026-11-04__11'16'42").apply { mkdirs() }.resolve("dxgi.log").writeText("x")
+        assertEquals("removed our dxgi.dll and Special K's logs", GameMods.remove(dir, GameMods.SPECIAL_K))
+        assertFalse(logs.exists())
+        assertTrue(ini.exists()); assertTrue(File(dir, "d3d11.ini").exists())
+    }
+
+    @Test fun specialKOffLeavesTheGamesOwnLogs() {
+        val dir = tmp.newFolder("game")
+        val (v1, s1) = dll("v1.dll", "Special K one")
+        GameMods.install(dir, GameMods.SPECIAL_K, "d3d11.dll", v1, s1)
+        val logs = File(dir, "Logs").apply { mkdir() }
+        File(logs, "d3d11.log").writeText("x")
+        File(logs, "game.log").writeText("the game's")
+        File(logs, "crash/2026-11-04__11'16'42").apply { mkdirs() }.resolve("crash.log").writeText("x")
+        File(logs, "crash/minidump").mkdirs()
+        assertEquals("removed our d3d11.dll and Special K's logs", GameMods.remove(dir, GameMods.SPECIAL_K))
+        assertFalse(File(logs, "d3d11.log").exists())
+        assertFalse(File(logs, "crash/2026-11-04__11'16'42").exists())
+        assertTrue(File(logs, "game.log").exists())
+        assertTrue(File(logs, "crash/minidump").isDirectory)
+    }
+
+    @Test fun specialKLogsGoWhenOurDllIsAlreadyGone() {
+        val dir = tmp.newFolder("game")
+        val (v1, s1) = dll("v1.dll", "Special K one")
+        GameMods.install(dir, GameMods.SPECIAL_K, "dxgi.dll", v1, s1)
+        File(dir, "dxgi.dll").delete()
+        File(dir, "logs").mkdir(); File(dir, "logs/dxgi.log").writeText("x")
+        assertEquals("removed Special K's logs", GameMods.remove(dir, GameMods.SPECIAL_K))
+        assertFalse(File(dir, "logs").exists())
+        assertNull(GameMods.remove(dir, GameMods.SPECIAL_K))
+    }
+
+    @Test fun reframeworkOffLeavesLogsAlone() {
+        val dir = tmp.newFolder("game")
+        val (v1, s1) = dll("v1.dll", "REFramework")
+        GameMods.install(dir, GameMods.REFRAMEWORK, "dinput8.dll", v1, s1)
+        File(dir, "logs").mkdir(); File(dir, "logs/dxgi.log").writeText("x")
+        assertEquals("removed our dinput8.dll", GameMods.remove(dir, GameMods.REFRAMEWORK))
+        assertTrue(File(dir, "logs/dxgi.log").exists())
     }
 }

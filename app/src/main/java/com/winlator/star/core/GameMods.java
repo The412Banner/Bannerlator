@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Per-game mods (game settings > Mods, in-game drawer > Mods): DLLs Bannerlator downloads from its own
@@ -28,7 +29,8 @@ import java.util.Set;
  *
  * Per game, off by default ({@link Mod#extra} = "1" turns a mod on). A marker file per mod records the
  * sha256 (and the DLL name) of the file we placed, so only our file is ever replaced or removed; a game
- * folder's own DLL of the same name is never touched. Pure Java (no Android calls), so it is unit-tested.
+ * folder's own DLL of the same name is never touched. Switching Special K off also deletes its logs; its
+ * .ini settings stay. Pure Java (no Android calls), so it is unit-tested.
  */
 public final class GameMods {
     private GameMods() {}
@@ -333,7 +335,11 @@ public final class GameMods {
         return new Result(true, true, dll + " placed");
     }
 
-    /** Removes the file we placed for {@code mod} (sha256 == marker); a note, or null when nothing to do. */
+    /**
+     * Removes the file we placed for {@code mod} (sha256 == marker); a note, or null when nothing to do. For
+     * Special K its logs go too ({@link #removeSpecialKLogs}); its .ini settings stay. A DLL of the same name
+     * that is not ours keeps its logs.
+     */
     public static String remove(File dir, Mod mod) throws Exception {
         String[] marker = readMarker(dir, mod);
         if (marker == null) return null;
@@ -342,10 +348,74 @@ public final class GameMods {
         if (dll != null && GameXInputDlls.sha256(dll).equals(marker[0])) {
             if (!dll.delete()) return "could not remove " + dll.getName();
             m.delete();
-            return "removed our " + dll.getName();
+            boolean logs = mod == SPECIAL_K && removeSpecialKLogs(dir) > 0;
+            return "removed our " + dll.getName() + (logs ? " and Special K's logs" : "");
         }
         m.delete();
-        return dll != null ? "the game folder's own " + dll.getName() + " left as it is" : null;
+        if (dll != null) return "the game folder's own " + dll.getName() + " left as it is";
+        return mod == SPECIAL_K && removeSpecialKLogs(dir) > 0 ? "removed Special K's logs" : null;
+    }
+
+    /** Special K's log files in logs\ (SpecialKO src/core.cpp, config.cpp, crash_handler.cpp, platform code). */
+    static final Set<String> SPECIALK_LOGS;
+    static {
+        Set<String> s = new LinkedHashSet<>();
+        for (String dll : SPECIALK_DLLS) s.add(dll.substring(0, dll.length() - 4) + ".log");
+        s.addAll(Arrays.asList("specialk.log", "dxgi_budget.log", "crash.log", "game_output.log", "modules.log",
+                "platform.log", "steam_api.log", "eos.log", "galaxy.log", "installer.log", "textures.log",
+                "file_reads.log", "file_writes.log"));
+        SPECIALK_LOGS = Collections.unmodifiableSet(s);
+    }
+
+    /** Special K's crash copies: logs\crash\<%Y-%m-%d__%H'%M'%S>\ (crash_handler.cpp). */
+    private static final Pattern SPECIALK_CRASH_RUN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}__\\d{2}'\\d{2}'\\d{2}");
+
+    /**
+     * Deletes Special K's files in {@code dir}\logs (its logs and its crash\ copies), then the crash and logs
+     * folders when they are empty. Anything else in there is the game's and stays. Returns how many went.
+     */
+    static int removeSpecialKLogs(File dir) {
+        File logs = findDir(dir, "logs");
+        File[] entries = logs != null ? logs.listFiles() : null;
+        if (entries == null) return 0;
+        int n = 0;
+        for (File f : entries) {
+            String name = f.getName().toLowerCase(Locale.ROOT);
+            if (f.isFile() && SPECIALK_LOGS.contains(name)) {
+                if (f.delete()) n++;
+            } else if (f.isDirectory() && !Files.isSymbolicLink(f.toPath()) && name.equals("crash")) {
+                File[] runs = f.listFiles();
+                if (runs != null) for (File run : runs) {
+                    if (run.isDirectory() && SPECIALK_CRASH_RUN.matcher(run.getName()).matches() && deleteTree(run)) n++;
+                }
+                if (isEmptyDir(f)) f.delete();
+            }
+        }
+        if (isEmptyDir(logs)) logs.delete();
+        return n;
+    }
+
+    private static File findDir(File dir, String name) {
+        File[] files = dir != null ? dir.listFiles() : null;
+        if (files == null) return null;
+        for (File f : files) {
+            if (f.isDirectory() && !Files.isSymbolicLink(f.toPath()) && f.getName().equalsIgnoreCase(name)) return f;
+        }
+        return null;
+    }
+
+    private static boolean isEmptyDir(File dir) {
+        String[] left = dir.list();
+        return left != null && left.length == 0;
+    }
+
+    /** Deletes {@code f} and what is under it; a symbolic link is removed, never followed. */
+    private static boolean deleteTree(File f) {
+        if (f.isDirectory() && !Files.isSymbolicLink(f.toPath())) {
+            File[] kids = f.listFiles();
+            if (kids != null) for (File k : kids) deleteTree(k);
+        }
+        return f.delete();
     }
 
     static void copy(File from, File to) throws IOException {

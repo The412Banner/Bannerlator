@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.xmbSolidBackground
 
 /**
  * Shared, theme-token-driven building blocks for the per-store game DETAIL pages
@@ -132,7 +133,7 @@ fun StoreHero(
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, MaterialTheme.colorScheme.background),
+                        listOf(Color.Transparent, xmbSolidBackground()),
                     ),
                 ),
         )

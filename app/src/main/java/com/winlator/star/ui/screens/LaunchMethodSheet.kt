@@ -8,9 +8,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -55,14 +57,26 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -86,6 +100,8 @@ import com.winlator.star.store.SteamPrefs
 import com.winlator.star.store.SteamRepository
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.deck.deckFocusRing
+import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -408,13 +424,25 @@ fun LaunchMethodSheet(
     } else null
 
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    // The Deck interface's XMB home gets its own landscape layout (three columns, controller first); everything else keeps the card below.
+    val xmbHome = AppThemeState.uiStyle.collectAsState().value == AppThemeState.UI_STYLE_DECK &&
+        AppThemeState.deckXmbHome.collectAsState().value
 
     val rawLabel = when { !notInstalled -> "Raw .exe"; hasPc -> "Download"; else -> "Not on PC" }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
       androidx.compose.runtime.CompositionLocalProvider(LocalRawLabel provides rawLabel) {
         DeckDialogBars()
         DeckDialogScaled {
-            if (landscape) {
+            if (landscape && xmbHome) {
+                DeckLandscapeCard(
+                    shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
+                    method, { method = it }, goldbergMode, { goldbergMode = it },
+                    rememberChoice, { rememberChoice = it }, controllerPassthrough, onPassthroughToggle, steamInput, onSteamInputToggle,
+                    secureLaunch, { secureLaunch = it; vacTouched = true }, detectedVac,
+                    helpText, toggleHelp, { helpText = null }, onDismiss, doLaunch, openDetails,
+                    onVerifyFiles, onUpdateFiles, steamLiteClient, appSteamClient,
+                )
+            } else if (landscape) {
                 LandscapeCard(
                     shortcut, source, appId, isSteam, hasDetails, enabledMethods, accent,
                     method, { method = it }, goldbergMode, { goldbergMode = it },
@@ -671,6 +699,445 @@ private fun LandscapeCard(
     }
 }
 
+// ── Deck landscape: three columns (methods · method settings · shared options) ────────────────────
+
+/**
+ * The Deck interface's landscape popup: a small header (cover, name, source, ✕) over three columns. Left: the launch
+ * methods, fixed-height rows, one focus stop where Up/Down moves the selection itself (no A needed), so the middle
+ * column follows as you move. Middle: what the selected method is and its own settings (scrolls if it must). Right: the
+ * options every method shares, with Cancel and Launch side by side at the bottom. Left and right always fit unscrolled.
+ */
+@Composable
+private fun DeckLandscapeCard(
+    shortcut: Shortcut,
+    source: GameSource,
+    appId: Int,
+    isSteam: Boolean,
+    hasDetails: Boolean,
+    enabledMethods: List<LaunchMethod>,
+    accent: Color,
+    method: LaunchMethod,
+    onMethod: (LaunchMethod) -> Unit,
+    goldbergMode: GoldbergMode,
+    onGoldbergMode: (GoldbergMode) -> Unit,
+    rememberChoice: Boolean,
+    onRemember: (Boolean) -> Unit,
+    passthrough: Boolean,
+    onPassthrough: (Boolean) -> Unit,
+    steamInput: Boolean,
+    onSteamInput: (Boolean) -> Unit,
+    secureLaunch: Boolean,
+    onSecureLaunch: (Boolean) -> Unit,
+    detectedVac: Boolean?,
+    helpText: String?,
+    toggleHelp: (String) -> Unit,
+    dismissHelp: () -> Unit,
+    onDismiss: () -> Unit,
+    doLaunch: () -> Unit,
+    openDetails: () -> Unit,
+    onVerifyFiles: (() -> Unit)?,
+    onUpdateFiles: (() -> Unit)?,
+    steamLiteClient: SteamLiteClientUi?,
+    appSteamClient: AppSteamClientUi?,
+) {
+    val cs = MaterialTheme.colorScheme
+    val cfg = LocalConfiguration.current
+    val rawLabel = LocalRawLabel.current
+    val xbox = source == GameSource.XBOX
+    // Every method the source can show, in rail order; the ones it can't use are listed dimmed, as the chips are.
+    val shown = if (xbox) listOf(LaunchMethod.RAW, LaunchMethod.STREAM)
+        else listOf(LaunchMethod.STEAMLITE, LaunchMethod.APPSTEAM, LaunchMethod.GOLDBERG, LaunchMethod.RAW)
+    val railRequester = remember { FocusRequester() }
+    var railFocused by remember { mutableStateOf(false) }
+    // First focus: the method rail, on the method already chosen.
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        runCatching { railRequester.requestFocus() }
+    }
+    val step: (Int) -> Unit = { delta ->
+        var i = shown.indexOf(method)
+        while (true) {
+            i += delta
+            if (i !in shown.indices) break
+            if (shown[i] in enabledMethods) { onMethod(shown[i]); break }
+        }
+    }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalTouchOnlyChrome provides true) {
+        // Not fillMaxSize: the box wraps the card, so a tap outside it still dismisses the dialog as before.
+        BoxWithConstraints(contentAlignment = Alignment.Center) {
+            val w = if (constraints.hasBoundedWidth) maxWidth * 0.92f else (cfg.screenWidthDp * 0.92f).dp
+            val h = if (constraints.hasBoundedHeight) maxHeight * 0.88f else (cfg.screenHeightDp * 0.88f).dp
+            // A short card drops the shared options' one-line subtitles so the right column still fits unscrolled.
+            val roomy = h >= 340.dp
+            Surface(
+                modifier = Modifier.width(w).height(h),
+                shape = RoundedCornerShape(20.dp),
+                color = cs.surface,
+                contentColor = cs.onSurface,
+                border = BorderStroke(1.dp, cs.outline),
+                shadowElevation = 26.dp,
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxSize()) {
+                        // Header: cover + name + source subline + close ✕ (as in portrait).
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 14.dp, bottom = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            GameCover(shortcut, accent, 36.dp, 48.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(shortcut.name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface,
+                                    fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(sourceSubline(source, appId), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            CloseButton(onDismiss)
+                        }
+                        HorizontalDivider(color = cs.outline)
+
+                        Row(Modifier.weight(1f).fillMaxWidth()) {
+                            // Left: the methods. One focus stop; Up/Down move the selection, Right goes on into its settings.
+                            Column(
+                                Modifier
+                                    .weight(0.27f)
+                                    .fillMaxHeight()
+                                    .padding(start = 14.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
+                                    .focusRequester(railRequester)
+                                    .onFocusChanged { railFocused = it.isFocused }
+                                    .onPreviewKeyEvent { e ->
+                                        if (e.type != KeyEventType.KeyDown) false
+                                        else when (e.key) {
+                                            Key.DirectionUp -> { step(-1); true }
+                                            Key.DirectionDown -> { step(1); true }
+                                            else -> false
+                                        }
+                                    }
+                                    .focusable(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    MicroLabel("Launch with")
+                                    Spacer(Modifier.width(6.dp))
+                                    HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_LAUNCH_WITH) })
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                shown.forEach { m ->
+                                    DeckMethodRow(
+                                        emoji = methodEmoji(m, rawLabel),
+                                        label = methodLabel(m, rawLabel),
+                                        selected = m == method,
+                                        enabled = m in enabledMethods,
+                                        focused = railFocused && m == method,
+                                        accent = accent,
+                                        onClick = { onMethod(m) },
+                                        onHelp = { toggleHelp(methodHelp(m)) },
+                                    )
+                                }
+                            }
+                            VerticalDivider(color = cs.outline)
+
+                            // Middle: the selected method and its own settings.
+                            Column(
+                                Modifier
+                                    .weight(0.40f)
+                                    .fillMaxHeight()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                            ) {
+                                MicroLabel(methodLabel(method, rawLabel))
+                                Spacer(Modifier.height(6.dp))
+                                MethodDesc(method, source, detectedVac == true)
+                                if (method == LaunchMethod.STEAMLITE && steamLiteClient != null) {
+                                    SteamLiteClientBlock(steamLiteClient, accent, compact = false, toggleHelp, doLaunch)
+                                }
+                                if (method == LaunchMethod.APPSTEAM) {
+                                    AppSteamClientBlock(appSteamClient, accent, compact = false, toggleHelp)
+                                }
+                                if (method == LaunchMethod.STEAMLITE && isSteam) {
+                                    Spacer(Modifier.height(10.dp))
+                                    DeckOptionRow(
+                                        title = "Controller passthrough", badge = "NEW",
+                                        subtitle = SUB_PASSTHROUGH,
+                                        accent = accent, onHelp = { toggleHelp(HELP_PASS) }, onClick = { onPassthrough(!passthrough) },
+                                    ) { DeckPill(passthrough, accent) }
+                                    DeckOptionRow(
+                                        title = "Steam Input", badge = "NEW",
+                                        subtitle = SUB_STEAM_INPUT,
+                                        accent = accent, onHelp = { toggleHelp(HELP_STEAMINPUT) }, onClick = { onSteamInput(!steamInput) },
+                                    ) { DeckPill(steamInput, accent) }
+                                    DeckOptionRow(
+                                        title = "Requires secure (VAC) launch", badge = "NEW",
+                                        subtitle = vacSubtitle(detectedVac),
+                                        accent = accent, onHelp = { toggleHelp(HELP_VAC) }, onClick = { onSecureLaunch(!secureLaunch) },
+                                    ) { DeckPill(secureLaunch, accent) }
+                                }
+                                if (method == LaunchMethod.GOLDBERG) {
+                                    Spacer(Modifier.height(12.dp))
+                                    DeckGoldbergList(goldbergMode, accent, onGoldbergMode, toggleHelp)
+                                }
+                            }
+                            VerticalDivider(color = cs.outline)
+
+                            // Right: options every method shares; Cancel and Launch at the bottom.
+                            Column(
+                                Modifier
+                                    .weight(0.33f)
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                MicroLabel("Options")
+                                if (hasDetails) {
+                                    DeckOptionRow(
+                                        title = "Full details & achievements", badge = null,
+                                        subtitle = if (roomy) SUB_DETAILS else null,
+                                        accent = accent, onHelp = { toggleHelp(HELP_DETAILS) }, onClick = openDetails,
+                                    ) {
+                                        Icon(Icons.Filled.ChevronRight, contentDescription = "Open details", tint = accent, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                DeckOptionRow(
+                                    title = "Remember my choice", badge = null,
+                                    subtitle = if (roomy) rememberSubtitle(shortcut.name) else null,
+                                    accent = accent, onHelp = { toggleHelp(HELP_REMEMBER) }, onClick = { onRemember(!rememberChoice) },
+                                ) { DeckPill(rememberChoice, accent) }
+                                // Steam-only game-files maintenance.
+                                if (isSteam && appId > 0 && (onVerifyFiles != null || onUpdateFiles != null)) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        val shape = RoundedCornerShape(9.dp)
+                                        if (onVerifyFiles != null) {
+                                            MaintButton("Verify files", Icons.Filled.Refresh, accent, compact = true,
+                                                Modifier.weight(1f).deckFocusRing(shape, scaleTo = 1f), onVerifyFiles)
+                                        }
+                                        if (onUpdateFiles != null) {
+                                            MaintButton("Check for updates", Icons.Filled.Download, accent, compact = true,
+                                                Modifier.weight(1f).deckFocusRing(shape, scaleTo = 1f), onUpdateFiles)
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.weight(1f))
+                                val footer = footerLaunch(method, steamLiteClient, appSteamClient, doLaunch)
+                                DeckFooter(accent, onDismiss, footer.second, footer.first)
+                            }
+                        }
+                    }
+                    if (helpText != null) HelpTip(helpText, dismissHelp)
+                }
+            }
+        }
+    }
+}
+
+/** One fixed-height method row in the Deck card's left rail. [focused] draws the Deck focus ring (the rail is the
+ *  single focus stop, so the ring is drawn here rather than by the row's own focus). Disabled = dimmed, not tappable. */
+@Composable
+private fun DeckMethodRow(
+    emoji: String,
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    focused: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    onHelp: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .then(if (focused) Modifier.shadow(18.dp, shape, ambientColor = accent, spotColor = accent) else Modifier)
+            .clip(shape)
+            .background(if (selected) accent.copy(alpha = 0.16f) else cs.surfaceContainerHigh)
+            .border(if (focused) 3.dp else 1.dp, if (selected) accent else cs.outline, shape)
+            .focusProperties { canFocus = false }
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(emoji, fontSize = 16.sp, modifier = Modifier.alpha(if (enabled) 1f else 0.38f))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = when {
+                !enabled -> cs.onSurfaceVariant.copy(alpha = 0.5f)
+                selected -> accent
+                else -> cs.onSurface
+            },
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        // Tappable even when the method is disabled (explains why it's unavailable).
+        HelpDot(accent, highlighted = selected, onClick = onHelp)
+    }
+}
+
+/** A Deck option row: title (+ badge / subtitle), "?" and a trailing control; the whole row is the focus stop and
+ *  [onClick] runs on A or a tap (a toggle flips, a link opens). */
+@Composable
+private fun DeckOptionRow(
+    title: String,
+    badge: String?,
+    subtitle: String?,
+    accent: Color,
+    onHelp: () -> Unit,
+    onClick: () -> Unit,
+    trailing: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .deckFocusRing(shape, scaleTo = 1f)
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (badge != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        badge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.dp, accent, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                    )
+                }
+            }
+            if (subtitle != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant, lineHeight = 14.sp)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        HelpDot(accent, highlighted = false, onClick = onHelp)
+        Spacer(Modifier.width(10.dp))
+        trailing()
+    }
+}
+
+/** The accent switch as a read-out: its row takes the focus and the press, so the switch itself is not interactive. */
+@Composable
+private fun DeckPill(checked: Boolean, accent: Color) {
+    Switch(
+        checked = checked,
+        onCheckedChange = null,
+        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = accent, checkedBorderColor = accent),
+    )
+}
+
+/** Goldberg's three modes as focusable rows (the middle column has the height the landscape segments lacked). */
+@Composable
+private fun DeckGoldbergList(mode: GoldbergMode, accent: Color, onSelected: (GoldbergMode) -> Unit, toggleHelp: (String) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MicroLabel("Goldberg mode")
+            Spacer(Modifier.width(6.dp))
+            HelpDot(accent, highlighted = false, onClick = { toggleHelp(HELP_GOLDBERG_MODE) })
+        }
+        GOLDBERG_OPTIONS.forEach { opt ->
+            val sel = opt.mode == mode
+            val shape = RoundedCornerShape(10.dp)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .deckFocusRing(shape, scaleTo = 1f)
+                    .clip(shape)
+                    .background(if (sel) accent.copy(alpha = 0.14f) else cs.surfaceContainerHigh)
+                    .border(1.dp, if (sel) accent else cs.outline, shape)
+                    .clickable { onSelected(opt.mode) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(opt.name, style = MaterialTheme.typography.bodyMedium, color = if (sel) accent else cs.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text(opt.sub, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                }
+                if (sel) Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+/** Cancel and Launch side by side, each a Deck focus stop ([launch] null = disabled, e.g. mid-download). */
+@Composable
+private fun DeckFooter(accent: Color, onDismiss: () -> Unit, launch: (() -> Unit)?, launchLabel: String) {
+    val cs = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            Modifier
+                .weight(1f)
+                .height(46.dp)
+                .deckFocusRing(shape, scaleTo = 1f)
+                .clip(shape)
+                .border(1.dp, cs.outline, shape)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Cancel", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+        }
+        Row(
+            Modifier
+                .weight(1f)
+                .height(46.dp)
+                .deckFocusRing(shape, scaleTo = 1f)
+                .clip(shape)
+                .background(if (launch != null) accent else accent.copy(alpha = 0.38f))
+                .clickable(enabled = launch != null) { launch?.invoke() },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(launchLabel, style = MaterialTheme.typography.labelLarge, color = cs.onPrimary, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.width(7.dp))
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = cs.onPrimary, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+/** The Deck rail's emoji, label and help text per method (the same ones the chips use). */
+private fun methodEmoji(method: LaunchMethod, rawLabel: String): String = when (method) {
+    LaunchMethod.STEAMLITE -> "🌐"
+    LaunchMethod.APPSTEAM -> "🔗"
+    LaunchMethod.GOLDBERG -> "🛡️"
+    LaunchMethod.RAW -> if (rawLabel == "Raw .exe") "▶️" else "⬇️"
+    LaunchMethod.STREAM -> "☁️"
+}
+
+private fun methodLabel(method: LaunchMethod, rawLabel: String): String = when (method) {
+    LaunchMethod.STEAMLITE -> "SteamLite"
+    LaunchMethod.APPSTEAM -> "Headless Steam"
+    LaunchMethod.GOLDBERG -> "Goldberg"
+    LaunchMethod.RAW -> rawLabel
+    LaunchMethod.STREAM -> "Stream"
+}
+
+private fun methodHelp(method: LaunchMethod): String = when (method) {
+    LaunchMethod.STEAMLITE -> HELP_STEAMLITE
+    LaunchMethod.APPSTEAM -> HELP_APPSTEAM
+    LaunchMethod.GOLDBERG -> HELP_GOLDBERG
+    LaunchMethod.RAW -> HELP_RAW
+    LaunchMethod.STREAM -> HELP_STREAM
+}
+
 // ── Shared content pieces ─────────────────────────────────────────────────────────────────────────
 
 /** The 4-chip "Launch with" segmented selector (SteamLite · App Steam · Goldberg · Raw). */
@@ -776,6 +1243,19 @@ private fun MethodDesc(method: LaunchMethod, source: GameSource, vacDetected: Bo
     )
 }
 
+// The option rows' subtitles, shared by OptionsBlock and the Deck three-column card.
+private const val SUB_DETAILS = "Details, achievements, DLC and cloud saves."
+private const val SUB_PASSTHROUGH = "Send the pad straight to the game. For classic games (HL2, CS:S)."
+private const val SUB_STEAM_INPUT = "Only for games that see pads through Steam alone (No Man's Sky). Keep OFF for games that already use a pad."
+
+private fun vacSubtitle(detectedVac: Boolean?): String = when (detectedVac) {
+    true -> "Detected: VAC-secured. Steam must start it (up to ~60 s wait)."
+    false -> "Detected: no VAC. Direct start after ~15 s is fine."
+    null -> "Auto-detected from Steam's app info."
+}
+
+private fun rememberSubtitle(gameName: String): String = "Skip this popup next time for $gameName."
+
 /** The option rows: Full details (Steam), Controller passthrough (Steam), Requires secure (VAC) launch (Steam), Remember. */
 @Composable
 private fun ColumnScope.OptionsBlock(
@@ -800,7 +1280,7 @@ private fun ColumnScope.OptionsBlock(
         OptionRow(
             title = "Full details & achievements",
             badge = null,
-            subtitle = if (compact) null else "Details, achievements, DLC and cloud saves.",
+            subtitle = if (compact) null else SUB_DETAILS,
             accent = accent,
             compact = compact,
             onHelp = { toggleHelp(HELP_DETAILS) },
@@ -814,7 +1294,7 @@ private fun ColumnScope.OptionsBlock(
         OptionRow(
             title = "Controller passthrough",
             badge = "NEW",
-            subtitle = if (compact) null else "Send the pad straight to the game. For classic games (HL2, CS:S).",
+            subtitle = if (compact) null else SUB_PASSTHROUGH,
             accent = accent,
             compact = compact,
             onHelp = { toggleHelp(HELP_PASS) },
@@ -823,7 +1303,7 @@ private fun ColumnScope.OptionsBlock(
         OptionRow(
             title = "Steam Input",
             badge = "NEW",
-            subtitle = if (compact) null else "Only for games that see pads through Steam alone (No Man's Sky). Keep OFF for games that already use a pad.",
+            subtitle = if (compact) null else SUB_STEAM_INPUT,
             accent = accent,
             compact = compact,
             onHelp = { toggleHelp(HELP_STEAMINPUT) },
@@ -832,11 +1312,7 @@ private fun ColumnScope.OptionsBlock(
         OptionRow(
             title = "Requires secure (VAC) launch",
             badge = "NEW",
-            subtitle = if (compact) null else when (detectedVac) {
-                true -> "Detected: VAC-secured. Steam must start it (up to ~60 s wait)."
-                false -> "Detected: no VAC. Direct start after ~15 s is fine."
-                null -> "Auto-detected from Steam's app info."
-            },
+            subtitle = if (compact) null else vacSubtitle(detectedVac),
             accent = accent,
             compact = compact,
             onHelp = { toggleHelp(HELP_VAC) },
@@ -846,7 +1322,7 @@ private fun ColumnScope.OptionsBlock(
     OptionRow(
         title = "Remember my choice",
         badge = null,
-        subtitle = if (compact) null else "Skip this popup next time for ${shortcut.name}.",
+        subtitle = if (compact) null else rememberSubtitle(shortcut.name),
         accent = accent,
         compact = compact,
         onHelp = { toggleHelp(HELP_REMEMBER) },
@@ -1254,11 +1730,19 @@ private fun rememberCoverModel(shortcut: Shortcut): Any? = remember(shortcut) {
 
 // ── Small shared widgets ──────────────────────────────────────────────────────────────────────────
 
+/** True inside the Deck landscape card: the "?" bubbles and ✕ stay tappable but take no D-pad focus (B closes). */
+private val LocalTouchOnlyChrome = androidx.compose.runtime.compositionLocalOf { false }
+
+/** [LocalTouchOnlyChrome] as a modifier: put it before the clickable it should keep out of the D-pad's way. */
+@Composable
+private fun Modifier.touchOnlyChrome(): Modifier =
+    if (LocalTouchOnlyChrome.current) this.focusProperties { canFocus = false } else this
+
 @Composable
 private fun CloseButton(onDismiss: () -> Unit, size: androidx.compose.ui.unit.Dp = 28.dp) {
     val cs = MaterialTheme.colorScheme
     Box(
-        Modifier.size(size).clip(RoundedCornerShape(8.dp)).border(1.dp, cs.outline, RoundedCornerShape(8.dp)).clickable(onClick = onDismiss),
+        Modifier.size(size).clip(RoundedCornerShape(8.dp)).border(1.dp, cs.outline, RoundedCornerShape(8.dp)).touchOnlyChrome().clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {
         Icon(Icons.Filled.Close, contentDescription = "Close", tint = cs.onSurfaceVariant, modifier = Modifier.size(size * 0.55f))
@@ -1273,6 +1757,7 @@ private fun HelpDot(accent: Color, highlighted: Boolean, onClick: () -> Unit, mo
         modifier.size(16.dp).clip(CircleShape)
             .background(if (highlighted) accent.copy(alpha = 0.16f) else cs.surfaceVariant)
             .border(1.dp, if (highlighted) accent.copy(alpha = 0.55f) else cs.outline, CircleShape)
+            .touchOnlyChrome()
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

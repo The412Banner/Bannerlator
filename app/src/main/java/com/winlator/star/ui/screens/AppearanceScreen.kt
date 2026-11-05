@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import kotlin.math.roundToInt
 import com.winlator.star.ui.components.ColorPicker
+import com.winlator.star.ui.deck.xmbGlowDraw
+import com.winlator.star.ui.deck.xmbGlowFor
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.theme.CUSTOM_PRESET_INDEX
 import com.winlator.star.ui.theme.Divider
@@ -84,21 +86,33 @@ fun AppearanceScreen() {
         SectionLabel("Interface Style")
         Text(
             text = "Classic keeps the side menu. Deck is a console-style layout with tabs across the top, " +
-                "made for controllers. Your theme and accent apply to both.",
+                "made for controllers. XMB is Deck with a full-screen XMB home: the tabs float over every page " +
+                "(switch them with L1/R1 or by touch), and Up from a game shows your stores, Downloads, Friends, " +
+                "Community configs and Add game. Your theme and accent apply to all three.",
             color = OnSurfaceVariant,
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(6.dp))
         val uiStyle by AppThemeState.uiStyle.collectAsState()
-        val styleOptions = listOf(
-            AppThemeState.UI_STYLE_CLASSIC to "Classic",
-            AppThemeState.UI_STYLE_DECK to "Deck",
-        )
+        val xmbHome by AppThemeState.deckXmbHome.collectAsState()
+        // XMB is Deck style with the XMB home on: three choices, one selected at a time.
+        val styleOptions = listOf("Classic", "Deck", "XMB")
+        val selectedStyle = when {
+            uiStyle != AppThemeState.UI_STYLE_DECK -> 0
+            xmbHome -> 2
+            else -> 1
+        }
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            styleOptions.forEachIndexed { index, (style, label) ->
+            styleOptions.forEachIndexed { index, label ->
                 SegmentedButton(
-                    selected = uiStyle == style,
-                    onClick = { AppThemeState.setUiStyle(style) },
+                    selected = selectedStyle == index,
+                    onClick = {
+                        when (index) {
+                            0 -> AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC)
+                            1 -> { AppThemeState.setDeckXmbHome(false); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                            else -> { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                        }
+                    },
                     shape = SegmentedButtonDefaults.itemShape(index, styleOptions.size),
                 ) { Text(label) }
             }
@@ -109,6 +123,13 @@ fun AppearanceScreen() {
 
         // ── Preset themes ────────────────────────────────────────────────
         SectionLabel("Theme Presets")
+        if (xmbHome) {
+            Text(
+                text = "XMB washes the theme color softly and evenly behind every screen; the swatches show that look.",
+                color = OnSurfaceVariant,
+                fontSize = 12.sp,
+            )
+        }
 
         val rows = themePresets.chunked(4)
         rows.forEach { row ->
@@ -121,6 +142,7 @@ fun AppearanceScreen() {
                         isSelected = isSelected,
                         isCustomSlot = index == CUSTOM_PRESET_INDEX,
                         customAccent = customAccent,
+                        xmbWash = xmbHome,
                         onClick = { AppThemeState.setPreset(index) },
                         modifier = Modifier.weight(1f)
                     )
@@ -185,31 +207,42 @@ fun AppearanceScreen() {
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(6.dp))
-        var orientationMode by remember { mutableStateOf(AppOrientation.mode(context)) }
-        val orientationOptions = listOf(
-            AppOrientation.AUTO to "Auto",
-            AppOrientation.PORTRAIT to "Portrait",
-            AppOrientation.LANDSCAPE to "Landscape",
-        )
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            orientationOptions.forEachIndexed { index, (mode, label) ->
-                SegmentedButton(
-                    selected = orientationMode == mode,
-                    onClick = {
-                        orientationMode = mode
-                        AppOrientation.setMode(context, mode)
-                        (context as? android.app.Activity)?.let { AppOrientation.apply(it) }
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(index, orientationOptions.size),
-                ) { Text(label) }
+        // The XMB home keeps its own lock (landscape, or portrait from the rotate button in its bars);
+        // every other mode uses the setting below.
+        if (selectedStyle == 2) {
+            Text(
+                text = "The XMB home stays in landscape and never turns with the device. " +
+                    "Use the rotate button in its top bar to switch to portrait and back.",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp,
+            )
+        } else {
+            var orientationMode by remember { mutableStateOf(AppOrientation.mode(context)) }
+            val orientationOptions = listOf(
+                AppOrientation.AUTO to "Auto",
+                AppOrientation.PORTRAIT to "Portrait",
+                AppOrientation.LANDSCAPE to "Landscape",
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                orientationOptions.forEachIndexed { index, (mode, label) ->
+                    SegmentedButton(
+                        selected = orientationMode == mode,
+                        onClick = {
+                            orientationMode = mode
+                            AppOrientation.setMode(context, mode)
+                            (context as? android.app.Activity)?.let { AppOrientation.apply(it) }
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index, orientationOptions.size),
+                    ) { Text(label) }
+                }
             }
+            Text(
+                text = "Auto follows device rotation (default).",
+                color = OnSurfaceVariant,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
-        Text(
-            text = "Auto follows device rotation (default).",
-            color = OnSurfaceVariant,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(top = 4.dp),
-        )
 
         Spacer(Modifier.height(4.dp))
         Box(Modifier.fillMaxWidth().height(1.dp).background(Divider))
@@ -334,10 +367,17 @@ private fun PresetSwatch(
     isSelected: Boolean,
     isCustomSlot: Boolean,
     customAccent: Color,
+    xmbWash: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val accent = if (isCustomSlot) customAccent else preset.primary
+    // XMB: the swatch shows the glow the app would paint with this preset (the same maths and drawing as the real backdrop),
+    // not the preset's flat background colour, and its mock-up bars are glass over it.
+    val glow = remember(preset, accent, xmbWash) {
+        if (xmbWash) xmbGlowFor(preset.background, accent, preset.onBackground, preset.onSurface, preset.onSurfaceVariant) else null
+    }
+    val glass = glow?.let { it.frost.tint.copy(alpha = 0.22f) }
     Column(
         modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -347,7 +387,7 @@ private fun PresetSwatch(
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(preset.background)
+                .then(if (glow != null) xmbGlowDraw(glow) else Modifier.background(preset.background))
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) MaterialTheme.colorScheme.primary else Divider,
@@ -360,10 +400,10 @@ private fun PresetSwatch(
                 modifier = Modifier.fillMaxSize().padding(6.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(2.dp)).background(preset.surface))
+                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surface))
                 Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(accent))
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(preset.surfaceVariant))
-                Box(Modifier.width(20.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(preset.surfaceVariant))
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surfaceVariant))
+                Box(Modifier.width(20.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surfaceVariant))
             }
             if (isSelected) {
                 Box(

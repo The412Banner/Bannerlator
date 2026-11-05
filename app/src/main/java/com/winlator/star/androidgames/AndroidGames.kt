@@ -246,7 +246,7 @@ object AndroidGames {
         return bmp
     }
 
-    private fun portraitTile(context: Context, pkg: String): Bitmap? {
+    internal fun portraitTile(context: Context, pkg: String): Bitmap? {
         val icon = iconBitmap(context, pkg, TILE_ICON) ?: return null
         val tile = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(tile)
@@ -282,7 +282,7 @@ object AndroidGames {
             ) iconName = base
         }
         val file = File(desktopDir, "$base.desktop")
-        val text = AndroidGameEntry.desktopEntry(app.label, app.packageName, app.activity, iconName)
+        val text = AndroidGameEntry.desktopEntry(app.label, app.packageName, app.activity, iconName, System.currentTimeMillis())
         if (!FileUtils.writeString(file, text)) {
             Log.w(TAG, "could not write $file")
             return null
@@ -302,8 +302,15 @@ object AndroidGames {
         val home = shortcut.container ?: return
         if (!isHome(home)) return
         val root = home.rootDir?.path ?: return
-        shortcut.iconFile?.takeIf { it.isFile && it.path.startsWith(root) }?.delete()
-        shortcut.customCoverArtPath?.takeIf { it.startsWith(root) }?.let { File(it).delete() }
+        shortcut.iconFile?.takeIf { it.isFile && it.path.startsWith(root) }?.let {
+            it.delete()
+            // What a custom cover replaced is kept beside the icon; nothing else uses it.
+            Shortcut.originalOf(it).delete()
+        }
+        shortcut.customCoverArtPath?.takeIf { it.startsWith(root) }?.let {
+            File(it).delete()
+            Shortcut.originalOf(File(it)).delete()
+        }
     }
 
     fun isInstalled(context: Context, pkg: String): Boolean = try {

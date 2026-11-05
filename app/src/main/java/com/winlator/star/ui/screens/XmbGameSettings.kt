@@ -724,7 +724,8 @@ private fun renameAndReturn(xmb: XmbScope, s: Shortcut, newBase: String) {
     }
 }
 
-private fun iconPickerMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
+/** The file browser on the usual picture folders, showing images only; [onPick] gets the chosen file. */
+private fun imageBrowserMenu(xmb: XmbScope, title: String, onPick: (File) -> Unit): XmbMenu {
     val start = File(android.os.Environment.getExternalStorageDirectory(), "Pictures").takeIf { it.isDirectory }
         ?: android.os.Environment.getExternalStorageDirectory()
     val roots = listOf(
@@ -733,12 +734,41 @@ private fun iconPickerMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
         "Internal storage" to android.os.Environment.getExternalStorageDirectory(),
     ).filter { it.second.isDirectory }
     val imageExt = setOf("png", "jpg", "jpeg", "webp", "bmp")
-    return xmbFileBrowserMenu(xmb, "Select icon image", start, roots, { it.extension.lowercase() in imageExt }) { f ->
+    return xmbFileBrowserMenu(xmb, title, start, roots, { it.extension.lowercase() in imageExt }, onPick)
+}
+
+private fun iconPickerMenu(xmb: XmbScope, s: Shortcut): XmbMenu =
+    imageBrowserMenu(xmb, "Select icon image") { f ->
         xmb.scope.launch {
             val ok = withContext(Dispatchers.IO) { xmbApplyIconFile(s, f) }
             xmb.toast(if (ok) "Icon updated." else "Couldn't read that image.")
             if (ok) { xmb.pop(); xmb.reloadGames() }
         }
+    }
+
+/**
+ * "Add your own cover": the picked image becomes the game's cover everywhere (CustomCover cuts it to the
+ * 2:3 cover shape and writes both the full cover and the XMB icon). A bad pick leaves the browser open.
+ */
+private fun coverPickerMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
+    val ctx = xmb.context
+    return imageBrowserMenu(xmb, ctx.getString(R.string.xmb_cover_browser_title)) { f ->
+        xmb.scope.launch {
+            val ok = withContext(Dispatchers.IO) { CustomCover.apply(s, f) != null }
+            xmb.toast(ctx.getString(if (ok) R.string.xmb_cover_applied else R.string.xmb_cover_unreadable))
+            if (ok) { xmb.pop(); xmb.saved(); xmb.refresh(); xmb.reloadGames() }
+        }
+    }
+}
+
+/** "Remove your cover": the cover the game had before comes back (CustomCover.remove). */
+private fun removeCustomCover(xmb: XmbScope, s: Shortcut) {
+    val ctx = xmb.context
+    xmb.scope.launch {
+        val ok = withContext(Dispatchers.IO) { CustomCover.remove(ctx, s) }
+        xmb.toast(ctx.getString(if (ok) R.string.xmb_cover_removed else R.string.xmb_cover_remove_failed))
+        xmb.refresh()
+        if (ok) { xmb.saved(); xmb.reloadGames() }
     }
 }
 
@@ -991,6 +1021,14 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
         rows += XmbRow.Text("name", "Game name", Icons.Filled.ShortText, s.name) { v ->
             val nb = v.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
             if (nb.isNotEmpty() && nb != s.name) renameAndReturn(xmb, s, nb)
+        }
+        // Next to the cover a game gets from Scrape cover: the user's own image, and the way back from it.
+        val coverCtx = xmb.context
+        rows += XmbRow.Link("coverAdd", coverCtx.getString(R.string.xmb_cover_add), Icons.Filled.Image,
+            subtitle = coverCtx.getString(R.string.xmb_cover_add_hint)) { coverPickerMenu(xmb, s) }
+        if (CustomCover.isCustom(s)) {
+            rows += XmbRow.Action("coverRemove", coverCtx.getString(R.string.xmb_cover_remove), Icons.Filled.Delete,
+                subtitle = coverCtx.getString(R.string.xmb_cover_remove_hint)) { removeCustomCover(xmb, s) }
         }
         rows += XmbRow.Link("search", "Search Steam", Icons.Filled.Search, subtitle = "Pick a result to fill every field") {
             results = emptyList(); searching = true

@@ -28,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.xmbCardFill
+import com.winlator.star.ui.deck.xmbCardLine
 
 /** The Epic **Profile** tab, fed by one [EpicUserData] fetch. No Friends tab: the roster is empty for
  *  most accounts, so the count and a short list live here instead. */
@@ -39,8 +41,8 @@ private fun EpicFriendRow(f: EpicUserData.Friend, modifier: Modifier = Modifier)
         modifier = modifier
             .steamFocusRing(shape)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -86,8 +88,8 @@ fun EpicProfileTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

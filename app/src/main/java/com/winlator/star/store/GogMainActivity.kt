@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
-import com.winlator.star.ui.theme.WinlatorTheme
 
 /**
  * The GOG section's host — flipped from a login card + "View Game Library" button to a
@@ -70,6 +69,15 @@ class GogMainActivity : ComponentActivity() {
     /** Bumped when the WebView closes so the host re-syncs the library (a claim may have landed). */
     private var webReturnTick by mutableStateOf(0)
 
+    // XMB home: L2 / R2 (buttons or analog triggers) step through the rail's tabs; see StoreXmbInput.
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        StoreXmbInput.onKey(event) || super.dispatchKeyEvent(event)
+
+    override fun dispatchGenericMotionEvent(ev: android.view.MotionEvent): Boolean {
+        StoreXmbInput.onMotion(ev)
+        return super.dispatchGenericMotionEvent(ev)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppOrientation.apply(this)
@@ -77,7 +85,7 @@ class GogMainActivity : ComponentActivity() {
         startTab = intent?.getIntExtra(EXTRA_TAB, 0) ?: 0
         refreshView()
         setContent {
-            WinlatorTheme {
+            StoreXmbTheme {
                 if (isLoggedIn) {
                     GogStorefrontHost(
                         initialTab = startTab,
@@ -211,10 +219,10 @@ private fun GogStorefrontHost(
             }
         },
         railActions = {
-            IconButton(onClick = { library.refresh(true) }, modifier = Modifier.steamFocusRing()) {
+            IconButton(onClick = { library.refresh(true) }, modifier = Modifier.steamFocusRing().xmbRailStop()) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Sync library", tint = MaterialTheme.colorScheme.primary)
             }
-            DownloadsButton()
+            DownloadsButton(Modifier.xmbRailStop(ring = true))
             StoreRailOverflow(
                 items = listOf<Triple<String, ImageVector, () -> Unit>>(
                     Triple("Full library screen", Icons.Filled.ViewList, { ctx.startActivity(Intent(ctx, GogGamesActivity::class.java)) }),
@@ -269,7 +277,7 @@ fun StoreRailOverflow(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.steamFocusRing()) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.steamFocusRing().xmbRailStop()) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More actions", tint = MaterialTheme.colorScheme.primary)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

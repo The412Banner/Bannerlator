@@ -1,5 +1,7 @@
 package com.winlator.star.androidgames
 
+import com.winlator.star.container.ShortcutOrder
+
 /**
  * The on-disk shape of an Android game in the Games list, kept free of Android classes so it can be
  * unit-tested on the JVM. An Android game is an ordinary `.desktop` shortcut — that is what the
@@ -31,8 +33,9 @@ object AndroidGameEntry {
      * The whole `.desktop` text for one Android game. [iconName] names the PNG under the
      * container's icon dir (the Games card reads `Icon=`, not the cover art). `eos=0` is written up
      * front so the EOS badge's background folder walk never runs on a path that isn't a folder.
+     * [addedAt] (epoch millis, 0 = not stamped) puts the game first in the recent order.
      */
-    fun desktopEntry(name: String, pkg: String, activity: String?, iconName: String?): String =
+    fun desktopEntry(name: String, pkg: String, activity: String?, iconName: String?, addedAt: Long = 0L): String =
         buildString {
             append("[Desktop Entry]\n")
             append("Name=").append(name).append('\n')
@@ -46,6 +49,7 @@ object AndroidGameEntry {
             append(EXTRA_PACKAGE).append('=').append(pkg).append('\n')
             if (!activity.isNullOrEmpty()) append(EXTRA_ACTIVITY).append('=').append(activity).append('\n')
             append("eos=0\n")
+            if (addedAt > 0L) append(ShortcutOrder.addedAtLine(addedAt))
         }
 
     /** The `Icon=` name of an entry's [Desktop Entry] section, or null when it has none. */

@@ -2,6 +2,7 @@ package com.winlator.star.core;
 
 import android.content.Context;
 
+import com.winlator.star.container.ShortcutOrder;
 import com.winlator.star.xenvironment.ImageFs;
 
 import java.io.DataInputStream;
@@ -233,6 +234,9 @@ public abstract class MSLink {
             pw.write("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + filePath + "\n");
             pw.write("Type=Application\n");
             pw.write("StartupNotify=True\n");
+            // A .lnk that shows up in the desktop dir becomes a game now: first in the recent order.
+            pw.write("\n[Extra Data]\n");
+            pw.write(ShortcutOrder.addedAtLine(System.currentTimeMillis()));
             pw.close();
             fos.close();
         }

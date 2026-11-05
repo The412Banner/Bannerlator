@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.xmbCardFill
+import com.winlator.star.ui.deck.xmbCardLine
 
 /**
  * The Amazon **Store** tab.
@@ -75,81 +78,89 @@ fun AmazonStoreTab(
         if (q.length < 2) emptyList() else items.map { it.first }.filter { it.title.lowercase().contains(q) }
     }
 
-    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        CatalogSearchField(
-            query = query,
-            placeholder = "Search your Amazon games…",
-            onQueryChange = { query = it },
-            onClear = { query = ""; focusManager.clearFocus() },
-            onSearch = { focusManager.clearFocus() },
-        )
-        if (query.trim().length >= 2) {
-            CatalogResults(
-                results = results,
-                searching = false,
-                query = query.trim(),
-                wide = wide,
-                storeLabel = "Amazon",
-                emptyBody = "Nothing in your Amazon library matched that. New Prime Gaming claims appear after a sync.",
-                actionFor = ::actionFor,
-                onOpen = ::open,
-                onAction = ::open,
-                modifier = Modifier.weight(1f),
-            )
-            return@Column
-        }
-
-        val prime: @Composable () -> Unit = { PrimeGamingCard(onOpenWeb, Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) }
-        val heroCard: @Composable () -> Unit = {
-            hero?.let { h ->
-                CatalogHeroCard(
-                    item = h,
-                    action = actionFor(h),
-                    storeLabel = "Amazon",
-                    onOpen = { open(h) },
-                    onAction = { open(h) },
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    eyebrow = if (h.id in state.installedIds) "FROM YOUR LIBRARY" else "READY TO INSTALL",
+    val header = rememberXmbHeader()
+    CompositionLocalProvider(LocalXmbHeader provides header) {
+        Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            header.Header {
+                CatalogSearchField(
+                    query = query,
+                    placeholder = "Search your Amazon games…",
+                    onQueryChange = { query = it },
+                    onClear = { query = ""; focusManager.clearFocus() },
+                    onSearch = { focusManager.clearFocus() },
                 )
             }
-        }
+            if (query.trim().length >= 2) {
+                CatalogResults(
+                    results = results,
+                    searching = false,
+                    query = query.trim(),
+                    wide = wide,
+                    storeLabel = "Amazon",
+                    emptyBody = "Nothing in your Amazon library matched that. New Prime Gaming claims appear after a sync.",
+                    actionFor = ::actionFor,
+                    onOpen = ::open,
+                    onAction = ::open,
+                    modifier = Modifier.weight(1f),
+                )
+                return@Column
+            }
 
-        if (wide) {
-            Row(modifier = Modifier.weight(1f).fillMaxSize()) {
+            val prime: @Composable () -> Unit = { PrimeGamingCard(onOpenWeb, Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) }
+            val heroCard: @Composable () -> Unit = {
+                hero?.let { h ->
+                    CatalogHeroCard(
+                        item = h,
+                        action = actionFor(h),
+                        storeLabel = "Amazon",
+                        onOpen = { open(h) },
+                        onAction = { open(h) },
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        eyebrow = if (h.id in state.installedIds) "FROM YOUR LIBRARY" else "READY TO INSTALL",
+                    )
+                }
+            }
+
+            if (wide) {
+                Row(modifier = Modifier.weight(1f).fillMaxSize()) {
+                    LazyColumn(
+                        state = rememberTrackedListState(),
+                        modifier = Modifier.weight(0.42f).fillMaxHeight().focusGroup(),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                    ) {
+                        item(key = "prime") { prime() }
+                        item(key = "hero") { heroCard() }
+                        if (notInstalled.isNotEmpty()) {
+                            item(key = "ni_hdr") { StoreSectionHeader("Ready to install", "${notInstalled.size}") }
+                            items(notInstalled, key = { "ni_${it.id}" }) { g ->
+                                CatalogResultRow(g, actionFor(g), "Amazon", { open(g) }, { open(g) },
+                                    Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
+                            }
+                        }
+                    }
+                    LazyColumn(
+                        state = rememberTrackedListState(),
+                        modifier = Modifier.weight(0.58f).fillMaxHeight().focusGroup(),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                    ) {
+                        catalogRail("Updates available", "Newer build on Amazon", updatable, "Amazon", ::actionFor, ::open, ::open)
+                        catalogRail("Installed", "Play now", installed, "Amazon", ::actionFor, ::open, ::open)
+                        if (state.games.isEmpty()) item(key = "empty") { EmptyLibraryNotice(state) }
+                    }
+                }
+            } else {
                 LazyColumn(
-                    modifier = Modifier.weight(0.42f).fillMaxHeight().focusGroup(),
+                    state = rememberTrackedListState(),
+                    modifier = Modifier.weight(1f).fillMaxSize().focusGroup(),
                     contentPadding = PaddingValues(bottom = 24.dp),
                 ) {
                     item(key = "prime") { prime() }
                     item(key = "hero") { heroCard() }
-                    if (notInstalled.isNotEmpty()) {
-                        item(key = "ni_hdr") { StoreSectionHeader("Ready to install", "${notInstalled.size}") }
-                        items(notInstalled, key = { "ni_${it.id}" }) { g ->
-                            CatalogResultRow(g, actionFor(g), "Amazon", { open(g) }, { open(g) },
-                                Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
-                        }
-                    }
-                }
-                LazyColumn(
-                    modifier = Modifier.weight(0.58f).fillMaxHeight().focusGroup(),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                ) {
+                    catalogRail("Ready to install", "Owned, not installed", notInstalled, "Amazon", ::actionFor, ::open, ::open)
                     catalogRail("Updates available", "Newer build on Amazon", updatable, "Amazon", ::actionFor, ::open, ::open)
                     catalogRail("Installed", "Play now", installed, "Amazon", ::actionFor, ::open, ::open)
                     if (state.games.isEmpty()) item(key = "empty") { EmptyLibraryNotice(state) }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxSize().focusGroup(),
-                contentPadding = PaddingValues(bottom = 24.dp),
-            ) {
-                item(key = "prime") { prime() }
-                item(key = "hero") { heroCard() }
-                catalogRail("Ready to install", "Owned, not installed", notInstalled, "Amazon", ::actionFor, ::open, ::open)
-                catalogRail("Updates available", "Newer build on Amazon", updatable, "Amazon", ::actionFor, ::open, ::open)
-                catalogRail("Installed", "Play now", installed, "Amazon", ::actionFor, ::open, ::open)
-                if (state.games.isEmpty()) item(key = "empty") { EmptyLibraryNotice(state) }
             }
         }
     }
@@ -177,8 +188,8 @@ private fun PrimeGamingCard(onOpenWeb: (url: String, title: String) -> Unit, mod
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(16.dp),
     ) {
         Text(

@@ -38,6 +38,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.xmbCardFill
+import com.winlator.star.ui.deck.xmbCardLine
 import coil.compose.AsyncImage
 
 /**
@@ -56,7 +58,7 @@ fun StoreAvatar(candidates: List<String>, name: String, size: androidx.compose.u
             .size(size)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -84,8 +86,8 @@ private fun FriendRow(f: GogUserData.Friend, modifier: Modifier = Modifier) {
         modifier = modifier
             .steamFocusRing(shape)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -130,8 +132,8 @@ fun GogProfileTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -240,8 +242,8 @@ fun StatTile(label: String, value: Int, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(

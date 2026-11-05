@@ -1,5 +1,10 @@
 package com.winlator.star.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,10 +43,19 @@ fun AppNavGraph(
     // The Deck shell's own editor route for the Containers list's Edit / New Container Defaults (null = the classic form).
     // The classic shell passes nothing.
     containerEditorRoute: ((Int) -> String?)? = null,
+    // The XMB home switches pages with no transition: the default cross-fade (700 ms) keeps the old page on screen
+    // while the new one fades in. Everyone else keeps that default.
+    instantPages: Boolean = false,
 ) {
     val activity = LocalContext.current as FragmentActivity
 
-    NavHost(navController = navController, startDestination = startRoute, modifier = modifier) {
+    NavHost(
+        navController = navController,
+        startDestination = startRoute,
+        modifier = modifier,
+        enterTransition = { if (instantPages) EnterTransition.None else fadeIn(animationSpec = tween(700)) },
+        exitTransition = { if (instantPages) ExitTransition.None else fadeOut(animationSpec = tween(700)) },
+    ) {
 
 
         composable(Screen.Containers.route) {

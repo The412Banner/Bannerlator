@@ -37,6 +37,7 @@ import com.winlator.star.communityconfigs.UploadedConfigsStore.UploadedConfig
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.core.GPUInformation
 import com.winlator.star.core.GameFolderScanner
 import com.winlator.star.core.GameIdentifier
@@ -1147,7 +1148,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 val lines = dest.readLines().map { line ->
                     if (line.startsWith("container_id:")) "container_id:${container.id}" else line
                 }
-                dest.writeText(lines.joinToString("\n") + "\n")
+                // An imported game is a new one: first in the recent order, whatever it carried over.
+                dest.writeText(ShortcutOrder.withAddedAt(lines.joinToString("\n") + "\n", System.currentTimeMillis()))
             }
             refresh()
             ImportResult.Success(dest.nameWithoutExtension)

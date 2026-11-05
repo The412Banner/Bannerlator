@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.XmbKeyboardWindow
 
 /**
  * Every Xbox Cloud Gaming player setting, as rows a controller can drive (each value has − / + buttons).
@@ -207,8 +208,8 @@ private fun PanelContent(
         AlertDialog(
             onDismissRequest = { naming = false },
             title = { Text("Save picture profile") },
-            text = { OutlinedTextField(value = name, onValueChange = { name = it.replace(":", "").replace(",", "").take(40) }, singleLine = true,
-                label = { Text("Name") }) },
+            text = { XmbKeyboardWindow { OutlinedTextField(value = name, onValueChange = { name = it.replace(":", "").replace(",", "").take(40) }, singleLine = true,
+                label = { Text("Name") }) } },
             confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = {
                 XboxCloudSettings.saveWineProfile(ctx, name.trim(), settings)
                 profiles = XboxCloudSettings.wineProfiles(ctx)

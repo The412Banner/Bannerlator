@@ -57,8 +57,8 @@ public final class WaylandTextInput implements WaylandCompositor.TextInputListen
     private final SurfaceInputView view;
     private final InputMethodManager imm;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private boolean textActive;        // a program accepts IME text
-    private boolean caretKnown;        // it reported a caret rectangle
+    private volatile boolean textActive;   // a program accepts IME text
+    private volatile boolean caretKnown;   // it reported a caret rectangle
     private boolean autoShown;         // we opened the keyboard ourselves
     private boolean userForced;        // the app's keyboard toggle opened it
     private View focusBefore;          // who had focus before we took it for the IME
@@ -78,6 +78,9 @@ public final class WaylandTextInput implements WaylandCompositor.TextInputListen
      *  the caret (winewayland enables for every focused window) the keyboard stays in key mode, so
      *  a game gets key events, not IME strings. */
     boolean textMode() { return textActive && caretKnown; }
+
+    /** Read-only view of {@link #textMode()} for the XMB keyboard's Wayland typer, which asks from its own thread: text goes to the program as text while it accepts it. */
+    public boolean acceptsText() { return textMode(); }
 
     public void start() { WaylandCompositor.setTextInputListener(this); }
 

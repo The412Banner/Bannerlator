@@ -17,6 +17,7 @@ import com.winlator.star.R;
 import com.winlator.star.container.Container;
 import com.winlator.star.container.ContainerManager;
 import com.winlator.star.container.Shortcut;
+import com.winlator.star.container.ShortcutOrder;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.ImageUtils;
 import com.winlator.star.core.WinePath;
@@ -369,7 +370,10 @@ public final class StarLaunchBridge {
                         + "Type=Application\n"
                         + "StartupWMClass=explorer\n"
                         + "\n"
-                        + "[Extra Data]\n";
+                        + "[Extra Data]\n"
+                        // A game added now sits first in the recent order (see ShortcutOrder); lastPlayed
+                        // stays unset so it does not pass for played.
+                        + ShortcutOrder.addedAtLine(System.currentTimeMillis());
 
                 // Tag Steam-origin shortcuts so the Games-tab Cloud Saves menu can gate on
                 // storeSource and the Save Manager can read the appId straight off the shortcut.

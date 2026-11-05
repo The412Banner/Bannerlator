@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.xmbDoneActions
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
@@ -63,7 +65,6 @@ import com.winlator.star.store.download.DownloadScope
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.StoreDownloadHooks
-import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,7 +119,7 @@ class EpicGamesActivity : ComponentActivity() {
         EpicLibrarySync.seed(this)
 
         setContent {
-            WinlatorTheme {
+            StoreKeyboardTheme {
                 EpicGamesScreen(
                     syncText = syncText,
                     searchQuery = searchQuery,
@@ -683,23 +684,26 @@ private fun EpicGamesScreen(
             DownloadsButton()
         }
 
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                cursorColor = MaterialTheme.colorScheme.onSurface,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            ),
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
-        )
+        XmbTapToEdit(Modifier.fillMaxWidth()) { fieldModifier, stopEditing ->
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                placeholder = { Text("Search games\u2026", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                singleLine = true,
+                modifier = fieldModifier,
+                keyboardActions = xmbDoneActions(stopEditing),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.onSurface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+            )
+        }
 
         Text(
             text = syncText,

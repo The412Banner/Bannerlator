@@ -512,8 +512,14 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             } else {
                 AnimatedContent(targetState = viewMode, label = "layout") { mode ->
                     if (mode == ShortcutViewMode.XMB) {
+                        // The row holds the latest XMB_ROW_LIMIT games (the rest are on the All Games page); picking games to
+                        // select needs them all.
+                        val xmbRow = remember(shortcuts, selectionMode) {
+                            if (selectionMode) shortcuts else xmbRowOf(xmbRecentFirst(context, shortcuts))
+                        }
                         ShortcutsXmbView(
-                            shortcuts = shortcuts,
+                            shortcuts = xmbRow,
+                            allShortcuts = shortcuts,
                             selectionMode = selectionMode,
                             selectedPaths = selectedPaths,
                             onToggleSelect = { selectedPaths = selectedPaths.toggle(it.file.path) },
@@ -9848,6 +9854,12 @@ private fun downloadBitmapOrNull(url: String): Bitmap? = try {
 internal fun applySteamCover(container: Container, base: String, appId: Int): Bitmap? {
     val shortcutFile = File(container.getDesktopDir(), "$base.desktop")
     if (!shortcutFile.isFile) return null
+    // A cover the user picked stays (coverSource=user); only the Steam link is recorded. The editor's
+    // "use Steam's art" clears the mark before it calls here.
+    if (runCatching { CustomCover.isCustom(Shortcut(container, shortcutFile)) }.getOrDefault(false)) {
+        recordSteamAppId(container, base, appId)
+        return null
+    }
     // The tall library cover Steam lists for the app (older games name it differently), else the
     // usual cover file, else the header.
     val listed = runCatching { SteamStoreSearch.libraryAssets(appId) }.getOrDefault(LinkedHashMap())
@@ -9858,6 +9870,7 @@ internal fun applySteamCover(container: Container, base: String, appId: Int): Bi
         val shortcut = Shortcut(container, shortcutFile)
         shortcut.putExtra("steamAppId", appId.toString())
         if (bmp != null) {
+            CustomCover.forget(shortcut) // the saved originals of an earlier custom cover no longer apply
             shortcut.saveCustomCoverArt(bmp) // persists cover + saveData() (writes the extra too)
             container.getIconsDir(64)?.let { iconsDir ->
                 if (!iconsDir.exists()) iconsDir.mkdirs()
@@ -9922,7 +9935,11 @@ internal fun launchShortcutNow(activity: Activity, shortcut: Shortcut, preflight
     }
 }
 
-/** Extra Data key holding the wall-clock millis of the game's last launch (absent = never launched from here). */
+/**
+ * Extra Data key holding the wall-clock millis of the game's last launch (absent = never launched from here).
+ * Only a launch writes it; a game that was merely added carries `addedAt` instead (see ShortcutOrder), so
+ * it never passes for played.
+ */
 internal const val EXTRA_LAST_PLAYED = "lastPlayed"
 
 /**

@@ -71,6 +71,8 @@ import coil.compose.AsyncImage
 import com.winlator.star.R
 import com.winlator.star.store.blsteam.BlPlayerProfile
 import com.winlator.star.store.blsteam.BlSteamEngine
+import com.winlator.star.ui.deck.xmbCardFill
+import com.winlator.star.ui.deck.xmbCardLine
 import com.winlator.star.ui.theme.LocalAccentDim
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.Locale
@@ -321,8 +323,8 @@ private fun IdentityCard(c: ProfileTabContent) {
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .fillMaxWidth()
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape),
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape),
     ) {
         // Banner: an accent wash, the same gradient treatment ProfileHero uses. When the account has
         // an equipped profile background, that art is drawn over it.
@@ -387,7 +389,7 @@ private fun IdentityCard(c: ProfileTabContent) {
                         .offset(x = 3.dp, y = 3.dp)
                         .size(15.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                        .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
                         .padding(2.5.dp)
                         .clip(CircleShape)
                         .background(dotColor(presenceOf(c.personaState))),
@@ -461,7 +463,7 @@ private fun ChangeAccountButton(onClick: () -> Unit) {
             .heightIn(min = 48.dp)
             .steamFocusRing(shape)
             .clip(shape)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -559,7 +561,7 @@ private fun MiniButton(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .steamFocusRing(shape)
             .clip(shape)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )
@@ -574,7 +576,7 @@ private fun SteamIdRow(steamId: Long, onCopy: () -> Unit) {
             .steamFocusRing(shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.background)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onCopy)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -638,11 +640,11 @@ private fun StatusChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clip(shape)
             .background(
                 if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceContainer,
+                else xmbCardFill(MaterialTheme.colorScheme.surfaceContainer),
             )
             .border(
                 1.dp,
-                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                if (selected) MaterialTheme.colorScheme.primary else xmbCardLine(MaterialTheme.colorScheme.outline),
                 shape,
             )
             .clickable(onClick = onClick)
@@ -733,8 +735,8 @@ private fun StatTile(
         modifier = modifier
             .then(if (onClick != null) Modifier.steamFocusRing(shape) else Modifier)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -855,8 +857,8 @@ private fun BadgeTile(
             modifier = Modifier
                 .size(48.dp)
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .border(1.dp, MaterialTheme.colorScheme.outline, shape),
+                .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape),
         ) {
             AsyncImage(
                 model = candidates[attempt],
@@ -943,8 +945,8 @@ private fun RecentRow(game: SteamFriendsStore.RecentGame, onClick: () -> Unit) {
             .fillMaxWidth()
             .steamFocusRing(shape)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .clickable(onClick = onClick)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,

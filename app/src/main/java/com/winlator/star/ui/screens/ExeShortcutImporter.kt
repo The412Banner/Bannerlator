@@ -7,6 +7,7 @@ import android.util.Log
 import com.winlator.star.container.Container
 import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GameIdentifier
 import com.winlator.star.core.WinePath
@@ -182,6 +183,9 @@ internal object ExeShortcutImporter {
             val oldIcon = File(dir, "$oldBase.png")
             val newIcon = File(dir, "$newBase.png")
             if (oldIcon.isFile && !newIcon.isFile) oldIcon.renameTo(newIcon)
+            // The icon a custom cover replaced (see CustomCover) stays with the game.
+            val oldOriginal = Shortcut.originalOf(oldIcon)
+            if (oldOriginal.isFile) oldOriginal.renameTo(Shortcut.originalOf(newIcon))
         }
 
         // Cover-art PNG (container root: app_data/cover_arts/<base>.png).
@@ -189,6 +193,7 @@ internal object ExeShortcutImporter {
         val oldCover = File(coverDir, "$oldBase.png")
         val newCover = File(coverDir, "$newBase.png")
         if (oldCover.isFile && !newCover.isFile) oldCover.renameTo(newCover)
+        Shortcut.originalOf(oldCover).takeIf { it.isFile }?.renameTo(Shortcut.originalOf(newCover))
 
         // Rewrite the Icon= line (raw — Shortcut has no setter), then repoint customCoverArtPath.
         // saveData() copies the Desktop Entry lines verbatim, so the rewritten Icon= survives.
@@ -233,6 +238,8 @@ internal object ExeShortcutImporter {
             // here) so the Games list can show a CUSTOM origin badge, mirroring how the store paths
             // stamp storeSource=steam/epic. Store installs use their own writers, never this one.
             append("storeSource=custom\n")
+            // A game added now sits first in the recent order; lastPlayed stays unset (see ShortcutOrder).
+            append(ShortcutOrder.addedAtLine(System.currentTimeMillis()))
         }
         shortcutFile.writeText(content)
         Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $winPath ($exeFile)")

@@ -5,6 +5,7 @@ import android.text.format.DateUtils
 import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.linux.LinuxShortcuts
 import com.winlator.star.ui.screens.EXTRA_LAST_PLAYED
 import com.winlator.star.ui.screens.isAmazonShortcut
@@ -19,8 +20,15 @@ import com.winlator.star.ui.screens.isSteamOriginShortcut
  * launch from the shortcut's own Extra Data (written by the shared launch path).
  */
 
-/** Total playtime (ms), play count and last launch (epoch ms, 0 = never launched since it was tracked). */
-internal data class PlayStats(val ms: Long, val count: Int, val lastPlayed: Long)
+/**
+ * Total playtime (ms), play count and last launch (epoch ms, 0 = never launched since it was tracked).
+ * [addedAt] is when the shortcut was created (0 = before it was recorded). It only feeds [recentKey]:
+ * [lastPlayed] stays the one thing that says a game was played.
+ */
+internal data class PlayStats(val ms: Long, val count: Int, val lastPlayed: Long, val addedAt: Long = 0L) {
+    /** What the recent order sorts on, newest first: a new game counts as the latest played until it is really played. */
+    val recentKey: Long get() = ShortcutOrder.recentKey(lastPlayed, addedAt)
+}
 
 internal fun readPlayStats(context: Context, shortcuts: List<Shortcut>): Map<String, PlayStats> {
     val prefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
@@ -29,11 +37,17 @@ internal fun readPlayStats(context: Context, shortcuts: List<Shortcut>): Map<Str
             ms = prefs.getLong("${s.name}_playtime", 0L),
             count = prefs.getInt("${s.name}_play_count", 0),
             lastPlayed = lastPlayedOf(s),
+            addedAt = addedAtOf(s),
         )
     }
 }
 
 internal fun lastPlayedOf(s: Shortcut): Long = s.getExtra(EXTRA_LAST_PLAYED, "").toLongOrNull() ?: 0L
+
+internal fun addedAtOf(s: Shortcut): Long = ShortcutOrder.parse(s.getExtra(ShortcutOrder.EXTRA_ADDED_AT, ""))
+
+/** The recent-order key of one shortcut, for callers that don't hold its [PlayStats]. Sort descending. */
+internal fun recentKeyOf(s: Shortcut): Long = ShortcutOrder.recentKey(lastPlayedOf(s), addedAtOf(s))
 
 internal fun playtimeLabel(ms: Long): String {
     val minutes = ms / 60_000L

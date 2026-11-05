@@ -16,6 +16,7 @@ import com.winlator.star.components.PrefixInstalledDetector
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerLayerUpdater
 import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.linux.LinuxShortcuts
 import com.winlator.star.store.xbox.XboxCloudShortcuts
@@ -199,6 +200,12 @@ object MoveGameToContainer {
                         dst.parentFile?.mkdirs()
                         src.copyTo(dst)
                         written += dst
+                        // What a custom cover replaced goes along, so Remove still works after the move.
+                        Shortcut.originalOf(src).takeIf { it.isFile }?.let { original ->
+                            val dstOriginal = Shortcut.originalOf(dst)
+                            original.copyTo(dstOriginal, overwrite = true)
+                            written += dstOriginal
+                        }
                     }
                 }
             }
@@ -212,11 +219,20 @@ object MoveGameToContainer {
                     dst.parentFile?.mkdirs()
                     src.copyTo(dst, overwrite = true)
                     written += dst
+                    Shortcut.originalOf(src).takeIf { it.isFile }?.let { original ->
+                        val dstOriginal = Shortcut.originalOf(dst)
+                        original.copyTo(dstOriginal, overwrite = true)
+                        written += dstOriginal
+                    }
                     moved.putExtra("customCoverArtPath", dst.path)
                     oldCover = src
                 }
             // A copy is a separate game: it gets its own home-screen id when it is pinned.
-            if (keepCopy) moved.putExtra("uuid", null)
+            if (keepCopy) {
+                moved.putExtra("uuid", null)
+                // ...and a new game in the recent order, where a move keeps the game's place.
+                moved.putExtra(ShortcutOrder.EXTRA_ADDED_AT, System.currentTimeMillis().toString())
+            }
             moved.saveData()
 
             // A C:\ path is the same in the target (its folder came along above); others go through the drive map.
@@ -247,7 +263,7 @@ object MoveGameToContainer {
             shortcut.file.delete()
             // A leftover .lnk would bring the game back into the source container.
             File(shortcut.file.parentFile, "${shortcut.name}.lnk").delete()
-            oldCover?.delete()
+            oldCover?.let { it.delete(); Shortcut.originalOf(it).delete() }
             updatePin(context, Shortcut(target, newFile))
         }
 

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -345,7 +346,7 @@ internal fun XmbNestedLayer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(Modifier.size(width = 22.dp, height = 32.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF222222))) {
+            Box(Modifier.size(width = 22.dp, height = 32.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
                 if (gameIcon != null) Image(remember(gameIcon) { gameIcon.asImageBitmap() }, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             }
             val tap = remember { MutableInteractionSource() }
@@ -550,9 +551,9 @@ private fun XmbValue(row: XmbRow, selected: Boolean, accent: Color) {
         when (row) {
             is XmbRow.Toggle -> {
                 Box(
-                    Modifier.clip(CircleShape).background(if (row.value) accent else Color(0xFF2E2E2E)).padding(horizontal = 8.dp, vertical = 2.dp),
+                    Modifier.clip(CircleShape).background(if (row.value) accent else MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 8.dp, vertical = 2.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(if (row.value) "On" else "Off", color = if (row.value) Color.White else Color(0xFF9A9A9A), fontSize = 10.5.sp, fontWeight = FontWeight.Bold) }
+                ) { Text(if (row.value) "On" else "Off", color = if (row.value) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.5.sp, fontWeight = FontWeight.Bold) }
             }
             is XmbRow.Choice -> { V(row.selected); Chev("›") }
             is XmbRow.Text -> V(row.value.ifEmpty { "—" })
@@ -589,7 +590,7 @@ private fun XmbEditField(row: XmbRow.Text, nav: XmbNavState, xmb: XmbScope, acce
             .focusRequester(fr)
             .width(200.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
             .border(1.dp, accent, RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp),
     )
@@ -611,7 +612,7 @@ private fun XmbPickerPanel(
             .width(pw.dp)
             .height(ph.dp)
             .clip(shape)
-            .background(Color(0xF20E0E12))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
             .border(1.dp, Color.White.copy(alpha = 0.1f), shape),
     ) {
         Text(p.row.label.uppercase(), color = Color(0xFF999999), fontSize = 10.5.sp, letterSpacing = 1.sp,

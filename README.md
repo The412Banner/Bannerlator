@@ -79,7 +79,7 @@ Before any **stable release** is published, all changes are **manually debugged 
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) · `Bannerlator Bionic AnTuTu` (antutu) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) · `com.antutu.ABenchMark` (antutu) |
-| **Version** | Bannerlator **V 3.1.8** — built from Star **marcescence** (`versionName 3.1.8`, `versionCode 104`) |
+| **Version** | Bannerlator **V 3.1.9-pre1** — built from Star **marcescence** (`versionName 3.1.9-pre1`, `versionCode 105`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
@@ -111,6 +111,7 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [🤖 AI Disclaimer](#-ai-disclaimer)
 - [ℹ️ Information](#ℹ️-information)
 - [🐛 Report a Mali GPU Issue](#-report-a-mali-gpu-game-issue)
+- [🗂️ New file manager & text editor, more unpack formats, XMB style, mods & Mali (3.1.9-pre1)](#️-new-file-manager--text-editor-more-unpack-formats-xmb-style-mods--mali-319-pre1)
 - [🧰 GOG prerequisites without the container, Visual C++ fixes & moving games (3.1.8)](#-gog-prerequisites-without-the-container-visual-c-fixes--moving-games-318)
 - [☁️ Xbox Cloud Gaming, v15 layers & Wine Mono (3.1.7)](#️-xbox-cloud-gaming-v15-layers--wine-mono-317)
 - [🟩 Xbox / PC Game Pass store, Steam accounts & Wayland adapter by default (3.1.7)](#-xbox--pc-game-pass-store-steam-accounts--wayland-adapter-by-default-317)
@@ -136,6 +137,17 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [📄 License](#-license)
 
 ---
+
+## 🗂️ New file manager & text editor, more unpack formats, XMB style, mods & Mali (3.1.9-pre1)
+
+**[3.1.9-pre1](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.9-pre1) is a test build of everything since 3.1.8:**
+
+- **File manager** — rebuilt in the look of BFE: Home tiles (storage, places, each container's C: drive, Favorites), a clickable path, two panes in landscape, archives that open like folders, compress, share and properties; the same screen picks files and folders everywhere in the app.
+- **Text editor** — view, edit and save .ini, .cfg, .txt, .log and other text files, keeping their encoding (UTF-8 / UTF-16) and line endings.
+- **More formats to unpack** — lzip, lzop, LZ4, ECM, ALZ, EGG, ACE, Amiga LZX, Android OTA files and FreeArc repacks with extra layers (BFE's engines).
+- **XMB interface style** (by **MGamer404**) — a console menu with an on-screen keyboard made for controllers, also inside games; plus **Epic** download and **Ubisoft Connect** fixes from him.
+- **Mods per game** — REFramework and Special K from a game's settings, a program that starts with the game, and switching a mod off removes its files.
+- **Mali GPUs** — the 3.1.8-mali-pre1 work (PanVK downloads, Faster BCn with the GameNative wrapper, newer compat layer, HUD counters).
 
 ## 🧰 GOG prerequisites without the container, Visual C++ fixes & moving games (3.1.8)
 
@@ -829,9 +841,10 @@ This build stands on a long chain of prior work — its direct lineage, plus the
 | **Xodus** (imLinguin, Vidi0, ChristopherHX and contributors) | [Xodus](https://github.com/xodus-gaming/xodus) (GPL-3.0, Rust) — the Xbox / Microsoft Store client the **Xbox store** (3.1.7) runs on: sign-in, library, licences and downloads, built for Android here. |
 | **Dominik Svoboda (domsvoboda)** | [Xodus Nexus](https://github.com/domsvoboda/xodus-nexus) (MIT; Wine modules LGPL-2.1) — the Xbox runtime, sign-in, saves and launch view Xbox games run with. |
 | **Kurt Himebauch (xXJSONDeruloXx)** | **DroidDeck**'s Xbox work (DroidDeck #1156, #1164, #1170) — the Android build recipe and launch flow Bannerlator's Xbox store follows. |
-| **[MGamer404](https://github.com/MGamer404)** | Steam account switching, extra library folders, rating sort, Goldberg fixes and the Goldberg Steam Cloud setting ([#613](https://github.com/The412Banner/Bannerlator/pull/613)–[#617](https://github.com/The412Banner/Bannerlator/pull/617)); the Xbox store's container-launch approach, from his `xbox-container` fork ([#623](https://github.com/The412Banner/Bannerlator/pull/623)); the ARM64 Visual C++ runtime for Xbox games in arm64ec containers ([#627](https://github.com/The412Banner/Bannerlator/pull/627), winlator-contents #28). |
+| **[MGamer404](https://github.com/MGamer404)** | Steam account switching, extra library folders, rating sort, Goldberg fixes and the Goldberg Steam Cloud setting ([#613](https://github.com/The412Banner/Bannerlator/pull/613)–[#617](https://github.com/The412Banner/Bannerlator/pull/617)); the Xbox store's container-launch approach, from his `xbox-container` fork ([#623](https://github.com/The412Banner/Bannerlator/pull/623)); the ARM64 Visual C++ runtime for Xbox games in arm64ec containers ([#627](https://github.com/The412Banner/Bannerlator/pull/627), winlator-contents #28).; the **XMB interface style** and controller keyboard ([#638](https://github.com/The412Banner/Bannerlator/pull/638)), the Epic download fix ([#657](https://github.com/The412Banner/Bannerlator/pull/657)) and the Ubisoft Connect setup ([#658](https://github.com/The412Banner/Bannerlator/pull/658)). |
 | **UnknownSKL (Jim Kroon)** | [Greenlight](https://github.com/unknownskl/greenlight) (MIT) — the WebRTC client and stream protocol of the **Xbox Cloud Gaming** player (3.1.7), and the cloud-gaming sign-in it follows (xal-node). |
 | **redphx** | [Better xCloud](https://github.com/redphx/better-xcloud) (MIT) — the H.264 preference, bitrate cap, sharpening, *Stop quality drops* and the cloud title lists of the **Xbox Cloud Gaming** player (3.1.7). |
+| **Extraction tools** (3.1.9) | **Bulat Ziganshin** (FreeArc unarc), **Christian Schneider** (precomp, with preflate by **Dirk Steinke**, packJPG / packMP3 by **Matthias Stirner**), **Antonio Diaz Diaz** (lunzip), **Markus F.X.J. Oberhumer** (lzop, LZO), **Yann Collet** (LZ4), **Neill Corlett** and **alucryd** (ecm-tools), **kippler** (unalz, xunazo), **Marcel Lemke** (UNACE), **Gareth Davidson** (amiga-lzx), **Lasse Collin** (XZ for Java), **Andrew Kolman** (EggDotNet, which the EGG reader follows) — brought in with BFE's unpack engines; licences in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md). |
 | **The412Banner** | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. **In 2.3**, building on JavaSteam / GameNative / Goldberg, the original engineering is Bannerlator's own: the **cross-store Download Manager**, the **four storefront integrations** (Steam / Epic / GOG / Amazon), the multi-week **Steam session-hardening** work, the depot **OOM fix**, the **Goldberg auto-patch** integration, the store **Material-3 restyle**, and the store-log **credential redaction** (`StoreLog.redactUrl`). **In 2.4**, the **fullscreen aspect-ratio pipeline** (Off/Fit/Stretch/Fill/Integer across all three renderers), the **in-app File-Manager import picker** replacing SAF (with image thumbnails + percent/ETA import progress), the **DLC picker**, the **true-size depot install fix**, **per-game persistence** of scaling / fullscreen / HUD position, and the **container wallpaper picker**. **In 2.5**, the **Mali / BCn hardening** — wiring leegao's bcn_layer (shader-v3) + ETC2-Milestone-2 wrapper into the **"Wrapper + bcn_layer"** and experimental **"Wrapper-gamenative"** drivers, the **BCn Layer Settings** UI, and the **in-game logging overhaul** (copy-logs button, selectable log location, co-located DXVK/VKD3D logs, scrollable debug-channels dialog). **In 2.5.1**, the **SurfaceFlinger colour + crash fix** and per-container / per-game **"Correct SurfaceFlinger colours"** toggle (ASurfaceRenderer R/B-swap fix + GPU converter, ported from GameNative #1620 / #1644), the in-game **FEX runtime indicator** (arm64ec / x86-64 · FEXCore / wowbox64 / Box64 · unixlib / DLL, read live from `/proc/<pid>/maps`), the **FEXCore unixlib (`.so`) auto-match** at launch (per-game version sync + uninstall cleanup), and **18 new Environment Variable presets** (DXVK / VKD3D / Wine / Mesa). **In 2.5.2**, the **Community Configs** system — the in-app catalog browser, per-uploaded-config cards with live upvotes / downloads / comments, the surgical config-apply engine, and the smart inline installer for DXVK / VKD3D / FEXCore + Turnip drivers — plus **two new Proton 11.0-1 x86-64 compatibility layers** (SDK 28 / SDK 35) built and published to the downloadable catalog. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
 
 ### Upstream stack

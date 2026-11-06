@@ -68,6 +68,8 @@ internal object DeckSettingsRoutes {
 
     fun game(path: String) = "deck_settings_game?path=" + Uri.encode(path)
     fun container(id: Int) = "deck_settings_container/$id"
+    /** The Simple style's New container: the container editor on a new form ([container] of this id). */
+    const val NEW_CONTAINER_ID = -1
 
     /** Every editor route. They draw their own header, so the shell hides its page bar for them. */
     fun isEditor(route: String?) = route != null && route.startsWith("deck_settings_")
@@ -318,12 +320,14 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
 private fun DeckContainerSettings(id: Int, navController: NavHostController) {
     val context = LocalContext.current
     val defaultsMode = id == ContainerDetailViewModel.EDIT_DEFAULTS_ID
+    // A new container (the Simple style's New container): the same form the classic create screen fills, saved by its confirm().
+    val createMode = id == DeckSettingsRoutes.NEW_CONTAINER_ID
     var generation by remember { mutableIntStateOf(0) }
     // All containers keeps a profile per architecture; the one being edited survives a save or discard.
     var arch by rememberSaveable { mutableStateOf(NewContainerDefaults.ARCH_ARM64EC) }
     val vm: ContainerDetailViewModel = viewModel(key = "deck-container-$id-f$generation")
     val defaultsVm: ContainerDetailViewModel? =
-        if (defaultsMode) null else viewModel(key = "deck-container-$id-d$generation")
+        if (defaultsMode || createMode) null else viewModel(key = "deck-container-$id-d$generation")
     var ready by remember(vm) { mutableStateOf(false) }
     LaunchedEffect(vm, defaultsVm) {
         vm.init(id)
@@ -361,7 +365,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         Loading()
         return
     }
-    if (!defaultsMode && vm.container == null) {
+    if (!defaultsMode && !createMode && vm.container == null) {
         Loading("This container no longer exists.")
         return
     }
@@ -375,7 +379,9 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
     }
     val extras = remember(components, graphics, sections) { categoryExtras(components, graphics, sections) }
 
-    val header = if (defaultsMode) {
+    val header = if (createMode) {
+        EditorHeader(overline = "New container", title = "New Container", icon = Icons.Filled.Inventory2)
+    } else if (defaultsMode) {
         EditorHeader(
             overline = "Defaults for every container",
             title = "All containers",
@@ -403,6 +409,16 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         onExit = { navController.popBackStack() },
         onHandoff = { h -> if (h.target == SettingsRegistry.TARGET_CLASSIC) navController.navigate("container_detail?id=$id") },
         onChainLink = { link -> link.onClick?.invoke() },
+        createMode = createMode,
+        yAction = if (!defaultsMode) null else ("Switch architecture" to {
+            val next = if (arch == NewContainerDefaults.ARCH_ARM64EC) NewContainerDefaults.ARCH_X86_64 else NewContainerDefaults.ARCH_ARM64EC
+            if (source.dirty) Toast.makeText(context, "Save or discard your changes first.", Toast.LENGTH_SHORT).show()
+            else {
+                arch = next
+                vm.selectDefaultsArch(next)
+                Toast.makeText(context, if (next == NewContainerDefaults.ARCH_X86_64) "x86-64 defaults" else "ARM64EC defaults", Toast.LENGTH_SHORT).show()
+            }
+        }),
         headerExtra = if (!defaultsMode) null else ({
             ArchSwitch(arch) { next ->
                 // Switching reloads the form from the other profile, so unsaved edits must be saved or discarded first.

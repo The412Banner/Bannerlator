@@ -120,9 +120,8 @@ internal fun SimpleSettingsEditor(
     val env = source.env
     val layout by AppThemeState.simpleLayout.collectAsState()
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
-    var level by remember {
-        mutableStateOf(runCatching { SettingLevel.valueOf(prefs.getString(SIMPLE_LEVEL_PREF, null) ?: "") }.getOrDefault(SettingLevel.SIMPLE))
-    }
+    // Simple shows every setting: no Simple / Advanced / Expert.
+    var level by remember { mutableStateOf(SettingLevel.EXPERT) }
     val changeLevel: (SettingLevel) -> Unit = { l ->
         level = l
         prefs.edit().putString(SIMPLE_LEVEL_PREF, l.name).apply()
@@ -266,7 +265,6 @@ internal fun SimpleSettingsEditor(
         add("↔" to "Change")
         add("A" to "Open")
         if (dirty) add("X" to "Save")
-        add("Y" to if (level == SettingLevel.EXPERT) "Fewer settings" else "More settings")
         add("L2" to "Category")
         add("⧉" to "Reset")
     }
@@ -291,7 +289,7 @@ internal fun SimpleSettingsEditor(
             zone == EZone.EXTRAS -> return@onKey false
             a == SIn.B -> onExit?.let { guard(it) }
             a == SIn.X -> if (dirty) save()
-            a == SIn.Y -> changeLevel(if (level == SettingLevel.EXPERT) SettingLevel.SIMPLE else SettingLevel.entries[level.ordinal + 1])
+            a == SIn.Y -> Unit
             a == SIn.LT -> stepCategory(-1)
             a == SIn.RT -> stepCategory(1)
             a == SIn.SELECT -> if (def != null && source.origin(def) == Origin.SET_HERE) source.reset(def)
@@ -483,7 +481,7 @@ internal fun SimpleSettingsEditor(
 }
 
 /** Left/Right change these in place; the rest open a dialog with A. */
-private fun isStepped(c: Control): Boolean =
+internal fun isStepped(c: Control): Boolean =
     c == Control.Toggle || c is Control.Segmented || c is Control.Chips || c is Control.Select || c is Control.Slider
 
 private fun originLabel(o: Origin, scope: EditorScope): String? = when (o) {
@@ -523,9 +521,6 @@ private fun EditorTitle(
                 }
             }
             Spacer(Modifier.weight(1f))
-            Text(level.label, color = SimpleMuted, fontSize = 12.sp)
-            Spacer(Modifier.width(6.dp))
-            SimpleGlyph("Y")
         }
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.Bottom) {
@@ -839,7 +834,7 @@ private fun LinkLine(title: String, subtitle: String?, focused: Boolean, active:
 
 /** A Simple list of a setting's choices; the current one is focused first. A picks, B closes. */
 @Composable
-private fun SimplePicker(
+internal fun SimplePicker(
     title: String,
     options: List<Opt>,
     current: String,

@@ -346,7 +346,10 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
             MenuSection(
                 "containers", "Containers", Icons.Filled.Inventory2, entries,
                 empty = "No containers yet.",
-                primary = MenuAction("New container", { onNavigate("container_detail?id=-1") }),
+                primary = MenuAction("New container", {
+                    if (com.winlator.star.xenvironment.ImageFs.find(context).isValid()) onNavigate(DeckSettingsRoutes.container(DeckSettingsRoutes.NEW_CONTAINER_ID))
+                    else toast(context, "The Windows system files are not installed yet.")
+                }),
             ),
             MenuSection(
                 "import", "Backups", Icons.Filled.Restore,

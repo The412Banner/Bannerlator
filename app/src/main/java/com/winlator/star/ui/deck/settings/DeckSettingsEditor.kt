@@ -162,10 +162,16 @@ internal fun DeckSettingsEditor(
     onChainLink: ((ChainLink) -> Unit)? = null,
     headerExtra: (@Composable () -> Unit)? = null,
     extras: Map<String, CategoryExtra> = emptyMap(),
+    /** A new container (Simple only): Save creates it and closes the editor. */
+    createMode: Boolean = false,
+    /** Simple only: what Y does on this editor (All containers: switch the architecture). */
+    yAction: Pair<String, () -> Unit>? = null,
 ) {
-    // The Simple style draws its own menus on the same source, categories and rows (SimpleSettingsEditor.kt).
+    // The Simple style draws its own menus on the same source and rows: the container, All-containers and game
+    // editors laid out like the Classic ones (SimpleClassicEditor.kt), the app settings as a Simple list (SimpleSettingsEditor.kt).
     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
-        SimpleSettingsEditor(header, source, categories, defs, handoffs, onExit, onHandoff, onChainLink, headerExtra, extras)
+        if (source.env.scope == EditorScope.APP) SimpleSettingsEditor(header, source, categories, defs, handoffs, onExit, onHandoff, onChainLink, headerExtra, extras)
+        else SimpleClassicEditor(header, source, categories, defs, handoffs, onExit, onHandoff, headerExtra, extras, createMode, yAction)
         return
     }
     val context = LocalContext.current

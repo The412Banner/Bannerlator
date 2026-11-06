@@ -280,7 +280,7 @@ internal fun SimpleSettingsEditor(
     val extrasFocus = remember { FocusRequester() }
     LaunchedEffect(zone, dialogOpen) {
         if (dialogOpen) return@LaunchedEffect
-        delay(60)
+        delay(if (zone == EZone.EXTRAS) 160 else 60)
         runCatching { if (zone == EZone.EXTRAS) extrasFocus.requestFocus() else focus.requestFocus() }
     }
     val onKey: (SIn) -> Boolean = onKey@{ a ->
@@ -684,7 +684,9 @@ private fun MenuPanel(
     onTap: (Int) -> Unit,
 ) {
     val state = remember(items.size) { LazyListState() }
-    LaunchedEffect(row, items.size) { if (items.isNotEmpty()) state.animateScrollToItem(max(0, row - 3)) }
+    LaunchedEffect(row, items.size) { if (items.isNotEmpty() && !extrasZone) state.animateScrollToItem(max(0, row - 3)) }
+    // Entering the lists and tools: bring them on screen so they can take the focus.
+    LaunchedEffect(extrasZone) { if (extrasZone && extra != null) state.scrollToItem(max(0, state.layoutInfo.totalItemsCount - 1)) }
     LazyColumn(
         state = state,
         contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 40.dp),

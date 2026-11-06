@@ -317,8 +317,9 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
         } else XrActivity.openIntent(activity, c.id, null)
     }
 
+    val gameCounts = remember(containers) { containers.associate { it.id to runCatching { vm.shortcutsFor(it).size }.getOrDefault(0) } }
     val entries = containers.map { c ->
-        val games = runCatching { vm.shortcutsFor(c).size }.getOrDefault(0)
+        val games = gameCounts[c.id] ?: 0
         MenuEntry(
             key = "c${c.id}",
             title = c.name,
@@ -389,10 +390,10 @@ internal fun SimpleComponentsPage(onNavigate: (String) -> Unit, onBack: () -> Un
     var tick by remember { mutableIntStateOf(0) }
     OnResume { vm.refreshStatus(); vm.refreshFolders(); tick++ }
     var defaultItem by remember { mutableStateOf<SetAsDefault.Item?>(null) }
-    val installed = remember(tick) {
+    val cm = remember(tick) { runCatching { ContentsManager(context).apply { syncContents() } }.getOrNull() }
+    val installed = remember(cm) {
         runCatching {
-            val cm = ContentsManager(context).apply { syncContents() }
-            ContentProfile.ContentType.values().flatMap { t -> cm.getProfiles(t).filter { it.remoteUrl == null }.map { t to it } }
+            ContentProfile.ContentType.values().flatMap { t -> cm?.getProfiles(t).orEmpty().filter { it.remoteUrl == null }.map { t to it } }
         }.getOrDefault(emptyList())
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -414,9 +415,9 @@ internal fun SimpleComponentsPage(onNavigate: (String) -> Unit, onBack: () -> Un
             trailing = label,
             icon = Icons.Filled.Extension,
             actions = buildList {
-                SetAsDefault.componentItem(context, ContentsManager(context), p)?.let { item -> add(MenuAction("Set as default…", { defaultItem = item })) }
+                cm?.let { m -> runCatching { SetAsDefault.componentItem(context, m, p) }.getOrNull() }?.let { item -> add(MenuAction("Set as default…", { defaultItem = item })) }
                 add(MenuAction("Remove", {
-                    runCatching { ContentsManager(context).apply { syncContents() }.also { it.removeContent(p) }.syncContents() }
+                    runCatching { cm?.removeContent(p); cm?.syncContents() }
                     vm.refreshStatus(); tick++
                     toast(context, "Removed $label ${p.verName}")
                 }, danger = true, confirm = "Remove $label ${p.verName}? Containers that use it fall back to their other choice."))
@@ -471,6 +472,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
     val loading by vm.detailLoading.collectAsState()
     val keepRaw by vm.keepRaw.collectAsState()
     val states by ContentDownloadRegistry.states.collectAsState()
+    val installedKeys by vm.installedKeys.collectAsState()
     var tick by remember { mutableIntStateOf(0) }
     val source = sources.getOrNull(index)
     LaunchedEffect(source?.name) { if (source != null) vm.selectSource(source) }
@@ -482,7 +484,8 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                 val key = ContentsInstaller.keyFor(item.type, item.sourceName, item.versionName)
                 val st = states[key]
                 val running = st != null && !st.terminal
-                val isIn = remember(tick, item) { vm.isInstalled(item) }
+                // Read installedKeys so the line updates when an install finishes.
+                val isIn = installedKeys.let { vm.isInstalled(item) }
                 MenuEntry(
                     key = "d${item.type}-${item.versionName}-${item.downloadUrl}",
                     title = item.displayName,

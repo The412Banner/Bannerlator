@@ -249,6 +249,7 @@ private fun mainLegend(ctl: SimpleController): List<Pair<String, String>> = when
 internal fun SimpleShelfLayout(ctl: SimpleController) {
     val d = ctl.data ?: return
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val screenW = maxWidth
         val portrait = maxHeight > maxWidth
         val pad = if (portrait) 20.dp else 56.dp
         val tileW = (if (portrait) maxWidth * 0.36f else maxWidth * 0.14f).coerceIn(112.dp, 196.dp)
@@ -293,7 +294,7 @@ internal fun SimpleShelfLayout(ctl: SimpleController) {
                 LaunchedEffect(f, ctl.section, ctl.filter) { state.animateScrollToItem(max(0, f)) }
                 LazyRow(
                     state = state,
-                    contentPadding = PaddingValues(start = pad, end = maxWidth),
+                    contentPadding = PaddingValues(start = pad, end = screenW),
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().height(tileH * 1.2f).padding(top = 6.dp),
@@ -353,6 +354,7 @@ internal fun SimpleRailLayout(ctl: SimpleController) {
     val d = ctl.data ?: return
     val accent = MaterialTheme.colorScheme.primary
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val screenW = maxWidth
         val portrait = maxHeight > maxWidth
         val railOpen = ctl.zone == Zone.RAIL
         val railW by animateDpAsState(if (railOpen) 214.dp else 68.dp, tween(260), label = "simpleRailW")
@@ -403,7 +405,7 @@ internal fun SimpleRailLayout(ctl: SimpleController) {
             if (showList) {
                 Column(
                     modifier = Modifier
-                        .then(if (portrait) Modifier.weight(1f) else Modifier.width((maxWidth * 0.36f).coerceIn(300.dp, 440.dp)))
+                        .then(if (portrait) Modifier.weight(1f) else Modifier.width((screenW * 0.36f).coerceIn(300.dp, 440.dp)))
                         .fillMaxHeight()
                         .background(Color(0xA8090B0F))
                         .padding(top = 18.dp),

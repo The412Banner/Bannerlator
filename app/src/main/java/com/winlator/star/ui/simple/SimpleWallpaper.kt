@@ -44,6 +44,10 @@ import kotlin.math.max
  */
 @Composable
 internal fun SimpleWallpaper(focused: Shortcut?, games: List<Shortcut>, hero: Boolean, modifier: Modifier = Modifier) {
+    // A page's list arrives a moment after it opens: until then the last one shown, so the collage never starts empty.
+    if (games.isNotEmpty()) SimpleWallpaperMemory.games = games
+    @Suppress("NAME_SHADOWING")
+    val games = games.ifEmpty { SimpleWallpaperMemory.games }
     val collageAlpha by animateFloatAsState(if (focused == null) 1f else 0f, tween(900), label = "simpleCollage")
     Box(modifier = modifier.fillMaxSize().background(Color(0xFF05070B))) {
         if (collageAlpha > 0.01f) {
@@ -83,6 +87,13 @@ internal fun SimpleWallpaper(focused: Shortcut?, games: List<Shortcut>, hero: Bo
     }
 }
 
+private const val COLLAGE_LOOP_MS = 150_000L
+
+/** The covers the collage last showed (see [SimpleWallpaper]). */
+internal object SimpleWallpaperMemory {
+    var games: List<Shortcut> = emptyList()
+}
+
 /**
  * Every game's cover in a tilted grid that drifts upward and loops. The rows repeat after one block, so moving by
  * exactly one block is seamless. With no covers at all it is a soft glow in the accent colour.
@@ -98,12 +109,15 @@ private fun SimpleCollage(games: List<Shortcut>, modifier: Modifier) {
         return
     }
     val transition = rememberInfiniteTransition(label = "simpleCollageDrift")
-    val t by transition.animateFloat(
+    // Where a shared clock has the drift now, so the collage on a page carries on from Home's instead of restarting.
+    val phase = remember { (android.os.SystemClock.uptimeMillis() % COLLAGE_LOOP_MS) / COLLAGE_LOOP_MS.toFloat() }
+    val tt by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(150_000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(COLLAGE_LOOP_MS.toInt(), easing = LinearEasing)),
         label = "simpleCollageT",
     )
+    val t = (tt + phase) % 1f
     Canvas(modifier = modifier.blur(1.5.dp, BlurredEdgeTreatment.Rectangle)) {
         val cols = 9
         val gap = 12.dp.toPx()

@@ -84,7 +84,6 @@ import com.winlator.star.ui.simple.SimpleLine
 import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
-import com.winlator.star.ui.simple.SimpleWallpaper
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
@@ -664,9 +663,13 @@ internal fun SimpleClassicEditor(
     }
 
     SimpleFlat {
+    // A game's settings sit on its own art, drawn by the shell edge to edge (under the bar areas too).
+    DisposableEffect(deckActions, env.shortcut) {
+        val s = env.shortcut
+        deckActions.pageArt.value = s
+        onDispose { if (deckActions.pageArt.value === s) deckActions.pageArt.value = null }
+    }
     Box(Modifier.fillMaxSize()) {
-        // A game's settings sit on its own art.
-        env.shortcut?.let { s -> SimpleWallpaper(focused = s, games = emptyList(), hero = false) }
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()

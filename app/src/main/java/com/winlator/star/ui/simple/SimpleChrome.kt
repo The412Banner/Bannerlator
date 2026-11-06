@@ -42,13 +42,16 @@ import com.winlator.star.ui.theme.AppThemeState
 // rails, bars and legend for these, in the shape of the chosen layout: Shelf and Focus get a line across the top,
 // Rail keeps its icon rail on the left. L1/R1 on a page go back to the Simple home's previous / next section.
 
-/** The cover collage behind every page while Simple is on, a little darker than on Home so the page stays readable. */
+/**
+ * Behind every page while Simple is on, edge to edge (under the bar areas too): the cover collage, or the game's own
+ * art on a game's pages ([art]), a little darker than on Home so the page stays readable.
+ */
 @Composable
-internal fun SimplePageBackdrop(modifier: Modifier = Modifier, vm: ShortcutsViewModel = viewModel()) {
-    val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
+internal fun SimplePageBackdrop(modifier: Modifier = Modifier, art: com.winlator.star.container.Shortcut? = null, vm: ShortcutsViewModel = viewModel()) {
+    val shortcuts by vm.shortcuts.collectAsState(initial = SimpleWallpaperMemory.games)
     Box(modifier) {
-        SimpleWallpaper(focused = null, games = shortcuts, hero = false)
-        Box(Modifier.fillMaxSize().background(Color(0x66050709)))
+        SimpleWallpaper(focused = art, games = shortcuts, hero = false)
+        Box(Modifier.fillMaxSize().background(Color(0x4D050709)))
     }
 }
 
@@ -62,7 +65,6 @@ internal fun SimplePageHeader(onSection: (Int) -> Unit, onBack: () -> Unit, modi
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color(0xB305070B), Color(0x00050709))))
             .padding(start = 18.dp, end = 26.dp, top = 10.dp, bottom = 8.dp),
     ) {
         Row(

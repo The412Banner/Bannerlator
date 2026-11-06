@@ -108,7 +108,7 @@ private val SimpleCorner = RoundedCornerShape(3.dp)
  * A Deck corner of [radius], or the Simple style's hard 3 dp corner while Simple is on. Reads snapshot state
  * (AppThemeState.simpleLook), so a composable that asks for it recomposes when the style changes.
  */
-internal fun deckShape(radius: androidx.compose.ui.unit.Dp): Shape =
+internal fun deckShape(radius: androidx.compose.ui.unit.Dp): androidx.compose.foundation.shape.CornerBasedShape =
     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) SimpleCorner else RoundedCornerShape(radius)
 
 /** How much smaller the Deck style draws than the rest of the app. */

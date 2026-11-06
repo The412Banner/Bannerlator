@@ -83,6 +83,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -172,6 +173,9 @@ fun DeckInGameOverlay() {
         // The game menu leaves most of the game in view: about two thirds of the width, at least what its rail and a page need.
         val menuWidth = if (compact) maxWidth else (maxWidth * 0.64f).coerceIn(minOf(560.dp, maxWidth), 900.dp)
         val quickWidth = if (compact) maxWidth else (maxWidth * 0.42f).coerceIn(340.dp, 470.dp)
+        // Simple style: a narrower quick menu on the left, hard-edged and lifted off the game.
+        val simple = remember { com.winlator.star.ui.theme.AppThemeState.simpleHome.value }
+        val simpleWidth = if (compact) maxWidth else (maxWidth * 0.34f).coerceIn(320.dp, 420.dp)
         CompositionLocalProvider(LocalIgCompact provides compact) {
             // Behind a panel: the full menu dims the game, the quick menu leaves it visible. A tap there closes either one.
             if (panel != Panel.NONE) {
@@ -196,11 +200,12 @@ fun DeckInGameOverlay() {
 
             AnimatedVisibility(
                 visible = quickOpen,
-                enter = slideInHorizontally { it } + fadeIn(),
-                exit = slideOutHorizontally { it } + fadeOut(),
-                modifier = Modifier.align(Alignment.CenterEnd),
+                enter = slideInHorizontally { if (simple) -it else it } + fadeIn(),
+                exit = slideOutHorizontally { if (simple) -it else it } + fadeOut(),
+                modifier = Modifier.align(if (simple) Alignment.CenterStart else Alignment.CenterEnd),
             ) {
-                DeckQuickMenu(Modifier.width(quickWidth).fillMaxHeight(), onExit = { confirmExit = true })
+                if (simple) SimpleQuickMenu(Modifier.width(simpleWidth).fillMaxHeight(), onExit = { confirmExit = true })
+                else DeckQuickMenu(Modifier.width(quickWidth).fillMaxHeight(), onExit = { confirmExit = true })
             }
         }
     }
@@ -245,6 +250,64 @@ private fun pauseAndClose() {
 }
 
 // ───────────────────────────── Quick menu ─────────────────────────────
+
+/**
+ * The Simple style's quick menu: one compact page on the left with the same controls as the Deck quick menu's first
+ * page (frame limit, frame generation, overlay, fit, brightness, mouse and on-screen controls; all through the same
+ * rows, so every change goes the same way), then Game menu, pause and exit. Square edges and a deep shadow, like the
+ * Simple home.
+ */
+@Composable
+private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val title by DeckInGameState.gameTitle.collectAsState()
+    val isPaused by XServerDrawerState.isPaused.collectAsState()
+    val kind by DeckInGameState.sessionKind.collectAsState()
+    val pageFocus = remember { FocusRequester() }
+    FocusOnRequest(Panel.QUICK, pageFocus)
+    Column(
+        modifier = modifier
+            .shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xF5171A23), Color(0xF70E1016))))
+            .border(1.dp, Color(0x1AFFFFFF))
+            .focusProperties { canFocus = false }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
+            .padding(top = 18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+            Text(
+                title.ifEmpty { "In game" },
+                color = Color.White,
+                fontFamily = SoraFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            DeviceStatus()
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.padding(horizontal = 20.dp).width(36.dp).height(3.dp).background(cs.primary))
+        Spacer(Modifier.height(8.dp))
+        val scroll = rememberScrollState()
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(horizontal = 12.dp).padding(bottom = 10.dp)) {
+            Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) { QuickControls(kind) }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x99090B0F))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            IgButton("Game menu", Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")
+            IgButton(null, if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose)
+            IgButton(null, Icons.AutoMirrored.Outlined.Logout, onExit, danger = true)
+        }
+    }
+}
 
 @Composable
 private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {

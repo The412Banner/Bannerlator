@@ -56,6 +56,20 @@ object AppThemeState {
     private val _deckXmbHome = MutableStateFlow(false)
     val deckXmbHome: StateFlow<Boolean> = _deckXmbHome
 
+    /**
+     * The Simple interface style is Deck style with this on (Appearance > Interface Style > Simple): Home is a
+     * full-screen controller-first launcher in one of three layouts ([simpleLayout]); every other page is the Deck page.
+     * Only ever true together with [UI_STYLE_DECK], never together with [deckXmbHome]. A fresh install starts here.
+     */
+    private val _simpleHome = MutableStateFlow(false)
+    val simpleHome: StateFlow<Boolean> = _simpleHome
+
+    const val SIMPLE_LAYOUT_SHELF = "shelf"
+    const val SIMPLE_LAYOUT_RAIL = "rail"
+    const val SIMPLE_LAYOUT_FOCUS = "focus"
+    private val _simpleLayout = MutableStateFlow(SIMPLE_LAYOUT_SHELF)
+    val simpleLayout: StateFlow<String> = _simpleLayout
+
     // The preset whose background/surface colors back the custom accent
     private val _customBaseIndex = MutableStateFlow(0)
 
@@ -108,15 +122,46 @@ object AppThemeState {
         _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
         _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
         _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
+        // No saved style yet: a fresh install starts in Simple; an update keeps Classic, the style it always had.
+        if (!themePrefs.contains("ui_style")) {
+            val fresh = runCatching {
+                val pi = context.packageManager.getPackageInfo(context.packageName, 0)
+                pi.firstInstallTime == pi.lastUpdateTime
+            }.getOrDefault(false)
+            themePrefs.edit()
+                .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
+                .putBoolean("simple_home", fresh)
+                .apply()
+        }
         _uiStyle.value = if (themePrefs.getString("ui_style", UI_STYLE_CLASSIC) == UI_STYLE_DECK) UI_STYLE_DECK
                          else UI_STYLE_CLASSIC
         _deckXmbHome.value = _uiStyle.value == UI_STYLE_DECK && themePrefs.getBoolean("deck_xmb_home", false)
+        _simpleHome.value = _uiStyle.value == UI_STYLE_DECK && !_deckXmbHome.value && themePrefs.getBoolean("simple_home", false)
+        _simpleLayout.value = when (themePrefs.getString("simple_layout", SIMPLE_LAYOUT_SHELF)) {
+            SIMPLE_LAYOUT_RAIL -> SIMPLE_LAYOUT_RAIL
+            SIMPLE_LAYOUT_FOCUS -> SIMPLE_LAYOUT_FOCUS
+            else -> SIMPLE_LAYOUT_SHELF
+        }
+    }
+
+    /** Turn the Simple home (Deck style with the Simple launcher as Home) on or off. Takes effect immediately. */
+    fun setSimpleHome(on: Boolean) {
+        _simpleHome.value = on
+        themePrefs.edit().putBoolean("simple_home", on).apply()
+    }
+
+    /** The Simple home's layout: [SIMPLE_LAYOUT_SHELF], [SIMPLE_LAYOUT_RAIL] or [SIMPLE_LAYOUT_FOCUS]. */
+    fun setSimpleLayout(layout: String) {
+        val v = when (layout) { SIMPLE_LAYOUT_RAIL, SIMPLE_LAYOUT_FOCUS -> layout; else -> SIMPLE_LAYOUT_SHELF }
+        _simpleLayout.value = v
+        themePrefs.edit().putString("simple_layout", v).apply()
     }
 
     /** Turn the XMB mode (Deck style with the XMB home) on or off. Takes effect immediately, no restart. */
     fun setDeckXmbHome(on: Boolean) {
         _deckXmbHome.value = on
         themePrefs.edit().putBoolean("deck_xmb_home", on).apply()
+        if (on) setSimpleHome(false)
     }
 
     /** Switch the app shell between Classic and Deck. Takes effect immediately, no restart. Leaving Deck leaves the XMB home too. */
@@ -124,7 +169,7 @@ object AppThemeState {
         val v = if (style == UI_STYLE_DECK) UI_STYLE_DECK else UI_STYLE_CLASSIC
         _uiStyle.value = v
         themePrefs.edit().putString("ui_style", v).apply()
-        if (v != UI_STYLE_DECK) setDeckXmbHome(false)
+        if (v != UI_STYLE_DECK) { setDeckXmbHome(false); setSimpleHome(false) }
     }
 
     /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */

@@ -472,12 +472,22 @@ private fun StepBody(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Interface style", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Text(
-                        "Classic is the drawer and top bar; choosing it closes this setup and switches straight away.",
+                        "Simple is a full-screen launcher for controllers; Deck has tabs across the top. Classic is the drawer " +
+                            "and top bar; choosing it closes this setup and switches straight away.",
                         color = cs.onSurfaceVariant,
                         fontSize = 13.5.sp,
                     )
+                    val simpleHome by AppThemeState.simpleHome.collectAsState()
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DeckChoiceChip("Deck", uiStyle == AppThemeState.UI_STYLE_DECK) { AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                        DeckChoiceChip("Simple", uiStyle == AppThemeState.UI_STYLE_DECK && simpleHome) {
+                            AppThemeState.setDeckXmbHome(false)
+                            AppThemeState.setSimpleHome(true)
+                            AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK)
+                        }
+                        DeckChoiceChip("Deck", uiStyle == AppThemeState.UI_STYLE_DECK && !simpleHome) {
+                            AppThemeState.setSimpleHome(false)
+                            AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK)
+                        }
                         DeckChoiceChip("Classic", uiStyle == AppThemeState.UI_STYLE_CLASSIC) {
                             AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC)
                             onFinish(false)

@@ -250,6 +250,8 @@ private fun DeckShellContent(
     val xmbHome by AppThemeState.deckXmbHome.collectAsState()
     val topTabs = rails && xmbHome
     val xmbHomeNow by rememberUpdatedState(xmbHome)
+    // Simple style: Deck with the Simple launcher as Home (AppThemeState.simpleHome); every other page is the Deck page.
+    val simpleHome by AppThemeState.simpleHome.collectAsState()
     val sideLists = remember { DeckSideLists() }
     val topBarActionsState = remember { topBarActionsState() }
     val topBarTransparentState = remember { mutableStateOf(false) }
@@ -365,17 +367,19 @@ private fun DeckShellContent(
     }
     // Re-run when the full-screen XMB closes: it shows the system bars again on its way out.
     val xmbShown = deckActions.fullscreen.value
+    // The Simple home is a console-style full screen too: no status bar while it is up (it shows its own clock).
+    val simpleShown = simpleHome && xmbShown && currentRoute == DeckRoutes.HOME
     // XMB mode: the status bar goes too, on every tab and in both orientations, like a console.
-    DisposableEffect(rails, xmbHome, activity, lifecycleOwner, xmbShown) {
+    DisposableEffect(rails, xmbHome, activity, lifecycleOwner, xmbShown, simpleShown) {
         val window = activity?.window
-        if (!(rails || xmbHome) || window == null) return@DisposableEffect onDispose {}
+        if (!(rails || xmbHome || simpleShown) || window == null) return@DisposableEffect onDispose {}
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        val bars = if (xmbHome) WindowInsetsCompat.Type.systemBars() else WindowInsetsCompat.Type.navigationBars()
+        val bars = if (xmbHome || simpleShown) WindowInsetsCompat.Type.systemBars() else WindowInsetsCompat.Type.navigationBars()
         val hide = {
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             controller.hide(bars)
             DeckWindow.setNavBarHidden(activity)
-            DeckWindow.setStatusBarHidden(xmbHome)
+            DeckWindow.setStatusBarHidden(xmbHome || simpleShown)
         }
         hide()
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) hide() }
@@ -652,7 +656,14 @@ private fun DeckShellContent(
                                     instantPages = xmbHome,
                                     extraRoutes = {
                                         composable(DeckRoutes.HOME) {
-                                            DeckHome(
+                                            if (simpleHome) {
+                                                com.winlator.star.ui.simple.SimpleHome(
+                                                    onNavigate = { route -> nav.open(route) },
+                                                    onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
+                                                    onLaunchStore = onLaunchStore,
+                                                    onAbout = onAbout,
+                                                )
+                                            } else DeckHome(
                                                 onOpenGame = { shortcut -> nav.open(DeckRoutes.game(shortcut.file.path)) },
                                                 onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
                                                 // "Add games" opens over Home (DeckGameActionsHost).

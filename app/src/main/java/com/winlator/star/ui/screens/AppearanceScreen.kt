@@ -88,18 +88,21 @@ fun AppearanceScreen() {
             text = "Classic keeps the side menu. Deck is a console-style layout with tabs across the top, " +
                 "made for controllers. XMB is Deck with a full-screen XMB home: the tabs float over every page " +
                 "(switch them with L1/R1 or by touch), and Up from a game shows your stores, Downloads, Friends, " +
-                "Community configs and Add game. Your theme and accent apply to all three.",
+                "Community configs and Add game. Simple is a full-screen launcher for controllers with your game " +
+                "art as the background, in one of three layouts. Your theme and accent apply to all four.",
             color = OnSurfaceVariant,
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(6.dp))
         val uiStyle by AppThemeState.uiStyle.collectAsState()
         val xmbHome by AppThemeState.deckXmbHome.collectAsState()
-        // XMB is Deck style with the XMB home on: three choices, one selected at a time.
-        val styleOptions = listOf("Classic", "Deck", "XMB")
+        val simpleHome by AppThemeState.simpleHome.collectAsState()
+        // XMB and Simple are Deck style with their own home on: four choices, one selected at a time.
+        val styleOptions = listOf("Classic", "Deck", "XMB", "Simple")
         val selectedStyle = when {
             uiStyle != AppThemeState.UI_STYLE_DECK -> 0
             xmbHome -> 2
+            simpleHome -> 3
             else -> 1
         }
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -109,12 +112,33 @@ fun AppearanceScreen() {
                     onClick = {
                         when (index) {
                             0 -> AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC)
-                            1 -> { AppThemeState.setDeckXmbHome(false); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
-                            else -> { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                            1 -> { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(false); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                            2 -> { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
+                            else -> { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }
                         }
                     },
                     shape = SegmentedButtonDefaults.itemShape(index, styleOptions.size),
                 ) { Text(label) }
+            }
+        }
+        if (selectedStyle == 3) {
+            Spacer(Modifier.height(10.dp))
+            Text("Simple layout", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Spacer(Modifier.height(6.dp))
+            val layout by AppThemeState.simpleLayout.collectAsState()
+            val layouts = listOf(
+                AppThemeState.SIMPLE_LAYOUT_SHELF to "Shelf",
+                AppThemeState.SIMPLE_LAYOUT_RAIL to "Rail",
+                AppThemeState.SIMPLE_LAYOUT_FOCUS to "Focus",
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                layouts.forEachIndexed { index, (key, label) ->
+                    SegmentedButton(
+                        selected = layout == key,
+                        onClick = { AppThemeState.setSimpleLayout(key) },
+                        shape = SegmentedButtonDefaults.itemShape(index, layouts.size),
+                    ) { Text(label) }
+                }
             }
         }
 

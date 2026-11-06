@@ -370,8 +370,8 @@ private fun DeckShellContent(
     }
     // Re-run when the full-screen XMB closes: it shows the system bars again on its way out.
     val xmbShown = deckActions.fullscreen.value
-    // The Simple home is a console-style full screen too: no status bar while it is up (it shows its own clock).
-    val simpleShown = simpleHome && xmbShown && currentRoute == DeckRoutes.HOME
+    // The Simple style is a console-style full screen on every page: no status bar (Home and the page frame show a clock).
+    val simpleShown = simpleHome
     // XMB mode: the status bar goes too, on every tab and in both orientations, like a console.
     DisposableEffect(rails, xmbHome, activity, lifecycleOwner, xmbShown, simpleShown) {
         val window = activity?.window
@@ -760,6 +760,7 @@ private fun DeckShellContent(
                                 subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
                                 optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
                                 modifier = Modifier.align(Alignment.End),
+                                own = deckActions.ownLegend.value,
                             )
                         }
                         if (!compact && !full && !xmbHome && !simpleHome) {

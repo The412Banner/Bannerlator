@@ -157,9 +157,9 @@ internal fun SimplePageRail(onSection: (Int) -> Unit, modifier: Modifier = Modif
 
 /** The line of hints under a page: Back, the sections, the page's own tabs (L2/R2), its options (X) and Search (Y). */
 @Composable
-internal fun SimplePageLegend(subTabLabel: String?, optionsLabel: String?, modifier: Modifier = Modifier) {
+internal fun SimplePageLegend(subTabLabel: String?, optionsLabel: String?, modifier: Modifier = Modifier, own: List<Pair<String, String>>? = null) {
     SimpleLegend(
-        listOfNotNull(
+        own ?: listOfNotNull(
             "B" to "Back",
             "L1" to "Sections",
             subTabLabel?.let { "L2" to it },

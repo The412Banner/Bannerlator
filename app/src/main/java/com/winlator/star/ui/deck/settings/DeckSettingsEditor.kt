@@ -163,6 +163,11 @@ internal fun DeckSettingsEditor(
     headerExtra: (@Composable () -> Unit)? = null,
     extras: Map<String, CategoryExtra> = emptyMap(),
 ) {
+    // The Simple style draws its own menus on the same source, categories and rows (SimpleSettingsEditor.kt).
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        SimpleSettingsEditor(header, source, categories, defs, handoffs, onExit, onHandoff, onChainLink, headerExtra, extras)
+        return
+    }
     val context = LocalContext.current
     val env = source.env
     val compact = isDeckCompact(LocalConfiguration.current)
@@ -1068,7 +1073,7 @@ private fun SourcePill(label: String) {
     )
 }
 
-private fun optionsOf(control: Control): List<Opt> = when (control) {
+internal fun optionsOf(control: Control): List<Opt> = when (control) {
     is Control.Segmented -> control.options
     is Control.Chips -> control.options
     is Control.Select -> control.options
@@ -1076,7 +1081,7 @@ private fun optionsOf(control: Control): List<Opt> = when (control) {
 }
 
 /** A stored value as the row shows it: the option's label, On/Off, or the slider's display text. */
-private fun labelFor(control: Control, v: String): String = when (control) {
+internal fun labelFor(control: Control, v: String): String = when (control) {
     Control.Toggle -> if (v == "1") "On" else "Off"
     is Control.Segmented -> control.options.firstOrNull { it.value == v }?.label ?: v
     is Control.Chips -> control.options.firstOrNull { it.value == v }?.label ?: v
@@ -1297,7 +1302,7 @@ private fun StepButton(icon: ImageVector, description: String, enabled: Boolean,
 }
 
 @Composable
-private fun TextControl(control: Control.TextField, value: String, enabled: Boolean, onPick: (String) -> Unit) {
+internal fun TextControl(control: Control.TextField, value: String, enabled: Boolean, onPick: (String) -> Unit) {
     var text by remember { mutableStateOf(value) }
     // Follow outside changes (Reset, Discard), but never overwrite what is being typed.
     LaunchedEffect(value) { if (value != text) text = value }
@@ -1372,7 +1377,7 @@ private fun ChecklistControl(control: Control.Checklist, value: String, enabled:
 
 /** Every item with a tick; the whole line is the focus target and A switches it. OK hands back the ones switched off. */
 @Composable
-private fun ChecklistDialog(title: String, all: List<String>, off: Set<String>, onDismiss: () -> Unit, onDone: (Set<String>) -> Unit) {
+internal fun ChecklistDialog(title: String, all: List<String>, off: Set<String>, onDismiss: () -> Unit, onDone: (Set<String>) -> Unit) {
     val cs = MaterialTheme.colorScheme
     var picked by remember(all, off) { mutableStateOf(all.filter { it in off }.toSet()) }
     val first = remember { FocusRequester() }
@@ -1425,7 +1430,7 @@ private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CoresControl(value: String, enabled: Boolean, onPick: (String) -> Unit) {
+internal fun CoresControl(value: String, enabled: Boolean, onPick: (String) -> Unit) {
     val cores = remember { Runtime.getRuntime().availableProcessors() }
     val on = value.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1617,7 +1622,7 @@ private fun UnsavedBar(saving: Boolean, compact: Boolean, onDiscard: () -> Unit,
 }
 
 @Composable
-private fun CustomValueDialog(
+internal fun CustomValueDialog(
     def: SettingDef,
     control: Control.Select,
     current: String,

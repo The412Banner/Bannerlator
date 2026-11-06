@@ -1,0 +1,495 @@
+package com.winlator.star.ui.simple
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.winlator.star.ui.deck.LocalDeckActions
+import com.winlator.star.ui.deck.SoraFamily
+import com.winlator.star.ui.deck.rememberXmbLogo
+import com.winlator.star.ui.theme.AppThemeState
+import kotlinx.coroutines.delay
+import kotlin.math.max
+import kotlin.math.min
+
+// The Simple style's list pages (Containers, Components, GPU drivers, Controls, Tools, Stores): sections of entries over
+// the existing data and actions, drawn per layout like the Simple settings menus: Shelf = section tabs over one panel,
+// Rail = a section list beside the entries, Focus = the section's title large with a section strip underneath.
+// A opens an entry, X its actions, Y the page's main action, L2/R2 the sections, B back.
+
+/** One thing an entry can do from its X menu. [confirm] asks first (removing, overwriting). */
+internal class MenuAction(val label: String, val run: () -> Unit, val danger: Boolean = false, val confirm: String? = null)
+
+internal class MenuEntry(
+    val key: String,
+    val title: String,
+    val subtitle: String? = null,
+    /** Short text on the right: a version, "Default", "Installed", a size. */
+    val trailing: String? = null,
+    val icon: ImageVector? = null,
+    val logo: Int? = null,
+    val brand: List<Color>? = null,
+    val logoWhite: Boolean = false,
+    /** 0..1 while something runs for this entry (a download), null otherwise. */
+    val progress: Float? = null,
+    /** Highlighted as the current choice (the default driver, the selected profile). */
+    val current: Boolean = false,
+    val onA: (() -> Unit)? = null,
+    val actions: List<MenuAction> = emptyList(),
+)
+
+internal class MenuSection(
+    val key: String,
+    val title: String,
+    val icon: ImageVector,
+    val entries: List<MenuEntry>,
+    val empty: String = "Nothing here yet.",
+    /** Y on this section, e.g. "New container" or "Install from a file". */
+    val primary: MenuAction? = null,
+)
+
+private enum class PZone { ROWS, SECS }
+
+@Composable
+internal fun SimpleMenuPage(
+    overline: String,
+    title: String,
+    sections: List<MenuSection>,
+    onBack: () -> Unit,
+    /** Extra lines over the menu (a status, a running download, a notice). */
+    banner: String? = null,
+) {
+    val layout by AppThemeState.simpleLayout.collectAsState()
+    var secKey by rememberSaveable { mutableStateOf(sections.firstOrNull()?.key ?: "") }
+    val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
+    val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
+    var row by rememberSaveable { mutableIntStateOf(0) }
+    var zone by remember { mutableStateOf(PZone.ROWS) }
+    val entries = sec?.entries.orEmpty()
+    val rowNow = row.coerceIn(0, max(0, entries.size - 1))
+    var actionsFor by remember { mutableStateOf<MenuEntry?>(null) }
+    var confirmFor by remember { mutableStateOf<MenuAction?>(null) }
+    val dialogOpen = actionsFor != null || confirmFor != null
+
+    fun stepSection(d: Int) {
+        if (sections.isEmpty()) return
+        secKey = sections[(secIndex + d + sections.size) % sections.size].key
+        row = 0
+    }
+    fun run(a: MenuAction) { if (a.confirm != null) confirmFor = a else a.run() }
+
+    BackHandler { onBack() }
+    val deckActions = LocalDeckActions.current
+    val legend = buildList {
+        add("B" to "Back")
+        add("A" to "Open")
+        if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to "Options")
+        sec?.primary?.let { add("Y" to it.label) }
+        if (sections.size > 1) add("L2" to "Section")
+    }
+    DisposableEffect(deckActions, legend) {
+        deckActions.ownLegend.value = legend
+        onDispose { if (deckActions.ownLegend.value === legend) deckActions.ownLegend.value = null }
+    }
+
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(dialogOpen) {
+        if (dialogOpen) return@LaunchedEffect
+        delay(60)
+        runCatching { focus.requestFocus() }
+    }
+    val onKey: (SIn) -> Boolean = onKey@{ a ->
+        val cur = entries.getOrNull(rowNow)
+        when {
+            a == SIn.B -> onBack()
+            a == SIn.LT -> stepSection(-1)
+            a == SIn.RT -> stepSection(1)
+            a == SIn.Y -> sec?.primary?.let { run(it) }
+            a == SIn.X -> { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+            zone == PZone.SECS -> when (a) {
+                SIn.UP, SIn.LEFT -> stepSection(-1)
+                SIn.DOWN -> stepSection(1)
+                SIn.RIGHT -> { if (layout == AppThemeState.SIMPLE_LAYOUT_RAIL) zone = PZone.ROWS else stepSection(1) }
+                SIn.A -> zone = PZone.ROWS
+                else -> return@onKey a == SIn.START || a == SIn.SELECT
+            }
+            else -> when (a) {
+                SIn.UP -> { if (rowNow > 0) row = rowNow - 1 }
+                SIn.DOWN -> {
+                    if (rowNow >= entries.size - 1 && layout == AppThemeState.SIMPLE_LAYOUT_FOCUS && sections.size > 1) zone = PZone.SECS
+                    else row = min(max(0, entries.size - 1), rowNow + 1)
+                }
+                SIn.LEFT -> { if (layout == AppThemeState.SIMPLE_LAYOUT_RAIL && sections.size > 1) zone = PZone.SECS }
+                SIn.A -> cur?.onA?.invoke() ?: run { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+                else -> return@onKey a == SIn.START || a == SIn.SELECT || a == SIn.RIGHT
+            }
+        }
+        true
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(focus)
+            .focusable()
+            .onPreviewKeyEvent { ev ->
+                if (dialogOpen) return@onPreviewKeyEvent false
+                val a = simpleInputOf(ev.nativeKeyEvent) ?: return@onPreviewKeyEvent false
+                if (a == SIn.LB || a == SIn.RB) return@onPreviewKeyEvent false
+                onKey(a)
+            },
+    ) {
+        val narrow = maxWidth < 700.dp
+        val list: @Composable (Modifier) -> Unit = { mod ->
+            EntryPanel(sec, entries, rowNow, active = zone == PZone.ROWS, modifier = mod) { i ->
+                zone = PZone.ROWS
+                if (i == rowNow) entries.getOrNull(i)?.let { e -> e.onA?.invoke() ?: run { if (e.actions.isNotEmpty()) actionsFor = e } } else row = i
+            }
+        }
+        when (layout) {
+            AppThemeState.SIMPLE_LAYOUT_RAIL -> Row(Modifier.fillMaxSize()) {
+                if (sections.size > 1) {
+                    SectionList(sections, sec, active = zone == PZone.SECS, modifier = Modifier.width(if (narrow) 190.dp else 240.dp).fillMaxHeight()) { k -> secKey = k; row = 0 }
+                }
+                Column(Modifier.weight(1f).fillMaxHeight().padding(start = 20.dp, end = 20.dp, top = 14.dp)) {
+                    PageTitle(overline, title, if (sections.size > 1) sec?.title else null, banner, big = false)
+                    Spacer(Modifier.height(12.dp))
+                    list(Modifier.weight(1f).fillMaxWidth())
+                }
+            }
+            AppThemeState.SIMPLE_LAYOUT_FOCUS -> Column(Modifier.fillMaxSize().padding(start = 40.dp, end = 40.dp, top = 10.dp)) {
+                PageTitle(overline, if (sections.size > 1) sec?.title ?: title else title, if (sections.size > 1) title else null, banner, big = true)
+                Spacer(Modifier.height(14.dp))
+                list(Modifier.weight(1f).fillMaxWidth(if (narrow) 1f else 0.72f))
+                if (sections.size > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    SectionStrip(sections, sec, active = zone == PZone.SECS) { k -> secKey = k; row = 0 }
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+            else -> Column(Modifier.fillMaxSize().padding(start = 40.dp, end = 40.dp, top = 6.dp)) {
+                PageTitle(overline, title, null, banner, big = false)
+                if (sections.size > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    SectionTabs(sections, sec) { k -> secKey = k; row = 0 }
+                }
+                Spacer(Modifier.height(12.dp))
+                list(Modifier.weight(1f).fillMaxWidth().widthIn(max = 1100.dp).align(Alignment.CenterHorizontally))
+            }
+        }
+    }
+
+    actionsFor?.let { e ->
+        SimpleActionSheet(e.title, e.actions, onDismiss = { actionsFor = null }) { a -> actionsFor = null; run(a) }
+    }
+    confirmFor?.let { a ->
+        SimpleConfirm(a.label, a.confirm ?: "", danger = a.danger, onDismiss = { confirmFor = null }) { confirmFor = null; a.run() }
+    }
+}
+
+@Composable
+private fun PageTitle(overline: String, title: String, sub: String?, banner: String?, big: Boolean) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(Modifier.fillMaxWidth()) {
+        Text(overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = if (big) 38.sp else 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!sub.isNullOrBlank()) Text(sub, color = SimpleMuted, fontSize = 13.sp, maxLines = 1)
+        if (!banner.isNullOrBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(banner, color = SimpleInk, fontSize = 13.sp, modifier = Modifier.background(accent.copy(alpha = 0.18f), SimpleShape).padding(horizontal = 10.dp, vertical = 5.dp))
+        }
+    }
+}
+
+@Composable
+private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, onPick: (String) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        SimpleGlyph("L2")
+        Spacer(Modifier.width(8.dp))
+        sections.forEach { s ->
+            val on = s.key == sec?.key
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .then(if (on) Modifier.simpleDepth().background(accent.copy(alpha = 0.24f), SimpleShape) else Modifier)
+                    .border(1.dp, if (on) accent else Color.Transparent, SimpleShape)
+                    .simpleTap { onPick(s.key) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(s.title, color = if (on) Color.White else SimpleMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Spacer(Modifier.width(6.dp))
+                Text("${s.entries.size}", color = SimpleDim, fontSize = 11.sp)
+            }
+        }
+        Spacer(Modifier.width(2.dp))
+        SimpleGlyph("R2")
+    }
+}
+
+@Composable
+private fun SectionList(sections: List<MenuSection>, sec: MenuSection?, active: Boolean, modifier: Modifier, onPick: (String) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    Column(modifier.simpleDepth(high = true, shape = RectangleShape).background(SimplePanelBrush).padding(10.dp)) {
+        sections.forEach { s ->
+            val on = s.key == sec?.key
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .then(
+                        if (on) Modifier
+                            .background(if (active) accent.copy(alpha = 0.3f) else accent.copy(alpha = 0.16f), SimpleShape)
+                            .drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
+                        else Modifier
+                    )
+                    .simpleTap { onPick(s.key) }
+                    .padding(horizontal = 14.dp),
+            ) {
+                Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(s.title, color = if (on) Color.White else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Text("${s.entries.size}", color = SimpleDim, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active: Boolean, onPick: (String) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().height(80.dp)) {
+        itemsIndexed(sections, key = { _, s -> s.key }) { _, s ->
+            val on = s.key == sec?.key
+            val scale by animateFloatAsState(if (on && active) 1.08f else 1f, tween(200), label = "simpleSecTile")
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .width(124.dp)
+                    .fillMaxHeight()
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .simpleDepth(high = on)
+                    .background(if (on) accent.copy(alpha = 0.3f) else Color(0xB30C0E13), SimpleShape)
+                    .border(if (on && active) 2.dp else 1.dp, if (on) accent else SimpleLine, SimpleShape)
+                    .simpleTap { onPick(s.key) }
+                    .padding(8.dp),
+            ) {
+                Icon(s.icon, contentDescription = null, tint = if (on) Color.White else SimpleMuted, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(s.title, color = if (on) Color.White else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EntryPanel(sec: MenuSection?, entries: List<MenuEntry>, row: Int, active: Boolean, modifier: Modifier, onTap: (Int) -> Unit) {
+    val state = remember(sec?.key) { LazyListState() }
+    LaunchedEffect(row, sec?.key) { if (entries.isNotEmpty()) state.animateScrollToItem(max(0, row - 3)) }
+    Box(
+        modifier = modifier
+            .simpleDepth(high = true)
+            .background(SimplePanelBrush, SimpleShape)
+            .border(1.dp, SimpleLine, SimpleShape),
+    ) {
+        if (entries.isEmpty()) {
+            Column(Modifier.padding(24.dp)) {
+                Text(sec?.empty ?: "Nothing here yet.", color = SimpleMuted, fontSize = 14.sp)
+                sec?.primary?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) { SimpleGlyph("Y"); Spacer(Modifier.width(6.dp)); Text(it.label, color = SimpleInk, fontSize = 14.sp) }
+                }
+            }
+        } else {
+            LazyColumn(state = state, contentPadding = PaddingValues(10.dp)) {
+                itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active) { onTap(i) } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val shift by animateFloatAsState(if (focused && active) 4f else 0f, tween(160), label = "simpleEntryShift")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { translationX = shift * density }
+            .then(
+                if (focused) Modifier
+                    .simpleDepth()
+                    .background(
+                        if (active) Brush.verticalGradient(listOf(accent.copy(alpha = 0.32f), accent.copy(alpha = 0.16f)))
+                        else Brush.verticalGradient(listOf(Color(0x1FFFFFFF), Color(0x14FFFFFF))),
+                        SimpleShape,
+                    )
+                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
+                else Modifier
+            )
+            .simpleTap(onTap)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 40.dp)) {
+            val logo = e.logo
+            val bmp = if (logo != null) rememberXmbLogo(logo) else null
+            when {
+                bmp != null -> Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(width = 46.dp, height = 32.dp).clip(SimpleShape).background(Brush.linearGradient(e.brand ?: listOf(Color(0xFF20242E), Color(0xFF12151C)))),
+                ) {
+                    Image(bmp, contentDescription = null, contentScale = ContentScale.Fit, colorFilter = if (e.logoWhite) ColorFilter.tint(Color.White) else null, modifier = Modifier.size(width = 34.dp, height = 22.dp))
+                }
+                e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (focused && active) accent else SimpleMuted, modifier = Modifier.size(22.dp))
+            }
+            if (bmp != null || e.icon != null) Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(e.title, color = if (focused) Color.White else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (e.current) {
+                        Spacer(Modifier.width(8.dp))
+                        Text("✓", color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (!e.subtitle.isNullOrBlank()) Text(e.subtitle, color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (!e.trailing.isNullOrBlank()) {
+                Spacer(Modifier.width(10.dp))
+                Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
+            }
+            if (e.actions.isNotEmpty() && focused) {
+                Spacer(Modifier.width(10.dp))
+                SimpleGlyph("X")
+            }
+        }
+        val p = e.progress
+        if (p != null) {
+            Spacer(Modifier.height(6.dp))
+            Box(Modifier.fillMaxWidth().height(3.dp).background(Color(0x26FFFFFF))) {
+                Box(Modifier.fillMaxWidth(p.coerceIn(0f, 1f)).height(3.dp).background(accent))
+            }
+        }
+    }
+}
+
+/** X on an entry: what it can do, as a Simple list. Focus starts on the first; A runs, B closes. */
+@Composable
+internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismiss: () -> Unit, message: String? = null, onRun: (MenuAction) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val requesters = remember(actions.size) { List(actions.size) { FocusRequester() } }
+    LaunchedEffect(Unit) {
+        delay(60)
+        runCatching { requesters.firstOrNull()?.requestFocus() }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = 300.dp, max = 520.dp)
+                .simpleDepth(high = true)
+                .background(SimplePanelBrush, SimpleShape)
+                .border(1.dp, SimpleLine, SimpleShape)
+                .padding(14.dp),
+        ) {
+            Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            if (!message.isNullOrBlank()) Text(message, color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp))
+            actions.forEachIndexed { i, a ->
+                var f by remember { mutableStateOf(false) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp)
+                        .focusRequester(requesters[i])
+                        .onFocusChanged { f = it.isFocused }
+                        .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
+                        .clickable { onRun(a) }
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                ) {
+                    Text(a.label, color = if (a.danger) MaterialTheme.colorScheme.error else Color.White, fontSize = 15.sp)
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text("Select", color = SimpleMuted, fontSize = 12.sp)
+                Spacer(Modifier.width(14.dp))
+                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text("Close", color = SimpleMuted, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+/** A Simple yes/no: the question, then the action (red when it removes something) and Cancel. */
+@Composable
+internal fun SimpleConfirm(title: String, body: String, danger: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    SimpleActionSheet(
+        title = title,
+        actions = listOf(MenuAction(title, onConfirm, danger = danger), MenuAction("Cancel", onDismiss)),
+        onDismiss = onDismiss,
+        message = body,
+    ) { it.run() }
+}

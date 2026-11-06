@@ -197,8 +197,20 @@ private val DECK_ALIASES = mapOf(
     Screen.InputControls.route to DeckRoutes.CONTROLS,
 )
 
+/** With the Simple style on, these routes open its own pages instead. */
+private val SIMPLE_ALIASES = mapOf(
+    Screen.Containers.route to com.winlator.star.ui.simple.SimpleRoutes.CONTAINERS,
+    Screen.Contents.route to com.winlator.star.ui.simple.SimpleRoutes.COMPONENTS,
+    DeckRoutes.COMPONENTS to com.winlator.star.ui.simple.SimpleRoutes.COMPONENTS,
+    Screen.AdrenoTools.route to com.winlator.star.ui.simple.SimpleRoutes.DRIVERS,
+    Screen.InputControls.route to com.winlator.star.ui.simple.SimpleRoutes.CONTROLS,
+    DeckRoutes.CONTROLS to com.winlator.star.ui.simple.SimpleRoutes.CONTROLS,
+    DeckRoutes.TOOLS to com.winlator.star.ui.simple.SimpleRoutes.TOOLS,
+    Screen.Settings.route to DeckSettingsRoutes.APP,
+)
+
 /** Routes the shell draws itself (no page bar above them). */
-private fun isDeckPage(route: String): Boolean = route.startsWith("deck_")
+private fun isDeckPage(route: String): Boolean = route.startsWith("deck_") || route.startsWith("simple_")
 
 /**
  * The Deck interface: a console-style shell around the same AppNavGraph routes the classic drawer uses,
@@ -433,7 +445,7 @@ private fun DeckShellContent(
     // Simple style: back to the Simple home at section [i] (the home keeps the rest of its place).
     val simpleGo: (Int) -> Unit = { i ->
         com.winlator.star.ui.simple.SimpleSession.controller.goSection(i)
-        nav.goTab(DeckTab.HOME)
+        nav.home()
     }
     val simpleStep: (Int) -> Unit = { d -> simpleGo(com.winlator.star.ui.simple.SimpleSession.controller.section + d) }
 
@@ -716,6 +728,12 @@ private fun DeckShellContent(
                                         composable(DeckRoutes.COMPONENTS) { DeckComponentsPage() }
                                         composable(DeckRoutes.CONTROLS) { DeckControlsPage() }
                                         deckSettingsRoutes(navController, onAbout)
+                                        com.winlator.star.ui.simple.simpleRoutes(
+                                            open = { route -> nav.open(route) },
+                                            back = { nav.back() },
+                                            onMyAccount = onAccount,
+                                            onAbout = onAbout,
+                                        )
                                         composable(DeckRoutes.TOOLS) {
                                             DeckToolsPage(
                                                 onNavigate = { route -> nav.open(route) },
@@ -879,6 +897,13 @@ private class DeckNav(private val navController: NavHostController) {
 
     /** Open any route: switch to its tab first, then push it when it is a sub-page of that tab. */
     fun open(requested: String) {
+        if (AppThemeState.simpleLook) {
+            // Simple has no tabs: every page is pushed over the Simple home and B pops it.
+            val r = SIMPLE_ALIASES[requested] ?: DECK_ALIASES[requested] ?: requested
+            if (r == DeckRoutes.HOME) home()
+            else if (currentRoute() != r) navController.navigate(r) { launchSingleTop = true }
+            return
+        }
         val route = DECK_ALIASES[requested] ?: requested
         val t = deckTabOf(route)
         goTab(t)
@@ -887,7 +912,16 @@ private class DeckNav(private val navController: NavHostController) {
         }
     }
 
+    /** Back to Home with nothing over it. */
+    fun home() {
+        if (!navController.popBackStack(DeckRoutes.HOME, inclusive = false)) goTab(DeckTab.HOME)
+    }
+
     fun back() {
+        if (AppThemeState.simpleLook) {
+            if (navController.previousBackStackEntry != null) navController.popBackStack()
+            return
+        }
         val route = currentRoute()
         val t = deckTabOf(route)
         if (route != t.root && navController.previousBackStackEntry != null) navController.popBackStack()

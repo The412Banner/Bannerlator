@@ -90,6 +90,8 @@ internal class MenuEntry(
     val logo: Int? = null,
     val brand: List<Color>? = null,
     val logoWhite: Boolean = false,
+    /** A colour square in front of the title (theme presets). */
+    val swatch: Color? = null,
     /** 0..1 while something runs for this entry (a download), null otherwise. */
     val progress: Float? = null,
     /** Highlighted as the current choice (the default driver, the selected profile). */
@@ -406,9 +408,10 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: ()
                 ) {
                     Image(bmp, contentDescription = null, contentScale = ContentScale.Fit, colorFilter = if (e.logoWhite) ColorFilter.tint(Color.White) else null, modifier = Modifier.size(width = 34.dp, height = 22.dp))
                 }
+                e.swatch != null -> Box(Modifier.size(22.dp).simpleDepth().background(e.swatch, SimpleShape).border(1.dp, Color(0x40FFFFFF), SimpleShape))
                 e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (focused && active) accent else SimpleMuted, modifier = Modifier.size(22.dp))
             }
-            if (bmp != null || e.icon != null) Spacer(Modifier.width(14.dp))
+            if (bmp != null || e.icon != null || e.swatch != null) Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.title, color = if (focused) Color.White else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))

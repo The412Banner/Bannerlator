@@ -488,7 +488,9 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
         onExit = null,
         onHandoff = { h ->
             when (h.target) {
-                AppSettingsRegistry.TARGET_APPEARANCE -> navController.navigate(Screen.Appearance.route)
+                AppSettingsRegistry.TARGET_APPEARANCE -> navController.navigate(
+                    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.APPEARANCE else Screen.Appearance.route,
+                )
                 AppSettingsRegistry.TARGET_LOGS -> showLogs = true
                 AppSettingsRegistry.TARGET_ABOUT -> onAbout()
                 AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(Screen.InputControls.route)

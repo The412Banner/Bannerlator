@@ -10,6 +10,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.ViewQuilt
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.RestartAlt
@@ -83,6 +89,12 @@ import com.winlator.star.ui.screens.contents.ContentsTypes
 import com.winlator.star.ui.screens.contents.SetAsDefault
 import com.winlator.star.ui.screens.contents.SetAsDefaultSheet
 import com.winlator.star.util.InAppFilePicker
+import com.winlator.star.core.AppOrientation
+import com.winlator.star.ui.components.ColorPicker
+import com.winlator.star.ui.theme.AppThemeState
+import com.winlator.star.ui.theme.CUSTOM_PRESET_INDEX
+import com.winlator.star.ui.theme.themePresets
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -100,6 +112,7 @@ internal object SimpleRoutes {
     const val DRIVERS = "simple_drivers"
     const val DRIVER_SOURCE = "simple_driver_source?i={i}"
     const val CONTROLS = "simple_controls"
+    const val APPEARANCE = "simple_appearance"
 
     fun componentSource(i: Int) = "simple_component_source?i=$i"
     fun driverSource(i: Int) = "simple_driver_source?i=$i"
@@ -192,6 +205,95 @@ internal fun NavGraphBuilder.simpleRoutes(open: (String) -> Unit, back: () -> Un
         SimpleDriverSourcePage(index = e.arguments?.getInt("i") ?: 0, onBack = back)
     }
     composable(SimpleRoutes.CONTROLS) { SimpleControlsPage(onBack = back) }
+    composable(SimpleRoutes.APPEARANCE) { SimpleAppearancePage(onBack = back) }
+}
+
+// ───────────────────────────── Appearance ─────────────────────────────
+
+/** Appearance: interface style, Simple layout, theme, accent colour, orientation and sizes, on the same AppThemeState as the Appearance screen. */
+@Composable
+internal fun SimpleAppearancePage(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val uiStyle by AppThemeState.uiStyle.collectAsState()
+    val xmbHome by AppThemeState.deckXmbHome.collectAsState()
+    val simpleHome by AppThemeState.simpleHome.collectAsState()
+    val layout by AppThemeState.simpleLayout.collectAsState()
+    val preset by AppThemeState.presetIndex.collectAsState()
+    val customAccent by AppThemeState.customAccent.collectAsState()
+    val uiScale by AppThemeState.uiScale.collectAsState()
+    val fontScale by AppThemeState.fontScale.collectAsState()
+    var orientation by remember { mutableStateOf(AppOrientation.mode(context)) }
+    var accentOpen by remember { mutableStateOf(false) }
+    fun mark(label: String, on: Boolean) = if (on) "$label  ✓" else label
+
+    val style = when {
+        uiStyle != AppThemeState.UI_STYLE_DECK -> "Classic"
+        xmbHome -> "XMB"
+        simpleHome -> "Simple"
+        else -> "Deck"
+    }
+    val styles = listOf(
+        MenuAction(mark("Simple", style == "Simple"), { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
+        MenuAction(mark("Deck", style == "Deck"), { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(false); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
+        MenuAction(mark("XMB", style == "XMB"), { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
+        MenuAction(mark("Classic", style == "Classic"), { AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC) }),
+    )
+    val layouts = listOf(AppThemeState.SIMPLE_LAYOUT_SHELF to "Shelf", AppThemeState.SIMPLE_LAYOUT_RAIL to "Rail", AppThemeState.SIMPLE_LAYOUT_FOCUS to "Focus")
+    val orientations = listOf(AppOrientation.AUTO to "Auto", AppOrientation.PORTRAIT to "Portrait", AppOrientation.LANDSCAPE to "Landscape")
+    val scales = listOf(0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f)
+    fun pct(f: Float) = "${(f * 100).roundToInt()}%"
+
+    val look = listOf(
+        MenuEntry("style", "Interface style", "Simple, Deck, XMB or Classic", trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
+        MenuEntry(
+            "layout", "Simple layout", "Shelf, Rail or Focus", trailing = layouts.firstOrNull { it.first == layout }?.second, icon = Icons.Filled.ViewQuilt,
+            actions = layouts.map { (k, l) -> MenuAction(mark(l, k == layout), { AppThemeState.setSimpleLayout(k) }) },
+        ),
+        MenuEntry(
+            "orientation", "Orientation", "The app's own screens; games keep theirs", trailing = orientations.firstOrNull { it.first == orientation }?.second,
+            icon = Icons.Filled.ScreenRotation,
+            actions = orientations.map { (m, l) ->
+                MenuAction(mark(l, m == orientation), {
+                    orientation = m
+                    AppOrientation.setMode(context, m)
+                    (context as? Activity)?.let { AppOrientation.apply(it) }
+                })
+            },
+        ),
+        MenuEntry("ui", "Interface size", trailing = pct(uiScale), icon = Icons.Filled.ZoomIn,
+            actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (uiScale * 100).roundToInt()), { AppThemeState.setUiScale(f) }) }),
+        MenuEntry("font", "Text size", trailing = pct(fontScale), icon = Icons.Filled.TextFields,
+            actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (fontScale * 100).roundToInt()), { AppThemeState.setFontScale(f) }) }),
+    )
+    val themes = themePresets.mapIndexed { i, t ->
+        val custom = i == CUSTOM_PRESET_INDEX
+        MenuEntry(
+            key = "t$i",
+            title = t.name,
+            subtitle = if (custom) "Your own accent colour · X to pick it" else null,
+            swatch = if (custom) customAccent else t.primary,
+            current = i == preset,
+            onA = { AppThemeState.setPreset(i) },
+            actions = if (custom) listOf(MenuAction("Pick the colour", { accentOpen = true })) else emptyList(),
+        )
+    }
+    SimpleMenuPage(
+        overline = "Settings",
+        title = "Appearance",
+        sections = listOf(
+            MenuSection("look", "Look", Icons.Filled.Dashboard, look),
+            MenuSection("theme", "Theme", Icons.Filled.Palette, themes),
+        ),
+        onBack = onBack,
+    )
+    if (accentOpen) {
+        OutlinedAlertDialog(
+            onDismissRequest = { accentOpen = false },
+            confirmButton = { TextButton(onClick = { accentOpen = false }) { Text("Done") } },
+            title = { Text("Accent colour") },
+            text = { ColorPicker(initialColor = customAccent, onColorChanged = { AppThemeState.setCustomAccent(it) }) },
+        )
+    }
 }
 
 // ───────────────────────────── Containers ─────────────────────────────

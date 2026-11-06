@@ -85,6 +85,8 @@ import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
 import com.winlator.star.ui.simple.SimpleWallpaper
+import com.winlator.star.ui.simple.SimpleFlat
+import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
 import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
@@ -116,17 +118,15 @@ private class CTab(val title: String, val icon: ImageVector, val items: List<CIt
 
 private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id.startsWith(it) } }
 
-// Two rows share the driver version's id: the X11 driver configuration's "Driver version" and the Wayland
-// compositor's driver (SettingsRegistry). They are told apart by label.
-private const val GFX_DRIVER_VERSION = GraphicsRows.ID_DRIVER_VERSION
-private val isCompositorRow: (SettingDef) -> Boolean = { d -> d.id == GFX_DRIVER_VERSION && d.label == "Graphics driver" }
+/** The Wayland compositor's driver (SettingsRegistry's own id; the X11 driver configuration's version is graphics.gdc.version). */
+private const val COMPOSITOR_DRIVER = "graphics.compositorDriver"
 
 private fun graphicsItems(game: Boolean): List<CItem> = listOf(
     CHead("Graphics"),
     CRow("performance.syncMode", "Sync").takeIf { game },
     CRow("graphics.driver", "Graphics Driver"),
-    CPage("Driver settings", listOf(CMatch { d -> d.id.startsWith("graphics.gdc.") && !isCompositorRow(d) })),
-    CRow(GFX_DRIVER_VERSION, "Graphics Driver", only = isCompositorRow),
+    CPage("Driver settings", listOf(CMatch(pre("graphics.gdc.")))),
+    CRow(COMPOSITOR_DRIVER, "Graphics Driver"),
     CPage("Wayland game driver", listOf(CMatch(pre("graphics.wl.")))),
     CRow("display.hdrOutput", "HDR output (HDR10)"),
     CRow("graphics.fastOpenGL", "OpenGL: Fast"),
@@ -663,6 +663,7 @@ internal fun SimpleClassicEditor(
         true
     }
 
+    SimpleFlat {
     Box(Modifier.fillMaxSize()) {
         // A game's settings sit on its own art.
         env.shortcut?.let { s -> SimpleWallpaper(focused = s, games = emptyList(), hero = false) }
@@ -687,7 +688,7 @@ internal fun SimpleClassicEditor(
                 if (ex != null) {
                     ExtrasPanel(ex, extrasAnchor, active = zone == KZone.EXTRAS, modifier = mod)
                 } else {
-                    LinesPanel(lines, rowNow, active = zone == KZone.ROWS, source = source, env = env, values = values, game = game, modifier = mod) { i ->
+                    LinesPanel("$tabKey/${stack.joinToString("/") { it.first }}", lines, rowNow, active = zone == KZone.ROWS, source = source, env = env, values = values, game = game, modifier = mod) { i ->
                         zone = KZone.ROWS
                         if (i == rowNow) lines.getOrNull(i)?.let { activate(it) } else row = i
                     }
@@ -824,6 +825,7 @@ internal fun SimpleClassicEditor(
             onKeepEditing = { afterUnsaved = null },
         )
     }
+    }
 }
 
 // ───────────────────────────── pieces ─────────────────────────────
@@ -843,7 +845,8 @@ private fun ClassicTitle(
     val accent = MaterialTheme.colorScheme.primary
     Column(Modifier.fillMaxWidth()) {
         if (showOverline) Text(header.overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
-        Row(verticalAlignment = Alignment.Bottom) {
+        // A fixed height: the Unsaved tag appearing must not move the page.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(if (big) 52.dp else 38.dp)) {
             Text(
                 title,
                 color = Color.White,
@@ -859,7 +862,7 @@ private fun ClassicTitle(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(bottom = 4.dp).background(accent.copy(alpha = 0.22f), SimpleShape).padding(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.background(accent.copy(alpha = 0.22f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
                     Text(if (createMode) "Not created yet" else "Unsaved", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
@@ -1029,6 +1032,7 @@ private fun SideCard(
 
 @Composable
 private fun LinesPanel(
+    listKey: String,
     lines: List<RLine>,
     row: Int,
     active: Boolean,
@@ -1039,8 +1043,9 @@ private fun LinesPanel(
     modifier: Modifier,
     onTap: (Int) -> Unit,
 ) {
-    val state = remember(lines.size, lines.firstOrNull()) { LazyListState() }
-    LaunchedEffect(row, lines.size) { if (lines.isNotEmpty()) state.animateScrollToItem(max(0, row - 3)) }
+    // One list state per page (the lines are rebuilt on every change; the state must not be).
+    val state = remember(listKey) { LazyListState() }
+    LaunchedEffect(row, listKey) { if (lines.isNotEmpty()) state.keepVisible(row) }
     LazyColumn(
         state = state,
         contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 40.dp),

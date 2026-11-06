@@ -121,6 +121,17 @@ internal fun SimpleMenuPage(
     /** Extra lines over the menu (a status, a running download, a notice). */
     banner: String? = null,
 ) {
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner) }
+}
+
+@Composable
+private fun SimpleMenuPageBody(
+    overline: String,
+    title: String,
+    sections: List<MenuSection>,
+    onBack: () -> Unit,
+    banner: String?,
+) {
     val layout by AppThemeState.simpleLayout.collectAsState()
     var secKey by rememberSaveable { mutableStateOf(sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
@@ -353,7 +364,7 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
 @Composable
 private fun EntryPanel(sec: MenuSection?, entries: List<MenuEntry>, row: Int, active: Boolean, modifier: Modifier, onTap: (Int) -> Unit) {
     val state = remember(sec?.key) { LazyListState() }
-    LaunchedEffect(row, sec?.key) { if (entries.isNotEmpty()) state.animateScrollToItem(max(0, row - 3)) }
+    LaunchedEffect(row, sec?.key) { if (entries.isNotEmpty()) state.keepVisible(row) }
     Box(
         modifier = modifier
             .simpleDepth(high = true)

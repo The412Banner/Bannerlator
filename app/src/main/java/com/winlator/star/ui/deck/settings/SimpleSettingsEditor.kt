@@ -76,6 +76,8 @@ import com.winlator.star.ui.simple.SimpleLine
 import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.SimpleFlat
+import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
 import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
@@ -523,7 +525,8 @@ private fun EditorTitle(
             Spacer(Modifier.weight(1f))
         }
         Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
+        // A fixed height: the Unsaved tag appearing must not move the page.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(if (big) 50.dp else 36.dp)) {
             Text(
                 if (big) current?.label ?: header.title else header.title,
                 color = Color.White,
@@ -539,7 +542,7 @@ private fun EditorTitle(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(bottom = 4.dp).background(accent.copy(alpha = 0.2f), SimpleShape).padding(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.background(accent.copy(alpha = 0.2f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
                     Text("Unsaved", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
@@ -597,7 +600,7 @@ private fun CategoryList(
     val accent = MaterialTheme.colorScheme.primary
     val state = remember { LazyListState() }
     val idx = cats.indexOfFirst { it.id == current?.id }.coerceAtLeast(0)
-    LaunchedEffect(idx) { state.animateScrollToItem(max(0, idx - 3)) }
+    LaunchedEffect(idx) { state.keepVisible(idx) }
     LazyColumn(
         state = state,
         contentPadding = PaddingValues(10.dp),
@@ -635,7 +638,7 @@ private fun CategoryStrip(cats: List<SettingsCategory>, current: SettingsCategor
     val accent = MaterialTheme.colorScheme.primary
     val state = remember { LazyListState() }
     val idx = cats.indexOfFirst { it.id == current?.id }.coerceAtLeast(0)
-    LaunchedEffect(idx) { state.animateScrollToItem(max(0, idx - 2)) }
+    LaunchedEffect(idx) { state.keepVisible(idx) }
     LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().height(86.dp)) {
         itemsIndexed(cats, key = { _, c -> c.id }) { _, c ->
             val on = c.id == current?.id
@@ -679,7 +682,18 @@ private fun MenuPanel(
     onTap: (Int) -> Unit,
 ) {
     val state = remember(items.size) { LazyListState() }
-    LaunchedEffect(row, items.size) { if (items.isNotEmpty() && !extrasZone) state.animateScrollToItem(max(0, row - 3)) }
+    // The list index of each row: a group title sits in the list before the first row of its group.
+    val listIndex = remember(items) {
+        var last: String? = null
+        var n = 0
+        items.map { m ->
+            val g = (m as? MenuItem.Setting)?.def?.group
+            if (g != null && g != last && g.isNotBlank()) n++
+            if (g != null) last = g
+            n++
+        }
+    }
+    LaunchedEffect(row, items.size) { if (items.isNotEmpty() && !extrasZone) state.keepVisible(listIndex.getOrElse(row) { row }) }
     // Entering the lists and tools: bring them on screen so they can take the focus.
     LaunchedEffect(extrasZone) { if (extrasZone && extra != null) state.scrollToItem(max(0, state.layoutInfo.totalItemsCount - 1)) }
     LazyColumn(

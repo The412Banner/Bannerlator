@@ -102,8 +102,8 @@ import kotlin.math.max
 
 private sealed interface CItem
 private class CHead(val title: String) : CItem
-/** One setting by id, with Classic's name for it. */
-private class CRow(val id: String, val label: String? = null) : CItem
+/** One setting by id, with Classic's name for it ([only] picks between rows that share an id). */
+private class CRow(val id: String, val label: String? = null, val only: ((SettingDef) -> Boolean)? = null) : CItem
 /** Every not yet placed setting [test] matches, in the registry's order. */
 private class CMatch(val test: (SettingDef) -> Boolean) : CItem
 /** A gear dialog of the Classic editor: its rows on a page of their own. */
@@ -116,12 +116,17 @@ private class CTab(val title: String, val icon: ImageVector, val items: List<CIt
 
 private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id.startsWith(it) } }
 
+// Two rows share the driver version's id: the X11 driver configuration's "Driver version" and the Wayland
+// compositor's driver (SettingsRegistry). They are told apart by label.
+private const val GFX_DRIVER_VERSION = GraphicsRows.ID_DRIVER_VERSION
+private val isCompositorRow: (SettingDef) -> Boolean = { d -> d.id == GFX_DRIVER_VERSION && d.label == "Graphics driver" }
+
 private fun graphicsItems(game: Boolean): List<CItem> = listOf(
     CHead("Graphics"),
     CRow("performance.syncMode", "Sync").takeIf { game },
     CRow("graphics.driver", "Graphics Driver"),
-    CPage("Driver settings", listOf(CMatch(pre("graphics.gdc.")))),
-    CRow(ID_DRIVER_VERSION, "Graphics Driver"),
+    CPage("Driver settings", listOf(CMatch { d -> d.id.startsWith("graphics.gdc.") && !isCompositorRow(d) })),
+    CRow(GFX_DRIVER_VERSION, "Graphics Driver", only = isCompositorRow),
     CPage("Wayland game driver", listOf(CMatch(pre("graphics.wl.")))),
     CRow("display.hdrOutput", "HDR output (HDR10)"),
     CRow("graphics.fastOpenGL", "OpenGL: Fast"),
@@ -380,16 +385,17 @@ private fun resolve(
     handoffs: Map<String, List<Handoff>>,
     categoryLabel: (String) -> String,
 ): List<RTab> {
-    val byId = defs.associateBy { it.id }
-    val placed = HashSet<String>()
+    // Placed rows by identity: a few rows share an id (see isCompositorRow).
+    val placed = HashSet<SettingDef>()
     val extraItems: Map<String, List<Pair<PageExtra, Boolean>>> =
         extras.mapValues { (_, e) -> e.top().map { it to true } + e.bottom().map { it to false } }
     val placedExtra = HashSet<String>()
     fun res(items: List<CItem>): List<RLine> = buildList {
         for (item in items) when (val it = item) {
             is CHead -> add(RHead(it.title))
-            is CRow -> byId[it.id]?.takeIf { d -> d.id !in placed && applies(d) }?.let { d -> placed += d.id; add(RSet(d, it.label ?: d.label)) }
-            is CMatch -> defs.filter { d -> d.id !in placed && applies(d) && it.test(d) }.forEach { d -> placed += d.id; add(RSet(d, d.label)) }
+            is CRow -> defs.firstOrNull { d -> d.id == it.id && d !in placed && (it.only?.invoke(d) ?: true) && applies(d) }
+                ?.let { d -> placed += d; add(RSet(d, it.label ?: d.label)) }
+            is CMatch -> defs.filter { d -> d !in placed && applies(d) && it.test(d) }.forEach { d -> placed += d; add(RSet(d, d.label)) }
             is CPage -> {
                 val lines = pruneHeads(res(it.items))
                 if (lines.isNotEmpty()) add(RPage(it.title, lines))
@@ -408,10 +414,10 @@ private fun resolve(
     }
     val resolved = tabs.map { t -> t to res(t.items).toMutableList() }
     for ((t, lines) in resolved) {
-        val left = defs.filter { d -> d.id !in placed && d.category in t.leftovers && applies(d) }
+        val left = defs.filter { d -> d !in placed && d.category in t.leftovers && applies(d) }
         if (left.isNotEmpty()) {
             lines += RHead("More")
-            left.forEach { d -> placed += d.id; lines += RSet(d, d.label) }
+            left.forEach { d -> placed += d; lines += RSet(d, d.label) }
         }
         for (cat in t.leftovers) {
             val rest = extraItems[cat].orEmpty().filter { (p, _) -> "$cat|${p.key}" !in placedExtra }.map { (p, _) -> p }
@@ -485,9 +491,9 @@ internal fun SimpleClassicEditor(
     if (tabIsExtra) openExtra = lines[0] as RExtra
     val extraOpen = openExtra != null
     LaunchedEffect(extraOpen, tabKey) { if (extraOpen) zone = KZone.EXTRAS else if (zone == KZone.EXTRAS) zone = KZone.ROWS }
-    fun focusable(l: RLine?) = l != null && l !is RHead
+    fun canFocus(l: RLine?) = l != null && l !is RHead
     val rowNow = row.coerceIn(0, max(0, lines.size - 1)).let { r ->
-        if (focusable(lines.getOrNull(r))) r else lines.indexOfFirst { focusable(it) }.coerceAtLeast(0)
+        if (canFocus(lines.getOrNull(r))) r else lines.indexOfFirst { canFocus(it) }.coerceAtLeast(0)
     }
 
     // Dialogs and pickers.
@@ -636,12 +642,12 @@ internal fun SimpleClassicEditor(
             else -> when (a) {
                 SIn.UP -> {
                     var i = rowNow - 1
-                    while (i >= 0 && !focusable(lines.getOrNull(i))) i--
+                    while (i >= 0 && !canFocus(lines.getOrNull(i))) i--
                     if (i >= 0) row = i
                 }
                 SIn.DOWN -> {
                     var i = rowNow + 1
-                    while (i < lines.size && !focusable(lines.getOrNull(i))) i++
+                    while (i < lines.size && !canFocus(lines.getOrNull(i))) i++
                     if (i < lines.size) row = i
                     else if (layout == AppThemeState.SIMPLE_LAYOUT_FOCUS && stack.isEmpty() && tabs.size > 1) zone = KZone.TABS
                 }

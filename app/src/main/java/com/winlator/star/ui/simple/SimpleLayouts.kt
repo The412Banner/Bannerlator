@@ -246,8 +246,7 @@ private fun mainLegend(ctl: SimpleController): List<Pair<String, String>> = when
 
 /** Shelf: one row of covers, the focused one large, its facts underneath. The default Simple layout. */
 @Composable
-internal fun SimpleShelfLayout(ctl: SimpleController) {
-    val d = ctl.data ?: return
+internal fun SimpleShelfLayout(ctl: SimpleController, d: SimpleData) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val screenW = maxWidth
         val portrait = maxHeight > maxWidth
@@ -350,8 +349,7 @@ internal fun SimpleShelfLayout(ctl: SimpleController) {
 
 /** Rail: an icon rail that opens when focused, a compact list, and the focused entry's details beside it. */
 @Composable
-internal fun SimpleRailLayout(ctl: SimpleController) {
-    val d = ctl.data ?: return
+internal fun SimpleRailLayout(ctl: SimpleController, d: SimpleData) {
     val accent = MaterialTheme.colorScheme.primary
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val screenW = maxWidth
@@ -554,8 +552,7 @@ private fun RailDetail(ctl: SimpleController, d: SimpleData, modifier: Modifier)
 
 /** Focus: the focused game fills the screen; its title, buttons and quick facts on the left, a strip to browse below. */
 @Composable
-internal fun SimpleFocusLayout(ctl: SimpleController) {
-    val d = ctl.data ?: return
+internal fun SimpleFocusLayout(ctl: SimpleController, d: SimpleData) {
     val accent = MaterialTheme.colorScheme.primary
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val portrait = maxHeight > maxWidth

@@ -474,7 +474,9 @@ internal fun SimpleHome(
         )
     }
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
-    ctl.data = SimpleData(
+    // Passed to the layouts as a parameter as well: the controller's copy is a plain field Compose does not watch, so a
+    // layout reading only that would keep showing the first (empty) list from before the games loaded.
+    val data = SimpleData(
         games = library,
         allGames = recent,
         filters = filters,
@@ -487,6 +489,7 @@ internal fun SimpleHome(
         gameMenu = { menuFor = it },
         addGame = addGame,
     )
+    ctl.data = data
 
     // The home takes the controller whenever it is back on screen: after a game, a page, the game menu or a dialog.
     val focus = remember { FocusRequester() }
@@ -510,9 +513,9 @@ internal fun SimpleHome(
         val wallGame = if (ctl.section == SEC_LIBRARY) ctl.focusedGame() else null
         SimpleWallpaper(wallGame, recent, hero = layout == AppThemeState.SIMPLE_LAYOUT_FOCUS)
         when (layout) {
-            AppThemeState.SIMPLE_LAYOUT_RAIL -> SimpleRailLayout(ctl)
-            AppThemeState.SIMPLE_LAYOUT_FOCUS -> SimpleFocusLayout(ctl)
-            else -> SimpleShelfLayout(ctl)
+            AppThemeState.SIMPLE_LAYOUT_RAIL -> SimpleRailLayout(ctl, data)
+            AppThemeState.SIMPLE_LAYOUT_FOCUS -> SimpleFocusLayout(ctl, data)
+            else -> SimpleShelfLayout(ctl, data)
         }
         if (ctl.helpOpen) SimpleHelp(layout) { ctl.helpOpen = false }
     }

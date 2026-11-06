@@ -125,6 +125,7 @@ import com.winlator.star.ui.screens.DeckGameActionsHost
 import com.winlator.star.ui.screens.GamesScreenRequests
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.ui.findActivity
+import com.winlator.star.ui.simple.simpleRoutes
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.topBarActionsState
 import kotlinx.coroutines.delay
@@ -729,7 +730,7 @@ private fun DeckShellContent(
                                         composable(DeckRoutes.COMPONENTS) { DeckComponentsPage() }
                                         composable(DeckRoutes.CONTROLS) { DeckControlsPage() }
                                         deckSettingsRoutes(navController, onAbout)
-                                        com.winlator.star.ui.simple.simpleRoutes(
+                                        simpleRoutes(
                                             open = { route -> nav.open(route) },
                                             back = { nav.back() },
                                             onMyAccount = onAccount,

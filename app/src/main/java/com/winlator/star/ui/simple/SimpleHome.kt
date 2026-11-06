@@ -221,16 +221,21 @@ internal class SimpleController {
         return if (it.cycle != null) emptyList() else listOf(SimpleAction("Open", { it.open?.invoke() }, primary = true))
     }
 
-    /** One press. True when it was used; false hands it on (B on the Library goes back as usual). */
+    /**
+     * One press. True when it was used. Only Y (the shell's search when nothing here uses it) and X are ever handed on:
+     * a direction or bumper that does nothing here must not move Compose focus off the home or let the Deck shell switch
+     * to one of its own tabs, and B on the Library does nothing rather than close the app by accident.
+     */
     fun input(a: SIn): Boolean {
         if (data == null) return false
         if (helpOpen) { helpOpen = false; return true }
         if (a == SIn.SELECT) { helpOpen = true; return true }
-        return when (layout) {
+        val used = when (layout) {
             AppThemeState.SIMPLE_LAYOUT_RAIL -> rail(a)
             AppThemeState.SIMPLE_LAYOUT_FOCUS -> focusLayout(a)
             else -> shelf(a)
         }
+        return used || (a != SIn.Y && a != SIn.X)
     }
 
     private fun shelf(a: SIn): Boolean {
@@ -368,6 +373,14 @@ internal class SimpleController {
     }
 }
 
+/**
+ * The home's place (section, focus per section, filter, order) for the whole app session: Home leaves composition while a
+ * Deck page is open, and B back must land where the user was.
+ */
+internal object SimpleSession {
+    val controller = SimpleController()
+}
+
 /** Tap without making the target a focus stop: the Simple home keeps the controller focus to itself. */
 internal fun Modifier.simpleTap(onTap: () -> Unit): Modifier = this.pointerInput(onTap) { detectTapGestures(onTap = { onTap() }) }
 
@@ -410,7 +423,7 @@ internal fun SimpleHome(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val ctl = remember { SimpleController() }
+    val ctl = remember { SimpleSession.controller }
     ctl.layout = layout
     val stats = remember(shortcuts) { readPlayStats(context, shortcuts) }
     val recent = remember(shortcuts, stats) { sortGames(shortcuts, LibrarySort.RECENT) { gameSortKeyOf(it, stats) } }

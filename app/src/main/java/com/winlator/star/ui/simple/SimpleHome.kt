@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.winlator.star.R
 import com.winlator.star.container.Shortcut
 import com.winlator.star.ui.Screen
 import com.winlator.star.ui.deck.DeckGameMenuSheet
@@ -112,7 +113,20 @@ internal class SimpleItem(
     val value: String? = null,
     val cycle: ((Int) -> Unit)? = null,
     val open: (() -> Unit)? = null,
+    /** A store's logo (drawable) on its [brand] colours; [logoWhite] draws a one-colour logo white. */
+    val logo: Int? = null,
+    val brand: List<Color>? = null,
+    val logoWhite: Boolean = false,
 )
+
+/** The stores' logos and brand colours, the same as the XMB store cards use. */
+private fun storeLogo(st: DeckStore): Triple<Int, List<Color>, Boolean> = when (st) {
+    DeckStore.STEAM -> Triple(R.drawable.store_logo_steam, listOf(Color(0xFF171A21), Color(0xFF1B2838)), false)
+    DeckStore.EPIC -> Triple(R.drawable.store_logo_epic, listOf(Color(0xFF121212), Color(0xFF202020)), false)
+    DeckStore.GOG -> Triple(R.drawable.store_logo_gog, listOf(Color(0xFF5C2D91), Color(0xFF3B1C60)), false)
+    DeckStore.AMAZON -> Triple(R.drawable.store_logo_amazon, listOf(Color(0xFF232F3E), Color(0xFF131A22)), false)
+    DeckStore.XBOX -> Triple(R.drawable.store_logo_xbox, listOf(Color(0xFF107C10), Color(0xFF0B5A0B)), true)
+}
 
 /** Everything the layouts show and do, rebuilt on each composition of [SimpleHome]. */
 internal class SimpleData(
@@ -440,12 +454,16 @@ internal fun SimpleHome(
     val stores = remember(signedIn, shortcuts) {
         DeckStore.entries.map { st ->
             val owned = shortcuts.count(st.owns)
+            val (logo, brand, white) = storeLogo(st)
             SimpleItem(
                 key = st.name,
                 title = st.label,
                 subtitle = if (signedIn[st] == true) "Signed in · $owned ${if (owned == 1) "game" else "games"}" else "Not signed in",
                 icon = Icons.Filled.Storefront,
                 open = { launchStore(st.screen) },
+                logo = logo,
+                brand = brand,
+                logoWhite = white,
             )
         }
     }

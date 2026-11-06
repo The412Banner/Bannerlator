@@ -1,6 +1,10 @@
 package com.winlator.star.ui.simple
 
 import androidx.compose.animation.core.Spring
+import com.winlator.star.ui.deck.rememberXmbLogo
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -102,6 +106,7 @@ private fun SimpleRow(
     focused: Boolean,
     active: Boolean = true,
     height: Dp = 52.dp,
+    logoItem: SimpleItem? = null,
     onTap: () -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -126,7 +131,10 @@ private fun SimpleRow(
             .simpleTap(onTap)
             .padding(horizontal = 16.dp),
     ) {
-        if (icon != null) {
+        if (logoItem?.logo != null) {
+            SimpleItemArt(logoItem, Modifier.size(width = 44.dp, height = 30.dp), iconSize = 18.dp, label = false)
+            Spacer(Modifier.width(14.dp))
+        } else if (icon != null) {
             Icon(icon, contentDescription = null, tint = if (focused && active) accent else SimpleMuted, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
         }
@@ -161,11 +169,24 @@ private fun SimpleTile(focused: Boolean, width: Dp, height: Dp, grow: Float, onT
     ) { content() }
 }
 
-/** The tile of a store or tool: its icon on a colour pair from its name, the name at the bottom. */
+/** The tile of a store or tool: a store's logo on its brand colours, else the icon on a colour pair; the name at the bottom. */
 @Composable
 private fun SimpleItemArt(item: SimpleItem, modifier: Modifier, iconSize: Dp = 48.dp, label: Boolean = true) {
-    Box(modifier = modifier.clip(SimpleShape).background(fallbackBrush(item.title + "#"))) {
-        Icon(item.icon, contentDescription = null, tint = Color.White.copy(alpha = 0.88f), modifier = Modifier.size(iconSize).align(Alignment.Center))
+    val brand = item.brand
+    Box(modifier = modifier.clip(SimpleShape).background(if (brand != null) Brush.linearGradient(brand) else fallbackBrush(item.title + "#"))) {
+        val logo = item.logo
+        val bmp = if (logo != null) rememberXmbLogo(logo) else null
+        if (bmp != null) {
+            Image(
+                bitmap = bmp,
+                contentDescription = item.title,
+                contentScale = ContentScale.Fit,
+                colorFilter = if (item.logoWhite) ColorFilter.tint(Color.White) else null,
+                modifier = Modifier.fillMaxSize(0.62f).align(Alignment.Center).padding(bottom = if (label) 14.dp else 0.dp),
+            )
+        } else {
+            Icon(item.icon, contentDescription = null, tint = Color.White.copy(alpha = 0.88f), modifier = Modifier.size(iconSize).align(Alignment.Center))
+        }
         if (label) {
             Text(
                 item.title,
@@ -437,7 +458,7 @@ internal fun SimpleRailLayout(ctl: SimpleController, d: SimpleData) {
                                 }
                             }
                             else -> itemsIndexed(ctl.itemsOf(ctl.section), key = { _, it -> it.key }) { i, it ->
-                                SimpleRow(it.icon, it.title, it.subtitle, value = it.value, focused = i == f, active = listActive, height = 56.dp) { tap(i) }
+                                SimpleRow(it.icon, it.title, logoItem = it, subtitle = it.subtitle, value = it.value, focused = i == f, active = listActive, height = 56.dp) { tap(i) }
                             }
                         }
                     }

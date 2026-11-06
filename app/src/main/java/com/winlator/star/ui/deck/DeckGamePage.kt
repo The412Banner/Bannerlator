@@ -203,10 +203,10 @@ internal fun DeckGamePage(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .deckFocusRing(RoundedCornerShape(16.dp), scaleTo = 1f)
-                            .clip(RoundedCornerShape(16.dp))
+                            .deckFocusRing(deckShape(16.dp), scaleTo = 1f)
+                            .clip(deckShape(16.dp))
                             .background(deckGlass())
-                            .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
+                            .border(1.dp, deckLine(), deckShape(16.dp))
                             .clickable(onClick = onBack)
                             .size(52.dp),
                     ) {
@@ -253,9 +253,9 @@ internal fun DeckGamePage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
-                            .deckFocusRing(RoundedCornerShape(16.dp), scaleTo = 1.03f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
+                            .deckFocusRing(deckShape(16.dp), scaleTo = 1.03f)
+                            .clip(deckShape(16.dp))
+                            .border(1.dp, deckLine(), deckShape(16.dp))
                             .clickable { onOpenContainer(s.container.id) }
                             .heightIn(min = 38.dp)
                             .padding(horizontal = 14.dp),
@@ -320,7 +320,7 @@ internal fun DeckGamePage(
                 // An Android game has neither, so the card is left out.
                 if (!isAndroid) {
                     val overrides = overrideCount(s)
-                    val setupShape = RoundedCornerShape(20.dp)
+                    val setupShape = deckShape(20.dp)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -387,9 +387,9 @@ internal fun DeckGamePage(
                         .weight(0.38f)
                         .fillMaxHeight()
                         .padding(vertical = 24.dp)
-                        .clip(RoundedCornerShape(28.dp))
+                        .clip(deckShape(28.dp))
                         .background(deckGlass())
-                        .border(1.dp, deckLine(), RoundedCornerShape(28.dp))
+                        .border(1.dp, deckLine(), deckShape(28.dp))
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                 ) {
@@ -597,8 +597,8 @@ internal fun DeckGameMenuSheet(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f)
-                                .clip(RoundedCornerShape(14.dp))
+                                .deckFocusRing(deckShape(14.dp), scaleTo = 1f)
+                                .clip(deckShape(14.dp))
                                 .clickable(onClick = onDismiss)
                                 .size(44.dp),
                         ) {
@@ -608,7 +608,7 @@ internal fun DeckGameMenuSheet(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 14.dp)) {
                         Box(
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(width = 54.dp, height = 76.dp).clip(RoundedCornerShape(10.dp)).background(cs.surfaceVariant),
+                            modifier = Modifier.size(width = 54.dp, height = 76.dp).clip(deckShape(10.dp)).background(cs.surfaceVariant),
                         ) {
                             val bmp = shortcut.icon
                             if (bmp != null) {

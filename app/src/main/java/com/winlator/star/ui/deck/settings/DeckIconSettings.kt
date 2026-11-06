@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -143,7 +144,7 @@ internal class DeckIconSection(
 @Composable
 private fun IconPreview(icon: Bitmap?) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(56.dp).clip(shape).background(cs.surfaceVariant.copy(alpha = 0.55f)),

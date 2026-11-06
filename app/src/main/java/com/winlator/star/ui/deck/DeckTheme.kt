@@ -80,11 +80,11 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
         labelSmall     = base.labelSmall.body(FontWeight.Bold),
     )
     val shapes = Shapes(
-        extraSmall = RoundedCornerShape(8.dp),
-        small      = RoundedCornerShape(12.dp),
-        medium     = RoundedCornerShape(16.dp),
-        large      = RoundedCornerShape(18.dp),
-        extraLarge = RoundedCornerShape(24.dp),
+        extraSmall = deckShape(8.dp),
+        small      = deckShape(12.dp),
+        medium     = deckShape(16.dp),
+        large      = deckShape(18.dp),
+        extraLarge = deckShape(24.dp),
     )
     // The Deck style is drawn DECK_UI_SCALE smaller than the rest of the app (on top of the interface-size setting),
     // so a phone or handheld at its stock display size has room for the console layout. Once only: a dialog's
@@ -100,6 +100,16 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
         )
     }
 }
+
+/** The Simple style's hard corner. */
+private val SimpleCorner = RoundedCornerShape(3.dp)
+
+/**
+ * A Deck corner of [radius], or the Simple style's hard 3 dp corner while Simple is on. Reads snapshot state
+ * (AppThemeState.simpleLook), so a composable that asks for it recomposes when the style changes.
+ */
+internal fun deckShape(radius: androidx.compose.ui.unit.Dp): Shape =
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) SimpleCorner else RoundedCornerShape(radius)
 
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
@@ -158,7 +168,7 @@ internal fun DeckGlyph(text: String, kind: GlyphKind, modifier: Modifier = Modif
     val shape = when {
         round -> CircleShape
         kind == GlyphKind.BUMPER -> RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp, bottomStart = 5.dp, bottomEnd = 5.dp)
-        else -> RoundedCornerShape(7.dp)
+        else -> deckShape(7.dp)
     }
     val (fill, ink) = when (kind) {
         GlyphKind.A -> cs.primary to cs.onPrimary

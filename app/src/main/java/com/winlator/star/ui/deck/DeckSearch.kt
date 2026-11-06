@@ -171,7 +171,7 @@ private fun DeckSearchPanel(
                     .clickable(onClick = onDismiss, indication = null, interactionSource = remember { MutableInteractionSource() })
                     .padding(horizontal = if (compact) 12.dp else 48.dp, vertical = if (compact) 16.dp else 40.dp),
             ) {
-                val shape = RoundedCornerShape(28.dp)
+                val shape = deckShape(28.dp)
                 Column(
                     modifier = Modifier
                         .widthIn(max = 900.dp)
@@ -192,8 +192,8 @@ private fun DeckSearchPanel(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f)
-                                .clip(RoundedCornerShape(14.dp))
+                                .deckFocusRing(deckShape(14.dp), scaleTo = 1f)
+                                .clip(deckShape(14.dp))
                                 .clickable(onClick = onDismiss)
                                 .size(44.dp),
                         ) {
@@ -210,7 +210,7 @@ private fun DeckSearchPanel(
                         keyboardActions = KeyboardActions(onSearch = {
                             games.firstOrNull()?.let { onOpenGame(it.file.path) } ?: places.firstOrNull()?.let { openDestination(it, onOpenRoute, onLaunchStore, onAbout) }
                         }),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = deckShape(18.dp),
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = cs.primary, unfocusedBorderColor = deckLine()),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -267,7 +267,7 @@ private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit,
 private fun SearchResultRow(title: String, subtitle: String, icon: ImageVector, cover: Shortcut?, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -282,7 +282,7 @@ private fun SearchResultRow(title: String, subtitle: String, icon: ImageVector, 
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(deckShape(12.dp))
                 .background(cs.primary.copy(alpha = 0.14f)),
         ) {
             val bmp = cover?.icon

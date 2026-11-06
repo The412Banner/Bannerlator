@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -447,7 +448,7 @@ private fun ComponentRow(state: DeckComponentsState, c: Component, note: String?
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f)
+            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
             // Stays focusable when there is nothing to do, so the pad can still walk the list; press() ignores it then.
             .clickable { state.press(c) }
             .padding(horizontal = 18.dp, vertical = 12.dp),
@@ -484,7 +485,7 @@ private fun ComponentRow(state: DeckComponentsState, c: Component, note: String?
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = state.progress.coerceIn(0f, 1f),
-                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(deckShape(2.dp)),
                 color = cs.primary,
                 trackColor = cs.surfaceVariant,
             )
@@ -495,7 +496,7 @@ private fun ComponentRow(state: DeckComponentsState, c: Component, note: String?
 @Composable
 private fun StatePill(label: String, accent: Boolean, dim: Boolean, icon: ImageVector? = if (accent) Icons.Filled.Download else null) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(22.dp)
+    val shape = deckShape(22.dp)
     val ink = when {
         dim -> cs.onSurfaceVariant.copy(alpha = 0.5f)
         accent -> cs.primary
@@ -527,7 +528,7 @@ private fun FoldToggle(title: String, subtitle: String, open: Boolean, onClick: 
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f)
+            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
@@ -552,7 +553,7 @@ private fun ComponentSearch(state: DeckComponentsState) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
         XmbTapToEdit(
             Modifier.weight(1f).then(if (xmbHome) Modifier else Modifier.focusRequester(state.searchFocus)),
-            RoundedCornerShape(16.dp),
+            deckShape(16.dp),
             edit,
         ) { fieldModifier, stopEditing ->
             OutlinedTextField(
@@ -567,7 +568,7 @@ private fun ComponentSearch(state: DeckComponentsState) {
                         modifier = Modifier.size(40.dp).clip(CircleShape).clickable { state.query = "" },
                     ) { Icon(Icons.Filled.Close, contentDescription = "Clear search") }
                 }),
-                shape = RoundedCornerShape(16.dp),
+                shape = deckShape(16.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = if (xmbHome) KeyboardActions(onSearch = { stopEditing() }) else KeyboardActions.Default,
                 modifier = fieldModifier,

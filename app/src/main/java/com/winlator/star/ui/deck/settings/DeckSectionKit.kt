@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -101,7 +102,7 @@ internal fun DeckActionRow(action: DeckAction) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f)
+            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
             .clickable(enabled = action.enabled, onClick = action.onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
@@ -135,7 +136,7 @@ internal fun DeckLine(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (onClick != null) Modifier.deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f).clickable(enabled = enabled, onClick = onClick)
+                if (onClick != null) Modifier.deckFocusRing(deckShape(12.dp), scaleTo = 1f).clickable(enabled = enabled, onClick = onClick)
                 else Modifier
             )
             .padding(horizontal = 18.dp, vertical = 12.dp),
@@ -170,7 +171,7 @@ internal fun DeckLine(
 @Composable
 internal fun DeckSmallButton(label: String, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier

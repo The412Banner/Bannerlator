@@ -146,7 +146,7 @@ internal fun IgSectionLabel(text: String) {
 /** A rounded card that groups rows, like the Deck home's shelves. */
 @Composable
 internal fun IgCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = deckShape(18.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -312,7 +312,7 @@ internal fun <T> IgSegmented(
     onSelect: (T) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val track = RoundedCornerShape(16.dp)
+    val track = deckShape(16.dp)
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -325,7 +325,7 @@ internal fun <T> IgSegmented(
         options.forEach { (v, label) ->
             val sel = v == selected
             val on = enabled && isEnabled(v)
-            val shape = RoundedCornerShape(12.dp)
+            val shape = deckShape(12.dp)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -383,7 +383,7 @@ internal fun IgButton(
     enabled: Boolean = true,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     val ink = when {
         primary -> cs.onPrimary
         danger -> cs.error
@@ -489,7 +489,7 @@ internal fun IgConfirmDialog(
     val cancelFocus = remember { FocusRequester() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         DeckTheme {
-            val shape = RoundedCornerShape(24.dp)
+            val shape = deckShape(24.dp)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier

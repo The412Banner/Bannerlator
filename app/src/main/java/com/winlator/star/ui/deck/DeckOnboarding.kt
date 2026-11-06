@@ -272,7 +272,7 @@ private fun DeckOnboardingContent(
                 Spacer(Modifier.height(14.dp))
                 LinearProgressIndicator(
                     progress = { (step + 1) / ONBOARDING_STEPS.size.toFloat() },
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)),
+                    modifier = Modifier.fillMaxWidth().clip(deckShape(3.dp)),
                     color = cs.primary,
                     trackColor = cs.surfaceVariant,
                 )
@@ -317,7 +317,7 @@ private fun StepPanel(step: Int, modifier: Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 3.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(deckShape(14.dp))
                     .background(if (current) cs.primary.copy(alpha = 0.18f) else Color.Transparent)
                     .heightIn(min = 48.dp)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
@@ -518,7 +518,7 @@ private fun StepBody(
             Spacer(Modifier.height(18.dp))
             LinearProgressIndicator(
                 progress = { if (!installing) 1f else installProgress.coerceIn(0, 100) / 100f },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(deckShape(4.dp)),
                 color = cs.primary,
                 trackColor = cs.surfaceVariant,
             )
@@ -617,7 +617,7 @@ private fun OnboardingButton(
     enabled: Boolean = true,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     val ink = if (primary) cs.onPrimary else cs.onSurface
     Row(
         verticalAlignment = Alignment.CenterVertically,

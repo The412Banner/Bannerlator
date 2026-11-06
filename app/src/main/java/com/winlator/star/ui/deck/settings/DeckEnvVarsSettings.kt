@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -521,7 +522,7 @@ private fun EnvAddDialog(s: DeckEnvVarsSection) {
                     isError = error != null,
                     label = { Text("NAME or NAME=VALUE") },
                     supportingText = { Text(error ?: "Or pick a known one below. Spaces are dropped.") },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = deckShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
@@ -568,7 +569,7 @@ private fun EnvRawDialog(s: DeckEnvVarsSection) {
                         else "Ignored, needs NAME=VALUE: " + malformed.joinToString(", ") + ". Values can't contain spaces.",
                     )
                 },
-                shape = RoundedCornerShape(14.dp),
+                shape = deckShape(14.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
             )
         },
@@ -593,7 +594,7 @@ private fun EnvValueField(value: String, label: String, numeric: Boolean, onValu
         label = { Text(label) },
         supportingText = { Text("Spaces are dropped: variables are separated by spaces.") },
         keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text),
-        shape = RoundedCornerShape(14.dp),
+        shape = deckShape(14.dp),
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
     )
 }
@@ -605,7 +606,7 @@ private fun EnvValueField(value: String, label: String, numeric: Boolean, onValu
 @Composable
 internal fun EnvChoiceLine(label: String, hint: String?, selected: Boolean, multi: Boolean?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

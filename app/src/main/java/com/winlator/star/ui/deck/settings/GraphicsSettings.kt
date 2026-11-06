@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -1211,7 +1212,7 @@ private fun ActionRow(action: DeckGraphicsState.Action) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f)
+            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
             .clickable(onClick = action.onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {

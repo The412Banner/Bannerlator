@@ -635,9 +635,9 @@ private fun LibraryToolbar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(deckShape(18.dp))
                     .background(deckCardFill())
-                    .border(1.dp, deckLine(), RoundedCornerShape(18.dp))
+                    .border(1.dp, deckLine(), deckShape(18.dp))
                     .padding(5.dp),
             ) {
                 LibraryMode.entries.forEach { m -> ModeButton(m.label, m.icon, selected = m == mode) { onMode(m) } }
@@ -650,7 +650,7 @@ private fun LibraryToolbar(
         // Steam friends and chat; renders only while signed in to Steam.
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(cs.surfaceContainerHigh).border(1.dp, deckLine(), RoundedCornerShape(12.dp)),
+            modifier = Modifier.clip(deckShape(12.dp)).background(cs.surfaceContainerHigh).border(1.dp, deckLine(), deckShape(12.dp)),
         ) {
             SteamFriendsAction(tint = cs.onSurface)
         }
@@ -661,7 +661,7 @@ private fun LibraryToolbar(
 @Composable
 private fun ModeButton(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -681,7 +681,7 @@ private fun ModeButton(label: String, icon: ImageVector, selected: Boolean, onCl
 @Composable
 private fun IconTile(icon: ImageVector, label: String, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -733,7 +733,7 @@ private fun LibraryFilterDialog(
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         DeckDialogBars()
         DeckDialogScaled {
-            val shape = RoundedCornerShape(26.dp)
+            val shape = deckShape(26.dp)
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
@@ -800,7 +800,7 @@ private fun DeckHero(
     onButtonsFocused: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(24.dp)
+    val shape = deckShape(24.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -952,7 +952,7 @@ private fun DeckGameCard(
     onLongClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused) 1.06f else 1f, label = "deckCardScale")
     Column(
@@ -1030,7 +1030,7 @@ private fun DeckListRow(
     onMenu: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1044,14 +1044,14 @@ private fun DeckListRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .weight(1f)
-                .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f, onFocused = onFocus)
-                .clip(RoundedCornerShape(14.dp))
+                .deckFocusRing(deckShape(14.dp), scaleTo = 1f, onFocused = onFocus)
+                .clip(deckShape(14.dp))
                 .clickable(onClick = onOpen)
                 .padding(4.dp),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(width = 56.dp, height = 76.dp).clip(RoundedCornerShape(10.dp)).background(cs.surfaceVariant),
+                modifier = Modifier.size(width = 56.dp, height = 76.dp).clip(deckShape(10.dp)).background(cs.surfaceVariant),
             ) {
                 val bmp = shortcut.icon
                 if (bmp != null) {
@@ -1096,7 +1096,7 @@ private fun DeckListRow(
 @Composable
 private fun DeckEmptyLibrary(modifier: Modifier, addRequester: FocusRequester, onAddGame: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(24.dp)
+    val shape = deckShape(24.dp)
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1134,7 +1134,7 @@ internal fun DeckButton(
     glyph: String? = null,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     val ink = if (primary) cs.onPrimary else cs.onSurface
     Row(
         verticalAlignment = Alignment.CenterVertically,

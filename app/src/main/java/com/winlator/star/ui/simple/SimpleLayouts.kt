@@ -68,7 +68,7 @@ import com.winlator.star.ui.deck.setupSummary
 import com.winlator.star.ui.deck.storeLabelOf
 import kotlin.math.max
 
-private val SECTION_ICONS = listOf(Icons.Filled.GridView, Icons.Filled.Storefront, Icons.Filled.Build, Icons.Filled.Settings)
+internal val SECTION_ICONS = listOf(Icons.Filled.GridView, Icons.Filled.Storefront, Icons.Filled.Build, Icons.Filled.Settings)
 
 /** "Steam · 14.2 h played · Today": the line under a game's title. */
 @Composable

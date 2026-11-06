@@ -350,7 +350,7 @@ private fun StoreLibrary(
 @Composable
 private fun StoreGameCard(shortcut: Shortcut, subtitle: String, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused) 1.05f else 1f, label = "deckStoreCardScale")
     Column(
@@ -479,7 +479,7 @@ private fun StoreOptionsDialog(
                 modifier = Modifier
                     .widthIn(max = 480.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
+                    .clip(deckShape(22.dp))
                     .background(cs.surfaceContainerHigh)
                     .padding(vertical = 14.dp),
             ) {

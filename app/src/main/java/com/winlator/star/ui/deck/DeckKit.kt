@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -122,7 +123,7 @@ internal fun DeckPageHeader(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(if (compact) 44.dp else 56.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(deckShape(16.dp))
                     .background(cs.primary.copy(alpha = 0.16f)),
             ) {
                 Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(if (compact) 24.dp else 30.dp))
@@ -225,7 +226,7 @@ internal fun DeckTabStrip(
         modifier = modifier.fillMaxWidth(),
     ) {
         if (!deckCompact()) {
-            DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected - 1 + count) % count) })
+            DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { currentOnSelect((selected - 1 + count) % count) })
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -233,15 +234,15 @@ internal fun DeckTabStrip(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .onFocusChanged { deckActions.stripFocused.value = it.hasFocus }
-                .clip(RoundedCornerShape(18.dp))
+                .clip(deckShape(18.dp))
                 .background(deckCardFill())
-                .border(1.dp, deckLine(), RoundedCornerShape(18.dp))
+                .border(1.dp, deckLine(), deckShape(18.dp))
                 .horizontalScroll(rememberScrollState())
                 .padding(6.dp),
         ) {
             tabs.forEachIndexed { i, t ->
                 val sel = i == selected
-                val shape = RoundedCornerShape(12.dp)
+                val shape = deckShape(12.dp)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -283,7 +284,7 @@ internal fun DeckTabStrip(
             }
         }
         if (!deckCompact()) {
-            DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { currentOnSelect((selected + 1) % count) })
+            DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { currentOnSelect((selected + 1) % count) })
         }
     }
 }
@@ -325,7 +326,7 @@ internal fun DeckCategoryRail(
                 DeckSectionLabel(item.group, Modifier.padding(start = 12.dp, top = 10.dp))
             }
             val sel = item.key == selectedKey
-            val shape = RoundedCornerShape(14.dp)
+            val shape = deckShape(14.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -374,7 +375,7 @@ internal fun DeckChoiceChip(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -405,7 +406,7 @@ internal fun DeckChoiceChip(
                 fontSize = 10.5.sp,
                 letterSpacing = 1.sp,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(deckShape(8.dp))
                     .background(cs.surfaceVariant)
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             )
@@ -416,10 +417,12 @@ internal fun DeckChoiceChip(
 /** A rounded card that groups [DeckRow]s with hairlines between them. */
 @Composable
 internal fun DeckCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = deckShape(22.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
+            // Simple style: lifted off the wallpaper with a soft shadow.
+            .then(if (com.winlator.star.ui.theme.AppThemeState.simpleLook) Modifier.shadow(10.dp, shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black) else Modifier)
             .clip(shape)
             .background(deckCardFill())
             .border(1.dp, deckLine(), shape),
@@ -464,7 +467,7 @@ internal fun DeckRow(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(deckShape(12.dp))
                     .background((if (danger) cs.error else cs.primary).copy(alpha = 0.14f)),
             ) {
                 Icon(icon, contentDescription = null, tint = if (danger) cs.error else cs.primary, modifier = Modifier.size(22.dp))
@@ -497,7 +500,7 @@ internal fun DeckRow(
 @Composable
 internal fun DeckStat(value: String, label: String, modifier: Modifier = Modifier, progress: Float? = null) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(18.dp)
+    val shape = deckShape(18.dp)
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
@@ -514,14 +517,14 @@ internal fun DeckStat(value: String, label: String, modifier: Modifier = Modifie
                     .padding(top = 6.dp)
                     .fillMaxWidth()
                     .heightIn(min = 6.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(deckShape(3.dp))
                     .background(cs.surfaceVariant),
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .heightIn(min = 6.dp)
-                        .background(cs.primary, RoundedCornerShape(3.dp)),
+                        .background(cs.primary, deckShape(3.dp)),
                 )
             }
         }
@@ -532,7 +535,7 @@ internal fun DeckStat(value: String, label: String, modifier: Modifier = Modifie
 @Composable
 internal fun DeckStatStrip(stats: List<Pair<String, String>>, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = deckShape(16.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -565,7 +568,7 @@ internal fun DeckPill(text: String, modifier: Modifier = Modifier) {
         fontSize = 13.sp,
         maxLines = 1,
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(deckShape(14.dp))
             .background(cs.surfaceVariant.copy(alpha = 0.8f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
@@ -582,7 +585,7 @@ internal fun DeckAndroidPill(modifier: Modifier = Modifier, small: Boolean = fal
         letterSpacing = 0.6.sp,
         maxLines = 1,
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(deckShape(14.dp))
             .background(Color(0xFF3DDC84))
             .padding(horizontal = if (small) 8.dp else 12.dp, vertical = if (small) 3.dp else 6.dp),
     )

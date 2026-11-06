@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -229,7 +230,7 @@ private fun DetectedLine(section: DeckWrapperDetectedSection, key: String) {
                 checked = value == "1",
                 onCheckedChange = { section.put(key, if (it) "1" else "0") },
                 enabled = enabled,
-                modifier = Modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+                modifier = Modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
             )
         }
         WrapperSettingsDictionary.Type.DROPDOWN -> DeckLine(
@@ -286,7 +287,7 @@ private fun ChoiceDialog(title: String, choices: List<String>, current: String, 
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(if (c == choices.firstOrNull()) Modifier.focusRequester(first) else Modifier)
-                            .deckFocusRing(RoundedCornerShape(10.dp), scaleTo = 1f)
+                            .deckFocusRing(deckShape(10.dp), scaleTo = 1f)
                             .clickable { onPick(c) }
                             .padding(end = 8.dp),
                     ) {

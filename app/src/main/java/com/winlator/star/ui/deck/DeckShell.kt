@@ -250,8 +250,11 @@ private fun DeckShellContent(
     val xmbHome by AppThemeState.deckXmbHome.collectAsState()
     val topTabs = rails && xmbHome
     val xmbHomeNow by rememberUpdatedState(xmbHome)
-    // Simple style: Deck with the Simple launcher as Home (AppThemeState.simpleHome); every other page is the Deck page.
+    // Simple style: Deck with the Simple launcher as Home (AppThemeState.simpleHome); every other page is the Deck page,
+    // drawn with Simple corners (deckShape) inside the Simple frame for the chosen layout (SimpleChrome.kt).
     val simpleHome by AppThemeState.simpleHome.collectAsState()
+    val simpleHomeNow by rememberUpdatedState(simpleHome)
+    val simpleLayout by AppThemeState.simpleLayout.collectAsState()
     val sideLists = remember { DeckSideLists() }
     val topBarActionsState = remember { topBarActionsState() }
     val topBarTransparentState = remember { mutableStateOf(false) }
@@ -427,6 +430,13 @@ private fun DeckShellContent(
         onDispose { if (deckActions.subTab.value === swap) deckActions.subTab.value = null }
     }
 
+    // Simple style: back to the Simple home at section [i] (the home keeps the rest of its place).
+    val simpleGo: (Int) -> Unit = { i ->
+        com.winlator.star.ui.simple.SimpleSession.controller.goSection(i)
+        nav.goTab(DeckTab.HOME)
+    }
+    val simpleStep: (Int) -> Unit = { d -> simpleGo(com.winlator.star.ui.simple.SimpleSession.controller.section + d) }
+
     // Controller shortcuts.
     // MainActivity only offers keys its view tree left unhandled, so a screen that uses L1/R1 or B itself keeps them.
     // None of this runs while a game is up, because the game is another activity.
@@ -435,10 +445,11 @@ private fun DeckShellContent(
             val first = ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0
             when (ev.keyCode) {
                 // L1/R1 always move the top-level tabs; L2/R2 move a page's own tabs (a tab strip, the settings editor's categories), else the top-level tabs.
-                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) switchMenu(-1); true }
-                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) switchMenu(1); true }
-                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.invoke(-1) ?: switchMenu(-1); true }
-                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.invoke(1) ?: switchMenu(1); true }
+                // Simple: L1/R1 on a page go back to the Simple home's previous / next section; L2/R2 only move a page's own tabs.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) { if (simpleHomeNow) simpleStep(-1) else switchMenu(-1) }; true }
+                KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) { if (simpleHomeNow) simpleStep(1) else switchMenu(1) }; true }
+                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.invoke(-1) ?: run { if (!simpleHomeNow) switchMenu(-1) }; true }
+                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.invoke(1) ?: run { if (!simpleHomeNow) switchMenu(1) }; true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (nav.currentRoute() == DeckRoutes.HOME) return@handler false
                     if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) {
@@ -482,6 +493,7 @@ private fun DeckShellContent(
                 .fillMaxSize()
                 .then(
                     if (xmbHome) { if (currentRoute == DeckRoutes.HOME) Modifier.xmbWashBackground() else Modifier }
+                    else if (simpleHome) Modifier.background(Color(0xFF05070B))
                     else Modifier
                         .background(cs.background)
                         .drawBehind {
@@ -504,6 +516,9 @@ private fun DeckShellContent(
         ) {
             // XMB mode, every page but Home (which paints its own over the wash): the glow, behind the page and the bars.
             if (xmbHome && currentRoute != DeckRoutes.HOME) XmbGlowBackdrop(Modifier.matchParentSize())
+            // Simple style, every page but Home (which draws its own wallpaper): the drifting cover collage.
+            val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
+            if (simplePages) com.winlator.star.ui.simple.SimplePageBackdrop(Modifier.matchParentSize())
             // Landscape: a camera hole on a short edge is not left as an empty strip. The side rail's glass runs under it with its
             // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
             val dir = LocalLayoutDirection.current
@@ -531,6 +546,9 @@ private fun DeckShellContent(
                 val full = deckActions.fullscreen.value && currentRoute == DeckRoutes.HOME
                 // XMB mode, every tab but Home (which floats it over the XMB) and the phone layout: the same floating bar as
                 // Home, at the same place, with the page starting right under it.
+                if (simplePages && simpleLayout != AppThemeState.SIMPLE_LAYOUT_RAIL) {
+                    com.winlator.star.ui.simple.SimplePageHeader(onSection = simpleGo, onBack = goBack)
+                }
                 if (floatTabs && !full && !homeBleed) {
                     DeckFloatingBar(
                         current = tab,
@@ -548,8 +566,11 @@ private fun DeckShellContent(
                 // portrait keeps the top bar over the content. The NavHost stays in one slot either way.
                 // Framed (XMB mode, tabs other than Home), only this middle part sits inside the even camera frame.
                 Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = frame)) {
+                    if (simplePages && simpleLayout == AppThemeState.SIMPLE_LAYOUT_RAIL) {
+                        com.winlator.star.ui.simple.SimplePageRail(onSection = simpleGo)
+                    }
                     if (rails && !full) {
-                        if (!topTabs) {
+                        if (!topTabs && !simpleHome) {
                             DeckSideRail(
                                 cutoutStart = cutoutStart,
                                 current = tab,
@@ -586,8 +607,9 @@ private fun DeckShellContent(
                         }
                     }
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        if (full || homeBleed || floatTabs) {
+                        if (full || homeBleed || floatTabs || simpleHome) {
                             // No top bar here: none over the XMB, and the XMB home floats its own (above, or over Home).
+                            // The Simple style has its own frame (SimplePageHeader / SimplePageRail).
                         } else if (compact) {
                             DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch, dpad = !xmbHome)
                         } else if (!rails) {
@@ -733,7 +755,14 @@ private fun DeckShellContent(
                         com.winlator.star.ui.UnpackProgressPill()
 
                         // XMB mode: no legend on any tab, only the floating Search below.
-                        if (!compact && !full && !xmbHome) {
+                        if (simplePages) {
+                            com.winlator.star.ui.simple.SimplePageLegend(
+                                subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
+                                optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
+                                modifier = Modifier.align(Alignment.End),
+                            )
+                        }
+                        if (!compact && !full && !xmbHome && !simpleHome) {
                             DeckLegend(
                                 thin = rails,
                                 endInset = cutoutEnd,
@@ -749,7 +778,7 @@ private fun DeckShellContent(
                         }
                     }
                 }
-                if (compact && !full) {
+                if (compact && !full && !simpleHome) {
                     DeckBottomBar(current = tab, tabs = tabs, onTab = { nav.goTab(it) }, dpad = !xmbHome)
                 }
             }
@@ -1018,7 +1047,7 @@ private fun DeckRotateButton(tint: Color = MaterialTheme.colorScheme.onSurface, 
 @Composable
 private fun DeckTabButton(tab: DeckTab, selected: Boolean, showLabel: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     val accent = cs.primary
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1169,7 +1198,7 @@ private fun DeckFloatingBar(
                 horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
                 modifier = Modifier
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(deckShape(10.dp))
                     .dpadFocus(false)
                     .clickable { onTab(t) }
                     .drawBehind {
@@ -1228,7 +1257,7 @@ private fun FloatingBumper(text: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(deckShape(10.dp))
             .dpadFocus(false)
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp)
@@ -1264,7 +1293,7 @@ internal fun DeckFloatingHint(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ss.dp(6f)),
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(deckShape(10.dp))
             .dpadFocus(false)
             .clickable(onClick = onClick)
             .padding(horizontal = ss.dp(8f), vertical = ss.dp(4f))
@@ -1401,7 +1430,7 @@ private fun DeckBumperButton(text: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .sizeIn(minWidth = 40.dp, minHeight = 40.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(deckShape(10.dp))
             .clickable(onClick = onClick),
     ) {
         DeckGlyph(text, GlyphKind.BUMPER)
@@ -1415,7 +1444,7 @@ private fun DeckBumperButton(text: String, onClick: () -> Unit) {
 @Composable
 private fun DeckRailButton(tab: DeckTab, selected: Boolean, fixedHeight: Dp = Dp.Unspecified, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     val accent = cs.primary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1529,10 +1558,10 @@ private fun DeckPageTabRail(
             .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = 10.dp),
     ) {
         val l2: @Composable () -> Unit = {
-            DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { if (count > 0) onSelect((selected - 1 + count) % count) })
+            DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { if (count > 0) onSelect((selected - 1 + count) % count) })
         }
         val r2: @Composable () -> Unit = {
-            DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(RoundedCornerShape(9.dp)).clickable { if (count > 0) onSelect((selected + 1) % count) })
+            DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { if (count > 0) onSelect((selected + 1) % count) })
         }
         if (compact) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) { l2(); r2() }
@@ -1706,7 +1735,7 @@ private fun DeckPageBar(
                 // "Settings" is the Deck settings editor; the classic Settings screen it hands off to counts as it.
                 listOf(DeckSettingsRoutes.APP to "Settings", Screen.Appearance.route to "Appearance").forEach { (route, label) ->
                     val selected = currentRoute == route || (route == DeckSettingsRoutes.APP && currentRoute == Screen.Settings.route)
-                    val shape = RoundedCornerShape(12.dp)
+                    val shape = deckShape(12.dp)
                     Text(
                         text = label,
                         color = if (selected) cs.onSurface else cs.onSurfaceVariant,
@@ -1777,7 +1806,7 @@ private fun DeckLegend(
 
 @Composable
 private fun LegendItem(glyphs: List<Pair<String, GlyphKind>>, label: String, thin: Boolean, onClick: (() -> Unit)?) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (thin) 5.dp else 6.dp),
@@ -1832,7 +1861,7 @@ private fun DeckBottomBar(current: DeckTab, tabs: List<DeckTab>, onTab: (DeckTab
 @Composable
 private fun BottomBarItem(icon: ImageVector, label: String, selected: Boolean, modifier: Modifier, dpad: Boolean = true, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),

@@ -64,6 +64,14 @@ object AppThemeState {
     private val _simpleHome = MutableStateFlow(false)
     val simpleHome: StateFlow<Boolean> = _simpleHome
 
+    /**
+     * True while the Simple style is on (Deck style with [simpleHome]). Snapshot state rather than a flow, so the Deck
+     * pages' shapes (deckShape) and the shell's Simple frame recompose the moment the style changes, wherever they read it.
+     */
+    private val _simpleLook = androidx.compose.runtime.mutableStateOf(false)
+    val simpleLook: Boolean get() = _simpleLook.value
+    private fun syncSimpleLook() { _simpleLook.value = _uiStyle.value == UI_STYLE_DECK && _simpleHome.value }
+
     const val SIMPLE_LAYOUT_SHELF = "shelf"
     const val SIMPLE_LAYOUT_RAIL = "rail"
     const val SIMPLE_LAYOUT_FOCUS = "focus"
@@ -142,12 +150,14 @@ object AppThemeState {
             SIMPLE_LAYOUT_FOCUS -> SIMPLE_LAYOUT_FOCUS
             else -> SIMPLE_LAYOUT_SHELF
         }
+        syncSimpleLook()
     }
 
     /** Turn the Simple home (Deck style with the Simple launcher as Home) on or off. Takes effect immediately. */
     fun setSimpleHome(on: Boolean) {
         _simpleHome.value = on
         themePrefs.edit().putBoolean("simple_home", on).apply()
+        syncSimpleLook()
     }
 
     /** The Simple home's layout: [SIMPLE_LAYOUT_SHELF], [SIMPLE_LAYOUT_RAIL] or [SIMPLE_LAYOUT_FOCUS]. */
@@ -170,6 +180,7 @@ object AppThemeState {
         _uiStyle.value = v
         themePrefs.edit().putString("ui_style", v).apply()
         if (v != UI_STYLE_DECK) { setDeckXmbHome(false); setSimpleHome(false) }
+        syncSimpleLook()
     }
 
     /** Show or hide the drawer's Stores section. Default on, so nothing changes until asked. */

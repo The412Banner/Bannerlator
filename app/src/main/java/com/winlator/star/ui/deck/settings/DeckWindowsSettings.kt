@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -352,8 +353,8 @@ private fun DriveLine(section: DeckWindowsSection, vm: ContainerDetailViewModel,
             singleLine = true,
             isError = duplicate,
             placeholder = { Text("Folder, e.g. /storage/emulated/0/Games") },
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.weight(1f).deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f),
+            shape = deckShape(14.dp),
+            modifier = Modifier.weight(1f).deckFocusRing(deckShape(14.dp), scaleTo = 1f),
         )
         DeckSmallButton("Browse", Icons.Filled.FolderOpen) { section.browseFor = drive.uid }
         DeckSmallButton("", Icons.Filled.Delete) { vm.removeDrive(drive.uid) }
@@ -378,7 +379,7 @@ private fun WallpaperLine(section: DeckWindowsSection, vm: ContainerDetailViewMo
         icon = Icons.Filled.Image,
     ) {
         preview?.let { img ->
-            Image(img, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
+            Image(img, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(48.dp).clip(deckShape(8.dp)))
         }
         DeckSmallButton(if (preview != null) "Change" else "Browse", Icons.Filled.FolderOpen) { section.pickImage = true }
         DeckSmallButton("System picker", Icons.Filled.PhotoLibrary) { section.pickImageSystem = true }

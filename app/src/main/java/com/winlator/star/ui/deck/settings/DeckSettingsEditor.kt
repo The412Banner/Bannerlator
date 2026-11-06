@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -546,7 +547,7 @@ private fun EditorTop(
 @Composable
 private fun SquareButton(icon: ImageVector, description: String, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -566,7 +567,7 @@ private fun IconTile(icon: ImageVector, size: Dp) {
     val cs = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(cs.primary.copy(alpha = 0.16f)),
+        modifier = Modifier.size(size).clip(deckShape(14.dp)).background(cs.primary.copy(alpha = 0.16f)),
     ) {
         Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(size * 0.52f))
     }
@@ -592,7 +593,7 @@ private fun LevelSwitch(level: SettingLevel, onLevel: (SettingLevel) -> Unit) {
 @Composable
 private fun SearchButton(onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -612,7 +613,7 @@ private fun SearchButton(onClick: () -> Unit) {
 @Composable
 private fun ChainChip(link: ChainLink, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(19.dp)
+    val shape = deckShape(19.dp)
     val here = link.onClick == null
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -684,7 +685,7 @@ private fun CategoryItem(
     modifier: Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     val accent = cs.primary
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -859,7 +860,7 @@ private fun PageHeader(category: SettingsCategory, onBack: (() -> Unit)?) {
 @Composable
 private fun ResetAllButton(count: Int, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1034,7 +1035,7 @@ private fun SourceLine(origin: Origin, baselineLabel: String?, scope: EditorScop
                     fontSize = 14.sp,
                 )
             }
-            val shape = RoundedCornerShape(12.dp)
+            val shape = deckShape(12.dp)
             Text(
                 text = "Reset",
                 color = cs.primary,
@@ -1061,7 +1062,7 @@ private fun SourcePill(label: String) {
         fontSize = 13.sp,
         modifier = Modifier
             .padding(top = 8.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(deckShape(10.dp))
             .background(cs.surfaceVariant.copy(alpha = 0.6f))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
@@ -1095,7 +1096,7 @@ private fun ControlView(control: Control, value: String, enabled: Boolean, align
             checked = value == "1",
             onCheckedChange = { onPick(if (it) "1" else "0") },
             enabled = enabled,
-            modifier = Modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+            modifier = Modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
         )
         is Control.Segmented -> SegmentedPills(control.options, value, enabled, alignEnd, onPick)
         is Control.Chips -> ChipPills(control.options, value, enabled, alignEnd, onPick)
@@ -1111,7 +1112,7 @@ private fun ControlView(control: Control, value: String, enabled: Boolean, align
 @Composable
 private fun SegmentedPills(options: List<Opt>, value: String, enabled: Boolean, alignEnd: Boolean, onPick: (String) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val outer = RoundedCornerShape(14.dp)
+    val outer = deckShape(14.dp)
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(2.dp, if (alignEnd) Alignment.End else Alignment.Start),
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1124,7 +1125,7 @@ private fun SegmentedPills(options: List<Opt>, value: String, enabled: Boolean, 
         options.forEach { o ->
             val sel = o.value == value
             val ok = enabled && o.disabledReason == null
-            val shape = RoundedCornerShape(11.dp)
+            val shape = deckShape(11.dp)
             Text(
                 text = o.label,
                 color = when {
@@ -1163,7 +1164,7 @@ private fun ChipPills(options: List<Opt>, value: String, enabled: Boolean, align
 @Composable
 private fun Pill(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(22.dp)
+    val shape = deckShape(22.dp)
     Text(
         text = label,
         color = when {
@@ -1187,7 +1188,7 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, onClick: ()
 @Composable
 private fun SelectBox(control: Control.Select, value: String, enabled: Boolean, onPick: (String) -> Unit, onCustom: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     var open by remember { mutableStateOf(false) }
     val label = control.options.firstOrNull { it.value == value }?.label
         ?: value.ifEmpty { "—" }.let(SettingsRegistry::prettyResolution)
@@ -1312,7 +1313,7 @@ private fun TextControl(control: Control.TextField, value: String, enabled: Bool
         isError = error != null,
         placeholder = { Text(control.placeholder) },
         supportingText = if (error != null) { { Text(error) } } else null,
-        shape = RoundedCornerShape(14.dp),
+        shape = deckShape(14.dp),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         modifier = Modifier.fillMaxWidth(),
     )
@@ -1322,7 +1323,7 @@ private fun TextControl(control: Control.TextField, value: String, enabled: Bool
 @Composable
 private fun ChecklistControl(control: Control.Checklist, value: String, enabled: Boolean, onPick: (String) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val shape = deckShape(14.dp)
     val items = control.items
     val off = value.split(',').filter { it.isNotEmpty() }.toSet()
     var open by remember { mutableStateOf(false) }
@@ -1407,7 +1408,7 @@ private fun ChecklistDialog(title: String, all: List<String>, off: Set<String>, 
 
 @Composable
 private fun ChecklistLine(label: String, checked: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -1450,7 +1451,7 @@ private fun HandoffRow(handoff: Handoff, onHandoff: (Handoff) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (opens) Modifier.deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f).clickable { onHandoff(handoff) } else Modifier)
+            .then(if (opens) Modifier.deckFocusRing(deckShape(12.dp), scaleTo = 1f).clickable { onHandoff(handoff) } else Modifier)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Icon(
@@ -1517,7 +1518,7 @@ private fun SearchPane(
                     modifier = Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onClose),
                 ) { Icon(Icons.Filled.Close, contentDescription = "Close search") }
             },
-            shape = RoundedCornerShape(16.dp),
+            shape = deckShape(16.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth().focusRequester(requester),
         )
@@ -1547,7 +1548,7 @@ private fun SearchPane(
 @Composable
 private fun SearchResult(title: String, path: String, value: String?, badge: String?, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = deckShape(16.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1568,7 +1569,7 @@ private fun SearchResult(title: String, path: String, value: String?, badge: Str
                         color = cs.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.5.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(cs.primary.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.clip(deckShape(8.dp)).background(cs.primary.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
             }
@@ -1603,7 +1604,7 @@ private fun UnsavedBar(saving: Boolean, compact: Boolean, onDiscard: () -> Unit,
         Button(
             onClick = onSave,
             enabled = !saving,
-            shape = RoundedCornerShape(12.dp),
+            shape = deckShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
         ) {
             if (saving) {

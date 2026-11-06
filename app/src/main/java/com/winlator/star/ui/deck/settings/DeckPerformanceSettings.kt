@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
@@ -618,7 +619,7 @@ private fun PowerLines(s: DeckPerformanceSection) {
                 Switch(
                     checked = on,
                     onCheckedChange = { want -> if (want) s.dangerFor = key else s.setDanger(key, false) },
-                    modifier = Modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+                    modifier = Modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
                 )
             },
         )
@@ -814,7 +815,7 @@ private fun VarLine(spec: VarSpec, value: String, onValue: (String) -> Unit, onH
             VarSpec.Kind.TOGGLE -> Switch(
                 checked = value == "1",
                 onCheckedChange = { onValue(if (it) "1" else "0") },
-                modifier = modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+                modifier = modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
             )
             VarSpec.Kind.TEXT -> OutlinedTextField(
                 value = value,
@@ -826,7 +827,7 @@ private fun VarLine(spec: VarSpec, value: String, onValue: (String) -> Unit, onH
             )
             VarSpec.Kind.DROPDOWN -> {
                 var open by remember { mutableStateOf(false) }
-                val shape = RoundedCornerShape(12.dp)
+                val shape = deckShape(12.dp)
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

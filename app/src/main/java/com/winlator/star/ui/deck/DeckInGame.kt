@@ -358,7 +358,7 @@ private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {
             DeckGlyph("L1", GlyphKind.BUMPER)
             tabs.forEach { t ->
                 val sel = t == shown
-                val shape = RoundedCornerShape(16.dp)
+                val shape = deckShape(16.dp)
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -789,7 +789,7 @@ private fun ToolTiles(tools: List<Triple<String, ImageVector, () -> Unit>>, perR
         tools.chunked(perRow).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 row.forEach { (label, icon, action) ->
-                    val shape = RoundedCornerShape(16.dp)
+                    val shape = deckShape(16.dp)
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -909,7 +909,7 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     val rail: @Composable () -> Unit = {
         tabs.forEach { t ->
             val sel = t == shown
-            val shape = RoundedCornerShape(14.dp)
+            val shape = deckShape(14.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.deck.deckShape
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -500,7 +501,7 @@ private fun EffectLine(sec: DeckReshadeSection, name: String, index: Int, count:
             Switch(
                 checked = on,
                 onCheckedChange = { v -> sec.edit { it.setEnabled(name, v) } },
-                modifier = Modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+                modifier = Modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
             )
             DeckSmallButton("", Icons.Filled.ArrowUpward, enabled = index > 0) { sec.move(name, -1) }
             DeckSmallButton("", Icons.Filled.ArrowDownward, enabled = index < count - 1) { sec.move(name, 1) }
@@ -548,7 +549,7 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
     Dialog(onDismissRequest = { sec.catalogOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         DeckDialogBars()
         DeckDialogScaled {
-            Surface(shape = RoundedCornerShape(22.dp), color = cs.surface, modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.92f)) {
+            Surface(shape = deckShape(22.dp), color = cs.surface, modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.92f)) {
                 Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("ReShade effects", color = cs.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.weight(1f))
@@ -563,14 +564,14 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    XmbTapToEdit(Modifier.fillMaxWidth(), RoundedCornerShape(14.dp)) { fieldModifier, stopEditing ->
+                    XmbTapToEdit(Modifier.fillMaxWidth(), deckShape(14.dp)) { fieldModifier, stopEditing ->
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
                             singleLine = true,
                             placeholder = { Text("Search effects…") },
                             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                            shape = RoundedCornerShape(14.dp),
+                            shape = deckShape(14.dp),
                             modifier = fieldModifier,
                             keyboardActions = xmbDoneActions(stopEditing),
                         )
@@ -630,7 +631,7 @@ private fun CatalogLine(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f)
+            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
             .clickable(enabled = !busy, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -678,7 +679,7 @@ private fun TuneDialog(sec: DeckReshadeSection, effect: ReshadeManager.ReshadeEf
     Dialog(onDismissRequest = { sec.tuning = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         DeckDialogBars()
         DeckDialogScaled {
-            Surface(shape = RoundedCornerShape(22.dp), color = cs.surface, modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.88f)) {
+            Surface(shape = deckShape(22.dp), color = cs.surface, modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.88f)) {
                 Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(effect.name, color = cs.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -711,7 +712,7 @@ private fun ParamControl(sec: DeckReshadeSection, effect: String, p: ReshadeMana
                 Switch(
                     checked = value >= 0.5f,
                     onCheckedChange = { on -> sec.edit { it.setParam(effect, p.name, if (on) 1f else 0f) } },
-                    modifier = Modifier.deckFocusRing(RoundedCornerShape(20.dp), scaleTo = 1f),
+                    modifier = Modifier.deckFocusRing(deckShape(20.dp), scaleTo = 1f),
                 )
             },
         )
@@ -765,7 +766,7 @@ private fun SliderLine(label: String, value: Float, min: Float, max: Float, step
                 value = shown,
                 onValueChange = onChange,
                 valueRange = lo..hi,
-                modifier = Modifier.weight(1f).padding(horizontal = 6.dp).deckFocusRing(RoundedCornerShape(12.dp), scaleTo = 1f),
+                modifier = Modifier.weight(1f).padding(horizontal = 6.dp).deckFocusRing(deckShape(12.dp), scaleTo = 1f),
             )
             DeckSmallButton("", Icons.Filled.Add, enabled = shown < hi) { onChange((shown + step).coerceIn(lo, hi)) }
         }

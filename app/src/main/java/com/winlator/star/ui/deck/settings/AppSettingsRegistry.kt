@@ -247,6 +247,8 @@ internal object AppSettingsRegistry {
         toggle("app.advanced.dri3", "app.advanced", "Display server (X11)", "Use DRI3", ADVANCED, "use_dri3", true),
         toggle("app.advanced.xr", "app.advanced", "Display server (X11)", "Allow XR / VR headsets", ADVANCED, "use_xr", true),
 
+        // The FPS saver (XServerDisplayActivity.saveSessionFps): counts frames with the overlay off and keeps each session's FPS.
+        toggle("app.performance.saveSessionFps", "app.performance", "FPS history", "Save FPS of each session", SIMPLE, "save_session_fps", true),
         // The GPU pin is a non-root default on Adreno (KGSL turbo); elsewhere it needs root, as in classic Settings › Performance.
         SettingDef(
             id = "app.performance.gpuClockLock", category = "app.performance", group = "Power (defaults for every game)",

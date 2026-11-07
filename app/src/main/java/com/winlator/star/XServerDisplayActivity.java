@@ -386,6 +386,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // session's average and 1% low can be saved with the game when it closes (Lab's "Last session" and FPS history).
     private final FpsCounter sessionFps = new FpsCounter();
     private volatile int sessionFpsWindowId = -1;
+    // Settings › Performance › Save FPS of each session (on by default); read once when the session starts.
+    private boolean sessionFpsOn = true;
     // Wayland mode has no X window to bind the HUD to; the compositor's game window stands in.
     private static final int WAYLAND_HUD_WINDOW_ID = Integer.MAX_VALUE;
     // Master HUD on/off, parsed from the fps config's `hudEnabled` key (default on). When false, every
@@ -1413,6 +1415,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * self-heal does). The window found is remembered, so later frames skip the window-manager lookup.
      */
     private void countSessionFrame(int wid) {
+        if (!sessionFpsOn) return;
         if (wid == sessionFpsWindowId || (wid != -1 && (wid == frameRatingWindowId || wid == glZinkHealedWindowId))) {
             sessionFps.tick();
             return;
@@ -1435,7 +1438,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Saves the session's FPS with the game when it ends (at least 30 s of frames): last average, 1% low, history. */
     private void saveSessionFps() {
         try {
-            if (shortcutName == null || shortcutName.isEmpty() || playtimePrefs == null) return;
+            if (!sessionFpsOn || shortcutName == null || shortcutName.isEmpty() || playtimePrefs == null) return;
             float secs = sessionFps.getSessionLengthSec();
             float avg = sessionFps.getAvgFPS();
             if (secs < 30f || avg <= 0f) return;
@@ -2821,6 +2824,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         // Initialize playtime tracking
         playtimePrefs = getSharedPreferences("playtime_stats", MODE_PRIVATE);
+        sessionFpsOn = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this).getBoolean("save_session_fps", true);
         shortcutName = getIntent().getStringExtra("shortcut_name");
 
         // Ensure shortcutPath is not null before proceeding
@@ -9916,7 +9920,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // temperature/GPU-load reads and BatteryManager binder calls, every 500 ms) runs on the
                 // sampler thread; one job is queued at a time, so a fast game can't pile them up.
                 if (padFeedWaylandGame) com.winlator.star.inputcontrols.BannerinWriter.onGameFrame();
-                sessionFps.tick();   // the saved session stats, HUD or not (only the game surface reports frames)
+                if (sessionFpsOn) sessionFps.tick();   // the saved session stats, HUD or not (only the game surface reports frames)
                 if (frameRatingWindowId == -1 || !hudCounterEnabled) return;
                 fpsCounter.tick();
                 android.os.Handler h = waylandHudSampler;

@@ -46,6 +46,8 @@ internal fun readPlayStats(context: Context, shortcuts: List<Shortcut>): Map<Str
 internal data class FpsStats(val lastAvg: Float, val lastLow: Int, val lastAt: Long, val history: List<Int>)
 
 internal fun readFpsStats(context: Context, s: Shortcut): FpsStats? {
+    // Settings › Performance › Save FPS of each session off: the tiles show playtime instead.
+    if (!androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).getBoolean("save_session_fps", true)) return null
     val prefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
     val k = "${s.name}_fps"
     val avg = prefs.getFloat("${k}_last_avg", 0f)

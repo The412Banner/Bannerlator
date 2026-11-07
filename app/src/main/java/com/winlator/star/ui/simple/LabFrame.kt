@@ -61,7 +61,12 @@ import kotlinx.coroutines.withContext
 import java.util.Date
 import kotlin.math.roundToInt
 
-/** The device's live numbers the Lab frame and home show. Read every 20 s. */
+/** One storage volume: internal storage, an SD card or a USB drive. */
+internal class LabVolume(val label: String, val usedGb: Float, val totalGb: Float, val removable: Boolean) {
+    val fraction: Float get() = if (totalGb > 0f) usedGb / totalGb else 0f
+}
+
+/** The device's live numbers the Lab frame and home show. Read every 20 s, so a drive plugged in shows up on its own. */
 internal class LabDeviceInfo(
     val battery: Int,
     val tempC: Int?,
@@ -70,6 +75,8 @@ internal class LabDeviceInfo(
     val diskUsedGb: Float,
     val diskTotalGb: Float,
     val time: String,
+    /** Internal storage first, then every SD card and USB drive that is mounted (the Classic drawer's StorageRoots). */
+    val volumes: List<LabVolume>,
 )
 
 internal fun readLabDevice(context: Context): LabDeviceInfo {
@@ -92,6 +99,17 @@ internal fun readLabDevice(context: Context): LabDeviceInfo {
         diskUsedGb = (total - free) / gb,
         diskTotalGb = total / gb,
         time = android.text.format.DateFormat.getTimeFormat(context).format(Date()),
+        volumes = buildList {
+            if (total > 0) add(LabVolume("Internal", (total - free) / gb, total / gb, removable = false))
+            runCatching { com.winlator.star.core.StorageRoots.list(context) }.getOrDefault(emptyList())
+                .filter { it.removable }
+                .forEach { root ->
+                    runCatching { StatFs(root.dir.path) }.getOrNull()?.let { st ->
+                        // A volume that cannot be read reports 0 B; better no line than "0 / 0 GB".
+                        if (st.totalBytes > 0) add(LabVolume(root.label, (st.totalBytes - st.availableBytes) / gb, st.totalBytes / gb, removable = true))
+                    }
+                }
+        },
     )
 }
 
@@ -219,11 +237,16 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                     Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
                     if (dev != null) {
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Storage", color = SimpleMuted, fontSize = 12.sp)
-                            LabBar(if (dev.diskTotalGb > 0) dev.diskUsedGb / dev.diskTotalGb else 0f, Modifier.weight(1f))
-                            Text("${fmtGb(dev.diskUsedGb)} / ${fmtGb(dev.diskTotalGb)} GB", color = SimpleMuted, fontSize = 12.sp)
+                        val showInternal by com.winlator.star.ui.theme.AppThemeState.showInternalStorage.collectAsState()
+                        val showSd by com.winlator.star.ui.theme.AppThemeState.showSdStorage.collectAsState()
+                        Spacer(Modifier.height(4.dp))
+                        dev.volumes.filter { if (it.removable) showSd else showInternal }.forEach { v ->
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(v.label, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(72.dp))
+                                LabBar(v.fraction, Modifier.weight(1f))
+                                Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 12.sp)
+                            }
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(

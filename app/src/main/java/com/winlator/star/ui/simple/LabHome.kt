@@ -256,6 +256,19 @@ internal fun LabHome(
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.TOOLS) }) {
                 LabTileLabel("Storage")
                 val f = if (dev != null && dev.diskTotalGb > 0) dev.diskUsedGb / dev.diskTotalGb else 0f
+                // With an SD card or a USB drive in: a bar for each volume. Internal only: the ring.
+                if (dev != null && dev.volumes.size > 1) {
+                    dev.volumes.forEach { v ->
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(v.label, color = SimpleInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                            }
+                            LabBar(v.fraction, Modifier.fillMaxWidth())
+                        }
+                    }
+                    return@LabDashTile
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
                         CircularProgressIndicator(progress = { f }, modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.primary, trackColor = SimpleLine, strokeWidth = 7.dp)

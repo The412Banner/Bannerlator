@@ -65,7 +65,7 @@ internal val LAB_SECTIONS = listOf(
     LabSection("Library", "Library", Icons.Filled.GridView, LabRoutes.LIBRARY),
     LabSection("Stores", "Stores", Icons.Filled.Storefront, LabRoutes.STORES),
     LabSection("Containers", "Containers", Icons.Filled.Inventory2, SimpleRoutes.CONTAINERS),
-    LabSection("Drivers & components", "Drivers", Icons.Filled.Memory, SimpleRoutes.DRIVERS),
+    LabSection("Contents", "Contents", Icons.Filled.Memory, SimpleRoutes.DRIVERS),
     LabSection("Controls", "Controls", Icons.Filled.SportsEsports, SimpleRoutes.CONTROLS),
     LabSection("Files & tools", "Tools", Icons.Filled.FolderOpen, SimpleRoutes.TOOLS),
     LabSection("Settings", "Settings", Icons.Filled.Settings, DeckSettingsRoutes.APP),

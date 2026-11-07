@@ -1356,7 +1356,7 @@ private fun typeIcon(type: String): ImageVector = when {
 
 // ── Dialogs ────────────────────────────────────────────────────────────────────
 @Composable
-private fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
+internal fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }

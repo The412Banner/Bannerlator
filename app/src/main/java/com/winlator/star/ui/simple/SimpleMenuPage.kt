@@ -108,6 +108,13 @@ internal class MenuEntry(
     val primary: Boolean = false,
     /** Start it straight away (a container's Windows desktop): a ▶ button on the row, Start on a controller. */
     val play: (() -> Unit)? = null,
+    /** The ▶ button's icon and name when it is not Launch (Download, Reinstall). */
+    val playIcon: ImageVector? = null,
+    val playLabel: String = "Launch",
+    /** Small labels on the right (the component types a download source offers). */
+    val pills: List<String> = emptyList(),
+    /** A heading over the first row of each run of rows with the same group (GPU drivers, DXVK …). */
+    val group: String? = null,
 )
 
 internal class MenuSection(
@@ -118,6 +125,8 @@ internal class MenuSection(
     val empty: String = "Nothing here yet.",
     /** Y on this section, e.g. "New container" or "Install from a file". */
     val primary: MenuAction? = null,
+    /** A screen of its own in place of the rows (the Linux runtime); the D-pad then moves through its buttons. */
+    val content: (@Composable () -> Unit)? = null,
 )
 
 private enum class PZone { ROWS, SECS }
@@ -187,7 +196,7 @@ private fun SimpleMenuPageBody(
     val legend = buildList {
         add("B" to "Back")
         add("A" to "Open")
-        if (entries.getOrNull(rowNow)?.play != null) add("Start" to "Launch")
+        entries.getOrNull(rowNow)?.takeIf { it.play != null }?.let { add("Start" to it.playLabel) }
         if (colsOf(entries.getOrNull(rowNow)).size > 1) add("◀▶" to "Buttons")
         if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to "Options")
         sec?.primary?.let { add("Y" to it.label) }
@@ -204,8 +213,18 @@ private fun SimpleMenuPageBody(
         delay(60)
         runCatching { focus.requestFocus() }
     }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var selfFocused by remember { mutableStateOf(false) }
     val onKey: (SIn) -> Boolean = onKey@{ a ->
         val cur = entries.getOrNull(rowNow)
+        // A section with a screen of its own: the D-pad and A go to its buttons (from the page itself, Down steps in).
+        if (sec?.content != null && a != SIn.B && a != SIn.LT && a != SIn.RT) {
+            if (selfFocused && (a == SIn.DOWN || a == SIn.RIGHT)) {
+                focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Next)
+                return@onKey true
+            }
+            return@onKey false
+        }
         when {
             a == SIn.B -> onBack()
             a == SIn.LT -> stepSection(-1)
@@ -253,6 +272,7 @@ private fun SimpleMenuPageBody(
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(focus)
+            .onFocusChanged { selfFocused = it.isFocused }
             .focusable()
             .onPreviewKeyEvent { ev ->
                 if (dialogOpen) return@onPreviewKeyEvent false
@@ -438,7 +458,10 @@ private fun EntryPanel(
             .background(SimplePanelBrush, SimpleShape)
             .border(1.dp, SimpleLine, SimpleShape),
     ) {
-        if (entries.isEmpty()) {
+        val content = sec?.content
+        if (content != null) {
+            Box(Modifier.fillMaxSize()) { content() }
+        } else if (entries.isEmpty()) {
             Column(Modifier.padding(24.dp)) {
                 Text(sec?.empty ?: "Nothing here yet.", color = SimpleMuted, fontSize = 14.sp)
                 sec?.primary?.let {
@@ -450,7 +473,16 @@ private fun EntryPanel(
             Column {
                 if (emptyText != null) Text(emptyText, color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp))
                 LazyColumn(state = state, contentPadding = PaddingValues(10.dp)) {
-                    itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }, col = if (i == row && active) col else 0) { onTap(i) } }
+                    itemsIndexed(entries, key = { _, e -> e.key }) { i, e ->
+                        val g = e.group
+                        if (g != null && (i == 0 || entries[i - 1].group != g)) {
+                            Text(
+                                g.uppercase(), color = SimpleDim, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.3.sp,
+                                modifier = Modifier.padding(start = 14.dp, top = if (i == 0) 4.dp else 14.dp, bottom = 4.dp),
+                            )
+                        }
+                        EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }, col = if (i == row && active) col else 0) { onTap(i) }
+                    }
                 }
             }
         }
@@ -496,6 +528,22 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 }
                 if (!e.subtitle.isNullOrBlank()) Text(e.subtitle, color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
             }
+            if (e.pills.isNotEmpty()) {
+                Spacer(Modifier.width(10.dp))
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.widthIn(max = 380.dp),
+                ) {
+                    e.pills.forEach { t ->
+                        Text(
+                            t, color = SimpleMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                            modifier = Modifier.background(SimpleCard, SimpleShape).border(1.dp, SimpleLine, SimpleShape).padding(horizontal = 7.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
             if (!e.trailing.isNullOrBlank()) {
                 Spacer(Modifier.width(10.dp))
                 Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
@@ -512,7 +560,7 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                         .background(accent, SimpleShape)
                         .then(if (col == 1) Modifier.border(3.dp, SimpleStrong, SimpleShape) else Modifier)
                         .simpleTap(play),
-                ) { Icon(Icons.Filled.PlayArrow, contentDescription = "Launch", tint = Color.White, modifier = Modifier.size(22.dp)) }
+                ) { Icon(e.playIcon ?: Icons.Filled.PlayArrow, contentDescription = e.playLabel, tint = Color.White, modifier = Modifier.size(22.dp)) }
             }
             if (e.actions.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FolderOpen
@@ -120,7 +121,7 @@ internal object SimpleRoutes {
 
 /** Calls [action] each time this page is shown again (after an editor, an activity or the file picker). */
 @Composable
-private fun OnResume(action: () -> Unit) {
+internal fun OnResume(action: () -> Unit) {
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) action() }
@@ -129,7 +130,7 @@ private fun OnResume(action: () -> Unit) {
     }
 }
 
-private fun toast(ctx: android.content.Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
+internal fun toast(ctx: android.content.Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
 
 /** A name to type (a new controls profile, a rename). */
 @Composable
@@ -211,7 +212,8 @@ internal fun NavGraphBuilder.simpleRoutes(
     composable(SimpleRoutes.COMPONENT_SOURCE, arguments = listOf(navArgument("i") { type = NavType.IntType; defaultValue = 0 })) { e ->
         SimpleComponentSourcePage(index = e.arguments?.getInt("i") ?: 0, onBack = back)
     }
-    composable(SimpleRoutes.DRIVERS) { SimpleDriversPage(onNavigate = open, onBack = back) }
+    // Lab's Contents (Classic's Contents screen as Lab lists); the rail's "Contents".
+    composable(SimpleRoutes.DRIVERS) { SimpleContentsPage(onNavigate = open, onBack = back) }
     composable(SimpleRoutes.DRIVER_SOURCE, arguments = listOf(navArgument("i") { type = NavType.IntType; defaultValue = 0 })) { e ->
         SimpleDriverSourcePage(index = e.arguments?.getInt("i") ?: 0, onBack = back)
     }
@@ -387,14 +389,14 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
 
 // ───────────────────────────── Components ─────────────────────────────
 
-private val TYPE_LABELS = mapOf(
+internal val TYPE_LABELS = mapOf(
     "CONTENT_TYPE_WINE" to "Wine", "CONTENT_TYPE_PROTON" to "Proton", "CONTENT_TYPE_DXVK" to "DXVK", "CONTENT_TYPE_D7VK" to "D7VK",
     "CONTENT_TYPE_VKD3D" to "VKD3D", "CONTENT_TYPE_BOX64" to "Box64", "CONTENT_TYPE_WOWBOX64" to "WOWBox64",
     "CONTENT_TYPE_FEXCORE" to "FEXCore", "CONTENT_TYPE_BOX64EC" to "Box64EC", "CONTENT_TYPE_VEGAS" to "VEGAS",
 )
 
 /** The file name an Android content URI points at, for an install from a file. */
-private fun displayNameOf(ctx: android.content.Context, uri: Uri): String =
+internal fun displayNameOf(ctx: android.content.Context, uri: Uri): String =
     runCatching {
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
     }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/') ?: "content"
@@ -522,6 +524,13 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                             vm.refreshStatus(); vm.refreshFolders(); tick++
                         }
                     },
+                    // The download button on the row (Right from the row, or Start), unless it is installed or on its way.
+                    play = if (isIn || running) null else ({
+                        ContentsInstaller.install(context, item.type, item.sourceName, item.versionName, item.downloadUrl, keepRaw) {
+                            vm.refreshStatus(); vm.refreshFolders(); tick++
+                        }
+                    }),
+                    playIcon = Icons.Filled.Download, playLabel = "Download",
                     actions = buildList {
                         if (running) add(MenuAction("Cancel the download", { ContentDownloadRegistry.requestCancel(key) }))
                         add(MenuAction("Save the file only", { vm.saveArchive(item) }))
@@ -531,7 +540,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
         )
     }
     SimpleMenuPage(
-        overline = "Components",
+        overline = "Contents",
         title = source?.name ?: "Source",
         sections = sections.ifEmpty { listOf(MenuSection("none", "Components", Icons.Filled.Extension, emptyList(), empty = if (loading) "Loading the list…" else "Nothing to download here.")) },
         onBack = onBack,

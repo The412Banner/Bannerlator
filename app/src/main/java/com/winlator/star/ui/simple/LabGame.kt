@@ -310,5 +310,5 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         )
     }
     ShortcutActionDialogs(actions)
-    ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context); onBack() })
+    ShortcutLaunchDialogs(launcher, onRemove = { val removed = vm.remove(it, context); if (removed) onBack(); removed })
 }

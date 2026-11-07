@@ -88,6 +88,8 @@ import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
+import com.winlator.star.ui.simple.simpleRowFocus
+import com.winlator.star.ui.simple.tabFill
 import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
 import com.winlator.star.ui.theme.AppThemeState
@@ -895,8 +897,7 @@ private fun TabTabs(tabs: List<RTab>, index: Int, compact: Boolean = false, onPi
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(end = 6.dp)
-                    .then(if (on) Modifier.simpleDepth().background(accent.copy(alpha = 0.24f), SimpleShape) else Modifier)
-                    .border(1.dp, if (on) accent else Color.Transparent, SimpleShape)
+                    .then(Modifier.tabFill(on, accent))
                     .simpleTap { onPick(i) }
                     .padding(horizontal = 13.dp, vertical = 8.dp),
             ) {
@@ -1123,17 +1124,7 @@ private fun ClassicSettingLine(
             .fillMaxWidth()
             .heightIn(min = 50.dp)
             .graphicsLayer { translationX = shift * density }
-            .then(
-                if (focused) Modifier
-                    .simpleDepth()
-                    .background(
-                        if (active) Brush.verticalGradient(listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.17f)))
-                        else Brush.verticalGradient(listOf(Color(0x1FFFFFFF), Color(0x14FFFFFF))),
-                        SimpleShape,
-                    )
-                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
-                else Modifier
-            )
+            .simpleRowFocus(focused, active)
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
@@ -1214,13 +1205,7 @@ private fun ClassicLinkLine(title: String, summary: String?, focused: Boolean, a
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 50.dp)
-            .then(
-                if (focused) Modifier
-                    .simpleDepth()
-                    .background(if (active) accent.copy(alpha = 0.26f) else Color(0x1AFFFFFF), SimpleShape)
-                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
-                else Modifier
-            )
+            .simpleRowFocus(focused, active)
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {

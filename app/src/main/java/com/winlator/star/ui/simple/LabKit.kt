@@ -35,6 +35,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -208,13 +209,20 @@ internal fun Modifier.labTile(
 ): Modifier {
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
+    // Eased, so the D-pad glides from tile to tile: outline, tint and a slight lift follow one progress.
+    val p by androidx.compose.animation.core.animateFloatAsState(
+        if (focused) 1f else 0f,
+        androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "labTileFocus",
+    )
     return this
         .then(if (requester != null) Modifier.focusRequester(requester) else Modifier)
         .onFocusChanged {
             if (it.isFocused && !focused) onFocus?.invoke()
             focused = it.isFocused
         }
-        .then(if (focused) Modifier.background(accent.copy(alpha = 0.14f), SimpleShape).border(2.dp, accent, SimpleShape) else Modifier)
+        .graphicsLayer { scaleX = 1f + 0.02f * p; scaleY = 1f + 0.02f * p }
+        .then(if (p > 0.01f) Modifier.background(accent.copy(alpha = 0.14f * p), SimpleShape).border(2.dp, accent.copy(alpha = p), SimpleShape) else Modifier)
         .onKeyEvent { ev ->
             val k = ev.nativeKeyEvent
             when {

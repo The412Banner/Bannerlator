@@ -305,8 +305,7 @@ private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, compact:
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(end = 6.dp)
-                    .then(if (on) Modifier.simpleDepth().background(accent.copy(alpha = 0.24f), SimpleShape) else Modifier)
-                    .border(1.dp, if (on) accent else Color.Transparent, SimpleShape)
+                    .then(Modifier.tabFill(on, accent))
                     .simpleTap { onPick(s.key) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
@@ -427,17 +426,7 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { translationX = shift * density }
-            .then(
-                if (focused) Modifier
-                    .simpleDepth()
-                    .background(
-                        if (active) Brush.verticalGradient(listOf(accent.copy(alpha = 0.32f), accent.copy(alpha = 0.16f)))
-                        else Brush.verticalGradient(listOf(Color(0x1FFFFFFF), Color(0x14FFFFFF))),
-                        SimpleShape,
-                    )
-                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
-                else Modifier
-            )
+            .simpleRowFocus(focused, active)
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {

@@ -6,6 +6,13 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import kotlin.math.max
@@ -47,4 +54,43 @@ internal suspend fun LazyListState.keepVisible(index: Int) {
         index <= first -> animateScrollToItem(max(0, index - 1))
         index >= lastFull -> animateScrollToItem(max(0, first + (index - lastFull) + 1))
     }
+}
+
+/**
+ * The focused row's highlight, eased in and out (about 180 ms) instead of switched, so moving with the D-pad glides
+ * from row to row: the accent tint, its bar at the left edge and the lift all follow the same progress.
+ * [active] is false while the controller is in another part of the page (the row keeps a quiet grey mark).
+ */
+@androidx.compose.runtime.Composable
+internal fun Modifier.simpleRowFocus(focused: Boolean, active: Boolean): Modifier {
+    val p by androidx.compose.animation.core.animateFloatAsState(
+        if (focused) 1f else 0f,
+        androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "simpleRowFocus",
+    )
+    if (p < 0.01f) return this
+    val accent = androidx.compose.material3.MaterialTheme.colorScheme.primary
+    val light = com.winlator.star.ui.theme.AppThemeState.labLight
+    val quiet = if (light) androidx.compose.ui.graphics.Color(0xFF111722) else androidx.compose.ui.graphics.Color.White
+    val top = if (active) accent.copy(alpha = 0.33f * p) else quiet.copy(alpha = 0.12f * p)
+    val bottom = if (active) accent.copy(alpha = 0.16f * p) else quiet.copy(alpha = 0.08f * p)
+    return this
+        .shadow((9f * p).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
+        .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(top, bottom)), SimpleShape)
+        .drawBehind { if (active) drawRect(accent.copy(alpha = p), size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
+}
+
+/** A tab's selected look (fill, outline, lift), eased as the selection moves with L/R or a tap. */
+@androidx.compose.runtime.Composable
+internal fun Modifier.tabFill(on: Boolean, accent: androidx.compose.ui.graphics.Color): Modifier {
+    val t by androidx.compose.animation.core.animateFloatAsState(
+        if (on) 1f else 0f,
+        androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "tabFill",
+    )
+    if (t < 0.01f) return this.border(1.dp, androidx.compose.ui.graphics.Color.Transparent, SimpleShape)
+    return this
+        .shadow((9f * t).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
+        .background(accent.copy(alpha = 0.24f * t), SimpleShape)
+        .border(1.dp, accent.copy(alpha = t), SimpleShape)
 }

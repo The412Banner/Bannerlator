@@ -80,6 +80,7 @@ import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
+import com.winlator.star.ui.simple.simpleRowFocus
 import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
 import com.winlator.star.ui.theme.AppThemeState
@@ -772,17 +773,7 @@ private fun SettingLine(
             .fillMaxWidth()
             .heightIn(min = 54.dp)
             .graphicsLayer { translationX = shift * density }
-            .then(
-                if (focused) Modifier
-                    .simpleDepth()
-                    .background(
-                        if (active) Brush.verticalGradient(listOf(accent.copy(alpha = 0.32f), accent.copy(alpha = 0.16f)))
-                        else Brush.verticalGradient(listOf(Color(0x1FFFFFFF), Color(0x14FFFFFF))),
-                        SimpleShape,
-                    )
-                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
-                else Modifier
-            )
+            .simpleRowFocus(focused, active)
             .simpleTap(onTap)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
@@ -829,13 +820,7 @@ private fun LinkLine(title: String, subtitle: String?, focused: Boolean, active:
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 50.dp)
-            .then(
-                if (focused) Modifier
-                    .simpleDepth()
-                    .background(if (active) accent.copy(alpha = 0.24f) else Color(0x1AFFFFFF), SimpleShape)
-                    .drawBehind { if (active) drawRect(accent, size = Size(3.dp.toPx(), size.height)) }
-                else Modifier
-            )
+            .simpleRowFocus(focused, active)
             .simpleTap(onTap)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {

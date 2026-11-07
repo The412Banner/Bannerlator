@@ -217,81 +217,101 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
  */
 @Composable
 internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Unit) {
+    // Slides in from the left with the shade fading in behind it, and back out on B, a tap outside or the back gesture;
+    // the shell is told it closed once the slide-out has finished.
+    val shown = remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+    val close = { shown.targetState = false }
+    LaunchedEffect(shown.isIdle, shown.currentState, shown.targetState) {
+        if (shown.isIdle && !shown.currentState && !shown.targetState) onClose()
+    }
     Popup(
         alignment = Alignment.TopStart,
-        onDismissRequest = onClose,
-        properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = true),
+        onDismissRequest = close,
+        properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = false),
     ) {
         val accent = MaterialTheme.colorScheme.primary
         val dev = rememberLabDevice()
         val downloads by ContentDownloadRegistry.states.collectAsState()
         val active = downloads.values.firstOrNull { !it.terminal }
         val first = remember { FocusRequester() }
-        LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
-        BackHandler { onClose() }
-        Row(Modifier.fillMaxSize()) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .width(320.dp)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(1.dp, SimpleLine)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 18.dp),
+        LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
+        BackHandler { close() }
+        Box(Modifier.fillMaxSize()) {
+            androidx.compose.animation.AnimatedVisibility(
+                visibleState = shown,
+                enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240)),
+                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)),
             ) {
-                Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 12.dp)) {
-                    Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
-                    if (dev != null) {
-                        val showInternal by com.winlator.star.ui.theme.AppThemeState.showInternalStorage.collectAsState()
-                        val showSd by com.winlator.star.ui.theme.AppThemeState.showSdStorage.collectAsState()
-                        Spacer(Modifier.height(4.dp))
-                        dev.volumes.filter { if (it.removable) showSd else showInternal }.forEach { v ->
-                            Spacer(Modifier.height(6.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(v.label, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(72.dp))
-                                LabBar(v.fraction, Modifier.weight(1f))
-                                Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 12.sp)
+                Box(Modifier.fillMaxSize().background(Color(0x66000000)).simpleTap(close))
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visibleState = shown,
+                enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { -it },
+                exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { -it },
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .width(320.dp)
+                        .fillMaxHeight()
+                        // Slightly see-through: the page shows faintly behind it.
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
+                        .border(1.dp, SimpleLine)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 18.dp),
+                ) {
+                    Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 12.dp)) {
+                        Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
+                        if (dev != null) {
+                            val showInternal by com.winlator.star.ui.theme.AppThemeState.showInternalStorage.collectAsState()
+                            val showSd by com.winlator.star.ui.theme.AppThemeState.showSdStorage.collectAsState()
+                            Spacer(Modifier.height(4.dp))
+                            dev.volumes.filter { if (it.removable) showSd else showInternal }.forEach { v ->
+                                Spacer(Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(v.label, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(72.dp))
+                                    LabBar(v.fraction, Modifier.weight(1f))
+                                    Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 12.sp)
+                                }
                             }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                listOfNotNull(
+                                    if (dev.battery >= 0) "${dev.battery}%" else null,
+                                    dev.tempC?.let { "$it°C" },
+                                    "RAM ${fmtGb(dev.ramUsedGb)} / ${fmtGb(dev.ramTotalGb)} GB",
+                                ).joinToString("  ·  "),
+                                color = SimpleMuted, fontSize = 12.sp,
+                            )
                         }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            listOfNotNull(
-                                if (dev.battery >= 0) "${dev.battery}%" else null,
-                                dev.tempC?.let { "$it°C" },
-                                "RAM ${fmtGb(dev.ramUsedGb)} / ${fmtGb(dev.ramTotalGb)} GB",
-                            ).joinToString("  ·  "),
-                            color = SimpleMuted, fontSize = 12.sp,
-                        )
                     }
-                }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(SimpleLine))
-                Spacer(Modifier.height(6.dp))
-                LAB_SECTIONS.forEachIndexed { i, s ->
-                    val on = i == current
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .then(if (on) Modifier.background(accent.copy(alpha = 0.16f), SimpleShape) else Modifier)
-                            .labTile(onClick = { onSection(i) }, requester = if (on) first else null)
-                            .padding(horizontal = 12.dp),
-                    ) {
-                        Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
-                        Text(s.label, color = if (on) SimpleStrong else SimpleInk, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
-                    }
-                }
-                if (active != null) {
-                    Spacer(Modifier.height(14.dp))
-                    Text("Downloading ${active.title} · ${(active.fraction * 100).roundToInt()}%", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(SimpleLine))
                     Spacer(Modifier.height(6.dp))
-                    LabBar(active.fraction, Modifier.fillMaxWidth().padding(horizontal = 10.dp))
+                    LAB_SECTIONS.forEachIndexed { i, s ->
+                        val on = i == current
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .then(if (on) Modifier.background(accent.copy(alpha = 0.16f), SimpleShape) else Modifier)
+                                .labTile(onClick = { onSection(i) }, requester = if (on) first else null)
+                                .padding(horizontal = 12.dp),
+                        ) {
+                            Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
+                            Text(s.label, color = if (on) SimpleStrong else SimpleInk, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
+                        }
+                    }
+                    if (active != null) {
+                        Spacer(Modifier.height(14.dp))
+                        Text("Downloading ${active.title} · ${(active.fraction * 100).roundToInt()}%", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))
+                        Spacer(Modifier.height(6.dp))
+                        LabBar(active.fraction, Modifier.fillMaxWidth().padding(horizontal = 10.dp))
+                    }
                 }
             }
-            Box(Modifier.weight(1f).fillMaxHeight().background(Color(0x66000000)).simpleTap(onClose))
         }
     }
 }

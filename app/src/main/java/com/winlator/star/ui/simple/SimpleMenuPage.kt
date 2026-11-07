@@ -30,7 +30,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,6 +101,8 @@ internal class MenuEntry(
     val current: Boolean = false,
     val onA: (() -> Unit)? = null,
     val actions: List<MenuAction> = emptyList(),
+    /** The section's main action shown as a row (New container, Install from a file …). */
+    val primary: Boolean = false,
 )
 
 internal class MenuSection(
@@ -138,11 +143,18 @@ private fun SimpleMenuPageBody(
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
     var zone by remember { mutableStateOf(PZone.ROWS) }
-    val entries = sec?.entries.orEmpty()
-    val rowNow = row.coerceIn(0, max(0, entries.size - 1))
     var actionsFor by remember { mutableStateOf<MenuEntry?>(null) }
     var confirmFor by remember { mutableStateOf<MenuAction?>(null) }
     val dialogOpen = actionsFor != null || confirmFor != null
+    val realEntries = sec?.entries.orEmpty()
+    // The section's main action (New container, Install from a file, New profile …) as the last row, so touch and the
+    // D-pad reach it too; Y still runs it from anywhere on the page.
+    val entries = realEntries + listOfNotNull(
+        sec?.primary?.let { p ->
+            MenuEntry(key = "__primary__", title = p.label, icon = Icons.Filled.Add, primary = true, onA = { if (p.confirm != null) confirmFor = p else p.run() })
+        },
+    )
+    val rowNow = row.coerceIn(0, max(0, entries.size - 1))
 
     fun stepSection(d: Int) {
         if (sections.isEmpty()) return
@@ -214,7 +226,11 @@ private fun SimpleMenuPageBody(
     ) {
         val narrow = maxWidth < 700.dp
         val list: @Composable (Modifier) -> Unit = { mod ->
-            EntryPanel(sec, entries, rowNow, active = zone == PZone.ROWS, modifier = mod) { i ->
+            EntryPanel(
+                sec, entries, rowNow, active = zone == PZone.ROWS, modifier = mod,
+                emptyText = if (realEntries.isEmpty()) sec?.empty else null,
+                onMenu = { i -> entries.getOrNull(i)?.takeIf { it.actions.isNotEmpty() }?.let { actionsFor = it } },
+            ) { i ->
                 zone = PZone.ROWS
                 if (i == rowNow) entries.getOrNull(i)?.let { e -> e.onA?.invoke() ?: run { if (e.actions.isNotEmpty()) actionsFor = e } } else row = i
             }
@@ -366,7 +382,16 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
 }
 
 @Composable
-private fun EntryPanel(sec: MenuSection?, entries: List<MenuEntry>, row: Int, active: Boolean, modifier: Modifier, onTap: (Int) -> Unit) {
+private fun EntryPanel(
+    sec: MenuSection?,
+    entries: List<MenuEntry>,
+    row: Int,
+    active: Boolean,
+    modifier: Modifier,
+    emptyText: String?,
+    onMenu: (Int) -> Unit,
+    onTap: (Int) -> Unit,
+) {
     val state = remember(sec?.key) { LazyListState() }
     LaunchedEffect(row, sec?.key) { if (entries.isNotEmpty()) state.keepVisible(row) }
     Box(
@@ -384,15 +409,18 @@ private fun EntryPanel(sec: MenuSection?, entries: List<MenuEntry>, row: Int, ac
                 }
             }
         } else {
-            LazyColumn(state = state, contentPadding = PaddingValues(10.dp)) {
-                itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active) { onTap(i) } }
+            Column {
+                if (emptyText != null) Text(emptyText, color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp))
+                LazyColumn(state = state, contentPadding = PaddingValues(10.dp)) {
+                    itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }) { onTap(i) } }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: () -> Unit) {
+private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: () -> Unit = {}, onTap: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val shift by animateFloatAsState(if (focused && active) 4f else 0f, tween(160), label = "simpleEntryShift")
     Column(
@@ -424,12 +452,12 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: ()
                     Image(bmp, contentDescription = null, contentScale = ContentScale.Fit, colorFilter = if (e.logoWhite) ColorFilter.tint(Color.White) else null, modifier = Modifier.size(width = 34.dp, height = 22.dp))
                 }
                 e.swatch != null -> Box(Modifier.size(22.dp).simpleDepth().background(e.swatch, SimpleShape).border(1.dp, Color(0x40FFFFFF), SimpleShape))
-                e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (focused && active) accent else SimpleMuted, modifier = Modifier.size(22.dp))
+                e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (e.primary || (focused && active)) accent else SimpleMuted, modifier = Modifier.size(22.dp))
             }
             if (bmp != null || e.icon != null || e.swatch != null) Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(e.title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(e.title, color = if (e.primary) accent else if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (e.current) {
                         Spacer(Modifier.width(8.dp))
                         Text("✓", color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -441,9 +469,13 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: ()
                 Spacer(Modifier.width(10.dp))
                 Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
             }
-            if (e.actions.isNotEmpty() && focused) {
-                Spacer(Modifier.width(10.dp))
-                SimpleGlyph("X")
+            // The item's options: a ⋯ to tap (X on a controller does the same).
+            if (e.actions.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(34.dp).background(if (focused) SimpleCard else Color.Transparent, SimpleShape).simpleTap(onMenu),
+                ) { Icon(Icons.Filled.MoreHoriz, contentDescription = "Options", tint = if (focused) SimpleStrong else SimpleMuted, modifier = Modifier.size(20.dp)) }
             }
         }
         val p = e.progress

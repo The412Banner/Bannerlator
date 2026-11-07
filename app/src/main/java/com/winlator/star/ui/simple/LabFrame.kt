@@ -255,7 +255,7 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                         .width(320.dp)
                         .fillMaxHeight()
                         // Slightly see-through: the page shows faintly behind it.
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
                         .border(1.dp, SimpleLine)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 12.dp, vertical = 18.dp),

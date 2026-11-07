@@ -209,9 +209,11 @@ internal fun LabHome(
                 return
             }
             // A different game picked below: the big tile fades over to it.
-            androidx.compose.animation.Crossfade(targetState = game, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
+            // The tile's size (its weight in the row) goes on the fade itself: inside it a weight would not apply, and the
+            // tile took the whole row (the library row and the tiles beside it had no room left).
+            androidx.compose.animation.Crossfade(targetState = game, modifier = m, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
             val st = stats[game.file.path]
-            Row(m.labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == recent.firstOrNull()) "Continue" else "Selected")

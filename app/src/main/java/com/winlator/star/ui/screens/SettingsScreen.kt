@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
 import com.winlator.star.R
 import com.winlator.star.SettingsFragment
+import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.box64.Box64Preset
 import com.winlator.star.box64.Box64PresetManager
@@ -1564,7 +1565,8 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 onSaved()
             },
             containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            // XMB mode: above the floating Back / Search hints (0 elsewhere).
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalXmbHintInset.current)
         ) {
             Icon(Icons.Default.Check, "Save", tint = MaterialTheme.colorScheme.onPrimary)
         }

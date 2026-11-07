@@ -101,6 +101,11 @@ internal fun isTextFile(file: File): Boolean = file.extension.lowercase() in TEX
 
 /** Opens [file] in the text viewer/editor; [readOnly] for copies (a file shown from inside an archive). */
 class TextEditorActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppThemeState.init(this)

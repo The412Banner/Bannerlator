@@ -42,6 +42,11 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class GogLoginActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         private const val TAG = "BH_GOG"

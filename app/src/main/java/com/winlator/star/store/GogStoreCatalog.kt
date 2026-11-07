@@ -84,7 +84,7 @@ object GogStoreCatalog {
     // ── Region ────────────────────────────────────────────────────────────────────────────────
 
     private fun country(): String =
-        Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase(Locale.ROOT) ?: "US"
+        com.winlator.star.AppLocale.deviceLocale().country.takeIf { it.length == 2 }?.uppercase(Locale.ROOT) ?: "US"
 
     private fun currency(): String {
         val cc = runCatching { Currency.getInstance(Locale("", country())).currencyCode }.getOrNull()

@@ -43,6 +43,12 @@ import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function2;
 
 public class ControlsEditorActivity extends AppCompatActivity {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase));
+    }
+
     private InputControlsView inputControlsView;
     private ControlsProfile profile;
     private CustomIconManager customIconManager;

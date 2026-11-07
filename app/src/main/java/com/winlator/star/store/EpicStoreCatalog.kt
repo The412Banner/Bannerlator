@@ -81,7 +81,7 @@ object EpicStoreCatalog {
     private val detailCache = ConcurrentHashMap<String, Cached<OfferDetail?>>()
 
     private fun country(): String =
-        Locale.getDefault().country.takeIf { it.length == 2 }?.uppercase(Locale.ROOT) ?: "US"
+        com.winlator.star.AppLocale.deviceLocale().country.takeIf { it.length == 2 }?.uppercase(Locale.ROOT) ?: "US"
 
     private fun nowIso(): String {
         val f = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)

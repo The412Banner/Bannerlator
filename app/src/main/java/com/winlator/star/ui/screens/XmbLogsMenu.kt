@@ -98,7 +98,8 @@ internal fun xmbLogsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 
     // Runs first (current, then archived launches), then the files inside the chosen run.
     val runs = LogInventory.runsIn(entry.dir)
-    val runLabels = xmbUniqueLabels(runs.map { if (it.current) "Current" else runLabel(it.millis) })
+    // Choice options must be distinct; archived runs can share a label ("2 hr ago").
+    val runLabels = p2Unique(runs.map { if (it.current) "Current" else runLabel(it.millis) })
     var runIdx by mutableIntStateOf(0)
     var files by mutableStateOf<List<File>>(LogInventory.filesIn(runs.firstOrNull()?.dir ?: entry.dir))
     fun runDir(): File = runs.getOrNull(runIdx)?.dir ?: entry.dir
@@ -132,16 +133,6 @@ internal fun xmbLogsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
             val dir = runDir()
             add(XmbRow.Link(key = "report", label = "Report a problem", icon = Icons.Filled.BugReport) { xmbLogReportMenu(xmb, entry, dir) })
         }
-    }
-}
-
-// Choice options must be distinct; archived runs can share a label ("2 hr ago").
-private fun xmbUniqueLabels(labels: List<String>): List<String> {
-    val seen = HashMap<String, Int>()
-    return labels.map { l ->
-        val n = (seen[l] ?: 0) + 1
-        seen[l] = n
-        if (n == 1) l else "$l ($n)"
     }
 }
 

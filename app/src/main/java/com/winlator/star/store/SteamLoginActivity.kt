@@ -46,6 +46,11 @@ import com.winlator.star.R
 import com.winlator.star.ui.deck.XmbKeyboardWindow
 
 class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         /** Intent extra: pre-fill the username (an account whose saved sign-in expired). */

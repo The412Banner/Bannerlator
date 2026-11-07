@@ -17,6 +17,12 @@ import java.io.IOException;
 import java.util.concurrent.Executors;
 
 public class RestoreActivity extends Activity {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase));
+    }
+
 
     private PreloaderDialog preloaderDialog;
 

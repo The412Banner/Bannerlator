@@ -138,42 +138,42 @@ internal fun LazyGridScope.hubTiles(tiles: List<HubTile>, focusFirst: Boolean) {
 /** A big icon + title + subtitle tile. [focusFirst] takes the initial focus once composed. */
 @Composable
 internal fun HubTileCard(tile: HubTile, focusFirst: Boolean) {
-    val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(18.dp)
     val requester = remember { FocusRequester() }
     if (focusFirst) DeckEntryFocus { requester.requestFocus() }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(requester)
-            .deckFocusRing(shape, scaleTo = 1.03f)
-            .clip(shape)
-            .background(deckCardFill())
-            .border(1.dp, deckLine(), shape)
-            .clickable(onClick = tile.onClick)
-            .heightIn(min = 76.dp)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
+    DeckInk { item, cs ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(cs.primary.copy(alpha = 0.16f)),
+                .fillMaxWidth()
+                .focusRequester(requester)
+                .deckFocusRingInk(shape, item, scaleTo = 1.03f)
+                .xmbGlassCard(shape)
+                .border(1.dp, deckLine(), shape)
+                .clickable(onClick = tile.onClick)
+                .heightIn(min = 76.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            Icon(tile.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(tile.title, color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1)
-            Text(
-                tile.subtitle,
-                color = cs.onSurfaceVariant,
-                fontSize = 12.5.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(cs.primary.copy(alpha = 0.16f)),
+            ) {
+                Icon(tile.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(tile.title, color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1)
+                Text(
+                    tile.subtitle,
+                    color = cs.onSurfaceVariant,
+                    fontSize = 12.5.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

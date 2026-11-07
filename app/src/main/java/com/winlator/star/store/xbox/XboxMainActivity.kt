@@ -92,6 +92,11 @@ import kotlinx.coroutines.withContext
  * Games are PC (MSIXVC) packages downloaded with the user's own license and run in a Wine container.
  */
 class XboxMainActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         const val EXTRA_TAB = "xbox_tab"

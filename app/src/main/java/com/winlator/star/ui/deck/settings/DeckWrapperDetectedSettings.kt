@@ -224,7 +224,11 @@ private fun DetectedLine(section: DeckWrapperDetectedSection, key: String) {
     val value = section.shown(key)
     val hint = listOf(def.hint, key).filter { it.isNotBlank() && it != def.label }.joinToString(" · ")
     when (def.type) {
-        WrapperSettingsDictionary.Type.TOGGLE -> DeckLine(label = def.label, hint = hint) {
+        WrapperSettingsDictionary.Type.TOGGLE -> DeckLine(
+            label = def.label, hint = hint,
+            // XMB: the line is one stop and A flips the switch (the switch itself is not a stop there).
+            activate = { if (enabled) section.put(key, if (value == "1") "0" else "1") },
+        ) {
             Switch(
                 checked = value == "1",
                 onCheckedChange = { section.put(key, if (it) "1" else "0") },

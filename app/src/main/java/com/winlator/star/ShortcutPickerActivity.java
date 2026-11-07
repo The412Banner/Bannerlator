@@ -16,6 +16,12 @@ import com.winlator.star.saves.FileAdapter;
 import java.io.File;
 
 public class ShortcutPickerActivity extends AppCompatActivity {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase));
+    }
+
 
     private File currentDirectory;
     private RecyclerView recyclerView;

@@ -80,6 +80,11 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 class AmazonGamesActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     private var prefs: SharedPreferences? = null
 

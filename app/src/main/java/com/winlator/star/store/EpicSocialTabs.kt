@@ -2,11 +2,9 @@ package com.winlator.star.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,12 +20,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.XmbGroupItem
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbInner
+import com.winlator.star.ui.deck.xmbOnGlass
 
 /** The Epic **Profile** tab, fed by one [EpicUserData] fetch. No Friends tab: the roster is empty for
  *  most accounts, so the count and a short list live here instead. */
@@ -40,8 +40,7 @@ private fun EpicFriendRow(f: EpicUserData.Friend, modifier: Modifier = Modifier)
     Row(
         modifier = modifier
             .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -84,43 +83,46 @@ fun EpicProfileTab(
 ) {
     val name = profile?.displayName?.ifBlank { null } ?: displayName.ifBlank { "Epic account" }
     val identity: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            StoreAvatar(emptyList(), name, 84.dp)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val sub = buildList {
-                profile?.country?.takeIf { it.isNotBlank() }?.let { add(it.uppercase()) }
-                if (tokenMinutesLeft > 0) add("Session ~${tokenMinutesLeft} min left")
-            }.joinToString(" · ")
-            if (sub.isNotBlank()) {
+        // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
+        val group = rememberXmbFocusGroup()
+        XmbGroupItem(group, RoundedCornerShape(12.dp), Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .xmbGlassCard(RoundedCornerShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                StoreAvatar(emptyList(), name, 84.dp)
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    text = sub,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StoreFilterChip("Account on epicgames.com", false) {
-                    onOpenWeb("https://www.epicgames.com/account/personal", "Epic account")
+                val sub = buildList {
+                    profile?.country?.takeIf { it.isNotBlank() }?.let { add(it.uppercase()) }
+                    if (tokenMinutesLeft > 0) add("Session ~${tokenMinutesLeft} min left")
+                }.joinToString(" · ")
+                if (sub.isNotBlank()) {
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
                 }
-                StoreFilterChip(if (loading) "Refreshing…" else "Refresh", false, onRefresh)
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StoreFilterChip("Account on epicgames.com", false, Modifier.xmbInner(group, first = true)) {
+                        onOpenWeb("https://www.epicgames.com/account/personal", "Epic account")
+                    }
+                    StoreFilterChip(if (loading) "Refreshing…" else "Refresh", false, Modifier.xmbInner(group), onRefresh)
+                }
             }
         }
     }
@@ -130,15 +132,7 @@ fun EpicProfileTab(
             add("Installed" to installedCount)
             profile?.takeIf { it.friendsAvailable }?.let { add("Friends" to it.friends.size) }
         }
-        val cols = if (wide) 3 else 2
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            tiles.chunked(cols).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (label, n) -> StatTile(label, n, Modifier.weight(1f)) }
-                    repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
+        StatTileGrid(tiles, if (wide) 3 else 2)
     }
     val friendsPeek: @Composable () -> Unit = {
         val friends = profile?.friends.orEmpty()
@@ -146,7 +140,8 @@ fun EpicProfileTab(
             StoreSectionHeader("Epic friends", "${friends.size} · no presence feed")
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                // On the glass the cards cast a shadow, so they sit further apart.
+                verticalArrangement = Arrangement.spacedBy(if (xmbOnGlass()) 14.dp else 6.dp),
             ) {
                 friends.take(if (wide) 6 else 4).forEach { f -> EpicFriendRow(f, Modifier.fillMaxWidth()) }
             }

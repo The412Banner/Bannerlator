@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.winlator.star.ui.theme.DangerRed
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -196,8 +196,9 @@ private fun XmbNavState.commitChoice(row: XmbRow.Choice, value: String, xmb: Xmb
     if (value in row.disabledOptions) { xmb.toast("Not available here"); return }
     picker = null
     if (value == row.selected) return
+    val commit = { row.onSelect(value); bump() }
     val c = row.confirm?.invoke(value)
-    if (c != null) xmb.confirm(c) { row.onSelect(value); bump() } else { row.onSelect(value); bump() }
+    if (c != null) xmb.confirm(c, commit) else commit()
 }
 
 private fun XmbNavState.adjust(row: XmbRow, d: Int, xmb: XmbScope) {
@@ -250,7 +251,7 @@ private fun XmbNavState.switchSibling(d: Int) {
     val s = m.siblings ?: return
     val n = ((s.index + d) % s.count + s.count) % s.count
     val next = s.make(n)
-    next.siblings = s.let { XmbSiblings(n, it.count, it.make, it.parentKey) }
+    next.siblings = XmbSiblings(n, s.count, s.make, s.parentKey)
     m.onClose?.invoke()
     picker = null; editingKey = null
     stack[stack.lastIndex] = next
@@ -362,7 +363,7 @@ internal fun XmbNestedLayer(
             val flash = nav.savedAt
             var showSaved by remember { mutableStateOf(false) }
             LaunchedEffect(flash) {
-                if (flash > 0L && System.currentTimeMillis() - flash < 1500L) { showSaved = true; kotlinx.coroutines.delay(1200); showSaved = false }
+                if (flash > 0L && System.currentTimeMillis() - flash < 1500L) { showSaved = true; delay(1200); showSaved = false }
             }
             val sa by animateFloatAsState(if (showSaved) 1f else 0f, tween(250), label = "xmbSaved")
             Text("✓ Saved", color = Color(0xFF3DDC84), fontSize = 11.sp, modifier = Modifier.graphicsLayer { alpha = sa })

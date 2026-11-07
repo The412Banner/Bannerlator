@@ -26,6 +26,11 @@ import java.util.concurrent.TimeUnit
  * web logins live elsewhere and are never touched.
  */
 class XboxLoginActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
     private lateinit var host: LinearLayout
     private lateinit var status: TextView
     private var view: WebView? = null

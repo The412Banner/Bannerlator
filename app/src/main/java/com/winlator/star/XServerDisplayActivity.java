@@ -188,6 +188,12 @@ import java.util.regex.Pattern;
 import cn.sherlock.com.sun.media.sound.SF2Soundbank;
 
 public class XServerDisplayActivity extends AppCompatActivity {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase));
+    }
+
     public static String NOTIFICATION_CHANNEL_ID = "Winlator";
     public static int NOTIFICATION_ID = 9004;
     private XServerView xServerView;

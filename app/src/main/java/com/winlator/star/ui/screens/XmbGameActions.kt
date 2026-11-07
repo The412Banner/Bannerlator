@@ -30,7 +30,7 @@ import com.winlator.star.store.EaSupport
 
 /**
  * XMB options column = a card's ⋮ menu, reordered for a D-pad (common first, Remove last). Items with
- * a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools*.kt)
+ * a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools.kt)
  * instead of pop-ups; the ones that hand off to Android or a full screen keep their handlers.
  * Shared by the Games screen's XMB view and the Deck home's XMB view.
  *

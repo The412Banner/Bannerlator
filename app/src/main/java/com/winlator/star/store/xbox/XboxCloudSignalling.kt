@@ -31,7 +31,7 @@ internal class XboxCloudSignalling(
     fun start(): XboxCloudSession.Reply {
         val body = JSONObject().put("clientSessionId", "").put("titleId", titleId).put("systemUpdateGroup", "")
             .put("settings", JSONObject().put("nanoVersion", "V3;WebrtcTransport.dll").put("enableOptionalDataCollection", false)
-                .put("enableTextToSpeech", false).put("highContrast", 0).put("locale", settings.language.ifEmpty { java.util.Locale.getDefault().toLanguageTag() })
+                .put("enableTextToSpeech", false).put("highContrast", 0).put("locale", settings.language.ifEmpty { com.winlator.star.AppLocale.deviceLocale().toLanguageTag() })
                 .put("useIceConnection", false).put("timezoneOffsetMinutes", java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 60_000)
                 .put("sdkType", "web").put("osName", settings.osName))
             .put("serverId", "").put("fallbackRegionNames", JSONArray())

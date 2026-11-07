@@ -393,6 +393,8 @@ internal class SimpleController {
  */
 internal object SimpleSession {
     val controller = SimpleController()
+    /** The library as last loaded: Home's first frames after it opens again (see SimpleHome). */
+    var lastShortcuts: List<com.winlator.star.container.Shortcut> = emptyList()
 }
 
 /** Tap without making the target a focus stop: the Simple home keeps the controller focus to itself. */
@@ -413,7 +415,10 @@ internal fun SimpleHome(
     vm: ShortcutsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())
+    // The list arrives a moment after Home opens again: until then the last one, so the rows never start with only
+    // "Add a game" (a row that starts like that keeps its scroll on that tile when the games arrive).
+    val shortcuts by vm.shortcuts.collectAsState(initial = SimpleSession.lastShortcuts)
+    LaunchedEffect(shortcuts) { if (shortcuts.isNotEmpty()) SimpleSession.lastShortcuts = shortcuts }
     val launcher = rememberShortcutLauncher()
     val actions = rememberShortcutActions(vm)
     val layout by AppThemeState.simpleLayout.collectAsState()

@@ -382,8 +382,9 @@ private fun DeckShellContent(
         AppOrientation.apply(activity)
         onDispose { AppOrientation.apply(activity) }
     }
-    // Re-run when the full-screen XMB closes: it shows the system bars again on its way out.
-    val xmbShown = deckActions.fullscreen.value
+    // Re-run when the full-screen XMB closes: it shows the system bars again on its way out. XMB only: the Simple home
+    // sets the same flag, and re-running this on every page change flashed the system bars (they stay hidden in Simple).
+    val xmbShown = if (xmbHome) deckActions.fullscreen.value else false
     // The Simple style is a console-style full screen on every page: no status bar (Home and the page frame show a clock).
     val simpleShown = simpleHome
     // XMB mode: the status bar goes too, on every tab and in both orientations, like a console.

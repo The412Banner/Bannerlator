@@ -311,7 +311,8 @@ internal fun SimpleShelfLayout(ctl: SimpleController, d: SimpleData) {
             } else {
                 val f = ctl.focusOf(ctl.section)
                 val state = remember(ctl.section, ctl.filter) { LazyListState() }
-                LaunchedEffect(f, ctl.section, ctl.filter) { state.animateScrollToItem(max(0, f)) }
+                // Also when the row's length changes (the games arriving): scroll back to the focused tile.
+                LaunchedEffect(f, ctl.section, ctl.filter, d.games.size) { state.animateScrollToItem(max(0, f)) }
                 LazyRow(
                     state = state,
                     contentPadding = PaddingValues(start = pad, end = screenW),
@@ -441,7 +442,7 @@ internal fun SimpleRailLayout(ctl: SimpleController, d: SimpleData) {
                     }
                     val f = ctl.focusOf(ctl.section)
                     val state = remember(ctl.section, ctl.sort) { LazyListState() }
-                    LaunchedEffect(f, ctl.section, ctl.sort) { state.animateScrollToItem(max(0, f - 3)) }
+                    LaunchedEffect(f, ctl.section, ctl.sort, d.games.size) { state.animateScrollToItem(max(0, f - 3)) }
                     val listActive = ctl.zone == Zone.LIST
                     LazyColumn(state = state, contentPadding = PaddingValues(start = 10.dp, end = 10.dp, bottom = 70.dp), modifier = Modifier.fillMaxSize()) {
                         val tap: (Int) -> Unit = { i ->
@@ -640,7 +641,7 @@ internal fun SimpleFocusLayout(ctl: SimpleController, d: SimpleData) {
             Text(SIMPLE_SECTIONS[ctl.section].uppercase(), color = SimpleMuted, fontSize = 11.sp, letterSpacing = 1.sp, modifier = Modifier.padding(start = pad, bottom = 10.dp))
             val f = ctl.focusOf(ctl.section)
             val state = remember(ctl.section, ctl.filter) { LazyListState() }
-            LaunchedEffect(f, ctl.section, ctl.filter) { state.animateScrollToItem(max(0, f - 2)) }
+            LaunchedEffect(f, ctl.section, ctl.filter, d.games.size) { state.animateScrollToItem(max(0, f - 2)) }
             val stripActive = ctl.zone == Zone.STRIP
             LazyRow(
                 state = state,

@@ -70,6 +70,7 @@ import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
 import java.io.File
+import kotlin.math.roundToInt
 
 /** The game page's quick settings: the first of each group that applies to this game (X11 or Wayland driver ...). */
 private val QUICK = listOf(
@@ -243,8 +244,19 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                         LabTileLabel("Everything else")
                         Text("All settings ›", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
-                    if (!portrait) {
-                        Column(Modifier.weight(2f).height(tileH).labPanel().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                }
+                // The saved FPS of its sessions (a chart), or its playtime until it has one.
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val fps = remember(resumeTick) { com.winlator.star.ui.deck.readFpsStats(context, shortcut) }
+                    Column(Modifier.weight(1f).height(if (fps != null) 110.dp else tileH).labPanel().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (fps != null) {
+                            LabTileLabel("FPS · last ${fps.history.size} sessions")
+                            Text(
+                                "${fps.lastAvg.roundToInt()} avg" + (if (fps.lastLow > 0) " · 1% low ${fps.lastLow}" else "") + " · ${playtimeLabel(stats?.ms ?: 0L)}",
+                                color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1,
+                            )
+                            LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
+                        } else {
                             LabTileLabel("Playtime")
                             Text(
                                 "${playtimeLabel(stats?.ms ?: 0L)} · ${stats?.count ?: 0} sessions",

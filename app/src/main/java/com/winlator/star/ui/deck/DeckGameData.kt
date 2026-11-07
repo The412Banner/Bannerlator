@@ -42,6 +42,22 @@ internal fun readPlayStats(context: Context, shortcuts: List<Shortcut>): Map<Str
     }
 }
 
+/** A game's saved FPS (XServerDisplayActivity.saveSessionFps): the last session's average and 1% low, and the averages of up to 24 sessions. */
+internal data class FpsStats(val lastAvg: Float, val lastLow: Int, val lastAt: Long, val history: List<Int>)
+
+internal fun readFpsStats(context: Context, s: Shortcut): FpsStats? {
+    val prefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
+    val k = "${s.name}_fps"
+    val avg = prefs.getFloat("${k}_last_avg", 0f)
+    if (avg <= 0f) return null
+    return FpsStats(
+        lastAvg = avg,
+        lastLow = prefs.getInt("${k}_last_low", 0),
+        lastAt = prefs.getLong("${k}_last_at", 0L),
+        history = prefs.getString("${k}_history", "").orEmpty().split(',').mapNotNull { it.trim().toIntOrNull() },
+    )
+}
+
 internal fun lastPlayedOf(s: Shortcut): Long = s.getExtra(EXTRA_LAST_PLAYED, "").toLongOrNull() ?: 0L
 
 internal fun addedAtOf(s: Shortcut): Long = ShortcutOrder.parse(s.getExtra(ShortcutOrder.EXTRA_ADDED_AT, ""))

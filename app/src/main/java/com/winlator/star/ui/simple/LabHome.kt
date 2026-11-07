@@ -2,6 +2,9 @@ package com.winlator.star.ui.simple
 
 import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -171,6 +174,7 @@ internal fun LabHome(
         containers = withContext(Dispatchers.IO) { runCatching { ContainerManager(context).containers.map { it.name } }.getOrNull() }
     }
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
+    var selPath by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     val playFocus = remember { FocusRequester() }
     val enterTick = deckActions.enterTick.intValue
     LaunchedEffect(resumeTick, enterTick, recent.isNotEmpty()) {
@@ -189,8 +193,8 @@ internal fun LabHome(
         val gap = 12.dp
         val pad = if (portrait) 12.dp else 18.dp
         val rowH: Dp = if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)
-        val game = recent.firstOrNull()
-        val next = recent.drop(1).take(if (portrait) 3 else 4)
+        // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
+        val game = recent.firstOrNull { it.file.path == selPath } ?: recent.firstOrNull()
 
         @Composable
         fun ContinueTile(m: Modifier) {
@@ -204,11 +208,13 @@ internal fun LabHome(
                 }
                 return
             }
+            // A different game picked below: the big tile fades over to it.
+            androidx.compose.animation.Crossfade(targetState = game, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
             val st = stats[game.file.path]
             Row(m.labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabTileLabel("Continue")
+                    LabTileLabel(if (game == recent.firstOrNull()) "Continue" else "Selected")
                     Text(game.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
@@ -225,25 +231,36 @@ internal fun LabHome(
                     }
                 }
             }
+            }
         }
 
         @Composable
         fun RecentTile(m: Modifier) {
+            // The whole library, last played first, in a row that scrolls. A tap (or the controller resting on a cover)
+            // puts that game in the big tile above; a long press or X opens its menu.
+            val coverW = (rowH - 46.dp) * 0.75f
             Column(m.labPanel().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LabTileLabel("Recent")
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    next.forEach { s ->
-                        Box(Modifier.fillMaxHeight().width((rowH - 46.dp) * 0.75f).labTile(onClick = { onNavigate(LabRoutes.game(s.file.path)) }, onMenu = { menuFor = s })) {
-                            SimpleCover(s, Modifier.fillMaxSize(), title = false)
+                LabTileLabel("Library · ${recent.size} ${if (recent.size == 1) "game" else "games"}")
+                LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(recent, key = { it.file.path }) { s ->
+                        val sel = s.file.path == game?.file?.path
+                        Box(
+                            Modifier.fillMaxHeight().width(coverW)
+                                .then(if (sel) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, SimpleShape) else Modifier)
+                                .labTile(onClick = { selPath = s.file.path }, onMenu = { menuFor = s }, onFocus = { selPath = s.file.path }),
+                        ) {
+                            SimpleCover(s, Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp), title = false)
                         }
                     }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxHeight().width((rowH - 46.dp) * 0.75f).background(SimpleCard, SimpleShape).labTile(onClick = { onNavigate(LabRoutes.LIBRARY) }),
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${recent.size}", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                            Text("All games", color = SimpleMuted, fontSize = 11.sp)
+                    item(key = "add") {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxHeight().width(coverW).background(SimpleCard, SimpleShape).labTile(onClick = addGame),
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                                Text("Add a game", color = SimpleMuted, fontSize = 11.sp)
+                            }
                         }
                     }
                 }
@@ -306,6 +323,20 @@ internal fun LabHome(
         @Composable
         fun PlaytimeTile(m: Modifier) {
             val total = stats.values.sumOf { it.ms }
+            // The last game's last session, once it has saved one; until then the total playtime.
+            val fps = remember(game, resumeTick) { game?.let { com.winlator.star.ui.deck.readFpsStats(context, it) } }
+            if (game != null && fps != null) {
+                LabDashTile(m, onClick = { onNavigate(LabRoutes.game(game.file.path)) }) {
+                    LabTileLabel("Last session")
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("${fps.lastAvg.roundToInt()}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, fontFamily = FontFamily.Monospace)
+                        Text("fps avg", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                        if (fps.lastLow > 0) Text("· 1% low ${fps.lastLow}", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    }
+                    LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
+                }
+                return
+            }
             LabDashTile(m, onClick = { onNavigate(LabRoutes.LIBRARY) }) {
                 LabTileLabel("Playtime")
                 Text(playtimeLabel(total), color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, maxLines = 1)

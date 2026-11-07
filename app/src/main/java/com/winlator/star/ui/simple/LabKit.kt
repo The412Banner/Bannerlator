@@ -238,3 +238,26 @@ internal fun Modifier.labTile(
 @Composable
 internal fun Modifier.labPanel(): Modifier =
     this.simpleDepth().background(SimplePanelBrush, SimpleShape).border(1.dp, SimpleLine, SimpleShape)
+
+/** A small line chart of [values] in the accent colour (a game's FPS over its last sessions). */
+@Composable
+internal fun LabSparkline(values: List<Int>, modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    val line = SimpleLine
+    Canvas(modifier) {
+        for (i in 1..3) drawLine(line, Offset(0f, size.height * i / 4f), Offset(size.width, size.height * i / 4f), 1f)
+        if (values.size < 2) {
+            values.firstOrNull()?.let { drawCircle(accent, 3.dp.toPx(), Offset(size.width / 2f, size.height / 2f)) }
+            return@Canvas
+        }
+        val lo = (values.min() - 3).toFloat()
+        val hi = (values.max() + 3).toFloat()
+        val path = androidx.compose.ui.graphics.Path()
+        values.forEachIndexed { i, v ->
+            val x = size.width * i / (values.size - 1)
+            val y = size.height - (v - lo) / (hi - lo) * size.height
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(path, accent, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()))
+    }
+}

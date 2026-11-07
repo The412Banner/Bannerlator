@@ -382,6 +382,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // restores each process exactly (revert philosophy). Populated on toggle ON, cleared on OFF.
     private final java.util.HashMap<Integer, Integer> bigCoreAffinitySnapshot = new java.util.HashMap<>();
     private int frameRatingWindowId = -1;
+    // The session's own frame counter: counts the game's frames whether or not the FPS overlay is on, so the
+    // session's average and 1% low can be saved with the game when it closes (Lab's "Last session" and FPS history).
+    private final FpsCounter sessionFps = new FpsCounter();
+    private volatile int sessionFpsWindowId = -1;
     // Wayland mode has no X window to bind the HUD to; the compositor's game window stands in.
     private static final int WAYLAND_HUD_WINDOW_ID = Integer.MAX_VALUE;
     // Master HUD on/off, parsed from the fps config's `hudEnabled` key (default on). When false, every
@@ -1403,8 +1407,57 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * without re-touching WM state off-thread. We deliberately do NOT reassign {@code frameRatingWindowId}
      * or {@code mesaDrvWindowIds} here (those are owned by the WM thread) — the volatile int is enough.
      */
+    /**
+     * X11: count a present for the session stats when it comes from the game: the window the HUD follows, or the
+     * focused application window (on GL/Zink, whatever window presents while a game window is focused, as the HUD's
+     * self-heal does). The window found is remembered, so later frames skip the window-manager lookup.
+     */
+    private void countSessionFrame(int wid) {
+        if (wid == sessionFpsWindowId || (wid != -1 && (wid == frameRatingWindowId || wid == glZinkHealedWindowId))) {
+            sessionFps.tick();
+            return;
+        }
+        try {
+            Window focused = xServer.windowManager.getFocusedWindow();
+            if (focused == null || !focused.isApplicationWindow() || focused.isDesktopWindow()) return;
+            boolean game = focused.id == wid;
+            if (!game && guestGlIsZink()) {
+                Window w = xServer.windowManager.getWindow(wid);
+                game = w == null || !w.isDesktopWindow();
+            }
+            if (game) {
+                sessionFpsWindowId = wid;
+                sessionFps.tick();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    /** Saves the session's FPS with the game when it ends (at least 30 s of frames): last average, 1% low, history. */
+    private void saveSessionFps() {
+        try {
+            if (shortcutName == null || shortcutName.isEmpty() || playtimePrefs == null) return;
+            float secs = sessionFps.getSessionLengthSec();
+            float avg = sessionFps.getAvgFPS();
+            if (secs < 30f || avg <= 0f) return;
+            String k = shortcutName + "_fps";
+            SharedPreferences.Editor e = playtimePrefs.edit();
+            e.putFloat(k + "_last_avg", avg);
+            e.putInt(k + "_last_low", Math.round(sessionFps.getLow1Pct()));
+            e.putLong(k + "_last_at", System.currentTimeMillis());
+            // The last 24 session averages, oldest first.
+            String hist = playtimePrefs.getString(k + "_history", "");
+            java.util.ArrayList<String> list = new java.util.ArrayList<>();
+            for (String v : hist.split(",")) if (!v.trim().isEmpty()) list.add(v.trim());
+            list.add(String.valueOf(Math.round(avg)));
+            while (list.size() > 24) list.remove(0);
+            e.putString(k + "_history", android.text.TextUtils.join(",", list));
+            e.apply();
+        } catch (Throwable ignored) {}
+    }
+
     private void driveHudFrameTick(int wid) {
         feedPadFrame(wid);   // controller pacing follows the game's frames, HUD or not
+        countSessionFrame(wid);   // the saved session stats, HUD or not
         if (frameRatingWindowId == -1 || !hudCounterEnabled) return;   // HUD inactive or toggled off -> never count
         if (wid != frameRatingWindowId && wid != glZinkHealedWindowId) {
             if (!guestGlIsZink()) return;                      // only the GL/Zink present topology
@@ -5583,6 +5636,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // The controllers and their slots for the controller log, before anything is released.
                 if (winHandler != null) com.winlator.star.core.ControllerLog.pads(winHandler.getPlayerSlotAssignments(), true);
                 savePlaytimeData(); // Save on destroy
+                saveSessionFps();
                 handler.removeCallbacks(savePlaytimeRunnable);
                 if (midiHandler != null) midiHandler.stop();
                 // Unregister sensor listener to avoid memory leaks
@@ -9862,6 +9916,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // temperature/GPU-load reads and BatteryManager binder calls, every 500 ms) runs on the
                 // sampler thread; one job is queued at a time, so a fast game can't pile them up.
                 if (padFeedWaylandGame) com.winlator.star.inputcontrols.BannerinWriter.onGameFrame();
+                sessionFps.tick();   // the saved session stats, HUD or not (only the game surface reports frames)
                 if (frameRatingWindowId == -1 || !hudCounterEnabled) return;
                 fpsCounter.tick();
                 android.os.Handler h = waylandHudSampler;

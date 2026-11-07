@@ -453,17 +453,17 @@ internal fun DeckGamePage(
 }
 
 /** One Deck game-menu entry: a classic ⋮ item (or Play / Container settings) with a line saying what it does. */
-private data class GameMenuEntry(val title: String, val hint: String, val action: GameMenuAction?, val danger: Boolean = false)
+internal data class GameMenuEntry(val title: String, val hint: String, val action: GameMenuAction?, val danger: Boolean = false)
 
 /** Pseudo-actions the classic ⋮ menu doesn't have. */
-private const val ENTRY_PLAY = "play"
-private const val ENTRY_CONTAINER = "container"
+internal const val ENTRY_PLAY = "play"
+internal const val ENTRY_CONTAINER = "container"
 
 /**
  * The classic ⋮ menu for [s] in Deck groups: the same items under the same rules ([gameMenuOffers]),
  * plus Play and Container settings at the top. An Android game has no container to open.
  */
-private fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>> {
+internal fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>>> {
     val isAndroid = AndroidGames.isAndroidEntry(s)
     fun e(a: GameMenuAction, hint: String, danger: Boolean = false) =
         if (gameMenuOffers(a, s)) null as String? to GameMenuEntry(menuTitle(a), hint, a, danger) else null
@@ -513,7 +513,7 @@ private fun menuTitle(a: GameMenuAction): String = when (a) {
 
 /** The grouped game menu, as cards of rows. Used on the game page's side column and in [DeckGameMenuSheet]. */
 /** Game-menu actions that need the installed copy of the game. */
-private val NEEDS_INSTALL = setOf(GameMenuAction.CLONE, GameMenuAction.COPY_TO_DRIVE_C, GameMenuAction.CHANGE_EXE,
+internal val NEEDS_INSTALL = setOf(GameMenuAction.CLONE, GameMenuAction.COPY_TO_DRIVE_C, GameMenuAction.CHANGE_EXE,
     GameMenuAction.ADD_TO_HOME, GameMenuAction.EXPORT, GameMenuAction.CLOUD_SAVES, GameMenuAction.BACKUP_SAVES,
     GameMenuAction.RESTORE_SAVES, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS, GameMenuAction.PROPERTIES)
 

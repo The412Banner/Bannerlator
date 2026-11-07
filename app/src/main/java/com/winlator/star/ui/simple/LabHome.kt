@@ -55,7 +55,6 @@ import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.store.download.ContentDownloadRegistry
-import com.winlator.star.ui.deck.DeckGameMenuSheet
 import com.winlator.star.ui.deck.LibrarySort
 import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
@@ -373,7 +372,7 @@ internal fun LabHome(
     }
 
     menuFor?.let { s ->
-        DeckGameMenuSheet(
+        LabGameMenu(
             shortcut = s,
             subtitle = storeLabelOf(s) + " · " + playtimeLabel(stats[s.file.path]?.ms ?: 0L),
             onDismiss = { menuFor = null },

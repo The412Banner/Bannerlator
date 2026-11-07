@@ -43,7 +43,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
-import com.winlator.star.ui.deck.DeckGameMenuSheet
 import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.deck.lastPlayedLabel
@@ -300,7 +299,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         )
     }
     if (menuOpen) {
-        DeckGameMenuSheet(
+        LabGameMenu(
             shortcut = shortcut,
             subtitle = storeLabelOf(shortcut) + " · " + playtimeLabel(stats?.ms ?: 0L),
             onDismiss = { menuOpen = false },

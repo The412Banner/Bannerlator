@@ -41,7 +41,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.container.Shortcut
 import com.winlator.star.ui.Screen
-import com.winlator.star.ui.deck.DeckGameMenuSheet
 import com.winlator.star.ui.deck.DeckStore
 import com.winlator.star.ui.deck.LibrarySort
 import com.winlator.star.ui.deck.LocalDeckActions
@@ -119,7 +118,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
         }
     }
     menuFor?.let { s ->
-        DeckGameMenuSheet(
+        LabGameMenu(
             shortcut = s,
             subtitle = storeLabelOf(s) + " · " + playtimeLabel(stats[s.file.path]?.ms ?: 0L),
             onDismiss = { menuFor = null },

@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.border
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -93,4 +94,16 @@ internal fun Modifier.tabFill(on: Boolean, accent: androidx.compose.ui.graphics.
         .shadow((9f * t).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
         .background(accent.copy(alpha = 0.24f * t), SimpleShape)
         .border(1.dp, accent.copy(alpha = t), SimpleShape)
+}
+
+/**
+ * Keeps this element in view while [on]: the scrolling row it sits in glides to it (a tab row stepped with L2/R2, so the
+ * selected tab never goes past the edge).
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@androidx.compose.runtime.Composable
+internal fun Modifier.keepInViewWhen(on: Boolean): Modifier {
+    val req = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    androidx.compose.runtime.LaunchedEffect(on) { if (on) runCatching { req.bringIntoView() } }
+    return this.bringIntoViewRequester(req)
 }

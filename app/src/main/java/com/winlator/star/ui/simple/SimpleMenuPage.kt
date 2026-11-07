@@ -324,6 +324,7 @@ private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, compact:
                     .padding(end = 6.dp)
                     .then(Modifier.tabFill(on, accent))
                     .simpleTap { onPick(s.key) }
+                    .keepInViewWhen(on)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))

@@ -87,6 +87,7 @@ import com.winlator.star.ui.simple.SimpleShape
 import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
+import com.winlator.star.ui.simple.keepInViewWhen
 import com.winlator.star.ui.simple.simpleDepth
 import com.winlator.star.ui.simple.simpleRowFocus
 import com.winlator.star.ui.simple.tabFill
@@ -909,6 +910,7 @@ private fun TabTabs(tabs: List<RTab>, index: Int, compact: Boolean = false, onPi
                     .padding(end = 6.dp)
                     .then(Modifier.tabFill(on, accent))
                     .simpleTap { onPick(i) }
+                    .keepInViewWhen(on)
                     .padding(horizontal = 13.dp, vertical = 8.dp),
             ) {
                 Icon(t.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))

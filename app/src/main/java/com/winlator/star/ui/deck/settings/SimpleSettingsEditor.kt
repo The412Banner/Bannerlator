@@ -79,6 +79,7 @@ import com.winlator.star.ui.simple.SimpleShape
 import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
+import com.winlator.star.ui.simple.keepInViewWhen
 import com.winlator.star.ui.simple.simpleDepth
 import com.winlator.star.ui.simple.simpleRowFocus
 import com.winlator.star.ui.simple.simpleInputOf
@@ -572,6 +573,7 @@ private fun CategoryTabs(cats: List<SettingsCategory>, current: SettingsCategory
                     .then(if (on) Modifier.simpleDepth().background(accent.copy(alpha = 0.24f), SimpleShape) else Modifier)
                     .border(1.dp, if (on) accent else Color.Transparent, SimpleShape)
                     .simpleTap { onPick(c.id) }
+                    .keepInViewWhen(on)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 Icon(c.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))

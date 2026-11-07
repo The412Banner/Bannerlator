@@ -725,7 +725,7 @@ internal fun SimpleClassicEditor(
                     title(false)
                     headerExtra?.invoke()
                     Spacer(Modifier.height(10.dp))
-                    TabTabs(tabs, tabIndex) { goTab(it) }
+                    TabTabs(tabs, tabIndex, compact = narrow) { goTab(it) }
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.weight(1f).fillMaxWidth()) {
                         body(Modifier.weight(1f).fillMaxHeight())
@@ -885,10 +885,10 @@ private fun ClassicTitle(
 
 /** Shelf: the tabs between LB and RB. */
 @Composable
-private fun TabTabs(tabs: List<RTab>, index: Int, onPick: (Int) -> Unit) {
+private fun TabTabs(tabs: List<RTab>, index: Int, compact: Boolean = false, onPick: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-        if (tabs.size > 1) { SimpleGlyph("LB"); Spacer(Modifier.width(8.dp)) }
+        if (tabs.size > 1 && !compact) { SimpleGlyph("LB"); Spacer(Modifier.width(8.dp)) }
         tabs.forEachIndexed { i, t ->
             val on = i == index
             Row(
@@ -901,11 +901,14 @@ private fun TabTabs(tabs: List<RTab>, index: Int, onPick: (Int) -> Unit) {
                     .padding(horizontal = 13.dp, vertical = 8.dp),
             ) {
                 Icon(t.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(t.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                // Portrait: the other tabs as icons, so the row fits a phone's width.
+                if (on || !compact) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(t.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                }
             }
         }
-        if (tabs.size > 1) { Spacer(Modifier.width(2.dp)); SimpleGlyph("RB") }
+        if (tabs.size > 1 && !compact) { Spacer(Modifier.width(2.dp)); SimpleGlyph("RB") }
     }
 }
 

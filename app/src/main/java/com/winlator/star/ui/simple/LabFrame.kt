@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -155,13 +156,20 @@ private val SimpleLineDraw: Color get() = SimpleLine
 
 /** The slim line over every Lab page: (portrait) the menu button, the name and device, then battery, temperature and clock. */
 @Composable
-internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, modifier: Modifier = Modifier) {
+internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Unit)?, modifier: Modifier = Modifier) {
     val dev = rememberLabDevice()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxWidth().height(48.dp).padding(horizontal = if (portrait) 12.dp else 18.dp),
     ) {
+        // Back on every page but Home (the system bars are hidden, so touch needs its own way back).
+        if (onBack != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(40.dp).labPanel().labTile(onClick = onBack),
+            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = SimpleInk, modifier = Modifier.size(22.dp)) }
+        }
         if (portrait) {
             Box(
                 contentAlignment = Alignment.Center,

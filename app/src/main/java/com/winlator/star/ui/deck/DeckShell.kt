@@ -578,7 +578,11 @@ private fun DeckShellContent(
                     // XMB mode, every tab but Home (which floats it over the XMB) and the phone layout: the same floating bar as
                     // Home, at the same place, with the page starting right under it.
                     if (simpleHome) {
-                        com.winlator.star.ui.simple.LabTopLine(portrait = !rails, onMenu = { labDrawer = true })
+                        com.winlator.star.ui.simple.LabTopLine(
+                            portrait = !rails,
+                            onMenu = { labDrawer = true },
+                            onBack = if (currentRoute != DeckRoutes.HOME) goBack else null,
+                        )
                     }
                     if (floatTabs && !full && !homeBleed) {
                         DeckFloatingBar(

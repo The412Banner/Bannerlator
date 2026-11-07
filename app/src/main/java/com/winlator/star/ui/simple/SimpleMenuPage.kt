@@ -244,10 +244,10 @@ private fun SimpleMenuPageBody(
                 PageTitle(overline, title, null, banner, big = false)
                 if (sections.size > 1) {
                     Spacer(Modifier.height(10.dp))
-                    SectionTabs(sections, sec) { k -> secKey = k; row = 0 }
+                    SectionTabs(sections, sec, compact = narrow) { k -> secKey = k; row = 0 }
                 }
                 Spacer(Modifier.height(12.dp))
-                list(Modifier.weight(1f).fillMaxWidth().widthIn(max = 1100.dp).align(Alignment.CenterHorizontally))
+                list(Modifier.weight(1f, fill = false).fillMaxWidth().widthIn(max = 1100.dp).align(Alignment.CenterHorizontally))
             }
         }
     }
@@ -276,11 +276,13 @@ private fun PageTitle(overline: String, title: String, sub: String?, banner: Str
 }
 
 @Composable
-private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, onPick: (String) -> Unit) {
+private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, compact: Boolean = false, onPick: (String) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-        SimpleGlyph("L2")
-        Spacer(Modifier.width(8.dp))
+        if (!compact) {
+            SimpleGlyph("L2")
+            Spacer(Modifier.width(8.dp))
+        }
         sections.forEach { s ->
             val on = s.key == sec?.key
             Row(
@@ -299,8 +301,10 @@ private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, onPick: 
                 Text("${s.entries.size}", color = SimpleDim, fontSize = 11.sp)
             }
         }
-        Spacer(Modifier.width(2.dp))
-        SimpleGlyph("R2")
+        if (!compact) {
+            Spacer(Modifier.width(2.dp))
+            SimpleGlyph("R2")
+        }
     }
 }
 

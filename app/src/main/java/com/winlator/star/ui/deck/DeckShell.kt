@@ -212,7 +212,7 @@ private val SIMPLE_ALIASES = mapOf(
 )
 
 /** Routes the shell draws itself (no page bar above them). */
-private fun isDeckPage(route: String): Boolean = route.startsWith("deck_") || route.startsWith("simple_")
+private fun isDeckPage(route: String): Boolean = route.startsWith("deck_") || route.startsWith("simple_") || route.startsWith("lab_")
 
 /**
  * The Deck interface: a console-style shell around the same AppNavGraph routes the classic drawer uses,

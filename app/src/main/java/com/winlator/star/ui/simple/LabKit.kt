@@ -4,7 +4,8 @@ import android.view.KeyEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -193,9 +194,11 @@ internal fun LabWallpaper(modifier: Modifier = Modifier) {
 private val A_KEYS = setOf(KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)
 
 /**
- * A Lab tile or button: focusable by the controller (the D-pad moves between them), A or a tap runs [onClick], X runs
- * [onMenu] when given. The focused one gets an accent outline and a light tint; no press shading.
+ * A Lab tile or button: focusable by the controller (the D-pad moves between them), A or a tap runs [onClick], X or a
+ * long press runs [onMenu] when given (a game's quick menu, a setting's full list). The focused one gets an accent
+ * outline and a light tint; no press shading.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun Modifier.labTile(
     onClick: () -> Unit,
@@ -220,7 +223,7 @@ internal fun Modifier.labTile(
                 else -> false
             }
         }
-        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+        .combinedClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick, onLongClick = onMenu)
 }
 
 /** A Lab panel: the see-through card every tile sits on. */

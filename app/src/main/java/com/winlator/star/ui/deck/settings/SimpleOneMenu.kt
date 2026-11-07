@@ -79,6 +79,9 @@ import kotlin.math.max
 // The rows, their storage and the hand-offs are the settings editor's (AppSource, AppSettingsRegistry): each change
 // applies at once, as before.
 
+/** App-settings sections that get a tab of their own beside Settings and Logs, in this order. */
+private val TAB_CATEGORIES = listOf("app.performance", "app.saves")
+
 private sealed interface OLine { val cat: SettingsCategory }
 private class OHead(override val cat: SettingsCategory) : OLine
 private class OSet(override val cat: SettingsCategory, val def: SettingDef) : OLine
@@ -100,10 +103,19 @@ internal fun SimpleOneMenuSettings(
     fun applies(def: SettingDef) = source.shows(def) && env.world in def.worlds && def.visible(env, values)
     LaunchedEffect(env) { env.loadAsync() }
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }   // 0 = Settings, 1 = Logs
+    // Tabs: Settings (every other section), then the sections that have a tab of their own, then Logs.
+    val tabCats = remember(categories) { TAB_CATEGORIES.mapNotNull { id -> categories.firstOrNull { it.id == id } } }
+    val tabCount = tabCats.size + 2
+    val logsTab = tabCount - 1
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val tabCat = tabCats.getOrNull(tab - 1)
     val logsTarget = AppSettingsRegistry.TARGET_LOGS
     val lines: List<OLine> = buildList {
-        for (c in categories) {
+        val shown = when {
+            tabCat != null -> listOf(tabCat)
+            else -> categories.filter { c -> tabCats.none { it.id == c.id } }
+        }
+        for (c in shown) {
             val rows = defs.filter { it.category == c.id && applies(it) }
             // The Log Manager is the Logs tab now, not a row.
             val links = handoffs[c.id].orEmpty().filter { env.world in it.worlds && it.target != logsTarget }
@@ -115,6 +127,8 @@ internal fun SimpleOneMenuSettings(
     }
     fun canFocus(l: OLine?) = l != null && l !is OHead
     var row by rememberSaveable { mutableIntStateOf(1) }
+    // A new tab starts at its first setting.
+    LaunchedEffect(tab) { row = lines.indexOfFirst { it !is OHead }.coerceAtLeast(0) }
     val rowNow = row.coerceIn(0, max(0, lines.size - 1)).let { r -> if (canFocus(lines.getOrNull(r))) r else lines.indexOfFirst { canFocus(it) }.coerceAtLeast(0) }
     var inSections by remember { mutableStateOf(false) }
     val catNow = lines.getOrNull(rowNow)?.cat
@@ -182,20 +196,20 @@ internal fun SimpleOneMenuSettings(
     // L2/R2 switch Settings / Logs, through the shell as well (they then work from any focus).
     val deckActions = LocalDeckActions.current
     val tabNow by rememberUpdatedState(tab)
-    DisposableEffect(deckActions) {
-        val step: (Int) -> Unit = { tab = if (tabNow == 0) 1 else 0 }
+    DisposableEffect(deckActions, tabCount) {
+        val step: (Int) -> Unit = { d -> tab = (tabNow + d + tabCount) % tabCount }
         deckActions.subTab.value = step
-        deckActions.subTabLabel.value = "Logs"
+        deckActions.subTabLabel.value = "Tab"
         onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
     }
     val cur = lines.getOrNull(rowNow)
     val curDef = (cur as? OSet)?.def
     val legend = buildList {
-        if (tab == 0) {
+        if (tab != logsTab) {
             if (curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to "Change")
             add("A" to "Open")
         }
-        add("L2 R2" to if (tab == 0) "Logs" else "Settings")
+        add("L2 R2" to "Tab")
     }
     DisposableEffect(deckActions, legend) {
         deckActions.ownLegend.value = legend
@@ -204,7 +218,7 @@ internal fun SimpleOneMenuSettings(
 
     val focus = remember { FocusRequester() }
     LaunchedEffect(tab, dialogOpen) {
-        if (dialogOpen || tab != 0) return@LaunchedEffect
+        if (dialogOpen || tab == logsTab) return@LaunchedEffect
         delay(60)
         runCatching { focus.requestFocus() }
     }
@@ -212,8 +226,8 @@ internal fun SimpleOneMenuSettings(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight && maxWidth >= 700.dp
         val onKey: (SIn) -> Boolean = onKey@{ a ->
-            if (a == SIn.LT || a == SIn.RT) { tab = if (tab == 0) 1 else 0; return@onKey true }
-            if (tab != 0) return@onKey false
+            if (a == SIn.LT || a == SIn.RT) { tab = (tab + (if (a == SIn.LT) -1 else 1) + tabCount) % tabCount; return@onKey true }
+            if (tab == logsTab) return@onKey false
             when {
                 inSections -> when (a) {
                     SIn.UP -> stepSection(-1)
@@ -228,7 +242,7 @@ internal fun SimpleOneMenuSettings(
                     SIn.LEFT, SIn.RIGHT -> {
                         val d = if (a == SIn.LEFT) -1 else 1
                         if (curDef != null && source.editable(curDef) && curDef.disabled(env, values) == null && isStepped(curDef.control(env, values))) change(curDef, d)
-                        else if (a == SIn.LEFT && landscape) inSections = true
+                        else if (a == SIn.LEFT && landscape && tab == 0) inSections = true
                     }
                     SIn.A -> cur?.let { activate(it) }
                     SIn.SELECT -> { if (curDef != null && source.origin(curDef) == Origin.SET_HERE) source.reset(curDef) }
@@ -254,17 +268,22 @@ internal fun SimpleOneMenuSettings(
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 OneTab("Settings", Icons.Filled.Settings, tab == 0) { tab = 0 }
+                tabCats.forEachIndexed { i, c ->
+                    Spacer(Modifier.width(6.dp))
+                    OneTab(c.label, c.icon, tab == i + 1) { tab = i + 1 }
+                }
                 Spacer(Modifier.width(6.dp))
-                OneTab("Logs", Icons.Filled.Description, tab == 1) { tab = 1 }
+                OneTab("Logs", Icons.Filled.Description, tab == logsTab) { tab = logsTab }
             }
             Spacer(Modifier.height(12.dp))
-            if (tab == 1) {
+            if (tab == logsTab) {
                 Box(Modifier.weight(1f).fillMaxWidth().simpleDepth(high = true).background(SimplePanelBrush, SimpleShape).border(1.dp, SimpleLine, SimpleShape)) {
                     LogManagerScreen(onClose = { tab = 0 })
                 }
             } else {
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    if (landscape) {
+                    // The section list only on the long Settings tab; the other tabs are one section each.
+                    if (landscape && tab == 0) {
                         SectionList(cats, catNow, active = inSections, modifier = Modifier.width(230.dp).fillMaxHeight()) { c -> inSections = false; jumpTo(c) }
                     }
                     OneList(lines, rowNow, active = !inSections, source = source, env = env, values = values, modifier = Modifier.weight(1f).fillMaxHeight()) { i ->

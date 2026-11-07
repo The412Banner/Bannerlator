@@ -160,6 +160,10 @@ private fun SimpleMenuPageBody(
         },
     )
     val rowNow = row.coerceIn(0, max(0, entries.size - 1))
+    // Right / Left on a row step onto its buttons: 0 = the row, 1 = its ▶ (Launch), 2 = its ⋯ (Options).
+    var col by remember { mutableIntStateOf(0) }
+    LaunchedEffect(rowNow, secKey) { col = 0 }
+    fun colsOf(e: MenuEntry?): List<Int> = buildList { add(0); if (e?.play != null) add(1); if (e?.actions?.isNotEmpty() == true) add(2) }
 
     fun stepSection(d: Int) {
         if (sections.isEmpty()) return
@@ -184,6 +188,7 @@ private fun SimpleMenuPageBody(
         add("B" to "Back")
         add("A" to "Open")
         if (entries.getOrNull(rowNow)?.play != null) add("Start" to "Launch")
+        if (colsOf(entries.getOrNull(rowNow)).size > 1) add("◀▶" to "Buttons")
         if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to "Options")
         sec?.primary?.let { add("Y" to it.label) }
         if (sections.size > 1) add("L2" to "Section")
@@ -220,10 +225,25 @@ private fun SimpleMenuPageBody(
                     if (rowNow >= entries.size - 1 && layout == AppThemeState.SIMPLE_LAYOUT_FOCUS && sections.size > 1) zone = PZone.SECS
                     else row = min(max(0, entries.size - 1), rowNow + 1)
                 }
-                SIn.LEFT -> { if (layout == AppThemeState.SIMPLE_LAYOUT_RAIL && sections.size > 1) zone = PZone.SECS }
-                SIn.A -> cur?.onA?.invoke() ?: run { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+                SIn.LEFT -> {
+                    val cols = colsOf(cur)
+                    val i = cols.indexOf(col)
+                    if (i > 0) col = cols[i - 1]
+                    else if (layout == AppThemeState.SIMPLE_LAYOUT_RAIL && sections.size > 1) zone = PZone.SECS
+                    else return@onKey false   // the Lab rail on the left takes it
+                }
+                SIn.RIGHT -> {
+                    val cols = colsOf(cur)
+                    val i = cols.indexOf(col)
+                    if (i >= 0 && i < cols.size - 1) col = cols[i + 1]
+                }
+                SIn.A -> when (col) {
+                    1 -> cur?.play?.invoke()
+                    2 -> { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+                    else -> cur?.onA?.invoke() ?: run { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
+                }
                 SIn.START -> { cur?.play?.invoke() }
-                else -> return@onKey a == SIn.SELECT || a == SIn.RIGHT
+                else -> return@onKey a == SIn.SELECT
             }
         }
         true
@@ -244,7 +264,7 @@ private fun SimpleMenuPageBody(
         val narrow = maxWidth < 700.dp
         val list: @Composable (Modifier) -> Unit = { mod ->
             EntryPanel(
-                sec, entries, rowNow, active = zone == PZone.ROWS, modifier = mod,
+                sec, entries, rowNow, active = zone == PZone.ROWS, modifier = mod, col = col,
                 emptyText = if (realEntries.isEmpty()) sec?.empty else null,
                 onMenu = { i -> entries.getOrNull(i)?.takeIf { it.actions.isNotEmpty() }?.let { actionsFor = it } },
             ) { i ->
@@ -407,6 +427,7 @@ private fun EntryPanel(
     modifier: Modifier,
     emptyText: String?,
     onMenu: (Int) -> Unit,
+    col: Int = 0,
     onTap: (Int) -> Unit,
 ) {
     val state = remember(sec?.key) { LazyListState() }
@@ -429,7 +450,7 @@ private fun EntryPanel(
             Column {
                 if (emptyText != null) Text(emptyText, color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp))
                 LazyColumn(state = state, contentPadding = PaddingValues(10.dp)) {
-                    itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }) { onTap(i) } }
+                    itemsIndexed(entries, key = { _, e -> e.key }) { i, e -> EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }, col = if (i == row && active) col else 0) { onTap(i) } }
                 }
             }
         }
@@ -437,7 +458,7 @@ private fun EntryPanel(
 }
 
 @Composable
-private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: () -> Unit = {}, onTap: () -> Unit) {
+private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: () -> Unit = {}, col: Int = 0, onTap: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val shift by animateFloatAsState(if (focused && active) 4f else 0f, tween(160), label = "simpleEntryShift")
     Column(
@@ -485,14 +506,23 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 Spacer(Modifier.width(8.dp))
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(width = 52.dp, height = 36.dp).background(accent, SimpleShape).simpleTap(play),
+                    modifier = Modifier
+                        .graphicsLayer { val k = if (col == 1) 1.08f else 1f; scaleX = k; scaleY = k }
+                        .size(width = 52.dp, height = 36.dp)
+                        .background(accent, SimpleShape)
+                        .then(if (col == 1) Modifier.border(3.dp, SimpleStrong, SimpleShape) else Modifier)
+                        .simpleTap(play),
                 ) { Icon(Icons.Filled.PlayArrow, contentDescription = "Launch", tint = Color.White, modifier = Modifier.size(22.dp)) }
             }
             if (e.actions.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(34.dp).background(if (focused) SimpleCard else Color.Transparent, SimpleShape).simpleTap(onMenu),
+                    modifier = Modifier
+                        .size(34.dp)
+                        .background(if (col == 2) accent.copy(alpha = 0.3f) else if (focused) SimpleCard else Color.Transparent, SimpleShape)
+                        .then(if (col == 2) Modifier.border(2.dp, accent, SimpleShape) else Modifier)
+                        .simpleTap(onMenu),
                 ) { Icon(Icons.Filled.MoreHoriz, contentDescription = "Options", tint = if (focused) SimpleStrong else SimpleMuted, modifier = Modifier.size(20.dp)) }
             }
         }

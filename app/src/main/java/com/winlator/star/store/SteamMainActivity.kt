@@ -81,6 +81,8 @@ import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbRailState
+import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.theme.LocalAccentDim
 
@@ -109,6 +111,11 @@ import com.winlator.star.ui.theme.LocalAccentDim
  * naturally (RIGHT = next card, DOWN = that card's action, LEFT back out to the rail).
  */
 class SteamMainActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         private const val REQ_NOTIFICATIONS = 1001
@@ -395,7 +402,7 @@ fun SteamStorefrontHost(
             // The Steam activities are not edge-to-edge, so systemBars is usually zero — but the
             // display cutout is NOT, and in landscape on a handheld it eats the rail. Both, always —
             // except in XMB home, where StoreXmbScreen already frames the screen edge to edge.
-            .then(if (LocalStoreXmb.current) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
+            .then(if (xmb) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
     ) {
         if (layout.wide) {
             Row(modifier = Modifier.fillMaxSize()) {
@@ -573,6 +580,8 @@ private fun StorefrontRail(
     // XMB home: a slim rail, just wide enough for an icon over a short label.
     val xmb = LocalStoreXmb.current
     val railWidth = if (xmb) rememberScreenScale().xmbRailWidth() else RAIL_WIDTH
+    // XMB home: Up / Down on the rail selects the tab it lands on; Left back from the content lands on the selected one.
+    val railState = rememberXmbRailState()
     Column(
         modifier = Modifier
             // EXACT width — see the note above. Do not replace with widthIn/wrapContentWidth.
@@ -581,11 +590,11 @@ private fun StorefrontRail(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .focusProperties { right = contentFocus },
+            .focusProperties { right = contentFocus }
+            .xmbRailGroup(railState),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(if (xmb) 2.dp else 6.dp))
-        if (xmb) XmbRailBumpers()
         // A compact status dot, not the full SteamStatusPill: the pill's label ("Signed in
         // elsewhere") would wrap to three lines inside a 96dp rail. The pill still carries the
         // wording in portrait's top bar; here the dot keeps the colour and the reconnect tap.
@@ -595,7 +604,7 @@ private fun StorefrontRail(
         tabs.forEach { t ->
             val n = counts[t]?.takeIf { it > 0 }
             if (xmb) {
-                XmbRailItem(t.label, t.icon, selected = tab == t, count = n, onClick = { onSelect(t) })
+                XmbRailItem(t.label, t.icon, selected = tab == t, count = n, onClick = { onSelect(t) }, rail = railState)
                 return@forEach
             }
             NavigationRailItem(

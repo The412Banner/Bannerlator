@@ -2,11 +2,9 @@ package com.winlator.star.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +29,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.XmbGroupItem
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbInner
+import com.winlator.star.ui.deck.xmbOnGlass
 import coil.compose.AsyncImage
 
 /**
@@ -85,8 +84,7 @@ private fun FriendRow(f: GogUserData.Friend, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -128,41 +126,46 @@ fun GogProfileTab(
 ) {
     val name = profile?.username?.ifBlank { null } ?: username.ifBlank { "GOG user" }
     val identity: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            StoreAvatar(GogUserData.avatarCandidates(profile?.avatar), name, 84.dp)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val sub = buildList {
-                profile?.country?.takeIf { it.isNotBlank() }?.let { add(it.uppercase()) }
-                profile?.galaxyUserId?.takeIf { it.isNotBlank() }?.let { add("Galaxy ID $it") }
-            }.joinToString(" · ")
-            if (sub.isNotBlank()) {
+        // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
+        val group = rememberXmbFocusGroup()
+        XmbGroupItem(group, RoundedCornerShape(12.dp), Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .xmbGlassCard(RoundedCornerShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                StoreAvatar(GogUserData.avatarCandidates(profile?.avatar), name, 84.dp)
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    text = sub,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StoreFilterChip("Account on GOG.com", false) { onOpenWeb("https://www.gog.com/account", "GOG account") }
-                StoreFilterChip(if (loading) "Refreshing…" else "Refresh", false, onRefresh)
+                val sub = buildList {
+                    profile?.country?.takeIf { it.isNotBlank() }?.let { add(it.uppercase()) }
+                    profile?.galaxyUserId?.takeIf { it.isNotBlank() }?.let { add("Galaxy ID $it") }
+                }.joinToString(" · ")
+                if (sub.isNotBlank()) {
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StoreFilterChip("Account on GOG.com", false, Modifier.xmbInner(group, first = true)) {
+                        onOpenWeb("https://www.gog.com/account", "GOG account")
+                    }
+                    StoreFilterChip(if (loading) "Refreshing…" else "Refresh", false, Modifier.xmbInner(group), onRefresh)
+                }
             }
         }
     }
@@ -175,15 +178,7 @@ fun GogProfileTab(
             profile?.wishlisted?.takeIf { it > 0 }?.let { add("Wishlisted" to it) }
             profile?.ownedMovies?.takeIf { it > 0 }?.let { add("Movies" to it) }
         }
-        val cols = if (wide) 3 else 2
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            tiles.chunked(cols).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (label, n) -> StatTile(label, n, Modifier.weight(1f)) }
-                    repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
+        StatTileGrid(tiles, if (wide) 3 else 2)
     }
     val friendsPeek: @Composable () -> Unit = {
         val friends = profile?.friends.orEmpty()
@@ -235,14 +230,13 @@ fun GogProfileTab(
     }
 }
 
-/** A stat tile: big number over a muted label. Shared by the GOG and Epic profile tabs. */
+/** A stat tile: big number over a muted label. Shared by the GOG, Epic and Amazon profile tabs. */
 @Composable
 fun StatTile(label: String, value: Int, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier = modifier
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+            .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
             .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -260,5 +254,20 @@ fun StatTile(label: String, value: Int, modifier: Modifier = Modifier) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** The profile tabs' stat tiles in rows of [cols], the last row padded so the tiles keep one width. */
+@Composable
+fun StatTileGrid(tiles: List<Pair<String, Int>>, cols: Int) {
+    // On the glass the tiles cast a shadow, so they sit further apart.
+    val gap = if (xmbOnGlass()) 14.dp else 8.dp
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+        tiles.chunked(cols).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                row.forEach { (label, n) -> StatTile(label, n, Modifier.weight(1f)) }
+                repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }

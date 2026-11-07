@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.MainActivity
 import com.winlator.star.R
 import com.winlator.star.ui.EmulatorLabels
+import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.findActivity
 import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
@@ -225,6 +226,8 @@ fun ContainerDetailScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = saveAndExit,
+                // XMB mode: above the floating Back / Search hints (0 elsewhere).
+                modifier = Modifier.padding(bottom = LocalXmbHintInset.current),
                 containerColor = if (viewModel.isSaving)
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 else

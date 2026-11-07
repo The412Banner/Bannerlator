@@ -42,6 +42,11 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.winlator.star.ui.theme.WinlatorTheme
 
 class QrLoginActivity : ComponentActivity(), SteamQrAuthManager.QrAuthListener {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     private var qrBitmap by mutableStateOf<Bitmap?>(null)
     private var statusText by mutableStateOf("Connecting\u2026")

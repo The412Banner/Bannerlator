@@ -2,6 +2,9 @@ package com.winlator.star.ui.screens
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
@@ -40,6 +43,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,7 +80,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -84,12 +87,12 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -106,8 +109,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,18 +125,23 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.LifecycleEventObserver
 import com.winlator.star.R
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.ui.LocalTopBarOverlayInset
+import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.XmbStoreMark
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.rememberXmbLogo
 import com.winlator.star.ui.deck.storeMarkOf
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.DangerRed
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -226,6 +238,12 @@ internal fun ShortcutsXmbView(
     val allCount = remember(allTotal) { context.resources.getQuantityString(R.plurals.xmb_all_games_count, allTotal, allTotal) }
     val allLabel = stringResource(R.string.xmb_all_games_open)
     var allOpen by rememberSaveable { mutableStateOf(false) }
+    // What the All Games card shows of the library (the mosaic on the card, the collage behind it while it is hovered): the
+    // games the row shows come first (the most recent), then the rest, games with art ahead of those without. Built from the
+    // covers already decoded for the row, and kept until the game list changes.
+    val libraryOrder = remember(shortcuts, allShortcuts) { if (hasAll) xmbRecentOrder(shortcuts, allShortcuts.orEmpty()) { it.file.path } else emptyList() }
+    val mosaic = remember(libraryOrder) { xmbMosaicPick(libraryOrder) { it.icon != null } }
+    val collageArts = remember(libraryOrder) { xmbCollagePick(libraryOrder) { it.icon != null }.mapNotNull { it.icon } }
 
     // The focused game is remembered by path so it survives rotation, leaving the tab, and a
     // refresh or sort that reorders the list. The All Games card is remembered as XMB_ALL_PATH.
@@ -289,7 +307,7 @@ internal fun ShortcutsXmbView(
     val xmbScope = remember(nav) {
         object : XmbScope {
             override val context: Context get() = appCtx
-            override val scope: kotlinx.coroutines.CoroutineScope get() = coScope
+            override val scope: CoroutineScope get() = coScope
             override fun push(menu: XmbMenu) = nav.push(menu)
             override fun pop() = nav.pop()
             override fun popToRoot() = nav.popTo(0)
@@ -353,6 +371,17 @@ internal fun ShortcutsXmbView(
     BackHandler(enabled = upperOpen) { closeUpper() }
     fun closeOpts() { optsOpen = false; act = 0 }
     BackHandler(enabled = centeredHome && optsOpen && !nested && !upperOpen) { closeOpts() }
+    // The All Games page is open: Back closes it onto its card. Registered after the others, so it is asked first (the page's own
+    // BackHandler, which closes its sort menu before the page, is registered later still and takes the press before this one).
+    BackHandler(enabled = allOpen) { allOpen = false }
+    // The Deck shell leaves its floating tab bar out while the page is up (the page has its own header there). Cleared again when the
+    // page closes or this view leaves the composition (another tab, the mode switched); a recreated activity restores allOpen, so the
+    // effect sets it again.
+    val deckActions = LocalDeckActions.current
+    DisposableEffect(allOpen, inDeckShell, deckActions) {
+        if (inDeckShell && allOpen) deckActions.xmbAllGamesOpen.value = true
+        onDispose { deckActions.xmbAllGamesOpen.value = false }
+    }
     // 1 = centred (no options), 0 = the options layout; the cards peek above the centred row.
     val cT by animateFloatAsState(if (centered) 1f else 0f, tween(300), label = "xmbCentred")
     val peekT by animateFloatAsState(if (centered && upperRow.isNotEmpty() && !upperOpen && !nested) 1f else 0f, tween(300), label = "xmbPeek")
@@ -421,6 +450,15 @@ internal fun ShortcutsXmbView(
     val clipTop = ss.dp(XMB_PEEK_CLIP).value
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val m = remember(maxWidth, maxHeight, topInset) { XmbMetrics(maxWidth.value, maxHeight.value - topInset.value) }
+        // The collage behind the hovered All Games card: a 5 x 3 grid of covers (repeated when the library is small), drawn once
+        // off the main thread.
+        val collageSpec = xmbCollageSpec(maxWidth.value / maxHeight.value.coerceAtLeast(1f), collageArts.size)
+        val collageState = remember(collageArts, collageSpec) { mutableStateOf<Bitmap?>(null) }
+        LaunchedEffect(collageState, onAll) {
+            if (onAll && collageSpec != null && collageState.value == null) {
+                collageState.value = withContext(Dispatchers.Default) { xmbCollageBitmap(collageArts, collageSpec) }
+            }
+        }
         // Centred home: the row is drawn larger while it's the only thing on screen (and under the open cards),
         // as large as fits between the peeking cards and the bottom edge, at most XMB_HOME_MAX_GROW. The options shrink it back.
         val homeK = if (!centeredHome) 1f
@@ -429,8 +467,6 @@ internal fun ShortcutsXmbView(
         val rowScale = { 1f + (homeK - 1f) * cT * (1f - upT) }
         val pitchPx = with(density) { m.pitch.dp.toPx() }
         val rowPx = with(density) { m.rowH.dp.toPx() }
-        val wPx = with(density) { maxWidth.toPx() }
-        val hPx = with(density) { maxHeight.toPx() }
 
         var swipe by remember { mutableFloatStateOf(0f) }
         val swipeBackPx = with(density) { 60.dp.toPx() }
@@ -571,50 +607,17 @@ internal fun ShortcutsXmbView(
                 )
                 .draggable(swipeDrag, Orientation.Vertical, onDragStarted = { swipeAcc = 0f; swipeDone = false }),
         ) {
-            // Background: accent glow → the focused cover (with the cards up, the chosen card's art), blurred → shade. The All
-            // Games card has no art, so on it only the glow and the shade show.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.radialGradient(
-                        0f to accent.copy(alpha = 0.50f), 0.48f to accent.copy(alpha = 0.10f), 0.85f to Color.Black,
-                        center = Offset(wPx * 0.18f, 0f), radius = max(wPx, hPx) * 1.1f,
-                    )
-                )
-            )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val card = if (upperOpen) upperRow.getOrNull(upIdx) else null
-                // Keyed on the card's art and icon (not the card itself, whose lambdas change every recomposition).
-                val picture: Any? = card?.let { c -> c.art?.let { XmbBackdropArt(it, c.icon) } } ?: focused?.icon
-                Crossfade(targetState = picture, animationSpec = tween(600), label = "xmbBackdrop") { pic ->
-                    when (pic) {
-                        is Bitmap -> Image(
-                            bitmap = remember(pic) { pic.asImageBitmap() },
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().blur(14.dp).alpha(0.34f),
-                        )
-                        is XmbBackdropArt -> Box(
-                            Modifier.fillMaxSize().blur(14.dp).alpha(0.34f).background(Brush.linearGradient(pic.art.colors)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val logo = pic.art.logo
-                            if (logo != null) {
-                                rememberXmbLogo(logo)?.let { bmp ->
-                                    Image(
-                                        bmp, contentDescription = null, contentScale = ContentScale.Fit,
-                                        colorFilter = if (pic.art.tintWhite) ColorFilter.tint(Color.White) else null,
-                                        modifier = Modifier.fillMaxSize(0.6f),
-                                    )
-                                }
-                            } else {
-                                Icon(pic.icon, contentDescription = null, tint = Color.White, modifier = Modifier.fillMaxSize(0.4f))
-                            }
-                        }
-                    }
-                }
-            }
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.55f), 0.55f to Color.Black.copy(alpha = 0.1f), 1f to Color.Black.copy(alpha = 0.45f))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f))))
+            // Background: black, the focused cover (with the cards up, the chosen card's art) blurred at full brightness, one flat
+            // veil for the text. Nothing else (no accent glow, no scrims, no preset colour), so the home looks the same under
+            // every preset. The All Games card has no art, so on it only the black shows.
+            val card = if (upperOpen) upperRow.getOrNull(upIdx) else null
+            // On the All Games card, the collage of the games inside it (a plain Bitmap, so it is blurred, dimmed and crossfaded
+            // exactly like a cover). It is built the first time the card is hovered, then kept until the games change.
+            val collage = collageState.value
+            // Keyed on the card's art and icon (not the card itself, whose lambdas change every recomposition).
+            val picture: Any? = card?.let { c -> c.art?.let { XmbBackdropArt(it, c.icon) } } ?: focused?.icon
+                ?: (if (onAll && !upperOpen) collage?.let { XmbCollagePicture(it) } else null)
+            XmbHomeBackdrop(picture)
             // Faint shade behind a see-through top bar so its title and buttons stay readable.
             if (topInset > 0.dp) {
                 Box(Modifier.fillMaxWidth().height(topInset + 24.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent))))
@@ -633,16 +636,16 @@ internal fun ShortcutsXmbView(
                 ) {
                     if (hasPad && nested) {
                         val hi = nav.hint(xmbScope)
-                        XmbHint("A", Color(0xFF3DDC84), hi.a, hs)
-                        XmbHint("B", Color(0xFFFF5252), "Back", hs)
+                        XmbButtonHint("A", Color(0xFF3DDC84), hi.a, hs)
+                        XmbButtonHint("B", Color(0xFFFF5252), "Back", hs)
                         if (!m.port && m.w >= 600f) {
                             XmbKeyHint("▲ ▼", "Move", hs)
                             if (hi.change) XmbKeyHint("◀ ▶", "Change", hs)
                         }
                         if (hi.sections) XmbKeyHint("L1 R1", "Section", hs)
                     } else if (hasPad) {
-                        XmbHint("A", Color(0xFF3DDC84), if (upperOpen) upperRow[upIdx].label else if (onAll) allLabel else if (centered) "Options" else actions[actIdx].label, hs)
-                        XmbHint("B", Color(0xFFFF5252), "Back", hs)
+                        XmbButtonHint("A", Color(0xFF3DDC84), if (upperOpen) upperRow[upIdx].label else if (onAll) allLabel else if (centered) "Options" else actions[actIdx].label, hs)
+                        XmbButtonHint("B", Color(0xFFFF5252), "Back", hs)
                         if (!m.port && m.w >= 600f) {
                             XmbKeyHint("◀ ▶", "Games", hs); XmbKeyHint("▲ ▼", "Options", hs); XmbKeyHint("L1 R1", if (inDeckShell) "Tabs" else "Jump", hs)
                         }
@@ -671,7 +674,9 @@ internal fun ShortcutsXmbView(
                 }) {
                 // The bar. Only covers near the cross are composed; each one's placement is read from
                 // `pos` in its graphics layer, so a swipe re-draws without recomposing.
-                val baseIdx by remember { derivedStateOf { floor(pos.floatValue).toInt() } }
+                // From the row's anchor (the same one the covers are drawn from, see xmbCoverSlot): the chosen card while the row
+                // is in use, the first one while the cards are up, so the covers at the left edge are composed then.
+                val baseIdx by remember { derivedStateOf { floor(xmbRowAnchor(pos.floatValue, 1f - upT)).toInt() } }
                 val ahead = ceil((m.w - m.cross) / m.pitch).toInt() + 1
                 // Centred home: the covers grow around the focused cover's left edge at the row's middle. A layer
                 // transform, so taps land on the covers as drawn.
@@ -686,7 +691,7 @@ internal fun ShortcutsXmbView(
                     if (i >= n) {
                         key(XMB_ALL_PATH) {
                             XmbAllGamesCover(
-                                index = i, pos = pos, m = m, accent = accent, count = allCount,
+                                index = i, pos = pos, m = m, accent = accent, count = allCount, mosaic = mosaic,
                                 focused = i == target && !upperOpen,
                                 grow = { 1f - upT },
                                 // Like a game, a tap first brings it to the cross; on the focused one it opens the page.
@@ -745,7 +750,7 @@ internal fun ShortcutsXmbView(
                     } else {
                         // An Android game has no container/resolution line; its package name stands in.
                         val meta = remember(s) {
-                            com.winlator.star.androidgames.AndroidGames.packageOf(s) ?: buildLaunchSpec(s, context).meta
+                            AndroidGames.packageOf(s) ?: buildLaunchSpec(s, context).meta
                         }
                         Column {
                             Text(
@@ -909,7 +914,7 @@ private fun XmbCover(
     selectionMode: Boolean,
     selected: Boolean,
     // 1 = the focused cover grows to full size (the usual row), 0 = every cover small (the home's lowered peek).
-    grow: () -> Float = { 1f },
+    grow: () -> Float,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
@@ -942,7 +947,7 @@ private fun XmbCover(
             XmbMonogram(shortcut.name, accent)
         }
         // Bottom-end, so it clears the selection mark at the top-end; it scales with the cover.
-        XmbStoreMark(mark, Modifier.align(Alignment.BottomEnd).padding(5.dp), (m.fW * 0.2f).coerceIn(18f, 26f).dp)
+        XmbStoreMark(mark, Modifier.align(Alignment.BottomEnd).padding(5.dp), (m.fW * 0.25f).coerceIn(22.5f, 32.5f).dp)
         if (selectionMode) {
             Box(
                 Modifier
@@ -960,31 +965,38 @@ private fun XmbCover(
     }
 }
 
-// A cover's place in the row (a game's or the All Games card's): its size, position and fade from its distance to the cross,
-// read in the graphics layer so a swipe re-draws without recomposing.
-private fun Modifier.xmbCoverSlot(index: Int, pos: MutableFloatState, m: XmbMetrics, focused: Boolean, grow: () -> Float): Modifier = this
+// A card's place in a row (a game's, the All Games card's or an upper-row card's): its size, position and fade from its distance to
+// the cross, read in the graphics layer so a swipe re-draws without recomposing. [y] is its top (dp) in the box it is drawn in.
+private fun Modifier.xmbCoverSlot(
+    index: Int, pos: MutableFloatState, m: XmbMetrics, focused: Boolean, grow: () -> Float, y: Float = m.top,
+): Modifier = this
     .zIndex(if (focused) 1f else 0f)
     .size(m.fW.dp, m.fH.dp)
     .graphicsLayer {
-        // u = distance from the cross in covers; the focused one grows to full size and the
+        // u = distance from the chosen card in covers; the focused one grows to full size and the
         // ones after it are pushed right by the extra width, so spacing stays even mid-swipe.
+        // ud = distance from the row's anchor (the cross): the chosen card while the row is in use, the first card while it is
+        // not ([grow] is 0 then), so a row left on a far card rests from the left edge instead of being shoved off it.
         val g = grow()
-        val u = index - pos.floatValue
+        val p = pos.floatValue
+        val u = index - p
+        val ud = index - xmbRowAnchor(p, g)
         val t = (1f - abs(u)).coerceAtLeast(0f) * g
         val sc = (m.sH + (m.fH - m.sH) * t) / m.fH
-        val x = m.cross + u * m.pitch + m.grow * g * u.coerceIn(0f, 1f)
+        val x = m.cross + ud * m.pitch + m.grow * g * u.coerceIn(0f, 1f)
         translationX = x.dp.toPx()
-        translationY = m.top.dp.toPx()
+        translationY = y.dp.toPx()
         scaleX = sc
         scaleY = sc
         transformOrigin = TransformOrigin(0f, 0f)
-        alpha = ((if (u >= 0f) 0.82f else 0.82f + u * 0.32f) + 0.18f * t).coerceIn(0f, 1f)
+        alpha = ((if (ud >= 0f) 0.82f else 0.82f + ud * 0.32f) + 0.18f * t).coerceIn(0f, 1f)
     }
 
-// The last card of the row: the grid glyph, "All Games" and the game count on the same plain surface as the upper row's Add game
-// card, 2:3 like a cover and ringed like the focused one. It opens the All Games page and has no game behind it, so there is no
-// store mark and no selection mark. One flat opaque fill and nothing nested: a see-through fill would let the focus shadow show
-// through as a dark inner box.
+// The last card of the row: a folder-like 3 x 2 preview of the library (the grid glyph when there are no games) on the same plain
+// surface as the upper row's Add game card, 2:3 like a cover and ringed like the focused one. Its name and game count are the
+// title beside the card (like every card's), so only the semantics carry them here. It opens the All Games page and has no game
+// behind it, so there is no store mark and no selection mark. One flat opaque fill and nothing nested: a see-through fill would
+// let the focus shadow show through as a dark inner box.
 @Composable
 private fun XmbAllGamesCover(
     index: Int,
@@ -992,12 +1004,14 @@ private fun XmbAllGamesCover(
     m: XmbMetrics,
     accent: Color,
     count: String,
+    mosaic: XmbMosaic<Shortcut>,
     focused: Boolean,
     grow: () -> Float,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
     val src = remember { MutableInteractionSource() }
+    val description = stringResource(R.string.xmb_all_games) + ", " + count
     Box(
         Modifier
             .xmbCoverSlot(index, pos, m, focused, grow)
@@ -1005,13 +1019,65 @@ private fun XmbAllGamesCover(
             .clip(shape)
             .background(Brush.linearGradient(XMB_PLAIN_CARD))
             .border(if (focused) 2.dp else 1.dp, if (focused) accent else Color.White.copy(alpha = 0.14f), shape)
+            .semantics(mergeDescendants = true) { contentDescription = description }
             .xmbClick(src, onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.GridView, contentDescription = null, tint = Color.White, modifier = Modifier.size((m.fW * 0.44f).dp))
-        Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-            Text(stringResource(R.string.xmb_all_games), color = Color.White.copy(alpha = 0.92f), fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2, lineHeight = 15.sp)
-            Text(count, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1)
+        if (mosaic.covers.isEmpty()) {
+            // No games yet: the grid glyph.
+            Icon(Icons.Filled.GridView, contentDescription = null, tint = Color.White, modifier = Modifier.size((m.fW * 0.44f).dp))
+        } else {
+            // Like a folder: a 3 x 2 preview of the games filling the card. Everything is sized in dp inside the card, so it
+            // scales with the card (the card itself is scaled by its graphics layer).
+            XmbAllGamesMosaic(mosaic, accent, Modifier.fillMaxSize().padding(6.dp))
+        }
+    }
+}
+
+// The All Games card's folder-like preview: up to five covers and a "+N more" tile, in a grid of XMB_MOSAIC_ROWS rows x
+// XMB_MOSAIC_COLS columns that fills the space it is given (the cells share it equally and crop the covers to fit, about square on
+// the 2:3 card). Cells with no game stay faintly empty.
+@Composable
+private fun XmbAllGamesMosaic(mosaic: XmbMosaic<Shortcut>, accent: Color, modifier: Modifier) {
+    val gap = 3.dp
+    val tileShape = RoundedCornerShape(3.dp)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(gap)) {
+        for (row in 0 until XMB_MOSAIC_ROWS) {
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                for (col in 0 until XMB_MOSAIC_COLS) {
+                    val i = row * XMB_MOSAIC_COLS + col
+                    val tile = Modifier.weight(1f).fillMaxHeight().clip(tileShape)
+                    when {
+                        i < mosaic.covers.size -> XmbMosaicCover(mosaic.covers[i], accent, tile)
+                        i == mosaic.covers.size && mosaic.more > 0 -> Box(tile.background(Color(0xFF2E3138)), contentAlignment = Alignment.Center) {
+                            // In a small cell "+N more" wraps at the space: "+N" over "more".
+                            Text(
+                                stringResource(R.string.xmb_all_games_more, mosaic.more), color = Color.White.copy(alpha = 0.92f),
+                                fontSize = 10.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2,
+                            )
+                        }
+                        else -> Box(tile.background(Color.White.copy(alpha = 0.06f)))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// One game's tile in the mosaic: its cover (the bitmap the row's cover shows), or its initials on the monogram's gradient.
+@Composable
+private fun XmbMosaicCover(s: Shortcut, accent: Color, modifier: Modifier) {
+    val bmp = s.icon
+    if (bmp != null) {
+        Image(
+            bitmap = remember(bmp) { bmp.asImageBitmap() },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+        )
+    } else {
+        Box(modifier.background(Brush.linearGradient(listOf(accent.copy(alpha = 0.55f), Color(0xFF0A0A0A)))), contentAlignment = Alignment.Center) {
+            Text(xmbInitials(s.name), color = Color.White.copy(alpha = 0.92f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }
@@ -1071,7 +1137,7 @@ private fun XmbActionRow(action: XmbAction, selected: Boolean, accent: Color, ic
 }
 
 /** Centred home: the peeking cards' middle sits this far (dp, on a 412 dp phone) from the top, just below the host's floating tab bar; above it they fade out. */
-internal const val XMB_PEEK_CLIP = 50f
+private const val XMB_PEEK_CLIP = 50f
 
 /** The surface of the upper row's plain cards (Add game) and of the All Games card, so they always match. */
 internal val XMB_PLAIN_CARD = listOf(Color(0xFF2A2D33), Color(0xFF16181C))
@@ -1183,20 +1249,9 @@ private fun XmbUpperCard(
     val src = remember { MutableInteractionSource() }
     val art = card.art
     Box(
+        // The bar's own box places the cards vertically (y = 0), unlike a game cover, which sits at the row's top.
         Modifier
-            .zIndex(if (focused) 1f else 0f)
-            .size(m.fW.dp, m.fH.dp)
-            .graphicsLayer {
-                val g = grow()
-                val u = index - pos.floatValue
-                val t = (1f - abs(u)).coerceAtLeast(0f) * g
-                val sc = (m.sH + (m.fH - m.sH) * t) / m.fH
-                translationX = (m.cross + u * m.pitch + m.grow * g * u.coerceIn(0f, 1f)).dp.toPx()
-                scaleX = sc
-                scaleY = sc
-                transformOrigin = TransformOrigin(0f, 0f)
-                alpha = ((if (u >= 0f) 0.82f else 0.82f + u * 0.32f) + 0.18f * t).coerceIn(0f, 1f)
-            }
+            .xmbCoverSlot(index, pos, m, focused, grow, y = 0f)
             .then(if (focused) Modifier.shadow(14.dp, shape, ambientColor = accent, spotColor = accent) else Modifier)
             .clip(shape)
             // Opaque, edge to edge: a see-through fill would let the focus shadow show through as a dark inner box.
@@ -1224,6 +1279,121 @@ private fun XmbUpperCard(
 /** What the backdrop shows for a chosen upper-row card: its [art], with [icon] standing in for a missing logo. */
 private data class XmbBackdropArt(val art: XmbCardArt, val icon: ImageVector)
 
+/** The home backdrop's blur: a medium one, so the art stays recognisable. */
+private val XMB_BACKDROP_BLUR = 16.dp
+
+/** The one flat black veil over the home backdrop's art, just enough for the text on top to stay readable. */
+private const val XMB_BACKDROP_VEIL = 0.30f
+
+/** Below API 31 the backdrop art is shrunk to 1/this of its size and scaled back up, which looks blurred. */
+internal const val XMB_BACKDROP_SOFT_DIV = 16
+
+/** The collage behind the hovered All Games card is blurred only very slightly (a tenth of [XMB_BACKDROP_BLUR]). */
+private val XMB_COLLAGE_BLUR = 1.6.dp
+
+/** Below API 31 the collage is not shrunk at all (it is already a small bitmap, scaled up with filtering), so it stays only slightly soft. */
+internal const val XMB_COLLAGE_SOFT_DIV = 1
+
+/** The size [xmbBackdropSoftBitmap] shrinks a [w] x [h] picture to (by [div]); never below 1 px. */
+internal fun xmbBackdropSoftSize(w: Int, h: Int, div: Int = XMB_BACKDROP_SOFT_DIV): Pair<Int, Int> =
+    max(1, w / div.coerceAtLeast(1)) to max(1, h / div.coerceAtLeast(1))
+
+/** What the backdrop shows on the All Games card: the [bitmap] collage of its games (it gets its own, lighter blur). */
+private data class XmbCollagePicture(val bitmap: Bitmap)
+
+/**
+ * The home backdrop, one implementation for the games row and the All Games page: black, then [picture] blurred at full
+ * brightness and crossfaded when it changes, then one flat veil for the text. [picture] is a game's cover (a [Bitmap]), an upper-row
+ * card's art, the All Games collage, or null for the black base alone. Fills its parent.
+ */
+@Composable
+internal fun XmbHomeBackdrop(picture: Any?) {
+    // Modifier.blur does nothing below API 31, where the art is drawn pre-shrunk and scaled up instead.
+    val nativeBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(Color.Black))
+        Crossfade(targetState = picture, animationSpec = tween(600), label = "xmbBackdrop") { pic ->
+            when (pic) {
+                is Bitmap -> XmbBackdropBitmap(pic, nativeBlur, XMB_BACKDROP_BLUR, XMB_BACKDROP_SOFT_DIV)
+                // The collage is only slightly blurred (each crossfade layer has its own blur).
+                is XmbCollagePicture -> XmbBackdropBitmap(pic.bitmap, nativeBlur, XMB_COLLAGE_BLUR, XMB_COLLAGE_SOFT_DIV)
+                is XmbBackdropArt -> Box(
+                    Modifier.fillMaxSize().blur(XMB_BACKDROP_BLUR).background(Brush.linearGradient(pic.art.colors)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val logo = pic.art.logo
+                    // Below API 31 the logo would stay sharp, so only the card's colours show there.
+                    if (nativeBlur) {
+                        if (logo != null) {
+                            rememberXmbLogo(logo)?.let { bmp ->
+                                Image(
+                                    bmp, contentDescription = null, contentScale = ContentScale.Fit,
+                                    colorFilter = if (pic.art.tintWhite) ColorFilter.tint(Color.White) else null,
+                                    modifier = Modifier.fillMaxSize(0.6f),
+                                )
+                            }
+                        } else {
+                            Icon(pic.icon, contentDescription = null, tint = Color.White, modifier = Modifier.fillMaxSize(0.4f))
+                        }
+                    }
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = XMB_BACKDROP_VEIL)))
+    }
+}
+
+/**
+ * A backdrop picture: [bmp] filling the screen, blurred by [radius] (Modifier.blur, API 31+) or, below that, shrunk by [softDiv]
+ * and scaled back up (see [xmbBackdropSoftBitmap]).
+ */
+@Composable
+private fun XmbBackdropBitmap(bmp: Bitmap, nativeBlur: Boolean, radius: Dp, softDiv: Int) {
+    val art = remember(bmp, nativeBlur, softDiv) { if (nativeBlur) bmp else xmbBackdropSoftBitmap(bmp, softDiv) }
+    if (art != null) Image(
+        bitmap = remember(art) { art.asImageBitmap() },
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        filterQuality = if (nativeBlur) FilterQuality.Low else FilterQuality.Medium,
+        modifier = Modifier.fillMaxSize().blur(radius),
+    )
+}
+
+/**
+ * A tiny copy of [src] for the backdrop below API 31, where Modifier.blur does nothing: drawn scaled up with filtering it
+ * looks blurred. Halved step by step, as one big filtered jump skips pixels and aliases. Null if the bitmap can't be scaled
+ * (the backdrop then shows only its black base). With a [div] of 1 the picture is used as it is.
+ */
+private fun xmbBackdropSoftBitmap(src: Bitmap, div: Int = XMB_BACKDROP_SOFT_DIV): Bitmap? = runCatching {
+    if (div <= 1) return@runCatching src
+    val (w, h) = xmbBackdropSoftSize(src.width, src.height, div)
+    var cur = src
+    while (cur.width / 2 > w && cur.height / 2 > h) cur = Bitmap.createScaledBitmap(cur, cur.width / 2, cur.height / 2, true)
+    Bitmap.createScaledBitmap(cur, w, h, true)
+}.getOrNull()
+
+/**
+ * The backdrop behind the hovered All Games card: [arts] (decoded covers, most recent first) tiled row by row into the grid of
+ * [spec], each centre-cropped to its cell, as one small bitmap. The backdrop then treats it as any other picture (the same veil
+ * and crossfade, but a much lighter blur: XMB_COLLAGE_BLUR, XMB_COLLAGE_SOFT_DIV), so it costs one draw like a cover. Cells with no cover stay black; a
+ * cover that can't be drawn is skipped. Null if the bitmap can't be made.
+ */
+private fun xmbCollageBitmap(arts: List<Bitmap>, spec: XmbCollageSpec): Bitmap? = runCatching {
+    val out = Bitmap.createBitmap(spec.width, spec.height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    canvas.drawColor(android.graphics.Color.BLACK)
+    val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    for (i in 0 until min(spec.cols * spec.rows, arts.size)) {
+        val art = arts[i]
+        val cell = xmbCellRect(i, spec.cols, spec.rows, spec.width, spec.height)
+        val crop = xmbCenterCrop(art.width, art.height, cell.width, cell.height)
+        runCatching {
+            canvas.drawBitmap(art, Rect(crop.left, crop.top, crop.right, crop.bottom), Rect(cell.left, cell.top, cell.right, cell.bottom), paint)
+        }
+    }
+    out
+}.getOrNull()
+
 // Right / lower pane: store badges, the same spec chips as the list card, playtime and Game Details.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1232,7 +1402,7 @@ private fun XmbInfo(s: Shortcut, playtime: String?, descLines: Int, storeBadges:
     val spec = remember(s) { buildLaunchSpec(s, context) }
     val details = remember(s) { buildLaunchDetails(s) }
     storeBadges(s)
-    if (!remember(s) { com.winlator.star.androidgames.AndroidGames.isAndroidEntry(s) }) SpecChipRows(
+    if (!remember(s) { AndroidGames.isAndroidEntry(s) }) SpecChipRows(
         rendererLabel = spec.rendererLabel,
         dxvkVersion = spec.dxvkVersion,
         frameGenLabel = spec.frameGenLabel,
@@ -1270,7 +1440,7 @@ private fun XmbInfo(s: Shortcut, playtime: String?, descLines: Int, storeBadges:
 }
 
 @Composable
-private fun XmbHint(glyph: String, color: Color, label: String, s: Float = 1f) {
+private fun XmbButtonHint(glyph: String, color: Color, label: String, s: Float) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(17.dp * s).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
             Text(glyph, color = Color.Black, fontSize = 10.sp * s, fontWeight = FontWeight.Bold)
@@ -1281,7 +1451,7 @@ private fun XmbHint(glyph: String, color: Color, label: String, s: Float = 1f) {
 }
 
 @Composable
-private fun XmbKeyHint(keys: String, label: String, s: Float = 1f) {
+private fun XmbKeyHint(keys: String, label: String, s: Float) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             keys, color = Color(0xFFDDDDDD), fontSize = 10.sp * s,

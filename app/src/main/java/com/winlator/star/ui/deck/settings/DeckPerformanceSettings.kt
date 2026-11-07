@@ -84,6 +84,7 @@ import com.winlator.star.perf.PerfRootApplier
 import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
 import com.winlator.star.ui.deck.deckFocusRing
+import com.winlator.star.ui.deck.deckInset
 import com.winlator.star.ui.deck.deckLine
 import com.winlator.star.ui.deck.settings.SettingLevel.ADVANCED
 import com.winlator.star.ui.deck.settings.SettingLevel.EXPERT
@@ -834,7 +835,7 @@ private fun VarLine(spec: VarSpec, value: String, onValue: (String) -> Unit, onH
                             .width(130.dp)
                             .deckFocusRing(shape, scaleTo = 1f)
                             .clip(shape)
-                            .background(cs.surfaceVariant.copy(alpha = 0.55f))
+                            .background(deckInset())
                             .border(1.dp, deckLine(), shape)
                             .clickable { open = true }
                             .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),

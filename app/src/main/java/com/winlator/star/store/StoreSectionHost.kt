@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbRailState
+import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.theme.LocalAccentDim
 
 /**
@@ -213,6 +215,8 @@ private fun SectionRail(
     // XMB home: a slim rail, just wide enough for an icon over a short label.
     val xmb = LocalStoreXmb.current
     val railWidth = if (xmb) rememberScreenScale().xmbRailWidth() else RAIL_WIDTH
+    // XMB home: Up / Down on the rail selects the tab it lands on; Left back from the content lands on the selected one.
+    val railState = rememberXmbRailState()
     Column(
         modifier = Modifier
             // EXACT width. Do not replace with widthIn/wrapContentWidth.
@@ -221,18 +225,18 @@ private fun SectionRail(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .focusProperties { right = contentFocus },
+            .focusProperties { right = contentFocus }
+            .xmbRailGroup(railState),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(if (xmb) 2.dp else 6.dp))
-        if (xmb) XmbRailBumpers()
         statusSlot()
         Spacer(Modifier.height(if (xmb) 4.dp else 8.dp))
 
         tabs.forEachIndexed { index, t ->
             val n = counts[t.key]?.takeIf { it > 0 }
             if (xmb) {
-                XmbRailItem(t.label, t.icon, selected = selected == index, count = n, onClick = { onSelect(index) })
+                XmbRailItem(t.label, t.icon, selected = selected == index, count = n, onClick = { onSelect(index) }, rail = railState)
                 return@forEachIndexed
             }
             NavigationRailItem(

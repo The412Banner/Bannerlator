@@ -3,10 +3,13 @@ package com.winlator.star.ui.screens
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.os.Build
+import android.os.Environment
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ContentCopy
@@ -50,10 +53,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import com.winlator.star.FeatureFlags
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
+import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
+import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.WrapperManager
 import com.winlator.star.core.BannerinXInput
@@ -69,26 +75,43 @@ import com.winlator.star.core.SyncSupport
 import com.winlator.star.core.StringUtils
 import com.winlator.star.core.WineInfo
 import com.winlator.star.core.WinePath
+import com.winlator.star.core.FastOpenGL
+import com.winlator.star.core.GpuSpoof
+import com.winlator.star.core.ImageUtils
+import com.winlator.star.core.MaliPanvk
+import com.winlator.star.core.UnrealHdr
+import com.winlator.star.core.WaylandAdapter
+import com.winlator.star.core.WaylandGameDriver
+import com.winlator.star.core.WineWaylandSupport
+import com.winlator.star.core.X11Egl
+import com.winlator.star.display.ExternalDisplay
 import com.winlator.star.display.WaylandHdr
+import com.winlator.star.linux.LinuxShortcuts
 import com.winlator.star.midi.MidiManager
 import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.store.xbox.XboxRuntime
 import com.winlator.star.ui.components.AUDIO_PRESETS
 import com.winlator.star.ui.components.PRESET_CUSTOM
 import com.winlator.star.ui.components.audioConfigFromEnv
+import com.winlator.star.ui.components.AudioConfig
 import com.winlator.star.ui.components.audioConfigToEnv
 import com.winlator.star.ui.components.latencyIsDirectBuffer
 import com.winlator.star.ui.components.latencyUsedBy
+import com.winlator.star.ui.components.syncGreyedReasons
+import com.winlator.star.widget.XServerView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// Phase 1 of the nested XMB: a game's Settings (the section list, General and Controller), Game
-// Details, Properties, Clone to container and Remove. Every row reads the shortcut's CURRENT value
+// A game's Settings (the section list, General and Controller), Game Details, Properties, Clone to
+// container and Remove, as nested XMB columns. Every row reads the shortcut's CURRENT value
 // with the same fallbacks as ShortcutSettingsDialogScreen's init (extra → container → default) and
 // writes on change with the same encoding as its save(); "" / null clears an extra so the game
-// re-inherits the container. Phase 2/3 menus (XmbSettingsPhase2*.kt / XmbGameTools*.kt) plug in here.
+// re-inherits the container. The other sections (XmbSettingsPhase2*.kt) and the tools
+// (XmbGameTools.kt) plug in here.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Things only the Games screen can do (its ViewModel / legacy dialogs). */
@@ -100,7 +123,7 @@ internal class XmbGameHost(
 
 /** One shortcut's settings, read/written the way the pop-up editor does. */
 internal class XmbPrefs(val context: Context, val shortcut: Shortcut) {
-    val res = context.resources!!
+    val res = context.resources
     val c: Container get() = shortcut.container
     fun ex(key: String, def: String): String = shortcut.getExtra(key, def) ?: def
     fun put(key: String, value: String?) { shortcut.putExtra(key, value); shortcut.saveData() }
@@ -177,7 +200,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     val rows = mutableListOf<XmbRow>()
     rows += XmbRow.Header("hGame", "Game")
     rows += XmbRow.Text("name", p.str(R.string.name), Icons.Filled.ShortText, s.name, subtitle = "Renames the shortcut") { v ->
-        val newBase = v.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+        val newBase = xmbSafeName(v)
         if (newBase.isNotEmpty() && newBase != s.name) renameAndReturn(xmb, s, newBase)
     }
     rows += XmbRow.Text("execArgs", "Exec arguments", Icons.Filled.ShortText, p.ex("execArgs", ""), subtitle = "Extra command-line arguments") { v ->
@@ -200,15 +223,15 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
             subtitle = "For Denuvo games we don't auto-detect", disabledReason = if (eos) null else "Needs EOS sign-in") { xmb.set(p, "epicOvtForce", if (it) "1" else "0") }
         rows += XmbRow.Toggle("epicOffline", "Launch offline", Icons.Filled.Layers, p.ex("epicOffline", "0") == "1",
             subtitle = "Skip Epic sign-in for this game", disabledReason = if (eos) null else "Needs EOS sign-in") { xmb.set(p, "epicOffline", if (it) "1" else "0") }
-        if (com.winlator.star.FeatureFlags.EPIC_OVERLAY_ENABLED) {
+        if (FeatureFlags.EPIC_OVERLAY_ENABLED) {
             rows += XmbRow.Toggle("epicOverlay", "Epic friends overlay", Icons.Filled.Layers, p.ex("epicOverlay", "0") == "1",
                 subtitle = "Experimental — Shift+F3 in game", disabledReason = if (eos) null else "Needs EOS sign-in") { xmb.set(p, "epicOverlay", if (it) "1" else "0") }
         }
     }
 
     if (s.getExtra("storeSource") == "xbox" && s.getExtra("xboxProductId").let { id ->
-            !id.isNullOrEmpty() && runCatching { com.winlator.star.store.xbox.XboxRuntime.shipsOwnRuntime(xmb.context, id) }.getOrDefault(false) }) {
-        val key = com.winlator.star.store.xbox.XboxRuntime.NEXUS_RUNTIME_EXTRA
+            !id.isNullOrEmpty() && runCatching { XboxRuntime.shipsOwnRuntime(xmb.context, id) }.getOrDefault(false) }) {
+        val key = XboxRuntime.NEXUS_RUNTIME_EXTRA
         rows += XmbRow.Header("hXbox", "Xbox")
         rows += XmbRow.Toggle(key, "Use the app's Xbox runtime", Icons.Filled.Layers, p.ex(key, "1") != "0",
             subtitle = "The game ships Microsoft's, which needs Windows' Gaming Services") { xmb.set(p, key, if (it) "1" else "0") }
@@ -217,7 +240,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     // Sync (esync / ntsync / fsync / wineserver): same extra and rules as the pop-up editor —
     // "Container default" clears the per-game override; greyed against the container's layer. The
     // layer probe reads ntdll.so, so a first visit starts it off-main and refreshes when it lands.
-    if (!com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(s)) {
+    if (!LinuxShortcuts.isLinuxEntry(s)) {
         val syncLayer = c.wineVersion ?: ""
         val syncCaps = SyncSupport.peek(syncLayer)
         if (syncCaps == null && xmbSyncProbing.add(syncLayer)) {
@@ -233,7 +256,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
             ?.let { syncCaps?.resolve(it) ?: it }
         val syncLabels = listOf("Container default ($cEff)") + SyncMode.ALL
         val overriding = sEff != null && sEff != cEff
-        val greyed = com.winlator.star.ui.components.syncGreyedReasons(syncCaps, syncLayer).joinToString("; ")
+        val greyed = syncGreyedReasons(syncCaps, syncLayer).joinToString("; ")
         rows += XmbRow.Header("hWine", "Wine")
         rows += XmbRow.Choice("syncMode", "Sync", Icons.Filled.Sync, syncLabels,
             if (overriding) sEff!! else syncLabels[0],
@@ -260,7 +283,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     // (WineWaylandSupport): otherwise "Wayland" is not pickable, a stored Wayland override displays
     // as the effective backend (X11), and "Container default" resolves to the container's EFFECTIVE
     // backend (X11 when the container says wayland but its layer can't drive it).
-    val waylandCapable = com.winlator.star.core.WineWaylandSupport.isWaylandCapable(p.context, c.wineVersion)
+    val waylandCapable = WineWaylandSupport.isWaylandCapable(p.context, c.wineVersion)
     val containerWaylandDefault = c.isWaylandBackend && waylandCapable
     val dbValues = listOf("", Container.DISPLAY_BACKEND_X11, Container.DISPLAY_BACKEND_WAYLAND)
     val dbLabels = listOf(
@@ -274,14 +297,14 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         // Same help text as the container editor's backend row.
         subtitle = when {
             waylandGame -> "Wayland (experimental): games render through the embedded compositor (winewayland). " +
-                "Needs " + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + ". Games render on the Turnip bundled with that Proton — " +
+                "Needs " + WineWaylandSupport.LAYER_HINT + ". Games render on the Turnip bundled with that Proton — " +
                 "the Compositor driver only affects the compositor. DX wrapper (DXVK/VKD3D) settings apply as on X11. " +
                 "The Renderer options below don't apply and are disabled."
             waylandStoredUnusable -> "Set to Wayland, but the container's Proton layer is not Wayland-capable: runs on X11. " +
-                "Wayland needs " + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + "."
+                "Wayland needs " + WineWaylandSupport.LAYER_HINT + "."
             !waylandCapable && c.isWaylandBackend -> "The container is set to Wayland, but its Proton layer is not Wayland-capable: runs on X11. " +
-                "Wayland needs " + com.winlator.star.core.WineWaylandSupport.LAYER_HINT + "."
-            !waylandCapable -> "Runs on the X11 server. Wayland needs " + com.winlator.star.core.WineWaylandSupport.LAYER_HINT +
+                "Wayland needs " + WineWaylandSupport.LAYER_HINT + "."
+            !waylandCapable -> "Runs on the X11 server. Wayland needs " + WineWaylandSupport.LAYER_HINT +
                 ". The selected layer does not include winewayland and its Wayland Turnip."
             else -> "Runs on the X11 server"
         },
@@ -292,16 +315,12 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     val sizes = p.arr(R.array.screen_size_entries)
     val rawSize = p.ex("screenSize", c.getScreenSize())
     val sizeLabel = sizes.firstOrNull { StringUtils.parseIdentifier(it).equals(rawSize, ignoreCase = true) } ?: "Custom"
+    val w = if (rawSize.contains("x")) rawSize.substringBefore("x") else "800"
+    val h = if (rawSize.contains("x")) rawSize.substringAfter("x") else "600"
     rows += XmbRow.Choice("screenSize", p.str(R.string.screen_size), Icons.Filled.DesktopWindows, sizes, sizeLabel) { v ->
-        if (v == "Custom") {
-            val w = if (rawSize.contains("x")) rawSize.substringBefore("x") else "800"
-            val h = if (rawSize.contains("x")) rawSize.substringAfter("x") else "600"
-            xmb.set(p, "screenSize", "${w}x$h")
-        } else xmb.set(p, "screenSize", StringUtils.parseIdentifier(v))
+        if (v == "Custom") xmb.set(p, "screenSize", "${w}x$h") else xmb.set(p, "screenSize", StringUtils.parseIdentifier(v))
     }
     if (sizeLabel == "Custom") {
-        val w = if (rawSize.contains("x")) rawSize.substringBefore("x") else "800"
-        val h = if (rawSize.contains("x")) rawSize.substringAfter("x") else "600"
         fun setWH(nw: String, nh: String) {
             val ok = nw.matches(Regex("[0-9]+")) && nh.matches(Regex("[0-9]+")) && nw.toInt() % 2 == 0 && nh.toInt() % 2 == 0
             if (!ok) xmb.toast("Width and height must be even numbers")
@@ -343,8 +362,9 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         val nv = rsValues[rsLabels.indexOf(v)]
         xmb.set(p, "renderScale", if (nv == "1.0") null else nv)
     }
-    val rates = xmbPanelRates(p.context).filter { it > 60 }
-    if (xmbPanelRates(p.context).isNotEmpty()) {
+    val panelRates = xmbPanelRates(p.context)
+    val rates = panelRates.filter { it > 60 }
+    if (panelRates.isNotEmpty()) {
         val rrValues = listOf("", "locked", "0") + rates.map { it.toString() }
         val rrLabels = listOf(p.str(R.string.use_container_default), p.str(R.string.in_game_refresh_locked), p.str(R.string.max_game_refresh_rate_unlimited)) + rates.map { "$it Hz" }
         val unlock = p.ex("unlockGameRefreshRate", "")
@@ -363,61 +383,61 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         }
     }
 
-    // TV — the same rows as the pop-up editor's TV tab (display.ExternalDisplay), on the same
+    // TV — the same rows as the pop-up editor's TV tab (ExternalDisplay), on the same
     // condition: an external display is plugged in, or this game is already set to launch on one so a
     // leftover setting is never hidden. Per game only, no container default. HDR is reported, not
     // asked: starting the session on the TV is what opens the compositor's HDR gate there.
     // XMB has no display listener of its own — its rows rebuild on refresh(), so a cable plugged in
     // while this column is open shows up on the next change rather than instantly.
-    val tvDisplay = com.winlator.star.display.ExternalDisplay.find(p.context)
-    if (tvDisplay != null || com.winlator.star.display.ExternalDisplay.launchOnTv(s)) {
+    val tvDisplay = ExternalDisplay.find(p.context)
+    if (tvDisplay != null || ExternalDisplay.launchOnTv(s)) {
         rows += XmbRow.Header("hTv", "TV")
         rows += XmbRow.Info("tvDisplay",
-            if (tvDisplay != null) com.winlator.star.display.ExternalDisplay.title(tvDisplay) else "No external display",
+            if (tvDisplay != null) ExternalDisplay.title(tvDisplay) else "No external display",
             Icons.Filled.Tv,
-            value = if (tvDisplay != null) com.winlator.star.display.ExternalDisplay.modeLabel(
-                com.winlator.star.display.ExternalDisplay.activeMode(tvDisplay)) else "",
-            subtitle = if (tvDisplay != null) com.winlator.star.display.ExternalDisplay.summary(tvDisplay)
+            value = if (tvDisplay != null) ExternalDisplay.modeLabel(
+                ExternalDisplay.activeMode(tvDisplay)) else "",
+            subtitle = if (tvDisplay != null) ExternalDisplay.summary(tvDisplay)
                        else "Nothing is plugged in. This game is still set to launch on a TV.")
         rows += XmbRow.Toggle("tvLaunch", "Launch this game on the TV", Icons.Filled.Tv,
-            com.winlator.star.display.ExternalDisplay.launchOnTv(s),
-            subtitle = com.winlator.star.display.ExternalDisplay.HELP_LAUNCH) {
-            xmb.set(p, com.winlator.star.display.ExternalDisplay.EXTRA_LAUNCH, if (it) "1" else "0")
+            ExternalDisplay.launchOnTv(s),
+            subtitle = ExternalDisplay.HELP_LAUNCH) {
+            xmb.set(p, ExternalDisplay.EXTRA_LAUNCH, if (it) "1" else "0")
         }
-        val tvModes = com.winlator.star.display.ExternalDisplay.selectableModes(tvDisplay)
-        val tvModeId = com.winlator.star.display.ExternalDisplay.modeId(s)
+        val tvModes = ExternalDisplay.selectableModes(tvDisplay)
+        val tvModeId = ExternalDisplay.modeId(s)
         if (tvModes.size > 1) {
             val tvValues = listOf(0) + tvModes.map { it.modeId }
             val tvLabels = listOf("Default (leave the TV as it is)") +
-                tvModes.map { com.winlator.star.display.ExternalDisplay.modeLabel(it) }
+                tvModes.map { ExternalDisplay.modeLabel(it) }
             rows += XmbRow.Choice("tvModeId", "Output mode", Icons.Filled.DesktopWindows, tvLabels,
                 tvLabels[tvValues.indexOf(tvModeId).coerceAtLeast(0)],
                 subtitle = "What the TV is told to run at") { v ->
-                xmb.set(p, com.winlator.star.display.ExternalDisplay.EXTRA_MODE_ID,
+                xmb.set(p, ExternalDisplay.EXTRA_MODE_ID,
                     tvValues[tvLabels.indexOf(v)].toString())
             }
         } else {
             rows += XmbRow.Info("tvModeId", "Output mode", Icons.Filled.DesktopWindows,
-                value = com.winlator.star.display.ExternalDisplay.modeLabel(tvModes.firstOrNull()).ifEmpty { "—" },
+                value = ExternalDisplay.modeLabel(tvModes.firstOrNull()).ifEmpty { "—" },
                 subtitle = if (tvDisplay != null) "This screen advertises one output mode"
                            else "Plug a screen in to choose an output mode")
         }
         rows += XmbRow.Toggle("tvMatchRes", "Match the TV's resolution", Icons.Filled.AspectRatio,
-            com.winlator.star.display.ExternalDisplay.matchResolution(s),
-            subtitle = com.winlator.star.display.ExternalDisplay.HELP_MATCH_RES) {
-            xmb.set(p, com.winlator.star.display.ExternalDisplay.EXTRA_MATCH_RES, if (it) "1" else "0")
+            ExternalDisplay.matchResolution(s),
+            subtitle = ExternalDisplay.HELP_MATCH_RES) {
+            xmb.set(p, ExternalDisplay.EXTRA_MATCH_RES, if (it) "1" else "0")
         }
         val tvHdrReason = if (tvDisplay == null) null
-                          else com.winlator.star.display.ExternalDisplay.hdrUnavailableReason(tvDisplay)
+                          else ExternalDisplay.hdrUnavailableReason(tvDisplay)
         rows += XmbRow.Info("tvHdr", "Use HDR on the TV", Icons.Filled.HdrOn,
             value = if (tvDisplay != null && tvHdrReason == null) "On" else "Off",
             subtitle = tvHdrReason ?: (
                 if (tvDisplay != null) "Automatic. This screen accepts HDR10, so HDR output switches on for this game."
                 else "Plug the screen in to see what it can do."))
         rows += XmbRow.Info("tvNoteUnplug", "If the cable comes out", Icons.Filled.Info,
-            subtitle = com.winlator.star.display.ExternalDisplay.NOTE_UNPLUG)
+            subtitle = ExternalDisplay.NOTE_UNPLUG)
         rows += XmbRow.Info("tvNoteTouch", "Touch on the TV", Icons.Filled.TouchApp,
-            subtitle = com.winlator.star.display.ExternalDisplay.NOTE_TOUCH)
+            subtitle = ExternalDisplay.NOTE_TOUCH)
     }
 
     // Graphics
@@ -431,7 +451,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     // (withGraphicsDriverVersion); the config link stays live for the same key.
     if (waylandGame) {
         val gdc = p.ex("graphicsDriverConfig", c.getGraphicsDriverConfig())
-        val compositorVersion = com.winlator.star.contentdialog.GraphicsDriverConfigDialog.getVersion(gdc) ?: ""
+        val compositorVersion = GraphicsDriverConfigDialog.getVersion(gdc) ?: ""
         // Same source as the config dialog's "Graphics Driver Version" (minus "System").
         if (xmbBundledDriverVersions == null && !xmbBundledDriverVersionsLoading) {
             xmbBundledDriverVersionsLoading = true
@@ -441,15 +461,15 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
                 xmb.refresh()
             }
         }
-        val turnips = ((if (com.winlator.star.core.MaliPanvk.isMaliGpu()) listOf("System") else emptyList()) +
+        val turnips = ((if (MaliPanvk.isMaliGpu()) listOf("System") else emptyList()) +
             (xmbBundledDriverVersions ?: emptyList()) + importedDriverVersions(p.context)).distinct()
         val turnipsLoaded = xmbBundledDriverVersions != null
         // One driver pick on Wayland: with the game driver on "adapter" it drives the game too.
         val wgdEffective = p.ex("waylandGameDriver", "").ifEmpty { c.waylandGameDriver }
         val gfxSubtitle = when {
-            com.winlator.star.core.WaylandAdapter.isProprietaryBlob(p.context, compositorVersion) ->
+            WaylandAdapter.isProprietaryBlob(p.context, compositorVersion) ->
                 "Qualcomm's own driver cannot put Wayland frames on screen: the screen uses a bundled Turnip automatically."
-            com.winlator.star.core.WaylandGameDriver.adapterActive(p.context, wgdEffective, compositorVersion) ->
+            WaylandGameDriver.adapterActive(p.context, wgdEffective, compositorVersion) ->
                 "Used for the game (through the Wayland adapter) and for putting its frames on screen."
             else -> "Used by the Wayland compositor to put frames on screen; the game renders on the Wayland game driver below."
         }
@@ -471,7 +491,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         // default): Auto / the bundled Turnip variants / imported Linux ICDs — same options and labels
         // as the pop-up editors (WaylandGameDriver). A stored imported:<id> whose import is gone stays
         // listed (labelled missing); launch uses Auto for it.
-        val wgdAuto = com.winlator.star.core.WaylandGameDriver.autoVariantIfKnown()
+        val wgdAuto = WaylandGameDriver.autoVariantIfKnown()
         if (wgdAuto == null && !xmbWaylandAutoLoading) {
             xmbWaylandAutoLoading = true
             xmb.scope.launch {
@@ -483,24 +503,24 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         // A stored auto shows as the adapter it resolves to (WaylandGameDriver.editorChoice), so the list
         // never carries two entries with the adapter's label.
         val wgdOverride = p.ex("waylandGameDriver", "").let {
-            if (it.isEmpty()) "" else com.winlator.star.core.WaylandGameDriver.editorChoice(p.context, it)
+            if (it.isEmpty()) "" else WaylandGameDriver.editorChoice(p.context, it)
         }
-        val wgdInstalled = com.winlator.star.core.WaylandGameDriver.optionValues(p.context)
+        val wgdInstalled = WaylandGameDriver.optionValues(p.context)
         val wgdValues = listOf("") + (if (wgdOverride.isEmpty() || wgdOverride in wgdInstalled) wgdInstalled else wgdInstalled + wgdOverride)
         val wgdLabels = wgdValues.map {
-            if (it.isEmpty()) "Container default (" + com.winlator.star.core.WaylandGameDriver.optionLabel(p.context, c.waylandGameDriver, wgdAuto) + ")"
-            else com.winlator.star.core.WaylandGameDriver.optionLabel(p.context, it, wgdAuto)
+            if (it.isEmpty()) "Container default (" + WaylandGameDriver.optionLabel(p.context, c.waylandGameDriver, wgdAuto) + ")"
+            else WaylandGameDriver.optionLabel(p.context, it, wgdAuto)
         }
         rows += XmbRow.Choice("waylandGameDriver", "Wayland game driver (advanced)", Icons.Filled.Memory, wgdLabels,
             wgdLabels[wgdValues.indexOf(wgdOverride).coerceAtLeast(0)],
-            subtitle = com.winlator.star.core.WaylandGameDriver.HELP_TEXT) { v ->
+            subtitle = WaylandGameDriver.HELP_TEXT) { v ->
             xmb.set(p, "waylandGameDriver", wgdValues[wgdLabels.indexOf(v)].ifEmpty { null })
         }
         // The pop-up editors' gear next to the Wayland game driver: GPU name spoof, memory cap, present
         // mode, UBWC hint, in the same graphicsDriverConfig keys as X11's driver configuration.
-        val spoof = com.winlator.star.core.GpuSpoof.gpuNameOf(gdc)
+        val spoof = GpuSpoof.gpuNameOf(gdc)
         rows += XmbRow.Link("waylandDriverCfg", "Wayland driver settings", Icons.Filled.Tune,
-            value = spoof.takeIf { com.winlator.star.core.GpuSpoof.isSpoofing(it) },
+            value = spoof.takeIf { GpuSpoof.isSpoofing(it) },
             subtitle = "GPU name spoof, memory cap, present mode…") { xmbWaylandDriverConfigMenu(xmb, s) }
         // HDR output (per-game override of the container's waylandHdr; "" = container default, "1" on,
         // "0" off) — same options as the pop-up editor (WaylandHdr). Greyed with the reason on a screen
@@ -518,29 +538,29 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         }
     }
     // Fast OpenGL (per-game override of the container's fastOpenGL; "" = container default, "1" on,
-    // "0" off) — same extra and rules as the pop-up editor (core.FastOpenGL). Locked on Wayland
+    // "0" off) — same extra and rules as the pop-up editor (FastOpenGL). Locked on Wayland
     // (always on there); on X11 greyed with one reason when the driver isn't a Turnip or the APK has
     // no X11 GL set. Any layer works on X11: the launch picks the EGL or GLX route.
-    if (!com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(s)) {
-        val glDriver = com.winlator.star.contentdialog.GraphicsDriverConfigDialog.getVersion(
+    if (!LinuxShortcuts.isLinuxEntry(s)) {
+        val glDriver = GraphicsDriverConfigDialog.getVersion(
             p.ex("graphicsDriverConfig", c.getGraphicsDriverConfig()))
-        val glLocked = if (waylandGame) com.winlator.star.core.FastOpenGL.WAYLAND_ALWAYS_ON
-            else com.winlator.star.core.FastOpenGL.unavailableReason(
-                com.winlator.star.core.FastOpenGL.driverUsable(p.context, glDriver),
-                com.winlator.star.core.X11Egl.isBundled(p.context))
+        val glLocked = if (waylandGame) FastOpenGL.WAYLAND_ALWAYS_ON
+            else FastOpenGL.unavailableReason(
+                FastOpenGL.driverUsable(p.context, glDriver),
+                X11Egl.isBundled(p.context))
         val glValues = listOf("", "1", "0")
         val glLabels = listOf("Container default (" + (if (c.isFastOpenGL()) "On" else "Off") + ")", "On", "Off")
-        val glOverride = com.winlator.star.core.FastOpenGL.normalize(p.ex(com.winlator.star.core.FastOpenGL.EXTRA, "")) ?: ""
-        rows += XmbRow.Choice(com.winlator.star.core.FastOpenGL.EXTRA, com.winlator.star.core.FastOpenGL.TITLE, Icons.Filled.Speed,
+        val glOverride = FastOpenGL.normalize(p.ex(FastOpenGL.EXTRA, "")) ?: ""
+        rows += XmbRow.Choice(FastOpenGL.EXTRA, FastOpenGL.TITLE, Icons.Filled.Speed,
             glLabels, glLabels[glValues.indexOf(glOverride).coerceAtLeast(0)],
-            subtitle = com.winlator.star.core.FastOpenGL.HINT, disabledReason = glLocked) { v ->
-            xmb.set(p, com.winlator.star.core.FastOpenGL.EXTRA, glValues[glLabels.indexOf(v)].ifEmpty { null })
+            subtitle = FastOpenGL.HINT, disabledReason = glLocked) { v ->
+            xmb.set(p, FastOpenGL.EXTRA, glValues[glLabels.indexOf(v)].ifEmpty { null })
         }
         // Show OpenGL FPS / OpenGL vsync off: the same Container default / On / Off choice, on both
-        // backends, never greyed (core.FastOpenGL.FPS_HUD / VSYNC_OFF).
-        for (sw in listOf(com.winlator.star.core.FastOpenGL.FPS_HUD, com.winlator.star.core.FastOpenGL.VSYNC_OFF)) {
+        // backends, never greyed (FastOpenGL.FPS_HUD / VSYNC_OFF).
+        for (sw in listOf(FastOpenGL.FPS_HUD, FastOpenGL.VSYNC_OFF)) {
             val labels = listOf("Container default (" + (if (sw.containerOn(c.getExtra(sw.extra))) "On" else "Off") + ")", "On", "Off")
-            val stored = com.winlator.star.core.FastOpenGL.normalize(p.ex(sw.extra, "")) ?: ""
+            val stored = FastOpenGL.normalize(p.ex(sw.extra, "")) ?: ""
             rows += XmbRow.Choice(sw.extra, sw.title, Icons.Filled.Speed, labels,
                 labels[glValues.indexOf(stored).coerceAtLeast(0)], subtitle = sw.hint) { v ->
                 xmb.set(p, sw.extra, glValues[labels.indexOf(v)].ifEmpty { null })
@@ -559,26 +579,26 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     // Wrappers are X11 game-driver shims; nothing on the Wayland path uses them.
     if (!waylandGame) rows += XmbRow.External("wrappers", "Manage wrappers", Icons.Filled.Cloud, subtitle = "Import or remove wrapper drivers") { host.openWrapperManager() }
     // Unreal Engine HDR (per-game override of the container's unrealHdr; "" = container default), both
-    // backends — same options as the pop-up editors (core.UnrealHdr). DirectX 11 while no NVIDIA GPU
+    // backends — same options as the pop-up editors (UnrealHdr). DirectX 11 while no NVIDIA GPU
     // name spoof is set gets the optional hint row.
     run {
-        val cMode = com.winlator.star.core.UnrealHdr.containerMode(c)
-        val uValues = listOf("") + com.winlator.star.core.UnrealHdr.MODES
+        val cMode = UnrealHdr.containerMode(c)
+        val uValues = listOf("") + UnrealHdr.MODES
         val uLabels = uValues.map {
-            if (it.isEmpty()) "Container default (" + com.winlator.star.core.UnrealHdr.label(cMode) + ")"
-            else com.winlator.star.core.UnrealHdr.label(it)
+            if (it.isEmpty()) "Container default (" + UnrealHdr.label(cMode) + ")"
+            else UnrealHdr.label(it)
         }
-        val uOverride = com.winlator.star.core.UnrealHdr.shortcutChoice(s)
-        rows += XmbRow.Choice(com.winlator.star.core.UnrealHdr.EXTRA, com.winlator.star.core.UnrealHdr.TITLE, Icons.Filled.HdrOn,
+        val uOverride = UnrealHdr.shortcutChoice(s)
+        rows += XmbRow.Choice(UnrealHdr.EXTRA, UnrealHdr.TITLE, Icons.Filled.HdrOn,
             uLabels, uLabels[uValues.indexOf(uOverride).coerceAtLeast(0)],
-            subtitle = com.winlator.star.core.UnrealHdr.HELP_SHORT) { v ->
-            xmb.set(p, com.winlator.star.core.UnrealHdr.EXTRA, uValues[uLabels.indexOf(v)].ifEmpty { null })
+            subtitle = UnrealHdr.HELP_SHORT) { v ->
+            xmb.set(p, UnrealHdr.EXTRA, uValues[uLabels.indexOf(v)].ifEmpty { null })
         }
-        val spoof = com.winlator.star.core.GpuSpoof.gpuNameOf(p.ex("graphicsDriverConfig", c.getGraphicsDriverConfig()))
-        if (uOverride.ifEmpty { cMode } == com.winlator.star.core.UnrealHdr.DX11 &&
-            !com.winlator.star.core.GpuSpoof.isNvidia(p.context, spoof)) {
+        val spoof = GpuSpoof.gpuNameOf(p.ex("graphicsDriverConfig", c.getGraphicsDriverConfig()))
+        if (uOverride.ifEmpty { cMode } == UnrealHdr.DX11 &&
+            !GpuSpoof.isNvidia(p.context, spoof)) {
             rows += XmbRow.Info("unrealHdrNvidia", "No NVIDIA GPU is reported", Icons.Filled.Info,
-                subtitle = com.winlator.star.core.UnrealHdr.nvidiaHint(waylandGame))
+                subtitle = UnrealHdr.nvidiaHint(waylandGame))
         }
     }
     val dxEntries = p.arr(R.array.dxwrapper_entries)
@@ -632,7 +652,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
                 xmb.set(p, "nativeBackend", nbValues[nbLabels.indexOf(v)])
             }
         }
-        val drivers = (listOf("system") + runCatching { com.winlator.star.contents.AdrenotoolsManager(p.context).enumarateInstalledDrivers().toList() }.getOrDefault(emptyList())).distinct()
+        val drivers = (listOf("system") + runCatching { AdrenotoolsManager(p.context).enumarateInstalledDrivers().toList() }.getOrDefault(emptyList())).distinct()
         val rd = p.ex("rendererDriverId", c.getRendererDriverId())
         rows += XmbRow.Choice("vkDriver", "Renderer driver", Icons.Filled.Memory, drivers, if (rd in drivers) rd else "system",
             subtitle = "The driver the compositor runs on") { v -> xmb.set(p, "rendererDriverId", v) }
@@ -686,7 +706,7 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
     val emuId = p.ex("emulator", c.emulator)
     val arm = p.arm64ec
     rows += XmbRow.Choice("emulator", "Emulator", Icons.Filled.Memory,
-        emuEntries.map { if (arm == true && StringUtils.parseIdentifier(it) == "box64") "WOWBox64" else it }.let { it },
+        emuEntries.map { if (arm == true && StringUtils.parseIdentifier(it) == "box64") "WOWBox64" else it },
         p.labelFor(emuEntries, emuId).let { if (arm == true && StringUtils.parseIdentifier(it) == "box64") "WOWBox64" else it },
         disabledReason = when (arm) { null -> "Checking the Wine build…"; false -> "Only arm64ec containers can switch"; else -> null }) { v ->
         val idx = emuEntries.indexOfFirst { it == v || (v == "WOWBox64" && StringUtils.parseIdentifier(it) == "box64") }
@@ -707,10 +727,13 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
 
 /** Panel refresh rates, same source as the editor (drives whether the refresh row exists). */
 private fun xmbPanelRates(context: Context): List<Int> = runCatching {
-    val display = if (android.os.Build.VERSION.SDK_INT >= 30) context.display
-        else (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).defaultDisplay
-    com.winlator.star.widget.XServerView.getSupportedRefreshRates(display).toList()
+    val display = if (Build.VERSION.SDK_INT >= 30) context.display
+        else (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+    XServerView.getSupportedRefreshRates(display).toList()
 }.getOrDefault(emptyList())
+
+/** A typed game name as a file base name: characters Windows forbids in file names become "_". */
+private fun xmbSafeName(typed: String): String = typed.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
 
 /** Rename = the Game Details path (moves .desktop/.lnk + icon + cover). The shortcut object is stale
  *  afterwards, so go back to the games bar and reload the list. */
@@ -726,12 +749,12 @@ private fun renameAndReturn(xmb: XmbScope, s: Shortcut, newBase: String) {
 
 /** The file browser on the usual picture folders, showing images only; [onPick] gets the chosen file. */
 private fun imageBrowserMenu(xmb: XmbScope, title: String, onPick: (File) -> Unit): XmbMenu {
-    val start = File(android.os.Environment.getExternalStorageDirectory(), "Pictures").takeIf { it.isDirectory }
-        ?: android.os.Environment.getExternalStorageDirectory()
+    val start = File(Environment.getExternalStorageDirectory(), "Pictures").takeIf { it.isDirectory }
+        ?: Environment.getExternalStorageDirectory()
     val roots = listOf(
-        "Pictures" to File(android.os.Environment.getExternalStorageDirectory(), "Pictures"),
-        "Download" to File(android.os.Environment.getExternalStorageDirectory(), "Download"),
-        "Internal storage" to android.os.Environment.getExternalStorageDirectory(),
+        "Pictures" to File(Environment.getExternalStorageDirectory(), "Pictures"),
+        "Download" to File(Environment.getExternalStorageDirectory(), "Download"),
+        "Internal storage" to Environment.getExternalStorageDirectory(),
     ).filter { it.second.isDirectory }
     val imageExt = setOf("png", "jpg", "jpeg", "webp", "bmp")
     return xmbFileBrowserMenu(xmb, title, start, roots, { it.extension.lowercase() in imageExt }, onPick)
@@ -774,10 +797,10 @@ private fun removeCustomCover(xmb: XmbScope, s: Shortcut) {
 
 /** Decodes an image file and writes it as the game's icon PNG, the way the editor's icon picker does. */
 internal fun xmbApplyIconFile(s: Shortcut, f: File): Boolean = runCatching {
-    val bitmap = com.winlator.star.core.ImageUtils.decodeCoverArt(f.absolutePath) ?: return false
+    val bitmap = ImageUtils.decodeCoverArt(f.absolutePath) ?: return false
     s.iconFile?.let { out ->
         out.parentFile?.mkdirs()
-        java.io.FileOutputStream(out).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        FileOutputStream(out).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
     s.icon = bitmap
     true
@@ -809,7 +832,7 @@ private fun controllerRows(xmb: XmbScope, p: XmbPrefs): List<XmbRow> {
     fun helpRow(key: String, label: String, title: String, res: Int) {
         rows += XmbRow.Link(key, label, Icons.Filled.HelpOutline) { xmbHelpMenu(p.context, xmb.scope, title, res) }
     }
-    if (!com.winlator.star.linux.LinuxShortcuts.isLinuxEntry(s)) {
+    if (!LinuxShortcuts.isLinuxEntry(s)) {
         rows += XmbRow.Header("hController", "Game controller")
         // DirectInput visibility (core.DInputVisibility): written to this game's inputType / exclusiveXInput
         // extras, the values older builds read.
@@ -976,7 +999,7 @@ private fun audioMenu(xmb: XmbScope, p: XmbPrefs, driverId: String): XmbMenu = X
     val direct = latencyIsDirectBuffer(driverId)
     val used = latencyUsedBy(driverId)
     val custom = cfg.preset == PRESET_CUSTOM
-    fun write(nc: com.winlator.star.ui.components.AudioConfig) =
+    fun write(nc: AudioConfig) =
         xmb.set(p, "envVars", audioConfigToEnv(p.ex("envVars", ""), nc, driverId).ifEmpty { null })
     val presetNames = AUDIO_PRESETS.map { it.name }
     val cur = AUDIO_PRESETS.firstOrNull { it.id == cfg.preset } ?: AUDIO_PRESETS.first()
@@ -1019,7 +1042,7 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
             rows += XmbRow.Action("unlink", "Unlink from Steam", Icons.Filled.LinkOff) { write(d.copy(steamAppId = null)) }
         }
         rows += XmbRow.Text("name", "Game name", Icons.Filled.ShortText, s.name) { v ->
-            val nb = v.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+            val nb = xmbSafeName(v)
             if (nb.isNotEmpty() && nb != s.name) renameAndReturn(xmb, s, nb)
         }
         // Next to the cover a game gets from Scrape cover: the user's own image, and the way back from it.
@@ -1054,7 +1077,7 @@ internal fun xmbGameDetailsMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
                                 withContext(Dispatchers.IO) { runCatching { nd.writeTo(s) }; runCatching { applySteamCover(s.container, s.name, r.appId) } }
                                 xmb.saved(); xmb.pop(); xmb.reloadGames()
                                 if (info != null && info.name.isNotBlank() && info.name != s.name) {
-                                    val nb = info.name.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+                                    val nb = xmbSafeName(info.name)
                                     if (nb.isNotEmpty()) renameAndReturn(xmb, s, nb)
                                 }
                             }

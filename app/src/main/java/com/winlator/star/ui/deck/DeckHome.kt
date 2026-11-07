@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -45,7 +44,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -567,7 +565,7 @@ internal fun DeckHome(
                     onFocusedChange = onFocus,
                     // Full screen: the XMB hides the system bars in landscape and keeps L1/R1 for its jumps.
                     // The XMB home sits inside the shell instead: the shell keeps the bars hidden, takes L1/R1 for its tabs
-                    // and floats its own tabs, status and Search over the XMB, so the XMB drops its hints and clock.
+                    // and floats its own tabs, status and Back / Search hints over the XMB, so the XMB drops its hints and clock.
                     // The games rest centred with the library cards (upperRow) peeking above; A opens a game's options,
                     // Up lifts the cards fully into view.
                     inDeckShell = xmbHome,
@@ -740,9 +738,8 @@ private fun LibraryFilterDialog(
                     .padding(16.dp)
                     .widthIn(max = 640.dp)
                     .fillMaxWidth()
-                    .clip(shape)
-                    .background(cs.surfaceContainerHigh)
-                    .border(1.dp, deckLine(), shape)
+                    // A dialog's panel: opaque (the glass look in XMB), with its hairline round it.
+                    .xmbPanel(shape, cs.surfaceContainerHigh)
                     .verticalScroll(rememberScrollState())
                     .padding(22.dp),
             ) {
@@ -1035,8 +1032,7 @@ private fun DeckListRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(deckCardFill())
+            .xmbGlassCard(shape)
             .border(1.dp, deckLine(), shape)
             .padding(12.dp),
     ) {
@@ -1104,8 +1100,7 @@ private fun DeckEmptyLibrary(modifier: Modifier, addRequester: FocusRequester, o
             modifier = Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .clip(shape)
-                .background(deckCardFill())
+                .xmbGlassCard(shape)
                 .border(1.dp, deckLine(), shape)
                 .padding(28.dp),
         ) {
@@ -1133,40 +1128,43 @@ internal fun DeckButton(
     big: Boolean = false,
     glyph: String? = null,
 ) {
-    val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(12.dp)
-    val ink = if (primary) cs.onPrimary else cs.onSurface
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-            .deckFocusRing(shape, scaleTo = 1.04f)
-            .clip(shape)
-            .background(if (primary) cs.primary else cs.surfaceContainerHigh)
-            .then(if (primary) Modifier else Modifier.border(1.dp, deckLine(), shape))
-            .clickable(onClick = onClick)
-            .heightIn(min = if (big) 48.dp else 40.dp)
-            .padding(horizontal = if (big) 22.dp else 15.dp),
-    ) {
-        if (icon != null) Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(if (big) 22.dp else 18.dp))
-        Text(
-            text = label,
-            color = ink,
-            fontFamily = NunitoSansFamily,
-            fontWeight = if (big) FontWeight.ExtraBold else FontWeight.Bold,
-            fontSize = if (big) 16.sp else 13.5.sp,
-            maxLines = 1,
-        )
-        if (glyph != null) {
-            DeckGlyph(
-                glyph,
-                when (glyph) {
-                    "A" -> GlyphKind.A
-                    "B" -> GlyphKind.B
-                    "Y" -> GlyphKind.Y
-                    else -> GlyphKind.X
-                },
+    DeckInk { item, cs ->
+        val ink = if (primary) cs.onPrimary else cs.onSurface
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier
+                .deckFocusRingInk(shape, item, scaleTo = 1.04f)
+                // Inside an XMB row (XmbGroupItem) this is one of its inner buttons: reached after A on the row.
+                .xmbInner()
+                .clip(shape)
+                .background(if (primary) cs.primary else cs.surfaceContainerHigh)
+                .then(if (primary) Modifier else Modifier.border(1.dp, deckLine(), shape))
+                .clickable(onClick = onClick)
+                .heightIn(min = if (big) 48.dp else 40.dp)
+                .padding(horizontal = if (big) 22.dp else 15.dp),
+        ) {
+            if (icon != null) Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(if (big) 22.dp else 18.dp))
+            Text(
+                text = label,
+                color = ink,
+                fontFamily = NunitoSansFamily,
+                fontWeight = if (big) FontWeight.ExtraBold else FontWeight.Bold,
+                fontSize = if (big) 16.sp else 13.5.sp,
+                maxLines = 1,
             )
+            if (glyph != null) {
+                DeckGlyph(
+                    glyph,
+                    when (glyph) {
+                        "A" -> GlyphKind.A
+                        "B" -> GlyphKind.B
+                        "Y" -> GlyphKind.Y
+                        else -> GlyphKind.X
+                    },
+                )
+            }
         }
     }
 }

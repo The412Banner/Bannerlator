@@ -238,7 +238,7 @@ internal fun xmbWinComponentsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 
 private data class P2EnvRow(val name: String, val value: String)
 
-/** Every edit re-reads the extra first, so Phase 1 rows that also write envVars never get clobbered. */
+/** Every edit re-reads the extra first, so the General rows that also write envVars (Sync, Microphone) never get clobbered. */
 private class P2Env(val xmb: XmbScope, val shortcut: Shortcut) {
     fun raw(): String = shortcut.p2Ex("envVars", "")
 
@@ -321,8 +321,9 @@ private fun p2EnvDefault(name: String): String {
 
 internal fun xmbEnvVarsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
     val env = P2Env(xmb, shortcut)
+    fun overridesNow(): String = env.rows().firstOrNull { it.name == DllOverrides.VAR }?.value ?: ""
     // WINEDLLOVERRIDES as it stood when the section opened — what a DLL toggle restores when switched off.
-    val dllBaseline = DllOverrides.baselineOf(env.rows().firstOrNull { it.name == DllOverrides.VAR }?.value ?: "")
+    val dllBaseline = DllOverrides.baselineOf(overridesNow())
     var foundDlls by mutableStateOf<List<String>>(emptyList())
     xmb.scope.launch {
         val dir = runCatching { WinePath.resolveAndroidPath(shortcut.container, shortcut.path ?: "")?.parentFile }.getOrNull()
@@ -334,12 +335,11 @@ internal fun xmbEnvVarsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
             }.getOrDefault(emptyList())
         }
     }
-    fun overridesNow(): String = env.rows().firstOrNull { it.name == DllOverrides.VAR }?.value ?: ""
 
     return XmbMenu("Env Vars", Icons.Filled.Extension) {
         val rows = mutableListOf<XmbRow>()
         val list = env.rows()
-        val overrides = list.firstOrNull { it.name == DllOverrides.VAR }?.value ?: ""
+        val overrides = overridesNow()
         // The master switch covers the DLLs detected next to the EXE, else the whole safe list.
         val masterScope = if (foundDlls.isNotEmpty()) foundDlls else DllOverrides.PREFER_GAME_FOLDER
         val allPreferred = DllOverrides.isEnabled(overrides, masterScope)
@@ -408,7 +408,7 @@ private fun p2EnvVarMenu(env: P2Env, name: String, occ: Int): XmbMenu {
             }
             EnvVarType.SELECT -> {
                 val presets = p2Unique(known?.options.orEmpty())
-                val opts = if (cur.isNotEmpty() && cur !in presets) presets + cur else presets
+                val opts = p2WithCurrent(presets, cur)
                 if (opts.isNotEmpty()) {
                     rows += XmbRow.Choice("preset", "Value", Icons.Filled.Tune, opts, cur, subtitle = "Presets — or type any value below") { v ->
                         env.setAt(name, occ, v)

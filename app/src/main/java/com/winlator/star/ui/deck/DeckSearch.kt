@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -125,7 +126,7 @@ internal fun DeckSearchOverlay(
     onAbout: () -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
-    // XMB mode: the panel is frosted glass over its own glow, so its text is the lifted colour the glow was tuned for, also over Home.
+    // XMB mode: the panel is frosted glass with its own opaque colour, so its text is the one the glass was tuned for, also over Home.
     XmbPanelTheme { DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm) }
 }
 
@@ -189,15 +190,17 @@ private fun DeckSearchPanel(
                             fontSize = if (compact) 20.sp else 24.sp,
                             modifier = Modifier.weight(1f),
                         )
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable(onClick = onDismiss)
-                                .size(44.dp),
-                        ) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close", tint = cs.onSurface)
+                        DeckInk { item, ink ->
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .deckFocusRingInk(RoundedCornerShape(14.dp), item, scaleTo = 1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable(onClick = onDismiss)
+                                    .size(44.dp),
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = ink.onSurface)
+                            }
                         }
                     }
                     OutlinedTextField(
@@ -265,18 +268,47 @@ private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit,
 
 @Composable
 private fun SearchResultRow(title: String, subtitle: String, icon: ImageVector, cover: Shortcut?, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    if (rememberXmbHome()) {
+        // XMB: the gliding outline marks the focused result (a faint fill, no flood) and its title turns accent through the ink.
+        DeckInk { item, ink ->
+            SearchResultBody(
+                ink, title, subtitle, icon, cover, focused = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .deckFocusRingInk(shape, item, scaleTo = 1f)
+                    .clip(shape)
+                    .clickable(onClick = onClick),
+            )
+        }
+        return
+    }
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(14.dp)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    SearchResultBody(
+        cs, title, subtitle, icon, cover, focused,
         modifier = Modifier
             .fillMaxWidth()
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
             .then(if (focused) Modifier.background(cs.primary.copy(alpha = 0.14f)).border(2.dp, cs.primary, shape) else Modifier)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clickable(onClick = onClick),
+    )
+}
+
+@Composable
+private fun SearchResultBody(
+    cs: ColorScheme,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    cover: Shortcut?,
+    focused: Boolean,
+    modifier: Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,

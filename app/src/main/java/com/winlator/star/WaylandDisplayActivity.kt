@@ -22,6 +22,11 @@ import com.winlator.star.wayland.WaylandCompositor
  * winewayland wcp) is the remaining M4 integration step — see WAYLAND_RUNTIME.md.
  */
 class WaylandDisplayActivity : Activity(), SurfaceHolder.Callback {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
     private var started = false
 
     override fun onCreate(savedInstanceState: Bundle?) {

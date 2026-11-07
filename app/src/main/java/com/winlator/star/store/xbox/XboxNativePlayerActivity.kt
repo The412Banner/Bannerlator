@@ -61,6 +61,11 @@ import java.util.concurrent.TimeUnit
  * Sign-in and session requests are the web player's (XboxCloudSession, XboxCloudSignalling).
  */
 class XboxNativePlayerActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
     private lateinit var root: FrameLayout
     private lateinit var surfaceView: SurfaceView
     private lateinit var status: TextView

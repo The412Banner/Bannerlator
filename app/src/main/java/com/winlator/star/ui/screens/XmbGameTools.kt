@@ -68,7 +68,7 @@ import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// Game tools as nested XMB columns (Phase 3). The ⋮-menu tools that used to open dialogs — Copy to
+// Game tools as nested XMB columns. The ⋮-menu tools that used to open dialogs — Copy to
 // Drive C, Change executable, Scrape cover, Back up / Restore saves — plus the folder browser they
 // pick with. Logs live in XmbLogsMenu.kt, community configs in XmbCommunityMenu.kt.
 //
@@ -196,10 +196,10 @@ private const val KEY_LOADING = "loading"
  * failure so the user can pick again. However deep the user browsed, one pop is always enough.
  */
 internal fun xmbFileBrowserMenu(
-    xmb: XmbScope, title: String, startDir: java.io.File,
-    roots: List<Pair<String, java.io.File>>,   // quick-jump entries shown at the top, e.g. "Drive C" → …/drive_c
-    accept: (java.io.File) -> Boolean,
-    onPick: (java.io.File) -> Unit,
+    xmb: XmbScope, title: String, startDir: File,
+    roots: List<Pair<String, File>>,   // quick-jump entries shown at the top, e.g. "Drive C" → …/drive_c
+    accept: (File) -> Boolean,
+    onPick: (File) -> Unit,
 ): XmbMenu = xmbBrowserColumn(
     XmbBrowse(xmb, title, roots, accept, pickDir = false, onPick = onPick),
     startDir, depth = 1, focus = null,

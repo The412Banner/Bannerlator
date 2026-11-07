@@ -179,6 +179,11 @@ private fun formatBranchUpdated(epochSeconds: Long): String {
 }
 
 class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventListener {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         const val EXTRA_APP_ID = "steam_app_id"

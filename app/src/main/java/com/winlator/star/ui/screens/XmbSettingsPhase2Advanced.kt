@@ -128,7 +128,7 @@ internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         rows += XmbRow.Header("hBox64", emu)
         val b64Stored = shortcut.p2Ex("box64Version", c.getBox64Version())
         val b64 = b64Stored.ifEmpty { d.box64Versions.firstOrNull() ?: "" }
-        val b64Opts = if (b64.isNotEmpty() && b64 !in d.box64Versions) d.box64Versions + b64 else d.box64Versions
+        val b64Opts = p2WithCurrent(d.box64Versions, b64)
         if (b64Opts.isNotEmpty()) {
             rows += XmbRow.Choice("b64Version", "$emu version", Icons.Filled.Memory, b64Opts, b64) { v ->
                 p2Put(xmb, shortcut, "box64Version", v)
@@ -144,7 +144,7 @@ internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         if (arm) {
             rows += XmbRow.Header("hFex", "FEXCore")
             val fex = shortcut.p2Ex("fexcoreVersion", c.getFEXCoreVersion())
-            val fexOpts = if (fex.isNotEmpty() && fex !in d.fexVersions) d.fexVersions + fex else d.fexVersions
+            val fexOpts = p2WithCurrent(d.fexVersions, fex)
             if (fexOpts.isNotEmpty()) {
                 rows += XmbRow.Choice("fexVersion", ctx.getString(R.string.fexcore_version), Icons.Filled.Memory, fexOpts,
                     if (fex.isEmpty()) fexOpts.first() else fex) { v -> p2Put(xmb, shortcut, "fexcoreVersion", v) }
@@ -319,7 +319,7 @@ private fun p2PresetValuesMenu(xmb: XmbScope, s: Shortcut, kind: PresetKind, pre
                     write(spec.name, nv)
                 }
                 else -> {
-                    val opts = p2Unique(if (v.isNotEmpty() && v !in spec.values) spec.values + v else spec.values)
+                    val opts = p2Unique(p2WithCurrent(spec.values, v))
                     if (opts.isEmpty()) {
                         rows += XmbRow.Text("v:${spec.name}", spec.name, Icons.Filled.Tune, v, subtitle = help(spec.name)) { nv -> write(spec.name, nv) }
                     } else {

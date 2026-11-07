@@ -28,8 +28,8 @@ internal data class CoverCrop(val x: Int, val y: Int, val width: Int, val height
 internal object CustomCover {
     private const val TAG = "CustomCover"
 
-    const val EXTRA_SOURCE = "coverSource"
-    const val SOURCE_USER = "user"
+    private const val EXTRA_SOURCE = "coverSource"
+    private const val SOURCE_USER = "user"
     /** The `Icon=` name the game had before its first custom cover ("" = none); absent when it was the game's own name. */
     private const val EXTRA_ICON_ORIG = "coverIconOrig"
     /**

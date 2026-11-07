@@ -744,7 +744,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         // on load — not only after the user re-picks from the list.
         selectedRenderer = identifierToDisplay(seed?.renderer ?: "opengl", rendererEntries)
 
-        val locale = java.util.Locale.getDefault()
+        val locale = com.winlator.star.AppLocale.deviceLocale()
         lcAll = seed?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"
 
         // DirectInput visibility, read from the stored inputType / exclusiveXInput (old values included)

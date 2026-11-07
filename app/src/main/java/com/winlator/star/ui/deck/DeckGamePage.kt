@@ -200,18 +200,20 @@ internal fun DeckGamePage(
             )
         }
         val backButton: @Composable () -> Unit = {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .deckFocusRing(RoundedCornerShape(16.dp), scaleTo = 1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(deckGlass())
-                            .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
-                            .clickable(onClick = onBack)
-                            .size(52.dp),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onSurface)
-                    }
+            DeckInk { item, ink ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .deckFocusRingInk(RoundedCornerShape(16.dp), item, scaleTo = 1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(deckGlass())
+                        .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
+                        .clickable(onClick = onBack)
+                        .size(52.dp),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ink.onSurface)
+                }
+            }
         }
         val main: @Composable (Modifier) -> Unit = { mod ->
             Column(modifier = mod, verticalArrangement = Arrangement.spacedBy(if (banner) 12.dp else 16.dp)) {
@@ -249,20 +251,22 @@ internal fun DeckGamePage(
                     DeckPill("gamescope · Wayland")
                 } else FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // The container chip opens that container's settings.
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .deckFocusRing(RoundedCornerShape(16.dp), scaleTo = 1.03f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
-                            .clickable { onOpenContainer(s.container.id) }
-                            .heightIn(min = 38.dp)
-                            .padding(horizontal = 14.dp),
-                    ) {
-                        Icon(Icons.Filled.Inventory2, contentDescription = null, tint = cs.onSurface, modifier = Modifier.size(17.dp))
-                        Text(s.container.name, color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    DeckInk { item, ink ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .deckFocusRingInk(RoundedCornerShape(16.dp), item, scaleTo = 1.03f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .border(1.dp, deckLine(), RoundedCornerShape(16.dp))
+                                .clickable { onOpenContainer(s.container.id) }
+                                .heightIn(min = 38.dp)
+                                .padding(horizontal = 14.dp),
+                        ) {
+                            Icon(Icons.Filled.Inventory2, contentDescription = null, tint = ink.onSurface, modifier = Modifier.size(17.dp))
+                            Text(s.container.name, color = ink.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = ink.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        }
                     }
                     s.getExtra("dxwrapper", s.container.getDXWrapper()).takeIf { it.isNotBlank() }?.let { DeckPill(it.uppercase()) }
                     s.getExtra("launchMode", "").takeIf { it.isNotBlank() }?.let {
@@ -321,33 +325,35 @@ internal fun DeckGamePage(
                 if (!isAndroid) {
                     val overrides = overrideCount(s)
                     val setupShape = RoundedCornerShape(20.dp)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .deckFocusRing(setupShape, scaleTo = 1.01f)
-                            .clip(setupShape)
-                            .background(cs.primary.copy(alpha = 0.10f))
-                            .border(1.dp, cs.primary.copy(alpha = 0.45f), setupShape)
-                            .clickable { actions.perform(GameMenuAction.SETTINGS, s) }
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                    ) {
-                        Icon(Icons.Filled.AccountTree, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = when {
-                                    isLinux -> "Steam (Linux) settings"
-                                    overrides == 0 -> "Uses its container’s setup"
-                                    else -> "$overrides setting${if (overrides == 1) "" else "s"} set just for this game"
-                                },
-                                color = cs.onSurface,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                            )
-                            Text(setupSummary(s), color = cs.onSurfaceVariant, fontSize = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    DeckInk { item, ink ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .deckFocusRingInk(setupShape, item, scaleTo = 1.01f)
+                                // The accent-tinted panel pops off the glass like every other card.
+                                .xmbGlassCard(setupShape, ink.primary.copy(alpha = 0.10f))
+                                .border(1.dp, ink.primary.copy(alpha = 0.45f), setupShape)
+                                .clickable { actions.perform(GameMenuAction.SETTINGS, s) }
+                                .padding(horizontal = 20.dp, vertical = 16.dp),
+                        ) {
+                            Icon(Icons.Filled.AccountTree, contentDescription = null, tint = ink.primary, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = when {
+                                        isLinux -> "Steam (Linux) settings"
+                                        overrides == 0 -> "Uses its container’s setup"
+                                        else -> "$overrides setting${if (overrides == 1) "" else "s"} set just for this game"
+                                    },
+                                    color = ink.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                )
+                                Text(setupSummary(s), color = ink.onSurfaceVariant, fontSize = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = ink.onSurfaceVariant)
                         }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant)
                     }
                 }
                 if (details.hasDisplayableDetails()) {
@@ -371,6 +377,9 @@ internal fun DeckGamePage(
         }
 
         if (wide) {
+            // XMB: the cards' shadows reach ~10 dp past them and the scroll container clips at its edge, so the page keeps that
+            // much room at the sides inside it.
+            val shadowRoom = if (rememberXmbHome()) 12.dp else 0.dp
             Row(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
                 modifier = Modifier.fillMaxSize().padding(horizontal = gutter),
@@ -380,15 +389,14 @@ internal fun DeckGamePage(
                         .weight(0.62f)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .padding(vertical = 24.dp),
+                        .padding(horizontal = shadowRoom, vertical = 24.dp),
                 )
                 Column(
                     modifier = Modifier
                         .weight(0.38f)
                         .fillMaxHeight()
                         .padding(vertical = 24.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(deckGlass())
+                        .xmbGlassCard(RoundedCornerShape(28.dp), deckGlass())
                         .border(1.dp, deckLine(), RoundedCornerShape(28.dp))
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
@@ -594,15 +602,17 @@ internal fun DeckGameMenuSheet(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Game menu", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.weight(1f))
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .deckFocusRing(RoundedCornerShape(14.dp), scaleTo = 1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable(onClick = onDismiss)
-                                .size(44.dp),
-                        ) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close", tint = cs.onSurface)
+                        DeckInk { item, ink ->
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .deckFocusRingInk(RoundedCornerShape(14.dp), item, scaleTo = 1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable(onClick = onDismiss)
+                                    .size(44.dp),
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = ink.onSurface)
+                            }
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 14.dp)) {

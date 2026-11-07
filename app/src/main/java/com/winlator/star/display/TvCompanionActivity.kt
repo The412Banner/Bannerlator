@@ -64,6 +64,11 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * arrives at all, so a failed launch can never leave a screen stuck on the handheld.
  */
 class TvCompanionActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     private var gameName = ""
     private var displayName = ""

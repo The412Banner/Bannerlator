@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -59,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,6 +69,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
 import com.winlator.star.core.FileUtils
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.ExitReasonReporter
 import com.winlator.star.core.LogInventory
@@ -205,7 +211,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onClose) {
+                IconButton(onClick = onClose, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -230,7 +236,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     DropdownMenu(
                         expanded = showLocationMenu,
                         onDismissRequest = { showLocationMenu = false },
-                        modifier = Modifier.outlinedMenuCard(),
+                        modifier = Modifier.outlinedMenuCard().xmbMenuBack { showLocationMenu = false },
                     ) {
                         MenuRow("Download", Icons.Default.Download) {
                             saveMode(LogLocation.MODE_DOWNLOAD); showLocationMenu = false
@@ -431,7 +437,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     DropdownMenu(
                         expanded = showKeepMenu,
                         onDismissRequest = { showKeepMenu = false },
-                        modifier = Modifier.outlinedMenuCard(),
+                        modifier = Modifier.outlinedMenuCard().xmbMenuBack { showKeepMenu = false },
                     ) {
                         listOf(0, 1, 3, 5, 10, 20, 50).forEachIndexed { i, n ->
                             if (i > 0) MenuItemDivider()
@@ -458,10 +464,12 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     }
                     Text("Browse", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                         modifier = Modifier
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { browseDir = LogLocation.resolveLogDir(context) }
                             .padding(horizontal = 8.dp, vertical = 6.dp))
                     Text("Clear all", color = DangerRed, fontSize = 12.sp,
                         modifier = Modifier
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { if (entries.isNotEmpty()) confirmClearAll = true }
                             .padding(horizontal = 6.dp, vertical = 6.dp)
                             .alpha(if (entries.isEmpty()) 0.4f else 1f))
@@ -490,6 +498,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 "Explain the log types",
                 color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                 modifier = Modifier
+                    .xmbStop(RoundedCornerShape(8.dp))
                     .clickable { showExplainAll = true }
                     .padding(vertical = 6.dp, horizontal = 4.dp)
             )
@@ -670,13 +679,16 @@ private fun SectionLabel(text: String) {
 /** Untitled card — the heading lives above it now. */
 @Composable
 private fun LogCard(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
+    // XMB glass: a glass panel that pops; elsewhere the Column it was.
+    XmbPanelColumn(
+        shape = RoundedCornerShape(10.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(10.dp))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) { content() }
 }
 
@@ -689,20 +701,24 @@ private fun PickRow(
     onInfo: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp))
-            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2)
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(8.dp), stop, wholeSubtree = true)
+                .clickable { onClick() }
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp))
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2)
+            }
+            if (onInfo != null) InfoDot(onInfo)
+            Text(action, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
         }
-        if (onInfo != null) InfoDot(onInfo)
-        Text(action, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
     }
 }
 
@@ -769,7 +785,7 @@ private fun WineChannelGroup(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
+            modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(8.dp)).clickable { expanded = !expanded }
         ) {
             Text(
                 "Channels",
@@ -827,7 +843,8 @@ private fun WineChannelGroup(
                 FilterChip(
                     selected = isOn,
                     onClick = { onChange(if (isOn) selected - ch else selected + ch) },
-                    label = { Text(ch, fontSize = 11.sp) }
+                    label = { Text(ch, fontSize = 11.sp) },
+                    modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp))
                 )
             }
             // Last chip in the flow, so it reads as "…and the rest are through here" rather than
@@ -836,6 +853,7 @@ private fun WineChannelGroup(
             if (all.isNotEmpty()) {
                 AssistChip(
                     onClick = { browseAll = true },
+                    modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                     label = { Text("Browse all ${all.size}…", fontSize = 11.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.ListAlt, null, modifier = Modifier.size(14.dp))
@@ -852,6 +870,7 @@ private fun WineChannelGroup(
             "Reset to defaults",
             color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
             modifier = Modifier
+                .xmbStop(RoundedCornerShape(8.dp))
                 .clickable {
                     onChange(com.winlator.star.SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS
                         .split(",").filter { it.isNotBlank() })
@@ -960,6 +979,7 @@ private fun AllChannelsDialog(
                         FilterChip(
                             selected = showHelp,
                             onClick = { showHelp = !showHelp },
+                            modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                             label = { Text("What's this?", fontSize = 11.sp) },
                             leadingIcon = {
                                 Icon(Icons.Outlined.HelpOutline, null, modifier = Modifier.size(14.dp))
@@ -969,9 +989,10 @@ private fun AllChannelsDialog(
                         FilterChip(
                             selected = selectedOnly,
                             onClick = { selectedOnly = !selectedOnly },
+                            modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                             label = { Text("On only", fontSize = 11.sp) },
                         )
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = onDismiss, modifier = Modifier.xmbBtn(CircleShape)) {
                             Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
@@ -1014,10 +1035,13 @@ private fun AllChannelsDialog(
                                 }
                                 items(names, key = { "ch-$it" }) { ch ->
                                     val isOn = ch in selected
+                                    val rowStop = rememberXmbHighlightItem()
+                                    XmbInk(rowStop) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .xmbStop(RoundedCornerShape(8.dp), rowStop)
                                             .clickable {
                                                 onChange(if (isOn) selected - ch else selected + ch)
                                             }
@@ -1028,6 +1052,7 @@ private fun AllChannelsDialog(
                                             onCheckedChange = {
                                                 onChange(if (isOn) selected - ch else selected + ch)
                                             },
+                                            modifier = Modifier.xmbNoFocus(),
                                         )
                                         Column(modifier = Modifier.weight(1f).padding(start = 2.dp)) {
                                             Text(
@@ -1045,6 +1070,7 @@ private fun AllChannelsDialog(
                                                 )
                                             }
                                         }
+                                    }
                                     }
                                 }
                             }
@@ -1069,13 +1095,20 @@ private fun GameLogCard(
     onDelete: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
+    // XMB interface: the card is a glass panel and one D-pad stop; A enters it (the name expands the file list, then
+    // View / Share / Delete). Elsewhere it is the Column it was.
+    val group = rememberXmbFocusGroup()
+    XmbGroupColumn(
+        group = group,
+        shape = RoundedCornerShape(10.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(10.dp))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
-            .padding(10.dp)
+            .padding(10.dp),
+        contentPadding = PaddingValues(10.dp),
+        vGap = 6.dp,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(
@@ -1096,7 +1129,7 @@ private fun GameLogCard(
                 )
             }
             Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
+            Column(modifier = Modifier.weight(1f).xmbClickOrBtn(RoundedCornerShape(8.dp), first = true) { expanded = !expanded }) {
                 Text(if (entry.isAppBucket) "App & crash logs" else entry.name,
                     color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 Text(
@@ -1153,6 +1186,7 @@ private fun CardAction(
     }
     Box(
         modifier = modifier
+            .xmbBtn(RoundedCornerShape(7.dp), tint = if (primary) MaterialTheme.colorScheme.primary else Color.Unspecified)
             .clickable { onClick() }
             .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(7.dp))
             .border(
@@ -1191,30 +1225,34 @@ private fun LogToggle(
     onInfo: (() -> Unit)? = null,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .then(if (enabled) Modifier.clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
+    // XMB interface: the switch is the row's one stop (its label tap stays for touch); the "?" is its own stop.
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(8.dp), stop, wholeSubtree = true).padding(vertical = 2.dp)
         ) {
-            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            if (hint != null) {
-                Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(if (enabled) Modifier.xmbNoFocus().clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
+            ) {
+                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                if (hint != null) {
+                    Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
             }
+            if (onInfo != null) InfoDot(onInfo)
+            Spacer(Modifier.width(4.dp))
+            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
         }
-        if (onInfo != null) InfoDot(onInfo)
-        Spacer(Modifier.width(4.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 
 /** Always-live "?" — a locked or off toggle must still be explainable. */
 @Composable
 private fun InfoDot(onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(28.dp)) {
+    IconButton(onClick = onClick, modifier = Modifier.size(28.dp).xmbBtn(CircleShape)) {
         Icon(Icons.Outlined.HelpOutline, "What's this?",
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
     }

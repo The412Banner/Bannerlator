@@ -60,6 +60,11 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * here shows up in the Library tab without a manual refresh.
  */
 class StoreWebActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         const val EXTRA_URL = "url"

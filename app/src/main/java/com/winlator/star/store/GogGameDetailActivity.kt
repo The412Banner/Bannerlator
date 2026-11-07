@@ -82,6 +82,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 
 class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     /** Redist install feedback → the shared themed bar (system Toasts are an unreadable black box
      *  on this ROM). Posted on the main thread; GogRedistInstaller already calls on main. */

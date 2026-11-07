@@ -34,6 +34,11 @@ import androidx.webkit.WebViewFeature
  * opens a game (xbox.com only); "ua" overrides the user agent for testing.
  */
 class XboxCloudActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
     private var web: WebView? = null
     private var custom: View? = null
     private var customCallback: WebChromeClient.CustomViewCallback? = null

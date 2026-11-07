@@ -67,6 +67,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.R
 import com.winlator.star.container.Container
 import com.winlator.star.saves.CustomFilePickerActivity
+import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.saves.Save
 import java.io.File
@@ -136,7 +137,9 @@ fun SavesScreen(vm: SavesViewModel = viewModel()) {
         Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(20.dp),
+                .padding(20.dp)
+                // XMB mode: above the floating Back / Search hints (0 elsewhere).
+                .padding(bottom = LocalXmbHintInset.current),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

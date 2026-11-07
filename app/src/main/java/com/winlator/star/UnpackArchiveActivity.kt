@@ -18,6 +18,11 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * the File Manager's ⋮ menu with the source archive's path, and reopened by the unpack notification.
  */
 class UnpackArchiveActivity : ComponentActivity() {
+    // English and left-to-right whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

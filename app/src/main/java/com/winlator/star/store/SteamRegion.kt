@@ -127,7 +127,7 @@ object SteamRegion {
     fun storeCountryCode(ctx: Context): String {
         val fromDc = try { resolveDc(ctx, allowProbe = false)?.let { DC_COUNTRY[it] } } catch (_: Throwable) { null }
         if (!fromDc.isNullOrBlank()) return fromDc
-        val locale = try { java.util.Locale.getDefault().country } catch (_: Throwable) { "" }
+        val locale = try { com.winlator.star.AppLocale.deviceLocale().country } catch (_: Throwable) { "" }
         return locale.takeIf { it.length == 2 }?.uppercase() ?: "US"
     }
 

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * runs as a plain child process of the app: no Linux runtime, no proot. Ported from DroidDeck's Xodus.kt.
  */
 internal object Xodus {
-    fun market(): String = java.util.Locale.getDefault().country.uppercase().takeIf { it.matches(Regex("[A-Z]{2}")) } ?: "US"
+    fun market(): String = com.winlator.star.AppLocale.deviceLocale().country.uppercase().takeIf { it.matches(Regex("[A-Z]{2}")) } ?: "US"
 
     fun binary(app: Context, service: Boolean): File =
         File(app.applicationInfo.nativeLibraryDir, if (service) "libxodus_service.so" else "libxodus_cli.so")

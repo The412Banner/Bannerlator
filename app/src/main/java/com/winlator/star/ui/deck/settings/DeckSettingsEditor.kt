@@ -170,8 +170,9 @@ internal fun DeckSettingsEditor(
     // The Simple style draws its own menus on the same source and rows: the container, All-containers and game
     // editors laid out like the Classic ones (SimpleClassicEditor.kt), the app settings as a Simple list (SimpleSettingsEditor.kt).
     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        // App settings: one scrolling menu like the Classic Settings screen, with Logs as a tab (SimpleOneMenu.kt).
         if (source.env.scope == EditorScope.APP) com.winlator.star.ui.simple.SimpleFlat {
-            SimpleSettingsEditor(header, source, categories, defs, handoffs, onExit, onHandoff, onChainLink, headerExtra, extras)
+            SimpleOneMenuSettings(header, source, categories, defs, handoffs, onHandoff)
         }
         else SimpleClassicEditor(header, source, categories, defs, handoffs, onExit, onHandoff, headerExtra, extras, createMode, yAction)
         return

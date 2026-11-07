@@ -751,7 +751,7 @@ private fun MenuPanel(
 
 /** One setting: its name, where its value comes from, and the value with ‹ › when Left/Right change it. */
 @Composable
-private fun SettingLine(
+internal fun SettingLine(
     def: SettingDef,
     source: SettingsSource,
     env: SettingsEnv,
@@ -815,7 +815,7 @@ private fun SettingLine(
 }
 
 @Composable
-private fun LinkLine(title: String, subtitle: String?, focused: Boolean, active: Boolean, onTap: () -> Unit) {
+internal fun LinkLine(title: String, subtitle: String?, focused: Boolean, active: Boolean, onTap: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Row(
         verticalAlignment = Alignment.CenterVertically,

@@ -150,7 +150,11 @@ internal fun Modifier.deckFocusRing(
         }
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .then(
-            if (focused) Modifier
+            // Simple: a flat accent tint, no glow. Its shadow shows through the see-through Simple panels as a dark band.
+            if (focused && com.winlator.star.ui.theme.AppThemeState.simpleLook) Modifier
+                .background(accent.copy(alpha = 0.16f), shape)
+                .border(2.dp, accent, shape)
+            else if (focused) Modifier
                 .shadow(18.dp, shape, ambientColor = accent, spotColor = accent)
                 .border(3.dp, accent, shape)
             else Modifier

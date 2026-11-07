@@ -533,7 +533,12 @@ private fun DeckShellContent(
             if (xmbHome && currentRoute != DeckRoutes.HOME) XmbGlowBackdrop(Modifier.matchParentSize())
             // Simple style, every page but Home (which draws its own wallpaper): the drifting cover collage.
             val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
-            if (simplePages) com.winlator.star.ui.simple.SimplePageBackdrop(Modifier.matchParentSize(), art = deckActions.pageArt.value)
+            if (simplePages) com.winlator.star.ui.simple.SimplePageBackdrop(
+                Modifier.matchParentSize(),
+                art = deckActions.pageArt.value,
+                // A game's settings: its art from the first frame (the editor sets pageArt only once it has loaded).
+                artPath = if (currentRoute == DeckSettingsRoutes.GAME) backstackEntry?.arguments?.getString("path") else null,
+            )
             // Landscape: a camera hole on a short edge is not left as an empty strip. The side rail's glass runs under it with its
             // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
             val dir = LocalLayoutDirection.current
@@ -690,7 +695,9 @@ private fun DeckShellContent(
                                     startRoute = DeckRoutes.HOME,
                                     modifier = Modifier.fillMaxSize(),
                                     containerEditorRoute = DeckSettingsRoutes::containerEditorFor,
-                                    instantPages = xmbHome,
+                                    // XMB and Simple switch pages at once: a cross-fade under the Simple frame (its header and
+                                    // backdrop change at once) showed the new page's header over the old page for a moment.
+                                    instantPages = xmbHome || simpleHome,
                                     extraRoutes = {
                                         composable(DeckRoutes.HOME) {
                                             if (simpleHome) {

@@ -47,10 +47,16 @@ import com.winlator.star.ui.theme.AppThemeState
  * art on a game's pages ([art]), a little darker than on Home so the page stays readable.
  */
 @Composable
-internal fun SimplePageBackdrop(modifier: Modifier = Modifier, art: com.winlator.star.container.Shortcut? = null, vm: ShortcutsViewModel = viewModel()) {
+internal fun SimplePageBackdrop(
+    modifier: Modifier = Modifier,
+    art: com.winlator.star.container.Shortcut? = null,
+    artPath: String? = null,
+    vm: ShortcutsViewModel = viewModel(),
+) {
     val shortcuts by vm.shortcuts.collectAsState(initial = SimpleWallpaperMemory.games)
+    val focused = art ?: artPath?.takeIf { it.isNotEmpty() }?.let { p -> shortcuts.firstOrNull { it.file.path == p } }
     Box(modifier) {
-        SimpleWallpaper(focused = art, games = shortcuts, hero = false)
+        SimpleWallpaper(focused = focused, games = shortcuts, hero = false)
         Box(Modifier.fillMaxSize().background(Color(0x4D050709)))
     }
 }

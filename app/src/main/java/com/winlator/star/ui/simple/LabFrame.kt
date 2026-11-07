@@ -11,6 +11,13 @@ import android.os.StatFs
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -287,4 +294,42 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
             Box(Modifier.weight(1f).fillMaxHeight().background(Color(0x66000000)).simpleTap(onClose))
         }
     }
+}
+
+/**
+ * Portrait: a swipe from the left edge to the right opens the drawer (as the ☰ button does). Only a drag that starts in
+ * the edge strip and moves clearly sideways counts, so taps and scrolling near the edge are untouched. A band of the
+ * edge is excluded from the system's back gesture on gesture-navigation devices, as Android's own drawers do.
+ */
+internal fun Modifier.labEdgeSwipe(onOpen: () -> Unit): Modifier = composed {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val edge = with(density) { 24.dp.toPx() }
+    val need = with(density) { 56.dp.toPx() }
+    val bandTop = with(density) { 72.dp.toPx() }
+    val bandHeight = with(density) { 200.dp.toPx() }
+    val open by androidx.compose.runtime.rememberUpdatedState(onOpen)
+    this
+        .systemGestureExclusion { coords -> androidx.compose.ui.geometry.Rect(0f, bandTop, edge, (bandTop + bandHeight).coerceAtMost(coords.size.height.toFloat())) }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                if (down.position.x > edge) return@awaitEachGesture
+                var dx = 0f
+                var dy = 0f
+                while (true) {
+                    val ev = awaitPointerEvent(PointerEventPass.Initial)
+                    val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                    if (!ch.pressed) break
+                    val d = ch.positionChange()
+                    dx += d.x
+                    dy += d.y
+                    if (dx > need && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.5f) {
+                        ch.consume()
+                        open()
+                        break
+                    }
+                    if (kotlin.math.abs(dy) > need || dx < -edge) break
+                }
+            }
+        }
 }

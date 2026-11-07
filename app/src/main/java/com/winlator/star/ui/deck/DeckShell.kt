@@ -125,6 +125,7 @@ import com.winlator.star.ui.screens.DeckGameActionsHost
 import com.winlator.star.ui.screens.GamesScreenRequests
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.ui.findActivity
+import com.winlator.star.ui.simple.labEdgeSwipe
 import com.winlator.star.ui.simple.simpleRoutes
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.topBarActionsState
@@ -523,7 +524,10 @@ private fun DeckShellContent(
                     .fillMaxSize()
                     .then(
                         if (xmbHome) { if (currentRoute == DeckRoutes.HOME) Modifier.xmbWashBackground() else Modifier }
-                        else if (simpleHome) Modifier.background(cs.background)
+                        else if (simpleHome) Modifier.background(cs.background).then(
+                        // Lab, portrait: a swipe from the left edge opens the drawer.
+                        if (!rails) Modifier.labEdgeSwipe { labDrawer = true } else Modifier
+                    )
                         else Modifier
                             .background(cs.background)
                             .drawBehind {

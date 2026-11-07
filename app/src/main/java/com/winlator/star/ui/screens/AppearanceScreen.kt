@@ -98,7 +98,7 @@ fun AppearanceScreen() {
         val xmbHome by AppThemeState.deckXmbHome.collectAsState()
         val simpleHome by AppThemeState.simpleHome.collectAsState()
         // XMB and Simple are Deck style with their own home on: four choices, one selected at a time.
-        val styleOptions = listOf("Classic", "Deck", "XMB", "Simple")
+        val styleOptions = listOf("Classic", "Deck", "XMB", "Lab")
         val selectedStyle = when {
             uiStyle != AppThemeState.UI_STYLE_DECK -> 0
             xmbHome -> 2
@@ -123,20 +123,15 @@ fun AppearanceScreen() {
         }
         if (selectedStyle == 3) {
             Spacer(Modifier.height(10.dp))
-            Text("Simple layout", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text("Lab look", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(Modifier.height(6.dp))
-            val layout by AppThemeState.simpleLayout.collectAsState()
-            val layouts = listOf(
-                AppThemeState.SIMPLE_LAYOUT_SHELF to "Shelf",
-                AppThemeState.SIMPLE_LAYOUT_RAIL to "Rail",
-                AppThemeState.SIMPLE_LAYOUT_FOCUS to "Focus",
-            )
+            val looks = listOf(false to "Dark", true to "Light")
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                layouts.forEachIndexed { index, (key, label) ->
+                looks.forEachIndexed { index, (light, label) ->
                     SegmentedButton(
-                        selected = layout == key,
-                        onClick = { AppThemeState.setSimpleLayout(key) },
-                        shape = SegmentedButtonDefaults.itemShape(index, layouts.size),
+                        selected = AppThemeState.labLight == light,
+                        onClick = { AppThemeState.setLabLight(light) },
+                        shape = SegmentedButtonDefaults.itemShape(index, looks.size),
                     ) { Text(label) }
                 }
             }

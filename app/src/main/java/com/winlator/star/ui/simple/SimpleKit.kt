@@ -1,5 +1,7 @@
 package com.winlator.star.ui.simple
 
+import com.winlator.star.ui.theme.AppThemeState
+
 import android.content.Context
 import android.os.BatteryManager
 import android.view.KeyEvent
@@ -48,14 +50,21 @@ import java.util.Date
 internal val SimpleShape = RoundedCornerShape(3.dp)
 internal val SimpleChipShape = RoundedCornerShape(2.dp)
 
-internal val SimpleInk = Color(0xFFEEF1F6)
-internal val SimpleMuted = Color(0xFFA9B2C1)
-internal val SimpleDim = Color(0xFF6A7383)
-internal val SimplePanelTop = Color(0xF0171A23)
-internal val SimplePanelBottom = Color(0xF20E1016)
-internal val SimpleLine = Color(0x1AFFFFFF)
+// Lab (the Simple style's successor) has a dark and a light look (AppThemeState.labLight). These read it, so a composable
+// that uses them recomposes when the look changes; the accent stays the theme's.
+private val light: Boolean get() = AppThemeState.labLight
+internal val SimpleInk: Color get() = if (light) Color(0xFF111722) else Color(0xFFEEF1F6)
+/** Titles and focused text: white on the dark look, near-black on the light one. */
+internal val SimpleStrong: Color get() = if (light) Color(0xFF0B0F17) else Color.White
+internal val SimpleMuted: Color get() = if (light) Color(0xFF4A5566) else Color(0xFFA9B2C1)
+internal val SimpleDim: Color get() = if (light) Color(0xFF8A94A5) else Color(0xFF6A7383)
+internal val SimplePanelTop: Color get() = if (light) Color(0xF2FFFFFF) else Color(0xF0171A23)
+internal val SimplePanelBottom: Color get() = if (light) Color(0xEEF6F8FB) else Color(0xF20E1016)
+internal val SimpleLine: Color get() = if (light) Color(0x1F111722) else Color(0x1AFFFFFF)
+/** A faint fill for cards on a panel. */
+internal val SimpleCard: Color get() = if (light) Color(0x0D111722) else Color(0x0DFFFFFF)
 
-internal val SimplePanelBrush = Brush.verticalGradient(listOf(SimplePanelTop, SimplePanelBottom))
+internal val SimplePanelBrush: Brush get() = Brush.verticalGradient(listOf(SimplePanelTop, SimplePanelBottom))
 
 /** Depth under a panel or tile: a soft drop shadow, deeper for things that float above the rest. */
 internal fun Modifier.simpleDepth(high: Boolean = false, shape: Shape = SimpleShape): Modifier =

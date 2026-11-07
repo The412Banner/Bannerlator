@@ -479,7 +479,7 @@ private fun StepBody(
                     )
                     val simpleHome by AppThemeState.simpleHome.collectAsState()
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DeckChoiceChip("Simple", uiStyle == AppThemeState.UI_STYLE_DECK && simpleHome) {
+                        DeckChoiceChip("Lab", uiStyle == AppThemeState.UI_STYLE_DECK && simpleHome) {
                             AppThemeState.setDeckXmbHome(false)
                             AppThemeState.setSimpleHome(true)
                             AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK)

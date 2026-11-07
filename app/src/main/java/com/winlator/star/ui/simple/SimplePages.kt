@@ -190,7 +190,18 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
 }
 
 /** The Simple pages, registered in the Deck shell's nav graph. */
-internal fun NavGraphBuilder.simpleRoutes(open: (String) -> Unit, back: () -> Unit, onMyAccount: () -> Unit, onAbout: () -> Unit) {
+internal fun NavGraphBuilder.simpleRoutes(
+    open: (String) -> Unit,
+    back: () -> Unit,
+    onMyAccount: () -> Unit,
+    onAbout: () -> Unit,
+    onLaunchStore: (Screen) -> Unit,
+) {
+    composable(LabRoutes.LIBRARY) { LabLibraryPage(onNavigate = open) }
+    composable(LabRoutes.STORES) { LabStoresPage(onLaunchStore = onLaunchStore, onBack = back) }
+    composable(LabRoutes.GAME, arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" })) { e ->
+        LabGamePage(path = e.arguments?.getString("path").orEmpty(), onNavigate = open, onBack = back)
+    }
     composable(SimpleRoutes.TOOLS) { SimpleToolsPage(onNavigate = open, onBack = back, onMyAccount = onMyAccount, onAbout = onAbout) }
     composable(SimpleRoutes.FILES) { FileManagerScreen() }
     composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back) }
@@ -229,11 +240,11 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
     val style = when {
         uiStyle != AppThemeState.UI_STYLE_DECK -> "Classic"
         xmbHome -> "XMB"
-        simpleHome -> "Simple"
+        simpleHome -> "Lab"
         else -> "Deck"
     }
     val styles = listOf(
-        MenuAction(mark("Simple", style == "Simple"), { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
+        MenuAction(mark("Lab", style == "Lab"), { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
         MenuAction(mark("Deck", style == "Deck"), { AppThemeState.setDeckXmbHome(false); AppThemeState.setSimpleHome(false); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
         MenuAction(mark("XMB", style == "XMB"), { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
         MenuAction(mark("Classic", style == "Classic"), { AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC) }),
@@ -244,10 +255,13 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
     fun pct(f: Float) = "${(f * 100).roundToInt()}%"
 
     val look = listOf(
-        MenuEntry("style", "Interface style", "Simple, Deck, XMB or Classic", trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
+        MenuEntry("style", "Interface style", "Lab, Deck, XMB or Classic", trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
         MenuEntry(
-            "layout", "Simple layout", "Shelf, Rail or Focus", trailing = layouts.firstOrNull { it.first == layout }?.second, icon = Icons.Filled.ViewQuilt,
-            actions = layouts.map { (k, l) -> MenuAction(mark(l, k == layout), { AppThemeState.setSimpleLayout(k) }) },
+            "look", "Look", "Dark or light; the accent is your theme's", trailing = if (AppThemeState.labLight) "Light" else "Dark", icon = Icons.Filled.Palette,
+            actions = listOf(
+                MenuAction(mark("Dark", !AppThemeState.labLight), { AppThemeState.setLabLight(false) }),
+                MenuAction(mark("Light", AppThemeState.labLight), { AppThemeState.setLabLight(true) }),
+            ),
         ),
         MenuEntry(
             "orientation", "Orientation", "The app's own screens; games keep theirs", trailing = orientations.firstOrNull { it.first == orientation }?.second,
@@ -558,13 +572,19 @@ internal fun SimpleDriversPage(onNavigate: (String) -> Unit, onBack: () -> Unit)
     val fromFile = MenuAction("Install from a file", { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, "Select GPU driver")) })
     SimpleMenuPage(
         overline = "Manage",
-        title = "GPU drivers",
+        title = "Drivers & components",
         sections = listOf(
             MenuSection("installed", "Installed", Icons.Filled.Memory, installed, empty = "Only the phone's own driver so far.", primary = fromFile),
             MenuSection(
                 "get", "Get drivers", Icons.Filled.CloudDownload,
                 sources.mapIndexed { i, s -> MenuEntry("s$i-${s.name}", s.name, "Browse and download", icon = Icons.Filled.CloudDownload, onA = { onNavigate(SimpleRoutes.driverSource(i)) }) },
                 empty = "No driver sources.", primary = fromFile,
+            ),
+            MenuSection(
+                "components", "Components", Icons.Filled.Extension,
+                listOf(
+                    MenuEntry("comp", "Wine, Proton, DXVK, VKD3D, FEX, Box64", "Installed ones, set as default, download more", icon = Icons.Filled.Extension, onA = { onNavigate(SimpleRoutes.COMPONENTS) }),
+                ),
             ),
         ),
         onBack = onBack,

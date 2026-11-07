@@ -120,7 +120,7 @@ internal class SimpleItem(
 )
 
 /** The stores' logos and brand colours, the same as the XMB store cards use. */
-private fun storeLogo(st: DeckStore): Triple<Int, List<Color>, Boolean> = when (st) {
+internal fun storeLogo(st: DeckStore): Triple<Int, List<Color>, Boolean> = when (st) {
     DeckStore.STEAM -> Triple(R.drawable.store_logo_steam, listOf(Color(0xFF171A21), Color(0xFF1B2838)), false)
     DeckStore.EPIC -> Triple(R.drawable.store_logo_epic, listOf(Color(0xFF121212), Color(0xFF202020)), false)
     DeckStore.GOG -> Triple(R.drawable.store_logo_gog, listOf(Color(0xFF5C2D91), Color(0xFF3B1C60)), false)

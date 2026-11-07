@@ -266,7 +266,7 @@ private fun PageTitle(overline: String, title: String, sub: String?, banner: Str
     Column(Modifier.fillMaxWidth()) {
         Text(overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
         Spacer(Modifier.height(4.dp))
-        Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = if (big) 38.sp else 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = if (big) 38.sp else 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (!sub.isNullOrBlank()) Text(sub, color = SimpleMuted, fontSize = 13.sp, maxLines = 1)
         if (!banner.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
@@ -294,7 +294,7 @@ private fun SectionTabs(sections: List<MenuSection>, sec: MenuSection?, onPick: 
             ) {
                 Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(s.title, color = if (on) Color.White else SimpleMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(s.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 Spacer(Modifier.width(6.dp))
                 Text("${s.entries.size}", color = SimpleDim, fontSize = 11.sp)
             }
@@ -326,7 +326,7 @@ private fun SectionList(sections: List<MenuSection>, sec: MenuSection?, active: 
             ) {
                 Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(s.title, color = if (on) Color.White else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Text(s.title, color = if (on) SimpleStrong else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
                 Text("${s.entries.size}", color = SimpleDim, fontSize = 12.sp)
             }
         }
@@ -353,9 +353,9 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
                     .simpleTap { onPick(s.key) }
                     .padding(8.dp),
             ) {
-                Icon(s.icon, contentDescription = null, tint = if (on) Color.White else SimpleMuted, modifier = Modifier.size(22.dp))
+                Icon(s.icon, contentDescription = null, tint = if (on) SimpleStrong else SimpleMuted, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.height(6.dp))
-                Text(s.title, color = if (on) Color.White else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(s.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -425,7 +425,7 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onTap: ()
             if (bmp != null || e.icon != null || e.swatch != null) Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(e.title, color = if (focused) Color.White else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(e.title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (e.current) {
                         Spacer(Modifier.width(8.dp))
                         Text("✓", color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -470,7 +470,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                 .border(1.dp, SimpleLine, SimpleShape)
                 .padding(14.dp),
         ) {
-            Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
             if (!message.isNullOrBlank()) Text(message, color = SimpleMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp))
             actions.forEachIndexed { i, a ->
                 var f by remember { mutableStateOf(false) }
@@ -485,7 +485,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                         .clickable { onRun(a) }
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                 ) {
-                    Text(a.label, color = if (a.danger) MaterialTheme.colorScheme.error else Color.White, fontSize = 15.sp)
+                    Text(a.label, color = if (a.danger) MaterialTheme.colorScheme.error else SimpleStrong, fontSize = 15.sp)
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

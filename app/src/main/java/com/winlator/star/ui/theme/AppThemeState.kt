@@ -72,6 +72,17 @@ object AppThemeState {
     val simpleLook: Boolean get() = _simpleLook.value
     private fun syncSimpleLook() { _simpleLook.value = _uiStyle.value == UI_STYLE_DECK && _simpleHome.value }
 
+    /**
+     * Lab's look: false = dark, true = light. Snapshot state (read by the Lab colours, which are getters). The accent
+     * stays the theme preset's or the custom accent either way.
+     */
+    private val _labLight = androidx.compose.runtime.mutableStateOf(false)
+    val labLight: Boolean get() = _labLight.value
+    fun setLabLight(on: Boolean) {
+        _labLight.value = on
+        themePrefs.edit().putBoolean("lab_light", on).apply()
+    }
+
     const val SIMPLE_LAYOUT_SHELF = "shelf"
     const val SIMPLE_LAYOUT_RAIL = "rail"
     const val SIMPLE_LAYOUT_FOCUS = "focus"
@@ -145,11 +156,9 @@ object AppThemeState {
                          else UI_STYLE_CLASSIC
         _deckXmbHome.value = _uiStyle.value == UI_STYLE_DECK && themePrefs.getBoolean("deck_xmb_home", false)
         _simpleHome.value = _uiStyle.value == UI_STYLE_DECK && !_deckXmbHome.value && themePrefs.getBoolean("simple_home", false)
-        _simpleLayout.value = when (themePrefs.getString("simple_layout", SIMPLE_LAYOUT_SHELF)) {
-            SIMPLE_LAYOUT_RAIL -> SIMPLE_LAYOUT_RAIL
-            SIMPLE_LAYOUT_FOCUS -> SIMPLE_LAYOUT_FOCUS
-            else -> SIMPLE_LAYOUT_SHELF
-        }
+        // Lab has one layout: its menus use the Shelf presentation (tabs over one panel).
+        _simpleLayout.value = SIMPLE_LAYOUT_SHELF
+        _labLight.value = themePrefs.getBoolean("lab_light", false)
         syncSimpleLook()
     }
 

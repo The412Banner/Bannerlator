@@ -76,6 +76,7 @@ import com.winlator.star.ui.simple.SimpleLine
 import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
@@ -529,7 +530,7 @@ private fun EditorTitle(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(if (big) 50.dp else 36.dp)) {
             Text(
                 if (big) current?.label ?: header.title else header.title,
-                color = Color.White,
+                color = SimpleStrong,
                 fontFamily = SoraFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = if (big) 38.sp else 26.sp,
@@ -544,7 +545,7 @@ private fun EditorTitle(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.background(accent.copy(alpha = 0.2f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
-                    Text("Unsaved", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Unsaved", color = SimpleStrong, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
                 }
             }
@@ -574,7 +575,7 @@ private fun CategoryTabs(cats: List<SettingsCategory>, current: SettingsCategory
             ) {
                 Icon(c.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(c.label, color = if (on) Color.White else SimpleMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(c.label, color = if (on) SimpleStrong else SimpleMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 val n = overrides(c.id)
                 if (n > 0) {
                     Spacer(Modifier.width(6.dp))
@@ -624,7 +625,7 @@ private fun CategoryList(
             ) {
                 Icon(c.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(c.label, color = if (on) Color.White else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(c.label, color = if (on) SimpleStrong else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 val n = overrides(c.id)
                 if (n > 0) Text("$n", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.background(accent, SimpleShape).padding(horizontal = 5.dp, vertical = 1.dp))
             }
@@ -656,9 +657,9 @@ private fun CategoryStrip(cats: List<SettingsCategory>, current: SettingsCategor
                     .simpleTap { onPick(c.id) }
                     .padding(8.dp),
             ) {
-                Icon(c.icon, contentDescription = null, tint = if (on) Color.White else SimpleMuted, modifier = Modifier.size(24.dp))
+                Icon(c.icon, contentDescription = null, tint = if (on) SimpleStrong else SimpleMuted, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.height(6.dp))
-                Text(c.label, color = if (on) Color.White else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(c.label, color = if (on) SimpleStrong else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val n = overrides(c.id)
                 if (n > 0) Text("$n changed", color = accent, fontSize = 10.sp)
             }
@@ -786,7 +787,7 @@ private fun SettingLine(
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(def.label, color = if (editable) (if (focused) Color.White else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(def.label, color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val sub = when {
                 disabled != null -> disabled
                 focused && note != null -> note
@@ -808,7 +809,7 @@ private fun SettingLine(
         if (stepped) Text("‹", color = if (focused) accent else Color.Transparent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Text(
             label,
-            color = if (editable) Color.White else SimpleMuted,
+            color = if (editable) SimpleStrong else SimpleMuted,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
             maxLines = 1,
@@ -839,7 +840,7 @@ private fun LinkLine(title: String, subtitle: String?, focused: Boolean, active:
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (focused) Color.White else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) Text(subtitle, color = SimpleDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("›", color = if (focused) accent else SimpleMuted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -873,7 +874,7 @@ internal fun SimplePicker(
                 .border(1.dp, SimpleLine, SimpleShape)
                 .padding(14.dp),
         ) {
-            Text(title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
             val state = remember { LazyListState(firstVisibleItemIndex = max(0, start - 3)) }
             LazyColumn(state = state, modifier = Modifier.heightIn(max = 420.dp)) {
                 itemsIndexed(options) { i, o ->
@@ -891,7 +892,7 @@ internal fun SimplePicker(
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(o.label, color = if (enabled) Color.White else SimpleDim, fontSize = 15.sp)
+                            Text(o.label, color = if (enabled) SimpleStrong else SimpleDim, fontSize = 15.sp)
                             if (o.disabledReason != null) Text(o.disabledReason, color = SimpleDim, fontSize = 12.sp)
                         }
                         if (o.value == current) Text("✓", color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)

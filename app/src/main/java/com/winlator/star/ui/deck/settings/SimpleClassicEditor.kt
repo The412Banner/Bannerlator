@@ -84,6 +84,7 @@ import com.winlator.star.ui.simple.SimpleLine
 import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.SimpleStrong
 import com.winlator.star.ui.simple.SimpleFlat
 import com.winlator.star.ui.simple.keepVisible
 import com.winlator.star.ui.simple.simpleDepth
@@ -852,7 +853,7 @@ private fun ClassicTitle(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(if (big) 52.dp else 38.dp)) {
             Text(
                 title,
-                color = Color.White,
+                color = SimpleStrong,
                 fontFamily = SoraFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = if (big) 38.sp else 26.sp,
@@ -867,7 +868,7 @@ private fun ClassicTitle(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.background(accent.copy(alpha = 0.22f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
-                    Text(if (createMode) "Not created yet" else "Unsaved", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (createMode) "Not created yet" else "Unsaved", color = SimpleStrong, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
                 }
             }
@@ -901,7 +902,7 @@ private fun TabTabs(tabs: List<RTab>, index: Int, onPick: (Int) -> Unit) {
             ) {
                 Icon(t.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(t.title, color = if (on) Color.White else SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(t.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
         if (tabs.size > 1) { Spacer(Modifier.width(2.dp)); SimpleGlyph("RB") }
@@ -914,7 +915,7 @@ private fun TabList(header: EditorHeader, tabs: List<RTab>, index: Int, active: 
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier.simpleDepth(high = true, shape = RectangleShape).background(SimplePanelBrush).padding(start = 10.dp, end = 10.dp, top = 18.dp)) {
         Text(header.overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(horizontal = 12.dp))
-        Text(header.title, color = Color.White, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp))
+        Text(header.title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp))
         tabs.forEachIndexed { i, t ->
             val on = i == index
             Row(
@@ -933,7 +934,7 @@ private fun TabList(header: EditorHeader, tabs: List<RTab>, index: Int, active: 
             ) {
                 Icon(t.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(t.title, color = if (on) Color.White else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(t.title, color = if (on) SimpleStrong else SimpleInk.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -961,9 +962,9 @@ private fun TabStrip(tabs: List<RTab>, index: Int, active: Boolean, onPick: (Int
                     .simpleTap { onPick(i) }
                     .padding(8.dp),
             ) {
-                Icon(t.icon, contentDescription = null, tint = if (on) Color.White else SimpleMuted, modifier = Modifier.size(22.dp))
+                Icon(t.icon, contentDescription = null, tint = if (on) SimpleStrong else SimpleMuted, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.height(6.dp))
-                Text(t.title, color = if (on) Color.White else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(t.title, color = if (on) SimpleStrong else SimpleMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -1134,7 +1135,7 @@ private fun ClassicSettingLine(
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(l.label, color = if (editable) (if (focused) Color.White else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(l.label, color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val sub = disabled ?: (if (focused) note else null)
             if (sub != null) Text(sub, color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
         }
@@ -1149,7 +1150,7 @@ private fun ClassicSettingLine(
             if (tag != null) {
                 Text(
                     tag,
-                    color = if (origin == Origin.SET_HERE) Color.White else SimpleMuted,
+                    color = if (origin == Origin.SET_HERE) SimpleStrong else SimpleMuted,
                     fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                     modifier = Modifier
                         .padding(start = 8.dp)
@@ -1166,7 +1167,7 @@ private fun ClassicSettingLine(
                 if (stepped) Text("‹", color = if (focused) accent else Color.Transparent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text(
                     shown.ifBlank { "—" },
-                    color = if (editable) Color.White else SimpleMuted,
+                    color = if (editable) SimpleStrong else SimpleMuted,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     maxLines = 1,
@@ -1220,7 +1221,7 @@ private fun ClassicLinkLine(title: String, summary: String?, focused: Boolean, a
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
-        Text(title, color = if (focused) Color.White else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (!summary.isNullOrBlank()) {
             Text(summary, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 280.dp).padding(start = 10.dp))
         }

@@ -254,7 +254,7 @@ private fun DeckShellContent(
     onLaunchStore: (Screen) -> Unit,
 ) {
     val context = LocalContext.current
-    val cs = MaterialTheme.colorScheme
+    val baseCs = MaterialTheme.colorScheme
     val cfg = LocalConfiguration.current
     val compact = isDeckCompact(cfg)
     // Landscape: side rails instead of the top bar (deckRails).
@@ -269,6 +269,10 @@ private fun DeckShellContent(
     val simpleHome by AppThemeState.simpleHome.collectAsState()
     val simpleHomeNow by rememberUpdatedState(simpleHome)
     val simpleLayout by AppThemeState.simpleLayout.collectAsState()
+    // Lab (the Simple style's successor, AppThemeState.simpleHome): its light look swaps in a light colour scheme that keeps
+    // the theme's accent; the drawer is its portrait menu.
+    val cs = if (simpleHome && AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(baseCs) else baseCs
+    var labDrawer by remember { mutableStateOf(false) }
     val sideLists = remember { DeckSideLists() }
     val topBarActionsState = remember { topBarActionsState() }
     val topBarTransparentState = remember { mutableStateOf(false) }
@@ -445,12 +449,15 @@ private fun DeckShellContent(
         onDispose { if (deckActions.subTab.value === swap) deckActions.subTab.value = null }
     }
 
-    // Simple style: back to the Simple home at section [i] (the home keeps the rest of its place).
-    val simpleGo: (Int) -> Unit = { i ->
-        com.winlator.star.ui.simple.SimpleSession.controller.goSection(i)
+    // Lab: a section (rail, drawer, L1/R1) opens over Home, so B from any section comes back to Home.
+    val labGo: (Int) -> Unit = { i ->
+        val all = com.winlator.star.ui.simple.LAB_SECTIONS
+        val sec = all[(i % all.size + all.size) % all.size]
+        labDrawer = false
         nav.home()
+        if (sec.route != DeckRoutes.HOME) nav.open(sec.route)
     }
-    val simpleStep: (Int) -> Unit = { d -> simpleGo(com.winlator.star.ui.simple.SimpleSession.controller.section + d) }
+    val simpleStep: (Int) -> Unit = { d -> labGo(com.winlator.star.ui.simple.labSectionOf(nav.currentRoute()) + d) }
 
     // Controller shortcuts.
     // MainActivity only offers keys its view tree left unhandled, so a screen that uses L1/R1 or B itself keeps them.
@@ -476,7 +483,13 @@ private fun DeckShellContent(
                     if (first) (deckActions.search.value ?: openSearch)()
                     true
                 }
-                KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_START -> {
+                KeyEvent.KEYCODE_BUTTON_START -> {
+                    if (simpleHomeNow && !railsNow) { if (first) labDrawer = !labDrawer; return@handler true }
+                    val options = deckActions.options.value ?: return@handler false
+                    if (first) options()
+                    true
+                }
+                KeyEvent.KEYCODE_BUTTON_X -> {
                     val options = deckActions.options.value ?: return@handler false
                     if (first) options()
                     true
@@ -496,375 +509,381 @@ private fun DeckShellContent(
     val glow1 by animateColorAsState(tints?.first ?: cs.primary, tween(900), label = "deckGlow1")
     val glow2 by animateColorAsState(tints?.second ?: lerp(cs.primary, cs.background, 0.35f), tween(900), label = "deckGlow2")
 
-    CompositionLocalProvider(
-        LocalTopBarActions provides topBarActionsState,
-        LocalTopBarTransparent provides topBarTransparentState,
-        LocalDeckActions provides deckActions,
-        LocalDeckAmbient provides ambient,
-        LocalContentColor provides cs.onBackground,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (xmbHome) { if (currentRoute == DeckRoutes.HOME) Modifier.xmbWashBackground() else Modifier }
-                    else if (simpleHome) Modifier.background(Color(0xFF05070B))
-                    else Modifier
-                        .background(cs.background)
-                        .drawBehind {
-                            drawRect(
-                                Brush.radialGradient(
-                                    colors = listOf(glow1.copy(alpha = 0.30f), Color.Transparent),
-                                    center = Offset(size.width * 0.88f, -size.height * 0.10f),
-                                    radius = size.maxDimension * 0.75f,
-                                )
-                            )
-                            drawRect(
-                                Brush.radialGradient(
-                                    colors = listOf(glow2.copy(alpha = 0.20f), Color.Transparent),
-                                    center = Offset(-size.width * 0.05f, size.height * 1.05f),
-                                    radius = size.maxDimension * 0.65f,
-                                )
-                            )
-                        }
-                ),
+    // Lab's light look: a light colour scheme for everything in the shell (pages, sheets, the Deck rows it hosts).
+    MaterialTheme(colorScheme = cs, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+        CompositionLocalProvider(
+            LocalTopBarActions provides topBarActionsState,
+            LocalTopBarTransparent provides topBarTransparentState,
+            LocalDeckActions provides deckActions,
+            LocalDeckAmbient provides ambient,
+            LocalContentColor provides cs.onBackground,
         ) {
-            // XMB mode, every page but Home (which paints its own over the wash): the glow, behind the page and the bars.
-            if (xmbHome && currentRoute != DeckRoutes.HOME) XmbGlowBackdrop(Modifier.matchParentSize())
-            // Simple style, every page but Home (which draws its own wallpaper): the drifting cover collage.
-            val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
-            if (simplePages) com.winlator.star.ui.simple.SimplePageBackdrop(
-                Modifier.matchParentSize(),
-                art = deckActions.pageArt.value,
-                // A game's settings: its art from the first frame (the editor sets pageArt only once it has loaded).
-                artPath = if (currentRoute == DeckSettingsRoutes.GAME) backstackEntry?.arguments?.getString("path") else null,
-            )
-            // Landscape: a camera hole on a short edge is not left as an empty strip. The side rail's glass runs under it with its
-            // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
-            val dir = LocalLayoutDirection.current
-            val cutout = WindowInsets.displayCutout.asPaddingValues()
-            // XMB home, landscape, any tab but Home: the page sits in an even frame, as wide as the camera strip on both
-            // sides, filled with the backdrop, so the strip reads as a margin rather than a wall beside the panels.
-            val framed = topTabs && !homeBleed
-            val frame = if (framed) maxOf(cutout.calculateStartPadding(dir), cutout.calculateEndPadding(dir)) else 0.dp
-            val cutoutStart = if (rails && !framed) cutout.calculateStartPadding(dir) else 0.dp
-            val cutoutEnd = if (rails && !framed) cutout.calculateEndPadding(dir) else 0.dp
-            val baseInsets = if (rails) WindowInsets.systemBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Vertical))
-                else WindowInsets.systemBars.union(WindowInsets.displayCutout)
-            // Edge to edge (XMB home) the window no longer makes room for the keyboard, so the pages do.
-            val insets = if (xmbHome) baseInsets.union(WindowInsets.ime) else baseInsets
-            // Home's XMB takes the whole screen, under the camera hole too; the shell floats its tabs and Search over it.
-            Column(modifier = Modifier.fillMaxSize().then(if (homeBleed) Modifier else Modifier.windowInsetsPadding(insets))) {
-                // The My-account sheet opens over the current page (DeckGameActionsHost).
-                val onAccount = { AccountUiBus.requestMyAccount() }
-                val onTabsFocus: (Boolean) -> Unit = { focused ->
-                    tabsFocused.value = focused
-                    deckActions.navHold.value = focused
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (xmbHome) { if (currentRoute == DeckRoutes.HOME) Modifier.xmbWashBackground() else Modifier }
+                        else if (simpleHome) Modifier.background(cs.background)
+                        else Modifier
+                            .background(cs.background)
+                            .drawBehind {
+                                drawRect(
+                                    Brush.radialGradient(
+                                        colors = listOf(glow1.copy(alpha = 0.30f), Color.Transparent),
+                                        center = Offset(size.width * 0.88f, -size.height * 0.10f),
+                                        radius = size.maxDimension * 0.75f,
+                                    )
+                                )
+                                drawRect(
+                                    Brush.radialGradient(
+                                        colors = listOf(glow2.copy(alpha = 0.20f), Color.Transparent),
+                                        center = Offset(-size.width * 0.05f, size.height * 1.05f),
+                                        radius = size.maxDimension * 0.65f,
+                                    )
+                                )
+                            }
+                    ),
+            ) {
+                // XMB mode, every page but Home (which paints its own over the wash): the glow, behind the page and the bars.
+                if (xmbHome && currentRoute != DeckRoutes.HOME) XmbGlowBackdrop(Modifier.matchParentSize())
+                // Simple style, every page but Home (which draws its own wallpaper): the drifting cover collage.
+                val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
+                // Lab: its graph-paper wallpaper behind every page, Home included, edge to edge.
+                if (simpleHome) com.winlator.star.ui.simple.LabWallpaper(Modifier.matchParentSize())
+                // Landscape: a camera hole on a short edge is not left as an empty strip. The side rail's glass runs under it with its
+                // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
+                val dir = LocalLayoutDirection.current
+                val cutout = WindowInsets.displayCutout.asPaddingValues()
+                // XMB home, landscape, any tab but Home: the page sits in an even frame, as wide as the camera strip on both
+                // sides, filled with the backdrop, so the strip reads as a margin rather than a wall beside the panels.
+                val framed = topTabs && !homeBleed
+                val frame = if (framed) maxOf(cutout.calculateStartPadding(dir), cutout.calculateEndPadding(dir)) else 0.dp
+                val cutoutStart = if (rails && !framed) cutout.calculateStartPadding(dir) else 0.dp
+                val cutoutEnd = if (rails && !framed) cutout.calculateEndPadding(dir) else 0.dp
+                val baseInsets = if (rails) WindowInsets.systemBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Vertical))
+                    else WindowInsets.systemBars.union(WindowInsets.displayCutout)
+                // Edge to edge (XMB home) the window no longer makes room for the keyboard, so the pages do.
+                val insets = if (xmbHome) baseInsets.union(WindowInsets.ime) else baseInsets
+                // Home's XMB takes the whole screen, under the camera hole too; the shell floats its tabs and Search over it.
+                Column(modifier = Modifier.fillMaxSize().then(if (homeBleed) Modifier else Modifier.windowInsetsPadding(insets))) {
+                    // The My-account sheet opens over the current page (DeckGameActionsHost).
+                    val onAccount = { AccountUiBus.requestMyAccount() }
+                    val onTabsFocus: (Boolean) -> Unit = { focused ->
+                        tabsFocused.value = focused
+                        deckActions.navHold.value = focused
+                    }
+                    val goBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() }
+                    // Home's XMB view takes the whole screen; the XMB has its own hints, menus and game row.
+                    val full = deckActions.fullscreen.value && currentRoute == DeckRoutes.HOME
+                    // XMB mode, every tab but Home (which floats it over the XMB) and the phone layout: the same floating bar as
+                    // Home, at the same place, with the page starting right under it.
+                    if (simpleHome) {
+                        com.winlator.star.ui.simple.LabTopLine(portrait = !rails, onMenu = { labDrawer = true })
+                    }
+                    if (floatTabs && !full && !homeBleed) {
+                        DeckFloatingBar(
+                            current = tab,
+                            tabs = tabs,
+                            avatarUrl = account?.displayAvatarUrl,
+                            portrait = !rails,
+                            startInset = if (rails) cutout.calculateStartPadding(dir) else 0.dp,
+                            endInset = if (rails) cutout.calculateEndPadding(dir) else 0.dp,
+                            onTab = { nav.goTab(it) },
+                            onCycle = { switchMenu(it) },
+                            onAccount = onAccount,
+                        )
+                    }
+                    // Landscape is rails | content (in the XMB mode: the page's own tab rail | content, under the floating tab bar);
+                    // portrait keeps the top bar over the content. The NavHost stays in one slot either way.
+                    // Framed (XMB mode, tabs other than Home), only this middle part sits inside the even camera frame.
+                    Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = frame)) {
+                        if (simpleHome && rails) {
+                            com.winlator.star.ui.simple.LabRail(current = com.winlator.star.ui.simple.labSectionOf(currentRoute), onSection = labGo)
+                        }
+                        if (rails && !full) {
+                            if (!topTabs && !simpleHome) {
+                                DeckSideRail(
+                                    cutoutStart = cutoutStart,
+                                    current = tab,
+                                    tabRequesters = tabRequesters,
+                                    avatarUrl = account?.displayAvatarUrl,
+                                    onTab = { nav.goTab(it) },
+                                    onCycle = { nav.cycle(it) },
+                                    onTabsFocus = onTabsFocus,
+                                    onEnterContent = enterContent,
+                                    onAccount = onAccount,
+                                    onSearch = openSearch,
+                                )
+                            }
+                            val pageTabs = deckActions.pageTabs.value
+                            if (settingsPages) {
+                                val pages = listOf(Screen.Settings.route to DeckTabItem("Settings", Icons.Filled.Settings), Screen.Appearance.route to DeckTabItem("Appearance", Icons.Filled.Palette))
+                                DeckPageTabRail(
+                                    tabs = pages.map { it.second },
+                                    selected = pages.indexOfFirst { it.first == currentRoute }.coerceAtLeast(0),
+                                    compact = false,
+                                    onSelect = { i -> if (pages[i].first != currentRoute) nav.open(pages[i].first) },
+                                    onFocus = { deckActions.stripFocused.value = it },
+                                    glass = !framed,
+                                )
+                            } else if (pageTabs != null && isDeckPage(currentRoute) && pageTabs.tabs.isNotEmpty()) {
+                                DeckPageTabRail(
+                                    tabs = pageTabs.tabs,
+                                    selected = pageTabs.selected,
+                                    compact = pageTabs.compact || sideLists.count.intValue > 0,
+                                    onSelect = { i -> pageTabs.onSelect(i) },
+                                    onFocus = { deckActions.stripFocused.value = it },
+                                    glass = !framed,
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            if (full || homeBleed || floatTabs || simpleHome) {
+                                // No top bar here: none over the XMB, and the XMB home floats its own (above, or over Home).
+                                // The Simple style has its own frame (SimplePageHeader / SimplePageRail).
+                            } else if (compact) {
+                                DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch, dpad = !xmbHome)
+                            } else if (!rails) {
+                                DeckTopBar(
+                                    current = tab,
+                                    wide = cfg.screenWidthDp >= DECK_WIDE_TABS_DP,
+                                    tabRequesters = tabRequesters,
+                                    avatarUrl = account?.displayAvatarUrl,
+                                    onTab = { nav.goTab(it) },
+                                    onCycle = { nav.cycle(it) },
+                                    onTabsFocus = onTabsFocus,
+                                    onEnterContent = enterContent,
+                                    onAccount = onAccount,
+                                    onSearch = openSearch,
+                                )
+                            }
+
+                            val pageTitle = deckActions.pageInfo.value
+                            if (full) {
+                                // No title line over the XMB.
+                            } else if (rails) {
+                                // One slim line: the page's title (description behind the info button) and the screen's own actions.
+                                // Home and the game page draw their own hero instead.
+                                if (!isDeckPage(currentRoute)) {
+                                    DeckTitleLine(
+                                        endInset = cutoutEnd,
+                                        title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
+                                        description = null,
+                                        showBack = currentRoute != tab.root && !settingsPages,
+                                        onBack = goBack,
+                                        actions = topBarActionsState.value,
+                                    )
+                                } else if (pageTitle != null && currentRoute != DeckRoutes.HOME && !currentRoute.startsWith("deck_game")) {
+                                    DeckTitleLine(
+                                        endInset = cutoutEnd,
+                                        title = pageTitle.title,
+                                        description = pageTitle.description,
+                                        showBack = false,
+                                        onBack = goBack,
+                                        actions = topBarActionsState.value,
+                                    )
+                                }
+                            } else if (!isDeckPage(currentRoute)) {
+                                // Deck pages draw their own header.
+                                DeckPageBar(
+                                    title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
+                                    showBack = currentRoute != tab.root,
+                                    onBack = goBack,
+                                    settingsSubTabs = tab == DeckTab.SETTINGS,
+                                    onSettingsSubTab = { route -> nav.open(route) },
+                                    currentRoute = currentRoute,
+                                    actions = topBarActionsState.value,
+                                )
+                            }
+
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(end = if (homeBleed) 0.dp else cutoutEnd)) {
+                                CompositionLocalProvider(
+                                    LocalHostedInDeck provides rails,
+                                    LocalDeckSideLists provides sideLists,
+                                ) {
+                                    AppNavGraph(
+                                        navController = navController,
+                                        startRoute = DeckRoutes.HOME,
+                                        modifier = Modifier.fillMaxSize(),
+                                        containerEditorRoute = DeckSettingsRoutes::containerEditorFor,
+                                        // XMB and Simple switch pages at once: a cross-fade under the Simple frame (its header and
+                                        // backdrop change at once) showed the new page's header over the old page for a moment.
+                                        instantPages = xmbHome || simpleHome,
+                                        extraRoutes = {
+                                            composable(DeckRoutes.HOME) {
+                                                if (simpleHome) {
+                                                    com.winlator.star.ui.simple.LabHome(
+                                                        onNavigate = { route -> nav.open(route) },
+                                                        onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
+                                                    )
+                                                } else DeckHome(
+                                                    onOpenGame = { shortcut -> nav.open(DeckRoutes.game(shortcut.file.path)) },
+                                                    onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
+                                                    // "Add games" opens over Home (DeckGameActionsHost).
+                                                    onAddGame = {
+                                                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME)
+                                                    },
+                                                    onBigPicture = { nav.open(Screen.BigPicture.route) },
+                                                    onLaunchStore = onLaunchStore,
+                                                )
+                                            }
+                                            composable(
+                                                route = DeckRoutes.GAME,
+                                                arguments = listOf(navArgument(DeckRoutes.GAME_ARG) { type = NavType.StringType; defaultValue = "" }),
+                                            ) { entry ->
+                                                DeckGamePage(
+                                                    shortcutPath = entry.arguments?.getString(DeckRoutes.GAME_ARG).orEmpty(),
+                                                    onBack = { nav.back() },
+                                                    onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
+                                                )
+                                            }
+                                            composable(DeckRoutes.STORES) {
+                                                DeckStoresPage(
+                                                    onLaunchStore = onLaunchStore,
+                                                    onOpenAppearance = { nav.open(Screen.Appearance.route) },
+                                                    onOpenGame = { path -> nav.open(DeckRoutes.game(path)) },
+                                                )
+                                            }
+                                            composable(DeckRoutes.COMPONENTS) { DeckComponentsPage() }
+                                            composable(DeckRoutes.CONTROLS) { DeckControlsPage() }
+                                            deckSettingsRoutes(navController, onAbout)
+                                            simpleRoutes(
+                                                open = { route -> nav.open(route) },
+                                                back = { nav.back() },
+                                                onMyAccount = onAccount,
+                                                onAbout = onAbout,
+                                                onLaunchStore = onLaunchStore,
+                                            )
+                                            composable(DeckRoutes.TOOLS) {
+                                                DeckToolsPage(
+                                                    onNavigate = { route -> nav.open(route) },
+                                                    onMyAccount = onAccount,
+                                                    onAbout = onAbout,
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                                // Add games, My account and the game actions the settings pages hand over: dialogs over whatever page is up.
+                                DeckGameActionsHost()
+                                // Lab, portrait: the drawer (its own window, so the controller stays in it).
+                                if (simpleHome && !rails && labDrawer) {
+                                    com.winlator.star.ui.simple.LabDrawer(
+                                        current = com.winlator.star.ui.simple.labSectionOf(currentRoute),
+                                        onSection = labGo,
+                                        onClose = { labDrawer = false },
+                                    )
+                                }
+                                // Update pill: over the content, under the title line / top bar (Classic's place relative to its top bar).
+                                val upd = pillUpdate
+                                if (upd != null && !searchOpen) {
+                                    com.winlator.star.ui.UpdatePill(
+                                        info = upd,
+                                        visible = pillVisible,
+                                        onDismiss = {
+                                            pillVisible = false
+                                            UpdateManager.dismissedThisSession = upd.versionCode
+                                        },
+                                        onView = {
+                                            pillVisible = false
+                                            UpdateManager.dismissedThisSession = upd.versionCode
+                                            scope.launch {
+                                                kotlinx.coroutines.delay(com.winlator.star.ui.UPDATE_PILL_EXIT_MS)
+                                                highlightsFor = upd
+                                            }
+                                        },
+                                        // On the XMB home it sits under the floating status line instead of on it.
+                                        modifier = Modifier.align(Alignment.TopEnd).padding(top = if (homeBleed) 52.dp else 8.dp, end = 12.dp),
+                                    )
+                                }
+                            }
+                            // App-wide minimized progress pill for a running archive unpack (renders nothing when idle).
+                            com.winlator.star.ui.UnpackProgressPill()
+
+                            // XMB mode: no legend on any tab, only the floating Search below.
+                            if (simpleHome && rails) {
+                                com.winlator.star.ui.simple.SimplePageLegend(
+                                    subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
+                                    optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
+                                    modifier = Modifier.align(Alignment.End),
+                                    own = deckActions.ownLegend.value,
+                                )
+                            }
+                            if (!compact && !full && !xmbHome && !simpleHome) {
+                                DeckLegend(
+                                    thin = rails,
+                                    endInset = cutoutEnd,
+                                    atHome = currentRoute == DeckRoutes.HOME,
+                                    subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
+                                    optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
+                                    onCycle = { switchMenu(1) },
+                                    onSubCycle = { deckActions.subTab.value?.invoke(1) },
+                                    onBack = goBack,
+                                    onOptions = { deckActions.options.value?.invoke() },
+                                    onSearch = { (deckActions.search.value ?: openSearch)() },
+                                )
+                            }
+                        }
+                    }
+                    if (compact && !full && !simpleHome) {
+                        DeckBottomBar(current = tab, tabs = tabs, onTab = { nav.goTab(it) }, dpad = !xmbHome)
+                    }
                 }
-                val goBack = { if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back() }
-                // Home's XMB view takes the whole screen; the XMB has its own hints, menus and game row.
-                val full = deckActions.fullscreen.value && currentRoute == DeckRoutes.HOME
-                // XMB mode, every tab but Home (which floats it over the XMB) and the phone layout: the same floating bar as
-                // Home, at the same place, with the page starting right under it.
-                if (simplePages && simpleLayout != AppThemeState.SIMPLE_LAYOUT_RAIL) {
-                    com.winlator.star.ui.simple.SimplePageHeader(onSection = simpleGo, onBack = goBack)
-                }
-                if (floatTabs && !full && !homeBleed) {
+
+                // XMB home: the tabs and status float over the XMB's own space above its game row, clear of the camera hole.
+                // No backgrounds, so the XMB's backdrop shows through.
+                if (homeBleed) {
                     DeckFloatingBar(
                         current = tab,
                         tabs = tabs,
                         avatarUrl = account?.displayAvatarUrl,
                         portrait = !rails,
-                        startInset = if (rails) cutout.calculateStartPadding(dir) else 0.dp,
-                        endInset = if (rails) cutout.calculateEndPadding(dir) else 0.dp,
+                        startInset = cutout.calculateStartPadding(dir),
+                        endInset = cutout.calculateEndPadding(dir),
                         onTab = { nav.goTab(it) },
                         onCycle = { switchMenu(it) },
-                        onAccount = onAccount,
+                        onAccount = { AccountUiBus.requestMyAccount() },
+                        modifier = Modifier.align(Alignment.TopStart).padding(top = cutout.calculateTopPadding()),
                     )
                 }
-                // Landscape is rails | content (in the XMB mode: the page's own tab rail | content, under the floating tab bar);
-                // portrait keeps the top bar over the content. The NavHost stays in one slot either way.
-                // Framed (XMB mode, tabs other than Home), only this middle part sits inside the even camera frame.
-                Row(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = frame)) {
-                    if (simplePages && simpleLayout == AppThemeState.SIMPLE_LAYOUT_RAIL) {
-                        com.winlator.star.ui.simple.SimplePageRail(onSection = simpleGo)
-                    }
-                    if (rails && !full) {
-                        if (!topTabs && !simpleHome) {
-                            DeckSideRail(
-                                cutoutStart = cutoutStart,
-                                current = tab,
-                                tabRequesters = tabRequesters,
-                                avatarUrl = account?.displayAvatarUrl,
-                                onTab = { nav.goTab(it) },
-                                onCycle = { nav.cycle(it) },
-                                onTabsFocus = onTabsFocus,
-                                onEnterContent = enterContent,
-                                onAccount = onAccount,
-                                onSearch = openSearch,
-                            )
-                        }
-                        val pageTabs = deckActions.pageTabs.value
-                        if (settingsPages) {
-                            val pages = listOf(Screen.Settings.route to DeckTabItem("Settings", Icons.Filled.Settings), Screen.Appearance.route to DeckTabItem("Appearance", Icons.Filled.Palette))
-                            DeckPageTabRail(
-                                tabs = pages.map { it.second },
-                                selected = pages.indexOfFirst { it.first == currentRoute }.coerceAtLeast(0),
-                                compact = false,
-                                onSelect = { i -> if (pages[i].first != currentRoute) nav.open(pages[i].first) },
-                                onFocus = { deckActions.stripFocused.value = it },
-                                glass = !framed,
-                            )
-                        } else if (pageTabs != null && isDeckPage(currentRoute) && pageTabs.tabs.isNotEmpty()) {
-                            DeckPageTabRail(
-                                tabs = pageTabs.tabs,
-                                selected = pageTabs.selected,
-                                compact = pageTabs.compact || sideLists.count.intValue > 0,
-                                onSelect = { i -> pageTabs.onSelect(i) },
-                                onFocus = { deckActions.stripFocused.value = it },
-                                glass = !framed,
-                            )
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        if (full || homeBleed || floatTabs || simpleHome) {
-                            // No top bar here: none over the XMB, and the XMB home floats its own (above, or over Home).
-                            // The Simple style has its own frame (SimplePageHeader / SimplePageRail).
-                        } else if (compact) {
-                            DeckCompactTopBar(tab = tab, avatarUrl = account?.displayAvatarUrl, onAccount = onAccount, onSearch = openSearch, dpad = !xmbHome)
-                        } else if (!rails) {
-                            DeckTopBar(
-                                current = tab,
-                                wide = cfg.screenWidthDp >= DECK_WIDE_TABS_DP,
-                                tabRequesters = tabRequesters,
-                                avatarUrl = account?.displayAvatarUrl,
-                                onTab = { nav.goTab(it) },
-                                onCycle = { nav.cycle(it) },
-                                onTabsFocus = onTabsFocus,
-                                onEnterContent = enterContent,
-                                onAccount = onAccount,
-                                onSearch = openSearch,
-                            )
-                        }
-
-                        val pageTitle = deckActions.pageInfo.value
-                        if (full) {
-                            // No title line over the XMB.
-                        } else if (rails) {
-                            // One slim line: the page's title (description behind the info button) and the screen's own actions.
-                            // Home and the game page draw their own hero instead.
-                            if (!isDeckPage(currentRoute)) {
-                                DeckTitleLine(
-                                    endInset = cutoutEnd,
-                                    title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
-                                    description = null,
-                                    showBack = currentRoute != tab.root && !settingsPages,
-                                    onBack = goBack,
-                                    actions = topBarActionsState.value,
-                                )
-                            } else if (pageTitle != null && currentRoute != DeckRoutes.HOME && !currentRoute.startsWith("deck_game")) {
-                                DeckTitleLine(
-                                    endInset = cutoutEnd,
-                                    title = pageTitle.title,
-                                    description = pageTitle.description,
-                                    showBack = false,
-                                    onBack = goBack,
-                                    actions = topBarActionsState.value,
-                                )
-                            }
-                        } else if (!isDeckPage(currentRoute)) {
-                            // Deck pages draw their own header.
-                            DeckPageBar(
-                                title = deckPageTitle(context, currentRoute, backstackEntry?.arguments?.getInt("id") ?: -1),
-                                showBack = currentRoute != tab.root,
-                                onBack = goBack,
-                                settingsSubTabs = tab == DeckTab.SETTINGS,
-                                onSettingsSubTab = { route -> nav.open(route) },
-                                currentRoute = currentRoute,
-                                actions = topBarActionsState.value,
-                            )
-                        }
-
-                        Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(end = if (homeBleed) 0.dp else cutoutEnd)) {
-                            CompositionLocalProvider(
-                                LocalHostedInDeck provides rails,
-                                LocalDeckSideLists provides sideLists,
-                            ) {
-                                AppNavGraph(
-                                    navController = navController,
-                                    startRoute = DeckRoutes.HOME,
-                                    modifier = Modifier.fillMaxSize(),
-                                    containerEditorRoute = DeckSettingsRoutes::containerEditorFor,
-                                    // XMB and Simple switch pages at once: a cross-fade under the Simple frame (its header and
-                                    // backdrop change at once) showed the new page's header over the old page for a moment.
-                                    instantPages = xmbHome || simpleHome,
-                                    extraRoutes = {
-                                        composable(DeckRoutes.HOME) {
-                                            if (simpleHome) {
-                                                com.winlator.star.ui.simple.SimpleHome(
-                                                    onNavigate = { route -> nav.open(route) },
-                                                    onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
-                                                    onLaunchStore = onLaunchStore,
-                                                    onAbout = onAbout,
-                                                )
-                                            } else DeckHome(
-                                                onOpenGame = { shortcut -> nav.open(DeckRoutes.game(shortcut.file.path)) },
-                                                onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
-                                                // "Add games" opens over Home (DeckGameActionsHost).
-                                                onAddGame = {
-                                                    GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME)
-                                                },
-                                                onBigPicture = { nav.open(Screen.BigPicture.route) },
-                                                onLaunchStore = onLaunchStore,
-                                            )
-                                        }
-                                        composable(
-                                            route = DeckRoutes.GAME,
-                                            arguments = listOf(navArgument(DeckRoutes.GAME_ARG) { type = NavType.StringType; defaultValue = "" }),
-                                        ) { entry ->
-                                            DeckGamePage(
-                                                shortcutPath = entry.arguments?.getString(DeckRoutes.GAME_ARG).orEmpty(),
-                                                onBack = { nav.back() },
-                                                onOpenContainer = { id -> nav.open(DeckSettingsRoutes.containerEditorFor(id) ?: "container_detail?id=$id") },
-                                            )
-                                        }
-                                        composable(DeckRoutes.STORES) {
-                                            DeckStoresPage(
-                                                onLaunchStore = onLaunchStore,
-                                                onOpenAppearance = { nav.open(Screen.Appearance.route) },
-                                                onOpenGame = { path -> nav.open(DeckRoutes.game(path)) },
-                                            )
-                                        }
-                                        composable(DeckRoutes.COMPONENTS) { DeckComponentsPage() }
-                                        composable(DeckRoutes.CONTROLS) { DeckControlsPage() }
-                                        deckSettingsRoutes(navController, onAbout)
-                                        simpleRoutes(
-                                            open = { route -> nav.open(route) },
-                                            back = { nav.back() },
-                                            onMyAccount = onAccount,
-                                            onAbout = onAbout,
-                                        )
-                                        composable(DeckRoutes.TOOLS) {
-                                            DeckToolsPage(
-                                                onNavigate = { route -> nav.open(route) },
-                                                onMyAccount = onAccount,
-                                                onAbout = onAbout,
-                                            )
-                                        }
-                                    },
-                                )
-                            }
-                            // Add games, My account and the game actions the settings pages hand over: dialogs over whatever page is up.
-                            DeckGameActionsHost()
-                            // Update pill: over the content, under the title line / top bar (Classic's place relative to its top bar).
-                            val upd = pillUpdate
-                            if (upd != null && !searchOpen) {
-                                com.winlator.star.ui.UpdatePill(
-                                    info = upd,
-                                    visible = pillVisible,
-                                    onDismiss = {
-                                        pillVisible = false
-                                        UpdateManager.dismissedThisSession = upd.versionCode
-                                    },
-                                    onView = {
-                                        pillVisible = false
-                                        UpdateManager.dismissedThisSession = upd.versionCode
-                                        scope.launch {
-                                            kotlinx.coroutines.delay(com.winlator.star.ui.UPDATE_PILL_EXIT_MS)
-                                            highlightsFor = upd
-                                        }
-                                    },
-                                    // On the XMB home it sits under the floating status line instead of on it.
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(top = if (homeBleed) 52.dp else 8.dp, end = 12.dp),
-                                )
-                            }
-                        }
-                        // App-wide minimized progress pill for a running archive unpack (renders nothing when idle).
-                        com.winlator.star.ui.UnpackProgressPill()
-
-                        // XMB mode: no legend on any tab, only the floating Search below.
-                        if (simplePages) {
-                            com.winlator.star.ui.simple.SimplePageLegend(
-                                subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
-                                optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
-                                modifier = Modifier.align(Alignment.End),
-                                own = deckActions.ownLegend.value,
-                            )
-                        }
-                        if (!compact && !full && !xmbHome && !simpleHome) {
-                            DeckLegend(
-                                thin = rails,
-                                endInset = cutoutEnd,
-                                atHome = currentRoute == DeckRoutes.HOME,
-                                subTabLabel = if (deckActions.subTab.value != null) deckActions.subTabLabel.value else null,
-                                optionsLabel = if (deckActions.options.value != null) deckActions.optionsLabel.value else null,
-                                onCycle = { switchMenu(1) },
-                                onSubCycle = { deckActions.subTab.value?.invoke(1) },
-                                onBack = goBack,
-                                onOptions = { deckActions.options.value?.invoke() },
-                                onSearch = { (deckActions.search.value ?: openSearch)() },
-                            )
-                        }
-                    }
+                // XMB home, every tab but the phone layout (which has its bars): the only hint is a muted Search bottom right,
+                // clear of the camera frame. It may sit over a page's corner.
+                if (xmbHome && !compact) {
+                    val ss = rememberScreenScale()
+                    DeckFloatingSearch(
+                        onSearch = { (deckActions.search.value ?: openSearch)() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(
+                                end = ss.dp(16f) + maxOf(frame, cutout.calculateEndPadding(dir)),
+                                bottom = ss.dp(12f) + cutout.calculateBottomPadding(),
+                            ),
+                    )
                 }
-                if (compact && !full && !simpleHome) {
-                    DeckBottomBar(current = tab, tabs = tabs, onTab = { nav.goTab(it) }, dpad = !xmbHome)
+
+                if (searchOpen) {
+                    DeckSearchOverlay(
+                        onDismiss = { searchOpen = false },
+                        onOpenGame = { path -> searchOpen = false; nav.open(DeckRoutes.game(path)) },
+                        onOpenRoute = { route -> searchOpen = false; nav.open(route) },
+                        onLaunchStore = { screen -> searchOpen = false; onLaunchStore(screen) },
+                        onAbout = { searchOpen = false; onAbout() },
+                    )
                 }
-            }
 
-            // XMB home: the tabs and status float over the XMB's own space above its game row, clear of the camera hole.
-            // No backgrounds, so the XMB's backdrop shows through.
-            if (homeBleed) {
-                DeckFloatingBar(
-                    current = tab,
-                    tabs = tabs,
-                    avatarUrl = account?.displayAvatarUrl,
-                    portrait = !rails,
-                    startInset = cutout.calculateStartPadding(dir),
-                    endInset = cutout.calculateEndPadding(dir),
-                    onTab = { nav.goTab(it) },
-                    onCycle = { switchMenu(it) },
-                    onAccount = { AccountUiBus.requestMyAccount() },
-                    modifier = Modifier.align(Alignment.TopStart).padding(top = cutout.calculateTopPadding()),
-                )
+                highlightsFor?.let { info ->
+                    com.winlator.star.ui.UpdateHighlightsDialog(
+                        info = info,
+                        onLater = { highlightsFor = null },
+                        onUpdate = {
+                            highlightsFor = null
+                            (context as? MainActivity)?.let { UpdateManager.downloadAndInstall(it, info) {} }
+                        },
+                    )
+                }
+                // The download card, whichever button started the download (pill, highlights, Settings, About).
+                com.winlator.star.ui.UpdateHost()
             }
-            // XMB home, every tab but the phone layout (which has its bars): the only hint is a muted Search bottom right,
-            // clear of the camera frame. It may sit over a page's corner.
-            if (xmbHome && !compact) {
-                val ss = rememberScreenScale()
-                DeckFloatingSearch(
-                    onSearch = { (deckActions.search.value ?: openSearch)() },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(
-                            end = ss.dp(16f) + maxOf(frame, cutout.calculateEndPadding(dir)),
-                            bottom = ss.dp(12f) + cutout.calculateBottomPadding(),
-                        ),
-                )
-            }
-
-            if (searchOpen) {
-                DeckSearchOverlay(
-                    onDismiss = { searchOpen = false },
-                    onOpenGame = { path -> searchOpen = false; nav.open(DeckRoutes.game(path)) },
-                    onOpenRoute = { route -> searchOpen = false; nav.open(route) },
-                    onLaunchStore = { screen -> searchOpen = false; onLaunchStore(screen) },
-                    onAbout = { searchOpen = false; onAbout() },
-                )
-            }
-
-            highlightsFor?.let { info ->
-                com.winlator.star.ui.UpdateHighlightsDialog(
-                    info = info,
-                    onLater = { highlightsFor = null },
-                    onUpdate = {
-                        highlightsFor = null
-                        (context as? MainActivity)?.let { UpdateManager.downloadAndInstall(it, info) {} }
-                    },
-                )
-            }
-            // The download card, whichever button started the download (pill, highlights, Settings, About).
-            com.winlator.star.ui.UpdateHost()
         }
     }
 }

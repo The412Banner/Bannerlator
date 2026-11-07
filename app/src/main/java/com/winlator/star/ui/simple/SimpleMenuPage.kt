@@ -32,6 +32,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.MaterialTheme
@@ -103,6 +106,8 @@ internal class MenuEntry(
     val actions: List<MenuAction> = emptyList(),
     /** The section's main action shown as a row (New container, Install from a file …). */
     val primary: Boolean = false,
+    /** Start it straight away (a container's Windows desktop): a ▶ button on the row, Start on a controller. */
+    val play: (() -> Unit)? = null,
 )
 
 internal class MenuSection(
@@ -168,6 +173,7 @@ private fun SimpleMenuPageBody(
     val legend = buildList {
         add("B" to "Back")
         add("A" to "Open")
+        if (entries.getOrNull(rowNow)?.play != null) add("Start" to "Launch")
         if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to "Options")
         sec?.primary?.let { add("Y" to it.label) }
         if (sections.size > 1) add("L2" to "Section")
@@ -206,7 +212,8 @@ private fun SimpleMenuPageBody(
                 }
                 SIn.LEFT -> { if (layout == AppThemeState.SIMPLE_LAYOUT_RAIL && sections.size > 1) zone = PZone.SECS }
                 SIn.A -> cur?.onA?.invoke() ?: run { if (cur != null && cur.actions.isNotEmpty()) actionsFor = cur }
-                else -> return@onKey a == SIn.START || a == SIn.SELECT || a == SIn.RIGHT
+                SIn.START -> { cur?.play?.invoke() }
+                else -> return@onKey a == SIn.SELECT || a == SIn.RIGHT
             }
         }
         true
@@ -427,7 +434,10 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
             .fillMaxWidth()
             .graphicsLayer { translationX = shift * density }
             .simpleRowFocus(focused, active)
-            .simpleTap(onTap)
+            .pointerInput(onTap, e.actions.isNotEmpty()) {
+                // Tap opens it, a long press its options (as on a game).
+                detectTapGestures(onTap = { onTap() }, onLongPress = if (e.actions.isNotEmpty()) ({ _ -> onMenu() }) else null)
+            }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 40.dp)) {
@@ -459,6 +469,14 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
             }
             // The item's options: a ⋯ to tap (X on a controller does the same).
+            val play = e.play
+            if (play != null) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(width = 52.dp, height = 36.dp).background(accent, SimpleShape).simpleTap(play),
+                ) { Icon(Icons.Filled.PlayArrow, contentDescription = "Launch", tint = Color.White, modifier = Modifier.size(22.dp)) }
+            }
             if (e.actions.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
                 Box(

@@ -341,6 +341,7 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
             trailing = if (c.displayBackend == Container.DISPLAY_BACKEND_WAYLAND) "Wayland" else "X11",
             icon = Icons.Filled.Inventory2,
             onA = { onNavigate(DeckSettingsRoutes.container(c.id)) },
+            play = { startDesktop(c) },
             actions = listOf(
                 MenuAction("Settings", { onNavigate(DeckSettingsRoutes.container(c.id)) }),
                 MenuAction("Start its Windows desktop", { startDesktop(c) }),

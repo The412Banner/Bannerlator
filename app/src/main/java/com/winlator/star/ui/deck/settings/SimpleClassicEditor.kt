@@ -595,6 +595,16 @@ internal fun SimpleClassicEditor(
 
     // The legend in the Simple frame.
     val deckActions = LocalDeckActions.current
+
+    // L2/R2 through the shell as well: they then work wherever the controller focus is (the Lab rail, a tile, a dialog).
+    val stepTabsNow = androidx.compose.runtime.rememberUpdatedState<(Int) -> Unit> { d -> goTab(tabIndex + d) }
+    DisposableEffect(deckActions, tabs.size) {
+        if (tabs.size < 2) return@DisposableEffect onDispose {}
+        val step: (Int) -> Unit = { stepTabsNow.value(it) }
+        deckActions.subTab.value = step
+        deckActions.subTabLabel.value = "Tab"
+        onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
+    }
     val cur = lines.getOrNull(rowNow)
     val curDef = (cur as? RSet)?.def
     val legend = buildList {

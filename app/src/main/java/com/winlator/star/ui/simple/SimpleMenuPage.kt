@@ -170,6 +170,16 @@ private fun SimpleMenuPageBody(
 
     BackHandler { onBack() }
     val deckActions = LocalDeckActions.current
+
+    // L2/R2 through the shell as well: they then work wherever the controller focus is (the Lab rail, a tile, a dialog).
+    val stepTabsNow = androidx.compose.runtime.rememberUpdatedState<(Int) -> Unit> { d -> stepSection(d) }
+    DisposableEffect(deckActions, sections.size) {
+        if (sections.size < 2) return@DisposableEffect onDispose {}
+        val step: (Int) -> Unit = { stepTabsNow.value(it) }
+        deckActions.subTab.value = step
+        deckActions.subTabLabel.value = "Section"
+        onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
+    }
     val legend = buildList {
         add("B" to "Back")
         add("A" to "Open")

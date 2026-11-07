@@ -206,6 +206,8 @@ internal fun Modifier.labTile(
     onMenu: (() -> Unit)? = null,
     requester: FocusRequester? = null,
     onFocus: (() -> Unit)? = null,
+    /** On an element filled with the accent (the Play button): a contrasting ring instead of the accent one, and a bigger lift. */
+    onAccent: Boolean = false,
 ): Modifier {
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
@@ -221,8 +223,12 @@ internal fun Modifier.labTile(
             if (it.isFocused && !focused) onFocus?.invoke()
             focused = it.isFocused
         }
-        .graphicsLayer { scaleX = 1f + 0.02f * p; scaleY = 1f + 0.02f * p }
-        .then(if (p > 0.01f) Modifier.background(accent.copy(alpha = 0.14f * p), SimpleShape).border(2.dp, accent.copy(alpha = p), SimpleShape) else Modifier)
+        .graphicsLayer { val k = if (onAccent) 0.06f else 0.02f; scaleX = 1f + k * p; scaleY = 1f + k * p }
+        .then(
+            if (p <= 0.01f) Modifier
+            else if (onAccent) Modifier.border(3.dp, SimpleStrong.copy(alpha = p), SimpleShape)
+            else Modifier.background(accent.copy(alpha = 0.14f * p), SimpleShape).border(2.dp, accent.copy(alpha = p), SimpleShape)
+        )
         .onKeyEvent { ev ->
             val k = ev.nativeKeyEvent
             when {

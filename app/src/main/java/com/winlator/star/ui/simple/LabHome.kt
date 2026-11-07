@@ -122,7 +122,7 @@ internal fun LabButton(
         modifier = modifier
             .height(40.dp)
             .background(if (primary) accent else SimpleCard, SimpleShape)
-            .labTile(onClick = onClick, requester = requester)
+            .labTile(onClick = onClick, requester = requester, onAccent = primary)
             .padding(horizontal = 16.dp),
     ) {
         if (icon != null) Icon(icon, contentDescription = null, tint = if (primary) Color.White else SimpleInk, modifier = Modifier.size(18.dp))

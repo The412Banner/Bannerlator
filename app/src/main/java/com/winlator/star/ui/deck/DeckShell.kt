@@ -464,6 +464,10 @@ private fun DeckShellContent(
     // MainActivity only offers keys its view tree left unhandled, so a screen that uses L1/R1 or B itself keeps them.
     // None of this runs while a game is up, because the game is another activity.
     DisposableEffect(nav, backDispatcher, deckActions) {
+        // B goes back on release, but only for a press the shell saw go down: a page that took the press itself (and went
+        // back on it) leaves its release unhandled, and acting on that went back a second time (a repository → Home
+        // instead of Contents).
+        var bDown = false
         val handler: (KeyEvent) -> Boolean = handler@{ ev ->
             val first = ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0
             when (ev.keyCode) {
@@ -474,7 +478,14 @@ private fun DeckShellContent(
                 KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.invoke(-1) ?: run { if (!simpleHomeNow) switchMenu(-1) }; true }
                 KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.invoke(1) ?: run { if (!simpleHomeNow) switchMenu(1) }; true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
-                    if (nav.currentRoute() == DeckRoutes.HOME) return@handler false
+                    if (ev.action == KeyEvent.ACTION_DOWN) {
+                        if (ev.repeatCount == 0) bDown = nav.currentRoute() != DeckRoutes.HOME
+                        if (!bDown) return@handler false
+                        return@handler true
+                    }
+                    val armed = bDown
+                    bDown = false
+                    if (!armed) return@handler nav.currentRoute() != DeckRoutes.HOME
                     if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) {
                         if (backDispatcher != null) backDispatcher.onBackPressed() else nav.back()
                     }

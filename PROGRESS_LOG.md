@@ -12,7 +12,12 @@
 - Pass A (e7b0dcaf): Lab's own screens wrapped (scripted + reviewed; comparisons on translated text fixed: "More" heading, Contents source sort) → 438 strings. Pass B (settings names/descriptions, in-game page rows) next.
 
 **Built:** ff8cf136 (core), e7b0dcaf (pass A). CI 42441793936 running. Main build of the Lab merge a10bc058: CI 42440618178 green ×4.
-**Resume:** worktree /root/src/Bannerlator-wt/lab-languages (sparse: java, res, tools, .github). DroidDeck strings downloaded to /root/.claude/jobs/9a3a037c/tmp/dd-strings (values-*/strings.xml). Next: translations (DD exact matches + drafts), build, stage, ask.
+- Pass B (8da0281e, CI 42442683290 green ×4): 16 settings files marked with T() (1,515 marks) and translated where Lab draws them; in-game page rows in L(). User chose to translate the long setting descriptions too ("option 1").
+- Saved values unmarked (a3ea5cac, 88d3503d): launch modes RealSteam/AppSteam/Raw, renderer SurfaceFlinger, VKD3D "None", capture "Custom", left-of-`to` values, inherited defaults, comparisons (audit: every marked text also compared elsewhere in the app checked by hand). Deck-style settings panels, graphics settings, editor headers and the Steam Deck mode pop-up switched T→L (704) so joined sentences and Deck lines translate (pieces were written to join). Reset dialog prefix made translatable (4be98c19).
+- **Translations (6193247337):** 1,673 strings × 32 languages, all complete (0 missing; 33 files / 55,209 strings XML-valid, escapes and % checked). Sources: DroidDeck exact English matches (~193/language) + machine drafts from 23 helper agents in three rounds (Lab screens; setting names; setting descriptions), each checked by i18n/validate*.py (every string present, placeholders and symbols kept). Files are marked "machine-drafted, corrections welcome".
+- Final build CI 42445159761 running.
+
+**Resume:** worktree /root/src/Bannerlator-wt/lab-languages (sparse: java, res, tools, .github). Drafts and checkers in /root/.claude/jobs/9a3a037c/tmp/i18n. Next: green → stage → ASK install → device check (Language picker, a few languages incl. Arabic RTL and a CJK one, restart on change, settings descriptions).
 
 ## 2026-11-08 — 🔁 Wayland "System" on Mali rebased onto main with the Lab UI (`fix/wayland-mali-system` b9c9c808, CI running, NOT device-tested, NOT merged)
 - **User:** "can you rebuild off main since we just merged the new lab ui work?"

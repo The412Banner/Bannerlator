@@ -168,6 +168,15 @@ public final class WaylandAdapter {
 
     // ── Which graphics drivers the adapter can sit on ────────────────────────────────────────────
 
+    /**
+     * "System" picked explicitly on an Arm Mali GPU: the phone's own Mali driver for both the compositor
+     * (XServerDisplayActivity's Wayland resolve, maliSystemPick) and the game. An empty id is not this
+     * pick. False on every other GPU.
+     */
+    public static boolean isMaliSystem(String driverId) {
+        return "System".equals(driverId) && MaliPanvk.isMaliGpu();
+    }
+
     /** True for a driver whose meta.json names Qualcomm as vendor (the proprietary blob, e.g. v819). */
     public static boolean isProprietaryBlob(Context context, String driverId) {
         if (driverId == null || driverId.isEmpty() || driverId.equals("System")) return false;
@@ -190,8 +199,13 @@ public final class WaylandAdapter {
      *   <li>an id that isn't installed / names no library.</li>
      * </ul>
      * In all three the launch keeps the old Auto (bundled Wayland Turnip) for the game.
+     * <p>
+     * Exception: "System" picked on purpose on an Arm Mali GPU ({@link #isMaliSystem}). No bundled
+     * Turnip runs there, so the adapter sits on the phone's own driver (the wrapper loads the system
+     * libvulkan when no ADRENOTOOLS_* is set), the same driver the compositor uses for that pick.
      */
     public static String unusableReason(Context context, String driverId) {
+        if (isMaliSystem(driverId)) return null;
         if (driverId == null || driverId.isEmpty() || driverId.equals("System"))
             return "the graphics driver is System";
         if (isProprietaryBlob(context, driverId))

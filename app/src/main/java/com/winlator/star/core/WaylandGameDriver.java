@@ -32,7 +32,8 @@ import java.util.List;
  * runs on the container's own AdrenoTools graphics driver, so one pick drives compositor and game.
  * It needs a Mesa AdrenoTools driver underneath ({@link WaylandAdapter#unusableReason}); on
  * "System", a Qualcomm blob or a missing driver it resolves to a bundled variant by GPU instead
- * (logged). {@code auto} resolves exactly like {@code adapter} once the launch knows the graphics
+ * (logged), except "System" on an Arm Mali GPU, where it runs on the phone's own driver
+ * ({@link WaylandAdapter#isMaliSystem}). {@code auto} resolves exactly like {@code adapter} once the launch knows the graphics
  * driver, so every container that never chose is on the adapter too — at resolution time only, the
  * stored value is never rewritten.
  */

@@ -257,6 +257,7 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
         manager.duplicateContainerAsync(container) { result ->
             _isLoading.value = false
             refresh()
+            ShortcutsViewModel.notifyContainersChanged()
             _message.value = if (result == null) "Couldn't duplicate container" else "Container duplicated"
             onDone()
         }
@@ -280,6 +281,7 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
         manager.importContainer(dir) {
             _isLoading.value = false
             refresh()
+            ShortcutsViewModel.notifyContainersChanged()
             onDone()
         }
     }
@@ -307,6 +309,7 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
         manager.removeContainerAsync(container) {
             _isLoading.value = false
             refresh()
+            ShortcutsViewModel.notifyContainersChanged()
             onDone()
         }
     }

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📦 Mali step 1 APKs STAGED (fix/wayland-mali-inline-shaders dfee621a; NOT installed, NOT device-tested)
+- **Build:** build-artifacts **42451675363** success ×4 (headSha dfee621a; each job 44 success / 15 skipped / 0 failed, same as normal builds).
+- **APK check:** every flavor carries assets/wayland/adapter/libvulkan_wrapper.so sha256 **cc512846…** (= adapter CI 42451258079, ffc3029d) and adapter.json version "… mali-inline-shaders ffc3029"; cert SHA-256 A4:0D:A8:0A… (same as the installed main 31196765, installs over it).
+- **Staged** (sha256 proot == Android side via rootsh): /sdcard/Download/Bannerlator-wayland-mali-inline-dfee621a-pubg.apk 01fcd8e3… · -standard 46430513… · -ludashi 6ebf7b35… · -antutu a1410bb8…. Artifacts expire 2026-11-15.
+- **Next (user's call):** send to kirimu (RP4 Pro Mali-G77, own r54p1 driver) for Wayland + "System": DXVK game, wine log line "wrapper-mali: inline pipeline shaders through the SPIR-V fixups: on" + "lowered to shader modules"; A/B with BANNER_WRAPPER_INLINE_SHADERS=0. Optional Adreno no-regression run on the Elite/Pocket FIT only on the user's yes (on Adreno the new code forwards straight to the driver).
+
 ## 2026-11-08 — 🔧 Mali step 1: Wayland adapter runs inline pipeline shaders through the Arm Mali SPIR-V fixups (fix/wayland-mali-inline-shaders, CI only, NOT device-tested)
 - **Why (user: "yes start step 1 on a new branch"):** with "System" on Wayland for Mali (78000ba3) the adapter sits on the phone's Arm Mali driver. The shipped adapter (Pipetto wrapper-25 @ ecdd0da8 + banner patches) rewrites SPIR-V for that driver (OpConstantComposite → OpSpecConstantComposite, ClipDistance/CullDistance removed) only in vkCreateShaderModule. Current DXVK passes every shader inline in the pipeline call (doitsujin/dxvk dxvk_shader.cpp:97-103), so none got the rewrite.
 - **Correction (told the user):** the other "step 1" item (BC decoder leaves the game's compute state changed) was read from the repo's leegao tree, which BL does not ship. The shipped Pipetto tree decodes BCn on the CPU (no compute bind) → nothing to fix there.

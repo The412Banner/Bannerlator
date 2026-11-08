@@ -134,7 +134,7 @@ object AppThemeState {
             themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
         }
 
-        // No saved style yet: a fresh install starts in Lab with Carbon & Ember; an update keeps Classic and its theme.
+        // No saved style yet: a fresh install starts in Lab with Carbon & Ember at 100 % sizes; an update keeps Classic, its theme and sizes.
         if (!themePrefs.contains("ui_style")) {
             val fresh = runCatching {
                 val pi = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -145,6 +145,9 @@ object AppThemeState {
                 .putBoolean("simple_home", fresh)
             val ember = themePresets.indexOfFirst { it.name == NEW_INSTALL_PRESET }
             if (fresh && ember >= 0 && !themePrefs.contains("preset_index")) edit.putInt("preset_index", ember)
+            // Sizes: a fresh install starts at 100 %; an update keeps its own (90 % when never changed).
+            if (fresh && !themePrefs.contains("ui_scale")) edit.putFloat("ui_scale", 1f)
+            if (fresh && !themePrefs.contains("font_scale")) edit.putFloat("font_scale", 1f)
             edit.apply()
         }
         _presetIndex.value = themePrefs.getInt("preset_index", 1).coerceIn(0, themePresets.size - 1)

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📐 feat/default-size-100: new installs at 100 % interface + text size (f3eb93c2; CI 42524310667 running, NOT device-tested)
+- **Why (user: "make those sizes 100 percent by default"):** the code default was 90 % for both, and setup step 4 switched the interface to Compact (80 %) on its own.
+- **Change:** AppThemeState's fresh-install block also saves ui_scale = font_scale = 1.0 (only when unset). Updates keep their sizes (90 % when never changed), the same rule as Lab and Carbon & Ember. Setup's "Interface size" offers Standard (100 %) and Compact (80 %) and no longer forces Compact. DECK_UI_SCALE (the Deck/Lab 0.8 draw factor) is unchanged.
+- **Next:** green → stage standard APK → ASK install (fresh) → check the sizes show 100 % → merge on the user's go.
+
 ## 2026-11-08 — 🔀 fix/onboarding-lab-ember MERGED to main d1caa3a2 (user: "merge it to main")
 - **What:** first-run setup in Lab + Carbon & Ember for new installs (updates keep theirs), portrait step circles, "Simple" → "Lab" wording, the notifications button opens the app's notification settings, and the new "Your first container" step.
 - **How:** --no-ff over main c5c0a6b4 (main had not moved, no conflicts). Backup ref refs/backup/20261108/main-before-onboarding-lab-ember → c5c0a6b4. Merged code == the tested 87150656 (diff empty outside PROGRESS_LOG.md).

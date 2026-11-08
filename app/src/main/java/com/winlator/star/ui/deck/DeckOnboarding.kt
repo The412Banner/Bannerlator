@@ -101,7 +101,8 @@ private val ONBOARDING_STEPS = listOf(
     "You're ready",
 )
 
-/** The one interface size the first run offers: Compact, Appearance's UI size at 80%. The full slider stays in Appearance. */
+/** The interface sizes the first run offers: Standard (100 %, the default) and Compact (80 %). The full slider stays in Appearance. */
+private const val UI_SIZE_STANDARD = 1f
 private const val UI_SIZE_COMPACT = 0.8f
 
 /** Marks the Deck first-run finished so it doesn't come back on the next start. */
@@ -503,8 +504,6 @@ private fun StepBody(
             val presetIndex by AppThemeState.presetIndex.collectAsState()
             val uiStyle by AppThemeState.uiStyle.collectAsState()
             val uiScale by AppThemeState.uiScale.collectAsState()
-            // The Deck is laid out for Compact: the first run sets it; Appearance can change it later.
-            LaunchedEffect(Unit) { AppThemeState.setUiScale(UI_SIZE_COMPACT) }
             DeckCard {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Theme", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -547,6 +546,7 @@ private fun StepBody(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Interface size", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DeckChoiceChip("Standard", kotlin.math.abs(uiScale - UI_SIZE_STANDARD) < 0.01f) { AppThemeState.setUiScale(UI_SIZE_STANDARD) }
                         DeckChoiceChip("Compact", kotlin.math.abs(uiScale - UI_SIZE_COMPACT) < 0.01f) { AppThemeState.setUiScale(UI_SIZE_COMPACT) }
                     }
                 }

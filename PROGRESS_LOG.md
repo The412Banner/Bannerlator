@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ lab-art-strings a82ca7dc INSTALLED on the Elite 12:35:44 EST (user: "yes install it"; NOT device-tested yet)
+- pm install -r Success; installed base.apk sha256 **9a1d32be…** == staged == CI artifact (code == main e930314f); logcat crash buffer empty. No game was running; peer sessions told before and "done" after.
+- **Undo:** /sdcard/Download/Bannerlator-lab-fixes-eb63bd5d.apk (5ac93e96…).
+- **Next:** user checks Settings › Appearance › Language in a few languages + the game art features; screenshots + logcat crash check.
+
 ## 2026-11-08 — 🔄 fix/wayland-mali-ahb-blit brought up to date with main (merge d5bf835f; no new build)
 - **User:** "bring the branch up to date from main first". Backup ref `refs/backup/20261108/fix-wayland-mali-ahb-blit-before-main-sync` = f448549a (the tested/posted build). Merged main **dd26c0a9** into the branch (`--no-ff`, no rebase, no force-push): **d5bf835f**, local == origin, 0 behind main, 5 ahead.
 - **Check:** the branch's own diff against main is byte-identical before and after (adapter.json, libvulkan_wrapper.so, XServerDisplayActivity.java +23/−3); main's changes came in byte-identical; no conflicts. The branch now also has Lab game art, lab-fixes, lab art strings and `ci/vendor/dxvk-nvapi` (own copy, so builds no longer depend on GitHub release downloads).

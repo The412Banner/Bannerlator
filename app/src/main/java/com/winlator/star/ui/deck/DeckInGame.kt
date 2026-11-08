@@ -1097,11 +1097,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                 .heightIn(min = 40.dp)
                 .padding(horizontal = 10.dp),
         ) {
+            // Icon only: the open page's name is the page title just below.
             Icon(icon, contentDescription = label, tint = if (sel) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(20.dp))
-            if (sel) {
-                Spacer(Modifier.width(8.dp))
-                Text(label, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
-            }
         }
     }
 
@@ -1123,7 +1120,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Box(Modifier.padding(horizontal = 16.dp).width(30.dp).height(3.dp).background(accent))
         Spacer(Modifier.height(8.dp))
-        // The pages: Quick, then the full menu's (icons; the open one is named).
+        // The pages: Quick, then the full menu's, as icons (the open one tinted; its name is the page title).
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),

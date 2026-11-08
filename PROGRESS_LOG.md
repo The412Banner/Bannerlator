@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 feat/default-size-100 MERGED to main db3253fc (user: "merge when green"; NOT device-tested, user's choice)
+- --no-ff over main a59d5348 (no conflicts). Backup ref refs/backup/20261108/main-before-default-size-100 → a59d5348. Merged code == the built f3eb93c2 (diff empty outside PROGRESS_LOG.md).
+- **Proof:** CI 42524310667 green ×4 (44 success / 15 skipped each). Not installed or tested on the device. Main push build 42525147953 running.
+- **Branch kept:** feat/default-size-100.
+- **Next (user):** more settings with recommended values in the "Your first container" step; waiting for the list.
+
 ## 2026-11-08 — 📐 feat/default-size-100: new installs at 100 % interface + text size (f3eb93c2; CI 42524310667 running, NOT device-tested)
 - **Why (user: "make those sizes 100 percent by default"):** the code default was 90 % for both, and setup step 4 switched the interface to Compact (80 %) on its own.
 - **Change:** AppThemeState's fresh-install block also saves ui_scale = font_scale = 1.0 (only when unset). Updates keep their sizes (90 % when never changed), the same rule as Lab and Carbon & Ember. Setup's "Interface size" offers Standard (100 %) and Compact (80 %) and no longer forces Compact. DECK_UI_SCALE (the Deck/Lab 0.8 draw factor) is unchanged.

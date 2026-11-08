@@ -2,6 +2,9 @@ package com.winlator.star.ui.simple
 
 import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
@@ -216,6 +219,20 @@ internal fun LabHome(
             // tile took the whole row (the library row and the tiles beside it had no room left).
             androidx.compose.animation.Crossfade(targetState = game, modifier = m, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
             val st = stats[game.file.path]
+            // Art and previews: the tile becomes the game's art with its trailer behind the logo, info and buttons.
+            if (LabArt.hasClips(LabArt.gameMode(game))) {
+                LabHeroTile(
+                    game,
+                    label = if (game == recent.firstOrNull()) L("Continue") else L("Selected"),
+                    meta = listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
+                    chips = setupSummary(game).split(" · ").filter { it.isNotBlank() },
+                    playFocus = playFocus,
+                    onPlay = { launcher.requestLaunch(game) },
+                    onPage = { onNavigate(LabRoutes.game(game.file.path)) },
+                    onMenu = { menuFor = game },
+                )
+                return@Crossfade
+            }
             Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -428,4 +445,58 @@ internal fun LabHome(
     }
     ShortcutActionDialogs(actions)
     ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
+}
+
+/**
+ * Home's big tile with previews on: the game's art filling the tile and its preview clip over it, the logo at its
+ * Adjust logo spot, then what it is, its setup and the buttons along the bottom over a dark fade. With 3D art the art
+ * and the clip shift against the device's tilt and the logo less.
+ */
+@Composable
+internal fun LabHeroTile(
+    game: Shortcut,
+    label: String,
+    meta: String,
+    chips: List<String>,
+    playFocus: FocusRequester,
+    onPlay: () -> Unit,
+    onPage: () -> Unit,
+    onMenu: () -> Unit,
+) {
+    val tick = LabArt.tick
+    val p3d = LabArt.has3d(LabArt.gameMode(game))
+    val bg = remember(game.file.path, tick) { LabArt.models(game, "bg").map { LabArt.Pic(it) } + listOfNotNull(LabArt.coverModel(game)?.let { LabArt.Pic(it, blur = true) }) }
+    Box(Modifier.fillMaxSize().simpleDepth().clip(SimpleShape).background(Color(0xFF101318)).border(1.dp, SimpleLine, SimpleShape)) {
+        val layer = Modifier.fillMaxSize().graphicsLayer {
+            val p = LabParallax.offset(p3d)
+            scaleX = 1.08f
+            scaleY = 1.08f
+            translationX = -p.first * 12.dp.toPx()
+            translationY = -p.second * 9.dp.toPx()
+        }
+        LabPicture(bg, layer)
+        LabClipPlayer(game, layer)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.08f), 0.35f to Color.Transparent, 0.66f to Color.Black.copy(alpha = 0.55f), 1f to Color.Black.copy(alpha = 0.86f))))
+        Box(
+            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 132.dp).graphicsLayer {
+                val p = LabParallax.offset(p3d)
+                translationX = p.first * 8.dp.toPx()
+                translationY = p.second * 6.dp.toPx()
+            },
+        ) { LabHeroLogo(game) }
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
+            Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                chips.take(4).forEach {
+                    Text(it, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.background(Color.Black.copy(alpha = 0.38f), SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LabButton(L("Play"), primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus, onClick = onPlay)
+                LabButton(L("Game page"), onClick = onPage)
+                LabButton("", icon = Icons.Filled.MoreHoriz, onClick = onMenu)
+            }
+        }
+    }
 }

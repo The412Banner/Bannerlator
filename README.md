@@ -429,7 +429,7 @@ Bannerlator handles the present mode for you. **Both native engines force FIFO**
 
 **No — not the ones you care about.** Wayland is **experimental** and new. X11 is still the default, still fully supported, and still the right choice for playing. Wayland exists so you can *try* the things X11 cannot do — HDR10, playing on a TV, zero-copy presentation, picking a game driver per game — ideally on a spare container rather than the one with your save files.
 
-It also has hard requirements: a **versionCode 8 arm64ec Proton 11 layer** (the **(v8)** rows in the catalog) and an **Adreno** GPU. On anything else the option is greyed out and a launch falls back to X11 with a notice. If a game misbehaves on Wayland, switch that container back to X11 — one setting — and report it with the log from `Download/Wayland-logs/`.
+It also has hard requirements: a **versionCode 8 arm64ec Proton 11 layer** (the **(v8)** rows in the catalog) and an **Adreno** GPU. On anything else the option is greyed out and a launch falls back to X11 with a notice. If a game misbehaves on Wayland, switch that container back to X11 — one setting — and report it with the game's logs (long-press the game › Share logs; the Wayland log is in the game's log folder under `wayland/`).
 
 ### Why is my FPS reading different from another emulator?
 

@@ -8779,7 +8779,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean launchDInputVisible;
     private String launchDInputForcedWhy;
 
-    /** One line for this session's log under {@code area}: the Wayland session log (Download/Wayland-logs)
+    /** One line for this session's log under {@code area}: the Wayland session log (the game's log folder, wayland/)
      *  on Wayland, the Wine debug log on X11 when the Log Manager has it open; logcat always. */
     private void logSessionLine(String area, String line) {
         Log.i("XServerDisplayActivity", area + ": " + line);
@@ -10299,6 +10299,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override public void surfaceCreated(android.view.SurfaceHolder h) {
                 if (!started) {
                     started = true;
+                    setWaylandSessionLogDir();
                     com.winlator.star.wayland.WaylandCompositor.nativeStartWithSurface(
                             h.getSurface(), xdgRuntimeDir, fDriverPath, fLibraryName, nativeLibDir);
                     startWaylandVsync();
@@ -16132,6 +16133,23 @@ return true;
      * the container's own name ("Container-2"), which is still what they see in the Containers list.
      * Sanitising happens in {@link com.winlator.star.core.LogLocation#sanitizeFolderName}.
      */
+    /**
+     * The Wayland session log goes into this game's log folder, wayland/ (one file per run, the same
+     * keep-last as previous/). Written whatever the Wine debug switch says, as before; if the folder
+     * can't be made the compositor keeps Download/Wayland-logs.
+     */
+    private void setWaylandSessionLogDir() {
+        try {
+            java.io.File dir = com.winlator.star.core.LogLocation.resolveWaylandLogDir(this, currentLogGameName());
+            if (dir != null) com.winlator.star.core.LogRotation.pruneWaylandLogs(
+                    dir, com.winlator.star.core.LogLocation.keepLastRuns(this));
+            com.winlator.star.wayland.WaylandCompositor.nativeSetSessionLogDir(dir != null ? dir.getAbsolutePath() : null);
+            Log.i("XServerDisplayActivity", "wayland: session log folder " + (dir != null ? dir : "Download/Wayland-logs"));
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "wayland: session log folder not set", t);
+        }
+    }
+
     private String currentLogGameName() {
         if (shortcut != null && shortcut.name != null && !shortcut.name.trim().isEmpty())
             return shortcut.name;

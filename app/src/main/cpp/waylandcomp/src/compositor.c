@@ -30,6 +30,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <limits.h>
 #include <sys/timerfd.h>
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
@@ -56,11 +57,21 @@
 #define WLOGE(...) __android_log_print(ANDROID_LOG_ERROR, "BannerWayland", __VA_ARGS__)
 
 /* ------------------------------------------------------------------ session log
- * One readable, time-stamped file per Wayland session in Download/Wayland-logs, also
- * mirrored to logcat: which programs connect, the desktop, windows opening and closing,
- * Vulkan frames arriving, a frame-rate summary every 10 seconds, and errors. */
+ * One readable, time-stamped file per Wayland session, also mirrored to logcat: which programs
+ * connect, the desktop, windows opening and closing, Vulkan frames arriving, a frame-rate summary
+ * every 10 seconds, and errors. It goes to the folder the app sets (the game's log folder's
+ * wayland/, banner_set_session_log_dir), else to Download/Wayland-logs. */
 
 #define SESSION_LOG_DIR "/storage/emulated/0/Download/Wayland-logs"
+
+static char g_session_log_dir[PATH_MAX];
+static pthread_mutex_t g_log_lock_dir = PTHREAD_MUTEX_INITIALIZER;
+
+void banner_set_session_log_dir(const char *dir) {
+    pthread_mutex_lock(&g_log_lock_dir);
+    snprintf(g_session_log_dir, sizeof(g_session_log_dir), "%s", dir ? dir : "");
+    pthread_mutex_unlock(&g_log_lock_dir);
+}
 
 static FILE *g_log;
 
@@ -94,20 +105,30 @@ void banner_log(const char *tag, const char *fmt, ...) {
 }
 
 static void open_session_log(void) {
-    char path[256], stamp[32];
+    char path[PATH_MAX + 64], stamp[32], dir[PATH_MAX];
     time_t now = time(NULL);
     struct tm tm;
-    FILE *f;
+    FILE *f = NULL;
 
     localtime_r(&now, &tm);
     strftime(stamp, sizeof(stamp), "%Y-%m-%d_%H-%M-%S", &tm);
-    mkdir("/storage/emulated/0/Download", 0775);
-    if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
-        WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
-    snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);
-    if (!(f = fopen(path, "w"))) {
-        WLOGE("can't open session log %s: %s", path, strerror(errno));
-        return;
+    pthread_mutex_lock(&g_log_lock_dir);
+    snprintf(dir, sizeof(dir), "%s", g_session_log_dir);
+    pthread_mutex_unlock(&g_log_lock_dir);
+    /* The game's own folder first (the app created it); the old shared folder if that fails. */
+    if (dir[0]) {
+        snprintf(path, sizeof(path), "%s/wayland-%s.log", dir, stamp);
+        if (!(f = fopen(path, "w"))) WLOGE("can't open session log %s: %s", path, strerror(errno));
+    }
+    if (!f) {
+        mkdir("/storage/emulated/0/Download", 0775);
+        if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
+            WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
+        snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);
+        if (!(f = fopen(path, "w"))) {
+            WLOGE("can't open session log %s: %s", path, strerror(errno));
+            return;
+        }
     }
     setvbuf(f, NULL, _IOLBF, 0);
     strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &tm);

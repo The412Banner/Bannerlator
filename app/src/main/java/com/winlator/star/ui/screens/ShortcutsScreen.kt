@@ -572,6 +572,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onCommunityConfigs = if (wineOnly) ({ communityConfigsFor(shortcut) }) else null,
                                     onGameDetails = { gameDetailsShortcut = shortcut },
                                     onViewLogs = if (wineOnly) ({ logsShortcut = shortcut }) else null,
+                                    onShareLogs = if (wineOnly) ({ shareGameLogs(context, shortcut.name) }) else null,
                                     onCloudSaves = if (wineOnly && isSteamOriginShortcut(shortcut))
                                         ({ launchSaveManager(context, steamAppIdOf(shortcut)) }) else null,
                                     onBackupSaves = if (wine && isCustomShortcut(shortcut))
@@ -615,6 +616,7 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
                                     onCommunityConfigs = if (wineOnly) ({ communityConfigsFor(shortcut) }) else null,
                                     onGameDetails = { gameDetailsShortcut = shortcut },
                                     onViewLogs = if (wineOnly) ({ logsShortcut = shortcut }) else null,
+                                    onShareLogs = if (wineOnly) ({ shareGameLogs(context, shortcut.name) }) else null,
                                     onCloudSaves = if (wineOnly && isSteamOriginShortcut(shortcut))
                                         ({ launchSaveManager(context, steamAppIdOf(shortcut)) }) else null,
                                     onBackupSaves = if (wine && isCustomShortcut(shortcut))
@@ -4084,6 +4086,7 @@ private fun ShortcutItemLayoutL(
     onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
     onViewLogs: (() -> Unit)?,
+    onShareLogs: (() -> Unit)? = null,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
@@ -4229,6 +4232,7 @@ private fun ShortcutItemLayoutL(
             onCommunityConfigs = onCommunityConfigs,
             onGameDetails = onGameDetails,
             onViewLogs = onViewLogs,
+            onShareLogs = onShareLogs,
             onCloudSaves = onCloudSaves,
             onBackupSaves = onBackupSaves,
             onRestoreSaves = onRestoreSaves,
@@ -4255,6 +4259,7 @@ private fun ShortcutOverflowButton(
     onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
     onViewLogs: (() -> Unit)?,
+    onShareLogs: (() -> Unit)? = null,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
@@ -4383,6 +4388,14 @@ private fun ShortcutOverflowButton(
                     onClick = { menuExpanded = false; onViewLogs() },
                 )
             }
+            if (onShareLogs != null) {
+                DropdownMenuItem(
+                    enabled = installed,
+                    text = { Text("Share logs") },
+                    leadingIcon = { Icon(Icons.Filled.Share, null) },
+                    onClick = { menuExpanded = false; onShareLogs() },
+                )
+            }
             MenuItemDivider()
             DropdownMenuItem(
                     enabled = installed,
@@ -4414,6 +4427,7 @@ private fun ShortcutGridItem(
     onCommunityConfigs: (() -> Unit)?,
     onGameDetails: () -> Unit,
     onViewLogs: (() -> Unit)?,
+    onShareLogs: (() -> Unit)? = null,
     onCloudSaves: (() -> Unit)? = null,
     onBackupSaves: (() -> Unit)? = null,
     onRestoreSaves: (() -> Unit)? = null,
@@ -4649,6 +4663,9 @@ private fun ShortcutGridItem(
             if (onViewLogs != null) {
                 MenuItemDivider()
                 DropdownMenuItem(enabled = installed, text = { Text("View logs") }, leadingIcon = { Icon(Icons.Filled.Description, null) }, onClick = { menuExpanded = false; onViewLogs() })
+            }
+            if (onShareLogs != null) {
+                DropdownMenuItem(enabled = installed, text = { Text("Share logs") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, onClick = { menuExpanded = false; onShareLogs() })
             }
             MenuItemDivider()
             DropdownMenuItem(enabled = installed, text = { Text("Properties") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { menuExpanded = false; onProperties() })

@@ -85,7 +85,10 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
     // launches sitting in previous/ — showing only the newest would hide exactly the run a user
     // is comparing against.
     val runs = remember(entry.dir) { LogInventory.runsIn(entry.dir) }
-    var selectedRun by remember { mutableStateOf(runs.firstOrNull()) }
+    // Open on the first run that has files: a game played with Wine logging off may only have Wayland logs.
+    var selectedRun by remember {
+        mutableStateOf(runs.firstOrNull { LogInventory.filesIn(it.dir).isNotEmpty() } ?: runs.firstOrNull())
+    }
     val files = remember(selectedRun) { LogInventory.filesIn(selectedRun?.dir ?: entry.dir) }
     var selected by remember(selectedRun) { mutableStateOf(files.firstOrNull()) }
     var following by remember { mutableStateOf(false) }
@@ -148,13 +151,13 @@ fun LogViewerScreen(entry: LogInventory.Entry, onClose: () -> Unit) {
                 ) {
                     runs.forEach { r ->
                         FileChip(
-                            if (r.current) "Current" else runLabel(r.millis),
+                            if (r.current) "Current" else if (r.wayland) "Wayland" else runLabel(r.millis),
                             r == selectedRun
                         ) {
                             selectedRun = r
                             query = ""
                             // Following a finished run would poll a file that can never change.
-                            if (!r.current) following = false
+                            if (!r.current && !r.wayland) following = false
                         }
                     }
                 }
@@ -573,4 +576,54 @@ fun shareLogGroup(context: Context, entry: LogInventory.Entry) {
     } catch (e: Exception) {
         Toast.makeText(context, "Couldn't share those logs.", Toast.LENGTH_SHORT).show()
     }
+}
+
+/**
+ * "Share logs" in a game's menu: zips the game's whole log folder (current run, previous/ and
+ * wayland/) into cacheDir/logs/share and opens Android's share sheet. The zip is built off the UI
+ * thread; the zips of earlier shares are removed first so the cache doesn't grow.
+ */
+fun shareGameLogs(context: Context, gameName: String) {
+    val entry = LogInventory.forGame(context, gameName)
+    if (entry == null) {
+        val msg = if (!com.winlator.star.core.LogLocation.isPerGameEnabled(context))
+            "Per-game log folders are off in Settings › Logs." else "No logs for $gameName yet."
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        return
+    }
+    Toast.makeText(context, "Zipping logs…", Toast.LENGTH_SHORT).show()
+    val app = context.applicationContext
+    val main = android.os.Handler(android.os.Looper.getMainLooper())
+    Thread {
+        try {
+            val dir = File(app.cacheDir, "logs/share").apply { mkdirs() }
+            dir.listFiles { f -> f.isFile && f.name.endsWith(".zip") }?.forEach { it.delete() }
+            val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US).format(java.util.Date())
+            val zip = File(dir, com.winlator.star.core.LogLocation.sanitizeFolderName(entry.name) + "-logs-" + stamp + ".zip")
+            val count = LogInventory.zipFolder(entry.dir, zip)
+            main.post {
+                if (count == 0) {
+                    Toast.makeText(context, "Nothing to share yet.", Toast.LENGTH_SHORT).show()
+                    return@post
+                }
+                try {
+                    val uri = FileProvider.getUriForFile(app, app.packageName + ".tileprovider", zip)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, zip.name)
+                        clipData = android.content.ClipData.newRawUri(zip.name, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    val chooser = Intent.createChooser(send, "Share logs")
+                    if (context !is android.app.Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(chooser)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Couldn't share the logs.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            main.post { Toast.makeText(context, "Couldn't zip the logs.", Toast.LENGTH_SHORT).show() }
+        }
+    }.start()
 }

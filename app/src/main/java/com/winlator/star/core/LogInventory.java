@@ -128,8 +128,18 @@ public final class LogInventory {
         for (File f : files) {
             if (f.isFile() && isOurs(f.getName())) return true;   // isOurs covers crash reports too
             if (f.isDirectory() && LogRotation.ARCHIVE_DIR.equals(f.getName())) return true;
+            if (f.isDirectory() && LogRotation.WAYLAND_DIR.equals(f.getName()) && !waylandLogs(f).isEmpty()) return true;
         }
         return false;
+    }
+
+    /** The Wayland session logs in a game folder's {@code wayland/} (only {@link LogRotation#isOurWaylandLog} names), newest first. */
+    private static List<File> waylandLogs(File waylandDir) {
+        List<File> out = new ArrayList<>();
+        File[] files = waylandDir == null || isLink(waylandDir) ? null : waylandDir.listFiles();
+        if (files != null) for (File f : files) if (f.isFile() && !isLink(f) && LogRotation.isOurWaylandLog(f.getName())) out.add(f);
+        Collections.sort(out, (a, b) -> b.getName().compareTo(a.getName()));
+        return out;
     }
 
     private static Entry describe(File dir, boolean appBucket) {
@@ -146,6 +156,8 @@ public final class LogInventory {
                         bytes += sizeOfTree(f);
                     } else if (isUbisoftSideFolder(f.getName())) {
                         bytes += sizeOfTree(f);
+                    } else if (LogRotation.WAYLAND_DIR.equals(f.getName())) {
+                        for (File w : waylandLogs(f)) { bytes += w.length(); newest = Math.max(newest, w.lastModified()); }
                     }
                     continue;
                 }
@@ -158,17 +170,27 @@ public final class LogInventory {
         return new Entry(dir.getName(), dir, count, bytes, newest, appBucket, archives);
     }
 
-    /** One run of a game: the current one, or an archived launch under {@code previous/}. */
+    /**
+     * One run of a game: the current one, or an archived launch under {@code previous/}. Also the
+     * game's {@code wayland/} folder ({@link #wayland}): one session log per run, listed as one entry.
+     */
     public static final class Run {
         public final File dir;
         public final boolean current;
         /** When the run happened, from the archive folder's timestamp name. */
         public final long millis;
+        /** The {@code wayland/} folder: its files are the Wayland session logs, newest first. */
+        public final boolean wayland;
 
         Run(File dir, boolean current, long millis) {
+            this(dir, current, millis, false);
+        }
+
+        Run(File dir, boolean current, long millis, boolean wayland) {
             this.dir = dir;
             this.current = current;
             this.millis = millis;
+            this.wayland = wayland;
         }
     }
 
@@ -182,6 +204,9 @@ public final class LogInventory {
         List<Run> out = new ArrayList<>();
         if (groupDir == null || !groupDir.isDirectory()) return out;
         out.add(new Run(groupDir, true, groupDir.lastModified()));
+        File wl = new File(groupDir, LogRotation.WAYLAND_DIR);
+        List<File> wlLogs = waylandLogs(wl);
+        if (!wlLogs.isEmpty()) out.add(new Run(wl, false, wlLogs.get(0).lastModified(), true));
 
         File[] archived = new File(groupDir, LogRotation.ARCHIVE_DIR).listFiles(File::isDirectory);
         if (archived == null) return out;
@@ -208,6 +233,7 @@ public final class LogInventory {
 
     /** Current-run log files in a group, newest first. Archives are not included. */
     public static List<File> filesIn(File dir) {
+        if (dir != null && LogRotation.WAYLAND_DIR.equals(dir.getName())) return waylandLogs(dir);
         List<File> out = new ArrayList<>();
         File[] files = dir == null ? null : dir.listFiles();
         if (files != null) for (File f : files) if (f.isFile() && isOurs(f.getName())) out.add(f);
@@ -239,6 +265,13 @@ public final class LogInventory {
                     // Only our own archive folder, never an arbitrary subdirectory.
                     if (LogRotation.ARCHIVE_DIR.equals(f.getName())) deleted += deleteTree(f);
                     else if (isUbisoftSideFolder(f.getName())) deleted += deleteTree(f);   // the Ubisoft report's own folder
+                    else if (LogRotation.WAYLAND_DIR.equals(f.getName())) {
+                        // Only the session logs the compositor wrote; the folder goes once it is empty.
+                        for (File w : waylandLogs(f)) if (w.delete()) deleted++;
+                        File[] left = f.listFiles();
+                        if (left != null && left.length == 0) //noinspection ResultOfMethodCallIgnored
+                            f.delete();
+                    }
                     continue;
                 }
                 if (isOurs(f.getName()) && f.delete()) deleted++;
@@ -262,6 +295,7 @@ public final class LogInventory {
             for (File f : files) {
                 if (f.isDirectory()) {
                     if (LogRotation.ARCHIVE_DIR.equals(f.getName()) || isUbisoftSideFolder(f.getName())) n += countTree(f);
+                    else if (LogRotation.WAYLAND_DIR.equals(f.getName())) n += waylandLogs(f).size();
                 } else if (isOurs(f.getName())) n++;
             }
         }
@@ -283,6 +317,8 @@ public final class LogInventory {
     private static boolean isOurs(String name) {
         String n = name.toLowerCase(Locale.US);
         if (LogRotation.isOurRunLog(n)) return true;
+        // Wayland session logs (wayland/ folder; its own exact name pattern, not part of the run rotation).
+        if (LogRotation.isOurWaylandLog(n)) return true;
         // Crash reports are ours and are .txt, which the run-log allowlist deliberately excludes.
         return n.startsWith("crash_") && n.endsWith(".txt");
     }
@@ -320,6 +356,43 @@ public final class LogInventory {
         File[] kids = f.listFiles();
         if (kids != null) for (File k : kids) n += countTree(k);
         return n;
+    }
+
+    /**
+     * Zip a game's whole log folder (current run, previous/, wayland/ and anything else in it) into
+     * {@code zip}, every path under the folder's own name. Links are never followed or stored. Not
+     * redacted: the per-file Share action isn't either. Returns how many files went in.
+     */
+    public static int zipFolder(File dir, File zip) throws java.io.IOException {
+        int[] n = {0};
+        try (java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(zip))) {
+            zipInto(out, dir, dir.getName(), n);
+        }
+        return n[0];
+    }
+
+    private static void zipInto(java.util.zip.ZipOutputStream out, File f, String path, int[] n)
+            throws java.io.IOException {
+        if (isLink(f)) return;
+        if (f.isDirectory()) {
+            File[] kids = f.listFiles();
+            if (kids == null) return;
+            java.util.Arrays.sort(kids, (a, b) -> a.getName().compareTo(b.getName()));
+            for (File k : kids) zipInto(out, k, path + "/" + k.getName(), n);
+            return;
+        }
+        if (!f.isFile()) return;
+        java.util.zip.ZipEntry e = new java.util.zip.ZipEntry(path);
+        e.setTime(f.lastModified());
+        out.putNextEntry(e);
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            byte[] buf = new byte[1 << 16];
+            int r;
+            while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+        }
+        out.closeEntry();
+        n[0]++;
     }
 
     public static long totalBytes(List<Entry> entries) {

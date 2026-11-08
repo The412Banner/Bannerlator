@@ -199,6 +199,10 @@ public final class WaylandCompositor {
     /** Start the compositor headless (no output window) — bring-up tests only. */
     public static native void nativeStart(String xdgRuntimeDir);
 
+    /** Folder for the next session's log (the game's log folder's wayland/); call before nativeStart*.
+     *  Null/empty or unwritable = Download/Wayland-logs. */
+    public static native void nativeSetSessionLogDir(String dir);
+
     /** Start the compositor rendering to {@code surface}. XDG_RUNTIME_DIR = an
      *  app-writable dir for the wayland socket (e.g. context.getFilesDir()).
      *  driverPath/libraryName/nativeLibDir select the Turnip driver via adrenotools
@@ -329,7 +333,7 @@ public final class WaylandCompositor {
      *  the session log. A no-op on Android versions without {@code ASurfaceTransaction_setFrameRate}. */
     public static native void nativeSetLayerFrameRate(float hz);
 
-    /** Write one line into the compositor's session log (Download/Wayland-logs) under the "display"
+    /** Write one line into the compositor's session log (the game's log folder, wayland/) under the "display"
      *  area, from Java. Used for facts the platform knows and the native side does not — the panel's
      *  HDR capability, which lives behind android.view.Display. Safe before the compositor thread is
      *  up (the line then only reaches logcat) and safe after it has gone. */

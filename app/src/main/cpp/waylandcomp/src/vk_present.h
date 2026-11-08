@@ -209,7 +209,10 @@ int vkp_pass_begin(int scene_w, int scene_h, const struct vkp_draw *draws, int n
 int vkp_pass_copy_to(struct vkp_image *dst, int wait_fd);
 void vkp_pass_abort(void);
 
-// Session log (compositor.c): one line to Download/Wayland-logs and logcat.
+// Session log (compositor.c): one line to the session log file and logcat.
 void banner_log(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+// Folder for the next session log (the game's log folder's wayland/); set before the compositor
+// starts. NULL/empty or unwritable = Download/Wayland-logs.
+void banner_set_session_log_dir(const char *dir);
 
 #endif

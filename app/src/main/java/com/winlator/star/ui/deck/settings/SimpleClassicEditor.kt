@@ -123,6 +123,8 @@ private class CPage(val title: String, val items: List<CItem>) : CItem
 private class CExtra(val category: String, val title: String, val keys: (String) -> Boolean = { true }, val top: Boolean? = null) : CItem
 /** The [category]'s hand-offs (change the program, move to another container ...). */
 private class CLinks(val category: String) : CItem
+/** A category's extra drawn in place among the rows (not behind a row of its own), e.g. the adapter report. */
+private class CInline(val category: String, val keys: (String) -> Boolean) : CItem
 private class CTab(val title: String, val icon: ImageVector, val items: List<CItem>, val leftovers: Set<String> = emptySet())
 
 private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id.startsWith(it) } }
@@ -136,7 +138,7 @@ private fun graphicsItems(game: Boolean): List<CItem> = listOf(
     CRow("graphics.driver", L("Graphics Driver")),
     CPage(L("Driver settings"), listOf(CMatch(pre("graphics.gdc.")))),
     CRow(COMPOSITOR_DRIVER, L("Graphics Driver")),
-    CPage(L("Wayland game driver"), listOf(CMatch(pre("graphics.wl.")), CExtra("graphics", L("Adapter report"), { it == WAYLAND_ADAPTER_REPORT }))),
+    CPage(L("Wayland game driver"), listOf(CInline("graphics") { it == WAYLAND_ADAPTER_REPORT }, CMatch(pre("graphics.wl.")))),
     CRow("display.hdrOutput", L("HDR output (HDR10)")),
     CRow("graphics.fastOpenGL", L("OpenGL: Fast")),
     CRow("graphics.glFpsHud", L("OpenGL: Show FPS")),
@@ -374,6 +376,7 @@ private class RSet(val def: SettingDef, val label: String) : RLine
 private class RPage(val title: String, val lines: List<RLine>) : RLine
 private class RExtra(val title: String, val items: List<PageExtra>) : RLine
 private class RLink(val h: Handoff) : RLine
+private class RInline(val items: List<PageExtra>) : RLine
 private class RTab(val title: String, val icon: ImageVector, val lines: List<RLine>)
 
 private fun pruneHeads(lines: List<RLine>): List<RLine> = lines.filterIndexed { i, l ->
@@ -415,6 +418,13 @@ private fun resolve(
                     .map { (p, _) -> p }
                 list.forEach { p -> placedExtra += "${it.category}|${p.key}" }
                 if (list.isNotEmpty()) add(RExtra(it.title, list))
+            }
+            is CInline -> {
+                val list = extraItems[it.category].orEmpty()
+                    .filter { (p, _) -> "${it.category}|${p.key}" !in placedExtra && it.keys(p.key) }
+                    .map { (p, _) -> p }
+                list.forEach { p -> placedExtra += "${it.category}|${p.key}" }
+                if (list.isNotEmpty()) add(RInline(list))
             }
             is CLinks -> handoffs[it.category].orEmpty()
                 .filter { h -> !h.target.startsWith(SettingsRegistry.TARGET_CATEGORY) && h.target != SettingsRegistry.TARGET_NONE }
@@ -500,7 +510,7 @@ internal fun SimpleClassicEditor(
     if (tabIsExtra) openExtra = lines[0] as RExtra
     val extraOpen = openExtra != null
     LaunchedEffect(extraOpen, tabKey) { if (extraOpen) zone = KZone.EXTRAS else if (zone == KZone.EXTRAS) zone = KZone.ROWS }
-    fun canFocus(l: RLine?) = l != null && l !is RHead
+    fun canFocus(l: RLine?) = l != null && l !is RHead && l !is RInline
     val rowNow = row.coerceIn(0, max(0, lines.size - 1)).let { r ->
         if (canFocus(lines.getOrNull(r))) r else lines.indexOfFirst { canFocus(it) }.coerceAtLeast(0)
     }
@@ -598,7 +608,7 @@ internal fun SimpleClassicEditor(
             is RPage -> { stack = stack + (l.title to rowNow); row = 0 }
             is RExtra -> { stack = stack + (l.title to rowNow); row = 0 }
             is RLink -> guard { onHandoff(l.h) }
-            is RHead -> Unit
+            is RHead, is RInline -> Unit
         }
     }
 
@@ -1149,6 +1159,7 @@ private fun LinesPanel(
                     is RPage -> ClassicLinkLine(l.title, pageSummary(l, source, env, values), focused = i == row, active = active) { onTap(i) }
                     is RExtra -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
                     is RLink -> ClassicLinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }
+                    is RInline -> Column(Modifier.fillMaxWidth()) { l.items.forEach { it.content() } }
                 }
             }
         }

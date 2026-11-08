@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔄 fix/wayland-mali-ahb-blit brought up to date with main (merge d5bf835f; no new build)
+- **User:** "bring the branch up to date from main first". Backup ref `refs/backup/20261108/fix-wayland-mali-ahb-blit-before-main-sync` = f448549a (the tested/posted build). Merged main **dd26c0a9** into the branch (`--no-ff`, no rebase, no force-push): **d5bf835f**, local == origin, 0 behind main, 5 ahead.
+- **Check:** the branch's own diff against main is byte-identical before and after (adapter.json, libvulkan_wrapper.so, XServerDisplayActivity.java +23/−3); main's changes came in byte-identical; no conflicts. The branch now also has Lab game art, lab-fixes, lab art strings and `ci/vendor/dxvk-nvapi` (own copy, so builds no longer depend on GitHub release downloads).
+- **CI:** none (push to a non-main branch does not build). The posted test build is still f448549a (run 42467072138). NOT device-tested. Merge to main only after Mali device proof + the user's go; `fix/wayland-mali-inline-shaders` is contained in this branch.
+
 ## 2026-11-08 — 🔀 feat/lab-art-strings MERGED to main e930314f (user: "merge it to main"; NOT device-tested)
 - **What:** the 89 new game art strings in 32 languages + the wrong existing translations fixed (a82ca7dc).
 - **How:** --no-ff over main 226c266f (1 log-only commit); PROGRESS_LOG conflict resolved (both kept). Backup ref refs/backup/20261108/main-before-lab-art-strings → 226c266f. Merged code == a82ca7dc (diff empty outside PROGRESS_LOG.md).

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ lab-fixes eb63bd5d INSTALLED on the Elite 04:22:17 EST (user: "install it when it's done"; NOT device-tested yet)
+- **Build:** build-artifacts 42465954643, pubg job success (47 success / 12 skipped: the Linux-runtime step ran because the _build.yml change reset its cache key); antutu failed on a GitHub 504 (gamescope release download), standard/ludashi still running at install time. Log: "dxvk-nvapi v0.9.2 bundled from our copy in ci/vendor/dxvk-nvapi/v0.9.2", "patched gamescope staged from gamescope-3.16.29-p4".
+- **ci (eb63bd5d, user: "yes keep our own copy of that file"):** ci/vendor/dxvk-nvapi/v0.9.2/{nvapi64,nvapi}.dll (taken from the 082c2715 APK, sha256 1bcf9b68… / afb3bfad… = the pinned manifest) + README; _build.yml uses that copy when both hashes match, else downloads the release (jp7677 release URL still 504 at 04:09 EST). **main not changed yet** (needs the user's go).
+- **APK:** sha256 5ac93e96… (staged /sdcard/Download/Bannerlator-lab-fixes-eb63bd5d.apk, host == device == installed), same cert; contains the crash fix (a54fcf6d), slow 3D drift, Steam-by-name + SteamGridDB backgrounds (3d05a47f). No new crash-buffer entries at install. Peers told before / "done" after. Fallback staged: Bannerlator-lab-fixes-082c2715.apk.
+- **Next:** user tests: no crash on 3D art, slow drift, sharp backgrounds (RE2, MIO, Samorost 3 / Epic games via SteamGridDB), logo not over SELECTED.
+
 ## 2026-11-08 — 🔧 lab-fixes after the first device try: crash, 3D, blurry art (3d05a47f; CI blocked by a GitHub 504)
 - **User test of 082c2715 (Elite, portrait):** 3D tilt jerky; **crash** when moving the device on 3D art (logcat crash 03:55:22 + 03:56:01 EST: IllegalStateException "Offset is unspecified" at AndroidViewHolder.layoutAccordingTo → positionInRoot, under BlockGraphicsLayerModifier = the preview player (AndroidView) inside the moving 3D layer with a bad tilt value); backgrounds blurry (screenshots 035753 Samorost 3 = Epic game, no Steam link → cover blurred fallback; 035758 RE2 = 1920x620 hero zoomed ~3x to fill 1080x1920).
 - **User asks:** 3D art should "slowly move like in the preview" (no gyro); backgrounds clear; "can't the games auto scrape from steamgriddb for proper clear game art?" → yes.

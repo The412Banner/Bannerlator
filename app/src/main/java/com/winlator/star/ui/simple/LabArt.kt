@@ -158,7 +158,7 @@ internal object LabArt {
     fun gameGrid(s: Shortcut): Boolean = when (s.getExtra(K_GRID, "")) { "on" -> true; "off" -> false; else -> grid }
     fun appId(s: Shortcut): Int? = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
 
-    private const val STEAM = "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/"
+    private const val STEAM = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
 
     /** Steam's published picture for [slot] of [appId]. */
     fun steamUrl(appId: Int, slot: String): String? = when (slot) {
@@ -169,6 +169,10 @@ internal object LabArt {
         else -> null
     }
 
+    /** Steam's pictures for [slot], sharpest first: the background's double size (3840×1240) where Steam has one. */
+    fun steamUrls(appId: Int, slot: String): List<String> =
+        if (slot == "bg") listOf("$STEAM$appId/library_hero_2x.jpg", "$STEAM$appId/library_hero.jpg") else listOfNotNull(steamUrl(appId, slot))
+
     fun model(v: String): Any = if (v.startsWith("http")) v else File(v)
 
     /** The game's own pick for [slot]: a URL or file path, "none", or null (automatic). */
@@ -178,7 +182,8 @@ internal object LabArt {
     fun models(s: Shortcut, slot: String): List<Any> {
         val p = pick(s, slot)
         if (p == "none") return emptyList()
-        return listOfNotNull(p?.let(::model), appId(s)?.let { steamUrl(it, slot) })
+        val id = appId(s)
+        return listOfNotNull(p?.let(::model)) + (if (id != null) steamUrls(id, slot) else emptyList())
     }
 
     /** The cover the app already shows (Simple cover's bitmap), as a picture model. */

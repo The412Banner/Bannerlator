@@ -176,7 +176,7 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
                 icon = Icons.Filled.Build,
                 entries = listOf(
                     MenuEntry("files", "File manager", "Internal storage, SD card and every container's drives", icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
-                    MenuEntry("saves", "Save backups", "Back up, restore and sync game saves", icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
+                    MenuEntry("saves", "Save Manager", "Back up, restore and sync game saves", icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
                     MenuEntry("logs", "Game logs", "What each game printed while it ran", icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
                     MenuEntry("wrappers", "Wrappers", "Graphics wrappers", icon = Icons.Filled.Layers, onA = { onNavigate(Screen.Wrappers.route) }),
                     MenuEntry("drivers", "GPU drivers", "Turnip and Qualcomm drivers", icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.DRIVERS) }),

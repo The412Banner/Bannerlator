@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
@@ -68,6 +69,7 @@ internal val LAB_SECTIONS = listOf(
     LabSection("Contents", "Contents", Icons.Filled.Memory, SimpleRoutes.DRIVERS),
     LabSection("Controls", "Controls", Icons.Filled.SportsEsports, SimpleRoutes.CONTROLS),
     LabSection("Files & tools", "Tools", Icons.Filled.FolderOpen, SimpleRoutes.TOOLS),
+    LabSection("Save Manager", "Saves", Icons.Filled.Save, SimpleRoutes.SAVES),
     LabSection("Settings", "Settings", Icons.Filled.Settings, DeckSettingsRoutes.APP),
 )
 
@@ -81,8 +83,9 @@ internal fun labSectionOf(route: String?): Int {
         r.startsWith("simple_containers") || r.startsWith("deck_settings_container") || r == DeckSettingsRoutes.DEFAULTS || r.startsWith("container_detail") -> 3
         r.startsWith("simple_driver") || r.startsWith("simple_component") || r.startsWith("adreno") || r.startsWith("contents") -> 4
         r.startsWith("simple_controls") || r.startsWith("input_controls") -> 5
-        r.startsWith("simple_tools") || r.startsWith("simple_files") || r.startsWith("simple_saves") || r.startsWith("simple_logs") || r.startsWith("wrappers") -> 6
-        r.startsWith("deck_settings_app") || r.startsWith("simple_appearance") || r.startsWith("settings") || r.startsWith("appearance") -> 7
+        r.startsWith("simple_tools") || r.startsWith("simple_files") || r.startsWith("simple_logs") || r.startsWith("wrappers") -> 6
+        r.startsWith("simple_saves") || r.startsWith("save_manager") -> 7
+        r.startsWith("deck_settings_app") || r.startsWith("simple_appearance") || r.startsWith("settings") || r.startsWith("appearance") -> 8
         else -> 0
     }
 }

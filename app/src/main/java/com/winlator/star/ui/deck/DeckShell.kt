@@ -210,6 +210,7 @@ private val SIMPLE_ALIASES = mapOf(
     DeckRoutes.TOOLS to com.winlator.star.ui.simple.SimpleRoutes.TOOLS,
     Screen.Settings.route to DeckSettingsRoutes.APP,
     Screen.Appearance.route to com.winlator.star.ui.simple.SimpleRoutes.APPEARANCE,
+    Screen.SaveManager.route to com.winlator.star.ui.simple.SimpleRoutes.SAVES,
 )
 
 /** Routes the shell draws itself (no page bar above them). */

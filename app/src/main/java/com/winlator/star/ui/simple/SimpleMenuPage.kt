@@ -116,6 +116,10 @@ internal class MenuEntry(
     val pills: List<String> = emptyList(),
     /** A heading over the first row of each run of rows with the same group (GPU drivers, DXVK …). */
     val group: String? = null,
+    /** An on/off row: a switch on the right (A or a tap runs [onA], which flips it). */
+    val toggle: Boolean? = null,
+    /** A picture in front of the title (a game's cover, logo, background …), in place of the icon. */
+    val thumb: (@Composable () -> Unit)? = null,
 )
 
 internal class MenuSection(
@@ -140,8 +144,10 @@ internal fun SimpleMenuPage(
     onBack: () -> Unit,
     /** Extra lines over the menu (a status, a running download, a notice). */
     banner: String? = null,
+    /** The section open first (its key); the first one when null. */
+    startSection: String? = null,
 ) {
-    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner) }
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection) }
 }
 
 @Composable
@@ -151,9 +157,10 @@ private fun SimpleMenuPageBody(
     sections: List<MenuSection>,
     onBack: () -> Unit,
     banner: String?,
+    startSection: String? = null,
 ) {
     val layout by AppThemeState.simpleLayout.collectAsState()
-    var secKey by rememberSaveable { mutableStateOf(sections.firstOrNull()?.key ?: "") }
+    var secKey by rememberSaveable { mutableStateOf(startSection ?: sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
@@ -515,10 +522,11 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 ) {
                     Image(bmp, contentDescription = null, contentScale = ContentScale.Fit, colorFilter = if (e.logoWhite) ColorFilter.tint(Color.White) else null, modifier = Modifier.size(width = 34.dp, height = 22.dp))
                 }
+                e.thumb != null -> Box(Modifier.width(112.dp), contentAlignment = Alignment.Center) { e.thumb.invoke() }
                 e.swatch != null -> Box(Modifier.size(22.dp).simpleDepth().background(e.swatch, SimpleShape).border(1.dp, Color(0x40FFFFFF), SimpleShape))
                 e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (e.primary || (focused && active)) accent else SimpleMuted, modifier = Modifier.size(22.dp))
             }
-            if (bmp != null || e.icon != null || e.swatch != null) Spacer(Modifier.width(14.dp))
+            if (bmp != null || e.icon != null || e.swatch != null || e.thumb != null) Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.title, color = if (e.primary) accent else if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -548,6 +556,10 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
             if (!e.trailing.isNullOrBlank()) {
                 Spacer(Modifier.width(10.dp))
                 Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
+            }
+            e.toggle?.let { on ->
+                Spacer(Modifier.width(10.dp))
+                LabSwitch(on)
             }
             // The item's options: a ⋯ to tap (X on a controller does the same).
             val play = e.play
@@ -642,4 +654,14 @@ internal fun SimpleConfirm(title: String, body: String, danger: Boolean, onDismi
         onDismiss = onDismiss,
         message = body,
     ) { it.run() }
+}
+
+/** Lab's switch: the accent track with the knob right when on. */
+@Composable
+internal fun LabSwitch(on: Boolean) {
+    val accent = MaterialTheme.colorScheme.primary
+    val x by animateFloatAsState(if (on) 1f else 0f, tween(200), label = "labSwitch")
+    Box(Modifier.size(width = 44.dp, height = 24.dp).background(if (on) accent else SimpleLine, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(3.dp)) {
+        Box(Modifier.graphicsLayer { translationX = x * 20.dp.toPx() }.size(18.dp).background(if (on) Color.White else SimpleMuted, androidx.compose.foundation.shape.CircleShape))
+    }
 }

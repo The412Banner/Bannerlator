@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in hu. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in hu. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Energia (alapértékek minden játékhoz)</string>
     <string name="lab_0016da13">Az Egyéni minden szolgáltatást kikapcsolva indít: csak azt kapcsold be, amire a játéknak szüksége van.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">B gomb</string>
     <string name="lab_00737986">Valódi HDR10-et küld a kijelzőre.</string>
     <string name="lab_007bf585">Azonnali indítás a mentett választásokkal. Kapcsold ki, hogy újra lásd az indítómenüt.</string>
+    <string name="lab_0086410b">Széles borítók</string>
     <string name="lab_00aad2e4">Játékmappa DLL-jei előnyben</string>
     <string name="lab_00d53383">Előbb hozz létre egy profilt (Képernyős lap).</string>
     <string name="lab_00e9bd4e">Wrapper</string>
     <string name="lab_00ef3163">CPU-governor és frekvenciarögzítés, szabad memória, hőmérséklet-figyelő (klasszikus Beállítások › Teljesítmény), valamint a Lossless.dll importálása a képkocka-generáláshoz.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s GB</string>
     <string name="lab_0134b985">DX wrapper beállításai</string>
+    <string name="lab_0155bfc3">Borítók, széles borítók vagy ikonok a Home képernyőn és a Könyvtárban</string>
     <string name="lab_015a2290">Engedélyek, téma és áruházak</string>
     <string name="lab_01940fd6">Általános</string>
     <string name="lab_01942160">FPS tizedesjeggyel</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">A játék által használható magok</string>
     <string name="lab_044b1956">Teljesítmény</string>
     <string name="lab_04accfcf">OpenGL: Gyors</string>
+    <string name="lab_04e55ba9">Kép kiválasztása: %1$s</string>
     <string name="lab_04fc2b5b">Kép</string>
     <string name="lab_052396d7">A DirectAudio kísérleti</string>
     <string name="lab_0526e39f">L1 / R1: lapozás, X: váltás a gyorsmenü és a játékmenü között, B: bezárás.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">A Beépített (Win-FG) az alkalmazáson belül interpolál. A Lossless Scaling a saját Lossless.dll fájlodat használja. Mindkettőhöz a Vulkan képernyő-renderelő, a Wayland vagy egy Linux-bejegyzés kell. A szorzót játék közben állíthatod be.</string>
     <string name="lab_070cecae">Válaszd ki, mi kerüljön a naplóba (Wine, Box64/FEX, DXVK, SteamLite, Felület nélküli Steam, logcat), hová kerüljenek a naplók és hányat őrizzen meg; böngészd és oszd meg őket.</string>
     <string name="lab_0721ad7c">Ez a konténer</string>
+    <string name="lab_075ffd70">Saját videó</string>
     <string name="lab_07a88d47">Egy Vissza gombnyomás továbbra is megnyitja a játék közbeni oldalsó menüt.</string>
     <string name="lab_07e11363">Az egész konténerre bekapcsolva: a konténerben kapcsold ki.</string>
     <string name="lab_080615dc">Konténer szerint</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Javítja a forgó vagy beragadt kamerát egyes régebbi játékokban.</string>
     <string name="lab_0d5a2b34">A program neve után hozzáadott extra szavak, pl. -windowed -dx11.</string>
     <string name="lab_0da00171">• A játékok nem kapják meg a kontrollert. A Steam saját menüi működnek, de játékban a kontroller nem csinál semmit.\n</string>
+    <string name="lab_0dc541d5">Visszaállítás alapértelmezettre</string>
     <string name="lab_0ddd64ae">Rezgés erőssége</string>
     <string name="lab_0e15cd35">Összehajtható telefonokon hasznos: a játék az egyik felén marad.</string>
     <string name="lab_0e24f0e3">Aszinkron shader-gyorsítótár</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">ReShade effektek</string>
     <string name="lab_1054fdc3">Waylanden a játék a beágyazott kompozitoron keresztül renderel, amelynek a képkockák importálásához telepített Turnip kell. A „Rendszer” csak Mali GPU-kon választható; máshol fekete képernyőt ad. Azt, hogy maga a játék min renderel, a lenti Wayland játék-illesztőprogram határozza meg.</string>
     <string name="lab_105c504c">OneUI / HyperOS javítás</string>
+    <string name="lab_1079be1d">Nincs találat a Steamen erre: %1$s</string>
     <string name="lab_10a08356">Váltás engedélyezése játék közben</string>
     <string name="lab_10cb69ae">Ikonkép kiválasztása</string>
     <string name="lab_1121166e">Alfa</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Szín kiválasztása</string>
     <string name="lab_1331bc15">A SteamLite a valódi Steam-klienst futtatja, így működnek a teljesítmények, a felhőmentések és az online játék. A Felület nélküli Steam az alkalmazás saját Steam-munkamenetén futtatja a játékot, így a barátok és a csevegés online marad (kísérleti). A Goldberg bejelentkezés nélkül Steamnek adja ki magát. A Közvetlen .exe a játék saját programját indítja.</string>
     <string name="lab_134638cc">GOG-játékok</string>
+    <string name="lab_136c7474">Bal alsó</string>
     <string name="lab_137513e1">Automatikusan kiválasztva: az új konténer alapértelmezéseiben szereplő illesztőprogram.</string>
     <string name="lab_137e9ac8">Egyelőre csak a beépített összetevők.</string>
     <string name="lab_13868325">Megnyitási módok</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Manuális</string>
     <string name="lab_177847bc">Nincs mit másolni</string>
     <string name="lab_17a0dfae">Offline</string>
+    <string name="lab_17c41d91">Képernyőkép</string>
     <string name="lab_17e8622b">A SurfaceFlinger a játék képkockáit közvetlenül az Android kompozitorának adja át. Gyorsabb lehet, de egyes eszközökön fekete képernyőt vagy hibás színeket mutat. Ilyenkor válts vissza Vulkanra vagy OpenGL-re.</string>
     <string name="lab_17f88806">Konténernév, nyelv, asztal és munkamenet-viselkedés.</string>
     <string name="lab_181ab51a">Ez nagyobb, mint 8K.</string>
     <string name="lab_1821acdc">Egyszínű</string>
+    <string name="lab_183f03ee">Előnézeti klip</string>
     <string name="lab_187e8ab4">ez a játék</string>
     <string name="lab_188dc386">A Teljesítmény › Szinkronizálás állítja be.</string>
     <string name="lab_18991a24">Egyéb</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Kontrollerteszt</string>
     <string name="lab_198324db">A Bannerlator névjegye</string>
     <string name="lab_19a0f782">Teljesítményszint, a fájl minden kulcsa, biztonsági mentések, valamint VEGAS buildek törlése vagy telepítése.</string>
+    <string name="lab_19b489d5">3D grafika és előnézetek</string>
     <string name="lab_19e91dd3">Bemenet</string>
     <string name="lab_1a0d3004">Ablakos</string>
     <string name="lab_1a1b35e7">Futtatókörnyezet</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · nincs csatlakoztatva (mentett rögzítés)</string>
     <string name="lab_2062fe79">FPS-korlátozó</string>
     <string name="lab_20898aa4">Csak ha az automatikus észlelés nem sikerül ([KFAULT] a naplóban).</string>
+    <string name="lab_208b07a1">Részletek, grafika, háttér ›</string>
     <string name="lab_209f636f">Felskálázás, élesítés és szín</string>
     <string name="lab_20f30881">Játék folytatása</string>
     <string name="lab_211badb3">Játék tévén, automatikus váltás, biztonsági terület, hangkimenet, elsötétítés és tévéfelbontás</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Kezelés</string>
     <string name="lab_23e9383c">Verzió, mi hajtja és készítők.</string>
     <string name="lab_2453405d">Használd: auto:N, fixed:N vagy off</string>
+    <string name="lab_2470de02">Átlátszó</string>
     <string name="lab_24720798">Felcserélt színek javítása</string>
     <string name="lab_247c39e6">Megkerüli a kompozitort a kisebb késésért. Kikapcsolja a képernyőeffekteket.</string>
     <string name="lab_24857b5d">RGBA (piros/kék csere)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Billentyűzet megjelenítése</string>
     <string name="lab_2694592a">Fent</string>
     <string name="lab_274284a1">Ebben a buildben Waylanden még nem érhető el.</string>
+    <string name="lab_2742f91b">Automatikus · Steam-előzetes</string>
     <string name="lab_2756404f">Energia- és root-beállítások visszaállítása az alkalmazás alapértelmezéseire</string>
     <string name="lab_27b56d30">Telepíti a Bannerlator XInput DLL-jeit a Wine saját XInputja mellé, akár be van kapcsolva a Közvetlen XInput, akár nincs, így a játékmenü Controls › Pad része futás közben válthat köztük (a kontroller újracsatlakozik). Alapból bekapcsolva. Ki: a Közvetlen XInput úgy marad, ahogy a játék indult, és a módosításához újraindítás kell.</string>
     <string name="lab_27bcb120">Box64 és FEX előbeállítások hozzáadása, másolása, törlése, exportálása vagy importálása (klasszikus Beállítások).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Háttérkép ehhez:</string>
     <string name="lab_28441b9b">Indítsa újra</string>
     <string name="lab_28502118">VEGAS beépített alapértékek (fájl nélkül)</string>
+    <string name="lab_286dae57">Automatikus · a borítóból</string>
     <string name="lab_287eabc8">FPS megjelenítése</string>
     <string name="lab_28d51363">A játék által választható frissítési frekvencia</string>
     <string name="lab_28f727b0">HUD-diagnosztika exportálása</string>
     <string name="lab_29198bb7">Nincs beállítva (rendszer)</string>
+    <string name="lab_2927fedd">Előnézetek csak Wi-Fi-n</string>
     <string name="lab_29a908d6">Bekapcsolt GPU-várakozás kihagyása szükséges.</string>
     <string name="lab_29b501c2">Barátok és csevegés, értesítések és játékon belüli jelenlét.</string>
     <string name="lab_29c3ef3b">Képernyős vezérlők, egér, rezgés, mozgásos célzás, játékosok.</string>
     <string name="lab_29d0a27a">Megjelenítési rendszer</string>
     <string name="lab_29faa513">Kontrollerek száma</string>
+    <string name="lab_29fe3935">Nincs összekapcsolva a Steammel</string>
     <string name="lab_2a1dcc50">Alapértelmezett Box64 előbeállítás</string>
     <string name="lab_2a234929">Nem érhető el — ennek a kijelzőnek egyetlen frissítési gyakorisága van, így nincs mihez igazítani.</string>
     <string name="lab_2a342d91">A játék közben leggyakrabban módosított beállítások.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Hang újraindítása</string>
     <string name="lab_2ab94a31">Csúsztatás a gombok között</string>
     <string name="lab_2ad5a458">Játékoshely-rögzítések</string>
+    <string name="lab_2adf1ef0">A Lab milliméterpapírja és jelei a grafika felett</string>
     <string name="lab_2b01a79e">A kép nem olvasható be.</string>
     <string name="lab_2b3bf173">Eszközök</string>
     <string name="lab_2b605d42">Több</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Alapértelmezett</string>
     <string name="lab_2ced81bf">Offline: mentett lista látható. Csatlakozz új effektek letöltéséhez.</string>
     <string name="lab_2d1366ec">Nincs egyező ismert változó.</string>
+    <string name="lab_2d45170d">Játékgrafika</string>
     <string name="lab_2d6ee59d">Vagy írj be bármilyen értéket</string>
     <string name="lab_2dad13e3">Nyelv</string>
     <string name="lab_2dc2e901">Mono</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Még nem volt ellenőrizve. Felsorolja a letölthető FEX, DXVK és VKD3D-Proton csomagokat.</string>
     <string name="lab_30c8cda7">FEX előbeállítás</string>
     <string name="lab_31132684">Dekódolja a Windows-játékok tömörített textúráit azoknak a GPU-knak, amelyek erre nem képesek.</string>
+    <string name="lab_312e2eb9">Grafika és előnézetek</string>
     <string name="lab_313f3497">Egyéni szolgáltatások</string>
     <string name="lab_314b6c8f">Wayland játék-illesztőprogramok</string>
     <string name="lab_318a4134">Beállítás ehhez a játékhoz</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">Olyan Samsung és Xiaomi telefonokhoz, amelyeken a játékok textúrái hibásak. Egyébként hagyd kikapcsolva.</string>
     <string name="lab_36936d70">Korlátozza, hány képkockát rajzol a játék másodpercenként. Kíméli az akkumulátort, és kisimítja az akadozást.</string>
     <string name="lab_36ef1cc0">Konténer szerint</string>
+    <string name="lab_37232683">Panelek a grafika felett</string>
     <string name="lab_3776c976">Natív renderelés</string>
     <string name="lab_377702f6">Érintés</string>
     <string name="lab_37ad98ec">A CPU-magok kiválasztása a program újraindításáig marad érvényben.</string>
@@ -395,12 +415,14 @@
     <string name="lab_37f22874">Minden meghajtónak saját betűjel kell</string>
     <string name="lab_3855543c">Exportálás (.icpx)</string>
     <string name="lab_385e1a80">Koppints az overlayre a függőleges és vízszintes elrendezés közti váltáshoz (Fusion: következő méret). Húzd az áthelyezéshez; hosszan nyomva rögzítheted a helyén.</string>
+    <string name="lab_386c72a7">Nem sikerült használni a fájlt</string>
     <string name="lab_3886b4de">Ez a mappa nem használható: válassz egyet a belső tárhelyen vagy SD-kártyán</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Közvetlen kijelzés módja</string>
     <string name="lab_38c3ee26">Gombok és karok ellenőrzése, fizikai profil hozzárendelése, játékoshelyek beállítása.</string>
     <string name="lab_38d2a5bb">Hőmérséklet</string>
     <string name="lab_38f46bd4">Indítómenü kihagyása</string>
+    <string name="lab_38f52cc5">Ki: az előnézetek hang nélkül játszódnak le</string>
     <string name="lab_39052457">Ez a konténer már nem létezik.</string>
     <string name="lab_390bed76">DirectDraw és Direct3D 7 Vulkanon.</string>
     <string name="lab_391a454c">A Deck felületen a Játékok és a Big Picture is a Home képernyőn nyílik meg.</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Kiegyensúlyozott</string>
     <string name="lab_3b7778ec">Szoftveres videódekódolás</string>
     <string name="lab_3bd060de"> és a játék a beépített Wayland Turnipon renderel (az adapterhez Turnip illesztőprogram kell).</string>
+    <string name="lab_3bf05e53">A Home képernyő nagy csempéjén a grafika felett látszik, ha az előnézetek be vannak kapcsolva. A játékoldalon a logó a név helyére kerül.</string>
     <string name="lab_3c0764a4">Képernyős vezérlők megjelenítése és a kiválasztott elrendezés</string>
     <string name="lab_3ca0cc27">HDR: automatikus. Ez a képernyő fogadja a HDR10-et, ezért ennél a játéknál bekapcsol a HDR-kimenet.</string>
     <string name="lab_3cc7318b">Magok</string>
     <string name="lab_3d0ded52">A képernyő most %1$s Hz-en fut.</string>
     <string name="lab_3d12f194">Tároló eltávolítása</string>
+    <string name="lab_3d198a51">3D grafika</string>
     <string name="lab_3d2c22d4">Illesztőprogram megjelenítési módja</string>
     <string name="lab_3d40c46a">Rezgés</string>
     <string name="lab_3d9862bb">Negatív mip bias: élesebb textúrák, némi vibrálás. Az Automatikus a játék indulási méretezését követi.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">A legújabb nyer: sosem írja felül az újabb helyi mentést.</string>
     <string name="lab_41f05e04">Az alábbi kiosztások ehhez a profilhoz tartoznak</string>
     <string name="lab_41fc25ab">Win-FG natív</string>
+    <string name="lab_4270e2ba">Felül középen</string>
     <string name="lab_42bbc821">Kísérleti: az Epic overlay játék közben Shift+F3-ra. A konténerben engedélyezni kell a teljes szolgáltatásokat.</string>
     <string name="lab_42ca94f9">Elsődleges kontroller</string>
     <string name="lab_43316731">Csak a C: (a Windows-prefix) és a Z: van meg. Adj hozzá egy meghajtót egy játékmappához.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">A Windows asztalának indítása</string>
     <string name="lab_4455b74f">Milyen gyakran jut el a karmozgás a játékhoz. Játék közben is módosítható.</string>
     <string name="lab_449c12fb">Méret a képernyőn</string>
+    <string name="lab_44bc352d">Logó</string>
     <string name="lab_4500ffeb">A(z) %1$s alapértelmezett profilja, </string>
     <string name="lab_452013a2">Exportálás</string>
     <string name="lab_45536eb8">Konténer</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">VEGAS konfigurációs fájl szerkesztése</string>
     <string name="lab_475cee12">Közép</string>
     <string name="lab_478577aa">Hőmérsékletek</string>
+    <string name="lab_47a2fcea">Grafika</string>
     <string name="lab_47db736e">Játékmappa kiválasztása</string>
     <string name="lab_47fbfb16">Módosítás</string>
     <string name="lab_480443a4">A | karaktert tartalmazó mappanevek nem használhatók</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Emulációs módszer</string>
     <string name="lab_4a51272f">A Visszaállítás az Összes konténer effektjeihez tér vissza.</string>
     <string name="lab_4a587711">Kapcsold be, hogy a képernyő a képkockakorlát × szorzó értékhez igazodjon.</string>
+    <string name="lab_4a690444">Játékgrafika háttérként</string>
     <string name="lab_4af762a7">Hőmérsékleti visszafogás letiltása</string>
     <string name="lab_4b02cb78">Erőforrás típusa</string>
     <string name="lab_4b0fb1b1">Még nincs importálva semmi: Tartalom › Telepítve › Linux futtatókörnyezet illesztőprogramjai.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Még nincs háttérkép</string>
     <string name="lab_4c5eeff6">Kiválasztás</string>
     <string name="lab_4c6da2bc">Windows asztal</string>
+    <string name="lab_4c6dae0d">Képek keresése…</string>
     <string name="lab_4c737acf">Eszköz (valódi GPU)</string>
     <string name="lab_4c76101a">FEX / DXVK / VKD3D választások</string>
     <string name="lab_4c76edfa">DXVK és VKD3D</string>
     <string name="lab_4c9774e6">Képernyőfrissítés igazítása a játék FPS-éhez</string>
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Aktív</string>
+    <string name="lab_4cc9a9c1">Borító</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Fel/le invertálása</string>
     <string name="lab_4d8c7321">Tartalom</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">A játék mappájában található.</string>
     <string name="lab_56b4c80c">Téma</string>
     <string name="lab_56b89990">Auto (alapértelmezett): a játék minden kirajzolt képkockájára egy karfrissítés, a beállított korlátig (alapból másodpercenként 60), így az a játék, amely gyorsabban rajzol, mint ahogy a bemenetet olvassa, sosem marad le. Fix: másodpercenként ennyi frissítés. Ütemezés nélkül: minden változás azonnal továbbmegy. Azonnal érvényes, játék közben is (Controls › Pad). A környezeti változókban megadott BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX felülírja ezt a beállítást.</string>
+    <string name="lab_56ed95b0">A könyvtár rácsa</string>
     <string name="lab_571567c9">Visszaállítod az alkalmazás alapértékeit?</string>
     <string name="lab_574b34d5">A DXVK + VKD3D a legtöbb DirectX 9–12 játékhoz megfelel. A VEGAS egy hangolt DXVK-fork. A WineD3D lassú, de széles körű tartalék nagyon régi játékokhoz.</string>
     <string name="lab_574e9955">A BCn textúrák ASTC-re konvertálása ezzel az illesztőprogrammal lefagyaszthatja vagy újraindíthatja a telefont; csak akkor próbáld ki, ha egy játékban hibás vagy hiányzó textúrák vannak.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Bétabuildek is</string>
     <string name="lab_58627009">Rezgés és mozgásos célzás.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Bal felső</string>
     <string name="lab_58a426c9">Ennél a játéknál kikapcsolva, amíg a képkocka-generálás fut. </string>
     <string name="lab_5901a4cd">Wayland: az egérelmozdulások a kompozitorhoz jutnak; a mutatót rögzítő játék relatív mozgásként kapja meg őket.</string>
+    <string name="lab_5946d9c6">Alkalmazásbeállítás használata (%1$s)</string>
     <string name="lab_594a913b">Aszinkron shaderek</string>
     <string name="lab_595daef9">Letöltött összetevők: archívumok és a katalóguslista.</string>
     <string name="lab_5983ab11">Offline mód (Valve-bejelentkezés nélkül)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Mindkettő</string>
     <string name="lab_5c2357bd">Könyvtár · 1 játék</string>
     <string name="lab_5c307bbf">Rezgés célja, erőssége és motorjai (lásd lent: Save for)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Rögzített képfrissítés</string>
     <string name="lab_5c462080">Nem érvényes, amíg az lsfg-vk sokszoroz: a képkockákat maga ütemezi.</string>
     <string name="lab_5c524fb3">Alapértékek új konténerekhez</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Belső tárhely, SD-kártya és minden konténer meghajtói</string>
     <string name="lab_659fcd98">Általam hozzáadva</string>
     <string name="lab_65f8ea90">Renderelő illesztőprogram</string>
+    <string name="lab_65f9e2b8">Tömör</string>
     <string name="lab_660f585a">Kiosztások másolása innen: %1$s</string>
     <string name="lab_662a7209">X invertálása</string>
     <string name="lab_6637ca24">BCn átkódolása ETC2-re</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Waylanden nem használatos: a képkocka-generálás a kompozitorban fut, a Turnip illesztőprogramodon.</string>
     <string name="lab_69f12fdf">Saját fájlok</string>
     <string name="lab_69f77a90">Unreal Engine HDR-javítás</string>
+    <string name="lab_69f7d525">Nem sikerült átnevezni</string>
     <string name="lab_6a271188">Box64 előbeállítás / WOWBox64 előbeállítás</string>
     <string name="lab_6a4b2ea4">Energia</string>
     <string name="lab_6a68da45">Relatív egér</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">A jelenlegi elrendezés érintőgombjai.</string>
     <string name="lab_6c3656ad">Álló</string>
     <string name="lab_6c37a76c">Az érintés funkciója</string>
+    <string name="lab_6c5fe717">Előnézetek hangja</string>
     <string name="lab_6c8e3b1f">Beállítás alapértelmezettként…</string>
     <string name="lab_6c9249ac">Az indításkori automatikus felhőletöltés KI lesz kapcsolva a GOG-könyvtárad játékainál. A legújabb felhőmentések nem töltődnek le a játék indulása előtt — magadnak kell letöltened őket a GOG Mentéskezelő lapon vagy a játék adatlapján. Folytatod?</string>
     <string name="lab_6cd478cd">Auto (legfeljebb 120/s)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">A munkamenet csak az alkalmazás saját változóival indul.</string>
     <string name="lab_6e2acf44">GPU-modell</string>
     <string name="lab_6e3da120">Könyvtár</string>
+    <string name="lab_6e661b92">Az előzetesek csak Wi-Fi-n töltődnek le</string>
     <string name="lab_6e6ffb5b">64 bites játékokat futtat, ha a 64 bites fordító a Box64EC.</string>
     <string name="lab_6e86a6ef">Munkamenet bezárása, amikor a játék kilép</string>
     <string name="lab_6ec32312">Észlelve ebben a wrapperben</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Kezdőképernyő és frissítések.</string>
     <string name="lab_7982eb6b">, lent felsorolva.</string>
     <string name="lab_79b6d4c7">Offline Steam-mód, fájlellenőrzés és frissítések</string>
+    <string name="lab_79c7988a">Nincs · a név látszik</string>
     <string name="lab_79e3b22e">Közepes</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Érzékenység</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Hátsó puffer</string>
     <string name="lab_7ceefd00">Letöltés sikertelen: %1$s</string>
     <string name="lab_7d24ed15">Még nincs itt semmi.</string>
+    <string name="lab_7d50777a">Akció, RPG, Stratégia</string>
     <string name="lab_7d6bff72">A DirectAudio hangrendszerrel érhető el.</string>
     <string name="lab_7d9f1b59">Lassabb. Csak olyan eszközhöz, amelynél a seccomp akadályt jelent.</string>
     <string name="lab_7da6281a">Fájlok és eszközök</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">x86-fordítók</string>
     <string name="lab_7e3548ee">A Játékok lap játékai a Steamben</string>
     <string name="lab_7e38b599">A kilépéskori automatikus felhőfeltöltés KI lesz kapcsolva a Steam-könyvtárad játékainál. A mentéseik nem kerülnek fel a Steam Cloudba a játék bezárásakor — magadnak kell feltöltened őket a játék adatlapjának Felhőmentések részében. Folytatod?</string>
+    <string name="lab_7e6d7e33">Könyvtárkártyák</string>
     <string name="lab_7e9c00ea">Auto (FPS szerint)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
     <string name="lab_7eb6734a">A Waylandhez hozzá készült Proton-réteg kell.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">A játék 64 bites x86-kódját futtatja. A Box64EC-hez telepített Box64EC összetevő kell.</string>
     <string name="lab_82265bbe">Szinkronizálod a teljesítményeket a Steammel?</string>
     <string name="lab_8232f25f">GDI (szoftveres)</string>
+    <string name="lab_82542307">Visszaállítás automatikusra</string>
     <string name="lab_82549ee8">Hogyan indul ez a játék: Steammel vagy anélkül, kontroller-átadás, csalásvédelem, Epic-bejelentkezés.</string>
     <string name="lab_82758f36">Natív backend</string>
     <string name="lab_828c5a26">GameNative motor használata (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Képkocka-lekérési jel kihagyása</string>
     <string name="lab_87f7f6ba">Energiaprofil</string>
     <string name="lab_880bfb03">Elrendezés szerkesztése</string>
+    <string name="lab_88328343">Automatikus · elmosott borító</string>
     <string name="lab_8844e521">Előbeállítás értékei</string>
     <string name="lab_8850c516">A DirectInput játékok rezegtethetik a kontrollert: egyszerű rezgés, valamint azok az erőhatások, amelyeket az autós és repülős játékok kormánynak vagy botkormánynak küldenek, a kontroller két motorján keresztül érezhetők. A Rezgés beállításait követi (rezgés célja és erőssége). Az állandó erőhatás (például amikor egy autós játék egyenesen tartja a kormányt) néhány másodperc után elhalványul, hogy a kontroller ne zümmögjön folyamatosan. A DirectInput játékok csak akkor érzik, amikor látják a kontrollert. A módosítás a kontroller újracsatlakozásakor (játék közben ezt a Controls › Pad végzi) vagy a következő indításkor lép életbe. A környezeti változókban megadott BANNERIN_DINPUT_FF felülírja ezt a beállítást.</string>
     <string name="lab_8861fdef">Hangbeállítások</string>
     <string name="lab_887ae5cd">Létrehozás</string>
+    <string name="lab_88819a36">Rács a grafika felett</string>
     <string name="lab_88845797">Feladatkezelő</string>
     <string name="lab_888e7afb">Adrenón nincs hatása, mert az maga dekódolja a BCn-t.</string>
     <string name="lab_88a8754b">Textúraélesség</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">A játékban feloldott teljesítmények a valódi Steam-fiókodba íródnak vissza. Ki: a feloldások ezen az eszközön maradnak.</string>
     <string name="lab_88f8aeb8">Szín #RRGGBB formában, pl. #1E88E5</string>
     <string name="lab_8907b290">Fájlok tallózása</string>
+    <string name="lab_892b7b55">Széles borító</string>
     <string name="lab_8965e6c7">Kevesebb szolgáltatás = gyorsabb indulás és több szabad RAM.</string>
     <string name="lab_8998f446">A bejegyzés ikonja</string>
     <string name="lab_89f43a0d">Fordító-előbeállítás értékei</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapperek</string>
     <string name="lab_8a8bb4d3">Parancsfolyam (CSMT)</string>
+    <string name="lab_8aa52c61">Játék részletei</string>
     <string name="lab_8ae3076a">Turbo</string>
     <string name="lab_8af52aac">Frissítések</string>
     <string name="lab_8b087b3c">Megjelenés</string>
@@ -948,6 +994,7 @@
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">Kiosztások: %1$s · az új kontrollerek ezeket öröklik</string>
     <string name="lab_8c68f725">Az OpenGL játékok (és a WineD3D-n át futó DirectDraw / régebbi Direct3D) a beépített Mesán és Zinken futnak, és Vulkan jeleníti meg őket képkockánkénti lassú másolás helyett. X11 alatt Turnip grafikus illesztőprogram kell hozzá. Waylanden mindig be van kapcsolva.</string>
+    <string name="lab_8c79f517">Steam-előzetes</string>
     <string name="lab_8c7f97b0">%1$s / %2$s GB</string>
     <string name="lab_8c913834">A kitöltés, a méretezési szűrő, a képkocka-ütemezés, a képkockakorlát és a képkocka-generálás a saját oldalán leírtak szerint mentődik</string>
     <string name="lab_8c9b8bce">Mozgásos célzás</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Ugyanaz, mint a konténeré</string>
     <string name="lab_952f41de">GPU-illesztőprogramok</string>
     <string name="lab_95432a7a">Játékoshelyek</string>
+    <string name="lab_95c66fc6">Megjelenés éve</string>
     <string name="lab_95ca1574">Grafikus illesztőprogram</string>
     <string name="lab_96125830">Alapértelmezett / bármely kontroller</string>
     <string name="lab_962bd533">Fényerő</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">a „Beállítás alapértelmezettként” választásai és az alapértelmezett rétege most törlődnek, és ez az oldal az alkalmazás saját alapértelmezéseit mutatja. </string>
     <string name="lab_97bb79af">A Deck módban a Steam-kliens úgy működik, mint egy Steam Decken, és megkapja a Gyors elérés menüt.\n\n</string>
     <string name="lab_98469a16">Csatlakoztatva</string>
+    <string name="lab_98513339">Steam-előzetesek</string>
     <string name="lab_9884a116">Emulátor (32 bites)</string>
+    <string name="lab_98964f8d">Nincs találat · a név látszik</string>
     <string name="lab_989f5c02">Linux futtatókörnyezet illesztőprogramjai</string>
+    <string name="lab_98aa06ba">Nagy</string>
     <string name="lab_98c4e496">A Wine és a Box64 / FEX kimenete, amíg a naplózás be van kapcsolva.</string>
     <string name="lab_99082159">Értesítési hang</string>
     <string name="lab_992421a8">Az alkalmazás nyitóképernyője</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Alapértelmezett MIDI hangbank</string>
     <string name="lab_99c314b2">Élénk</string>
     <string name="lab_9a2890b2">Adreno (Qualcomm) GPU kell hozzá, más GPU-kon root.</string>
+    <string name="lab_9a75ad29">Nincs összekapcsolva a Steammel: kapcsold össze a Részletek alatt, hogy előzeteseket találj.</string>
     <string name="lab_9a8f0817">Ez a játék</string>
     <string name="lab_9aa56987">Mozgásos célzás (giroszkóp)</string>
     <string name="lab_9aaea01f">Epic barátok overlay</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Apró mozdulatok figyelmen kívül hagyása</string>
     <string name="lab_9d727d6c">Előbb importáld a Lossless.dll fájlt a Beállítások › Teljesítmény alatt.</string>
     <string name="lab_9d954afa">Választás megjegyzése</string>
+    <string name="lab_9e5d1d40">Keresés a Steamen név alapján</string>
     <string name="lab_9e7ac4ad">Szinkronizálási változók</string>
     <string name="lab_9e7bf84e">Közös előbeállítás szerint</string>
     <string name="lab_9ea6cfdd">Csak a szükségesek</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Felület stílusa</string>
     <string name="lab_a2efb709">Arm Mali GPU-khoz. Amíg nem kapcsolod át, az illesztőprogramot követi: PanVK illesztőprogramnál be, egyébként ki.</string>
     <string name="lab_a35eef98">Szenzorjelentést ment (CPU, GPU, hőmérsékletek, VRAM…) a Letöltések mappába.</string>
+    <string name="lab_a36379d6">Automatikus · Steam</string>
     <string name="lab_a37cf853">Válassz másik .exe-t a játék mappájából ehhez a bejegyzéshez.</string>
     <string name="lab_a3904026">Tartsd nyomva a célzáshoz</string>
+    <string name="lab_a396cfaa">Nem sikerült betölteni a képet</string>
     <string name="lab_a3c61ce1">Ablakok és naplók</string>
     <string name="lab_a3f6a50d">Képernyőhöz igazítás</string>
     <string name="lab_a40c85ce">A Windowszal induló szolgáltatások</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Rezgőmotorok</string>
     <string name="lab_a559e736">XR-kontroller</string>
     <string name="lab_a57ba715">Processzoraffinitás (cpuList)</string>
+    <string name="lab_a593c4da">Saját fájl</string>
     <string name="lab_a59e2986">Xalia ki (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">A kliens úgy működik, mint egy Steam Decken, a Gyors elérés menüvel. A játékok nem kapják meg a kontrollert.</string>
     <string name="lab_a5d4b1b1">egy játék fut rajta</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Képernyős vezérlők vs. valódi kontroller</string>
     <string name="lab_a6e62e9e">DirectX-fordítás</string>
     <string name="lab_a71846fe">Téma és színek</string>
+    <string name="lab_a74f5b6d">Ki, játékgrafika, lassan a mélységben sodródó 3D grafika, vagy előnézetekkel: előzetes a Home képernyő nagy csempéjén</string>
     <string name="lab_a7a4aed7">Az Érintőképernyő valódi érintésként küldi az ujjakat a Steamnek; az Érintőpad húzással mozgatja a mutatót, és koppintással kattint.</string>
     <string name="lab_a7c6d9e7">Képkockakorlát</string>
     <string name="lab_a7c8bcd7">Mindkettő (PC-hű): a nagy és a kis motort külön vezérli, mint egy PC-s kontroller. Egy (simább karok): egy motort használ. Egyes kézi eszközök kontrollerei (pl. AYANEO Pocket FIT) lelassítják a karfrissítést, amíg mindkét motor jár; az Egy felére csökkenti ezt a lassulást, így a célzás sima marad. Alapértelmezés: Pocket FIT-en Egy, máshol Mindkettő.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">A telepített játékok továbbra is elindulnak. Előbb egy online bejelentkezés kell ezen az eszközön. A következő munkamenettől érvényes.</string>
     <string name="lab_af32ab2f">Egyedül</string>
     <string name="lab_af39be20">Hálózat</string>
+    <string name="lab_af3f8345">Ehhez a játékhoz nincs találat. Válassz egy képet, vagy kapcsold össze a Steammel a Részletek alatt.</string>
     <string name="lab_af456994">Megakadályozza, hogy a kernel lekapcsolja a magokat.</string>
+    <string name="lab_af47e020">Műfajok</string>
     <string name="lab_afb57bd1">Felskálázó szűrő, élesítés és sávosodás-csökkentés</string>
     <string name="lab_b01a2f1b">Környezeti vált.</string>
     <string name="lab_b01c4a81">Tájolás</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Mentések megosztása az alkalmazással</string>
     <string name="lab_b132aa74">A telepített Turnip, amellyel a Wayland-kompozitor a játék képkockáit a képernyőre teszi.</string>
     <string name="lab_b18ba364">Érintőképernyő</string>
+    <string name="lab_b1aea182">Inkább a név megjelenítése</string>
     <string name="lab_b1cc94c4">Effekt</string>
     <string name="lab_b1fb3d78">Rögzítés a helyén</string>
     <string name="lab_b2091323">A BOX64_* változói a Box64EC-re is vonatkoznak.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Futtatás…</string>
     <string name="lab_b4467898">Hangpuffer finomhangolása</string>
     <string name="lab_b46c3296">Törlés</string>
+    <string name="lab_b484c517">Kicsi</string>
     <string name="lab_b48bc44b">Nem sikerült betölteni a listát</string>
     <string name="lab_b4c6ec80"> Ehhez a játékhoz beállítva.</string>
     <string name="lab_b4d38912">Első játék hozzáadása</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">Nincs telepített VEGAS build: tölts le egyet lent.</string>
     <string name="lab_bd63a37d">Háttérképfájl</string>
     <string name="lab_bd87c7d9">Dekódolt textúrák gyorsítótárazása</string>
+    <string name="lab_bd9b3216">Részletek</string>
     <string name="lab_bdaf406a">Játékban</string>
+    <string name="lab_be12d609">Kép kiválasztása…</string>
+    <string name="lab_be45a0e0">Nincs találat · nincs összekapcsolva a Steammel</string>
     <string name="lab_be638831">Nagyító, ablakok, naplók és futó programok.</string>
     <string name="lab_be998b7c">Szinkronizálás minden képkockánál</string>
     <string name="lab_be9a2a59">Dupla Vissza megnyitja a Gyors elérést</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> A következő játékindításkor lép életbe.</string>
     <string name="lab_bed0286f">Tároló elrejtése</string>
     <string name="lab_bef10a2e">Áthelyezés másik konténerbe</string>
+    <string name="lab_bf5a86a3">Pozíció</string>
     <string name="lab_bf9aba55">Újrakezdés</string>
     <string name="lab_bfa9745f">Mindig be</string>
     <string name="lab_bfb6fae9">Sötét vagy világos; a kiemelőszín a témádé</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Kikapcsolod az automatikus mentést?</string>
     <string name="lab_c06ade64">Kísérleti kapcsolók és a megjelenítőszerver belső beállításai.</string>
+    <string name="lab_c088a86d">Logó beállítása</string>
     <string name="lab_c0b26391">Kompatibilitás</string>
     <string name="lab_c0ba51f5">Környezet</string>
     <string name="lab_c0cb7e61">Alapból kikapcsolva, így az XInputot és DirectInputot is olvasó játékok egy kontrollert látnak.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">A módosítások ehhez a játékhoz csak ott maradnak meg, ahol eltérnek a globális alapértelmezéstől.</string>
     <string name="lab_c1bc6675">A játékok által X11 alatt használt Vulkan wrapper. Az importált wrapperek is itt jelennek meg.</string>
     <string name="lab_c1c757e2">BCn-réteg hibakeresési naplója</string>
+    <string name="lab_c1df4081">Közepes</string>
     <string name="lab_c206cdbf">Minden mentés biztonsági mentése</string>
     <string name="lab_c22c196f">Piros</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Képernyős elrendezés</string>
     <string name="lab_c781beb4">Teljesítmény (kísérleti)</string>
     <string name="lab_c78bbaf5">Képernyős vezérlők, egér, rezgés, mozgásos célzás.</string>
+    <string name="lab_c7b49d50">Steam-alkalmazás %1$s</string>
     <string name="lab_c7fad197">Nem találhatók további beállítások</string>
     <string name="lab_c82e7e67">Buildek a katalógusból. A telepítettek a DXVK verzió alatt jelennek meg.</string>
     <string name="lab_c844d41c">Olyan Denuvo-játékokhoz, amelyeket az alkalmazás magától nem ismer fel.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Közös előbeállítás, módosítva</string>
     <string name="lab_cb5fc4d5">VEGAS konfiguráció</string>
     <string name="lab_cb6d604d">A HUD játék közben nem húzható.</string>
+    <string name="lab_cbab7f7a">Ikonok</string>
     <string name="lab_cbb98111">Jobb kar</string>
     <string name="lab_cc03c446">Fájlkezelő</string>
     <string name="lab_cc0a2f50">Ha egy Steam-játék Goldberggel vagy Közvetlen .exe-vel indul (Wine-játékok), jelezze a Steamnek, hogy játszol vele, így a barátaid látják, és a játékidő is számít. A SteamLite-indítások mindig látszanak.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Automatikus letöltés a GOG-felhőből indításkor</string>
     <string name="lab_cf4ce884">Teljes képernyős mód</string>
     <string name="lab_cf608a0d">DirectAudio használata</string>
+    <string name="lab_cf6c6955">Ennek a játéknak még nincs logója. Válassz egyet a Logó alatt, hogy itt lásd.</string>
     <string name="lab_cf6d2530">Amire az A710/A720/A722 illesztőprogram-buildeknek szükségük van; az Automatikus ezeknél az importoknál bekapcsolja. A környezeti változókban megadott TU_DEBUG az erősebb.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Alul középen</string>
     <string name="lab_cf8f0f8a">Nincsenek beállított környezeti változók</string>
     <string name="lab_cf9192cb">%1$s telepítve</string>
     <string name="lab_d02befc2">Videómemória</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Kiválasztás a rendszerrel…</string>
     <string name="lab_d063c529">ARM64EC konténereken WOWBox64 a neve; ott a 32 bites kódot futtatja, ha fent ezt választod.</string>
     <string name="lab_d097c7ad">Érintőpad</string>
+    <string name="lab_d0c3d24d">Videó kiválasztása…</string>
     <string name="lab_d1106762">Kép kiválasztása</string>
     <string name="lab_d13696b8">Kontrollerek rögzítése játékosokhoz</string>
     <string name="lab_d1588174">Rezgés helye</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Beállítás újrafuttatása</string>
     <string name="lab_d49be3e8">Tárhely és mappák</string>
     <string name="lab_d4d60815">Egyenletesebb képkocka-ütemezés és hűvösebb eszköz.</string>
+    <string name="lab_d4e70b40">Előzetesek keresése…</string>
     <string name="lab_d4eb64e3">Egyéni…</string>
     <string name="lab_d51bc9cd">BCn-textúraemuláció</string>
     <string name="lab_d51bce77">Kizárólagos bemenet / DInput engedélyezése</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Ravasz</string>
     <string name="lab_d5e887b8">%1$s óra</string>
     <string name="lab_d60412d3">Eredeti</string>
+    <string name="lab_d620ef74">Borító, elmosva</string>
     <string name="lab_d653f990">x86-fordító 32 bites kódhoz</string>
     <string name="lab_d6d3fe68">Válasszon összetevőcsomagot (-linux .wcp)</string>
     <string name="lab_d7060afb">Konténer importálása</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Ez az illesztőprogram nem töltődött be ezen a GPU-n: helyette a rendszer-illesztőprogram válaszolt az ellenőrzésre.</string>
     <string name="lab_d8e06406">Képernyő</string>
     <string name="lab_d8e621c2">Meghajtó hozzáadása</string>
+    <string name="lab_d90a905b">Üveg</string>
     <string name="lab_d91754f0">Nincs bejegyzés.</string>
     <string name="lab_d92d0230">Alkalmazva: </string>
     <string name="lab_d92fb9d6">A név nem lehet üres.</string>
+    <string name="lab_d9667615">Kép</string>
     <string name="lab_d9767690">A játék a konténere változóival indul</string>
     <string name="lab_d9a22ca4">DX Wrapper</string>
     <string name="lab_d9b07af8">Importálva: </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">A játék változói</string>
     <string name="lab_dbe48d14">Soha</string>
     <string name="lab_dc2dbf53">(üres)</string>
+    <string name="lab_dc6bb726">Leválasztás</string>
     <string name="lab_dc942e27">Értesítés új verziókról</string>
     <string name="lab_dcb67730">Érték</string>
     <string name="lab_dcba8bc8">Egér letiltása</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">A Waylandnek telepített Turnip kell, hogy a játék képkockáit a képernyőre tegye. Az újak a Grafikus illesztőprogram alatt jelennek meg.</string>
     <string name="lab_e2410f47">Böngészés és letöltés</string>
     <string name="lab_e2421520">WOWBox64 verziók letöltése</string>
+    <string name="lab_e280d375">Kártyaméret</string>
     <string name="lab_e2a7f23e">Képernyős</string>
+    <string name="lab_e2b70ebc">Nincs előnézeti klip</string>
     <string name="lab_e2c38520">Ennek a bejegyzésnek nincs ikonfájlja, amelybe írni lehetne.</string>
     <string name="lab_e2ce4373">Szakasz</string>
     <string name="lab_e2e95fcd">Játéknaplók</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Olyan játékokhoz, amelyek csak a Steamen keresztül látják a kontrollert (No Man\'s Sky). Hagyd kikapcsolva azoknál a játékoknál, amelyek maguk olvassák a kontrollert. Kikapcsolja az átengedést.</string>
     <string name="lab_e3e80b58">Vezérlési profil</string>
     <string name="lab_e41154d8">FPS-előzmények</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Médiakodekek</string>
     <string name="lab_e73d4b35">Vulkan bővítmények</string>
     <string name="lab_e7bab6f9">Renderelési skála (supersampling)</string>
+    <string name="lab_e7d39686">Mennyire átlátszók a csempék a grafika felett</string>
     <string name="lab_e7d6bbaa">DirectX-fordítás, GPU-illesztőprogram, OpenGL és a kép képernyőre juttatásának módja.</string>
     <string name="lab_e7d75246">A képkocka-generálási lánc ezen a magasságon fut; a szélesség a képernyődet követi. Az alacsonyabb jóval kevésbé terhel, de lágyabb.</string>
     <string name="lab_e801ba28">Ki is kapcsolhatod, ha úgy jobb; ez a játék megjegyzi.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Kiosztásainak eltávolítása</string>
     <string name="lab_eb680509">Egy .exe a fájljaid közül, vagy egy játék egy áruházból.</string>
     <string name="lab_eb6d0257"> · használja: </string>
+    <string name="lab_eb78cff1">Leírás</string>
     <string name="lab_ebd67348">A vezérlési profilban mentve</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">x86-64 alapértékek</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">A Steam menüje a bal felső sarokban, a Gyors elérés menüje a jobb felsőben.</string>
     <string name="lab_ef041fbb">Motor</string>
     <string name="lab_efc1065a">Nincs csatlakoztatva</string>
+    <string name="lab_efca121e">Lab-tapéta</string>
     <string name="lab_efd740b9">Átlátszóság</string>
     <string name="lab_efdeb1c6">Az előbeállítás-listán minden konténer és játék osztozik.</string>
     <string name="lab_efdfc7e5">FPS-korlátozó</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Beépített (Win-FG)</string>
     <string name="lab_f38c2b5b">Képernyő igazítása</string>
     <string name="lab_f39e4ef9">API-kulcs</string>
+    <string name="lab_f3a4d6f2">Összekapcsolva ezzel a Steam-alkalmazással: %1$s</string>
     <string name="lab_f3c5111e">Élesebb textúrák ferde szögből. DirectX 9–11 játékokhoz.</string>
     <string name="lab_f3d61893">Vizuális effektek</string>
     <string name="lab_f3e2bf3c">A játék fölé rajzolt FPS-/hőmérséklet-overlay.</string>
@@ -1632,7 +1716,10 @@
     <string name="lab_f61050cc">Játék felbontása</string>
     <string name="lab_f665e069">Értesítés, ha egy barátod üzenetet küld, és a vele folytatott csevegés nincs megnyitva.</string>
     <string name="lab_f667b7f4">Kiemelőszín</string>
+    <string name="lab_f690a199">Saját borító</string>
     <string name="lab_f6f41dc4">Ismert, az eszközön talált problémák:\n</string>
+    <string name="lab_f6f5fb6b">Konténer létrehozása</string>
+    <string name="lab_f721f484">Borítók</string>
     <string name="lab_f745bb2a">Streamelés</string>
     <string name="lab_f7578887">Az új konténer alapértelmezéseiből indul. X hozza létre.</string>
     <string name="lab_f783e029">Kettős akkumulátor</string>
@@ -1647,11 +1734,14 @@
     <string name="lab_f91491fe">A játék egy másik ablakának előtérbe hozása.</string>
     <string name="lab_f918602e">Az a Vulkan illesztőprogram, amelyen maga a játék renderel Wayland alatt.</string>
     <string name="lab_f94e949e">A Hang › Mikrofon állítja be</string>
+    <string name="lab_f97022d8">A Steamen nincs előzetes ehhez a játékhoz.</string>
     <string name="lab_fa109fc6">Effektek keresése…</string>
+    <string name="lab_fa2965af">Háttérkép</string>
     <string name="lab_fa381e9a">Élesebb (-0.5)</string>
     <string name="lab_fa700875">Egyes játékok sosem olvassák maguk a kontrollert: a Steamtől kérik. SteamLite alatt erre senki sem válaszol, így ezek a játékok nem látnak kontrollert. Be: a SteamLite ügynök ennél a játéknál bekapcsolja a Steam kontrollerrétegét egy megfelelő elrendezéssel. Hagyd kikapcsolva azoknál a játékoknál, amelyek már olvassák a kontrollert, különben minden gombnyomást kétszer kapnak. A kontroller-átengedés ellentéte, így egyszerre csak az egyik lehet bekapcsolva. Csak SteamLite-tal.</string>
     <string name="lab_fa859fc7">A Goldberg mód, a Fájlok ellenőrzése és a Frissítések keresése az indítómenüben található. Kapcsold ki az „Indítómenü kihagyása” beállítást, hogy a következő indításkor megjelenjen.</string>
     <string name="lab_fac0fe64">A méretezési beállítások nélküle is elvégzik a hasznos részt, a képkockasebességet pedig a játék közbeni oldalsó menü FPS-korlátja szabályozza. Kapcsold ki újra a Deck módot, ha egy játék nem reagál a kontrollerre.</string>
+    <string name="lab_fad0baa9">Alapértelmezett (Steam: %1$s)</string>
     <string name="lab_fae2666b">A Valve saját Protonja, amelyet a Steam frissítéskor lecserél; az eredetijei buildenként megmaradnak</string>
     <string name="lab_fae62cc0">A mutatót a játékhoz rögzíti. A feloldáshoz nyomd meg a Hangerő le gombot.</string>
     <string name="lab_fb2b9733">Mindkettő (PC-hű)</string>

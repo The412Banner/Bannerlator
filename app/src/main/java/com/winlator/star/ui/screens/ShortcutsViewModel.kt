@@ -223,6 +223,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             libraryChanged.collect { from -> if (from !== this@ShortcutsViewModel) reload() }
         }
+        viewModelScope.launch { containersChanged.collect { reload() } }
     }
 
     /**
@@ -1271,6 +1272,17 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
 
         // Which ViewModel just re-read the library on behalf of the others (see sharesRefreshes).
         private val libraryChanged = MutableSharedFlow<ShortcutsViewModel>(extraBufferCapacity = 4)
+
+        // A container was created, copied, imported, renamed or removed outside this ViewModel (the
+        // container editor, the Containers page). Each one keeps its own ContainerManager, and in Lab
+        // the editor is a page of the same activity, so no ON_RESUME refresh() follows: without this
+        // the add-game and clone pickers kept listing the old containers until a launch or restart.
+        private val containersChanged = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+
+        /** Every live ShortcutsViewModel re-reads its containers and games (on the main thread; callable from any thread). */
+        fun notifyContainersChanged() {
+            containersChanged.tryEmit(Unit)
+        }
 
         // A shortcut name genuinely ties several canonical games when their match scores sit within
         // this epsilon of the top score → the "Which game is this?" picker (issue #167). Capped so a

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in tr. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in tr. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Güç (tüm oyunlar için varsayılanlar)</string>
     <string name="lab_0016da13">Özel, tüm hizmetler kapalı başlar: yalnızca oyunun ihtiyaç duyduklarını açın.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">B düğmesi</string>
     <string name="lab_00737986">Ekrana gerçek HDR10 gönderir.</string>
     <string name="lab_007bf585">Kayıtlı seçimlerle hemen başlat. Başlatma menüsünü yeniden görmek için kapatın.</string>
+    <string name="lab_0086410b">Geniş kapaklar</string>
     <string name="lab_00aad2e4">Oyun klasöründeki DLL\'leri tercih et</string>
     <string name="lab_00d53383">Önce bir profil oluşturun (Ekranda sekmesi).</string>
     <string name="lab_00e9bd4e">Sarmalayıcı</string>
     <string name="lab_00ef3163">CPU yöneticisi ve frekans kilitleri, boş bellek, sıcaklık bekçisi (klasik Ayarlar › Performans) ve kare oluşturma için Lossless.dll içe aktarma.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s GB</string>
     <string name="lab_0134b985">DX sarmalayıcı ayarları</string>
+    <string name="lab_0155bfc3">Home ve kütüphanede kapaklar, geniş kapaklar veya simgeler</string>
     <string name="lab_015a2290">İzinler, tema ve mağazalar</string>
     <string name="lab_01940fd6">Genel</string>
     <string name="lab_01942160">Ondalıklı FPS</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">Oyunun kullanabileceği çekirdekler</string>
     <string name="lab_044b1956">Performans</string>
     <string name="lab_04accfcf">OpenGL: Hızlı</string>
+    <string name="lab_04e55ba9">Görsel seçin: %1$s</string>
     <string name="lab_04fc2b5b">Görsel</string>
     <string name="lab_052396d7">DirectAudio deneyseldir</string>
     <string name="lab_0526e39f">L1 / R1 sayfa değiştirir, X hızlı menü ile oyun menüsü arasında geçiş yapar, B kapatır.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">Yerleşik (Win-FG) ara kareleri uygulamanın içinde üretir. Lossless Scaling kendi Lossless.dll dosyanızı kullanır. İkisi de Vulkan ekran işleyicisi, Wayland veya bir Linux girdisi gerektirir. Çarpan oyun içinde ayarlanır.</string>
     <string name="lab_070cecae">Neyin kaydedileceğini (Wine, Box64/FEX, DXVK, SteamLite, Arayüzsüz Steam, logcat), günlüklerin nereye gideceğini ve kaç tanesinin saklanacağını seçin; günlüklere göz atın ve paylaşın.</string>
     <string name="lab_0721ad7c">Bu konteyner</string>
+    <string name="lab_075ffd70">Kendi videonuz</string>
     <string name="lab_07a88d47">Tek bir Geri basışı oyun içi çekmeceyi yine açar.</string>
     <string name="lab_07e11363">Tüm konteyner için açık: konteynerden kapatın.</string>
     <string name="lab_080615dc">Konteynerinkini kullan</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Bazı eski oyunlarda dönen veya takılı kalan kameraları düzeltir.</string>
     <string name="lab_0d5a2b34">Program adından sonra eklenen ek sözcükler, örn. -windowed -dx11.</string>
     <string name="lab_0da00171">• Oyunlar kumandayı almaz olur. Steam\'in kendi menüleri yine çalışır, ancak bir oyunda kumanda hiçbir şey yapmaz.\n</string>
+    <string name="lab_0dc541d5">Varsayılana sıfırla</string>
     <string name="lab_0ddd64ae">Titreşim yoğunluğu</string>
     <string name="lab_0e15cd35">Katlanabilir cihazlarda kullanışlı: oyunu ekranın bir yarısında tutar.</string>
     <string name="lab_0e24f0e3">Eşzamansız gölgelendirici önbelleği</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">ReShade efektleri</string>
     <string name="lab_1054fdc3">Wayland\'de oyun, karelerini içe aktarmak için yüklü bir Turnip gerektiren gömülü birleştirici üzerinden işlenir. \"Sistem\" yalnızca Mali GPU\'larda sunulur; diğerlerinde siyah ekran gösterir. Oyunun kendisinin neyle işlendiğini aşağıdaki Wayland oyun sürücüsü belirler.</string>
     <string name="lab_105c504c">OneUI / HyperOS düzeltmesi</string>
+    <string name="lab_1079be1d">Steam\'de %1$s için bir şey bulunamadı</string>
     <string name="lab_10a08356">Oyun içinde değiştirmeye izin ver</string>
     <string name="lab_10cb69ae">Simge görseli seçin</string>
     <string name="lab_1121166e">Alfa</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Rengi seçin</string>
     <string name="lab_1331bc15">SteamLite gerçek Steam istemcisini çalıştırır, böylece başarımlar, bulut kayıtları ve çevrim içi oyun çalışır. Arayüzsüz Steam, oyunu uygulamanın kendi Steam oturumunda çalıştırır, böylece arkadaşlar ve sohbet çevrim içi kalır (deneysel). Goldberg oturum açmadan Steam gibi davranır. Doğrudan .exe oyunun kendi programını başlatır.</string>
     <string name="lab_134638cc">GOG oyunları</string>
+    <string name="lab_136c7474">Sol alt</string>
     <string name="lab_137513e1">Sizin için seçildi: Yeni konteyner varsayılanlarınızdaki sürücü.</string>
     <string name="lab_137e9ac8">Şimdilik yalnızca yerleşik bileşenler.</string>
     <string name="lab_13868325">Açma yolları</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Manuel</string>
     <string name="lab_177847bc">Kopyalanacak bir şey yok</string>
     <string name="lab_17a0dfae">Çevrimdışı</string>
+    <string name="lab_17c41d91">Ekran görüntüsü</string>
     <string name="lab_17e8622b">SurfaceFlinger oyun karelerini doğrudan Android\'in birleştiricisine verir. Daha hızlı olabilir, ancak bazı cihazlarda siyah ekran veya yanlış renkler gösterir. Böyle olursa Vulkan veya OpenGL\'e geri dönün.</string>
     <string name="lab_17f88806">Konteyner adı, dil, masaüstü ve oturum davranışı.</string>
     <string name="lab_181ab51a">Bu, 8K\'dan büyük.</string>
     <string name="lab_1821acdc">Düz renk</string>
+    <string name="lab_183f03ee">Önizleme klibi</string>
     <string name="lab_187e8ab4">bu oyun</string>
     <string name="lab_188dc386">Performans › Eşitleme bunu ayarlar.</string>
     <string name="lab_18991a24">Diğer</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Kumanda testi</string>
     <string name="lab_198324db">Bannerlator hakkında</string>
     <string name="lab_19a0f782">Performans seviyesi, dosyanın her anahtarı, yedekler ve VEGAS derlemelerini silme veya yükleme.</string>
+    <string name="lab_19b489d5">3D görsel ve önizlemeler</string>
     <string name="lab_19e91dd3">Giriş</string>
     <string name="lab_1a0d3004">Pencereli</string>
     <string name="lab_1a1b35e7">Çalışma zamanı</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · bağlı değil (kayıtlı sabitleme)</string>
     <string name="lab_2062fe79">FPS sınırlayıcı</string>
     <string name="lab_20898aa4">Yalnızca otomatik algılama başarısız olursa (günlükte [KFAULT]).</string>
+    <string name="lab_208b07a1">Ayrıntılar, görseller, arka plan ›</string>
     <string name="lab_209f636f">Ölçekleme, keskinleştirme ve renk</string>
     <string name="lab_20f30881">Oyuna devam et</string>
     <string name="lab_211badb3">TV\'de oyna, otomatik geçiş, güvenli alan, ses çıkışı, karartma ve TV çözünürlüğü</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Yönet</string>
     <string name="lab_23e9383c">Sürüm, arkasındaki teknolojiler ve emeği geçenler.</string>
     <string name="lab_2453405d">auto:N, fixed:N veya off kullanın</string>
+    <string name="lab_2470de02">Şeffaf</string>
     <string name="lab_24720798">Yer değiştiren renkleri düzelt</string>
     <string name="lab_247c39e6">Daha düşük gecikme için birleştiriciyi atlar. Ekran efektlerini kapatır.</string>
     <string name="lab_24857b5d">RGBA (kırmızı/maviyi değiştir)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Klavyeyi göster</string>
     <string name="lab_2694592a">Üst</string>
     <string name="lab_274284a1">Bu derlemede henüz Wayland\'de yok.</string>
+    <string name="lab_2742f91b">Otomatik · bir Steam fragmanı</string>
     <string name="lab_2756404f">Güç ve root ayarlarını uygulama varsayılanlarına sıfırla</string>
     <string name="lab_27b56d30">Doğrudan XInput açık da olsa kapalı da olsa Bannerlator\'ın XInput DLL\'lerini, yanlarında Wine\'ın kendi XInput\'uyla birlikte yükler; böylece oyun içi menüdeki Kontroller › Kumanda, oyun çalışırken ikisi arasında geçiş yapabilir (kumanda yeniden bağlanır). Varsayılan olarak açık. Kapalı: Doğrudan XInput oyun başladığı gibi kalır ve değiştirmek yeniden başlatma gerektirir.</string>
     <string name="lab_27bcb120">Box64 ve FEX ön ayarlarını ekleyin, kopyalayın, silin, dışa veya içe aktarın (klasik Ayarlar).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Duvar kâğıdı resmi:</string>
     <string name="lab_28441b9b">Yeniden başlat</string>
     <string name="lab_28502118">VEGAS yerleşik varsayılanları (dosya yok)</string>
+    <string name="lab_286dae57">Otomatik · kapaktan</string>
     <string name="lab_287eabc8">FPS göster</string>
     <string name="lab_28d51363">Oyunun seçebileceği yenileme hızı</string>
     <string name="lab_28f727b0">HUD tanılamasını dışa aktar</string>
     <string name="lab_29198bb7">Ayarlanmadı (Sistem)</string>
+    <string name="lab_2927fedd">Önizlemeler yalnızca Wi-Fi ile</string>
     <string name="lab_29a908d6">GPU gönderim beklemelerini atla açık olmalı.</string>
     <string name="lab_29b501c2">Arkadaşlar ve sohbet, bildirimler ve oyun içi durum.</string>
     <string name="lab_29c3ef3b">Ekran kontrolleri, fare, titreşim, hareketle nişan, oyuncular.</string>
     <string name="lab_29d0a27a">Görüntü sistemi</string>
     <string name="lab_29faa513">Kumanda sayısı</string>
+    <string name="lab_29fe3935">Steam\'e bağlı değil</string>
     <string name="lab_2a1dcc50">Varsayılan Box64 ön ayarı</string>
     <string name="lab_2a234929">Kullanılamaz — bu ekranın tek bir yenileme hızı var, eşlenecek bir şey yok.</string>
     <string name="lab_2a342d91">Oyun sırasında en çok değiştirilen ayarlar.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Sesi yeniden başlat</string>
     <string name="lab_2ab94a31">Düğmeler arasında kaydır</string>
     <string name="lab_2ad5a458">Oyuncu yuvası sabitlemeleri</string>
+    <string name="lab_2adf1ef0">Görselin üzerinde Lab\'ın milimetrik kâğıdı ve sinyalleri</string>
     <string name="lab_2b01a79e">Bu görsel okunamadı.</string>
     <string name="lab_2b3bf173">Araçlar</string>
     <string name="lab_2b605d42">Daha fazla</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Varsayılan</string>
     <string name="lab_2ced81bf">Çevrimdışı: kayıtlı bir liste gösteriliyor. Yeni efektler indirmek için bağlanın.</string>
     <string name="lab_2d1366ec">Eşleşen bilinen değişken yok.</string>
+    <string name="lab_2d45170d">Oyun görseli</string>
     <string name="lab_2d6ee59d">Ya da herhangi bir değer yazın</string>
     <string name="lab_2dad13e3">Dil</string>
     <string name="lab_2dc2e901">Mono</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Hiç denetlenmedi. İndirilecek FEX, DXVK ve VKD3D-Proton paketlerini listeler.</string>
     <string name="lab_30c8cda7">FEX ön ayarı</string>
     <string name="lab_31132684">Windows oyunlarının kullandığı sıkıştırılmış dokuları, bunu yapamayan GPU\'lar için çözer.</string>
+    <string name="lab_312e2eb9">Görsel ve önizlemeler</string>
     <string name="lab_313f3497">Özel hizmetler</string>
     <string name="lab_314b6c8f">Wayland oyun sürücüleri</string>
     <string name="lab_318a4134">Bu oyun için ayarla</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">Oyunlarında bozuk dokular görünen Samsung ve Xiaomi telefonlar için. Aksi halde kapalı bırakın.</string>
     <string name="lab_36936d70">Oyunun saniyede çizdiği kare sayısını sınırlar. Pil tasarrufu sağlar ve takılmaları dengeler.</string>
     <string name="lab_36ef1cc0">Konteyneri izler</string>
+    <string name="lab_37232683">Görsel üzerindeki paneller</string>
     <string name="lab_3776c976">Yerel işleme</string>
     <string name="lab_377702f6">Dokunma</string>
     <string name="lab_37ad98ec">CPU çekirdeği seçimleri program yeniden başlayana kadar geçerlidir.</string>
@@ -395,12 +415,14 @@
     <string name="lab_37f22874">Her diskin kendi harfi olmalı</string>
     <string name="lab_3855543c">Dışa aktar (.icpx)</string>
     <string name="lab_385e1a80">Dikey ve yatay arasında çevirmek için katmana dokunun (Fusion: sonraki boyut). Taşımak için sürükleyin; yerinde kilitlemek için uzun basın.</string>
+    <string name="lab_386c72a7">Bu dosya kullanılamadı</string>
     <string name="lab_3886b4de">Bu klasör kullanılamaz: dahili depolamada veya SD kartta bir klasör seçin</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Doğrudan ekrana yöntemi</string>
     <string name="lab_38c3ee26">Düğmeleri ve çubukları test edin, fiziksel bir profil atayın, oyuncu yuvalarını ayarlayın.</string>
     <string name="lab_38d2a5bb">Sıcaklık</string>
     <string name="lab_38f46bd4">Başlatma menüsünü atla</string>
+    <string name="lab_38f52cc5">Kapalı: önizlemeler sessiz oynatılır</string>
     <string name="lab_39052457">Bu konteyner artık yok.</string>
     <string name="lab_390bed76">Vulkan üzerinde DirectDraw ve Direct3D 7.</string>
     <string name="lab_391a454c">Deck arayüzünde Oyunlar ve Big Picture ikisi de Home\'da açılır.</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Dengeli</string>
     <string name="lab_3b7778ec">Yazılımsal video kod çözme</string>
     <string name="lab_3bd060de"> ve oyun yerleşik Wayland Turnip üzerinde işlenir (bağdaştırıcı bir Turnip sürücüsü gerektirir).</string>
+    <string name="lab_3bf05e53">Önizlemeler açıkken Home\'un büyük kutucuğunda görselin üzerinde görünür. Oyun sayfasında logo adın yerini alır.</string>
     <string name="lab_3c0764a4">Ekran kontrollerini ve seçtiğiniz düzeni göster</string>
     <string name="lab_3ca0cc27">HDR: otomatik. Bu ekran HDR10\'u kabul ediyor, bu yüzden bu oyun için HDR çıkışı açılır.</string>
     <string name="lab_3cc7318b">Çekirdekler</string>
     <string name="lab_3d0ded52">Ekran şu anda %1$s Hz.</string>
     <string name="lab_3d12f194">Bu depoyu kaldır</string>
+    <string name="lab_3d198a51">3D görsel</string>
     <string name="lab_3d2c22d4">Sürücü sunum modu</string>
     <string name="lab_3d40c46a">Titreşim</string>
     <string name="lab_3d9862bb">Negatif mip sapması: daha keskin dokular, biraz parıldama. Otomatik, oyunun başladığı ölçeklemeyi izler.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">En yeni kazanır: daha yeni bir yerel kaydın üzerine asla yazmaz.</string>
     <string name="lab_41f05e04">Aşağıdaki atamalar bu profile ait</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
+    <string name="lab_4270e2ba">Üst orta</string>
     <string name="lab_42bbc821">Deneysel: Shift+F3 ile oyun içinde Epic katmanı. Konteynerin tüm hizmetlere izin vermesi gerekir.</string>
     <string name="lab_42ca94f9">Birincil kumanda</string>
     <string name="lab_43316731">Yalnızca C: (Windows öneki) ve Z: var. Bir oyun klasörü için disk ekleyin.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">Windows masaüstünü başlat</string>
     <string name="lab_4455b74f">Çubuk hareketinin oyuna ne sıklıkla ulaştığı. Oyun içinde de değiştirilebilir.</string>
     <string name="lab_449c12fb">Ekrandaki boyut</string>
+    <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">%1$s varsayılan profili, </string>
     <string name="lab_452013a2">Dışa aktar</string>
     <string name="lab_45536eb8">Konteyner</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">VEGAS yapılandırma dosyasını düzenle</string>
     <string name="lab_475cee12">Orta</string>
     <string name="lab_478577aa">Sıcaklıklar</string>
+    <string name="lab_47a2fcea">Görseller</string>
     <string name="lab_47db736e">Oyun klasörü seçin</string>
     <string name="lab_47fbfb16">Değiştir</string>
     <string name="lab_480443a4">| içeren klasör adları kullanılamaz</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Emülasyon yöntemi</string>
     <string name="lab_4a51272f">Sıfırla, Tüm konteynerler efektlerine geri döner.</string>
     <string name="lab_4a587711">Ekranı kare sınırı × çarpana uydurmak için açın.</string>
+    <string name="lab_4a690444">Oyun görseli arka planı</string>
     <string name="lab_4af762a7">Termal kısıtlamayı devre dışı bırak</string>
     <string name="lab_4b02cb78">Kaynak türü</string>
     <string name="lab_4b0fb1b1">Henüz hiçbir şey içe aktarılmadı: İçerikler › Yüklü › Linux çalışma zamanı sürücüleri.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Henüz duvar kâğıdı resmi yok</string>
     <string name="lab_4c5eeff6">Seç</string>
     <string name="lab_4c6da2bc">Windows masaüstü</string>
+    <string name="lab_4c6dae0d">Görseller aranıyor…</string>
     <string name="lab_4c737acf">Cihaz (gerçek GPU)</string>
     <string name="lab_4c76101a">FEX / DXVK / VKD3D seçimleri</string>
     <string name="lab_4c76edfa">DXVK ve VKD3D</string>
     <string name="lab_4c9774e6">Ekran yenileme hızını oyunun FPS\'ine eşitle</string>
     <string name="lab_4c9cbae2">Süper örnekleme</string>
     <string name="lab_4cb2f934">Etkin</string>
+    <string name="lab_4cc9a9c1">Kapak</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Yukarı/aşağıyı ters çevir</string>
     <string name="lab_4d8c7321">İçerikler</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">Oyun klasöründe bulundu.</string>
     <string name="lab_56b4c80c">Tema</string>
     <string name="lab_56b89990">Otomatik (varsayılan): oyunun çizdiği her kare için bir çubuk güncellemesi, ayarlanan sınıra kadar (varsayılan olarak saniyede 60); böylece girişi okuduğundan hızlı çizen bir oyun asla geride kalmaz. Sabit: saniyede o kadar güncelleme. Zamanlamasız: her değişiklik anında gönderilir. Hemen uygulanır, oyun içinde de (Kontroller › Kumanda). Ortam değişkenlerindeki BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX bu ayarın önüne geçer.</string>
+    <string name="lab_56ed95b0">Kütüphane ızgarası</string>
     <string name="lab_571567c9">Uygulama varsayılanlarına sıfırlansın mı?</string>
     <string name="lab_574b34d5">DXVK + VKD3D çoğu DirectX 9–12 oyununa uygundur. VEGAS, ince ayarlı bir DXVK çatalıdır. WineD3D, çok eski oyunlar için yavaş ama geniş kapsamlı yedek seçenektir.</string>
     <string name="lab_574e9955">Bu sürücüyle BCn dokularını ASTC\'ye dönüştürmek telefonu dondurabilir veya yeniden başlatabilir; yalnızca bir oyunda dokular bozuk veya eksikse deneyin.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Beta derlemeleri dahil et</string>
     <string name="lab_58627009">Titreşim ve hareketle nişan.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Sol üst</string>
     <string name="lab_58a426c9">Kare oluşturma çalışırken bu oyun için kapalı. </string>
     <string name="lab_5901a4cd">Wayland: fare hareket farkları birleştiriciye gider; imleci kilitleyen bir oyun bunları göreli hareket olarak alır.</string>
+    <string name="lab_5946d9c6">Uygulama ayarını kullan (%1$s)</string>
     <string name="lab_594a913b">Eşzamansız gölgelendiriciler</string>
     <string name="lab_595daef9">İndirilen bileşenler: arşivler ve katalog listesi.</string>
     <string name="lab_5983ab11">Çevrimdışı mod (Valve\'a oturum açılmaz)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Her ikisi</string>
     <string name="lab_5c2357bd">Kütüphane · 1 oyun</string>
     <string name="lab_5c307bbf">Titreşim hedefi, yoğunluğu ve motorları (kayıt yeri aşağıda seçilir)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Sabit ekran yenileme hızı</string>
     <string name="lab_5c462080">lsfg-vk kare çoğaltırken uygulanmaz: kare zamanlamasını kendisi yapar.</string>
     <string name="lab_5c524fb3">Yeni konteyner varsayılanları</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Dahili depolama, SD kart ve tüm konteynerlerin diskleri</string>
     <string name="lab_659fcd98">Benim eklediğim</string>
     <string name="lab_65f8ea90">İşleyici sürücüsü</string>
+    <string name="lab_65f9e2b8">Opak</string>
     <string name="lab_660f585a">Atamaları kopyala: %1$s</string>
     <string name="lab_662a7209">X\'i ters çevir</string>
     <string name="lab_6637ca24">BCn\'yi ETC2\'ye dönüştür</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Wayland\'de kullanılmaz: kare oluşturma, Turnip sürücünüz üzerindeki birleştiricide çalışır.</string>
     <string name="lab_69f12fdf">Dosyalarım</string>
     <string name="lab_69f77a90">Unreal Engine HDR düzeltmesi</string>
+    <string name="lab_69f7d525">Yeniden adlandırılamadı</string>
     <string name="lab_6a271188">Box64 ön ayarı / WOWBox64 ön ayarı</string>
     <string name="lab_6a4b2ea4">Güç</string>
     <string name="lab_6a68da45">Göreli fare</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">Geçerli düzenin dokunmatik düğmeleri.</string>
     <string name="lab_6c3656ad">Dikey</string>
     <string name="lab_6c37a76c">Dokunma işlevi</string>
+    <string name="lab_6c5fe717">Önizleme sesi</string>
     <string name="lab_6c8e3b1f">Varsayılan yap…</string>
     <string name="lab_6c9249ac">Başlatırken otomatik bulut indirme, GOG kütüphanenizdeki oyunlar için KAPALI olacak. En son bulut kayıtları oyun başlamadan önce çekilmeyecek — bunları GOG Kayıt Yöneticisi sekmesinden veya oyunun ayrıntı sayfasından kendiniz indirmeniz gerekecek. Devam edilsin mi?</string>
     <string name="lab_6cd478cd">Otomatik (en fazla 120/sn)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">Oturum yalnızca uygulamanın kendi değişkenleriyle başlar.</string>
     <string name="lab_6e2acf44">GPU modeli</string>
     <string name="lab_6e3da120">Kütüphane</string>
+    <string name="lab_6e661b92">Fragmanlar yalnızca Wi-Fi ile indirilir</string>
     <string name="lab_6e6ffb5b">64 bit çevirici Box64EC olduğunda 64 bit oyunları çalıştırır.</string>
     <string name="lab_6e86a6ef">Oyundan çıkınca oturumu kapat</string>
     <string name="lab_6ec32312">Bu sarmalayıcıda bulunanlar</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Başlangıç ekranı ve güncellemeler.</string>
     <string name="lab_7982eb6b">, aşağıda listelenmiştir.</string>
     <string name="lab_79b6d4c7">Çevrimdışı Steam modu, dosya denetimleri ve güncellemeler</string>
+    <string name="lab_79c7988a">Yok · ad gösterilir</string>
     <string name="lab_79e3b22e">Orta</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Hassasiyet</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Arka arabellek</string>
     <string name="lab_7ceefd00">İndirme başarısız oldu: %1$s</string>
     <string name="lab_7d24ed15">Burada henüz bir şey yok.</string>
+    <string name="lab_7d50777a">Aksiyon, RPG, Strateji</string>
     <string name="lab_7d6bff72">DirectAudio ses sisteminde kullanılabilir.</string>
     <string name="lab_7d9f1b59">Daha yavaş. Yalnızca seccomp\'un engel olduğu cihazlar için.</string>
     <string name="lab_7da6281a">Dosyalar ve araçlar</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">x86 çeviricileri</string>
     <string name="lab_7e3548ee">Oyunlar sekmesindeki oyunlarımı Steam\'de göster</string>
     <string name="lab_7e38b599">Çıkışta otomatik bulut yükleme, Steam kütüphanenizdeki oyunlar için KAPALI olacak. Bir oyun kapandığında kayıtları Steam Cloud\'a gönderilmeyecek — bunları oyunun ayrıntı sayfasındaki Bulut Kayıtları bölümünden kendiniz yüklemeniz gerekecek. Devam edilsin mi?</string>
+    <string name="lab_7e6d7e33">Kütüphane kartları</string>
     <string name="lab_7e9c00ea">Otomatik (FPS\'e göre)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
     <string name="lab_7eb6734a">Wayland, onun için derlenmiş bir Proton katmanı gerektirir.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">Oyunun 64 bit x86 kodunu çalıştırır. Box64EC için bir Box64EC bileşeninin yüklü olması gerekir.</string>
     <string name="lab_82265bbe">Başarımlar Steam\'e eşitlensin mi?</string>
     <string name="lab_8232f25f">GDI (yazılımsal)</string>
+    <string name="lab_82542307">Otomatiğe sıfırla</string>
     <string name="lab_82549ee8">Bu oyunun nasıl başladığı: Steam ile mi değil mi, kumanda aktarımı, hile önleme, Epic oturumu.</string>
     <string name="lab_82758f36">Yerel arka uç</string>
     <string name="lab_828c5a26">GameNative motorunu kullan (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Kare alma sinyalini atla</string>
     <string name="lab_87f7f6ba">Güç profili</string>
     <string name="lab_880bfb03">Düzeni düzenle</string>
+    <string name="lab_88328343">Otomatik · bulanık kapak</string>
     <string name="lab_8844e521">Ön ayar değerleri</string>
     <string name="lab_8850c516">DirectInput oyunlarının kumandayı titreştirmesini sağlar: düz titreşim ve yarış ile uçuş oyunlarının direksiyona veya joystick\'e gönderdiği kuvvet efektleri, kumandanın iki motoru üzerinden hissedilir. Titreşim ayarlarını izler (titreşim hedefi ve yoğunluğu). Sabit bir kuvvet (örneğin direksiyonu düz tutan bir yarış oyunu) birkaç saniye sonra söner, böylece kumanda vızıldamaya devam etmez. DirectInput oyunları bunu yalnızca kumandayı görebildikleri sürece hissettirir. Değişiklik kumanda yeniden bağlandığında (oyun içinde Kontroller › Kumanda bunu yapar) veya bir sonraki başlatmada uygulanır. Ortam değişkenlerindeki BANNERIN_DINPUT_FF bu ayarın önüne geçer.</string>
     <string name="lab_8861fdef">Ses ayarları</string>
     <string name="lab_887ae5cd">Oluştur</string>
+    <string name="lab_88819a36">Görsel üzerinde ızgara</string>
     <string name="lab_88845797">Görev yöneticisi</string>
     <string name="lab_888e7afb">BCn\'yi kendisi çözen Adreno\'da etkisi yoktur.</string>
     <string name="lab_88a8754b">Doku keskinliği</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">Oyunda açtığınız başarımlar gerçek Steam hesabınıza yazılır. Kapalı: başarımlar bu cihazda kalır.</string>
     <string name="lab_88f8aeb8">#RRGGBB biçiminde renk, örn. #1E88E5</string>
     <string name="lab_8907b290">Dosyalara göz at</string>
+    <string name="lab_892b7b55">Geniş kapak</string>
     <string name="lab_8965e6c7">Daha az hizmet = daha hızlı başlangıç ve daha fazla boş RAM.</string>
     <string name="lab_8998f446">Bu girdinin simgesi</string>
     <string name="lab_89f43a0d">Çevirici ön ayar değerleri</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Sarmalayıcılar</string>
     <string name="lab_8a8bb4d3">Komut akışı (CSMT)</string>
+    <string name="lab_8aa52c61">Oyun ayrıntıları</string>
     <string name="lab_8ae3076a">Turbo</string>
     <string name="lab_8af52aac">Güncellemeler</string>
     <string name="lab_8b087b3c">Görünüm</string>
@@ -948,6 +994,7 @@
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">%1$s atama · yeni kumandalar bunları devralır</string>
     <string name="lab_8c68f725">OpenGL oyunları (ve WineD3D üzerinden DirectDraw / eski Direct3D) her karede yavaş bir kopya yerine yerleşik Mesa ve Zink üzerinde çalışır ve Vulkan ile sunulur. X11\'de bir Turnip grafik sürücüsü gerekir. Wayland ile her zaman açık.</string>
+    <string name="lab_8c79f517">Steam fragmanı</string>
     <string name="lab_8c7f97b0">%1$s / %2$s GB</string>
     <string name="lab_8c913834">Sığdırma, ölçekleme filtresi, kare zamanlaması, kare sınırı ve kare oluşturma kendi sayfalarındaki gibi kaydedilir</string>
     <string name="lab_8c9b8bce">Hareketle nişan</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Konteynerinkiyle aynı</string>
     <string name="lab_952f41de">GPU sürücüleri</string>
     <string name="lab_95432a7a">Oyuncu yuvaları</string>
+    <string name="lab_95c66fc6">Çıkış yılı</string>
     <string name="lab_95ca1574">Grafik sürücüsü</string>
     <string name="lab_96125830">Varsayılan / Herhangi bir kumanda</string>
     <string name="lab_962bd533">Parlaklık</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">\"Varsayılan yap\" seçimleri ve varsayılan katmanı artık unutuldu ve bu sayfa uygulamanın kendi varsayılanlarını gösteriyor. </string>
     <string name="lab_97bb79af">Deck modu, Steam istemcisinin Steam Deck\'teki gibi davranmasını sağlar ve Hızlı Erişim Menüsü\'nü ekler.\n\n</string>
     <string name="lab_98469a16">Bağlı</string>
+    <string name="lab_98513339">Steam fragmanları</string>
     <string name="lab_9884a116">Emülatör (32 bit)</string>
+    <string name="lab_98964f8d">Bulunamadı · ad gösterilir</string>
     <string name="lab_989f5c02">Linux çalışma zamanı sürücüleri</string>
+    <string name="lab_98aa06ba">Büyük</string>
     <string name="lab_98c4e496">Günlük kaydı açıkken Wine ve Box64 / FEX çıktısı.</string>
     <string name="lab_99082159">Bildirim sesi</string>
     <string name="lab_992421a8">Açılış ekranı</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Varsayılan MIDI ses bankası</string>
     <string name="lab_99c314b2">Canlı</string>
     <string name="lab_9a2890b2">Adreno (Qualcomm) GPU veya diğer GPU\'larda root gerekir.</string>
+    <string name="lab_9a75ad29">Steam\'e bağlı değil: fragman bulmak için Ayrıntılar sekmesinden bağlayın.</string>
     <string name="lab_9a8f0817">Bu oyun</string>
     <string name="lab_9aa56987">Hareketle nişan (jiroskop)</string>
     <string name="lab_9aaea01f">Epic Arkadaş Katmanı</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Küçük hareketleri yok say</string>
     <string name="lab_9d727d6c">Önce Ayarlar › Performans\'ta Lossless.dll\'yi içe aktarın.</string>
     <string name="lab_9d954afa">Seçimimi hatırla</string>
+    <string name="lab_9e5d1d40">Steam\'de ada göre ara</string>
     <string name="lab_9e7ac4ad">Değişkenleri eşitle</string>
     <string name="lab_9e7bf84e">Paylaşılan ön ayarı izler</string>
     <string name="lab_9ea6cfdd">Yalnızca gerekli olanlar</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Arayüz stili</string>
     <string name="lab_a2efb709">Arm Mali GPU\'lar için. Değiştirilene kadar sürücüyü izler: PanVK sürücüsünde açık, diğerlerinde kapalı.</string>
     <string name="lab_a35eef98">Bir sensör raporunu (CPU, GPU, sıcaklıklar, VRAM…) İndirilenler klasörünüze kaydeder.</string>
+    <string name="lab_a36379d6">Otomatik · Steam</string>
     <string name="lab_a37cf853">Bu girdi için oyunun klasöründe başka bir .exe seçin.</string>
     <string name="lab_a3904026">Nişan almak için basılı tutun</string>
+    <string name="lab_a396cfaa">Bu görsel yüklenemedi</string>
     <string name="lab_a3c61ce1">Pencereler ve günlükler</string>
     <string name="lab_a3f6a50d">Ekrana sığdır</string>
     <string name="lab_a40c85ce">Windows ile başlayan hizmetler</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Titreşim motorları</string>
     <string name="lab_a559e736">XR kumandası</string>
     <string name="lab_a57ba715">İşlemci benzeşimi (cpuList)</string>
+    <string name="lab_a593c4da">Kendi dosyanız</string>
     <string name="lab_a59e2986">Xalia kapalı (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">İstemcinin Hızlı Erişim Menüsü ile Steam Deck\'teki gibi davranmasını sağlar. Oyunlar kumandayı almaz olur.</string>
     <string name="lab_a5d4b1b1">üzerinde bir oyun çalışıyor</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Ekran kontrolleri ve gerçek kumanda</string>
     <string name="lab_a6e62e9e">DirectX çevirisi</string>
     <string name="lab_a71846fe">Tema ve renkler</string>
+    <string name="lab_a74f5b6d">Kapalı, oyun görseli, derinlikte yavaşça süzülen 3D görsel veya önizlemeli: Home\'un büyük kutucuğunda bir fragman</string>
     <string name="lab_a7a4aed7">Dokunmatik ekran, parmakları Steam\'e gerçek dokunuşlar olarak gönderir; Dokunmatik yüzey imleci sürükleyerek hareket ettirir ve dokunarak tıklar.</string>
     <string name="lab_a7c6d9e7">Kare hızı sınırı</string>
     <string name="lab_a7c8bcd7">Her ikisi (PC\'deki gibi): büyük ve küçük motorları bir PC kumandası gibi ayrı ayrı çalıştırır. Tek (daha akıcı çubuklar): tek motor kullanır. Bazı el konsolu kumandaları (örn. AYANEO Pocket FIT) iki motor birlikte çalışırken çubuk güncellemelerini yavaşlatır; Tek bu yavaşlamayı yarıya indirir, böylece nişan almak akıcı kalır. Varsayılan: Pocket FIT\'te Tek, diğerlerinde Her ikisi.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">Yüklü oyunlar yine başlar. Önce bu cihazda bir kez çevrim içi oturum açılması gerekir. Bir sonraki oturumda uygulanır.</string>
     <string name="lab_af32ab2f">Tekli</string>
     <string name="lab_af39be20">Ağ</string>
+    <string name="lab_af3f8345">Bu oyun için bir şey bulunamadı. Bir görsel seçin veya oyunu Ayrıntılar sekmesinden Steam\'e bağlayın.</string>
     <string name="lab_af456994">Kernel\'in çekirdekleri kapatmasını önler.</string>
+    <string name="lab_af47e020">Türler</string>
     <string name="lab_afb57bd1">Ölçekleme filtresi, keskinleştirme ve bant giderme</string>
     <string name="lab_b01a2f1b">Ortam değişkenleri</string>
     <string name="lab_b01c4a81">Yön</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Kayıtları uygulamayla paylaş</string>
     <string name="lab_b132aa74">Wayland birleştiricisinin oyunun karelerini ekrana aktarırken kullandığı yüklü Turnip.</string>
     <string name="lab_b18ba364">Dokunmatik ekran</string>
+    <string name="lab_b1aea182">Bunun yerine adı göster</string>
     <string name="lab_b1cc94c4">Efekt</string>
     <string name="lab_b1fb3d78">Yerinde kilitle</string>
     <string name="lab_b2091323">BOX64_* değişkenleri Box64EC için de geçerlidir.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Çalıştır…</string>
     <string name="lab_b4467898">Ses arabelleğine ince ayar</string>
     <string name="lab_b46c3296">Siliniyor</string>
+    <string name="lab_b484c517">Küçük</string>
     <string name="lab_b48bc44b">Liste yüklenemedi</string>
     <string name="lab_b4c6ec80"> Bu oyun için ayarlandı.</string>
     <string name="lab_b4d38912">İlk oyununuzu ekleyin</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">VEGAS derlemesi yüklü değil: aşağıdan bir tane indirin.</string>
     <string name="lab_bd63a37d">Duvar kâğıdı resmi</string>
     <string name="lab_bd87c7d9">Çözülen dokuları önbelleğe al</string>
+    <string name="lab_bd9b3216">Ayrıntılar</string>
     <string name="lab_bdaf406a">Oyunda</string>
+    <string name="lab_be12d609">Görsel seç…</string>
+    <string name="lab_be45a0e0">Bulunamadı · Steam\'e bağlı değil</string>
     <string name="lab_be638831">Büyüteç, pencereler, günlükler ve çalışan programlar.</string>
     <string name="lab_be998b7c">Her karede eşitle</string>
     <string name="lab_be9a2a59">Çift Geri, Hızlı Erişim\'i açar</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> Bir sonraki oyun başlatmada uygulanır.</string>
     <string name="lab_bed0286f">Bu depoyu gizle</string>
     <string name="lab_bef10a2e">Başka bir konteynere taşı</string>
+    <string name="lab_bf5a86a3">Konum</string>
     <string name="lab_bf9aba55">Baştan başla</string>
     <string name="lab_bfa9745f">Her zaman açık</string>
     <string name="lab_bfb6fae9">Koyu veya açık; vurgu temanızdan gelir</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Otomatik yedekleme kapatılsın mı?</string>
     <string name="lab_c06ade64">Deneysel anahtarlar ve görüntü sunucusu iç ayarları.</string>
+    <string name="lab_c088a86d">Logoyu ayarla</string>
     <string name="lab_c0b26391">Uyumluluk</string>
     <string name="lab_c0ba51f5">Ortam</string>
     <string name="lab_c0cb7e61">Varsayılan olarak kapalı, böylece hem XInput hem DirectInput okuyan oyunlar tek kumanda görür.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">Değişiklikler bu oyun için yalnızca genel varsayılandan farklı olduklarında saklanır.</string>
     <string name="lab_c1bc6675">Oyunların X11\'de kullandığı Vulkan sarmalayıcısı. İçe aktarılan sarmalayıcılar da burada görünür.</string>
     <string name="lab_c1c757e2">BCn katmanı hata ayıklama günlüğü</string>
+    <string name="lab_c1df4081">Orta boy</string>
     <string name="lab_c206cdbf">Tüm kayıtları yedekle</string>
     <string name="lab_c22c196f">Kırmızı</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Ekran düzeni</string>
     <string name="lab_c781beb4">Performans (deneysel)</string>
     <string name="lab_c78bbaf5">Ekran kontrolleri, fare, titreşim, hareketle nişan.</string>
+    <string name="lab_c7b49d50">Steam uygulaması %1$s</string>
     <string name="lab_c7fad197">Ek ayar algılanmadı</string>
     <string name="lab_c82e7e67">Katalogdan derlemeler. Yüklenenler DXVK sürümü altında görünür.</string>
     <string name="lab_c844d41c">Uygulamanın kendiliğinden algılamadığı Denuvo oyunları için.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Paylaşılan ön ayar, düzenlendi</string>
     <string name="lab_cb5fc4d5">VEGAS yapılandırması</string>
     <string name="lab_cb6d604d">HUD oyun içinde sürüklenemez.</string>
+    <string name="lab_cbab7f7a">Simgeler</string>
     <string name="lab_cbb98111">Sağ analog çubuk</string>
     <string name="lab_cc03c446">Dosya yöneticisi</string>
     <string name="lab_cc0a2f50">Bir Steam oyunu Goldberg veya Doğrudan .exe (Wine oyunları) ile başladığında, arkadaşlarınız görsün ve oynama süresi sayılsın diye Steam\'e onu oynadığınızı bildir. SteamLite başlatmaları her zaman gösterilir.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Başlatırken GOG bulutundan otomatik indir</string>
     <string name="lab_cf4ce884">Tam ekran modu</string>
     <string name="lab_cf608a0d">DirectAudio kullan</string>
+    <string name="lab_cf6c6955">Bu oyunun henüz logosu yok. Burada görmek için Logo bölümünden bir tane seçin.</string>
     <string name="lab_cf6d2530">A710/A720/A722 sürücü derlemelerinin ihtiyacı; Otomatik bunu bu içe aktarmalar için açar. Ortam değişkenlerindeki bir TU_DEBUG önceliklidir.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Alt orta</string>
     <string name="lab_cf8f0f8a">Ayarlı ortam değişkeni yok</string>
     <string name="lab_cf9192cb">%1$s yüklendi</string>
     <string name="lab_d02befc2">Video belleği</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Sistemle seç…</string>
     <string name="lab_d063c529">ARM64EC konteynerlerinde WOWBox64 adını alır; yukarıda seçildiğinde 32 bit kodu çalıştırır.</string>
     <string name="lab_d097c7ad">Dokunmatik yüzey</string>
+    <string name="lab_d0c3d24d">Video seç…</string>
     <string name="lab_d1106762">Görsel seçin</string>
     <string name="lab_d13696b8">Kumandaları oyunculara sabitle</string>
     <string name="lab_d1588174">Titreşim açık</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Kurulumu yeniden çalıştır</string>
     <string name="lab_d49be3e8">Depolama ve klasörler</string>
     <string name="lab_d4d60815">Daha dengeli kare zamanlaması ve daha serin bir cihaz.</string>
+    <string name="lab_d4e70b40">Fragmanlar aranıyor…</string>
     <string name="lab_d4eb64e3">Özel…</string>
     <string name="lab_d51bc9cd">BCn doku emülasyonu</string>
     <string name="lab_d51bce77">Ayrıcalıklı giriş / DInput\'u etkinleştir</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Tetik</string>
     <string name="lab_d5e887b8">%1$s sa</string>
     <string name="lab_d60412d3">Orijinal</string>
+    <string name="lab_d620ef74">Bulanık kapak</string>
     <string name="lab_d653f990">32 bit kod için x86 çevirici</string>
     <string name="lab_d6d3fe68">Bir bileşen paketi seçin (-linux .wcp)</string>
     <string name="lab_d7060afb">Bu konteyneri içe aktar</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Bu sürücü bu GPU\'da yüklenmedi: denetime onun yerine sistem sürücüsü yanıt verdi.</string>
     <string name="lab_d8e06406">Ekran</string>
     <string name="lab_d8e621c2">Disk ekle</string>
+    <string name="lab_d90a905b">Cam</string>
     <string name="lab_d91754f0">Girdi yok.</string>
     <string name="lab_d92d0230">Uygulandı: </string>
     <string name="lab_d92fb9d6">Ad boş olamaz.</string>
+    <string name="lab_d9667615">Görsel</string>
     <string name="lab_d9767690">Oyun, konteynerinin değişkenleriyle başlar</string>
     <string name="lab_d9a22ca4">DX sarmalayıcı</string>
     <string name="lab_d9b07af8">İçe aktarıldı: </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">Bu oyunun değişkenleri</string>
     <string name="lab_dbe48d14">Asla</string>
     <string name="lab_dc2dbf53">(boş)</string>
+    <string name="lab_dc6bb726">Bağlantıyı kaldır</string>
     <string name="lab_dc942e27">Yeni sürümleri bana bildir</string>
     <string name="lab_dcb67730">Değer</string>
     <string name="lab_dcba8bc8">Fareyi devre dışı bırak</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">Wayland, oyunun karelerini ekrana aktarmak için yüklü bir Turnip gerektirir. Yenileri Grafik sürücüsü altında görünür.</string>
     <string name="lab_e2410f47">Göz at ve indir</string>
     <string name="lab_e2421520">WOWBox64 sürümlerini indir</string>
+    <string name="lab_e280d375">Kart boyutu</string>
     <string name="lab_e2a7f23e">Ekranda</string>
+    <string name="lab_e2b70ebc">Önizleme klibi yok</string>
     <string name="lab_e2c38520">Bu girdinin yazılacak bir simge dosyası yok.</string>
     <string name="lab_e2ce4373">Bölüm</string>
     <string name="lab_e2e95fcd">Oyun günlükleri</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Kumandayı yalnızca Steam üzerinden gören oyunlar için (No Man\'s Sky). Kumandayı kendisi okuyan oyunlarda kapalı tutun. Doğrudan aktarımı kapatır.</string>
     <string name="lab_e3e80b58">Kontrol profili</string>
     <string name="lab_e41154d8">FPS geçmişi</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Medya kodekleri</string>
     <string name="lab_e73d4b35">Vulkan uzantıları</string>
     <string name="lab_e7bab6f9">İşleme ölçeği (süper örnekleme)</string>
+    <string name="lab_e7d39686">Kutucukların görsel üzerinde ne kadar şeffaf olduğu</string>
     <string name="lab_e7d6bbaa">DirectX çevirisi, GPU sürücüsü, OpenGL ve görüntünün ekrana nasıl aktarıldığı.</string>
     <string name="lab_e7d75246">Kare oluşturma zincirinin çalıştığı yükseklik; genişlik ekranınıza uyar. Düşük değer çok daha hafiftir ama görüntü yumuşar.</string>
     <string name="lab_e801ba28">İsterseniz kapatın; bu oyun bunu hatırlar.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Atamalarını kaldır</string>
     <string name="lab_eb680509">Dosyalarınızdan bir .exe ya da mağazadan bir oyun.</string>
     <string name="lab_eb6d0257"> · kullanan: </string>
+    <string name="lab_eb78cff1">Açıklama</string>
     <string name="lab_ebd67348">Kontrol profiline kaydedildi</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">x86-64 varsayılanları</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">Sol üst köşede Steam menüsü, sağ üstte Hızlı Erişim Menüsü.</string>
     <string name="lab_ef041fbb">Motor</string>
     <string name="lab_efc1065a">Bağlı değil</string>
+    <string name="lab_efca121e">Lab duvar kâğıdı</string>
     <string name="lab_efd740b9">Saydamlık</string>
     <string name="lab_efdeb1c6">Ön ayar listesi tüm konteynerler ve oyunlar tarafından paylaşılır.</string>
     <string name="lab_efdfc7e5">FPS sınırlayıcı</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Yerleşik (Win-FG)</string>
     <string name="lab_f38c2b5b">Ekran hizalaması</string>
     <string name="lab_f39e4ef9">API anahtarı</string>
+    <string name="lab_f3a4d6f2">Steam uygulaması %1$s ile bağlandı</string>
     <string name="lab_f3c5111e">Açılı bakışta daha keskin dokular. DirectX 9 ile 11 arası oyunlar.</string>
     <string name="lab_f3d61893">Görsel efektler</string>
     <string name="lab_f3e2bf3c">Oyunun üzerine çizilen FPS/sıcaklık katmanı.</string>
@@ -1632,7 +1716,10 @@
     <string name="lab_f61050cc">Oyun çözünürlüğü</string>
     <string name="lab_f665e069">Bir arkadaşınız size mesaj attığında ve sohbeti açık değilken bildirim.</string>
     <string name="lab_f667b7f4">Vurgu rengi</string>
+    <string name="lab_f690a199">Kendi kapağınız</string>
     <string name="lab_f6f41dc4">Cihazda bulunan bilinen sorunlar:\n</string>
+    <string name="lab_f6f5fb6b">Konteyner oluştur</string>
+    <string name="lab_f721f484">Kapaklar</string>
     <string name="lab_f745bb2a">Akış</string>
     <string name="lab_f7578887">Yeni konteyner varsayılanlarınızdan başlar. X ile oluşturulur.</string>
     <string name="lab_f783e029">Çift pil</string>
@@ -1647,11 +1734,14 @@
     <string name="lab_f91491fe">Oyunun başka bir penceresini öne getir.</string>
     <string name="lab_f918602e">Wayland ile oyunun kendisinin işlendiği Vulkan sürücüsü.</string>
     <string name="lab_f94e949e">Ses › Mikrofon tarafından ayarlanır</string>
+    <string name="lab_f97022d8">Steam\'de bu oyun için fragman yok.</string>
     <string name="lab_fa109fc6">Efektlerde ara…</string>
+    <string name="lab_fa2965af">Arka plan görseli</string>
     <string name="lab_fa381e9a">Daha keskin (-0.5)</string>
     <string name="lab_fa700875">Bazı oyunlar kumandayı asla kendisi okumaz: onu Steam\'den ister. SteamLite\'ta kimse yanıt vermez, bu yüzden bu oyunlar kumanda görmez. Açık: SteamLite aracısı bu oyun için Steam\'in kumanda katmanını uygun bir düzenle açar. Zaten kumanda okuyan oyunlarda kapalı tutun, yoksa her basış iki kez algılanır. Kumanda doğrudan aktarımının tersidir, bu yüzden yalnızca biri açık olabilir. Yalnızca SteamLite.</string>
     <string name="lab_fa859fc7">Goldberg modu, Dosyaları doğrula ve Güncellemeleri denetle başlatma menüsünde bulunur. Bir sonraki başlatmada görmek için \"Başlatma menüsünü atla\"yı kapatın.</string>
     <string name="lab_fac0fe64">Ölçekleme kontrolleri işe yarayan kısmı onsuz da yapar ve oyun içi çekmecenin FPS sınırı kare hızını sınırlar. Bir oyun kumandaya yanıt vermeyi bırakırsa Deck modunu yeniden kapatın.</string>
+    <string name="lab_fad0baa9">Varsayılan (Steam: %1$s)</string>
     <string name="lab_fae2666b">Valve\'ın kendi Proton\'u, Steam güncellediğinde değiştirilir; orijinalleri her derleme için saklanır</string>
     <string name="lab_fae62cc0">İmleci oyuna kilitler. Bırakmak için Sesi Kıs\'a basın.</string>
     <string name="lab_fb2b9733">Her ikisi (PC\'deki gibi)</string>

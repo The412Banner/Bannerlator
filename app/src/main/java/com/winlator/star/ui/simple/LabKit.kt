@@ -57,6 +57,9 @@ internal object LabRoutes {
     const val STORES = "lab_stores"
     const val GAME = "lab_game?path={path}"
     fun game(path: String) = "lab_game?path=" + android.net.Uri.encode(path)
+    const val DETAILS_PREFIX = "lab_details"
+    const val DETAILS = "lab_details?path={path}&tab={tab}"
+    fun details(path: String, tab: Int = 0) = "lab_details?path=" + android.net.Uri.encode(path) + "&tab=" + tab
 }
 
 internal class LabSection(val label: String, val short: String, val icon: ImageVector, val route: String)
@@ -78,7 +81,7 @@ internal fun labSectionOf(route: String?): Int {
     val r = route ?: return 0
     return when {
         r == DeckRoutes.HOME -> 0
-        r.startsWith("lab_library") || r.startsWith("lab_game") || r.startsWith("deck_settings_game") -> 1
+        r.startsWith("lab_library") || r.startsWith("lab_game") || r.startsWith("lab_details") || r.startsWith("deck_settings_game") -> 1
         r.startsWith("lab_stores") -> 2
         r.startsWith("simple_containers") || r.startsWith("deck_settings_container") || r == DeckSettingsRoutes.DEFAULTS || r.startsWith("container_detail") -> 3
         r.startsWith("simple_driver") || r.startsWith("simple_component") || r.startsWith("adreno") || r.startsWith("contents") -> 4
@@ -133,7 +136,7 @@ internal fun labLightScheme(base: ColorScheme): ColorScheme {
  * soft accent glow. Redrawn about 30 times a second while it is on screen (the frame clock stops when it is not).
  */
 @Composable
-internal fun LabWallpaper(modifier: Modifier = Modifier) {
+internal fun LabWallpaper(modifier: Modifier = Modifier, fill: Boolean = true) {
     val cs = MaterialTheme.colorScheme
     val light = AppThemeState.labLight
     var t by remember { mutableFloatStateOf(0f) }
@@ -151,7 +154,7 @@ internal fun LabWallpaper(modifier: Modifier = Modifier) {
     val bg = cs.background
     val grid = if (light) Color(0x12111722) else Color(0x0DFFFFFF)
     Canvas(modifier.fillMaxSize()) {
-        drawRect(bg)
+        if (fill) drawRect(bg)
         val s = 48.dp.toPx()
         val drift = (t * 6.dp.toPx()) % s
         var x = drift
@@ -187,6 +190,7 @@ internal fun LabWallpaper(modifier: Modifier = Modifier) {
                 drawCircle(accent.copy(alpha = alphaHead), 2.4.dp.toPx(), Offset(xx, head))
             }
         }
+        if (!fill) return@Canvas
         val c = Offset(size.width * 0.78f, size.height * 0.12f)
         drawCircle(
             Brush.radialGradient(listOf(accent.copy(alpha = if (light) 0.08f else 0.13f), Color.Transparent), center = c, radius = size.maxDimension * 0.65f),

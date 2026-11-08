@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in bg. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in bg. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Захранване (по подразбиране за всяка игра)</string>
     <string name="lab_0016da13">Персонализирано започва с всички услуги изключени: включете само това, от което играта има нужда.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">Бутон B</string>
     <string name="lab_00737986">Изпраща истински HDR10 към екрана.</string>
     <string name="lab_007bf585">Стартиране веднага със запазените избори. Изключете, за да видите отново менюто за стартиране.</string>
+    <string name="lab_0086410b">Широки корици</string>
     <string name="lab_00aad2e4">Предпочитай DLL от папката на играта</string>
     <string name="lab_00d53383">Първо създайте профил (раздел На екрана).</string>
     <string name="lab_00e9bd4e">Wrapper</string>
     <string name="lab_00ef3163">Governor и заключване на честотите на CPU, свободна памет, температурна защита (класически Настройки › Производителност) и импортиране на Lossless.dll за генериране на кадри.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s ГБ</string>
     <string name="lab_0134b985">Настройки на DX wrapper</string>
+    <string name="lab_0155bfc3">Корици, широки корици или икони в Home и библиотеката</string>
     <string name="lab_015a2290">Разрешения, тема и магазини</string>
     <string name="lab_01940fd6">Общи</string>
     <string name="lab_01942160">FPS с десетичен знак</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">Ядра, достъпни за играта</string>
     <string name="lab_044b1956">Производителност</string>
     <string name="lab_04accfcf">OpenGL: Бързо</string>
+    <string name="lab_04e55ba9">Изберете изображение: %1$s</string>
     <string name="lab_04fc2b5b">Изображение</string>
     <string name="lab_052396d7">DirectAudio е експериментален</string>
     <string name="lab_0526e39f">L1 / R1 сменят страницата, X превключва между бързото меню и менюто на играта, B затваря.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">Вграден (Win-FG) интерполира в самото приложение. Lossless Scaling използва вашия собствен Lossless.dll. И двата изискват екранния рендерер Vulkan, Wayland или Linux запис. Множителят се задава в играта.</string>
     <string name="lab_070cecae">Изберете какво да се записва (Wine, Box64/FEX, DXVK, SteamLite, Steam без интерфейс, logcat), къде да отиват журналите и колко да се пазят; разглеждайте и ги споделяйте.</string>
     <string name="lab_0721ad7c">Този контейнер</string>
+    <string name="lab_075ffd70">Ваше видео</string>
     <string name="lab_07a88d47">Едно натискане на Назад все още отваря страничното меню в играта.</string>
     <string name="lab_07e11363">Включено за целия контейнер: изключете го в контейнера.</string>
     <string name="lab_080615dc">Като в контейнера</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Оправя въртящи се или заседнали камери в някои по-стари игри.</string>
     <string name="lab_0d5a2b34">Допълнителни думи след името на програмата, напр. -windowed -dx11.</string>
     <string name="lab_0da00171">• Игрите спират да получават контролера. Собствените менюта на Steam работят, но в игра контролерът не прави нищо.\n</string>
+    <string name="lab_0dc541d5">Върни по подразбиране</string>
     <string name="lab_0ddd64ae">Сила на вибрацията</string>
     <string name="lab_0e15cd35">Полезно на сгъваеми устройства: играта остава на едната половина.</string>
     <string name="lab_0e24f0e3">Асинхронен кеш на шейдъри</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">Ефекти на ReShade</string>
     <string name="lab_1054fdc3">При Wayland играта се рендерира чрез вградения композитор, който изисква инсталиран Turnip, за да импортира кадрите ѝ. „Системен“ се предлага само на GPU Mali; на другите показва черен екран. На какво се рендерира самата игра, определя драйверът за игри Wayland по-долу.</string>
     <string name="lab_105c504c">Поправка за OneUI / HyperOS</string>
+    <string name="lab_1079be1d">Нищо не е намерено в Steam за %1$s</string>
     <string name="lab_10a08356">Превключване по време на игра</string>
     <string name="lab_10cb69ae">Избери изображение за иконата</string>
     <string name="lab_1121166e">Алфа</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Избери цвят</string>
     <string name="lab_1331bc15">SteamLite стартира истинския клиент на Steam, така че постиженията, записите в облака и онлайн играта работят. Steam без интерфейс стартира играта в собствената Steam сесия на приложението, така че приятелите и чатът остават онлайн (експериментално). Goldberg се представя за Steam без влизане. Директно .exe стартира собствената програма на играта.</string>
     <string name="lab_134638cc">Игри от GOG</string>
+    <string name="lab_136c7474">Долу вляво</string>
     <string name="lab_137513e1">Избрано за вас: драйверът от стандартните настройки за нов контейнер.</string>
     <string name="lab_137e9ac8">Засега само вградените компоненти.</string>
     <string name="lab_13868325">Начини за отваряне</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Ръчно</string>
     <string name="lab_177847bc">Няма какво да се копира</string>
     <string name="lab_17a0dfae">Офлайн</string>
+    <string name="lab_17c41d91">Екранна снимка</string>
     <string name="lab_17e8622b">SurfaceFlinger предава кадрите на играта директно на композитора на Android. Може да е по-бързо, но на някои устройства показва черен екран или грешни цветове. Ако това се случи, превключете обратно на Vulkan или OpenGL.</string>
     <string name="lab_17f88806">Име на контейнера, език, работен плот и поведение на сесията.</string>
     <string name="lab_181ab51a">Това е повече от 8K.</string>
     <string name="lab_1821acdc">Плътен цвят</string>
+    <string name="lab_183f03ee">Клип за преглед</string>
     <string name="lab_187e8ab4">тази игра</string>
     <string name="lab_188dc386">Задава се от Производителност › Синхронизиране.</string>
     <string name="lab_18991a24">Други</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Тест на контролера</string>
     <string name="lab_198324db">Относно Bannerlator</string>
     <string name="lab_19a0f782">Ниво на производителност, всеки ключ от файла, резервни копия и изтриване или инсталиране на компилации на VEGAS.</string>
+    <string name="lab_19b489d5">3D арт и клипове</string>
     <string name="lab_19e91dd3">Вход</string>
     <string name="lab_1a0d3004">В прозорец</string>
     <string name="lab_1a1b35e7">Среда за изпълнение</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · не е свързан (запазено закачане)</string>
     <string name="lab_2062fe79">Ограничител на FPS</string>
     <string name="lab_20898aa4">Само ако автоматичното откриване не успее ([KFAULT] в журнала).</string>
+    <string name="lab_208b07a1">Подробности, изображения, фон ›</string>
     <string name="lab_209f636f">Мащабиране, изостряне и цвят</string>
     <string name="lab_20f30881">Продължи играта</string>
     <string name="lab_211badb3">Игра на телевизор, автоматично превключване, безопасна зона, аудио изход, затъмняване и резолюция на телевизора</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Управление</string>
     <string name="lab_23e9383c">Версия, на какво работи и автори.</string>
     <string name="lab_2453405d">Използвайте auto:N, fixed:N или off</string>
+    <string name="lab_2470de02">Прозрачни</string>
     <string name="lab_24720798">Поправи разменените цветове</string>
     <string name="lab_247c39e6">Заобикаля композитора за по-малко забавяне. Изключва ефектите на екрана.</string>
     <string name="lab_24857b5d">RGBA (размени червено/синьо)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Показване на клавиатурата</string>
     <string name="lab_2694592a">Горе</string>
     <string name="lab_274284a1">Все още не е налично за Wayland в тази компилация.</string>
+    <string name="lab_2742f91b">Автоматично · трейлър от Steam</string>
     <string name="lab_2756404f">Връщане на захранването и root към стандартните настройки на приложението</string>
     <string name="lab_27b56d30">Инсталира XInput DLL-ите на Bannerlator, независимо дали Директен XInput е включен, заедно със собствения XInput на Wine, така че Controls › Pad в менюто на играта да превключва между тях, докато играта работи (контролерът се свързва отново). Включено по подразбиране. Изключено: Директен XInput остава както при стартирането на играта и промяната му изисква рестарт.</string>
     <string name="lab_27bcb120">Добавяне, копиране, изтриване, експорт или импорт на пресети за Box64 и FEX (класически Настройки).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Изображение за тапет за</string>
     <string name="lab_28441b9b">Рестартиране</string>
     <string name="lab_28502118">Вградени стандартни за VEGAS (без файл)</string>
+    <string name="lab_286dae57">Автоматично · от корицата</string>
     <string name="lab_287eabc8">Покажи FPS</string>
     <string name="lab_28d51363">Честота на опресняване, която играта може да избере</string>
     <string name="lab_28f727b0">Експортирай диагностиката на HUD</string>
     <string name="lab_29198bb7">Не е зададено (системно)</string>
+    <string name="lab_2927fedd">Клипове само през Wi-Fi</string>
     <string name="lab_29a908d6">Изисква включено Пропусни изчакването на GPU.</string>
     <string name="lab_29b501c2">Приятели и чат, известия и присъствие в игра.</string>
     <string name="lab_29c3ef3b">Екранни контроли, мишка, вибрация, прицелване с движение, играчи.</string>
     <string name="lab_29d0a27a">Система за показване</string>
     <string name="lab_29faa513">Брой контролери</string>
+    <string name="lab_29fe3935">Не е свързано със Steam</string>
     <string name="lab_2a1dcc50">Стандартен пресет на Box64</string>
     <string name="lab_2a234929">Не е налично — този дисплей има само една честота на опресняване, така че няма с какво да се съгласува.</string>
     <string name="lab_2a342d91">Най-често променяните настройки по време на игра.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Рестартирай звука</string>
     <string name="lab_2ab94a31">Плъзгане между бутоните</string>
     <string name="lab_2ad5a458">Закачени места на играчи</string>
+    <string name="lab_2adf1ef0">Милиметровата хартия и сигналите на Lab върху арта</string>
     <string name="lab_2b01a79e">Изображението не може да бъде прочетено.</string>
     <string name="lab_2b3bf173">Инструменти</string>
     <string name="lab_2b605d42">Повече</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Стандартна</string>
     <string name="lab_2ced81bf">Офлайн: показва се записан списък. Свържете се, за да изтеглите нови ефекти.</string>
     <string name="lab_2d1366ec">Няма съвпадащи известни променливи.</string>
+    <string name="lab_2d45170d">Арт на играта</string>
     <string name="lab_2d6ee59d">Или въведете стойност</string>
     <string name="lab_2dad13e3">Език</string>
     <string name="lab_2dc2e901">Моно</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Никога не е проверявано. Показва пакетите FEX, DXVK и VKD3D-Proton за изтегляне.</string>
     <string name="lab_30c8cda7">Предварителна настройка на FEX</string>
     <string name="lab_31132684">Декодира компресираните текстури, които използват игрите за Windows, за GPU, които не могат да го правят.</string>
+    <string name="lab_312e2eb9">Арт и клипове</string>
     <string name="lab_313f3497">Персонализирани услуги</string>
     <string name="lab_314b6c8f">Драйвери за игри Wayland</string>
     <string name="lab_318a4134">Задай за тази игра</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">За телефони Samsung и Xiaomi, на които игрите показват повредени текстури. Иначе го оставете изключено.</string>
     <string name="lab_36936d70">Ограничава колко кадъра в секунда рисува играта. Пести батерия и изглажда накъсването.</string>
     <string name="lab_36ef1cc0">Като в контейнера</string>
+    <string name="lab_37232683">Панели върху арта</string>
     <string name="lab_3776c976">Нативно рендериране</string>
     <string name="lab_377702f6">Докосване</string>
     <string name="lab_37ad98ec">Изборът на ядра на CPU важи до рестартиране на програмата.</string>
@@ -395,12 +415,14 @@
     <string name="lab_37f22874">Всеки диск се нуждае от собствена буква</string>
     <string name="lab_3855543c">Експорт (.icpx)</string>
     <string name="lab_385e1a80">Докоснете слоя, за да го превключите между вертикален и хоризонтален (Fusion: следващ размер). Плъзнете, за да го преместите; задръжте, за да го заключите на място.</string>
+    <string name="lab_386c72a7">Файлът не можа да се използва</string>
     <string name="lab_3886b4de">Тази папка не може да се използва: изберете папка във вътрешната памет или на SD карта</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Метод за директно извеждане</string>
     <string name="lab_38c3ee26">Проверка на бутоните и стиковете, назначаване на физически профил, задаване на местата на играчите.</string>
     <string name="lab_38d2a5bb">Температура</string>
     <string name="lab_38f46bd4">Пропусни менюто за стартиране</string>
+    <string name="lab_38f52cc5">Изключено: клиповете вървят без звук</string>
     <string name="lab_39052457">Този контейнер вече не съществува.</string>
     <string name="lab_390bed76">DirectDraw и Direct3D 7 през Vulkan.</string>
     <string name="lab_391a454c">В интерфейса Deck и Игри, и Big Picture се отварят на Home.</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Балансирано</string>
     <string name="lab_3b7778ec">Софтуерно декодиране на видео</string>
     <string name="lab_3bd060de"> и играта се рендерира на вградения Wayland Turnip (адаптерът изисква драйвер Turnip).</string>
+    <string name="lab_3bf05e53">Показва се върху арта в голямата плочка на Home, когато клиповете са включени. На страницата на играта логото заменя името.</string>
     <string name="lab_3c0764a4">Показване на екранните контроли и избраната подредба</string>
     <string name="lab_3ca0cc27">HDR: автоматично. Този екран приема HDR10, затова HDR изходът се включва за тази игра.</string>
     <string name="lab_3cc7318b">Ядра</string>
     <string name="lab_3d0ded52">Екранът в момента е на %1$s Hz.</string>
     <string name="lab_3d12f194">Премахни това хранилище</string>
+    <string name="lab_3d198a51">3D арт</string>
     <string name="lab_3d2c22d4">Режим на представяне на драйвера</string>
     <string name="lab_3d40c46a">Вибрация</string>
     <string name="lab_3d9862bb">Отрицателен mip bias: по-остри текстури, малко трептене. Авто следва мащабирането, с което играта стартира.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">Най-новото печели: никога не презаписва по-нов локален запис.</string>
     <string name="lab_41f05e04">Назначенията по-долу са на този профил</string>
     <string name="lab_41fc25ab">Win-FG нативен</string>
+    <string name="lab_4270e2ba">Горе в средата</string>
     <string name="lab_42bbc821">Експериментално: overlay-ят на Epic в играта с Shift+F3. Контейнерът трябва да позволява всички услуги.</string>
     <string name="lab_42ca94f9">Основен контролер</string>
     <string name="lab_43316731">Има само C: (префиксът на Windows) и Z:. Добавете диск за папка с игри.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">Стартирай неговия работен плот на Windows</string>
     <string name="lab_4455b74f">Колко често движението на стиковете стига до играта. Може да се променя и в играта.</string>
     <string name="lab_449c12fb">Размер на екрана</string>
+    <string name="lab_44bc352d">Лого</string>
     <string name="lab_4500ffeb">Профилът по подразбиране за %1$s, </string>
     <string name="lab_452013a2">Експорт</string>
     <string name="lab_45536eb8">Контейнер</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">Редактирай конфигурационния файл на VEGAS</string>
     <string name="lab_475cee12">В средата</string>
     <string name="lab_478577aa">Температури</string>
+    <string name="lab_47a2fcea">Изображения</string>
     <string name="lab_47db736e">Избери папка с игри</string>
     <string name="lab_47fbfb16">Промяна</string>
     <string name="lab_480443a4">Имена на папки с | не могат да се използват</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Метод на емулация</string>
     <string name="lab_4a51272f">Нулиране връща към ефектите от Всички контейнери.</string>
     <string name="lab_4a587711">Включете го, за да съгласувате екрана с ограничението на кадрите × множителя.</string>
+    <string name="lab_4a690444">Фон с арт на играта</string>
     <string name="lab_4af762a7">Изключи термичното ограничаване</string>
     <string name="lab_4b02cb78">Тип ресурс</string>
     <string name="lab_4b0fb1b1">Все още нищо не е импортирано: Съдържание › Инсталирани › Драйвери за Linux средата.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Още няма изображение за тапет</string>
     <string name="lab_4c5eeff6">Избор</string>
     <string name="lab_4c6da2bc">Работен плот на Windows</string>
+    <string name="lab_4c6dae0d">Търсене на изображения…</string>
     <string name="lab_4c737acf">Устройство (реалният GPU)</string>
     <string name="lab_4c76101a">Избор на FEX / DXVK / VKD3D</string>
     <string name="lab_4c76edfa">DXVK и VKD3D</string>
     <string name="lab_4c9774e6">Съгласуване на опресняването на екрана с FPS на играта</string>
     <string name="lab_4c9cbae2">Суперсемплинг</string>
     <string name="lab_4cb2f934">Активен</string>
+    <string name="lab_4cc9a9c1">Корица</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Обърни горе/долу</string>
     <string name="lab_4d8c7321">Съдържание</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">Намерено в папката на играта.</string>
     <string name="lab_56b4c80c">Тема</string>
     <string name="lab_56b89990">Авто (по подразбиране): едно обновяване на стиковете за всеки кадър, който играта рисува, до зададения лимит (по подразбиране 60 в секунда), така че игра, която рисува по-бързо, отколкото чете входа, никога не изостава. Фиксирано: толкова обновявания в секунда. Без темпо: всяка промяна се изпраща веднага. Прилага се веднага, и в играта (Controls › Pad). BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX в променливите на средата имат предимство пред тази настройка.</string>
+    <string name="lab_56ed95b0">Мрежата на библиотеката</string>
     <string name="lab_571567c9">Възстановяване на стандартните настройки на приложението?</string>
     <string name="lab_574b34d5">DXVK + VKD3D подхожда за повечето игри с DirectX 9–12. VEGAS е настроен форк на DXVK. WineD3D е бавният, но широко съвместим резервен вариант за много стари игри.</string>
     <string name="lab_574e9955">Преобразуването на BCn текстури в ASTC с този драйвер може да замрази или рестартира телефона; опитайте само ако някоя игра показва повредени или липсващи текстури.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Включи бета компилациите</string>
     <string name="lab_58627009">Вибрация и прицелване с движение.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Горе вляво</string>
     <string name="lab_58a426c9">Изключено за тази игра, докато работи генерирането на кадри. </string>
     <string name="lab_5901a4cd">Wayland: движенията на мишката отиват към композитора; игра, която заключва показалеца, ги получава като относително движение.</string>
+    <string name="lab_5946d9c6">Като в приложението (%1$s)</string>
     <string name="lab_594a913b">Асинхронни шейдъри</string>
     <string name="lab_595daef9">Изтеглени компоненти: архиви и списъкът на каталога.</string>
     <string name="lab_5983ab11">Офлайн режим (без вход във Valve)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Двата</string>
     <string name="lab_5c2357bd">Библиотека · 1 игра</string>
     <string name="lab_5c307bbf">Цел, сила и мотори на вибрацията (вижте Save for по-долу)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Фиксирано опресняване на екрана</string>
     <string name="lab_5c462080">Не се прилага, докато lsfg-vk умножава: той сам задава темпото на кадрите.</string>
     <string name="lab_5c524fb3">Стандартни за нови контейнери</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Вътрешна памет, SD карта и дисковете на всеки контейнер</string>
     <string name="lab_659fcd98">Добавено от мен</string>
     <string name="lab_65f8ea90">Драйвер на рендерера</string>
+    <string name="lab_65f9e2b8">Плътни</string>
     <string name="lab_660f585a">Копирай назначенията от %1$s</string>
     <string name="lab_662a7209">Обърни X</string>
     <string name="lab_6637ca24">Транскодирай BCn към ETC2</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Не се използва при Wayland: генерирането на кадри работи в композитора, на вашия драйвер Turnip.</string>
     <string name="lab_69f12fdf">Моите файлове</string>
     <string name="lab_69f77a90">Поправка на HDR за Unreal Engine</string>
+    <string name="lab_69f7d525">Не можа да се преименува</string>
     <string name="lab_6a271188">Пресет на Box64 / Пресет на WOWBox64</string>
     <string name="lab_6a4b2ea4">Захранване</string>
     <string name="lab_6a68da45">Относителна мишка</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">Сензорните бутони на текущата подредба.</string>
     <string name="lab_6c3656ad">Вертикална</string>
     <string name="lab_6c37a76c">Докосването действа като</string>
+    <string name="lab_6c5fe717">Звук на клиповете</string>
     <string name="lab_6c8e3b1f">Задай по подразбиране…</string>
     <string name="lab_6c9249ac">Автоматичното изтегляне от облака при стартиране ще бъде ИЗКЛЮЧЕНО за игрите от библиотеката ви в GOG. Най-новите записи в облака няма да се изтеглят преди стартиране на игра — ще трябва да ги изтеглите сами от раздела GOG Мениджър на записите или от страницата с подробности за играта. Продължаване?</string>
     <string name="lab_6cd478cd">Авто (до 120/s)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">Сесията стартира само със собствените променливи на приложението.</string>
     <string name="lab_6e2acf44">Модел на GPU</string>
     <string name="lab_6e3da120">Библиотека</string>
+    <string name="lab_6e661b92">Трейлърите се изтеглят само през Wi-Fi</string>
     <string name="lab_6e6ffb5b">Изпълнява 64-битови игри, когато 64-битовият транслатор е Box64EC.</string>
     <string name="lab_6e86a6ef">Затваряне на сесията, когато играта приключи</string>
     <string name="lab_6ec32312">Открито в този wrapper</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Начален екран и актуализации.</string>
     <string name="lab_7982eb6b">, изброени по-долу.</string>
     <string name="lab_79b6d4c7">Офлайн режим на Steam, проверки на файловете и актуализации</string>
+    <string name="lab_79c7988a">Няма · показва се името</string>
     <string name="lab_79e3b22e">Среден</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Чувствителност</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Заден буфер</string>
     <string name="lab_7ceefd00">Изтеглянето се провали: %1$s</string>
     <string name="lab_7d24ed15">Все още няма нищо тук.</string>
+    <string name="lab_7d50777a">Екшън, RPG, стратегия</string>
     <string name="lab_7d6bff72">Налично със звуковата система DirectAudio.</string>
     <string name="lab_7d9f1b59">По-бавно. Само за устройство, на което seccomp пречи.</string>
     <string name="lab_7da6281a">Файлове и инструменти</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">x86 транслатори</string>
     <string name="lab_7e3548ee">Покажи игрите от раздел Игри в Steam</string>
     <string name="lab_7e38b599">Автоматичното качване в облака при изход ще бъде ИЗКЛЮЧЕНО за игрите от библиотеката ви в Steam. Записите им няма да се качват в Steam Cloud при затваряне на игра — ще трябва да ги качите сами от раздела Записи в облака на страницата с подробности за играта. Продължаване?</string>
+    <string name="lab_7e6d7e33">Карти в библиотеката</string>
     <string name="lab_7e9c00ea">Авто (според FPS)</string>
     <string name="lab_7e9eede5">Профил %1$s</string>
     <string name="lab_7eb6734a">Wayland изисква слой Proton, създаден за него.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">Изпълнява 64-битовия x86 код на играта. Box64EC изисква инсталиран компонент Box64EC.</string>
     <string name="lab_82265bbe">Синхронизиране на постиженията със Steam?</string>
     <string name="lab_8232f25f">GDI (софтуерно)</string>
+    <string name="lab_82542307">Върни на автоматично</string>
     <string name="lab_82549ee8">Как стартира тази игра: със Steam или без, предаване на контролера, анти-чийт, вход в Epic.</string>
     <string name="lab_82758f36">Нативен бекенд</string>
     <string name="lab_828c5a26">Използвай двигателя GameNative (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Пропусни сигнала за придобиване на кадър</string>
     <string name="lab_87f7f6ba">Профил на захранването</string>
     <string name="lab_880bfb03">Редактиране на разположението</string>
+    <string name="lab_88328343">Автоматично · замъглената корица</string>
     <string name="lab_8844e521">Стойности на пресета</string>
     <string name="lab_8850c516">Позволява на игрите с DirectInput да карат контролера да вибрира: обикновена вибрация и силовите ефекти, които състезателните и летателните игри изпращат към волан или джойстик, усещани чрез двата мотора на контролера. Следва настройките за Вибрация (цел и сила на вибрацията). Постоянна сила (например състезателна игра, която държи волана прав) затихва след няколко секунди, за да не бръмчи контролерът постоянно. Игрите с DirectInput я усещат само докато виждат контролера. Промяната се прилага, когато контролерът се свърже отново (в играта това прави Controls › Pad), или при следващото стартиране. BANNERIN_DINPUT_FF в променливите на средата има предимство пред тази настройка.</string>
     <string name="lab_8861fdef">Настройки на звука</string>
     <string name="lab_887ae5cd">Създаване</string>
+    <string name="lab_88819a36">Мрежа върху арта</string>
     <string name="lab_88845797">Диспечер на задачите</string>
     <string name="lab_888e7afb">Няма ефект върху Adreno, който декодира BCn сам.</string>
     <string name="lab_88a8754b">Острота на текстурите</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">Постиженията, отключени в играта, се записват обратно в истинския ви акаунт в Steam. Изключено: отключванията остават на това устройство.</string>
     <string name="lab_88f8aeb8">Цвят като #RRGGBB, напр. #1E88E5</string>
     <string name="lab_8907b290">Преглед на файлове</string>
+    <string name="lab_892b7b55">Широка корица</string>
     <string name="lab_8965e6c7">По-малко услуги = по-бързо стартиране и повече свободна RAM.</string>
     <string name="lab_8998f446">Иконата на този запис</string>
     <string name="lab_89f43a0d">Стойности на пресета на транслатора</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper-и</string>
     <string name="lab_8a8bb4d3">Поток от команди (CSMT)</string>
+    <string name="lab_8aa52c61">Подробности за играта</string>
     <string name="lab_8ae3076a">Турбо</string>
     <string name="lab_8af52aac">Актуализации</string>
     <string name="lab_8b087b3c">Визия</string>
@@ -944,10 +990,11 @@
     <string name="lab_8c195a44">Синхронизиране</string>
     <string name="lab_8c283df5">Компилации на DirectX 12 от каталога.</string>
     <string name="lab_8c33a442">Всяка звукова система пази собствен пресет, така че превключването между PulseAudio, ALSA и DirectAudio никога не смесва настройките им. Игра без собствен пресет продължава да следва контейнера си.</string>
-    <string name="lab_8c4054fa">Прозрачност</string>
+    <string name="lab_8c4054fa">Непрозрачност</string>
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">Назначения: %1$s · новите контролери ги наследяват</string>
     <string name="lab_8c68f725">Игрите с OpenGL (и DirectDraw / по-стар Direct3D чрез WineD3D) работят на вградените Mesa и Zink и се показват чрез Vulkan, вместо с бавно копиране на всеки кадър. Изисква графичен драйвер Turnip при X11. Винаги включено с Wayland.</string>
+    <string name="lab_8c79f517">Трейлър от Steam</string>
     <string name="lab_8c7f97b0">%1$s от %2$s ГБ</string>
     <string name="lab_8c913834">Запълването, филтърът за мащабиране, темпото на кадрите, ограничението на кадрите и генерирането на кадри се записват както на собствените им страници</string>
     <string name="lab_8c9b8bce">Прицелване с движение</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Същото като в контейнера</string>
     <string name="lab_952f41de">GPU драйвери</string>
     <string name="lab_95432a7a">Места за играчи</string>
+    <string name="lab_95c66fc6">Година на издаване</string>
     <string name="lab_95ca1574">Графичен драйвер</string>
     <string name="lab_96125830">Стандартен / Всеки контролер</string>
     <string name="lab_962bd533">Яркост</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">изборите му „Задай по подразбиране“ и слоят му по подразбиране се забравят сега, а тази страница показва собствените стандартни настройки на приложението. </string>
     <string name="lab_97bb79af">Режимът Deck кара клиента на Steam да работи като на Steam Deck и добавя менюто за бърз достъп.\n\n</string>
     <string name="lab_98469a16">Свързано</string>
+    <string name="lab_98513339">Трейлъри от Steam</string>
     <string name="lab_9884a116">Емулатор (32-bit)</string>
+    <string name="lab_98964f8d">Нищо не е намерено · показва се името</string>
     <string name="lab_989f5c02">Драйвери за Linux средата</string>
+    <string name="lab_98aa06ba">Голям</string>
     <string name="lab_98c4e496">Изходът на Wine и Box64 / FEX, докато записването в журнал е включено.</string>
     <string name="lab_99082159">Звук за известие</string>
     <string name="lab_992421a8">Отваряй приложението на</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Стандартна MIDI звукова банка</string>
     <string name="lab_99c314b2">Наситен</string>
     <string name="lab_9a2890b2">Изисква GPU Adreno (Qualcomm) или root на други GPU.</string>
+    <string name="lab_9a75ad29">Не е свързано със Steam: свържете го в Подробности, за да намерите трейлъри.</string>
     <string name="lab_9a8f0817">Тази игра</string>
     <string name="lab_9aa56987">Прицелване с движение (жироскоп)</string>
     <string name="lab_9aaea01f">Насложен слой с приятели в Epic</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Игнорирай малките движения</string>
     <string name="lab_9d727d6c">Първо импортирайте Lossless.dll в Настройки › Производителност.</string>
     <string name="lab_9d954afa">Запомни избора ми</string>
+    <string name="lab_9e5d1d40">Търси в Steam по име</string>
     <string name="lab_9e7ac4ad">Променливи за синхронизация</string>
     <string name="lab_9e7bf84e">Като в споделения пресет</string>
     <string name="lab_9ea6cfdd">Само основните</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Стил на интерфейса</string>
     <string name="lab_a2efb709">За GPU Arm Mali. Докато не бъде превключено, следва драйвера: включено за драйвер PanVK, иначе изключено.</string>
     <string name="lab_a35eef98">Записва отчет от сензорите (CPU, GPU, температури, VRAM…) в папката Изтеглени.</string>
+    <string name="lab_a36379d6">Автоматично · Steam</string>
     <string name="lab_a37cf853">Изберете друг .exe в папката на играта за този запис.</string>
     <string name="lab_a3904026">Задръж за прицелване</string>
+    <string name="lab_a396cfaa">Изображението не можа да се зареди</string>
     <string name="lab_a3c61ce1">Прозорци и журнали</string>
     <string name="lab_a3f6a50d">Вместване в екрана</string>
     <string name="lab_a40c85ce">Услуги, стартирани с Windows</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Вибромотори</string>
     <string name="lab_a559e736">XR контролер</string>
     <string name="lab_a57ba715">Афинитет на процесора (cpuList)</string>
+    <string name="lab_a593c4da">Ваш файл</string>
     <string name="lab_a59e2986">Xalia изкл. (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Кара клиента да работи като на Steam Deck, с менюто за бърз достъп. Игрите спират да получават контролера.</string>
     <string name="lab_a5d4b1b1">на него работи игра</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Екранни контроли срещу истински контролер</string>
     <string name="lab_a6e62e9e">Транслация на DirectX</string>
     <string name="lab_a71846fe">Тема и цветове</string>
+    <string name="lab_a74f5b6d">Изключено, арт на играта, 3D арт, който бавно се носи в дълбочина, или с клипове: трейлър в голямата плочка на Home</string>
     <string name="lab_a7a4aed7">Сензорен екран изпраща пръстите към Steam като истински докосвания; Тъчпад движи показалеца с плъзгане и щраква с докосване.</string>
     <string name="lab_a7c6d9e7">Ограничение на кадрите</string>
     <string name="lab_a7c8bcd7">И двата (както на PC): управлява големия и малкия мотор поотделно, като контролер за PC. Единичен (по-плавни стикове): използва един мотор. Някои контролери на преносими устройства (напр. AYANEO Pocket FIT) забавят обновяването на стиковете, докато работят и двата мотора; Единичен намалява това забавяне наполовина, така че прицелването остава плавно. По подразбиране: Единичен на Pocket FIT, И двата на останалите.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">Инсталираните игри пак се стартират. Първо е нужно едно онлайн влизане на това устройство. Прилага се от следващата сесия.</string>
     <string name="lab_af32ab2f">Самостоятелно</string>
     <string name="lab_af39be20">Мрежа</string>
+    <string name="lab_af3f8345">Нищо не е намерено за тази игра. Изберете изображение или я свържете със Steam в Подробности.</string>
     <string name="lab_af456994">Не позволява на Linux ядрото да изключва CPU ядра.</string>
+    <string name="lab_af47e020">Жанрове</string>
     <string name="lab_afb57bd1">Филтър за мащабиране, изостряне и премахване на ивици</string>
     <string name="lab_b01a2f1b">Променливи на ср.</string>
     <string name="lab_b01c4a81">Ориентация</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Споделяй записите с приложението</string>
     <string name="lab_b132aa74">Инсталираният Turnip, с който композиторът Wayland извежда кадрите на играта на екрана.</string>
     <string name="lab_b18ba364">Сензорен екран</string>
+    <string name="lab_b1aea182">Показвай името вместо логото</string>
     <string name="lab_b1cc94c4">Ефект</string>
     <string name="lab_b1fb3d78">Заключване на място</string>
     <string name="lab_b2091323">Неговите променливи BOX64_* важат и за Box64EC.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Стартирай…</string>
     <string name="lab_b4467898">Фина настройка на звуковия буфер</string>
     <string name="lab_b46c3296">Изтриване</string>
+    <string name="lab_b484c517">Малък</string>
     <string name="lab_b48bc44b">Списъкът не можа да се зареди</string>
     <string name="lab_b4c6ec80"> Зададено за тази игра.</string>
     <string name="lab_b4d38912">Добавете първата си игра</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">Няма инсталирана компилация на VEGAS: изтеглете една по-долу.</string>
     <string name="lab_bd63a37d">Изображение за тапет</string>
     <string name="lab_bd87c7d9">Кеширай декодираните текстури</string>
+    <string name="lab_bd9b3216">Подробности</string>
     <string name="lab_bdaf406a">В игра</string>
+    <string name="lab_be12d609">Избери изображение…</string>
+    <string name="lab_be45a0e0">Нищо не е намерено · няма връзка със Steam</string>
     <string name="lab_be638831">Лупа, прозорци, журнали и работещи програми.</string>
     <string name="lab_be998b7c">Синхронизирай всеки кадър</string>
     <string name="lab_be9a2a59">Двойно Назад отваря Бърз достъп</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> Прилага се при следващото стартиране на игра.</string>
     <string name="lab_bed0286f">Скрий това хранилище</string>
     <string name="lab_bef10a2e">Премести в друг контейнер</string>
+    <string name="lab_bf5a86a3">Позиция</string>
     <string name="lab_bf9aba55">Започни отначало</string>
     <string name="lab_bfa9745f">Винаги включено</string>
     <string name="lab_bfb6fae9">Тъмна или светла; акцентът идва от темата</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Изключване на автоматичното архивиране?</string>
     <string name="lab_c06ade64">Експериментални превключватели и вътрешни настройки на сървъра за показване.</string>
+    <string name="lab_c088a86d">Настройка на логото</string>
     <string name="lab_c0b26391">Съвместимост</string>
     <string name="lab_c0ba51f5">Среда</string>
     <string name="lab_c0cb7e61">Изключено по подразбиране, така че игрите, които четат и XInput, и DirectInput, да виждат един контролер.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">Промените се пазят за тази игра само там, където се различават от глобалната стойност по подразбиране.</string>
     <string name="lab_c1bc6675">Wrapper-ът за Vulkan, който игрите използват при X11. Импортираните wrapper-и също се появяват тук.</string>
     <string name="lab_c1c757e2">Журнал за отстраняване на грешки на BCn слоя</string>
+    <string name="lab_c1df4081">Среден</string>
     <string name="lab_c206cdbf">Архивирай всички записи</string>
     <string name="lab_c22c196f">Червено</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Екранна подредба</string>
     <string name="lab_c781beb4">Производителност (експериментално)</string>
     <string name="lab_c78bbaf5">Екранни контроли, мишка, вибрация, прицелване с движение.</string>
+    <string name="lab_c7b49d50">Steam приложение %1$s</string>
     <string name="lab_c7fad197">Не са открити допълнителни настройки</string>
     <string name="lab_c82e7e67">Компилации от каталога. Инсталираните се появяват под Версия на DXVK.</string>
     <string name="lab_c844d41c">За игри с Denuvo, които приложението не открива само.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Споделен пресет, редактиран</string>
     <string name="lab_cb5fc4d5">Конфигурация на VEGAS</string>
     <string name="lab_cb6d604d">HUD не може да се влачи по време на игра.</string>
+    <string name="lab_cbab7f7a">Икони</string>
     <string name="lab_cbb98111">Десен стик</string>
     <string name="lab_cc03c446">Файлов мениджър</string>
     <string name="lab_cc0a2f50">Когато игра от Steam стартира с Goldberg или Директно .exe (игри под Wine), съобщава на Steam, че я играете, за да я виждат приятелите и да се отчита времето за игра. Стартиранията със SteamLite винаги се показват.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Автоматично изтегляне от облака на GOG при стартиране</string>
     <string name="lab_cf4ce884">Режим на цял екран</string>
     <string name="lab_cf608a0d">Използвай DirectAudio</string>
+    <string name="lab_cf6c6955">Тази игра още няма лого. Изберете го в Лого, за да го видите тук.</string>
     <string name="lab_cf6d2530">Това, от което се нуждаят компилациите на драйверите за A710/A720/A722; Автоматично го включва за тези импорти. TU_DEBUG в променливите на средата има предимство.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Долу в средата</string>
     <string name="lab_cf8f0f8a">Няма зададени променливи на средата</string>
     <string name="lab_cf9192cb">%1$s е инсталирана</string>
     <string name="lab_d02befc2">Видео памет</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Избор чрез системата…</string>
     <string name="lab_d063c529">Нарича се WOWBox64 в контейнери ARM64EC, където изпълнява 32-битов код, когато е избран по-горе.</string>
     <string name="lab_d097c7ad">Тъчпад</string>
+    <string name="lab_d0c3d24d">Избери видео…</string>
     <string name="lab_d1106762">Избери изображение</string>
     <string name="lab_d13696b8">Закачи контролерите към играчи</string>
     <string name="lab_d1588174">Вибрация на</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Стартирай настройката отново</string>
     <string name="lab_d49be3e8">Хранилище и папки</string>
     <string name="lab_d4d60815">По-равномерно темпо на кадрите и по-хладно устройство.</string>
+    <string name="lab_d4e70b40">Търсене на трейлъри…</string>
     <string name="lab_d4eb64e3">Персонализирана…</string>
     <string name="lab_d51bc9cd">Емулация на BCn текстури</string>
     <string name="lab_d51bce77">Ексклузивен вход / Включи DInput</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Спусък</string>
     <string name="lab_d5e887b8">%1$s ч</string>
     <string name="lab_d60412d3">Оригинал</string>
+    <string name="lab_d620ef74">Замъглена корица</string>
     <string name="lab_d653f990">x86 транслатор за 32-битов код</string>
     <string name="lab_d6d3fe68">Избор на пакет с компоненти (-linux .wcp)</string>
     <string name="lab_d7060afb">Импортирай този контейнер</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Този драйвер не се зареди на този GPU: на проверката отговори системният драйвер.</string>
     <string name="lab_d8e06406">Екран</string>
     <string name="lab_d8e621c2">Добави диск</string>
+    <string name="lab_d90a905b">Стъклени</string>
     <string name="lab_d91754f0">Няма запис.</string>
     <string name="lab_d92d0230">Приложено: </string>
     <string name="lab_d92fb9d6">Името не може да е празно.</string>
+    <string name="lab_d9667615">Изображение</string>
     <string name="lab_d9767690">Играта стартира с променливите на своя контейнер</string>
     <string name="lab_d9a22ca4">DX Wrapper</string>
     <string name="lab_d9b07af8">Импортирано </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">Променливи на тази игра</string>
     <string name="lab_dbe48d14">Никога</string>
     <string name="lab_dc2dbf53">(празно)</string>
+    <string name="lab_dc6bb726">Премахни връзката</string>
     <string name="lab_dc942e27">Уведомявай ме за нови версии</string>
     <string name="lab_dcb67730">Стойност</string>
     <string name="lab_dcba8bc8">Изключи мишката</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">Wayland изисква инсталиран Turnip, за да изведе кадрите на играта на екрана. Новите се появяват под Графичен драйвер.</string>
     <string name="lab_e2410f47">Разглеждане и изтегляне</string>
     <string name="lab_e2421520">Изтегли версии на WOWBox64</string>
+    <string name="lab_e280d375">Размер на картите</string>
     <string name="lab_e2a7f23e">На екрана</string>
+    <string name="lab_e2b70ebc">Без клип за преглед</string>
     <string name="lab_e2c38520">Този запис няма файл с икона, в който да се запише.</string>
     <string name="lab_e2ce4373">Раздел</string>
     <string name="lab_e2e95fcd">Журнали на игрите</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">За игри, които виждат контролер само чрез Steam (No Man\'s Sky). Оставете изключено за игри, които сами четат контролера. Изключва директното предаване.</string>
     <string name="lab_e3e80b58">Профил на контролите</string>
     <string name="lab_e41154d8">История на FPS</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Медийни кодеци</string>
     <string name="lab_e73d4b35">Разширения на Vulkan</string>
     <string name="lab_e7bab6f9">Мащаб на рендериране (суперсемплинг)</string>
+    <string name="lab_e7d39686">Колко прозрачни са плочките върху арта</string>
     <string name="lab_e7d6bbaa">Превод на DirectX, GPU драйвер, OpenGL и начинът, по който картината се извежда на екрана.</string>
     <string name="lab_e7d75246">Височината, на която работи веригата за генериране на кадри; ширината следва екрана ви. По-ниската е много по-лека, но по-мека.</string>
     <string name="lab_e801ba28">Изключете го, ако предпочитате; тази игра ще го запомни.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Премахни назначенията му</string>
     <string name="lab_eb680509">.exe от вашите файлове или игра от магазин.</string>
     <string name="lab_eb6d0257"> · използва се от </string>
+    <string name="lab_eb78cff1">Описание</string>
     <string name="lab_ebd67348">Запазено в профила на контролите</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">Стандартни за x86-64</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">Менюто на Steam в горния ляв ъгъл, менюто му за бърз достъп в горния десен.</string>
     <string name="lab_ef041fbb">Ядро</string>
     <string name="lab_efc1065a">Не е свързано</string>
+    <string name="lab_efca121e">Тапет на Lab</string>
     <string name="lab_efd740b9">Прозрачност</string>
     <string name="lab_efdeb1c6">Списъкът с пресети е общ за всички контейнери и игри.</string>
     <string name="lab_efdfc7e5">Ограничител на FPS</string>
@@ -1604,7 +1687,7 @@
     <string name="lab_f313ebdb">С какво започва всеки нов контейнер</string>
     <string name="lab_f314de09">Включено — дисплеят следва вашия FPS.</string>
     <string name="lab_f31dfc2b">Пакет с компоненти от изданията „-Linux“ на Nightlies.</string>
-    <string name="lab_f335b780">Фонов режим</string>
+    <string name="lab_f335b780">Фон</string>
     <string name="lab_f33838e2">Редактирай екранната подредба</string>
     <string name="lab_f350b09c">Как се комбинират ефектите</string>
     <string name="lab_f361f51f">DirectDraw wrapper</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Вграден (Win-FG)</string>
     <string name="lab_f38c2b5b">Подравняване на екрана</string>
     <string name="lab_f39e4ef9">API ключ</string>
+    <string name="lab_f3a4d6f2">Свързано със Steam приложение %1$s</string>
     <string name="lab_f3c5111e">По-остри текстури под ъгъл. Игри с DirectX 9 до 11.</string>
     <string name="lab_f3d61893">Визуални ефекти</string>
     <string name="lab_f3e2bf3c">Слоят с FPS/температура върху играта.</string>
@@ -1632,7 +1716,10 @@
     <string name="lab_f61050cc">Резолюция на играта</string>
     <string name="lab_f665e069">Известие, когато приятел ви пише, а чатът с него не е отворен.</string>
     <string name="lab_f667b7f4">Акцентен цвят</string>
+    <string name="lab_f690a199">Ваша корица</string>
     <string name="lab_f6f41dc4">Известни проблеми, открити на устройството:\n</string>
+    <string name="lab_f6f5fb6b">Създай контейнер</string>
+    <string name="lab_f721f484">Корици</string>
     <string name="lab_f745bb2a">Стрийминг</string>
     <string name="lab_f7578887">Започва от стандартните настройки за нов контейнер. X го създава.</string>
     <string name="lab_f783e029">Двойна батерия</string>
@@ -1647,11 +1734,14 @@
     <string name="lab_f91491fe">Извеждане на друг прозорец на играта отпред.</string>
     <string name="lab_f918602e">Драйверът Vulkan, на който самата игра се рендерира с Wayland.</string>
     <string name="lab_f94e949e">Задава се от Звук › Микрофон</string>
+    <string name="lab_f97022d8">Steam няма трейлъри за тази игра.</string>
     <string name="lab_fa109fc6">Търси ефекти…</string>
+    <string name="lab_fa2965af">Фоново изображение</string>
     <string name="lab_fa381e9a">По-остро (-0.5)</string>
     <string name="lab_fa700875">Някои игри никога не четат контролера сами: искат го от Steam. В SteamLite никой не отговаря, затова тези игри не виждат контролер. Включено: агентът на SteamLite включва слоя за контролери на Steam за тази игра с подходяща подредба. Оставете изключено за игри, които вече четат контролер, иначе ще получават всяко натискане два пъти. Обратното на директното предаване на контролера, затова може да е включено само едното. Само за SteamLite.</string>
     <string name="lab_fa859fc7">Режимът Goldberg, Проверка на файловете и Проверка за актуализации са в менюто за стартиране. Изключете „Пропусни менюто за стартиране“, за да го видите при следващото стартиране.</string>
     <string name="lab_fac0fe64">Контролите за мащабиране вършат полезната част и без него, а ограничението на FPS в страничното меню на играта ограничава честотата на кадрите. Изключете отново режима Deck, ако някоя игра спре да реагира на контролера.</string>
+    <string name="lab_fad0baa9">По подразбиране (Steam: %1$s)</string>
     <string name="lab_fae2666b">Собственият Proton на Valve, който Steam заменя при актуализация; оригиналите му се пазят за всяка компилация</string>
     <string name="lab_fae62cc0">Заключва показалеца в играта. Натиснете бутона за намаляване на звука, за да го освободите.</string>
     <string name="lab_fb2b9733">И двата (както на PC)</string>

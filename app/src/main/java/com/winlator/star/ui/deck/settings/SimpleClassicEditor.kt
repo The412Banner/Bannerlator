@@ -5,6 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
@@ -540,6 +542,10 @@ internal fun SimpleClassicEditor(
         }
     }
     val dirty = source.dirty
+    // Touch has no X: Create / Save is also a button (portrait has no side card and no hint line).
+    val showAction = createMode || dirty
+    val actionLabel = if (createMode) L("Create container") else L("Save")
+    val onAction: () -> Unit = { save() }
     val guard: (() -> Unit) -> Unit = { action -> if (dirty) afterUnsaved = action else action() }
     fun goTab(i: Int) {
         if (tabs.isEmpty()) return
@@ -699,7 +705,7 @@ internal fun SimpleClassicEditor(
             val narrow = maxWidth < 760.dp
             val crumb = stack.map { it.first }
             val title: @Composable (Boolean) -> Unit = { big ->
-                ClassicTitle(header, if (big) (crumb.lastOrNull() ?: tab?.title ?: "") else header.title, if (big) header.title else null, crumb, tab?.title, dirty, createMode, big)
+                ClassicTitle(header, if (big) (crumb.lastOrNull() ?: tab?.title ?: "") else header.title, if (big) header.title else null, crumb, tab?.title, dirty, createMode, big, onAction = onAction)
             }
             val body: @Composable (Modifier) -> Unit = { mod ->
                 val ex = openExtra
@@ -712,15 +718,20 @@ internal fun SimpleClassicEditor(
                     }
                 }
             }
-            val card: @Composable (Modifier) -> Unit = { mod -> SideCard(header, env, source, values, createMode, game, mod) }
+            val card: @Composable (Modifier) -> Unit = { mod -> SideCard(header, env, source, values, createMode, game, mod, if (showAction) actionLabel else null, onAction) }
             when (layout) {
                 AppThemeState.SIMPLE_LAYOUT_RAIL -> Row(Modifier.fillMaxSize()) {
                     TabList(header, tabs, tabIndex, active = zone == KZone.TABS, modifier = Modifier.width(if (narrow) 210.dp else 250.dp).fillMaxHeight()) { goTab(it) }
                     Column(Modifier.weight(1f).fillMaxHeight().padding(start = 22.dp, end = 22.dp, top = 12.dp)) {
-                        ClassicTitle(header, crumb.lastOrNull() ?: tab?.title ?: "", null, crumb, tab?.title, dirty, createMode, big = false, showOverline = false)
+                        ClassicTitle(header, crumb.lastOrNull() ?: tab?.title ?: "", null, crumb, tab?.title, dirty, createMode, big = false, showOverline = false, onAction = onAction)
                         headerExtra?.invoke()
                         Spacer(Modifier.height(10.dp))
                         body(Modifier.weight(1f).fillMaxWidth())
+                        if (showAction) {
+                            Spacer(Modifier.height(10.dp))
+                            ActionButton(actionLabel, onAction, if (narrow) Modifier.fillMaxWidth() else Modifier.align(Alignment.End).widthIn(min = 260.dp))
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
                 }
                 AppThemeState.SIMPLE_LAYOUT_FOCUS -> Column(Modifier.fillMaxSize().padding(start = 44.dp, end = 44.dp, top = 8.dp)) {
@@ -730,6 +741,10 @@ internal fun SimpleClassicEditor(
                     Row(Modifier.weight(1f).fillMaxWidth()) {
                         body(Modifier.weight(1f).fillMaxHeight())
                         if (!narrow) { Spacer(Modifier.width(20.dp)); card(Modifier.width(250.dp).fillMaxHeight()) }
+                    }
+                    if (showAction && narrow) {
+                        Spacer(Modifier.height(10.dp))
+                        ActionButton(actionLabel, onAction, Modifier.fillMaxWidth())
                     }
                     Spacer(Modifier.height(10.dp))
                     TabStrip(tabs, tabIndex, active = zone == KZone.TABS) { goTab(it) }
@@ -744,6 +759,11 @@ internal fun SimpleClassicEditor(
                     Row(Modifier.weight(1f).fillMaxWidth()) {
                         body(Modifier.weight(1f).fillMaxHeight())
                         if (!narrow) { Spacer(Modifier.width(22.dp)); card(Modifier.width(300.dp).fillMaxHeight()) }
+                    }
+                    if (showAction && narrow) {
+                        Spacer(Modifier.height(10.dp))
+                        ActionButton(actionLabel, onAction, Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
             }
@@ -859,6 +879,7 @@ private fun ClassicTitle(
     createMode: Boolean,
     big: Boolean,
     showOverline: Boolean = true,
+    onAction: (() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Column(Modifier.fillMaxWidth()) {
@@ -880,7 +901,9 @@ private fun ClassicTitle(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.background(accent.copy(alpha = 0.22f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
+                    modifier = Modifier.background(accent.copy(alpha = 0.22f), SimpleShape)
+                        .then(if (onAction != null) Modifier.pointerInput(onAction) { detectTapGestures(onTap = { onAction() }) } else Modifier)
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
                     Text(if (createMode) L("Not created yet") else L("Unsaved"), color = SimpleStrong, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
@@ -997,6 +1020,8 @@ private fun SideCard(
     createMode: Boolean,
     game: Boolean,
     modifier: Modifier,
+    actionLabel: String? = null,
+    onAction: () -> Unit = {},
 ) {
     val vm = env.vm
     Column(
@@ -1048,6 +1073,40 @@ private fun SideCard(
             },
             color = SimpleDim, fontSize = 12.sp,
         )
+        if (actionLabel != null) ActionButton(actionLabel, onAction, Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * Create / Save for touch, next to the X a controller uses. It takes taps only and is not focusable, so the
+ * D-pad focus stays on the rows and tabs.
+ */
+@Composable
+private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    var pressed by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
+            .height(52.dp)
+            .background(accent.copy(alpha = if (pressed) 0.72f else 1f), SimpleShape)
+            .pointerInput(onClick) {
+                detectTapGestures(
+                    onPress = { pressed = true; tryAwaitRelease(); pressed = false },
+                    onTap = { onClick() },
+                )
+            }
+            .padding(horizontal = 18.dp),
+    ) {
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onPrimary,
+            fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.width(10.dp))
+        SimpleGlyph("X")
     }
 }
 

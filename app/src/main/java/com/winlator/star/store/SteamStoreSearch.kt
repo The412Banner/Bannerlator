@@ -276,7 +276,8 @@ object SteamStoreSearch {
     private fun pickMovieUrl(m: JSONObject): String? {
         val mp4 = m.optJSONObject("mp4")
         val webm = m.optJSONObject("webm")
-        return listOf(mp4?.optString("480"), mp4?.optString("max"), webm?.optString("480"), webm?.optString("max"))
+        // Steam now publishes only streams (hls_h264, dash_h264, dash_av1) for most trailers; the HLS one is the fallback.
+        return listOf(mp4?.optString("480"), mp4?.optString("max"), webm?.optString("480"), webm?.optString("max"), m.optString("hls_h264"))
             .firstOrNull { !it.isNullOrBlank() }
             ?.let(::httpsOf)
     }

@@ -1276,6 +1276,7 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.saveData()
             saveMouseWarp(c)
             saveRunAsAdmin(c)
+            ShortcutsViewModel.notifyContainersChanged()
             onComplete()
         }
         else {
@@ -1289,7 +1290,10 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 container = created
                 // Registry-backed settings need the prefix to exist, so they land after extraction.
                 // (Run as administrator is stamped by ContainerManager from the runAsAdmin flag.)
-                if (created != null) saveMouseWarp(created)
+                if (created != null) {
+                    saveMouseWarp(created)
+                    ShortcutsViewModel.notifyContainersChanged()
+                }
                 onComplete()
             }
         }

@@ -570,6 +570,8 @@ private fun DeckShellContent(
                 val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
                 // Lab: its graph-paper wallpaper behind every page, Home included, edge to edge.
                 if (simpleHome) com.winlator.star.ui.simple.LabWallpaper(Modifier.matchParentSize())
+                // Lab: the selected game's art over it on Home, Library, the game page and Game details (Appearance › Game art background).
+                if (simpleHome) com.winlator.star.ui.simple.LabArtBackdrop(currentRoute, Modifier.matchParentSize())
                 // Landscape: a camera hole on a short edge is not left as an empty strip. The side rail's glass runs under it with its
                 // icons clear of it; on the other side the page background runs under it and only the page, not the legend, keeps clear.
                 val dir = LocalLayoutDirection.current

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in vi. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in vi. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Điện năng (mặc định cho mọi game)</string>
     <string name="lab_0016da13">Tùy chỉnh bắt đầu với mọi dịch vụ tắt: chỉ bật những gì game cần.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">Nút B</string>
     <string name="lab_00737986">Gửi HDR10 thật ra màn hình.</string>
     <string name="lab_007bf585">Khởi động ngay với các lựa chọn đã lưu. Tắt để thấy lại menu khởi chạy.</string>
+    <string name="lab_0086410b">Ảnh bìa ngang</string>
     <string name="lab_00aad2e4">Ưu tiên DLL trong thư mục game</string>
     <string name="lab_00d53383">Hãy tạo hồ sơ trước (tab Nút ảo).</string>
     <string name="lab_00e9bd4e">Wrapper</string>
     <string name="lab_00ef3163">Khóa governor và tần số CPU, giải phóng bộ nhớ, giám sát nhiệt độ (Thiết lập Classic › Hiệu năng) và nhập Lossless.dll cho tạo khung hình.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s GB</string>
     <string name="lab_0134b985">Thiết lập DX wrapper</string>
+    <string name="lab_0155bfc3">Ảnh bìa, ảnh bìa ngang hoặc biểu tượng ở Trang chủ và Thư viện</string>
     <string name="lab_015a2290">Quyền, giao diện và cửa hàng</string>
     <string name="lab_01940fd6">Chung</string>
     <string name="lab_01942160">FPS có số thập phân</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">Lõi game được dùng</string>
     <string name="lab_044b1956">Hiệu năng</string>
     <string name="lab_04accfcf">OpenGL: Nhanh</string>
+    <string name="lab_04e55ba9">Chọn ảnh: %1$s</string>
     <string name="lab_04fc2b5b">Hình ảnh</string>
     <string name="lab_052396d7">DirectAudio đang thử nghiệm</string>
     <string name="lab_0526e39f">L1 / R1 đổi trang, X chuyển giữa menu nhanh và menu game, B để đóng.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">Tích hợp (Win-FG) nội suy ngay trong ứng dụng. Lossless Scaling dùng tệp Lossless.dll của bạn. Cả hai đều cần Renderer màn hình Vulkan, Wayland hoặc mục Linux. Hệ số nhân được đặt trong game.</string>
     <string name="lab_070cecae">Chọn nội dung được ghi (Wine, Box64/FEX, DXVK, SteamLite, Steam chạy ẩn, logcat), nơi lưu log và số log giữ lại; duyệt và chia sẻ log.</string>
     <string name="lab_0721ad7c">Container này</string>
+    <string name="lab_075ffd70">Video của bạn</string>
     <string name="lab_07a88d47">Nhấn Quay lại một lần vẫn mở ngăn kéo trong game.</string>
     <string name="lab_07e11363">Đang bật cho toàn bộ container: hãy tắt nó trong container.</string>
     <string name="lab_080615dc">Dùng của container</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Sửa camera tự xoay hoặc bị kẹt trong một số game cũ.</string>
     <string name="lab_0d5a2b34">Các tham số thêm sau tên chương trình, ví dụ -windowed -dx11.</string>
     <string name="lab_0da00171">• Game không còn nhận tay cầm. Menu riêng của Steam vẫn hoạt động, nhưng trong game tay cầm không làm gì cả.\n</string>
+    <string name="lab_0dc541d5">Đặt lại về mặc định</string>
     <string name="lab_0ddd64ae">Cường độ rung</string>
     <string name="lab_0e15cd35">Hữu ích trên máy gập: giữ game ở một nửa màn hình.</string>
     <string name="lab_0e24f0e3">Bộ nhớ đệm shader bất đồng bộ</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">Hiệu ứng ReShade</string>
     <string name="lab_1054fdc3">Trên Wayland, game render qua compositor tích hợp, vốn cần một Turnip đã cài để nhập khung hình. \"Hệ thống\" chỉ có trên GPU Mali; ở nơi khác sẽ ra màn hình đen. Thứ game thực sự dùng để render là Driver game Wayland bên dưới.</string>
     <string name="lab_105c504c">Bản sửa cho OneUI / HyperOS</string>
+    <string name="lab_1079be1d">Không tìm thấy %1$s trên Steam</string>
     <string name="lab_10a08356">Cho phép đổi trong game</string>
     <string name="lab_10cb69ae">Chọn ảnh biểu tượng</string>
     <string name="lab_1121166e">Alpha</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Chọn màu</string>
     <string name="lab_1331bc15">SteamLite chạy client Steam thật nên thành tựu, bản lưu đám mây và chơi trực tuyến hoạt động. Steam chạy ẩn chạy game trên phiên Steam riêng của ứng dụng, nên bạn bè và trò chuyện vẫn trực tuyến (thử nghiệm). Goldberg giả làm Steam mà không cần đăng nhập. .exe thô khởi động chương trình riêng của game.</string>
     <string name="lab_134638cc">Game GOG</string>
+    <string name="lab_136c7474">Dưới bên trái</string>
     <string name="lab_137513e1">Đã chọn sẵn: driver trong Mặc định cho container mới của bạn.</string>
     <string name="lab_137e9ac8">Hiện chỉ có thành phần tích hợp.</string>
     <string name="lab_13868325">Cách mở</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Thủ công</string>
     <string name="lab_177847bc">Không có gì để sao chép</string>
     <string name="lab_17a0dfae">Ngoại tuyến</string>
+    <string name="lab_17c41d91">Ảnh chụp màn hình</string>
     <string name="lab_17e8622b">SurfaceFlinger đưa khung hình game thẳng tới compositor của Android. Có thể nhanh hơn, nhưng trên một số thiết bị sẽ ra màn hình đen hoặc sai màu. Khi đó hãy chuyển về Vulkan hoặc OpenGL.</string>
     <string name="lab_17f88806">Tên container, ngôn ngữ, desktop và cách hoạt động của phiên.</string>
     <string name="lab_181ab51a">Lớn hơn 8K.</string>
     <string name="lab_1821acdc">Màu đơn</string>
+    <string name="lab_183f03ee">Clip xem trước</string>
     <string name="lab_187e8ab4">game này</string>
     <string name="lab_188dc386">Được đặt bởi Hiệu năng › Đồng bộ.</string>
     <string name="lab_18991a24">Khác</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Kiểm tra tay cầm</string>
     <string name="lab_198324db">Giới thiệu Bannerlator</string>
     <string name="lab_19a0f782">Mức hiệu năng, từng khóa của tệp, bản sao lưu, và xóa hoặc cài bản build VEGAS.</string>
+    <string name="lab_19b489d5">Ảnh 3D và xem trước</string>
     <string name="lab_19e91dd3">Đầu vào</string>
     <string name="lab_1a0d3004">Cửa sổ</string>
     <string name="lab_1a1b35e7">Runtime</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · chưa kết nối (đã ghim)</string>
     <string name="lab_2062fe79">Giới hạn FPS</string>
     <string name="lab_20898aa4">Chỉ khi tự phát hiện thất bại ([KFAULT] trong log).</string>
+    <string name="lab_208b07a1">Chi tiết, hình ảnh, nền ›</string>
     <string name="lab_209f636f">Upscale, làm nét và màu sắc</string>
     <string name="lab_20f30881">Tiếp tục game</string>
     <string name="lab_211badb3">Chơi trên TV, tự chuyển, vùng an toàn, đầu ra âm thanh, làm tối và độ phân giải TV</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Quản lý</string>
     <string name="lab_23e9383c">Phiên bản, công nghệ bên trong và ghi công.</string>
     <string name="lab_2453405d">Dùng auto:N, fixed:N hoặc off</string>
+    <string name="lab_2470de02">Trong suốt</string>
     <string name="lab_24720798">Sửa màu bị đảo</string>
     <string name="lab_247c39e6">Bỏ qua compositor để giảm độ trễ. Tắt hiệu ứng màn hình.</string>
     <string name="lab_24857b5d">RGBA (đổi đỏ/xanh dương)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Hiện bàn phím</string>
     <string name="lab_2694592a">Trên</string>
     <string name="lab_274284a1">Bản build này chưa hỗ trợ Wayland.</string>
+    <string name="lab_2742f91b">Tự động · trailer Steam</string>
     <string name="lab_2756404f">Đặt lại điện năng và root về mặc định của ứng dụng</string>
     <string name="lab_27b56d30">Cài DLL XInput của Bannerlator dù XInput trực tiếp bật hay tắt, cùng với XInput của Wine bên cạnh, để Điều khiển › Tay cầm trong menu game có thể chuyển giữa chúng khi game đang chạy (tay cầm kết nối lại). Bật theo mặc định. Tắt: XInput trực tiếp giữ nguyên như lúc game khởi động, và muốn đổi phải khởi động lại.</string>
     <string name="lab_27bcb120">Thêm, sao chép, xóa, xuất hoặc nhập preset Box64 và FEX (Thiết lập Classic).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Hình nền cho</string>
     <string name="lab_28441b9b">Khởi động lại</string>
     <string name="lab_28502118">Mặc định tích hợp của VEGAS (không có tệp)</string>
+    <string name="lab_286dae57">Tự động · lấy từ ảnh bìa</string>
     <string name="lab_287eabc8">Hiện FPS</string>
     <string name="lab_28d51363">Tần số quét game có thể chọn</string>
     <string name="lab_28f727b0">Xuất chẩn đoán HUD</string>
     <string name="lab_29198bb7">Chưa đặt (Hệ thống)</string>
+    <string name="lab_2927fedd">Chỉ xem trước qua Wi-Fi</string>
     <string name="lab_29a908d6">Cần bật Bỏ chờ gửi lệnh GPU.</string>
     <string name="lab_29b501c2">Bạn bè và trò chuyện, thông báo và trạng thái trong game.</string>
     <string name="lab_29c3ef3b">Nút ảo, chuột, rung, ngắm bằng gyro, người chơi.</string>
     <string name="lab_29d0a27a">Hệ thống hiển thị</string>
     <string name="lab_29faa513">Số tay cầm</string>
+    <string name="lab_29fe3935">Chưa liên kết với Steam</string>
     <string name="lab_2a1dcc50">Preset Box64 mặc định</string>
     <string name="lab_2a234929">Không khả dụng — màn hình này chỉ có một tần số quét nên không có gì để khớp.</string>
     <string name="lab_2a342d91">Các thiết lập hay đổi nhất khi chơi.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Khởi động lại âm thanh</string>
     <string name="lab_2ab94a31">Vuốt giữa các nút</string>
     <string name="lab_2ad5a458">Ghim vị trí người chơi</string>
+    <string name="lab_2adf1ef0">Giấy kẻ ô và tín hiệu của Lab phủ trên ảnh</string>
     <string name="lab_2b01a79e">Không đọc được hình ảnh đó.</string>
     <string name="lab_2b3bf173">Công cụ</string>
     <string name="lab_2b605d42">Thêm</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Mặc định</string>
     <string name="lab_2ced81bf">Ngoại tuyến: đang hiện danh sách đã lưu. Kết nối để tải hiệu ứng mới.</string>
     <string name="lab_2d1366ec">Không có biến đã biết nào khớp.</string>
+    <string name="lab_2d45170d">Ảnh game</string>
     <string name="lab_2d6ee59d">Hoặc nhập giá trị bất kỳ</string>
     <string name="lab_2dad13e3">Ngôn ngữ</string>
     <string name="lab_2dc2e901">Đơn sắc</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Chưa kiểm tra lần nào. Liệt kê các gói FEX, DXVK và VKD3D-Proton có thể tải.</string>
     <string name="lab_30c8cda7">Thiết lập trước FEX</string>
     <string name="lab_31132684">Giải mã texture nén mà game Windows dùng, cho GPU không tự làm được.</string>
+    <string name="lab_312e2eb9">Ảnh và xem trước</string>
     <string name="lab_313f3497">Dịch vụ tùy chỉnh</string>
     <string name="lab_314b6c8f">Driver game Wayland</string>
     <string name="lab_318a4134">Đặt cho game này</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">Cho điện thoại Samsung và Xiaomi bị lỗi texture trong game. Nếu không thì để tắt.</string>
     <string name="lab_36936d70">Giới hạn số khung hình mỗi giây game vẽ. Tiết kiệm pin và giảm giật.</string>
     <string name="lab_36ef1cc0">Theo container</string>
+    <string name="lab_37232683">Bảng trên ảnh</string>
     <string name="lab_3776c976">Kết xuất gốc</string>
     <string name="lab_377702f6">Chạm</string>
     <string name="lab_37ad98ec">Lựa chọn lõi CPU giữ nguyên đến khi chương trình khởi động lại.</string>
@@ -395,12 +415,14 @@
     <string name="lab_37f22874">Mỗi ổ đĩa cần một ký tự riêng</string>
     <string name="lab_3855543c">Xuất (.icpx)</string>
     <string name="lab_385e1a80">Chạm vào lớp phủ để xoay giữa dọc và ngang (Fusion: kích thước tiếp theo). Kéo để di chuyển; nhấn giữ để khóa vị trí.</string>
+    <string name="lab_386c72a7">Không thể dùng tệp đó</string>
     <string name="lab_3886b4de">Không dùng được thư mục đó: hãy chọn thư mục trên bộ nhớ trong hoặc thẻ SD</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Cách xuất trực tiếp lên màn hình</string>
     <string name="lab_38c3ee26">Kiểm tra nút và cần analog, gán hồ sơ cho tay cầm thật, đặt vị trí người chơi.</string>
     <string name="lab_38d2a5bb">Nhiệt độ</string>
     <string name="lab_38f46bd4">Bỏ qua menu khởi chạy</string>
+    <string name="lab_38f52cc5">Tắt: xem trước phát không tiếng</string>
     <string name="lab_39052457">Container này không còn tồn tại.</string>
     <string name="lab_390bed76">DirectDraw và Direct3D 7 trên Vulkan.</string>
     <string name="lab_391a454c">Trong giao diện Deck, Game và Big Picture đều mở ở Trang chủ.</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Cân bằng</string>
     <string name="lab_3b7778ec">Giải mã video bằng phần mềm</string>
     <string name="lab_3bd060de"> và game render trên Wayland Turnip đi kèm (adapter cần driver Turnip).</string>
+    <string name="lab_3bf05e53">Hiện trên ảnh trong ô lớn ở Trang chủ khi bật xem trước. Ở trang game, logo thay cho tên.</string>
     <string name="lab_3c0764a4">Hiện điều khiển trên màn hình và bố cục bạn chọn</string>
     <string name="lab_3ca0cc27">HDR: tự động. Màn hình này nhận HDR10 nên đầu ra HDR được bật cho game này.</string>
     <string name="lab_3cc7318b">Lõi</string>
     <string name="lab_3d0ded52">Màn hình hiện đang ở %1$s Hz.</string>
     <string name="lab_3d12f194">Xóa kho này</string>
+    <string name="lab_3d198a51">Ảnh 3D</string>
     <string name="lab_3d2c22d4">Chế độ present của driver</string>
     <string name="lab_3d40c46a">Rung</string>
     <string name="lab_3d9862bb">Mip bias âm: texture sắc nét hơn, hơi lấp lóa. Tự động theo mức chia tỷ lệ lúc game khởi động.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">Mới nhất thắng: không bao giờ ghi đè bản lưu cục bộ mới hơn.</string>
     <string name="lab_41f05e04">Các gán phím bên dưới thuộc hồ sơ này</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
+    <string name="lab_4270e2ba">Trên ở giữa</string>
     <string name="lab_42bbc821">Thử nghiệm: lớp phủ Epic trong game bằng Shift+F3. Container cần cho phép đầy đủ dịch vụ.</string>
     <string name="lab_42ca94f9">Tay cầm chính</string>
     <string name="lab_43316731">Chỉ có C: (prefix Windows) và Z:. Thêm một ổ cho thư mục game.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">Mở desktop Windows</string>
     <string name="lab_4455b74f">Tần suất chuyển động cần analog đến game. Cũng đổi được trong game.</string>
     <string name="lab_449c12fb">Kích thước trên màn hình</string>
+    <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Hồ sơ mặc định %1$s, </string>
     <string name="lab_452013a2">Xuất</string>
     <string name="lab_45536eb8">Container</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">Sửa tệp cấu hình VEGAS</string>
     <string name="lab_475cee12">Giữa</string>
     <string name="lab_478577aa">Nhiệt độ</string>
+    <string name="lab_47a2fcea">Hình ảnh</string>
     <string name="lab_47db736e">Chọn thư mục game</string>
     <string name="lab_47fbfb16">Đổi</string>
     <string name="lab_480443a4">Không dùng được tên thư mục có ký tự |</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Phương thức giả lập</string>
     <string name="lab_4a51272f">Đặt lại sẽ quay về hiệu ứng của Mọi container.</string>
     <string name="lab_4a587711">Bật để khớp màn hình với giới hạn khung hình × hệ số nhân.</string>
+    <string name="lab_4a690444">Nền ảnh game</string>
     <string name="lab_4af762a7">Tắt giảm xung do nhiệt</string>
     <string name="lab_4b02cb78">Loại tài nguyên</string>
     <string name="lab_4b0fb1b1">Chưa nhập gì: Nội dung › Đã cài › Driver runtime Linux.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Chưa có hình nền</string>
     <string name="lab_4c5eeff6">Chọn</string>
     <string name="lab_4c6da2bc">Desktop Windows</string>
+    <string name="lab_4c6dae0d">Đang tìm ảnh…</string>
     <string name="lab_4c737acf">Thiết bị (GPU thật)</string>
     <string name="lab_4c76101a">Lựa chọn FEX / DXVK / VKD3D</string>
     <string name="lab_4c76edfa">DXVK và VKD3D</string>
     <string name="lab_4c9774e6">Khớp tần số quét màn hình với FPS của game</string>
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Đang dùng</string>
+    <string name="lab_4cc9a9c1">Ảnh bìa</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Đảo lên/xuống</string>
     <string name="lab_4d8c7321">Nội dung</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">Tìm thấy trong thư mục game.</string>
     <string name="lab_56b4c80c">Giao diện</string>
     <string name="lab_56b89990">Tự động (mặc định): mỗi khung hình game vẽ thì cập nhật cần analog một lần, tối đa theo giới hạn đã đặt (mặc định 60 lần/giây), nên game vẽ nhanh hơn tốc độ đọc đầu vào cũng không bị chậm. Cố định: cập nhật đúng số lần đó mỗi giây. Không điều nhịp: mọi thay đổi được gửi đi ngay. Áp dụng ngay, cả trong game (Điều khiển › Tay cầm). BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX trong biến môi trường được ưu tiên hơn thiết lập này.</string>
+    <string name="lab_56ed95b0">Lưới Thư viện</string>
     <string name="lab_571567c9">Đặt lại về mặc định ứng dụng?</string>
     <string name="lab_574b34d5">DXVK + VKD3D hợp với hầu hết game DirectX 9–12. VEGAS là bản fork DXVK đã tinh chỉnh. WineD3D chậm nhưng tương thích rộng, là phương án dự phòng cho game rất cũ.</string>
     <string name="lab_574e9955">Chuyển texture BCn sang ASTC có thể làm điện thoại treo hoặc khởi động lại với driver này; chỉ thử khi game bị lỗi hoặc thiếu texture.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Gồm cả bản beta</string>
     <string name="lab_58627009">Rung và ngắm bằng gyro.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Trên bên trái</string>
     <string name="lab_58a426c9">Tắt cho game này khi đang tạo khung hình. </string>
     <string name="lab_5901a4cd">Wayland: chuyển động chuột được gửi tới compositor; game khóa con trỏ nhận chúng dưới dạng chuyển động tương đối.</string>
+    <string name="lab_5946d9c6">Dùng thiết lập ứng dụng (%1$s)</string>
     <string name="lab_594a913b">Shader bất đồng bộ</string>
     <string name="lab_595daef9">Thành phần đã tải: tệp nén và danh sách danh mục.</string>
     <string name="lab_5983ab11">Chế độ ngoại tuyến (không đăng nhập Valve)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Cả hai</string>
     <string name="lab_5c2357bd">Thư viện · 1 game</string>
     <string name="lab_5c307bbf">Mục tiêu rung, cường độ và động cơ (Lưu cho, bên dưới)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Tần số quét cố định</string>
     <string name="lab_5c462080">Không áp dụng khi lsfg-vk đang nhân khung hình: nó tự điều nhịp khung hình.</string>
     <string name="lab_5c524fb3">Mặc định cho container mới</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Bộ nhớ trong, thẻ SD và ổ đĩa của mọi container</string>
     <string name="lab_659fcd98">Do tôi thêm</string>
     <string name="lab_65f8ea90">Driver renderer</string>
+    <string name="lab_65f9e2b8">Đặc</string>
     <string name="lab_660f585a">Sao chép gán phím từ %1$s</string>
     <string name="lab_662a7209">Đảo trục X</string>
     <string name="lab_6637ca24">Chuyển mã BCn sang ETC2</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Không dùng trên Wayland: tạo khung hình chạy trong compositor trên driver Turnip của bạn.</string>
     <string name="lab_69f12fdf">Tệp của tôi</string>
     <string name="lab_69f77a90">Sửa HDR cho Unreal Engine</string>
+    <string name="lab_69f7d525">Không thể đổi tên</string>
     <string name="lab_6a271188">Preset Box64 / Preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Điện năng</string>
     <string name="lab_6a68da45">Chuột tương đối</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">Các nút cảm ứng của bố cục hiện tại.</string>
     <string name="lab_6c3656ad">Dọc</string>
     <string name="lab_6c37a76c">Chạm hoạt động như</string>
+    <string name="lab_6c5fe717">Âm thanh xem trước</string>
     <string name="lab_6c8e3b1f">Đặt làm mặc định…</string>
     <string name="lab_6c9249ac">Tự động tải xuống từ đám mây khi khởi chạy sẽ TẮT cho các game trong thư viện GOG. Bản lưu đám mây mới nhất sẽ không được tải về trước khi game chạy — bạn cần tự tải chúng từ tab Quản lý bản lưu GOG hoặc trang chi tiết của game. Tiếp tục?</string>
     <string name="lab_6cd478cd">Tự động (tối đa 120/giây)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">Phiên bắt đầu chỉ với các biến riêng của ứng dụng.</string>
     <string name="lab_6e2acf44">Mẫu GPU</string>
     <string name="lab_6e3da120">Thư viện</string>
+    <string name="lab_6e661b92">Trailer chỉ tải qua Wi-Fi</string>
     <string name="lab_6e6ffb5b">Chạy game 64-bit khi trình dịch 64-bit là Box64EC.</string>
     <string name="lab_6e86a6ef">Đóng phiên khi game thoát</string>
     <string name="lab_6ec32312">Phát hiện trong wrapper này</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Màn hình khởi động và cập nhật.</string>
     <string name="lab_7982eb6b">, liệt kê bên dưới.</string>
     <string name="lab_79b6d4c7">Chế độ Steam ngoại tuyến, kiểm tra tệp và cập nhật</string>
+    <string name="lab_79c7988a">Không có · hiện tên</string>
     <string name="lab_79e3b22e">Vừa</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Độ nhạy</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Back buffer</string>
     <string name="lab_7ceefd00">Tải xuống thất bại: %1$s</string>
     <string name="lab_7d24ed15">Chưa có gì ở đây.</string>
+    <string name="lab_7d50777a">Hành động, RPG, Chiến thuật</string>
     <string name="lab_7d6bff72">Có trên hệ thống âm thanh DirectAudio.</string>
     <string name="lab_7d9f1b59">Chậm hơn. Chỉ dùng cho thiết bị bị seccomp cản trở.</string>
     <string name="lab_7da6281a">Tệp và công cụ</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">Trình dịch x86</string>
     <string name="lab_7e3548ee">Hiện game ở tab Game trong Steam</string>
     <string name="lab_7e38b599">Tự động tải lên đám mây khi thoát sẽ TẮT cho các game trong thư viện Steam. Bản lưu sẽ không được đẩy lên Steam Cloud khi game đóng — bạn cần tự tải lên từ mục Bản lưu đám mây trên trang chi tiết của game. Tiếp tục?</string>
+    <string name="lab_7e6d7e33">Thẻ Thư viện</string>
     <string name="lab_7e9c00ea">Tự động (theo FPS)</string>
     <string name="lab_7e9eede5">Hồ sơ %1$s</string>
     <string name="lab_7eb6734a">Wayland cần lớp Proton được dựng cho nó.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">Chạy mã x86 64-bit của game. Box64EC cần cài thành phần Box64EC.</string>
     <string name="lab_82265bbe">Đồng bộ thành tựu lên Steam?</string>
     <string name="lab_8232f25f">GDI (phần mềm)</string>
+    <string name="lab_82542307">Đặt lại về tự động</string>
     <string name="lab_82549ee8">Cách game này khởi động: có Steam hay không, chuyển giao tay cầm, chống gian lận, đăng nhập Epic.</string>
     <string name="lab_82758f36">Backend gốc</string>
     <string name="lab_828c5a26">Dùng engine GameNative (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Bỏ tín hiệu frame-acquire</string>
     <string name="lab_87f7f6ba">Chế độ nguồn</string>
     <string name="lab_880bfb03">Chỉnh sửa bố cục</string>
+    <string name="lab_88328343">Tự động · ảnh bìa làm mờ</string>
     <string name="lab_8844e521">Giá trị preset</string>
     <string name="lab_8850c516">Cho game DirectInput làm tay cầm rung: rung thường, và các hiệu ứng lực mà game đua xe và bay gửi tới vô lăng hoặc cần điều khiển, cảm nhận qua hai động cơ của tay cầm. Tuân theo thiết lập Rung (mục tiêu và cường độ rung). Lực ổn định (ví dụ game đua xe giữ vô lăng thẳng) sẽ nhạt dần sau vài giây để tay cầm không rung mãi. Game DirectInput chỉ cảm nhận được khi chúng thấy tay cầm. Thay đổi áp dụng khi tay cầm kết nối lại (trong game, Điều khiển › Tay cầm làm việc đó) hoặc ở lần khởi chạy sau. BANNERIN_DINPUT_FF trong biến môi trường được ưu tiên hơn thiết lập này.</string>
     <string name="lab_8861fdef">Thiết lập âm thanh</string>
     <string name="lab_887ae5cd">Tạo</string>
+    <string name="lab_88819a36">Lưới trên ảnh</string>
     <string name="lab_88845797">Trình quản lý tác vụ</string>
     <string name="lab_888e7afb">Không có tác dụng trên Adreno, vốn tự giải mã BCn.</string>
     <string name="lab_88a8754b">Độ sắc nét texture</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">Thành tựu bạn mở khóa trong game được ghi ngược lên tài khoản Steam thật. Tắt: thành tựu chỉ lưu trên thiết bị này.</string>
     <string name="lab_88f8aeb8">Màu dạng #RRGGBB, vd. #1E88E5</string>
     <string name="lab_8907b290">Duyệt tệp</string>
+    <string name="lab_892b7b55">Ảnh bìa ngang</string>
     <string name="lab_8965e6c7">Ít dịch vụ hơn = khởi động nhanh hơn và trống nhiều RAM hơn.</string>
     <string name="lab_8998f446">Biểu tượng của mục này</string>
     <string name="lab_89f43a0d">Giá trị preset trình dịch</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper</string>
     <string name="lab_8a8bb4d3">Luồng lệnh (CSMT)</string>
+    <string name="lab_8aa52c61">Chi tiết game</string>
     <string name="lab_8ae3076a">Turbo</string>
     <string name="lab_8af52aac">Cập nhật</string>
     <string name="lab_8b087b3c">Giao diện</string>
@@ -948,6 +994,7 @@
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">%1$s gán phím · tay cầm mới sẽ dùng các gán này</string>
     <string name="lab_8c68f725">Game OpenGL (và DirectDraw / Direct3D cũ qua WineD3D) chạy trên Mesa và Zink đi kèm và được Vulkan hiển thị, thay vì sao chép chậm từng khung hình. Cần driver đồ họa Turnip trên X11. Luôn bật với Wayland.</string>
+    <string name="lab_8c79f517">Trailer Steam</string>
     <string name="lab_8c7f97b0">%1$s trên %2$s GB</string>
     <string name="lab_8c913834">Vừa khít, bộ lọc chia tỷ lệ, nhịp khung hình, giới hạn khung hình và tạo khung hình được lưu như trên trang riêng của chúng</string>
     <string name="lab_8c9b8bce">Ngắm bằng gyro</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Giống của container</string>
     <string name="lab_952f41de">Driver GPU</string>
     <string name="lab_95432a7a">Vị trí người chơi</string>
+    <string name="lab_95c66fc6">Năm phát hành</string>
     <string name="lab_95ca1574">Driver đồ họa</string>
     <string name="lab_96125830">Mặc định / Mọi tay cầm</string>
     <string name="lab_962bd533">Độ sáng</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">các lựa chọn \"Đặt làm mặc định\" và lớp mặc định của nó bị quên ngay bây giờ, và trang này hiện mặc định của chính ứng dụng. </string>
     <string name="lab_97bb79af">Chế độ Deck làm client Steam hoạt động như trên Steam Deck và thêm Menu truy cập nhanh.\n\n</string>
     <string name="lab_98469a16">Đã kết nối</string>
+    <string name="lab_98513339">Trailer Steam</string>
     <string name="lab_9884a116">Trình giả lập (32-bit)</string>
+    <string name="lab_98964f8d">Không tìm thấy · hiện tên</string>
     <string name="lab_989f5c02">Driver runtime Linux</string>
+    <string name="lab_98aa06ba">Lớn</string>
     <string name="lab_98c4e496">Đầu ra của Wine và Box64 / FEX khi đang bật ghi log.</string>
     <string name="lab_99082159">Âm báo</string>
     <string name="lab_992421a8">Mở ứng dụng ở</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Sound bank MIDI mặc định</string>
     <string name="lab_99c314b2">Rực rỡ</string>
     <string name="lab_9a2890b2">Cần GPU Adreno (Qualcomm), hoặc root trên GPU khác.</string>
+    <string name="lab_9a75ad29">Chưa liên kết với Steam: hãy liên kết trong Chi tiết để tìm trailer.</string>
     <string name="lab_9a8f0817">Game này</string>
     <string name="lab_9aa56987">Ngắm chuyển động (gyro)</string>
     <string name="lab_9aaea01f">Lớp phủ bạn bè Epic</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Bỏ qua chuyển động nhỏ</string>
     <string name="lab_9d727d6c">Hãy nhập Lossless.dll trong Thiết lập › Hiệu năng trước.</string>
     <string name="lab_9d954afa">Ghi nhớ lựa chọn</string>
+    <string name="lab_9e5d1d40">Tìm trên Steam theo tên</string>
     <string name="lab_9e7ac4ad">Biến đồng bộ</string>
     <string name="lab_9e7bf84e">Theo preset dùng chung</string>
     <string name="lab_9ea6cfdd">Chỉ thiết yếu</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Kiểu giao diện</string>
     <string name="lab_a2efb709">Cho GPU Arm Mali. Cho đến khi được chuyển, nó theo driver: bật với driver PanVK, tắt với driver khác.</string>
     <string name="lab_a35eef98">Lưu báo cáo cảm biến (CPU, GPU, nhiệt độ, VRAM…) vào thư mục Tải xuống.</string>
+    <string name="lab_a36379d6">Tự động · Steam</string>
     <string name="lab_a37cf853">Chọn một .exe khác trong thư mục game cho mục này.</string>
     <string name="lab_a3904026">Giữ nút này để ngắm</string>
+    <string name="lab_a396cfaa">Không thể tải ảnh đó</string>
     <string name="lab_a3c61ce1">Cửa sổ và log</string>
     <string name="lab_a3f6a50d">Vừa màn hình</string>
     <string name="lab_a40c85ce">Dịch vụ khởi động cùng Windows</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Động cơ rung</string>
     <string name="lab_a559e736">Tay cầm XR</string>
     <string name="lab_a57ba715">Ái lực bộ xử lý (cpuList)</string>
+    <string name="lab_a593c4da">Tệp của bạn</string>
     <string name="lab_a59e2986">Tắt Xalia (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Làm client hoạt động như trên Steam Deck, có Menu truy cập nhanh. Game không còn nhận tay cầm.</string>
     <string name="lab_a5d4b1b1">đang có game chạy</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Nút ảo và tay cầm thật</string>
     <string name="lab_a6e62e9e">Dịch DirectX</string>
     <string name="lab_a71846fe">Giao diện và màu sắc</string>
+    <string name="lab_a74f5b6d">Tắt, ảnh game, ảnh 3D trôi chậm theo chiều sâu, hoặc kèm xem trước: trailer trong ô lớn ở Trang chủ</string>
     <string name="lab_a7a4aed7">Màn hình cảm ứng gửi ngón tay tới Steam như thao tác chạm thật; Touchpad di chuyển con trỏ bằng cách kéo và nhấp bằng cách chạm.</string>
     <string name="lab_a7c6d9e7">Giới hạn tốc độ khung hình</string>
     <string name="lab_a7c8bcd7">Cả hai (giống PC): điều khiển riêng động cơ lớn và nhỏ như tay cầm PC. Một động cơ (cần mượt hơn): chỉ dùng một động cơ. Một số tay cầm trên máy cầm tay (ví dụ AYANEO Pocket FIT) cập nhật cần analog chậm lại khi cả hai động cơ chạy; Một động cơ giảm một nửa mức chậm đó để ngắm vẫn mượt. Mặc định: Một động cơ trên Pocket FIT, Cả hai trên thiết bị khác.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">Game đã cài vẫn khởi chạy được. Cần đăng nhập trực tuyến một lần trên thiết bị này trước. Áp dụng từ phiên sau.</string>
     <string name="lab_af32ab2f">Đơn</string>
     <string name="lab_af39be20">Mạng</string>
+    <string name="lab_af3f8345">Không tìm thấy gì cho game này. Hãy chọn một ảnh, hoặc liên kết với Steam trong Chi tiết.</string>
     <string name="lab_af456994">Ngăn kernel tắt bớt lõi.</string>
+    <string name="lab_af47e020">Thể loại</string>
     <string name="lab_afb57bd1">Bộ lọc upscale, làm nét và khử dải màu</string>
     <string name="lab_b01a2f1b">Biến môi trường</string>
     <string name="lab_b01c4a81">Hướng màn hình</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Dùng chung bản lưu với ứng dụng</string>
     <string name="lab_b132aa74">Turnip đã cài mà compositor Wayland dùng để đưa khung hình game lên màn hình.</string>
     <string name="lab_b18ba364">Màn hình cảm ứng</string>
+    <string name="lab_b1aea182">Hiện tên thay thế</string>
     <string name="lab_b1cc94c4">Hiệu ứng</string>
     <string name="lab_b1fb3d78">Khóa vị trí</string>
     <string name="lab_b2091323">Các biến BOX64_* của nó cũng áp dụng cho Box64EC.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Chạy…</string>
     <string name="lab_b4467898">Tinh chỉnh bộ đệm âm thanh</string>
     <string name="lab_b46c3296">Đang xóa</string>
+    <string name="lab_b484c517">Nhỏ</string>
     <string name="lab_b48bc44b">Không thể tải danh sách</string>
     <string name="lab_b4c6ec80"> Đặt cho game này.</string>
     <string name="lab_b4d38912">Thêm game đầu tiên</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">Chưa cài bản build VEGAS nào: tải một bản bên dưới.</string>
     <string name="lab_bd63a37d">Ảnh hình nền</string>
     <string name="lab_bd87c7d9">Lưu đệm texture đã giải mã</string>
+    <string name="lab_bd9b3216">Chi tiết</string>
     <string name="lab_bdaf406a">Trong game</string>
+    <string name="lab_be12d609">Chọn ảnh…</string>
+    <string name="lab_be45a0e0">Không tìm thấy · chưa liên kết với Steam</string>
     <string name="lab_be638831">Kính lúp, cửa sổ, log và chương trình đang chạy.</string>
     <string name="lab_be998b7c">Đồng bộ mỗi khung hình</string>
     <string name="lab_be9a2a59">Nhấn Back hai lần mở Quick Access</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> Thay đổi áp dụng từ lần khởi động game tiếp theo.</string>
     <string name="lab_bed0286f">Ẩn kho này</string>
     <string name="lab_bef10a2e">Chuyển sang container khác</string>
+    <string name="lab_bf5a86a3">Vị trí</string>
     <string name="lab_bf9aba55">Làm lại từ đầu</string>
     <string name="lab_bfa9745f">Luôn bật</string>
     <string name="lab_bfb6fae9">Tối hoặc sáng; màu nhấn theo giao diện của bạn</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Tắt tự động sao lưu?</string>
     <string name="lab_c06ade64">Công tắc thử nghiệm và thông số nội bộ của máy chủ hiển thị.</string>
+    <string name="lab_c088a86d">Chỉnh logo</string>
     <string name="lab_c0b26391">Tương thích</string>
     <string name="lab_c0ba51f5">Môi trường</string>
     <string name="lab_c0cb7e61">Tắt theo mặc định, để game đọc cả XInput và DirectInput chỉ thấy một tay cầm.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">Thay đổi chỉ được giữ cho game này ở những chỗ khác với mặc định chung.</string>
     <string name="lab_c1bc6675">Wrapper Vulkan mà game dùng trên X11. Wrapper đã nhập cũng hiện ở đây.</string>
     <string name="lab_c1c757e2">Log gỡ lỗi lớp BCn</string>
+    <string name="lab_c1df4081">Vừa</string>
     <string name="lab_c206cdbf">Sao lưu mọi bản lưu</string>
     <string name="lab_c22c196f">Đỏ</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Bố cục nút ảo</string>
     <string name="lab_c781beb4">Hiệu năng (thử nghiệm)</string>
     <string name="lab_c78bbaf5">Nút ảo, chuột, rung, ngắm bằng gyro.</string>
+    <string name="lab_c7b49d50">Ứng dụng Steam %1$s</string>
     <string name="lab_c7fad197">Không phát hiện thiết lập bổ sung</string>
     <string name="lab_c82e7e67">Các bản build từ danh mục. Bản đã cài hiện trong Phiên bản DXVK.</string>
     <string name="lab_c844d41c">Cho các game Denuvo mà ứng dụng không tự phát hiện được.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Preset dùng chung, đã sửa</string>
     <string name="lab_cb5fc4d5">Cấu hình VEGAS</string>
     <string name="lab_cb6d604d">Không thể kéo HUD khi đang chơi.</string>
+    <string name="lab_cbab7f7a">Biểu tượng</string>
     <string name="lab_cbb98111">Cần analog phải</string>
     <string name="lab_cc03c446">Trình quản lý tệp</string>
     <string name="lab_cc0a2f50">Khi game Steam khởi động bằng Goldberg hoặc .exe thô (game Wine), báo cho Steam rằng bạn đang chơi để bạn bè thấy và thời gian chơi được tính. Khởi chạy bằng SteamLite luôn hiển thị.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Tự tải từ đám mây GOG khi khởi chạy</string>
     <string name="lab_cf4ce884">Chế độ toàn màn hình</string>
     <string name="lab_cf608a0d">Dùng DirectAudio</string>
+    <string name="lab_cf6c6955">Game này chưa có logo. Chọn logo trong mục Logo để xem ở đây.</string>
     <string name="lab_cf6d2530">Thứ mà các bản build driver A710/A720/A722 cần; Tự động bật nó cho các bản nhập đó. TU_DEBUG trong biến môi trường được ưu tiên.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Dưới ở giữa</string>
     <string name="lab_cf8f0f8a">Chưa đặt biến môi trường nào</string>
     <string name="lab_cf9192cb">Đã cài %1$s</string>
     <string name="lab_d02befc2">Bộ nhớ video</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Chọn qua hệ thống…</string>
     <string name="lab_d063c529">Gọi là WOWBox64 trên container ARM64EC, nơi nó chạy mã 32-bit khi được chọn ở trên.</string>
     <string name="lab_d097c7ad">Touchpad</string>
+    <string name="lab_d0c3d24d">Chọn video…</string>
     <string name="lab_d1106762">Chọn hình ảnh</string>
     <string name="lab_d13696b8">Ghim tay cầm cho người chơi</string>
     <string name="lab_d1588174">Rung trên</string>
@@ -1383,7 +1455,7 @@
     <string name="lab_d166863e">Tự động sao lưu bản lưu khi thoát sẽ TẮT cho các game bạn tự nhập. Bản lưu sẽ không được ghi lại khi game đóng — bạn cần tự sao lưu bằng tùy chọn sao lưu của container hoặc menu ⋮ của game → \'Sao lưu bản lưu\'. Tiếp tục?</string>
     <string name="lab_d16b2e1e">Nhập chiều cao tính bằng pixel.</string>
     <string name="lab_d1c8f604">Sound bank nhạc MIDI</string>
-    <string name="lab_d1e4a3ee">Home</string>
+    <string name="lab_d1e4a3ee">Trang chủ</string>
     <string name="lab_d22702d7">Vừa khít (viền đen)</string>
     <string name="lab_d235caa8">Toàn bộ danh sách dạng NAME=VALUE, ngăn cách bằng dấu cách.</string>
     <string name="lab_d23a11bc">Nhiệt độ GPU</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Chạy lại thiết lập ban đầu</string>
     <string name="lab_d49be3e8">Lưu trữ và thư mục</string>
     <string name="lab_d4d60815">Nhịp khung hình ổn định hơn và thiết bị mát hơn.</string>
+    <string name="lab_d4e70b40">Đang tìm trailer…</string>
     <string name="lab_d4eb64e3">Tùy chỉnh…</string>
     <string name="lab_d51bc9cd">Giả lập texture BCn</string>
     <string name="lab_d51bce77">Đầu vào độc quyền / Bật DInput</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Cò</string>
     <string name="lab_d5e887b8">%1$s giờ</string>
     <string name="lab_d60412d3">Gốc</string>
+    <string name="lab_d620ef74">Ảnh bìa làm mờ</string>
     <string name="lab_d653f990">Trình dịch x86 cho mã 32-bit</string>
     <string name="lab_d6d3fe68">Chọn một gói thành phần (-linux .wcp)</string>
     <string name="lab_d7060afb">Nhập container này</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Driver này không nạp được trên GPU này: driver hệ thống đã trả lời kiểm tra thay nó.</string>
     <string name="lab_d8e06406">Màn hình</string>
     <string name="lab_d8e621c2">Thêm ổ đĩa</string>
+    <string name="lab_d90a905b">Kính</string>
     <string name="lab_d91754f0">Không có mục nào.</string>
     <string name="lab_d92d0230">Đã áp dụng: </string>
     <string name="lab_d92fb9d6">Tên không được để trống.</string>
+    <string name="lab_d9667615">Ảnh</string>
     <string name="lab_d9767690">Game khởi động với các biến của container</string>
     <string name="lab_d9a22ca4">DX Wrapper</string>
     <string name="lab_d9b07af8">Đã nhập </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">Biến của game này</string>
     <string name="lab_dbe48d14">Không bao giờ</string>
     <string name="lab_dc2dbf53">(rỗng)</string>
+    <string name="lab_dc6bb726">Hủy liên kết</string>
     <string name="lab_dc942e27">Báo khi có phiên bản mới</string>
     <string name="lab_dcb67730">Giá trị</string>
     <string name="lab_dcba8bc8">Tắt chuột</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">Wayland cần một Turnip đã cài để đưa khung hình game lên màn hình. Bản mới sẽ hiện trong Driver đồ họa.</string>
     <string name="lab_e2410f47">Duyệt và tải xuống</string>
     <string name="lab_e2421520">Tải phiên bản WOWBox64</string>
+    <string name="lab_e280d375">Kích thước thẻ</string>
     <string name="lab_e2a7f23e">Nút ảo</string>
+    <string name="lab_e2b70ebc">Không có clip xem trước</string>
     <string name="lab_e2c38520">Mục này không có tệp biểu tượng để ghi vào.</string>
     <string name="lab_e2ce4373">Mục</string>
     <string name="lab_e2e95fcd">Log game</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Cho game chỉ nhận tay cầm qua Steam (No Man\'s Sky). Để tắt với game tự đọc tay cầm. Tắt chuyển tiếp tay cầm.</string>
     <string name="lab_e3e80b58">Hồ sơ điều khiển</string>
     <string name="lab_e41154d8">Lịch sử FPS</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Codec đa phương tiện</string>
     <string name="lab_e73d4b35">Extension Vulkan</string>
     <string name="lab_e7bab6f9">Tỷ lệ kết xuất (supersampling)</string>
+    <string name="lab_e7d39686">Độ trong suốt của các ô trên ảnh</string>
     <string name="lab_e7d6bbaa">Dịch DirectX, driver GPU, OpenGL và cách đưa hình lên màn hình.</string>
     <string name="lab_e7d75246">Chiều cao mà chuỗi tạo khung hình chạy; chiều rộng theo màn hình. Thấp hơn thì nhẹ hơn nhiều, nhưng mờ hơn.</string>
     <string name="lab_e801ba28">Tắt nếu bạn muốn; game này sẽ ghi nhớ.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Xóa gán phím</string>
     <string name="lab_eb680509">Tệp .exe trong máy, hoặc game từ cửa hàng.</string>
     <string name="lab_eb6d0257"> · đang được dùng bởi </string>
+    <string name="lab_eb78cff1">Mô tả</string>
     <string name="lab_ebd67348">Lưu trong hồ sơ điều khiển</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">Mặc định x86-64</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">Menu Steam ở góc trên bên trái, Menu truy cập nhanh ở góc trên bên phải.</string>
     <string name="lab_ef041fbb">Engine</string>
     <string name="lab_efc1065a">Chưa kết nối</string>
+    <string name="lab_efca121e">Hình nền Lab</string>
     <string name="lab_efd740b9">Độ trong suốt</string>
     <string name="lab_efdeb1c6">Danh sách preset được dùng chung cho mọi container và game.</string>
     <string name="lab_efdfc7e5">Giới hạn FPS</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Tích hợp (Win-FG)</string>
     <string name="lab_f38c2b5b">Căn chỉnh màn hình</string>
     <string name="lab_f39e4ef9">Khóa API</string>
+    <string name="lab_f3a4d6f2">Đã liên kết với ứng dụng Steam %1$s</string>
     <string name="lab_f3c5111e">Texture sắc nét hơn khi nhìn nghiêng. Cho game DirectX 9 đến 11.</string>
     <string name="lab_f3d61893">Hiệu ứng hình ảnh</string>
     <string name="lab_f3e2bf3c">Lớp phủ FPS/nhiệt độ hiển thị trên game.</string>
@@ -1632,7 +1716,10 @@
     <string name="lab_f61050cc">Độ phân giải game</string>
     <string name="lab_f665e069">Thông báo khi bạn bè nhắn tin mà khung trò chuyện với họ chưa mở.</string>
     <string name="lab_f667b7f4">Màu nhấn</string>
+    <string name="lab_f690a199">Ảnh bìa của bạn</string>
     <string name="lab_f6f41dc4">Lỗi đã biết, phát hiện trên thiết bị:\n</string>
+    <string name="lab_f6f5fb6b">Tạo container</string>
+    <string name="lab_f721f484">Ảnh bìa</string>
     <string name="lab_f745bb2a">Phát trực tuyến</string>
     <string name="lab_f7578887">Bắt đầu từ Mặc định cho container mới. Nhấn X để tạo.</string>
     <string name="lab_f783e029">Pin kép</string>
@@ -1647,11 +1734,14 @@
     <string name="lab_f91491fe">Đưa một cửa sổ khác của game lên trước.</string>
     <string name="lab_f918602e">Driver Vulkan mà chính game dùng để render khi dùng Wayland.</string>
     <string name="lab_f94e949e">Đặt bởi Âm thanh › Micro</string>
+    <string name="lab_f97022d8">Steam không có trailer cho game này.</string>
     <string name="lab_fa109fc6">Tìm hiệu ứng…</string>
+    <string name="lab_fa2965af">Ảnh nền</string>
     <string name="lab_fa381e9a">Nét hơn (-0.5)</string>
     <string name="lab_fa700875">Một số game không tự đọc tay cầm mà hỏi Steam. Trong SteamLite không ai trả lời, nên các game đó không thấy tay cầm. Bật: agent SteamLite bật lớp tay cầm của Steam cho game này với bố cục phù hợp. Để tắt với game đã tự đọc tay cầm, nếu không mỗi lần bấm sẽ bị nhận hai lần. Ngược với Chuyển tiếp tay cầm nên chỉ bật được một trong hai. Chỉ cho SteamLite.</string>
     <string name="lab_fa859fc7">Chế độ Goldberg, Kiểm tra tệp và Kiểm tra cập nhật nằm trong menu khởi chạy. Tắt \"Bỏ qua menu khởi chạy\" để thấy menu ở lần khởi động sau.</string>
     <string name="lab_fac0fe64">Các điều khiển chia tỷ lệ làm được phần hữu ích mà không cần nó, và giới hạn FPS trong ngăn kéo của game sẽ giới hạn tốc độ khung hình. Tắt chế độ Deck nếu game không còn phản hồi tay cầm.</string>
+    <string name="lab_fad0baa9">Mặc định (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton của chính Valve, bị thay khi Steam cập nhật; bản gốc được giữ theo từng build</string>
     <string name="lab_fae62cc0">Khóa con trỏ vào game. Nhấn Giảm âm lượng để nhả.</string>
     <string name="lab_fb2b9733">Cả hai (giống PC)</string>

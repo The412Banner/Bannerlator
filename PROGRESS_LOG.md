@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 feat/lab-art-strings MERGED to main e930314f (user: "merge it to main"; NOT device-tested)
+- **What:** the 89 new game art strings in 32 languages + the wrong existing translations fixed (a82ca7dc).
+- **How:** --no-ff over main 226c266f (1 log-only commit); PROGRESS_LOG conflict resolved (both kept). Backup ref refs/backup/20261108/main-before-lab-art-strings → 226c266f. Merged code == a82ca7dc (diff empty outside PROGRESS_LOG.md).
+- **Proof:** CI 42468593200 (a82ca7dc) green ×4; main push build 42502643371 running. APK /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk staged, not installed (user chose to merge first).
+- **Branch kept:** feat/lab-art-strings — delete only on the user's word.
+
 ## 2026-11-08 — 📦 feat/lab-art-strings a82ca7dc CI green, APK staged (NOT installed, NOT device-tested)
 - **CI:** build-artifacts 42468593200 attempt 4: standard / pubg / ludashi / antutu success, headSha a82ca7dc. Attempts 1–3 failed only on GitHub 504s for the Gradle distribution download. dxvk-nvapi came from our copy (ci/vendor, both sha256 OK); skipped steps = cached / main-only ones.
 - **APK:** /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk, sha256 9a1d32be… (host == sdcard == root). com.tencent.ig, signer a40da80a… (v2 + v3) == the installed app. resources.arsc has the new strings (e.g. "Game art background" in es, de, ja, zh, ru).

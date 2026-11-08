@@ -238,6 +238,14 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                         LabTileLabel(L("Container"))
                         Text(shortcut.container.name, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
                     }
+                    // Lab's Game details: the details, the pictures and this game's background.
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = { onNavigate(LabRoutes.details(shortcut.file.path)) }).padding(12.dp),
+                    ) {
+                        LabTileLabel(L("Game details"))
+                        Text(L("Details, artwork, background ›"), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = { onNavigate(DeckSettingsRoutes.game(shortcut.file.path)) }).padding(12.dp),
@@ -319,6 +327,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
             onPlay = { menuOpen = false; launcher.requestLaunch(shortcut) },
             onAction = { menuOpen = false; actions.perform(it, shortcut) },
             onContainer = { menuOpen = false; onNavigate(DeckSettingsRoutes.container(shortcut.container.id)) },
+            onDetails = { tab -> menuOpen = false; onNavigate(LabRoutes.details(shortcut.file.path, tab)) },
         )
     }
     ShortcutActionDialogs(actions)

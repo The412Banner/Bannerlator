@@ -71,6 +71,8 @@ internal fun LabGameMenu(
     onPlay: () -> Unit,
     onAction: (GameMenuAction) -> Unit,
     onContainer: () -> Unit,
+    /** Lab's Game details page (its tab: 0 Details, 1 Artwork) for Game details and Cover art; the classic dialogs when null. */
+    onDetails: ((Int) -> Unit)? = null,
 ) {
     val shown = remember { MutableTransitionState(false).apply { targetState = true } }
     // Run the pick (or just close) once the panel has slid away.
@@ -143,7 +145,11 @@ internal fun LabGameMenu(
                                                     blocked -> Unit
                                                     play -> close(onPlay)
                                                     key == ENTRY_CONTAINER -> close(onContainer)
-                                                    entry.action != null -> { val a = entry.action; close { onAction(a) } }
+                                                    entry.action != null -> {
+                                                        val a = entry.action
+                                                        val tab = when (a) { GameMenuAction.GAME_DETAILS -> 0; GameMenuAction.SCRAPE_COVER -> 1; else -> -1 }
+                                                        if (onDetails != null && tab >= 0) close { onDetails(tab) } else close { onAction(a) }
+                                                    }
                                                 }
                                             },
                                             requester = if (gi == 0 && i == 0) first else null,

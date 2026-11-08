@@ -128,6 +128,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
             onPlay = { menuFor = null; launcher.requestLaunch(s) },
             onAction = { menuFor = null; actions.perform(it, s) },
             onContainer = { menuFor = null; onNavigate(DeckSettingsRoutes.container(s.container.id)) },
+            onDetails = { tab -> menuFor = null; onNavigate(LabRoutes.details(s.file.path, tab)) },
         )
     }
     ShortcutActionDialogs(actions)

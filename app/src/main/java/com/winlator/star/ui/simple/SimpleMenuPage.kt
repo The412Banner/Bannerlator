@@ -118,6 +118,8 @@ internal class MenuEntry(
     val group: String? = null,
     /** An on/off row: a switch on the right (A or a tap runs [onA], which flips it). */
     val toggle: Boolean? = null,
+    /** A picture in front of the title (a game's cover, logo, background …), in place of the icon. */
+    val thumb: (@Composable () -> Unit)? = null,
 )
 
 internal class MenuSection(
@@ -142,8 +144,10 @@ internal fun SimpleMenuPage(
     onBack: () -> Unit,
     /** Extra lines over the menu (a status, a running download, a notice). */
     banner: String? = null,
+    /** The section open first (its key); the first one when null. */
+    startSection: String? = null,
 ) {
-    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner) }
+    SimpleFlat { SimpleMenuPageBody(overline, title, sections, onBack, banner, startSection) }
 }
 
 @Composable
@@ -153,9 +157,10 @@ private fun SimpleMenuPageBody(
     sections: List<MenuSection>,
     onBack: () -> Unit,
     banner: String?,
+    startSection: String? = null,
 ) {
     val layout by AppThemeState.simpleLayout.collectAsState()
-    var secKey by rememberSaveable { mutableStateOf(sections.firstOrNull()?.key ?: "") }
+    var secKey by rememberSaveable { mutableStateOf(startSection ?: sections.firstOrNull()?.key ?: "") }
     val sec = sections.firstOrNull { it.key == secKey } ?: sections.firstOrNull()
     val secIndex = sections.indexOfFirst { it.key == sec?.key }.coerceAtLeast(0)
     var row by rememberSaveable { mutableIntStateOf(0) }
@@ -517,10 +522,11 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 ) {
                     Image(bmp, contentDescription = null, contentScale = ContentScale.Fit, colorFilter = if (e.logoWhite) ColorFilter.tint(Color.White) else null, modifier = Modifier.size(width = 34.dp, height = 22.dp))
                 }
+                e.thumb != null -> Box(Modifier.width(112.dp), contentAlignment = Alignment.Center) { e.thumb.invoke() }
                 e.swatch != null -> Box(Modifier.size(22.dp).simpleDepth().background(e.swatch, SimpleShape).border(1.dp, Color(0x40FFFFFF), SimpleShape))
                 e.icon != null -> Icon(e.icon, contentDescription = null, tint = if (e.primary || (focused && active)) accent else SimpleMuted, modifier = Modifier.size(22.dp))
             }
-            if (bmp != null || e.icon != null || e.swatch != null) Spacer(Modifier.width(14.dp))
+            if (bmp != null || e.icon != null || e.swatch != null || e.thumb != null) Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.title, color = if (e.primary) accent else if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))

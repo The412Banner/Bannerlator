@@ -99,13 +99,13 @@ internal object LabArt {
         cardSize = p.getString("card_size", "m")?.takeIf { v -> SIZES.any { it.first == v } } ?: "m"
     }
 
-    fun setMode(v: String) { mode = v; prefs?.edit()?.putString("mode", v)?.apply() }
-    fun setWifiOnly(v: Boolean) { wifiOnly = v; prefs?.edit()?.putBoolean("wifi_only", v)?.apply() }
-    fun setSound(v: Boolean) { sound = v; prefs?.edit()?.putBoolean("sound", v)?.apply() }
-    fun setPanels(v: String) { panels = v; prefs?.edit()?.putString("panels", v)?.apply() }
-    fun setGrid(v: Boolean) { grid = v; prefs?.edit()?.putBoolean("grid", v)?.apply() }
-    fun setCards(v: String) { cards = v; prefs?.edit()?.putString("cards", v)?.apply() }
-    fun setCardSize(v: String) { cardSize = v; prefs?.edit()?.putString("card_size", v)?.apply() }
+    fun chooseMode(v: String) { mode = v; prefs?.edit()?.putString("mode", v)?.apply() }
+    fun chooseWifiOnly(v: Boolean) { wifiOnly = v; prefs?.edit()?.putBoolean("wifi_only", v)?.apply() }
+    fun chooseSound(v: Boolean) { sound = v; prefs?.edit()?.putBoolean("sound", v)?.apply() }
+    fun choosePanels(v: String) { panels = v; prefs?.edit()?.putString("panels", v)?.apply() }
+    fun chooseGrid(v: Boolean) { grid = v; prefs?.edit()?.putBoolean("grid", v)?.apply() }
+    fun chooseCards(v: String) { cards = v; prefs?.edit()?.putString("cards", v)?.apply() }
+    fun chooseCardSize(v: String) { cardSize = v; prefs?.edit()?.putString("card_size", v)?.apply() }
 
     fun label(list: List<Pair<String, String>>, v: String): String = L(list.firstOrNull { it.first == v }?.second ?: v)
 

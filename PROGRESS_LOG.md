@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 lab-fixes: new containers in Add a game + touch Create/Save in the container editor (branch lab-fixes cccee60d; CI running, NOT device-tested)
+- **Why (user, Pocket FIT, screenshot 02:02 EST):** a container made in Lab did not show in Add a game → Select container until it was launched (Home said Containers 2, the picker listed 1). And New container in portrait had no Create button, only "press X" (the side card with the hint is hidden when narrow and Lab draws no hint line in portrait).
+- **Cause 1:** ShortcutsViewModel keeps its own ContainerManager and re-reads only in refresh() on ON_RESUME; Lab's container editor is a page of the same activity, so nothing re-read after the create.
+- **Fix 1:** ShortcutsViewModel.notifyContainersChanged() (companion SharedFlow; every live instance reload()s on the main thread), called after create + edit (ContainerDetailViewModel) and duplicate / import / remove (ContainersViewModel). Covers the Add a game picker, the clone picker and XMB's in every style.
+- **Fix 2:** SimpleClassicEditor ActionButton "Create container" (new) / "Save" (edit): portrait under the list (Shelf, Focus), landscape in the side card, Rail under the list; the "Not created yet"/"Unsaved" tag is tappable. Taps only (pointerInput), not focusable, so controller focus is unchanged; X still works.
+- **Strings:** "Create container" (lab_f6f5fb6b) in values + 32 languages via tools/i18n/lab_strings.py fill (one line each, headers unchanged); `lab_strings.py check` up to date.
+- **Built:** cccee60d. **CI:** build-artifacts 42457939974 (workflow_dispatch, headSha cccee60d) running.
+- **Next:** green → stage pubg APK `/sdcard/Download/Bannerlator-lab-fixes-<sha8>.apk` (sha256 host == device) → ASK before install → device test: make a container in portrait (button) → Add a game lists it without a launch; logcat crash check. Merge only on the user's go.
+
 ## 2026-11-08 — 📣 Mali step 1 test build POSTED in BannerHub (user: "post"; build dfee621a, NOT device-tested)
 - BannerBot embed card "Bannerlator Mali test build: System driver + shader fix on Wayland", title link = build-artifacts run 42451675363 (artifacts, GitHub sign-in, expire 11-15), text approved by the user (VM /var/lib/bannerbot/claude/posts/bl-mali-inline-1.txt, sha256 91205512…, 2,214 chars): what changed, install steps, Display backend Wayland + Graphics Driver System + Wayland game driver Adapter, Settings › Logs › Wine debug, `BANNER_WRAPPER_INLINE_SHADERS=0` for the A/B, report fields + Share logs + expected log line, black-screen note, report board, credits (Utkarsh Dalal/GameNative, wallentx, Pipetto-crypto, leegao).
 - #general-mali-and-support 1530604459330113649 → msg **1568870827963842661** (01:12:33 EST); #winlator-general 1517502041033805825 → msg **1568870855876812853** (01:12:40 EST). Verified with dget: author BannerBot, title + url right, description == approved text, no pings.

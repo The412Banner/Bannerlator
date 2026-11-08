@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import com.winlator.star.ui.simple.keepInViewWhen

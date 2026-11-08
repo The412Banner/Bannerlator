@@ -25,7 +25,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,21 +41,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
+import com.winlator.star.box64.Box64Preset
+import com.winlator.star.box64.Box64PresetManager
 import com.winlator.star.container.Container
+import com.winlator.star.container.ContainerManager
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.contents.Downloader
+import com.winlator.star.core.DirectAudioSupport
 import com.winlator.star.core.GPUInformation
+import com.winlator.star.core.StringUtils
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.core.VKD3DVersionItem
 import com.winlator.star.core.WineThemeManager
+import com.winlator.star.fexcore.FEXCorePreset
+import com.winlator.star.fexcore.FEXCorePresetManager
 import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.store.download.startContentDownload
@@ -108,7 +123,16 @@ internal class FirstContainerSetup(private val app: Application) {
     val vkd3d = FcPick("VKD3D")
     val fex = FcPick("FEXCore")
     val box64 = FcPick("Box64")
+    val wowbox64 = FcPick("WOWBox64")
     val driver = FcPick("Graphics driver")
+    val backend = FcPick("Display backend")
+    val fexPreset = FcPick("FEXCore preset")
+    val box64Preset = FcPick("Box64 preset")
+    val audio = FcPick("Audio driver")
+    var name by mutableStateOf("")
+    var fpsLimiter by mutableStateOf(true)
+    var showFps by mutableStateOf(true)
+    var microphone by mutableStateOf(true)
 
     var gpuLabel by mutableStateOf<String?>(null); private set
     var loading by mutableStateOf(false); private set
@@ -123,6 +147,8 @@ internal class FirstContainerSetup(private val app: Application) {
 
     val cores: Int = Runtime.getRuntime().availableProcessors()
     val isArm64ec: Boolean get() = proton.chosen?.label?.contains("arm64ec", ignoreCase = true) == true
+    /** The microphone is captured by DirectAudio only. */
+    val micPossible: Boolean get() = audio.chosen?.let { StringUtils.parseIdentifier(it.label) == "directaudio" } == true
 
     fun load(scope: CoroutineScope) {
         if (loading || loaded) return
@@ -152,9 +178,38 @@ internal class FirstContainerSetup(private val app: Application) {
                 fex.fill(fexes, fexes.filter { !it.label.contains("ppa", true) && !it.label.contains("nightly", true) }
                     .maxWithOrNull(BY_NAME))
 
+                // The Nightlies feed the Contents screen offers ("Nightlies by The412Banner"): the rolling nightly-latest builds.
+                val nightly = withContext(Dispatchers.IO) { runCatching { Downloader.downloadString(NIGHTLIES_COMPONENTS) }.getOrNull() }
+                    ?.let { j -> runCatching { parseCatalog(j) }.getOrNull() }.orEmpty()
+                    .filter { it.remoteUrl.orEmpty().endsWith(".wcp", true) }
+                fun merged(t: ContentProfile.ContentType): List<ContentProfile> {
+                    val seen = HashSet<String>()
+                    return (of(t) + nightly.filter { it.type == t }).filter { it.remoteUrl.orEmpty().endsWith(".wcp", true) && seen.add(it.remoteUrl!!) }
+                }
+                fun latestHybrid(list: List<FcChoice>, bionic: Boolean) = list.firstOrNull {
+                    it.profile?.remoteUrl.orEmpty().contains("/nightly-latest/") && it.label.contains("Hybrid", true) &&
+                        (!bionic || it.label.endsWith("Bionic", true))
+                }
+
                 val bundled = app.resources.getStringArray(R.array.box64_version_entries).map { FcChoice("$it (built in)", builtIn = it) }
-                val box64s = bundled + choices(of(ContentProfile.ContentType.CONTENT_TYPE_BOX64))
-                box64.fill(box64s, bundled.firstOrNull())
+                val box64s = bundled + choices(merged(ContentProfile.ContentType.CONTENT_TYPE_BOX64))
+                box64.fill(box64s, latestHybrid(box64s, bionic = true) ?: bundled.firstOrNull())
+
+                val bundledWow = app.resources.getStringArray(R.array.wowbox64_version_entries).map { FcChoice("$it (built in)", builtIn = it) }
+                val wows = bundledWow + choices(merged(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64))
+                wowbox64.fill(wows, latestHybrid(wows, bionic = false) ?: bundledWow.firstOrNull())
+
+                val b64Presets = Box64PresetManager.getPresets("box64", app).map { FcChoice(it.name, builtIn = it.id) }
+                box64Preset.fill(b64Presets, b64Presets.firstOrNull { it.builtIn == Box64Preset.EXTREME })
+                val fexPresets = FEXCorePresetManager.getPresets(app).map { FcChoice(it.name, builtIn = it.id) }
+                fexPreset.fill(fexPresets, fexPresets.firstOrNull { it.builtIn == FEXCorePreset.PERFORMANCE_TSO })
+                val audios = app.resources.getStringArray(R.array.audio_driver_entries).map { FcChoice(it) }
+                audio.fill(audios, audios.firstOrNull { StringUtils.parseIdentifier(it.label) == "directaudio" })
+                val backends = listOf(FcChoice("Wayland", builtIn = Container.DISPLAY_BACKEND_WAYLAND), FcChoice("X11", builtIn = Container.DISPLAY_BACKEND_X11))
+                backend.fill(backends, backends.first())
+                if (name.isBlank()) name = withContext(Dispatchers.IO) {
+                    runCatching { "${app.getString(R.string.container)}-${ContainerManager(app).nextContainerId}" }.getOrDefault("")
+                }
 
                 loadDrivers()
                 loaded = true
@@ -202,7 +257,10 @@ internal class FirstContainerSetup(private val app: Application) {
                 val dxvkValue = dxvk.chosen?.profile?.let { ContentsManager.getEntryName(install(it, "DXVK")).substringAfter('-') }
                 val vkd3dValue = vkd3d.chosen?.profile?.let { p -> install(p, "VKD3D").let { VKD3DVersionItem(it.verName, it.verCode).identifier } }
                 val fexValue = if (arm) fex.chosen?.profile?.let { ContentsManager.getEntryName(install(it, "FEXCore")).substringAfter('-') } else null
-                val box64Value = if (arm) null else box64.chosen?.let { c ->
+                // On arm64ec the Box64 slot is WOWBox64 (32-bit programs still run on FEXCore unless switched).
+                val box64Value = if (arm) wowbox64.chosen?.let { c ->
+                    c.builtIn ?: c.profile?.let { ContentsManager.getEntryName(install(it, "WOWBox64")).substringAfter('-') }
+                } else box64.chosen?.let { c ->
                     c.builtIn ?: c.profile?.let { ContentsManager.getEntryName(install(it, "Box64")).substringAfter('-') }
                 }
                 val driverId = driver.chosen?.driver?.let { installDriver(it) }
@@ -284,6 +342,22 @@ internal class FirstContainerSetup(private val app: Application) {
         box64Value?.let { vm.selectedBox64Version = it }
         driverId?.let { vm.graphicsDriverConfig = withGraphicsDriverVersion(vm.graphicsDriverConfig, it) }
         vm.cpuList = Container.getFallbackCPUList()
+        vm.cpuListWoW64 = Container.getFallbackCPUList()
+        name.trim().takeIf { it.isNotEmpty() }?.let { vm.containerName = it }
+        when (backend.chosen?.builtIn) {
+            Container.DISPLAY_BACKEND_WAYLAND -> if (vm.isWineWaylandCapable(wine)) vm.onDisplayBackendChanged(Container.DISPLAY_BACKEND_WAYLAND)
+            Container.DISPLAY_BACKEND_X11 -> vm.onDisplayBackendChanged(Container.DISPLAY_BACKEND_X11)
+        }
+        box64Preset.chosen?.builtIn?.let { vm.selectBox64PresetById(it) }
+        fexPreset.chosen?.builtIn?.let { vm.selectFEXCorePresetById(it) }
+        val audioId = audio.chosen?.label?.let { StringUtils.parseIdentifier(it) }
+        val directAudio = audioId == "directaudio" && DirectAudioSupport.isSupported(wine)
+        if (audioId != null && (audioId != "directaudio" || directAudio)) {
+            vm.audioDriverEntries.firstOrNull { StringUtils.parseIdentifier(it) == audioId }?.let { vm.selectedAudioDriver = it }
+        }
+        if (directAudio && microphone) vm.envVarsStr = DirectAudioSupport.withMicEnabled(vm.envVarsStr, true)
+        vm.fpsLimiterEnabled = fpsLimiter
+        vm.showFPS = showFps
         val color = if (vm.desktopBgTypeIndex == WineThemeManager.BackgroundType.COLOR.ordinal)
             String.format(Locale.ENGLISH, "#%06X", 0x00ffffff and vm.desktopBgColorInt) else "#0277bd"
         val finished = CompletableDeferred<Unit>()
@@ -296,6 +370,7 @@ internal class FirstContainerSetup(private val app: Application) {
 
     companion object {
         private val BY_NAME = Comparator<FcChoice> { a, b -> natural(a.label, b.label) }
+        private const val NIGHTLIES_COMPONENTS = "https://raw.githubusercontent.com/The412Banner/Nightlies/refs/heads/main/nightlies_components.json"
         private val STABLE_VKD3D = Regex("^vkd3d-proton-[0-9.]+$", RegexOption.IGNORE_CASE)
         /** Banners-Turnip names: date, optional rebuild number, optional variant ("" = Standard). */
         private val TURNIP = Regex("^Turnip-v[0-9.]+-(\\d{8})(?:-r(\\d+))?(?:-(.+))?$")
@@ -347,32 +422,87 @@ internal class FirstContainerSetup(private val app: Application) {
 @Composable
 internal fun FirstContainerStep(fc: FirstContainerSetup, scope: CoroutineScope) {
     val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
     LaunchedEffect(Unit) { fc.load(scope) }
     val locked = fc.busy || fc.done
-    DeckCard {
-        when {
-            fc.loading -> DeckRow(title = "Loading…")
-            fc.loadError != null -> DeckRow(
-                title = "Couldn't load the lists",
-                subtitle = fc.loadError,
-                trailing = { DeckButton("Retry", null, { fc.load(scope) }) },
-            )
-            else -> {
-                PickField(fc.proton, !locked)
-                DeckRowDivider()
-                PickField(fc.dxvk, !locked)
-                DeckRowDivider()
-                PickField(fc.vkd3d, !locked)
-                DeckRowDivider()
-                PickField(if (fc.isArm64ec) fc.fex else fc.box64, !locked)
-                if (fc.driver.options.isNotEmpty()) {
-                    DeckRowDivider()
-                    PickField(fc.driver, !locked, title = fc.gpuLabel?.let { "Graphics driver ($it)" })
-                }
-                DeckRowDivider()
-                DeckRow(title = "CPU cores", trailing = { Text("All ${fc.cores}", color = cs.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp) })
+    // The microphone needs Android's permission: asked at Create; refused = mic off.
+    val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) fc.microphone = false
+        fc.create(scope)
+    }
+    val startCreate: () -> Unit = {
+        val needMic = fc.microphone && fc.micPossible &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        if (needMic) micLauncher.launch(Manifest.permission.RECORD_AUDIO) else fc.create(scope)
+    }
+    if (!fc.loaded) {
+        DeckCard {
+            if (fc.loadError != null) {
+                DeckRow(
+                    title = "Couldn't load the lists",
+                    subtitle = fc.loadError,
+                    trailing = { DeckButton("Retry", null, { fc.load(scope) }) },
+                )
+            } else {
+                DeckRow(title = "Loading…")
             }
         }
+        return
+    }
+    DeckCard {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Text("Container name", color = cs.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = fc.name,
+                onValueChange = { fc.name = it },
+                enabled = !locked,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        DeckRowDivider()
+        PickField(fc.backend, !locked)
+    }
+    Spacer(Modifier.height(18.dp))
+    DeckCard {
+        PickField(fc.proton, !locked)
+        DeckRowDivider()
+        PickField(fc.dxvk, !locked)
+        DeckRowDivider()
+        PickField(fc.vkd3d, !locked)
+        DeckRowDivider()
+        if (fc.isArm64ec) {
+            PickField(fc.fex, !locked)
+            DeckRowDivider()
+            PickField(fc.wowbox64, !locked)
+        } else {
+            PickField(fc.box64, !locked)
+        }
+        if (fc.driver.options.isNotEmpty()) {
+            DeckRowDivider()
+            PickField(fc.driver, !locked, title = fc.gpuLabel?.let { "Graphics driver ($it)" })
+        }
+    }
+    Spacer(Modifier.height(18.dp))
+    DeckCard {
+        if (fc.isArm64ec) {
+            PickField(fc.fexPreset, !locked)
+            DeckRowDivider()
+        }
+        PickField(fc.box64Preset, !locked, title = if (fc.isArm64ec) "WOWBox64 preset" else null)
+        DeckRowDivider()
+        PickField(fc.audio, !locked)
+        DeckRowDivider()
+        DeckRow(title = "Frame rate limit (60)", trailing = { Switch(checked = fc.fpsLimiter, onCheckedChange = { fc.fpsLimiter = it }, enabled = !locked) })
+        DeckRowDivider()
+        DeckRow(title = "Show FPS", trailing = { Switch(checked = fc.showFps, onCheckedChange = { fc.showFps = it }, enabled = !locked) })
+        DeckRowDivider()
+        DeckRow(title = "Microphone", trailing = {
+            Switch(checked = fc.microphone && fc.micPossible, onCheckedChange = { fc.microphone = it }, enabled = !locked && fc.micPossible)
+        })
+        DeckRowDivider()
+        DeckRow(title = "CPU cores", trailing = { Text("All ${fc.cores}", color = cs.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp) })
     }
     if (fc.loaded) {
         Spacer(Modifier.height(18.dp))
@@ -388,7 +518,7 @@ internal fun FirstContainerStep(fc: FirstContainerSetup, scope: CoroutineScope) 
                     when {
                         fc.done -> Icon(Icons.Filled.CheckCircle, contentDescription = "Done", tint = cs.primary, modifier = Modifier.size(28.dp))
                         fc.busy -> Unit
-                        else -> DeckButton(if (fc.error != null) "Retry" else "Create", null, { fc.create(scope) })
+                        else -> DeckButton(if (fc.error != null) "Retry" else "Create", null, startCreate)
                     }
                 },
             )

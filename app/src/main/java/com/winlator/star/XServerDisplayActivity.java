@@ -8710,6 +8710,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Set in startWaylandCompositor: the HDR opt-in turned zero-copy presentation on for this session
      *  (the guest half, BANNER_WSI_AHB=1, is exported in setupXEnvironment, which runs after it). */
     private volatile boolean waylandHdrZeroCopyForced = false;
+    /** Set in startWaylandCompositor: this Wayland session runs on a Mali GPU with "System" picked, so
+     *  zero-copy presentation is on whatever the switch says (the phone's Arm driver reaches the compositor
+     *  only through gralloc buffers); the guest half (BANNER_WSI_AHB=1, BANNER_WSI_AHB_BLIT=1) is exported
+     *  in setupXEnvironment. */
+    private volatile boolean waylandMaliSystem = false;
     /** The HDR opt-in mode this session started with (the ratio sampler runs only when it is on). */
     private int waylandHdrMode = com.winlator.star.wayland.WaylandCompositor.HDR_MODE_OFF;
 
@@ -10238,6 +10243,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 XServerDrawerState.INSTANCE.setWaylandZeroCopyRequested(true);
                 Log.i("XServerDisplayActivity", "wayland: HDR output requested on an HDR10 display - zero-copy on for this session");
             }
+            // Mali with "System": the Arm driver neither exports a dma-buf the compositor can take nor
+            // imports one (Retroid Pocket 4 Pro, Mali-G77, 2026-11-08), so the game's frames reach the
+            // compositor only as gralloc buffers (the adapter's copy route): zero-copy on for this session.
+            waylandMaliSystem = maliSystemPick;
+            if (maliSystemPick && !zeroCopy) {
+                zeroCopy = true;
+                XServerDrawerState.INSTANCE.setWaylandZeroCopyRequested(true);
+                logSessionLine("layer", "zero-copy on for this session: Mali with the System driver "
+                        + "(its frames reach the compositor only as gralloc buffers)");
+            }
             pushWaylandHdrDisplay(hdrDisp);
             // DXVK_HDR=1 reaches the game when the user set it, or when HDR is on and the user did not
             // set it at all (setupXEnvironment exports it then; an explicit DXVK_HDR=0 stays 0).
@@ -11733,7 +11748,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // allocate the game's swapchain images as gralloc buffers and hand them to the compositor
             // (banner_ahb_v1), so the layer shows the game's own buffer without a copy.
             // The HDR opt-in (startWaylandCompositor, which runs first) can turn zero-copy on too.
-            if (waylandMode && (isWaylandZeroCopyRequested() || waylandHdrZeroCopyForced)) envVars.put("BANNER_WSI_AHB", "1");
+            if (waylandMode && (isWaylandZeroCopyRequested() || waylandHdrZeroCopyForced || waylandMaliSystem))
+                envVars.put("BANNER_WSI_AHB", "1");
+            // Mali with "System": the adapter's copy route (gralloc buffers filled by a copy, the only way this
+            // driver's frames reach the compositor). The adapter also picks it by itself on the Arm driver; a
+            // BANNER_WSI_AHB_BLIT the user typed wins.
+            if (waylandMode && waylandMaliSystem && !envVars.has("BANNER_WSI_AHB_BLIT"))
+                envVars.put("BANNER_WSI_AHB_BLIT", "1");
             if (waylandMode) applyWaylandHdrEnv(envVars);
             // Unreal Engine HDR (both backends) and, on Wayland, the GPU name spoof: after both user env
             // merges and the HDR env above, so a DXVK_ENABLE_NVAPI / WINEDLLOVERRIDES / DXVK_CONFIG entry

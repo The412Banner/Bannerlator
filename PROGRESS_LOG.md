@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📝 pre2 checklist: Classic check dropped (user: "forget the classic check")
+- The Classic smoke test for updaters from pre1 is not done, by the user's decision. Remaining: the #659 fix (CI 42537143277) → merge on the user's go → cut 3.1.9-pre2 only on "cut it".
+
 ## 2026-11-08 — 🐞 fix/fm-duplicate-entries: file manager crash with duplicated folders, issue #659 (d4b14a0b; CI 42537143277 running, NOT device-tested)
 - **Report (#659, jebran0987, 11-06, against 3.1.9-pre1):** the file manager crashes on open with IllegalArgumentException: Key "/storage/emulated/0/.SHAREit" was already used. The reporter's phone shows duplicated folders (2 Android, 2 DCIM …).
 - **Cause:** FmPane.load lists with File.listFiles(), which on that phone returns some folders twice. Each row's LazyColumn key is the absolute path (FileManager.kt items(shown, key = { it.key })), so two rows share a key and Compose throws. The same duplication also walks those folders twice in deep search and counts them twice in treeSize.

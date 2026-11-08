@@ -24,11 +24,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,8 @@ import com.winlator.star.core.GpuSpoof
 import com.winlator.star.core.KeyValueSet
 import com.winlator.star.core.MaliPanvk
 import com.winlator.star.core.WaylandAdapter
+import com.winlator.star.core.WaylandAdapterSettings
+import com.winlator.star.core.WaylandDriverProbe
 import com.winlator.star.core.WaylandGameDriver
 import com.winlator.star.core.StringUtils
 import com.winlator.star.ui.deck.deckFocusRing
@@ -56,6 +60,7 @@ import com.winlator.star.ui.screens.DxvkConfigDialog
 import com.winlator.star.ui.screens.StockConfigDownloadSheet
 import com.winlator.star.ui.screens.VegasDownloadSheet
 import com.winlator.star.ui.screens.WAYLAND_DRIVER_SETTINGS_HELP
+import com.winlator.star.ui.screens.WaylandAdapterReportBlock
 import com.winlator.star.ui.screens.WAYLAND_PRESENT_MODES
 import com.winlator.star.ui.screens.WrapperManagerDialog
 import com.winlator.star.ui.screens.adrenodownload.AdrenoDriverDownloadSheet
@@ -760,6 +765,76 @@ internal object GraphicsRows {
         hint = hint, modeOnly = false,
     )
 
+    /**
+     * The Wayland adapter settings of the classic gear (core.WaylandAdapterSettings), keys of the same driver
+     * config, so the classic dialog and these rows read and write the same values. "" = Default: nothing is
+     * injected and the profile or the adapter report decides; a game's "" follows its container.
+     */
+    private fun adapterRow(
+        id: String, key: String, label: String, help: String,
+        options: List<Pair<String, String>> = listOf("" to "Default", "1" to "On", "0" to "Off"),
+        decode: (SettingsEnv, String?) -> String = { _, r -> r ?: "" },
+    ) = packedRow(
+        DRIVER_CFG, id, key, L("Wayland adapter"), label, EXPERT,
+        control = { _, _ -> Control.Segmented(options.map { Opt(it.first, L(it.second)) }) },
+        decode = decode, help = help,
+        visible = { env, values -> waylandGame(env, values) },
+    )
+
+    private fun adapterDefs(): List<SettingDef> = listOf(
+        packedRow(
+            DRIVER_CFG, "graphics.wl.adapterProfile", WaylandAdapterSettings.KEY_PROFILE, L("Wayland adapter"), L("Adapter profile"), ADVANCED,
+            control = { _, _ -> Control.Select(WaylandAdapterSettings.PROFILES.map { Opt(it, L(WaylandAdapterSettings.profileLabel(it))) }) },
+            // Stored as the profile's name ("auto" too), so a game's Auto can differ from its container's choice.
+            decode = { _, r -> WaylandAdapterSettings.normalizeProfile(r) },
+            help = WaylandAdapterSettings.PROFILES.joinToString("\n\n") { "${WaylandAdapterSettings.profileLabel(it)}: ${WaylandAdapterSettings.profileHelp(it)}" } +
+                "\n\nEnv vars you type under Env vars always win over these; the single switches win over the profile.",
+            visible = { env, values -> waylandGame(env, values) },
+        ),
+        adapterRow(
+            "graphics.wl.adapterPresent", WaylandAdapterSettings.KEY_PRESENT, L("Adapter present mode"),
+            "mailbox = newest frame, lowest latency; fifo = vsync, even pacing. Default follows the profile, else the " +
+                "stored present mode. Immediate needs tearing, which Wayland does not offer.",
+            options = listOf("" to "Default", "mailbox" to "mailbox", "fifo" to "fifo"),
+        ),
+        adapterRow(
+            "graphics.wl.adapterAsyncCopy", WaylandAdapterSettings.KEY_ASYNC_COPY, L("Asynchronous copy"),
+            "The compositor keeps frames in flight instead of waiting for each screen blit. Turn off if frames arrive " +
+                "out of order or a game stutters only on Wayland.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterZeroCopy", WaylandAdapterSettings.KEY_ZERO_COPY, L("Zero-copy presentation"),
+            "The game's own buffer goes on screen without a copy (lowest latency, less heat). Needs sync-file fences in " +
+                "the driver (see the adapter report). Turn off if you see tearing or stale frames.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterClientFence", WaylandAdapterSettings.KEY_CLIENT_FENCE, L("Client render fences"),
+            "With zero-copy, the game's driver tells the compositor when a frame is finished. Turn off only to compare; " +
+                "off can show half-drawn frames.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterUbwc", WaylandAdapterSettings.KEY_UBWC, L("UBWC / compressed buffers"),
+            "Frames travel as compressed GPU buffers (less bandwidth). Turn off if the picture shows garbled blocks or stripes.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterModifiers", WaylandAdapterSettings.KEY_MODIFIERS, L("DRM format modifiers"),
+            "Lets the game's driver and the compositor agree on buffer layouts. Off makes the game use plain linear " +
+                "buffers (BANNER_WSI_NO_MODIFIERS=1); try it for a black screen or corrupt frames.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterKgslShim", WaylandAdapterSettings.KEY_KGSL_SHIM, L("KGSL timing shim"),
+            "Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame (the report's timing " +
+                "bug). Default lets the adapter detect it; On forces it, Off disables it.",
+        ),
+        adapterRow(
+            "graphics.wl.adapterSubgroups", WaylandAdapterSettings.KEY_SUBGROUPS, L("Subgroups"),
+            "Auto tells the game what subgroup operations your Mesa driver supports (DOOM Eternal and other games that " +
+                "need them start). Off hides them, as older adapters did; try it if a game shows glitches or crashes that it did not before.",
+            options = listOf("auto" to "Auto", "0" to "Off"),
+            decode = { _, r -> if (r == "0") "0" else "auto" },
+        ),
+    )
+
     /** Rows of the Wayland driver gear, shown under the compositor driver on Wayland. */
     fun waylandDefs(): List<SettingDef> = listOf(
         SettingDef(
@@ -787,6 +862,7 @@ internal object GraphicsRows {
             note = { env, values -> env.graphics.waylandDriveNote(values(ID_WL_GAME_DRIVER), values(ID_COMPOSITOR)) },
         ),
 
+    ) + adapterDefs() + listOf(
         maliRow(
             ID_MALI_MODE, MaliPanvk.KEY_MODE, L("Mali (PanVK) mode"), ADVANCED,
             hint = L("PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver."),
@@ -1170,7 +1246,13 @@ internal class DeckGraphicsState(
     fun categoryExtra(): CategoryExtra = CategoryExtra(top = this::topItems, bottom = this::bottomItems)
 
     // Nothing to see: it reads the lists and probes the driver while the Graphics page is open.
-    private fun topItems(): List<PageExtra> = listOf(PageExtra("graphics-probes") { GraphicsProbes(this) })
+    private fun topItems(): List<PageExtra> = buildList {
+        add(PageExtra("graphics-probes") { GraphicsProbes(this@DeckGraphicsState) })
+        // The classic gear's adapter report: what the graphics driver used on Wayland can do.
+        if (!env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) {
+            add(PageExtra(WAYLAND_ADAPTER_REPORT) { WaylandAdapterReport(value("graphics.compositorDriver")) })
+        }
+    }
 
     private fun bottomItems(): List<PageExtra> {
         val actions = buildList {
@@ -1193,6 +1275,49 @@ internal class DeckGraphicsState(
     }
 
     class Action(val key: String, val icon: ImageVector, val label: String, val hint: String, val onClick: () -> Unit)
+}
+
+internal const val WAYLAND_ADAPTER_REPORT = "wayland-adapter-report"
+
+/**
+ * The Wayland adapter report of [driverId], as the classic gear shows it: cached per driver and app build,
+ * probed here when there is none (with the other GPU probes on graphicsProbeMutex, never during a game).
+ */
+@Composable
+private fun WaylandAdapterReport(driverId: String) {
+    val context = LocalContext.current
+    var report by remember(driverId) { mutableStateOf<WaylandDriverProbe.Report?>(null) }
+    var probing by remember(driverId) { mutableStateOf(false) }
+    var note by remember(driverId) { mutableStateOf<String?>(null) }
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(driverId, tick) {
+        note = null
+        if (driverId.isEmpty() || driverId == "System") {
+            report = null
+            note = L("No Turnip graphics driver is set, so there is nothing to check.")
+            return@LaunchedEffect
+        }
+        val cached = withContext(Dispatchers.IO) { runCatching { WaylandDriverProbe.cached(context, driverId) }.getOrNull() }
+        if (cached != null) { report = cached; return@LaunchedEffect }
+        if (com.winlator.star.XServerDisplayActivity.isSessionInForeground()) {
+            note = WaylandDriverProbe.SESSION_RUNNING_NOTE
+            return@LaunchedEffect
+        }
+        probing = true
+        report = withContext(Dispatchers.IO) {
+            graphicsProbeMutex.withLock { runCatching { WaylandDriverProbe.probe(context, driverId) }.getOrNull() }
+        }
+        probing = false
+        if (report == null) note = L("The driver could not be checked.")
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(L("Adapter report"), fontWeight = FontWeight.Bold)
+        WaylandAdapterReportBlock(report = report, probing = probing, note = note, onRecheck = {
+            WaylandDriverProbe.forget(context, driverId)
+            report = null
+            tick++
+        })
+    }
 }
 
 /** Reads the lists once, and probes the driver version and wrapper being edited, while the Graphics page shows. */

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ feat/log-wayland 008f2ec7: CI green, pubg APK staged (NOT installed, NOT device-tested)
+- **CI:** build-artifacts 42444528045 (headSha 008f2ec7) success ×4, 0 failed steps; skipped steps differ from the last runs only in cache steps (this run rebuilt JavaSteam/blsteam etc.). BUILD SUCCESSFUL; only the old OpenInNew deprecation warnings in the touched files.
+- **APK check:** classes4.dex has the Share logs code; libbannerwayland.so exports Java_..._nativeSetSessionLogDir; cert SHA-256 A4:0D:A8:0A… (same as installed builds).
+- **Staged:** /sdcard/Download/Bannerlator-log-wayland-008f2ec7-pubg.apk sha256 d4d3bf25… (host == device). Installed now on the Elite: com.tencent.ig vc 105 = Bannerlator-lab-ui-fe1b32aa.apk (base.apk 8778024f…, updated 2026-11-07 21:45 EST) → undo = reinstall that file.
+- **Next:** user's yes → install → one Wayland game launch (save first) → check <game>/wayland/wayland-*.log, the Wayland chip in View logs, Share logs zip contents, logcat for FATAL.
+
 ## 2026-11-08 — 🗂️ Logs: each game's Wayland logs in its log folder + "Share logs" in the game menu (`feat/log-wayland` 008f2ec7, CI running, NOT device-tested, NOT merged)
 - **User:** "we need to be able to view wayland logs in app as well, each games wayland logs also need to go with the rest ... add a wayland folder for each games folder ... time stamped just like the rest" → "go with the wayland folder, also for each game long press menu under view logs, we need to add a share logs button, that zips the entire games log folder ... android share menu".
 - **Before (verified on main 080020c0 + the Elite):** game logs in <log folder>/<game>/ (this device's setting: Download/bannerlator; default Documents/bannerlator), older runs in previous/<stamp>/ (keep 5); the Wayland session log always went to Download/Wayland-logs/wayland-<stamp>.log (compositor.c SESSION_LOG_DIR), never pruned (188 files), not shown in the app.

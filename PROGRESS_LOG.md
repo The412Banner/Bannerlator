@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ lab-fixes 082c2715 INSTALLED on the Elite 03:50:36 EST (user: "yes install it"; NOT device-tested yet)
+- pm install -r Success; installed base.apk sha256 **c1765f3d…** == staged == CI artifact; logcat crash buffer: no com.tencent.ig / FATAL entries. Peer sessions root-6b / root-e5 told before and "done" after.
+- Replaced the Pocket FIT session's lab-fixes cccee60d (2f723b4a…), which 082c2715 contains.
+- **Resume:** user tests (Appearance › Look via Settings › Theme and colours; Home/Library/game page art; Game details tile; Art and previews with MIO / RE2; 3D tilt). Read screenshots in /sdcard/Pictures/Screenshots, logcat -b crash for com.tencent.ig. Before any game launch: save + say "saved". Fallback: none staged (cccee60d not in Download).
+
 ## 2026-11-08 — 📦 lab-fixes 082c2715 STAGED (game art background stages 1–3; NOT installed, NOT device-tested)
 - **CI:** build-artifacts 42463583334 (1cbfbc74, stages 1+2) success ×4; **42463721801 (082c2715, stage 3) success ×4**, pubg job 44 success / 15 skipped (same as normal builds). Stage 1's own run 42463224133 failed (setter JVM clash, fixed in 1cbfbc74).
 - **APK:** pubg 596,834,642 B sha256 **c1765f3d…**, cert SHA-256 A4:0D:A8:0A… (same key as the installed build), dex carries LabArtBackdrop / LabGameDetailsPage / LabClips / ExoPlayer / hls_h264. Staged /sdcard/Download/Bannerlator-lab-fixes-082c2715.apk (hash host == device).

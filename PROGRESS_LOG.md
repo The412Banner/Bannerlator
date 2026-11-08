@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 feat/lab-polish-strings MERGED to main 7e05a479 (user: "install it when it's done, pubg" + "then merge to main and build as artifacts only")
+- **Built:** CI 42532718306 (120ed323) green ×4; resources.arsc has the new strings (de Adapterprofil, ja アダプタープロファイル) and the fixed labels.
+- **Installed:** on the Elite main app (com.tencent.ig) at 18:07:26 EST; base.apk sha256 263a18a8… == staged; no game was running; crash buffer empty.
+- **Merge:** --no-ff over main 15606507 (no conflicts). Backup ref refs/backup/20261108/main-before-lab-polish-strings → 15606507. Merged code == built 120ed323. Main push build = "CI Build (artifacts only)" 42533643521; no release.
+- **Pending:** install on the Pocket FIT over ssh. It is unreachable (192.168.1.251:8022 "No route to host"; the LAN scan found only the Duo). The user was asked to wake it and start sshd.
+
 ## 2026-11-08 — 🌐 lab-polish-strings: pl + uk Default fixed (120ed323; CI 42532718306 running; 043d86d1's run cancelled)
 - **User: "yes fix those too".** pl Default Domyślna → Domyślne (also "Default (Steam: %1$s)"). uk Default Стандартний → За замовчуванням (also the "Default / Any controller" slot and its copy row). The adapter explanations quoting them were updated.
 - **Indonesian kept "Default":** the app uses it as the Indonesian word in about 20 strings, so changing only the label would be inconsistent.

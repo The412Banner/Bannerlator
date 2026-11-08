@@ -147,7 +147,7 @@
     <string name="lab_13b9f697">Salvar só o arquivo</string>
     <string name="lab_13cd4116">NAME ou NAME=VALUE</string>
     <string name="lab_13d539b7">Verde-azulado</string>
-    <string name="lab_13f11ba3">Desativada</string>
+    <string name="lab_13f11ba3">Desativado</string>
     <string name="lab_1405c85b">Esticar os jogos para preencher a tela</string>
     <string name="lab_144c53aa">Escolha primeiro uma versão do driver.</string>
     <string name="lab_145ab26b">Auto / Padrão</string>
@@ -225,7 +225,7 @@
     <string name="lab_1dd0373a">Remover %1$s e tudo o que há nele? Os atalhos dos jogos dele também serão removidos.</string>
     <string name="lab_1dd4a128">Opções de root</string>
     <string name="lab_1df4901e">%1$s duplicado</string>
-    <string name="lab_1df4bc73">\"Automático\" informa ao jogo quais operações de subgrupo o seu driver Mesa suporta (assim iniciam o DOOM Eternal e outros jogos que precisam delas). \"Desativada\" as oculta, como os adaptadores antigos faziam; tente se um jogo apresentar falhas gráficas ou travamentos que não tinha antes.</string>
+    <string name="lab_1df4bc73">\"Automático\" informa ao jogo quais operações de subgrupo o seu driver Mesa suporta (assim iniciam o DOOM Eternal e outros jogos que precisam delas). \"Desativado\" as oculta, como os adaptadores antigos faziam; tente se um jogo apresentar falhas gráficas ou travamentos que não tinha antes.</string>
     <string name="lab_1dfaae77">Um nome não pode conter \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Para os jogos que o cliente inicia, não para o próprio cliente, e para todos eles: a sessão tem um único ambiente. </string>
     <string name="lab_1e223777">Versão, notas de lançamento e Baixar e instalar (Configurações do Classic).</string>
@@ -386,7 +386,7 @@
     <string name="lab_318a4134">Definidos para este jogo</string>
     <string name="lab_31aa53e1">Editar como texto</string>
     <string name="lab_31b614e4">Auto usa isso só nas Adreno 710, 720 e 722. Mude só se um jogo apresentar problemas.</string>
-    <string name="lab_32038add">Contorna um bug do Turnip em que perguntar \"a GPU terminou?\" espera o quadro inteiro (o bug de temporização do relatório). \"Padrão\" deixa o adaptador detectar o bug; \"Ativado\" força o shim, \"Desativada\" o desliga.</string>
+    <string name="lab_32038add">Contorna um bug do Turnip em que perguntar \"a GPU terminou?\" espera o quadro inteiro (o bug de temporização do relatório). \"Padrão\" deixa o adaptador detectar o bug; \"Ativado\" força o shim, \"Desativado\" o desliga.</string>
     <string name="lab_3205bc81">Nenhum driver gráfico Turnip está definido, então não há nada para verificar.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Modo touchscreen</string>
@@ -1737,7 +1737,7 @@
     <string name="lab_f593aa90">O driver com que o compositor do app exibe a sessão na tela. Não é aquele com que o cliente desenha.</string>
     <string name="lab_f59e59da">Exibido na sua biblioteca. Renomear mantém a capa e o ícone.</string>
     <string name="lab_f61050cc">Resolução do jogo</string>
-    <string name="lab_f65eddfe">Permite que o driver do jogo e o compositor combinem o layout dos buffers. \"Desativada\" faz o jogo usar buffers lineares simples (BANNER_WSI_NO_MODIFIERS=1); tente em caso de tela preta ou quadros corrompidos.</string>
+    <string name="lab_f65eddfe">Permite que o driver do jogo e o compositor combinem o layout dos buffers. \"Desativado\" faz o jogo usar buffers lineares simples (BANNER_WSI_NO_MODIFIERS=1); tente em caso de tela preta ou quadros corrompidos.</string>
     <string name="lab_f665e069">Uma notificação quando um amigo manda mensagem e o chat dele não está aberto.</string>
     <string name="lab_f667b7f4">Cor de destaque</string>
     <string name="lab_f690a199">Sua capa</string>

@@ -147,7 +147,7 @@
     <string name="lab_13b9f697">Solo guardar el archivo</string>
     <string name="lab_13cd4116">NAME o NAME=VALUE</string>
     <string name="lab_13d539b7">Verde azulado</string>
-    <string name="lab_13f11ba3">Desactivada</string>
+    <string name="lab_13f11ba3">Desactivado</string>
     <string name="lab_1405c85b">Estirar los juegos para llenar la pantalla</string>
     <string name="lab_144c53aa">Elige primero una versión del controlador.</string>
     <string name="lab_145ab26b">Auto / Predeterminado</string>
@@ -225,7 +225,7 @@
     <string name="lab_1dd0373a">¿Quitar %1$s y todo su contenido? También se quitan los accesos directos de sus juegos.</string>
     <string name="lab_1dd4a128">Opciones de root</string>
     <string name="lab_1df4901e">%1$s duplicado</string>
-    <string name="lab_1df4bc73">\"Auto\" indica al juego qué operaciones de subgrupo admite tu controlador Mesa (así arrancan DOOM Eternal y otros juegos que las necesitan). \"Desactivada\" las oculta, como hacían los adaptadores anteriores; pruébalo si un juego muestra fallos gráficos o se cierra inesperadamente cuando antes no lo hacía.</string>
+    <string name="lab_1df4bc73">\"Auto\" indica al juego qué operaciones de subgrupo admite tu controlador Mesa (así arrancan DOOM Eternal y otros juegos que las necesitan). \"Desactivado\" las oculta, como hacían los adaptadores anteriores; pruébalo si un juego muestra fallos gráficos o se cierra inesperadamente cuando antes no lo hacía.</string>
     <string name="lab_1dfaae77">Un nombre no puede contener \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Para los juegos que inicia el cliente, no para el propio cliente, y para todos ellos: la sesión tiene un único entorno. </string>
     <string name="lab_1e223777">Versión, notas de la versión y Descargar e instalar (Ajustes de Classic).</string>
@@ -386,7 +386,7 @@
     <string name="lab_318a4134">Definidos para este juego</string>
     <string name="lab_31aa53e1">Editar como texto</string>
     <string name="lab_31b614e4">Auto lo usa solo en Adreno 710, 720 y 722. Cámbialo solo si un juego da problemas.</string>
-    <string name="lab_32038add">Sortea un fallo de Turnip por el que preguntar \"¿ha terminado la GPU?\" espera a todo el fotograma (el fallo de temporización del informe). \"Predeterminado\" deja que el adaptador lo detecte; \"Sí\" fuerza el parche y \"Desactivada\" lo apaga.</string>
+    <string name="lab_32038add">Sortea un fallo de Turnip por el que preguntar \"¿ha terminado la GPU?\" espera a todo el fotograma (el fallo de temporización del informe). \"Predeterminado\" deja que el adaptador lo detecte; \"Activado\" fuerza el parche y \"Desactivado\" lo apaga.</string>
     <string name="lab_3205bc81">No hay ningún controlador gráfico Turnip configurado, así que no hay nada que comprobar.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Modo de pantalla táctil</string>
@@ -1116,7 +1116,7 @@
     <string name="lab_9bc722a8">Almacenamiento</string>
     <string name="lab_9bd29497">Mouse con trackpad</string>
     <string name="lab_9c232707">Acerca de y ayuda</string>
-    <string name="lab_9c320d6a">Sí</string>
+    <string name="lab_9c320d6a">Activado</string>
     <string name="lab_9c61a5ad">No hay nada que descargar aquí.</string>
     <string name="lab_9cca0408">Matemática de shaders estricta</string>
     <string name="lab_9cd41ca1">Descargar componentes</string>
@@ -1737,7 +1737,7 @@
     <string name="lab_f593aa90">El controlador con el que el compositor de la app muestra la sesión en pantalla. No es con el que dibuja el cliente.</string>
     <string name="lab_f59e59da">Se muestra en tu biblioteca. Al renombrarlo se conservan la portada y el icono.</string>
     <string name="lab_f61050cc">Resolución del juego</string>
-    <string name="lab_f65eddfe">Permite que el controlador del juego y el compositor acuerden la disposición de los búferes. \"Desactivada\" hace que el juego use búferes lineales simples (BANNER_WSI_NO_MODIFIERS=1); pruébalo si ves una pantalla negra o fotogramas corruptos.</string>
+    <string name="lab_f65eddfe">Permite que el controlador del juego y el compositor acuerden la disposición de los búferes. \"Desactivado\" hace que el juego use búferes lineales simples (BANNER_WSI_NO_MODIFIERS=1); pruébalo si ves una pantalla negra o fotogramas corruptos.</string>
     <string name="lab_f665e069">Una notificación cuando un amigo te escribe y su chat no está abierto.</string>
     <string name="lab_f667b7f4">Color de acento</string>
     <string name="lab_f690a199">Tu portada</string>

@@ -147,7 +147,7 @@
     <string name="lab_13b9f697">Salva solo il file</string>
     <string name="lab_13cd4116">NAME o NAME=VALUE</string>
     <string name="lab_13d539b7">Verde acqua</string>
-    <string name="lab_13f11ba3">Disattivata</string>
+    <string name="lab_13f11ba3">Disattivato</string>
     <string name="lab_1405c85b">Allunga i giochi a tutto schermo</string>
     <string name="lab_144c53aa">Scegli prima una versione del driver.</string>
     <string name="lab_145ab26b">Auto / Predefinito</string>
@@ -225,7 +225,7 @@
     <string name="lab_1dd0373a">Rimuovere %1$s e tutto il suo contenuto? Anche i collegamenti dei suoi giochi verranno rimossi.</string>
     <string name="lab_1dd4a128">Opzioni root</string>
     <string name="lab_1df4901e">%1$s duplicato</string>
-    <string name="lab_1df4bc73">Auto comunica al gioco quali operazioni subgroup supporta il tuo driver Mesa (così DOOM Eternal e gli altri giochi che le richiedono si avviano). Disattivata le nasconde, come facevano gli adattatori precedenti; prova questa opzione se un gioco mostra glitch o crash che prima non dava.</string>
+    <string name="lab_1df4bc73">Auto comunica al gioco quali operazioni subgroup supporta il tuo driver Mesa (così DOOM Eternal e gli altri giochi che le richiedono si avviano). Disattivato le nasconde, come facevano gli adattatori precedenti; prova questa opzione se un gioco mostra glitch o crash che prima non dava.</string>
     <string name="lab_1dfaae77">Un nome non può contenere \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Per i giochi che il client avvia, non per il client stesso, e per tutti: la sessione ha un unico ambiente. </string>
     <string name="lab_1e223777">Versione, note di rilascio e Scarica e installa (impostazioni di Classic).</string>
@@ -350,7 +350,7 @@
     <string name="lab_2c6448d6">Impostato per questo container</string>
     <string name="lab_2c768f35">I nuovi container partono con</string>
     <string name="lab_2c963a33">si applica subito · salvato come predefinito di questo motore</string>
-    <string name="lab_2ce33943">Predefinita</string>
+    <string name="lab_2ce33943">Predefinito</string>
     <string name="lab_2ced81bf">Offline: viene mostrato un elenco salvato. Connettiti per scaricare nuovi effetti.</string>
     <string name="lab_2d1366ec">Nessuna variabile nota corrisponde.</string>
     <string name="lab_2d45170d">Artwork del gioco</string>
@@ -386,7 +386,7 @@
     <string name="lab_318a4134">Impostati per questo gioco</string>
     <string name="lab_31aa53e1">Modifica come testo</string>
     <string name="lab_31b614e4">Auto lo usa solo su Adreno 710, 720 e 722. Cambialo solo se un gioco si comporta male.</string>
-    <string name="lab_32038add">Aggira un bug di Turnip per cui chiedere \"la GPU ha finito?\" attende l\'intero frame (il bug di timing del rapporto). Predefinita lascia che sia l\'adattatore a rilevarlo; Sì lo forza, Disattivata lo disattiva.</string>
+    <string name="lab_32038add">Aggira un bug di Turnip per cui chiedere \"la GPU ha finito?\" attende l\'intero frame (il bug di timing del rapporto). Predefinito lascia che sia l\'adattatore a rilevarlo; Attivato lo forza, Disattivato lo disattiva.</string>
     <string name="lab_3205bc81">Nessun driver grafico Turnip impostato, quindi non c\'è nulla da controllare.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Modalità touchscreen</string>
@@ -1116,7 +1116,7 @@
     <string name="lab_9bc722a8">Memoria</string>
     <string name="lab_9bd29497">Mouse con trackpad</string>
     <string name="lab_9c232707">Informazioni e aiuto</string>
-    <string name="lab_9c320d6a">Sì</string>
+    <string name="lab_9c320d6a">Attivato</string>
     <string name="lab_9c61a5ad">Niente da scaricare qui.</string>
     <string name="lab_9cca0408">Matematica shader rigorosa</string>
     <string name="lab_9cd41ca1">Scarica componenti</string>
@@ -1446,7 +1446,7 @@
     <string name="lab_ce49c69f">Allunga</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">Nitidezza DLS + riduzione rumore</string>
-    <string name="lab_ce6eab03">Con lo zero-copy, il driver del gioco comunica al compositor quando un frame è finito. Disattivalo solo per fare confronti; con Disattivata possono comparire frame disegnati a metà.</string>
+    <string name="lab_ce6eab03">Con lo zero-copy, il driver del gioco comunica al compositor quando un frame è finito. Disattivalo solo per fare confronti; con Disattivato possono comparire frame disegnati a metà.</string>
     <string name="lab_ce764fd8">Spazio usato, cartelle dell\'app e sistema di base.</string>
     <string name="lab_ce9b8eca">Transcodifica BCn in ASTC</string>
     <string name="lab_ceadf171">Android blocca fsync</string>
@@ -1683,7 +1683,7 @@
     <string name="lab_efeacf52">Per ora solo il driver del telefono.</string>
     <string name="lab_f04c78b9">Impostazioni audio · questo gioco</string>
     <string name="lab_f05053e7">Legge direttamente uno Steam Controller (i suoi trackpad e tasti extra). Disattivato: il normale percorso di input resta invariato.</string>
-    <string name="lab_f0520965">mailbox = frame più recente, latenza minima; fifo = vsync, pacing uniforme. Predefinita segue il profilo, altrimenti la modalità di presentazione salvata. Immediate richiede il tearing, che Wayland non offre.</string>
+    <string name="lab_f0520965">mailbox = frame più recente, latenza minima; fifo = vsync, pacing uniforme. Predefinito segue il profilo, altrimenti la modalità di presentazione salvata. Immediate richiede il tearing, che Wayland non offre.</string>
     <string name="lab_f05494f9">Il layer Wine di questo container non può gestire Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein e Jedi Academy girano in finestra alla dimensione della sessione.</string>
     <string name="lab_f0c81c31">Client Steam</string>
@@ -1737,7 +1737,7 @@
     <string name="lab_f593aa90">Il driver con cui il compositor dell\'app mostra la sessione sullo schermo. Non quello con cui disegna il client.</string>
     <string name="lab_f59e59da">Mostrato nella libreria. La rinomina mantiene copertina e icona.</string>
     <string name="lab_f61050cc">Risoluzione del gioco</string>
-    <string name="lab_f65eddfe">Permette al driver del gioco e al compositor di accordarsi sul layout dei buffer. Disattivata fa usare al gioco semplici buffer lineari (BANNER_WSI_NO_MODIFIERS=1); prova questa opzione in caso di schermo nero o frame corrotti.</string>
+    <string name="lab_f65eddfe">Permette al driver del gioco e al compositor di accordarsi sul layout dei buffer. Disattivato fa usare al gioco semplici buffer lineari (BANNER_WSI_NO_MODIFIERS=1); prova questa opzione in caso di schermo nero o frame corrotti.</string>
     <string name="lab_f665e069">Una notifica quando un amico ti scrive e la sua chat non è aperta.</string>
     <string name="lab_f667b7f4">Colore di accento</string>
     <string name="lab_f690a199">La tua copertina</string>

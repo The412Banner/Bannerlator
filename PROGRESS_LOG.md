@@ -8,7 +8,7 @@
 ## 2026-11-08 — 🔀 feat/lab-art-strings MERGED to main e930314f (user: "merge it to main"; NOT device-tested)
 - **What:** the 89 new game art strings in 32 languages + the wrong existing translations fixed (a82ca7dc).
 - **How:** --no-ff over main 226c266f (1 log-only commit); PROGRESS_LOG conflict resolved (both kept). Backup ref refs/backup/20261108/main-before-lab-art-strings → 226c266f. Merged code == a82ca7dc (diff empty outside PROGRESS_LOG.md).
-- **Proof:** CI 42468593200 (a82ca7dc) green ×4; main push build 42502643371 running. APK /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk staged, not installed (user chose to merge first).
+- **Proof:** CI 42468593200 (a82ca7dc) green ×4; main push build 42502643371 (e930314f) green ×4 first try (each 44 success / 15 skipped = cached parts + main-only saves of them; artifacts Bannerlator-main-*). APK /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk staged, not installed (user chose to merge first).
 - **Branch kept:** feat/lab-art-strings — delete only on the user's word.
 
 ## 2026-11-08 — 📦 feat/lab-art-strings a82ca7dc CI green, APK staged (NOT installed, NOT device-tested)

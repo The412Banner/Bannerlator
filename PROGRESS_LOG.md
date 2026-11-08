@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🎨 fix/onboarding-lab-ember: portrait step circles, Lab wording, Carbon & Ember for new installs (976eca39; CI running, NOT device-tested)
+- **Why (user, after a fresh standard install on the Elite, screenshots 151144 portrait / 151156 landscape):** portrait setup has no step list like landscape's side panel; new installs should start on Carbon & Ember; the setup still calls Lab "Simple". The user confirmed main already starts new installs in Lab and keeps updaters' style (AppThemeState, since 4740062a; not in any release yet).
+- **Changes:** DeckOnboarding: portrait shows the 7 steps as a row of circles (check = done, filled = current, joining lines fill in) instead of the progress bar (no label under them: the page heading already names the step); StepCircle shared with the landscape panel. "Simple" → "Lab" in the setup's interface-style text and in Classic Appearance (dropped "in one of three layouts"). AppThemeState.init: the fresh-install block now runs before the theme is read and also saves preset_index = Carbon & Ember (by name) when fresh and no theme saved; updates keep theirs (AMOLED default).
+- **CI:** build-artifacts 42519487700 (headSha 976eca39) running.
+- **Next:** green → stage the STANDARD APK (com.winlator.banner) → ASK install; the test copy on the Elite must be uninstalled first for a true fresh install (its prefs already hold preset_index 9) → user checks portrait + landscape setup and the orange theme → merge on the user's go.
+
 ## 2026-11-08 — 🧩 Mali build 4: native BCn on an Arm driver that has it (fix/wayland-mali-ahb-blit bdc3b79d; CI green ×4, staged, posted, NOT device-tested)
 - **Tester (gtaforever00, 13:07 EST):** kirimu's driver has native BCn through a shim; on Winlator he always tests with BCn emulation off; asked for a way to turn the unpacking off.
 - **User:** "yes do both, post the tip and build 4".

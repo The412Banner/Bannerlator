@@ -1,6 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
-import com.winlator.star.ui.simple.T
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.deckShape
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -219,7 +219,7 @@ internal class DeckEnvVarsSection(
     /** Why [name] can't be added, or null. */
     fun addError(name: String): String? = when {
         name.isEmpty() -> null
-        hidesSync && name in SYNC_VARS -> T("Performance › Sync sets this one.")
+        hidesSync && name in SYNC_VARS -> L("Performance › Sync sets this one.")
         name in names() -> "$name is already in the list."
         else -> null
     }
@@ -281,9 +281,9 @@ internal class DeckEnvVarsSection(
 
     /** The setting that also writes [name], for the line under it. */
     private fun ownerOf(name: String): String? = when {
-        AUDIO_OWNED.matches(name) -> T("Set by Audio › Sound latency")
-        name == DirectAudioSupport.MIC_ENV_KEY -> T("Set by Audio › Microphone")
-        name == DllOverrides.VAR -> T("Also switched by Prefer game-folder DLLs above")
+        AUDIO_OWNED.matches(name) -> L("Set by Audio › Sound latency")
+        name == DirectAudioSupport.MIC_ENV_KEY -> L("Set by Audio › Microphone")
+        name == DllOverrides.VAR -> L("Also switched by Prefer game-folder DLLs above")
         else -> null
     }
 
@@ -305,25 +305,25 @@ internal class DeckEnvVarsSection(
             add(PageExtra("env-linux") {
                 GroupCard(first = true, last = true, highlight = false) {
                     DeckLine(
-                        T("One environment for the whole session"),
-                        T("These reach the Steam client and every game it launches. A variable here overrides the same name from the FEXCore preset."),
+                        L("One environment for the whole session"),
+                        L("These reach the Steam client and every game it launches. A variable here overrides the same name from the FEXCore preset."),
                         icon = Icons.Filled.Info,
                     )
                 }
             })
         }
 
-        add(PageExtra("env-compat-label") { GroupLabel(T("Compatibility")) })
+        add(PageExtra("env-compat-label") { GroupLabel(L("Compatibility")) })
         add(PageExtra("env-compat") {
             LaunchedEffect(Unit) { scanGameDir() }
             GroupCard(first = true, last = found.isEmpty(), highlight = false) {
                 DeckLine(
-                    T("Prefer game-folder DLLs"),
-                    hint = (if (linux) T("For the games the client launches, not the client itself, and for every one of them: the session has one environment. ")
+                    L("Prefer game-folder DLLs"),
+                    hint = (if (linux) L("For the games the client launches, not the client itself, and for every one of them: the session has one environment. ")
                         else "") +
-                        T("Loads the game's own ") + DllOverrides.PREFER_GAME_FOLDER.joinToString(", ") +
-                        T(" instead of Wine's. Needed by many wrappers and mod loaders. Graphics DLLs are never included: DXVK and VKD3D own those.") +
-                        (if (anyOn && !allOn) T(" Some are on: see below.") else ""),
+                        L("Loads the game's own ") + DllOverrides.PREFER_GAME_FOLDER.joinToString(", ") +
+                        L(" instead of Wine's. Needed by many wrappers and mod loaders. Graphics DLLs are never included: DXVK and VKD3D own those.") +
+                        (if (anyOn && !allOn) L(" Some are on: see below.") else ""),
                     icon = Icons.Filled.Extension,
                     onClick = { preferDlls(!allOn, master) },
                 ) { Switch(checked = allOn, onCheckedChange = null) }
@@ -334,25 +334,25 @@ internal class DeckEnvVarsSection(
             add(PageExtra("env-dll:$dll") {
                 GroupCard(first = false, last = i == found.lastIndex, highlight = false) {
                     val on = DllOverrides.isEnabled(overrides, dll)
-                    DeckLine("$dll.dll", T("Found in the game folder."), onClick = { preferDlls(!on, listOf(dll)) }) {
+                    DeckLine("$dll.dll", L("Found in the game folder."), onClick = { preferDlls(!on, listOf(dll)) }) {
                         Switch(checked = on, onCheckedChange = null)
                     }
                 }
             })
         }
 
-        add(PageExtra("env-vars-label") { GroupLabel(if (game && !linux) T("This game's variables") else T("Environment variables")) })
+        add(PageExtra("env-vars-label") { GroupLabel(if (game && !linux) L("This game's variables") else L("Environment variables")) })
         val shown = listed(vars)
         if (shown.isEmpty()) {
             add(PageExtra("env-none") {
                 GroupCard(first = true, last = false, highlight = false) {
                     DeckLine(
-                        T("No environment variables set"),
+                        L("No environment variables set"),
                         when {
-                            linux -> T("The session starts with the app's own variables only.")
-                            game -> T("The game starts with its container's variables") + (if (containerVars.isEmpty()) "." else T(", listed below."))
-                            env.scope == EditorScope.DEFAULTS -> T("New containers start with none.")
-                            else -> T("Every game in this container starts with none of its own.")
+                            linux -> L("The session starts with the app's own variables only.")
+                            game -> L("The game starts with its container's variables") + (if (containerVars.isEmpty()) "." else L(", listed below."))
+                            env.scope == EditorScope.DEFAULTS -> L("New containers start with none.")
+                            else -> L("Every game in this container starts with none of its own.")
                         },
                     )
                 }
@@ -360,9 +360,9 @@ internal class DeckEnvVarsSection(
         }
         shown.forEachIndexed { i, (v, occ) ->
             val notes = listOfNotNull(
-                v.value.ifEmpty { T("(empty)") },
+                v.value.ifEmpty { L("(empty)") },
                 ownerOf(v.name),
-                containerVars[v.name]?.let { c -> if (c.value == v.value) T("Same as the container's") else "Replaces the container's ${c.value.ifEmpty { "(empty)" }}" },
+                containerVars[v.name]?.let { c -> if (c.value == v.value) L("Same as the container's") else "Replaces the container's ${c.value.ifEmpty { "(empty)" }}" },
             )
             add(PageExtra("env-var:${v.name}#$occ") {
                 GroupCard(first = i == 0, last = false, highlight = false) {
@@ -375,8 +375,8 @@ internal class DeckEnvVarsSection(
             add(PageExtra("env-sync") {
                 GroupCard(first = false, last = false, highlight = false) {
                     DeckLine(
-                        T("Sync variables"),
-                        renderEnv(kept) + T(" · Kept from before the Sync setting; Performance › Sync reads them and clears them when you set it."),
+                        L("Sync variables"),
+                        renderEnv(kept) + L(" · Kept from before the Sync setting; Performance › Sync reads them and clears them when you set it."),
                         icon = Icons.Filled.Info,
                     )
                 }
@@ -384,25 +384,25 @@ internal class DeckEnvVarsSection(
         }
         add(PageExtra("env-add") {
             GroupCard(first = false, last = false, highlight = false) {
-                DeckActionRow(DeckAction("add", Icons.Filled.Add, T("Add a variable"), T("Pick a known variable or type your own: NAME, or NAME=VALUE.")) { adding = true })
+                DeckActionRow(DeckAction("add", Icons.Filled.Add, L("Add a variable"), L("Pick a known variable or type your own: NAME, or NAME=VALUE.")) { adding = true })
             }
         })
         add(PageExtra("env-raw") {
             GroupCard(first = false, last = true, highlight = false) {
-                DeckActionRow(DeckAction("raw", Icons.Filled.Edit, T("Edit as text"), T("The whole list as NAME=VALUE, separated by spaces.")) { rawText = true })
+                DeckActionRow(DeckAction("raw", Icons.Filled.Edit, L("Edit as text"), L("The whole list as NAME=VALUE, separated by spaces.")) { rawText = true })
             }
         })
 
         // The container's variables this game doesn't set itself: it starts with them as they are.
         val inherited = containerVars.values.filter { c -> vars.none { it.name == c.name } }
         if (inherited.isNotEmpty()) {
-            add(PageExtra("env-container-label") { GroupLabel(T("From the container")) })
+            add(PageExtra("env-container-label") { GroupLabel(L("From the container")) })
             inherited.forEachIndexed { i, c ->
                 add(PageExtra("env-container:${c.name}") {
                     GroupCard(first = i == 0, last = i == inherited.lastIndex, highlight = false) {
                         DeckLine(
                             c.name,
-                            listOfNotNull(c.value.ifEmpty { T("(empty)") }, ownerOf(c.name)).joinToString(" · ") + T(" · Pick it to give this game its own value."),
+                            listOfNotNull(c.value.ifEmpty { L("(empty)") }, ownerOf(c.name)).joinToString(" · ") + L(" · Pick it to give this game its own value."),
                             icon = Icons.Filled.Inventory2,
                             onClick = { editing = EnvEdit(c.name, 0, c.value, fromContainer = true) },
                         )
@@ -444,7 +444,7 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
             Column {
                 Text(e.name, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (e.fromContainer) {
-                    Text(T("From the container. OK gives this game its own value."), fontSize = 12.5.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    Text(L("From the container. OK gives this game its own value."), fontSize = 12.5.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         },
@@ -456,8 +456,8 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
                         val off = known?.options?.getOrNull(0) ?: "0"
                         val on = known?.options?.getOrNull(1) ?: "1"
                         val checked = value == on || value == "1" || value == "true"
-                        EnvChoiceLine(T("On"), "${e.name}=$on", selected = checked, multi = false, modifier = Modifier.focusRequester(first)) { value = on }
-                        EnvChoiceLine(T("Off"), "${e.name}=$off", selected = !checked, multi = false) { value = off }
+                        EnvChoiceLine(L("On"), "${e.name}=$on", selected = checked, multi = false, modifier = Modifier.focusRequester(first)) { value = on }
+                        EnvChoiceLine(L("Off"), "${e.name}=$off", selected = !checked, multi = false) { value = off }
                     }
                     EnvVarType.SELECT -> {
                         val presets = known?.options.orEmpty().distinct()
@@ -465,7 +465,7 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
                         opts.forEachIndexed { i, o ->
                             EnvChoiceLine(o, null, selected = o == value, multi = false, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { value = o }
                         }
-                        EnvValueField(value, T("Or type any value"), numeric = false) { value = it }
+                        EnvValueField(value, L("Or type any value"), numeric = false) { value = it }
                     }
                     EnvVarType.SELECT_MULTIPLE -> {
                         val selected = value.split(",").filter { it.isNotBlank() }
@@ -474,9 +474,9 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
                                 value = (if (o in selected) selected - o else selected + o).joinToString(",")
                             }
                         }
-                        EnvValueField(value, T("As text, comma-separated"), numeric = false) { value = it }
+                        EnvValueField(value, L("As text, comma-separated"), numeric = false) { value = it }
                     }
-                    EnvVarType.NUMBER, EnvVarType.TEXT -> EnvValueField(value, T("Value"), numeric = type == EnvVarType.NUMBER) { value = it }
+                    EnvVarType.NUMBER, EnvVarType.TEXT -> EnvValueField(value, L("Value"), numeric = type == EnvVarType.NUMBER) { value = it }
                 }
             }
         },
@@ -484,7 +484,7 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
             TextButton(onClick = {
                 s.commit(e, value)
                 close()
-            }) { Text(if (e.fromContainer) T("Set for this game") else "OK") }
+            }) { Text(if (e.fromContainer) L("Set for this game") else "OK") }
         },
         dismissButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -492,9 +492,9 @@ private fun EnvVarDialog(s: DeckEnvVarsSection, e: EnvEdit) {
                     TextButton(onClick = {
                         s.removeAt(e.name, e.occ)
                         close()
-                    }) { Text(T("Remove"), color = cs.error) }
+                    }) { Text(L("Remove"), color = cs.error) }
                 }
-                TextButton(onClick = { close() }) { Text(T("Cancel")) }
+                TextButton(onClick = { close() }) { Text(L("Cancel")) }
             }
         },
     )
@@ -508,12 +508,12 @@ private fun EnvAddDialog(s: DeckEnvVarsSection) {
     val cleaned = text.trim().replace(" ", "")
     val eq = cleaned.indexOf('=')
     val name = if (eq >= 0) cleaned.substring(0, eq) else cleaned
-    val error = if (eq == 0) T("Type a name before the =.") else s.addError(name)
+    val error = if (eq == 0) L("Type a name before the =.") else s.addError(name)
     val existing = s.names()
     val candidates = KnownEnvVars.names.filter { it !in existing && (name.isEmpty() || it.contains(name, ignoreCase = true)) }
     OutlinedAlertDialog(
         onDismissRequest = { s.adding = false },
-        title = { Text(T("Add a variable")) },
+        title = { Text(L("Add a variable")) },
         text = {
             Column {
                 OutlinedTextField(
@@ -521,13 +521,13 @@ private fun EnvAddDialog(s: DeckEnvVarsSection) {
                     onValueChange = { text = it },
                     singleLine = true,
                     isError = error != null,
-                    label = { Text(T("NAME or NAME=VALUE")) },
-                    supportingText = { Text(error ?: T("Or pick a known one below. Spaces are dropped.")) },
+                    label = { Text(L("NAME or NAME=VALUE")) },
+                    supportingText = { Text(error ?: L("Or pick a known one below. Spaces are dropped.")) },
                     shape = deckShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    if (candidates.isEmpty()) T("No known variable matches.") else T("Known variables"),
+                    if (candidates.isEmpty()) L("No known variable matches.") else L("Known variables"),
                     color = cs.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
                     modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
                 )
@@ -542,9 +542,9 @@ private fun EnvAddDialog(s: DeckEnvVarsSection) {
             TextButton(
                 onClick = { s.addAndEdit(name, if (eq >= 0) cleaned.substring(eq + 1) else envDefault(name)) },
                 enabled = name.isNotEmpty() && error == null,
-            ) { Text(T("Add")) }
+            ) { Text(L("Add")) }
         },
-        dismissButton = { TextButton(onClick = { s.adding = false }) { Text(T("Cancel")) } },
+        dismissButton = { TextButton(onClick = { s.adding = false }) { Text(L("Cancel")) } },
     )
 }
 
@@ -557,17 +557,17 @@ private fun EnvRawDialog(s: DeckEnvVarsSection) {
     val malformed = text.replace('\n', ' ').split(" ").filter { it.isNotBlank() && it.indexOf('=') <= 0 }
     OutlinedAlertDialog(
         onDismissRequest = { s.rawText = false },
-        title = { Text(T("Edit as text")) },
+        title = { Text(L("Edit as text")) },
         text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                label = { Text(T("NAME=VALUE, separated by spaces")) },
+                label = { Text(L("NAME=VALUE, separated by spaces")) },
                 isError = malformed.isNotEmpty(),
                 supportingText = {
                     Text(
-                        if (malformed.isEmpty()) T("Values can't contain spaces.")
-                        else T("Ignored, needs NAME=VALUE: ") + malformed.joinToString(", ") + T(". Values can't contain spaces."),
+                        if (malformed.isEmpty()) L("Values can't contain spaces.")
+                        else L("Ignored, needs NAME=VALUE: ") + malformed.joinToString(", ") + L(". Values can't contain spaces."),
                     )
                 },
                 shape = deckShape(14.dp),
@@ -578,10 +578,10 @@ private fun EnvRawDialog(s: DeckEnvVarsSection) {
             TextButton(onClick = {
                 s.setRaw(text)
                 s.rawText = false
-                if (malformed.isNotEmpty()) Toast.makeText(context, T("Saved. Entries without NAME=VALUE do nothing."), Toast.LENGTH_SHORT).show()
+                if (malformed.isNotEmpty()) Toast.makeText(context, L("Saved. Entries without NAME=VALUE do nothing."), Toast.LENGTH_SHORT).show()
             }) { Text("OK") }
         },
-        dismissButton = { TextButton(onClick = { s.rawText = false }) { Text(T("Cancel")) } },
+        dismissButton = { TextButton(onClick = { s.rawText = false }) { Text(L("Cancel")) } },
     )
 }
 
@@ -593,7 +593,7 @@ private fun EnvValueField(value: String, label: String, numeric: Boolean, onValu
         onValueChange = { onValue(it.replace(" ", "")) },
         singleLine = true,
         label = { Text(label) },
-        supportingText = { Text(T("Spaces are dropped: variables are separated by spaces.")) },
+        supportingText = { Text(L("Spaces are dropped: variables are separated by spaces.")) },
         keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text),
         shape = deckShape(14.dp),
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.T
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -853,7 +854,7 @@ internal object SettingsRegistry {
                         if (match != null) {
                             vm.fgCaptureSelection = match
                         } else {
-                            vm.fgCaptureSelection = vm.screenSizeEntries.firstOrNull { it.equals("custom", ignoreCase = true) } ?: T("Custom")
+                            vm.fgCaptureSelection = vm.screenSizeEntries.firstOrNull { it.equals("custom", ignoreCase = true) } ?: "Custom"
                             vm.fgCaptureCustomHeight = h.toString()
                         }
                     }
@@ -1488,12 +1489,12 @@ internal object SettingsRegistry {
             confirm = { v ->
                 if (v == "1") Confirm(
                     T("Turn on Steam Deck mode?"),
-                    T("Deck mode makes the Steam client behave as it does on a Steam Deck and adds the Quick Access Menu.\n\n") +
-                        T("Known problems, found on device:\n") +
-                        T("• Games stop receiving the controller. Steam's own menus still work, but in a game the pad does nothing.\n") +
-                        T("• The client may show a Steam Client update under System that will not install. Deck mode now uses the Steam Deck beta channel to avoid it, but if it appears, do not press Apply.\n") +
-                        T("• The Quick Access Menu's performance overlay is new and not yet tried on a device.\n\n") +
-                        T("The scaling controls do the useful part without it, and the in-game drawer's FPS limit caps the frame rate. Turn Deck mode off again if a game stops responding to the controller."),
+                    L("Deck mode makes the Steam client behave as it does on a Steam Deck and adds the Quick Access Menu.\n\n") +
+                        L("Known problems, found on device:\n") +
+                        L("• Games stop receiving the controller. Steam's own menus still work, but in a game the pad does nothing.\n") +
+                        L("• The client may show a Steam Client update under System that will not install. Deck mode now uses the Steam Deck beta channel to avoid it, but if it appears, do not press Apply.\n") +
+                        L("• The Quick Access Menu's performance overlay is new and not yet tried on a device.\n\n") +
+                        L("The scaling controls do the useful part without it, and the in-game drawer's FPS limit caps the frame rate. Turn Deck mode off again if a game stops responding to the controller."),
                     T("Turn on anyway"),
                 ) else null
             },
@@ -1588,8 +1589,8 @@ internal object SettingsRegistry {
             visible = { env, values -> gameScope(env) && values("linux.appGames") == "1" }),
     )
 
-    private val LAUNCH_MODES = setOf(T("RealSteam"), T("AppSteam"), "Goldberg", T("Raw"))
-    private val RENDERERS = listOf("OpenGL", "Vulkan", T("SurfaceFlinger"))
+    private val LAUNCH_MODES = setOf("RealSteam", "AppSteam", "Goldberg", "Raw")
+    private val RENDERERS = listOf("OpenGL", "Vulkan", "SurfaceFlinger")
 
     /** A power toggle: per game it overrides the app-wide default (Settings › Performance); there is no container level. */
     private fun perfToggle(id: String, key: String, label: String, hint: String?) = SettingDef(

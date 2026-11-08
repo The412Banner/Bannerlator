@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator restarts to switch the language.</string>
     <string name="lab_22d5b60e">Which CPU cores the Steam client and the compositor drawing its interface may run on. It reaches the client and its menus only, </string>
     <string name="lab_22f20854">Automatic cloud upload on exit will be OFF for your GOG library games. Their saves won\'t be pushed to GOG cloud when a game closes — you\'ll need to upload them yourself from the GOG Save Manager tab or the game\'s detail page. Continue?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Values can\'t contain spaces.</string>
     <string name="lab_235fa0f3">Stop at startup</string>
     <string name="lab_2379f827">Cast to a TV</string>
@@ -1536,7 +1535,6 @@
     <string name="lab_e9e73eeb">Touchscreen sends real touches to the game.</string>
     <string name="lab_ea08e43f">Linux runtime and every list</string>
     <string name="lab_ea354143">A faint button at the top right that opens the quick menu by touch. Back, the Menu button or a four-finger tap work without it.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">How it starts</string>
     <string name="lab_ea83f479">• The client may show a Steam Client update under System that will not install. Deck mode now uses the Steam Deck beta channel to avoid it, but if it appears, do not press Apply.\n</string>
     <string name="lab_ea954889">Continue</string>
@@ -1658,7 +1656,6 @@
     <string name="lab_fbd4f98b">GPU name games see</string>
     <string name="lab_fbf2e44f">The on-screen FPS and temperature readout.</string>
     <string name="lab_fd1310b6">Button X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Colour</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (driver tracing)</string>

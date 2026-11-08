@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+
+## 2026-11-08 — 🌐 Lab languages (feat/lab-languages, in progress)
+
+**Why:** user: "lab screens first with your drafts, go, droiddeck is my project so go ahead" + "use what will work best and take your time". Bannerlator was English only (values/strings.xml 1,358 entries, no translations; ~1,100+ hardcoded UI texts).
+
+**How (works on every Android version and activity; targetSdk is 28, so the system per-app language is not relied on):**
+- `ui/simple/LabText.kt`: `LabLang` (picked language in prefs `lab_language`, "" = phone's; own `Resources` via createConfigurationContext; RTL flag), `L("English", args…)` looks up `lab_<crc32 of the English>` in the picked language, English fallback; `T("…")` marks English translated where it is drawn. Language change = confirm + app restart (lists built at start come back in the new language).
+- Appearance › Language: 34 entries (System default, English, DroidDeck's 32: ar bg cs da de el es es-419 fi fr hi hu in it ja ko ms nb nl pl pt pt-PT ro ru sv th tr uk vi zh-CN zh-HK zh-TW), each named in its own language. Lab shell + in-game overlay RTL for Arabic. Options sheet scrolls.
+- `tools/i18n/lab_strings.py`: extract (values/strings_lab.xml from every L()/T() call), check, fill LANG FILE (JSON english→translation; placeholder check), missing LANG.
+- Pass A (e7b0dcaf): Lab's own screens wrapped (scripted + reviewed; comparisons on translated text fixed: "More" heading, Contents source sort) → 438 strings. Pass B (settings names/descriptions, in-game page rows) next.
+
+**Built:** ff8cf136 (core), e7b0dcaf (pass A). CI 42441793936 running. Main build of the Lab merge a10bc058: CI 42440618178 green ×4.
+**Resume:** worktree /root/src/Bannerlator-wt/lab-languages (sparse: java, res, tools, .github). DroidDeck strings downloaded to /root/.claude/jobs/9a3a037c/tmp/dd-strings (values-*/strings.xml). Next: translations (DD exact matches + drafts), build, stage, ask.
+
 ## 2026-11-08 — 🔁 Wayland "System" on Mali rebased onto main with the Lab UI (`fix/wayland-mali-system` b9c9c808, CI running, NOT device-tested, NOT merged)
 - **User:** "can you rebuild off main since we just merged the new lab ui work?"
 - **Done:** backup ref refs/backup/20261108/fix-wayland-mali-system-before-rebase → e857f780 (pushed); rebased onto main 38483dd5 (Lab UI merge a10bc058 included), clean, patch identical (same 3 files, +20/-1); pushed with --force-with-lease, origin == b9c9c808.

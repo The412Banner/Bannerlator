@@ -1,5 +1,10 @@
 package com.winlator.star.store
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import com.winlator.star.ui.simple.keepInViewWhen
+import com.winlator.star.ui.simple.simpleTap
+import com.winlator.star.ui.simple.tabFill
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -149,6 +154,8 @@ class SteamSaveManagerActivity : ComponentActivity() {
 internal fun SaveManagerScreen(
     focusAppId: Int = 0,
     onBack: (() -> Unit)? = null,
+    /** Lab: the Lab title and a tab row (L2/R2) in place of the header and side rail, over the Lab wallpaper. */
+    lab: Boolean = false,
 ) {
     val context = LocalContext.current
     // Signed-in gate (a saved Steam account). Read once; SteamPrefs.init is idempotent + cheap.
@@ -399,10 +406,35 @@ internal fun SaveManagerScreen(
     // Root Box so the status bar can float as an overlay over whichever tab is showing (matches how
     // the store screens place UninstallResultBar at their outermost container).
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(modifier = Modifier.fillMaxSize().background(if (lab) Color.Transparent else MaterialTheme.colorScheme.background)) {
+        if (lab) {
+            // Lab: the page title as on the other Lab pages, the Steam pill beside it, then the sections as tabs.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 4.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("MANAGE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+                    Text("Save Manager", color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = com.winlator.star.ui.deck.SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
+                }
+                if (signedIn) SteamStatusPill(status = steamStatus, onReconnect = { SteamRepository.getInstance().reconnectNow() })
+            }
+            LabSaveTabs(selectedTab, needSync) { selectedTab = it }
+            // L2/R2 step through the tabs from anywhere on the page (through the shell).
+            val deckActions = com.winlator.star.ui.deck.LocalDeckActions.current
+            DisposableEffect(deckActions) {
+                val step: (Int) -> Unit = { d ->
+                    val i = LAB_SAVE_TABS.indexOfFirst { it.first == selectedTab }.coerceAtLeast(0)
+                    selectedTab = LAB_SAVE_TABS[(i + d + LAB_SAVE_TABS.size) % LAB_SAVE_TABS.size].first
+                }
+                deckActions.subTab.value = step
+                deckActions.subTabLabel.value = "Tab"
+                onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
+            }
+        }
         // Header bar — mirrors the Steam Library header idiom (back + title).
         // The Deck shell's landscape frame shows the title and the connection pill itself.
-        if (!com.winlator.star.ui.LocalHostedInDeck.current) Row(
+        if (!lab && !com.winlator.star.ui.LocalHostedInDeck.current) Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -453,7 +485,7 @@ internal fun SaveManagerScreen(
         }
 
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            CollapsibleRail(
+            if (!lab) CollapsibleRail(
                 state = railState,
                 title = "Save Manager",
                 sections = listOf(
@@ -471,10 +503,18 @@ internal fun SaveManagerScreen(
             )
 
             // ── Content: full height beside the rail ─────────────────────────────────────────────
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight().then(
+                    if (lab) Modifier
+                        .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                        .background(com.winlator.star.ui.simple.SimplePanelBrush, com.winlator.star.ui.simple.SimpleShape)
+                        .border(1.dp, com.winlator.star.ui.simple.SimpleLine, com.winlator.star.ui.simple.SimpleShape)
+                    else Modifier
+                ),
+            ) {
                 // Collapsed rail hides the section labels, so surface the active one over the content
                 // (matches ContainerDetailScreen) — the user never loses their place.
-                if (railState.collapsed) {
+                if (!lab && railState.collapsed) {
                     Text(
                         activeSection,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -646,6 +686,47 @@ internal fun SaveManagerScreen(
 // behavior). Now an inline rail section (was a cog dialog). State seeds from the shared
 // "save_manager_prefs". Turning a toggle OFF is gated behind a warning confirm (write only on
 // Continue; Cancel leaves it ON); turning ON writes through then shows a brief info dialog.
+/** Lab's Save Manager tabs, in the rail's order: (selectedTab value, label, icon). */
+private val LAB_SAVE_TABS = listOf(
+    Triple(0, "Steam", Icons.Filled.VideogameAsset),
+    Triple(1, "Custom", Icons.Filled.Folder),
+    Triple(3, "Epic", Icons.Filled.Cloud),
+    Triple(4, "GOG", Icons.Filled.Storefront),
+    Triple(2, "Settings", Icons.Filled.Settings),
+)
+
+@Composable
+private fun LabSaveTabs(selected: Int, needSync: Int, onPick: (Int) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 12.dp),
+    ) {
+        com.winlator.star.ui.simple.SimpleGlyph("L2")
+        LAB_SAVE_TABS.forEach { (id, label, icon) ->
+            val on = id == selected
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .tabFill(on, accent)
+                    .simpleTap { onPick(id) }
+                    .keepInViewWhen(on)
+                    .padding(horizontal = 13.dp, vertical = 8.dp),
+            ) {
+                Icon(icon, contentDescription = null, tint = if (on) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(label, color = if (on) com.winlator.star.ui.simple.SimpleStrong else com.winlator.star.ui.simple.SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                if (id == 0 && needSync > 0) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("$needSync", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        com.winlator.star.ui.simple.SimpleGlyph("R2")
+    }
+}
+
 @Composable
 private fun SaveManagerSettingsSection(modifier: Modifier = Modifier) {
     val context = LocalContext.current

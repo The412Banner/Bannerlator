@@ -219,7 +219,7 @@ internal fun NavGraphBuilder.simpleRoutes(
     }
     composable(SimpleRoutes.TOOLS) { SimpleToolsPage(onNavigate = open, onBack = back, onMyAccount = onMyAccount, onAbout = onAbout) }
     composable(SimpleRoutes.FILES) { FileManagerScreen() }
-    composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back) }
+    composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back, lab = AppThemeState.simpleLook) }
     composable(SimpleRoutes.LOGS) { LogManagerScreen(onClose = back) }
     composable(SimpleRoutes.CONTAINERS) { SimpleContainersPage(onNavigate = open, onBack = back) }
     composable(SimpleRoutes.COMPONENTS) { SimpleComponentsPage(onNavigate = open, onBack = back) }

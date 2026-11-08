@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔔 onboarding: "Allow notifications" did nothing → opens notification settings (89f71daa; CI 42520568049 running)
+- **User test of 976eca39 (screenshot 153020, portrait):** orange Carbon & Ember setup + step circles OK; tapping "Allow notifications" does nothing.
+- **Cause (logcat 15:30:14–15 EST, Elite SDK 36):** each tap starts GrantPermissionsActivity, which closes at once unseen; POST_NOTIFICATIONS stays granted=false. The app targets SDK 28, and Android 13+ only prompts apps targeting 33+. Old code (on main), not from this branch.
+- **Fix:** when the prompt can't show, the button opens the app's notification settings page (fallback: app details); the step state uses areNotificationsEnabled() and is re-read on return.
+- **Same cause elsewhere, NOT changed:** MainActivity (startup + a second request) and SteamMainActivity also call requestPermissions(POST_NOTIFICATIONS) → no prompt on Android 13+.
+- **Next:** green → stage standard APK → ASK install (update over the test copy; for a clean first run, uninstall first) → user retests the button.
+
 ## 2026-11-08 — ✅ onboarding 976eca39 STANDARD installed fresh on the Elite 15:29:52 EST (user: "yes install it"; NOT device-tested yet)
 - pm install Success; installed base.apk sha256 **a511f35a…** == staged; first install == last update time, no saved settings yet; crash buffer empty. The user's main app (com.tencent.ig) untouched.
 - **Next:** user opens it: orange setup from the first screen, portrait step circles, "Lab is a full-screen launcher…", app opens in Lab; landscape panel still fine. Then check winlator_theme.xml (ui_style deck, simple_home true, preset_index 9) + crash log.

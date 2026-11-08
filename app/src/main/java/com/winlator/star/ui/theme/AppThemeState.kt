@@ -118,6 +118,9 @@ object AppThemeState {
                else themePresets.getOrElse(index) { themePresets.first() }.accentDim
     }
 
+    /** The theme a fresh install starts with (updates keep theirs; AMOLED when none was ever picked). */
+    private const val NEW_INSTALL_PRESET = "Carbon & Ember"
+
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
 
@@ -131,6 +134,19 @@ object AppThemeState {
             themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
         }
 
+        // No saved style yet: a fresh install starts in Lab with Carbon & Ember; an update keeps Classic and its theme.
+        if (!themePrefs.contains("ui_style")) {
+            val fresh = runCatching {
+                val pi = context.packageManager.getPackageInfo(context.packageName, 0)
+                pi.firstInstallTime == pi.lastUpdateTime
+            }.getOrDefault(false)
+            val edit = themePrefs.edit()
+                .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
+                .putBoolean("simple_home", fresh)
+            val ember = themePresets.indexOfFirst { it.name == NEW_INSTALL_PRESET }
+            if (fresh && ember >= 0 && !themePrefs.contains("preset_index")) edit.putInt("preset_index", ember)
+            edit.apply()
+        }
         _presetIndex.value = themePrefs.getInt("preset_index", 1).coerceIn(0, themePresets.size - 1)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF0055FF).toArgb())
         _customAccent.value = Color(savedAccent)
@@ -141,17 +157,6 @@ object AppThemeState {
         _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
         _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
         _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
-        // No saved style yet: a fresh install starts in Simple; an update keeps Classic, the style it always had.
-        if (!themePrefs.contains("ui_style")) {
-            val fresh = runCatching {
-                val pi = context.packageManager.getPackageInfo(context.packageName, 0)
-                pi.firstInstallTime == pi.lastUpdateTime
-            }.getOrDefault(false)
-            themePrefs.edit()
-                .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
-                .putBoolean("simple_home", fresh)
-                .apply()
-        }
         _uiStyle.value = if (themePrefs.getString("ui_style", UI_STYLE_CLASSIC) == UI_STYLE_DECK) UI_STYLE_DECK
                          else UI_STYLE_CLASSIC
         _deckXmbHome.value = _uiStyle.value == UI_STYLE_DECK && themePrefs.getBoolean("deck_xmb_home", false)

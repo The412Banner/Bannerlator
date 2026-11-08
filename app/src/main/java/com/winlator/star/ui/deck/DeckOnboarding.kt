@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -95,6 +96,7 @@ private val ONBOARDING_STEPS = listOf(
     "Notifications",
     "Make it yours",
     "Installing the base system",
+    "Your first container",
     "Sign in to your stores (optional)",
     "You're ready",
 )
@@ -118,8 +120,22 @@ private fun filesGranted(context: Context): Boolean =
     else ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
 
 private fun notificationsGranted(context: Context): Boolean =
-    Build.VERSION.SDK_INT < 33 ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+/**
+ * Android 13+ shows its notification prompt only to apps targeting 33 or higher; for this app (target 28) a
+ * request returns at once with no prompt. Then the app's notification settings page is opened instead.
+ */
+private fun notificationPromptWorks(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= 33 && context.applicationInfo.targetSdkVersion >= 33
+
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+    }.recoverCatching {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:${context.packageName}")))
+    }
+}
 
 /** Sign-in state of the five stores, read the same way each store's own screen reads it. */
 private fun storeSignIns(context: Context): Map<Screen, Boolean> = mapOf(
@@ -165,6 +181,9 @@ private fun DeckOnboardingContent(
     val compact = deckCompact()
     var step by rememberSaveable { mutableIntStateOf(0) }
     val last = ONBOARDING_STEPS.size - 1
+    val firstContainer = remember { FirstContainerSetup(context.applicationContext as android.app.Application) }
+    val setupScope = rememberCoroutineScope()
+    val containerBusy = step == 5 && firstContainer.busy
 
     // Permission and sign-in state is re-read whenever the app comes back (from Android settings, a store login).
     var resumeTick by remember { mutableIntStateOf(0) }
@@ -207,11 +226,12 @@ private fun DeckOnboardingContent(
         when {
             step == 4 && installing && installDone -> { onInstallContinue(); step++ }
             step == 4 && !installReady -> Unit
+            containerBusy -> Unit
             step < last -> step++
             else -> finish(false)
         }
     }
-    val back: () -> Unit = { if (step > 0) step-- }
+    val back: () -> Unit = { if (step > 0 && !containerBusy) step-- }
     BackHandler(enabled = step > 0) { back() }
 
     val continueRequester = remember { FocusRequester() }
@@ -232,18 +252,21 @@ private fun DeckOnboardingContent(
             installReady = installReady,
             onRequestFiles = requestFiles,
             onRequestNotifications = {
-                if (Build.VERSION.SDK_INT >= 33) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (notificationPromptWorks(context)) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else openNotificationSettings(context)
             },
             onLaunchStore = onLaunchStore,
             onNext = next,
             onFinish = finish,
+            firstContainer = firstContainer,
+            setupScope = setupScope,
         )
         Spacer(Modifier.height(24.dp))
         NavButtons(
             step = step,
             last = last,
             compact = compact,
-            continueEnabled = step != 4 || installReady,
+            continueEnabled = (step != 4 || installReady) && !containerBusy,
             continueRequester = continueRequester,
             onBack = back,
             onSkip = { finish(false) },
@@ -269,14 +292,9 @@ private fun DeckOnboardingContent(
                     Spacer(Modifier.width(12.dp))
                     Text("Set up Bannerlator", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                 }
-                Spacer(Modifier.height(14.dp))
-                LinearProgressIndicator(
-                    progress = { (step + 1) / ONBOARDING_STEPS.size.toFloat() },
-                    modifier = Modifier.fillMaxWidth().clip(deckShape(3.dp)),
-                    color = cs.primary,
-                    trackColor = cs.surfaceVariant,
-                )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(18.dp))
+                StepRow(step)
+                Spacer(Modifier.height(22.dp))
                 body()
             }
         } else {
@@ -291,6 +309,46 @@ private fun DeckOnboardingContent(
                         .widthIn(max = 1100.dp),
                 ) { body() }
             }
+        }
+    }
+}
+
+/** One step's circle: a check once done, filled with the accent while current, else its number. */
+@Composable
+private fun StepCircle(i: Int, step: Int) {
+    val cs = MaterialTheme.colorScheme
+    val current = i == step
+    val done = i < step
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(28.dp)
+            .then(
+                if (current) Modifier.background(cs.primary, CircleShape)
+                else Modifier.border(1.5.dp, if (done) cs.primary else cs.outline, CircleShape)
+            ),
+    ) {
+        if (done) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
+        else Text("${i + 1}", color = if (current) cs.onPrimary else cs.onSurfaceVariant, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+    }
+}
+
+/** The step list on a narrow screen: the same circles in one row, joined by lines that fill in as steps are done. */
+@Composable
+private fun StepRow(step: Int) {
+    val cs = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        ONBOARDING_STEPS.indices.forEach { i ->
+            if (i > 0) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .height(2.dp)
+                        .background(if (i <= step) cs.primary else cs.outline.copy(alpha = 0.5f), deckShape(1.dp))
+                )
+            }
+            StepCircle(i, step)
         }
     }
 }
@@ -311,7 +369,6 @@ private fun StepPanel(step: Int, modifier: Modifier) {
         Spacer(Modifier.height(20.dp))
         ONBOARDING_STEPS.forEachIndexed { i, label ->
             val current = i == step
-            val done = i < step
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -322,18 +379,7 @@ private fun StepPanel(step: Int, modifier: Modifier) {
                     .heightIn(min = 48.dp)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .then(
-                            if (current) Modifier.background(cs.primary, CircleShape)
-                            else Modifier.border(1.5.dp, if (done) cs.primary else cs.outline, CircleShape)
-                        ),
-                ) {
-                    if (done) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
-                    else Text("${i + 1}", color = if (current) cs.onPrimary else cs.onSurfaceVariant, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                }
+                StepCircle(i, step)
                 Spacer(Modifier.width(14.dp))
                 Text(
                     text = label,
@@ -385,6 +431,8 @@ private fun StepBody(
     onLaunchStore: (Screen) -> Unit,
     onNext: () -> Unit,
     onFinish: (Boolean) -> Unit,
+    firstContainer: FirstContainerSetup,
+    setupScope: kotlinx.coroutines.CoroutineScope,
 ) {
     val cs = MaterialTheme.colorScheme
     Text(
@@ -412,7 +460,8 @@ private fun StepBody(
             2 -> "Get notified about finished downloads, unpacking progress, Steam chat and app updates."
             3 -> "Pick a colour theme, the interface style and how big things are. All of it can be changed later in Settings › Appearance."
             4 -> "Wait here if it isn't finished yet. You can't start games until this completes."
-            5 -> "Bring in games you own. Skip if you only play your own installers."
+            5 -> "Downloads Proton and the parts games need, then creates a container to install games into."
+            6 -> "Bring in games you own. Skip if you only play your own installers."
             else -> "Add a game from a store, or install one from a file with \"Add a game\"."
         },
         color = cs.onSurfaceVariant,
@@ -424,7 +473,7 @@ private fun StepBody(
 
     when (step) {
         0 -> DeckCard {
-            DeckRow(title = "Get started", subtitle = "Seven short steps; every one of them can be skipped.", trailing = {
+            DeckRow(title = "Get started", subtitle = "Eight short steps; every one of them can be skipped.", trailing = {
                 DeckButton("Get started", null, onNext)
             })
         }
@@ -472,7 +521,7 @@ private fun StepBody(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Interface style", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Text(
-                        "Simple is a full-screen launcher for controllers; Deck has tabs across the top. Classic is the drawer " +
+                        "Lab is a full-screen launcher for controllers; Deck has tabs across the top. Classic is the drawer " +
                             "and top bar; choosing it closes this setup and switches straight away.",
                         color = cs.onSurfaceVariant,
                         fontSize = 13.5.sp,
@@ -523,7 +572,8 @@ private fun StepBody(
                 trackColor = cs.surfaceVariant,
             )
         }
-        5 -> {
+        5 -> FirstContainerStep(firstContainer, setupScope)
+        6 -> {
             val showStores by AppThemeState.showStores.collectAsState()
             DeckCard {
                 listOf(Screen.Steam, Screen.Epic, Screen.Gog, Screen.Amazon, Screen.Xbox).forEachIndexed { i, store ->

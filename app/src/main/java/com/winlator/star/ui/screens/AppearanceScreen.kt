@@ -88,8 +88,8 @@ fun AppearanceScreen() {
             text = "Classic keeps the side menu. Deck is a console-style layout with tabs across the top, " +
                 "made for controllers. XMB is Deck with a full-screen XMB home: the tabs float over every page " +
                 "(switch them with L1/R1 or by touch), and Up from a game shows your stores, Downloads, Friends, " +
-                "Community configs and Add game. Simple is a full-screen launcher for controllers with your game " +
-                "art as the background, in one of three layouts. Your theme and accent apply to all four.",
+                "Community configs and Add game. Lab is a full-screen launcher for controllers with your game " +
+                "art as the background. Your theme and accent apply to all four.",
             color = OnSurfaceVariant,
             fontSize = 12.sp,
         )

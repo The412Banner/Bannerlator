@@ -1,5 +1,55 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ onboarding 87150656 device-tested on the Elite: the container step works (user: "looks perfect")
+- **Created:** xuser-1/.container "Container-1".
+  - wineVersion Proton-11.0-11.9-arm64ec-16 (DroidDeck Proton 11.9 arm64ec)
+  - DXVK version=2.4.1-1-gplasync-pre-reg-0, vkd3dVersion=3.1-0
+  - fexcoreVersion FEXCore-2611-unix-0, emulator fexcore, box64Version 0.3.7 (WOWBox64 default)
+  - graphicsDriverConfig version=Banners-AIO (all SoC) v27.0.0-20261108-r4 (the newest AIO at the time), graphicsDriver wrapper-original (editor default)
+  - cpuList = all cores
+- **Installed in files/contents:** DXVK, FEXCore, Proton, VKD3D and the adrenotools driver. Crash buffer empty since 16:10 EST. Saved settings: ui_style deck, simple_home true, preset_index 9, ui_scale 0.8.
+- **Not tested:** launching a game in that container; the x86_64 Proton / Box64 path; a phone without an Adreno GPU.
+
+## 2026-11-08 — ✅ onboarding 87150656 STANDARD installed fresh on the Elite 16:10:38 EST (user: "install it when it's done" + "uninstall it first, fresh install"; NOT device-tested yet)
+- CI 42523039270 green ×4 on the first try (44 success / 15 skipped). APK sha256 51343061… == staged == installed; signer a40da80a…; the dex has the new step.
+- The old test copy was uninstalled first, after checking it held only the base system (933 MB, no containers, games or components). The user's main app is untouched. The crash buffer is empty.
+- **Next:** the user runs setup through step 6 → check the created container's settings and the installed components → crash log.
+
+## 2026-11-08 — 📦 onboarding: "Your first container" step (87150656; CI 42523039270 running, NOT device-tested)
+- **Why (user: "can we also add a step to automatic download and create a proton container?"):** a new setup step with lists and recommended picks. User decisions: Proton list shows all, latest DroidDeck Proton arm64ec recommended; FEXCore 2611-unix (list = -unix builds); DXVK + VKD3D regular builds, dxvk-gplasync 2.4.1 pre-reg and the latest stable vkd3d-proton recommended; all CPU cores; latest Banners-AIO recommended with the Banners-Turnip builds for the detected Adreno, Android builds only (no -Linux / -Wayland).
+- **How:** new ui/deck/DeckFirstContainer.kt (FirstContainerSetup + FirstContainerStep), step 6 of 8 after the base-system install.
+  - Lists come from contents.json (parsed into ContentProfile rows) and DriverSources "Banners-Turnip". The GPU is read from GPUInformation.getRenderer(null, null) under graphicsProbeMutex.
+  - Variants by GPU: 8xx → AIO + A8xx; 710–722 → AIO + 710-720-Test; Samsung 740 → AIO + 8G2-OneUI + Standard; other Adreno → AIO + Standard; other GPUs → no driver row.
+  - x86_64 Proton swaps the FEXCore row for Box64 (built-in first).
+  - Create checks the base system is valid, then installs the picks one at a time through startContentDownload / ContentDownloadRegistry (installs share files/tmp/contents). The installed profile is found by before/after diff.
+  - The driver is installed with RemoteDriverRepository.downloadEntry + AdrenotoolsManager.installDriver; its id comes from meta.json "name" when already installed.
+  - The container is made by ContainerDetailViewModel in create mode (init(-1) → onWineVersionChanged → dxWrapperConfig version/vkd3dVersion, selectedFEXCoreVersion or selectedBox64Version, graphicsDriverConfig version=<id>, cpuList all → confirm), the same path as "New container".
+- **Not verified yet:** whether every catalog row's installed profile is found by the diff; whether the editor's create-mode defaults keep FEXCore as the emulator on arm64ec.
+- **Next:** green → stage standard APK → ASK install (fresh: uninstall the test copy first) → user runs setup with network → check the container in the editor + one launch.
+
+## 2026-11-08 — ✅ onboarding 89f71daa device-tested on the Elite: notifications button works (user: "notifications fix works")
+- **Build:** CI 42520568049 green ×4. The user installed the standard APK fresh themselves (first install == last update 15:43:24 EST); installed base.apk sha256 7fdd323b… == staged.
+- **Proof:** POST_NOTIFICATIONS granted=true (USER_SET) after the button → settings page → back; crash buffer empty since 15:29 EST. Earlier screenshot 153020 (976eca39) showed the orange Carbon & Ember setup at step 3, before the theme step, and the portrait step circles. Saved settings on the fresh install: ui_style=deck, simple_home=true, preset_index=9 (Carbon & Ember).
+- **Not seen on the device yet:** the "Lab is a full-screen launcher…" text, the landscape side panel on this build.
+- **Next:** the "Create your first container" setup step (decisions in the entry below), same branch.
+
+## 2026-11-08 — 🔔 onboarding: "Allow notifications" did nothing → opens notification settings (89f71daa; CI 42520568049 running)
+- **User test of 976eca39 (screenshot 153020, portrait):** orange Carbon & Ember setup + step circles OK; tapping "Allow notifications" does nothing.
+- **Cause (logcat 15:30:14–15 EST, Elite SDK 36):** each tap starts GrantPermissionsActivity, which closes at once unseen; POST_NOTIFICATIONS stays granted=false. The app targets SDK 28, and Android 13+ only prompts apps targeting 33+. Old code (on main), not from this branch.
+- **Fix:** when the prompt can't show, the button opens the app's notification settings page (fallback: app details); the step state uses areNotificationsEnabled() and is re-read on return.
+- **Same cause elsewhere, NOT changed:** MainActivity (startup + a second request) and SteamMainActivity also call requestPermissions(POST_NOTIFICATIONS) → no prompt on Android 13+.
+- **Next:** green → stage standard APK → ASK install (update over the test copy; for a clean first run, uninstall first) → user retests the button.
+
+## 2026-11-08 — ✅ onboarding 976eca39 STANDARD installed fresh on the Elite 15:29:52 EST (user: "yes install it"; NOT device-tested yet)
+- pm install Success; installed base.apk sha256 **a511f35a…** == staged; first install == last update time, no saved settings yet; crash buffer empty. The user's main app (com.tencent.ig) untouched.
+- **Next:** user opens it: orange setup from the first screen, portrait step circles, "Lab is a full-screen launcher…", app opens in Lab; landscape panel still fine. Then check winlator_theme.xml (ui_style deck, simple_home true, preset_index 9) + crash log.
+
+## 2026-11-08 — 🎨 fix/onboarding-lab-ember: portrait step circles, Lab wording, Carbon & Ember for new installs (976eca39; CI running, NOT device-tested)
+- **Why (user, after a fresh standard install on the Elite, screenshots 151144 portrait / 151156 landscape):** portrait setup has no step list like landscape's side panel; new installs should start on Carbon & Ember; the setup still calls Lab "Simple". The user confirmed main already starts new installs in Lab and keeps updaters' style (AppThemeState, since 4740062a; not in any release yet).
+- **Changes:** DeckOnboarding: portrait shows the 7 steps as a row of circles (check = done, filled = current, joining lines fill in) instead of the progress bar (no label under them: the page heading already names the step); StepCircle shared with the landscape panel. "Simple" → "Lab" in the setup's interface-style text and in Classic Appearance (dropped "in one of three layouts"). AppThemeState.init: the fresh-install block now runs before the theme is read and also saves preset_index = Carbon & Ember (by name) when fresh and no theme saved; updates keep theirs (AMOLED default).
+- **CI:** build-artifacts 42519487700 (headSha 976eca39) green ×4 first try (44 success / 15 skipped = cached parts). STAGED /sdcard/Download/Bannerlator-onboarding-976eca39-standard.apk sha256 a511f35a… (host == sdcard == root), revision 976eca39, signer a40da80a…, dex has the new Lab texts + "Carbon & Ember", no "Simple is a full-screen launcher". The test copy com.winlator.banner is no longer installed (user removed it) → a plain install is a true fresh install. NOT installed — asked.
+- **Next:** green → stage the STANDARD APK (com.winlator.banner) → ASK install; the test copy on the Elite must be uninstalled first for a true fresh install (its prefs already hold preset_index 9) → user checks portrait + landscape setup and the orange theme → merge on the user's go.
+
 ## 2026-11-08 — 🧩 Mali build 4: native BCn on an Arm driver that has it (fix/wayland-mali-ahb-blit bdc3b79d; CI green ×4, staged, posted, NOT device-tested)
 - **Tester (gtaforever00, 13:07 EST):** kirimu's driver has native BCn through a shim; on Winlator he always tests with BCn emulation off; asked for a way to turn the unpacking off.
 - **User:** "yes do both, post the tip and build 4".

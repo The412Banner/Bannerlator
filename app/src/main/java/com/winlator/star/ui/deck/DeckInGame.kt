@@ -129,8 +129,13 @@ import kotlin.math.roundToInt
 fun setupDeckInGame(view: ComposeView) {
     view.setContent {
         WinlatorTheme {
-            DeckTheme {
-                DeckInGameOverlay()
+            // Lab: the in-game panels follow Lab's Dark / Light look, as the app does.
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+            val base = MaterialTheme.colorScheme
+            MaterialTheme(colorScheme = if (lab && com.winlator.star.ui.theme.AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(base) else base, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+                DeckTheme {
+                    DeckInGameOverlay()
+                }
             }
         }
     }
@@ -268,8 +273,8 @@ private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
     Column(
         modifier = modifier
             .shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xF5171A23), Color(0xF70E1016))))
-            .border(1.dp, Color(0x1AFFFFFF))
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(com.winlator.star.ui.simple.SimplePanelTop.copy(alpha = 0.97f), com.winlator.star.ui.simple.SimplePanelBottom.copy(alpha = 0.98f))))
+            .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
             .focusProperties { canFocus = false }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
             .padding(top = 18.dp),
@@ -277,7 +282,7 @@ private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             Text(
                 title.ifEmpty { "In game" },
-                color = Color.White,
+                color = com.winlator.star.ui.simple.SimpleStrong,
                 fontFamily = SoraFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
@@ -299,7 +304,8 @@ private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0x99090B0F))
+                .background(com.winlator.star.ui.simple.SimpleCard)
+                .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             IgButton("Game menu", Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")

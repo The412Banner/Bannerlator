@@ -6,6 +6,9 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -45,6 +48,49 @@ internal fun OutlinedAlertDialog(
     // XMB glow pages: the stock container is replaced by a frosted panel over its own glow (see xmbPanel). A dialog that asks
     // for a colour of its own keeps it.
     val glass = xmbOnGlow() && containerColor == AlertDialogDefaults.containerColor
+    // Lab: square Lab corners and line, Lab's title font, Lab's focus outline on the cards and buttons inside.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    if (lab) {
+        val accent = MaterialTheme.colorScheme.primary
+        val labShape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+        val ring: @Composable (@Composable () -> Unit) -> Unit = { slot ->
+            var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .onFocusChanged { focused = it.hasFocus }
+                    .border(2.dp, if (focused) accent else Color.Transparent, labShape),
+            ) { slot() }
+        }
+        val labIndication = androidx.compose.runtime.remember(accent) { com.winlator.star.ui.simple.LabFocusIndication(accent) }
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            confirmButton = {
+                DeckDialogBars()
+                ring { DeckDialogScaled(confirmButton) }
+            },
+            modifier = modifier.border(1.dp, com.winlator.star.ui.simple.SimpleLine, labShape),
+            dismissButton = dismissButton?.let { { ring { DeckDialogScaled(it) } } },
+            icon = icon?.let { { DeckDialogScaled(it) } },
+            title = title?.let {
+                {
+                    androidx.compose.material3.ProvideTextStyle(
+                        androidx.compose.material3.LocalTextStyle.current.copy(fontFamily = com.winlator.star.ui.deck.SoraFamily, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    ) { DeckDialogScaled(it) }
+                }
+            },
+            text = text?.let {
+                { androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.LocalIndication provides labIndication) { DeckDialogScaled(it) } }
+            },
+            shape = labShape,
+            containerColor = if (containerColor == AlertDialogDefaults.containerColor) MaterialTheme.colorScheme.surface else containerColor,
+            iconContentColor = iconContentColor,
+            titleContentColor = titleContentColor,
+            textContentColor = textContentColor,
+            tonalElevation = tonalElevation,
+            properties = properties,
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {

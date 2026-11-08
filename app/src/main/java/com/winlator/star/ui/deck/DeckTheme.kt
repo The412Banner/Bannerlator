@@ -138,6 +138,8 @@ internal fun Modifier.deckFocusRing(
     shape: Shape,
     scaleTo: Float = 1.05f,
     onFocused: (() -> Unit)? = null,
+    /** On an accent-filled control: Lab draws a contrasting ring (an accent one would not show). */
+    onAccent: Boolean = false,
 ): Modifier {
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused) scaleTo else 1f, label = "deckFocusScale")
@@ -151,7 +153,9 @@ internal fun Modifier.deckFocusRing(
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .then(
             // Simple: a flat accent tint, no glow. Its shadow shows through the see-through Simple panels as a dark band.
-            if (focused && com.winlator.star.ui.theme.AppThemeState.simpleLook) Modifier
+            if (focused && com.winlator.star.ui.theme.AppThemeState.simpleLook && onAccent) Modifier
+                .border(3.dp, com.winlator.star.ui.simple.SimpleStrong, shape)
+            else if (focused && com.winlator.star.ui.theme.AppThemeState.simpleLook) Modifier
                 .background(accent.copy(alpha = 0.16f), shape)
                 .border(2.dp, accent, shape)
             else if (focused) Modifier

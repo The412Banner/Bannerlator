@@ -1,5 +1,7 @@
 package com.winlator.star.ui.deck
 
+import com.winlator.star.ui.simple.simpleRowFocus
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -239,8 +241,13 @@ internal fun IgRow(
             }
         }
     }
+    // Lab: the row lights up (eased) while its control has the controller, as Lab's menu rows do.
+    var within by remember { mutableStateOf(false) }
+    val rowFocus = if (com.winlator.star.ui.theme.AppThemeState.simpleLook)
+        Modifier.onFocusChanged { within = it.hasFocus }.simpleRowFocus(within, true)
+    else Modifier
     if (compact || control == null) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
+        Column(Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = 18.dp, vertical = 14.dp)) {
             text(Modifier.fillMaxWidth())
             if (control != null) {
                 Spacer(Modifier.height(10.dp))
@@ -250,7 +257,7 @@ internal fun IgRow(
     } else {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
             text(Modifier.weight(1f))
             Spacer(Modifier.width(16.dp))
@@ -281,7 +288,8 @@ internal fun <T> IgChips(
         options.forEach { (v, label) ->
             val sel = v == selected
             val on = enabled && isEnabled(v)
-            val shape = RoundedCornerShape(50)
+            // Lab: square chips like the rest of Lab; elsewhere pills.
+            val shape = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) deckShape(4.dp) else RoundedCornerShape(50)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -393,7 +401,7 @@ internal fun IgButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally),
         modifier = modifier
-            .deckFocusRing(shape, scaleTo = 1.04f)
+            .deckFocusRing(shape, scaleTo = 1.04f, onAccent = primary)
             .clip(shape)
             .background(if (primary) cs.primary else cs.surfaceContainerHigh.copy(alpha = 0.85f))
             .then(if (primary) Modifier else Modifier.border(1.dp, if (danger) cs.error.copy(alpha = 0.7f) else deckLine().copy(alpha = 0.5f), shape))

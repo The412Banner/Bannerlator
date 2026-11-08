@@ -11039,7 +11039,7 @@ internal fun MenuOptionCard(
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 4.dp else 10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {

@@ -1,5 +1,7 @@
 package com.winlator.star.ui.simple
 
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.IndicationInstance
 import androidx.compose.foundation.LocalIndication
@@ -106,4 +108,33 @@ internal fun Modifier.keepInViewWhen(on: Boolean): Modifier {
     val req = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     androidx.compose.runtime.LaunchedEffect(on) { if (on) runCatching { req.bringIntoView() } }
     return this.bringIntoViewRequester(req)
+}
+
+/**
+ * Lab dialogs: a focused clickable (an option card, a list row) gets Lab's accent tint and outline, a pressed one a light
+ * tint, instead of Material's faint grey state layer, so the controller's place is plain to see.
+ */
+internal class LabFocusIndication(private val accent: androidx.compose.ui.graphics.Color) : Indication {
+    private class Inst(
+        val accent: androidx.compose.ui.graphics.Color,
+        val focused: androidx.compose.runtime.State<Boolean>,
+        val pressed: androidx.compose.runtime.State<Boolean>,
+    ) : IndicationInstance {
+        override fun ContentDrawScope.drawIndication() {
+            drawContent()
+            if (focused.value) {
+                drawRect(accent.copy(alpha = 0.14f))
+                drawRect(accent, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+            } else if (pressed.value) {
+                drawRect(accent.copy(alpha = 0.10f))
+            }
+        }
+    }
+
+    @Composable
+    override fun rememberUpdatedInstance(interactionSource: InteractionSource): IndicationInstance {
+        val focused = interactionSource.collectIsFocusedAsState()
+        val pressed = interactionSource.collectIsPressedAsState()
+        return androidx.compose.runtime.remember(interactionSource, accent) { Inst(accent, focused, pressed) }
+    }
 }

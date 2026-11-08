@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🌐 lab-polish-strings: pl + uk Default fixed (120ed323; CI 42532718306 running; 043d86d1's run cancelled)
+- **User: "yes fix those too".** pl Default Domyślna → Domyślne (also "Default (Steam: %1$s)"). uk Default Стандартний → За замовчуванням (also the "Default / Any controller" slot and its copy row). The adapter explanations quoting them were updated.
+- **Indonesian kept "Default":** the app uses it as the Indonesian word in about 20 strings, so changing only the label would be inconsistent.
+- **Next:** green → install pubg (pre-approved) → merge on go.
+
 ## 2026-11-08 — 🌐 lab-polish-strings: On / Off / Default labels fixed (043d86d1; CI 42532280744 running; c0f66b29's run cancelled)
 - **User: "yes fix those too".** es + es-419 On Sí → Activado, Off Desactivada → Desactivado. it On Sì → Attivato, Off Disattivata → Disattivato, Default Predefinita → Predefinito. pt Off Desativada → Desativado. bg Default Стандартна → По подразбиране.
 - The new adapter explanations quoting these labels were updated (16 strings). Strings that use the words for their own nouns (bg "Стандартна MIDI звукова банка", it "Predefinita di sistema" / "Predefinita (Steam: %1$s)") are unchanged.

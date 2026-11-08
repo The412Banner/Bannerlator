@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ main 31196765 pubg INSTALLED on the Elite 00:04:43 EST (logs test next, NOT device-tested yet)
+- **Install:** rootsh copy → /data/local/tmp → pm install -r: Success; installed base.apk sha256 7b146311… == staged; vc 105; tmp copy removed; logcat crash buffer has no com.tencent.ig / FATAL entries after install.
+- **Undo:** pm install -r /sdcard/Download/Bannerlator-lab-languages-fb83bee0.apk (f6d3d0b2…). Peer root-2e paused device work until "done".
+- **Resume point / test:** the user launches one Wayland game (DiRT Showdown) → check Download/bannerlator/DiRT Showdown/wayland/wayland-<stamp>.log appears (and Download/Wayland-logs gets no new file), View logs › "Wayland" chip, Share logs zip contents, logcat -b crash; then send root-2e "done". No background jobs running.
+
 ## 2026-11-08 — 📲 Installing main 31196765 pubg on the Elite for the logs test (user: "yes install it")
 - **Build:** build-artifacts 42448581860 success ×4 (0 failed steps); main push CI 42448034535 (78000ba3) success.
 - **Before install:** installed = Bannerlator-lab-languages-fb83bee0.apk (base.apk f6d3d0b2…, updated 2026-11-07 23:27 EST, from the other session); app process up (pid 11600), no Wine processes, Termux on top. Peer session root-2e told (don't install/launch/force-stop BL until "done").

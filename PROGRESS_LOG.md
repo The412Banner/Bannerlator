@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🌐 feat/lab-polish-strings: the Wayland adapter strings in 32 languages (c0f66b29; CI 42532074388 running, NOT device-tested)
+- **Why (user: "yes do the translations"):** the new adapter rows were English only.
+- **How:** 9f212ee2 makes the help texts and option names L("…") single literals (profile names via profileName) so lab_strings.py sees them. extract → 1796 strings (+24). 4 drafting agents (8 languages each) used terms.py for the app's existing words.
+- **Env Vars fix:** the profile explanation names the Env Vars tab as each language shows it. 3 drafters did this themselves; ms/nb/nl/pl/pt-PT/pt/ro/ru were patched by hand.
+- **Result:** fill ×32 → all at 1796/1796, check up to date, all 33 strings_lab.xml parse.
+- **Noted, NOT changed (existing app-wide labels):** pt On "Ativado" / Off "Desativada"; es, es-419 and it On = "Sí/Sì" with a feminine Off; bg Default "Стандартна". The new texts quote them as they are.
+- **Next:** green → install pubg (user: "install it when it's done, pubg") → merge on go.
+
 ## 2026-11-08 — 🔀 feat/lab-settings-polish MERGED to main 47c5d7c3 (user: "good merge it")
 - **What:** a faint fading line between options in Lab's settings and menus; "?" help buttons (START too); the classic Wayland adapter settings as rows (profile + 8 single switches, same driver-config keys) with the adapter report at the top of Lab's Wayland game driver page.
 - **Proof:** CI 42529607854 green ×4. Installed on the Elite main app and checked by the user (screenshots 171740/171744 + the inline report). Crash buffer empty.

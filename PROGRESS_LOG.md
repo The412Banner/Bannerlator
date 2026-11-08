@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ onboarding 87150656 device-tested on the Elite: the container step works (user: "looks perfect")
+- **Created:** xuser-1/.container "Container-1".
+  - wineVersion Proton-11.0-11.9-arm64ec-16 (DroidDeck Proton 11.9 arm64ec)
+  - DXVK version=2.4.1-1-gplasync-pre-reg-0, vkd3dVersion=3.1-0
+  - fexcoreVersion FEXCore-2611-unix-0, emulator fexcore, box64Version 0.3.7 (WOWBox64 default)
+  - graphicsDriverConfig version=Banners-AIO (all SoC) v27.0.0-20261108-r4 (the newest AIO at the time), graphicsDriver wrapper-original (editor default)
+  - cpuList = all cores
+- **Installed in files/contents:** DXVK, FEXCore, Proton, VKD3D and the adrenotools driver. Crash buffer empty since 16:10 EST. Saved settings: ui_style deck, simple_home true, preset_index 9, ui_scale 0.8.
+- **Not tested:** launching a game in that container; the x86_64 Proton / Box64 path; a phone without an Adreno GPU.
+
 ## 2026-11-08 — ✅ onboarding 87150656 STANDARD installed fresh on the Elite 16:10:38 EST (user: "install it when it's done" + "uninstall it first, fresh install"; NOT device-tested yet)
 - CI 42523039270 green ×4 on the first try (44 success / 15 skipped). APK sha256 51343061… == staged == installed; signer a40da80a…; the dex has the new step.
 - The old test copy was uninstalled first, after checking it held only the base system (933 MB, no containers, games or components). The user's main app is untouched. The crash buffer is empty.

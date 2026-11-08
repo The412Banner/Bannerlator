@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ onboarding 87150656 STANDARD installed fresh on the Elite 16:10:38 EST (user: "install it when it's done" + "uninstall it first, fresh install"; NOT device-tested yet)
+- CI 42523039270 green ×4 on the first try (44 success / 15 skipped). APK sha256 51343061… == staged == installed; signer a40da80a…; the dex has the new step.
+- The old test copy was uninstalled first, after checking it held only the base system (933 MB, no containers, games or components). The user's main app is untouched. The crash buffer is empty.
+- **Next:** the user runs setup through step 6 → check the created container's settings and the installed components → crash log.
+
 ## 2026-11-08 — 📦 onboarding: "Your first container" step (87150656; CI 42523039270 running, NOT device-tested)
 - **Why (user: "can we also add a step to automatic download and create a proton container?"):** a new setup step with lists and recommended picks. User decisions: Proton list shows all, latest DroidDeck Proton arm64ec recommended; FEXCore 2611-unix (list = -unix builds); DXVK + VKD3D regular builds, dxvk-gplasync 2.4.1 pre-reg and the latest stable vkd3d-proton recommended; all CPU cores; latest Banners-AIO recommended with the Banners-Turnip builds for the detected Adreno, Android builds only (no -Linux / -Wayland).
 - **How:** new ui/deck/DeckFirstContainer.kt (FirstContainerSetup + FirstContainerStep), step 6 of 8 after the base-system install.

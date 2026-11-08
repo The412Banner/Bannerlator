@@ -372,12 +372,12 @@ internal object SettingsRegistry {
             id = "launch.method", category = "launch", group = T("How it starts"), level = SIMPLE,
             label = T("Start the game with"), tech = T("Launch with: SteamLite / Headless Steam / Goldberg / Raw .exe"),
             help = T("SteamLite runs the real Steam client so achievements, cloud saves and online play work. Headless Steam runs the game on the app's own Steam session, so friends and chat stay online (experimental). Goldberg pretends to be Steam without signing in. Raw .exe starts the game's own program."),
-            control = { _, _ -> seg(T("RealSteam") to "SteamLite", T("AppSteam") to T("Headless Steam"), "Goldberg" to T("Goldberg (offline)"), T("Raw") to T("Raw .exe")) },
+            control = { _, _ -> seg("RealSteam" to "SteamLite", "AppSteam" to T("Headless Steam"), "Goldberg" to T("Goldberg (offline)"), "Raw" to T("Raw .exe")) },
             game = GameBinding(
                 listOf("launchMode"),
                 read = { e -> e.get("launchMode")?.takeIf { it in LAUNCH_MODES } },
                 write = { e, v -> e.put("launchMode", v) },
-                inherit = Inherit.BUILT_IN, inherited = { T("RealSteam") },
+                inherit = Inherit.BUILT_IN, inherited = { "RealSteam" },
             ),
             visible = { env, _ -> gameScope(env) && env.isSteam },
         ),
@@ -402,7 +402,7 @@ internal object SettingsRegistry {
                 },
                 inherit = Inherit.BUILT_IN, inherited = { "0" },
             ),
-            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == T("RealSteam") },
+            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == "RealSteam" },
         ),
         SettingDef(
             id = "launch.steamInput", category = "launch", group = T("Steam options"), level = ADVANCED,
@@ -418,7 +418,7 @@ internal object SettingsRegistry {
                 },
                 inherit = Inherit.BUILT_IN, inherited = { "0" },
             ),
-            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == T("RealSteam") },
+            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == "RealSteam" },
         ),
         SettingDef(
             id = "launch.vacSecure", category = "launch", group = T("Steam options"), level = ADVANCED,
@@ -430,7 +430,7 @@ internal object SettingsRegistry {
                 write = { e, v -> e.put("steamVacLaunch", if (v == "auto") null else v) },
                 inherit = Inherit.BUILT_IN, inherited = { "auto" },
             ),
-            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == T("RealSteam") },
+            visible = { env, values -> gameScope(env) && env.isSteam && values("launch.method") == "RealSteam" },
         ),
         SettingDef(
             id = "launch.epicEos", category = "launch", group = T("Epic Games"), level = SIMPLE,
@@ -1005,12 +1005,12 @@ internal object SettingsRegistry {
         SettingDef(
             id = "visuals.vkbasalt", category = "visuals", group = T("Sharpening"), level = ADVANCED,
             label = T("Vulkan post-effect (vkBasalt)"), hint = T("Sharpens the image after it is drawn."), tech = T("Sharpness (VKBasalt) › Effect"),
-            control = { _, _ -> seg(T("None") to T("None"), "CAS" to T("CAS sharpen"), "DLS" to T("DLS sharpen + denoise")) },
+            control = { _, _ -> seg("None" to T("None"), "CAS" to T("CAS sharpen"), "DLS" to T("DLS sharpen + denoise")) },
             game = GameBinding(listOf("sharpnessEffect"), read = { e -> e.get("sharpnessEffect")?.takeIf { it.isNotEmpty() } },
-                write = { e, v -> e.put("sharpnessEffect", v) }, inherit = Inherit.BUILT_IN, inherited = { T("None") }),
+                write = { e, v -> e.put("sharpnessEffect", v) }, inherit = Inherit.BUILT_IN, inherited = { "None" }),
             visible = { env, _ -> gameScope(env) },
         ),
-        percentSlider("visuals.vkbasaltLevel", "sharpnessLevel", T("vkBasalt strength"), T("Level")) { values -> values("visuals.vkbasalt") != T("None") },
+        percentSlider("visuals.vkbasaltLevel", "sharpnessLevel", T("vkBasalt strength"), T("Level")) { values -> values("visuals.vkbasalt") != "None" },
         percentSlider("visuals.vkbasaltDenoise", "sharpnessDenoise", T("vkBasalt denoise"), T("Denoise")) { values -> values("visuals.vkbasalt") == "DLS" },
         // ReShade: Solo / Stack and the loadout the section edits.
         *ReshadeRows.defs().toTypedArray(),

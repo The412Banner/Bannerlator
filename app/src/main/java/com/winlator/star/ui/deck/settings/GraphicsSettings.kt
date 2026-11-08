@@ -298,7 +298,7 @@ internal object GraphicsRows {
             hint = T("DirectX 8 to 11 through Vulkan. Builds named async or gplasync can compile shaders in the background."),
             control = { env, values ->
                 val g = env.graphics
-                val withVkd3d = values(ID_VKD3D) != T("None") && !relaxDxvk(values)
+                val withVkd3d = values(ID_VKD3D) != "None" && !relaxDxvk(values)
                 // VKD3D-Proton needs DXVK 2.x: the 1.x builds are left out while VKD3D is on (#113).
                 val fits = { v: String -> !withVkd3d || (DXVKConfigDialog.tryGetMajor(v)?.let { it >= 2 } ?: true) }
                 versions(
@@ -975,7 +975,7 @@ internal class GraphicsLists(private val context: Context) {
                 vkd3d = runCatching { DXVKConfigDialog.loadVkd3dVersionList(context, cm).toList() }.getOrDefault(listOf(T("None"))),
                 d7vk = runCatching { DXVKConfigDialog.loadD7vkVersionList(context, cm).toList() }.getOrDefault(listOf(DXVKConfigDialog.D7VK_BUNDLED)),
                 stock = runCatching { DXVKConfigDialog.loadVegasStockSources(context, cm).toList() }.getOrDefault(emptyList()),
-                custom = runCatching { DXVKConfigDialog.loadVegasConfigSourceList(context).filter { it != T("None") } }.getOrDefault(emptyList()),
+                custom = runCatching { DXVKConfigDialog.loadVegasConfigSourceList(context).filter { it != "None" } }.getOrDefault(emptyList()),
             )
         }
         dxvk = c.dxvk.distinct()

@@ -162,7 +162,7 @@ internal class DeckInputSection(val env: SettingsEnv, val source: SettingsSource
     companion object {
         private const val SLOT_AUTO = -1
         private val SLOT_OPTIONS: List<Pair<String, Int>> =
-            listOf(T("Auto") to SLOT_AUTO) + (0 until 4).map { "Player ${it + 1}" to it } + (T("Ignore") to WinHandler.SLOT_IGNORE)
+            listOf("Auto" to SLOT_AUTO) + (0 until 4).map { "Player ${it + 1}" to it } + ("Ignore" to WinHandler.SLOT_IGNORE)
     }
 
     /** Auto / Player 1-4 / Ignore for one device. */

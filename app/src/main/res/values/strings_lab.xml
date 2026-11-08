@@ -79,7 +79,6 @@
     <string name="lab_09cdafe2">Text size</string>
     <string name="lab_09d2be7b">Public beta</string>
     <string name="lab_0a1714a9">Anisotropic filtering</string>
-    <string name="lab_0a24d3d4">Ignore</string>
     <string name="lab_0a40d9f8">PulseAudio suits most games. DirectAudio has the lowest delay on the builds that ship it.</string>
     <string name="lab_0a56e692">Power defaults for every game and translator presets.</string>
     <string name="lab_0a710538">Skip GL error checks (MESA_NO_ERROR)</string>
@@ -478,7 +477,6 @@
     <string name="lab_463dbb35">Language &amp; region</string>
     <string name="lab_466171a5">Removed %1$s</string>
     <string name="lab_467d1fc1">Saves &amp; cloud</string>
-    <string name="lab_46a34760">Switch architecture</string>
     <string name="lab_46fd73ef">Leaving every core ticked lets Android place the work itself, which is usually the best choice.</string>
     <string name="lab_471552db">Edit the VEGAS config file</string>
     <string name="lab_475cee12">Center</string>
@@ -1421,7 +1419,6 @@
     <string name="lab_d8321a59">No crackle</string>
     <string name="lab_d834a1cf">Checking which installed drivers can show the game…</string>
     <string name="lab_d870ae5e">This driver didn\'t load on this GPU: the system driver answered the check instead.</string>
-    <string name="lab_d88b4907">ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DirectX translation.</string>
     <string name="lab_d8e06406">Screen</string>
     <string name="lab_d8e621c2">Add a drive</string>
     <string name="lab_d91754f0">No entry.</string>

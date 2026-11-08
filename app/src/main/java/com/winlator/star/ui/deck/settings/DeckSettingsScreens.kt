@@ -411,7 +411,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         onHandoff = { h -> if (h.target == SettingsRegistry.TARGET_CLASSIC) navController.navigate("container_detail?id=$id") },
         onChainLink = { link -> link.onClick?.invoke() },
         createMode = createMode,
-        yAction = if (!defaultsMode) null else (T("Switch architecture") to {
+        yAction = if (!defaultsMode) null else ("Switch architecture" to {
             val next = if (arch == NewContainerDefaults.ARCH_ARM64EC) NewContainerDefaults.ARCH_X86_64 else NewContainerDefaults.ARCH_ARM64EC
             if (source.dirty) Toast.makeText(context, T("Save or discard your changes first."), Toast.LENGTH_SHORT).show()
             else {

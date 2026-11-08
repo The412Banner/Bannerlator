@@ -464,7 +464,7 @@ private fun LoadoutCard(sec: DeckReshadeSection, names: List<String>) {
         trailing = { DeckSmallButton(T("Browse"), Icons.Filled.CloudDownload) { sec.openCatalog() } },
     )
     val notes = buildList {
-        if (names.isNotEmpty() && !sec.supported()) add(T("ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DirectX translation.") to true)
+        if (names.isNotEmpty() && !sec.supported()) add("ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DirectX translation." to true)
         if (names.size > 6) add("${names.size} effects: the game takes longer to compile them at start." to false)
     }
     notes.forEach { (text, bad) ->

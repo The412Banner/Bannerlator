@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📣 Mali step 1 test build POSTED in BannerHub (user: "post"; build dfee621a, NOT device-tested)
+- BannerBot embed card "Bannerlator Mali test build: System driver + shader fix on Wayland", title link = build-artifacts run 42451675363 (artifacts, GitHub sign-in, expire 11-15), text approved by the user (VM /var/lib/bannerbot/claude/posts/bl-mali-inline-1.txt, sha256 91205512…, 2,214 chars): what changed, install steps, Display backend Wayland + Graphics Driver System + Wayland game driver Adapter, Settings › Logs › Wine debug, `BANNER_WRAPPER_INLINE_SHADERS=0` for the A/B, report fields + Share logs + expected log line, black-screen note, report board, credits (Utkarsh Dalal/GameNative, wallentx, Pipetto-crypto, leegao).
+- #general-mali-and-support 1530604459330113649 → msg **1568870827963842661** (01:12:33 EST); #winlator-general 1517502041033805825 → msg **1568870855876812853** (01:12:40 EST). Verified with dget: author BannerBot, title + url right, description == approved text, no pings.
+- GameNative / Utkarsh Dalal not asked before posting (idea credited; own code). Next: tester reports (thread + report board), kirimu first.
+
 ## 2026-11-08 — 📦 Mali step 1 APKs STAGED (fix/wayland-mali-inline-shaders dfee621a; NOT installed, NOT device-tested)
 - **Build:** build-artifacts **42451675363** success ×4 (headSha dfee621a; each job 44 success / 15 skipped / 0 failed, same as normal builds).
 - **APK check:** every flavor carries assets/wayland/adapter/libvulkan_wrapper.so sha256 **cc512846…** (= adapter CI 42451258079, ffc3029d) and adapter.json version "… mali-inline-shaders ffc3029"; cert SHA-256 A4:0D:A8:0A… (same as the installed main 31196765, installs over it).

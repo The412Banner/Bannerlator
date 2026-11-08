@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ labpolish 569502c6 INSTALLED on the Elite main app (pubg) 17:16:08 EST (user: "install pubg"; NOT device-tested yet)
+- CI 42527770632 green ×4. pm install -r Success; installed base.apk sha256 ff9c2d3b… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the row lines, the "?" buttons (and START), and the Wayland game driver page (adapter rows + report) → merge on go.
+
 ## 2026-11-08 — 🧹 feat/lab-settings-polish: row lines, "?" help, Wayland adapter settings in Lab (569502c6; CI 42527770632 running, NOT device-tested)
 - **Why (user, screenshot 164826 of Lab container settings):** "can we add a faint faded line between options?"; "in classic container and game settings we had wayland adapter settings … where is all that in lab ui?"; "what about all the ? buttons that explain stuff, can we add those in just like classic had as well?"
 - **Found:** Lab and Deck had only the "Wayland game driver" row. The classic gear's adapter settings (WaylandDriverSettingsDialog: profile, single switches, adapter report) were never ported to the settings registry. No "mesh shader" setting exists anywhere in BL; the closest item is Subgroups.

@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ⚙️ feat/setup-container-options: more settings in "Your first container" (54dde650; CI 42525743073 running, NOT device-tested)
+- **User's list:** container name; display backend (Wayland pre-selected, user's answer); Box64 preset Extreme; FEXCore Performance+TSO; DirectAudio; frame rate limiter on (60); Show FPS on; all CPU cores; microphone on; WOWBox64 = the latest nightly Hybrid. 32-bit programs stay on FEXCore (user's answer), so WOWBox64 is set but only used if 32-bit is switched to it.
+- **Sources:** WOWBox64/Box64 nightlies come from Nightlies/nightlies_components.json (the Contents screen's "Nightlies by The412Banner" feed), release nightly-latest: today WOWBox64-0.4.5-Hybrid-c8ad5c378 and Box64-0.4.5-Hybrid-c8ad5c378-Bionic. Their profile.json types were checked: WOWBox64 / Box64.
+- **Applied through the editor's view-model:**
+  - containerName
+  - onDisplayBackendChanged, Wayland only when isWineWaylandCapable
+  - selectBox64PresetById(EXTREME), selectFEXCorePresetById(PERFORMANCE_TSO)
+  - selectedAudioDriver DirectAudio when DirectAudioSupport.isSupported
+  - mic env via DirectAudioSupport.withMicEnabled; RECORD_AUDIO asked at Create, refused = off
+  - fpsLimiterEnabled (value default 60), showFPS, cpuList + cpuListWoW64 = all cores
+- **Next:** green → stage the standard APK → ASK install (fresh) → user runs setup → check the container's settings.
+
 ## 2026-11-08 — 🔀 feat/default-size-100 MERGED to main db3253fc (user: "merge when green"; NOT device-tested, user's choice)
 - --no-ff over main a59d5348 (no conflicts). Backup ref refs/backup/20261108/main-before-default-size-100 → a59d5348. Merged code == the built f3eb93c2 (diff empty outside PROGRESS_LOG.md).
 - **Proof:** CI 42524310667 green ×4 (44 success / 15 skipped each). Not installed or tested on the device. Main push build 42525147953 running.

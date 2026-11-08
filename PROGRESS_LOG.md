@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ DEVICE-PROVEN on the Elite: per-game Wayland logs + "Share logs" (main 31196765 pubg)
+- **Test (user played DiRT Showdown on Wayland, 00:06 EST, then View logs and Share logs):**
+  - `Download/bannerlator/DiRT Showdown/wayland/wayland-2026-11-08_00-06-17.log` created (13.8 KB, 99 lines, header "Log" line = the new path, full session); `Download/Wayland-logs` got no new file (newest still 21:53 EST). previous/ rotated normally (5 kept).
+  - View logs (screenshot 000929): chips Current · **Wayland** · older runs; Wayland shows the session log file chip and its text.
+  - Share logs (screenshot 000941): "Zipping logs…" toast, Android sheet "Sharing 1 file — DiRT Showdown-logs-2026-11-08_00-09-39.zip". Zip (74,693 B, cache/logs/share) opens clean (testzip OK), 25 entries = all 25 files in the folder (current run 4, previous/ 5×4, wayland/ 1), sizes match.
+  - logcat crash buffer: no com.tencent.ig / FATAL entries; app process alive.
+- **Proof:** logs feature DEVICE-PROVEN on Pocket FIT Elite (Adreno 830, Wayland, Banners-AIO v27.0.0-20261107-r3). Mali "System" on Wayland still NOT device-tested (needs kirimu / a Mali phone).
+- **Device:** main 31196765 stays installed; peer root-2e told "done".
+
 ## 2026-11-08 — ✅ main 31196765 pubg INSTALLED on the Elite 00:04:43 EST (logs test next, NOT device-tested yet)
 - **Install:** rootsh copy → /data/local/tmp → pm install -r: Success; installed base.apk sha256 7b146311… == staged; vc 105; tmp copy removed; logcat crash buffer has no com.tencent.ig / FATAL entries after install.
 - **Undo:** pm install -r /sdcard/Download/Bannerlator-lab-languages-fb83bee0.apk (f6d3d0b2…). Peer root-2e paused device work until "done".

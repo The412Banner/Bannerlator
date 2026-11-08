@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 fix/onboarding-lab-ember MERGED to main d1caa3a2 (user: "merge it to main")
+- **What:** first-run setup in Lab + Carbon & Ember for new installs (updates keep theirs), portrait step circles, "Simple" → "Lab" wording, the notifications button opens the app's notification settings, and the new "Your first container" step.
+- **How:** --no-ff over main c5c0a6b4 (main had not moved, no conflicts). Backup ref refs/backup/20261108/main-before-onboarding-lab-ember → c5c0a6b4. Merged code == the tested 87150656 (diff empty outside PROGRESS_LOG.md).
+- **Proof:** CI 42523039270 green ×4; device-tested on the Elite (fresh standard install). Main push build 42524213188 running.
+- **Branch kept:** fix/onboarding-lab-ember. Next: new branch for 100 % interface + text size defaults.
+
 ## 2026-11-08 — ✅ onboarding 87150656 device-tested on the Elite: the container step works (user: "looks perfect")
 - **Created:** xuser-1/.container "Container-1".
   - wineVersion Proton-11.0-11.9-arm64ec-16 (DroidDeck Proton 11.9 arm64ec)

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔁 Wayland "System" on Mali rebased onto main with the Lab UI (`fix/wayland-mali-system` b9c9c808, CI running, NOT device-tested, NOT merged)
+- **User:** "can you rebuild off main since we just merged the new lab ui work?"
+- **Done:** backup ref refs/backup/20261108/fix-wayland-mali-system-before-rebase → e857f780 (pushed); rebased onto main 38483dd5 (Lab UI merge a10bc058 included), clean, patch identical (same 3 files, +20/-1); pushed with --force-with-lease, origin == b9c9c808.
+- **CI:** old run 42440505762 (e857f780, old base) cancelled; build-artifacts 42440745677 (headSha b9c9c808 asserted), release_number wayland-mali-system-b9c9c808.
+- **Resume:** wait for 42440745677 → read job conclusions + logs → stage APKs in /sdcard/Download with sha256 → kirimu tests Wayland + "System" on his Mali-G77.
+
 ## 2026-11-08 — 🧪 Wayland "System" on Mali: game now runs on the phone's own driver (`fix/wayland-mali-system`, CI running, NOT device-tested, NOT merged)
 - **Why:** user asked (Discord: kirimu, Retroid Pocket 4 Pro, Mali-G77) for "System" to work on Wayland for Mali. On main 7d6757a6 a Mali "System" pick already made the compositor use the phone's driver (XServerDisplayActivity maliSystemPick), but the game side refused System (WaylandAdapter.unusableReason) and fell back to a bundled Wayland Turnip, which cannot run on Mali.
 - **Built:** e857f780 on `fix/wayland-mali-system` (off main 7d6757a6): WaylandAdapter.isMaliSystem ("System" + Mali GPU) → unusableReason returns null, so the adapter loads the system libvulkan (wrapper_instance.c: no ADRENOTOOLS_* → /system/lib64/libvulkan.so); WaylandDriverProbe skips that pick (no AdrenoTools .so; no report → Auto profile injects nothing). Adreno and an empty driver id unchanged. No UI text added; the Mali section with BCn emulation was already in the Wayland driver gear.

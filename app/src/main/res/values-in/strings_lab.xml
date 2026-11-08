@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in in. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in in. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Daya (default untuk semua game)</string>
     <string name="lab_0016da13">Khusus dimulai dengan semua layanan nonaktif: aktifkan hanya yang dibutuhkan game.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">Tombol B</string>
     <string name="lab_00737986">Mengirim HDR10 asli ke layar.</string>
     <string name="lab_007bf585">Langsung mulai dengan pilihan tersimpan. Nonaktifkan untuk melihat menu peluncuran lagi.</string>
+    <string name="lab_0086410b">Sampul lebar</string>
     <string name="lab_00aad2e4">Utamakan DLL di folder game</string>
     <string name="lab_00d53383">Buat profil dulu (tab Di layar).</string>
     <string name="lab_00e9bd4e">Wrapper</string>
     <string name="lab_00ef3163">Governor CPU dan kunci frekuensi, memori bebas, pengawas suhu (Setelan Classic › Performa), dan impor Lossless.dll untuk frame generation.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s GB</string>
     <string name="lab_0134b985">Setelan DX wrapper</string>
+    <string name="lab_0155bfc3">Sampul, sampul lebar, atau ikon di Beranda dan Pustaka</string>
     <string name="lab_015a2290">Izin, tema, dan toko</string>
     <string name="lab_01940fd6">Umum</string>
     <string name="lab_01942160">FPS dengan desimal</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">Core yang boleh dipakai game</string>
     <string name="lab_044b1956">Performa</string>
     <string name="lab_04accfcf">OpenGL: Cepat</string>
+    <string name="lab_04e55ba9">Pilih gambar: %1$s</string>
     <string name="lab_04fc2b5b">Gambar</string>
     <string name="lab_052396d7">DirectAudio masih eksperimental</string>
     <string name="lab_0526e39f">L1 / R1 ganti halaman, X menukar menu cepat dan menu game, B menutup.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">Bawaan (Win-FG) melakukan interpolasi di dalam aplikasi. Lossless Scaling memakai Lossless.dll milik Anda. Keduanya butuh renderer layar Vulkan, Wayland, atau entri Linux. Pengali diatur dalam game.</string>
     <string name="lab_070cecae">Pilih apa yang dicatat (Wine, Box64/FEX, DXVK, SteamLite, Steam tanpa antarmuka, logcat), tempat log disimpan, dan berapa banyak yang disimpan; telusuri dan bagikan.</string>
     <string name="lab_0721ad7c">Container ini</string>
+    <string name="lab_075ffd70">Video Anda</string>
     <string name="lab_07a88d47">Satu kali tekan Kembali tetap membuka panel dalam game.</string>
     <string name="lab_07e11363">Aktif untuk seluruh container: nonaktifkan di container.</string>
     <string name="lab_080615dc">Pakai milik container</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Memperbaiki kamera yang berputar sendiri atau macet di beberapa game lama.</string>
     <string name="lab_0d5a2b34">Kata tambahan setelah nama program, mis. -windowed -dx11.</string>
     <string name="lab_0da00171">• Game berhenti menerima pengontrol. Menu Steam tetap berfungsi, tapi di dalam game gamepad tidak berfungsi.\n</string>
+    <string name="lab_0dc541d5">Setel ulang ke default</string>
     <string name="lab_0ddd64ae">Intensitas Getaran</string>
     <string name="lab_0e15cd35">Berguna di ponsel lipat: tampilkan game di satu sisi saja.</string>
     <string name="lab_0e24f0e3">Cache shader async</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">Efek ReShade</string>
     <string name="lab_1054fdc3">Di Wayland, game dirender lewat compositor tertanam, yang memerlukan Turnip terinstal untuk mengimpor frame-nya. \"Sistem\" hanya ditawarkan di GPU Mali; di GPU lain hasilnya layar hitam. Driver yang dipakai game itu sendiri untuk render adalah Driver game Wayland di bawah.</string>
     <string name="lab_105c504c">Perbaikan OneUI / HyperOS</string>
+    <string name="lab_1079be1d">Tidak ada hasil di Steam untuk %1$s</string>
     <string name="lab_10a08356">Izinkan beralih dalam game</string>
     <string name="lab_10cb69ae">Pilih gambar ikon</string>
     <string name="lab_1121166e">Alfa</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Pilih warna</string>
     <string name="lab_1331bc15">SteamLite menjalankan klien Steam asli sehingga pencapaian, save cloud, dan main online berfungsi. Steam tanpa antarmuka menjalankan game di sesi Steam milik aplikasi, sehingga teman dan obrolan tetap online (eksperimental). Goldberg berpura-pura menjadi Steam tanpa login. .exe mentah menjalankan program game itu sendiri.</string>
     <string name="lab_134638cc">Game GOG</string>
+    <string name="lab_136c7474">Kiri bawah</string>
     <string name="lab_137513e1">Dipilihkan untuk Anda: driver di Default Container Baru Anda.</string>
     <string name="lab_137e9ac8">Baru ada komponen bawaan.</string>
     <string name="lab_13868325">Cara membuka</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Manual</string>
     <string name="lab_177847bc">Tidak ada yang bisa disalin</string>
     <string name="lab_17a0dfae">Offline</string>
+    <string name="lab_17c41d91">Tangkapan layar</string>
     <string name="lab_17e8622b">SurfaceFlinger menyerahkan frame game langsung ke compositor Android. Bisa lebih cepat, tapi di beberapa perangkat menampilkan layar hitam atau warna yang salah. Kembali ke Vulkan atau OpenGL jika itu terjadi.</string>
     <string name="lab_17f88806">Nama container, bahasa, desktop, dan perilaku sesi.</string>
     <string name="lab_181ab51a">Itu lebih besar dari 8K.</string>
     <string name="lab_1821acdc">Warna solid</string>
+    <string name="lab_183f03ee">Klip pratinjau</string>
     <string name="lab_187e8ab4">game ini</string>
     <string name="lab_188dc386">Diatur oleh Performa › Sinkronisasi.</string>
     <string name="lab_18991a24">Lainnya</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Tes pengontrol</string>
     <string name="lab_198324db">Tentang Bannerlator</string>
     <string name="lab_19a0f782">Tingkat performa, setiap kunci di file, cadangan, serta menghapus atau menginstal build VEGAS.</string>
+    <string name="lab_19b489d5">Gambar 3D dan pratinjau</string>
     <string name="lab_19e91dd3">Input</string>
     <string name="lab_1a0d3004">Berjendela</string>
     <string name="lab_1a1b35e7">Runtime</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · tidak terhubung (pin tersimpan)</string>
     <string name="lab_2062fe79">Pembatas FPS</string>
     <string name="lab_20898aa4">Hanya jika deteksi otomatis gagal ([KFAULT] di log).</string>
+    <string name="lab_208b07a1">Detail, karya seni, latar belakang ›</string>
     <string name="lab_209f636f">Upscaling, penajaman &amp; warna</string>
     <string name="lab_20f30881">Lanjutkan game</string>
     <string name="lab_211badb3">Main di TV, beralih otomatis, area aman, output audio, peredupan, dan resolusi TV</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Kelola</string>
     <string name="lab_23e9383c">Versi, teknologi di baliknya, dan kredit.</string>
     <string name="lab_2453405d">Gunakan auto:N, fixed:N, atau off</string>
+    <string name="lab_2470de02">Bening</string>
     <string name="lab_24720798">Perbaiki warna tertukar</string>
     <string name="lab_247c39e6">Melewati compositor untuk lag lebih rendah. Menonaktifkan efek layar.</string>
     <string name="lab_24857b5d">RGBA (tukar merah/biru)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Tampilkan keyboard</string>
     <string name="lab_2694592a">Atas</string>
     <string name="lab_274284a1">Belum tersedia di Wayland pada build ini.</string>
+    <string name="lab_2742f91b">Otomatis · trailer Steam</string>
     <string name="lab_2756404f">Setel ulang daya dan root ke default aplikasi</string>
     <string name="lab_27b56d30">Memasang DLL XInput Bannerlator baik XInput langsung aktif maupun nonaktif, bersama XInput bawaan Wine, sehingga Kontrol › Pad di menu dalam game bisa beralih di antaranya saat game berjalan (pengontrol tersambung ulang). Aktif secara default. Nonaktif: XInput langsung tetap seperti saat game dimulai, dan mengubahnya perlu memulai ulang.</string>
     <string name="lab_27bcb120">Tambah, salin, hapus, ekspor, atau impor preset Box64 dan FEX (Setelan Classic).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Gambar wallpaper untuk</string>
     <string name="lab_28441b9b">Mulai ulang</string>
     <string name="lab_28502118">Default bawaan VEGAS (tanpa file)</string>
+    <string name="lab_286dae57">Otomatis · dari sampul</string>
     <string name="lab_287eabc8">Tampilkan FPS</string>
     <string name="lab_28d51363">Kecepatan refresh yang bisa dipilih game</string>
     <string name="lab_28f727b0">Ekspor diagnostik HUD</string>
     <string name="lab_29198bb7">Belum diatur (Sistem)</string>
+    <string name="lab_2927fedd">Pratinjau hanya lewat Wi-Fi</string>
     <string name="lab_29a908d6">Perlu Lewati tunggu submit GPU diaktifkan.</string>
     <string name="lab_29b501c2">Teman dan obrolan, notifikasi, dan status dalam game.</string>
     <string name="lab_29c3ef3b">Kontrol layar, mouse, getaran, bidik gerak, pemain.</string>
     <string name="lab_29d0a27a">Sistem tampilan</string>
     <string name="lab_29faa513">Jumlah Pengontrol</string>
+    <string name="lab_29fe3935">Tidak tertaut ke Steam</string>
     <string name="lab_2a1dcc50">Preset Box64 default</string>
     <string name="lab_2a234929">Tidak tersedia — layar ini hanya punya satu kecepatan refresh, jadi tidak ada yang perlu disamakan.</string>
     <string name="lab_2a342d91">Setelan yang paling sering diubah saat bermain.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Mulai ulang audio</string>
     <string name="lab_2ab94a31">Geser antar tombol</string>
     <string name="lab_2ad5a458">Pin slot pemain</string>
+    <string name="lab_2adf1ef0">Kertas grafik dan sinyal Lab di atas gambar</string>
     <string name="lab_2b01a79e">Gambar itu tidak bisa dibaca.</string>
     <string name="lab_2b3bf173">Alat</string>
     <string name="lab_2b605d42">Lainnya</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Default</string>
     <string name="lab_2ced81bf">Offline: menampilkan daftar tersimpan. Sambungkan ke internet untuk mengunduh efek baru.</string>
     <string name="lab_2d1366ec">Tidak ada variabel dikenal yang cocok.</string>
+    <string name="lab_2d45170d">Gambar game</string>
     <string name="lab_2d6ee59d">Atau ketik nilai apa saja</string>
     <string name="lab_2dad13e3">Bahasa</string>
     <string name="lab_2dc2e901">Mono</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Belum pernah diperiksa. Menampilkan paket FEX, DXVK, dan VKD3D-Proton yang bisa diunduh.</string>
     <string name="lab_30c8cda7">Preset FEX</string>
     <string name="lab_31132684">Mendekode tekstur terkompresi yang dipakai game Windows, untuk GPU yang tidak mampu melakukannya.</string>
+    <string name="lab_312e2eb9">Gambar dan pratinjau</string>
     <string name="lab_313f3497">Layanan khusus</string>
     <string name="lab_314b6c8f">Driver game Wayland</string>
     <string name="lab_318a4134">Atur untuk game ini</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">Untuk ponsel Samsung dan Xiaomi yang game-nya menampilkan tekstur rusak. Biarkan nonaktif jika tidak.</string>
     <string name="lab_36936d70">Membatasi jumlah frame per detik yang digambar game. Menghemat baterai dan meratakan stutter.</string>
     <string name="lab_36ef1cc0">Ikuti container</string>
+    <string name="lab_37232683">Panel di atas gambar</string>
     <string name="lab_3776c976">Rendering native</string>
     <string name="lab_377702f6">Sentuhan</string>
     <string name="lab_37ad98ec">Pilihan core CPU berlaku sampai program dimulai ulang.</string>
@@ -395,15 +415,17 @@
     <string name="lab_37f22874">Setiap drive butuh huruf sendiri</string>
     <string name="lab_3855543c">Ekspor (.icpx)</string>
     <string name="lab_385e1a80">Ketuk overlay untuk mengubahnya antara vertikal dan horizontal (Fusion: ukuran berikutnya). Seret untuk memindahkan; tekan lama untuk menguncinya di tempat.</string>
+    <string name="lab_386c72a7">Tidak dapat memakai file itu</string>
     <string name="lab_3886b4de">Folder itu tidak bisa dipakai: pilih folder di penyimpanan internal atau kartu SD</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Metode langsung ke layar</string>
     <string name="lab_38c3ee26">Periksa tombol dan stik, tetapkan profil fisik, atur slot pemain.</string>
     <string name="lab_38d2a5bb">Suhu</string>
     <string name="lab_38f46bd4">Lewati menu peluncuran</string>
+    <string name="lab_38f52cc5">Nonaktif: pratinjau diputar tanpa suara</string>
     <string name="lab_39052457">Container ini sudah tidak ada.</string>
     <string name="lab_390bed76">DirectDraw dan Direct3D 7 di atas Vulkan.</string>
-    <string name="lab_391a454c">Di antarmuka Deck, Game dan Big Picture sama-sama terbuka di Home.</string>
+    <string name="lab_391a454c">Di antarmuka Deck, Game dan Big Picture sama-sama terbuka di Beranda.</string>
     <string name="lab_3926cf7c">Gaya gerakan</string>
     <string name="lab_392c99d1">Buat salinan %1$s?</string>
     <string name="lab_394fec80">Suara</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Seimbang</string>
     <string name="lab_3b7778ec">Dekode video perangkat lunak</string>
     <string name="lab_3bd060de"> dan game dirender di Turnip Wayland bawaan (adapter memerlukan driver Turnip).</string>
+    <string name="lab_3bf05e53">Tampil di atas gambar pada kotak besar Beranda saat pratinjau aktif. Di halaman game, logo menggantikan nama.</string>
     <string name="lab_3c0764a4">Tampilkan kontrol di layar dan tata letak yang Anda pilih</string>
     <string name="lab_3ca0cc27">HDR: otomatis. Layar ini menerima HDR10, jadi output HDR aktif untuk game ini.</string>
     <string name="lab_3cc7318b">Core</string>
     <string name="lab_3d0ded52">Layar sekarang di %1$s Hz.</string>
     <string name="lab_3d12f194">Hapus repositori ini</string>
+    <string name="lab_3d198a51">Gambar 3D</string>
     <string name="lab_3d2c22d4">Mode present driver</string>
     <string name="lab_3d40c46a">Getaran</string>
     <string name="lab_3d9862bb">Mip bias negatif: tekstur lebih tajam, sedikit berkelip. Otomatis mengikuti skala saat game dimulai.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">Yang terbaru menang: tidak pernah menimpa save lokal yang lebih baru.</string>
     <string name="lab_41f05e04">Pemetaan tombol di bawah milik profil ini</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
+    <string name="lab_4270e2ba">Tengah atas</string>
     <string name="lab_42bbc821">Eksperimental: overlay Epic dalam game lewat Shift+F3. Container harus mengizinkan layanan penuh.</string>
     <string name="lab_42ca94f9">Pengontrol utama</string>
     <string name="lab_43316731">Hanya ada C: (prefix Windows) dan Z:. Tambahkan drive untuk folder game.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">Mulai desktop Windows-nya</string>
     <string name="lab_4455b74f">Seberapa sering gerakan stik sampai ke game. Juga bisa diubah dalam game.</string>
     <string name="lab_449c12fb">Ukuran di layar</string>
+    <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Profil default %1$s, </string>
     <string name="lab_452013a2">Ekspor</string>
     <string name="lab_45536eb8">Container</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">Edit file konfigurasi VEGAS</string>
     <string name="lab_475cee12">Tengah</string>
     <string name="lab_478577aa">Suhu</string>
+    <string name="lab_47a2fcea">Karya seni</string>
     <string name="lab_47db736e">Pilih folder game</string>
     <string name="lab_47fbfb16">Ubah</string>
     <string name="lab_480443a4">Nama folder dengan | tidak bisa dipakai</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Metode emulasi</string>
     <string name="lab_4a51272f">Setel ulang kembali ke efek Semua container.</string>
     <string name="lab_4a587711">Aktifkan untuk menyesuaikan layar dengan batas frame × pengali.</string>
+    <string name="lab_4a690444">Latar belakang gambar game</string>
     <string name="lab_4af762a7">Nonaktifkan thermal throttling</string>
     <string name="lab_4b02cb78">Jenis resource</string>
     <string name="lab_4b0fb1b1">Belum ada yang diimpor: Konten › Terinstal › Driver runtime Linux.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Belum ada gambar wallpaper</string>
     <string name="lab_4c5eeff6">Pilih</string>
     <string name="lab_4c6da2bc">Desktop Windows</string>
+    <string name="lab_4c6dae0d">Mencari gambar…</string>
     <string name="lab_4c737acf">Perangkat (GPU asli)</string>
     <string name="lab_4c76101a">Pilihan FEX / DXVK / VKD3D</string>
     <string name="lab_4c76edfa">DXVK dan VKD3D</string>
     <string name="lab_4c9774e6">Samakan refresh layar dengan FPS game</string>
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Aktif</string>
+    <string name="lab_4cc9a9c1">Sampul</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Balik atas/bawah</string>
     <string name="lab_4d8c7321">Konten</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">Ditemukan di folder game.</string>
     <string name="lab_56b4c80c">Tema</string>
     <string name="lab_56b89990">Otomatis (default): satu pembaruan stik per frame yang digambar game, hingga batas yang diatur (default 60 per detik), sehingga game yang menggambar lebih cepat daripada membaca input tidak pernah tertinggal. Tetap: sejumlah itu pembaruan per detik. Tanpa pacing: setiap perubahan langsung dikirim. Langsung berlaku, juga dalam game (Kontrol › Pad). BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX di variabel lingkungan lebih diutamakan daripada setelan ini.</string>
+    <string name="lab_56ed95b0">Kisi Pustaka</string>
     <string name="lab_571567c9">Setel ulang ke default aplikasi?</string>
     <string name="lab_574b34d5">DXVK + VKD3D cocok untuk sebagian besar game DirectX 9–12. VEGAS adalah fork DXVK yang dioptimalkan. WineD3D adalah alternatif yang lambat tapi kompatibel luas untuk game yang sangat lama.</string>
     <string name="lab_574e9955">Mengonversi tekstur BCn ke ASTC bisa membuat ponsel macet atau reboot dengan driver ini; coba hanya jika game menampilkan tekstur rusak atau hilang.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Sertakan build beta</string>
     <string name="lab_58627009">Getaran dan bidik gerak.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Kiri atas</string>
     <string name="lab_58a426c9">Nonaktif untuk game ini selama frame generation berjalan. </string>
     <string name="lab_5901a4cd">Wayland: delta mouse dikirim ke compositor; game yang mengunci pointer menerimanya sebagai gerakan relatif.</string>
+    <string name="lab_5946d9c6">Gunakan setelan aplikasi (%1$s)</string>
     <string name="lab_594a913b">Shader async</string>
     <string name="lab_595daef9">Komponen yang diunduh: arsip dan daftar katalog.</string>
     <string name="lab_5983ab11">Mode offline (tanpa masuk ke Valve)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Keduanya</string>
     <string name="lab_5c2357bd">Pustaka · 1 game</string>
     <string name="lab_5c307bbf">Target getaran, intensitas, dan motor (Simpan untuk, di bawah)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Refresh layar tetap</string>
     <string name="lab_5c462080">Tidak diterapkan selama lsfg-vk melipatgandakan frame: ia mengatur pacing frame sendiri.</string>
     <string name="lab_5c524fb3">Default untuk container baru</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Penyimpanan internal, kartu SD, dan drive setiap container</string>
     <string name="lab_659fcd98">Ditambahkan oleh saya</string>
     <string name="lab_65f8ea90">Driver Renderer</string>
+    <string name="lab_65f9e2b8">Solid</string>
     <string name="lab_660f585a">Salin pemetaan dari %1$s</string>
     <string name="lab_662a7209">Balik X</string>
     <string name="lab_6637ca24">Transkode BCn ke ETC2</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Tidak dipakai di Wayland: frame generation berjalan di compositor pada driver Turnip Anda.</string>
     <string name="lab_69f12fdf">File saya</string>
     <string name="lab_69f77a90">Perbaikan HDR Unreal Engine</string>
+    <string name="lab_69f7d525">Tidak dapat mengganti nama</string>
     <string name="lab_6a271188">Preset Box64 / Preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Daya</string>
     <string name="lab_6a68da45">Mouse relatif</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">Tombol sentuh dari tata letak saat ini.</string>
     <string name="lab_6c3656ad">Potret</string>
     <string name="lab_6c37a76c">Sentuhan berfungsi sebagai</string>
+    <string name="lab_6c5fe717">Suara pratinjau</string>
     <string name="lab_6c8e3b1f">Jadikan default…</string>
     <string name="lab_6c9249ac">Unduhan cloud otomatis saat peluncuran akan NONAKTIF untuk game di pustaka GOG Anda. Save cloud terbaru tidak akan diambil sebelum game dimulai — Anda perlu mengunduhnya sendiri dari tab Pengelola Save GOG atau halaman detail game. Lanjutkan?</string>
     <string name="lab_6cd478cd">Otomatis (hingga 120/dtk)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">Sesi dimulai hanya dengan variabel milik aplikasi.</string>
     <string name="lab_6e2acf44">Model GPU</string>
     <string name="lab_6e3da120">Pustaka</string>
+    <string name="lab_6e661b92">Trailer hanya diunduh lewat Wi-Fi</string>
     <string name="lab_6e6ffb5b">Menjalankan game 64-bit saat penerjemah 64-bit adalah Box64EC.</string>
     <string name="lab_6e86a6ef">Tutup sesi saat game keluar</string>
     <string name="lab_6ec32312">Terdeteksi di wrapper ini</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Layar awal dan pembaruan.</string>
     <string name="lab_7982eb6b">, tercantum di bawah.</string>
     <string name="lab_79b6d4c7">Mode Steam offline, pemeriksaan file, dan pembaruan</string>
+    <string name="lab_79c7988a">Tidak ada · nama ditampilkan</string>
     <string name="lab_79e3b22e">Sedang</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Sensitivitas</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Back buffer</string>
     <string name="lab_7ceefd00">Unduhan gagal: %1$s</string>
     <string name="lab_7d24ed15">Belum ada apa-apa di sini.</string>
+    <string name="lab_7d50777a">Aksi, RPG, Strategi</string>
     <string name="lab_7d6bff72">Tersedia pada sistem suara DirectAudio.</string>
     <string name="lab_7d9f1b59">Lebih lambat. Hanya untuk perangkat yang seccomp-nya mengganggu.</string>
     <string name="lab_7da6281a">File &amp; alat</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">Penerjemah x86</string>
     <string name="lab_7e3548ee">Tampilkan game tab Game di Steam</string>
     <string name="lab_7e38b599">Unggahan cloud otomatis saat keluar akan NONAKTIF untuk game di pustaka Steam Anda. Save-nya tidak akan dikirim ke Steam Cloud saat game ditutup — Anda perlu mengunggahnya sendiri dari bagian Save Cloud di halaman detail game. Lanjutkan?</string>
+    <string name="lab_7e6d7e33">Kartu Pustaka</string>
     <string name="lab_7e9c00ea">Otomatis (ikuti FPS)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
     <string name="lab_7eb6734a">Wayland memerlukan layer Proton yang dibuat untuknya.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">Menjalankan kode x86 64-bit game. Box64EC memerlukan komponen Box64EC terinstal.</string>
     <string name="lab_82265bbe">Sinkronkan pencapaian ke Steam?</string>
     <string name="lab_8232f25f">GDI (perangkat lunak)</string>
+    <string name="lab_82542307">Setel ulang ke otomatis</string>
     <string name="lab_82549ee8">Cara game ini dimulai: lewat Steam atau tidak, penyerahan pengontrol, anti-cheat, login Epic.</string>
     <string name="lab_82758f36">Backend native</string>
     <string name="lab_828c5a26">Gunakan mesin GameNative (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Lewati sinyal frame-acquire</string>
     <string name="lab_87f7f6ba">Profil daya</string>
     <string name="lab_880bfb03">Edit tata letak</string>
+    <string name="lab_88328343">Otomatis · sampul yang diburamkan</string>
     <string name="lab_8844e521">Nilai preset</string>
     <string name="lab_8850c516">Membuat game DirectInput bisa menggetarkan pengontrol: getaran biasa, serta efek gaya (force feedback) yang dikirim game balap dan penerbangan ke setir atau joystick, terasa lewat dua motor pengontrol. Mengikuti setelan Getaran (target dan intensitas getaran). Gaya yang konstan (misalnya game balap yang menahan setir tetap lurus) memudar setelah beberapa detik, agar pengontrol tidak terus bergetar. Ini hanya berfungsi selama game DirectInput bisa melihat pengontrol. Perubahan berlaku saat pengontrol tersambung ulang (dalam game, Kontrol › Pad melakukannya) atau di peluncuran berikutnya. BANNERIN_DINPUT_FF di variabel lingkungan lebih diutamakan daripada setelan ini.</string>
     <string name="lab_8861fdef">Setelan audio</string>
     <string name="lab_887ae5cd">Buat</string>
+    <string name="lab_88819a36">Kisi di atas gambar</string>
     <string name="lab_88845797">Pengelola tugas</string>
     <string name="lab_888e7afb">Tidak berpengaruh di Adreno, yang mendekode BCn sendiri.</string>
     <string name="lab_88a8754b">Ketajaman tekstur</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">Pencapaian yang Anda buka dalam game dicatat ke akun Steam asli Anda. Nonaktif: hanya tersimpan di perangkat ini.</string>
     <string name="lab_88f8aeb8">Warna format #RRGGBB, mis. #1E88E5</string>
     <string name="lab_8907b290">Telusuri file</string>
+    <string name="lab_892b7b55">Sampul lebar</string>
     <string name="lab_8965e6c7">Lebih sedikit layanan = mulai lebih cepat dan RAM lebih lega.</string>
     <string name="lab_8998f446">Ikon entri ini</string>
     <string name="lab_89f43a0d">Nilai preset penerjemah</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper</string>
     <string name="lab_8a8bb4d3">Command stream (CSMT)</string>
+    <string name="lab_8aa52c61">Detail game</string>
     <string name="lab_8ae3076a">Turbo</string>
     <string name="lab_8af52aac">Pembaruan</string>
     <string name="lab_8b087b3c">Tampilan</string>
@@ -948,6 +994,7 @@
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">%1$s pemetaan tombol · pengontrol baru mewarisinya</string>
     <string name="lab_8c68f725">Game OpenGL (serta DirectDraw / Direct3D lama lewat WineD3D) berjalan di Mesa dan Zink bawaan dan ditampilkan oleh Vulkan, bukan dengan salinan lambat per frame. Memerlukan driver grafis Turnip di X11. Selalu aktif dengan Wayland.</string>
+    <string name="lab_8c79f517">Trailer Steam</string>
     <string name="lab_8c7f97b0">%1$s dari %2$s GB</string>
     <string name="lab_8c913834">Pas, filter penskalaan, frame pacing, batas frame, dan frame generation tersimpan seperti di halamannya masing-masing</string>
     <string name="lab_8c9b8bce">Bidik gerak</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Sama dengan milik container</string>
     <string name="lab_952f41de">Driver GPU</string>
     <string name="lab_95432a7a">Slot pemain</string>
+    <string name="lab_95c66fc6">Tahun rilis</string>
     <string name="lab_95ca1574">Driver grafis</string>
     <string name="lab_96125830">Default / Semua pengontrol</string>
     <string name="lab_962bd533">Kecerahan</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">pilihan \"Jadikan default\"-nya dan layer default-nya kini dilupakan, dan halaman ini menampilkan default aplikasi sendiri. </string>
     <string name="lab_97bb79af">Mode Deck membuat klien Steam berperilaku seperti di Steam Deck dan menambahkan Quick Access Menu.\n\n</string>
     <string name="lab_98469a16">Terhubung</string>
+    <string name="lab_98513339">Trailer Steam</string>
     <string name="lab_9884a116">Emulator (32-bit)</string>
+    <string name="lab_98964f8d">Tidak ditemukan · nama ditampilkan</string>
     <string name="lab_989f5c02">Driver runtime Linux</string>
+    <string name="lab_98aa06ba">Besar</string>
     <string name="lab_98c4e496">Output Wine dan Box64 / FEX selama logging aktif.</string>
     <string name="lab_99082159">Suara notifikasi</string>
     <string name="lab_992421a8">Buka aplikasi di</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Bank suara MIDI default</string>
     <string name="lab_99c314b2">Cerah</string>
     <string name="lab_9a2890b2">Memerlukan GPU Adreno (Qualcomm), atau root di GPU lain.</string>
+    <string name="lab_9a75ad29">Tidak tertaut ke Steam: tautkan di Detail untuk mencari trailer.</string>
     <string name="lab_9a8f0817">Game ini</string>
     <string name="lab_9aa56987">Bidik gerak (gyro)</string>
     <string name="lab_9aaea01f">Overlay Teman Epic</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Abaikan gerakan kecil</string>
     <string name="lab_9d727d6c">Impor Lossless.dll di Setelan › Performa terlebih dulu.</string>
     <string name="lab_9d954afa">Ingat pilihan saya</string>
+    <string name="lab_9e5d1d40">Cari di Steam berdasarkan nama</string>
     <string name="lab_9e7ac4ad">Variabel sinkronisasi</string>
     <string name="lab_9e7bf84e">Ikuti preset bersama</string>
     <string name="lab_9ea6cfdd">Hanya yang penting</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Gaya antarmuka</string>
     <string name="lab_a2efb709">Untuk GPU Arm Mali. Selama belum diubah, ini mengikuti driver: aktif untuk driver PanVK, nonaktif untuk lainnya.</string>
     <string name="lab_a35eef98">Menyimpan laporan sensor (CPU, GPU, suhu, VRAM…) ke folder Downloads Anda.</string>
+    <string name="lab_a36379d6">Otomatis · Steam</string>
     <string name="lab_a37cf853">Pilih .exe lain di folder game untuk entri ini.</string>
     <string name="lab_a3904026">Tahan ini untuk membidik</string>
+    <string name="lab_a396cfaa">Tidak dapat memuat gambar itu</string>
     <string name="lab_a3c61ce1">Jendela &amp; log</string>
     <string name="lab_a3f6a50d">Pas di layar</string>
     <string name="lab_a40c85ce">Layanan yang dimulai bersama Windows</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Motor getar</string>
     <string name="lab_a559e736">Pengontrol XR</string>
     <string name="lab_a57ba715">Afinitas Prosesor (cpuList)</string>
+    <string name="lab_a593c4da">File Anda</string>
     <string name="lab_a59e2986">Xalia nonaktif (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Membuat klien berperilaku seperti di Steam Deck, dengan Quick Access Menu. Game berhenti menerima pengontrol.</string>
     <string name="lab_a5d4b1b1">ada game yang berjalan di dalamnya</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Kontrol layar vs. pengontrol fisik</string>
     <string name="lab_a6e62e9e">Penerjemahan DirectX</string>
     <string name="lab_a71846fe">Tema dan warna</string>
+    <string name="lab_a74f5b6d">Nonaktif, gambar game, gambar 3D yang bergerak perlahan dalam kedalaman, atau dengan pratinjau: trailer di kotak besar Beranda</string>
     <string name="lab_a7a4aed7">Layar sentuh mengirim jari ke Steam sebagai sentuhan asli; Touchpad menggerakkan pointer dengan seret dan mengklik dengan ketukan.</string>
     <string name="lab_a7c6d9e7">Batas frame rate</string>
     <string name="lab_a7c8bcd7">Keduanya (akurat seperti PC): menggerakkan motor besar dan kecil secara terpisah, seperti pengontrol PC. Tunggal (stik lebih halus): memakai satu motor. Beberapa pengontrol handheld (mis. AYANEO Pocket FIT) memperlambat pembaruan stik saat kedua motor berjalan; Tunggal memangkas perlambatan itu hingga separuh agar bidikan tetap mulus. Default: Tunggal di Pocket FIT, Keduanya di perangkat lain.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">Game yang terinstal tetap bisa dijalankan. Perlu sekali login online di perangkat ini terlebih dulu. Berlaku di sesi berikutnya.</string>
     <string name="lab_af32ab2f">Solo</string>
     <string name="lab_af39be20">Jaringan</string>
+    <string name="lab_af3f8345">Tidak ada yang ditemukan untuk game ini. Pilih gambar, atau tautkan ke Steam di Detail.</string>
     <string name="lab_af456994">Mencegah kernel menonaktifkan core.</string>
+    <string name="lab_af47e020">Genre</string>
     <string name="lab_afb57bd1">Filter upscaling, penajaman, dan debanding</string>
     <string name="lab_b01a2f1b">Variabel Lingkungan</string>
     <string name="lab_b01c4a81">Orientasi</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Bagikan save dengan aplikasi</string>
     <string name="lab_b132aa74">Turnip terinstal yang dipakai compositor Wayland untuk menampilkan frame game di layar.</string>
     <string name="lab_b18ba364">Layar sentuh</string>
+    <string name="lab_b1aea182">Tampilkan nama saja</string>
     <string name="lab_b1cc94c4">Efek</string>
     <string name="lab_b1fb3d78">Kunci posisi</string>
     <string name="lab_b2091323">Variabel BOX64_*-nya juga berlaku untuk Box64EC.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Jalankan…</string>
     <string name="lab_b4467898">Setel halus buffer suara</string>
     <string name="lab_b46c3296">Menghapus</string>
+    <string name="lab_b484c517">Kecil</string>
     <string name="lab_b48bc44b">Tidak dapat memuat daftar</string>
     <string name="lab_b4c6ec80"> Diatur untuk game ini.</string>
     <string name="lab_b4d38912">Tambahkan game pertama Anda</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">Belum ada build VEGAS terinstal: unduh di bawah.</string>
     <string name="lab_bd63a37d">Gambar wallpaper</string>
     <string name="lab_bd87c7d9">Cache tekstur yang sudah didekode</string>
+    <string name="lab_bd9b3216">Detail</string>
     <string name="lab_bdaf406a">Dalam game</string>
+    <string name="lab_be12d609">Pilih gambar…</string>
+    <string name="lab_be45a0e0">Tidak ditemukan · tidak tertaut ke Steam</string>
     <string name="lab_be638831">Kaca pembesar, jendela, log, dan program yang berjalan.</string>
     <string name="lab_be998b7c">Sinkronkan setiap frame</string>
     <string name="lab_be9a2a59">Back dua kali membuka Quick Access</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> Berlaku saat game berikutnya dimulai.</string>
     <string name="lab_bed0286f">Sembunyikan repositori ini</string>
     <string name="lab_bef10a2e">Pindahkan ke container lain</string>
+    <string name="lab_bf5a86a3">Posisi</string>
     <string name="lab_bf9aba55">Mulai dari awal</string>
     <string name="lab_bfa9745f">Selalu aktif</string>
     <string name="lab_bfb6fae9">Gelap atau terang; aksen mengikuti tema Anda</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Matikan pencadangan otomatis?</string>
     <string name="lab_c06ade64">Sakelar eksperimental dan internal server tampilan.</string>
+    <string name="lab_c088a86d">Atur logo</string>
     <string name="lab_c0b26391">Kompatibilitas</string>
     <string name="lab_c0ba51f5">Lingkungan</string>
     <string name="lab_c0cb7e61">Nonaktif secara default, agar game yang membaca XInput dan DirectInput hanya melihat satu gamepad.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">Perubahan disimpan untuk game ini hanya jika berbeda dari default global.</string>
     <string name="lab_c1bc6675">Wrapper Vulkan yang dipakai game di X11. Wrapper yang diimpor juga muncul di sini.</string>
     <string name="lab_c1c757e2">Log debug layer BCn</string>
+    <string name="lab_c1df4081">Sedang</string>
     <string name="lab_c206cdbf">Cadangkan semua save</string>
     <string name="lab_c22c196f">Merah</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Tata letak di layar</string>
     <string name="lab_c781beb4">Performa (eksperimental)</string>
     <string name="lab_c78bbaf5">Kontrol layar, mouse, getaran, bidik gerak.</string>
+    <string name="lab_c7b49d50">Aplikasi Steam %1$s</string>
     <string name="lab_c7fad197">Tidak ada setelan tambahan terdeteksi</string>
     <string name="lab_c82e7e67">Build dari katalog. Yang terinstal muncul di Versi DXVK.</string>
     <string name="lab_c844d41c">Untuk game Denuvo yang tidak terdeteksi otomatis oleh aplikasi.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Preset bersama, diedit</string>
     <string name="lab_cb5fc4d5">Konfigurasi VEGAS</string>
     <string name="lab_cb6d604d">HUD tidak bisa digeser saat bermain.</string>
+    <string name="lab_cbab7f7a">Ikon</string>
     <string name="lab_cbb98111">Stik kanan</string>
     <string name="lab_cc03c446">Pengelola file</string>
     <string name="lab_cc0a2f50">Saat game Steam dimulai dengan Goldberg atau .exe mentah (game Wine), beri tahu Steam bahwa Anda sedang memainkannya agar teman melihatnya dan waktu bermain tercatat. Peluncuran SteamLite selalu ditampilkan.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Unduh otomatis dari cloud GOG saat diluncurkan</string>
     <string name="lab_cf4ce884">Mode Layar Penuh</string>
     <string name="lab_cf608a0d">Gunakan DirectAudio</string>
+    <string name="lab_cf6c6955">Game ini belum punya logo. Pilih satu di Logo untuk melihatnya di sini.</string>
     <string name="lab_cf6d2530">Yang dibutuhkan build driver A710/A720/A722; Otomatis mengaktifkannya untuk driver impor tersebut. TU_DEBUG di variabel lingkungan lebih diutamakan.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Tengah bawah</string>
     <string name="lab_cf8f0f8a">Tidak ada variabel lingkungan</string>
     <string name="lab_cf9192cb">%1$s terinstal</string>
     <string name="lab_d02befc2">Memori video</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Pilih lewat sistem…</string>
     <string name="lab_d063c529">Disebut WOWBox64 di container ARM64EC, tempat ia menjalankan kode 32-bit jika dipilih di atas.</string>
     <string name="lab_d097c7ad">Touchpad</string>
+    <string name="lab_d0c3d24d">Pilih video…</string>
     <string name="lab_d1106762">Pilih gambar</string>
     <string name="lab_d13696b8">Sematkan pengontrol ke pemain</string>
     <string name="lab_d1588174">Getar pada</string>
@@ -1383,7 +1455,7 @@
     <string name="lab_d166863e">Pencadangan save otomatis saat keluar akan NONAKTIF untuk game yang Anda impor sendiri. Save-nya tidak akan diambil saat game ditutup — Anda perlu mencadangkannya sendiri lewat opsi cadangan container atau menu ⋮ game → \'Cadangkan save\'. Lanjutkan?</string>
     <string name="lab_d16b2e1e">Ketik tinggi dalam piksel.</string>
     <string name="lab_d1c8f604">Bank suara musik MIDI</string>
-    <string name="lab_d1e4a3ee">Home</string>
+    <string name="lab_d1e4a3ee">Beranda</string>
     <string name="lab_d22702d7">Pas (bilah hitam)</string>
     <string name="lab_d235caa8">Seluruh daftar sebagai NAME=VALUE, dipisahkan dengan spasi.</string>
     <string name="lab_d23a11bc">Suhu GPU</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Jalankan penyiapan lagi</string>
     <string name="lab_d49be3e8">Penyimpanan dan folder</string>
     <string name="lab_d4d60815">Frame pacing lebih stabil dan perangkat lebih dingin.</string>
+    <string name="lab_d4e70b40">Mencari trailer…</string>
     <string name="lab_d4eb64e3">Khusus…</string>
     <string name="lab_d51bc9cd">Emulasi tekstur BCn</string>
     <string name="lab_d51bce77">Input Eksklusif / Aktifkan DInput</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Pemicu</string>
     <string name="lab_d5e887b8">%1$s j</string>
     <string name="lab_d60412d3">Asli</string>
+    <string name="lab_d620ef74">Sampul, diburamkan</string>
     <string name="lab_d653f990">Penerjemah x86 untuk kode 32-bit</string>
     <string name="lab_d6d3fe68">Pilih paket komponen (-linux .wcp)</string>
     <string name="lab_d7060afb">Impor container ini</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Driver ini tidak dimuat di GPU ini: yang menjawab pemeriksaan justru driver sistem.</string>
     <string name="lab_d8e06406">Layar</string>
     <string name="lab_d8e621c2">Tambah drive</string>
+    <string name="lab_d90a905b">Kaca</string>
     <string name="lab_d91754f0">Tidak ada entri.</string>
     <string name="lab_d92d0230">Diterapkan: </string>
     <string name="lab_d92fb9d6">Nama tidak boleh kosong.</string>
+    <string name="lab_d9667615">Gambar</string>
     <string name="lab_d9767690">Game dimulai dengan variabel container-nya</string>
     <string name="lab_d9a22ca4">DX Wrapper</string>
     <string name="lab_d9b07af8">Diimpor </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">Variabel game ini</string>
     <string name="lab_dbe48d14">Tidak pernah</string>
     <string name="lab_dc2dbf53">(kosong)</string>
+    <string name="lab_dc6bb726">Putuskan tautan</string>
     <string name="lab_dc942e27">Beri tahu saya versi baru</string>
     <string name="lab_dcb67730">Nilai</string>
     <string name="lab_dcba8bc8">Nonaktifkan mouse</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">Wayland memerlukan Turnip terinstal untuk menampilkan frame game di layar. Yang baru muncul di Driver grafis.</string>
     <string name="lab_e2410f47">Telusuri dan unduh</string>
     <string name="lab_e2421520">Unduh versi WOWBox64</string>
+    <string name="lab_e280d375">Ukuran kartu</string>
     <string name="lab_e2a7f23e">Di layar</string>
+    <string name="lab_e2b70ebc">Tanpa klip pratinjau</string>
     <string name="lab_e2c38520">Entri ini tidak punya file ikon untuk ditulis.</string>
     <string name="lab_e2ce4373">Bagian</string>
     <string name="lab_e2e95fcd">Log game</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Untuk game yang hanya mengenali gamepad lewat Steam (No Man\'s Sky). Biarkan nonaktif untuk game yang membaca gamepad sendiri. Menonaktifkan passthrough.</string>
     <string name="lab_e3e80b58">Profil Kontrol</string>
     <string name="lab_e41154d8">Riwayat FPS</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Codec media</string>
     <string name="lab_e73d4b35">Ekstensi Vulkan</string>
     <string name="lab_e7bab6f9">Skala render (supersampling)</string>
+    <string name="lab_e7d39686">Seberapa tembus pandang kotak di atas gambar</string>
     <string name="lab_e7d6bbaa">Penerjemahan DirectX, driver GPU, OpenGL, dan cara gambar ditampilkan di layar.</string>
     <string name="lab_e7d75246">Tinggi resolusi rantai frame generation; lebarnya mengikuti layar Anda. Lebih rendah jauh lebih ringan, tapi lebih lembut.</string>
     <string name="lab_e801ba28">Nonaktifkan jika Anda mau; game ini akan mengingatnya.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Hapus pemetaan tombolnya</string>
     <string name="lab_eb680509">File .exe dari perangkat Anda, atau game dari toko.</string>
     <string name="lab_eb6d0257"> · dipakai oleh </string>
+    <string name="lab_eb78cff1">Deskripsi</string>
     <string name="lab_ebd67348">Disimpan di profil kontrol</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">Default x86-64</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">Menu Steam di pojok kiri atas, Quick Access Menu-nya di kanan atas.</string>
     <string name="lab_ef041fbb">Mesin</string>
     <string name="lab_efc1065a">Tidak terhubung</string>
+    <string name="lab_efca121e">Wallpaper Lab</string>
     <string name="lab_efd740b9">Transparansi</string>
     <string name="lab_efdeb1c6">Daftar preset dipakai bersama oleh semua container dan game.</string>
     <string name="lab_efdfc7e5">Pembatas FPS</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Bawaan (Win-FG)</string>
     <string name="lab_f38c2b5b">Perataan Layar</string>
     <string name="lab_f39e4ef9">Kunci API</string>
+    <string name="lab_f3a4d6f2">Tertaut ke aplikasi Steam %1$s</string>
     <string name="lab_f3c5111e">Tekstur lebih tajam saat dilihat dari sudut miring. Game DirectX 9 hingga 11.</string>
     <string name="lab_f3d61893">Efek visual</string>
     <string name="lab_f3e2bf3c">Overlay FPS/suhu yang tampil di atas game.</string>
@@ -1632,8 +1716,10 @@
     <string name="lab_f61050cc">Resolusi game</string>
     <string name="lab_f665e069">Notifikasi saat teman mengirim pesan dan obrolannya tidak sedang terbuka.</string>
     <string name="lab_f667b7f4">Warna aksen</string>
+    <string name="lab_f690a199">Sampul Anda</string>
     <string name="lab_f6f41dc4">Masalah yang diketahui, ditemukan di perangkat:\n</string>
     <string name="lab_f6f5fb6b">Buat container</string>
+    <string name="lab_f721f484">Sampul</string>
     <string name="lab_f745bb2a">Streaming</string>
     <string name="lab_f7578887">Dimulai dari Default Container Baru Anda. X untuk membuatnya.</string>
     <string name="lab_f783e029">Baterai ganda</string>
@@ -1648,11 +1734,14 @@
     <string name="lab_f91491fe">Bawa jendela lain dari game ini ke depan.</string>
     <string name="lab_f918602e">Driver Vulkan yang dipakai game itu sendiri untuk render dengan Wayland.</string>
     <string name="lab_f94e949e">Diatur oleh Audio › Mikrofon</string>
+    <string name="lab_f97022d8">Steam tidak punya trailer untuk game ini.</string>
     <string name="lab_fa109fc6">Cari efek…</string>
+    <string name="lab_fa2965af">Gambar latar belakang</string>
     <string name="lab_fa381e9a">Lebih tajam (-0.5)</string>
     <string name="lab_fa700875">Beberapa game tidak pernah membaca pengontrol sendiri: game memintanya ke Steam. Di SteamLite tidak ada yang menjawab, jadi game tersebut tidak melihat gamepad. Aktif: agen SteamLite mengaktifkan lapisan pengontrol Steam untuk game ini dengan tata letak yang sesuai. Biarkan nonaktif untuk game yang sudah membaca gamepad, atau setiap tekanan akan terbaca dua kali. Kebalikan dari passthrough pengontrol, jadi hanya satu yang bisa aktif. Khusus SteamLite.</string>
     <string name="lab_fa859fc7">Mode Goldberg, Verifikasi file, dan Periksa pembaruan ada di menu peluncuran. Nonaktifkan \"Lewati menu peluncuran\" untuk melihatnya saat mulai berikutnya.</string>
     <string name="lab_fac0fe64">Kontrol penskalaan sudah menangani bagian yang berguna tanpanya, dan batas FPS di panel dalam game membatasi laju frame. Nonaktifkan lagi mode Deck jika game berhenti merespons pengontrol.</string>
+    <string name="lab_fad0baa9">Default (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton milik Valve, diganti saat Steam memperbaruinya; file aslinya disimpan per build</string>
     <string name="lab_fae62cc0">Mengunci pointer ke game. Tekan Volume Turun untuk melepaskan.</string>
     <string name="lab_fb2b9733">Keduanya (akurat seperti PC)</string>

@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ onboarding 976eca39 STANDARD installed fresh on the Elite 15:29:52 EST (user: "yes install it"; NOT device-tested yet)
+- pm install Success; installed base.apk sha256 **a511f35a…** == staged; first install == last update time, no saved settings yet; crash buffer empty. The user's main app (com.tencent.ig) untouched.
+- **Next:** user opens it: orange setup from the first screen, portrait step circles, "Lab is a full-screen launcher…", app opens in Lab; landscape panel still fine. Then check winlator_theme.xml (ui_style deck, simple_home true, preset_index 9) + crash log.
+
 ## 2026-11-08 — 🎨 fix/onboarding-lab-ember: portrait step circles, Lab wording, Carbon & Ember for new installs (976eca39; CI running, NOT device-tested)
 - **Why (user, after a fresh standard install on the Elite, screenshots 151144 portrait / 151156 landscape):** portrait setup has no step list like landscape's side panel; new installs should start on Carbon & Ember; the setup still calls Lab "Simple". The user confirmed main already starts new installs in Lab and keeps updaters' style (AppThemeState, since 4740062a; not in any release yet).
 - **Changes:** DeckOnboarding: portrait shows the 7 steps as a row of circles (check = done, filled = current, joining lines fill in) instead of the progress bar (no label under them: the page heading already names the step); StepCircle shared with the landscape panel. "Simple" → "Lab" in the setup's interface-style text and in Classic Appearance (dropped "in one of three layouts"). AppThemeState.init: the fresh-install block now runs before the theme is read and also saves preset_index = Carbon & Ember (by name) when fresh and no theme saved; updates keep theirs (AMOLED default).

@@ -450,7 +450,7 @@ internal fun LabHome(
 /**
  * Home's big tile with previews on: the game's art filling the tile and its preview clip over it, the logo at its
  * Adjust logo spot, then what it is, its setup and the buttons along the bottom over a dark fade. With 3D art the art
- * and the clip shift against the device's tilt and the logo less.
+ * drifts slowly in depth and the logo less.
  */
 @Composable
 internal fun LabHeroTile(
@@ -475,7 +475,8 @@ internal fun LabHeroTile(
             translationY = -p.second * 9.dp.toPx()
         }
         LabPicture(bg, layer)
-        LabClipPlayer(game, layer)
+        // The player is never moved by the drift (an AndroidView under a moving layer has to be re-placed every frame).
+        LabClipPlayer(game, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.08f), 0.35f to Color.Transparent, 0.66f to Color.Black.copy(alpha = 0.55f), 1f to Color.Black.copy(alpha = 0.86f))))
         Box(
             Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 132.dp).graphicsLayer {

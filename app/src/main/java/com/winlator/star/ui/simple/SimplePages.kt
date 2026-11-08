@@ -306,7 +306,7 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
         ),
         // Game art (LabArt): the art behind the game pages, previews in Home's big tile, how the tiles sit over it, the cards.
         MenuEntry(
-            "gameart", L("Game art background"), L("Off, game art, 3D art that moves with the gyro, or with previews: a trailer in Home's big tile"),
+            "gameart", L("Game art background"), L("Off, game art, 3D art that slowly drifts in depth, or with previews: a trailer in Home's big tile"),
             trailing = LabArt.label(LabArt.MODES, LabArt.mode), icon = Icons.Filled.Image,
             actions = LabArt.MODES.map { (v, l) -> MenuAction(mark(L(l), v == LabArt.mode), { LabArt.chooseMode(v) }) },
         ),

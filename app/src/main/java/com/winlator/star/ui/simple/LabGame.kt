@@ -142,7 +142,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         return
     }
     val shortcut = shortcutState.value
-    LaunchedEffect(shortcut.file.path) { LabArt.selected = shortcut }
+    LaunchedEffect(shortcut.file.path) { LabArt.selected = shortcut; LabArt.resolve(context, shortcut) }
     val defs = SettingsRegistry.defs
     val byId = remember(defs) { defs.associateBy { it.id } }
     val values: (String) -> String = { id -> byId[id]?.takeIf { source.shows(it) }?.let { source.value(it) } ?: "" }

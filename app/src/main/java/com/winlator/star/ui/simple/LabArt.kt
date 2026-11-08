@@ -50,6 +50,7 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.ui.deck.DeckRoutes
 import com.winlator.star.ui.deck.SoraFamily
 import java.io.File
+import kotlinx.coroutines.launch
 
 /**
  * Lab's game art. App-wide choices (Settings › Appearance › Look), each game's own (Game details › Background and
@@ -156,7 +157,45 @@ internal object LabArt {
     fun gameMode(s: Shortcut): String = s.getExtra(K_MODE, "").takeIf { v -> MODES.any { it.first == v } } ?: mode
     fun gamePanels(s: Shortcut): String = s.getExtra(K_PANELS, "").takeIf { v -> PANELS.any { it.first == v } } ?: panels
     fun gameGrid(s: Shortcut): Boolean = when (s.getExtra(K_GRID, "")) { "on" -> true; "off" -> false; else -> grid }
-    fun appId(s: Shortcut): Int? = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
+    /** The game's Steam app: its link (Game details), else one found by its name for art and previews only. */
+    fun appId(s: Shortcut): Int? = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 } ?: foundIds[s.name]
+
+    /** Steam apps found by name for games without a link (never written to the game); found SteamGridDB heroes. */
+    private val foundIds = androidx.compose.runtime.mutableStateMapOf<String, Int>()
+    private val foundHeroes = androidx.compose.runtime.mutableStateMapOf<String, String>()
+    private val tried = HashSet<String>()
+    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
+    /**
+     * The art found for a game automatically: its Steam app by name when it has no link (the store's strict title
+     * match, remembered by SteamStoreSearch) and SteamGridDB's sharpest background (3840x1240 first, not the blurred
+     * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found; a miss is
+     * retried after a week), so SteamGridDB is asked once per game. Not used when the game has its own background.
+     */
+    fun resolve(context: Context, s: Shortcut) {
+        if (pick(s, "bg") != null) return
+        val name = s.name
+        synchronized(tried) { if (!tried.add(name)) return }
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences("lab_art_found", Context.MODE_PRIVATE)
+        prefs.getString("hero:$name", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[name] = it }
+        val linked = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
+        io.launch {
+            val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
+            val cached = prefs.getString("hero:$name", null)
+            val now = System.currentTimeMillis()
+            val hero = when {
+                cached != null && cached.startsWith("http") -> cached
+                cached != null && now - (cached.removePrefix("none:").toLongOrNull() ?: 0L) < 7L * 24 * 3600 * 1000 -> null
+                else -> runCatching { labSgdbHero(app, id, name) }.getOrNull().also { prefs.edit().putString("hero:$name", it ?: "none:$now").apply() }
+            }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (linked == null && id != null) foundIds[name] = id
+                if (hero != null) foundHeroes[name] = hero
+                if ((linked == null && id != null) || hero != null) changed()
+            }
+        }
+    }
 
     private const val STEAM = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
 
@@ -183,6 +222,10 @@ internal object LabArt {
         val p = pick(s, slot)
         if (p == "none") return emptyList()
         val id = appId(s)
+        if (slot == "bg") {
+            // Sharpest first: Steam's double size, SteamGridDB's (3840x1240 when it has one), Steam's 1920x620.
+            return listOfNotNull(p?.let(::model), id?.let { "$STEAM$it/library_hero_2x.jpg" }, foundHeroes[s.name], id?.let { "$STEAM$it/library_hero.jpg" })
+        }
         return listOfNotNull(p?.let(::model)) + (if (id != null) steamUrls(id, slot) else emptyList())
     }
 
@@ -250,7 +293,7 @@ internal fun LabArtBackdrop(route: String?, modifier: Modifier = Modifier) {
     }
     val vis by animateFloatAsState(if (shown != null) 1f else 0f, tween(450), label = "labArtVis")
     val drift = rememberInfiniteTransition(label = "labArtDrift")
-    val k by drift.animateFloat(1f, 1.07f, infiniteRepeatable(tween(42_000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "labArtScale")
+    val k by drift.animateFloat(1f, 1.04f, infiniteRepeatable(tween(42_000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "labArtScale")
     val bg = MaterialTheme.colorScheme.background
     LabParallaxSensor(enabled = shown?.parallax == true)
     BoxWithConstraints(modifier) {
@@ -259,7 +302,7 @@ internal fun LabArtBackdrop(route: String?, modifier: Modifier = Modifier) {
         if (vis > 0.01f && look != null) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = vis }) {
                 androidx.compose.animation.Crossfade(targetState = look, animationSpec = tween(450), label = "labArt") { l ->
-                    Box(Modifier.fillMaxSize().graphicsLayer { scaleX = k * 1.05f; scaleY = k * 1.05f; val p = LabParallax.offset(l.parallax); translationX = -p.first * 30.dp.toPx(); translationY = -p.second * 22.dp.toPx(); rotationY = p.first * 4f; rotationX = -p.second * 3f }) {
+                    Box(Modifier.fillMaxSize().graphicsLayer { val p = LabParallax.offset(l.parallax); val z = k * (if (l.parallax) 1.06f else 1f); scaleX = z; scaleY = z; translationX = -p.first * 30.dp.toPx(); translationY = -p.second * 22.dp.toPx(); rotationY = p.first * 4f; rotationX = -p.second * 3f }) {
                         LabPicture(l.pics, Modifier.fillMaxSize())
                     }
                 }

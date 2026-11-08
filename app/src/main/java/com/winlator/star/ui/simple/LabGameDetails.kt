@@ -177,6 +177,28 @@ private fun sgdbChoices(context: Context, s: Shortcut, slot: String): List<ArtCh
     }.getOrDefault(emptyList())
 }
 
+/**
+ * SteamGridDB's sharpest background for a game: by its Steam app when known, else a game titled like [name] (the
+ * store's strict title match). 3840x1240 first, then any size; never the blurred style. Null when none. BLOCKING.
+ */
+internal fun labSgdbHero(context: Context, steamId: Int?, name: String): String? {
+    val p = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+    val key = if (p.getBoolean("enable_custom_api_key", false)) p.getString("custom_api_key", "").orEmpty().ifBlank { SGDB_BUILTIN_KEY } else SGDB_BUILTIN_KEY
+    val base = "https://www.steamgriddb.com/api/v2"
+    val bySteam = steamId?.let { sid ->
+        httpText("$base/games/steam/$sid", key)?.let { runCatching { JSONObject(it).optJSONObject("data")?.optInt("id", 0) }.getOrNull() }
+    }?.takeIf { it > 0 }
+    val id = bySteam ?: run {
+        val hits = httpText("$base/search/autocomplete/" + URLEncoder.encode(name, "UTF-8"), key)?.let { runCatching { JSONObject(it).optJSONArray("data") }.getOrNull() } ?: return null
+        (0 until minOf(hits.length(), 5)).mapNotNull { hits.optJSONObject(it) }
+            .firstOrNull { SteamStoreSearch.nameMatch(name, it.optString("name")) >= 2 }?.optInt("id", 0)?.takeIf { it > 0 }
+    } ?: return null
+    fun first(query: String): String? = httpText("$base/heroes/game/$id$query", key)?.let { body ->
+        runCatching { JSONObject(body).optJSONArray("data")?.optJSONObject(0)?.optString("url")?.takeIf { it.isNotBlank() } }.getOrNull()
+    }
+    return first("?dimensions=3840x1240&styles=alternate,material") ?: first("?styles=alternate,material")
+}
+
 /** Steam's pictures for [slot] of the linked app. BLOCKING. */
 private fun steamChoices(appId: Int, slot: String): List<ArtChoice> {
     val out = LinkedHashMap<String, ArtChoice>()

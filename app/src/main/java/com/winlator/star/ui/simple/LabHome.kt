@@ -201,6 +201,8 @@ internal fun LabHome(
         val game = recent.firstOrNull { it.file.path == selPath } ?: recent.firstOrNull()
         // Its art goes behind the page (Appearance › Game art background).
         LaunchedEffect(game?.file?.path) { LabArt.selected = game }
+        // Games without a Steam link: find their art by name (once per game).
+        LaunchedEffect(recent) { recent.forEach { LabArt.resolve(context, it) } }
 
         @Composable
         fun ContinueTile(m: Modifier) {
@@ -479,7 +481,7 @@ internal fun LabHeroTile(
         LabClipPlayer(game, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.08f), 0.35f to Color.Transparent, 0.66f to Color.Black.copy(alpha = 0.55f), 1f to Color.Black.copy(alpha = 0.86f))))
         Box(
-            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 132.dp).graphicsLayer {
+            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 156.dp).graphicsLayer {
                 val p = LabParallax.offset(p3d)
                 translationX = p.first * 8.dp.toPx()
                 translationY = p.second * 6.dp.toPx()

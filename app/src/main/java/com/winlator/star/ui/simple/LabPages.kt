@@ -80,7 +80,10 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
     val first = remember { FocusRequester() }
     LaunchedEffect(games.isNotEmpty()) { delay(120); runCatching { first.requestFocus() } }
-    LaunchedEffect(games) { if (games.none { it.file.path == LabArt.selected?.file?.path }) LabArt.selected = games.firstOrNull() }
+    LaunchedEffect(games) {
+        if (games.none { it.file.path == LabArt.selected?.file?.path }) LabArt.selected = games.firstOrNull()
+        games.forEach { LabArt.resolve(context, it) }
+    }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions) {
         val legend = listOf("B" to L("Back"), "A" to L("Open"), "X" to L("Game menu"), "L1 R1" to L("Section"))

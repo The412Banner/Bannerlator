@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 feat/lab-settings-polish MERGED to main 47c5d7c3 (user: "good merge it")
+- **What:** a faint fading line between options in Lab's settings and menus; "?" help buttons (START too); the classic Wayland adapter settings as rows (profile + 8 single switches, same driver-config keys) with the adapter report at the top of Lab's Wayland game driver page.
+- **Proof:** CI 42529607854 green ×4. Installed on the Elite main app and checked by the user (screenshots 171740/171744 + the inline report). Crash buffer empty.
+- **How:** --no-ff over main 2bfb9019 (no conflicts). Backup ref refs/backup/20261108/main-before-lab-settings-polish → 2bfb9019. Merged code == the tested ce72b150. Main push build 42530953085 running.
+- **Open:** the new labels and explanations are English only (a lab_strings.py extract + fill pass is needed). Branch kept.
+
 ## 2026-11-08 — ✅ labpolish ce72b150 INSTALLED on the Elite main app (pubg) 17:29:09 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42529607854 green ×4. Installed base.apk sha256 92866540… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
 - **Next:** the user checks the report at the top of the Wayland game driver page → merge on go.

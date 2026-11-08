@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Composants Windows</string>
     <string name="lab_14bf5ec1">Le plus récent l\'emporte : n\'écrase jamais une sauvegarde cloud plus récente.</string>
     <string name="lab_14d452ce">Comment l\'image du jeu remplit votre écran.</string>
+    <string name="lab_14e033f6">Sous-groupes</string>
     <string name="lab_157c2809">Jeux moteur Quake en fenêtré</string>
     <string name="lab_15a3b754">Unique (sticks plus fluides)</string>
     <string name="lab_15cf88ba">Fichier .icp ou .icpx</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Les fichiers propres à chaque Proton ont été enregistrés comme son original à l\'ouverture de cette page.</string>
     <string name="lab_1b4c8948">Mode de présentation</string>
     <string name="lab_1bbf10a9"> (votre copie)</string>
+    <string name="lab_1bc2538c">Correctif de timing KGSL</string>
     <string name="lab_1bdd2734">Par défaut du jeu</string>
     <string name="lab_1bfb31a3">Couleur d\'arrière-plan</string>
     <string name="lab_1bfc578f">Notifications du chat</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Supprimer %1$s et tout son contenu ? Les raccourcis de ses jeux seront aussi supprimés.</string>
     <string name="lab_1dd4a128">Options root</string>
     <string name="lab_1df4901e">%1$s dupliqué</string>
+    <string name="lab_1df4bc73">Auto indique au jeu quelles opérations de sous-groupe votre pilote Mesa prend en charge (DOOM Eternal et les autres jeux qui en ont besoin démarrent). Désactivé les masque, comme le faisaient les anciens adaptateurs ; essayez-le si un jeu présente des problèmes graphiques ou des plantages qu\'il n\'avait pas avant.</string>
     <string name="lab_1dfaae77">Un nom ne peut pas contenir \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Pour les jeux que le client lance, pas pour le client lui-même, et pour chacun d\'eux : la session n\'a qu\'un seul environnement. </string>
     <string name="lab_1e223777">Version, notes de version et Télécharger et installer (paramètres de Classic).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Annuler le téléchargement</string>
     <string name="lab_1f52ec4a">Le niveau de fonctionnalités annoncé par VKD3D. Baissez-le seulement pour un jeu qui refuse de démarrer.</string>
     <string name="lab_1f5ee21a">Affiche l\'avis de mise à jour quand une nouvelle version sort.</string>
+    <string name="lab_1f796e30">Les images transitent sous forme de tampons GPU compressés (moins de bande passante). Désactivez-le si l\'image montre des blocs brouillés ou des rayures.</string>
     <string name="lab_1f7b66b6">Composants Win</string>
     <string name="lab_1f88c31b">Options</string>
     <string name="lab_1f89987a">Règle d\'un coup les options d\'énergie, GPU et root ci-dessus pour ce jeu. Le profil lui-même n\'est pas conservé.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Définis pour ce jeu</string>
     <string name="lab_31aa53e1">Modifier en texte</string>
     <string name="lab_31b614e4">Auto ne l\'utilise que sur Adreno 710, 720 et 722. Ne le changez que si un jeu fonctionne mal.</string>
+    <string name="lab_32038add">Contourne un bug de Turnip où demander \"le GPU a-t-il fini ?\" attend la fin de toute l\'image (le bug de timing du rapport). Par défaut laisse l\'adaptateur le détecter ; Activé le force, Désactivé le désactive.</string>
+    <string name="lab_3205bc81">Aucun pilote graphique Turnip n\'est défini, il n\'y a donc rien à vérifier.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Mode écran tactile</string>
     <string name="lab_32a7fa00">Génération d\'images</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Banques de sons installées et dossier d\'export</string>
     <string name="lab_33b3dcd5">Maintient le GPU à sa fréquence maximale pendant qu\'un jeu tourne. Plus chaud et plus gourmand ; les jeux peuvent passer outre.</string>
     <string name="lab_33b5c99c">Seulement après acceptation de l\'avertissement sur le cloud tiers ; ne supprime jamais rien du cloud.</string>
+    <string name="lab_33e13543">Rapport de l\'adaptateur</string>
     <string name="lab_340a5eba">Sauvegardes automatiques et synchronisation cloud pour Steam, GOG et vos propres jeux.</string>
     <string name="lab_340d70c2">Moteurs de téléchargement des boutiques, vitesse et connexion Steam.</string>
     <string name="lab_3421373f">Collecte auto à la sortie</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Le profil par défaut %1$s, </string>
     <string name="lab_452013a2">Exporter</string>
     <string name="lab_45536eb8">Conteneur</string>
+    <string name="lab_455f1d53">UBWC / tampons compressés</string>
     <string name="lab_45bf9648">Backend d\'affichage</string>
     <string name="lab_45e5d14f">Échec de l\'exportation</string>
     <string name="lab_45f80a27">Avancé</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Fréquence d\'affichage fixe</string>
     <string name="lab_5c462080">Non appliqué pendant que lsfg-vk multiplie les images : il gère lui-même leur cadence.</string>
     <string name="lab_5c524fb3">Valeurs par défaut des nouveaux conteneurs</string>
+    <string name="lab_5c596310">Le compositeur garde plusieurs images en cours de traitement au lieu d\'attendre chaque blit vers l\'écran. Désactivez-le si les images arrivent dans le désordre ou si un jeu saccade uniquement sous Wayland.</string>
     <string name="lab_5c821476">Sélecteur du système</string>
     <string name="lab_5cb6896e">Steam sans interface</string>
     <string name="lab_5cc2a688">Le centre de données Steam à utiliser, le test des régions et la vérification réseau SteamLite (paramètres de Classic).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">réappliqué au lancement à </string>
     <string name="lab_63a87e7d">Plus net (-0.25)</string>
     <string name="lab_63ce8179">Bêta Steam Deck</string>
+    <string name="lab_641b9c9d">Le tampon du jeu va directement à l\'écran, sans copie (latence minimale, moins de chaleur). Nécessite des fences sync-file dans le pilote (voir le rapport de l\'adaptateur). Désactivez-le si vous voyez du déchirement d\'image ou des images périmées.</string>
     <string name="lab_643b2baf">Partager / transférer</string>
     <string name="lab_64903a6c">Obtenir plus</string>
     <string name="lab_64c5e98f">Image dans l\'image</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Paramètres Vulkan</string>
     <string name="lab_8429d942">Installer des environnements d\'exécution et des bibliothèques dans le conteneur, et choisir les DLL de Wine ou de Microsoft.</string>
     <string name="lab_845439e4">Les extensions d\'un pilote Qualcomm ne sont connues qu\'une fois le jeu lancé.</string>
+    <string name="lab_84a0335e">Profil de l\'adaptateur</string>
     <string name="lab_84cba1d0" formatted="false">%.1f Mo · enregistré</string>
     <string name="lab_8521db60">Menu rapide</string>
     <string name="lab_85486938">Journaux et diagnostic</string>
+    <string name="lab_8554e6fa">Rapide</string>
     <string name="lab_85558be1">Valeurs par défaut de tous les conteneurs</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Basculer</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Mises à jour</string>
     <string name="lab_8b087b3c">Apparence</string>
     <string name="lab_8b60dd8e">Lancez le client Steam une fois pour qu\'il télécharge son Proton ARM64, ou ajoutez GE-Proton / CachyOS depuis le catalogue des Protons Linux.</string>
+    <string name="lab_8bf2cbae">Modificateurs de format DRM</string>
     <string name="lab_8c195a44">Synchronisation</string>
     <string name="lab_8c283df5">Builds DirectX 12 du catalogue.</string>
     <string name="lab_8c33a442">Chaque système audio garde son propre préréglage, donc passer de PulseAudio à ALSA ou DirectAudio ne mélange jamais leurs paramètres. Un jeu sans préréglage propre continue de suivre son conteneur.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Partager le presse-papiers Android avec les jeux</string>
     <string name="lab_968b9d49">Appliqués au lancement. Le menu latéral en jeu les modifie toujours en direct.</string>
     <string name="lab_969dab73">ReShade activé / désactivé, Seul / Empilé, effets et leurs paramètres</string>
+    <string name="lab_969fd520">Fences de rendu client</string>
     <string name="lab_96a7cb77">Le remplacement en attente a été annulé.</string>
     <string name="lab_96df6867">%1$s h jouées</string>
     <string name="lab_97275ac4">Réinverse le rouge et le bleu (BGRA vers RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• La superposition de performance du menu d\'accès rapide est nouvelle et n\'a encore été essayée sur aucun appareil.\n\n</string>
     <string name="lab_9b395c25">Laisser le jeu gérer la manette</string>
     <string name="lab_9b5699c0">Architecture, traducteur et façon dont FEX est chargé.</string>
+    <string name="lab_9ba84344">Le pilote n\'a pas pu être vérifié.</string>
     <string name="lab_9bc722a8">Stockage</string>
     <string name="lab_9bd29497">Souris au trackpad</string>
     <string name="lab_9c232707">À propos et aide</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 via Vulkan. Aucun désactive DirectX 12.</string>
     <string name="lab_ab612af4">Temp.</string>
     <string name="lab_ab78a04b">Connectez-vous pour gérer vos configurations partagées</string>
+    <string name="lab_ab8824cb">Mode de présentation de l\'adaptateur</string>
     <string name="lab_abb1c367">Rien n\'est branché. Ce jeu est toujours réglé pour démarrer sur une TV.</string>
     <string name="lab_abb20221">Aucun préréglage</string>
     <string name="lab_abf1049c">Conserver l\'archive brute par défaut</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Changer de fenêtre</string>
     <string name="lab_aca7092f">Les versions installées apparaissent sous Version de Box64.</string>
     <string name="lab_acfc8aab">Utiliser</string>
+    <string name="lab_ad11f65e">Auto (recommandé)</string>
     <string name="lab_ad23e110">Aucun programme signalé pour l\'instant.</string>
     <string name="lab_ad26a7c7">inconnu</string>
     <string name="lab_adcb307d">Comment les appels DirectX de Windows sont convertis en Vulkan pour votre GPU.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Lecture des extensions du pilote…</string>
     <string name="lab_b6b590cf">Lancer hors ligne</string>
     <string name="lab_b6e99688">Zoomer sur une partie de l\'écran.</string>
+    <string name="lab_b7079be0">Présentation zero-copy</string>
     <string name="lab_b71f7c14">Télécharger des versions de FEXCore</string>
     <string name="lab_b7320213">Programmes en cours</string>
     <string name="lab_b736f934">Vos boutiques</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">s\'applique tout de suite · enregistré pour ce jeu et comme valeur par défaut de ce moteur</string>
     <string name="lab_ca45d5a4">ce conteneur</string>
     <string name="lab_ca62f862">Téléchargements et réseau</string>
+    <string name="lab_cabf747a">Copie asynchrone</string>
     <string name="lab_caf7d4a3">Préréglage partagé, modifié</string>
     <string name="lab_cb5fc4d5">Config VEGAS</string>
     <string name="lab_cb6d604d">Le HUD ne peut pas être déplacé en jeu.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Étirer</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">Netteté DLS + débruitage</string>
+    <string name="lab_ce6eab03">Avec le zero-copy, le pilote du jeu indique au compositeur quand une image est terminée. Ne le désactivez que pour comparer ; Désactivé peut afficher des images à moitié dessinées.</string>
     <string name="lab_ce764fd8">Espace utilisé, dossiers de l\'appli et système de base.</string>
     <string name="lab_ce9b8eca">Transcoder BCn en ASTC</string>
     <string name="lab_ceadf171">Android bloque fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Priorité des contrôles à l\'écran</string>
     <string name="lab_e1768a43">Se change aussi en jeu depuis le menu latéral.</string>
     <string name="lab_e18caa5c">Aucun lecteur</string>
+    <string name="lab_e19da5b2">Adaptateur Wayland</string>
     <string name="lab_e1be537c">Non enregistré</string>
     <string name="lab_e22a8ea9">Wayland a besoin d\'un Turnip installé pour afficher les images du jeu à l\'écran. Les nouveaux apparaissent sous Pilote graphique.</string>
     <string name="lab_e2410f47">Parcourir et télécharger</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Seulement le pilote de l\'appareil pour l\'instant.</string>
     <string name="lab_f04c78b9">Paramètres audio · ce jeu</string>
     <string name="lab_f05053e7">Lit directement un Steam Controller (ses trackpads et boutons supplémentaires). Désactivé : le chemin d\'entrée normal reste inchangé.</string>
+    <string name="lab_f0520965">mailbox = image la plus récente, latence minimale ; fifo = vsync, cadence régulière. Par défaut suit le profil, sinon le mode de présentation enregistré. Immediate nécessite le déchirement d\'image, que Wayland ne propose pas.</string>
     <string name="lab_f05494f9">La couche Wine de ce conteneur ne peut pas piloter Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein et Jedi Academy tournent en fenêtre à la taille de la session.</string>
     <string name="lab_f0c81c31">Client Steam</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Valeurs par défaut</string>
     <string name="lab_f523d27f">Transmission directe de la manette</string>
     <string name="lab_f54f4eb6">Impossible d\'installer %1$s</string>
+    <string name="lab_f552097b">Auto : choisit d\'après le rapport de l\'adaptateur de votre pilote ; sans rapport, il ne change rien.\n\nFluide : cadence d\'images régulière : vsync (fifo), images copiées en arrière-plan, pas de zero-copy.\n\nRapide : latence minimale : mailbox, zero-copy avec tampons compressés, fences de rendu client.\n\nCompatibilité : le plus sûr : vsync, tous les raccourcis désactivés, tampons simples, correctif de timing activé. Pour les jeux qui scintillent ou se figent.\n\nLes variables d\'environnement saisies dans l\'onglet Variables d\'env. priment toujours sur ces profils ; les options individuelles priment sur le profil.</string>
     <string name="lab_f55495e0">Enregistrer</string>
     <string name="lab_f576fb2d">Couches du catalogue, ou installez-en une depuis un fichier. Les nouveaux conteneurs peuvent les utiliser.</string>
     <string name="lab_f57b35ee">Zone morte et lissage</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Le pilote avec lequel le compositeur de l\'appli affiche la session à l\'écran. Pas celui avec lequel le client dessine.</string>
     <string name="lab_f59e59da">Affiché dans votre bibliothèque. Renommer conserve la jaquette et l\'icône.</string>
     <string name="lab_f61050cc">Résolution du jeu</string>
+    <string name="lab_f65eddfe">Permet au pilote du jeu et au compositeur de s\'accorder sur la disposition des tampons. Désactivé oblige le jeu à utiliser de simples tampons linéaires (BANNER_WSI_NO_MODIFIERS=1) ; essayez-le en cas d\'écran noir ou d\'images corrompues.</string>
     <string name="lab_f665e069">Une notification quand un ami vous écrit et que sa conversation n\'est pas ouverte.</string>
     <string name="lab_f667b7f4">Couleur d\'accentuation</string>
     <string name="lab_f690a199">Votre jaquette</string>

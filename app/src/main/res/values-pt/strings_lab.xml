@@ -147,13 +147,14 @@
     <string name="lab_13b9f697">Salvar só o arquivo</string>
     <string name="lab_13cd4116">NAME ou NAME=VALUE</string>
     <string name="lab_13d539b7">Verde-azulado</string>
-    <string name="lab_13f11ba3">Desativada</string>
+    <string name="lab_13f11ba3">Desativado</string>
     <string name="lab_1405c85b">Esticar os jogos para preencher a tela</string>
     <string name="lab_144c53aa">Escolha primeiro uma versão do driver.</string>
     <string name="lab_145ab26b">Auto / Padrão</string>
     <string name="lab_148d6175">Componentes do Windows</string>
     <string name="lab_14bf5ec1">O mais recente vence: nunca sobrescreve um jogo salvo mais recente na nuvem.</string>
     <string name="lab_14d452ce">Como a imagem do jogo preenche a sua tela.</string>
+    <string name="lab_14e033f6">Subgrupos</string>
     <string name="lab_157c2809">Jogos com engine Quake em janela</string>
     <string name="lab_15a3b754">Único (analógicos mais suaves)</string>
     <string name="lab_15cf88ba">Arquivo .icp ou .icpx</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Os arquivos próprios de cada Proton foram salvos como o original dele quando esta página abriu.</string>
     <string name="lab_1b4c8948">Modo de apresentação</string>
     <string name="lab_1bbf10a9"> (sua cópia)</string>
+    <string name="lab_1bc2538c">Shim de temporização KGSL</string>
     <string name="lab_1bdd2734">Padrão do jogo</string>
     <string name="lab_1bfb31a3">Cor de fundo</string>
     <string name="lab_1bfc578f">Notificações do chat</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Remover %1$s e tudo o que há nele? Os atalhos dos jogos dele também serão removidos.</string>
     <string name="lab_1dd4a128">Opções de root</string>
     <string name="lab_1df4901e">%1$s duplicado</string>
+    <string name="lab_1df4bc73">\"Automático\" informa ao jogo quais operações de subgrupo o seu driver Mesa suporta (assim iniciam o DOOM Eternal e outros jogos que precisam delas). \"Desativado\" as oculta, como os adaptadores antigos faziam; tente se um jogo apresentar falhas gráficas ou travamentos que não tinha antes.</string>
     <string name="lab_1dfaae77">Um nome não pode conter \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Para os jogos que o cliente inicia, não para o próprio cliente, e para todos eles: a sessão tem um único ambiente. </string>
     <string name="lab_1e223777">Versão, notas de lançamento e Baixar e instalar (Configurações do Classic).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Cancelar o download</string>
     <string name="lab_1f52ec4a">O nível de recursos que o VKD3D informa. Reduza só para um jogo que se recusa a iniciar.</string>
     <string name="lab_1f5ee21a">Mostra o aviso de atualização quando sai uma nova versão.</string>
+    <string name="lab_1f796e30">Os quadros trafegam como buffers de GPU comprimidos (menos largura de banda). Desative se a imagem mostrar blocos ou listras embaralhados.</string>
     <string name="lab_1f7b66b6">Componentes Win</string>
     <string name="lab_1f88c31b">Opções</string>
     <string name="lab_1f89987a">Aplica de uma vez as opções de energia, GPU e root acima para este jogo. O perfil em si não é guardado.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Definidos para este jogo</string>
     <string name="lab_31aa53e1">Editar como texto</string>
     <string name="lab_31b614e4">Auto usa isso só nas Adreno 710, 720 e 722. Mude só se um jogo apresentar problemas.</string>
+    <string name="lab_32038add">Contorna um bug do Turnip em que perguntar \"a GPU terminou?\" espera o quadro inteiro (o bug de temporização do relatório). \"Padrão\" deixa o adaptador detectar o bug; \"Ativado\" força o shim, \"Desativado\" o desliga.</string>
+    <string name="lab_3205bc81">Nenhum driver gráfico Turnip está definido, então não há nada para verificar.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Modo touchscreen</string>
     <string name="lab_32a7fa00">Geração de quadros</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Bancos de sons instalados e pasta de exportação</string>
     <string name="lab_33b3dcd5">Mantém a GPU na frequência máxima enquanto um jogo roda. Esquenta e consome mais; os jogos podem substituir isso.</string>
     <string name="lab_33b5c99c">Só depois que você aceitar o aviso sobre a nuvem de terceiros; nunca apaga nada da nuvem.</string>
+    <string name="lab_33e13543">Relatório do adaptador</string>
     <string name="lab_340a5eba">Backups automáticos dos jogos salvos e sincronização na nuvem para Steam, GOG e seus próprios jogos.</string>
     <string name="lab_340d70c2">Mecanismos de download das lojas, velocidade e conexão com a Steam.</string>
     <string name="lab_3421373f">Coletar automaticamente ao sair</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">O perfil padrão %1$s, </string>
     <string name="lab_452013a2">Exportar</string>
     <string name="lab_45536eb8">Contêiner</string>
+    <string name="lab_455f1d53">UBWC / buffers comprimidos</string>
     <string name="lab_45bf9648">Backend de exibição</string>
     <string name="lab_45e5d14f">Falha ao exportar</string>
     <string name="lab_45f80a27">Avançado</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Taxa de atualização fixa</string>
     <string name="lab_5c462080">Não é aplicado enquanto o lsfg-vk está multiplicando: ele mesmo controla o ritmo dos quadros.</string>
     <string name="lab_5c524fb3">Padrões de novos contêineres</string>
+    <string name="lab_5c596310">O compositor mantém quadros em andamento em vez de esperar cada blit na tela. Desative se os quadros chegarem fora de ordem ou se um jogo engasgar só no Wayland.</string>
     <string name="lab_5c821476">Seletor do sistema</string>
     <string name="lab_5cb6896e">Steam sem interface</string>
     <string name="lab_5cc2a688">Qual datacenter da Steam usar, teste de regiões e a verificação de rede do SteamLite (Configurações do Classic).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">reaplicado ao iniciar às </string>
     <string name="lab_63a87e7d">Mais nítido (-0.25)</string>
     <string name="lab_63ce8179">Beta do Steam Deck</string>
+    <string name="lab_641b9c9d">O buffer do próprio jogo vai para a tela sem cópia (menor latência, menos calor). Exige fences sync-file no driver (veja o relatório do adaptador). Desative se você vir tearing ou quadros desatualizados.</string>
     <string name="lab_643b2baf">Compartilhar / transferir</string>
     <string name="lab_64903a6c">Obter mais</string>
     <string name="lab_64c5e98f">Picture-in-picture</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Configurações do Vulkan</string>
     <string name="lab_8429d942">Instale runtimes e bibliotecas no contêiner e escolha entre as DLLs do Wine ou da Microsoft.</string>
     <string name="lab_845439e4">As extensões de um driver da Qualcomm só são conhecidas depois que o jogo inicia.</string>
+    <string name="lab_84a0335e">Perfil do adaptador</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · salvo</string>
     <string name="lab_8521db60">Menu rápido</string>
     <string name="lab_85486938">Logs e diagnóstico</string>
+    <string name="lab_8554e6fa">Rápido</string>
     <string name="lab_85558be1">Padrões para todos os contêineres</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Trocar</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Atualizações</string>
     <string name="lab_8b087b3c">Aparência</string>
     <string name="lab_8b60dd8e">Inicie o cliente Steam uma vez para ele baixar o Proton ARM64, ou adicione GE-Proton / CachyOS pelo catálogo de Protons Linux.</string>
+    <string name="lab_8bf2cbae">Modificadores de formato DRM</string>
     <string name="lab_8c195a44">Sincronização</string>
     <string name="lab_8c283df5">Builds do DirectX 12 do catálogo.</string>
     <string name="lab_8c33a442">Cada sistema de som mantém sua própria predefinição, então trocar entre PulseAudio, ALSA e DirectAudio nunca mistura as configurações deles. Um jogo sem predefinição própria continua seguindo o contêiner.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Compartilhar a área de transferência do Android com os jogos</string>
     <string name="lab_968b9d49">Aplicadas na inicialização. O menu lateral do jogo ainda as altera em tempo real.</string>
     <string name="lab_969dab73">ReShade ativado / desativado, Único / Empilhado, efeitos e suas configurações</string>
+    <string name="lab_969fd520">Fences de renderização do cliente</string>
     <string name="lab_96a7cb77">A troca pendente foi cancelada.</string>
     <string name="lab_96df6867">%1$s h jogadas</string>
     <string name="lab_97275ac4">Troca de volta o vermelho e o azul (BGRA para RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• O overlay de desempenho do Menu de Acesso Rápido é novo e ainda não foi testado em um aparelho.\n\n</string>
     <string name="lab_9b395c25">Deixar o jogo cuidar do controle</string>
     <string name="lab_9b5699c0">Arquitetura, tradutor e como o FEX é carregado.</string>
+    <string name="lab_9ba84344">Não foi possível verificar o driver.</string>
     <string name="lab_9bc722a8">Armazenamento</string>
     <string name="lab_9bd29497">Mouse no trackpad</string>
     <string name="lab_9c232707">Sobre e ajuda</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 via Vulkan. Nenhum desativa o DirectX 12.</string>
     <string name="lab_ab612af4">Temp.</string>
     <string name="lab_ab78a04b">Entre para gerenciar suas configurações compartilhadas</string>
+    <string name="lab_ab8824cb">Modo de apresentação do adaptador</string>
     <string name="lab_abb1c367">Nada está conectado. Este jogo ainda está configurado para iniciar em uma TV.</string>
     <string name="lab_abb20221">Nenhuma predefinição</string>
     <string name="lab_abf1049c">Manter o arquivo original por padrão</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Trocar janela</string>
     <string name="lab_aca7092f">As instaladas aparecem em Versão do Box64.</string>
     <string name="lab_acfc8aab">Usar</string>
+    <string name="lab_ad11f65e">Automático (recomendado)</string>
     <string name="lab_ad23e110">Nenhum programa informado ainda.</string>
     <string name="lab_ad26a7c7">desconhecido</string>
     <string name="lab_adcb307d">Como as chamadas DirectX do Windows são convertidas em Vulkan para a sua GPU.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Lendo as extensões do driver…</string>
     <string name="lab_b6b590cf">Iniciar offline</string>
     <string name="lab_b6e99688">Ampliar uma parte da tela.</string>
+    <string name="lab_b7079be0">Apresentação zero-copy</string>
     <string name="lab_b71f7c14">Baixar versões do FEXCore</string>
     <string name="lab_b7320213">Programas em execução</string>
     <string name="lab_b736f934">Suas lojas</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">aplica-se agora · salvo para este jogo e como padrão deste mecanismo</string>
     <string name="lab_ca45d5a4">este contêiner</string>
     <string name="lab_ca62f862">Downloads e rede</string>
+    <string name="lab_cabf747a">Cópia assíncrona</string>
     <string name="lab_caf7d4a3">Predefinição compartilhada, editada</string>
     <string name="lab_cb5fc4d5">Configuração do VEGAS</string>
     <string name="lab_cb6d604d">O HUD não pode ser arrastado no jogo.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Esticar</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">Nitidez DLS + redução de ruído</string>
+    <string name="lab_ce6eab03">Com zero-copy, o driver do jogo avisa o compositor quando um quadro termina. Desative só para comparar; desativado, podem aparecer quadros desenhados pela metade.</string>
     <string name="lab_ce764fd8">Espaço usado, pastas do app e o sistema base.</string>
     <string name="lab_ce9b8eca">Transcodificar BCn para ASTC</string>
     <string name="lab_ceadf171">O Android bloqueia o fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Prioridade dos controles na tela</string>
     <string name="lab_e1768a43">Também pode ser trocado no jogo pelo menu lateral.</string>
     <string name="lab_e18caa5c">Nenhuma unidade</string>
+    <string name="lab_e19da5b2">Adaptador Wayland</string>
     <string name="lab_e1be537c">Não salvo</string>
     <string name="lab_e22a8ea9">O Wayland precisa de um Turnip instalado para exibir os quadros do jogo na tela. Os novos aparecem em Driver gráfico.</string>
     <string name="lab_e2410f47">Explorar e baixar</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Por enquanto, só o driver do próprio celular.</string>
     <string name="lab_f04c78b9">Configurações de áudio · este jogo</string>
     <string name="lab_f05053e7">Lê um Steam Controller diretamente (os trackpads e botões extras dele). Desativado: o caminho de entrada normal não muda.</string>
+    <string name="lab_f0520965">mailbox = quadro mais recente, menor latência; fifo = vsync, ritmo uniforme. \"Padrão\" segue o perfil; sem ele, o modo de apresentação salvo. Immediate precisa de tearing, que o Wayland não oferece.</string>
     <string name="lab_f05494f9">A camada do Wine deste contêiner não funciona com Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein e Jedi Academy rodam em janela no tamanho da sessão.</string>
     <string name="lab_f0c81c31">Cliente Steam</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Padrões</string>
     <string name="lab_f523d27f">Passthrough do controle</string>
     <string name="lab_f54f4eb6">Não foi possível instalar o %1$s</string>
+    <string name="lab_f552097b">Automático: escolhe com base no relatório do adaptador do seu driver; sem relatório, não muda nada.\n\nFluido: ritmo de quadros uniforme: vsync (fifo), quadros copiados em segundo plano, sem zero-copy.\n\nRápido: menor latência: mailbox, zero-copy com buffers comprimidos, fences de renderização do cliente.\n\nCompatibilidade: o mais seguro: vsync, todos os atalhos desativados, buffers simples, shim de temporização ativado. Para jogos que cintilam ou travam.\n\nAs variáveis de ambiente que você digitar em \"Variáveis de ambiente\" sempre têm prioridade sobre esses perfis; as opções individuais têm prioridade sobre o perfil.</string>
     <string name="lab_f55495e0">Salvar</string>
     <string name="lab_f576fb2d">Camadas do catálogo, ou instale uma de um arquivo. Novos contêineres podem usá-las.</string>
     <string name="lab_f57b35ee">Zona morta e suavização</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">O driver com que o compositor do app exibe a sessão na tela. Não é aquele com que o cliente desenha.</string>
     <string name="lab_f59e59da">Exibido na sua biblioteca. Renomear mantém a capa e o ícone.</string>
     <string name="lab_f61050cc">Resolução do jogo</string>
+    <string name="lab_f65eddfe">Permite que o driver do jogo e o compositor combinem o layout dos buffers. \"Desativado\" faz o jogo usar buffers lineares simples (BANNER_WSI_NO_MODIFIERS=1); tente em caso de tela preta ou quadros corrompidos.</string>
     <string name="lab_f665e069">Uma notificação quando um amigo manda mensagem e o chat dele não está aberto.</string>
     <string name="lab_f667b7f4">Cor de destaque</string>
     <string name="lab_f690a199">Sua capa</string>

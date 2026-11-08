@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Komponen Windows</string>
     <string name="lab_14bf5ec1">Yang terbaru menang: tidak pernah menimpa save cloud yang lebih baru.</string>
     <string name="lab_14d452ce">Cara gambar game mengisi layar Anda.</string>
+    <string name="lab_14e033f6">Subgroup</string>
     <string name="lab_157c2809">Game mesin Quake dalam jendela</string>
     <string name="lab_15a3b754">Tunggal (stik lebih halus)</string>
     <string name="lab_15cf88ba">File .icp atau .icpx</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">File bawaan tiap Proton disimpan sebagai aslinya saat halaman ini dibuka.</string>
     <string name="lab_1b4c8948">Mode Present</string>
     <string name="lab_1bbf10a9"> (salinan Anda)</string>
+    <string name="lab_1bc2538c">Shim timing KGSL</string>
     <string name="lab_1bdd2734">Default game</string>
     <string name="lab_1bfb31a3">Warna Latar</string>
     <string name="lab_1bfc578f">Notifikasi obrolan</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Hapus %1$s dan semua isinya? Pintasan game-nya juga ikut terhapus.</string>
     <string name="lab_1dd4a128">Kontrol root</string>
     <string name="lab_1df4901e">%1$s diduplikasi</string>
+    <string name="lab_1df4bc73">Otomatis memberi tahu game operasi subgroup apa saja yang didukung driver Mesa Anda (DOOM Eternal dan game lain yang membutuhkannya jadi bisa berjalan). Nonaktif menyembunyikannya, seperti adapter lama; coba ini jika game mengalami glitch atau crash yang sebelumnya tidak terjadi.</string>
     <string name="lab_1dfaae77">Nama tidak boleh berisi \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Untuk game yang dijalankan klien, bukan klien itu sendiri, dan untuk semuanya: sesi hanya punya satu lingkungan. </string>
     <string name="lab_1e223777">Versi, catatan rilis, dan Unduh &amp; instal (Setelan Classic).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Batalkan unduhan</string>
     <string name="lab_1f52ec4a">Feature level yang dilaporkan VKD3D. Turunkan hanya untuk game yang tidak mau mulai.</string>
     <string name="lab_1f5ee21a">Menampilkan pemberitahuan pembaruan saat versi baru tersedia.</string>
+    <string name="lab_1f796e30">Frame dikirim sebagai buffer GPU terkompresi (bandwidth lebih kecil). Nonaktifkan jika gambar menampilkan blok atau garis yang rusak.</string>
     <string name="lab_1f7b66b6">Komponen Win</string>
     <string name="lab_1f88c31b">Opsi</string>
     <string name="lab_1f89987a">Mengatur sakelar daya, GPU, dan root di atas untuk game ini sekaligus. Profilnya sendiri tidak disimpan.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Atur untuk game ini</string>
     <string name="lab_31aa53e1">Edit sebagai teks</string>
     <string name="lab_31b614e4">Otomatis hanya memakainya di Adreno 710, 720, dan 722. Ubah hanya jika ada game yang bermasalah.</string>
+    <string name="lab_32038add">Mengatasi bug Turnip saat pertanyaan \"apakah GPU sudah selesai?\" menunggu seluruh frame (bug timing dalam laporan). Default membiarkan adapter mendeteksinya; Aktif memaksanya, Nonaktif mematikannya.</string>
+    <string name="lab_3205bc81">Belum ada driver grafis Turnip yang diatur, jadi tidak ada yang perlu diperiksa.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Mode Layar Sentuh</string>
     <string name="lab_32a7fa00">Frame gen</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Bank suara terinstal dan folder ekspor</string>
     <string name="lab_33b3dcd5">Menahan GPU di clock tertinggi selama game berjalan. Lebih panas dan boros daya; setiap game bisa menimpanya.</string>
     <string name="lab_33b5c99c">Hanya setelah Anda menyetujui penafian cloud pihak ketiga; tidak pernah menghapus apa pun dari cloud.</string>
+    <string name="lab_33e13543">Laporan adapter</string>
     <string name="lab_340a5eba">Cadangan save otomatis dan sinkronisasi cloud untuk Steam, GOG, dan game Anda sendiri.</string>
     <string name="lab_340d70c2">Mesin unduhan toko, kecepatan, dan koneksi Steam.</string>
     <string name="lab_3421373f">Kumpulkan otomatis saat keluar</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Profil default %1$s, </string>
     <string name="lab_452013a2">Ekspor</string>
     <string name="lab_45536eb8">Container</string>
+    <string name="lab_455f1d53">UBWC / buffer terkompresi</string>
     <string name="lab_45bf9648">Backend tampilan</string>
     <string name="lab_45e5d14f">Ekspor gagal</string>
     <string name="lab_45f80a27">Lanjutan</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Refresh layar tetap</string>
     <string name="lab_5c462080">Tidak diterapkan selama lsfg-vk melipatgandakan frame: ia mengatur pacing frame sendiri.</string>
     <string name="lab_5c524fb3">Default untuk container baru</string>
+    <string name="lab_5c596310">Compositor memproses beberapa frame sekaligus alih-alih menunggu setiap blit ke layar. Nonaktifkan jika frame datang tidak berurutan atau game tersendat hanya di Wayland.</string>
     <string name="lab_5c821476">Pemilih sistem</string>
     <string name="lab_5cb6896e">Steam tanpa antarmuka</string>
     <string name="lab_5cc2a688">Pusat data Steam yang dipakai, pengujian region, dan pemeriksaan jaringan SteamLite (Setelan Classic).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">diterapkan ulang saat peluncuran </string>
     <string name="lab_63a87e7d">Lebih tajam (-0.25)</string>
     <string name="lab_63ce8179">Beta Steam Deck</string>
+    <string name="lab_641b9c9d">Buffer milik game langsung tampil di layar tanpa disalin (latensi terendah, lebih sedikit panas). Memerlukan fence sync-file di driver (lihat laporan adapter). Nonaktifkan jika terlihat tearing atau frame usang.</string>
     <string name="lab_643b2baf">Bagikan / transfer</string>
     <string name="lab_64903a6c">Dapatkan lagi</string>
     <string name="lab_64c5e98f">Gambar-dalam-gambar</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Setelan Vulkan</string>
     <string name="lab_8429d942">Instal runtime dan library ke container, dan pilih DLL milik Wine atau Microsoft.</string>
     <string name="lab_845439e4">Ekstensi driver Qualcomm baru diketahui setelah game dimulai.</string>
+    <string name="lab_84a0335e">Profil adapter</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · tersimpan</string>
     <string name="lab_8521db60">Menu cepat</string>
     <string name="lab_85486938">Log &amp; diagnostik</string>
+    <string name="lab_8554e6fa">Cepat</string>
     <string name="lab_85558be1">Default untuk semua container</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Tukar</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Pembaruan</string>
     <string name="lab_8b087b3c">Tampilan</string>
     <string name="lab_8b60dd8e">Jalankan klien Steam sekali agar mengunduh Proton ARM64-nya, atau tambahkan GE-Proton / CachyOS dari katalog Proton Linux.</string>
+    <string name="lab_8bf2cbae">Modifier format DRM</string>
     <string name="lab_8c195a44">Sinkronisasi</string>
     <string name="lab_8c283df5">Build DirectX 12 dari katalog.</string>
     <string name="lab_8c33a442">Setiap sistem suara menyimpan presetnya sendiri, jadi beralih antara PulseAudio, ALSA, dan DirectAudio tidak pernah mencampur setelannya. Game tanpa preset sendiri tetap mengikuti container-nya.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Bagikan clipboard Android dengan game</string>
     <string name="lab_968b9d49">Diterapkan saat peluncuran. Menu samping dalam game tetap bisa mengubahnya secara langsung.</string>
     <string name="lab_969dab73">ReShade aktif / nonaktif, Solo / Tumpuk, efek dan setelannya</string>
+    <string name="lab_969fd520">Fence render klien</string>
     <string name="lab_96a7cb77">Pergantian yang tertunda dibatalkan.</string>
     <string name="lab_96df6867">Dimainkan %1$s jam</string>
     <string name="lab_97275ac4">Menukar kembali merah dan biru (BGRA ke RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• Overlay performa di Quick Access Menu masih baru dan belum dicoba di perangkat.\n\n</string>
     <string name="lab_9b395c25">Biarkan game menangani pengontrol</string>
     <string name="lab_9b5699c0">Arsitektur, penerjemah, dan cara FEX dimuat.</string>
+    <string name="lab_9ba84344">Driver tidak dapat diperiksa.</string>
     <string name="lab_9bc722a8">Penyimpanan</string>
     <string name="lab_9bd29497">Mouse trackpad</string>
     <string name="lab_9c232707">Tentang &amp; bantuan</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 lewat Vulkan. Pilihan Tidak ada menonaktifkan DirectX 12.</string>
     <string name="lab_ab612af4">Suhu</string>
     <string name="lab_ab78a04b">Masuk untuk mengelola konfigurasi yang Anda bagikan</string>
+    <string name="lab_ab8824cb">Mode present adapter</string>
     <string name="lab_abb1c367">Tidak ada yang tersambung. Game ini masih diatur untuk dimulai di TV.</string>
     <string name="lab_abb20221">Tanpa preset</string>
     <string name="lab_abf1049c">Simpan arsip mentah secara default</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Ganti jendela</string>
     <string name="lab_aca7092f">Yang terinstal muncul di Versi Box64.</string>
     <string name="lab_acfc8aab">Gunakan</string>
+    <string name="lab_ad11f65e">Otomatis (disarankan)</string>
     <string name="lab_ad23e110">Belum ada program yang dilaporkan.</string>
     <string name="lab_ad26a7c7">tidak diketahui</string>
     <string name="lab_adcb307d">Cara panggilan DirectX Windows diubah menjadi Vulkan untuk GPU Anda.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Membaca ekstensi driver…</string>
     <string name="lab_b6b590cf">Jalankan secara offline</string>
     <string name="lab_b6e99688">Perbesar sebagian layar.</string>
+    <string name="lab_b7079be0">Presentasi zero-copy</string>
     <string name="lab_b71f7c14">Unduh versi FEXCore</string>
     <string name="lab_b7320213">Program yang berjalan</string>
     <string name="lab_b736f934">Toko Anda</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">berlaku sekarang · disimpan untuk game ini dan sebagai default mesin ini</string>
     <string name="lab_ca45d5a4">container ini</string>
     <string name="lab_ca62f862">Unduhan &amp; jaringan</string>
+    <string name="lab_cabf747a">Penyalinan asinkron</string>
     <string name="lab_caf7d4a3">Preset bersama, diedit</string>
     <string name="lab_cb5fc4d5">Konfigurasi VEGAS</string>
     <string name="lab_cb6d604d">HUD tidak bisa digeser saat bermain.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Regangkan</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">Penajaman + pengurangan noise DLS</string>
+    <string name="lab_ce6eab03">Dengan zero-copy, driver game memberi tahu compositor saat frame selesai. Nonaktifkan hanya untuk membandingkan; saat Nonaktif, frame yang setengah tergambar bisa muncul.</string>
     <string name="lab_ce764fd8">Ruang terpakai, folder aplikasi, dan sistem dasar.</string>
     <string name="lab_ce9b8eca">Transkode BCn ke ASTC</string>
     <string name="lab_ceadf171">Android memblokir fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Prioritas di layar</string>
     <string name="lab_e1768a43">Juga bisa diganti dalam game dari menu samping.</string>
     <string name="lab_e18caa5c">Tidak ada drive</string>
+    <string name="lab_e19da5b2">Adapter Wayland</string>
     <string name="lab_e1be537c">Belum disimpan</string>
     <string name="lab_e22a8ea9">Wayland memerlukan Turnip terinstal untuk menampilkan frame game di layar. Yang baru muncul di Driver grafis.</string>
     <string name="lab_e2410f47">Telusuri dan unduh</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Baru ada driver bawaan ponsel.</string>
     <string name="lab_f04c78b9">Setelan audio · game ini</string>
     <string name="lab_f05053e7">Membaca Steam Controller secara langsung (trackpad dan tombol tambahannya). Nonaktif: jalur input normal tidak berubah.</string>
+    <string name="lab_f0520965">mailbox = frame terbaru, latensi terendah; fifo = vsync, pacing merata. Default mengikuti profil, jika tidak ada, mode present yang tersimpan. Immediate memerlukan tearing, yang tidak ditawarkan Wayland.</string>
     <string name="lab_f05494f9">Layer Wine container ini tidak bisa menjalankan Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein, dan Jedi Academy berjalan dalam mode jendela seukuran sesi.</string>
     <string name="lab_f0c81c31">Klien Steam</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Default</string>
     <string name="lab_f523d27f">Passthrough pengontrol</string>
     <string name="lab_f54f4eb6">Tidak dapat menginstal %1$s</string>
+    <string name="lab_f552097b">Otomatis: memilih berdasarkan laporan adapter dari driver Anda; tanpa laporan, tidak ada yang diubah.\n\nMulus: frame pacing merata: vsync (fifo), frame disalin di latar belakang, tanpa zero-copy.\n\nCepat: latensi terendah: mailbox, zero-copy dengan buffer terkompresi, fence render klien.\n\nKompatibilitas: paling aman: vsync, semua jalan pintas nonaktif, buffer biasa, shim timing aktif. Untuk game yang berkedip atau macet.\n\nVariabel lingkungan yang Anda ketik di tab Variabel Lingkungan selalu lebih diutamakan daripada profil ini; sakelar satuan lebih diutamakan daripada profil.</string>
     <string name="lab_f55495e0">Simpan</string>
     <string name="lab_f576fb2d">Layer dari katalog, atau instal dari file. Container baru bisa memakainya.</string>
     <string name="lab_f57b35ee">Deadzone dan penghalusan</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Driver yang dipakai compositor aplikasi untuk menampilkan sesi di layar. Bukan yang dipakai klien untuk menggambar.</string>
     <string name="lab_f59e59da">Ditampilkan di pustaka Anda. Mengganti nama tetap mempertahankan sampul dan ikon.</string>
     <string name="lab_f61050cc">Resolusi game</string>
+    <string name="lab_f65eddfe">Membuat driver game dan compositor menyepakati tata letak buffer. Nonaktif membuat game memakai buffer linear biasa (BANNER_WSI_NO_MODIFIERS=1); coba ini jika layar hitam atau frame rusak.</string>
     <string name="lab_f665e069">Notifikasi saat teman mengirim pesan dan obrolannya tidak sedang terbuka.</string>
     <string name="lab_f667b7f4">Warna aksen</string>
     <string name="lab_f690a199">Sampul Anda</string>

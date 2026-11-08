@@ -772,65 +772,65 @@ internal object GraphicsRows {
      */
     private fun adapterRow(
         id: String, key: String, label: String, help: String,
-        options: List<Pair<String, String>> = listOf("" to "Default", "1" to "On", "0" to "Off"),
+        options: List<Pair<String, String>> = listOf("" to L("Default"), "1" to L("On"), "0" to L("Off")),
         decode: (SettingsEnv, String?) -> String = { _, r -> r ?: "" },
     ) = packedRow(
         DRIVER_CFG, id, key, L("Wayland adapter"), label, EXPERT,
-        control = { _, _ -> Control.Segmented(options.map { Opt(it.first, L(it.second)) }) },
+        control = { _, _ -> Control.Segmented(options.map { Opt(it.first, it.second) }) },
         decode = decode, help = help,
         visible = { env, values -> waylandGame(env, values) },
     )
 
+    /** The adapter profiles' names, as the classic dialog shows them (WaylandAdapterSettings.profileLabel). */
+    private fun profileName(p: String): String = when (WaylandAdapterSettings.normalizeProfile(p)) {
+        WaylandAdapterSettings.PROFILE_SMOOTH -> L("Smooth")
+        WaylandAdapterSettings.PROFILE_FAST -> L("Fast")
+        WaylandAdapterSettings.PROFILE_COMPAT -> L("Compatibility")
+        else -> L("Auto (recommended)")
+    }
+
     private fun adapterDefs(): List<SettingDef> = listOf(
         packedRow(
             DRIVER_CFG, "graphics.wl.adapterProfile", WaylandAdapterSettings.KEY_PROFILE, L("Wayland adapter"), L("Adapter profile"), ADVANCED,
-            control = { _, _ -> Control.Select(WaylandAdapterSettings.PROFILES.map { Opt(it, L(WaylandAdapterSettings.profileLabel(it))) }) },
+            control = { _, _ -> Control.Select(WaylandAdapterSettings.PROFILES.map { Opt(it, profileName(it)) }) },
             // Stored as the profile's name ("auto" too), so a game's Auto can differ from its container's choice.
             decode = { _, r -> WaylandAdapterSettings.normalizeProfile(r) },
-            help = WaylandAdapterSettings.PROFILES.joinToString("\n\n") { "${WaylandAdapterSettings.profileLabel(it)}: ${WaylandAdapterSettings.profileHelp(it)}" } +
-                "\n\nEnv vars you type under Env vars always win over these; the single switches win over the profile.",
+            help = L("Auto: picks from the adapter report of your driver; with no report it changes nothing.\n\nSmooth: even frame pacing: vsync (fifo), frames copied in the background, no zero-copy.\n\nFast: lowest latency: mailbox, zero-copy with compressed buffers, client render fences.\n\nCompatibility: safest: vsync, every shortcut off, plain buffers, timing shim on. For games that flicker or hang.\n\nEnv vars you type under Env vars always win over these; the single switches win over the profile."),
             visible = { env, values -> waylandGame(env, values) },
         ),
         adapterRow(
             "graphics.wl.adapterPresent", WaylandAdapterSettings.KEY_PRESENT, L("Adapter present mode"),
-            "mailbox = newest frame, lowest latency; fifo = vsync, even pacing. Default follows the profile, else the " +
-                "stored present mode. Immediate needs tearing, which Wayland does not offer.",
-            options = listOf("" to "Default", "mailbox" to "mailbox", "fifo" to "fifo"),
+            L("mailbox = newest frame, lowest latency; fifo = vsync, even pacing. Default follows the profile, else the stored present mode. Immediate needs tearing, which Wayland does not offer."),
+            options = listOf("" to L("Default"), "mailbox" to "mailbox", "fifo" to "fifo"),
         ),
         adapterRow(
             "graphics.wl.adapterAsyncCopy", WaylandAdapterSettings.KEY_ASYNC_COPY, L("Asynchronous copy"),
-            "The compositor keeps frames in flight instead of waiting for each screen blit. Turn off if frames arrive " +
-                "out of order or a game stutters only on Wayland.",
+            L("The compositor keeps frames in flight instead of waiting for each screen blit. Turn off if frames arrive out of order or a game stutters only on Wayland."),
         ),
         adapterRow(
             "graphics.wl.adapterZeroCopy", WaylandAdapterSettings.KEY_ZERO_COPY, L("Zero-copy presentation"),
-            "The game's own buffer goes on screen without a copy (lowest latency, less heat). Needs sync-file fences in " +
-                "the driver (see the adapter report). Turn off if you see tearing or stale frames.",
+            L("The game's own buffer goes on screen without a copy (lowest latency, less heat). Needs sync-file fences in the driver (see the adapter report). Turn off if you see tearing or stale frames."),
         ),
         adapterRow(
             "graphics.wl.adapterClientFence", WaylandAdapterSettings.KEY_CLIENT_FENCE, L("Client render fences"),
-            "With zero-copy, the game's driver tells the compositor when a frame is finished. Turn off only to compare; " +
-                "off can show half-drawn frames.",
+            L("With zero-copy, the game's driver tells the compositor when a frame is finished. Turn off only to compare; off can show half-drawn frames."),
         ),
         adapterRow(
             "graphics.wl.adapterUbwc", WaylandAdapterSettings.KEY_UBWC, L("UBWC / compressed buffers"),
-            "Frames travel as compressed GPU buffers (less bandwidth). Turn off if the picture shows garbled blocks or stripes.",
+            L("Frames travel as compressed GPU buffers (less bandwidth). Turn off if the picture shows garbled blocks or stripes."),
         ),
         adapterRow(
             "graphics.wl.adapterModifiers", WaylandAdapterSettings.KEY_MODIFIERS, L("DRM format modifiers"),
-            "Lets the game's driver and the compositor agree on buffer layouts. Off makes the game use plain linear " +
-                "buffers (BANNER_WSI_NO_MODIFIERS=1); try it for a black screen or corrupt frames.",
+            L("Lets the game's driver and the compositor agree on buffer layouts. Off makes the game use plain linear buffers (BANNER_WSI_NO_MODIFIERS=1); try it for a black screen or corrupt frames."),
         ),
         adapterRow(
             "graphics.wl.adapterKgslShim", WaylandAdapterSettings.KEY_KGSL_SHIM, L("KGSL timing shim"),
-            "Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame (the report's timing " +
-                "bug). Default lets the adapter detect it; On forces it, Off disables it.",
+            L("Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame (the report's timing bug). Default lets the adapter detect it; On forces it, Off disables it."),
         ),
         adapterRow(
             "graphics.wl.adapterSubgroups", WaylandAdapterSettings.KEY_SUBGROUPS, L("Subgroups"),
-            "Auto tells the game what subgroup operations your Mesa driver supports (DOOM Eternal and other games that " +
-                "need them start). Off hides them, as older adapters did; try it if a game shows glitches or crashes that it did not before.",
-            options = listOf("auto" to "Auto", "0" to "Off"),
+            L("Auto tells the game what subgroup operations your Mesa driver supports (DOOM Eternal and other games that need them start). Off hides them, as older adapters did; try it if a game shows glitches or crashes that it did not before."),
+            options = listOf("auto" to L("Auto"), "0" to L("Off")),
             decode = { _, r -> if (r == "0") "0" else "auto" },
         ),
     )

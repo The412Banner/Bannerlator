@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Komponenty Windows</string>
     <string name="lab_14bf5ec1">Vyhrává novější: nikdy nepřepíše novější uloženou hru v cloudu.</string>
     <string name="lab_14d452ce">Jak obraz hry vyplní displej.</string>
+    <string name="lab_14e033f6">Podskupiny</string>
     <string name="lab_157c2809">Hry na enginu Quake v okně</string>
     <string name="lab_15a3b754">Jeden (plynulejší páčky)</string>
     <string name="lab_15cf88ba">Soubor .icp nebo .icpx</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Vlastní soubory každého Protonu byly při otevření této stránky uloženy jako originál.</string>
     <string name="lab_1b4c8948">Režim prezentace</string>
     <string name="lab_1bbf10a9"> (vaše kopie)</string>
+    <string name="lab_1bc2538c">Korekce časování KGSL</string>
     <string name="lab_1bdd2734">Výchozí hry</string>
     <string name="lab_1bfb31a3">Barva pozadí</string>
     <string name="lab_1bfc578f">Oznámení chatu</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Odebrat %1$s i s veškerým obsahem? Zástupci jeho her budou také odebráni.</string>
     <string name="lab_1dd4a128">Funkce s rootem</string>
     <string name="lab_1df4901e">Duplikováno: %1$s</string>
+    <string name="lab_1df4bc73">„Automaticky“ sdělí hře, které operace podskupin váš ovladač Mesa podporuje (DOOM Eternal a další hry, které je potřebují, se pak spustí). „Vypnuto“ je skryje, jako to dělaly starší adaptéry; zkuste to, pokud hra vykazuje grafické chyby nebo padá, což dříve nedělala.</string>
     <string name="lab_1dfaae77">Název nesmí obsahovat \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Pro hry, které klient spouští, ne pro klienta samotného, a to pro všechny: relace má jedno prostředí. </string>
     <string name="lab_1e223777">Verze, poznámky k vydání a Download &amp; install (nastavení Classic).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Zrušit stahování</string>
     <string name="lab_1f52ec4a">Úroveň funkcí, kterou hlásí VKD3D. Snižte ji jen pro hru, která se odmítá spustit.</string>
     <string name="lab_1f5ee21a">Zobrazí upozornění na aktualizaci, když vyjde nová verze.</string>
+    <string name="lab_1f796e30">Snímky putují jako komprimované buffery GPU (šetří propustnost). Vypněte, pokud obraz ukazuje rozsypané bloky nebo pruhy.</string>
     <string name="lab_1f7b66b6">Komponenty Win</string>
     <string name="lab_1f88c31b">Možnosti</string>
     <string name="lab_1f89987a">Nastaví přepínače napájení, GPU a rootu výše pro tuto hru najednou. Samotný profil se neuchovává.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Nastavit pro tuto hru</string>
     <string name="lab_31aa53e1">Upravit jako text</string>
     <string name="lab_31b614e4">Auto ho používá jen na Adreno 710, 720 a 722. Měňte ho, jen když hra nefunguje správně.</string>
+    <string name="lab_32038add">Obchází chybu Turnipu, kdy dotaz „má GPU hotovo?“ čeká na celý snímek (chyba časování ze zprávy). „Výchozí“ nechá adaptér chybu rozpoznat; „Zapnuto“ korekci vynutí, „Vypnuto“ ji vypne.</string>
+    <string name="lab_3205bc81">Není nastaven žádný grafický ovladač Turnip, takže není co kontrolovat.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Režim dotykové obrazovky</string>
     <string name="lab_32a7fa00">Gen. snímků</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Nainstalované zvukové banky a složka exportu</string>
     <string name="lab_33b3dcd5">Drží GPU na nejvyšším taktu, dokud hra běží. Víc hřeje a víc spotřebovává; hry to mohou přepsat.</string>
     <string name="lab_33b5c99c">Jen po přijetí upozornění k cloudu třetí strany; z cloudu nikdy nic nemaže.</string>
+    <string name="lab_33e13543">Zpráva adaptéru</string>
     <string name="lab_340a5eba">Automatické zálohy uložených her a synchronizace s cloudem pro Steam, GOG a vaše vlastní hry.</string>
     <string name="lab_340d70c2">Moduly stahování z obchodů, rychlost a připojení ke Steamu.</string>
     <string name="lab_3421373f">Automaticky shromáždit při ukončení</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Výchozí profil %1$s, </string>
     <string name="lab_452013a2">Exportovat</string>
     <string name="lab_45536eb8">Kontejner</string>
+    <string name="lab_455f1d53">UBWC / komprimované buffery</string>
     <string name="lab_45bf9648">Backend zobrazení</string>
     <string name="lab_45e5d14f">Export se nezdařil</string>
     <string name="lab_45f80a27">Pokročilé</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Pevná obnovovací frekvence</string>
     <string name="lab_5c462080">Nepoužije se, dokud lsfg-vk násobí snímky: časuje je samo.</string>
     <string name="lab_5c524fb3">Výchozí pro nové kontejnery</string>
+    <string name="lab_5c596310">Kompozitor zpracovává více snímků současně, místo aby čekal na každý blit na obrazovku. Vypněte, pokud snímky přicházejí ve špatném pořadí nebo se hra zasekává jen na Waylandu.</string>
     <string name="lab_5c821476">Systémový výběr</string>
     <string name="lab_5cb6896e">Steam bez rozhraní</string>
     <string name="lab_5cc2a688">Které datové centrum Steamu použít, testování regionů a kontrola sítě SteamLite (nastavení Classic).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">znovu použito při spuštění </string>
     <string name="lab_63a87e7d">Ostřejší (-0.25)</string>
     <string name="lab_63ce8179">Beta pro Steam Deck</string>
+    <string name="lab_641b9c9d">Vlastní buffer hry jde na obrazovku bez kopírování (nejnižší latence, méně tepla). Vyžaduje sync-file fence v ovladači (viz zpráva adaptéru). Vypněte, pokud vidíte trhání obrazu nebo zastaralé snímky.</string>
     <string name="lab_643b2baf">Sdílet / přenést</string>
     <string name="lab_64903a6c">Získat další</string>
     <string name="lab_64c5e98f">Obraz v obraze</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Nastavení Vulkan</string>
     <string name="lab_8429d942">Instalujte do kontejneru běhová prostředí a knihovny a vyberte DLL od Wine nebo od Microsoftu.</string>
     <string name="lab_845439e4">Rozšíření ovladače Qualcomm jsou známa až po spuštění hry.</string>
+    <string name="lab_84a0335e">Profil adaptéru</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · uloženo</string>
     <string name="lab_8521db60">Rychlé menu</string>
     <string name="lab_85486938">Protokoly a diagnostika</string>
+    <string name="lab_8554e6fa">Rychlý</string>
     <string name="lab_85558be1">Výchozí pro všechny kontejnery</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Nahradit</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Aktualizace</string>
     <string name="lab_8b087b3c">Vzhled</string>
     <string name="lab_8b60dd8e">Jednou spusťte klienta Steam, aby si stáhl svůj ARM64 Proton, nebo přidejte GE-Proton / CachyOS z katalogu linuxových Protonů.</string>
+    <string name="lab_8bf2cbae">Modifikátory formátu DRM</string>
     <string name="lab_8c195a44">Synchronizace</string>
     <string name="lab_8c283df5">Sestavení DirectX 12 z katalogu.</string>
     <string name="lab_8c33a442">Každý zvukový systém má vlastní předvolbu, takže přepínání mezi PulseAudio, ALSA a DirectAudio nikdy nesmíchá jejich nastavení. Hra bez vlastní předvolby se dál řídí svým kontejnerem.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Sdílet schránku Androidu s hrami</string>
     <string name="lab_968b9d49">Použijí se při spuštění. Boční menu ve hře je stále mění za běhu.</string>
     <string name="lab_969dab73">ReShade zapnuto / vypnuto, Samostatně / Kombinovaně, efekty a jejich nastavení</string>
+    <string name="lab_969fd520">Fence vykreslování klienta</string>
     <string name="lab_96a7cb77">Čekající přepnutí bylo zrušeno.</string>
     <string name="lab_96df6867">hráno %1$s h</string>
     <string name="lab_97275ac4">Prohodí zpět červenou a modrou (BGRA na RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• Výkonový overlay v nabídce Rychlý přístup je nový a na zařízení zatím nebyl vyzkoušen.\n\n</string>
     <string name="lab_9b395c25">Nechat ovladač na hře</string>
     <string name="lab_9b5699c0">Architektura, překladač a způsob načtení FEX.</string>
+    <string name="lab_9ba84344">Ovladač se nepodařilo zkontrolovat.</string>
     <string name="lab_9bc722a8">Úložiště</string>
     <string name="lab_9bd29497">Trackpad jako myš</string>
     <string name="lab_9c232707">O aplikaci a nápověda</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 přes Vulkan. Žádné vypne DirectX 12.</string>
     <string name="lab_ab612af4">Tepl.</string>
     <string name="lab_ab78a04b">Přihlaste se a spravujte sdílené konfigurace</string>
+    <string name="lab_ab8824cb">Režim prezentace adaptéru</string>
     <string name="lab_abb1c367">Nic není připojeno. Tato hra je stále nastavena ke spuštění na TV.</string>
     <string name="lab_abb20221">Bez předvolby</string>
     <string name="lab_abf1049c">Ve výchozím stavu ponechat surový archiv</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Přepnout okno</string>
     <string name="lab_aca7092f">Nainstalované se zobrazí v nastavení Verze Box64.</string>
     <string name="lab_acfc8aab">Použít</string>
+    <string name="lab_ad11f65e">Automaticky (doporučeno)</string>
     <string name="lab_ad23e110">Zatím nejsou hlášeny žádné programy.</string>
     <string name="lab_ad26a7c7">neznámé</string>
     <string name="lab_adcb307d">Jak se volání DirectX z Windows převádějí na Vulkan pro vaše GPU.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Načítání rozšíření ovladače…</string>
     <string name="lab_b6b590cf">Spustit offline</string>
     <string name="lab_b6e99688">Přiblížit část obrazovky.</string>
+    <string name="lab_b7079be0">Prezentace zero-copy</string>
     <string name="lab_b71f7c14">Stáhnout verze FEXCore</string>
     <string name="lab_b7320213">Spuštěné programy</string>
     <string name="lab_b736f934">Vaše obchody</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">platí hned · uloženo pro tuto hru a jako výchozí tohoto zvukového systému</string>
     <string name="lab_ca45d5a4">tento kontejner</string>
     <string name="lab_ca62f862">Stahování a síť</string>
+    <string name="lab_cabf747a">Asynchronní kopírování</string>
     <string name="lab_caf7d4a3">Sdílená předvolba, upravená</string>
     <string name="lab_cb5fc4d5">Konfigurace VEGAS</string>
     <string name="lab_cb6d604d">HUD nelze ve hře přetahovat.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Roztáhnout</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">Zostření DLS + odšumění</string>
+    <string name="lab_ce6eab03">Se zero-copy ovladač hry oznamuje kompozitoru, kdy je snímek hotový. Vypínejte jen pro srovnání; ve vypnutém stavu se mohou zobrazit napůl vykreslené snímky.</string>
     <string name="lab_ce764fd8">Využité místo, složky aplikace a základní systém.</string>
     <string name="lab_ce9b8eca">Překódovat BCn na ASTC</string>
     <string name="lab_ceadf171">Android blokuje fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Priorita na obrazovce</string>
     <string name="lab_e1768a43">Lze přepnout i ve hře z bočního menu.</string>
     <string name="lab_e18caa5c">Žádné jednotky</string>
+    <string name="lab_e19da5b2">Adaptér Wayland</string>
     <string name="lab_e1be537c">Neuloženo</string>
     <string name="lab_e22a8ea9">Wayland potřebuje nainstalovaný Turnip, aby zobrazil snímky hry na obrazovce. Nové se zobrazí v nastavení Grafický ovladač.</string>
     <string name="lab_e2410f47">Procházet a stahovat</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Zatím jen vlastní ovladač telefonu.</string>
     <string name="lab_f04c78b9">Nastavení zvuku · tato hra</string>
     <string name="lab_f05053e7">Čte Steam Controller přímo (jeho trackpady a další tlačítka). Vypnuto: běžná cesta vstupu se nemění.</string>
+    <string name="lab_f0520965">mailbox = nejnovější snímek, nejnižší latence; fifo = vsync, rovnoměrné časování. „Výchozí“ se řídí profilem, jinak uloženým režimem prezentace. Immediate vyžaduje trhání obrazu, které Wayland nenabízí.</string>
     <string name="lab_f05494f9">Vrstva Wine tohoto kontejneru neumí pracovat s Waylandem.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein a Jedi Academy běží v okně ve velikosti relace.</string>
     <string name="lab_f0c81c31">Klient Steam</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Výchozí</string>
     <string name="lab_f523d27f">Přímé předání ovladače</string>
     <string name="lab_f54f4eb6">Nepodařilo se nainstalovat %1$s</string>
+    <string name="lab_f552097b">Automaticky: vybírá podle zprávy adaptéru o vašem ovladači; bez zprávy nic nemění.\n\nPlynulý: rovnoměrné časování snímků: vsync (fifo), snímky se kopírují na pozadí, bez zero-copy.\n\nRychlý: nejnižší latence: mailbox, zero-copy s komprimovanými buffery, fence vykreslování klienta.\n\nKompatibilita: nejbezpečnější: vsync, všechny optimalizace vypnuté, obyčejné buffery, korekce časování zapnutá. Pro hry, které blikají nebo zamrzají.\n\nCo zadáte v sekci „Proměnné prostředí“, má vždy přednost před těmito profily; jednotlivé přepínače mají přednost před profilem.</string>
     <string name="lab_f55495e0">Uložit</string>
     <string name="lab_f576fb2d">Vrstvy z katalogu, nebo nainstalujte vrstvu ze souboru. Nové kontejnery je mohou používat.</string>
     <string name="lab_f57b35ee">Mrtvá zóna a vyhlazování</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Ovladač, kterým kompozitor aplikace zobrazuje relaci na obrazovce. Ne ten, kterým vykresluje klient.</string>
     <string name="lab_f59e59da">Zobrazuje se v knihovně. Přejmenování zachová obal i ikonu.</string>
     <string name="lab_f61050cc">Rozlišení hry</string>
+    <string name="lab_f65eddfe">Umožní ovladači hry a kompozitoru dohodnout se na rozložení bufferů. „Vypnuto“ přiměje hru používat obyčejné lineární buffery (BANNER_WSI_NO_MODIFIERS=1); zkuste to při černé obrazovce nebo poškozených snímcích.</string>
     <string name="lab_f665e069">Oznámení, když vám přítel napíše a jeho chat nemáte otevřený.</string>
     <string name="lab_f667b7f4">Barva zvýraznění</string>
     <string name="lab_f690a199">Váš obal</string>

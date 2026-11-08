@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows components</string>
     <string name="lab_14bf5ec1">Newest wins: never overwrites a newer cloud save.</string>
     <string name="lab_14d452ce">How the game picture fills your display.</string>
+    <string name="lab_14e033f6">Subgroups</string>
     <string name="lab_157c2809">Quake-engine games windowed</string>
     <string name="lab_15a3b754">Single (smoother sticks)</string>
     <string name="lab_15cf88ba">.icp or .icpx file</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Each Proton\'s own files were saved as its original when this page opened.</string>
     <string name="lab_1b4c8948">Present Mode</string>
     <string name="lab_1bbf10a9"> (your copy)</string>
+    <string name="lab_1bc2538c">KGSL timing shim</string>
     <string name="lab_1bdd2734">Game default</string>
     <string name="lab_1bfb31a3">Background Color</string>
     <string name="lab_1bfc578f">Chat notifications</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Remove %1$s and everything in it? Its games\' shortcuts go too.</string>
     <string name="lab_1dd4a128">Root controls</string>
     <string name="lab_1df4901e">Duplicated %1$s</string>
+    <string name="lab_1df4bc73">Auto tells the game what subgroup operations your Mesa driver supports (DOOM Eternal and other games that need them start). Off hides them, as older adapters did; try it if a game shows glitches or crashes that it did not before.</string>
     <string name="lab_1dfaae77">A name can\'t contain \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">For the games the client launches, not the client itself, and for every one of them: the session has one environment. </string>
     <string name="lab_1e223777">Version, release notes and Download &amp; install (classic Settings).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Cancel the download</string>
     <string name="lab_1f52ec4a">The feature level VKD3D reports. Lower it only for a game that refuses to start.</string>
     <string name="lab_1f5ee21a">Shows the update notice when a new version is out.</string>
+    <string name="lab_1f796e30">Frames travel as compressed GPU buffers (less bandwidth). Turn off if the picture shows garbled blocks or stripes.</string>
     <string name="lab_1f7b66b6">Win Components</string>
     <string name="lab_1f88c31b">Options</string>
     <string name="lab_1f89987a">Sets the power, GPU and root switches above for this game in one go. The profile itself isn\'t kept.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Set for this game</string>
     <string name="lab_31aa53e1">Edit as text</string>
     <string name="lab_31b614e4">Auto uses it on Adreno 710, 720 and 722 only. Change it only if a game misbehaves.</string>
+    <string name="lab_32038add">Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame (the report\'s timing bug). Default lets the adapter detect it; On forces it, Off disables it.</string>
+    <string name="lab_3205bc81">No Turnip graphics driver is set, so there is nothing to check.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Touchscreen Mode</string>
     <string name="lab_32a7fa00">Frame gen</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Installed sound banks and export folder</string>
     <string name="lab_33b3dcd5">Holds the GPU at its top clock while a game runs. Hotter and hungrier; games can override it.</string>
     <string name="lab_33b5c99c">Only after you accept the third-party cloud disclaimer; never deletes anything from the cloud.</string>
+    <string name="lab_33e13543">Adapter report</string>
     <string name="lab_340a5eba">Automatic save backups and cloud sync for Steam, GOG and your own games.</string>
     <string name="lab_340d70c2">Store download engines, speed and Steam connection.</string>
     <string name="lab_3421373f">Auto-collect on exit</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">The %1$s defaults profile, </string>
     <string name="lab_452013a2">Export</string>
     <string name="lab_45536eb8">Container</string>
+    <string name="lab_455f1d53">UBWC / compressed buffers</string>
     <string name="lab_45bf9648">Display backend</string>
     <string name="lab_45e5d14f">Export failed</string>
     <string name="lab_45f80a27">Advanced</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Fixed screen refresh</string>
     <string name="lab_5c462080">Not applied while lsfg-vk is multiplying: it paces frames itself.</string>
     <string name="lab_5c524fb3">Defaults for new containers</string>
+    <string name="lab_5c596310">The compositor keeps frames in flight instead of waiting for each screen blit. Turn off if frames arrive out of order or a game stutters only on Wayland.</string>
     <string name="lab_5c821476">System picker</string>
     <string name="lab_5cb6896e">Headless Steam</string>
     <string name="lab_5cc2a688">Which Steam datacenter to use, testing regions, and the SteamLite network check (classic Settings).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">re-applied at launch </string>
     <string name="lab_63a87e7d">Sharper (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck beta</string>
+    <string name="lab_641b9c9d">The game\'s own buffer goes on screen without a copy (lowest latency, less heat). Needs sync-file fences in the driver (see the adapter report). Turn off if you see tearing or stale frames.</string>
     <string name="lab_643b2baf">Share / transfer</string>
     <string name="lab_64903a6c">Get more</string>
     <string name="lab_64c5e98f">Picture-in-picture</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan settings</string>
     <string name="lab_8429d942">Install runtimes and libraries into the container, and pick Wine\'s or Microsoft\'s DLLs.</string>
     <string name="lab_845439e4">A Qualcomm driver\'s extensions are only known once the game starts.</string>
+    <string name="lab_84a0335e">Adapter profile</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · saved</string>
     <string name="lab_8521db60">Quick menu</string>
     <string name="lab_85486938">Logs &amp; diagnostics</string>
+    <string name="lab_8554e6fa">Fast</string>
     <string name="lab_85558be1">Defaults for every container</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Swap</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Updates</string>
     <string name="lab_8b087b3c">Look</string>
     <string name="lab_8b60dd8e">Start the Steam client once so it downloads its ARM64 Proton, or add GE-Proton / CachyOS from the Linux Protons catalog.</string>
+    <string name="lab_8bf2cbae">DRM format modifiers</string>
     <string name="lab_8c195a44">Sync</string>
     <string name="lab_8c283df5">DirectX 12 builds from the catalog.</string>
     <string name="lab_8c33a442">Each sound system keeps its own preset, so switching between PulseAudio, ALSA and DirectAudio never mixes their settings. A game without its own keeps following its container.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Share the Android clipboard with games</string>
     <string name="lab_968b9d49">Applied at launch. The in-game side menu still changes them live.</string>
     <string name="lab_969dab73">ReShade on / off, Solo / Stack, effects and their settings</string>
+    <string name="lab_969fd520">Client render fences</string>
     <string name="lab_96a7cb77">The waiting swap was cancelled.</string>
     <string name="lab_96df6867">%1$s h played</string>
     <string name="lab_97275ac4">Swaps red and blue back (BGRA to RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• The Quick Access Menu\'s performance overlay is new and not yet tried on a device.\n\n</string>
     <string name="lab_9b395c25">Let the game handle the controller</string>
     <string name="lab_9b5699c0">Architecture, translator and how FEX is loaded.</string>
+    <string name="lab_9ba84344">The driver could not be checked.</string>
     <string name="lab_9bc722a8">Storage</string>
     <string name="lab_9bd29497">Trackpad mouse</string>
     <string name="lab_9c232707">About &amp; help</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 through Vulkan. None turns DirectX 12 off.</string>
     <string name="lab_ab612af4">Temp</string>
     <string name="lab_ab78a04b">Sign in to manage your shared configs</string>
+    <string name="lab_ab8824cb">Adapter present mode</string>
     <string name="lab_abb1c367">Nothing is plugged in. This game is still set to start on a TV.</string>
     <string name="lab_abb20221">No preset</string>
     <string name="lab_abf1049c">Keep raw archive by default</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Switch window</string>
     <string name="lab_aca7092f">Installed ones appear under Box64 version.</string>
     <string name="lab_acfc8aab">Use</string>
+    <string name="lab_ad11f65e">Auto (recommended)</string>
     <string name="lab_ad23e110">No programs reported yet.</string>
     <string name="lab_ad26a7c7">unknown</string>
     <string name="lab_adcb307d">How Windows DirectX calls are turned into Vulkan for your GPU.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Reading the driver\'s extensions…</string>
     <string name="lab_b6b590cf">Launch offline</string>
     <string name="lab_b6e99688">Zoom into part of the screen.</string>
+    <string name="lab_b7079be0">Zero-copy presentation</string>
     <string name="lab_b71f7c14">Download FEXCore versions</string>
     <string name="lab_b7320213">Running programs</string>
     <string name="lab_b736f934">Your stores</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">applies now · saved for this game and as this engine\'s default</string>
     <string name="lab_ca45d5a4">this container</string>
     <string name="lab_ca62f862">Downloads &amp; network</string>
+    <string name="lab_cabf747a">Asynchronous copy</string>
     <string name="lab_caf7d4a3">Shared preset, edited</string>
     <string name="lab_cb5fc4d5">VEGAS config</string>
     <string name="lab_cb6d604d">The HUD can\'t be dragged in-game.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Stretch</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS sharpen + denoise</string>
+    <string name="lab_ce6eab03">With zero-copy, the game\'s driver tells the compositor when a frame is finished. Turn off only to compare; off can show half-drawn frames.</string>
     <string name="lab_ce764fd8">Space used, app folders and the base system.</string>
     <string name="lab_ce9b8eca">Transcode BCn to ASTC</string>
     <string name="lab_ceadf171">Android blocks fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">On-screen priority</string>
     <string name="lab_e1768a43">Also switchable in-game from the side menu.</string>
     <string name="lab_e18caa5c">No drives</string>
+    <string name="lab_e19da5b2">Wayland adapter</string>
     <string name="lab_e1be537c">Unsaved</string>
     <string name="lab_e22a8ea9">Wayland needs an installed Turnip to put the game\'s frames on screen. New ones appear under Graphics driver.</string>
     <string name="lab_e2410f47">Browse and download</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Only the phone\'s own driver so far.</string>
     <string name="lab_f04c78b9">Audio settings · this game</string>
     <string name="lab_f05053e7">Reads a Steam Controller directly (its trackpads and extra buttons). Off: the normal input path is unchanged.</string>
+    <string name="lab_f0520965">mailbox = newest frame, lowest latency; fifo = vsync, even pacing. Default follows the profile, else the stored present mode. Immediate needs tearing, which Wayland does not offer.</string>
     <string name="lab_f05494f9">This container\'s Wine layer can\'t drive Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein and Jedi Academy run windowed at the session\'s size.</string>
     <string name="lab_f0c81c31">Steam client</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Defaults</string>
     <string name="lab_f523d27f">Controller passthrough</string>
     <string name="lab_f54f4eb6">Could not install %1$s</string>
+    <string name="lab_f552097b">Auto: picks from the adapter report of your driver; with no report it changes nothing.\n\nSmooth: even frame pacing: vsync (fifo), frames copied in the background, no zero-copy.\n\nFast: lowest latency: mailbox, zero-copy with compressed buffers, client render fences.\n\nCompatibility: safest: vsync, every shortcut off, plain buffers, timing shim on. For games that flicker or hang.\n\nEnv vars you type under Env vars always win over these; the single switches win over the profile.</string>
     <string name="lab_f55495e0">Save</string>
     <string name="lab_f576fb2d">Layers from the catalog, or install one from a file. New containers can use them.</string>
     <string name="lab_f57b35ee">Deadzone and smoothing</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">The driver the app\'s compositor puts the session on screen with. Not what the client draws with.</string>
     <string name="lab_f59e59da">Shown in your library. Renaming keeps the cover and icon.</string>
     <string name="lab_f61050cc">Game resolution</string>
+    <string name="lab_f65eddfe">Lets the game\'s driver and the compositor agree on buffer layouts. Off makes the game use plain linear buffers (BANNER_WSI_NO_MODIFIERS=1); try it for a black screen or corrupt frames.</string>
     <string name="lab_f665e069">A notification when a friend messages you and their chat isn\'t open.</string>
     <string name="lab_f667b7f4">Accent colour</string>
     <string name="lab_f690a199">Your cover</string>

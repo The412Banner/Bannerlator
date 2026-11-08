@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows 구성 요소</string>
     <string name="lab_14bf5ec1">최신 우선: 더 최신인 클라우드 세이브를 덮어쓰지 않습니다.</string>
     <string name="lab_14d452ce">게임 화면이 디스플레이를 채우는 방식.</string>
+    <string name="lab_14e033f6">서브그룹</string>
     <string name="lab_157c2809">Quake 엔진 게임 창 모드</string>
     <string name="lab_15a3b754">단일 (부드러운 스틱)</string>
     <string name="lab_15cf88ba">.icp 또는 .icpx 파일</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">이 페이지를 열 때 각 Proton의 원래 파일을 원본으로 저장했습니다.</string>
     <string name="lab_1b4c8948">프레젠트 모드</string>
     <string name="lab_1bbf10a9"> (내 사본)</string>
+    <string name="lab_1bc2538c">KGSL 타이밍 보정</string>
     <string name="lab_1bdd2734">게임 기본값</string>
     <string name="lab_1bfb31a3">배경 색상</string>
     <string name="lab_1bfc578f">채팅 알림</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">%1$s 및 그 안의 모든 항목을 제거할까요? 게임 바로가기도 함께 삭제됩니다.</string>
     <string name="lab_1dd4a128">루트 제어</string>
     <string name="lab_1df4901e">%1$s 복제됨</string>
+    <string name="lab_1df4bc73">자동은 Mesa 드라이버가 지원하는 서브그룹 연산을 게임에 알려 줍니다(DOOM Eternal처럼 이를 필요로 하는 게임이 실행됩니다). 끔으로 두면 예전 어댑터처럼 이를 숨깁니다. 전에는 없던 그래픽 오류나 충돌이 게임에서 생기면 시도해 보세요.</string>
     <string name="lab_1dfaae77">이름에 \\ / : * ? \" &lt; &gt; |는 사용할 수 없습니다</string>
     <string name="lab_1e1e0a24">클라이언트 자체가 아니라 클라이언트가 실행하는 모든 게임에 적용됩니다. 세션의 환경은 하나입니다. </string>
     <string name="lab_1e223777">버전, 릴리스 노트, 다운로드 및 설치(Classic 설정).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">다운로드 취소</string>
     <string name="lab_1f52ec4a">VKD3D가 보고하는 기능 수준. 시작되지 않는 게임에서만 낮추세요.</string>
     <string name="lab_1f5ee21a">새 버전이 나오면 업데이트 알림을 표시합니다.</string>
+    <string name="lab_1f796e30">프레임을 압축된 GPU 버퍼로 전달합니다(대역폭 절약). 화면에 깨진 블록이나 줄무늬가 보이면 끄세요.</string>
     <string name="lab_1f7b66b6">Win 구성 요소</string>
     <string name="lab_1f88c31b">옵션</string>
     <string name="lab_1f89987a">위의 전원, GPU, 루트 스위치를 이 게임용으로 한 번에 설정합니다. 프로필 자체는 저장되지 않습니다.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">이 게임에 설정</string>
     <string name="lab_31aa53e1">텍스트로 편집</string>
     <string name="lab_31b614e4">자동은 Adreno 710, 720, 722에서만 사용합니다. 게임이 이상하게 동작할 때만 바꾸세요.</string>
+    <string name="lab_32038add">Turnip 버그를 우회합니다. 이 버그는 \'GPU 작업이 끝났나?\'를 물으면 프레임 전체가 끝날 때까지 기다립니다(보고서의 타이밍 버그). \'기본값\'은 어댑터가 감지하게 하고, \'켬\'은 강제로 적용하며, \'끔\'은 사용하지 않습니다.</string>
+    <string name="lab_3205bc81">Turnip 그래픽 드라이버가 설정되지 않아 확인할 것이 없습니다.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">터치스크린 모드</string>
     <string name="lab_32a7fa00">프레임 생성</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">설치된 사운드 뱅크 및 내보내기 폴더</string>
     <string name="lab_33b3dcd5">게임이 실행되는 동안 GPU를 최고 클럭으로 유지합니다. 발열과 전력 소모가 커지며, 게임이 이를 무시할 수 있습니다.</string>
     <string name="lab_33b5c99c">타사 클라우드 고지 사항에 동의한 후에만 동작하며, 클라우드에서 아무것도 삭제하지 않습니다.</string>
+    <string name="lab_33e13543">어댑터 보고서</string>
     <string name="lab_340a5eba">Steam, GOG 및 직접 추가한 게임의 세이브 자동 백업과 클라우드 동기화.</string>
     <string name="lab_340d70c2">스토어 다운로드 엔진, 속도, Steam 연결.</string>
     <string name="lab_3421373f">종료 시 자동 수집</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">%1$s 기본값 프로필과 </string>
     <string name="lab_452013a2">내보내기</string>
     <string name="lab_45536eb8">컨테이너</string>
+    <string name="lab_455f1d53">UBWC / 압축 버퍼</string>
     <string name="lab_45bf9648">디스플레이 백엔드</string>
     <string name="lab_45e5d14f">내보내기 실패</string>
     <string name="lab_45f80a27">고급</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">고정 주사율</string>
     <string name="lab_5c462080">lsfg-vk가 프레임을 늘리는 동안에는 적용되지 않습니다. lsfg-vk가 직접 프레임 페이싱을 합니다.</string>
     <string name="lab_5c524fb3">새 컨테이너 기본값</string>
+    <string name="lab_5c596310">컴포지터가 화면 blit을 매번 기다리지 않고 여러 프레임을 동시에 처리합니다. 프레임 순서가 뒤섞이거나 Wayland에서만 게임이 끊기면 끄세요.</string>
     <string name="lab_5c821476">시스템 선택기</string>
     <string name="lab_5cb6896e">헤드리스 Steam</string>
     <string name="lab_5cc2a688">사용할 Steam 데이터센터, 지역 테스트, SteamLite 네트워크 확인(Classic 설정).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">실행 시 다시 적용 </string>
     <string name="lab_63a87e7d">더 선명하게 (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck 베타</string>
+    <string name="lab_641b9c9d">게임 자체 버퍼를 복사 없이 화면에 표시합니다(가장 낮은 지연, 발열 감소). 드라이버에 sync-file 펜스가 필요합니다(어댑터 보고서 참고). 티어링이나 지난 프레임이 보이면 끄세요.</string>
     <string name="lab_643b2baf">공유 / 전송</string>
     <string name="lab_64903a6c">더 받기</string>
     <string name="lab_64c5e98f">PIP</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan 설정</string>
     <string name="lab_8429d942">런타임과 라이브러리를 컨테이너에 설치하고, Wine 또는 Microsoft DLL을 선택합니다.</string>
     <string name="lab_845439e4">Qualcomm 드라이버의 확장 기능은 게임이 시작된 후에야 알 수 있습니다.</string>
+    <string name="lab_84a0335e">어댑터 프로필</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · 저장됨</string>
     <string name="lab_8521db60">빠른 메뉴</string>
     <string name="lab_85486938">로그 및 진단</string>
+    <string name="lab_8554e6fa">빠르게</string>
     <string name="lab_85558be1">모든 컨테이너의 기본값</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">교체</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">업데이트</string>
     <string name="lab_8b087b3c">외관</string>
     <string name="lab_8b60dd8e">Steam 클라이언트를 한 번 시작해 ARM64 Proton을 다운로드하게 하거나, Linux Proton 카탈로그에서 GE-Proton / CachyOS를 추가하세요.</string>
+    <string name="lab_8bf2cbae">DRM 포맷 모디파이어</string>
     <string name="lab_8c195a44">동기화</string>
     <string name="lab_8c283df5">카탈로그의 DirectX 12 빌드.</string>
     <string name="lab_8c33a442">사운드 시스템마다 프리셋을 따로 보관하므로 PulseAudio, ALSA, DirectAudio 사이를 전환해도 설정이 섞이지 않습니다. 자체 설정이 없는 게임은 계속 컨테이너를 따릅니다.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Android 클립보드를 게임과 공유</string>
     <string name="lab_968b9d49">실행 시 적용됩니다. 게임 중 사이드 메뉴에서도 실시간으로 바꿀 수 있습니다.</string>
     <string name="lab_969dab73">ReShade 켜기 / 끄기, 단독 / 중첩, 효과와 그 설정</string>
+    <string name="lab_969fd520">클라이언트 렌더 펜스</string>
     <string name="lab_96a7cb77">대기 중이던 교체가 취소되었습니다.</string>
     <string name="lab_96df6867">%1$s시간 플레이</string>
     <string name="lab_97275ac4">뒤바뀐 빨강과 파랑을 되돌립니다(BGRA에서 RGBA로).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• 빠른 액세스 메뉴의 성능 오버레이는 새로운 기능이며 아직 실제 기기에서 시험하지 않았습니다.\n\n</string>
     <string name="lab_9b395c25">게임이 컨트롤러를 직접 처리</string>
     <string name="lab_9b5699c0">아키텍처, 변환기, FEX 로드 방식.</string>
+    <string name="lab_9ba84344">드라이버를 확인할 수 없습니다.</string>
     <string name="lab_9bc722a8">저장소</string>
     <string name="lab_9bd29497">트랙패드 마우스</string>
     <string name="lab_9c232707">정보 및 도움말</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">Vulkan을 통한 DirectX 12. \'없음\'은 DirectX 12를 끕니다.</string>
     <string name="lab_ab612af4">온도</string>
     <string name="lab_ab78a04b">로그인하여 공유한 구성 관리</string>
+    <string name="lab_ab8824cb">어댑터 프레젠트 모드</string>
     <string name="lab_abb1c367">연결된 장치가 없습니다. 이 게임은 여전히 TV에서 시작하도록 설정되어 있습니다.</string>
     <string name="lab_abb20221">프리셋 없음</string>
     <string name="lab_abf1049c">기본적으로 원본 압축 파일 보관</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">창 전환</string>
     <string name="lab_aca7092f">설치된 항목은 Box64 버전에 표시됩니다.</string>
     <string name="lab_acfc8aab">사용</string>
+    <string name="lab_ad11f65e">자동(권장)</string>
     <string name="lab_ad23e110">아직 보고된 프로그램이 없습니다.</string>
     <string name="lab_ad26a7c7">알 수 없음</string>
     <string name="lab_adcb307d">Windows DirectX 호출을 GPU에 맞게 Vulkan으로 바꾸는 방식.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">드라이버 확장 읽는 중…</string>
     <string name="lab_b6b590cf">오프라인으로 실행</string>
     <string name="lab_b6e99688">화면 일부를 확대합니다.</string>
+    <string name="lab_b7079be0">제로 카피 표시</string>
     <string name="lab_b71f7c14">FEXCore 버전 다운로드</string>
     <string name="lab_b7320213">실행 중인 프로그램</string>
     <string name="lab_b736f934">내 스토어</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">바로 적용 · 이 게임용 및 이 엔진의 기본값으로 저장</string>
     <string name="lab_ca45d5a4">이 컨테이너</string>
     <string name="lab_ca62f862">다운로드 및 네트워크</string>
+    <string name="lab_cabf747a">비동기 복사</string>
     <string name="lab_caf7d4a3">공유 프리셋, 편집됨</string>
     <string name="lab_cb5fc4d5">VEGAS 구성</string>
     <string name="lab_cb6d604d">게임 중에는 HUD를 드래그할 수 없습니다.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">늘이기</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS 샤프닝 + 노이즈 제거</string>
+    <string name="lab_ce6eab03">제로 카피를 쓸 때 게임 드라이버가 프레임이 완성된 시점을 컴포지터에 알립니다. 비교할 때만 끄세요. 끔으로 두면 반쯤 그려진 프레임이 보일 수 있습니다.</string>
     <string name="lab_ce764fd8">사용 공간, 앱 폴더, 기본 시스템.</string>
     <string name="lab_ce9b8eca">BCn을 ASTC로 트랜스코딩</string>
     <string name="lab_ceadf171">Android가 fsync 차단</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">온스크린 우선순위</string>
     <string name="lab_e1768a43">게임 중 사이드 메뉴에서도 전환할 수 있습니다.</string>
     <string name="lab_e18caa5c">드라이브 없음</string>
+    <string name="lab_e19da5b2">Wayland 어댑터</string>
     <string name="lab_e1be537c">저장 안 됨</string>
     <string name="lab_e22a8ea9">Wayland에서 게임 프레임을 화면에 표시하려면 설치된 Turnip이 필요합니다. 새로 설치한 드라이버는 그래픽 드라이버 아래에 표시됩니다.</string>
     <string name="lab_e2410f47">찾아보기 및 다운로드</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">아직 기기 자체 드라이버만 있습니다.</string>
     <string name="lab_f04c78b9">오디오 설정 · 이 게임</string>
     <string name="lab_f05053e7">Steam Controller를 직접 읽습니다(트랙패드와 추가 버튼). 끔: 일반 입력 경로는 그대로입니다.</string>
+    <string name="lab_f0520965">mailbox = 최신 프레임, 가장 낮은 지연. fifo = vsync, 고른 페이싱. \'기본값\'은 프로필을 따르고, 없으면 저장된 프레젠트 모드를 따릅니다. Immediate는 티어링이 필요한데, Wayland는 이를 제공하지 않습니다.</string>
     <string name="lab_f05494f9">이 컨테이너의 Wine 레이어는 Wayland를 구동할 수 없습니다.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein, Jedi Academy를 세션 크기의 창 모드로 실행합니다.</string>
     <string name="lab_f0c81c31">Steam 클라이언트</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">기본값</string>
     <string name="lab_f523d27f">컨트롤러 패스스루</string>
     <string name="lab_f54f4eb6">%1$s을(를) 설치할 수 없습니다</string>
+    <string name="lab_f552097b">자동: 드라이버의 어댑터 보고서를 바탕으로 선택합니다. 보고서가 없으면 아무것도 바꾸지 않습니다.\n\n부드럽게: 고른 프레임 페이싱. vsync(fifo), 백그라운드에서 프레임 복사, 제로 카피 없음.\n\n빠르게: 가장 낮은 지연. mailbox, 압축 버퍼를 쓰는 제로 카피, 클라이언트 렌더 펜스.\n\n호환성: 가장 안전함. vsync, 모든 가속 기능 끔, 일반 버퍼, 타이밍 보정 켬. 깜빡이거나 멈추는 게임용.\n\n환경 변수 탭에 입력한 환경 변수는 항상 이 설정보다 우선하며, 개별 스위치는 프로필보다 우선합니다.</string>
     <string name="lab_f55495e0">저장</string>
     <string name="lab_f576fb2d">카탈로그의 레이어 또는 파일에서 설치한 레이어. 새 컨테이너에서 사용할 수 있습니다.</string>
     <string name="lab_f57b35ee">데드존 및 스무딩</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">앱의 컴포지터가 세션을 화면에 표시할 때 쓰는 드라이버. 클라이언트가 그릴 때 쓰는 드라이버가 아닙니다.</string>
     <string name="lab_f59e59da">라이브러리에 표시됩니다. 이름을 바꿔도 커버와 아이콘은 유지됩니다.</string>
     <string name="lab_f61050cc">게임 해상도</string>
+    <string name="lab_f65eddfe">게임 드라이버와 컴포지터가 버퍼 레이아웃을 맞추게 합니다. 끔으로 두면 게임이 일반 선형 버퍼를 사용합니다(BANNER_WSI_NO_MODIFIERS=1). 검은 화면이나 깨진 프레임이 보이면 시도해 보세요.</string>
     <string name="lab_f665e069">채팅창이 열려 있지 않은 친구가 메시지를 보내면 알림을 표시합니다.</string>
     <string name="lab_f667b7f4">강조 색상</string>
     <string name="lab_f690a199">내 커버</string>

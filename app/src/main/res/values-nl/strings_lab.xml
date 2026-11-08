@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows-componenten</string>
     <string name="lab_14bf5ec1">Nieuwste wint: overschrijft nooit een nieuwere cloudsave.</string>
     <string name="lab_14d452ce">Hoe het beeld van de game je scherm vult.</string>
+    <string name="lab_14e033f6">Subgroepen</string>
     <string name="lab_157c2809">Quake-enginegames in venster</string>
     <string name="lab_15a3b754">Enkel (soepelere sticks)</string>
     <string name="lab_15cf88ba">.icp- of .icpx-bestand</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">De eigen bestanden van elke Proton zijn als origineel opgeslagen toen deze pagina werd geopend.</string>
     <string name="lab_1b4c8948">Presentatiemodus</string>
     <string name="lab_1bbf10a9"> (je eigen kopie)</string>
+    <string name="lab_1bc2538c">KGSL-timingshim</string>
     <string name="lab_1bdd2734">Gamestandaard</string>
     <string name="lab_1bfb31a3">Achtergrondkleur</string>
     <string name="lab_1bfc578f">Chatmeldingen</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">%1$s en alles erin verwijderen? De snelkoppelingen van de games verdwijnen ook.</string>
     <string name="lab_1dd4a128">Root-bediening</string>
     <string name="lab_1df4901e">%1$s gedupliceerd</string>
+    <string name="lab_1df4bc73">Automatisch vertelt de game welke subgroepbewerkingen je Mesa-driver ondersteunt (DOOM Eternal en andere games die ze nodig hebben, starten dan). Uit verbergt ze, zoals oudere adapters deden; probeer het als een game grafische fouten of crashes vertoont die er eerder niet waren.</string>
     <string name="lab_1dfaae77">Een naam mag geen \\ / : * ? \" &lt; &gt; | bevatten</string>
     <string name="lab_1e1e0a24">Voor de games die de client start, niet de client zelf, en voor allemaal tegelijk: de sessie heeft één omgeving. </string>
     <string name="lab_1e223777">Versie, release-opmerkingen en Downloaden en installeren (klassieke Instellingen).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Download annuleren</string>
     <string name="lab_1f52ec4a">Het featureniveau dat VKD3D meldt. Verlaag het alleen voor een game die weigert te starten.</string>
     <string name="lab_1f5ee21a">Toont de updatemelding als er een nieuwe versie is.</string>
+    <string name="lab_1f796e30">Frames gaan als gecomprimeerde GPU-buffers (minder bandbreedte). Zet uit als het beeld vervormde blokken of strepen toont.</string>
     <string name="lab_1f7b66b6">Win-componenten</string>
     <string name="lab_1f88c31b">Opties</string>
     <string name="lab_1f89987a">Stelt de energie-, GPU- en rootschakelaars hierboven in één keer in voor deze game. Het profiel zelf wordt niet bewaard.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Ingesteld voor deze game</string>
     <string name="lab_31aa53e1">Bewerken als tekst</string>
     <string name="lab_31b614e4">Auto gebruikt het alleen op Adreno 710, 720 en 722. Wijzig het alleen als een game zich misdraagt.</string>
+    <string name="lab_32038add">Omzeilt een Turnip-bug waarbij de vraag \"is de GPU klaar?\" op het hele frame wacht (de timingbug uit het rapport). Standaard laat de adapter de bug detecteren; Aan dwingt de shim af, Uit schakelt hem uit.</string>
+    <string name="lab_3205bc81">Er is geen Turnip als grafische driver ingesteld, dus er valt niets te controleren.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Touchscreenmodus</string>
     <string name="lab_32a7fa00">Framegeneratie</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Geïnstalleerde klankbanken en exportmap</string>
     <string name="lab_33b3dcd5">Houdt de GPU op zijn hoogste kloksnelheid zolang een game draait. Warmer en verbruikt meer; games kunnen het overschrijven.</string>
     <string name="lab_33b5c99c">Pas nadat je de disclaimer voor de cloud van derden hebt geaccepteerd; verwijdert nooit iets uit de cloud.</string>
+    <string name="lab_33e13543">Adapterrapport</string>
     <string name="lab_340a5eba">Automatische back-ups van savegames en cloudsynchronisatie voor Steam, GOG en je eigen games.</string>
     <string name="lab_340d70c2">Downloadengines van winkels, snelheid en Steam-verbinding.</string>
     <string name="lab_3421373f">Automatisch verzamelen bij afsluiten</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Het %1$s-standaardprofiel, </string>
     <string name="lab_452013a2">Exporteren</string>
     <string name="lab_45536eb8">Container</string>
+    <string name="lab_455f1d53">UBWC / gecomprimeerde buffers</string>
     <string name="lab_45bf9648">Weergavebackend</string>
     <string name="lab_45e5d14f">Exporteren mislukt</string>
     <string name="lab_45f80a27">Geavanceerd</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Vaste schermverversing</string>
     <string name="lab_5c462080">Niet toegepast zolang lsfg-vk frames vermenigvuldigt: het regelt de pacing zelf.</string>
     <string name="lab_5c524fb3">Standaardwaarden voor nieuwe containers</string>
+    <string name="lab_5c596310">De compositor houdt frames onderweg in plaats van op elke schermblit te wachten. Zet uit als frames in de verkeerde volgorde aankomen of een game alleen op Wayland hapert.</string>
     <string name="lab_5c821476">Systeemkiezer</string>
     <string name="lab_5cb6896e">Steam zonder interface</string>
     <string name="lab_5cc2a688">Welk Steam-datacenter je gebruikt, regio\'s testen en de netwerkcontrole van SteamLite (klassieke Instellingen).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">opnieuw toegepast bij start om </string>
     <string name="lab_63a87e7d">Scherper (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck-bèta</string>
+    <string name="lab_641b9c9d">De eigen buffer van de game gaat zonder kopie op het scherm (laagste latentie, minder warmte). Vereist sync-file-fences in de driver (zie het adapterrapport). Zet uit als je tearing of verouderde frames ziet.</string>
     <string name="lab_643b2baf">Delen / overzetten</string>
     <string name="lab_64903a6c">Meer ophalen</string>
     <string name="lab_64c5e98f">Beeld-in-beeld</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan-instellingen</string>
     <string name="lab_8429d942">Installeer runtimes en bibliotheken in de container, en kies de DLL\'s van Wine of van Microsoft.</string>
     <string name="lab_845439e4">De extensies van een Qualcomm-driver zijn pas bekend als de game start.</string>
+    <string name="lab_84a0335e">Adapterprofiel</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · opgeslagen</string>
     <string name="lab_8521db60">Snelmenu</string>
     <string name="lab_85486938">Logs en diagnostiek</string>
+    <string name="lab_8554e6fa">Snel</string>
     <string name="lab_85558be1">Standaardwaarden voor elke container</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Wisselen</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Updates</string>
     <string name="lab_8b087b3c">Weergave</string>
     <string name="lab_8b60dd8e">Start de Steam-client één keer zodat hij zijn ARM64-Proton downloadt, of voeg GE-Proton / CachyOS toe uit de catalogus Linux-Protons.</string>
+    <string name="lab_8bf2cbae">DRM-formaatmodifiers</string>
     <string name="lab_8c195a44">Synchronisatie</string>
     <string name="lab_8c283df5">DirectX 12-builds uit de catalogus.</string>
     <string name="lab_8c33a442">Elk geluidssysteem houdt zijn eigen preset, dus wisselen tussen PulseAudio, ALSA en DirectAudio mengt hun instellingen nooit. Een game zonder eigen preset blijft zijn container volgen.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Android-klembord delen met games</string>
     <string name="lab_968b9d49">Toegepast bij het starten. Het zijmenu in de game wijzigt ze nog steeds live.</string>
     <string name="lab_969dab73">ReShade aan / uit, Solo / Stapelen, effecten en hun instellingen</string>
+    <string name="lab_969fd520">Client-renderfences</string>
     <string name="lab_96a7cb77">De wachtende wissel is geannuleerd.</string>
     <string name="lab_96df6867">%1$s u gespeeld</string>
     <string name="lab_97275ac4">Wisselt rood en blauw terug (BGRA naar RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• De prestatie-overlay van het menu Snelle toegang is nieuw en nog niet op een apparaat getest.\n\n</string>
     <string name="lab_9b395c25">De game de controller laten afhandelen</string>
     <string name="lab_9b5699c0">Architectuur, vertaler en hoe FEX wordt geladen.</string>
+    <string name="lab_9ba84344">De driver kon niet worden gecontroleerd.</string>
     <string name="lab_9bc722a8">Opslag</string>
     <string name="lab_9bd29497">Trackpadmuis</string>
     <string name="lab_9c232707">Over en help</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 via Vulkan. Geen zet DirectX 12 uit.</string>
     <string name="lab_ab612af4">Temp.</string>
     <string name="lab_ab78a04b">Meld je aan om je gedeelde configuraties te beheren</string>
+    <string name="lab_ab8824cb">Presentatiemodus van adapter</string>
     <string name="lab_abb1c367">Er is niets aangesloten. Deze game is nog ingesteld om op een tv te starten.</string>
     <string name="lab_abb20221">Geen preset</string>
     <string name="lab_abf1049c">Ruw archief standaard bewaren</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Venster wisselen</string>
     <string name="lab_aca7092f">Geïnstalleerde staan onder Box64-versie.</string>
     <string name="lab_acfc8aab">Gebruiken</string>
+    <string name="lab_ad11f65e">Automatisch (aanbevolen)</string>
     <string name="lab_ad23e110">Nog geen programma\'s gemeld.</string>
     <string name="lab_ad26a7c7">onbekend</string>
     <string name="lab_adcb307d">Hoe DirectX-aanroepen van Windows voor je GPU naar Vulkan worden omgezet.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Extensies van de driver lezen…</string>
     <string name="lab_b6b590cf">Offline starten</string>
     <string name="lab_b6e99688">Inzoomen op een deel van het scherm.</string>
+    <string name="lab_b7079be0">Zero-copy-presentatie</string>
     <string name="lab_b71f7c14">FEXCore-versies downloaden</string>
     <string name="lab_b7320213">Actieve programma\'s</string>
     <string name="lab_b736f934">Je winkels</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">geldt meteen · opgeslagen voor deze game en als standaard van deze engine</string>
     <string name="lab_ca45d5a4">deze container</string>
     <string name="lab_ca62f862">Downloads en netwerk</string>
+    <string name="lab_cabf747a">Asynchroon kopiëren</string>
     <string name="lab_caf7d4a3">Gedeelde preset, bewerkt</string>
     <string name="lab_cb5fc4d5">VEGAS-configuratie</string>
     <string name="lab_cb6d604d">De HUD kan in de game niet worden versleept.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Uitrekken</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS-verscherping + ruisonderdrukking</string>
+    <string name="lab_ce6eab03">Met zero-copy meldt de driver van de game aan de compositor wanneer een frame klaar is. Zet alleen uit om te vergelijken; uit kan half getekende frames tonen.</string>
     <string name="lab_ce764fd8">Gebruikte ruimte, app-mappen en het basissysteem.</string>
     <string name="lab_ce9b8eca">BCn naar ASTC transcoderen</string>
     <string name="lab_ceadf171">Android blokkeert fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Prioriteit schermbediening</string>
     <string name="lab_e1768a43">Ook in de game te schakelen via het zijmenu.</string>
     <string name="lab_e18caa5c">Geen stations</string>
+    <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Niet opgeslagen</string>
     <string name="lab_e22a8ea9">Wayland heeft een geïnstalleerde Turnip nodig om de frames van de game op het scherm te zetten. Nieuwe verschijnen onder Grafische driver.</string>
     <string name="lab_e2410f47">Bekijken en downloaden</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Nog alleen de eigen driver van de telefoon.</string>
     <string name="lab_f04c78b9">Audio-instellingen · deze game</string>
     <string name="lab_f05053e7">Leest een Steam Controller rechtstreeks uit (trackpads en extra knoppen). Uit: het normale invoerpad blijft ongewijzigd.</string>
+    <string name="lab_f0520965">mailbox = nieuwste frame, laagste latentie; fifo = vsync, gelijkmatige pacing. Standaard volgt het profiel, anders de opgeslagen presentatiemodus. Immediate vereist tearing, en dat biedt Wayland niet.</string>
     <string name="lab_f05494f9">De Wine-laag van deze container kan Wayland niet aansturen.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein en Jedi Academy draaien in een venster op het formaat van de sessie.</string>
     <string name="lab_f0c81c31">Steam-client</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Standaardwaarden</string>
     <string name="lab_f523d27f">Controller-passthrough</string>
     <string name="lab_f54f4eb6">Kan %1$s niet installeren</string>
+    <string name="lab_f552097b">Automatisch: kiest op basis van het adapterrapport van je driver; zonder rapport verandert het niets.\n\nVloeiend: gelijkmatige framepacing: vsync (fifo), frames op de achtergrond gekopieerd, geen zero-copy.\n\nSnel: laagste latentie: mailbox, zero-copy met gecomprimeerde buffers, client-renderfences.\n\nCompatibiliteit: het veiligst: vsync, alle versnellingen uit, gewone buffers, timingshim aan. Voor games die flikkeren of vastlopen.\n\nOmgevingsvariabelen die je onder \"Omgevingsvariabelen\" invoert, gaan altijd voor deze profielen; de losse schakelaars gaan voor het profiel.</string>
     <string name="lab_f55495e0">Opslaan</string>
     <string name="lab_f576fb2d">Lagen uit de catalogus, of installeer er een uit een bestand. Nieuwe containers kunnen ze gebruiken.</string>
     <string name="lab_f57b35ee">Dode zone en afvlakking</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">De driver waarmee de compositor van de app de sessie op het scherm zet. Niet waarmee de client tekent.</string>
     <string name="lab_f59e59da">Getoond in je bibliotheek. Hernoemen behoudt de hoes en het pictogram.</string>
     <string name="lab_f61050cc">Gameresolutie</string>
+    <string name="lab_f65eddfe">Laat de driver van de game en de compositor het eens worden over bufferindelingen. Uit laat de game gewone lineaire buffers gebruiken (BANNER_WSI_NO_MODIFIERS=1); probeer het bij een zwart scherm of beschadigde frames.</string>
     <string name="lab_f665e069">Een melding als een vriend je een bericht stuurt en de chat niet open is.</string>
     <string name="lab_f667b7f4">Accentkleur</string>
     <string name="lab_f690a199">Jouw cover</string>

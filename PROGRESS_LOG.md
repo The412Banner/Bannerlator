@@ -1,5 +1,25 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🌐 lab-polish-strings: pl + uk Default fixed (120ed323; CI 42532718306 running; 043d86d1's run cancelled)
+- **User: "yes fix those too".** pl Default Domyślna → Domyślne (also "Default (Steam: %1$s)"). uk Default Стандартний → За замовчуванням (also the "Default / Any controller" slot and its copy row). The adapter explanations quoting them were updated.
+- **Indonesian kept "Default":** the app uses it as the Indonesian word in about 20 strings, so changing only the label would be inconsistent.
+- **Next:** green → install pubg (pre-approved) → merge on go.
+
+## 2026-11-08 — 🌐 lab-polish-strings: On / Off / Default labels fixed (043d86d1; CI 42532280744 running; c0f66b29's run cancelled)
+- **User: "yes fix those too".** es + es-419 On Sí → Activado, Off Desactivada → Desactivado. it On Sì → Attivato, Off Disattivata → Disattivato, Default Predefinita → Predefinito. pt Off Desativada → Desativado. bg Default Стандартна → По подразбиране.
+- The new adapter explanations quoting these labels were updated (16 strings). Strings that use the words for their own nouns (bg "Стандартна MIDI звукова банка", it "Predefinita di sistema" / "Predefinita (Steam: %1$s)") are unchanged.
+- All 32 still at 1796/1796; check up to date; XML parses.
+- **Possible next candidates (not changed):** pl Default "Domyślna", uk Default "Стандартний", in Default "Default" (English).
+- **Next:** green → install pubg (pre-approved) → merge on go.
+
+## 2026-11-08 — 🌐 feat/lab-polish-strings: the Wayland adapter strings in 32 languages (c0f66b29; CI 42532074388 running, NOT device-tested)
+- **Why (user: "yes do the translations"):** the new adapter rows were English only.
+- **How:** 9f212ee2 makes the help texts and option names L("…") single literals (profile names via profileName) so lab_strings.py sees them. extract → 1796 strings (+24). 4 drafting agents (8 languages each) used terms.py for the app's existing words.
+- **Env Vars fix:** the profile explanation names the Env Vars tab as each language shows it. 3 drafters did this themselves; ms/nb/nl/pl/pt-PT/pt/ro/ru were patched by hand.
+- **Result:** fill ×32 → all at 1796/1796, check up to date, all 33 strings_lab.xml parse.
+- **Noted, NOT changed (existing app-wide labels):** pt On "Ativado" / Off "Desativada"; es, es-419 and it On = "Sí/Sì" with a feminine Off; bg Default "Стандартна". The new texts quote them as they are.
+- **Next:** green → install pubg (user: "install it when it's done, pubg") → merge on go.
+
 ## 2026-11-08 — 🔀 feat/lab-settings-polish MERGED to main 47c5d7c3 (user: "good merge it")
 - **What:** a faint fading line between options in Lab's settings and menus; "?" help buttons (START too); the classic Wayland adapter settings as rows (profile + 8 single switches, same driver-config keys) with the adapter report at the top of Lab's Wayland game driver page.
 - **Proof:** CI 42529607854 green ×4. Installed on the Elite main app and checked by the user (screenshots 171740/171744 + the inline report). Crash buffer empty.

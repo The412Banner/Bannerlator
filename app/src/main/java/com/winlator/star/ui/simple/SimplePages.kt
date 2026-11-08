@@ -1,6 +1,20 @@
 package com.winlator.star.ui.simple
 
 import android.app.Activity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.key
+import com.winlator.star.core.HttpUtils
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Edit
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -665,15 +679,41 @@ internal fun SimpleDriverSourcePage(index: Int, onBack: () -> Unit) {
 /** Controls: the on-screen / controller profiles, the connected controllers, and the controller test. */
 @Composable
 internal fun SimpleControlsPage(onBack: () -> Unit) {
+    // Classic's Controls screen as Lab lists: the same four tabs (On-screen, Controller, Assign, Device) on the same
+    // data (InputControlsManager, the profile's controllers); Assign and Device are Classic's own sections.
     val context = LocalContext.current
     val manager = remember { InputControlsManager(context) }
     var tick by remember { mutableIntStateOf(0) }
     OnResume { tick++ }
+    // Controllers plugged in or out while the page is open: rebuild the list (as Classic does).
+    DisposableEffect(Unit) {
+        val im = context.getSystemService(android.content.Context.INPUT_SERVICE) as? android.hardware.input.InputManager
+        val l = object : android.hardware.input.InputManager.InputDeviceListener {
+            override fun onInputDeviceAdded(deviceId: Int) { tick++ }
+            override fun onInputDeviceRemoved(deviceId: Int) { tick++ }
+            override fun onInputDeviceChanged(deviceId: Int) { tick++ }
+        }
+        im?.registerInputDeviceListener(l, android.os.Handler(android.os.Looper.getMainLooper()))
+        onDispose { im?.unregisterInputDeviceListener(l) }
+    }
     val profiles = remember(tick) { runCatching { manager.profiles.toList() }.getOrDefault(emptyList()) }
-    val controllers = remember(tick) { runCatching { ExternalController.getControllers().toList() }.getOrDefault(emptyList()) }
+    // The profile the Controller tab works on (Classic's profile picker); the first one until another is picked.
+    var selId by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(-1) }
+    val sel = profiles.firstOrNull { it.id == selId } ?: profiles.firstOrNull()
+    val layouts = remember(tick) { profiles.associate { it.id to runCatching { it.hasElementsOnDisk() }.getOrDefault(false) } }
+    // As Classic: the profile's saved controllers plus the connected ones, the Default template on its own row.
+    val loaded = remember(tick, sel?.id) { runCatching { sel?.loadControllers()?.toList() }.getOrNull().orEmpty() }
+    val controllers = remember(tick, sel?.id) {
+        val list = loaded.toMutableList()
+        runCatching { ExternalController.getControllers() }.getOrNull()?.forEach { c -> if (c !in list) list.add(c) }
+        list.filter { it.id != ControlsProfile.DEFAULT_CONTROLLER_ID }
+    }
+    val defaultBinds = loaded.firstOrNull { it.id == ControlsProfile.DEFAULT_CONTROLLER_ID }?.controllerBindingCount ?: 0
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<ControlsProfile?>(null) }
     var testOpen by remember { mutableStateOf(false) }
+    var community by remember { mutableStateOf<List<String>?>(null) }
+    var communityOpen by remember { mutableStateOf(false) }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
         val ok = runCatching {
@@ -686,56 +726,140 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     fun editLayout(p: ControlsProfile) = context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra("profile_id", p.id))
     fun bindings(p: ControlsProfile, controllerId: String = ControlsProfile.DEFAULT_CONTROLLER_ID) =
         context.startActivity(Intent(context, ExternalControllerBindingsActivity::class.java).putExtra("profile_id", p.id).putExtra("controller_id", controllerId))
+    fun copyBindings(fromId: String, to: ExternalController) {
+        val p = sel ?: return
+        p.loadControllers()
+        val src = p.getController(fromId)
+        // Never copy an empty set: it would wipe the target's bindings.
+        if (src == null || src.controllerBindingCount == 0) { toast(context, "Nothing to copy"); return }
+        p.addController(to.id)?.let { it.copyBindingsFrom(src); p.save(); tick++; toast(context, "Bindings copied") }
+    }
+    fun exported(f: java.io.File?) = toast(context, if (f != null) "Exported to ${f.path}" else "Export failed")
 
-    val profileEntries = profiles.map { p ->
+    // ── On-screen: the profiles (pick one, edit its layout) ──
+    val onScreen = profiles.map { p ->
+        val on = p.id == sel?.id
         MenuEntry(
-            key = "p${p.id}", title = p.name, subtitle = "On-screen layout and controller bindings", icon = Icons.Filled.Gamepad,
-            onA = { editLayout(p) },
+            key = "p${p.id}", title = p.name,
+            subtitle = if (layouts[p.id] == true) "On-screen layout" else "No on-screen layout yet",
+            trailing = if (on) "Selected" else null, current = on,
+            icon = Icons.Filled.Gamepad, group = "Profiles",
+            onA = { selId = p.id },
+            play = { selId = p.id; editLayout(p) }, playIcon = Icons.Filled.Edit, playLabel = "Edit layout",
             actions = listOf(
-                MenuAction("Edit the on-screen layout", { editLayout(p) }),
-                MenuAction("Controller bindings", { bindings(p) }),
+                MenuAction("Edit the on-screen layout", { selId = p.id; editLayout(p) }),
+                MenuAction("Controller bindings", { selId = p.id; bindings(p) }),
                 MenuAction("Rename", { renaming = p }),
                 MenuAction("Duplicate", { manager.duplicateProfile(p); tick++ }, confirm = "Make a copy of ${p.name}?"),
-                MenuAction("Export", { val f = runCatching { manager.exportProfile(p) }.getOrNull(); toast(context, if (f != null) "Exported to ${f.path}" else "Export failed") }),
-                MenuAction("Remove", { manager.removeProfile(p); tick++ }, danger = true, confirm = "Remove ${p.name}?"),
+                MenuAction("Export (.icpx)", { exported(runCatching { manager.exportProfile(p) }.getOrNull()) }),
+                MenuAction("Export (.icp, older versions)", { exported(runCatching { manager.exportLegacyProfile(p) }.getOrNull()) }),
+                MenuAction("Delete", { manager.removeProfile(p); if (selId == p.id) selId = -1; tick++ }, danger = true, confirm = "Delete ${p.name}?"),
             ),
         )
+    } + listOf(
+        MenuEntry("import", "Import a profile", ".icp or .icpx file", icon = Icons.Filled.Add, group = "Share / transfer",
+            onA = { importer.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.ICP, "Select controls profile")) }),
+        MenuEntry("community", "Download community profiles", "The online list", icon = Icons.Filled.CloudDownload, group = "Share / transfer",
+            onA = {
+                communityOpen = true
+                if (community == null) HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/index.txt") { content ->
+                    (context as? Activity)?.runOnUiThread {
+                        community = content?.split("\n")?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
+                        if (content == null) toast(context, "Could not load the list")
+                    }
+                }
+            }),
+    )
+
+    // ── Controller: the selected profile's bindings for each controller ──
+    val controllerTab = if (sel == null) emptyList() else buildList {
+        add(MenuEntry("prof", "Profile: ${sel.name}", "The bindings below belong to this profile", icon = Icons.Filled.Gamepad,
+            actions = profiles.map { p -> MenuAction(p.name, { selId = p.id }) }))
+        add(MenuEntry("test", "Test and bind controllers", "Remap buttons and check every input", icon = Icons.Filled.SportsEsports, onA = { testOpen = true }))
+        add(MenuEntry("default", "Default / Any controller", "$defaultBinds bindings · new controllers inherit these", icon = Icons.Filled.SportsEsports,
+            group = "Controllers", onA = { bindings(sel) }))
+        controllers.forEach { c ->
+            val dev = if (c.isConnected) android.view.InputDevice.getDevice(c.deviceId) else null
+            val battery = runCatching {
+                if (dev != null && android.os.Build.VERSION.SDK_INT >= 29) dev.batteryState.takeIf { it.isPresent }?.capacity?.takeIf { it >= 0f }?.let { Math.round(it * 100f) } else null
+            }.getOrNull()
+            val vib = runCatching { dev?.vibrator?.takeIf { it.hasVibrator() } }.getOrNull()
+            add(
+                MenuEntry(
+                    key = "c${c.id}", title = c.name ?: c.id, group = "Controllers",
+                    subtitle = listOfNotNull("${c.controllerBindingCount} bindings", if (c.isConnected) "Connected" else "Not connected", battery?.let { "Battery $it%" }).joinToString(" · "),
+                    current = c.isConnected,
+                    icon = Icons.Filled.SportsEsports,
+                    onA = { bindings(sel, c.id) },
+                    actions = buildList {
+                        add(MenuAction("Edit its bindings", { bindings(sel, c.id) }))
+                        add(MenuAction("Copy bindings from Default / Any controller", { copyBindings(ControlsProfile.DEFAULT_CONTROLLER_ID, c) }))
+                        controllers.filter { it.id != c.id && it.controllerBindingCount > 0 }.forEach { o ->
+                            add(MenuAction("Copy bindings from ${o.name}", { copyBindings(o.id, c) }))
+                        }
+                        if (vib != null) add(MenuAction("Test rumble", {
+                            runCatching { vib.vibrate(android.os.VibrationEffect.createOneShot(250, android.os.VibrationEffect.DEFAULT_AMPLITUDE)) }
+                        }))
+                        if (c.controllerBindingCount > 0) add(MenuAction("Remove its bindings", { sel.removeController(c); sel.save(); tick++ }, danger = true, confirm = "Remove the bindings of ${c.name}?"))
+                    },
+                ),
+            )
+        }
     }
-    val controllerEntries = controllers.map { c ->
-        MenuEntry(
-            key = "c${c.id}", title = c.name ?: c.id, subtitle = if (c.isConnected) "Connected" else "Not connected",
-            icon = Icons.Filled.SportsEsports,
-            onA = { profiles.firstOrNull()?.let { bindings(it, c.id) } },
-        )
-    }
+
     SimpleMenuPage(
         overline = "Manage",
         title = "Controls",
         sections = listOf(
-            MenuSection("profiles", "Profiles", Icons.Filled.Gamepad, profileEntries, empty = "No profiles yet.", primary = MenuAction("New profile", { creating = true })),
-            MenuSection("controllers", "Controllers", Icons.Filled.SportsEsports, controllerEntries, empty = "No controller seen yet. Press a button on it."),
-            MenuSection(
-                "tools", "Tools", Icons.Filled.Build,
-                listOf(
-                    MenuEntry("test", "Controller test", "Check every button, stick and trigger", icon = Icons.Filled.SportsEsports, onA = { testOpen = true }),
-                    MenuEntry("import", "Import a profile", "An .icp file from your storage", icon = Icons.Filled.Add, onA = { importer.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.ICP, "Select controls profile")) }),
-                ),
-            ),
+            MenuSection("onscreen", "On-screen", Icons.Filled.TouchApp, onScreen, empty = "No profiles yet.", primary = MenuAction("New profile", { creating = true })),
+            MenuSection("controller", "Controller", Icons.Filled.SportsEsports, controllerTab, empty = "Make a profile first (On-screen tab)."),
+            MenuSection("assign", "Assign", Icons.Filled.People, emptyList(), content = {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    com.winlator.star.ui.screens.GlobalPlayerSlotsSection()
+                }
+            }),
+            MenuSection("device", "Device", Icons.Filled.Build, emptyList(), content = {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    com.winlator.star.ui.screens.GyroscopeSection()
+                    Spacer(Modifier.height(16.dp))
+                    com.winlator.star.ui.screens.SteamControllerSection()
+                    Spacer(Modifier.height(16.dp))
+                    com.winlator.star.ui.screens.MenuButtonSection()
+                }
+            }),
         ),
         onBack = onBack,
     )
-    if (creating) NameDialog("New profile", "Profile ${profiles.size + 1}", onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name); tick++ }
+    if (creating) NameDialog("New profile", "Profile ${profiles.size + 1}", onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
     renaming?.let { p -> NameDialog("Rename", p.name, onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
+    if (communityOpen) {
+        val items = community
+        key(items?.size ?: -1) {
+            SimpleActionSheet(
+                title = "Community profiles",
+                actions = items.orEmpty().map { f ->
+                    MenuAction(f.removeSuffix(".icp"), {
+                        HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/$f") { content ->
+                            val ok = content != null && runCatching { manager.importProfile(JSONObject(content)) != null }.getOrDefault(false)
+                            (context as? Activity)?.runOnUiThread { toast(context, if (ok) "Imported ${f.removeSuffix(".icp")}" else "Could not import $f"); tick++ }
+                        }
+                    })
+                },
+                message = if (items == null) "Loading the list…" else if (items.isEmpty()) "Nothing in the list." else null,
+                onDismiss = { communityOpen = false },
+            ) { a -> communityOpen = false; a.run() }
+        }
+    }
     if (testOpen) {
         SettingsControllerTestDialog(
-            onDismiss = { testOpen = false },
-            profile = profiles.firstOrNull(),
+            onDismiss = { testOpen = false; tick++ },
+            profile = sel,
             allProfiles = profiles,
-            onSelectProfile = { },
+            onSelectProfile = { p -> selId = p.id },
             onCreateProfile = { name -> manager.createProfile(name); tick++ },
             onRenameProfile = { },
             onBindingsChanged = { tick++ },
-            onOpenAllBindings = { profiles.firstOrNull()?.let { bindings(it) } },
+            onOpenAllBindings = { sel?.let { bindings(it) } },
         )
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.ViewQuilt
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.HelpOutline
@@ -270,7 +271,15 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
     val scales = listOf(0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f)
     fun pct(f: Float) = "${(f * 100).roundToInt()}%"
 
+    val langTag = LabLang.tag(context)
     val look = listOf(
+        // Lab's language: every language Lab is translated into, each named in its own language.
+        MenuEntry(
+            "language", L("Language"), trailing = LabLang.name(context), icon = Icons.Filled.Translate,
+            actions = LabLang.LANGUAGES.map { (t, n) ->
+                MenuAction(mark(if (t.isEmpty()) L("System default") else n, t == langTag), { (context as? Activity)?.let { LabLang.set(it, t) } })
+            },
+        ),
         MenuEntry("style", "Interface style", "Lab, Deck, XMB or Classic", trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
         MenuEntry(
             "look", "Look", "Dark or light; the accent is your theme's", trailing = if (AppThemeState.labLight) "Light" else "Dark", icon = Icons.Filled.Palette,

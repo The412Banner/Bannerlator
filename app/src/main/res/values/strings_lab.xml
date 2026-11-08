@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lab's text in English. Written by tools/i18n/lab_strings.py from the L("...") calls; do not edit by hand. -->
+<resources>
+    <string name="lab_2dad13e3">Language</string>
+    <string name="lab_b73987a8">System default</string>
+</resources>

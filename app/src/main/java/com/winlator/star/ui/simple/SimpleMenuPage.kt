@@ -1,5 +1,6 @@
 package com.winlator.star.ui.simple
 
+import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -597,9 +598,12 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
         Column(
             modifier = Modifier
                 .widthIn(min = 300.dp, max = 520.dp)
+                // A long list (the languages) scrolls; the controller's row is kept in view.
+                .heightIn(max = 620.dp)
                 .simpleDepth(high = true)
                 .background(SimplePanelBrush, SimpleShape)
                 .border(1.dp, SimpleLine, SimpleShape)
+                .verticalScroll(rememberScrollState())
                 .padding(14.dp),
         ) {
             Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))

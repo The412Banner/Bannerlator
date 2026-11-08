@@ -24,6 +24,8 @@ class BannerlatorApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Lab's language (Appearance › Language): read once here; a change re-reads it and redraws the screen.
+        com.winlator.star.ui.simple.LabLang.init(this)
         com.winlator.star.core.DirectAudioSupport.init(this)
 
         // The Xbox sign-in window and the cloud player run in their own process (":xboxlogin", isolated WebView data). None of

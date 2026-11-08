@@ -134,7 +134,7 @@ fun setupDeckInGame(view: ComposeView) {
             val base = MaterialTheme.colorScheme
             MaterialTheme(colorScheme = if (lab && com.winlator.star.ui.theme.AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(base) else base, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
                 DeckTheme {
-                    DeckInGameOverlay()
+                    if (lab) com.winlator.star.ui.simple.LabDirection { DeckInGameOverlay() } else DeckInGameOverlay()
                 }
             }
         }

@@ -98,9 +98,10 @@ internal fun xmbLogsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 
     // Runs first (current, then archived launches), then the files inside the chosen run.
     val runs = LogInventory.runsIn(entry.dir)
-    val runLabels = xmbUniqueLabels(runs.map { if (it.current) "Current" else runLabel(it.millis) })
-    var runIdx by mutableIntStateOf(0)
-    var files by mutableStateOf<List<File>>(LogInventory.filesIn(runs.firstOrNull()?.dir ?: entry.dir))
+    val runLabels = xmbUniqueLabels(runs.map { if (it.current) "Current" else if (it.wayland) "Wayland" else runLabel(it.millis) })
+    // The first run with files: a game played with Wine logging off may only have Wayland logs.
+    var runIdx by mutableIntStateOf(runs.indexOfFirst { LogInventory.filesIn(it.dir).isNotEmpty() }.coerceAtLeast(0))
+    var files by mutableStateOf<List<File>>(LogInventory.filesIn(runs.getOrNull(runIdx)?.dir ?: entry.dir))
     fun runDir(): File = runs.getOrNull(runIdx)?.dir ?: entry.dir
 
     return XmbMenu(title = if (entry.isAppBucket) "App & crash logs" else "Logs", icon = Icons.Filled.Description) {

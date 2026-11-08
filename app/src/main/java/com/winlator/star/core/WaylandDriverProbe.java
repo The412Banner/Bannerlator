@@ -121,6 +121,7 @@ public final class WaylandDriverProbe {
      */
     public static String libPath(Context context, String driverId) {
         if (WaylandAdapter.unusableReason(context, driverId) != null) return null;
+        if (WaylandAdapter.isMaliSystem(driverId)) return null; // no AdrenoTools .so to load
         try {
             AdrenotoolsManager atm = new AdrenotoolsManager(context);
             String lib = atm.getLibraryName(driverId);
@@ -202,6 +203,9 @@ public final class WaylandDriverProbe {
             store(context, driverId, r.json);
             return r;
         }
+        // The probe loads an AdrenoTools .so by path; the Mali System driver has none. Not stored, and
+        // with no report the Auto profile injects nothing (WaylandAdapterSettings.resolve).
+        if (WaylandAdapter.isMaliSystem(driverId)) return failed(driverId, "the probe does not measure the System driver");
         String libPath = libPath(context, driverId);
         if (libPath == null) {
             Report r = failed(driverId, "the driver's library file is missing");

@@ -58,8 +58,9 @@ internal val SimpleInk: Color get() = if (light) Color(0xFF111722) else Color(0x
 internal val SimpleStrong: Color get() = if (light) Color(0xFF0B0F17) else Color.White
 internal val SimpleMuted: Color get() = if (light) Color(0xFF4A5566) else Color(0xFFA9B2C1)
 internal val SimpleDim: Color get() = if (light) Color(0xFF8A94A5) else Color(0xFF6A7383)
-internal val SimplePanelTop: Color get() = if (light) Color(0xF2FFFFFF) else Color(0xF0171A23)
-internal val SimplePanelBottom: Color get() = if (light) Color(0xEEF6F8FB) else Color(0xF20E1016)
+internal val SimplePanelTop: Color get() = (if (light) Color(0xF2FFFFFF) else Color(0xF0171A23)).let { c -> LabArt.panelAlpha?.let { c.copy(alpha = it) } ?: c }
+internal val SimplePanelBottom: Color get() = (if (light) Color(0xEEF6F8FB) else Color(0xF20E1016)).let { c -> LabArt.panelAlpha?.let { c.copy(alpha = it + 0.02f) } ?: c }
+/** Over game art (Panels over art: Glass / Clear) the Lab panels let it through; Solid keeps them as they are. */
 internal val SimpleLine: Color get() = if (light) Color(0x1F111722) else Color(0x1AFFFFFF)
 /** A faint fill for cards on a panel. */
 internal val SimpleCard: Color get() = if (light) Color(0x0D111722) else Color(0x0DFFFFFF)

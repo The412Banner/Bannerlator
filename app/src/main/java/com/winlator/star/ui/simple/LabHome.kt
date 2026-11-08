@@ -2,6 +2,9 @@ package com.winlator.star.ui.simple
 
 import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -195,6 +199,10 @@ internal fun LabHome(
         val rowH: Dp = if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)
         // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
         val game = recent.firstOrNull { it.file.path == selPath } ?: recent.firstOrNull()
+        // Its art goes behind the page (Appearance › Game art background).
+        LaunchedEffect(game?.file?.path) { LabArt.selected = game }
+        // Games without a Steam link: find their art by name (once per game).
+        LaunchedEffect(recent) { recent.forEach { LabArt.resolve(context, it) } }
 
         @Composable
         fun ContinueTile(m: Modifier) {
@@ -213,11 +221,25 @@ internal fun LabHome(
             // tile took the whole row (the library row and the tiles beside it had no room left).
             androidx.compose.animation.Crossfade(targetState = game, modifier = m, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
             val st = stats[game.file.path]
+            // Art and previews: the tile becomes the game's art with its trailer behind the logo, info and buttons.
+            if (LabArt.hasClips(LabArt.gameMode(game))) {
+                LabHeroTile(
+                    game,
+                    label = if (game == recent.firstOrNull()) L("Continue") else L("Selected"),
+                    meta = listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
+                    chips = setupSummary(game).split(" · ").filter { it.isNotBlank() },
+                    playFocus = playFocus,
+                    onPlay = { launcher.requestLaunch(game) },
+                    onPage = { onNavigate(LabRoutes.game(game.file.path)) },
+                    onMenu = { menuFor = game },
+                )
+                return@Crossfade
+            }
             Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == recent.firstOrNull()) L("Continue") else L("Selected"))
-                    Text(game.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    LabTitle(game, 56.dp, 22.sp)
                     Text(
                         listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
                         color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -241,17 +263,25 @@ internal fun LabHome(
             // The whole library, last played first, in a row that scrolls. A tap (or the controller resting on a cover)
             // puts that game in the big tile above; a long press or X opens its menu.
             val coverW = (rowH - 46.dp) * 0.75f
+            // Appearance › Library cards: tall covers, wide covers, or icons with the name under them.
+            val style = LabArt.cards
+            val cardW = when (style) { LabArt.WIDE -> (rowH - 46.dp) * 2.14f; LabArt.ICONS -> rowH - 84.dp; else -> coverW }
             Column(m.labPanel().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LabTileLabel(if (recent.size == 1) L("Library · 1 game") else L("Library · %1\$s games", recent.size))
                 LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(recent, key = { it.file.path }) { s ->
                         val sel = s.file.path == game?.file?.path
                         Box(
-                            Modifier.fillMaxHeight().width(coverW)
+                            Modifier.fillMaxHeight().width(cardW)
                                 .then(if (sel) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, SimpleShape) else Modifier)
                                 .labTile(onClick = { selPath = s.file.path }, onMenu = { menuFor = s }, onFocus = { selPath = s.file.path }),
                         ) {
-                            SimpleCover(s, Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp), title = false)
+                            val inner = Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp)
+                            when (style) {
+                                LabArt.WIDE -> LabWideCard(s, inner, title = false)
+                                LabArt.ICONS -> LabIconCard(s, inner, Modifier.fillMaxWidth().aspectRatio(1f))
+                                else -> SimpleCover(s, inner, title = false)
+                            }
                         }
                     }
                     item(key = "add") {
@@ -412,8 +442,64 @@ internal fun LabHome(
             onPlay = { menuFor = null; launcher.requestLaunch(s) },
             onAction = { menuFor = null; actions.perform(it, s) },
             onContainer = { menuFor = null; onOpenContainer(s.container.id) },
+            onDetails = { tab -> menuFor = null; onNavigate(LabRoutes.details(s.file.path, tab)) },
         )
     }
     ShortcutActionDialogs(actions)
     ShortcutLaunchDialogs(launcher, onRemove = { vm.remove(it, context) })
+}
+
+/**
+ * Home's big tile with previews on: the game's art filling the tile and its preview clip over it, the logo at its
+ * Adjust logo spot, then what it is, its setup and the buttons along the bottom over a dark fade. With 3D art the art
+ * drifts slowly in depth and the logo less.
+ */
+@Composable
+internal fun LabHeroTile(
+    game: Shortcut,
+    label: String,
+    meta: String,
+    chips: List<String>,
+    playFocus: FocusRequester,
+    onPlay: () -> Unit,
+    onPage: () -> Unit,
+    onMenu: () -> Unit,
+) {
+    val tick = LabArt.tick
+    val p3d = LabArt.has3d(LabArt.gameMode(game))
+    val bg = remember(game.file.path, tick) { LabArt.models(game, "bg").map { LabArt.Pic(it) } + listOfNotNull(LabArt.coverModel(game)?.let { LabArt.Pic(it, blur = true) }) }
+    Box(Modifier.fillMaxSize().simpleDepth().clip(SimpleShape).background(Color(0xFF101318)).border(1.dp, SimpleLine, SimpleShape)) {
+        val layer = Modifier.fillMaxSize().graphicsLayer {
+            val p = LabParallax.offset(p3d)
+            scaleX = 1.08f
+            scaleY = 1.08f
+            translationX = -p.first * 12.dp.toPx()
+            translationY = -p.second * 9.dp.toPx()
+        }
+        LabPicture(bg, layer)
+        // The player is never moved by the drift (an AndroidView under a moving layer has to be re-placed every frame).
+        LabClipPlayer(game, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.08f), 0.35f to Color.Transparent, 0.66f to Color.Black.copy(alpha = 0.55f), 1f to Color.Black.copy(alpha = 0.86f))))
+        Box(
+            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 156.dp).graphicsLayer {
+                val p = LabParallax.offset(p3d)
+                translationX = p.first * 8.dp.toPx()
+                translationY = p.second * 6.dp.toPx()
+            },
+        ) { LabHeroLogo(game) }
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
+            Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                chips.take(4).forEach {
+                    Text(it, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.background(Color.Black.copy(alpha = 0.38f), SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LabButton(L("Play"), primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus, onClick = onPlay)
+                LabButton(L("Game page"), onClick = onPage)
+                LabButton("", icon = Icons.Filled.MoreHoriz, onClick = onMenu)
+            }
+        }
+    }
 }

@@ -22,6 +22,12 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.PhotoSizeSelectLarge
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Dashboard
@@ -218,6 +224,12 @@ internal fun NavGraphBuilder.simpleRoutes(
     composable(LabRoutes.GAME, arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" })) { e ->
         LabGamePage(path = e.arguments?.getString("path").orEmpty(), onNavigate = open, onBack = back)
     }
+    composable(
+        LabRoutes.DETAILS,
+        arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" }, navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+    ) { e ->
+        LabGameDetailsPage(path = e.arguments?.getString("path").orEmpty(), tab = e.arguments?.getInt("tab") ?: 0, onNavigate = open, onBack = back)
+    }
     composable(SimpleRoutes.TOOLS) { SimpleToolsPage(onNavigate = open, onBack = back, onMyAccount = onMyAccount, onAbout = onAbout) }
     composable(SimpleRoutes.FILES) { FileManagerScreen() }
     composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back, lab = AppThemeState.simpleLook) }
@@ -291,6 +303,27 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
                 MenuAction(mark(L("Dark"), !AppThemeState.labLight), { AppThemeState.setLabLight(false) }),
                 MenuAction(mark(L("Light"), AppThemeState.labLight), { AppThemeState.setLabLight(true) }),
             ),
+        ),
+        // Game art (LabArt): the art behind the game pages, previews in Home's big tile, how the tiles sit over it, the cards.
+        MenuEntry(
+            "gameart", L("Game art background"), L("Off, game art, 3D art that slowly drifts in depth, or with previews: a trailer in Home's big tile"),
+            trailing = LabArt.label(LabArt.MODES, LabArt.mode), icon = Icons.Filled.Image,
+            actions = LabArt.MODES.map { (v, l) -> MenuAction(mark(L(l), v == LabArt.mode), { LabArt.chooseMode(v) }) },
+        ),
+        MenuEntry("wifi", L("Previews on Wi-Fi only"), L("Trailers download only on Wi-Fi"), icon = Icons.Filled.Wifi, toggle = LabArt.wifiOnly, onA = { LabArt.chooseWifiOnly(!LabArt.wifiOnly) }),
+        MenuEntry("sound", L("Preview sound"), L("Off: previews play muted"), icon = Icons.AutoMirrored.Filled.VolumeUp, toggle = LabArt.sound, onA = { LabArt.chooseSound(!LabArt.sound) }),
+        MenuEntry(
+            "panels", L("Panels over art"), L("How see-through the tiles are over the art"), trailing = LabArt.label(LabArt.PANELS, LabArt.panels), icon = Icons.Filled.Layers,
+            actions = LabArt.PANELS.map { (v, l) -> MenuAction(mark(L(l), v == LabArt.panels), { LabArt.choosePanels(v) }) },
+        ),
+        MenuEntry("grid", L("Grid over art"), L("Lab's graph paper and signals on top of the art"), icon = Icons.Filled.GridOn, toggle = LabArt.grid, onA = { LabArt.chooseGrid(!LabArt.grid) }),
+        MenuEntry(
+            "cards", L("Library cards"), L("Covers, wide covers or icons on Home and Library"), trailing = LabArt.label(LabArt.CARDS, LabArt.cards), icon = Icons.Filled.ViewModule,
+            actions = LabArt.CARDS.map { (v, l) -> MenuAction(mark(L(l), v == LabArt.cards), { LabArt.chooseCards(v) }) },
+        ),
+        MenuEntry(
+            "cardsize", L("Card size"), L("The Library grid"), trailing = LabArt.label(LabArt.SIZES, LabArt.cardSize), icon = Icons.Filled.PhotoSizeSelectLarge,
+            actions = LabArt.SIZES.map { (v, l) -> MenuAction(mark(L(l), v == LabArt.cardSize), { LabArt.chooseCardSize(v) }) },
         ),
         MenuEntry(
             "orientation", L("Orientation"), L("The app's own screens; games keep theirs"), trailing = orientations.firstOrNull { it.first == orientation }?.second,

@@ -1633,6 +1633,7 @@
     <string name="lab_f665e069">チャットを開いていないフレンドからメッセージが届いたときに通知します。</string>
     <string name="lab_f667b7f4">アクセントカラー</string>
     <string name="lab_f6f41dc4">実機で見つかった既知の問題：\n</string>
+    <string name="lab_f6f5fb6b">コンテナを作成</string>
     <string name="lab_f745bb2a">ストリーミング</string>
     <string name="lab_f7578887">新規コンテナのデフォルトから始めます。Xで作成。</string>
     <string name="lab_f783e029">デュアルバッテリー</string>

@@ -80,6 +80,10 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
     val first = remember { FocusRequester() }
     LaunchedEffect(games.isNotEmpty()) { delay(120); runCatching { first.requestFocus() } }
+    LaunchedEffect(games) {
+        if (games.none { it.file.path == LabArt.selected?.file?.path }) LabArt.selected = games.firstOrNull()
+        games.forEach { LabArt.resolve(context, it) }
+    }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions) {
         val legend = listOf("B" to L("Back"), "A" to L("Open"), "X" to L("Game menu"), "L1 R1" to L("Section"))
@@ -90,7 +94,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
         Text(L("Library"), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp)
         Text(L("%1\$s games · last played first", games.size), color = SimpleMuted, fontSize = 13.sp)
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(140.dp),
+            columns = GridCells.Adaptive(labCardMin(LabArt.cards, LabArt.cardSize)),
             contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -98,15 +102,17 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
         ) {
             items(games, key = { it.file.path }) { s ->
                 val i = games.indexOf(s)
-                Box(
-                    Modifier.fillMaxWidth().aspectRatio(3f / 4f)
-                        .labTile(onClick = { onNavigate(LabRoutes.game(s.file.path)) }, onMenu = { menuFor = s }, requester = if (i == 0) first else null),
-                ) { SimpleCover(s, Modifier.fillMaxSize()) }
+                // The cover the controller rests on is the game whose art shows behind the page.
+                LabGridCard(
+                    s,
+                    Modifier.fillMaxWidth()
+                        .labTile(onClick = { onNavigate(LabRoutes.game(s.file.path)) }, onMenu = { menuFor = s }, requester = if (i == 0) first else null, onFocus = { LabArt.selected = s }),
+                )
             }
             item(key = "add") {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).labPanel()
+                    modifier = Modifier.fillMaxWidth().aspectRatio(if (LabArt.cards == LabArt.WIDE) 460f / 215f else if (LabArt.cards == LabArt.ICONS) 1f else 3f / 4f).labPanel()
                         .labTile(onClick = { GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME) }, requester = if (games.isEmpty()) first else null),
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -125,6 +131,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
             onPlay = { menuFor = null; launcher.requestLaunch(s) },
             onAction = { menuFor = null; actions.perform(it, s) },
             onContainer = { menuFor = null; onNavigate(DeckSettingsRoutes.container(s.container.id)) },
+            onDetails = { tab -> menuFor = null; onNavigate(LabRoutes.details(s.file.path, tab)) },
         )
     }
     ShortcutActionDialogs(actions)

@@ -142,6 +142,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         return
     }
     val shortcut = shortcutState.value
+    LaunchedEffect(shortcut.file.path) { LabArt.selected = shortcut; LabArt.resolve(context, shortcut) }
     val defs = SettingsRegistry.defs
     val byId = remember(defs) { defs.associateBy { it.id } }
     val values: (String) -> String = { id -> byId[id]?.takeIf { source.shows(it) }?.let { source.value(it) } ?: "" }
@@ -204,7 +205,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
 
         val header: @Composable (Modifier) -> Unit = { m ->
             Column(m, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(shortcut.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                LabTitle(shortcut, 72.dp, 24.sp)
                 Text(
                     listOfNotNull(storeLabelOf(shortcut), playtimeLabel(stats?.ms ?: 0L), lastPlayedLabel(context, stats?.lastPlayed ?: 0L), shortcut.container.name).joinToString(" · "),
                     color = SimpleMuted, fontSize = 13.sp, maxLines = 2,
@@ -236,6 +237,14 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                     ) {
                         LabTileLabel(L("Container"))
                         Text(shortcut.container.name, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
+                    }
+                    // Lab's Game details: the details, the pictures and this game's background.
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = { onNavigate(LabRoutes.details(shortcut.file.path)) }).padding(12.dp),
+                    ) {
+                        LabTileLabel(L("Game details"))
+                        Text(L("Details, artwork, background ›"), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -318,6 +327,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
             onPlay = { menuOpen = false; launcher.requestLaunch(shortcut) },
             onAction = { menuOpen = false; actions.perform(it, shortcut) },
             onContainer = { menuOpen = false; onNavigate(DeckSettingsRoutes.container(shortcut.container.id)) },
+            onDetails = { tab -> menuOpen = false; onNavigate(LabRoutes.details(shortcut.file.path, tab)) },
         )
     }
     ShortcutActionDialogs(actions)

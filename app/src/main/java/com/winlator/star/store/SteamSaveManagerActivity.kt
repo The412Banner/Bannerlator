@@ -215,6 +215,7 @@ private fun SaveIconAction(icon: androidx.compose.ui.graphics.vector.ImageVector
     ) { Icon(imageVector = icon, contentDescription = description, tint = tint, modifier = Modifier.size(22.dp)) }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun SaveManagerScreenBody(
     focusAppId: Int,

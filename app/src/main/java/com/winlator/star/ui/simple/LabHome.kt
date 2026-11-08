@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -195,6 +196,8 @@ internal fun LabHome(
         val rowH: Dp = if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)
         // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
         val game = recent.firstOrNull { it.file.path == selPath } ?: recent.firstOrNull()
+        // Its art goes behind the page (Appearance › Game art background).
+        LaunchedEffect(game?.file?.path) { LabArt.selected = game }
 
         @Composable
         fun ContinueTile(m: Modifier) {
@@ -217,7 +220,7 @@ internal fun LabHome(
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == recent.firstOrNull()) L("Continue") else L("Selected"))
-                    Text(game.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    LabTitle(game, 56.dp, 22.sp)
                     Text(
                         listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
                         color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -241,17 +244,25 @@ internal fun LabHome(
             // The whole library, last played first, in a row that scrolls. A tap (or the controller resting on a cover)
             // puts that game in the big tile above; a long press or X opens its menu.
             val coverW = (rowH - 46.dp) * 0.75f
+            // Appearance › Library cards: tall covers, wide covers, or icons with the name under them.
+            val style = LabArt.cards
+            val cardW = when (style) { LabArt.WIDE -> (rowH - 46.dp) * 2.14f; LabArt.ICONS -> rowH - 84.dp; else -> coverW }
             Column(m.labPanel().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LabTileLabel(if (recent.size == 1) L("Library · 1 game") else L("Library · %1\$s games", recent.size))
                 LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(recent, key = { it.file.path }) { s ->
                         val sel = s.file.path == game?.file?.path
                         Box(
-                            Modifier.fillMaxHeight().width(coverW)
+                            Modifier.fillMaxHeight().width(cardW)
                                 .then(if (sel) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, SimpleShape) else Modifier)
                                 .labTile(onClick = { selPath = s.file.path }, onMenu = { menuFor = s }, onFocus = { selPath = s.file.path }),
                         ) {
-                            SimpleCover(s, Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp), title = false)
+                            val inner = Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp)
+                            when (style) {
+                                LabArt.WIDE -> LabWideCard(s, inner, title = false)
+                                LabArt.ICONS -> LabIconCard(s, inner, Modifier.fillMaxWidth().aspectRatio(1f))
+                                else -> SimpleCover(s, inner, title = false)
+                            }
                         }
                     }
                     item(key = "add") {

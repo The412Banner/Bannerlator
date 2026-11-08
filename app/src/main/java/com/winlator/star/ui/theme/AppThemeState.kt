@@ -159,6 +159,7 @@ object AppThemeState {
         // Lab has one layout: its menus use the Shelf presentation (tabs over one panel).
         _simpleLayout.value = SIMPLE_LAYOUT_SHELF
         _labLight.value = themePrefs.getBoolean("lab_light", false)
+        com.winlator.star.ui.simple.LabArt.init(context)
         syncSimpleLook()
     }
 

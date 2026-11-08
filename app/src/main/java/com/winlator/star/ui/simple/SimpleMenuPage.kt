@@ -116,6 +116,8 @@ internal class MenuEntry(
     val pills: List<String> = emptyList(),
     /** A heading over the first row of each run of rows with the same group (GPU drivers, DXVK …). */
     val group: String? = null,
+    /** An on/off row: a switch on the right (A or a tap runs [onA], which flips it). */
+    val toggle: Boolean? = null,
 )
 
 internal class MenuSection(
@@ -549,6 +551,10 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                 Spacer(Modifier.width(10.dp))
                 Text(e.trailing, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
             }
+            e.toggle?.let { on ->
+                Spacer(Modifier.width(10.dp))
+                LabSwitch(on)
+            }
             // The item's options: a ⋯ to tap (X on a controller does the same).
             val play = e.play
             if (play != null) {
@@ -642,4 +648,14 @@ internal fun SimpleConfirm(title: String, body: String, danger: Boolean, onDismi
         onDismiss = onDismiss,
         message = body,
     ) { it.run() }
+}
+
+/** Lab's switch: the accent track with the knob right when on. */
+@Composable
+internal fun LabSwitch(on: Boolean) {
+    val accent = MaterialTheme.colorScheme.primary
+    val x by animateFloatAsState(if (on) 1f else 0f, tween(200), label = "labSwitch")
+    Box(Modifier.size(width = 44.dp, height = 24.dp).background(if (on) accent else SimpleLine, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(3.dp)) {
+        Box(Modifier.graphicsLayer { translationX = x * 20.dp.toPx() }.size(18.dp).background(if (on) Color.White else SimpleMuted, androidx.compose.foundation.shape.CircleShape))
+    }
 }

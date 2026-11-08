@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🧩 Mali build 4: native BCn on an Arm driver that has it (fix/wayland-mali-ahb-blit bdc3b79d; CI running, NOT device-tested)
+- **Tester (gtaforever00, 13:07 EST):** kirimu's driver has native BCn through a shim; on Winlator he always tests with BCn emulation off; asked for a way to turn the unpacking off.
+- **User:** "yes do both, post the tip and build 4".
+- **Tip posted** 13:17:44 EST (msg 1569053326983696534, reply + ping): build 3 ready; `WRAPPER_EMULATE_BCN=0 BANNER_WRAPPER_PASSTHROUGH=0` in the game's env vars (user env wins over the app's: XServerDisplayActivity 3457 → 3471 → 11621/11733), only with a BCn driver.
+- **Built:** adapter **1051d023** — auto leaves BCn to the Arm driver when its own features report it (stock driver keeps build 3's unpacking; PanVK unchanged); the Arm driver keeps the wrapped dispatch (pass-through only ever tested on Adreno). CI 42509398943 green ×4, .so 74eb8eb1…; BL **bdc3b79d** (adapter.json "… bcn nativebcn 1051d02"). build-artifacts **42509827693** running.
+- **Next:** green → verify + stage `/sdcard/Download/Bannerlator-wayland-mali-nativebcn-bdc3b79d-*.apk` → post the build 4 card to gtaforever00. NOT device-tested.
+
 ## 2026-11-08 — 🧱 Mali build 3: BCn texture fixes in the Wayland adapter (fix/wayland-mali-ahb-blit 884658a3; CI green ×4, staged, posted, NOT device-tested)
 - **Tester (gtaforever00, Mali-G77, build 2 f448549a, #general-mali-and-support 12:30 EST):** Wayland + System now shows a picture (Wayland logs: Megabonk 263-363 zero-copy frames/10 s, Hades II 52-57 fps on screen). Left: striped textures (Megabonk ground/trees, Hades II logo) and Hades II failing when a run starts. Fine for him on X11 and Ludashi. His wine logs in the zips were from 03:39 (Wine debug off today). Reply card posted 12:44:29 EST (msg 1569044957761634355, user-approved text).
 - **Cause (adapter, verified in Pipetto ecdd0da8):** BCn is unpacked on the CPU only in vkCmdCopyBufferToImage, but DXVK/vkd3d-proton record vkCmdCopyBufferToImage2 → raw BC bytes in the RGBA8 image; vkGetDeviceImageMemoryRequirements answered for the compressed format (vkd3d "Heap too small for the texture" ×355, fmt #61 = 0x61 = BC7, 349440 vs 1397760 bytes); vkBindBufferMemory2 not tracked; staging buffers never freed under DXVK/vkd3d.

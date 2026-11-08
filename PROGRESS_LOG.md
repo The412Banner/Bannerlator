@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ MERGED to main 78000ba3: game Wayland logs + Share logs + "System" on Wayland for Mali (CI-green, NOT device-tested)
+- **User:** "yes rebase both onto main and rebuild and merge".
+- **CI:** fix/wayland-mali-system 6895b064 → 42447350344 success ×4; feat/log-wayland 344d9376 (stacked on 6895b064, = main + both) → 42447351816 success ×4; main's own 42447118936 (Lab languages, 233ab7d4) success ×4 before main was pushed. 0 failed steps.
+- **Merge:** backup refs/backup/20261108/main-before-mali-system-and-log-wayland → a3afa8ca (pushed). Main had gained only a PROGRESS_LOG commit, so a --no-ff merge commit 78000ba3 (parents a3afa8ca + 344d9376); `git diff --name-only 344d9376 78000ba3` = PROGRESS_LOG.md only → merged code == the tested build. Main CI 42448034535 started on 78000ba3.
+- **Language check:** none of the changed screens use Lab's L() translations (log viewer, XMB menus, classic and Deck game menus); the Lab game menu shows every action name in English (LabGameMenu.kt:155 `entry.title`), so "Share logs" matches. Translating Lab's game menu names is a separate follow-up.
+- **Proof:** CI-green; NOT device-tested. Open: Mali "System" on Wayland → kirimu (RP4 Pro, Mali-G77); logs → one Wayland game on the Elite (wayland/ folder, Wayland chip, Share logs zip).
+- **Kept:** branches fix/wayland-mali-system, feat/log-wayland and the backup refs; delete on the user's word.
+- **Mistake (twice this session):** zsh read `$M:app/...` and `$C:refs/...` as variable modifiers (:a, :r), so a git show and the first push failed with nothing changed. Lesson: always write `${VAR}:path` in zsh.
+
 ## 2026-11-08 — 🔁 Mali "System" on Wayland + game Wayland logs/Share logs rebased onto main 233ab7d4 (Lab languages), stacked, CI running — merge on the user's go (NOT device-tested)
 - **User:** "yes rebase both onto main and rebuild and merge". Dry merges before: main + each branch, the two together and all three were clean (no shared files).
 - **Backups:** refs/backup/20261108/fix-wayland-mali-system-before-rebase-onto-233ab7d4 → b9c9c808, refs/backup/20261108/feat-log-wayland-before-rebase-onto-233ab7d4 → 008f2ec7 (both pushed).

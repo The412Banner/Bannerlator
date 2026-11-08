@@ -1,6 +1,13 @@
 # Star-Compose — Progress Log
 
-## 2026-11-08 — 🌐 feat/lab-art-strings: the game art strings in 32 languages + wrong translations fixed (a82ca7dc; CI running, NOT device-tested)
+## 2026-11-08 — 📦 feat/lab-art-strings a82ca7dc CI green, APK staged (NOT installed, NOT device-tested)
+- **CI:** build-artifacts 42468593200 attempt 4: standard / pubg / ludashi / antutu success, headSha a82ca7dc. Attempts 1–3 failed only on GitHub 504s for the Gradle distribution download. dxvk-nvapi came from our copy (ci/vendor, both sha256 OK); skipped steps = cached / main-only ones.
+- **APK:** /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk, sha256 9a1d32be… (host == sdcard == root). com.tencent.ig, signer a40da80a… (v2 + v3) == the installed app. resources.arsc has the new strings (e.g. "Game art background" in es, de, ja, zh, ru).
+- **Elite now:** lab-fixes eb63bd5d installed (base.apk 5ac93e96…). Asked the user before installing.
+- **Main merge build 42467307104 (22ea9c7c):** standard / ludashi / antutu green, pubg re-run running.
+- **Next:** on yes → pm install -r, installed hash == 9a1d32be…, logcat crash check → user checks a few languages → merge on the user's go (backup ref first).
+
+## 2026-11-08 — 🌐 feat/lab-art-strings: the game art strings in 32 languages + wrong translations fixed (a82ca7dc; CI green, NOT device-tested)
 - **Why (user: "do the translations for the new lab strings", then "yes fix those wrong translations too"):** lab-fixes added 89 English-only Lab strings.
 - **How:** branch off main 22ea9c7c; `tools/i18n/lab_strings.py extract` (1772 strings); 4 drafting agents (8 languages each) wrote draft_<lang>.json using each language's existing Lab terms (helper terms.py), validated (keys, placeholders, ·›…, Steam/SteamGridDB/Lab/Metacritic untranslated); `fill` per language; all 32 = 1772/1772, XML parses, `check` up to date. Genres hint keeps ASCII commas (the field splits on ",").
 - **Wrong existing translations fixed (found by the drafting):** Home (de "Pos1", fr "Début" = keyboard keys; pt/ja/ko/zh-CN/zh-HK/zh-TW/vi/in/ms were English) · Background (es, es-419, pt, pt-PT, it, pl, bg, ru, el, ja, ko, zh-CN meant background process / "move to background"; now the picture background — it is the Game details tab and slot) · Opacity (nl, bg, el, th said "transparency", the opposite) · Games (fr singular) · Top/Bottom (zh-* "pin") · Library (zh-CN) · "(Game Details)" still English (es, es-419, pt) · "Home" in the start-up hint (zh-*, in, ms).

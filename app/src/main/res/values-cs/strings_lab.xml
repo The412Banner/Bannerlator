@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in cs. Strings matching DroidDeck's English use DroidDeck's translation; the rest are machine-drafted. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in cs. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Napájení (výchozí pro všechny hry)</string>
     <string name="lab_0016da13">Vlastní začíná se všemi službami vypnutými: zapněte jen to, co hra potřebuje.</string>
@@ -9,12 +9,14 @@
     <string name="lab_0071e9cc">Tlačítko B</string>
     <string name="lab_00737986">Posílá na obrazovku skutečné HDR10.</string>
     <string name="lab_007bf585">Spustit hned s uloženými volbami. Vypněte, chcete-li znovu vidět nabídku spuštění.</string>
+    <string name="lab_0086410b">Široké obaly</string>
     <string name="lab_00aad2e4">Upřednostnit DLL ze složky hry</string>
     <string name="lab_00d53383">Nejprve vytvořte profil (karta Na obrazovce).</string>
     <string name="lab_00e9bd4e">Wrapper</string>
     <string name="lab_00ef3163">Governor CPU a zámky frekvence, volná paměť, hlídání teploty (nastavení Classic › Performance) a import Lossless.dll pro generování snímků.</string>
     <string name="lab_0117ff17">RAM %1$s / %2$s GB</string>
     <string name="lab_0134b985">Nastavení DX wrapperu</string>
+    <string name="lab_0155bfc3">Obaly, široké obaly nebo ikony na Home a v Knihovně</string>
     <string name="lab_015a2290">Oprávnění, téma a obchody</string>
     <string name="lab_01940fd6">Obecné</string>
     <string name="lab_01942160">FPS s desetinným místem</string>
@@ -40,6 +42,7 @@
     <string name="lab_044669c8">Jádra dostupná pro hru</string>
     <string name="lab_044b1956">Výkon</string>
     <string name="lab_04accfcf">OpenGL: Rychlé</string>
+    <string name="lab_04e55ba9">Vybrat obrázek: %1$s</string>
     <string name="lab_04fc2b5b">Obrázek</string>
     <string name="lab_052396d7">DirectAudio je experimentální</string>
     <string name="lab_0526e39f">L1 / R1 mění stránku, X přepíná mezi rychlým menu a herním menu, B zavírá.</string>
@@ -61,6 +64,7 @@
     <string name="lab_06eb3f00">Vestavěné (Win-FG) interpoluje přímo v aplikaci. Lossless Scaling používá váš vlastní Lossless.dll. Obě vyžadují renderer obrazovky Vulkan, Wayland nebo položku pro Linux. Násobič se nastavuje ve hře.</string>
     <string name="lab_070cecae">Zvolte, co se zaznamenává (Wine, Box64/FEX, DXVK, SteamLite, Steam bez rozhraní, logcat), kam se protokoly ukládají a kolik se jich uchová; procházejte je a sdílejte.</string>
     <string name="lab_0721ad7c">Tento kontejner</string>
+    <string name="lab_075ffd70">Vaše video</string>
     <string name="lab_07a88d47">Jedno stisknutí Zpět stále otevře herní panel.</string>
     <string name="lab_07e11363">Zapnuto pro celý kontejner: vypněte to v kontejneru.</string>
     <string name="lab_080615dc">Podle kontejneru</string>
@@ -101,6 +105,7 @@
     <string name="lab_0cfb7a3b">Opraví točící se nebo zaseknutou kameru v některých starších hrách.</string>
     <string name="lab_0d5a2b34">Další slova přidaná za název programu, např. -windowed -dx11.</string>
     <string name="lab_0da00171">• Hry přestanou dostávat vstup z ovladače. Vlastní menu Steamu stále fungují, ale ve hře ovladač nic nedělá.\n</string>
+    <string name="lab_0dc541d5">Obnovit výchozí</string>
     <string name="lab_0ddd64ae">Intenzita vibrací</string>
     <string name="lab_0e15cd35">Užitečné na skládacích telefonech: hra zůstane na jedné polovině.</string>
     <string name="lab_0e24f0e3">Asynchronní mezipaměť shaderů</string>
@@ -118,6 +123,7 @@
     <string name="lab_101f5ed2">Efekty ReShade</string>
     <string name="lab_1054fdc3">Na Waylandu se hra vykresluje přes vestavěný kompozitor, který k importu jejích snímků potřebuje nainstalovaný Turnip. „Systémové“ se nabízí jen na GPU Mali; jinde zobrazí černou obrazovku. Na čem se vykresluje samotná hra, určuje Herní ovladač Wayland níže.</string>
     <string name="lab_105c504c">Oprava OneUI / HyperOS</string>
+    <string name="lab_1079be1d">Na Steamu nebylo pro %1$s nic nalezeno</string>
     <string name="lab_10a08356">Povolit přepínání ve hře</string>
     <string name="lab_10cb69ae">Vybrat obrázek ikony</string>
     <string name="lab_1121166e">Alfa</string>
@@ -133,6 +139,7 @@
     <string name="lab_1331338d">Vybrat barvu</string>
     <string name="lab_1331bc15">SteamLite spouští skutečného klienta Steam, takže fungují úspěchy, uložené hry v cloudu i hraní online. Steam bez rozhraní spouští hru na vlastní relaci Steam aplikace, takže přátelé a chat zůstávají online (experimentální). Goldberg předstírá Steam bez přihlášení. Přímo .exe spustí vlastní program hry.</string>
     <string name="lab_134638cc">Hry z GOG</string>
+    <string name="lab_136c7474">Vlevo dole</string>
     <string name="lab_137513e1">Vybráno za vás: ovladač z výchozího nastavení nového kontejneru.</string>
     <string name="lab_137e9ac8">Zatím jen vestavěné komponenty.</string>
     <string name="lab_13868325">Způsoby otevření</string>
@@ -163,10 +170,12 @@
     <string name="lab_1777bbf2">Manuální</string>
     <string name="lab_177847bc">Nic ke kopírování</string>
     <string name="lab_17a0dfae">Offline</string>
+    <string name="lab_17c41d91">Snímek obrazovky</string>
     <string name="lab_17e8622b">SurfaceFlinger předává snímky hry přímo kompozitoru Androidu. Může být rychlejší, ale na některých zařízeních zobrazí černou obrazovku nebo špatné barvy. V takovém případě přepněte zpět na Vulkan nebo OpenGL.</string>
     <string name="lab_17f88806">Název kontejneru, jazyk, plocha a chování relace.</string>
     <string name="lab_181ab51a">To je víc než 8K.</string>
     <string name="lab_1821acdc">Jednolitá barva</string>
+    <string name="lab_183f03ee">Klip náhledu</string>
     <string name="lab_187e8ab4">tato hra</string>
     <string name="lab_188dc386">Nastavuje se ve Výkon › Synchronizace.</string>
     <string name="lab_18991a24">Jiné</string>
@@ -181,6 +190,7 @@
     <string name="lab_196a774e">Test ovladače</string>
     <string name="lab_198324db">O aplikaci Bannerlator</string>
     <string name="lab_19a0f782">Úroveň výkonu, jednotlivé klíče souboru, zálohy a mazání nebo instalace sestavení VEGAS.</string>
+    <string name="lab_19b489d5">3D grafika a náhledy</string>
     <string name="lab_19e91dd3">Vstup</string>
     <string name="lab_1a0d3004">V okně</string>
     <string name="lab_1a1b35e7">Runtime</string>
@@ -239,6 +249,7 @@
     <string name="lab_20226dfe"> · nepřipojeno (uložené přiřazení)</string>
     <string name="lab_2062fe79">Omezovač FPS</string>
     <string name="lab_20898aa4">Jen pokud selže automatické zjištění ([KFAULT] v protokolu).</string>
+    <string name="lab_208b07a1">Podrobnosti, grafika, pozadí ›</string>
     <string name="lab_209f636f">Škálování, zostření a barvy</string>
     <string name="lab_20f30881">Pokračovat ve hře</string>
     <string name="lab_211badb3">Hraní na TV, automatické přepnutí, bezpečná oblast, zvukový výstup, ztlumení obrazu a rozlišení TV</string>
@@ -264,6 +275,7 @@
     <string name="lab_23deaf7c">Správa</string>
     <string name="lab_23e9383c">Verze, na čem běží a autoři.</string>
     <string name="lab_2453405d">Použijte auto:N, fixed:N nebo off</string>
+    <string name="lab_2470de02">Průhledné</string>
     <string name="lab_24720798">Opravit prohozené barvy</string>
     <string name="lab_247c39e6">Obejde kompozitor pro nižší prodlevu. Vypne efekty obrazovky.</string>
     <string name="lab_24857b5d">RGBA (prohodit červenou/modrou)</string>
@@ -282,6 +294,7 @@
     <string name="lab_2674268b">Zobrazit klávesnici</string>
     <string name="lab_2694592a">Nahoře</string>
     <string name="lab_274284a1">V tomto sestavení zatím ne na Waylandu.</string>
+    <string name="lab_2742f91b">Automaticky · trailer ze Steamu</string>
     <string name="lab_2756404f">Obnovit napájení a root na výchozí hodnoty aplikace</string>
     <string name="lab_27b56d30">Nainstaluje XInput DLL od Bannerlatoru bez ohledu na to, zda je Přímý XInput zapnutý, a vedle nich vlastní XInput z Wine, takže Controls › Pad v herním menu mezi nimi může přepínat za běhu hry (ovladač se znovu připojí). Ve výchozím stavu zapnuto. Vypnuto: Přímý XInput zůstane tak, jak hra začala, a jeho změna vyžaduje restart.</string>
     <string name="lab_27bcb120">Přidávejte, kopírujte, mažte, exportujte nebo importujte předvolby Box64 a FEX (nastavení Classic).</string>
@@ -292,15 +305,18 @@
     <string name="lab_2829cce5">Obrázek tapety pro</string>
     <string name="lab_28441b9b">Restartujte</string>
     <string name="lab_28502118">Vestavěné výchozí VEGAS (bez souboru)</string>
+    <string name="lab_286dae57">Automaticky · z obalu</string>
     <string name="lab_287eabc8">Zobrazit FPS</string>
     <string name="lab_28d51363">Obnovovací frekvence dostupná hře</string>
     <string name="lab_28f727b0">Exportovat diagnostiku HUD</string>
     <string name="lab_29198bb7">Nenastaveno (systém)</string>
+    <string name="lab_2927fedd">Náhledy jen přes Wi-Fi</string>
     <string name="lab_29a908d6">Vyžaduje zapnuté Přeskočit čekání na GPU.</string>
     <string name="lab_29b501c2">Přátelé a chat, oznámení a stav ve hře.</string>
     <string name="lab_29c3ef3b">Ovládání na obrazovce, myš, vibrace, míření pohybem, hráči.</string>
     <string name="lab_29d0a27a">Zobrazovací systém</string>
     <string name="lab_29faa513">Počet ovladačů</string>
+    <string name="lab_29fe3935">Nepropojeno se Steamem</string>
     <string name="lab_2a1dcc50">Výchozí předvolba Box64</string>
     <string name="lab_2a234929">Nedostupné — tento displej má jen jednu obnovovací frekvenci, takže není co sladit.</string>
     <string name="lab_2a342d91">Nastavení nejčastěji měněná během hry.</string>
@@ -313,6 +329,7 @@
     <string name="lab_2a88fd3c">Restartovat zvuk</string>
     <string name="lab_2ab94a31">Přejíždění mezi tlačítky</string>
     <string name="lab_2ad5a458">Přiřazení slotů hráčů</string>
+    <string name="lab_2adf1ef0">Milimetrový papír a signály Lab nad grafikou</string>
     <string name="lab_2b01a79e">Obrázek nelze načíst.</string>
     <string name="lab_2b3bf173">Nástroje</string>
     <string name="lab_2b605d42">Více</string>
@@ -332,6 +349,7 @@
     <string name="lab_2ce33943">Výchozí</string>
     <string name="lab_2ced81bf">Offline: zobrazuje se uložený seznam. Pro stažení nových efektů se připojte.</string>
     <string name="lab_2d1366ec">Žádná známá proměnná neodpovídá.</string>
+    <string name="lab_2d45170d">Grafika hry</string>
     <string name="lab_2d6ee59d">Nebo zadejte libovolnou hodnotu</string>
     <string name="lab_2dad13e3">Jazyk</string>
     <string name="lab_2dc2e901">Mono</string>
@@ -358,6 +376,7 @@
     <string name="lab_30c83ac6">Zatím nezkontrolováno. Vypíše balíčky FEX, DXVK a VKD3D-Proton ke stažení.</string>
     <string name="lab_30c8cda7">Předvolba FEX</string>
     <string name="lab_31132684">Dekóduje komprimované textury, které používají hry pro Windows, pro GPU, která to neumí.</string>
+    <string name="lab_312e2eb9">Grafika a náhledy</string>
     <string name="lab_313f3497">Vlastní služby</string>
     <string name="lab_314b6c8f">Herní ovladače Wayland</string>
     <string name="lab_318a4134">Nastavit pro tuto hru</string>
@@ -388,6 +407,7 @@
     <string name="lab_366e8f9a">Pro telefony Samsung a Xiaomi, na kterých hry zobrazují poškozené textury. Jinak nechte vypnuté.</string>
     <string name="lab_36936d70">Omezuje, kolik snímků za sekundu hra vykreslí. Šetří baterii a vyrovnává zasekávání.</string>
     <string name="lab_36ef1cc0">Podle kontejneru</string>
+    <string name="lab_37232683">Panely nad grafikou</string>
     <string name="lab_3776c976">Nativní vykreslování</string>
     <string name="lab_377702f6">Dotyk</string>
     <string name="lab_37ad98ec">Volba jader CPU platí do restartu programu.</string>
@@ -395,12 +415,14 @@
     <string name="lab_37f22874">Každá jednotka musí mít vlastní písmeno</string>
     <string name="lab_3855543c">Exportovat (.icpx)</string>
     <string name="lab_385e1a80">Klepnutím na overlay ho přepnete mezi svislým a vodorovným zobrazením (Fusion: další velikost). Tažením ho přesunete; dlouhým stiskem ho zamknete na místě.</string>
+    <string name="lab_386c72a7">Soubor nelze použít</string>
     <string name="lab_3886b4de">Tuto složku nelze použít: vyberte složku v interním úložišti nebo na SD kartě</string>
     <string name="lab_38b17551">End</string>
     <string name="lab_38b2d540">Metoda přímého zobrazení</string>
     <string name="lab_38c3ee26">Otestujte tlačítka a páčky, přiřaďte fyzický profil, nastavte sloty hráčů.</string>
     <string name="lab_38d2a5bb">Teplota</string>
     <string name="lab_38f46bd4">Přeskočit nabídku spuštění</string>
+    <string name="lab_38f52cc5">Vypnuto: náhledy hrají bez zvuku</string>
     <string name="lab_39052457">Tento kontejner už neexistuje.</string>
     <string name="lab_390bed76">DirectDraw a Direct3D 7 přes Vulkan.</string>
     <string name="lab_391a454c">V rozhraní Deck se Hry i Big Picture otevírají na Home.</string>
@@ -422,11 +444,13 @@
     <string name="lab_3b02039e">Vyvážené</string>
     <string name="lab_3b7778ec">Softwarové dekódování videa</string>
     <string name="lab_3bd060de"> a hra se vykresluje na přibaleném Wayland Turnipu (adaptér potřebuje ovladač Turnip).</string>
+    <string name="lab_3bf05e53">Zobrazuje se nad grafikou ve velké dlaždici na Home, když jsou náhledy zapnuté. Na stránce hry logo nahrazuje název.</string>
     <string name="lab_3c0764a4">Zobrazit ovládání na obrazovce a zvolené rozložení</string>
     <string name="lab_3ca0cc27">HDR: automaticky. Tato obrazovka přijímá HDR10, takže se pro tuto hru zapne výstup HDR.</string>
     <string name="lab_3cc7318b">Jádra</string>
     <string name="lab_3d0ded52">Obrazovka teď běží na %1$s Hz.</string>
     <string name="lab_3d12f194">Odebrat tento repozitář</string>
+    <string name="lab_3d198a51">3D grafika</string>
     <string name="lab_3d2c22d4">Režim prezentace ovladače</string>
     <string name="lab_3d40c46a">Vibrace</string>
     <string name="lab_3d9862bb">Záporný mip bias: ostřejší textury, trochu mihotání. Auto se řídí škálováním, se kterým hra startuje.</string>
@@ -460,6 +484,7 @@
     <string name="lab_415a93a6">Vyhrává novější: nikdy nepřepíše novější místní uloženou hru.</string>
     <string name="lab_41f05e04">Přiřazení níže patří k tomuto profilu</string>
     <string name="lab_41fc25ab">Win-FG nativně</string>
+    <string name="lab_4270e2ba">Nahoře uprostřed</string>
     <string name="lab_42bbc821">Experimentální: overlay Epic ve hře přes Shift+F3. Vyžaduje, aby kontejner povoloval všechny služby.</string>
     <string name="lab_42ca94f9">Hlavní ovladač</string>
     <string name="lab_43316731">Jsou tu jen C: (prefix Windows) a Z:. Pro složku s hrami přidejte jednotku.</string>
@@ -468,6 +493,7 @@
     <string name="lab_443d0954">Spustit jeho plochu Windows</string>
     <string name="lab_4455b74f">Jak často se pohyb páčky dostane do hry. Lze změnit i ve hře.</string>
     <string name="lab_449c12fb">Velikost na obrazovce</string>
+    <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Výchozí profil %1$s, </string>
     <string name="lab_452013a2">Exportovat</string>
     <string name="lab_45536eb8">Kontejner</string>
@@ -482,6 +508,7 @@
     <string name="lab_471552db">Upravit konfigurační soubor VEGAS</string>
     <string name="lab_475cee12">Uprostřed</string>
     <string name="lab_478577aa">Teploty</string>
+    <string name="lab_47a2fcea">Grafika</string>
     <string name="lab_47db736e">Vybrat složku s hrami</string>
     <string name="lab_47fbfb16">Změnit</string>
     <string name="lab_480443a4">Názvy složek se znakem | nelze použít</string>
@@ -510,6 +537,7 @@
     <string name="lab_4a4a99d4">Metoda emulace</string>
     <string name="lab_4a51272f">Reset vrátí efekty z nastavení Všechny kontejnery.</string>
     <string name="lab_4a587711">Zapněte, aby se obrazovka přizpůsobila limitu snímků × násobiči.</string>
+    <string name="lab_4a690444">Grafika hry na pozadí</string>
     <string name="lab_4af762a7">Vypnout tepelné omezování</string>
     <string name="lab_4b02cb78">Typ prostředku</string>
     <string name="lab_4b0fb1b1">Zatím nic importováno: Obsah › Nainstalováno › Ovladače běhového prostředí Linuxu.</string>
@@ -525,12 +553,14 @@
     <string name="lab_4c4683c7">Zatím žádný obrázek tapety</string>
     <string name="lab_4c5eeff6">Vybrat</string>
     <string name="lab_4c6da2bc">Plocha Windows</string>
+    <string name="lab_4c6dae0d">Hledání obrázků…</string>
     <string name="lab_4c737acf">Zařízení (skutečné GPU)</string>
     <string name="lab_4c76101a">Volby FEX / DXVK / VKD3D</string>
     <string name="lab_4c76edfa">DXVK a VKD3D</string>
     <string name="lab_4c9774e6">Sladit obnovovací frekvenci obrazovky s FPS hry</string>
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Aktivní</string>
+    <string name="lab_4cc9a9c1">Obal</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Invertovat nahoru/dolů</string>
     <string name="lab_4d8c7321">Obsah</string>
@@ -593,6 +623,7 @@
     <string name="lab_55fb28db">Nalezeno ve složce hry.</string>
     <string name="lab_56b4c80c">Téma</string>
     <string name="lab_56b89990">Auto (výchozí): jedna aktualizace páčky na každý snímek, který hra vykreslí, až do nastaveného limitu (výchozí 60 za sekundu), takže hra, která vykresluje rychleji, než čte vstup, nikdy nezaostává. Pevně: zvolený počet aktualizací za sekundu. Bez časování: každá změna se odešle okamžitě. Platí hned, i ve hře (Controls › Pad). BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX v proměnných prostředí mají přednost před tímto nastavením.</string>
+    <string name="lab_56ed95b0">Mřížka knihovny</string>
     <string name="lab_571567c9">Obnovit výchozí nastavení aplikace?</string>
     <string name="lab_574b34d5">DXVK + VKD3D se hodí pro většinu her s DirectX 9–12. VEGAS je vyladěný fork DXVK. WineD3D je pomalá, ale široce použitelná záloha pro velmi staré hry.</string>
     <string name="lab_574e9955">Převod textur BCn na ASTC může s tímto ovladačem zamrazit nebo restartovat telefon; zkoušejte to jen tehdy, když hra zobrazuje poškozené nebo chybějící textury.</string>
@@ -607,8 +638,10 @@
     <string name="lab_584bc88d">Zahrnout beta sestavení</string>
     <string name="lab_58627009">Vibrace a míření pohybem.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
+    <string name="lab_587004e8">Vlevo nahoře</string>
     <string name="lab_58a426c9">Pro tuto hru vypnuto, dokud běží generování snímků. </string>
     <string name="lab_5901a4cd">Wayland: posuny myši jdou do kompozitoru; hra, která zamyká ukazatel, je dostává jako relativní pohyb.</string>
+    <string name="lab_5946d9c6">Použít nastavení aplikace (%1$s)</string>
     <string name="lab_594a913b">Asynchronní shadery</string>
     <string name="lab_595daef9">Stažené komponenty: archivy a seznam katalogu.</string>
     <string name="lab_5983ab11">Režim offline (bez přihlášení k Valve)</string>
@@ -622,6 +655,7 @@
     <string name="lab_5be8962f">Oba</string>
     <string name="lab_5c2357bd">Knihovna · 1 hra</string>
     <string name="lab_5c307bbf">Cíl, intenzita a motory vibrací (viz Save for níže)</string>
+    <string name="lab_5c353b05">Steam</string>
     <string name="lab_5c375239">Pevná obnovovací frekvence</string>
     <string name="lab_5c462080">Nepoužije se, dokud lsfg-vk násobí snímky: časuje je samo.</string>
     <string name="lab_5c524fb3">Výchozí pro nové kontejnery</string>
@@ -693,6 +727,7 @@
     <string name="lab_65787fdc">Interní úložiště, SD karta a jednotky všech kontejnerů</string>
     <string name="lab_659fcd98">Přidáno mnou</string>
     <string name="lab_65f8ea90">Ovladač rendereru</string>
+    <string name="lab_65f9e2b8">Plné</string>
     <string name="lab_660f585a">Kopírovat přiřazení z %1$s</string>
     <string name="lab_662a7209">Invertovat X</string>
     <string name="lab_6637ca24">Překódovat BCn na ETC2</string>
@@ -719,6 +754,7 @@
     <string name="lab_69c05ddf">Na Waylandu se nepoužívá: generování snímků běží v kompozitoru na vašem ovladači Turnip.</string>
     <string name="lab_69f12fdf">Moje soubory</string>
     <string name="lab_69f77a90">Oprava HDR pro Unreal Engine</string>
+    <string name="lab_69f7d525">Nepodařilo se přejmenovat</string>
     <string name="lab_6a271188">Předvolba Box64 / předvolba WOWBox64</string>
     <string name="lab_6a4b2ea4">Napájení</string>
     <string name="lab_6a68da45">Relativní myš</string>
@@ -734,6 +770,7 @@
     <string name="lab_6c15cb41">Dotyková tlačítka aktuálního rozložení.</string>
     <string name="lab_6c3656ad">Na výšku</string>
     <string name="lab_6c37a76c">Dotyk funguje jako</string>
+    <string name="lab_6c5fe717">Zvuk náhledů</string>
     <string name="lab_6c8e3b1f">Nastavit jako výchozí…</string>
     <string name="lab_6c9249ac">Automatické stahování z cloudu při spuštění bude pro hry z vaší knihovny GOG VYPNUTO. Nejnovější uložené hry z cloudu se před spuštěním hry nestáhnou — budete je muset stáhnout sami na kartě Správce uložených her GOG nebo na stránce podrobností hry. Pokračovat?</string>
     <string name="lab_6cd478cd">Auto (až 120/s)</string>
@@ -746,6 +783,7 @@
     <string name="lab_6db8b808">Relace začíná jen s vlastními proměnnými aplikace.</string>
     <string name="lab_6e2acf44">Model GPU</string>
     <string name="lab_6e3da120">Knihovna</string>
+    <string name="lab_6e661b92">Trailery se stahují jen přes Wi-Fi</string>
     <string name="lab_6e6ffb5b">Spouští 64bitové hry, když je 64bitovým překladačem Box64EC.</string>
     <string name="lab_6e86a6ef">Ukončit relaci po ukončení hry</string>
     <string name="lab_6ec32312">Zjištěno v tomto wrapperu</string>
@@ -825,6 +863,7 @@
     <string name="lab_791d1125">Úvodní obrazovka a aktualizace.</string>
     <string name="lab_7982eb6b">, jsou uvedeny níže.</string>
     <string name="lab_79b6d4c7">Režim Steam offline, kontrola souborů a aktualizace</string>
+    <string name="lab_79c7988a">Žádné · zobrazí se název</string>
     <string name="lab_79e3b22e">Střední</string>
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Citlivost</string>
@@ -844,6 +883,7 @@
     <string name="lab_7ccc17cd">Zadní buffer</string>
     <string name="lab_7ceefd00">Stažení se nezdařilo: %1$s</string>
     <string name="lab_7d24ed15">Zatím tu nic není.</string>
+    <string name="lab_7d50777a">Akční, RPG, Strategie</string>
     <string name="lab_7d6bff72">Dostupné se zvukovým systémem DirectAudio.</string>
     <string name="lab_7d9f1b59">Pomalejší. Jen pro zařízení, kde překáží seccomp.</string>
     <string name="lab_7da6281a">Soubory a nástroje</string>
@@ -854,6 +894,7 @@
     <string name="lab_7e2d2eb0">Překladače x86</string>
     <string name="lab_7e3548ee">Zobrazit hry z karty Hry ve Steamu</string>
     <string name="lab_7e38b599">Automatické nahrávání do cloudu při ukončení bude pro hry z vaší knihovny Steam VYPNUTO. Jejich uložené hry se po zavření hry nenahrají do Steam Cloud — budete je muset nahrát sami v sekci Cloud Saves na stránce podrobností hry. Pokračovat?</string>
+    <string name="lab_7e6d7e33">Karty knihovny</string>
     <string name="lab_7e9c00ea">Auto (podle FPS)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
     <string name="lab_7eb6734a">Wayland vyžaduje vrstvu Proton sestavenou pro něj.</string>
@@ -877,6 +918,7 @@
     <string name="lab_81d6790e">Spouští 64bitový kód x86 hry. Box64EC vyžaduje nainstalovanou komponentu Box64EC.</string>
     <string name="lab_82265bbe">Synchronizovat úspěchy se Steamem?</string>
     <string name="lab_8232f25f">GDI (softwarově)</string>
+    <string name="lab_82542307">Obnovit na automatické</string>
     <string name="lab_82549ee8">Jak se tato hra spouští: se Steamem nebo bez, předání ovladače, anti-cheat, přihlášení Epic.</string>
     <string name="lab_82758f36">Nativní backend</string>
     <string name="lab_828c5a26">Použít engine GameNative (DirectX 12)</string>
@@ -917,10 +959,12 @@
     <string name="lab_87e8276d">Přeskočit signál získání snímku</string>
     <string name="lab_87f7f6ba">Profil napájení</string>
     <string name="lab_880bfb03">Upravit rozložení</string>
+    <string name="lab_88328343">Automaticky · rozmazaný obal</string>
     <string name="lab_8844e521">Hodnoty předvolby</string>
     <string name="lab_8850c516">Umožní hrám s DirectInput rozvibrovat ovladač: běžné vibrace i silové efekty, které závodní a letecké hry posílají do volantu nebo joysticku, pocítíte přes dva motory ovladače. Řídí se nastavením Vibrace (cíl a intenzita vibrací). Stálá síla (například když závodní hra drží volant rovně) po několika sekundách zeslábne, aby ovladač nebzučel pořád. U her s DirectInput to funguje jen tehdy, když ovladač vidí. Změna se projeví po opětovném připojení ovladače (ve hře to udělá Controls › Pad) nebo při příštím spuštění. BANNERIN_DINPUT_FF v proměnných prostředí má přednost před tímto nastavením.</string>
     <string name="lab_8861fdef">Nastavení zvuku</string>
     <string name="lab_887ae5cd">Vytvořit</string>
+    <string name="lab_88819a36">Mřížka nad grafikou</string>
     <string name="lab_88845797">Správce úloh</string>
     <string name="lab_888e7afb">Na Adreno nemá vliv, to dekóduje BCn samo.</string>
     <string name="lab_88a8754b">Ostrost textur</string>
@@ -929,6 +973,7 @@
     <string name="lab_88eb46f0">Úspěchy odemčené ve hře se zapíšou do vašeho skutečného účtu Steam. Vypnuto: odemčení zůstanou v tomto zařízení.</string>
     <string name="lab_88f8aeb8">Barva jako #RRGGBB, např. #1E88E5</string>
     <string name="lab_8907b290">Procházet soubory</string>
+    <string name="lab_892b7b55">Široký obal</string>
     <string name="lab_8965e6c7">Méně služeb = rychlejší start a více volné RAM.</string>
     <string name="lab_8998f446">Ikona této položky</string>
     <string name="lab_89f43a0d">Hodnoty předvolby překladače</string>
@@ -937,6 +982,7 @@
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrappery</string>
     <string name="lab_8a8bb4d3">Proud příkazů (CSMT)</string>
+    <string name="lab_8aa52c61">Podrobnosti hry</string>
     <string name="lab_8ae3076a">Turbo</string>
     <string name="lab_8af52aac">Aktualizace</string>
     <string name="lab_8b087b3c">Vzhled</string>
@@ -948,6 +994,7 @@
     <string name="lab_8c565d6d">WineD3D</string>
     <string name="lab_8c59022c">Přiřazení: %1$s · nové ovladače je převezmou</string>
     <string name="lab_8c68f725">Hry s OpenGL (a DirectDraw / starší Direct3D přes WineD3D) běží na přibaleném Mesa a Zink a zobrazuje je Vulkan místo pomalého kopírování každého snímku. Na X11 vyžaduje grafický ovladač Turnip. S Waylandem vždy zapnuto.</string>
+    <string name="lab_8c79f517">Trailer ze Steamu</string>
     <string name="lab_8c7f97b0">%1$s z %2$s GB</string>
     <string name="lab_8c913834">Přizpůsobení, filtr škálování, časování snímků, limit snímků a generování snímků se ukládají stejně jako na svých vlastních stránkách</string>
     <string name="lab_8c9b8bce">Míření pohybem</string>
@@ -1012,6 +1059,7 @@
     <string name="lab_952a7868">Stejné jako v kontejneru</string>
     <string name="lab_952f41de">Ovladače GPU</string>
     <string name="lab_95432a7a">Sloty hráčů</string>
+    <string name="lab_95c66fc6">Rok vydání</string>
     <string name="lab_95ca1574">Grafický ovladač</string>
     <string name="lab_96125830">Výchozí / libovolný ovladač</string>
     <string name="lab_962bd533">Jas</string>
@@ -1026,8 +1074,11 @@
     <string name="lab_976ff031">jeho volby „Nastavit jako výchozí“ a výchozí vrstva budou nyní zapomenuty a tato stránka zobrazí výchozí hodnoty aplikace. </string>
     <string name="lab_97bb79af">Režim Steam Deck přiměje klienta Steam chovat se jako na Steam Decku a přidá nabídku Rychlý přístup.\n\n</string>
     <string name="lab_98469a16">Připojeno</string>
+    <string name="lab_98513339">Trailery ze Steamu</string>
     <string name="lab_9884a116">Emulátor (32-bit)</string>
+    <string name="lab_98964f8d">Nic nenalezeno · zobrazí se název</string>
     <string name="lab_989f5c02">Ovladače běhového prostředí Linuxu</string>
+    <string name="lab_98aa06ba">Velké</string>
     <string name="lab_98c4e496">Výstup Wine a Box64 / FEX, když je protokolování zapnuté.</string>
     <string name="lab_99082159">Zvuk oznámení</string>
     <string name="lab_992421a8">Otevřít aplikaci na</string>
@@ -1037,6 +1088,7 @@
     <string name="lab_99895147">Výchozí zvuková banka MIDI</string>
     <string name="lab_99c314b2">Sytá</string>
     <string name="lab_9a2890b2">Vyžaduje GPU Adreno (Qualcomm), nebo root na jiných GPU.</string>
+    <string name="lab_9a75ad29">Nepropojeno se Steamem: propojte hru v části Podrobnosti, abyste našli trailery.</string>
     <string name="lab_9a8f0817">Tato hra</string>
     <string name="lab_9aa56987">Míření pohybem (gyroskop)</string>
     <string name="lab_9aaea01f">Overlay přátel Epic</string>
@@ -1061,6 +1113,7 @@
     <string name="lab_9d67bd7f">Ignorovat drobné pohyby</string>
     <string name="lab_9d727d6c">Nejprve importujte Lossless.dll v Nastavení › Výkon.</string>
     <string name="lab_9d954afa">Zapamatovat volbu</string>
+    <string name="lab_9e5d1d40">Hledat na Steamu podle názvu</string>
     <string name="lab_9e7ac4ad">Proměnné synchronizace</string>
     <string name="lab_9e7bf84e">Podle sdílené předvolby</string>
     <string name="lab_9ea6cfdd">Jen nezbytné</string>
@@ -1090,8 +1143,10 @@
     <string name="lab_a2d63cef">Styl rozhraní</string>
     <string name="lab_a2efb709">Pro GPU Arm Mali. Dokud ho nepřepnete, řídí se ovladačem: zapnuto pro ovladač PanVK, jinak vypnuto.</string>
     <string name="lab_a35eef98">Uloží zprávu ze senzorů (CPU, GPU, teploty, VRAM…) do složky Stažené.</string>
+    <string name="lab_a36379d6">Automaticky · Steam</string>
     <string name="lab_a37cf853">Vyberte pro tuto položku jiný .exe ve složce hry.</string>
     <string name="lab_a3904026">Podržením mířit</string>
+    <string name="lab_a396cfaa">Obrázek se nepodařilo načíst</string>
     <string name="lab_a3c61ce1">Okna a protokoly</string>
     <string name="lab_a3f6a50d">Přizpůsobení obrazovce</string>
     <string name="lab_a40c85ce">Služby spouštěné s Windows</string>
@@ -1104,6 +1159,7 @@
     <string name="lab_a523a4e1">Vibrační motory</string>
     <string name="lab_a559e736">Ovladač XR</string>
     <string name="lab_a57ba715">Afinita procesoru (cpuList)</string>
+    <string name="lab_a593c4da">Váš soubor</string>
     <string name="lab_a59e2986">Xalia vypnuto (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Klient se chová jako na Steam Decku, s nabídkou Rychlý přístup. Hry přestanou dostávat vstup z ovladače.</string>
     <string name="lab_a5d4b1b1">běží na něm hra</string>
@@ -1112,6 +1168,7 @@
     <string name="lab_a6902569">Ovládání na obrazovce vs. skutečný ovladač</string>
     <string name="lab_a6e62e9e">Překlad DirectX</string>
     <string name="lab_a71846fe">Téma a barvy</string>
+    <string name="lab_a74f5b6d">Vypnuto, grafika hry, 3D grafika pomalu plující do hloubky, nebo s náhledy: trailer ve velké dlaždici na Home</string>
     <string name="lab_a7a4aed7">Dotyková obrazovka posílá prsty do Steamu jako skutečné dotyky; Touchpad posouvá ukazatel tažením a kliká klepnutím.</string>
     <string name="lab_a7c6d9e7">Limit snímků</string>
     <string name="lab_a7c8bcd7">Oba (jako na PC): ovládá velký a malý motor zvlášť, jako ovladač na PC. Jeden (plynulejší páčky): používá jeden motor. Některé ovladače handheldů (např. AYANEO Pocket FIT) zpomalují aktualizace páček, když běží oba motory; Jeden toto zpomalení sníží na polovinu, takže míření zůstane plynulé. Výchozí: Jeden na Pocket FIT, Oba jinde.</string>
@@ -1158,7 +1215,9 @@
     <string name="lab_af0804da">Nainstalované hry se stále spustí. Nejprve je potřeba se na tomto zařízení jednou přihlásit online. Platí od příští relace.</string>
     <string name="lab_af32ab2f">Samostatně</string>
     <string name="lab_af39be20">Síť</string>
+    <string name="lab_af3f8345">Pro tuto hru nebylo nic nalezeno. Vyberte obrázek nebo hru propojte se Steamem v části Podrobnosti.</string>
     <string name="lab_af456994">Brání kernelu odpojovat jádra.</string>
+    <string name="lab_af47e020">Žánry</string>
     <string name="lab_afb57bd1">Filtr škálování, zostření a odstranění pruhů</string>
     <string name="lab_b01a2f1b">Proměnné prostř.</string>
     <string name="lab_b01c4a81">Orientace</string>
@@ -1171,6 +1230,7 @@
     <string name="lab_b0fc42e2">Sdílet uložené hry s aplikací</string>
     <string name="lab_b132aa74">Nainstalovaný Turnip, kterým kompozitor Wayland zobrazuje snímky hry na obrazovce.</string>
     <string name="lab_b18ba364">Dotyková obrazovka</string>
+    <string name="lab_b1aea182">Zobrazit místo toho název</string>
     <string name="lab_b1cc94c4">Efekt</string>
     <string name="lab_b1fb3d78">Zamknout na místě</string>
     <string name="lab_b2091323">Jeho proměnné BOX64_* platí i pro Box64EC.</string>
@@ -1192,6 +1252,7 @@
     <string name="lab_b41f7d88">Spustit…</string>
     <string name="lab_b4467898">Doladit zvukový buffer</string>
     <string name="lab_b46c3296">Mazání</string>
+    <string name="lab_b484c517">Malé</string>
     <string name="lab_b48bc44b">Seznam se nepodařilo načíst</string>
     <string name="lab_b4c6ec80"> Nastaveno pro tuto hru.</string>
     <string name="lab_b4d38912">Přidejte první hru</string>
@@ -1245,7 +1306,10 @@
     <string name="lab_bd50227c">Není nainstalováno žádné sestavení VEGAS: stáhněte ho níže.</string>
     <string name="lab_bd63a37d">Obrázek tapety</string>
     <string name="lab_bd87c7d9">Ukládat dekódované textury do mezipaměti</string>
+    <string name="lab_bd9b3216">Podrobnosti</string>
     <string name="lab_bdaf406a">Ve hře</string>
+    <string name="lab_be12d609">Vybrat obrázek…</string>
+    <string name="lab_be45a0e0">Nic nenalezeno · nepropojeno se Steamem</string>
     <string name="lab_be638831">Lupa, okna, protokoly a spuštěné programy.</string>
     <string name="lab_be998b7c">Synchronizovat každý snímek</string>
     <string name="lab_be9a2a59">Dvojité Zpět otevře Rychlý přístup</string>
@@ -1253,6 +1317,7 @@
     <string name="lab_bec1ccfe"> Projeví se při příštím spuštění hry.</string>
     <string name="lab_bed0286f">Skrýt tento repozitář</string>
     <string name="lab_bef10a2e">Přesunout do jiného kontejneru</string>
+    <string name="lab_bf5a86a3">Poloha</string>
     <string name="lab_bf9aba55">Začít znovu</string>
     <string name="lab_bfa9745f">Vždy zapnuto</string>
     <string name="lab_bfb6fae9">Tmavý nebo světlý; zvýraznění podle tématu</string>
@@ -1261,6 +1326,7 @@
     <string name="lab_c056fb2a">DirectDraw</string>
     <string name="lab_c05f6e32">Vypnout automatické zálohování?</string>
     <string name="lab_c06ade64">Experimentální přepínače a vnitřnosti zobrazovacího serveru.</string>
+    <string name="lab_c088a86d">Upravit logo</string>
     <string name="lab_c0b26391">Kompatibilita</string>
     <string name="lab_c0ba51f5">Prostředí</string>
     <string name="lab_c0cb7e61">Ve výchozím stavu vypnuto, aby hry, které čtou XInput i DirectInput, viděly jen jeden ovladač.</string>
@@ -1272,6 +1338,7 @@
     <string name="lab_c172ec97">Změny se pro tuto hru uloží jen tam, kde se liší od globálního výchozího nastavení.</string>
     <string name="lab_c1bc6675">Wrapper Vulkan, který hry používají na X11. Zobrazují se zde i importované wrappery.</string>
     <string name="lab_c1c757e2">Ladicí protokol vrstvy BCn</string>
+    <string name="lab_c1df4081">Střední</string>
     <string name="lab_c206cdbf">Zálohovat všechny uložené hry</string>
     <string name="lab_c22c196f">Červená</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
@@ -1316,6 +1383,7 @@
     <string name="lab_c75e808b">Rozložení na obrazovce</string>
     <string name="lab_c781beb4">Výkon (experimentální)</string>
     <string name="lab_c78bbaf5">Ovládání na obrazovce, myš, vibrace, míření pohybem.</string>
+    <string name="lab_c7b49d50">Aplikace Steamu %1$s</string>
     <string name="lab_c7fad197">Nebyla zjištěna žádná další nastavení</string>
     <string name="lab_c82e7e67">Sestavení z katalogu. Nainstalovaná se zobrazí v nastavení Verze DXVK.</string>
     <string name="lab_c844d41c">Pro hry s Denuvo, které aplikace sama nerozpozná.</string>
@@ -1338,6 +1406,7 @@
     <string name="lab_caf7d4a3">Sdílená předvolba, upravená</string>
     <string name="lab_cb5fc4d5">Konfigurace VEGAS</string>
     <string name="lab_cb6d604d">HUD nelze ve hře přetahovat.</string>
+    <string name="lab_cbab7f7a">Ikony</string>
     <string name="lab_cbb98111">Pravá páčka</string>
     <string name="lab_cc03c446">Správce souborů</string>
     <string name="lab_cc0a2f50">Když se hra ze Steamu spustí přes Goldberg nebo Přímo .exe (hry Wine), oznámit Steamu, že ji hrajete, aby to viděli přátelé a počítal se herní čas. Spuštění přes SteamLite se zobrazují vždy.</string>
@@ -1366,8 +1435,10 @@
     <string name="lab_cf22495d">Automaticky stahovat z cloudu GOG při spuštění</string>
     <string name="lab_cf4ce884">Režim celé obrazovky</string>
     <string name="lab_cf608a0d">Použít DirectAudio</string>
+    <string name="lab_cf6c6955">Tato hra zatím nemá logo. Vyberte ho v části Logo a uvidíte ho zde.</string>
     <string name="lab_cf6d2530">Co potřebují sestavení ovladačů pro A710/A720/A722; Automaticky to pro tyto importy zapne. TU_DEBUG v proměnných prostředí má přednost.</string>
     <string name="lab_cf7aae35">Box64 / WOWBox64</string>
+    <string name="lab_cf811d8c">Dole uprostřed</string>
     <string name="lab_cf8f0f8a">Nejsou nastaveny žádné proměnné prostředí</string>
     <string name="lab_cf9192cb">%1$s nainstalována</string>
     <string name="lab_d02befc2">Video paměť</string>
@@ -1376,6 +1447,7 @@
     <string name="lab_d06090cf">Vybrat přes systém…</string>
     <string name="lab_d063c529">V kontejnerech ARM64EC se jmenuje WOWBox64 a spouští 32bitový kód, pokud je zvolen výše.</string>
     <string name="lab_d097c7ad">Touchpad</string>
+    <string name="lab_d0c3d24d">Vybrat video…</string>
     <string name="lab_d1106762">Vybrat obrázek</string>
     <string name="lab_d13696b8">Přiřadit ovladače hráčům</string>
     <string name="lab_d1588174">Vibrace na</string>
@@ -1406,6 +1478,7 @@
     <string name="lab_d492096d">Znovu spustit nastavení</string>
     <string name="lab_d49be3e8">Úložiště a složky</string>
     <string name="lab_d4d60815">Stabilnější časování snímků a chladnější zařízení.</string>
+    <string name="lab_d4e70b40">Hledání trailerů…</string>
     <string name="lab_d4eb64e3">Vlastní…</string>
     <string name="lab_d51bc9cd">Emulace textur BCn</string>
     <string name="lab_d51bce77">Exkluzivní vstup / zapnout DInput</string>
@@ -1418,6 +1491,7 @@
     <string name="lab_d5d636c1">Spoušť</string>
     <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Originál</string>
+    <string name="lab_d620ef74">Obal, rozmazaný</string>
     <string name="lab_d653f990">Překladač x86 pro 32bitový kód</string>
     <string name="lab_d6d3fe68">Vybrat balíček komponenty (-linux .wcp)</string>
     <string name="lab_d7060afb">Importovat tento kontejner</string>
@@ -1429,9 +1503,11 @@
     <string name="lab_d870ae5e">Tento ovladač se na tomto GPU nenačetl: na kontrolu místo něj odpověděl systémový ovladač.</string>
     <string name="lab_d8e06406">Obrazovka</string>
     <string name="lab_d8e621c2">Přidat jednotku</string>
+    <string name="lab_d90a905b">Sklo</string>
     <string name="lab_d91754f0">Žádný záznam.</string>
     <string name="lab_d92d0230">Použito: </string>
     <string name="lab_d92fb9d6">Název nesmí být prázdný.</string>
+    <string name="lab_d9667615">Obrázek</string>
     <string name="lab_d9767690">Hra začíná s proměnnými svého kontejneru</string>
     <string name="lab_d9a22ca4">DX Wrapper</string>
     <string name="lab_d9b07af8">Importováno </string>
@@ -1456,6 +1532,7 @@
     <string name="lab_dbd5d59f">Proměnné této hry</string>
     <string name="lab_dbe48d14">Nikdy</string>
     <string name="lab_dc2dbf53">(prázdné)</string>
+    <string name="lab_dc6bb726">Zrušit propojení</string>
     <string name="lab_dc942e27">Informovat o nových verzích</string>
     <string name="lab_dcb67730">Hodnota</string>
     <string name="lab_dcba8bc8">Vypnout myš</string>
@@ -1504,10 +1581,13 @@
     <string name="lab_e22a8ea9">Wayland potřebuje nainstalovaný Turnip, aby zobrazil snímky hry na obrazovce. Nové se zobrazí v nastavení Grafický ovladač.</string>
     <string name="lab_e2410f47">Procházet a stahovat</string>
     <string name="lab_e2421520">Stáhnout verze WOWBox64</string>
+    <string name="lab_e280d375">Velikost karet</string>
     <string name="lab_e2a7f23e">Na obrazovce</string>
+    <string name="lab_e2b70ebc">Bez klipu náhledu</string>
     <string name="lab_e2c38520">Tato položka nemá soubor ikony, do kterého by se dalo zapisovat.</string>
     <string name="lab_e2ce4373">Sekce</string>
     <string name="lab_e2e95fcd">Protokoly her</string>
+    <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Pro hry, které vidí ovladač jen přes Steam (No Man\'s Sky). U her, které čtou ovladač samy, nechte vypnuté. Vypne přímé předání ovladače.</string>
     <string name="lab_e3e80b58">Profil ovládání</string>
     <string name="lab_e41154d8">Historie FPS</string>
@@ -1529,6 +1609,7 @@
     <string name="lab_e72cac52">Multimediální kodeky</string>
     <string name="lab_e73d4b35">Rozšíření Vulkan</string>
     <string name="lab_e7bab6f9">Měřítko vykreslování (supersampling)</string>
+    <string name="lab_e7d39686">Jak průhledné jsou dlaždice nad grafikou</string>
     <string name="lab_e7d6bbaa">Překlad DirectX, ovladač GPU, OpenGL a způsob, jakým se obraz dostane na obrazovku.</string>
     <string name="lab_e7d75246">Výška, ve které běží řetězec generování snímků; šířka se řídí obrazovkou. Nižší je mnohem méně náročná, ale měkčí.</string>
     <string name="lab_e801ba28">Pokud chcete, vypněte to; tato hra si to zapamatuje.</string>
@@ -1552,6 +1633,7 @@
     <string name="lab_eb655287">Odebrat jeho přiřazení</string>
     <string name="lab_eb680509">Soubor .exe z vašich souborů nebo hra z obchodu.</string>
     <string name="lab_eb6d0257"> · používá </string>
+    <string name="lab_eb78cff1">Popis</string>
     <string name="lab_ebd67348">Uloženo v profilu ovládání</string>
     <string name="lab_ebfc68a3">FPS .1</string>
     <string name="lab_ec1e0733">Výchozí pro x86-64</string>
@@ -1573,6 +1655,7 @@
     <string name="lab_eee0fc1f">Menu Steamu v levém horním rohu, jeho nabídka Rychlý přístup v pravém horním.</string>
     <string name="lab_ef041fbb">Jádro</string>
     <string name="lab_efc1065a">Nepřipojeno</string>
+    <string name="lab_efca121e">Tapeta Lab</string>
     <string name="lab_efd740b9">Průhlednost</string>
     <string name="lab_efdeb1c6">Seznam předvoleb sdílejí všechny kontejnery a hry.</string>
     <string name="lab_efdfc7e5">Omezovač FPS</string>
@@ -1612,6 +1695,7 @@
     <string name="lab_f3860a8b">Vestavěné (Win-FG)</string>
     <string name="lab_f38c2b5b">Zarovnání obrazovky</string>
     <string name="lab_f39e4ef9">Klíč API</string>
+    <string name="lab_f3a4d6f2">Propojeno s aplikací Steamu %1$s</string>
     <string name="lab_f3c5111e">Ostřejší textury pod úhlem. Hry s DirectX 9 až 11.</string>
     <string name="lab_f3d61893">Vizuální efekty</string>
     <string name="lab_f3e2bf3c">Overlay FPS/teploty vykreslený přes hru.</string>
@@ -1632,8 +1716,10 @@
     <string name="lab_f61050cc">Rozlišení hry</string>
     <string name="lab_f665e069">Oznámení, když vám přítel napíše a jeho chat nemáte otevřený.</string>
     <string name="lab_f667b7f4">Barva zvýraznění</string>
+    <string name="lab_f690a199">Váš obal</string>
     <string name="lab_f6f41dc4">Známé problémy zjištěné na zařízení:\n</string>
     <string name="lab_f6f5fb6b">Vytvořit kontejner</string>
+    <string name="lab_f721f484">Obaly</string>
     <string name="lab_f745bb2a">Streamovat</string>
     <string name="lab_f7578887">Vychází z výchozího nastavení nového kontejneru. X ho vytvoří.</string>
     <string name="lab_f783e029">Dvojitá baterie</string>
@@ -1648,11 +1734,14 @@
     <string name="lab_f91491fe">Přenést jiné okno hry do popředí.</string>
     <string name="lab_f918602e">Ovladač Vulkan, na kterém se s Waylandem vykresluje samotná hra.</string>
     <string name="lab_f94e949e">Nastavuje Zvuk › Mikrofon</string>
+    <string name="lab_f97022d8">Steam pro tuto hru nemá žádné trailery.</string>
     <string name="lab_fa109fc6">Hledat efekty…</string>
+    <string name="lab_fa2965af">Obrázek pozadí</string>
     <string name="lab_fa381e9a">Ostřejší (-0.5)</string>
     <string name="lab_fa700875">Některé hry ovladač samy nečtou: žádají o něj Steam. V SteamLite nikdo neodpovídá, takže tyto hry žádný ovladač nevidí. Zapnuto: agent SteamLite pro tuto hru zapne vrstvu ovladače Steamu s vhodným rozložením. U her, které už ovladač čtou, nechte vypnuté, jinak dostanou každé stisknutí dvakrát. Opak přímého předání ovladače, takže zapnuté může být jen jedno z nich. Jen SteamLite.</string>
     <string name="lab_fa859fc7">Goldberg mode, Verify files a Check for updates najdete v nabídce spuštění. Vypněte „Přeskočit nabídku spuštění“, abyste ji uviděli při příštím spuštění.</string>
     <string name="lab_fac0fe64">Ovládání škálování zvládne užitečnou část i bez něj a limit FPS v herním panelu omezí snímkovou frekvenci. Pokud hra přestane reagovat na ovladač, režim Steam Deck znovu vypněte.</string>
+    <string name="lab_fad0baa9">Výchozí (Steam: %1$s)</string>
     <string name="lab_fae2666b">Vlastní Proton od Valve, nahrazený při aktualizaci Steamem; jeho originály se uchovávají pro každé sestavení</string>
     <string name="lab_fae62cc0">Zamkne ukazatel ve hře. Uvolníte ho tlačítkem snížení hlasitosti.</string>
     <string name="lab_fb2b9733">Oba (jako na PC)</string>

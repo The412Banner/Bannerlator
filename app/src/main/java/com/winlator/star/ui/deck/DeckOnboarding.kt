@@ -118,8 +118,22 @@ private fun filesGranted(context: Context): Boolean =
     else ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
 
 private fun notificationsGranted(context: Context): Boolean =
-    Build.VERSION.SDK_INT < 33 ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+/**
+ * Android 13+ shows its notification prompt only to apps targeting 33 or higher; for this app (target 28) a
+ * request returns at once with no prompt. Then the app's notification settings page is opened instead.
+ */
+private fun notificationPromptWorks(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= 33 && context.applicationInfo.targetSdkVersion >= 33
+
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+    }.recoverCatching {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:${context.packageName}")))
+    }
+}
 
 /** Sign-in state of the five stores, read the same way each store's own screen reads it. */
 private fun storeSignIns(context: Context): Map<Screen, Boolean> = mapOf(
@@ -232,7 +246,8 @@ private fun DeckOnboardingContent(
             installReady = installReady,
             onRequestFiles = requestFiles,
             onRequestNotifications = {
-                if (Build.VERSION.SDK_INT >= 33) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if (notificationPromptWorks(context)) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else openNotificationSettings(context)
             },
             onLaunchStore = onLaunchStore,
             onNext = next,

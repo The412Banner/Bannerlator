@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -95,6 +96,7 @@ private val ONBOARDING_STEPS = listOf(
     "Notifications",
     "Make it yours",
     "Installing the base system",
+    "Your first container",
     "Sign in to your stores (optional)",
     "You're ready",
 )
@@ -179,6 +181,9 @@ private fun DeckOnboardingContent(
     val compact = deckCompact()
     var step by rememberSaveable { mutableIntStateOf(0) }
     val last = ONBOARDING_STEPS.size - 1
+    val firstContainer = remember { FirstContainerSetup(context.applicationContext as android.app.Application) }
+    val setupScope = rememberCoroutineScope()
+    val containerBusy = step == 5 && firstContainer.busy
 
     // Permission and sign-in state is re-read whenever the app comes back (from Android settings, a store login).
     var resumeTick by remember { mutableIntStateOf(0) }
@@ -221,11 +226,12 @@ private fun DeckOnboardingContent(
         when {
             step == 4 && installing && installDone -> { onInstallContinue(); step++ }
             step == 4 && !installReady -> Unit
+            containerBusy -> Unit
             step < last -> step++
             else -> finish(false)
         }
     }
-    val back: () -> Unit = { if (step > 0) step-- }
+    val back: () -> Unit = { if (step > 0 && !containerBusy) step-- }
     BackHandler(enabled = step > 0) { back() }
 
     val continueRequester = remember { FocusRequester() }
@@ -252,13 +258,15 @@ private fun DeckOnboardingContent(
             onLaunchStore = onLaunchStore,
             onNext = next,
             onFinish = finish,
+            firstContainer = firstContainer,
+            setupScope = setupScope,
         )
         Spacer(Modifier.height(24.dp))
         NavButtons(
             step = step,
             last = last,
             compact = compact,
-            continueEnabled = step != 4 || installReady,
+            continueEnabled = (step != 4 || installReady) && !containerBusy,
             continueRequester = continueRequester,
             onBack = back,
             onSkip = { finish(false) },
@@ -423,6 +431,8 @@ private fun StepBody(
     onLaunchStore: (Screen) -> Unit,
     onNext: () -> Unit,
     onFinish: (Boolean) -> Unit,
+    firstContainer: FirstContainerSetup,
+    setupScope: kotlinx.coroutines.CoroutineScope,
 ) {
     val cs = MaterialTheme.colorScheme
     Text(
@@ -450,7 +460,8 @@ private fun StepBody(
             2 -> "Get notified about finished downloads, unpacking progress, Steam chat and app updates."
             3 -> "Pick a colour theme, the interface style and how big things are. All of it can be changed later in Settings › Appearance."
             4 -> "Wait here if it isn't finished yet. You can't start games until this completes."
-            5 -> "Bring in games you own. Skip if you only play your own installers."
+            5 -> "Downloads Proton and the parts games need, then creates a container to install games into."
+            6 -> "Bring in games you own. Skip if you only play your own installers."
             else -> "Add a game from a store, or install one from a file with \"Add a game\"."
         },
         color = cs.onSurfaceVariant,
@@ -462,7 +473,7 @@ private fun StepBody(
 
     when (step) {
         0 -> DeckCard {
-            DeckRow(title = "Get started", subtitle = "Seven short steps; every one of them can be skipped.", trailing = {
+            DeckRow(title = "Get started", subtitle = "Eight short steps; every one of them can be skipped.", trailing = {
                 DeckButton("Get started", null, onNext)
             })
         }
@@ -561,7 +572,8 @@ private fun StepBody(
                 trackColor = cs.surfaceVariant,
             )
         }
-        5 -> {
+        5 -> FirstContainerStep(firstContainer, setupScope)
+        6 -> {
             val showStores by AppThemeState.showStores.collectAsState()
             DeckCard {
                 listOf(Screen.Steam, Screen.Epic, Screen.Gog, Screen.Amazon, Screen.Xbox).forEachIndexed { i, store ->

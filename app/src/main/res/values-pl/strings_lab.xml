@@ -350,7 +350,7 @@
     <string name="lab_2c6448d6">Ustawione dla tego kontenera</string>
     <string name="lab_2c768f35">Nowe kontenery startują z</string>
     <string name="lab_2c963a33">działa od razu · zapisane jako domyślne dla tego mechanizmu</string>
-    <string name="lab_2ce33943">Domyślna</string>
+    <string name="lab_2ce33943">Domyślne</string>
     <string name="lab_2ced81bf">Offline: wyświetlana jest zapisana lista. Połącz się, aby pobrać nowe efekty.</string>
     <string name="lab_2d1366ec">Brak pasujących znanych zmiennych.</string>
     <string name="lab_2d45170d">Grafika gry</string>
@@ -386,7 +386,7 @@
     <string name="lab_318a4134">Ustaw dla tej gry</string>
     <string name="lab_31aa53e1">Edytuj jako tekst</string>
     <string name="lab_31b614e4">Auto używa tego tylko na Adreno 710, 720 i 722. Zmieniaj tylko, gdy gra działa nieprawidłowo.</string>
-    <string name="lab_32038add">Obchodzi błąd Turnipa, w którym pytanie „czy GPU skończyło pracę?” czeka na całą klatkę (błąd czasowy z raportu). „Domyślna” pozwala adapterowi wykryć błąd; „Wł.” wymusza shim, „Wył.” go wyłącza.</string>
+    <string name="lab_32038add">Obchodzi błąd Turnipa, w którym pytanie „czy GPU skończyło pracę?” czeka na całą klatkę (błąd czasowy z raportu). „Domyślne” pozwala adapterowi wykryć błąd; „Wł.” wymusza shim, „Wył.” go wyłącza.</string>
     <string name="lab_3205bc81">Nie ustawiono sterownika grafiki Turnip, więc nie ma czego sprawdzać.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Tryb ekranu dotykowego</string>
@@ -1683,7 +1683,7 @@
     <string name="lab_efeacf52">Na razie tylko sterownik telefonu.</string>
     <string name="lab_f04c78b9">Ustawienia dźwięku · ta gra</string>
     <string name="lab_f05053e7">Odczytuje Steam Controller bezpośrednio (jego trackpady i dodatkowe przyciski). Wyłączone: zwykła ścieżka wejścia bez zmian.</string>
-    <string name="lab_f0520965">mailbox = najnowsza klatka, najniższe opóźnienie; fifo = vsync, równe tempo. „Domyślna” stosuje tryb z profilu, a bez niego zapisany tryb prezentacji. Immediate wymaga rozrywania obrazu, którego Wayland nie oferuje.</string>
+    <string name="lab_f0520965">mailbox = najnowsza klatka, najniższe opóźnienie; fifo = vsync, równe tempo. „Domyślne” stosuje tryb z profilu, a bez niego zapisany tryb prezentacji. Immediate wymaga rozrywania obrazu, którego Wayland nie oferuje.</string>
     <string name="lab_f05494f9">Warstwa Wine tego kontenera nie obsługuje Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein i Jedi Academy działają w oknie o rozmiarze sesji.</string>
     <string name="lab_f0c81c31">Klient Steam</string>
@@ -1765,7 +1765,7 @@
     <string name="lab_fa700875">Niektóre gry nigdy same nie odczytują kontrolera: proszą o niego Steam. W SteamLite nikt nie odpowiada, więc te gry nie widzą pada. Włączone: agent SteamLite włącza dla tej gry warstwę kontrolera Steam z pasującym układem. Zostaw wyłączone dla gier, które już odczytują pad, inaczej każde naciśnięcie dostaną podwójnie. To przeciwieństwo przekazywania kontrolera, więc tylko jedno może być włączone. Tylko SteamLite.</string>
     <string name="lab_fa859fc7">Goldberg mode, Verify files i Check for updates znajdują się w menu uruchamiania. Wyłącz „Pomiń menu uruchamiania”, aby zobaczyć je przy następnym starcie.</string>
     <string name="lab_fac0fe64">Opcje skalowania robią to, co przydatne, bez niej, a limit FPS w panelu bocznym gry ogranicza liczbę klatek. Wyłącz tryb Decka, jeśli gra przestanie reagować na kontroler.</string>
-    <string name="lab_fad0baa9">Domyślna (Steam: %1$s)</string>
+    <string name="lab_fad0baa9">Domyślne (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton od Valve, zastępowany, gdy Steam go aktualizuje; jego oryginały są zachowywane dla każdej wersji</string>
     <string name="lab_fae62cc0">Blokuje kursor w grze. Naciśnij przycisk ściszania, aby go zwolnić.</string>
     <string name="lab_fb2b9733">Oba (jak na PC)</string>

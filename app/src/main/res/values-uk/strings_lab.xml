@@ -350,7 +350,7 @@
     <string name="lab_2c6448d6">Задано для цього контейнера</string>
     <string name="lab_2c768f35">Нові контейнери починають з</string>
     <string name="lab_2c963a33">застосовується одразу · зберігається як стандартне значення для цього рушія</string>
-    <string name="lab_2ce33943">Стандартний</string>
+    <string name="lab_2ce33943">За замовчуванням</string>
     <string name="lab_2ced81bf">Офлайн: показано збережений список. Підключіться, щоб завантажити нові ефекти.</string>
     <string name="lab_2d1366ec">Немає збігів серед відомих змінних.</string>
     <string name="lab_2d45170d">Арт гри</string>
@@ -386,7 +386,7 @@
     <string name="lab_318a4134">Задати для цієї гри</string>
     <string name="lab_31aa53e1">Редагувати як текст</string>
     <string name="lab_31b614e4">«Авто» вмикає це лише на Adreno 710, 720 і 722. Змінюйте, лише якщо гра працює неправильно.</string>
-    <string name="lab_32038add">Обходить помилку Turnip, через яку запит «чи завершив GPU?» чекає на весь кадр (помилка таймінгу у звіті). «Стандартний» дає адаптеру самому її виявити; «Увімк.» вмикає примусово, «Вимк.» вимикає.</string>
+    <string name="lab_32038add">Обходить помилку Turnip, через яку запит «чи завершив GPU?» чекає на весь кадр (помилка таймінгу у звіті). «За замовчуванням» дає адаптеру самому її виявити; «Увімк.» вмикає примусово, «Вимк.» вимикає.</string>
     <string name="lab_3205bc81">Графічний драйвер Turnip не задано, тож перевіряти нічого.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Режим сенсорного екрана</string>
@@ -1074,7 +1074,7 @@
     <string name="lab_95432a7a">Слоти гравців</string>
     <string name="lab_95c66fc6">Рік випуску</string>
     <string name="lab_95ca1574">Графічний драйвер</string>
-    <string name="lab_96125830">Стандартний / Будь-який контролер</string>
+    <string name="lab_96125830">За замовчуванням / Будь-який контролер</string>
     <string name="lab_962bd533">Яскравість</string>
     <string name="lab_964d1a40">Спільний буфер обміну Android з іграми</string>
     <string name="lab_968b9d49">Застосовуються під час запуску. Бічне меню в грі й надалі змінює їх на льоту.</string>
@@ -1373,7 +1373,7 @@
     <string name="lab_c403f77e">proot без seccomp (PROOT_NO_SECCOMP)</string>
     <string name="lab_c4285f04">Цієї гри більше немає у вашій бібліотеці.</string>
     <string name="lab_c4519938">Графік FPS</string>
-    <string name="lab_c494b0be">Копіювати прив’язки з «Стандартний / Будь-який контролер»</string>
+    <string name="lab_c494b0be">Копіювати прив’язки з «За замовчуванням / Будь-який контролер»</string>
     <string name="lab_c49fd4f3">Цей пристрій</string>
     <string name="lab_c4a8001f">Усі дані додатка, збереження ігор і контейнери.</string>
     <string name="lab_c4cd444a">Сповіщати про оновлення</string>
@@ -1683,7 +1683,7 @@
     <string name="lab_efeacf52">Поки лише власний драйвер телефона.</string>
     <string name="lab_f04c78b9">Налаштування звуку · ця гра</string>
     <string name="lab_f05053e7">Читає Steam Controller напряму (його трекпади й додаткові кнопки). Вимк.: звичайний шлях введення не змінюється.</string>
-    <string name="lab_f0520965">mailbox = найновіший кадр, мінімальна затримка; fifo = vsync, рівномірна подача. «Стандартний» іде за профілем, інакше — за збереженим режимом виводу. Для immediate потрібні розриви зображення, а Wayland їх не пропонує.</string>
+    <string name="lab_f0520965">mailbox = найновіший кадр, мінімальна затримка; fifo = vsync, рівномірна подача. «За замовчуванням» іде за профілем, інакше — за збереженим режимом виводу. Для immediate потрібні розриви зображення, а Wayland їх не пропонує.</string>
     <string name="lab_f05494f9">Шар Wine цього контейнера не підтримує Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein і Jedi Academy працюють у вікні розміром із сеанс.</string>
     <string name="lab_f0c81c31">Клієнт Steam</string>

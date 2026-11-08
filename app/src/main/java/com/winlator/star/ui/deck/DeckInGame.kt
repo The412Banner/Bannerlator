@@ -187,15 +187,26 @@ fun DeckInGameOverlay() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(if (menuOpen) Color.Black.copy(alpha = 0.55f) else Color.Transparent)
+                        .background(if (menuOpen && !simple) Color.Black.copy(alpha = 0.55f) else Color.Transparent)
                         // Touch only: as a focus target the full-screen catcher could take the pad's focus and keep it.
                         .focusProperties { canFocus = false }
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { DeckInGameState.close() }
                 )
             }
 
+            // Lab: one menu (Quick first, then every page), a little under half the screen wide.
+            val labWidth = if (compact) maxWidth else (maxWidth * 0.46f).coerceIn(minOf(420.dp, maxWidth), 600.dp)
             AnimatedVisibility(
-                visible = menuOpen,
+                visible = simple && panel != Panel.NONE,
+                enter = slideInHorizontally { -it } + fadeIn(),
+                exit = slideOutHorizontally { -it } + fadeOut(),
+                modifier = Modifier.align(Alignment.CenterStart),
+            ) {
+                LabInGameMenu(Modifier.width(labWidth).fillMaxHeight(), onExit = { confirmExit = true })
+            }
+
+            AnimatedVisibility(
+                visible = menuOpen && !simple,
                 enter = slideInHorizontally { -it } + fadeIn(),
                 exit = slideOutHorizontally { -it } + fadeOut(),
                 modifier = Modifier.align(Alignment.CenterStart),
@@ -204,7 +215,7 @@ fun DeckInGameOverlay() {
             }
 
             AnimatedVisibility(
-                visible = quickOpen,
+                visible = quickOpen && !simple,
                 enter = slideInHorizontally { if (simple) -it else it } + fadeIn(),
                 exit = slideOutHorizontally { if (simple) -it else it } + fadeOut(),
                 modifier = Modifier.align(if (simple) Alignment.CenterStart else Alignment.CenterEnd),
@@ -1043,6 +1054,134 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             }
             Box(Modifier.width(1.dp).fillMaxHeight().background(deckLine().copy(alpha = 0.4f)))
             content(Modifier.weight(1f).fillMaxHeight())
+        }
+    }
+}
+
+/**
+ * Lab's in-game menu: one panel a little under half the screen, the quick menu's controls as its first page (Quick) and
+ * every page of the full menu after it, picked from a tab strip (L1 / R1, or a tap). The pages are the full menu's own.
+ */
+@Composable
+private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
+    val state = XServerDrawerState
+    val tab by DeckInGameState.menuTab.collectAsState()
+    val quick by DeckInGameState.labQuick.collectAsState()
+    val panel by DeckInGameState.panel.collectAsState()
+    val title by DeckInGameState.gameTitle.collectAsState()
+    val isPaused by state.isPaused.collectAsState()
+    val kind by DeckInGameState.sessionKind.collectAsState()
+    val tvConnected by state.tvConnected.collectAsState()
+    val castSupported by state.castSupported.collectAsState()
+    val friendsSource by InGameFriendsSource.state.collectAsState()
+    val tabs = DeckInGameState.availableMenuTabs(kind, FeatureFlags.TV_OUTPUT_ENABLED && (tvConnected || castSupported), friendsSource.tabVisible)
+    val shown = if (tab in tabs) tab else tabs.first()
+    val accent = MaterialTheme.colorScheme.primary
+    val stripFocus = remember { FocusRequester() }
+    val pageFocus = remember { FocusRequester() }
+    FocusOnRequest(panel, pageFocus, fallback = stripFocus)
+    LaunchedEffect(Unit) { InGameFriendsSource.poke() }
+
+    @Composable
+    fun TabChip(icon: ImageVector, label: String, sel: Boolean, onPick: () -> Unit) {
+        val shape = deckShape(4.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .then(if (sel) Modifier.focusRequester(stripFocus) else Modifier)
+                .focusProperties { down = pageFocus }
+                .deckFocusRing(shape, scaleTo = 1.03f)
+                .clip(shape)
+                .background(if (sel) accent.copy(alpha = 0.2f) else Color.Transparent)
+                .clickable(onClick = onPick)
+                .heightIn(min = 40.dp)
+                .padding(horizontal = 10.dp),
+        ) {
+            Icon(icon, contentDescription = label, tint = if (sel) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(20.dp))
+            if (sel) {
+                Spacer(Modifier.width(8.dp))
+                Text(label, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+            }
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(com.winlator.star.ui.simple.SimplePanelTop.copy(alpha = 0.97f), com.winlator.star.ui.simple.SimplePanelBottom.copy(alpha = 0.98f))))
+            .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
+            .focusProperties { canFocus = false }
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp)) {
+            Text(
+                title.ifEmpty { "In game" }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
+                fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+            DeviceStatus()
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.padding(horizontal = 16.dp).width(30.dp).height(3.dp).background(accent))
+        Spacer(Modifier.height(8.dp))
+        // The pages: Quick, then the full menu's (icons; the open one is named).
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 2.dp),
+        ) {
+            DeckGlyph("L1", GlyphKind.BUMPER)
+            TabChip(Icons.Outlined.Bolt, "Quick", quick) { DeckInGameState.selectLabQuick() }
+            tabs.forEach { t -> TabChip(menuTabIcon(t), menuTabTitle(t), !quick && t == shown) { DeckInGameState.selectMenuTab(t) } }
+            DeckGlyph("R1", GlyphKind.BUMPER)
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(com.winlator.star.ui.simple.SimpleLine))
+        val pageTitle = if (quick) "Quick" else menuTabTitle(shown)
+        val pageDesc = if (quick) "The settings changed most during a game." else menuTabDesc(shown, kind)
+        val pageHeader: @Composable () -> Unit = {
+            Text(pageTitle, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+            Text(pageDesc, color = com.winlator.star.ui.simple.SimpleMuted, fontFamily = NunitoSansFamily, fontSize = 12.5.sp, lineHeight = 16.sp)
+            Spacer(Modifier.height(4.dp))
+        }
+        if (!quick && shown == MenuTab.FRIENDS) {
+            Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp).focusRequester(pageFocus)) {
+                pageHeader()
+                Spacer(Modifier.height(8.dp))
+                IgHostedCard { FriendsContent(state) }
+            }
+        } else {
+            val scroll = key(quick, shown) { rememberScrollState() }
+            Column(Modifier.weight(1f).fillMaxWidth().igPageScroll(scroll).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                pageHeader()
+                Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) {
+                    if (quick) QuickControls(kind)
+                    else when (shown) {
+                        MenuTab.SCREEN -> ScreenPage(state)
+                        MenuTab.PERFORMANCE -> PerformancePage(state)
+                        MenuTab.EFFECTS -> EffectsPage(state, kind)
+                        MenuTab.OVERLAY -> OverlayPage(state)
+                        MenuTab.CONTROLS -> ControlsPage(state, kind)
+                        MenuTab.AUDIO -> AudioPage(state)
+                        MenuTab.STEAM -> SteamPage(state)
+                        MenuTab.TV -> TvPage(state)
+                        MenuTab.TOOLS -> ToolsPage(state, kind)
+                        MenuTab.FRIENDS -> Unit
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(com.winlator.star.ui.simple.SimpleCard)
+                .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            IgButton(if (isPaused) "Resume" else "Pause", if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
+            IgButton("Exit game", Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
         }
     }
 }

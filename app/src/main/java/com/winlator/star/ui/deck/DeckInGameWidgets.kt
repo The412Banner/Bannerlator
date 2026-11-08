@@ -115,9 +115,9 @@ internal fun IgScopeChip(scope: SaveScope) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
+            .clip(if (com.winlator.star.ui.theme.AppThemeState.simpleLook) deckShape(3.dp) else RoundedCornerShape(50))
             .background(cs.surfaceContainerHigh.copy(alpha = 0.8f))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+            .padding(horizontal = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 7.dp else 9.dp, vertical = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 3.dp else 4.dp),
     ) {
         Icon(scope.icon, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(5.dp))
@@ -137,6 +137,7 @@ internal fun IgScopeChips(scopes: List<SaveScope>, modifier: Modifier = Modifier
 /** Uppercase, letter-spaced group heading ("FRAME RATE"). */
 @Composable
 internal fun IgSectionLabel(text: String) {
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
     Text(
         text.uppercase(),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -144,7 +145,7 @@ internal fun IgSectionLabel(text: String) {
         fontWeight = FontWeight.ExtraBold,
         fontSize = 12.sp,
         letterSpacing = 2.sp,
-        modifier = Modifier.padding(start = 4.dp, top = 20.dp, bottom = 8.dp),
+        modifier = Modifier.padding(start = 4.dp, top = if (lab) 12.dp else 20.dp, bottom = if (lab) 6.dp else 8.dp),
     )
 }
 
@@ -227,12 +228,16 @@ internal fun IgRow(
 ) {
     val cs = MaterialTheme.colorScheme
     val compact = LocalIgCompact.current
+    // Lab: tighter rows (smaller type and padding), so a narrower menu still shows plenty.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    val padH = if (lab) 14.dp else 18.dp
+    val padV = if (lab) 10.dp else 14.dp
     val text: @Composable (Modifier) -> Unit = { m ->
         Column(m.alpha(if (enabled) 1f else 0.55f)) {
-            Text(title, color = cs.onSurface, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(title, color = cs.onSurface, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = if (lab) 15.sp else 16.sp)
             if (!hint.isNullOrEmpty()) {
-                Spacer(Modifier.height(3.dp))
-                Text(hint, color = cs.onSurfaceVariant, fontFamily = NunitoSansFamily, fontSize = 13.5.sp, lineHeight = 18.sp)
+                Spacer(Modifier.height(if (lab) 2.dp else 3.dp))
+                Text(hint, color = cs.onSurfaceVariant, fontFamily = NunitoSansFamily, fontSize = if (lab) 12.5.sp else 13.5.sp, lineHeight = if (lab) 16.sp else 18.sp)
             }
             if (!note.isNullOrEmpty()) {
                 Spacer(Modifier.height(3.dp))
@@ -250,7 +255,7 @@ internal fun IgRow(
         Modifier.onFocusChanged { within = it.hasFocus }.simpleRowFocus(within, true)
     else Modifier
     if (compact || control == null) {
-        Column(Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = 18.dp, vertical = 14.dp)) {
+        Column(Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = padH, vertical = padV)) {
             text(Modifier.fillMaxWidth())
             if (control != null) {
                 Spacer(Modifier.height(10.dp))
@@ -260,10 +265,10 @@ internal fun IgRow(
     } else {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = 18.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().then(rowFocus).padding(horizontal = padH, vertical = padV),
         ) {
             text(Modifier.weight(1f))
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(if (lab) 10.dp else 16.dp))
             Box(
                 contentAlignment = Alignment.CenterEnd,
                 modifier = if (wideControl) Modifier.weight(1.25f) else Modifier,
@@ -284,9 +289,10 @@ internal fun <T> IgChips(
 ) {
     val cs = MaterialTheme.colorScheme
     val compact = LocalIgCompact.current
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp, if (compact) Alignment.Start else Alignment.End),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (lab) 6.dp else 8.dp, if (compact) Alignment.Start else Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(if (lab) 6.dp else 8.dp),
     ) {
         options.forEach { (v, label) ->
             val sel = v == selected
@@ -301,12 +307,12 @@ internal fun <T> IgChips(
                     .background(if (sel) cs.primary.copy(alpha = 0.16f) else cs.surfaceContainerHigh)
                     .border(if (sel) 2.dp else 1.dp, if (sel) cs.primary else deckLine().copy(alpha = 0.4f), shape)
                     .clickable(enabled = on, role = Role.RadioButton) { onSelect(v) }
-                    .heightIn(min = 40.dp)
-                    .widthIn(min = 52.dp)
-                    .padding(horizontal = 15.dp)
+                    .heightIn(min = if (lab) 34.dp else 40.dp)
+                    .widthIn(min = if (lab) 44.dp else 52.dp)
+                    .padding(horizontal = if (lab) 11.dp else 15.dp)
                     .alpha(if (on) 1f else 0.45f),
             ) {
-                Text(label, color = if (sel) cs.primary else cs.onSurface, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.5.sp, maxLines = 1)
+                Text(label, color = if (sel) cs.primary else cs.onSurface, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = if (lab) 13.5.sp else 14.5.sp, maxLines = 1)
             }
         }
     }
@@ -344,8 +350,8 @@ internal fun <T> IgSegmented(
                     .clip(shape)
                     .background(if (sel) cs.primary else Color.Transparent)
                     .clickable(enabled = on, role = Role.RadioButton) { onSelect(v) }
-                    .heightIn(min = 40.dp)
-                    .padding(horizontal = 16.dp)
+                    .heightIn(min = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 34.dp else 40.dp)
+                    .padding(horizontal = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 12.dp else 16.dp)
                     .alpha(if (on) 1f else 0.45f),
             ) {
                 Text(label, color = if (sel) cs.onPrimary else cs.onSurfaceVariant, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.5.sp, maxLines = 1)
@@ -409,8 +415,8 @@ internal fun IgButton(
             .background(if (primary) cs.primary else cs.surfaceContainerHigh.copy(alpha = 0.85f))
             .then(if (primary) Modifier else Modifier.border(1.dp, if (danger) cs.error.copy(alpha = 0.7f) else deckLine().copy(alpha = 0.5f), shape))
             .clickable(enabled = enabled, onClick = onClick)
-            .heightIn(min = 46.dp)
-            .padding(horizontal = if (label == null) 13.dp else 18.dp)
+            .heightIn(min = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 40.dp else 46.dp)
+            .padding(horizontal = if (label == null) 13.dp else if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 14.dp else 18.dp)
             .alpha(if (enabled) 1f else 0.45f),
     ) {
         if (icon != null) Icon(icon, contentDescription = label, tint = ink, modifier = Modifier.size(20.dp))

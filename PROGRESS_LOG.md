@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📦 onboarding: "Your first container" step (87150656; CI 42523039270 running, NOT device-tested)
+- **Why (user: "can we also add a step to automatic download and create a proton container?"):** a new setup step with lists and recommended picks. User decisions: Proton list shows all, latest DroidDeck Proton arm64ec recommended; FEXCore 2611-unix (list = -unix builds); DXVK + VKD3D regular builds, dxvk-gplasync 2.4.1 pre-reg and the latest stable vkd3d-proton recommended; all CPU cores; latest Banners-AIO recommended with the Banners-Turnip builds for the detected Adreno, Android builds only (no -Linux / -Wayland).
+- **How:** new ui/deck/DeckFirstContainer.kt (FirstContainerSetup + FirstContainerStep), step 6 of 8 after the base-system install.
+  - Lists come from contents.json (parsed into ContentProfile rows) and DriverSources "Banners-Turnip". The GPU is read from GPUInformation.getRenderer(null, null) under graphicsProbeMutex.
+  - Variants by GPU: 8xx → AIO + A8xx; 710–722 → AIO + 710-720-Test; Samsung 740 → AIO + 8G2-OneUI + Standard; other Adreno → AIO + Standard; other GPUs → no driver row.
+  - x86_64 Proton swaps the FEXCore row for Box64 (built-in first).
+  - Create checks the base system is valid, then installs the picks one at a time through startContentDownload / ContentDownloadRegistry (installs share files/tmp/contents). The installed profile is found by before/after diff.
+  - The driver is installed with RemoteDriverRepository.downloadEntry + AdrenotoolsManager.installDriver; its id comes from meta.json "name" when already installed.
+  - The container is made by ContainerDetailViewModel in create mode (init(-1) → onWineVersionChanged → dxWrapperConfig version/vkd3dVersion, selectedFEXCoreVersion or selectedBox64Version, graphicsDriverConfig version=<id>, cpuList all → confirm), the same path as "New container".
+- **Not verified yet:** whether every catalog row's installed profile is found by the diff; whether the editor's create-mode defaults keep FEXCore as the emulator on arm64ec.
+- **Next:** green → stage standard APK → ASK install (fresh: uninstall the test copy first) → user runs setup with network → check the container in the editor + one launch.
+
 ## 2026-11-08 — ✅ onboarding 89f71daa device-tested on the Elite: notifications button works (user: "notifications fix works")
 - **Build:** CI 42520568049 green ×4. The user installed the standard APK fresh themselves (first install == last update 15:43:24 EST); installed base.apk sha256 7fdd323b… == staged.
 - **Proof:** POST_NOTIFICATIONS granted=true (USER_SET) after the button → settings page → back; crash buffer empty since 15:29 EST. Earlier screenshot 153020 (976eca39) showed the orange Carbon & Ember setup at step 3, before the theme step, and the portrait step circles. Saved settings on the fresh install: ui_style=deck, simple_home=true, preset_index=9 (Carbon & Ember).

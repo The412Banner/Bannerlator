@@ -269,14 +269,9 @@ private fun DeckOnboardingContent(
                     Spacer(Modifier.width(12.dp))
                     Text("Set up Bannerlator", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                 }
-                Spacer(Modifier.height(14.dp))
-                LinearProgressIndicator(
-                    progress = { (step + 1) / ONBOARDING_STEPS.size.toFloat() },
-                    modifier = Modifier.fillMaxWidth().clip(deckShape(3.dp)),
-                    color = cs.primary,
-                    trackColor = cs.surfaceVariant,
-                )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(18.dp))
+                StepRow(step)
+                Spacer(Modifier.height(22.dp))
                 body()
             }
         } else {
@@ -291,6 +286,46 @@ private fun DeckOnboardingContent(
                         .widthIn(max = 1100.dp),
                 ) { body() }
             }
+        }
+    }
+}
+
+/** One step's circle: a check once done, filled with the accent while current, else its number. */
+@Composable
+private fun StepCircle(i: Int, step: Int) {
+    val cs = MaterialTheme.colorScheme
+    val current = i == step
+    val done = i < step
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(28.dp)
+            .then(
+                if (current) Modifier.background(cs.primary, CircleShape)
+                else Modifier.border(1.5.dp, if (done) cs.primary else cs.outline, CircleShape)
+            ),
+    ) {
+        if (done) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
+        else Text("${i + 1}", color = if (current) cs.onPrimary else cs.onSurfaceVariant, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+    }
+}
+
+/** The step list on a narrow screen: the same circles in one row, joined by lines that fill in as steps are done. */
+@Composable
+private fun StepRow(step: Int) {
+    val cs = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        ONBOARDING_STEPS.indices.forEach { i ->
+            if (i > 0) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .height(2.dp)
+                        .background(if (i <= step) cs.primary else cs.outline.copy(alpha = 0.5f), deckShape(1.dp))
+                )
+            }
+            StepCircle(i, step)
         }
     }
 }
@@ -311,7 +346,6 @@ private fun StepPanel(step: Int, modifier: Modifier) {
         Spacer(Modifier.height(20.dp))
         ONBOARDING_STEPS.forEachIndexed { i, label ->
             val current = i == step
-            val done = i < step
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -322,18 +356,7 @@ private fun StepPanel(step: Int, modifier: Modifier) {
                     .heightIn(min = 48.dp)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .then(
-                            if (current) Modifier.background(cs.primary, CircleShape)
-                            else Modifier.border(1.5.dp, if (done) cs.primary else cs.outline, CircleShape)
-                        ),
-                ) {
-                    if (done) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary, modifier = Modifier.size(16.dp))
-                    else Text("${i + 1}", color = if (current) cs.onPrimary else cs.onSurfaceVariant, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                }
+                StepCircle(i, step)
                 Spacer(Modifier.width(14.dp))
                 Text(
                     text = label,
@@ -472,7 +495,7 @@ private fun StepBody(
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Interface style", color = cs.onSurface, fontFamily = SoraFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Text(
-                        "Simple is a full-screen launcher for controllers; Deck has tabs across the top. Classic is the drawer " +
+                        "Lab is a full-screen launcher for controllers; Deck has tabs across the top. Classic is the drawer " +
                             "and top bar; choosing it closes this setup and switches straight away.",
                         color = cs.onSurfaceVariant,
                         fontSize = 13.5.sp,

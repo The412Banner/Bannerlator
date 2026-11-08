@@ -74,14 +74,14 @@ import kotlin.math.roundToInt
 
 /** The game page's quick settings: the first of each group that applies to this game (X11 or Wayland driver ...). */
 private val QUICK = listOf(
-    listOf("graphics.driver", "graphics.compositorDriver") to "GPU driver",
-    listOf("graphics.dxWrapper") to "DX wrapper",
-    listOf("display.resolution") to "Resolution",
-    listOf("hud.show") to "FPS overlay",
-    listOf("performance.frameGen") to "Frame gen",
-    listOf("performance.fpsLimiter") to "FPS limiter",
-    listOf("performance.syncMode") to "Sync",
-    listOf("input.controlsProfile") to "Controls",
+    listOf("graphics.driver", "graphics.compositorDriver") to L("GPU driver"),
+    listOf("graphics.dxWrapper") to L("DX wrapper"),
+    listOf("display.resolution") to L("Resolution"),
+    listOf("hud.show") to L("FPS overlay"),
+    listOf("performance.frameGen") to L("Frame gen"),
+    listOf("performance.fpsLimiter") to L("FPS limiter"),
+    listOf("performance.syncMode") to L("Sync"),
+    listOf("input.controlsProfile") to L("Controls"),
 )
 
 /**
@@ -103,7 +103,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         }.getOrNull()
     }
     if (loaded == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("This game is no longer in your library.", color = SimpleMuted) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(L("This game is no longer in your library."), color = SimpleMuted) }
         return
     }
     val shortcutState = remember(path) { mutableStateOf(loaded) }
@@ -133,7 +133,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions) {
-        val legend = listOf("B" to "Back", "A" to "Change / open", "X" to "All values", "L1 R1" to "Section")
+        val legend = listOf("B" to L("Back"), "A" to L("Change / open"), "X" to L("All values"), "L1 R1" to L("Section"))
         deckActions.ownLegend.value = legend
         onDispose { if (deckActions.ownLegend.value === legend) deckActions.ownLegend.value = null }
     }
@@ -157,7 +157,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
 
     fun commit(def: SettingDef, v: String) {
         source.set(def, v)
-        source.save { ok -> if (!ok) Toast.makeText(context, "Could not save", Toast.LENGTH_SHORT).show() }
+        source.save { ok -> if (!ok) Toast.makeText(context, L("Could not save"), Toast.LENGTH_SHORT).show() }
     }
     fun take(def: SettingDef, v: String) {
         if (source.value(def) == v) return
@@ -165,7 +165,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     }
     fun next(def: SettingDef, label: String) {
         def.disabled(env, values)?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); return }
-        if (!source.editable(def)) { Toast.makeText(context, "$label is a container setting.", Toast.LENGTH_SHORT).show(); return }
+        if (!source.editable(def)) { Toast.makeText(context, L("%1\$s is a container setting.", label), Toast.LENGTH_SHORT).show(); return }
         when (val c = def.control(env, values)) {
             Control.Toggle -> take(def, if (source.value(def) == "1") "0" else "1")
             is Control.Segmented, is Control.Chips, is Control.Select -> {
@@ -196,7 +196,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabTileLabel(label)
                     Spacer(Modifier.weight(1f))
-                    if (origin == Origin.SET_HERE) Text("This game", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    if (origin == Origin.SET_HERE) Text(L("This game"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
                 Text(v.ifBlank { "—" }, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -210,7 +210,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                     color = SimpleMuted, fontSize = 13.sp, maxLines = 2,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabButton("Play", primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus) { launcher.requestLaunch(shortcut) }
+                    LabButton(L("Play"), primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus) { launcher.requestLaunch(shortcut) }
                     LabButton("", icon = Icons.Filled.MoreHoriz) { menuOpen = true }
                 }
             }
@@ -234,15 +234,15 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                             })
                             .padding(12.dp),
                     ) {
-                        LabTileLabel("Container")
+                        LabTileLabel(L("Container"))
                         Text(shortcut.container.name, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
                     }
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = { onNavigate(DeckSettingsRoutes.game(shortcut.file.path)) }).padding(12.dp),
                     ) {
-                        LabTileLabel("Everything else")
-                        Text("All settings ›", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        LabTileLabel(L("Everything else"))
+                        Text(L("All settings ›"), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
                 // The saved FPS of its sessions (a chart), or its playtime until it has one.
@@ -250,16 +250,16 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                     val fps = remember(resumeTick) { com.winlator.star.ui.deck.readFpsStats(context, shortcut) }
                     Column(Modifier.weight(1f).height(if (fps != null) 110.dp else tileH).labPanel().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (fps != null) {
-                            LabTileLabel("FPS · last ${fps.history.size} sessions")
+                            LabTileLabel(L("FPS · last %1\$s sessions", fps.history.size))
                             Text(
-                                "${fps.lastAvg.roundToInt()} avg" + (if (fps.lastLow > 0) " · 1% low ${fps.lastLow}" else "") + " · ${playtimeLabel(stats?.ms ?: 0L)}",
+                                L("%1\$s avg", fps.lastAvg.roundToInt()) + (if (fps.lastLow > 0) L(" · 1%% low %1\$s", fps.lastLow) else "") + " · ${playtimeLabel(stats?.ms ?: 0L)}",
                                 color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1,
                             )
                             LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
                         } else {
-                            LabTileLabel("Playtime")
+                            LabTileLabel(L("Playtime"))
                             Text(
-                                "${playtimeLabel(stats?.ms ?: 0L)} · ${stats?.count ?: 0} sessions",
+                                L("%1\$s · %2\$s sessions", playtimeLabel(stats?.ms ?: 0L), stats?.count ?: 0),
                                 color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1,
                             )
                         }
@@ -305,7 +305,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         else OutlinedAlertDialog(
             onDismissRequest = { confirm = null },
             confirmButton = { TextButton(onClick = { confirm = null; commit(def, v) }) { Text(ask.confirmLabel) } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text(L("Cancel")) } },
             title = { Text(ask.title) },
             text = { Text(ask.body) },
         )

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck
 
+import com.winlator.star.ui.simple.L
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
@@ -855,33 +856,33 @@ private fun OpenersPage() {
 // ───────────────────────────── Full game menu ─────────────────────────────
 
 private fun menuTabTitle(t: MenuTab) = when (t) {
-    MenuTab.SCREEN -> "Screen"
-    MenuTab.PERFORMANCE -> "Performance"
-    MenuTab.EFFECTS -> "Visual effects"
-    MenuTab.OVERLAY -> "Performance overlay"
-    MenuTab.CONTROLS -> "Controls"
-    MenuTab.AUDIO -> "Audio"
+    MenuTab.SCREEN -> L("Screen")
+    MenuTab.PERFORMANCE -> L("Performance")
+    MenuTab.EFFECTS -> L("Visual effects")
+    MenuTab.OVERLAY -> L("Performance overlay")
+    MenuTab.CONTROLS -> L("Controls")
+    MenuTab.AUDIO -> L("Audio")
     MenuTab.STEAM -> "Steam"
     MenuTab.TV -> "TV"
-    MenuTab.FRIENDS -> "Friends"
-    MenuTab.TOOLS -> "Tools"
+    MenuTab.FRIENDS -> L("Friends")
+    MenuTab.TOOLS -> L("Tools")
 }
 
 private fun menuTabDesc(t: MenuTab, kind: InGameSessionKind) = when (t) {
-    MenuTab.SCREEN -> "Picture size, frame pacing and refresh rate."
-    MenuTab.PERFORMANCE -> "Frame limit, frame generation and device power."
-    MenuTab.EFFECTS -> if (kind.isWine) "Upscaling, sharpening, colour and ReShade." else "Upscaling, sharpening and colour."
-    MenuTab.OVERLAY -> "The FPS/temperature overlay drawn over the game."
+    MenuTab.SCREEN -> L("Picture size, frame pacing and refresh rate.")
+    MenuTab.PERFORMANCE -> L("Frame limit, frame generation and device power.")
+    MenuTab.EFFECTS -> if (kind.isWine) L("Upscaling, sharpening, colour and ReShade.") else L("Upscaling, sharpening and colour.")
+    MenuTab.OVERLAY -> L("The FPS/temperature overlay drawn over the game.")
     MenuTab.CONTROLS -> when (kind) {
-        InGameSessionKind.LINUX_STEAM -> "Rumble and motion aim."
-        InGameSessionKind.LINUX_RUNTIME -> "On-screen controls, mouse, rumble, motion aim."
-        else -> "On-screen controls, mouse, rumble, motion aim, players."
+        InGameSessionKind.LINUX_STEAM -> L("Rumble and motion aim.")
+        InGameSessionKind.LINUX_RUNTIME -> L("On-screen controls, mouse, rumble, motion aim.")
+        else -> L("On-screen controls, mouse, rumble, motion aim, players.")
     }
-    MenuTab.AUDIO -> "Sound profile, and a quick fix for crackle or silence."
-    MenuTab.STEAM -> "The Linux Steam client session."
-    MenuTab.TV -> "Play on a TV or cast to one."
-    MenuTab.FRIENDS -> "Steam friends and chat."
-    MenuTab.TOOLS -> if (kind.isWine) "Magnifier, windows, logs and running programs." else "Magnifier, picture-in-picture, keyboard and performance."
+    MenuTab.AUDIO -> L("Sound profile, and a quick fix for crackle or silence.")
+    MenuTab.STEAM -> L("The Linux Steam client session.")
+    MenuTab.TV -> L("Play on a TV or cast to one.")
+    MenuTab.FRIENDS -> L("Steam friends and chat.")
+    MenuTab.TOOLS -> if (kind.isWine) L("Magnifier, windows, logs and running programs.") else L("Magnifier, picture-in-picture, keyboard and performance.")
 }
 
 private fun menuTabIcon(t: MenuTab): ImageVector = when (t) {
@@ -1112,7 +1113,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp)) {
             Text(
-                title.ifEmpty { "In game" }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
+                title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
                 fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
             )
             DeviceStatus()
@@ -1127,14 +1128,14 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 2.dp),
         ) {
             DeckGlyph("L1", GlyphKind.BUMPER)
-            TabChip(Icons.Outlined.Bolt, "Quick", quick) { DeckInGameState.selectLabQuick() }
+            TabChip(Icons.Outlined.Bolt, L("Quick"), quick) { DeckInGameState.selectLabQuick() }
             tabs.forEach { t -> TabChip(menuTabIcon(t), menuTabTitle(t), !quick && t == shown) { DeckInGameState.selectMenuTab(t) } }
             DeckGlyph("R1", GlyphKind.BUMPER)
         }
         Spacer(Modifier.height(6.dp))
         Box(Modifier.fillMaxWidth().height(1.dp).background(com.winlator.star.ui.simple.SimpleLine))
-        val pageTitle = if (quick) "Quick" else menuTabTitle(shown)
-        val pageDesc = if (quick) "The settings changed most during a game." else menuTabDesc(shown, kind)
+        val pageTitle = if (quick) L("Quick") else menuTabTitle(shown)
+        val pageDesc = if (quick) L("The settings changed most during a game.") else menuTabDesc(shown, kind)
         val pageHeader: @Composable () -> Unit = {
             Text(pageTitle, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
             Text(pageDesc, color = com.winlator.star.ui.simple.SimpleMuted, fontFamily = NunitoSansFamily, fontSize = 12.5.sp, lineHeight = 16.sp)
@@ -1177,8 +1178,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                 .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            IgButton(if (isPaused) "Resume" else "Pause", if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
-            IgButton("Exit game", Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
+            IgButton(if (isPaused) L("Resume") else L("Pause"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
+            IgButton(L("Exit game"), Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
         }
     }
 }

@@ -97,11 +97,23 @@ object LabLang {
         ids.clear()
     }
 
-    /** Picks a language ("" = the phone's) and redraws [activity] in it. */
+    /**
+     * Picks a language ("" = the phone's) and restarts the app in it: lists built once at start (the sections, the
+     * settings) are made again in the new language, not only the screen on show.
+     */
     fun set(activity: Activity, tag: String) {
-        PreferenceManager.getDefaultSharedPreferences(activity).edit().putString(PREF, tag).apply()
-        init(activity)
-        activity.recreate()
+        PreferenceManager.getDefaultSharedPreferences(activity).edit().putString(PREF, tag).commit()
+        val start = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+            ?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        if (start == null) {
+            init(activity)
+            activity.recreate()
+            return
+        }
+        activity.startActivity(start)
+        activity.finishAffinity()
+        // The new task starts in a fresh process once this one is gone.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ Runtime.getRuntime().exit(0) }, 150)
     }
 
     /** Right-to-left (Arabic): Lab's screens lay out from the right. */
@@ -129,6 +141,12 @@ object LabLang {
  * ("Removed %1$s", name). Missing translations show the English.
  */
 fun L(english: String, vararg args: Any?): String = LabLang.lookup(english, args)
+
+/**
+ * Marks English that is kept as English where it is defined (a list built once, a setting's label) and translated
+ * where it is drawn, with L(text). tools/i18n/lab_strings.py collects T("...") as well as L("...").
+ */
+fun T(english: String): String = english
 
 /** Lab's screens laid out in the picked language's direction (right to left for Arabic). */
 @Composable

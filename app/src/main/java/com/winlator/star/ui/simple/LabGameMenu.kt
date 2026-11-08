@@ -115,14 +115,14 @@ internal fun LabGameMenu(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         SimpleCover(shortcut, Modifier.width(54.dp).height(72.dp), title = false)
                         Column(Modifier.weight(1f)) {
-                            LabTileLabel("Game menu")
+                            LabTileLabel(L("Game menu"))
                             Text(shortcut.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(subtitle, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.size(40.dp).background(SimpleCard, SimpleShape).labTile(onClick = { close {} }),
-                        ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = SimpleInk, modifier = Modifier.size(20.dp)) }
+                        ) { Icon(Icons.Filled.Close, contentDescription = L("Close"), tint = SimpleInk, modifier = Modifier.size(20.dp)) }
                     }
                     Spacer(Modifier.height(12.dp))
                     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -152,7 +152,7 @@ internal fun LabGameMenu(
                                         .padding(horizontal = 14.dp, vertical = 8.dp),
                                 ) {
                                     Text(
-                                        if (blocked) "${entry.title} · download the game first" else entry.title,
+                                        if (blocked) L("%1\$s · download the game first", entry.title) else entry.title,
                                         color = when {
                                             entry.danger -> MaterialTheme.colorScheme.error
                                             play -> MaterialTheme.colorScheme.primary

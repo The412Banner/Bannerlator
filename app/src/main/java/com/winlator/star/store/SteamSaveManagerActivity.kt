@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.T
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.labTile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
@@ -194,7 +196,7 @@ private fun SaveTextAction(label: String, onClick: () -> Unit) {
             .background(com.winlator.star.ui.simple.SimpleCard, com.winlator.star.ui.simple.SimpleShape)
             .labTile(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) { Text(label, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+    ) { Text(L(label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
 }
 
 /** A row's icon action (download / upload). */
@@ -479,8 +481,8 @@ private fun SaveManagerScreenBody(
                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, top = 4.dp),
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("MANAGE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
-                    Text("Save Manager", color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = com.winlator.star.ui.deck.SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
+                    Text(L("Manage").uppercase(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+                    Text(L("Save Manager"), color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = com.winlator.star.ui.deck.SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                 }
                 if (signedIn) SteamStatusPill(status = steamStatus, onReconnect = { SteamRepository.getInstance().reconnectNow() })
             }
@@ -754,10 +756,10 @@ private fun SaveManagerScreenBody(
 /** Lab's Save Manager tabs, in the rail's order: (selectedTab value, label, icon). */
 private val LAB_SAVE_TABS = listOf(
     Triple(0, "Steam", Icons.Filled.VideogameAsset),
-    Triple(1, "Custom", Icons.Filled.Folder),
+    Triple(1, T("Custom"), Icons.Filled.Folder),
     Triple(3, "Epic", Icons.Filled.Cloud),
     Triple(4, "GOG", Icons.Filled.Storefront),
-    Triple(2, "Settings", Icons.Filled.Settings),
+    Triple(2, T("Settings"), Icons.Filled.Settings),
 )
 
 @Composable
@@ -781,7 +783,7 @@ private fun LabSaveTabs(selected: Int, needSync: Int, onPick: (Int) -> Unit) {
             ) {
                 Icon(icon, contentDescription = null, tint = if (on) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(label, color = if (on) com.winlator.star.ui.simple.SimpleStrong else com.winlator.star.ui.simple.SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(L(label), color = if (on) com.winlator.star.ui.simple.SimpleStrong else com.winlator.star.ui.simple.SimpleMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 if (id == 0 && needSync > 0) {
                     Spacer(Modifier.width(6.dp))
                     Text("$needSync", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1362,10 +1364,10 @@ private fun CustomSaveRow(
             )
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                SaveTextAction("Back up", onBackup)
+                SaveTextAction(T("Back up"), onBackup)
                 // Restore is always available: latest vault snapshot if present, else browse for a
                 // GameHub/Bannerlator save file (the chooser decides).
-                SaveTextAction("Restore", onRestore)
+                SaveTextAction(T("Restore"), onRestore)
             }
         }
     }

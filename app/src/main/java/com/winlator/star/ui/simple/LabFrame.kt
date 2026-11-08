@@ -107,7 +107,7 @@ internal fun readLabDevice(context: Context): LabDeviceInfo {
         diskTotalGb = total / gb,
         time = android.text.format.DateFormat.getTimeFormat(context).format(Date()),
         volumes = buildList {
-            if (total > 0) add(LabVolume("Internal", (total - free) / gb, total / gb, removable = false))
+            if (total > 0) add(LabVolume(L("Internal"), (total - free) / gb, total / gb, removable = false))
             runCatching { com.winlator.star.core.StorageRoots.list(context) }.getOrDefault(emptyList())
                 .filter { it.removable }
                 .forEach { root ->
@@ -169,8 +169,8 @@ internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier 
                     .labTile(onClick = { onSection(i) })
                     .padding(vertical = 7.dp),
             ) {
-                Icon(s.icon, contentDescription = s.label, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
-                Text(s.short, color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, maxLines = 1)
+                Icon(s.icon, contentDescription = L(s.label), tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
+                Text(L(s.short), color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, maxLines = 1)
             }
         }
     }
@@ -193,19 +193,19 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(40.dp).labPanel().labTile(onClick = onBack),
-            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = SimpleInk, modifier = Modifier.size(22.dp)) }
+            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = L("Back"), tint = SimpleInk, modifier = Modifier.size(22.dp)) }
         }
         if (portrait) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(40.dp).labPanel().labTile(onClick = onMenu),
-            ) { Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = SimpleInk, modifier = Modifier.size(22.dp)) }
+            ) { Icon(Icons.Filled.Menu, contentDescription = L("Menu"), tint = SimpleInk, modifier = Modifier.size(22.dp)) }
         }
         Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1)
         Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (dev != null) {
             if (dev.battery >= 0) Text("${dev.battery}%", color = SimpleMuted, fontSize = 13.sp)
-            dev.tempC?.let { Text("$it°C", color = SimpleMuted, fontSize = 13.sp) }
+            dev.tempC?.let { Text(L("%1\$s°C", it), color = SimpleMuted, fontSize = 13.sp) }
             Text(dev.time, color = SimpleInk, fontSize = 13.sp)
         }
     }
@@ -272,15 +272,15 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(v.label, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(72.dp))
                                     LabBar(v.fraction, Modifier.weight(1f))
-                                    Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 12.sp)
+                                    Text(L("%1\$s / %2\$s GB", fmtGb(v.usedGb), fmtGb(v.totalGb)), color = SimpleMuted, fontSize = 12.sp)
                                 }
                             }
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 listOfNotNull(
                                     if (dev.battery >= 0) "${dev.battery}%" else null,
-                                    dev.tempC?.let { "$it°C" },
-                                    "RAM ${fmtGb(dev.ramUsedGb)} / ${fmtGb(dev.ramTotalGb)} GB",
+                                    dev.tempC?.let { L("%1\$s°C", it) },
+                                    L("RAM %1\$s / %2\$s GB", fmtGb(dev.ramUsedGb), fmtGb(dev.ramTotalGb)),
                                 ).joinToString("  ·  "),
                                 color = SimpleMuted, fontSize = 12.sp,
                             )
@@ -301,12 +301,12 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                                 .padding(horizontal = 12.dp),
                         ) {
                             Icon(s.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
-                            Text(s.label, color = if (on) SimpleStrong else SimpleInk, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
+                            Text(L(s.label), color = if (on) SimpleStrong else SimpleInk, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
                         }
                     }
                     if (active != null) {
                         Spacer(Modifier.height(14.dp))
-                        Text("Downloading ${active.title} · ${(active.fraction * 100).roundToInt()}%", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))
+                        Text(L("Downloading %1\$s · %2\$s%%", active.title, (active.fraction * 100).roundToInt()), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))
                         Spacer(Modifier.height(6.dp))
                         LabBar(active.fraction, Modifier.fillMaxWidth().padding(horizontal = 10.dp))
                     }

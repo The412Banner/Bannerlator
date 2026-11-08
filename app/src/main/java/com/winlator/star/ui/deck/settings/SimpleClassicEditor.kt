@@ -75,6 +75,7 @@ import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.UnsavedChangesDialog
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.SIn
 import com.winlator.star.ui.simple.SimpleCover
 import com.winlator.star.ui.simple.SimpleDim
@@ -125,53 +126,53 @@ private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id
 private const val COMPOSITOR_DRIVER = "graphics.compositorDriver"
 
 private fun graphicsItems(game: Boolean): List<CItem> = listOf(
-    CHead("Graphics"),
-    CRow("performance.syncMode", "Sync").takeIf { game },
-    CRow("graphics.driver", "Graphics Driver"),
-    CPage("Driver settings", listOf(CMatch(pre("graphics.gdc.")))),
-    CRow(COMPOSITOR_DRIVER, "Graphics Driver"),
-    CPage("Wayland game driver", listOf(CMatch(pre("graphics.wl.")))),
-    CRow("display.hdrOutput", "HDR output (HDR10)"),
-    CRow("graphics.fastOpenGL", "OpenGL: Fast"),
-    CRow("graphics.glFpsHud", "OpenGL: Show FPS"),
-    CRow("graphics.glVsyncOff", "OpenGL: Vsync off"),
-    CRow("graphics.unrealHdr", "Unreal Engine HDR"),
-    CRow("graphics.dxWrapper", "DX Wrapper"),
-    CPage("DX wrapper settings", listOf(CMatch(pre("graphics.dx.")))),
-    CRow("graphics.renderer", "Renderer"),
+    CHead(L("Graphics")),
+    CRow("performance.syncMode", L("Sync")).takeIf { game },
+    CRow("graphics.driver", L("Graphics Driver")),
+    CPage(L("Driver settings"), listOf(CMatch(pre("graphics.gdc.")))),
+    CRow(COMPOSITOR_DRIVER, L("Graphics Driver")),
+    CPage(L("Wayland game driver"), listOf(CMatch(pre("graphics.wl.")))),
+    CRow("display.hdrOutput", L("HDR output (HDR10)")),
+    CRow("graphics.fastOpenGL", L("OpenGL: Fast")),
+    CRow("graphics.glFpsHud", L("OpenGL: Show FPS")),
+    CRow("graphics.glVsyncOff", L("OpenGL: Vsync off")),
+    CRow("graphics.unrealHdr", L("Unreal Engine HDR")),
+    CRow("graphics.dxWrapper", L("DX Wrapper")),
+    CPage(L("DX wrapper settings"), listOf(CMatch(pre("graphics.dx.")))),
+    CRow("graphics.renderer", L("Renderer")),
     CPage(
-        "Vulkan settings",
+        L("Vulkan settings"),
         listOf(
-            CRow("graphics.nativeRenderer", "Native Renderer"), CRow("graphics.nativeBackend", "Native backend"),
-            CRow("graphics.presentMode", "Present Mode"), CRow("graphics.rendererDriver", "Renderer Driver"),
-            CRow("graphics.swapColours", "Colors"),
+            CRow("graphics.nativeRenderer", L("Native Renderer")), CRow("graphics.nativeBackend", L("Native backend")),
+            CRow("graphics.presentMode", L("Present Mode")), CRow("graphics.rendererDriver", L("Renderer Driver")),
+            CRow("graphics.swapColours", L("Colors")),
         ),
     ),
-    CRow("graphics.sfColours", "Correct SurfaceFlinger colours"),
-    CRow("display.renderScale", "Render scale (supersampling)"),
+    CRow("graphics.sfColours", L("Correct SurfaceFlinger colours")),
+    CRow("display.renderScale", L("Render scale (supersampling)")),
     CPage(
-        "Wrapper settings and tools",
-        listOf(CMatch(pre("graphics.wrapperDetected.")), CExtra("graphics", "Detected in this wrapper", { it.startsWith("wrapper-detected") }), CExtra("graphics", "Downloads and tools")),
+        L("Wrapper settings and tools"),
+        listOf(CMatch(pre("graphics.wrapperDetected.")), CExtra("graphics", L("Detected in this wrapper"), { it.startsWith("wrapper-detected") }), CExtra("graphics", L("Downloads and tools"))),
     ),
 ).filterNotNull()
 
 private fun audioItems(game: Boolean): List<CItem> = listOf(
-    CHead("Audio"),
-    CRow("audio.driver", "Audio Driver"),
-    CPage(if (game) "Audio settings · this game" else "Audio settings", listOf(CMatch(pre("audio.latency")), CExtra("audio", "Sound"))),
-    CRow("audio.microphone", "Microphone"),
-    CRow("audio.midiSoundfont", "MIDI SoundFont"),
+    CHead(L("Audio")),
+    CRow("audio.driver", L("Audio Driver")),
+    CPage(if (game) L("Audio settings · this game") else L("Audio settings"), listOf(CMatch(pre("audio.latency")), CExtra("audio", L("Sound")))),
+    CRow("audio.microphone", L("Microphone")),
+    CRow("audio.midiSoundfont", L("MIDI SoundFont")),
 )
 
 private fun componentsTab(): CTab = CTab(
-    "Win Components", Icons.Filled.GridView,
+    L("Win Components"), Icons.Filled.GridView,
     listOf(
-        CExtra(SettingsRegistry.CAT_COMPONENTS, "This game needs", top = true),
-        CExtra(SettingsRegistry.CAT_COMPONENTS, "Browse & install components", top = false),
+        CExtra(SettingsRegistry.CAT_COMPONENTS, L("This game needs"), top = true),
+        CExtra(SettingsRegistry.CAT_COMPONENTS, L("Browse & install components"), top = false),
         CMatch { it.category == SettingsRegistry.CAT_COMPONENTS },
-        CHead("Codecs"),
-        CRow("windows.codecBackend", "Builtin decoder"),
-        CRow("windows.softwareDecoding", "Software decoding"),
+        CHead(L("Codecs")),
+        CRow("windows.codecBackend", L("Builtin decoder")),
+        CRow("windows.softwareDecoding", L("Software decoding")),
     ),
     leftovers = setOf(SettingsRegistry.CAT_COMPONENTS),
 )
@@ -185,178 +186,178 @@ private fun envTab(title: String): CTab = CTab(
 /** Classic's container editor: GENERAL · ENVIRONMENT · DRIVES · WIN COMPONENTS · ADVANCED (All containers has no drives). */
 private fun containerLayout(): List<CTab> = listOf(
     CTab(
-        "General", Icons.Filled.Settings,
+        L("General"), Icons.Filled.Settings,
         listOf(
-            CHead("Container"),
-            CRow("windows.containerName", "Name"),
-            CRow("display.resolution", "Screen Size"),
-            CRow("windows.wineVersion", "Wine Version"),
-            CRow("performance.syncMode", "Sync"),
-            CRow(SettingsEnv.ID_BACKEND, "Display backend"),
+            CHead(L("Container")),
+            CRow("windows.containerName", L("Name")),
+            CRow("display.resolution", L("Screen Size")),
+            CRow("windows.wineVersion", L("Wine Version")),
+            CRow("performance.syncMode", L("Sync")),
+            CRow(SettingsEnv.ID_BACKEND, L("Display backend")),
         ) + graphicsItems(game = false) + listOf(
-            CHead("Display"),
-            CRow("display.fullscreenMode", "Fullscreen Mode"),
-            CRow("display.alignment", "Screen Alignment"),
-            CRow("performance.frameGen", "Frame Generation (AI)"),
-            CRow("performance.frameGenModel", "Interpolation model"),
-            CRow("performance.fgCapture", "Capture resolution"),
-            CRow("performance.lsfgVk11", "LSFG on Vulkan 1.1 drivers (compat)"),
-            CRow("performance.fpsLimiter", "FPS Limiter"),
-            CRow("display.refreshAuto", "Auto (match FPS)"),
-            CRow("display.refreshManual", "Manual refresh rate"),
-            CRow("display.refreshInGame", "In-game refresh rate"),
-            CRow("hud.show", "Show FPS Counter"),
-            CPage("FPS counter settings", listOf(CMatch(pre("hud.")), CExtra("hud", "Diagnostics"))),
+            CHead(L("Display")),
+            CRow("display.fullscreenMode", L("Fullscreen Mode")),
+            CRow("display.alignment", L("Screen Alignment")),
+            CRow("performance.frameGen", L("Frame Generation (AI)")),
+            CRow("performance.frameGenModel", L("Interpolation model")),
+            CRow("performance.fgCapture", L("Capture resolution")),
+            CRow("performance.lsfgVk11", L("LSFG on Vulkan 1.1 drivers (compat)")),
+            CRow("performance.fpsLimiter", L("FPS Limiter")),
+            CRow("display.refreshAuto", L("Auto (match FPS)")),
+            CRow("display.refreshManual", L("Manual refresh rate")),
+            CRow("display.refreshInGame", L("In-game refresh rate")),
+            CRow("hud.show", L("Show FPS Counter")),
+            CPage(L("FPS counter settings"), listOf(CMatch(pre("hud.")), CExtra("hud", L("Diagnostics")))),
         ) + audioItems(game = false) + listOf(
-            CHead("Emulation"),
-            CRow("performance.translator", "Emulator (32-bit)"),
-            CRow("performance.translator64", "Emulator (64-bit)"),
-            CHead("Other"),
-            CRow("windows.closeOnExit", "Close when game exits"),
-            CPage("ReShade loadout", listOf(CMatch(pre("visuals.reshade.")), CExtra("visuals", "Effects", { it.startsWith("reshade") }))),
+            CHead(L("Emulation")),
+            CRow("performance.translator", L("Emulator (32-bit)")),
+            CRow("performance.translator64", L("Emulator (64-bit)")),
+            CHead(L("Other")),
+            CRow("windows.closeOnExit", L("Close when game exits")),
+            CPage(L("ReShade loadout"), listOf(CMatch(pre("visuals.reshade.")), CExtra("visuals", L("Effects"), { it.startsWith("reshade") }))),
             CRow("windows.locale", "LC_ALL"),
-            CHead("Desktop"),
-            CRow("windows.theme", "Theme"),
-            CRow("windows.desktopBackground", "Background"),
-            CRow("windows.wallpaperScope", "Apply wallpaper to"),
-            CExtra("windows", "Wallpaper Image", { it.startsWith("windows-wallpaper") }),
-            CRow("windows.desktopColor", "Background Color"),
-            CRow("input.mouseWarp", "Mouse Warp Override"),
-            CRow("windows.runAsAdmin", "Run as administrator"),
+            CHead(L("Desktop")),
+            CRow("windows.theme", L("Theme")),
+            CRow("windows.desktopBackground", L("Background")),
+            CRow("windows.wallpaperScope", L("Apply wallpaper to")),
+            CExtra("windows", L("Wallpaper Image"), { it.startsWith("windows-wallpaper") }),
+            CRow("windows.desktopColor", L("Background Color")),
+            CRow("input.mouseWarp", L("Mouse Warp Override")),
+            CRow("windows.runAsAdmin", L("Run as administrator")),
         ),
         leftovers = setOf("game", "launch", "display", "graphics", "audio", "hud", "windows", "linux"),
     ),
-    envTab("Environment"),
-    CTab("Drives", Icons.Filled.Storage, listOf(CExtra("windows", "Drives", { it.startsWith("windows-drive") }))),
+    envTab(L("Environment")),
+    CTab(L("Drives"), Icons.Filled.Storage, listOf(CExtra("windows", L("Drives"), { it.startsWith("windows-drive") }))),
     componentsTab(),
     CTab(
-        "Advanced", Icons.Filled.Memory,
+        L("Advanced"), Icons.Filled.Memory,
         listOf(
             CHead("Box64EC"),
-            CRow("performance.box64ecVersion", "Box64EC Version"),
+            CRow("performance.box64ecVersion", L("Box64EC Version")),
             CHead("Box64"),
-            CRow("performance.box64Version", "Version"),
-            CRow("performance.box64Preset", "Preset"),
+            CRow("performance.box64Version", L("Version")),
+            CRow("performance.box64Preset", L("Preset")),
             CHead("FEXCore"),
-            CRow("performance.fexVersion", "FEXCore Version"),
-            CRow("performance.fexPreset", "FEXCore Preset"),
-            CRow("performance.forceSsbs", "Force SSBS (CPU speed fix)"),
-            CPage("Preset values", listOf(CExtra("performance", "Translator presets", { it.startsWith("perf-preset") }))),
+            CRow("performance.fexVersion", L("FEXCore Version")),
+            CRow("performance.fexPreset", L("FEXCore Preset")),
+            CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
+            CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
         ) + controllerItems(game = false) + listOf(
-            CHead("System"),
-            CRow("performance.startupServices", "Startup Selection"),
-            CPage("Custom Services", listOf(CMatch(pre("performance.service.")))),
-            CRow("performance.cpuAffinity", "Processor Affinity"),
-            CRow("performance.cpuAffinity32", "Processor Affinity (32-bit apps)"),
+            CHead(L("System")),
+            CRow("performance.startupServices", L("Startup Selection")),
+            CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
+            CRow("performance.cpuAffinity", L("Processor Affinity")),
+            CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
             CHead("XR"),
-            CRow("input.xr.primary", "Primary controller"),
-            CPage("Controller Mapping", listOf(CMatch(pre("input.xr.map")))),
+            CRow("input.xr.primary", L("Primary controller")),
+            CPage(L("Controller Mapping"), listOf(CMatch(pre("input.xr.map")))),
         ),
         leftovers = setOf("input", "performance", "visuals"),
     ),
 )
 
 private fun controllerItems(game: Boolean): List<CItem> = listOf(
-    CHead("Game Controller"),
-    CRow("input.dinputVisible", "DirectInput games can see the controller"),
-    CRow("input.dinputVibration", "DirectInput vibration"),
-    CRow("input.bannerinXInput", "Direct XInput (BANNERIN)"),
-    CRow("input.bannerinXInputSwitching", "Allow in-game switching"),
-    CRow("input.stickPacing", "Stick updates"),
-    CRow("input.controllerIdentity", "Controller identity"),
-    CRow("input.disableXInput", "Disable XInput"),
-    CHead("Vibration"),
-    CRow("input.vibrationTarget", "Rumble Target"),
-    CRow("input.vibrationIntensity", "Rumble Intensity"),
-    CRow("input.rumbleMotors", "Rumble Motors"),
-    CHead(if (game) "Input" else "Player Slots"),
-    CRow("input.touchMode", "Touchscreen Mode"),
-    CRow("input.numControllers", "Num Controllers"),
-    CRow("input.onScreenPriority", "On-screen priority"),
-    CRow("input.hideOnController", "Hide on-screen controls when a controller connects"),
-    CPage("Player Slots", listOf(CExtra("input", "Slots", { it.startsWith("slots") }))),
-    CRow("input.relativeMouse", "Relative mouse"),
-    CHead("Gyro (Motion Aim)"),
-    CRow("input.gyro.enabled", "Enable Motion Aim"),
-    CRow("input.gyro.mode", "Motion Mode"),
-    CRow("input.gyro.target", "Motion Target"),
-    CRow("input.gyro.activator", "Activator Button"),
-    CRow("input.gyro.activation", "Activation"),
-    CRow("input.gyro.sensitivity", "Sensitivity"),
-    CRow("input.gyro.deadzone", "Deadzone"),
-    CRow("input.gyro.smoothing", "Smoothing"),
-    CRow("input.gyro.invertX", "Invert X"),
-    CRow("input.gyro.invertY", "Invert Y"),
+    CHead(L("Game Controller")),
+    CRow("input.dinputVisible", L("DirectInput games can see the controller")),
+    CRow("input.dinputVibration", L("DirectInput vibration")),
+    CRow("input.bannerinXInput", L("Direct XInput (BANNERIN)")),
+    CRow("input.bannerinXInputSwitching", L("Allow in-game switching")),
+    CRow("input.stickPacing", L("Stick updates")),
+    CRow("input.controllerIdentity", L("Controller identity")),
+    CRow("input.disableXInput", L("Disable XInput")),
+    CHead(L("Vibration")),
+    CRow("input.vibrationTarget", L("Rumble Target")),
+    CRow("input.vibrationIntensity", L("Rumble Intensity")),
+    CRow("input.rumbleMotors", L("Rumble Motors")),
+    CHead(if (game) L("Input") else L("Player Slots")),
+    CRow("input.touchMode", L("Touchscreen Mode")),
+    CRow("input.numControllers", L("Num Controllers")),
+    CRow("input.onScreenPriority", L("On-screen priority")),
+    CRow("input.hideOnController", L("Hide on-screen controls when a controller connects")),
+    CPage(L("Player Slots"), listOf(CExtra("input", L("Slots"), { it.startsWith("slots") }))),
+    CRow("input.relativeMouse", L("Relative mouse")),
+    CHead(L("Gyro (Motion Aim)")),
+    CRow("input.gyro.enabled", L("Enable Motion Aim")),
+    CRow("input.gyro.mode", L("Motion Mode")),
+    CRow("input.gyro.target", L("Motion Target")),
+    CRow("input.gyro.activator", L("Activator Button")),
+    CRow("input.gyro.activation", L("Activation")),
+    CRow("input.gyro.sensitivity", L("Sensitivity")),
+    CRow("input.gyro.deadzone", L("Deadzone")),
+    CRow("input.gyro.smoothing", L("Smoothing")),
+    CRow("input.gyro.invertX", L("Invert X")),
+    CRow("input.gyro.invertY", L("Invert Y")),
 )
 
 /** Classic's game editor: General · Win Components · Env Vars · Advanced · Controller (+ TV). */
 private fun gameLayout(): List<CTab> = listOf(
     CTab(
-        "General", Icons.Filled.Settings,
+        L("General"), Icons.Filled.Settings,
         listOf(
-            CHead("Game"),
-            CRow("game.name", "Name"),
-            CRow("game.arguments", "Exec Arguments"),
+            CHead(L("Game")),
+            CRow("game.name", L("Name")),
+            CRow("game.arguments", L("Exec Arguments")),
             CLinks("game"),
-            CPage("Icon", listOf(CExtra("game", "Icon", { it.startsWith("icon") }))),
-            CHead("Launch"),
+            CPage(L("Icon"), listOf(CExtra("game", L("Icon"), { it.startsWith("icon") }))),
+            CHead(L("Launch")),
             CMatch(pre("launch.")),
             CLinks("launch"),
-            CHead("Display"),
-            CRow("display.resolution", "Screen Size"),
-            CRow("display.alignment", "Screen Alignment"),
-            CRow("display.fullscreenMode", "Fullscreen Mode"),
-            CRow("display.refreshInGame", "In-game refresh rate"),
-            CRow(SettingsEnv.ID_BACKEND, "Display backend"),
+            CHead(L("Display")),
+            CRow("display.resolution", L("Screen Size")),
+            CRow("display.alignment", L("Screen Alignment")),
+            CRow("display.fullscreenMode", L("Fullscreen Mode")),
+            CRow("display.refreshInGame", L("In-game refresh rate")),
+            CRow(SettingsEnv.ID_BACKEND, L("Display backend")),
         ) + graphicsItems(game = true) + listOf(
-            CRow("performance.frameGen", "Frame Generation (AI)"),
-            CRow("performance.frameGenModel", "Interpolation model"),
-            CRow("performance.fpsLimiter", "FPS Limiter"),
-            CPage("Performance", listOf(CMatch(pre("performance.power.", "performance.root.")), CExtra("performance", "Power profile and root", { it.startsWith("perf-power") }))),
-            CRow("hud.show", "Show FPS Counter"),
-            CPage("FPS counter settings", listOf(CMatch(pre("hud.")))),
+            CRow("performance.frameGen", L("Frame Generation (AI)")),
+            CRow("performance.frameGenModel", L("Interpolation model")),
+            CRow("performance.fpsLimiter", L("FPS Limiter")),
+            CPage(L("Performance"), listOf(CMatch(pre("performance.power.", "performance.root.")), CExtra("performance", L("Power profile and root"), { it.startsWith("perf-power") }))),
+            CRow("hud.show", L("Show FPS Counter")),
+            CPage(L("FPS counter settings"), listOf(CMatch(pre("hud.")))),
         ) + audioItems(game = true) + listOf(
-            CHead("Other"),
-            CRow("performance.translator", "Emulator (32-bit)"),
-            CRow("performance.translator64", "Emulator (64-bit)"),
+            CHead(L("Other")),
+            CRow("performance.translator", L("Emulator (32-bit)")),
+            CRow("performance.translator64", L("Emulator (64-bit)")),
             CRow("windows.locale", "LC_ALL"),
-            CRow("windows.closeOnExit", "Close when game exits"),
-            CHead("Linux runtime"),
+            CRow("windows.closeOnExit", L("Close when game exits")),
+            CHead(L("Linux runtime")),
             CMatch { it.category == "linux" },
-            CExtra("linux", "Games folders and components"),
+            CExtra("linux", L("Games folders and components")),
         ),
         leftovers = setOf("game", "launch", "display", "graphics", "audio", "hud", "windows", "linux"),
     ),
     componentsTab(),
-    envTab("Env Vars"),
+    envTab(L("Env Vars")),
     CTab(
-        "Advanced", Icons.Filled.Memory,
+        L("Advanced"), Icons.Filled.Memory,
         listOf(
             CHead("Box64"),
-            CRow("performance.box64Version", "Version"),
-            CRow("performance.box64Preset", "Preset"),
+            CRow("performance.box64Version", L("Version")),
+            CRow("performance.box64Preset", L("Preset")),
             CHead("Box64EC"),
-            CRow("performance.box64ecVersion", "Box64EC Version"),
+            CRow("performance.box64ecVersion", L("Box64EC Version")),
             CHead("FEXCore"),
-            CRow("performance.fexVersion", "FEXCore Version"),
-            CRow("performance.fexPreset", "FEXCore Preset"),
-            CRow("performance.forceSsbs", "Force SSBS (CPU speed fix)"),
-            CPage("Preset values", listOf(CExtra("performance", "Translator presets", { it.startsWith("perf-preset") }))),
-            CHead("System"),
-            CRow("input.controlsProfile", "Controls Profile"),
-            CRow("performance.startupServices", "Startup Selection"),
-            CPage("Custom Services", listOf(CMatch(pre("performance.service.")))),
-            CRow("performance.cpuAffinity", "Processor Affinity"),
-            CRow("performance.cpuAffinity32", "Processor Affinity (32-bit apps)"),
-            CHead("Sharpness (VKBasalt)"),
-            CRow("visuals.vkbasalt", "Effect"),
+            CRow("performance.fexVersion", L("FEXCore Version")),
+            CRow("performance.fexPreset", L("FEXCore Preset")),
+            CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
+            CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
+            CHead(L("System")),
+            CRow("input.controlsProfile", L("Controls Profile")),
+            CRow("performance.startupServices", L("Startup Selection")),
+            CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
+            CRow("performance.cpuAffinity", L("Processor Affinity")),
+            CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
+            CHead(L("Sharpness (VKBasalt)")),
+            CRow("visuals.vkbasalt", L("Effect")),
             CMatch(pre("visuals.vkbasalt")),
-            CHead("ReShade"),
-            CPage("ReShade loadout", listOf(CMatch(pre("visuals.reshade.")), CExtra("visuals", "Effects", { it.startsWith("reshade") }))),
+            CHead(L("ReShade")),
+            CPage(L("ReShade loadout"), listOf(CMatch(pre("visuals.reshade.")), CExtra("visuals", L("Effects"), { it.startsWith("reshade") }))),
         ),
         leftovers = setOf("performance", "visuals"),
     ),
-    CTab("Controller", Icons.Filled.Gamepad, controllerItems(game = true), leftovers = setOf("input")),
+    CTab(L("Controller"), Icons.Filled.Gamepad, controllerItems(game = true), leftovers = setOf("input")),
     CTab("TV", Icons.Filled.Tv, listOf(CMatch(pre("display.tv.")))),
 )
 
@@ -419,14 +420,14 @@ private fun resolve(
     for ((t, lines) in resolved) {
         val left = defs.filter { d -> d !in placed && d.category in t.leftovers && applies(d) }
         if (left.isNotEmpty()) {
-            lines += RHead("More")
+            lines += RHead(L("More"))
             left.forEach { d -> placed += d; lines += RSet(d, d.label) }
         }
         for (cat in t.leftovers) {
             val rest = extraItems[cat].orEmpty().filter { (p, _) -> "$cat|${p.key}" !in placedExtra }.map { (p, _) -> p }
             if (rest.isNotEmpty()) {
                 rest.forEach { p -> placedExtra += "$cat|${p.key}" }
-                if (lines.none { it is RHead && it.title == "More" }) lines += RHead("More")
+                if (lines.none { it is RHead && it.title == L("More") }) lines += RHead(L("More"))
                 lines += RExtra(categoryLabel(cat), rest)
             }
         }
@@ -519,7 +520,7 @@ internal fun SimpleClassicEditor(
     fun save(after: (() -> Unit)? = null) {
         if (saving) return
         if (createMode && env.vm?.selectedWineVersion.isNullOrBlank()) {
-            Toast.makeText(context, "Install a Wine or Proton version first (Components).", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, L("Install a Wine or Proton version first (Components)."), Toast.LENGTH_LONG).show()
             return
         }
         saving = true
@@ -528,7 +529,7 @@ internal fun SimpleClassicEditor(
             if (ok) {
                 when {
                     createMode -> {
-                        Toast.makeText(context, "Container created", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, L("Container created"), Toast.LENGTH_SHORT).show()
                         onExit?.invoke()
                         return@save
                     }
@@ -603,19 +604,19 @@ internal fun SimpleClassicEditor(
         if (tabs.size < 2) return@DisposableEffect onDispose {}
         val step: (Int) -> Unit = { stepTabsNow.value(it) }
         deckActions.subTab.value = step
-        deckActions.subTabLabel.value = "Tab"
+        deckActions.subTabLabel.value = L("Tab")
         onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
     }
     val cur = lines.getOrNull(rowNow)
     val curDef = (cur as? RSet)?.def
     val legend = buildList {
-        add("B" to "Back")
-        if (zone == KZone.ROWS && curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to "Change")
-        if (zone == KZone.ROWS && cur != null && cur !is RHead) add("A" to "Open")
-        if (tabs.size > 1) add("LB RB" to "Tab")
-        if (createMode) add("X" to "Create") else if (dirty) add("X" to "Save")
+        add("B" to L("Back"))
+        if (zone == KZone.ROWS && curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to L("Change"))
+        if (zone == KZone.ROWS && cur != null && cur !is RHead) add("A" to L("Open"))
+        if (tabs.size > 1) add("LB RB" to L("Tab"))
+        if (createMode) add("X" to L("Create")) else if (dirty) add("X" to L("Save"))
         yAction?.let { add("Y" to it.first) }
-        if (game && curDef != null && source.origin(curDef) == Origin.SET_HERE) add("⧉" to "Use container's")
+        if (game && curDef != null && source.origin(curDef) == Origin.SET_HERE) add("⧉" to L("Use container's"))
     }
     DisposableEffect(deckActions, legend) {
         deckActions.ownLegend.value = legend
@@ -772,7 +773,7 @@ internal fun SimpleClassicEditor(
         if (control == null) textFor = null
         else OutlinedAlertDialog(
             onDismissRequest = { textFor = null },
-            confirmButton = { TextButton(onClick = { textFor = null }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { textFor = null }) { Text(L("Done")) } },
             title = { Text((lines.firstOrNull { it is RSet && it.def.id == def.id } as? RSet)?.label ?: def.label) },
             text = { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } },
         )
@@ -780,7 +781,7 @@ internal fun SimpleClassicEditor(
     coresFor?.let { def ->
         OutlinedAlertDialog(
             onDismissRequest = { coresFor = null },
-            confirmButton = { TextButton(onClick = { coresFor = null }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { coresFor = null }) { Text(L("Done")) } },
             title = { Text(def.label) },
             text = { CoresControl(source.value(def), enabled = true) { v -> pick(def, v) } },
         )
@@ -813,7 +814,7 @@ internal fun SimpleClassicEditor(
                 Text(
                     listOfNotNull(
                         def.disabled(env, values),
-                        if (!source.editable(def)) "This is a container setting; change it in the container's settings." else null,
+                        if (!source.editable(def)) L("This is a container setting; change it in the container's settings.") else null,
                         def.help ?: def.hint,
                     ).joinToString("\n\n"),
                 )
@@ -829,7 +830,7 @@ internal fun SimpleClassicEditor(
             OutlinedAlertDialog(
                 onDismissRequest = { pendingConfirm = null },
                 confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(ask.confirmLabel) } },
-                dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text(L("Cancel")) } },
                 title = { Text(ask.title) },
                 text = { Text(ask.body) },
             )
@@ -881,7 +882,7 @@ private fun ClassicTitle(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.background(accent.copy(alpha = 0.22f), SimpleShape).padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
-                    Text(if (createMode) "Not created yet" else "Unsaved", color = SimpleStrong, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (createMode) L("Not created yet") else L("Unsaved"), color = SimpleStrong, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     SimpleGlyph("X")
                 }
             }
@@ -1021,15 +1022,15 @@ private fun SideCard(
         }
         val kv = buildList {
             if (game) {
-                s?.container?.name?.let { add("Container" to it) }
+                s?.container?.name?.let { add(L("Container") to it) }
             } else if (vm != null && env.scope != EditorScope.DEFAULTS) {
                 add("Wine" to vm.selectedWineVersion)
             }
             if (vm != null) add("Arch" to if (vm.isArm64EC) "ARM64EC" else "x86-64")
-            add("Display" to if (values(SettingsEnv.ID_BACKEND) == com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND) "Wayland" else "X11")
+            add(L("Display") to if (values(SettingsEnv.ID_BACKEND) == com.winlator.star.container.Container.DISPLAY_BACKEND_WAYLAND) "Wayland" else "X11")
             if (game) {
                 val n = SettingsRegistry.defs.count { d -> source.shows(d) && d.game != null && runCatching { source.origin(d) }.getOrNull() == Origin.SET_HERE }
-                add("Set for this game" to n.toString())
+                add(L("Set for this game") to n.toString())
             }
         }
         kv.forEach { (k, v) ->
@@ -1041,8 +1042,8 @@ private fun SideCard(
         Spacer(Modifier.weight(1f))
         Text(
             when {
-                createMode -> "Starts from your New Container Defaults. X creates it."
-                game -> "Container = follows the container. This game = set here."
+                createMode -> L("Starts from your New Container Defaults. X creates it.")
+                game -> L("Container = follows the container. This game = set here.")
                 else -> ""
             },
             color = SimpleDim, fontSize = 12.sp,
@@ -1147,10 +1148,10 @@ private fun ClassicSettingLine(
         }
         if (game) {
             val tag = when (origin) {
-                Origin.SET_HERE -> "This game"
-                Origin.FROM_CONTAINER -> "Container"
-                Origin.FROM_APP -> "App"
-                Origin.CONTAINER_ONLY -> "Container only"
+                Origin.SET_HERE -> L("This game")
+                Origin.FROM_CONTAINER -> L("Container")
+                Origin.FROM_APP -> L("App")
+                Origin.CONTAINER_ONLY -> L("Container only")
                 else -> null
             }
             if (tag != null) {

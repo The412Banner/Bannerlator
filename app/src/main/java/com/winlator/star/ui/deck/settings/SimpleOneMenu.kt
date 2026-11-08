@@ -57,6 +57,7 @@ import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.screens.LogManagerScreen
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.SIn
 import com.winlator.star.ui.simple.SimpleDim
 import com.winlator.star.ui.simple.SimpleInk
@@ -199,17 +200,17 @@ internal fun SimpleOneMenuSettings(
     DisposableEffect(deckActions, tabCount) {
         val step: (Int) -> Unit = { d -> tab = (tabNow + d + tabCount) % tabCount }
         deckActions.subTab.value = step
-        deckActions.subTabLabel.value = "Tab"
+        deckActions.subTabLabel.value = L("Tab")
         onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
     }
     val cur = lines.getOrNull(rowNow)
     val curDef = (cur as? OSet)?.def
     val legend = buildList {
         if (tab != logsTab) {
-            if (curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to "Change")
-            add("A" to "Open")
+            if (curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to L("Change"))
+            add("A" to L("Open"))
         }
-        add("L2 R2" to "Tab")
+        add("L2 R2" to L("Tab"))
     }
     DisposableEffect(deckActions, legend) {
         deckActions.ownLegend.value = legend
@@ -267,13 +268,13 @@ internal fun SimpleOneMenuSettings(
             Text(header.title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                OneTab("Settings", Icons.Filled.Settings, tab == 0) { tab = 0 }
+                OneTab(L("Settings"), Icons.Filled.Settings, tab == 0) { tab = 0 }
                 tabCats.forEachIndexed { i, c ->
                     Spacer(Modifier.width(6.dp))
                     OneTab(c.label, c.icon, tab == i + 1) { tab = i + 1 }
                 }
                 Spacer(Modifier.width(6.dp))
-                OneTab("Logs", Icons.Filled.Description, tab == logsTab) { tab = logsTab }
+                OneTab(L("Logs"), Icons.Filled.Description, tab == logsTab) { tab = logsTab }
             }
             Spacer(Modifier.height(12.dp))
             if (tab == logsTab) {
@@ -318,7 +319,7 @@ internal fun SimpleOneMenuSettings(
         if (control == null) textFor = null
         else OutlinedAlertDialog(
             onDismissRequest = { textFor = null },
-            confirmButton = { TextButton(onClick = { textFor = null }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { textFor = null }) { Text(L("Done")) } },
             title = { Text(def.label) },
             text = { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } },
         )
@@ -326,7 +327,7 @@ internal fun SimpleOneMenuSettings(
     coresFor?.let { def ->
         OutlinedAlertDialog(
             onDismissRequest = { coresFor = null },
-            confirmButton = { TextButton(onClick = { coresFor = null }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { coresFor = null }) { Text(L("Done")) } },
             title = { Text(def.label) },
             text = { CoresControl(source.value(def), enabled = true) { v -> pick(def, v) } },
         )
@@ -367,7 +368,7 @@ internal fun SimpleOneMenuSettings(
             OutlinedAlertDialog(
                 onDismissRequest = { pendingConfirm = null },
                 confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(ask.confirmLabel) } },
-                dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text(L("Cancel")) } },
                 title = { Text(ask.title) },
                 text = { Text(ask.body) },
             )

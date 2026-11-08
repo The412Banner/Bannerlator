@@ -24,7 +24,7 @@ HEADER_EN = "<!-- Lab's text in English. Written by tools/i18n/lab_strings.py fr
 HEADER_TR = ("<!-- Lab's text in {lang}. {source} Corrections welcome: change the text, keep the name and any %1$s / %2$d. "
              "Written by tools/i18n/lab_strings.py. -->")
 
-CALL = re.compile(r'(?<![A-Za-z0-9_.])L\(\s*"')
+CALL = re.compile(r'(?<![A-Za-z0-9_.])[LT]\(\s*"')
 PLACEHOLDER = re.compile(r"%(\d+)\$[sdf]")
 
 

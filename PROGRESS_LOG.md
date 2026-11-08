@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔁 Mali "System" on Wayland + game Wayland logs/Share logs rebased onto main 233ab7d4 (Lab languages), stacked, CI running — merge on the user's go (NOT device-tested)
+- **User:** "yes rebase both onto main and rebuild and merge". Dry merges before: main + each branch, the two together and all three were clean (no shared files).
+- **Backups:** refs/backup/20261108/fix-wayland-mali-system-before-rebase-onto-233ab7d4 → b9c9c808, refs/backup/20261108/feat-log-wayland-before-rebase-onto-233ab7d4 → 008f2ec7 (both pushed).
+- **Rebased:** fix/wayland-mali-system 6895b064 (on 233ab7d4); feat/log-wayland 344d9376 stacked on 6895b064, so its build = main + both. Patches identical to the tested ones. Pushed --force-with-lease.
+- **CI:** 42447350344 (6895b064), 42447351816 (344d9376), headSha asserted. Main's own CI 42447118936 (Lab languages merge) was running, so main is not pushed with code until it ends.
+- **Plan:** both green → backup refs/backup/20261108/main-before-mali-system-and-log-wayland → main to 344d9376 (fast-forward, or --no-ff if main only gained PROGRESS_LOG commits; merged code checked equal to the tested build). Proof at merge: CI-green only, NOT device-tested (Mali needs kirimu; logs needs the device test).
+
 ## 2026-11-08 — 🌐 Lab languages (feat/lab-languages, MERGED to main)
 
 **Why:** user: "lab screens first with your drafts, go, droiddeck is my project so go ahead" + "use what will work best and take your time". Bannerlator was English only (values/strings.xml 1,358 entries, no translations; ~1,100+ hardcoded UI texts).

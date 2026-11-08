@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ Wayland "System" on Mali b9c9c808: CI green, APKs staged (`fix/wayland-mali-system`, NOT device-tested, NOT merged)
+- **CI:** build-artifacts 42440745677 (headSha b9c9c808) success ×4 (standard, pubg, ludashi, antutu), 0 failed steps, 15 skipped each (same as main); BUILD SUCCESSFUL, no warnings in the 3 touched files. Artifacts expire 2026-11-15.
+- **APK check:** classes3.dex holds isMaliSystem and the new probe message; signing cert SHA-256 A4:0D:A8:0A… = earlier CI builds (installs over them).
+- **Staged (sha256 same on host and device):** /sdcard/Download/Bannerlator-wayland-mali-system-b9c9c808-standard.apk 7a9a39e4…, -pubg.apk 06f7396e…, -ludashi.apk a9f25711…, -antutu.apk 7f20de58…. Not installed anywhere.
+- **Proof:** CI-green; NOT device-tested (no Mali device here). Next: kirimu (RP4 Pro, Mali-G77) tests Wayland with the driver on "System" and sends wine_debug.log + logcat if it fails; Adreno A/B before any merge.
+
 ## 2026-11-08 — 🔁 Wayland "System" on Mali rebased onto main with the Lab UI (`fix/wayland-mali-system` b9c9c808, CI running, NOT device-tested, NOT merged)
 - **User:** "can you rebuild off main since we just merged the new lab ui work?"
 - **Done:** backup ref refs/backup/20261108/fix-wayland-mali-system-before-rebase → e857f780 (pushed); rebased onto main 38483dd5 (Lab UI merge a10bc058 included), clean, patch identical (same 3 files, +20/-1); pushed with --force-with-lease, origin == b9c9c808.

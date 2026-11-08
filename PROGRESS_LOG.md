@@ -4,7 +4,7 @@
 - **CI:** build-artifacts 42468593200 attempt 4: standard / pubg / ludashi / antutu success, headSha a82ca7dc. Attempts 1–3 failed only on GitHub 504s for the Gradle distribution download. dxvk-nvapi came from our copy (ci/vendor, both sha256 OK); skipped steps = cached / main-only ones.
 - **APK:** /sdcard/Download/Bannerlator-lab-art-strings-a82ca7dc.apk, sha256 9a1d32be… (host == sdcard == root). com.tencent.ig, signer a40da80a… (v2 + v3) == the installed app. resources.arsc has the new strings (e.g. "Game art background" in es, de, ja, zh, ru).
 - **Elite now:** lab-fixes eb63bd5d installed (base.apk 5ac93e96…). Asked the user before installing.
-- **Main merge build 42467307104 (22ea9c7c):** standard / ludashi / antutu green, pubg re-run running.
+- **Main merge build 42467307104 (22ea9c7c):** all 4 green at 06:31 EST (pubg after re-runs; skipped steps = cache hits / main-only saves of cached parts).
 - **Next:** on yes → pm install -r, installed hash == 9a1d32be…, logcat crash check → user checks a few languages → merge on the user's go (backup ref first).
 
 ## 2026-11-08 — 🌐 feat/lab-art-strings: the game art strings in 32 languages + wrong translations fixed (a82ca7dc; CI green, NOT device-tested)

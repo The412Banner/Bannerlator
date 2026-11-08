@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🗂️ Logs: each game's Wayland logs in its log folder + "Share logs" in the game menu (`feat/log-wayland` 008f2ec7, CI running, NOT device-tested, NOT merged)
+- **User:** "we need to be able to view wayland logs in app as well, each games wayland logs also need to go with the rest ... add a wayland folder for each games folder ... time stamped just like the rest" → "go with the wayland folder, also for each game long press menu under view logs, we need to add a share logs button, that zips the entire games log folder ... android share menu".
+- **Before (verified on main 080020c0 + the Elite):** game logs in <log folder>/<game>/ (this device's setting: Download/bannerlator; default Documents/bannerlator), older runs in previous/<stamp>/ (keep 5); the Wayland session log always went to Download/Wayland-logs/wayland-<stamp>.log (compositor.c SESSION_LOG_DIR), never pruned (188 files), not shown in the app.
+- **Built (008f2ec7, off main 080020c0):** compositor writes its session log to the folder the app sets (new JNI nativeSetSessionLogDir, banner_set_session_log_dir; falls back to Download/Wayland-logs); XServerDisplayActivity sets <game folder>/wayland/ before nativeStartWithSurface and prunes old wayland-*.log to keep-last (LogRotation.pruneWaylandLogs, strict name pattern). LogInventory: wayland/ counted, listed as a "Wayland" run (viewer + XMB), deleted with the group; zipFolder for sharing. "Share logs" (GameMenuAction.SHARE_LOGS) under "View logs" in the classic grid + list menus, Deck, Lab (via the Deck list) and XMB: zips the whole game log folder into cache logs/share and opens the share sheet. README line updated. Old Download/Wayland-logs files untouched.
+- **CI:** build-artifacts 42444528045 (headSha 008f2ec7 asserted).
+- **Proof:** compile pending; NOT device-tested.
+- **Resume:** worktree /root/src/Bannerlator-wt/log-wayland. Next: CI result → stage APK → (ask) install → one Wayland game launch (save memory first) → check <game>/wayland/wayland-*.log, Wayland chip in View logs, Share logs zip contents.
+
 ## 2026-11-08 — ✅ Wayland "System" on Mali b9c9c808: CI green, APKs staged (`fix/wayland-mali-system`, NOT device-tested, NOT merged)
 - **CI:** build-artifacts 42440745677 (headSha b9c9c808) success ×4 (standard, pubg, ludashi, antutu), 0 failed steps, 15 skipped each (same as main); BUILD SUCCESSFUL, no warnings in the 3 touched files. Artifacts expire 2026-11-15.
 - **APK check:** classes3.dex holds isMaliSystem and the new probe message; signing cert SHA-256 A4:0D:A8:0A… = earlier CI builds (installs over them).

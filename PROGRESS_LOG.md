@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🌐 lab-polish-strings: On / Off / Default labels fixed (043d86d1; CI 42532280744 running; c0f66b29's run cancelled)
+- **User: "yes fix those too".** es + es-419 On Sí → Activado, Off Desactivada → Desactivado. it On Sì → Attivato, Off Disattivata → Disattivato, Default Predefinita → Predefinito. pt Off Desativada → Desativado. bg Default Стандартна → По подразбиране.
+- The new adapter explanations quoting these labels were updated (16 strings). Strings that use the words for their own nouns (bg "Стандартна MIDI звукова банка", it "Predefinita di sistema" / "Predefinita (Steam: %1$s)") are unchanged.
+- All 32 still at 1796/1796; check up to date; XML parses.
+- **Possible next candidates (not changed):** pl Default "Domyślna", uk Default "Стандартний", in Default "Default" (English).
+- **Next:** green → install pubg (pre-approved) → merge on go.
+
 ## 2026-11-08 — 🌐 feat/lab-polish-strings: the Wayland adapter strings in 32 languages (c0f66b29; CI 42532074388 running, NOT device-tested)
 - **Why (user: "yes do the translations"):** the new adapter rows were English only.
 - **How:** 9f212ee2 makes the help texts and option names L("…") single literals (profile names via profileName) so lab_strings.py sees them. extract → 1796 strings (+24). 4 drafting agents (8 languages each) used terms.py for the app's existing words.

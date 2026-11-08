@@ -488,6 +488,7 @@ internal fun gameMenuGroups(s: Shortcut): List<List<Pair<String?, GameMenuEntry>
             e(GameMenuAction.BACKUP_SAVES, "Zip this game's saves into its backup folder."),
             e(GameMenuAction.RESTORE_SAVES, "Pick a save backup and restore it into a container."),
             e(GameMenuAction.VIEW_LOGS, "This game's captured logs."),
+            e(GameMenuAction.SHARE_LOGS, "Zip this game's log folder and share it."),
             e(GameMenuAction.PROPERTIES, "Times played and total playtime."),
         ),
         listOfNotNull(
@@ -515,7 +516,8 @@ private fun menuTitle(a: GameMenuAction): String = when (a) {
 /** Game-menu actions that need the installed copy of the game. */
 internal val NEEDS_INSTALL = setOf(GameMenuAction.CLONE, GameMenuAction.COPY_TO_DRIVE_C, GameMenuAction.CHANGE_EXE,
     GameMenuAction.ADD_TO_HOME, GameMenuAction.EXPORT, GameMenuAction.CLOUD_SAVES, GameMenuAction.BACKUP_SAVES,
-    GameMenuAction.RESTORE_SAVES, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS, GameMenuAction.PROPERTIES)
+    GameMenuAction.RESTORE_SAVES, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS, GameMenuAction.SHARE_LOGS,
+    GameMenuAction.PROPERTIES)
 
 @Composable
 internal fun DeckGameMenuList(

@@ -138,6 +138,7 @@ class ShortcutActions internal constructor(
             GameMenuAction.SCRAPE_COVER -> scrapeCoverFor(shortcut)
             GameMenuAction.COMMUNITY_CONFIGS -> communityConfigsFor(shortcut)
             GameMenuAction.VIEW_LOGS -> logsShortcut = shortcut
+            GameMenuAction.SHARE_LOGS -> shareGameLogs(context, shortcut.name)
             GameMenuAction.PROPERTIES -> propertiesShortcut = shortcut
             GameMenuAction.ADD_GAME -> Unit
         }
@@ -213,7 +214,7 @@ internal fun gameMenuOffers(action: GameMenuAction, shortcut: Shortcut): Boolean
     return when (action) {
         GameMenuAction.SETTINGS -> hasSettings
         GameMenuAction.CLONE, GameMenuAction.MOVE_TO_CONTAINER, GameMenuAction.COPY_TO_DRIVE_C, GameMenuAction.CHANGE_EXE,
-        GameMenuAction.EXPORT, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS -> wine
+        GameMenuAction.EXPORT, GameMenuAction.COMMUNITY_CONFIGS, GameMenuAction.VIEW_LOGS, GameMenuAction.SHARE_LOGS -> wine
         GameMenuAction.CLOUD_SAVES -> wine && isSteamOriginShortcut(shortcut)
         GameMenuAction.BACKUP_SAVES, GameMenuAction.RESTORE_SAVES -> wine && isCustomShortcut(shortcut)
         GameMenuAction.ADD_GAME -> false

@@ -21,6 +21,7 @@ enum class GameMenuAction(val label: String) {
     SCRAPE_COVER("Scrape cover"),
     COMMUNITY_CONFIGS("Community configs"),
     VIEW_LOGS("View logs"),
+    SHARE_LOGS("Share logs"),
     PROPERTIES("Properties"),
     ADD_GAME("Add a game"),
 }

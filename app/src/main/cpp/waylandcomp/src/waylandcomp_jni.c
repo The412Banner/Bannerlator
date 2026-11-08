@@ -285,6 +285,14 @@ Java_com_winlator_star_wayland_WaylandCompositor_nativeStartWithSurface(
     start_thread();
 }
 
+/* Folder for the next session's log (the game's log folder's wayland/). Call before nativeStart*. */
+JNIEXPORT void JNICALL
+Java_com_winlator_star_wayland_WaylandCompositor_nativeSetSessionLogDir(JNIEnv *env, jclass clazz, jstring dir) {
+    char *d = dup_jstr(env, dir);
+    banner_set_session_log_dir(d);
+    free(d);
+}
+
 /* Inject a pointer event from the Android SurfaceView touch listener (UI thread).
  * action: 0=down 1=move 2=up; x/y in output space (0..1919, 0..1079). */
 JNIEXPORT void JNICALL

@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -84,6 +86,7 @@ import com.winlator.star.ui.simple.SimpleDim
 import com.winlator.star.ui.simple.SimpleGlyph
 import com.winlator.star.ui.simple.SimpleInk
 import com.winlator.star.ui.simple.SimpleLine
+import com.winlator.star.ui.simple.SimpleRowDivider
 import com.winlator.star.ui.simple.SimpleMuted
 import com.winlator.star.ui.simple.SimplePanelBrush
 import com.winlator.star.ui.simple.SimpleShape
@@ -120,6 +123,8 @@ private class CPage(val title: String, val items: List<CItem>) : CItem
 private class CExtra(val category: String, val title: String, val keys: (String) -> Boolean = { true }, val top: Boolean? = null) : CItem
 /** The [category]'s hand-offs (change the program, move to another container ...). */
 private class CLinks(val category: String) : CItem
+/** A category's extra drawn in place among the rows (not behind a row of its own), e.g. the adapter report. */
+private class CInline(val category: String, val keys: (String) -> Boolean) : CItem
 private class CTab(val title: String, val icon: ImageVector, val items: List<CItem>, val leftovers: Set<String> = emptySet())
 
 private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id.startsWith(it) } }
@@ -133,7 +138,7 @@ private fun graphicsItems(game: Boolean): List<CItem> = listOf(
     CRow("graphics.driver", L("Graphics Driver")),
     CPage(L("Driver settings"), listOf(CMatch(pre("graphics.gdc.")))),
     CRow(COMPOSITOR_DRIVER, L("Graphics Driver")),
-    CPage(L("Wayland game driver"), listOf(CMatch(pre("graphics.wl.")))),
+    CPage(L("Wayland game driver"), listOf(CInline("graphics") { it == WAYLAND_ADAPTER_REPORT }, CMatch(pre("graphics.wl.")))),
     CRow("display.hdrOutput", L("HDR output (HDR10)")),
     CRow("graphics.fastOpenGL", L("OpenGL: Fast")),
     CRow("graphics.glFpsHud", L("OpenGL: Show FPS")),
@@ -371,6 +376,7 @@ private class RSet(val def: SettingDef, val label: String) : RLine
 private class RPage(val title: String, val lines: List<RLine>) : RLine
 private class RExtra(val title: String, val items: List<PageExtra>) : RLine
 private class RLink(val h: Handoff) : RLine
+private class RInline(val items: List<PageExtra>) : RLine
 private class RTab(val title: String, val icon: ImageVector, val lines: List<RLine>)
 
 private fun pruneHeads(lines: List<RLine>): List<RLine> = lines.filterIndexed { i, l ->
@@ -412,6 +418,13 @@ private fun resolve(
                     .map { (p, _) -> p }
                 list.forEach { p -> placedExtra += "${it.category}|${p.key}" }
                 if (list.isNotEmpty()) add(RExtra(it.title, list))
+            }
+            is CInline -> {
+                val list = extraItems[it.category].orEmpty()
+                    .filter { (p, _) -> "${it.category}|${p.key}" !in placedExtra && it.keys(p.key) }
+                    .map { (p, _) -> p }
+                list.forEach { p -> placedExtra += "${it.category}|${p.key}" }
+                if (list.isNotEmpty()) add(RInline(list))
             }
             is CLinks -> handoffs[it.category].orEmpty()
                 .filter { h -> !h.target.startsWith(SettingsRegistry.TARGET_CATEGORY) && h.target != SettingsRegistry.TARGET_NONE }
@@ -497,7 +510,7 @@ internal fun SimpleClassicEditor(
     if (tabIsExtra) openExtra = lines[0] as RExtra
     val extraOpen = openExtra != null
     LaunchedEffect(extraOpen, tabKey) { if (extraOpen) zone = KZone.EXTRAS else if (zone == KZone.EXTRAS) zone = KZone.ROWS }
-    fun canFocus(l: RLine?) = l != null && l !is RHead
+    fun canFocus(l: RLine?) = l != null && l !is RHead && l !is RInline
     val rowNow = row.coerceIn(0, max(0, lines.size - 1)).let { r ->
         if (canFocus(lines.getOrNull(r))) r else lines.indexOfFirst { canFocus(it) }.coerceAtLeast(0)
     }
@@ -595,7 +608,7 @@ internal fun SimpleClassicEditor(
             is RPage -> { stack = stack + (l.title to rowNow); row = 0 }
             is RExtra -> { stack = stack + (l.title to rowNow); row = 0 }
             is RLink -> guard { onHandoff(l.h) }
-            is RHead -> Unit
+            is RHead, is RInline -> Unit
         }
     }
 
@@ -677,7 +690,8 @@ internal fun SimpleClassicEditor(
                     else if (a == SIn.LEFT && layout == AppThemeState.SIMPLE_LAYOUT_RAIL && stack.isEmpty()) zone = KZone.TABS
                 }
                 SIn.A -> cur?.let { activate(it) }
-                else -> return@onKey a == SIn.START
+                SIn.START -> curDef?.let { d -> if ((d.help ?: d.hint) != null) helpFor = d }
+                else -> return@onKey false
             }
         }
         true
@@ -712,7 +726,7 @@ internal fun SimpleClassicEditor(
                 if (ex != null) {
                     ExtrasPanel(ex, extrasAnchor, active = zone == KZone.EXTRAS, modifier = mod)
                 } else {
-                    LinesPanel("$tabKey/${stack.joinToString("/") { it.first }}", lines, rowNow, active = zone == KZone.ROWS, source = source, env = env, values = values, game = game, modifier = mod) { i ->
+                    LinesPanel("$tabKey/${stack.joinToString("/") { it.first }}", lines, rowNow, active = zone == KZone.ROWS, source = source, env = env, values = values, game = game, modifier = mod, onHelp = { helpFor = it }) { i ->
                         zone = KZone.ROWS
                         if (i == rowNow) lines.getOrNull(i)?.let { activate(it) } else row = i
                     }
@@ -1121,6 +1135,7 @@ private fun LinesPanel(
     values: (String) -> String,
     game: Boolean,
     modifier: Modifier,
+    onHelp: (SettingDef) -> Unit,
     onTap: (Int) -> Unit,
 ) {
     // One list state per page (the lines are rebuilt on every change; the state must not be).
@@ -1135,12 +1150,17 @@ private fun LinesPanel(
             .border(1.dp, SimpleLine, SimpleShape),
     ) {
         itemsIndexed(lines) { i, l ->
-            when (l) {
-                is RHead -> Text(l.title.uppercase(), color = SimpleDim, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 4.dp))
-                is RSet -> ClassicSettingLine(l, source, env, values, game, focused = i == row, active = active) { onTap(i) }
-                is RPage -> ClassicLinkLine(l.title, pageSummary(l, source, env, values), focused = i == row, active = active) { onTap(i) }
-                is RExtra -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
-                is RLink -> ClassicLinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }
+            Column {
+                // A faint line between two options (none under a section title).
+                if (l !is RHead && i > 0 && lines[i - 1] !is RHead) SimpleRowDivider()
+                when (l) {
+                    is RHead -> Text(l.title.uppercase(), color = SimpleDim, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 4.dp))
+                    is RSet -> ClassicSettingLine(l, source, env, values, game, focused = i == row, active = active, onHelp = { onHelp(l.def) }) { onTap(i) }
+                    is RPage -> ClassicLinkLine(l.title, pageSummary(l, source, env, values), focused = i == row, active = active) { onTap(i) }
+                    is RExtra -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
+                    is RLink -> ClassicLinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }
+                    is RInline -> Column(Modifier.fillMaxWidth()) { l.items.forEach { it.content() } }
+                }
             }
         }
     }
@@ -1178,6 +1198,7 @@ private fun ClassicSettingLine(
     game: Boolean,
     focused: Boolean,
     active: Boolean,
+    onHelp: () -> Unit,
     onTap: () -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -1200,10 +1221,13 @@ private fun ClassicSettingLine(
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(L(l.label), color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val sub = disabled ?: (if (focused) note else null)
-            if (sub != null) Text(L(sub), color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f, fill = false)) {
+                Text(L(l.label), color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val sub = disabled ?: (if (focused) note else null)
+                if (sub != null) Text(L(sub), color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
+            }
+            if ((def.help ?: def.hint) != null) HelpDot(focused, onHelp)
         }
         if (game) {
             val tag = when (origin) {
@@ -1244,6 +1268,23 @@ private fun ClassicSettingLine(
                 else if (editable) Text("›", color = SimpleMuted, fontSize = 16.sp)
             }
         }
+    }
+}
+
+/** The "?" beside a setting with an explanation, as the classic editors have: opens it (START does too). */
+@Composable
+private fun HelpDot(focused: Boolean, onClick: () -> Unit) {
+    val tint = if (focused) MaterialTheme.colorScheme.primary else SimpleMuted
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .size(22.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .border(1.dp, tint.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClick = onClick),
+    ) {
+        Text("?", color = tint, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 

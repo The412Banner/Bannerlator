@@ -1,5 +1,29 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ labpolish ce72b150 INSTALLED on the Elite main app (pubg) 17:29:09 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42529607854 green ×4. Installed base.apk sha256 92866540… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the report at the top of the Wayland game driver page → merge on go.
+
+## 2026-11-08 — 🔧 lab-settings-polish: adapter report at the top of the page (ce72b150; CI 42529607854 running)
+- **User test of 569502c6 on the main app (screenshots 171740 / 171744, DiRT Showdown game settings):** the row lines, the "?" buttons and the adapter rows all show. The report works (Adreno 830 · turnip Mesa 26.99.99; timing bug no; fences yes; zero-copy safe yes; modifiers yes; high priority accepted). User: "adapter report should be at the top of the menu not its own sub menu".
+- **Fix:** a category extra can now be drawn in place among the rows (CInline → RInline, not focusable). The report is the first item of the Wayland game driver page.
+- **Next:** green → stage pubg → ASK install → user checks → merge on go.
+
+## 2026-11-08 — ✅ labpolish 569502c6 INSTALLED on the Elite main app (pubg) 17:16:08 EST (user: "install pubg"; NOT device-tested yet)
+- CI 42527770632 green ×4. pm install -r Success; installed base.apk sha256 ff9c2d3b… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the row lines, the "?" buttons (and START), and the Wayland game driver page (adapter rows + report) → merge on go.
+
+## 2026-11-08 — 🧹 feat/lab-settings-polish: row lines, "?" help, Wayland adapter settings in Lab (569502c6; CI 42527770632 running, NOT device-tested)
+- **Why (user, screenshot 164826 of Lab container settings):** "can we add a faint faded line between options?"; "in classic container and game settings we had wayland adapter settings … where is all that in lab ui?"; "what about all the ? buttons that explain stuff, can we add those in just like classic had as well?"
+- **Found:** Lab and Deck had only the "Wayland game driver" row. The classic gear's adapter settings (WaylandDriverSettingsDialog: profile, single switches, adapter report) were never ported to the settings registry. No "mesh shader" setting exists anywhere in BL; the closest item is Subgroups.
+- **Changes:**
+  - SimpleRowDivider (SimpleKit): SimpleLine fading at both ends, between options in SimpleClassicEditor (container + game settings) and SimpleMenuPage lists; none under section/group titles.
+  - HelpDot "?" next to every row with help/hint → the editor's existing help dialog; START opens it for the focused row.
+  - GraphicsSettings.adapterDefs: graphics.wl.adapterProfile (Select, stored by name incl. "auto"), adapterPresent / AsyncCopy / ZeroCopy / ClientFence / Ubwc / Modifiers / KgslShim (Default/On/Off), adapterSubgroups (Auto/Off). These are packed DRIVER_CFG keys, the same as the classic dialog's, shown on Wayland. Lab puts them on its "Wayland game driver" page by the graphics.wl. prefix.
+  - Adapter report as the PageExtra "wayland-adapter-report" (WaylandAdapterReportBlock made internal), listed on that page.
+- **Note:** the new texts are English-only until a translation pass (lab_strings.py extract/fill).
+- **Next:** green → stage the APK → ASK install → user checks the lines, "?" buttons and the adapter rows (container + game) → merge on go.
+
 ## 2026-11-08 — 🔀 feat/setup-container-options MERGED to main ec270146 (user: "good merge it")
 - **Device proof (Elite, fresh standard install of 54dde650):** the setup's Container-1 got displayBackend wayland, audioDriver directaudio, envVars BANNER_AUDIO_DIRECT_MIC=1 (RECORD_AUDIO granted, USER_SET), fpsLimiterEnabled 1, showFPS true, fexcorePreset PERFORMANCE_TSO, box64Preset EXTREME, box64Version WOWBox64-0.4.5-Hybrid-c8ad5c378-0 (installed from nightly-latest), emulator fexcore, cpuList + cpuListWoW64 = 0–7, Proton-11.0-11.9-arm64ec-16, FEXCore-2611-unix-0. Crash buffer empty.
 - **How:** --no-ff over main 2e37c517 (no conflicts). Backup ref refs/backup/20261108/main-before-setup-container-options → 2e37c517. Merged code == the tested 54dde650.

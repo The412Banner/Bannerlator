@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -62,6 +63,19 @@ internal val SimplePanelTop: Color get() = (if (light) Color(0xF2FFFFFF) else Co
 internal val SimplePanelBottom: Color get() = (if (light) Color(0xEEF6F8FB) else Color(0xF20E1016)).let { c -> LabArt.panelAlpha?.let { c.copy(alpha = it + 0.02f) } ?: c }
 /** Over game art (Panels over art: Glass / Clear) the Lab panels let it through; Solid keeps them as they are. */
 internal val SimpleLine: Color get() = if (light) Color(0x1F111722) else Color(0x1AFFFFFF)
+
+/** The faint line between two options of a list: the row line colour, fading out at both ends. */
+@Composable
+internal fun SimpleRowDivider(modifier: Modifier = Modifier) {
+    val line = SimpleLine
+    Box(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp)
+            .height(1.dp)
+            .background(Brush.horizontalGradient(listOf(Color.Transparent, line, line, Color.Transparent))),
+    )
+}
 /** A faint fill for cards on a panel. */
 internal val SimpleCard: Color get() = if (light) Color(0x0D111722) else Color(0x0DFFFFFF)
 

@@ -489,6 +489,8 @@ private fun EntryPanel(
                                 modifier = Modifier.padding(start = 14.dp, top = if (i == 0) 4.dp else 14.dp, bottom = 4.dp),
                             )
                         }
+                        // A faint line between two entries of one group (none under a group title).
+                        else if (i > 0) SimpleRowDivider()
                         EntryLine(e, focused = i == row, active = active, onMenu = { onMenu(i) }, col = if (i == row && active) col else 0) { onTap(i) }
                     }
                 }

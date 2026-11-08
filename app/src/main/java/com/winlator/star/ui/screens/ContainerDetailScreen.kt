@@ -3640,7 +3640,7 @@ private fun WaylandTriStateRow(
  * the progress row while it runs and a Re-check that drops the cache.
  */
 @Composable
-private fun WaylandAdapterReportBlock(
+internal fun WaylandAdapterReportBlock(
     report: com.winlator.star.core.WaylandDriverProbe.Report?,
     probing: Boolean,
     note: String?,

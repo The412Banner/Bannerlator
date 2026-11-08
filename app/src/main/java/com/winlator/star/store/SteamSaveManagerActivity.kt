@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.labTile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -157,6 +158,68 @@ internal fun SaveManagerScreen(
     onBack: (() -> Unit)? = null,
     /** Lab: the Lab title and a tab row (L2/R2) in place of the header and side rail, over the Lab wallpaper. */
     lab: Boolean = false,
+) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalLabSaves provides lab) { SaveManagerScreenBody(focusAppId, onBack, lab) }
+}
+
+/** Lab: the save rows, their buttons and the settings switches drawn as Lab rows (visible controller focus). */
+private val LocalLabSaves = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** A save row's card: Lab's card and line in Lab, Classic's otherwise. */
+@Composable
+private fun Modifier.saveCard(highlighted: Boolean = false): Modifier {
+    val cs = MaterialTheme.colorScheme
+    return if (LocalLabSaves.current) this
+        .background(com.winlator.star.ui.simple.SimpleCard, com.winlator.star.ui.simple.SimpleShape)
+        .border(if (highlighted) 2.dp else 1.dp, if (highlighted) cs.primary else com.winlator.star.ui.simple.SimpleLine, com.winlator.star.ui.simple.SimpleShape)
+    else this
+        .clip(RoundedCornerShape(12.dp))
+        .background(cs.surfaceVariant)
+        .border(if (highlighted) 2.dp else 1.dp, if (highlighted) cs.primary else cs.outline, RoundedCornerShape(12.dp))
+}
+
+/** A tappable card: Lab's eased outline and tint when the controller is on it, Classic's ripple otherwise. */
+@Composable
+private fun Modifier.saveClick(onClick: () -> Unit): Modifier =
+    if (LocalLabSaves.current) this.labTile(onClick = onClick) else this.clickable(onClick = onClick)
+
+/** A row's text action (Back up, Restore). */
+@Composable
+private fun SaveTextAction(label: String, onClick: () -> Unit) {
+    if (!LocalLabSaves.current) { TextButton(onClick = onClick) { Text(label) }; return }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .padding(vertical = 3.dp)
+            .background(com.winlator.star.ui.simple.SimpleCard, com.winlator.star.ui.simple.SimpleShape)
+            .labTile(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) { Text(label, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+}
+
+/** A row's icon action (download / upload). */
+@Composable
+private fun SaveIconAction(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
+    val tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+    if (!LocalLabSaves.current) {
+        IconButton(onClick = onClick, enabled = enabled) { Icon(imageVector = icon, contentDescription = description, tint = tint) }
+        return
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .padding(vertical = 3.dp)
+            .size(42.dp)
+            .background(com.winlator.star.ui.simple.SimpleCard, com.winlator.star.ui.simple.SimpleShape)
+            .then(if (enabled) Modifier.labTile(onClick = onClick) else Modifier),
+    ) { Icon(imageVector = icon, contentDescription = description, tint = tint, modifier = Modifier.size(22.dp)) }
+}
+
+@Composable
+private fun SaveManagerScreenBody(
+    focusAppId: Int,
+    onBack: (() -> Unit)?,
+    lab: Boolean,
 ) {
     val context = LocalContext.current
     // Signed-in gate (a saved Steam account). Read once; SteamPrefs.init is idempotent + cheap.
@@ -970,9 +1033,11 @@ private fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val lab = LocalLabSaves.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
+        // Lab: the whole row is one stop that flips the switch, with Lab's outline when the controller is on it.
+        modifier = Modifier.fillMaxWidth().then(if (lab) Modifier.labTile(onClick = { onCheckedChange(!checked) }).padding(horizontal = 10.dp, vertical = 8.dp) else Modifier),
     ) {
         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
             Text(
@@ -986,7 +1051,7 @@ private fun SettingsToggleRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = if (lab) null else onCheckedChange)
     }
 }
 
@@ -1232,9 +1297,7 @@ private fun CustomSaveRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .saveCard()
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
         // Thumbnail = the shortcut's own art (cover → icon); custom games have no Steam appId cover.
@@ -1298,10 +1361,10 @@ private fun CustomSaveRow(
             )
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onBackup) { Text("Back up") }
+                SaveTextAction("Back up", onBackup)
                 // Restore is always available: latest vault snapshot if present, else browse for a
                 // GameHub/Bannerlator save file (the chooser decides).
-                TextButton(onClick = onRestore) { Text("Restore") }
+                SaveTextAction("Restore", onRestore)
             }
         }
     }
@@ -1418,12 +1481,10 @@ private fun EpicSaveRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .saveCard()
             // Tapping the card opens the Epic store detail page. The Up/Down IconButtons keep their own
             // click handlers so they stay independently tappable (not swallowed by the card click).
-            .clickable(onClick = onOpen)
+            .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
         // Real cover from the Epic library cache (artCover → artSquare); the neutral game-asset icon
@@ -1506,20 +1567,8 @@ private fun EpicSaveRow(
         } else {
             val disabledTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = onDownload, enabled = actionsEnabled) {
-                    Icon(
-                        imageVector = Icons.Filled.CloudDownload,
-                        contentDescription = "Download from Epic Cloud",
-                        tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                    )
-                }
-                IconButton(onClick = onUpload, enabled = actionsEnabled) {
-                    Icon(
-                        imageVector = Icons.Filled.CloudUpload,
-                        contentDescription = "Upload to Epic Cloud",
-                        tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                    )
-                }
+                SaveIconAction(Icons.Filled.CloudDownload, "Download from Epic Cloud", actionsEnabled, onDownload)
+                SaveIconAction(Icons.Filled.CloudUpload, "Upload to Epic Cloud", actionsEnabled, onUpload)
             }
         }
     }
@@ -1709,12 +1758,10 @@ private fun GogSaveRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .saveCard()
             // Tapping the card opens the GOG store detail page. The Up/Down IconButtons keep their own
             // click handlers so they stay independently tappable (not swallowed by the card click).
-            .clickable(onClick = onOpen)
+            .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
         // Real cover from the GOG library cache; the neutral game-asset icon stays behind it as the
@@ -1798,20 +1845,8 @@ private fun GogSaveRow(
             // save folder is set (manual) or the game is auto-resolvable.
             val disabledTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = onDownload, enabled = actionsEnabled) {
-                    Icon(
-                        imageVector = Icons.Filled.CloudDownload,
-                        contentDescription = "Download from GOG Cloud",
-                        tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                    )
-                }
-                IconButton(onClick = onUpload, enabled = actionsEnabled) {
-                    Icon(
-                        imageVector = Icons.Filled.CloudUpload,
-                        contentDescription = "Upload to GOG Cloud",
-                        tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                    )
-                }
+                SaveIconAction(Icons.Filled.CloudDownload, "Download from GOG Cloud", actionsEnabled, onDownload)
+                SaveIconAction(Icons.Filled.CloudUpload, "Upload to GOG Cloud", actionsEnabled, onUpload)
             }
         }
     }
@@ -1838,15 +1873,8 @@ private fun SaveStatusRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(
-                width = if (highlighted) 2.dp else 1.dp,
-                color = if (highlighted) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(12.dp),
-            )
-            .clickable(onClick = onOpen)
+            .saveCard(highlighted)
+            .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
     ) {
         val (pillColor, pillLabel) = pillFor(status.state)
@@ -1930,20 +1958,8 @@ private fun SaveStatusRow(
         // Disabled while a move runs (live progress is in the row body) and for NOT_SET_UP rows.
         val disabledTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(onClick = onSyncFrom, enabled = syncFromEnabled) {
-                Icon(
-                    imageVector = Icons.Filled.CloudDownload,
-                    contentDescription = "Sync from Cloud",
-                    tint = if (syncFromEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                )
-            }
-            IconButton(onClick = onSyncTo, enabled = actionsEnabled) {
-                Icon(
-                    imageVector = Icons.Filled.CloudUpload,
-                    contentDescription = "Sync to Cloud",
-                    tint = if (actionsEnabled) MaterialTheme.colorScheme.primary else disabledTint,
-                )
-            }
+            SaveIconAction(Icons.Filled.CloudDownload, "Sync from Cloud", syncFromEnabled, onSyncFrom)
+            SaveIconAction(Icons.Filled.CloudUpload, "Sync to Cloud", actionsEnabled, onSyncTo)
         }
     }
 }

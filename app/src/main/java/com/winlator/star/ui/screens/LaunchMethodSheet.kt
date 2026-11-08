@@ -1970,13 +1970,17 @@ private fun PillSwitch(checked: Boolean, accent: Color, onCheckedChange: (Boolea
             Modifier
                 .onFocusChanged { focused = it.hasFocus }
                 .border(2.dp, if (focused) accent else Color.Transparent, RoundedCornerShape(50))
-                .padding(2.dp),
+                .padding(3.dp),
         ) {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = accent, checkedBorderColor = accent),
-            )
+            // Without the 48 dp touch box round the switch, so the ring sits on the switch's own pill.
+            @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentEnforcement provides false) {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = accent, checkedBorderColor = accent),
+                )
+            }
         }
         return
     }

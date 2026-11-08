@@ -1,5 +1,8 @@
 package com.winlator.star.ui.deck
 
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onSizeChanged
 import com.winlator.star.ui.simple.simpleRowFocus
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.core.animateDpAsState
@@ -523,4 +526,32 @@ internal fun IgConfirmDialog(
             }
         }
     }
+}
+
+/**
+ * A page's vertical scroll that goes all the way back to the top when the control the controller moves to fits on screen
+ * there, so coming back up to a page's first control shows the page's title and notes above it again (the plain scroll
+ * only brought the control itself into view, leaving the header hidden).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun Modifier.igPageScroll(scroll: androidx.compose.foundation.ScrollState): Modifier {
+    var viewport by remember { mutableStateOf(0) }
+    var content by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    return this
+        .onSizeChanged { viewport = it.height }
+        .verticalScroll(scroll)
+        .onPlaced { content = it }
+        .onFocusedBoundsChanged { f ->
+            val c = content
+            if (f == null || c == null || !c.isAttached || !f.isAttached || viewport <= 0) return@onFocusedBoundsChanged
+            val r = c.localBoundingBoxOf(f, clipBounds = false)
+            if (scroll.value > 0 && r.bottom <= viewport * 0.92f) {
+                scope.launch {
+                    kotlinx.coroutines.delay(40)
+                    scroll.animateScrollTo(0)
+                }
+            }
+        }
 }

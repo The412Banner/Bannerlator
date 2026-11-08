@@ -968,7 +968,7 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             } else {
                 // Each page starts at its top rather than at the previous page's scroll offset.
                 val scroll = key(shown) { rememberScrollState() }
-                Column(pageMod.verticalScroll(scroll).padding(horizontal = if (compact) 16.dp else 24.dp, vertical = 18.dp)) {
+                Column(pageMod.igPageScroll(scroll).padding(horizontal = if (compact) 16.dp else 24.dp, vertical = 18.dp)) {
                     header()
                     // Inside the scroll container, so the request lands on the page's first control, not the scroll group.
                     Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) {

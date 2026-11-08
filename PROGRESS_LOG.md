@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ onboarding 89f71daa device-tested on the Elite: notifications button works (user: "notifications fix works")
+- **Build:** CI 42520568049 green ×4. The user installed the standard APK fresh themselves (first install == last update 15:43:24 EST); installed base.apk sha256 7fdd323b… == staged.
+- **Proof:** POST_NOTIFICATIONS granted=true (USER_SET) after the button → settings page → back; crash buffer empty since 15:29 EST. Earlier screenshot 153020 (976eca39) showed the orange Carbon & Ember setup at step 3, before the theme step, and the portrait step circles. Saved settings on the fresh install: ui_style=deck, simple_home=true, preset_index=9 (Carbon & Ember).
+- **Not seen on the device yet:** the "Lab is a full-screen launcher…" text, the landscape side panel on this build.
+- **Next:** the "Create your first container" setup step (decisions in the entry below), same branch.
+
 ## 2026-11-08 — 🔔 onboarding: "Allow notifications" did nothing → opens notification settings (89f71daa; CI 42520568049 running)
 - **User test of 976eca39 (screenshot 153020, portrait):** orange Carbon & Ember setup + step circles OK; tapping "Allow notifications" does nothing.
 - **Cause (logcat 15:30:14–15 EST, Elite SDK 36):** each tap starts GrantPermissionsActivity, which closes at once unseen; POST_NOTIFICATIONS stays granted=false. The app targets SDK 28, and Android 13+ only prompts apps targeting 33+. Old code (on main), not from this branch.

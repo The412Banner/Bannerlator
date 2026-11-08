@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Σελίδα παιχνιδιού</string>
     <string name="lab_0687488a">Προγράμματα οδήγησης Turnip και Qualcomm</string>
     <string name="lab_06a7c591">Η κοινή προρρύθμιση που ακολουθεί κάθε κοντέινερ, εκτός αν έχει δικές του τιμές. Αποθηκεύεται μόλις πατήσετε Αποθήκευση. Η Επαναφορά επαναφέρει το αρχικό.</string>
+    <string name="lab_06e7ab7e">%1$s λεπ.</string>
     <string name="lab_06eb3f00">Το Ενσωματωμένο (Win-FG) κάνει παρεμβολή μέσα στην εφαρμογή. Το Lossless Scaling χρησιμοποιεί το δικό σας Lossless.dll. Και τα δύο χρειάζονται τον Vulkan renderer οθόνης, Wayland ή καταχώριση Linux. Ο πολλαπλασιαστής ορίζεται μέσα στο παιχνίδι.</string>
     <string name="lab_070cecae">Επιλέξτε τι καταγράφεται (Wine, Box64/FEX, DXVK, SteamLite, Steam χωρίς διεπαφή, logcat), πού πηγαίνουν τα αρχεία καταγραφής και πόσα κρατιούνται. Περιηγηθείτε σε αυτά και μοιραστείτε τα.</string>
     <string name="lab_0721ad7c">Αυτό το κοντέινερ</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Υφές BCn</string>
     <string name="lab_6563bc96">Πιο οξύ (-0.75)</string>
     <string name="lab_65787fdc">Εσωτερικός χώρος, κάρτα SD και οι μονάδες κάθε κοντέινερ</string>
+    <string name="lab_659fcd98">Προστέθηκε από εμένα</string>
     <string name="lab_65f8ea90">Πρόγραμμα οδήγησης renderer</string>
     <string name="lab_660f585a">Αντιγραφή αντιστοιχίσεων από %1$s</string>
     <string name="lab_662a7209">Αντιστροφή X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Λειτουργία εξόδου</string>
     <string name="lab_676dd596">Συνέχιση</string>
     <string name="lab_67805216">Έκδοση Box64EC</string>
+    <string name="lab_67c5a895">Χθες</string>
     <string name="lab_67d87dd3">Η πλήρης διαδρομή ενός αρχείου .conf, π.χ. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Οι οθόνες της εφαρμογής, τα παιχνίδια κρατούν τις δικές τους</string>
     <string name="lab_67e3a624">Αριθμός χειριστηρίων</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Με ποιο backend το Media Foundation αναπαράγει τα cutscenes. Το FFmpeg χρειάζεται ένα επίπεδο arm64ec φτιαγμένο με αυτό (Proton 11.0-2 vc12+). Αλλού επιστρέφει στο GStreamer.</string>
     <string name="lab_71bf97b4">Μνήμη GPU που βλέπουν τα παιχνίδια</string>
     <string name="lab_71d5a5d7">Λήψη προγράμματος οδήγησης Turnip</string>
+    <string name="lab_721589c1">Σήμερα</string>
     <string name="lab_72395178">Παιχνίδια και βιβλιοθήκη</string>
     <string name="lab_7246e766">Προφίλ</string>
     <string name="lab_72550119">Ενημερώσεις αναλογικών</string>
     <string name="lab_728e56d6">Ομαλό</string>
     <string name="lab_72b16281">Παίρνει το πρώτο ελεύθερο γράμμα. Επιλέξτε τον φάκελό του με Περιήγηση.</string>
     <string name="lab_72b89c6d">Επαναφορά στις προεπιλογές της εφαρμογής</string>
+    <string name="lab_72ca24e4">πριν από %1$s ημέρες</string>
     <string name="lab_72f26990">Εγκατεστημένο στο compatibilitytools.d</string>
     <string name="lab_7341f15d">Απόδοση σε πλακίδια GMEM</string>
     <string name="lab_7398c748">Δικό σας χρώμα έμφασης · X για επιλογή</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Ευαισθησία</string>
     <string name="lab_7a1cdbc4">Πυρήνες παιχνιδιού</string>
+    <string name="lab_7a1eba36">Δεν έχει παιχτεί ακόμη</string>
     <string name="lab_7a2a1141">Έκδοση D7VK</string>
     <string name="lab_7a377726">Πώς φτάνει η εικόνα στην οθόνη</string>
     <string name="lab_7a54182d">Επικάλυψη FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Εφαρμόζονται στην εκκίνηση. Το πλευρικό μενού μέσα στο παιχνίδι εξακολουθεί να τις αλλάζει ζωντανά.</string>
     <string name="lab_969dab73">ReShade ενεργό / ανενεργό, Μεμονωμένα / Συνδυαστικά, εφέ και οι ρυθμίσεις τους</string>
     <string name="lab_96a7cb77">Η εκκρεμής εναλλαγή ακυρώθηκε.</string>
+    <string name="lab_96df6867">%1$s ώρ. παιχνίδι</string>
     <string name="lab_97275ac4">Αντιστρέφει ξανά το κόκκινο και το μπλε (BGRA σε RGBA).</string>
     <string name="lab_97342f2d">Προεπιλογή: 16 MB.</string>
     <string name="lab_975587b0">Ισχύει μετά την επανεκκίνηση της εφαρμογής.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Έκδοση Wine</string>
     <string name="lab_d5d36d66">Εγκατεστημένο %1$s</string>
     <string name="lab_d5d636c1">Σκανδάλη</string>
+    <string name="lab_d5e887b8">%1$s ώ.</string>
     <string name="lab_d60412d3">Πρωτότυπο</string>
     <string name="lab_d653f990">Μεταφραστής x86 για κώδικα 32-bit</string>
     <string name="lab_d6d3fe68">Επιλέξτε ένα πακέτο στοιχείων (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Επίπεδο, μοντέλο, κλίμακα ροής και λειτουργία απόδοσης</string>
     <string name="lab_ff9f6b19">Ως κείμενο, διαχωρισμένο με κόμματα</string>
     <string name="lab_ffb9855e">Αυτό το αρχείο δεν είναι προφίλ χειρισμού</string>
+    <string name="lab_ffcd863d">%1$s λεπ. παιχνίδι</string>
 </resources>

@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Spielseite</string>
     <string name="lab_0687488a">Turnip- und Qualcomm-Treiber</string>
     <string name="lab_06a7c591">Das gemeinsame Preset, dem jeder Container folgt, sofern er keine eigenen Werte hat. Wird gespeichert, sobald du auf Speichern drückst; Zurücksetzen stellt das Original wieder her.</string>
+    <string name="lab_06e7ab7e">%1$s Min.</string>
     <string name="lab_06eb3f00">Integriert (Win-FG) interpoliert in der App. Lossless Scaling nutzt deine eigene Lossless.dll. Beide brauchen den Vulkan-Bildschirm-Renderer, Wayland oder einen Linux-Eintrag. Der Multiplikator wird im Spiel eingestellt.</string>
     <string name="lab_070cecae">Wähle, was aufgezeichnet wird (Wine, Box64/FEX, DXVK, SteamLite, Steam ohne Oberfläche, logcat), wohin Logs gehen und wie viele behalten werden; durchsuche und teile sie.</string>
     <string name="lab_0721ad7c">Dieser Container</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn-Texturen</string>
     <string name="lab_6563bc96">Schärfer (-0.75)</string>
     <string name="lab_65787fdc">Interner Speicher, SD-Karte und die Laufwerke aller Container</string>
+    <string name="lab_659fcd98">Von mir hinzugefügt</string>
     <string name="lab_65f8ea90">Renderer-Treiber</string>
     <string name="lab_660f585a">Belegungen von %1$s kopieren</string>
     <string name="lab_662a7209">X invertieren</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Ausgabemodus</string>
     <string name="lab_676dd596">Fortsetzen</string>
     <string name="lab_67805216">Box64EC-Version</string>
+    <string name="lab_67c5a895">Gestern</string>
     <string name="lab_67d87dd3">Der vollständige Pfad einer .conf-Datei, z. B. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Die eigenen Bildschirme der App; Spiele behalten ihre</string>
     <string name="lab_67e3a624">Anzahl der Controller</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Mit welchem Backend Media Foundation Zwischensequenzen abspielt. FFmpeg erfordert einen damit gebauten arm64ec-Layer (Proton 11.0-2 vc12+); anderswo fällt es auf GStreamer zurück.</string>
     <string name="lab_71bf97b4">GPU-Speicher für Spiele</string>
     <string name="lab_71d5a5d7">Turnip-Treiber herunterladen</string>
+    <string name="lab_721589c1">Heute</string>
     <string name="lab_72395178">Spiele &amp; Bibliothek</string>
     <string name="lab_7246e766">Profile</string>
     <string name="lab_72550119">Stick-Updates</string>
     <string name="lab_728e56d6">Flüssig</string>
     <string name="lab_72b16281">Nimmt den ersten freien Buchstaben. Wähle seinen Ordner mit Durchsuchen.</string>
     <string name="lab_72b89c6d">Auf App-Standards zurücksetzen</string>
+    <string name="lab_72ca24e4">vor %1$s Tagen</string>
     <string name="lab_72f26990">In compatibilitytools.d installiert</string>
     <string name="lab_7341f15d">GMEM-Tile-Rendering</string>
     <string name="lab_7398c748">Eigene Akzentfarbe · X zum Auswählen</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Empfindlichkeit</string>
     <string name="lab_7a1cdbc4">Spielkerne</string>
+    <string name="lab_7a1eba36">Noch nicht gespielt</string>
     <string name="lab_7a2a1141">D7VK-Version</string>
     <string name="lab_7a377726">Wie das Bild auf den Bildschirm kommt</string>
     <string name="lab_7a54182d">FPS-Overlay</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Wird beim Start angewendet. Das Seitenmenü im Spiel ändert sie weiterhin live.</string>
     <string name="lab_969dab73">ReShade an / aus, Einzeln / Gestapelt, Effekte und ihre Einstellungen</string>
     <string name="lab_96a7cb77">Der wartende Austausch wurde abgebrochen.</string>
+    <string name="lab_96df6867">%1$s Std. gespielt</string>
     <string name="lab_97275ac4">Tauscht Rot und Blau zurück (BGRA zu RGBA).</string>
     <string name="lab_97342f2d">Standard: 16 MB.</string>
     <string name="lab_975587b0">Wird nach dem Neustart der App wirksam.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine-Version</string>
     <string name="lab_d5d36d66">%1$s installiert</string>
     <string name="lab_d5d636c1">Trigger</string>
+    <string name="lab_d5e887b8">%1$s Std.</string>
     <string name="lab_d60412d3">Original</string>
     <string name="lab_d653f990">x86-Übersetzer für 32-Bit-Code</string>
     <string name="lab_d6d3fe68">Komponentenpaket auswählen (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Stufe, Modell, Flow-Skalierung und Leistungsmodus</string>
     <string name="lab_ff9f6b19">Als Text, durch Kommas getrennt</string>
     <string name="lab_ffb9855e">Diese Datei ist kein Steuerungsprofil</string>
+    <string name="lab_ffcd863d">%1$s Min. gespielt</string>
 </resources>

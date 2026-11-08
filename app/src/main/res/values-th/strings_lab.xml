@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">หน้าเกม</string>
     <string name="lab_0687488a">ไดรเวอร์ Turnip และ Qualcomm</string>
     <string name="lab_06a7c591">พรีเซ็ตที่ใช้ร่วมกันซึ่งทุกคอนเทนเนอร์ใช้ตาม เว้นแต่มีค่าของตัวเอง บันทึกทันทีที่คุณกด บันทึก ส่วน รีเซ็ต จะคืนค่าเดิม</string>
+    <string name="lab_06e7ab7e">%1$s นาที</string>
     <string name="lab_06eb3f00">ในตัว (Win-FG) สร้างเฟรมแทรกภายในแอป Lossless Scaling ใช้ Lossless.dll ของคุณเอง ทั้งสองแบบต้องใช้เรนเดอเรอร์หน้าจอ Vulkan, Wayland หรือรายการ Linux ตัวคูณตั้งได้ในเกม</string>
     <string name="lab_070cecae">เลือกสิ่งที่จะบันทึก (Wine, Box64/FEX, DXVK, SteamLite, Steam แบบเบื้องหลัง, logcat) ตำแหน่งเก็บล็อก และจำนวนที่เก็บไว้ เรียกดูและแชร์ล็อกได้</string>
     <string name="lab_0721ad7c">คอนเทนเนอร์นี้</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">พื้นผิว BCn</string>
     <string name="lab_6563bc96">คมขึ้น (-0.75)</string>
     <string name="lab_65787fdc">พื้นที่จัดเก็บภายใน การ์ด SD และไดรฟ์ของทุกคอนเทนเนอร์</string>
+    <string name="lab_659fcd98">ฉันเพิ่มเอง</string>
     <string name="lab_65f8ea90">ไดรเวอร์เรนเดอเรอร์</string>
     <string name="lab_660f585a">คัดลอกการกำหนดปุ่มจาก %1$s</string>
     <string name="lab_662a7209">กลับแกน X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">โหมดเอาต์พุต</string>
     <string name="lab_676dd596">ดำเนินการต่อ</string>
     <string name="lab_67805216">เวอร์ชัน Box64EC</string>
+    <string name="lab_67c5a895">เมื่อวาน</string>
     <string name="lab_67d87dd3">พาธเต็มของไฟล์ .conf เช่น /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">หน้าจอของแอปเอง; เกมใช้ของตัวเอง</string>
     <string name="lab_67e3a624">จำนวนคอนโทรลเลอร์</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">แบ็กเอนด์ที่ Media Foundation ใช้เล่นคัตซีน FFmpeg ต้องใช้เลเยอร์ arm64ec ที่สร้างมาพร้อม FFmpeg (Proton 11.0-2 vc12+) กรณีอื่นจะกลับไปใช้ GStreamer</string>
     <string name="lab_71bf97b4">หน่วยความจำ GPU ที่เกมเห็น</string>
     <string name="lab_71d5a5d7">ดาวน์โหลดไดรเวอร์ Turnip</string>
+    <string name="lab_721589c1">วันนี้</string>
     <string name="lab_72395178">เกมและไลบรารี</string>
     <string name="lab_7246e766">โปรไฟล์</string>
     <string name="lab_72550119">การอัปเดตสติ๊ก</string>
     <string name="lab_728e56d6">ลื่นไหล</string>
     <string name="lab_72b16281">ใช้อักษรว่างตัวแรก เลือกโฟลเดอร์ด้วย เรียกดู</string>
     <string name="lab_72b89c6d">รีเซ็ตเป็นค่าเริ่มต้นของแอป</string>
+    <string name="lab_72ca24e4">%1$s วันที่แล้ว</string>
     <string name="lab_72f26990">ติดตั้งใน compatibilitytools.d</string>
     <string name="lab_7341f15d">การเรนเดอร์แบบไทล์ GMEM</string>
     <string name="lab_7398c748">สีเน้นของคุณเอง · กด X เพื่อเลือก</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">ความไว</string>
     <string name="lab_7a1cdbc4">คอร์สำหรับเกม</string>
+    <string name="lab_7a1eba36">ยังไม่เคยเล่น</string>
     <string name="lab_7a2a1141">เวอร์ชัน D7VK</string>
     <string name="lab_7a377726">วิธีที่ภาพไปถึงหน้าจอ</string>
     <string name="lab_7a54182d">โอเวอร์เลย์ FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">มีผลเมื่อเปิดเกม เมนูด้านข้างในเกมยังเปลี่ยนค่าเหล่านี้ได้ทันที</string>
     <string name="lab_969dab73">เปิด / ปิด ReShade, เดี่ยว / ซ้อน, เอฟเฟกต์และการตั้งค่า</string>
     <string name="lab_96a7cb77">ยกเลิกการสลับที่รออยู่แล้ว</string>
+    <string name="lab_96df6867">เล่นแล้ว %1$s ชม.</string>
     <string name="lab_97275ac4">สลับสีแดงและน้ำเงินกลับ (BGRA เป็น RGBA)</string>
     <string name="lab_97342f2d">ค่าเริ่มต้น: 16 MB</string>
     <string name="lab_975587b0">มีผลหลังรีสตาร์ทแอป</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">เวอร์ชัน Wine</string>
     <string name="lab_d5d36d66">ติดตั้ง %1$s แล้ว</string>
     <string name="lab_d5d636c1">ทริกเกอร์</string>
+    <string name="lab_d5e887b8">%1$s ชม.</string>
     <string name="lab_d60412d3">ต้นฉบับ</string>
     <string name="lab_d653f990">ตัวแปล x86 สำหรับโค้ด 32 บิต</string>
     <string name="lab_d6d3fe68">เลือกแพ็กเกจคอมโพเนนต์ (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">ระดับ โมเดล flow scale และโหมดประสิทธิภาพ</string>
     <string name="lab_ff9f6b19">เป็นข้อความ คั่นด้วยจุลภาค</string>
     <string name="lab_ffb9855e">ไฟล์นั้นไม่ใช่โปรไฟล์การควบคุม</string>
+    <string name="lab_ffcd863d">เล่นแล้ว %1$s นาที</string>
 </resources>

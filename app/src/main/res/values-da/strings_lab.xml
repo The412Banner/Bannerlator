@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Spilside</string>
     <string name="lab_0687488a">Turnip- og Qualcomm-drivere</string>
     <string name="lab_06a7c591">Den delte forudindstilling, som alle containere følger, medmindre de har deres egne værdier. Gemmes, så snart du trykker på Gem; Nulstil gendanner originalen.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Indbygget (Win-FG) interpolerer i appen. Lossless Scaling bruger din egen Lossless.dll. Begge kræver Vulkan-skærmrendereren, Wayland eller en Linux-post. Multiplikatoren indstilles i spillet.</string>
     <string name="lab_070cecae">Vælg, hvad der logges (Wine, Box64/FEX, DXVK, SteamLite, Steam uden brugerflade, logcat), hvor logfilerne gemmes, og hvor mange der beholdes; gennemse og del dem.</string>
     <string name="lab_0721ad7c">Denne container</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn-teksturer</string>
     <string name="lab_6563bc96">Skarpere (-0.75)</string>
     <string name="lab_65787fdc">Intern lagerplads, SD-kort og alle containeres drev</string>
+    <string name="lab_659fcd98">Tilføjet af mig</string>
     <string name="lab_65f8ea90">Renderer-driver</string>
     <string name="lab_660f585a">Kopiér tildelinger fra %1$s</string>
     <string name="lab_662a7209">Invertér X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Outputtilstand</string>
     <string name="lab_676dd596">Genoptag</string>
     <string name="lab_67805216">Box64EC-version</string>
+    <string name="lab_67c5a895">I går</string>
     <string name="lab_67d87dd3">Den fulde sti til en .conf-fil, f.eks. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Appens egne skærme; spil beholder deres</string>
     <string name="lab_67e3a624">Antal controllere</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Hvilken backend Media Foundation afspiller mellemsekvenser med. FFmpeg kræver et arm64ec-lag, der er bygget med det (Proton 11.0-2 vc12+); ellers falder den tilbage til GStreamer.</string>
     <string name="lab_71bf97b4">GPU-hukommelse, som spil ser</string>
     <string name="lab_71d5a5d7">Download en Turnip-driver</string>
+    <string name="lab_721589c1">I dag</string>
     <string name="lab_72395178">Spil og bibliotek</string>
     <string name="lab_7246e766">Profiler</string>
     <string name="lab_72550119">Stick-opdateringer</string>
     <string name="lab_728e56d6">Jævn</string>
     <string name="lab_72b16281">Tager det første ledige bogstav. Vælg dets mappe med Gennemse.</string>
     <string name="lab_72b89c6d">Nulstil til appens standardværdier</string>
+    <string name="lab_72ca24e4">for %1$s dage siden</string>
     <string name="lab_72f26990">Installeret i compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM-tile-rendering</string>
     <string name="lab_7398c748">Din egen accentfarve · X for at vælge den</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Følsomhed</string>
     <string name="lab_7a1cdbc4">Spilkerner</string>
+    <string name="lab_7a1eba36">Ikke spillet endnu</string>
     <string name="lab_7a2a1141">D7VK-version</string>
     <string name="lab_7a377726">Hvordan billedet når skærmen</string>
     <string name="lab_7a54182d">FPS-overlay</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Anvendes ved start. Sidemenuen i spillet kan stadig ændre dem undervejs.</string>
     <string name="lab_969dab73">ReShade til / fra, Solo / Stak, effekter og deres indstillinger</string>
     <string name="lab_96a7cb77">Den ventende udskiftning blev annulleret.</string>
+    <string name="lab_96df6867">%1$s t spillet</string>
     <string name="lab_97275ac4">Bytter rød og blå tilbage (BGRA til RGBA).</string>
     <string name="lab_97342f2d">Standard: 16 MB.</string>
     <string name="lab_975587b0">Træder i kraft, når appen genstartes.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine-version</string>
     <string name="lab_d5d36d66">Installeret %1$s</string>
     <string name="lab_d5d636c1">Aftrækker</string>
+    <string name="lab_d5e887b8">%1$s t</string>
     <string name="lab_d60412d3">Original</string>
     <string name="lab_d653f990">x86-oversætter til 32-bit-kode</string>
     <string name="lab_d6d3fe68">Vælg en komponentpakke (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Niveau, model, flowskala og ydelsestilstand</string>
     <string name="lab_ff9f6b19">Som tekst, kommasepareret</string>
     <string name="lab_ffb9855e">Filen er ikke en kontrolprofil</string>
+    <string name="lab_ffcd863d">%1$s min spillet</string>
 </resources>

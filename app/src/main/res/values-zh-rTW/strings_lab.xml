@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">遊戲頁面</string>
     <string name="lab_0687488a">Turnip 和 Qualcomm 驅動程式</string>
     <string name="lab_06a7c591">所有容器都會跟隨的共用預設集，除非容器有自己的值。按「儲存」後立即儲存；「重設」會還原原始設定。</string>
+    <string name="lab_06e7ab7e">%1$s 分鐘</string>
     <string name="lab_06eb3f00">內建（Win-FG）在應用程式內部進行插幀。Lossless Scaling 使用你自己的 Lossless.dll。兩者都需要 Vulkan 螢幕渲染器、Wayland 或 Linux 項目。倍數在遊戲中設定。</string>
     <string name="lab_070cecae">選擇要記錄的內容（Wine、Box64/FEX、DXVK、SteamLite、無介面 Steam、logcat）、日誌的儲存位置及保留數量；瀏覽並分享日誌。</string>
     <string name="lab_0721ad7c">此容器</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn 材質</string>
     <string name="lab_6563bc96">較銳利（-0.75）</string>
     <string name="lab_65787fdc">內部儲存空間、SD 卡和所有容器的磁碟機</string>
+    <string name="lab_659fcd98">我新增的</string>
     <string name="lab_65f8ea90">渲染器驅動程式</string>
     <string name="lab_660f585a">從 %1$s 複製綁定</string>
     <string name="lab_662a7209">反轉 X 軸</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">輸出模式</string>
     <string name="lab_676dd596">繼續</string>
     <string name="lab_67805216">Box64EC 版本</string>
+    <string name="lab_67c5a895">昨天</string>
     <string name="lab_67d87dd3">.conf 檔案的完整路徑，例如 /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">應用程式本身的畫面；遊戲維持各自的設定</string>
     <string name="lab_67e3a624">控制器數量</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Media Foundation 播放過場動畫所用的後端。FFmpeg 需要內含它的 arm64ec 層（Proton 11.0-2 vc12+）；其他情況下會改用 GStreamer。</string>
     <string name="lab_71bf97b4">遊戲偵測到的 GPU 記憶體</string>
     <string name="lab_71d5a5d7">下載 Turnip 驅動程式</string>
+    <string name="lab_721589c1">今天</string>
     <string name="lab_72395178">遊戲與收藏庫</string>
     <string name="lab_7246e766">設定檔</string>
     <string name="lab_72550119">搖桿更新</string>
     <string name="lab_728e56d6">流暢</string>
     <string name="lab_72b16281">使用第一個可用的磁碟機代號。用「瀏覽」選擇其資料夾。</string>
     <string name="lab_72b89c6d">重設為應用程式預設值</string>
+    <string name="lab_72ca24e4">%1$s 天前</string>
     <string name="lab_72f26990">已安裝到 compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM 分塊渲染</string>
     <string name="lab_7398c748">自訂強調色 · 按 X 選取</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">靈敏度</string>
     <string name="lab_7a1cdbc4">遊戲核心</string>
+    <string name="lab_7a1eba36">尚未玩過</string>
     <string name="lab_7a2a1141">D7VK 版本</string>
     <string name="lab_7a377726">畫面輸出到螢幕的方式</string>
     <string name="lab_7a54182d">FPS 重疊層</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">啟動時套用。仍可透過遊戲內側邊選單即時變更。</string>
     <string name="lab_969dab73">ReShade 開 / 關、單獨 / 疊加、效果及其設定</string>
     <string name="lab_96a7cb77">已取消等待中的換入。</string>
+    <string name="lab_96df6867">已玩 %1$s 小時</string>
     <string name="lab_97275ac4">將紅色和藍色對調回來（BGRA 轉 RGBA）。</string>
     <string name="lab_97342f2d">預設：16 MB。</string>
     <string name="lab_975587b0">重新啟動應用程式後生效。</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine 版本</string>
     <string name="lab_d5d36d66">已安裝 %1$s</string>
     <string name="lab_d5d636c1">扳機鍵</string>
+    <string name="lab_d5e887b8">%1$s 小時</string>
     <string name="lab_d60412d3">原始</string>
     <string name="lab_d653f990">32 位元程式碼的 x86 轉譯器</string>
     <string name="lab_d6d3fe68">選擇元件套件（-linux .wcp）</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">等級、模型、光流比例和效能模式</string>
     <string name="lab_ff9f6b19">文字，以逗號分隔</string>
     <string name="lab_ffb9855e">該檔案不是控制設定檔</string>
+    <string name="lab_ffcd863d">已玩 %1$s 分鐘</string>
 </resources>

@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Pagina jocului</string>
     <string name="lab_0687488a">Drivere Turnip și Qualcomm</string>
     <string name="lab_06a7c591">Presetarea comună pe care o urmează fiecare container, dacă nu are valori proprii. Se salvează imediat ce apeși Salvează; Resetează restaurează originalul.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Integrat (Win-FG) interpolează în aplicație. Lossless Scaling folosește propriul tău Lossless.dll. Ambele au nevoie de rendererul de ecran Vulkan, de Wayland sau de o intrare Linux. Multiplicatorul se setează în joc.</string>
     <string name="lab_070cecae">Alege ce se înregistrează (Wine, Box64/FEX, DXVK, SteamLite, Steam fără interfață, logcat), unde ajung jurnalele și câte se păstrează; răsfoiește-le și partajează-le.</string>
     <string name="lab_0721ad7c">Acest container</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Texturi BCn</string>
     <string name="lab_6563bc96">Mai clar (-0.75)</string>
     <string name="lab_65787fdc">Stocare internă, card SD și unitățile fiecărui container</string>
+    <string name="lab_659fcd98">Adăugat de mine</string>
     <string name="lab_65f8ea90">Driver renderer</string>
     <string name="lab_660f585a">Copiază mapările din %1$s</string>
     <string name="lab_662a7209">Inversează X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Mod de ieșire</string>
     <string name="lab_676dd596">Reluare</string>
     <string name="lab_67805216">Versiune Box64EC</string>
+    <string name="lab_67c5a895">Ieri</string>
     <string name="lab_67d87dd3">Calea completă a unui fișier .conf, de ex. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Ecranele aplicației; jocurile le păstrează pe ale lor</string>
     <string name="lab_67e3a624">Număr de controllere</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Cu ce backend redă Media Foundation secvențele video. FFmpeg necesită un strat arm64ec construit cu el (Proton 11.0-2 vc12+); în rest revine la GStreamer.</string>
     <string name="lab_71bf97b4">Memoria GPU văzută de jocuri</string>
     <string name="lab_71d5a5d7">Descarcă un driver Turnip</string>
+    <string name="lab_721589c1">Azi</string>
     <string name="lab_72395178">Jocuri și bibliotecă</string>
     <string name="lab_7246e766">Profiluri</string>
     <string name="lab_72550119">Actualizări stick</string>
     <string name="lab_728e56d6">Fluid</string>
     <string name="lab_72b16281">Primește prima literă liberă. Alege-i folderul cu Răsfoiește.</string>
     <string name="lab_72b89c6d">Resetează la valorile implicite ale aplicației</string>
+    <string name="lab_72ca24e4">acum %1$s zile</string>
     <string name="lab_72f26990">Instalat în compatibilitytools.d</string>
     <string name="lab_7341f15d">Randare pe dale GMEM</string>
     <string name="lab_7398c748">Culoare de accent proprie · X pentru a o alege</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Sensibilitate</string>
     <string name="lab_7a1cdbc4">Nuclee pentru joc</string>
+    <string name="lab_7a1eba36">Nejucat încă</string>
     <string name="lab_7a2a1141">Versiune D7VK</string>
     <string name="lab_7a377726">Cum ajunge imaginea pe ecran</string>
     <string name="lab_7a54182d">Suprapunere FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Aplicate la lansare. Meniul lateral din joc le poate schimba în continuare din mers.</string>
     <string name="lab_969dab73">ReShade activat / dezactivat, Individual / Combinat, efectele și setările lor</string>
     <string name="lab_96a7cb77">Comutarea în așteptare a fost anulată.</string>
+    <string name="lab_96df6867">%1$s h jucate</string>
     <string name="lab_97275ac4">Inversează înapoi roșul și albastrul (BGRA în RGBA).</string>
     <string name="lab_97342f2d">Implicit: 16 MB.</string>
     <string name="lab_975587b0">Se aplică după repornirea aplicației.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Versiune Wine</string>
     <string name="lab_d5d36d66">Instalat %1$s</string>
     <string name="lab_d5d636c1">Trăgaci</string>
+    <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Original</string>
     <string name="lab_d653f990">Translator x86 pentru cod pe 32 de biți</string>
     <string name="lab_d6d3fe68">Alege un pachet de componente (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Nivelul, modelul, scara fluxului și modul de performanță</string>
     <string name="lab_ff9f6b19">Ca text, separat prin virgule</string>
     <string name="lab_ffb9855e">Fișierul nu este un profil de comenzi</string>
+    <string name="lab_ffcd863d">%1$s min jucate</string>
 </resources>

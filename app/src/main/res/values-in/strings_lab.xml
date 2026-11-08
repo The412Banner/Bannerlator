@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Halaman game</string>
     <string name="lab_0687488a">Driver Turnip dan Qualcomm</string>
     <string name="lab_06a7c591">Preset bersama yang diikuti setiap container kecuali punya nilai sendiri. Disimpan begitu Anda menekan Simpan; Setel ulang memulihkan aslinya.</string>
+    <string name="lab_06e7ab7e">%1$s mnt</string>
     <string name="lab_06eb3f00">Bawaan (Win-FG) melakukan interpolasi di dalam aplikasi. Lossless Scaling memakai Lossless.dll milik Anda. Keduanya butuh renderer layar Vulkan, Wayland, atau entri Linux. Pengali diatur dalam game.</string>
     <string name="lab_070cecae">Pilih apa yang dicatat (Wine, Box64/FEX, DXVK, SteamLite, Steam tanpa antarmuka, logcat), tempat log disimpan, dan berapa banyak yang disimpan; telusuri dan bagikan.</string>
     <string name="lab_0721ad7c">Container ini</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Tekstur BCn</string>
     <string name="lab_6563bc96">Lebih tajam (-0.75)</string>
     <string name="lab_65787fdc">Penyimpanan internal, kartu SD, dan drive setiap container</string>
+    <string name="lab_659fcd98">Ditambahkan oleh saya</string>
     <string name="lab_65f8ea90">Driver Renderer</string>
     <string name="lab_660f585a">Salin pemetaan dari %1$s</string>
     <string name="lab_662a7209">Balik X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Mode output</string>
     <string name="lab_676dd596">Lanjutkan</string>
     <string name="lab_67805216">Versi Box64EC</string>
+    <string name="lab_67c5a895">Kemarin</string>
     <string name="lab_67d87dd3">Path lengkap file .conf, mis. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Layar aplikasi ini sendiri; game tetap memakai miliknya</string>
     <string name="lab_67e3a624">Jumlah pengontrol</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Backend yang dipakai Media Foundation untuk memutar cutscene. FFmpeg memerlukan layer arm64ec yang dibuat dengannya (Proton 11.0-2 vc12+); di tempat lain beralih ke GStreamer.</string>
     <string name="lab_71bf97b4">Memori GPU yang dilihat game</string>
     <string name="lab_71d5a5d7">Unduh driver Turnip</string>
+    <string name="lab_721589c1">Hari ini</string>
     <string name="lab_72395178">Game &amp; pustaka</string>
     <string name="lab_7246e766">Profil</string>
     <string name="lab_72550119">Pembaruan stik</string>
     <string name="lab_728e56d6">Mulus</string>
     <string name="lab_72b16281">Memakai huruf kosong pertama. Pilih foldernya dengan Telusuri.</string>
     <string name="lab_72b89c6d">Setel ulang ke default aplikasi</string>
+    <string name="lab_72ca24e4">%1$s hari lalu</string>
     <string name="lab_72f26990">Terinstal di compatibilitytools.d</string>
     <string name="lab_7341f15d">Rendering tile GMEM</string>
     <string name="lab_7398c748">Warna aksen Anda sendiri · X untuk memilih</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Sensitivitas</string>
     <string name="lab_7a1cdbc4">Core gim</string>
+    <string name="lab_7a1eba36">Belum dimainkan</string>
     <string name="lab_7a2a1141">Versi D7VK</string>
     <string name="lab_7a377726">Cara gambar sampai ke layar</string>
     <string name="lab_7a54182d">Overlay FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Diterapkan saat peluncuran. Menu samping dalam game tetap bisa mengubahnya secara langsung.</string>
     <string name="lab_969dab73">ReShade aktif / nonaktif, Solo / Tumpuk, efek dan setelannya</string>
     <string name="lab_96a7cb77">Pergantian yang tertunda dibatalkan.</string>
+    <string name="lab_96df6867">Dimainkan %1$s jam</string>
     <string name="lab_97275ac4">Menukar kembali merah dan biru (BGRA ke RGBA).</string>
     <string name="lab_97342f2d">Default: 16 MB.</string>
     <string name="lab_975587b0">Berlaku setelah aplikasi dimulai ulang.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Versi Wine</string>
     <string name="lab_d5d36d66">Terinstal %1$s</string>
     <string name="lab_d5d636c1">Pemicu</string>
+    <string name="lab_d5e887b8">%1$s j</string>
     <string name="lab_d60412d3">Asli</string>
     <string name="lab_d653f990">Penerjemah x86 untuk kode 32-bit</string>
     <string name="lab_d6d3fe68">Pilih paket komponen (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Level, model, flow scale, dan mode performa</string>
     <string name="lab_ff9f6b19">Sebagai teks, dipisahkan koma</string>
     <string name="lab_ffb9855e">File itu bukan profil kontrol</string>
+    <string name="lab_ffcd863d">Dimainkan %1$s mnt</string>
 </resources>

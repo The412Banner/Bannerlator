@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Страница на играта</string>
     <string name="lab_0687488a">Драйвери Turnip и Qualcomm</string>
     <string name="lab_06a7c591">Споделеният пресет, който всеки контейнер следва, освен ако няма собствени стойности. Записва се веднага щом натиснете Запиши; Нулиране възстановява оригинала.</string>
+    <string name="lab_06e7ab7e">%1$s мин</string>
     <string name="lab_06eb3f00">Вграден (Win-FG) интерполира в самото приложение. Lossless Scaling използва вашия собствен Lossless.dll. И двата изискват екранния рендерер Vulkan, Wayland или Linux запис. Множителят се задава в играта.</string>
     <string name="lab_070cecae">Изберете какво да се записва (Wine, Box64/FEX, DXVK, SteamLite, Steam без интерфейс, logcat), къде да отиват журналите и колко да се пазят; разглеждайте и ги споделяйте.</string>
     <string name="lab_0721ad7c">Този контейнер</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn текстури</string>
     <string name="lab_6563bc96">По-остро (-0.75)</string>
     <string name="lab_65787fdc">Вътрешна памет, SD карта и дисковете на всеки контейнер</string>
+    <string name="lab_659fcd98">Добавено от мен</string>
     <string name="lab_65f8ea90">Драйвер на рендерера</string>
     <string name="lab_660f585a">Копирай назначенията от %1$s</string>
     <string name="lab_662a7209">Обърни X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Режим на изхода</string>
     <string name="lab_676dd596">Продължи</string>
     <string name="lab_67805216">Версия на Box64EC</string>
+    <string name="lab_67c5a895">Вчера</string>
     <string name="lab_67d87dd3">Пълният път до файл .conf, напр. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Собствените екрани на приложението; игрите запазват своите</string>
     <string name="lab_67e3a624">Брой контролери</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">С кой бекенд Media Foundation възпроизвежда видеоклиповете. FFmpeg изисква слой arm64ec, компилиран с него (Proton 11.0-2 vc12+); иначе се връща към GStreamer.</string>
     <string name="lab_71bf97b4">GPU памет, която игрите виждат</string>
     <string name="lab_71d5a5d7">Изтегли драйвер Turnip</string>
+    <string name="lab_721589c1">Днес</string>
     <string name="lab_72395178">Игри и библиотека</string>
     <string name="lab_7246e766">Профили</string>
     <string name="lab_72550119">Обновяване на стиковете</string>
     <string name="lab_728e56d6">Плавен</string>
     <string name="lab_72b16281">Взема първата свободна буква. Изберете папката ѝ с Преглед.</string>
     <string name="lab_72b89c6d">Възстанови стандартните настройки на приложението</string>
+    <string name="lab_72ca24e4">преди %1$s дни</string>
     <string name="lab_72f26990">Инсталирано в compatibilitytools.d</string>
     <string name="lab_7341f15d">Плочково рендериране GMEM</string>
     <string name="lab_7398c748">Собствен акцентен цвят · X за избор</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Чувствителност</string>
     <string name="lab_7a1cdbc4">Ядра за игри</string>
+    <string name="lab_7a1eba36">Още не е играна</string>
     <string name="lab_7a2a1141">Версия на D7VK</string>
     <string name="lab_7a377726">Как картината стига до екрана</string>
     <string name="lab_7a54182d">Насложен слой FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Прилага се при стартиране. Страничното меню в играта все още ги променя на живо.</string>
     <string name="lab_969dab73">ReShade вкл. / изкл., Самостоятелно / Наслагване, ефекти и техните настройки</string>
     <string name="lab_96a7cb77">Изчакващата размяна беше отказана.</string>
+    <string name="lab_96df6867">%1$s ч игра</string>
     <string name="lab_97275ac4">Разменя обратно червеното и синьото (BGRA към RGBA).</string>
     <string name="lab_97342f2d">Стандартно: 16 MB.</string>
     <string name="lab_975587b0">Влиза в сила след рестарт на приложението.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Версия на Wine</string>
     <string name="lab_d5d36d66">Инсталирано: %1$s</string>
     <string name="lab_d5d636c1">Спусък</string>
+    <string name="lab_d5e887b8">%1$s ч</string>
     <string name="lab_d60412d3">Оригинал</string>
     <string name="lab_d653f990">x86 транслатор за 32-битов код</string>
     <string name="lab_d6d3fe68">Избор на пакет с компоненти (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Ниво, модел, мащаб на потока и режим на производителност</string>
     <string name="lab_ff9f6b19">Като текст, разделени със запетаи</string>
     <string name="lab_ffb9855e">Този файл не е профил на контролите</string>
+    <string name="lab_ffcd863d">%1$s мин игра</string>
 </resources>

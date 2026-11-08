@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Játékoldal</string>
     <string name="lab_0687488a">Turnip és Qualcomm illesztőprogramok</string>
     <string name="lab_06a7c591">A közös előbeállítás, amelyet minden konténer követ, hacsak nincsenek saját értékei. Azonnal mentődik, amint megnyomod a Mentés gombot; a Visszaállítás visszahozza az eredetit.</string>
+    <string name="lab_06e7ab7e">%1$s perc</string>
     <string name="lab_06eb3f00">A Beépített (Win-FG) az alkalmazáson belül interpolál. A Lossless Scaling a saját Lossless.dll fájlodat használja. Mindkettőhöz a Vulkan képernyő-renderelő, a Wayland vagy egy Linux-bejegyzés kell. A szorzót játék közben állíthatod be.</string>
     <string name="lab_070cecae">Válaszd ki, mi kerüljön a naplóba (Wine, Box64/FEX, DXVK, SteamLite, Felület nélküli Steam, logcat), hová kerüljenek a naplók és hányat őrizzen meg; böngészd és oszd meg őket.</string>
     <string name="lab_0721ad7c">Ez a konténer</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn-textúrák</string>
     <string name="lab_6563bc96">Élesebb (-0.75)</string>
     <string name="lab_65787fdc">Belső tárhely, SD-kártya és minden konténer meghajtói</string>
+    <string name="lab_659fcd98">Általam hozzáadva</string>
     <string name="lab_65f8ea90">Renderelő illesztőprogram</string>
     <string name="lab_660f585a">Kiosztások másolása innen: %1$s</string>
     <string name="lab_662a7209">X invertálása</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Kimeneti mód</string>
     <string name="lab_676dd596">Folytatás</string>
     <string name="lab_67805216">Box64EC verzió</string>
+    <string name="lab_67c5a895">Tegnap</string>
     <string name="lab_67d87dd3">Egy .conf fájl teljes elérési útja, pl. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Az alkalmazás saját képernyői; a játékok megtartják a sajátjukat</string>
     <string name="lab_67e3a624">Kontrollerek száma</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Melyik háttérrendszerrel játssza le a Media Foundation az átvezető videókat. Az FFmpeghez vele épített arm64ec réteg kell (Proton 11.0-2 vc12+); máshol GStreamerre vált vissza.</string>
     <string name="lab_71bf97b4">A játékok által látott GPU-memória</string>
     <string name="lab_71d5a5d7">Turnip illesztőprogram letöltése</string>
+    <string name="lab_721589c1">Ma</string>
     <string name="lab_72395178">Játékok és könyvtár</string>
     <string name="lab_7246e766">Profilok</string>
     <string name="lab_72550119">Karfrissítés</string>
     <string name="lab_728e56d6">Sima</string>
     <string name="lab_72b16281">Az első szabad betűjelet kapja. A mappáját a Tallózással választhatod ki.</string>
     <string name="lab_72b89c6d">Alkalmazás-alapértékek visszaállítása</string>
+    <string name="lab_72ca24e4">%1$s napja</string>
     <string name="lab_72f26990">Telepítve: compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM csempés renderelés</string>
     <string name="lab_7398c748">Saját kiemelőszín · X a kiválasztáshoz</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Érzékenység</string>
     <string name="lab_7a1cdbc4">Játékmagok</string>
+    <string name="lab_7a1eba36">Még nem játszott</string>
     <string name="lab_7a2a1141">D7VK verzió</string>
     <string name="lab_7a377726">Hogyan jut a kép a képernyőre</string>
     <string name="lab_7a54182d">FPS-overlay</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Indításkor lép életbe. Játék közben az oldalsó menüben továbbra is élőben módosíthatók.</string>
     <string name="lab_969dab73">ReShade be / ki, Egyedül / Halmozva, effektek és beállításaik</string>
     <string name="lab_96a7cb77">A várakozó csere megszakítva.</string>
+    <string name="lab_96df6867">%1$s óra játék</string>
     <string name="lab_97275ac4">Visszacseréli a pirosat és a kéket (BGRA-ból RGBA).</string>
     <string name="lab_97342f2d">Alapértelmezés: 16 MB.</string>
     <string name="lab_975587b0">Az alkalmazás újraindítása után lép életbe.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine verzió</string>
     <string name="lab_d5d36d66">%1$s telepítve</string>
     <string name="lab_d5d636c1">Ravasz</string>
+    <string name="lab_d5e887b8">%1$s óra</string>
     <string name="lab_d60412d3">Eredeti</string>
     <string name="lab_d653f990">x86-fordító 32 bites kódhoz</string>
     <string name="lab_d6d3fe68">Válasszon összetevőcsomagot (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Szint, modell, áramlási skála és teljesítménymód</string>
     <string name="lab_ff9f6b19">Szövegként, vesszővel elválasztva</string>
     <string name="lab_ffb9855e">Ez a fájl nem vezérlési profil</string>
+    <string name="lab_ffcd863d">%1$s perc játék</string>
 </resources>

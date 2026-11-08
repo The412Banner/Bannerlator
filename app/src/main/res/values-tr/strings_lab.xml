@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Oyun sayfası</string>
     <string name="lab_0687488a">Turnip ve Qualcomm sürücüleri</string>
     <string name="lab_06a7c591">Kendi değerleri olmadıkça tüm konteynerlerin izlediği paylaşılan ön ayar. Kaydet\'e bastığınız anda kaydedilir; Sıfırla orijinali geri yükler.</string>
+    <string name="lab_06e7ab7e">%1$s dk</string>
     <string name="lab_06eb3f00">Yerleşik (Win-FG) ara kareleri uygulamanın içinde üretir. Lossless Scaling kendi Lossless.dll dosyanızı kullanır. İkisi de Vulkan ekran işleyicisi, Wayland veya bir Linux girdisi gerektirir. Çarpan oyun içinde ayarlanır.</string>
     <string name="lab_070cecae">Neyin kaydedileceğini (Wine, Box64/FEX, DXVK, SteamLite, Arayüzsüz Steam, logcat), günlüklerin nereye gideceğini ve kaç tanesinin saklanacağını seçin; günlüklere göz atın ve paylaşın.</string>
     <string name="lab_0721ad7c">Bu konteyner</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn dokuları</string>
     <string name="lab_6563bc96">Daha keskin (-0.75)</string>
     <string name="lab_65787fdc">Dahili depolama, SD kart ve tüm konteynerlerin diskleri</string>
+    <string name="lab_659fcd98">Benim eklediğim</string>
     <string name="lab_65f8ea90">İşleyici sürücüsü</string>
     <string name="lab_660f585a">Atamaları kopyala: %1$s</string>
     <string name="lab_662a7209">X\'i ters çevir</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Çıkış modu</string>
     <string name="lab_676dd596">Devam et</string>
     <string name="lab_67805216">Box64EC sürümü</string>
+    <string name="lab_67c5a895">Dün</string>
     <string name="lab_67d87dd3">Bir .conf dosyasının tam yolu, örn. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Uygulamanın kendi ekranları; oyunlar kendininkini korur</string>
     <string name="lab_67e3a624">Kumanda sayısı</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Media Foundation\'ın ara sahneleri hangi arka uçla oynattığı. FFmpeg, onunla derlenmiş bir arm64ec katmanı gerektirir (Proton 11.0-2 vc12+); diğerlerinde GStreamer\'a geri döner.</string>
     <string name="lab_71bf97b4">Oyunların gördüğü GPU belleği</string>
     <string name="lab_71d5a5d7">Turnip sürücüsü indir</string>
+    <string name="lab_721589c1">Bugün</string>
     <string name="lab_72395178">Oyunlar ve kütüphane</string>
     <string name="lab_7246e766">Profiller</string>
     <string name="lab_72550119">Çubuk güncellemeleri</string>
     <string name="lab_728e56d6">Akıcı</string>
     <string name="lab_72b16281">İlk boş harfi alır. Klasörünü Göz at ile seçin.</string>
     <string name="lab_72b89c6d">Uygulama varsayılanlarına sıfırla</string>
+    <string name="lab_72ca24e4">%1$s gün önce</string>
     <string name="lab_72f26990">compatibilitytools.d içinde yüklü</string>
     <string name="lab_7341f15d">GMEM döşemeli işleme</string>
     <string name="lab_7398c748">Kendi vurgu renginiz · seçmek için X</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Hassasiyet</string>
     <string name="lab_7a1cdbc4">Oyun çekirdekleri</string>
+    <string name="lab_7a1eba36">Henüz oynanmadı</string>
     <string name="lab_7a2a1141">D7VK sürümü</string>
     <string name="lab_7a377726">Görüntünün ekrana ulaşma şekli</string>
     <string name="lab_7a54182d">FPS katmanı</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Başlatmada uygulanır. Oyun içi yan menü bunları yine anında değiştirebilir.</string>
     <string name="lab_969dab73">ReShade açık / kapalı, Tekli / Katmanlı, efektler ve ayarları</string>
     <string name="lab_96a7cb77">Bekleyen değişim iptal edildi.</string>
+    <string name="lab_96df6867">%1$s sa oynandı</string>
     <string name="lab_97275ac4">Kırmızı ve maviyi yeniden yer değiştirir (BGRA\'dan RGBA\'ya).</string>
     <string name="lab_97342f2d">Varsayılan: 16 MB.</string>
     <string name="lab_975587b0">Uygulama yeniden başlayınca geçerli olur.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine sürümü</string>
     <string name="lab_d5d36d66">Yüklü: %1$s</string>
     <string name="lab_d5d636c1">Tetik</string>
+    <string name="lab_d5e887b8">%1$s sa</string>
     <string name="lab_d60412d3">Orijinal</string>
     <string name="lab_d653f990">32 bit kod için x86 çevirici</string>
     <string name="lab_d6d3fe68">Bir bileşen paketi seçin (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Seviye, model, akış ölçeği ve performans modu</string>
     <string name="lab_ff9f6b19">Metin olarak, virgülle ayrılmış</string>
     <string name="lab_ffb9855e">Bu dosya bir kontrol profili değil</string>
+    <string name="lab_ffcd863d">%1$s dk oynandı</string>
 </resources>

@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Stránka hry</string>
     <string name="lab_0687488a">Ovladače Turnip a Qualcomm</string>
     <string name="lab_06a7c591">Sdílená předvolba, kterou se řídí každý kontejner, pokud nemá vlastní hodnoty. Uloží se, jakmile stisknete Uložit; Reset obnoví originál.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Vestavěné (Win-FG) interpoluje přímo v aplikaci. Lossless Scaling používá váš vlastní Lossless.dll. Obě vyžadují renderer obrazovky Vulkan, Wayland nebo položku pro Linux. Násobič se nastavuje ve hře.</string>
     <string name="lab_070cecae">Zvolte, co se zaznamenává (Wine, Box64/FEX, DXVK, SteamLite, Steam bez rozhraní, logcat), kam se protokoly ukládají a kolik se jich uchová; procházejte je a sdílejte.</string>
     <string name="lab_0721ad7c">Tento kontejner</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Textury BCn</string>
     <string name="lab_6563bc96">Ostřejší (-0.75)</string>
     <string name="lab_65787fdc">Interní úložiště, SD karta a jednotky všech kontejnerů</string>
+    <string name="lab_659fcd98">Přidáno mnou</string>
     <string name="lab_65f8ea90">Ovladač rendereru</string>
     <string name="lab_660f585a">Kopírovat přiřazení z %1$s</string>
     <string name="lab_662a7209">Invertovat X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Režim výstupu</string>
     <string name="lab_676dd596">Obnovit</string>
     <string name="lab_67805216">Verze Box64EC</string>
+    <string name="lab_67c5a895">Včera</string>
     <string name="lab_67d87dd3">Úplná cesta k souboru .conf, např. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Obrazovky samotné aplikace; hry si ponechají své</string>
     <string name="lab_67e3a624">Počet ovladačů</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Kterým backendem Media Foundation přehrává cutscény. FFmpeg vyžaduje vrstvu arm64ec sestavenou s ním (Proton 11.0-2 vc12+); jinde se vrátí ke GStreameru.</string>
     <string name="lab_71bf97b4">Paměť GPU viditelná pro hry</string>
     <string name="lab_71d5a5d7">Stáhnout ovladač Turnip</string>
+    <string name="lab_721589c1">Dnes</string>
     <string name="lab_72395178">Hry a knihovna</string>
     <string name="lab_7246e766">Profily</string>
     <string name="lab_72550119">Aktualizace páček</string>
     <string name="lab_728e56d6">Plynulý</string>
     <string name="lab_72b16281">Použije první volné písmeno. Složku vyberte přes Procházet.</string>
     <string name="lab_72b89c6d">Obnovit výchozí nastavení aplikace</string>
+    <string name="lab_72ca24e4">před %1$s dny</string>
     <string name="lab_72f26990">Nainstalováno v compatibilitytools.d</string>
     <string name="lab_7341f15d">Dlaždicové vykreslování GMEM</string>
     <string name="lab_7398c748">Vlastní barva zvýraznění · X pro výběr</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Citlivost</string>
     <string name="lab_7a1cdbc4">Jádra pro hru</string>
+    <string name="lab_7a1eba36">Zatím nehráno</string>
     <string name="lab_7a2a1141">Verze D7VK</string>
     <string name="lab_7a377726">Jak se obraz dostane na obrazovku</string>
     <string name="lab_7a54182d">Overlay FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Použijí se při spuštění. Boční menu ve hře je stále mění za běhu.</string>
     <string name="lab_969dab73">ReShade zapnuto / vypnuto, Samostatně / Kombinovaně, efekty a jejich nastavení</string>
     <string name="lab_96a7cb77">Čekající přepnutí bylo zrušeno.</string>
+    <string name="lab_96df6867">hráno %1$s h</string>
     <string name="lab_97275ac4">Prohodí zpět červenou a modrou (BGRA na RGBA).</string>
     <string name="lab_97342f2d">Výchozí: 16 MB.</string>
     <string name="lab_975587b0">Projeví se po restartu aplikace.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Verze Wine</string>
     <string name="lab_d5d36d66">Nainstalováno %1$s</string>
     <string name="lab_d5d636c1">Spoušť</string>
+    <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Originál</string>
     <string name="lab_d653f990">Překladač x86 pro 32bitový kód</string>
     <string name="lab_d6d3fe68">Vybrat balíček komponenty (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Úroveň, model, měřítko toku a režim výkonu</string>
     <string name="lab_ff9f6b19">Jako text, oddělené čárkami</string>
     <string name="lab_ffb9855e">Tento soubor není profil ovládání</string>
+    <string name="lab_ffcd863d">hráno %1$s min</string>
 </resources>

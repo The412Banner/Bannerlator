@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Página do jogo</string>
     <string name="lab_0687488a">Drivers Turnip e Qualcomm</string>
     <string name="lab_06a7c591">A predefinição compartilhada que todo contêiner segue, a menos que tenha valores próprios. Salva assim que você pressiona Salvar; Redefinir restaura a original.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Integrado (Win-FG) interpola dentro do app. Lossless Scaling usa o seu próprio Lossless.dll. Ambos precisam do renderizador da tela Vulkan, do Wayland ou de uma entrada Linux. O multiplicador é definido no jogo.</string>
     <string name="lab_070cecae">Escolha o que é registrado (Wine, Box64/FEX, DXVK, SteamLite, Steam sem interface, logcat), para onde vão os logs e quantos são mantidos; navegue por eles e compartilhe.</string>
     <string name="lab_0721ad7c">Este contêiner</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Texturas BCn</string>
     <string name="lab_6563bc96">Mais nítido (-0.75)</string>
     <string name="lab_65787fdc">Armazenamento interno, cartão SD e unidades de cada contêiner</string>
+    <string name="lab_659fcd98">Adicionado por mim</string>
     <string name="lab_65f8ea90">Driver do renderizador</string>
     <string name="lab_660f585a">Copiar mapeamentos de %1$s</string>
     <string name="lab_662a7209">Inverter X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Modo de saída</string>
     <string name="lab_676dd596">Retomar</string>
     <string name="lab_67805216">Versão do Box64EC</string>
+    <string name="lab_67c5a895">Ontem</string>
     <string name="lab_67d87dd3">O caminho completo de um arquivo .conf, ex.: /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">As telas do próprio app; os jogos mantêm as deles</string>
     <string name="lab_67e3a624">Número de controles</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Com qual backend o Media Foundation reproduz as cutscenes. O FFmpeg exige uma camada arm64ec compilada com ele (Proton 11.0-2 vc12+); nos demais casos, usa o GStreamer.</string>
     <string name="lab_71bf97b4">Memória de GPU vista pelos jogos</string>
     <string name="lab_71d5a5d7">Baixar um driver Turnip</string>
+    <string name="lab_721589c1">Hoje</string>
     <string name="lab_72395178">Jogos e biblioteca</string>
     <string name="lab_7246e766">Perfis</string>
     <string name="lab_72550119">Atualização dos analógicos</string>
     <string name="lab_728e56d6">Fluido</string>
     <string name="lab_72b16281">Usa a primeira letra livre. Escolha a pasta em Explorar.</string>
     <string name="lab_72b89c6d">Redefinir para os padrões do app</string>
+    <string name="lab_72ca24e4">há %1$s dias</string>
     <string name="lab_72f26990">Instalado em compatibilitytools.d</string>
     <string name="lab_7341f15d">Renderização em tiles GMEM</string>
     <string name="lab_7398c748">Sua própria cor de destaque · X para escolher</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Sensibilidade</string>
     <string name="lab_7a1cdbc4">Núcleos dos jogos</string>
+    <string name="lab_7a1eba36">Ainda não jogado</string>
     <string name="lab_7a2a1141">Versão do D7VK</string>
     <string name="lab_7a377726">Como a imagem chega à tela</string>
     <string name="lab_7a54182d">Overlay de FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Aplicadas na inicialização. O menu lateral do jogo ainda as altera em tempo real.</string>
     <string name="lab_969dab73">ReShade ativado / desativado, Único / Empilhado, efeitos e suas configurações</string>
     <string name="lab_96a7cb77">A troca pendente foi cancelada.</string>
+    <string name="lab_96df6867">%1$s h jogadas</string>
     <string name="lab_97275ac4">Troca de volta o vermelho e o azul (BGRA para RGBA).</string>
     <string name="lab_97342f2d">Padrão: 16 MB.</string>
     <string name="lab_975587b0">Entra em vigor após reiniciar o app.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Versão do Wine</string>
     <string name="lab_d5d36d66">Instalado: %1$s</string>
     <string name="lab_d5d636c1">Gatilho</string>
+    <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Original</string>
     <string name="lab_d653f990">Tradutor x86 para código de 32 bits</string>
     <string name="lab_d6d3fe68">Escolha um pacote de componente (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Nível, modelo, escala de fluxo e modo de desempenho</string>
     <string name="lab_ff9f6b19">Como texto, separado por vírgulas</string>
     <string name="lab_ffb9855e">Esse arquivo não é um perfil de controles</string>
+    <string name="lab_ffcd863d">%1$s min jogados</string>
 </resources>

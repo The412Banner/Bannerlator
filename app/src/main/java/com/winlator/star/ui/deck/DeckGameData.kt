@@ -1,5 +1,7 @@
 package com.winlator.star.ui.deck
 
+import com.winlator.star.ui.simple.T
+import com.winlator.star.ui.simple.L
 import android.content.Context
 import android.text.format.DateUtils
 import com.winlator.star.androidgames.AndroidGames
@@ -70,9 +72,9 @@ internal fun recentKeyOf(s: Shortcut): Long = ShortcutOrder.recentKey(lastPlayed
 internal fun playtimeLabel(ms: Long): String {
     val minutes = ms / 60_000L
     return when {
-        ms <= 0L -> "Not played yet"
-        minutes < 60L -> "${minutes.coerceAtLeast(1L)} min played"
-        else -> "%.1f h played".format(ms / 3_600_000.0)
+        ms <= 0L -> L("Not played yet")
+        minutes < 60L -> L("%1\$s min played", minutes.coerceAtLeast(1L))
+        else -> L("%1\$s h played", "%.1f".format(ms / 3_600_000.0))
     }
 }
 
@@ -81,8 +83,8 @@ internal fun playtimeShort(ms: Long): String {
     val minutes = ms / 60_000L
     return when {
         ms <= 0L -> "—"
-        minutes < 60L -> "${minutes.coerceAtLeast(1L)} min"
-        else -> "%.1f h".format(ms / 3_600_000.0)
+        minutes < 60L -> L("%1\$s min", minutes.coerceAtLeast(1L))
+        else -> L("%1\$s h", "%.1f".format(ms / 3_600_000.0))
     }
 }
 
@@ -91,9 +93,9 @@ internal fun lastPlayedLabel(context: Context, whenMs: Long): String? {
     if (whenMs <= 0L) return null
     val now = System.currentTimeMillis()
     return when {
-        DateUtils.isToday(whenMs) -> "Today"
-        DateUtils.isToday(whenMs + DateUtils.DAY_IN_MILLIS) -> "Yesterday"
-        now - whenMs < 7 * DateUtils.DAY_IN_MILLIS -> "${(now - whenMs) / DateUtils.DAY_IN_MILLIS} days ago"
+        DateUtils.isToday(whenMs) -> L("Today")
+        DateUtils.isToday(whenMs + DateUtils.DAY_IN_MILLIS) -> L("Yesterday")
+        now - whenMs < 7 * DateUtils.DAY_IN_MILLIS -> L("%1\$s days ago", (now - whenMs) / DateUtils.DAY_IN_MILLIS)
         else -> DateUtils.formatDateTime(context, whenMs, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH)
     }
 }
@@ -119,12 +121,13 @@ internal val STORE_SHELVES: List<Pair<String, (Shortcut) -> Boolean>> = listOf(
     "Amazon Games" to { s: Shortcut -> isAmazonShortcut(s) },
     "Xbox" to { s: Shortcut -> isXboxShortcut(s) },
     "Android" to { s: Shortcut -> AndroidGames.isAndroidEntry(s) },
-    "Added by me" to { s: Shortcut -> isCustomOriginShortcut(s) },
+    T("Added by me") to { s: Shortcut -> isCustomOriginShortcut(s) },
 )
 
 internal fun storeLabelOf(s: Shortcut): String = when {
     LinuxShortcuts.isLinuxEntry(s) -> "Linux"
-    else -> STORE_SHELVES.firstOrNull { it.second(s) }?.first ?: "Added by me"
+    // Store names stay as they are; "Added by me" is shown in Lab's language.
+    else -> L(STORE_SHELVES.firstOrNull { it.second(s) }?.first ?: "Added by me")
 }
 
 /**

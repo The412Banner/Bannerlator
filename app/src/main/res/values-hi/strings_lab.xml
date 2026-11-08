@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">गेम पेज</string>
     <string name="lab_0687488a">Turnip और Qualcomm ड्राइवर</string>
     <string name="lab_06a7c591">शेयर किया प्रीसेट, जिसे हर कंटेनर तब तक मानता है जब तक उसकी अपनी वैल्यू न हों। सेव दबाते ही सेव हो जाता है; रीसेट मूल वैल्यू वापस लाता है।</string>
+    <string name="lab_06e7ab7e">%1$s मिनट</string>
     <string name="lab_06eb3f00">बिल्ट-इन (Win-FG) ऐप के अंदर ही बीच के फ़्रेम बनाता है। Lossless Scaling आपकी अपनी Lossless.dll इस्तेमाल करता है। दोनों के लिए Vulkan स्क्रीन रेंडरर, Wayland या Linux एंट्री चाहिए। मल्टीप्लायर गेम में सेट होता है।</string>
     <string name="lab_070cecae">चुनें कि क्या रिकॉर्ड हो (Wine, Box64/FEX, DXVK, SteamLite, हेडलेस Steam, logcat), लॉग कहां जाएं और कितने रखे जाएं; उन्हें देखें और शेयर करें।</string>
     <string name="lab_0721ad7c">यह कंटेनर</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn टेक्सचर</string>
     <string name="lab_6563bc96">ज़्यादा शार्प (-0.75)</string>
     <string name="lab_65787fdc">इंटरनल स्टोरेज, SD कार्ड और हर कंटेनर की ड्राइव</string>
+    <string name="lab_659fcd98">मेरे द्वारा जोड़ा गया</string>
     <string name="lab_65f8ea90">रेंडरर ड्राइवर</string>
     <string name="lab_660f585a">%1$s से बाइंडिंग कॉपी करें</string>
     <string name="lab_662a7209">X उलटें</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">आउटपुट मोड</string>
     <string name="lab_676dd596">फिर से शुरू करें</string>
     <string name="lab_67805216">Box64EC संस्करण</string>
+    <string name="lab_67c5a895">कल</string>
     <string name="lab_67d87dd3">किसी .conf फ़ाइल का पूरा पाथ, जैसे /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">ऐप की अपनी स्क्रीन; गेम अपनी रखते हैं</string>
     <string name="lab_67e3a624">कंट्रोलर की संख्या</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Media Foundation कटसीन किस बैकएंड से चलाता है। FFmpeg के लिए उसके साथ बनी arm64ec लेयर चाहिए (Proton 11.0-2 vc12+); बाकी जगह यह GStreamer पर लौट आता है।</string>
     <string name="lab_71bf97b4">गेम को दिखने वाली GPU मेमोरी</string>
     <string name="lab_71d5a5d7">Turnip ड्राइवर डाउनलोड करें</string>
+    <string name="lab_721589c1">आज</string>
     <string name="lab_72395178">गेम और लाइब्रेरी</string>
     <string name="lab_7246e766">प्रोफ़ाइल</string>
     <string name="lab_72550119">स्टिक अपडेट</string>
     <string name="lab_728e56d6">स्मूद</string>
     <string name="lab_72b16281">पहला खाली अक्षर लेता है। ब्राउज़ करें से इसका फ़ोल्डर चुनें।</string>
     <string name="lab_72b89c6d">ऐप डिफ़ॉल्ट पर रीसेट करें</string>
+    <string name="lab_72ca24e4">%1$s दिन पहले</string>
     <string name="lab_72f26990">compatibilitytools.d में इंस्टॉल है</string>
     <string name="lab_7341f15d">GMEM टाइल्ड रेंडरिंग</string>
     <string name="lab_7398c748">आपका अपना एक्सेंट रंग · चुनने के लिए X</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">सेंसिटिविटी</string>
     <string name="lab_7a1cdbc4">गेम कोर</string>
+    <string name="lab_7a1eba36">अभी तक नहीं खेला</string>
     <string name="lab_7a2a1141">D7VK संस्करण</string>
     <string name="lab_7a377726">तस्वीर स्क्रीन तक कैसे पहुंचती है</string>
     <string name="lab_7a54182d">FPS ओवरले</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">लॉन्च पर लागू होते हैं। गेम का साइड मेन्यू अब भी इन्हें तुरंत बदल सकता है।</string>
     <string name="lab_969dab73">ReShade चालू / बंद, एकल / स्टैक, इफ़ेक्ट और उनकी सेटिंग</string>
     <string name="lab_96a7cb77">पेंडिंग स्वैप रद्द कर दिया गया।</string>
+    <string name="lab_96df6867">%1$s घंटे खेला</string>
     <string name="lab_97275ac4">लाल और नीले को वापस अदला-बदली करता है (BGRA से RGBA)।</string>
     <string name="lab_97342f2d">डिफ़ॉल्ट: 16 MB।</string>
     <string name="lab_975587b0">ऐप रीस्टार्ट होने के बाद लागू होगा।</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine संस्करण</string>
     <string name="lab_d5d36d66">इंस्टॉल है %1$s</string>
     <string name="lab_d5d636c1">ट्रिगर</string>
+    <string name="lab_d5e887b8">%1$s घं</string>
     <string name="lab_d60412d3">ओरिजिनल</string>
     <string name="lab_d653f990">32-बिट कोड के लिए x86 ट्रांसलेटर</string>
     <string name="lab_d6d3fe68">कॉम्पोनेंट पैकेज चुनें (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">लेवल, मॉडल, फ़्लो स्केल और परफ़ॉर्मेंस मोड</string>
     <string name="lab_ff9f6b19">टेक्स्ट के रूप में, कॉमा से अलग</string>
     <string name="lab_ffb9855e">यह फ़ाइल कंट्रोल प्रोफ़ाइल नहीं है</string>
+    <string name="lab_ffcd863d">%1$s मिनट खेला</string>
 </resources>

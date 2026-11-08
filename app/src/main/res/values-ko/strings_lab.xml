@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">게임 페이지</string>
     <string name="lab_0687488a">Turnip 및 Qualcomm 드라이버</string>
     <string name="lab_06a7c591">자체 값이 없는 모든 컨테이너가 따르는 공유 프리셋. 저장을 누르면 바로 저장되며, 초기화하면 원래대로 돌아갑니다.</string>
+    <string name="lab_06e7ab7e">%1$s분</string>
     <string name="lab_06eb3f00">내장 (Win-FG)은 앱 안에서 프레임을 보간합니다. Lossless Scaling은 직접 준비한 Lossless.dll을 사용합니다. 둘 다 Vulkan 화면 렌더러, Wayland 또는 Linux 항목이 필요합니다. 배율은 게임 중에 설정합니다.</string>
     <string name="lab_070cecae">기록할 항목(Wine, Box64/FEX, DXVK, SteamLite, 헤드리스 Steam, logcat), 로그 저장 위치와 보관 개수를 선택하고, 로그를 살펴보고 공유합니다.</string>
     <string name="lab_0721ad7c">이 컨테이너</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn 텍스처</string>
     <string name="lab_6563bc96">더 선명하게 (-0.75)</string>
     <string name="lab_65787fdc">내부 저장소, SD 카드, 모든 컨테이너의 드라이브</string>
+    <string name="lab_659fcd98">직접 추가함</string>
     <string name="lab_65f8ea90">렌더러 드라이버</string>
     <string name="lab_660f585a">%1$s에서 바인딩 복사</string>
     <string name="lab_662a7209">X축 반전</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">출력 모드</string>
     <string name="lab_676dd596">재개</string>
     <string name="lab_67805216">Box64EC 버전</string>
+    <string name="lab_67c5a895">어제</string>
     <string name="lab_67d87dd3">.conf 파일의 전체 경로(예: /storage/emulated/0/Download/dxvk.conf)</string>
     <string name="lab_67e0e365">앱 자체 화면, 게임은 각자 설정 유지</string>
     <string name="lab_67e3a624">컨트롤러 수</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Media Foundation이 컷신 재생에 쓰는 백엔드. FFmpeg는 FFmpeg를 포함해 빌드된 arm64ec 레이어(Proton 11.0-2 vc12+)가 필요하며, 그 외에는 GStreamer로 대체됩니다.</string>
     <string name="lab_71bf97b4">게임에 보이는 GPU 메모리</string>
     <string name="lab_71d5a5d7">Turnip 드라이버 다운로드</string>
+    <string name="lab_721589c1">오늘</string>
     <string name="lab_72395178">게임 및 라이브러리</string>
     <string name="lab_7246e766">프로필</string>
     <string name="lab_72550119">스틱 업데이트</string>
     <string name="lab_728e56d6">부드럽게</string>
     <string name="lab_72b16281">비어 있는 첫 번째 드라이브 문자를 사용합니다. 폴더는 \'찾아보기\'로 고르세요.</string>
     <string name="lab_72b89c6d">앱 기본값으로 초기화</string>
+    <string name="lab_72ca24e4">%1$s일 전</string>
     <string name="lab_72f26990">compatibilitytools.d에 설치됨</string>
     <string name="lab_7341f15d">GMEM 타일 렌더링</string>
     <string name="lab_7398c748">나만의 강조 색상 · X로 선택</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">감도</string>
     <string name="lab_7a1cdbc4">게임 코어</string>
+    <string name="lab_7a1eba36">아직 플레이 안 함</string>
     <string name="lab_7a2a1141">D7VK 버전</string>
     <string name="lab_7a377726">화면 출력 방식</string>
     <string name="lab_7a54182d">FPS 오버레이</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">실행 시 적용됩니다. 게임 중 사이드 메뉴에서도 실시간으로 바꿀 수 있습니다.</string>
     <string name="lab_969dab73">ReShade 켜기 / 끄기, 단독 / 중첩, 효과와 그 설정</string>
     <string name="lab_96a7cb77">대기 중이던 교체가 취소되었습니다.</string>
+    <string name="lab_96df6867">%1$s시간 플레이</string>
     <string name="lab_97275ac4">뒤바뀐 빨강과 파랑을 되돌립니다(BGRA에서 RGBA로).</string>
     <string name="lab_97342f2d">기본값: 16 MB.</string>
     <string name="lab_975587b0">앱을 다시 시작하면 적용됩니다.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine 버전</string>
     <string name="lab_d5d36d66">%1$s 설치됨</string>
     <string name="lab_d5d636c1">트리거</string>
+    <string name="lab_d5e887b8">%1$s시간</string>
     <string name="lab_d60412d3">원본</string>
     <string name="lab_d653f990">32비트 코드용 x86 변환기</string>
     <string name="lab_d6d3fe68">구성 요소 패키지 선택(-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">레벨, 모델, 플로 스케일, 성능 모드</string>
     <string name="lab_ff9f6b19">텍스트 (쉼표로 구분)</string>
     <string name="lab_ffb9855e">컨트롤 프로필 파일이 아닙니다</string>
+    <string name="lab_ffcd863d">%1$s분 플레이</string>
 </resources>

@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Страница игры</string>
     <string name="lab_0687488a">Драйверы Turnip и Qualcomm</string>
     <string name="lab_06a7c591">Общий пресет, которому следуют все контейнеры, если у них нет своих значений. Сохраняется сразу при нажатии «Сохранить»; «Сбросить» восстанавливает исходный.</string>
+    <string name="lab_06e7ab7e">%1$s мин</string>
     <string name="lab_06eb3f00">«Встроенная (Win-FG)» интерполирует кадры внутри приложения. Lossless Scaling использует ваш собственный Lossless.dll. Обоим нужен экранный рендерер Vulkan, Wayland или запись Linux. Множитель задаётся в игре.</string>
     <string name="lab_070cecae">Выберите, что записывать (Wine, Box64/FEX, DXVK, SteamLite, Steam без интерфейса, logcat), куда сохранять журналы и сколько хранить; просматривайте их и делитесь ими.</string>
     <string name="lab_0721ad7c">Этот контейнер</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Текстуры BCn</string>
     <string name="lab_6563bc96">Резче (-0.75)</string>
     <string name="lab_65787fdc">Внутренняя память, SD-карта и диски всех контейнеров</string>
+    <string name="lab_659fcd98">Добавлено мной</string>
     <string name="lab_65f8ea90">Драйвер рендерера</string>
     <string name="lab_660f585a">Копировать привязки из %1$s</string>
     <string name="lab_662a7209">Инвертировать X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Режим вывода</string>
     <string name="lab_676dd596">Продолжить</string>
     <string name="lab_67805216">Версия Box64EC</string>
+    <string name="lab_67c5a895">Вчера</string>
     <string name="lab_67d87dd3">Полный путь к файлу .conf, напр. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Экраны самого приложения; у игр свои</string>
     <string name="lab_67e3a624">Число контроллеров</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Через какой бэкенд Media Foundation воспроизводит видеоролики. Для FFmpeg нужен слой arm64ec, собранный с ним (Proton 11.0-2 vc12+); в остальных случаях используется GStreamer.</string>
     <string name="lab_71bf97b4">Видеопамять, видимая играм</string>
     <string name="lab_71d5a5d7">Скачать драйвер Turnip</string>
+    <string name="lab_721589c1">Сегодня</string>
     <string name="lab_72395178">Игры и библиотека</string>
     <string name="lab_7246e766">Профили</string>
     <string name="lab_72550119">Обновление стиков</string>
     <string name="lab_728e56d6">Плавный</string>
     <string name="lab_72b16281">Занимает первую свободную букву. Выберите папку через «Обзор».</string>
     <string name="lab_72b89c6d">Сбросить к настройкам приложения</string>
+    <string name="lab_72ca24e4">%1$s дн. назад</string>
     <string name="lab_72f26990">Установлено в compatibilitytools.d</string>
     <string name="lab_7341f15d">Тайловый рендеринг GMEM</string>
     <string name="lab_7398c748">Свой акцентный цвет · X — выбрать</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Чувствительность</string>
     <string name="lab_7a1cdbc4">Ядра игры</string>
+    <string name="lab_7a1eba36">Ещё не запускалась</string>
     <string name="lab_7a2a1141">Версия D7VK</string>
     <string name="lab_7a377726">Как изображение попадает на экран</string>
     <string name="lab_7a54182d">Оверлей FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Применяются при запуске. Боковое меню в игре по-прежнему меняет их на лету.</string>
     <string name="lab_969dab73">ReShade вкл./выкл., «Один» / «Стек», эффекты и их настройки</string>
     <string name="lab_96a7cb77">Ожидающая замена отменена.</string>
+    <string name="lab_96df6867">Сыграно %1$s ч</string>
     <string name="lab_97275ac4">Возвращает на место красный и синий (BGRA в RGBA).</string>
     <string name="lab_97342f2d">По умолчанию: 16 MB.</string>
     <string name="lab_975587b0">Вступит в силу после перезапуска приложения.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Версия Wine</string>
     <string name="lab_d5d36d66">Установлено: %1$s</string>
     <string name="lab_d5d636c1">Курок</string>
+    <string name="lab_d5e887b8">%1$s ч</string>
     <string name="lab_d60412d3">Оригинал</string>
     <string name="lab_d653f990">Транслятор x86 для 32-битного кода</string>
     <string name="lab_d6d3fe68">Выберите пакет компонентов (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Уровень, модель, масштаб потока и режим производительности</string>
     <string name="lab_ff9f6b19">Текстом, через запятую</string>
     <string name="lab_ffb9855e">Этот файл не является профилем управления</string>
+    <string name="lab_ffcd863d">Сыграно %1$s мин</string>
 </resources>

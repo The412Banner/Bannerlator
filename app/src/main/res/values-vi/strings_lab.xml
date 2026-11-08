@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Trang game</string>
     <string name="lab_0687488a">Driver Turnip và Qualcomm</string>
     <string name="lab_06a7c591">Preset dùng chung mà mọi container theo nếu không có giá trị riêng. Được lưu ngay khi bạn bấm Lưu; Đặt lại khôi phục bản gốc.</string>
+    <string name="lab_06e7ab7e">%1$s phút</string>
     <string name="lab_06eb3f00">Tích hợp (Win-FG) nội suy ngay trong ứng dụng. Lossless Scaling dùng tệp Lossless.dll của bạn. Cả hai đều cần Renderer màn hình Vulkan, Wayland hoặc mục Linux. Hệ số nhân được đặt trong game.</string>
     <string name="lab_070cecae">Chọn nội dung được ghi (Wine, Box64/FEX, DXVK, SteamLite, Steam chạy ẩn, logcat), nơi lưu log và số log giữ lại; duyệt và chia sẻ log.</string>
     <string name="lab_0721ad7c">Container này</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Texture BCn</string>
     <string name="lab_6563bc96">Nét hơn (-0.75)</string>
     <string name="lab_65787fdc">Bộ nhớ trong, thẻ SD và ổ đĩa của mọi container</string>
+    <string name="lab_659fcd98">Do tôi thêm</string>
     <string name="lab_65f8ea90">Driver renderer</string>
     <string name="lab_660f585a">Sao chép gán phím từ %1$s</string>
     <string name="lab_662a7209">Đảo trục X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Chế độ xuất</string>
     <string name="lab_676dd596">Tiếp tục</string>
     <string name="lab_67805216">Phiên bản Box64EC</string>
+    <string name="lab_67c5a895">Hôm qua</string>
     <string name="lab_67d87dd3">Đường dẫn đầy đủ của tệp .conf, ví dụ /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Màn hình của ứng dụng; game giữ nguyên của chúng</string>
     <string name="lab_67e3a624">Số tay cầm</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Backend mà Media Foundation dùng để phát đoạn cắt cảnh. FFmpeg cần lớp arm64ec được build kèm nó (Proton 11.0-2 vc12+); ở nơi khác sẽ quay về GStreamer.</string>
     <string name="lab_71bf97b4">Bộ nhớ GPU mà game thấy</string>
     <string name="lab_71d5a5d7">Tải driver Turnip</string>
+    <string name="lab_721589c1">Hôm nay</string>
     <string name="lab_72395178">Game và thư viện</string>
     <string name="lab_7246e766">Hồ sơ</string>
     <string name="lab_72550119">Cập nhật cần analog</string>
     <string name="lab_728e56d6">Mượt</string>
     <string name="lab_72b16281">Lấy ký tự ổ đĩa trống đầu tiên. Chọn thư mục bằng Duyệt.</string>
     <string name="lab_72b89c6d">Đặt lại về mặc định ứng dụng</string>
+    <string name="lab_72ca24e4">%1$s ngày trước</string>
     <string name="lab_72f26990">Đã cài trong compatibilitytools.d</string>
     <string name="lab_7341f15d">Kết xuất theo ô GMEM</string>
     <string name="lab_7398c748">Màu nhấn riêng · nhấn X để chọn</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Độ nhạy</string>
     <string name="lab_7a1cdbc4">Lõi game</string>
+    <string name="lab_7a1eba36">Chưa chơi</string>
     <string name="lab_7a2a1141">Phiên bản D7VK</string>
     <string name="lab_7a377726">Cách hình ảnh đến màn hình</string>
     <string name="lab_7a54182d">Lớp phủ FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Áp dụng khi khởi chạy. Menu bên trong game vẫn đổi được trực tiếp.</string>
     <string name="lab_969dab73">ReShade bật / tắt, Đơn / Chồng lớp, hiệu ứng và thiết lập của chúng</string>
     <string name="lab_96a7cb77">Lượt thay đang chờ đã bị hủy.</string>
+    <string name="lab_96df6867">Đã chơi %1$s giờ</string>
     <string name="lab_97275ac4">Đảo đỏ và xanh lam về đúng chỗ (BGRA sang RGBA).</string>
     <string name="lab_97342f2d">Mặc định: 16 MB.</string>
     <string name="lab_975587b0">Có hiệu lực sau khi khởi động lại ứng dụng.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Phiên bản Wine</string>
     <string name="lab_d5d36d66">Đã cài %1$s</string>
     <string name="lab_d5d636c1">Cò</string>
+    <string name="lab_d5e887b8">%1$s giờ</string>
     <string name="lab_d60412d3">Gốc</string>
     <string name="lab_d653f990">Trình dịch x86 cho mã 32-bit</string>
     <string name="lab_d6d3fe68">Chọn một gói thành phần (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Mức, mô hình, tỷ lệ luồng và chế độ hiệu năng</string>
     <string name="lab_ff9f6b19">Dạng văn bản, phân tách bằng dấu phẩy</string>
     <string name="lab_ffb9855e">Tệp đó không phải hồ sơ điều khiển</string>
+    <string name="lab_ffcd863d">Đã chơi %1$s phút</string>
 </resources>

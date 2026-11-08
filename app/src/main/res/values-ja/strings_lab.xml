@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">ゲームページ</string>
     <string name="lab_0687488a">TurnipとQualcommのドライバー</string>
     <string name="lab_06a7c591">独自の値を持たないすべてのコンテナが従う共有プリセット。保存を押すとすぐに保存され、リセットで元に戻ります。</string>
+    <string name="lab_06e7ab7e">%1$s分</string>
     <string name="lab_06eb3f00">内蔵（Win-FG）はアプリ内でフレームを補間します。Lossless Scaling は自分の Lossless.dll を使います。どちらも Vulkan 画面レンダラー、Wayland、または Linux エントリーが必要です。倍率はゲーム中に設定します。</string>
     <string name="lab_070cecae">記録する内容（Wine、Box64/FEX、DXVK、SteamLite、ヘッドレスSteam、logcat）、ログの保存先と保持数を選び、ログを閲覧・共有できます。</string>
     <string name="lab_0721ad7c">このコンテナ</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn テクスチャ</string>
     <string name="lab_6563bc96">シャープ（-0.75）</string>
     <string name="lab_65787fdc">内部ストレージ、SDカード、各コンテナのドライブ</string>
+    <string name="lab_659fcd98">自分で追加</string>
     <string name="lab_65f8ea90">レンダラードライバー</string>
     <string name="lab_660f585a">%1$sから割り当てをコピー</string>
     <string name="lab_662a7209">X軸を反転</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">出力モード</string>
     <string name="lab_676dd596">再開</string>
     <string name="lab_67805216">Box64EC バージョン</string>
+    <string name="lab_67c5a895">昨日</string>
     <string name="lab_67d87dd3">.conf ファイルのフルパス（例: /storage/emulated/0/Download/dxvk.conf）</string>
     <string name="lab_67e0e365">アプリ自体の画面。ゲームはそれぞれの設定のまま</string>
     <string name="lab_67e3a624">コントローラー数</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Media Foundation がムービーの再生に使うバックエンド。FFmpeg には FFmpeg 入りでビルドされた arm64ec レイヤー（Proton 11.0-2 vc12+）が必要です。それ以外では GStreamer に戻ります。</string>
     <string name="lab_71bf97b4">ゲームから見える GPU メモリ</string>
     <string name="lab_71d5a5d7">Turnip ドライバーをダウンロード</string>
+    <string name="lab_721589c1">今日</string>
     <string name="lab_72395178">ゲームとライブラリ</string>
     <string name="lab_7246e766">プロファイル</string>
     <string name="lab_72550119">スティックの更新</string>
     <string name="lab_728e56d6">スムーズ</string>
     <string name="lab_72b16281">最初の空いているドライブ文字を使います。フォルダーは「参照」で選んでください。</string>
     <string name="lab_72b89c6d">アプリのデフォルトにリセット</string>
+    <string name="lab_72ca24e4">%1$s日前</string>
     <string name="lab_72f26990">compatibilitytools.d にインストール済み</string>
     <string name="lab_7341f15d">GMEM タイルレンダリング</string>
     <string name="lab_7398c748">独自のアクセントカラー · Xで選択</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">感度</string>
     <string name="lab_7a1cdbc4">ゲームコア</string>
+    <string name="lab_7a1eba36">未プレイ</string>
     <string name="lab_7a2a1141">D7VK バージョン</string>
     <string name="lab_7a377726">映像を画面に出す方法</string>
     <string name="lab_7a54182d">FPSオーバーレイ</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">起動時に適用されます。ゲーム中のサイドメニューからもその場で変更できます。</string>
     <string name="lab_969dab73">ReShade のオン / オフ、単独 / 重ねがけ、エフェクトとその設定</string>
     <string name="lab_96a7cb77">待機中の置き換えをキャンセルしました。</string>
+    <string name="lab_96df6867">%1$s時間プレイ</string>
     <string name="lab_97275ac4">入れ替わった赤と青を元に戻します（BGRA から RGBA へ）。</string>
     <string name="lab_97342f2d">デフォルト: 16 MB。</string>
     <string name="lab_975587b0">アプリの再起動後に反映されます。</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wineバージョン</string>
     <string name="lab_d5d36d66">%1$s インストール済み</string>
     <string name="lab_d5d636c1">トリガー</string>
+    <string name="lab_d5e887b8">%1$s時間</string>
     <string name="lab_d60412d3">元</string>
     <string name="lab_d653f990">32ビットコード用 x86 トランスレーター</string>
     <string name="lab_d6d3fe68">コンポーネントパッケージ（-linux .wcp）を選択</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">レベル、モデル、フロースケール、パフォーマンスモード</string>
     <string name="lab_ff9f6b19">テキスト（カンマ区切り）</string>
     <string name="lab_ffb9855e">そのファイルはコントロールプロファイルではありません</string>
+    <string name="lab_ffcd863d">%1$s分プレイ</string>
 </resources>

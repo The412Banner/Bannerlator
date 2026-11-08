@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Pelisivu</string>
     <string name="lab_0687488a">Turnip- ja Qualcomm-ajurit</string>
     <string name="lab_06a7c591">Jaettu esiasetus, jota jokainen kontti seuraa, ellei sillä ole omia arvoja. Tallennetaan heti, kun painat Tallenna; Palauta palauttaa alkuperäisen.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Sisäänrakennettu (Win-FG) interpoloi sovelluksen sisällä. Lossless Scaling käyttää omaa Lossless.dll-tiedostoasi. Molemmat tarvitsevat Vulkan-näyttörenderöijän, Waylandin tai Linux-merkinnän. Kerroin asetetaan pelin aikana.</string>
     <string name="lab_070cecae">Valitse, mitä kirjataan (Wine, Box64/FEX, DXVK, SteamLite, Steam ilman käyttöliittymää, logcat), minne lokit tallennetaan ja montako säilytetään; selaa ja jaa niitä.</string>
     <string name="lab_0721ad7c">Tämä kontti</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn-tekstuurit</string>
     <string name="lab_6563bc96">Terävämpi (-0.75)</string>
     <string name="lab_65787fdc">Sisäinen tallennustila, SD-kortti ja jokaisen kontin asemat</string>
+    <string name="lab_659fcd98">Itse lisätty</string>
     <string name="lab_65f8ea90">Renderöijän ajuri</string>
     <string name="lab_660f585a">Kopioi määritykset ohjaimesta %1$s</string>
     <string name="lab_662a7209">Käännä X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Lähtötila</string>
     <string name="lab_676dd596">Jatka</string>
     <string name="lab_67805216">Box64EC-versio</string>
+    <string name="lab_67c5a895">Eilen</string>
     <string name="lab_67d87dd3">Koko polku .conf-tiedostoon, esim. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Sovelluksen omat näkymät; pelit pitävät omansa</string>
     <string name="lab_67e3a624">Ohjainten määrä</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Millä taustajärjestelmällä Media Foundation toistaa välivideot. FFmpeg vaatii arm64ec-kerroksen, joka on käännetty sen kanssa (Proton 11.0-2 vc12+); muualla se palaa GStreameriin.</string>
     <string name="lab_71bf97b4">Peleille näkyvä GPU-muisti</string>
     <string name="lab_71d5a5d7">Lataa Turnip-ajuri</string>
+    <string name="lab_721589c1">Tänään</string>
     <string name="lab_72395178">Pelit ja kirjasto</string>
     <string name="lab_7246e766">Profiilit</string>
     <string name="lab_72550119">Tikun päivitykset</string>
     <string name="lab_728e56d6">Sulava</string>
     <string name="lab_72b16281">Ottaa ensimmäisen vapaan kirjaimen. Valitse sen kansio Selaa-painikkeella.</string>
     <string name="lab_72b89c6d">Palauta sovelluksen oletukset</string>
+    <string name="lab_72ca24e4">%1$s päivää sitten</string>
     <string name="lab_72f26990">Asennettu kansioon compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM-laattarenderöinti</string>
     <string name="lab_7398c748">Oma korostusvärisi · valitse X:llä</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Herkkyys</string>
     <string name="lab_7a1cdbc4">Pelin ytimet</string>
+    <string name="lab_7a1eba36">Ei vielä pelattu</string>
     <string name="lab_7a2a1141">D7VK-versio</string>
     <string name="lab_7a377726">Miten kuva päätyy näytölle</string>
     <string name="lab_7a54182d">FPS-peittokuva</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Otetaan käyttöön käynnistettäessä. Pelin sivuvalikko voi edelleen muuttaa niitä lennossa.</string>
     <string name="lab_969dab73">ReShade päällä / pois, Yksin / Pinoa, tehosteet ja niiden asetukset</string>
     <string name="lab_96a7cb77">Odottava vaihto peruttiin.</string>
+    <string name="lab_96df6867">pelattu %1$s h</string>
     <string name="lab_97275ac4">Vaihtaa punaisen ja sinisen takaisin (BGRA:sta RGBA:ksi).</string>
     <string name="lab_97342f2d">Oletus: 16 MB.</string>
     <string name="lab_975587b0">Tulee voimaan, kun sovellus käynnistyy uudelleen.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine-versio</string>
     <string name="lab_d5d36d66">Asennettu: %1$s</string>
     <string name="lab_d5d636c1">Liipaisin</string>
+    <string name="lab_d5e887b8">%1$s t</string>
     <string name="lab_d60412d3">Alkuperäinen</string>
     <string name="lab_d653f990">x86-kääntäjä 32-bittiselle koodille</string>
     <string name="lab_d6d3fe68">Valitse komponenttipaketti (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Taso, malli, virtausskaala ja suorituskykytila</string>
     <string name="lab_ff9f6b19">Tekstinä, pilkuin eroteltuna</string>
     <string name="lab_ffb9855e">Tiedosto ei ole ohjausprofiili</string>
+    <string name="lab_ffcd863d">pelattu %1$s min</string>
 </resources>

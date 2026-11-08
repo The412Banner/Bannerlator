@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">صفحة اللعبة</string>
     <string name="lab_0687488a">برامج تشغيل Turnip وQualcomm</string>
     <string name="lab_06a7c591">الإعداد المسبق المشترك الذي تتبعه كل حاوية ما لم تكن لها قيمها الخاصة. يُحفظ بمجرد الضغط على «حفظ»؛ و«إعادة ضبط» تستعيد الأصل.</string>
+    <string name="lab_06e7ab7e">%1$s د</string>
     <string name="lab_06eb3f00">يُنشئ «مدمج (Win-FG)» إطارات وسيطة داخل التطبيق. يستخدم Lossless Scaling ملف Lossless.dll الخاص بك. يحتاج كلاهما إلى عارض الشاشة Vulkan أو Wayland أو إدخال Linux. يُضبط المُضاعِف أثناء اللعب.</string>
     <string name="lab_070cecae">اختر ما يُسجَّل (Wine وBox64/FEX وDXVK وSteamLite وSteam بدون واجهة وlogcat)، ومكان حفظ السجلات وعدد ما يُحتفظ به منها؛ واستعرضها وشاركها.</string>
     <string name="lab_0721ad7c">هذه الحاوية</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">ملامس BCn</string>
     <string name="lab_6563bc96">أكثر حدة (-0.75)</string>
     <string name="lab_65787fdc">التخزين الداخلي وبطاقة SD ومحركات أقراص كل حاوية</string>
+    <string name="lab_659fcd98">أضفتها بنفسي</string>
     <string name="lab_65f8ea90">برنامج تشغيل العارض</string>
     <string name="lab_660f585a">نسخ التعيينات من %1$s</string>
     <string name="lab_662a7209">عكس X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">وضع الإخراج</string>
     <string name="lab_676dd596">استئناف</string>
     <string name="lab_67805216">إصدار Box64EC</string>
+    <string name="lab_67c5a895">أمس</string>
     <string name="lab_67d87dd3">المسار الكامل لملف .conf، مثل /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">شاشات التطبيق نفسه؛ وتحتفظ الألعاب بشاشاتها</string>
     <string name="lab_67e3a624">عدد وحدات التحكم</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">الواجهة الخلفية التي يشغّل بها Media Foundation المشاهد السينمائية. يحتاج FFmpeg إلى طبقة arm64ec مبنية معه (Proton 11.0-2 vc12+)؛ وفي غير ذلك يعود إلى GStreamer.</string>
     <string name="lab_71bf97b4">ذاكرة GPU التي تراها الألعاب</string>
     <string name="lab_71d5a5d7">تنزيل برنامج تشغيل Turnip</string>
+    <string name="lab_721589c1">اليوم</string>
     <string name="lab_72395178">الألعاب والمكتبة</string>
     <string name="lab_7246e766">ملفات التعريف</string>
     <string name="lab_72550119">تحديثات العصا</string>
     <string name="lab_728e56d6">سلس</string>
     <string name="lab_72b16281">يأخذ أول حرف متاح. اختر مجلده عبر «استعراض».</string>
     <string name="lab_72b89c6d">إعادة الضبط إلى افتراضيات التطبيق</string>
+    <string name="lab_72ca24e4">منذ %1$s أيام</string>
     <string name="lab_72f26990">مثبّت في compatibilitytools.d</string>
     <string name="lab_7341f15d">عرض GMEM المجزّأ</string>
     <string name="lab_7398c748">لون التمييز الخاص بك · اضغط X لاختياره</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">الحساسية</string>
     <string name="lab_7a1cdbc4">أنوية الألعاب</string>
+    <string name="lab_7a1eba36">لم تُلعب بعد</string>
     <string name="lab_7a2a1141">إصدار D7VK</string>
     <string name="lab_7a377726">كيف تصل الصورة إلى الشاشة</string>
     <string name="lab_7a54182d">تراكب FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">تُطبَّق عند التشغيل. ولا تزال القائمة الجانبية أثناء اللعب تغيّرها مباشرةً.</string>
     <string name="lab_969dab73">تشغيل / إيقاف ReShade، ومنفرد / تكديس، والمؤثرات وإعداداتها</string>
     <string name="lab_96a7cb77">تم إلغاء التبديل المنتظَر.</string>
+    <string name="lab_96df6867">تم اللعب %1$s س</string>
     <string name="lab_97275ac4">يعيد تبديل الأحمر والأزرق (BGRA إلى RGBA).</string>
     <string name="lab_97342f2d">الافتراضي: 16 MB.</string>
     <string name="lab_975587b0">يسري بعد إعادة تشغيل التطبيق.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">إصدار Wine</string>
     <string name="lab_d5d36d66">مثبَّت: %1$s</string>
     <string name="lab_d5d636c1">الزناد</string>
+    <string name="lab_d5e887b8">%1$s س</string>
     <string name="lab_d60412d3">أصلي</string>
     <string name="lab_d653f990">مترجم x86 للكود 32 بت</string>
     <string name="lab_d6d3fe68">اختر حزمة مكوّن (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">المستوى والنموذج ومقياس التدفق ووضع الأداء</string>
     <string name="lab_ff9f6b19">كنص، مفصول بفواصل</string>
     <string name="lab_ffb9855e">هذا الملف ليس ملف تعريف تحكم</string>
+    <string name="lab_ffcd863d">تم اللعب %1$s د</string>
 </resources>

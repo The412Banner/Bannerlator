@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Game page</string>
     <string name="lab_0687488a">Turnip and Qualcomm drivers</string>
     <string name="lab_06a7c591">The shared preset every container follows unless it has its own values. Saved as soon as you press Save; Reset restores the original.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Built-in (Win-FG) interpolates inside the app. Lossless Scaling uses your own Lossless.dll. Both need the Vulkan screen renderer, Wayland or a Linux entry. The multiplier is set in-game.</string>
     <string name="lab_070cecae">Choose what is recorded (Wine, Box64/FEX, DXVK, SteamLite, Headless Steam, logcat), where logs go and how many are kept; browse and share them.</string>
     <string name="lab_0721ad7c">This container</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn textures</string>
     <string name="lab_6563bc96">Sharper (-0.75)</string>
     <string name="lab_65787fdc">Internal storage, SD card and every container\'s drives</string>
+    <string name="lab_659fcd98">Added by me</string>
     <string name="lab_65f8ea90">Renderer Driver</string>
     <string name="lab_660f585a">Copy bindings from %1$s</string>
     <string name="lab_662a7209">Invert X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Output mode</string>
     <string name="lab_676dd596">Resume</string>
     <string name="lab_67805216">Box64EC Version</string>
+    <string name="lab_67c5a895">Yesterday</string>
     <string name="lab_67d87dd3">The full path of a .conf file, e.g. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">The app\'s own screens; games keep theirs</string>
     <string name="lab_67e3a624">Number of controllers</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Which backend Media Foundation plays cutscenes with. FFmpeg needs an arm64ec layer built with it (Proton 11.0-2 vc12+); elsewhere it falls back to GStreamer.</string>
     <string name="lab_71bf97b4">GPU memory games see</string>
     <string name="lab_71d5a5d7">Download a Turnip driver</string>
+    <string name="lab_721589c1">Today</string>
     <string name="lab_72395178">Games &amp; library</string>
     <string name="lab_7246e766">Profiles</string>
     <string name="lab_72550119">Stick updates</string>
     <string name="lab_728e56d6">Smooth</string>
     <string name="lab_72b16281">Takes the first free letter. Pick its folder with Browse.</string>
     <string name="lab_72b89c6d">Reset to app defaults</string>
+    <string name="lab_72ca24e4">%1$s days ago</string>
     <string name="lab_72f26990">Installed in compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM tiled rendering</string>
     <string name="lab_7398c748">Your own accent colour · X to pick it</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Sensitivity</string>
     <string name="lab_7a1cdbc4">Game cores</string>
+    <string name="lab_7a1eba36">Not played yet</string>
     <string name="lab_7a2a1141">D7VK version</string>
     <string name="lab_7a377726">How the picture reaches the screen</string>
     <string name="lab_7a54182d">FPS overlay</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Applied at launch. The in-game side menu still changes them live.</string>
     <string name="lab_969dab73">ReShade on / off, Solo / Stack, effects and their settings</string>
     <string name="lab_96a7cb77">The waiting swap was cancelled.</string>
+    <string name="lab_96df6867">%1$s h played</string>
     <string name="lab_97275ac4">Swaps red and blue back (BGRA to RGBA).</string>
     <string name="lab_97342f2d">Default: 16 MB.</string>
     <string name="lab_975587b0">Takes effect after the app restarts.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine Version</string>
     <string name="lab_d5d36d66">Installed %1$s</string>
     <string name="lab_d5d636c1">Trigger</string>
+    <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Original</string>
     <string name="lab_d653f990">x86 translator for 32-bit code</string>
     <string name="lab_d6d3fe68">Choose a component package (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Level, model, flow scale and performance mode</string>
     <string name="lab_ff9f6b19">As text, comma-separated</string>
     <string name="lab_ffb9855e">That file is not a controls profile</string>
+    <string name="lab_ffcd863d">%1$s min played</string>
 </resources>

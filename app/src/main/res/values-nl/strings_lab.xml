@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Gamepagina</string>
     <string name="lab_0687488a">Turnip- en Qualcomm-drivers</string>
     <string name="lab_06a7c591">De gedeelde preset die elke container volgt, tenzij hij eigen waarden heeft. Opgeslagen zodra je op Opslaan drukt; Resetten herstelt het origineel.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Ingebouwd (Win-FG) interpoleert binnen de app. Lossless Scaling gebruikt je eigen Lossless.dll. Beide hebben de Vulkan-schermrenderer, Wayland of een Linux-item nodig. De vermenigvuldiger stel je in de game in.</string>
     <string name="lab_070cecae">Kies wat wordt vastgelegd (Wine, Box64/FEX, DXVK, SteamLite, Steam zonder interface, logcat), waar logs heen gaan en hoeveel er worden bewaard; bekijk en deel ze.</string>
     <string name="lab_0721ad7c">Deze container</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">BCn-texturen</string>
     <string name="lab_6563bc96">Scherper (-0.75)</string>
     <string name="lab_65787fdc">Interne opslag, SD-kaart en de stations van elke container</string>
+    <string name="lab_659fcd98">Door mij toegevoegd</string>
     <string name="lab_65f8ea90">Rendererdriver</string>
     <string name="lab_660f585a">Toewijzingen kopiëren van %1$s</string>
     <string name="lab_662a7209">X omkeren</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Uitvoermodus</string>
     <string name="lab_676dd596">Hervatten</string>
     <string name="lab_67805216">Box64EC-versie</string>
+    <string name="lab_67c5a895">Gisteren</string>
     <string name="lab_67d87dd3">Het volledige pad van een .conf-bestand, bijv. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">De eigen schermen van de app; games houden de hunne</string>
     <string name="lab_67e3a624">Aantal controllers</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Met welke backend Media Foundation tussenfilmpjes afspeelt. FFmpeg vereist een arm64ec-laag die ermee is gebouwd (Proton 11.0-2 vc12+); elders valt het terug op GStreamer.</string>
     <string name="lab_71bf97b4">GPU-geheugen dat games zien</string>
     <string name="lab_71d5a5d7">Een Turnip-driver downloaden</string>
+    <string name="lab_721589c1">Vandaag</string>
     <string name="lab_72395178">Games en bibliotheek</string>
     <string name="lab_7246e766">Profielen</string>
     <string name="lab_72550119">Stick-updates</string>
     <string name="lab_728e56d6">Vloeiend</string>
     <string name="lab_72b16281">Krijgt de eerste vrije letter. Kies de map met Bladeren.</string>
     <string name="lab_72b89c6d">Standaardwaarden van app herstellen</string>
+    <string name="lab_72ca24e4">%1$s dagen geleden</string>
     <string name="lab_72f26990">Geïnstalleerd in compatibilitytools.d</string>
     <string name="lab_7341f15d">GMEM-tegelrendering</string>
     <string name="lab_7398c748">Je eigen accentkleur · X om te kiezen</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Gevoeligheid</string>
     <string name="lab_7a1cdbc4">Gamecores</string>
+    <string name="lab_7a1eba36">Nog niet gespeeld</string>
     <string name="lab_7a2a1141">D7VK-versie</string>
     <string name="lab_7a377726">Hoe het beeld het scherm bereikt</string>
     <string name="lab_7a54182d">FPS-overlay</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Toegepast bij het starten. Het zijmenu in de game wijzigt ze nog steeds live.</string>
     <string name="lab_969dab73">ReShade aan / uit, Solo / Stapelen, effecten en hun instellingen</string>
     <string name="lab_96a7cb77">De wachtende wissel is geannuleerd.</string>
+    <string name="lab_96df6867">%1$s u gespeeld</string>
     <string name="lab_97275ac4">Wisselt rood en blauw terug (BGRA naar RGBA).</string>
     <string name="lab_97342f2d">Standaard: 16 MB.</string>
     <string name="lab_975587b0">Werkt na herstart van de app.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Wine-versie</string>
     <string name="lab_d5d36d66">%1$s geïnstalleerd</string>
     <string name="lab_d5d636c1">Trigger</string>
+    <string name="lab_d5e887b8">%1$s u</string>
     <string name="lab_d60412d3">Origineel</string>
     <string name="lab_d653f990">x86-vertaler voor 32-bit code</string>
     <string name="lab_d6d3fe68">Kies een componentpakket (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Niveau, model, flow-schaal en prestatiemodus</string>
     <string name="lab_ff9f6b19">Als tekst, gescheiden door komma\'s</string>
     <string name="lab_ffb9855e">Dat bestand is geen bedieningsprofiel</string>
+    <string name="lab_ffcd863d">%1$s min gespeeld</string>
 </resources>

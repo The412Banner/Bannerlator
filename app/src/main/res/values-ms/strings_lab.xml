@@ -57,6 +57,7 @@
     <string name="lab_066c2fb1">Halaman permainan</string>
     <string name="lab_0687488a">Pemacu Turnip dan Qualcomm</string>
     <string name="lab_06a7c591">Pratetap kongsi yang diikuti setiap container melainkan ia mempunyai nilai sendiri. Disimpan sebaik sahaja anda menekan Simpan; Set semula memulihkan yang asal.</string>
+    <string name="lab_06e7ab7e">%1$s min</string>
     <string name="lab_06eb3f00">Terbina dalam (Win-FG) membuat interpolasi dalam apl. Lossless Scaling menggunakan Lossless.dll anda sendiri. Kedua-duanya memerlukan pemapar skrin Vulkan, Wayland atau entri Linux. Pendarab ditetapkan dalam permainan.</string>
     <string name="lab_070cecae">Pilih apa yang direkodkan (Wine, Box64/FEX, DXVK, SteamLite, Steam tanpa paparan, logcat), ke mana log disimpan dan berapa banyak disimpan; layari dan kongsikannya.</string>
     <string name="lab_0721ad7c">Container ini</string>
@@ -690,6 +691,7 @@
     <string name="lab_655d40f1">Tekstur BCn</string>
     <string name="lab_6563bc96">Lebih tajam (-0.75)</string>
     <string name="lab_65787fdc">Storan dalaman, kad SD dan drive setiap container</string>
+    <string name="lab_659fcd98">Ditambah oleh saya</string>
     <string name="lab_65f8ea90">Pemacu Pemapar</string>
     <string name="lab_660f585a">Salin pemetaan daripada %1$s</string>
     <string name="lab_662a7209">Songsangkan X</string>
@@ -701,6 +703,7 @@
     <string name="lab_66e416b8">Mod output</string>
     <string name="lab_676dd596">Sambung</string>
     <string name="lab_67805216">Versi Box64EC</string>
+    <string name="lab_67c5a895">Semalam</string>
     <string name="lab_67d87dd3">Laluan penuh fail .conf, cth. /storage/emulated/0/Download/dxvk.conf</string>
     <string name="lab_67e0e365">Skrin apl itu sendiri; permainan kekal dengan milik mereka</string>
     <string name="lab_67e3a624">Bilangan pengawal</string>
@@ -770,12 +773,14 @@
     <string name="lab_715f3f8e">Backend yang digunakan Media Foundation untuk memainkan cutscene. FFmpeg memerlukan lapisan arm64ec yang dibina dengannya (Proton 11.0-2 vc12+); di tempat lain ia beralih ke GStreamer.</string>
     <string name="lab_71bf97b4">Memori GPU yang dilihat permainan</string>
     <string name="lab_71d5a5d7">Muat turun pemacu Turnip</string>
+    <string name="lab_721589c1">Hari ini</string>
     <string name="lab_72395178">Permainan &amp; pustaka</string>
     <string name="lab_7246e766">Profil</string>
     <string name="lab_72550119">Kemas kini kayu bedik</string>
     <string name="lab_728e56d6">Lancar</string>
     <string name="lab_72b16281">Mengambil huruf kosong pertama. Pilih foldernya dengan Layari.</string>
     <string name="lab_72b89c6d">Set semula ke lalai apl</string>
+    <string name="lab_72ca24e4">%1$s hari lalu</string>
     <string name="lab_72f26990">Dipasang dalam compatibilitytools.d</string>
     <string name="lab_7341f15d">Pemaparan berjubin GMEM</string>
     <string name="lab_7398c748">Warna aksen anda sendiri · X untuk memilihnya</string>
@@ -824,6 +829,7 @@
     <string name="lab_79f3f75d">PID %1$s · %2$s</string>
     <string name="lab_7a0c20e0">Kepekaan</string>
     <string name="lab_7a1cdbc4">Teras permainan</string>
+    <string name="lab_7a1eba36">Belum dimainkan</string>
     <string name="lab_7a2a1141">Versi D7VK</string>
     <string name="lab_7a377726">Cara gambar sampai ke skrin</string>
     <string name="lab_7a54182d">Overlay FPS</string>
@@ -1013,6 +1019,7 @@
     <string name="lab_968b9d49">Digunakan semasa pelancaran. Menu sisi dalam permainan masih boleh menukarnya secara langsung.</string>
     <string name="lab_969dab73">ReShade hidup / mati, Solo / Tindan, kesan dan tetapannya</string>
     <string name="lab_96a7cb77">Penukaran yang menunggu telah dibatalkan.</string>
+    <string name="lab_96df6867">Dimainkan %1$s jam</string>
     <string name="lab_97275ac4">Menukar semula merah dan biru (BGRA kepada RGBA).</string>
     <string name="lab_97342f2d">Lalai: 16 MB.</string>
     <string name="lab_975587b0">Berkuat kuasa selepas apl dimulakan semula.</string>
@@ -1409,6 +1416,7 @@
     <string name="lab_d5ce7a0e">Versi Wine</string>
     <string name="lab_d5d36d66">%1$s dipasang</string>
     <string name="lab_d5d636c1">Picu</string>
+    <string name="lab_d5e887b8">%1$s j</string>
     <string name="lab_d60412d3">Asal</string>
     <string name="lab_d653f990">Penterjemah x86 untuk kod 32-bit</string>
     <string name="lab_d6d3fe68">Pilih pakej komponen (-linux .wcp)</string>
@@ -1674,4 +1682,5 @@
     <string name="lab_ff9ebc74">Tahap, model, flow scale dan mod prestasi</string>
     <string name="lab_ff9f6b19">Sebagai teks, dipisahkan koma</string>
     <string name="lab_ffb9855e">Fail itu bukan profil kawalan</string>
+    <string name="lab_ffcd863d">Dimainkan %1$s min</string>
 </resources>

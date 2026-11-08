@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📲 Installing main 31196765 pubg on the Elite for the logs test (user: "yes install it")
+- **Build:** build-artifacts 42448581860 success ×4 (0 failed steps); main push CI 42448034535 (78000ba3) success.
+- **Before install:** installed = Bannerlator-lab-languages-fb83bee0.apk (base.apk f6d3d0b2…, updated 2026-11-07 23:27 EST, from the other session); app process up (pid 11600), no Wine processes, Termux on top. Peer session root-2e told (don't install/launch/force-stop BL until "done").
+- **Installing:** /sdcard/Download/Bannerlator-main-31196765-pubg.apk sha256 7b146311… via rootsh copy → /data/local/tmp + pm install -r.
+- **Resume point:** if the session dies: check `pm path com.tencent.ig` base.apk hash (7b146311… = installed); undo = pm install -r /sdcard/Download/Bannerlator-lab-languages-fb83bee0.apk; tell root-2e "done". Test still to do: one Wayland game (DiRT Showdown) → Download/bannerlator/DiRT Showdown/wayland/wayland-*.log, View logs › Wayland chip, Share logs zip, logcat -b crash.
+
 ## 2026-11-08 — 📦 main 31196765 artifacts build, pubg APK staged (NOT installed, NOT device-tested)
 - **User:** "build main as artifacts only" → build-artifacts 42448581860 (headSha 31196765 = main; code == merge 78000ba3 == tested 344d9376). "stage the apk when the build is done, pubg".
 - **pubg job:** success, 0 failed steps, BUILD SUCCESSFUL (standard/antutu still running at staging; ludashi done).

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🧱 Mali build 3: BCn texture fixes in the Wayland adapter (fix/wayland-mali-ahb-blit 884658a3; CI running, NOT device-tested)
+- **Tester (gtaforever00, Mali-G77, build 2 f448549a, #general-mali-and-support 12:30 EST):** Wayland + System now shows a picture (Wayland logs: Megabonk 263-363 zero-copy frames/10 s, Hades II 52-57 fps on screen). Left: striped textures (Megabonk ground/trees, Hades II logo) and Hades II failing when a run starts. Fine for him on X11 and Ludashi. His wine logs in the zips were from 03:39 (Wine debug off today). Reply card posted 12:44:29 EST (msg 1569044957761634355, user-approved text).
+- **Cause (adapter, verified in Pipetto ecdd0da8):** BCn is unpacked on the CPU only in vkCmdCopyBufferToImage, but DXVK/vkd3d-proton record vkCmdCopyBufferToImage2 → raw BC bytes in the RGBA8 image; vkGetDeviceImageMemoryRequirements answered for the compressed format (vkd3d "Heap too small for the texture" ×355, fmt #61 = 0x61 = BC7, 349440 vs 1397760 bytes); vkBindBufferMemory2 not tracked; staging buffers never freed under DXVK/vkd3d.
+- **User:** "start on the adapter fixes" → "make the fixes, build it on the same branch we were working from then post a link to the action build with the bot after".
+- **Built:** adapter banner/wayland-wsi-mali-ahb-blit **e7402de6** (banner/mali/banner_mali_bcn.py; hooks only when the adapter emulates BCn; Turnip unchanged), CI 42507509383 green ×4, .so sha256 f22c1462…; BL **884658a3** (asset + adapter.json "… bcn e7402de"). BL build-artifacts **42508013651** (headSha 884658a3) running.
+- **Next:** 4 green → verify + stage `/sdcard/Download/Bannerlator-wayland-mali-bcn-884658a3-*.apk` → post the build link card (drafted, shown to the user) as a reply to gtaforever00. NOT device-tested.
+
 ## 2026-11-08 — ✅ lab-art-strings a82ca7dc INSTALLED on the Elite 12:35:44 EST (user: "yes install it"; NOT device-tested yet)
 - pm install -r Success; installed base.apk sha256 **9a1d32be…** == staged == CI artifact (code == main e930314f); logcat crash buffer empty. No game was running; peer sessions told before and "done" after.
 - **Undo:** /sdcard/Download/Bannerlator-lab-fixes-eb63bd5d.apk (5ac93e96…).

@@ -154,6 +154,7 @@
     <string name="lab_148d6175">مكوّنات Windows</string>
     <string name="lab_14bf5ec1">الأحدث يفوز: لا يستبدل أبدًا ملف حفظ سحابيًا أحدث.</string>
     <string name="lab_14d452ce">كيف تملأ صورة اللعبة شاشتك.</string>
+    <string name="lab_14e033f6">المجموعات الفرعية</string>
     <string name="lab_157c2809">ألعاب محرك Quake في نافذة</string>
     <string name="lab_15a3b754">واحد (عصي أكثر سلاسة)</string>
     <string name="lab_15cf88ba">ملف .icp أو .icpx</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">حُفظت ملفات كل Proton كنسخته الأصلية عند فتح هذه الصفحة.</string>
     <string name="lab_1b4c8948">وضع العرض</string>
     <string name="lab_1bbf10a9"> (نسختك)</string>
+    <string name="lab_1bc2538c">رقعة توقيت KGSL</string>
     <string name="lab_1bdd2734">افتراضي اللعبة</string>
     <string name="lab_1bfb31a3">لون الخلفية</string>
     <string name="lab_1bfc578f">إشعارات الدردشة</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">إزالة %1$s وكل ما فيها؟ ستُحذف اختصارات ألعابها أيضًا.</string>
     <string name="lab_1dd4a128">عناصر تحكم root</string>
     <string name="lab_1df4901e">تم تكرار %1$s</string>
+    <string name="lab_1df4bc73">يُخبر «تلقائي» اللعبةَ بعمليات المجموعات الفرعية التي يدعمها برنامج تشغيل Mesa لديك (فتعمل DOOM Eternal والألعاب الأخرى التي تحتاج إليها). أما «إيقاف» فيُخفيها كما كانت تفعل المحوّلات الأقدم؛ جرّبه إذا ظهر في لعبة خلل رسومي أو صارت تتعطّل ولم تكن كذلك من قبل.</string>
     <string name="lab_1dfaae77">لا يمكن أن يحتوي الاسم على \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">للألعاب التي يشغّلها العميل، لا للعميل نفسه، ولكل واحدة منها: للجلسة بيئة واحدة. </string>
     <string name="lab_1e223777">الإصدار وملاحظات الإصدار و«تنزيل وتثبيت» (إعدادات Classic).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">إلغاء التنزيل</string>
     <string name="lab_1f52ec4a">مستوى الميزات الذي يُبلغ عنه VKD3D. لا تخفضه إلا للعبة ترفض البدء.</string>
     <string name="lab_1f5ee21a">يعرض إشعار التحديث عند صدور إصدار جديد.</string>
+    <string name="lab_1f796e30">تنتقل الإطارات كمخازن مؤقتة مضغوطة على GPU (عرض نطاق أقل). أوقفه إذا ظهرت في الصورة كتل أو خطوط مشوّهة.</string>
     <string name="lab_1f7b66b6">مكوّنات Win</string>
     <string name="lab_1f88c31b">الخيارات</string>
     <string name="lab_1f89987a">يضبط مفاتيح الطاقة وGPU وroot أعلاه لهذه اللعبة دفعة واحدة. لا يُحتفظ بملف التعريف نفسه.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">ضبط لهذه اللعبة</string>
     <string name="lab_31aa53e1">تعديل كنص</string>
     <string name="lab_31b614e4">يستخدمه «تلقائي» على Adreno 710 و720 و722 فقط. لا تغيّره إلا إذا أساءت لعبة التصرف.</string>
+    <string name="lab_32038add">يتجاوز خللًا في Turnip يجعل السؤال «هل انتهت GPU؟» ينتظر الإطار كاملًا (خلل التوقيت في التقرير). يترك «الافتراضي» للمحوّل اكتشافه؛ ويفرض «تشغيل» الرقعة، ويعطّلها «إيقاف».</string>
+    <string name="lab_3205bc81">لم يُعيَّن برنامج تشغيل رسومات Turnip، لذا لا يوجد ما يُفحص.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">وضع شاشة اللمس</string>
     <string name="lab_32a7fa00">توليد الإطارات</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">بنوك الأصوات المثبّتة ومجلد التصدير</string>
     <string name="lab_33b3dcd5">يُبقي GPU على أعلى تردد له أثناء تشغيل لعبة. حرارة واستهلاك أعلى؛ ويمكن للألعاب تجاوزه.</string>
     <string name="lab_33b5c99c">فقط بعد قبولك إخلاء المسؤولية الخاص بالسحابة التابعة لجهة خارجية؛ ولا يحذف أي شيء من السحابة أبدًا.</string>
+    <string name="lab_33e13543">تقرير المحوّل</string>
     <string name="lab_340a5eba">نسخ احتياطي تلقائي لملفات الحفظ ومزامنة سحابية لألعاب Steam وGOG وألعابك الخاصة.</string>
     <string name="lab_340d70c2">محركات التنزيل من المتاجر والسرعة واتصال Steam.</string>
     <string name="lab_3421373f">جمع تلقائي عند الخروج</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">ملف الإعدادات الافتراضية لـ %1$s، </string>
     <string name="lab_452013a2">تصدير</string>
     <string name="lab_45536eb8">الحاوية</string>
+    <string name="lab_455f1d53">UBWC / مخازن مؤقتة مضغوطة</string>
     <string name="lab_45bf9648">واجهة العرض الخلفية</string>
     <string name="lab_45e5d14f">فشل التصدير</string>
     <string name="lab_45f80a27">متقدّم</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">معدل تحديث ثابت للشاشة</string>
     <string name="lab_5c462080">لا يُطبَّق أثناء مضاعفة lsfg-vk للإطارات: فهو يضبط توقيت الإطارات بنفسه.</string>
     <string name="lab_5c524fb3">افتراضيات الحاويات الجديدة</string>
+    <string name="lab_5c596310">يُبقي المركّب عدة إطارات قيد المعالجة بدلًا من انتظار كل نقل (blit) إلى الشاشة. أوقفه إذا وصلت الإطارات بترتيب خاطئ أو إذا كانت لعبة تتقطّع على Wayland فقط.</string>
     <string name="lab_5c821476">أداة اختيار النظام</string>
     <string name="lab_5cb6896e">Steam بدون واجهة</string>
     <string name="lab_5cc2a688">مركز بيانات Steam المستخدم، واختبار المناطق، وفحص شبكة SteamLite (إعدادات Classic).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">أُعيد التطبيق عند التشغيل </string>
     <string name="lab_63a87e7d">أكثر حدة (-0.25)</string>
     <string name="lab_63ce8179">بيتا Steam Deck</string>
+    <string name="lab_641b9c9d">يذهب المخزن المؤقت الخاص باللعبة إلى الشاشة دون نسخ (أقل زمن استجابة وحرارة أقل). يتطلب حواجز sync-file في برنامج التشغيل (راجع تقرير المحوّل). أوقفه إذا رأيت تمزّقًا أو إطارات قديمة.</string>
     <string name="lab_643b2baf">مشاركة / نقل</string>
     <string name="lab_64903a6c">الحصول على المزيد</string>
     <string name="lab_64c5e98f">صورة داخل صورة</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">إعدادات Vulkan</string>
     <string name="lab_8429d942">ثبّت بيئات التشغيل والمكتبات في الحاوية، واختر ملفات DLL من Wine أو من Microsoft.</string>
     <string name="lab_845439e4">لا تُعرف امتدادات برنامج تشغيل Qualcomm إلا بعد بدء اللعبة.</string>
+    <string name="lab_84a0335e">ملف تعريف المحوّل</string>
     <string name="lab_84cba1d0" formatted="false">%.1f ميغابايت · تم الحفظ</string>
     <string name="lab_8521db60">القائمة السريعة</string>
     <string name="lab_85486938">السجلات والتشخيص</string>
+    <string name="lab_8554e6fa">سريع</string>
     <string name="lab_85558be1">الافتراضيات لكل الحاويات</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">تبديل</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">التحديثات</string>
     <string name="lab_8b087b3c">المظهر</string>
     <string name="lab_8b60dd8e">شغّل عميل Steam مرة واحدة كي ينزّل Proton الخاص به لـ ARM64، أو أضف GE-Proton / CachyOS من كتالوج إصدارات Proton لـ Linux.</string>
+    <string name="lab_8bf2cbae">معدِّلات تنسيق DRM</string>
     <string name="lab_8c195a44">المزامنة</string>
     <string name="lab_8c283df5">إصدارات DirectX 12 من الكتالوج.</string>
     <string name="lab_8c33a442">يحتفظ كل نظام صوت بإعداده المسبق الخاص، فلا يخلط التبديل بين PulseAudio وALSA وDirectAudio إعداداتها أبدًا. واللعبة التي ليس لها إعداد خاص تظل تتبع حاويتها.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">مشاركة حافظة Android مع الألعاب</string>
     <string name="lab_968b9d49">تُطبَّق عند التشغيل. ولا تزال القائمة الجانبية أثناء اللعب تغيّرها مباشرةً.</string>
     <string name="lab_969dab73">تشغيل / إيقاف ReShade، ومنفرد / تكديس، والمؤثرات وإعداداتها</string>
+    <string name="lab_969fd520">حواجز عرض العميل</string>
     <string name="lab_96a7cb77">تم إلغاء التبديل المنتظَر.</string>
     <string name="lab_96df6867">تم اللعب %1$s س</string>
     <string name="lab_97275ac4">يعيد تبديل الأحمر والأزرق (BGRA إلى RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• تراكب الأداء في قائمة الوصول السريع جديد ولم يُجرَّب على جهاز بعد.\n\n</string>
     <string name="lab_9b395c25">ترك اللعبة تتعامل مع وحدة التحكم</string>
     <string name="lab_9b5699c0">المعمارية والمترجم وطريقة تحميل FEX.</string>
+    <string name="lab_9ba84344">تعذّر فحص برنامج التشغيل.</string>
     <string name="lab_9bc722a8">التخزين</string>
     <string name="lab_9bd29497">فأرة لوحة التتبع</string>
     <string name="lab_9c232707">حول التطبيق والمساعدة</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 عبر Vulkan. «لا شيء» يوقف DirectX 12.</string>
     <string name="lab_ab612af4">الحرارة</string>
     <string name="lab_ab78a04b">سجّل الدخول لإدارة إعداداتك المشتركة</string>
+    <string name="lab_ab8824cb">وضع العرض للمحوّل</string>
     <string name="lab_abb1c367">لا يوجد شيء موصول. لا تزال هذه اللعبة مضبوطة للبدء على تلفاز.</string>
     <string name="lab_abb20221">بلا إعداد مسبق</string>
     <string name="lab_abf1049c">الاحتفاظ بالأرشيف الخام افتراضيًا</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">تبديل النافذة</string>
     <string name="lab_aca7092f">تظهر المثبّتة ضمن إصدار Box64.</string>
     <string name="lab_acfc8aab">استخدام</string>
+    <string name="lab_ad11f65e">تلقائي (موصى به)</string>
     <string name="lab_ad23e110">لم يُبلَّغ عن أي برامج بعد.</string>
     <string name="lab_ad26a7c7">غير معروف</string>
     <string name="lab_adcb307d">كيفية تحويل استدعاءات DirectX في Windows إلى Vulkan لمعالج GPU لديك.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">جارٍ قراءة امتدادات برنامج التشغيل…</string>
     <string name="lab_b6b590cf">التشغيل دون اتصال</string>
     <string name="lab_b6e99688">تكبير جزء من الشاشة.</string>
+    <string name="lab_b7079be0">عرض دون نسخ</string>
     <string name="lab_b71f7c14">تنزيل إصدارات FEXCore</string>
     <string name="lab_b7320213">البرامج قيد التشغيل</string>
     <string name="lab_b736f934">متاجرك</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">يُطبَّق الآن · يُحفظ لهذه اللعبة وكافتراضي لهذا المحرك</string>
     <string name="lab_ca45d5a4">هذه الحاوية</string>
     <string name="lab_ca62f862">التنزيلات والشبكة</string>
+    <string name="lab_cabf747a">النسخ غير المتزامن</string>
     <string name="lab_caf7d4a3">إعداد مسبق مشترك، معدَّل</string>
     <string name="lab_cb5fc4d5">إعدادات VEGAS</string>
     <string name="lab_cb6d604d">لا يمكن سحب HUD أثناء اللعب.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">تمديد</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">حدة DLS + إزالة التشويش</string>
+    <string name="lab_ce6eab03">مع العرض دون نسخ، يُبلغ برنامج تشغيل اللعبة المركّبَ عند اكتمال الإطار. لا توقفه إلا للمقارنة؛ فعند إيقافه قد تظهر إطارات نصف مرسومة.</string>
     <string name="lab_ce764fd8">المساحة المستخدمة ومجلدات التطبيق والنظام الأساسي.</string>
     <string name="lab_ce9b8eca">تحويل BCn إلى ASTC</string>
     <string name="lab_ceadf171">Android يحظر fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">أولوية التحكم على الشاشة</string>
     <string name="lab_e1768a43">يمكن تبديله أيضًا أثناء اللعب من القائمة الجانبية.</string>
     <string name="lab_e18caa5c">لا توجد محركات أقراص</string>
+    <string name="lab_e19da5b2">محوّل Wayland</string>
     <string name="lab_e1be537c">غير محفوظ</string>
     <string name="lab_e22a8ea9">يحتاج Wayland إلى Turnip مثبّت لعرض إطارات اللعبة على الشاشة. تظهر الجديدة تحت «برنامج تشغيل الرسومات».</string>
     <string name="lab_e2410f47">استعراض وتنزيل</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">برنامج تشغيل الهاتف فقط حتى الآن.</string>
     <string name="lab_f04c78b9">إعدادات الصوت · هذه اللعبة</string>
     <string name="lab_f05053e7">يقرأ Steam Controller مباشرةً (لوحات التتبع والأزرار الإضافية). عند الإيقاف: يبقى مسار الإدخال العادي دون تغيير.</string>
+    <string name="lab_f0520965">mailbox = أحدث إطار، أقل زمن استجابة؛ fifo = vsync، توقيت منتظم. يتبع «الافتراضي» ملف التعريف، وإلا فوضع العرض المحفوظ. يحتاج Immediate إلى التمزّق، وهو ما لا يوفّره Wayland.</string>
     <string name="lab_f05494f9">طبقة Wine في هذه الحاوية لا تستطيع تشغيل Wayland.</string>
     <string name="lab_f06ef939">تعمل Quake III وTeam Arena وReturn to Castle Wolfenstein وJedi Academy في نافذة بحجم الجلسة.</string>
     <string name="lab_f0c81c31">عميل Steam</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">الإعدادات الافتراضية</string>
     <string name="lab_f523d27f">تمرير وحدة التحكم</string>
     <string name="lab_f54f4eb6">تعذّر تثبيت %1$s</string>
+    <string name="lab_f552097b">تلقائي: يختار بناءً على تقرير المحوّل لبرنامج التشغيل لديك؛ ومن دون تقرير لا يغيّر شيئًا.\n\nسلس: توقيت إطارات منتظم: vsync (fifo)، ونسخ الإطارات في الخلفية، والعرض دون نسخ متوقف.\n\nسريع: أقل زمن استجابة: mailbox، والعرض دون نسخ مع مخازن مؤقتة مضغوطة، وحواجز عرض العميل.\n\nالتوافق: الأكثر أمانًا: vsync، وكل التحسينات متوقفة، ومخازن مؤقتة عادية، ورقعة التوقيت مشغّلة. للألعاب التي تومض أو تتجمّد.\n\nما تكتبه في «متغيرات البيئة» يتغلّب دائمًا على ملفات التعريف هذه؛ والمفاتيح المنفردة تتغلّب على ملف التعريف.</string>
     <string name="lab_f55495e0">حفظ</string>
     <string name="lab_f576fb2d">طبقات من الكتالوج، أو ثبّت واحدة من ملف. يمكن للحاويات الجديدة استخدامها.</string>
     <string name="lab_f57b35ee">المنطقة الميتة والتنعيم</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">برنامج التشغيل الذي يعرض به مركّب التطبيق الجلسة على الشاشة. ليس ما يرسم به العميل.</string>
     <string name="lab_f59e59da">يظهر في مكتبتك. إعادة التسمية تحتفظ بالغلاف والأيقونة.</string>
     <string name="lab_f61050cc">دقة اللعبة</string>
+    <string name="lab_f65eddfe">يتيح لبرنامج تشغيل اللعبة والمركّب الاتفاق على تخطيطات المخازن المؤقتة. عند الإيقاف تستخدم اللعبة مخازن مؤقتة خطية عادية (BANNER_WSI_NO_MODIFIERS=1)؛ جرّبه عند ظهور شاشة سوداء أو إطارات تالفة.</string>
     <string name="lab_f665e069">إشعار عندما يراسلك صديق ولا تكون محادثته مفتوحة.</string>
     <string name="lab_f667b7f4">لون التمييز</string>
     <string name="lab_f690a199">غلافك</string>

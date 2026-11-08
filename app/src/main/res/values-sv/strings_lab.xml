@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows-komponenter</string>
     <string name="lab_14bf5ec1">Nyast vinner: skriver aldrig över en nyare molnsparfil.</string>
     <string name="lab_14d452ce">Hur spelbilden fyller skärmen.</string>
+    <string name="lab_14e033f6">Subgrupper</string>
     <string name="lab_157c2809">Quake-motorspel i fönster</string>
     <string name="lab_15a3b754">En (mjukare spakar)</string>
     <string name="lab_15cf88ba">.icp- eller .icpx-fil</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Varje Protons egna filer sparades som dess original när denna sida öppnades.</string>
     <string name="lab_1b4c8948">Presentationsläge</string>
     <string name="lab_1bbf10a9"> (din kopia)</string>
+    <string name="lab_1bc2538c">KGSL-tidsshim</string>
     <string name="lab_1bdd2734">Spelets standard</string>
     <string name="lab_1bfb31a3">Bakgrundsfärg</string>
     <string name="lab_1bfc578f">Chattaviseringar</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Ta bort %1$s och allt i den? Spelens genvägar försvinner också.</string>
     <string name="lab_1dd4a128">Root-kontroller</string>
     <string name="lab_1df4901e">Duplicerade %1$s</string>
+    <string name="lab_1df4bc73">Auto talar om för spelet vilka subgruppsoperationer din Mesa-drivrutin stöder (så startar DOOM Eternal och andra spel som behöver dem). Av döljer dem, som äldre adaptrar gjorde; prova det om ett spel visar grafikfel eller kraschar när det inte gjorde det förut.</string>
     <string name="lab_1dfaae77">Ett namn får inte innehålla \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">För spelen som klienten startar, inte själva klienten, och för alla på en gång: sessionen har en enda miljö. </string>
     <string name="lab_1e223777">Version, versionsinformation och Ladda ned och installera (klassiska Inställningar).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Avbryt nedladdningen</string>
     <string name="lab_1f52ec4a">Funktionsnivån som VKD3D rapporterar. Sänk den bara för ett spel som vägrar starta.</string>
     <string name="lab_1f5ee21a">Visar uppdateringsmeddelandet när en ny version finns.</string>
+    <string name="lab_1f796e30">Bildrutorna skickas som komprimerade GPU-buffertar (mindre bandbredd). Stäng av om bilden visar förvrängda block eller ränder.</string>
     <string name="lab_1f7b66b6">Win-komponenter</string>
     <string name="lab_1f88c31b">Alternativ</string>
     <string name="lab_1f89987a">Ställer in energi-, GPU- och root-brytarna ovan för detta spel på en gång. Själva profilen sparas inte.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Inställt för detta spel</string>
     <string name="lab_31aa53e1">Redigera som text</string>
     <string name="lab_31b614e4">Auto använder det bara på Adreno 710, 720 och 722. Ändra det bara om ett spel krånglar.</string>
+    <string name="lab_32038add">Kringgår en Turnip-bugg där frågan \"är GPU:n klar?\" väntar på hela bildrutan (tidsbuggen i rapporten). Standard låter adaptern upptäcka den; På slår alltid på den, Av stänger av den.</string>
+    <string name="lab_3205bc81">Ingen Turnip-grafikdrivrutin är inställd, så det finns inget att kontrollera.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Pekskärmsläge</string>
     <string name="lab_32a7fa00">Bildgenerering</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Installerade ljudbanker och exportmapp</string>
     <string name="lab_33b3dcd5">Håller GPU:n på högsta klockfrekvens medan ett spel körs. Varmare och mer strömkrävande; spel kan åsidosätta det.</string>
     <string name="lab_33b5c99c">Först när du har godkänt ansvarsfriskrivningen för tredjepartsmoln; tar aldrig bort något från molnet.</string>
+    <string name="lab_33e13543">Adapterrapport</string>
     <string name="lab_340a5eba">Automatisk säkerhetskopiering av sparfiler och molnsynk för Steam, GOG och dina egna spel.</string>
     <string name="lab_340d70c2">Butikernas nedladdningsmotorer, hastighet och Steam-anslutning.</string>
     <string name="lab_3421373f">Samla in automatiskt vid avslut</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Standardprofilen för %1$s, </string>
     <string name="lab_452013a2">Exportera</string>
     <string name="lab_45536eb8">Container</string>
+    <string name="lab_455f1d53">UBWC / komprimerade buffertar</string>
     <string name="lab_45bf9648">Visningsbackend</string>
     <string name="lab_45e5d14f">Exporten misslyckades</string>
     <string name="lab_45f80a27">Avancerat</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Fast skärmuppdatering</string>
     <string name="lab_5c462080">Tillämpas inte medan lsfg-vk multiplicerar: den styr bildtakten själv.</string>
     <string name="lab_5c524fb3">Standardvärden för nya containrar</string>
+    <string name="lab_5c596310">Kompositorn håller flera bildrutor i omlopp i stället för att vänta på varje kopiering till skärmen. Stäng av om bildrutor kommer i fel ordning eller om ett spel bara hackar på Wayland.</string>
     <string name="lab_5c821476">Systemväljare</string>
     <string name="lab_5cb6896e">Steam utan gränssnitt</string>
     <string name="lab_5cc2a688">Vilket Steam-datacenter som används, test av regioner och SteamLites nätverkskontroll (klassiska Inställningar).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">tillämpat igen vid start kl. </string>
     <string name="lab_63a87e7d">Skarpare (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck-beta</string>
+    <string name="lab_641b9c9d">Spelets egen buffert visas på skärmen utan kopia (lägst latens, mindre värme). Kräver sync-file-fences i drivrutinen (se adapterrapporten). Stäng av om du ser tearing eller inaktuella bildrutor.</string>
     <string name="lab_643b2baf">Dela / överför</string>
     <string name="lab_64903a6c">Hämta fler</string>
     <string name="lab_64c5e98f">Bild-i-bild</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan-inställningar</string>
     <string name="lab_8429d942">Installera körmiljöer och bibliotek i containern, och välj Wines eller Microsofts DLL:er.</string>
     <string name="lab_845439e4">En Qualcomm-drivrutins tillägg är kända först när spelet startar.</string>
+    <string name="lab_84a0335e">Adapterprofil</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · sparad</string>
     <string name="lab_8521db60">Snabbmeny</string>
     <string name="lab_85486938">Loggar och diagnostik</string>
+    <string name="lab_8554e6fa">Snabb</string>
     <string name="lab_85558be1">Standardvärden för alla containrar</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Byt</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Uppdateringar</string>
     <string name="lab_8b087b3c">Utseende</string>
     <string name="lab_8b60dd8e">Starta Steam-klienten en gång så att den laddar ned sin ARM64-Proton, eller lägg till GE-Proton / CachyOS från katalogen Linux-Protons.</string>
+    <string name="lab_8bf2cbae">DRM-formatmodifierare</string>
     <string name="lab_8c195a44">Synkronisering</string>
     <string name="lab_8c283df5">DirectX 12-byggen från katalogen.</string>
     <string name="lab_8c33a442">Varje ljudsystem behåller sin egen förinställning, så byte mellan PulseAudio, ALSA och DirectAudio blandar aldrig deras inställningar. Ett spel utan egen förinställning fortsätter att följa sin container.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Dela Androids urklipp med spel</string>
     <string name="lab_968b9d49">Tillämpas vid start. Sidomenyn i spelet ändrar dem fortfarande direkt.</string>
     <string name="lab_969dab73">ReShade på / av, Solo / Stapla, effekter och deras inställningar</string>
+    <string name="lab_969fd520">Klientens render-fences</string>
     <string name="lab_96a7cb77">Det väntande bytet avbröts.</string>
     <string name="lab_96df6867">%1$s tim spelat</string>
     <string name="lab_97275ac4">Byter tillbaka rött och blått (BGRA till RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• Snabbåtkomstmenyns prestandaöverlägg är nytt och ännu inte provat på en enhet.\n\n</string>
     <string name="lab_9b395c25">Låt spelet hantera handkontrollen</string>
     <string name="lab_9b5699c0">Arkitektur, översättare och hur FEX läses in.</string>
+    <string name="lab_9ba84344">Drivrutinen kunde inte kontrolleras.</string>
     <string name="lab_9bc722a8">Lagring</string>
     <string name="lab_9bd29497">Styrplattemus</string>
     <string name="lab_9c232707">Om och hjälp</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 via Vulkan. Ingen stänger av DirectX 12.</string>
     <string name="lab_ab612af4">Temp</string>
     <string name="lab_ab78a04b">Logga in för att hantera dina delade konfigurationer</string>
+    <string name="lab_ab8824cb">Adapterns presentationsläge</string>
     <string name="lab_abb1c367">Inget är anslutet. Detta spel är fortfarande inställt på att starta på en TV.</string>
     <string name="lab_abb20221">Ingen förinställning</string>
     <string name="lab_abf1049c">Behåll råarkivet som standard</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Byt fönster</string>
     <string name="lab_aca7092f">Installerade visas under Box64-version.</string>
     <string name="lab_acfc8aab">Använd</string>
+    <string name="lab_ad11f65e">Auto (rekommenderas)</string>
     <string name="lab_ad23e110">Inga program rapporterade än.</string>
     <string name="lab_ad26a7c7">okänd</string>
     <string name="lab_adcb307d">Hur Windows DirectX-anrop omvandlas till Vulkan för din GPU.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Läser drivrutinens tillägg…</string>
     <string name="lab_b6b590cf">Starta offline</string>
     <string name="lab_b6e99688">Zooma in på en del av skärmen.</string>
+    <string name="lab_b7079be0">Zero-copy-presentation</string>
     <string name="lab_b71f7c14">Ladda ned FEXCore-versioner</string>
     <string name="lab_b7320213">Program som körs</string>
     <string name="lab_b736f934">Dina butiker</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">gäller direkt · sparas för detta spel och som standard för denna motor</string>
     <string name="lab_ca45d5a4">denna container</string>
     <string name="lab_ca62f862">Hämtningar och nätverk</string>
+    <string name="lab_cabf747a">Asynkron kopiering</string>
     <string name="lab_caf7d4a3">Delad förinställning, redigerad</string>
     <string name="lab_cb5fc4d5">VEGAS-konfiguration</string>
     <string name="lab_cb6d604d">HUD:en kan inte dras i spelet.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Sträck ut</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS-skärpning + brusreducering</string>
+    <string name="lab_ce6eab03">Med zero-copy talar spelets drivrutin om för kompositorn när en bildruta är klar. Stäng bara av för att jämföra; avstängt kan halvritade bildrutor visas.</string>
     <string name="lab_ce764fd8">Använt utrymme, appmappar och bassystemet.</string>
     <string name="lab_ce9b8eca">Omkoda BCn till ASTC</string>
     <string name="lab_ceadf171">Android blockerar fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Prioritet för skärmkontroller</string>
     <string name="lab_e1768a43">Kan även växlas i spelet från sidomenyn.</string>
     <string name="lab_e18caa5c">Inga enheter</string>
+    <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Inte sparat</string>
     <string name="lab_e22a8ea9">Wayland behöver en installerad Turnip för att visa spelets bildrutor på skärmen. Nya visas under Grafikdrivrutin.</string>
     <string name="lab_e2410f47">Bläddra och ladda ned</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Bara telefonens egen drivrutin hittills.</string>
     <string name="lab_f04c78b9">Ljudinställningar · detta spel</string>
     <string name="lab_f05053e7">Läser en Steam Controller direkt (dess styrplattor och extra knappar). Av: den vanliga inmatningsvägen är oförändrad.</string>
+    <string name="lab_f0520965">mailbox = nyaste bildrutan, lägst latens; fifo = vsync, jämn takt. Standard följer profilen, annars det sparade presentationsläget. Immediate kräver tearing, vilket Wayland inte erbjuder.</string>
     <string name="lab_f05494f9">Denna containers Wine-lager kan inte driva Wayland.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein och Jedi Academy körs i fönster i sessionens storlek.</string>
     <string name="lab_f0c81c31">Steam-klient</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Standardvärden</string>
     <string name="lab_f523d27f">Handkontroll-passthrough</string>
     <string name="lab_f54f4eb6">Kunde inte installera %1$s</string>
+    <string name="lab_f552097b">Auto: väljer utifrån adapterrapporten för din drivrutin; utan rapport ändras ingenting.\n\nJämn: jämn bildtakt: vsync (fifo), bildrutor kopieras i bakgrunden, ingen zero-copy.\n\nSnabb: lägst latens: mailbox, zero-copy med komprimerade buffertar, klientens render-fences.\n\nKompatibilitet: säkrast: vsync, alla genvägar av, vanliga buffertar, tidsshim på. För spel som flimrar eller hänger sig.\n\nVariabler du skriver under Miljövariabler går alltid före dessa; de enskilda brytarna går före profilen.</string>
     <string name="lab_f55495e0">Spara</string>
     <string name="lab_f576fb2d">Lager från katalogen, eller installera ett från en fil. Nya containrar kan använda dem.</string>
     <string name="lab_f57b35ee">Dödzon och utjämning</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Drivrutinen som appens kompositor visar sessionen på skärmen med. Inte den som klienten ritar med.</string>
     <string name="lab_f59e59da">Visas i ditt bibliotek. Namnbyte behåller omslaget och ikonen.</string>
     <string name="lab_f61050cc">Spelets upplösning</string>
+    <string name="lab_f65eddfe">Låter spelets drivrutin och kompositorn komma överens om buffertlayout. Av gör att spelet använder vanliga linjära buffertar (BANNER_WSI_NO_MODIFIERS=1); prova det vid svart skärm eller trasiga bildrutor.</string>
     <string name="lab_f665e069">En avisering när en vän skickar ett meddelande och chatten inte är öppen.</string>
     <string name="lab_f667b7f4">Accentfärg</string>
     <string name="lab_f690a199">Ditt omslag</string>

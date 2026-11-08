@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows-összetevők</string>
     <string name="lab_14bf5ec1">A legújabb nyer: sosem írja felül az újabb felhőmentést.</string>
     <string name="lab_14d452ce">Hogyan tölti ki a játék képe a kijelzőt.</string>
+    <string name="lab_14e033f6">Alcsoportok</string>
     <string name="lab_157c2809">Quake-motoros játékok ablakban</string>
     <string name="lab_15a3b754">Egy (simább karok)</string>
     <string name="lab_15cf88ba">.icp vagy .icpx fájl</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Minden Proton saját fájljai eredetiként mentődtek, amikor ez az oldal megnyílt.</string>
     <string name="lab_1b4c8948">Megjelenítési mód</string>
     <string name="lab_1bbf10a9"> (saját másolat)</string>
+    <string name="lab_1bc2538c">KGSL időzítési javítás</string>
     <string name="lab_1bdd2734">Játék alapértéke</string>
     <string name="lab_1bfb31a3">Háttérszín</string>
     <string name="lab_1bfc578f">Csevegési értesítések</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">%1$s eltávolítása minden tartalmával együtt? A játékainak parancsikonjai is törlődnek.</string>
     <string name="lab_1dd4a128">Root-funkciók</string>
     <string name="lab_1df4901e">%1$s duplikálva</string>
+    <string name="lab_1df4bc73">Az Automatikus közli a játékkal, mely alcsoport-műveleteket támogatja a Mesa illesztőprogramod (így elindul a DOOM Eternal és a többi játék, amelynek ezek kellenek). A Ki elrejti őket, ahogy a régebbi adapterek tették; próbáld ki, ha egy játékban korábban nem tapasztalt grafikai hibák vagy összeomlások jelentkeznek.</string>
     <string name="lab_1dfaae77">A név nem tartalmazhatja ezeket: \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">A kliens által indított játékokra vonatkozik, nem magára a kliensre, és mindegyikükre: a munkamenetnek egyetlen környezete van. </string>
     <string name="lab_1e223777">Verzió, kiadási megjegyzések és Letöltés és telepítés (klasszikus Beállítások).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Letöltés megszakítása</string>
     <string name="lab_1f52ec4a">A VKD3D által jelentett funkciószint. Csak olyan játéknál csökkentsd, amely nem hajlandó elindulni.</string>
     <string name="lab_1f5ee21a">Frissítési értesítést mutat, ha új verzió jelenik meg.</string>
+    <string name="lab_1f796e30">A képkockák tömörített GPU-pufferekként utaznak (kisebb sávszélesség). Kapcsold ki, ha a képen torz blokkok vagy csíkok jelennek meg.</string>
     <string name="lab_1f7b66b6">Win összetevők</string>
     <string name="lab_1f88c31b">Opciók</string>
     <string name="lab_1f89987a">Egyszerre beállítja a fenti energia-, GPU- és root-kapcsolókat ehhez a játékhoz. Magát a profilt nem tárolja.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Beállítás ehhez a játékhoz</string>
     <string name="lab_31aa53e1">Szerkesztés szövegként</string>
     <string name="lab_31b614e4">Az Automatikus csak Adreno 710, 720 és 722 esetén használja. Csak akkor módosítsd, ha egy játék hibásan működik.</string>
+    <string name="lab_32038add">Megkerül egy Turnip-hibát, amelyben a „kész van a GPU?” kérdés az egész képkockát kivárja (a jelentés időzítési hibája). Az Alapértelmezett az adapterre bízza az észlelést; a Be kikényszeríti, a Ki letiltja.</string>
+    <string name="lab_3205bc81">Nincs beállítva Turnip grafikus illesztőprogram, így nincs mit ellenőrizni.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Érintőképernyő módja</string>
     <string name="lab_32a7fa00">Képkocka-gen.</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Telepített hangbankok és exportmappa</string>
     <string name="lab_33b3dcd5">Játék közben a GPU-t a legmagasabb órajelen tartja. Melegebb és többet fogyaszt; a játékok felülbírálhatják.</string>
     <string name="lab_33b5c99c">Csak a külső felhőre vonatkozó nyilatkozat elfogadása után; sosem töröl semmit a felhőből.</string>
+    <string name="lab_33e13543">Adapterjelentés</string>
     <string name="lab_340a5eba">Mentések automatikus biztonsági mentése és felhőszinkronizálása Steam-, GOG- és saját játékokhoz.</string>
     <string name="lab_340d70c2">Áruházi letöltőmotorok, sebesség és Steam-kapcsolat.</string>
     <string name="lab_3421373f">Automatikus gyűjtés kilépéskor</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">A(z) %1$s alapértelmezett profilja, </string>
     <string name="lab_452013a2">Exportálás</string>
     <string name="lab_45536eb8">Konténer</string>
+    <string name="lab_455f1d53">UBWC / tömörített pufferek</string>
     <string name="lab_45bf9648">Megjelenítési backend</string>
     <string name="lab_45e5d14f">Exportálás sikertelen</string>
     <string name="lab_45f80a27">Speciális</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Rögzített képfrissítés</string>
     <string name="lab_5c462080">Nem érvényes, amíg az lsfg-vk sokszoroz: a képkockákat maga ütemezi.</string>
     <string name="lab_5c524fb3">Alapértékek új konténerekhez</string>
+    <string name="lab_5c596310">A kompozitor több képkockát tart folyamatban ahelyett, hogy minden képernyőre másolásra (blit) várna. Kapcsold ki, ha a képkockák rossz sorrendben érkeznek, vagy egy játék csak Waylanden akadozik.</string>
     <string name="lab_5c821476">Rendszerválasztó</string>
     <string name="lab_5cb6896e">Felület nélküli Steam</string>
     <string name="lab_5cc2a688">Melyik Steam-adatközpontot használja, régiók tesztelése és a SteamLite hálózati ellenőrzése (klasszikus Beállítások).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">újraalkalmazva indításkor </string>
     <string name="lab_63a87e7d">Élesebb (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck béta</string>
+    <string name="lab_641b9c9d">A játék saját puffere másolás nélkül kerül a képernyőre (legkisebb késleltetés, kevesebb hő). Az illesztőprogramnak sync-file fence-ek kellenek hozzá (lásd az adapterjelentést). Kapcsold ki, ha képtörést vagy elavult képkockákat látsz.</string>
     <string name="lab_643b2baf">Megosztás / átvitel</string>
     <string name="lab_64903a6c">Továbbiak</string>
     <string name="lab_64c5e98f">Kép a képben</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan beállítások</string>
     <string name="lab_8429d942">Futtatókörnyezetek és könyvtárak telepítése a konténerbe, valamint a Wine vagy a Microsoft DLL-jeinek kiválasztása.</string>
     <string name="lab_845439e4">A Qualcomm illesztőprogram bővítményei csak a játék indulása után ismertek.</string>
+    <string name="lab_84a0335e">Adapterprofil</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · mentve</string>
     <string name="lab_8521db60">Gyorsmenü</string>
     <string name="lab_85486938">Naplók és diagnosztika</string>
+    <string name="lab_8554e6fa">Gyors</string>
     <string name="lab_85558be1">Alapértékek minden konténerhez</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Csere</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Frissítések</string>
     <string name="lab_8b087b3c">Megjelenés</string>
     <string name="lab_8b60dd8e">Indítsd el egyszer a Steam-klienst, hogy letöltse az ARM64 Protonját, vagy adj hozzá GE-Protont / CachyOS-t a Linux Protonok katalógusából.</string>
+    <string name="lab_8bf2cbae">DRM formátummódosítók</string>
     <string name="lab_8c195a44">Szinkronizálás</string>
     <string name="lab_8c283df5">DirectX 12 buildek a katalógusból.</string>
     <string name="lab_8c33a442">Minden hangrendszer saját előbeállítást tart, így a PulseAudio, az ALSA és a DirectAudio közötti váltás sosem keveri a beállításaikat. A saját előbeállítás nélküli játék továbbra is a konténerét követi.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Android vágólap megosztása a játékokkal</string>
     <string name="lab_968b9d49">Indításkor lép életbe. Játék közben az oldalsó menüben továbbra is élőben módosíthatók.</string>
     <string name="lab_969dab73">ReShade be / ki, Egyedül / Halmozva, effektek és beállításaik</string>
+    <string name="lab_969fd520">Kliens renderelési fence-ek</string>
     <string name="lab_96a7cb77">A várakozó csere megszakítva.</string>
     <string name="lab_96df6867">%1$s óra játék</string>
     <string name="lab_97275ac4">Visszacseréli a pirosat és a kéket (BGRA-ból RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• A Gyors elérés menü teljesítmény-overlayje új, és még nem próbálták ki eszközön.\n\n</string>
     <string name="lab_9b395c25">A játék kezelje a kontrollert</string>
     <string name="lab_9b5699c0">Architektúra, fordító és a FEX betöltésének módja.</string>
+    <string name="lab_9ba84344">Az illesztőprogramot nem sikerült ellenőrizni.</string>
     <string name="lab_9bc722a8">Tárhely</string>
     <string name="lab_9bd29497">Trackpad egérként</string>
     <string name="lab_9c232707">Névjegy és súgó</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 Vulkanon keresztül. A Nincs kikapcsolja a DirectX 12-t.</string>
     <string name="lab_ab612af4">Hőm.</string>
     <string name="lab_ab78a04b">Jelentkezz be a megosztott konfigurációid kezeléséhez</string>
+    <string name="lab_ab8824cb">Adapter megjelenítési módja</string>
     <string name="lab_abb1c367">Nincs semmi csatlakoztatva. Ez a játék továbbra is tévén való indításra van állítva.</string>
     <string name="lab_abb20221">Nincs előbeállítás</string>
     <string name="lab_abf1049c">Nyers archívum megtartása alapból</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Ablakváltás</string>
     <string name="lab_aca7092f">A telepítettek a Box64 verzió alatt jelennek meg.</string>
     <string name="lab_acfc8aab">Használat</string>
+    <string name="lab_ad11f65e">Automatikus (ajánlott)</string>
     <string name="lab_ad23e110">Még nincs jelentett program.</string>
     <string name="lab_ad26a7c7">ismeretlen</string>
     <string name="lab_adcb307d">Hogyan alakulnak át a Windows DirectX-hívásai Vulkanná a GPU-d számára.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Illesztőprogram bővítményeinek beolvasása…</string>
     <string name="lab_b6b590cf">Indítás offline</string>
     <string name="lab_b6e99688">A képernyő egy részének nagyítása.</string>
+    <string name="lab_b7079be0">Zero-copy megjelenítés</string>
     <string name="lab_b71f7c14">FEXCore verziók letöltése</string>
     <string name="lab_b7320213">Futó programok</string>
     <string name="lab_b736f934">Áruházaid</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">azonnal érvényes · ehhez a játékhoz és ennek a motornak az alapértelmezéseként mentve</string>
     <string name="lab_ca45d5a4">ez a konténer</string>
     <string name="lab_ca62f862">Letöltések és hálózat</string>
+    <string name="lab_cabf747a">Aszinkron másolás</string>
     <string name="lab_caf7d4a3">Közös előbeállítás, módosítva</string>
     <string name="lab_cb5fc4d5">VEGAS konfiguráció</string>
     <string name="lab_cb6d604d">A HUD játék közben nem húzható.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Nyújtás</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS élesítés + zajcsökkentés</string>
+    <string name="lab_ce6eab03">Zero-copy esetén a játék illesztőprogramja jelzi a kompozitornak, ha egy képkocka elkészült. Csak összehasonlításhoz kapcsold ki; Ki állásban félig megrajzolt képkockák jelenhetnek meg.</string>
     <string name="lab_ce764fd8">Foglalt hely, alkalmazásmappák és az alaprendszer.</string>
     <string name="lab_ce9b8eca">BCn átkódolása ASTC-re</string>
     <string name="lab_ceadf171">Az Android blokkolja az fsync-et</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Képernyős prioritás</string>
     <string name="lab_e1768a43">Játék közben az oldalsó menüből is kapcsolható.</string>
     <string name="lab_e18caa5c">Nincsenek meghajtók</string>
+    <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Nincs mentve</string>
     <string name="lab_e22a8ea9">A Waylandnek telepített Turnip kell, hogy a játék képkockáit a képernyőre tegye. Az újak a Grafikus illesztőprogram alatt jelennek meg.</string>
     <string name="lab_e2410f47">Böngészés és letöltés</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Egyelőre csak a telefon saját illesztőprogramja.</string>
     <string name="lab_f04c78b9">Hangbeállítások · ez a játék</string>
     <string name="lab_f05053e7">Közvetlenül olvassa a Steam Controllert (trackpadjeit és extra gombjait). Ki: a normál bemeneti útvonal változatlan.</string>
+    <string name="lab_f0520965">mailbox = legújabb képkocka, legkisebb késleltetés; fifo = vsync, egyenletes ütemezés. Az Alapértelmezett a profilt követi, ennek hiányában a tárolt megjelenítési módot. Az Immediate képtörést igényel, amit a Wayland nem kínál.</string>
     <string name="lab_f05494f9">Ennek a konténernek a Wine-rétege nem tudja kezelni a Waylandet.</string>
     <string name="lab_f06ef939">A Quake III, a Team Arena, a Return to Castle Wolfenstein és a Jedi Academy ablakban, a munkamenet méretében fut.</string>
     <string name="lab_f0c81c31">Steam-kliens</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Alapértelmezések</string>
     <string name="lab_f523d27f">Kontroller-átengedés</string>
     <string name="lab_f54f4eb6">Nem sikerült telepíteni a %1$s-t</string>
+    <string name="lab_f552097b">Automatikus: az illesztőprogramod adapterjelentése alapján választ; jelentés nélkül semmit sem változtat.\n\nSima: egyenletes képkocka-ütemezés: vsync (fifo), a képkockák másolása a háttérben, zero-copy nélkül.\n\nGyors: legkisebb késleltetés: mailbox, zero-copy tömörített pufferekkel, kliens renderelési fence-ek.\n\nKompatibilitás: a legbiztonságosabb: vsync, minden gyorsítás kikapcsolva, egyszerű pufferek, időzítési javítás bekapcsolva. Villódzó vagy lefagyó játékokhoz.\n\nA Környezeti vált. lapon megadott környezeti változók mindig felülírják ezeket; az egyes kapcsolók felülírják a profilt.</string>
     <string name="lab_f55495e0">Mentés</string>
     <string name="lab_f576fb2d">Rétegek a katalógusból, vagy telepíts egyet fájlból. Az új konténerek használhatják őket.</string>
     <string name="lab_f57b35ee">Holtzóna és simítás</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Az illesztőprogram, amellyel az alkalmazás kompozitora a munkamenetet a képernyőre teszi. Nem az, amellyel a kliens rajzol.</string>
     <string name="lab_f59e59da">A könyvtáradban látható. Átnevezéskor a borító és az ikon megmarad.</string>
     <string name="lab_f61050cc">Játék felbontása</string>
+    <string name="lab_f65eddfe">Lehetővé teszi, hogy a játék illesztőprogramja és a kompozitor megegyezzen a pufferek elrendezéséről. Ki: a játék egyszerű lineáris puffereket használ (BANNER_WSI_NO_MODIFIERS=1); próbáld ki fekete képernyő vagy hibás képkockák esetén.</string>
     <string name="lab_f665e069">Értesítés, ha egy barátod üzenetet küld, és a vele folytatott csevegés nincs megnyitva.</string>
     <string name="lab_f667b7f4">Kiemelőszín</string>
     <string name="lab_f690a199">Saját borító</string>

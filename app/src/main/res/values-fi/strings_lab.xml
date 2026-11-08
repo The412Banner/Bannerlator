@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows-komponentit</string>
     <string name="lab_14bf5ec1">Uusin voittaa: ei koskaan korvaa uudempaa pilvitallennusta.</string>
     <string name="lab_14d452ce">Miten pelikuva täyttää näyttösi.</string>
+    <string name="lab_14e033f6">Aliryhmät</string>
     <string name="lab_157c2809">Quake-moottorin pelit ikkunassa</string>
     <string name="lab_15a3b754">Yksi (sulavammat tatit)</string>
     <string name="lab_15cf88ba">.icp- tai .icpx-tiedosto</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Jokaisen Protonin omat tiedostot tallennettiin sen alkuperäisinä, kun tämä sivu avattiin.</string>
     <string name="lab_1b4c8948">Esitystila</string>
     <string name="lab_1bbf10a9"> (oma kopiosi)</string>
+    <string name="lab_1bc2538c">KGSL-ajoituskorjaus</string>
     <string name="lab_1bdd2734">Pelin oletus</string>
     <string name="lab_1bfb31a3">Taustaväri</string>
     <string name="lab_1bfc578f">Chat-ilmoitukset</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">Poistetaanko %1$s ja kaikki sen sisältö? Sen pelien pikakuvakkeet poistuvat myös.</string>
     <string name="lab_1dd4a128">Root-säätimet</string>
     <string name="lab_1df4901e">Monistettu: %1$s</string>
+    <string name="lab_1df4bc73">Automaattinen kertoo pelille, mitä aliryhmäoperaatioita Mesa-ajurisi tukee (DOOM Eternal ja muut niitä tarvitsevat pelit käynnistyvät). Pois piilottaa ne, kuten vanhemmat sovittimet tekivät; kokeile sitä, jos pelissä on grafiikkavirheitä tai kaatumisia, joita ei ennen ollut.</string>
     <string name="lab_1dfaae77">Nimessä ei saa olla merkkejä \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Asiakasohjelman käynnistämille peleille, ei itse asiakasohjelmalle, ja jokaiselle niistä: istunnolla on yksi ympäristö. </string>
     <string name="lab_1e223777">Versio, julkaisutiedot sekä Lataa ja asenna (Classicin asetukset).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Peruuta lataus</string>
     <string name="lab_1f52ec4a">Ominaisuustaso, jonka VKD3D ilmoittaa. Laske sitä vain pelille, joka ei suostu käynnistymään.</string>
     <string name="lab_1f5ee21a">Näyttää päivitysilmoituksen, kun uusi versio on julkaistu.</string>
+    <string name="lab_1f796e30">Ruudut kulkevat pakattuina GPU-puskureina (vähemmän kaistaa). Poista käytöstä, jos kuvassa näkyy sotkeutuneita lohkoja tai raitoja.</string>
     <string name="lab_1f7b66b6">Win-komponentit</string>
     <string name="lab_1f88c31b">Valinnat</string>
     <string name="lab_1f89987a">Asettaa yllä olevat virta-, GPU- ja root-kytkimet tälle pelille kerralla. Itse profiilia ei säilytetä.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Asetettu tälle pelille</string>
     <string name="lab_31aa53e1">Muokkaa tekstinä</string>
     <string name="lab_31b614e4">Auto käyttää sitä vain Adreno 710:ssä, 720:ssa ja 722:ssa. Muuta sitä vain, jos peli toimii väärin.</string>
+    <string name="lab_32038add">Kiertää Turnip-bugin, jossa kysymys \"onko GPU valmis?\" odottaa koko ruudun valmistumista (raportin ajoitusbugi). Oletus antaa sovittimen tunnistaa sen; Päällä pakottaa sen käyttöön, Pois poistaa sen käytöstä.</string>
+    <string name="lab_3205bc81">Turnip-grafiikka-ajuria ei ole asetettu, joten tarkistettavaa ei ole.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Kosketusnäyttötila</string>
     <string name="lab_32a7fa00">Ruutugenerointi</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Asennetut äänipankit ja vientikansio</string>
     <string name="lab_33b3dcd5">Pitää GPU:n huippukellotaajuudella, kun peli on käynnissä. Kuumempi ja virtasyöpömpi; pelit voivat ohittaa sen.</string>
     <string name="lab_33b5c99c">Vasta kun olet hyväksynyt kolmannen osapuolen pilven vastuuvapauslausekkeen; ei koskaan poista mitään pilvestä.</string>
+    <string name="lab_33e13543">Sovitinraportti</string>
     <string name="lab_340a5eba">Tallennusten automaattiset varmuuskopiot ja pilvisynkronointi Steamille, GOGille ja omille peleillesi.</string>
     <string name="lab_340d70c2">Kauppojen latausmoottorit, nopeus ja Steam-yhteys.</string>
     <string name="lab_3421373f">Kerää automaattisesti poistuttaessa</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">%1$s-oletusprofiili, </string>
     <string name="lab_452013a2">Vie</string>
     <string name="lab_45536eb8">Kontti</string>
+    <string name="lab_455f1d53">UBWC / pakatut puskurit</string>
     <string name="lab_45bf9648">Näytön taustajärjestelmä</string>
     <string name="lab_45e5d14f">Vienti epäonnistui</string>
     <string name="lab_45f80a27">Lisäasetukset</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Kiinteä virkistystaajuus</string>
     <string name="lab_5c462080">Ei käytetä, kun lsfg-vk monistaa ruutuja: se tahdistaa ruudut itse.</string>
     <string name="lab_5c524fb3">Uusien konttien oletukset</string>
+    <string name="lab_5c596310">Kompositori pitää useita ruutuja työn alla odottamatta jokaista näyttökopiota (blit). Poista käytöstä, jos ruudut saapuvat väärässä järjestyksessä tai peli nykii vain Waylandissa.</string>
     <string name="lab_5c821476">Järjestelmän valitsin</string>
     <string name="lab_5cb6896e">Steam ilman käyttöliittymää</string>
     <string name="lab_5cc2a688">Mitä Steamin palvelinkeskusta käytetään, alueiden testaus ja SteamLiten verkkotarkistus (Classicin asetukset).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">otettu uudelleen käyttöön käynnistyksessä klo </string>
     <string name="lab_63a87e7d">Terävämpi (-0.25)</string>
     <string name="lab_63ce8179">Steam Deck -beta</string>
+    <string name="lab_641b9c9d">Pelin oma puskuri menee näytölle ilman kopiota (pienin viive, vähemmän lämpöä). Vaatii ajurilta sync-file-fence-tuen (katso sovitinraportti). Poista käytöstä, jos näet repeilyä tai vanhentuneita ruutuja.</string>
     <string name="lab_643b2baf">Jaa / siirrä</string>
     <string name="lab_64903a6c">Hae lisää</string>
     <string name="lab_64c5e98f">Kuva kuvassa</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan-asetukset</string>
     <string name="lab_8429d942">Asenna ajoympäristöjä ja kirjastoja konttiin ja valitse Winen tai Microsoftin DLL:t.</string>
     <string name="lab_845439e4">Qualcomm-ajurin laajennukset tiedetään vasta, kun peli käynnistyy.</string>
+    <string name="lab_84a0335e">Sovitinprofiili</string>
     <string name="lab_84cba1d0" formatted="false">%.1f Mt · tallennettu</string>
     <string name="lab_8521db60">Pikavalikko</string>
     <string name="lab_85486938">Lokit ja diagnostiikka</string>
+    <string name="lab_8554e6fa">Nopea</string>
     <string name="lab_85558be1">Oletukset kaikille konteille</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Vaihda</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Päivitykset</string>
     <string name="lab_8b087b3c">Ulkoasu</string>
     <string name="lab_8b60dd8e">Käynnistä Steam-asiakasohjelma kerran, jotta se lataa ARM64-Protoninsa, tai lisää GE-Proton / CachyOS Linux-Protonien luettelosta.</string>
+    <string name="lab_8bf2cbae">DRM-muotomodifikaattorit</string>
     <string name="lab_8c195a44">Synkronointi</string>
     <string name="lab_8c283df5">DirectX 12 -koontiversiot luettelosta.</string>
     <string name="lab_8c33a442">Jokaisella äänijärjestelmällä on oma esiasetuksensa, joten vaihtaminen PulseAudion, ALSAn ja DirectAudion välillä ei koskaan sekoita niiden asetuksia. Peli, jolla ei ole omaa, seuraa edelleen konttiaan.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Jaa Androidin leikepöytä pelien kanssa</string>
     <string name="lab_968b9d49">Otetaan käyttöön käynnistettäessä. Pelin sivuvalikko voi edelleen muuttaa niitä lennossa.</string>
     <string name="lab_969dab73">ReShade päällä / pois, Yksin / Pinoa, tehosteet ja niiden asetukset</string>
+    <string name="lab_969fd520">Asiakkaan render-fencet</string>
     <string name="lab_96a7cb77">Odottava vaihto peruttiin.</string>
     <string name="lab_96df6867">pelattu %1$s h</string>
     <string name="lab_97275ac4">Vaihtaa punaisen ja sinisen takaisin (BGRA:sta RGBA:ksi).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• Quick Access Menun suorituskykypeittokuva on uusi, eikä sitä ole vielä kokeiltu laitteella.\n\n</string>
     <string name="lab_9b395c25">Anna pelin hoitaa ohjain</string>
     <string name="lab_9b5699c0">Arkkitehtuuri, kääntäjä ja FEX:n lataustapa.</string>
+    <string name="lab_9ba84344">Ajuria ei voitu tarkistaa.</string>
     <string name="lab_9bc722a8">Tallennustila</string>
     <string name="lab_9bd29497">Kosketuslevyhiiri</string>
     <string name="lab_9c232707">Tietoja ja ohje</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 Vulkanin kautta. Ei mitään -valinta poistaa DirectX 12:n käytöstä.</string>
     <string name="lab_ab612af4">Lämpö</string>
     <string name="lab_ab78a04b">Kirjaudu sisään hallitaksesi jaettuja asetuksiasi</string>
+    <string name="lab_ab8824cb">Sovittimen esitystila</string>
     <string name="lab_abb1c367">Mitään ei ole kytketty. Tämä peli on yhä asetettu käynnistymään televisiossa.</string>
     <string name="lab_abb20221">Ei esiasetusta</string>
     <string name="lab_abf1049c">Säilytä raaka-arkisto oletuksena</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Vaihda ikkunaa</string>
     <string name="lab_aca7092f">Asennetut näkyvät kohdassa Box64-versio.</string>
     <string name="lab_acfc8aab">Käytä</string>
+    <string name="lab_ad11f65e">Automaattinen (suositeltu)</string>
     <string name="lab_ad23e110">Ohjelmia ei ole vielä ilmoitettu.</string>
     <string name="lab_ad26a7c7">tuntematon</string>
     <string name="lab_adcb307d">Miten Windowsin DirectX-kutsut muunnetaan Vulkaniksi GPU:llesi.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Luetaan ajurin laajennuksia…</string>
     <string name="lab_b6b590cf">Käynnistä offline-tilassa</string>
     <string name="lab_b6e99688">Lähennä osaan näytöstä.</string>
+    <string name="lab_b7079be0">Zero-copy-esitys</string>
     <string name="lab_b71f7c14">Lataa FEXCore-versioita</string>
     <string name="lab_b7320213">Käynnissä olevat ohjelmat</string>
     <string name="lab_b736f934">Omat kauppasi</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">tulee voimaan heti · tallennettu tälle pelille ja tämän moottorin oletukseksi</string>
     <string name="lab_ca45d5a4">tämä kontti</string>
     <string name="lab_ca62f862">Lataukset ja verkko</string>
+    <string name="lab_cabf747a">Asynkroninen kopiointi</string>
     <string name="lab_caf7d4a3">Jaettu esiasetus, muokattu</string>
     <string name="lab_cb5fc4d5">VEGAS-asetukset</string>
     <string name="lab_cb6d604d">HUDia ei voi vetää pelin aikana.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Venytä</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS-terävöinti + kohinanpoisto</string>
+    <string name="lab_ce6eab03">Kun zero-copy on käytössä, pelin ajuri kertoo kompositorille, milloin ruutu on valmis. Poista käytöstä vain vertailua varten; Pois-asennossa voi näkyä puoliksi piirrettyjä ruutuja.</string>
     <string name="lab_ce764fd8">Käytetty tila, sovelluksen kansiot ja perusjärjestelmä.</string>
     <string name="lab_ce9b8eca">Muunna BCn ASTC:ksi</string>
     <string name="lab_ceadf171">Android estää fsyncin</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Näytön ohjainten prioriteetti</string>
     <string name="lab_e1768a43">Voidaan kytkeä myös pelin aikana sivuvalikosta.</string>
     <string name="lab_e18caa5c">Ei asemia</string>
+    <string name="lab_e19da5b2">Wayland-sovitin</string>
     <string name="lab_e1be537c">Tallentamaton</string>
     <string name="lab_e22a8ea9">Wayland tarvitsee asennetun Turnipin tuodakseen pelin ruudut näytölle. Uudet näkyvät kohdassa Grafiikka-ajuri.</string>
     <string name="lab_e2410f47">Selaa ja lataa</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Toistaiseksi vain puhelimen oma ajuri.</string>
     <string name="lab_f04c78b9">Ääniasetukset · tämä peli</string>
     <string name="lab_f05053e7">Lukee Steam Controlleria suoraan (sen kosketuslevyt ja lisäpainikkeet). Pois: tavallinen syötereitti pysyy ennallaan.</string>
+    <string name="lab_f0520965">mailbox = uusin ruutu, pienin viive; fifo = vsync, tasainen tahdistus. Oletus seuraa profiilia, muuten tallennettua esitystilaa. Immediate vaatii repeilyä, jota Wayland ei tarjoa.</string>
     <string name="lab_f05494f9">Tämän kontin Wine-kerros ei pysty ohjaamaan Waylandia.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein ja Jedi Academy toimivat ikkunassa istunnon koossa.</string>
     <string name="lab_f0c81c31">Steam-asiakasohjelma</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Oletukset</string>
     <string name="lab_f523d27f">Ohjaimen läpivienti</string>
     <string name="lab_f54f4eb6">Kohdetta %1$s ei voitu asentaa</string>
+    <string name="lab_f552097b">Automaattinen: valitsee asetukset ajurisi sovitinraportin perusteella; ilman raporttia se ei muuta mitään.\n\nSulava: tasainen ruutujen tahdistus: vsync (fifo), ruudut kopioidaan taustalla, ei zero-copy-esitystä.\n\nNopea: pienin viive: mailbox, zero-copy pakatuilla puskureilla, asiakkaan render-fencet.\n\nYhteensopivuus: turvallisin: vsync, kaikki oikotiet pois, tavalliset puskurit, ajoituskorjaus päällä. Peleille, jotka välkkyvät tai jumittuvat.\n\nYmpäristömuuttujat-välilehdelle kirjoittamasi muuttujat ohittavat aina nämä; yksittäiset kytkimet ohittavat profiilin.</string>
     <string name="lab_f55495e0">Tallenna</string>
     <string name="lab_f576fb2d">Kerroksia luettelosta, tai asenna sellainen tiedostosta. Uudet kontit voivat käyttää niitä.</string>
     <string name="lab_f57b35ee">Kuollut alue ja pehmennys</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Ajuri, jolla sovelluksen kompositori tuo istunnon näytölle. Ei se, jolla asiakasohjelma piirtää.</string>
     <string name="lab_f59e59da">Näytetään kirjastossasi. Uudelleennimeäminen säilyttää kansikuvan ja kuvakkeen.</string>
     <string name="lab_f61050cc">Pelin resoluutio</string>
+    <string name="lab_f65eddfe">Antaa pelin ajurin ja kompositorin sopia puskurien asettelusta. Pois saa pelin käyttämään tavallisia lineaarisia puskureita (BANNER_WSI_NO_MODIFIERS=1); kokeile sitä, jos näyttö on musta tai ruudut ovat rikki.</string>
     <string name="lab_f665e069">Ilmoitus, kun kaveri lähettää sinulle viestin eikä keskustelu hänen kanssaan ole auki.</string>
     <string name="lab_f667b7f4">Korostusväri</string>
     <string name="lab_f690a199">Oma kansikuva</string>

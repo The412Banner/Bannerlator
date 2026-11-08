@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windowsコンポーネント</string>
     <string name="lab_14bf5ec1">新しい方を優先: より新しいクラウドセーブを上書きすることはありません。</string>
     <string name="lab_14d452ce">ゲーム画面をディスプレイにどう表示するか。</string>
+    <string name="lab_14e033f6">サブグループ</string>
     <string name="lab_157c2809">Quake エンジンのゲームをウィンドウ表示</string>
     <string name="lab_15a3b754">シングル（スティックが滑らか）</string>
     <string name="lab_15cf88ba">.icp または .icpx ファイル</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">このページを開いたときに、各 Proton の元のファイルをオリジナルとして保存しました。</string>
     <string name="lab_1b4c8948">プレゼントモード</string>
     <string name="lab_1bbf10a9">（自分のコピー）</string>
+    <string name="lab_1bc2538c">KGSL タイミング補正</string>
     <string name="lab_1bdd2734">ゲームのデフォルト</string>
     <string name="lab_1bfb31a3">背景色</string>
     <string name="lab_1bfc578f">チャット通知</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">%1$sと中身をすべて削除しますか？そのゲームのショートカットも削除されます。</string>
     <string name="lab_1dd4a128">root 操作</string>
     <string name="lab_1df4901e">%1$sを複製しました</string>
+    <string name="lab_1df4bc73">自動では、Mesa ドライバーが対応しているサブグループ演算をゲームに伝えます（DOOM Eternal など、これを必要とするゲームが起動するようになります）。オフにすると、以前のアダプターと同じように隠します。以前はなかった表示の乱れやクラッシュがゲームで起きる場合に試してください。</string>
     <string name="lab_1dfaae77">名前に \\ / : * ? \" &lt; &gt; | は使えません</string>
     <string name="lab_1e1e0a24">クライアント自体ではなく、クライアントが起動するすべてのゲームが対象です（セッションの環境は 1 つです）。 </string>
     <string name="lab_1e223777">バージョン、リリースノート、ダウンロードとインストール（Classic の設定）。</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">ダウンロードをキャンセル</string>
     <string name="lab_1f52ec4a">VKD3D が報告する機能レベル。起動しないゲームの場合のみ下げてください。</string>
     <string name="lab_1f5ee21a">新しいバージョンが出たときにアップデートの通知を表示します。</string>
+    <string name="lab_1f796e30">フレームを圧縮 GPU バッファーとして渡します（帯域幅が少なくて済みます）。画面にブロック状の乱れや縞が出る場合はオフにしてください。</string>
     <string name="lab_1f7b66b6">Winコンポーネント</string>
     <string name="lab_1f88c31b">オプション</string>
     <string name="lab_1f89987a">上の電力、GPU、root のスイッチをこのゲーム用に一括で設定します。プロファイル自体は保存されません。</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">このゲームに設定</string>
     <string name="lab_31aa53e1">テキストとして編集</string>
     <string name="lab_31b614e4">自動では Adreno 710、720、722 でのみ使用します。ゲームの動作がおかしい場合のみ変更してください。</string>
+    <string name="lab_32038add">「GPU の処理は終わった？」という問い合わせがフレーム全体の完了まで待ってしまう Turnip のバグ（レポートのタイミングバグ）を回避します。「デフォルト」ではアダプターが検出し、「オン」で強制的に有効、「オフ」で無効になります。</string>
+    <string name="lab_3205bc81">Turnip グラフィックドライバーが設定されていないため、確認するものがありません。</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">タッチスクリーンモード</string>
     <string name="lab_32a7fa00">フレーム生成</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">インストール済みのサウンドバンクとエクスポート先フォルダー</string>
     <string name="lab_33b3dcd5">ゲーム実行中、GPU を最大クロックに固定します。発熱と消費電力が増えます。ゲーム側で上書きされることがあります。</string>
     <string name="lab_33b5c99c">サードパーティのクラウドに関する免責事項に同意した後のみ有効です。クラウドから何かを削除することはありません。</string>
+    <string name="lab_33e13543">アダプターレポート</string>
     <string name="lab_340a5eba">Steam、GOG、自分で追加したゲームのセーブデータの自動バックアップとクラウド同期。</string>
     <string name="lab_340d70c2">ストアのダウンロードエンジン、速度、Steam への接続。</string>
     <string name="lab_3421373f">終了時に自動収集</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">%1$s のデフォルトプロファイルと、</string>
     <string name="lab_452013a2">エクスポート</string>
     <string name="lab_45536eb8">コンテナ</string>
+    <string name="lab_455f1d53">UBWC / 圧縮バッファー</string>
     <string name="lab_45bf9648">ディスプレイバックエンド</string>
     <string name="lab_45e5d14f">エクスポートに失敗しました</string>
     <string name="lab_45f80a27">詳細設定</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">固定リフレッシュレート</string>
     <string name="lab_5c462080">lsfg-vk がフレームを増やしている間は適用されません。lsfg-vk が自分でフレームのペースを調整します。</string>
     <string name="lab_5c524fb3">新規コンテナのデフォルト</string>
+    <string name="lab_5c596310">コンポジターは画面への blit を毎回待たずに、複数のフレームを並行して処理します。フレームの順序が乱れる場合や、Wayland でだけゲームがカクつく場合はオフにしてください。</string>
     <string name="lab_5c821476">システムの選択画面</string>
     <string name="lab_5cb6896e">ヘッドレスSteam</string>
     <string name="lab_5cc2a688">使用する Steam データセンター、リージョンのテスト、SteamLite のネットワーク確認（Classic の設定）。</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">起動時に再適用 </string>
     <string name="lab_63a87e7d">シャープ（-0.25）</string>
     <string name="lab_63ce8179">Steam Deck ベータ</string>
+    <string name="lab_641b9c9d">ゲーム自身のバッファーをコピーせずに画面に表示します（遅延が最小、発熱も減ります）。ドライバーに sync-file フェンスが必要です（アダプターレポートを参照）。ティアリングや古いフレームが表示される場合はオフにしてください。</string>
     <string name="lab_643b2baf">共有 / 転送</string>
     <string name="lab_64903a6c">さらに入手</string>
     <string name="lab_64c5e98f">ピクチャーインピクチャー</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan設定</string>
     <string name="lab_8429d942">ランタイムやライブラリをコンテナにインストールし、Wine と Microsoft のどちらの DLL を使うかを選びます。</string>
     <string name="lab_845439e4">Qualcomm ドライバーの拡張機能は、ゲームが起動するまでわかりません。</string>
+    <string name="lab_84a0335e">アダプタープロファイル</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · 保存済み</string>
     <string name="lab_8521db60">クイックメニュー</string>
     <string name="lab_85486938">ログと診断</string>
+    <string name="lab_8554e6fa">高速</string>
     <string name="lab_85558be1">すべてのコンテナのデフォルト</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">切り替え</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">アップデート</string>
     <string name="lab_8b087b3c">外観</string>
     <string name="lab_8b60dd8e">Steam クライアントを一度起動して ARM64 版 Proton をダウンロードさせるか、Linux Proton のカタログから GE-Proton / CachyOS を追加してください。</string>
+    <string name="lab_8bf2cbae">DRM フォーマットモディファイア</string>
     <string name="lab_8c195a44">同期</string>
     <string name="lab_8c283df5">カタログにある DirectX 12 ビルド。</string>
     <string name="lab_8c33a442">サウンドシステムごとに個別のプリセットを保持するため、PulseAudio、ALSA、DirectAudio を切り替えても設定が混ざりません。独自の設定がないゲームはコンテナの設定に従います。</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Android のクリップボードをゲームと共有</string>
     <string name="lab_968b9d49">起動時に適用されます。ゲーム中のサイドメニューからもその場で変更できます。</string>
     <string name="lab_969dab73">ReShade のオン / オフ、単独 / 重ねがけ、エフェクトとその設定</string>
+    <string name="lab_969fd520">クライアントのレンダーフェンス</string>
     <string name="lab_96a7cb77">待機中の置き換えをキャンセルしました。</string>
     <string name="lab_96df6867">%1$s時間プレイ</string>
     <string name="lab_97275ac4">入れ替わった赤と青を元に戻します（BGRA から RGBA へ）。</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• クイックアクセスメニューのパフォーマンスオーバーレイは新しい機能で、まだ実機で試されていません。\n\n</string>
     <string name="lab_9b395c25">コントローラーをゲームに任せる</string>
     <string name="lab_9b5699c0">アーキテクチャ、トランスレーター、FEX の読み込み方法。</string>
+    <string name="lab_9ba84344">ドライバーを確認できませんでした。</string>
     <string name="lab_9bc722a8">ストレージ</string>
     <string name="lab_9bd29497">トラックパッドマウス</string>
     <string name="lab_9c232707">概要とヘルプ</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 を Vulkan で実行します。「なし」で DirectX 12 をオフにします。</string>
     <string name="lab_ab612af4">温度</string>
     <string name="lab_ab78a04b">サインインして共有した設定を管理</string>
+    <string name="lab_ab8824cb">アダプターのプレゼントモード</string>
     <string name="lab_abb1c367">何も接続されていません。このゲームはテレビで起動する設定のままです。</string>
     <string name="lab_abb20221">プリセットなし</string>
     <string name="lab_abf1049c">デフォルトで元のアーカイブを残す</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">ウィンドウを切り替え</string>
     <string name="lab_aca7092f">インストールしたものは「Box64 バージョン」に表示されます。</string>
     <string name="lab_acfc8aab">使用</string>
+    <string name="lab_ad11f65e">自動（推奨）</string>
     <string name="lab_ad23e110">まだ報告されたプログラムはありません。</string>
     <string name="lab_ad26a7c7">不明</string>
     <string name="lab_adcb307d">Windows の DirectX 呼び出しを、GPU 向けに Vulkan へ変換する方法。</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">ドライバーの拡張機能を読み込み中…</string>
     <string name="lab_b6b590cf">オフラインで起動</string>
     <string name="lab_b6e99688">画面の一部を拡大します。</string>
+    <string name="lab_b7079be0">ゼロコピー表示</string>
     <string name="lab_b71f7c14">FEXCore のバージョンをダウンロード</string>
     <string name="lab_b7320213">実行中のプログラム</string>
     <string name="lab_b736f934">マイストア</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">すぐに適用 · このゲーム用およびこのエンジンのデフォルトとして保存</string>
     <string name="lab_ca45d5a4">このコンテナ</string>
     <string name="lab_ca62f862">ダウンロードとネットワーク</string>
+    <string name="lab_cabf747a">非同期コピー</string>
     <string name="lab_caf7d4a3">共有プリセット（編集済み）</string>
     <string name="lab_cb5fc4d5">VEGAS 設定</string>
     <string name="lab_cb6d604d">ゲーム中は HUD をドラッグできません。</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">引き伸ばし</string>
     <string name="lab_ce4bcdaa">DirectX 11（NVAPI）</string>
     <string name="lab_ce53a62a">DLS シャープ化 + ノイズ除去</string>
+    <string name="lab_ce6eab03">ゼロコピー時に、フレームが完成したことをゲームのドライバーがコンポジターに伝えます。オフにするのは比較するときだけにしてください。オフでは描画途中のフレームが表示されることがあります。</string>
     <string name="lab_ce764fd8">使用容量、アプリのフォルダー、ベースシステム。</string>
     <string name="lab_ce9b8eca">BCn を ASTC にトランスコード</string>
     <string name="lab_ceadf171">Android が fsync をブロック</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">オンスクリーンの優先度</string>
     <string name="lab_e1768a43">ゲーム中にサイドメニューからも切り替えられます。</string>
     <string name="lab_e18caa5c">ドライブなし</string>
+    <string name="lab_e19da5b2">Wayland アダプター</string>
     <string name="lab_e1be537c">未保存</string>
     <string name="lab_e22a8ea9">Wayland でゲームのフレームを画面に表示するには、インストール済みの Turnip が必要です。新しいものは「グラフィックドライバー」に表示されます。</string>
     <string name="lab_e2410f47">探してダウンロード</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">今のところ端末標準のドライバーのみです。</string>
     <string name="lab_f04c78b9">オーディオ設定 · このゲーム</string>
     <string name="lab_f05053e7">Steam Controller を直接読み取ります（トラックパッドと追加ボタン）。オフ: 通常の入力経路は変わりません。</string>
+    <string name="lab_f0520965">mailbox = 最新のフレーム、遅延が最小。fifo = vsync、均一なペース。「デフォルト」ではプロファイルに従い、なければ保存済みのプレゼントモードを使います。Immediate にはティアリングが必要ですが、Wayland には用意されていません。</string>
     <string name="lab_f05494f9">このコンテナの Wine レイヤーは Wayland に対応していません。</string>
     <string name="lab_f06ef939">Quake III、Team Arena、Return to Castle Wolfenstein、Jedi Academy をセッションのサイズのウィンドウで実行します。</string>
     <string name="lab_f0c81c31">Steamクライアント</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">デフォルト</string>
     <string name="lab_f523d27f">コントローラーのパススルー</string>
     <string name="lab_f54f4eb6">%1$sをインストールできませんでした</string>
+    <string name="lab_f552097b">自動: ドライバーのアダプターレポートをもとに選びます。レポートがない場合は何も変更しません。\n\nスムーズ: 均一なフレームペーシング。vsync（fifo）、フレームはバックグラウンドでコピー、ゼロコピーなし。\n\n高速: 遅延が最小。mailbox、圧縮バッファーでのゼロコピー、クライアントのレンダーフェンス。\n\n互換性: 最も安全。vsync、高速化オプションはすべてオフ、通常のバッファー、タイミング補正はオン。ちらつきやフリーズが起きるゲーム向け。\n\n環境変数タブで入力した環境変数は常にこれらより優先され、個別のスイッチはプロファイルより優先されます。</string>
     <string name="lab_f55495e0">保存</string>
     <string name="lab_f576fb2d">カタログのレイヤー、またはファイルからインストールしたもの。新しいコンテナで使えます。</string>
     <string name="lab_f57b35ee">デッドゾーンとスムージング</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">アプリのコンポジターがセッションを画面に表示するためのドライバー。クライアントの描画に使うものではありません。</string>
     <string name="lab_f59e59da">ライブラリに表示されます。名前を変えてもカバーとアイコンはそのままです。</string>
     <string name="lab_f61050cc">ゲームの解像度</string>
+    <string name="lab_f65eddfe">ゲームのドライバーとコンポジターがバッファーのレイアウトを取り決められるようにします。オフにすると、ゲームは通常のリニアバッファーを使います（BANNER_WSI_NO_MODIFIERS=1）。画面が真っ黒になる場合やフレームが壊れる場合に試してください。</string>
     <string name="lab_f665e069">チャットを開いていないフレンドからメッセージが届いたときに通知します。</string>
     <string name="lab_f667b7f4">アクセントカラー</string>
     <string name="lab_f690a199">選択したカバー</string>

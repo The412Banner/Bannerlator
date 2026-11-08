@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows-Komponenten</string>
     <string name="lab_14bf5ec1">Das Neueste gewinnt: Überschreibt nie einen neueren Cloud-Spielstand.</string>
     <string name="lab_14d452ce">Wie das Spielbild deinen Bildschirm ausfüllt.</string>
+    <string name="lab_14e033f6">Subgroups</string>
     <string name="lab_157c2809">Quake-Engine-Spiele im Fenster</string>
     <string name="lab_15a3b754">Einzeln (flüssigere Sticks)</string>
     <string name="lab_15cf88ba">.icp- oder .icpx-Datei</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">Die eigenen Dateien jeder Proton-Version wurden beim Öffnen dieser Seite als ihr Original gespeichert.</string>
     <string name="lab_1b4c8948">Präsentationsmodus</string>
     <string name="lab_1bbf10a9"> (deine Kopie)</string>
+    <string name="lab_1bc2538c">KGSL-Timing-Shim</string>
     <string name="lab_1bdd2734">Spielstandard</string>
     <string name="lab_1bfb31a3">Hintergrundfarbe</string>
     <string name="lab_1bfc578f">Chat-Benachrichtigungen</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">%1$s mit allem Inhalt entfernen? Die Verknüpfungen seiner Spiele werden auch entfernt.</string>
     <string name="lab_1dd4a128">Root-Optionen</string>
     <string name="lab_1df4901e">%1$s dupliziert</string>
+    <string name="lab_1df4bc73">Auto teilt dem Spiel mit, welche Subgroup-Operationen dein Mesa-Treiber unterstützt (DOOM Eternal und andere Spiele, die sie brauchen, starten dann). Aus blendet sie aus, wie es ältere Adapter taten; probiere es, wenn ein Spiel Grafikfehler zeigt oder abstürzt, was es vorher nicht tat.</string>
     <string name="lab_1dfaae77">Ein Name darf nicht \\ / : * ? \" &lt; &gt; | enthalten</string>
     <string name="lab_1e1e0a24">Für die Spiele, die der Client startet, nicht für den Client selbst, und zwar für alle: Die Sitzung hat eine einzige Umgebung. </string>
     <string name="lab_1e223777">Version, Versionshinweise und Herunterladen und installieren (Classic-Einstellungen).</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">Download abbrechen</string>
     <string name="lab_1f52ec4a">Das Feature-Level, das VKD3D meldet. Senke es nur für ein Spiel, das nicht starten will.</string>
     <string name="lab_1f5ee21a">Zeigt den Update-Hinweis, wenn eine neue Version erscheint.</string>
+    <string name="lab_1f796e30">Frames werden als komprimierte GPU-Puffer übertragen (weniger Bandbreite). Schalte es aus, wenn das Bild fehlerhafte Blöcke oder Streifen zeigt.</string>
     <string name="lab_1f7b66b6">Win-Komponenten</string>
     <string name="lab_1f88c31b">Optionen</string>
     <string name="lab_1f89987a">Setzt die Energie-, GPU- und Root-Schalter oben für dieses Spiel in einem Schritt. Das Profil selbst wird nicht gespeichert.</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">Für dieses Spiel festgelegt</string>
     <string name="lab_31aa53e1">Als Text bearbeiten</string>
     <string name="lab_31b614e4">Auto nutzt es nur auf Adreno 710, 720 und 722. Ändere es nur, wenn sich ein Spiel fehlerhaft verhält.</string>
+    <string name="lab_32038add">Umgeht einen Turnip-Fehler, bei dem die Frage \"Ist die GPU fertig?\" auf den ganzen Frame wartet (der Timing-Fehler im Bericht). Standard lässt den Adapter den Fehler erkennen; An erzwingt den Shim, Aus schaltet ihn ab.</string>
+    <string name="lab_3205bc81">Es ist kein Turnip-Grafiktreiber eingestellt, daher gibt es nichts zu prüfen.</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">Touchscreen-Modus</string>
     <string name="lab_32a7fa00">Frame-Gen</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">Installierte Soundbanks und Exportordner</string>
     <string name="lab_33b3dcd5">Hält die GPU auf ihrem höchsten Takt, solange ein Spiel läuft. Wärmer und stromhungriger; Spiele können das überschreiben.</string>
     <string name="lab_33b5c99c">Erst nachdem du den Haftungshinweis zur Drittanbieter-Cloud akzeptiert hast; löscht nie etwas aus der Cloud.</string>
+    <string name="lab_33e13543">Adapterbericht</string>
     <string name="lab_340a5eba">Automatische Spielstandsicherungen und Cloud-Synchronisierung für Steam, GOG und deine eigenen Spiele.</string>
     <string name="lab_340d70c2">Download-Engines der Stores, Geschwindigkeit und Steam-Verbindung.</string>
     <string name="lab_3421373f">Beim Beenden automatisch erfassen</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">Das %1$s-Standardprofil, </string>
     <string name="lab_452013a2">Exportieren</string>
     <string name="lab_45536eb8">Container</string>
+    <string name="lab_455f1d53">UBWC / komprimierte Puffer</string>
     <string name="lab_45bf9648">Anzeige-Backend</string>
     <string name="lab_45e5d14f">Export fehlgeschlagen</string>
     <string name="lab_45f80a27">Erweitert</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">Feste Bildwiederholrate</string>
     <string name="lab_5c462080">Wird nicht angewendet, solange lsfg-vk vervielfacht: Es taktet die Frames selbst.</string>
     <string name="lab_5c524fb3">Standards für neue Container</string>
+    <string name="lab_5c596310">Der Compositor hält mehrere Frames gleichzeitig in Arbeit, statt auf jeden Blit auf den Bildschirm zu warten. Schalte es aus, wenn Frames in falscher Reihenfolge ankommen oder ein Spiel nur unter Wayland ruckelt.</string>
     <string name="lab_5c821476">Systemauswahl</string>
     <string name="lab_5cb6896e">Steam ohne Oberfläche</string>
     <string name="lab_5cc2a688">Welches Steam-Rechenzentrum genutzt wird, Regionen testen und die SteamLite-Netzwerkprüfung (Classic-Einstellungen).</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">beim Start erneut angewendet um </string>
     <string name="lab_63a87e7d">Schärfer (-0.25)</string>
     <string name="lab_63ce8179">Steam-Deck-Beta</string>
+    <string name="lab_641b9c9d">Der eigene Puffer des Spiels kommt ohne Kopie auf den Bildschirm (geringste Latenz, weniger Wärme). Erfordert sync-file-Fences im Treiber (siehe Adapterbericht). Schalte es aus, wenn du Tearing oder veraltete Frames siehst.</string>
     <string name="lab_643b2baf">Teilen / übertragen</string>
     <string name="lab_64903a6c">Mehr holen</string>
     <string name="lab_64c5e98f">Bild-im-Bild</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan-Einstellungen</string>
     <string name="lab_8429d942">Laufzeiten und Bibliotheken im Container installieren und zwischen den DLLs von Wine oder Microsoft wählen.</string>
     <string name="lab_845439e4">Die Erweiterungen eines Qualcomm-Treibers sind erst bekannt, wenn das Spiel startet.</string>
+    <string name="lab_84a0335e">Adapterprofil</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · gespeichert</string>
     <string name="lab_8521db60">Schnellmenü</string>
     <string name="lab_85486938">Logs &amp; Diagnose</string>
+    <string name="lab_8554e6fa">Schnell</string>
     <string name="lab_85558be1">Standards für alle Container</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">Austauschen</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">Updates</string>
     <string name="lab_8b087b3c">Aussehen</string>
     <string name="lab_8b60dd8e">Starte den Steam-Client einmal, damit er sein ARM64-Proton herunterlädt, oder füge GE-Proton / CachyOS aus dem Katalog der Linux-Protons hinzu.</string>
+    <string name="lab_8bf2cbae">DRM-Formatmodifikatoren</string>
     <string name="lab_8c195a44">Synchronisierung</string>
     <string name="lab_8c283df5">DirectX-12-Builds aus dem Katalog.</string>
     <string name="lab_8c33a442">Jedes Soundsystem behält sein eigenes Preset, sodass sich beim Wechsel zwischen PulseAudio, ALSA und DirectAudio die Einstellungen nie vermischen. Ein Spiel ohne eigenes folgt weiter seinem Container.</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">Android-Zwischenablage mit Spielen teilen</string>
     <string name="lab_968b9d49">Wird beim Start angewendet. Das Seitenmenü im Spiel ändert sie weiterhin live.</string>
     <string name="lab_969dab73">ReShade an / aus, Einzeln / Gestapelt, Effekte und ihre Einstellungen</string>
+    <string name="lab_969fd520">Client-Render-Fences</string>
     <string name="lab_96a7cb77">Der wartende Austausch wurde abgebrochen.</string>
     <string name="lab_96df6867">%1$s Std. gespielt</string>
     <string name="lab_97275ac4">Tauscht Rot und Blau zurück (BGRA zu RGBA).</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• Das Leistungs-Overlay des Schnellzugriffsmenüs ist neu und wurde noch auf keinem Gerät ausprobiert.\n\n</string>
     <string name="lab_9b395c25">Controller dem Spiel überlassen</string>
     <string name="lab_9b5699c0">Architektur, Übersetzer und wie FEX geladen wird.</string>
+    <string name="lab_9ba84344">Der Treiber konnte nicht geprüft werden.</string>
     <string name="lab_9bc722a8">Speicher</string>
     <string name="lab_9bd29497">Trackpad-Maus</string>
     <string name="lab_9c232707">Über &amp; Hilfe</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">DirectX 12 über Vulkan. Keine schaltet DirectX 12 ab.</string>
     <string name="lab_ab612af4">Temp.</string>
     <string name="lab_ab78a04b">Melde dich an, um deine geteilten Konfigurationen zu verwalten</string>
+    <string name="lab_ab8824cb">Präsentationsmodus des Adapters</string>
     <string name="lab_abb1c367">Nichts ist angeschlossen. Dieses Spiel ist weiterhin auf den Start auf einem TV eingestellt.</string>
     <string name="lab_abb20221">Kein Preset</string>
     <string name="lab_abf1049c">Originalarchiv standardmäßig behalten</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">Fenster wechseln</string>
     <string name="lab_aca7092f">Installierte erscheinen unter Box64-Version.</string>
     <string name="lab_acfc8aab">Verwenden</string>
+    <string name="lab_ad11f65e">Auto (empfohlen)</string>
     <string name="lab_ad23e110">Noch keine Programme gemeldet.</string>
     <string name="lab_ad26a7c7">unbekannt</string>
     <string name="lab_adcb307d">Wie Windows-DirectX-Aufrufe für deine GPU in Vulkan umgewandelt werden.</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">Treibererweiterungen werden gelesen…</string>
     <string name="lab_b6b590cf">Offline starten</string>
     <string name="lab_b6e99688">In einen Bildschirmbereich zoomen.</string>
+    <string name="lab_b7079be0">Zero-Copy-Präsentation</string>
     <string name="lab_b71f7c14">FEXCore-Versionen herunterladen</string>
     <string name="lab_b7320213">Laufende Programme</string>
     <string name="lab_b736f934">Deine Stores</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">gilt sofort · für dieses Spiel und als Standard dieser Engine gespeichert</string>
     <string name="lab_ca45d5a4">dieser Container</string>
     <string name="lab_ca62f862">Downloads &amp; Netzwerk</string>
+    <string name="lab_cabf747a">Asynchrone Kopie</string>
     <string name="lab_caf7d4a3">Gemeinsames Preset, bearbeitet</string>
     <string name="lab_cb5fc4d5">VEGAS-Konfiguration</string>
     <string name="lab_cb6d604d">Das HUD kann im Spiel nicht verschoben werden.</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">Strecken</string>
     <string name="lab_ce4bcdaa">DirectX 11 (NVAPI)</string>
     <string name="lab_ce53a62a">DLS-Schärfung + Entrauschen</string>
+    <string name="lab_ce6eab03">Bei Zero-Copy meldet der Treiber des Spiels dem Compositor, wann ein Frame fertig ist. Schalte es nur zum Vergleichen aus; ausgeschaltet können halb gezeichnete Frames erscheinen.</string>
     <string name="lab_ce764fd8">Belegter Speicher, App-Ordner und das Basissystem.</string>
     <string name="lab_ce9b8eca">BCn in ASTC transkodieren</string>
     <string name="lab_ceadf171">Android blockiert fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">Vorrang Bildschirmsteuerung</string>
     <string name="lab_e1768a43">Lässt sich auch im Spiel über das Seitenmenü umschalten.</string>
     <string name="lab_e18caa5c">Keine Laufwerke</string>
+    <string name="lab_e19da5b2">Wayland-Adapter</string>
     <string name="lab_e1be537c">Nicht gespeichert</string>
     <string name="lab_e22a8ea9">Wayland braucht einen installierten Turnip, um die Frames des Spiels auf den Bildschirm zu bringen. Neue erscheinen unter Grafiktreiber.</string>
     <string name="lab_e2410f47">Durchsuchen und herunterladen</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">Bisher nur der eigene Treiber des Geräts.</string>
     <string name="lab_f04c78b9">Audioeinstellungen · dieses Spiel</string>
     <string name="lab_f05053e7">Liest einen Steam Controller direkt aus (seine Trackpads und Zusatztasten). Aus: Der normale Eingabeweg bleibt unverändert.</string>
+    <string name="lab_f0520965">mailbox = neuester Frame, geringste Latenz; fifo = vsync, gleichmäßiges Pacing. Standard folgt dem Profil, sonst dem gespeicherten Präsentationsmodus. Immediate erfordert Tearing, das Wayland nicht anbietet.</string>
     <string name="lab_f05494f9">Der Wine-Layer dieses Containers kann Wayland nicht ansteuern.</string>
     <string name="lab_f06ef939">Quake III, Team Arena, Return to Castle Wolfenstein und Jedi Academy laufen im Fenster in der Größe der Sitzung.</string>
     <string name="lab_f0c81c31">Steam-Client</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">Standardwerte</string>
     <string name="lab_f523d27f">Controller-Durchreichung</string>
     <string name="lab_f54f4eb6">%1$s konnte nicht installiert werden</string>
+    <string name="lab_f552097b">Auto: wählt anhand des Adapterberichts deines Treibers; ohne Bericht ändert es nichts.\n\nFlüssig: gleichmäßiges Frame-Pacing: vsync (fifo), Frames werden im Hintergrund kopiert, kein Zero-Copy.\n\nSchnell: geringste Latenz: mailbox, Zero-Copy mit komprimierten Puffern, Client-Render-Fences.\n\nKompatibilität: am sichersten: vsync, alle Abkürzungen aus, einfache Puffer, Timing-Shim an. Für Spiele, die flackern oder hängen.\n\nWas du unter Umgebungsvariablen einträgst, hat immer Vorrang vor diesen Profilen; die einzelnen Schalter haben Vorrang vor dem Profil.</string>
     <string name="lab_f55495e0">Speichern</string>
     <string name="lab_f576fb2d">Layer aus dem Katalog, oder installiere einen aus einer Datei. Neue Container können sie nutzen.</string>
     <string name="lab_f57b35ee">Totzone und Glättung</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">Der Treiber, mit dem der Compositor der App die Sitzung auf den Bildschirm bringt. Nicht der, mit dem der Client zeichnet.</string>
     <string name="lab_f59e59da">Wird in deiner Bibliothek angezeigt. Beim Umbenennen bleiben Cover und Symbol erhalten.</string>
     <string name="lab_f61050cc">Spielauflösung</string>
+    <string name="lab_f65eddfe">Lässt den Treiber des Spiels und den Compositor sich auf Puffer-Layouts einigen. Aus lässt das Spiel einfache lineare Puffer nutzen (BANNER_WSI_NO_MODIFIERS=1); probiere es bei schwarzem Bildschirm oder fehlerhaften Frames.</string>
     <string name="lab_f665e069">Eine Benachrichtigung, wenn dir ein Freund schreibt und sein Chat nicht geöffnet ist.</string>
     <string name="lab_f667b7f4">Akzentfarbe</string>
     <string name="lab_f690a199">Dein Cover</string>

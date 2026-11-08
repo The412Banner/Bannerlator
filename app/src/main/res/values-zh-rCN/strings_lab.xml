@@ -154,6 +154,7 @@
     <string name="lab_148d6175">Windows 组件</string>
     <string name="lab_14bf5ec1">以最新为准：绝不会覆盖较新的云存档。</string>
     <string name="lab_14d452ce">游戏画面如何填充你的屏幕。</string>
+    <string name="lab_14e033f6">子组</string>
     <string name="lab_157c2809">Quake 引擎游戏窗口化</string>
     <string name="lab_15a3b754">单马达（摇杆更流畅）</string>
     <string name="lab_15cf88ba">.icp 或 .icpx 文件</string>
@@ -204,6 +205,7 @@
     <string name="lab_1b4a4a98">打开此页面时，每个 Proton 自带的文件已保存为原件。</string>
     <string name="lab_1b4c8948">呈现模式</string>
     <string name="lab_1bbf10a9">（你的副本）</string>
+    <string name="lab_1bc2538c">KGSL 计时修正</string>
     <string name="lab_1bdd2734">游戏默认</string>
     <string name="lab_1bfb31a3">背景颜色</string>
     <string name="lab_1bfc578f">聊天通知</string>
@@ -223,6 +225,7 @@
     <string name="lab_1dd0373a">移除 %1$s 及其中所有内容？其游戏的快捷方式也会一并移除。</string>
     <string name="lab_1dd4a128">root 控制</string>
     <string name="lab_1df4901e">已创建 %1$s 的副本</string>
+    <string name="lab_1df4bc73">“自动”会告诉游戏你的 Mesa 驱动支持哪些子组操作（DOOM Eternal 等需要这些操作的游戏因此能够启动）。“关闭”会像旧版适配层一样隐藏它们；如果游戏出现以前没有的画面错误或崩溃，可以试试。</string>
     <string name="lab_1dfaae77">名称不能包含 \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">作用于客户端启动的游戏，而非客户端本身，并且对所有游戏生效：整个会话只有一套环境。</string>
     <string name="lab_1e223777">版本、更新说明以及“下载并安装”（Classic 设置）。</string>
@@ -237,6 +240,7 @@
     <string name="lab_1f343853">取消下载</string>
     <string name="lab_1f52ec4a">VKD3D 报告的功能级别。仅在游戏拒绝启动时才降低。</string>
     <string name="lab_1f5ee21a">有新版本时显示更新通知。</string>
+    <string name="lab_1f796e30">帧以压缩的 GPU 缓冲区传输（占用带宽更少）。如果画面出现错乱的色块或条纹，请关闭。</string>
     <string name="lab_1f7b66b6">Win 组件</string>
     <string name="lab_1f88c31b">选项</string>
     <string name="lab_1f89987a">一次性为此游戏设置上方的电源、GPU 和 root 开关。配置本身不会保留。</string>
@@ -382,6 +386,8 @@
     <string name="lab_318a4134">为此游戏设置</string>
     <string name="lab_31aa53e1">以文本编辑</string>
     <string name="lab_31b614e4">“自动”仅在 Adreno 710、720 和 722 上使用。仅在游戏运行异常时才需更改。</string>
+    <string name="lab_32038add">绕过 Turnip 的一个错误：询问“GPU 完成了吗？”时会等待整帧完成（即报告中的计时错误）。“默认”由适配层自动检测；“开启”强制使用，“关闭”禁用。</string>
+    <string name="lab_3205bc81">未设置 Turnip 图形驱动，因此没有可检查的内容。</string>
     <string name="lab_32398034">%1$s Hz</string>
     <string name="lab_328de36e">触屏模式</string>
     <string name="lab_32a7fa00">帧生成</string>
@@ -390,6 +396,7 @@
     <string name="lab_33a35a95">已安装的音色库和导出文件夹</string>
     <string name="lab_33b3dcd5">游戏运行时将 GPU 保持在最高频率。发热和耗电更多；游戏可以覆盖此设置。</string>
     <string name="lab_33b5c99c">仅在你接受第三方云服务免责声明后进行；绝不会从云端删除任何内容。</string>
+    <string name="lab_33e13543">适配层报告</string>
     <string name="lab_340a5eba">为 Steam、GOG 和你自己的游戏自动备份存档并进行云同步。</string>
     <string name="lab_340d70c2">商店下载引擎、速度和 Steam 连接。</string>
     <string name="lab_3421373f">退出时自动收集</string>
@@ -497,6 +504,7 @@
     <string name="lab_4500ffeb">%1$s 默认配置文件</string>
     <string name="lab_452013a2">导出</string>
     <string name="lab_45536eb8">容器</string>
+    <string name="lab_455f1d53">UBWC / 压缩缓冲区</string>
     <string name="lab_45bf9648">显示后端</string>
     <string name="lab_45e5d14f">导出失败</string>
     <string name="lab_45f80a27">高级</string>
@@ -659,6 +667,7 @@
     <string name="lab_5c375239">固定刷新率</string>
     <string name="lab_5c462080">lsfg-vk 倍增帧数时不会应用：它会自行控制帧节奏。</string>
     <string name="lab_5c524fb3">新容器默认值</string>
+    <string name="lab_5c596310">合成器会让多帧同时处理，而不是等待每次复制到屏幕完成。如果帧顺序错乱，或游戏只在 Wayland 下卡顿，请关闭。</string>
     <string name="lab_5c821476">系统选择器</string>
     <string name="lab_5cb6896e">无界面 Steam</string>
     <string name="lab_5cc2a688">要使用的 Steam 数据中心、测试地区，以及 SteamLite 网络检查（Classic 设置）。</string>
@@ -717,6 +726,7 @@
     <string name="lab_6381687c">启动时重新应用 </string>
     <string name="lab_63a87e7d">较锐利（-0.25）</string>
     <string name="lab_63ce8179">Steam Deck 测试版</string>
+    <string name="lab_641b9c9d">游戏自己的缓冲区无需复制即可显示到屏幕上（延迟最低、发热更少）。需要驱动支持 sync-file 栅栏（参见适配层报告）。如果出现画面撕裂或旧帧，请关闭。</string>
     <string name="lab_643b2baf">分享 / 传输</string>
     <string name="lab_64903a6c">获取更多</string>
     <string name="lab_64c5e98f">画中画</string>
@@ -932,9 +942,11 @@
     <string name="lab_8417c598">Vulkan 设置</string>
     <string name="lab_8429d942">将运行库和库安装到容器中，并选择使用 Wine 还是 Microsoft 的 DLL。</string>
     <string name="lab_845439e4">Qualcomm 驱动的扩展要等游戏启动后才能得知。</string>
+    <string name="lab_84a0335e">适配层配置</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · 已保存</string>
     <string name="lab_8521db60">快捷菜单</string>
     <string name="lab_85486938">日志与诊断</string>
+    <string name="lab_8554e6fa">快速</string>
     <string name="lab_85558be1">所有容器的默认值</string>
     <string name="lab_8562499d">ReShade</string>
     <string name="lab_85a12a5f">替换</string>
@@ -987,6 +999,7 @@
     <string name="lab_8af52aac">更新</string>
     <string name="lab_8b087b3c">外观</string>
     <string name="lab_8b60dd8e">先启动一次 Steam 客户端，让它下载其 ARM64 Proton，或从 Linux Proton 目录添加 GE-Proton / CachyOS。</string>
+    <string name="lab_8bf2cbae">DRM 格式修饰符</string>
     <string name="lab_8c195a44">同步</string>
     <string name="lab_8c283df5">目录中的 DirectX 12 版本。</string>
     <string name="lab_8c33a442">每个声音系统都有各自的预设，因此在 PulseAudio、ALSA 和 DirectAudio 之间切换时，设置不会混在一起。没有单独设置的游戏会继续跟随其容器。</string>
@@ -1066,6 +1079,7 @@
     <string name="lab_964d1a40">与游戏共享 Android 剪贴板</string>
     <string name="lab_968b9d49">启动时应用。仍可通过游戏内侧边菜单实时更改。</string>
     <string name="lab_969dab73">ReShade 开 / 关、单独 / 叠加、效果及其设置</string>
+    <string name="lab_969fd520">客户端渲染栅栏</string>
     <string name="lab_96a7cb77">等待中的替换已取消。</string>
     <string name="lab_96df6867">已玩 %1$s 小时</string>
     <string name="lab_97275ac4">将红色和蓝色换回来（BGRA 转 RGBA）。</string>
@@ -1098,6 +1112,7 @@
     <string name="lab_9b35041b">• 快速访问菜单的性能覆盖层是新功能，尚未在设备上测试。\n\n</string>
     <string name="lab_9b395c25">由游戏直接处理手柄</string>
     <string name="lab_9b5699c0">架构、转译器以及 FEX 的加载方式。</string>
+    <string name="lab_9ba84344">无法检查该驱动。</string>
     <string name="lab_9bc722a8">存储</string>
     <string name="lab_9bd29497">触控板鼠标</string>
     <string name="lab_9c232707">关于与帮助</string>
@@ -1195,6 +1210,7 @@
     <string name="lab_ab2ea144">通过 Vulkan 运行 DirectX 12。“无”会关闭 DirectX 12。</string>
     <string name="lab_ab612af4">温度</string>
     <string name="lab_ab78a04b">登录以管理你分享的配置</string>
+    <string name="lab_ab8824cb">适配层呈现模式</string>
     <string name="lab_abb1c367">未连接任何设备。此游戏仍设置为在电视上启动。</string>
     <string name="lab_abb20221">无预设</string>
     <string name="lab_abf1049c">默认保留原始压缩包</string>
@@ -1204,6 +1220,7 @@
     <string name="lab_aca69f94">切换窗口</string>
     <string name="lab_aca7092f">已安装的版本会显示在“Box64 版本”中。</string>
     <string name="lab_acfc8aab">使用</string>
+    <string name="lab_ad11f65e">自动（推荐）</string>
     <string name="lab_ad23e110">尚无程序报告。</string>
     <string name="lab_ad26a7c7">未知</string>
     <string name="lab_adcb307d">Windows DirectX 调用如何转换为适用于你 GPU 的 Vulkan。</string>
@@ -1270,6 +1287,7 @@
     <string name="lab_b6ae29ff">正在读取驱动扩展…</string>
     <string name="lab_b6b590cf">离线启动</string>
     <string name="lab_b6e99688">放大屏幕的一部分。</string>
+    <string name="lab_b7079be0">零拷贝呈现</string>
     <string name="lab_b71f7c14">下载 FEXCore 版本</string>
     <string name="lab_b7320213">运行中的程序</string>
     <string name="lab_b736f934">我的商店</string>
@@ -1403,6 +1421,7 @@
     <string name="lab_ca16bb77">立即生效 · 为此游戏保存，并保存为此引擎的默认值</string>
     <string name="lab_ca45d5a4">此容器</string>
     <string name="lab_ca62f862">下载与网络</string>
+    <string name="lab_cabf747a">异步复制</string>
     <string name="lab_caf7d4a3">共享预设（已编辑）</string>
     <string name="lab_cb5fc4d5">VEGAS 配置</string>
     <string name="lab_cb6d604d">游戏中无法拖动 HUD。</string>
@@ -1427,6 +1446,7 @@
     <string name="lab_ce49c69f">拉伸</string>
     <string name="lab_ce4bcdaa">DirectX 11（NVAPI）</string>
     <string name="lab_ce53a62a">DLS 锐化 + 降噪</string>
+    <string name="lab_ce6eab03">使用零拷贝时，游戏的驱动会在一帧完成时通知合成器。仅在对比时关闭；关闭后可能显示未绘制完成的帧。</string>
     <string name="lab_ce764fd8">已用空间、应用文件夹和基础系统。</string>
     <string name="lab_ce9b8eca">将 BCn 转码为 ASTC</string>
     <string name="lab_ceadf171">Android 会阻止 fsync</string>
@@ -1577,6 +1597,7 @@
     <string name="lab_e141ca5d">屏幕按键优先级</string>
     <string name="lab_e1768a43">也可在游戏中通过侧边菜单切换。</string>
     <string name="lab_e18caa5c">没有驱动器</string>
+    <string name="lab_e19da5b2">Wayland 适配层</string>
     <string name="lab_e1be537c">未保存</string>
     <string name="lab_e22a8ea9">Wayland 需要已安装的 Turnip 才能将游戏画面输出到屏幕。新安装的会显示在“图形驱动”下。</string>
     <string name="lab_e2410f47">浏览并下载</string>
@@ -1662,6 +1683,7 @@
     <string name="lab_efeacf52">目前只有手机自带的驱动。</string>
     <string name="lab_f04c78b9">音频设置 · 此游戏</string>
     <string name="lab_f05053e7">直接读取 Steam Controller（其触控板和额外按键）。关闭：常规输入路径不变。</string>
+    <string name="lab_f0520965">mailbox = 最新帧，延迟最低；fifo = vsync，帧节奏均匀。“默认”跟随配置，否则使用已保存的呈现模式。immediate 需要允许画面撕裂，而 Wayland 不提供。</string>
     <string name="lab_f05494f9">此容器的 Wine 层无法驱动 Wayland。</string>
     <string name="lab_f06ef939">Quake III、Team Arena、Return to Castle Wolfenstein 和 Jedi Academy 会以会话尺寸窗口化运行。</string>
     <string name="lab_f0c81c31">Steam 客户端</string>
@@ -1707,6 +1729,7 @@
     <string name="lab_f4f73c18">默认值</string>
     <string name="lab_f523d27f">手柄直通</string>
     <string name="lab_f54f4eb6">无法安装 %1$s</string>
+    <string name="lab_f552097b">自动：根据你的驱动的适配层报告选择；没有报告时不做任何更改。\n\n流畅：帧节奏均匀：vsync（fifo）、在后台复制帧、不使用零拷贝。\n\n快速：延迟最低：mailbox、使用压缩缓冲区的零拷贝、客户端渲染栅栏。\n\n兼容性：最安全：vsync、关闭所有捷径、普通缓冲区、开启计时修正。适用于闪烁或卡死的游戏。\n\n你在“环境变量”中输入的变量始终优先于这些配置；单项开关优先于配置。</string>
     <string name="lab_f55495e0">保存</string>
     <string name="lab_f576fb2d">目录中的层，或从文件安装。新容器可以使用它们。</string>
     <string name="lab_f57b35ee">死区和平滑</string>
@@ -1714,6 +1737,7 @@
     <string name="lab_f593aa90">应用的合成器将会话输出到屏幕所用的驱动。不是客户端绘制所用的驱动。</string>
     <string name="lab_f59e59da">显示在你的游戏库中。重命名会保留封面和图标。</string>
     <string name="lab_f61050cc">游戏分辨率</string>
+    <string name="lab_f65eddfe">让游戏的驱动和合成器就缓冲区布局达成一致。“关闭”会让游戏使用普通线性缓冲区（BANNER_WSI_NO_MODIFIERS=1）；遇到黑屏或画面损坏时可以试试。</string>
     <string name="lab_f665e069">好友给你发消息且未打开其聊天窗口时发出通知。</string>
     <string name="lab_f667b7f4">强调色</string>
     <string name="lab_f690a199">你的封面</string>

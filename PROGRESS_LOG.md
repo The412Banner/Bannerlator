@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 feat/setup-container-options MERGED to main ec270146 (user: "good merge it")
+- **Device proof (Elite, fresh standard install of 54dde650):** the setup's Container-1 got displayBackend wayland, audioDriver directaudio, envVars BANNER_AUDIO_DIRECT_MIC=1 (RECORD_AUDIO granted, USER_SET), fpsLimiterEnabled 1, showFPS true, fexcorePreset PERFORMANCE_TSO, box64Preset EXTREME, box64Version WOWBox64-0.4.5-Hybrid-c8ad5c378-0 (installed from nightly-latest), emulator fexcore, cpuList + cpuListWoW64 = 0–7, Proton-11.0-11.9-arm64ec-16, FEXCore-2611-unix-0. Crash buffer empty.
+- **How:** --no-ff over main 2e37c517 (no conflicts). Backup ref refs/backup/20261108/main-before-setup-container-options → 2e37c517. Merged code == the tested 54dde650.
+- **Proof:** CI 42525743073 green ×4; main push build 42527038096 running.
+- **Not tested:** a game launch in the setup-made container, the x86_64 Proton / Box64 path, a phone without an Adreno GPU.
+- **Branch kept:** feat/setup-container-options.
+
 ## 2026-11-08 — ✅ setupopts 54dde650 STANDARD installed fresh on the Elite 16:43:20 EST (user: "uninstall it first, fresh install when green"; NOT device-tested yet)
 - CI 42525743073 green ×4 (44 success / 15 skipped). APK sha256 d67891a6… == staged == installed; signer a40da80a…. The test copy was already uninstalled. Crash buffer empty.
 - **Next:** the user runs setup → check the container's presets, audio, FPS, limiter, mic, backend, WOWBox64 and cores.

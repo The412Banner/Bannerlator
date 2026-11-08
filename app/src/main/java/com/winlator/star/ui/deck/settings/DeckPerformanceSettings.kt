@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.content.Context
@@ -138,14 +139,14 @@ internal object PerformanceRows {
     fun defs(): List<SettingDef> =
         WineUtils.STARTUP_SERVICES.mapIndexed { i, entry -> serviceRow(i, entry) } +
             listOf(
-                rootRow(PerfRootApplier.KEY_GPU_CLOCK_LOCK, "Power", "Lock the GPU to its top clock", ADVANCED,
-                    "Adreno: no root needed (KGSL turbo). Other GPUs need root."),
-                rootRow(PerfRootApplier.KEY_CPU_GOVERNOR, "Root controls", "CPU governor: performance", EXPERT,
-                    "Forces every CPU cluster to the performance governor."),
-                rootRow(PerfRootApplier.KEY_CPU_FREQ_LOCK, "Root controls", "Lock CPU frequency to max", EXPERT,
-                    "Sets every cluster's minimum frequency to its maximum."),
-                rootRow(PerfRootApplier.KEY_CORES_ONLINE, "Root controls", "Keep all cores online", EXPERT,
-                    "Stops the kernel taking cores offline."),
+                rootRow(PerfRootApplier.KEY_GPU_CLOCK_LOCK, L("Power"), L("Lock the GPU to its top clock"), ADVANCED,
+                    L("Adreno: no root needed (KGSL turbo). Other GPUs need root.")),
+                rootRow(PerfRootApplier.KEY_CPU_GOVERNOR, L("Root controls"), L("CPU governor: performance"), EXPERT,
+                    L("Forces every CPU cluster to the performance governor.")),
+                rootRow(PerfRootApplier.KEY_CPU_FREQ_LOCK, L("Root controls"), L("Lock CPU frequency to max"), EXPERT,
+                    L("Sets every cluster's minimum frequency to its maximum.")),
+                rootRow(PerfRootApplier.KEY_CORES_ONLINE, L("Root controls"), L("Keep all cores online"), EXPERT,
+                    L("Stops the kernel taking cores offline.")),
             ) +
             DANGER_KEYS.map { k -> hiddenDef(rootId(k), "performance", vm = null, game = appOverride(k), worlds = WINE_LINUX) } +
             listOf(
@@ -176,11 +177,11 @@ internal object PerformanceRows {
         val raw = WineUtils.startupServiceRawName(entry)
         val label = WineUtils.STARTUP_SERVICE_LABELS.getOrElse(i) { raw }
         return SettingDef(
-            id = "performance.service.$raw", category = "performance", group = "Custom services", level = ADVANCED,
+            id = "performance.service.$raw", category = "performance", group = L("Custom services"), level = ADVANCED,
             label = label, tech = raw,
             hint = when {
-                i == 0 -> "Custom starts with every service off: turn on only what the game needs."
-                raw == "winebus" || raw == "winehid" -> "Turning it off can break controllers."
+                i == 0 -> L("Custom starts with every service off: turn on only what the game needs.")
+                raw == "winebus" || raw == "winehid" -> L("Turning it off can break controllers.")
                 else -> null
             },
             control = { _, _ -> Control.Toggle },
@@ -229,7 +230,7 @@ internal object PerformanceRows {
         worlds = WINE_LINUX,
         note = { _, _ ->
             if (runCatching { PerfRootApplier.isUsable(key) }.getOrDefault(true)) null
-            else "Saved for this game and applied at launch once root is granted."
+            else L("Saved for this game and applied at launch once root is granted.")
         },
     )
 }
@@ -383,7 +384,7 @@ internal class DeckPerformanceSection(
 
     fun duplicate(kind: PresetKind) {
         val id = selected(kind)
-        ask = Ask("Duplicate preset", context.getString(R.string.do_you_want_to_duplicate_this_preset), "Duplicate") {
+        ask = Ask(L("Duplicate preset"), context.getString(R.string.do_you_want_to_duplicate_this_preset), "Duplicate") {
             if (isFex(kind)) FEXCorePresetManager.duplicatePreset(context, id) else Box64PresetManager.duplicatePreset("box64", context, id)
             listChanged()
         }
@@ -395,7 +396,7 @@ internal class DeckPerformanceSection(
             AppUtils.showToast(context, R.string.you_cannot_remove_this_preset)
             return
         }
-        ask = Ask("Delete preset", context.getString(R.string.do_you_want_to_remove_this_preset), "Delete") {
+        ask = Ask(L("Delete preset"), context.getString(R.string.do_you_want_to_remove_this_preset), "Delete") {
             if (isFex(kind)) FEXCorePresetManager.removePreset(context, id) else Box64PresetManager.removePreset("box64", context, id)
             listChanged()
         }
@@ -404,7 +405,7 @@ internal class DeckPerformanceSection(
     fun export(kind: PresetKind) {
         val id = selected(kind)
         if (!isCustomPreset(kind, id)) {
-            AppUtils.showToast(context, "Only your own presets can be exported.")
+            AppUtils.showToast(context, L("Only your own presets can be exported."))
             return
         }
         if (isFex(kind)) FEXCorePresetManager.exportPreset(context, id) else Box64PresetManager.exportPreset("box64", context, id)
@@ -432,15 +433,15 @@ internal class DeckPerformanceSection(
         val cpuRoot = listOf(PerfRootApplier.KEY_CPU_GOVERNOR, PerfRootApplier.KEY_CPU_FREQ_LOCK, PerfRootApplier.KEY_CORES_ONLINE)
             .map { PerformanceRows.rootId(it) }
         when (p) {
-            "Off", "Battery" -> {
+            L("Off"), L("Battery") -> {
                 on(PerformanceRows.ID_SUSTAINED, false); on(PerformanceRows.ID_PRIORITY, false); on(PerformanceRows.ID_BIG_CORES, false)
                 on(gpu, false); cpuRoot.forEach { on(it, false) }
             }
-            "Balanced" -> {
+            L("Balanced") -> {
                 on(PerformanceRows.ID_SUSTAINED, true); on(PerformanceRows.ID_PRIORITY, false); on(PerformanceRows.ID_BIG_CORES, false)
                 on(gpu, false)
             }
-            "Performance", "Turbo" -> {
+            L("Performance"), L("Turbo") -> {
                 on(PerformanceRows.ID_SUSTAINED, true); on(PerformanceRows.ID_PRIORITY, true); on(PerformanceRows.ID_BIG_CORES, true)
                 on(gpu, true); cpuRoot.forEach { on(it, true) }
             }
@@ -472,7 +473,7 @@ internal class DeckPerformanceSection(
     private fun bottomItems(): List<PageExtra> = buildList {
         val kinds = kinds()
         if (kinds.isNotEmpty()) {
-            add(PageExtra("perf-presets-label") { GroupLabel("Translator preset values") })
+            add(PageExtra("perf-presets-label") { GroupLabel(L("Translator preset values")) })
             kinds.forEachIndexed { i, kind ->
                 add(PageExtra("perf-preset:${kind.name}") {
                     GroupCard(first = i == 0, last = i == kinds.lastIndex, highlight = false) { PresetLines(this@DeckPerformanceSection, kind) }
@@ -480,7 +481,7 @@ internal class DeckPerformanceSection(
             }
         }
         if (power) {
-            add(PageExtra("perf-power-label") { GroupLabel("Power profile and root") })
+            add(PageExtra("perf-power-label") { GroupLabel(L("Power profile and root")) })
             add(PageExtra("perf-power") {
                 GroupCard(first = true, last = true, highlight = false) { PowerLines(this@DeckPerformanceSection) }
             })
@@ -499,7 +500,7 @@ internal class DeckPerformanceSection(
             OutlinedAlertDialog(
                 onDismissRequest = { ask = null },
                 confirmButton = { TextButton(onClick = { ask = null; a.run() }) { Text(a.confirm) } },
-                dismissButton = { TextButton(onClick = { ask = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { ask = null }) { Text(L("Cancel")) } },
                 title = { Text(a.title) },
                 text = { Text(a.body) },
             )
@@ -511,30 +512,30 @@ internal class DeckPerformanceSection(
                     TextButton(onClick = {
                         importFor = null
                         startImport(kind)
-                        inApp.launch(InAppFilePicker.buildIntent(context, emptyArray(), "Select preset"))
-                    }) { Text("Browse files") }
+                        inApp.launch(InAppFilePicker.buildIntent(context, emptyArray(), L("Select preset")))
+                    }) { Text(L("Browse files")) }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         importFor = null
                         startImport(kind)
                         system.launch(arrayOf("*/*"))
-                    }) { Text("Pick via system…") }
+                    }) { Text(L("Pick via system…")) }
                 },
                 title = { Text("Import a ${kindLabel(kind)} preset") },
-                text = { Text("A .wbp preset file. It joins the preset list every container and game picks from.") },
+                text = { Text(L("A .wbp preset file. It joins the preset list every container and game picks from.")) },
             )
         }
         dangerFor?.let { key ->
             PerfDisclaimerDialog(
-                title = dangerLabel(key), body = PerfDisclaimerCopy.ROOT_RISK, confirmLabel = "Enable",
+                title = dangerLabel(key), body = PerfDisclaimerCopy.ROOT_RISK, confirmLabel = L("Enable"),
                 onConfirm = { dangerFor = null; setDanger(key, true) },
                 onDismiss = { dangerFor = null },
             )
         }
         if (grantGate) {
             PerfDisclaimerDialog(
-                title = "Power-user performance — read first", body = PerfDisclaimerCopy.ROOT_RISK, confirmLabel = "Grant Root",
+                title = L("Power-user performance — read first"), body = PerfDisclaimerCopy.ROOT_RISK, confirmLabel = L("Grant Root"),
                 onConfirm = { grantGate = false; requestRoot() },
                 onDismiss = { grantGate = false },
             )
@@ -542,7 +543,7 @@ internal class DeckPerformanceSection(
     }
 }
 
-private fun dangerLabel(key: String) = if (key == PerfRootApplier.KEY_THERMAL_DISABLE) "Disable thermal throttling" else "Fan to maximum"
+private fun dangerLabel(key: String) = if (key == PerfRootApplier.KEY_THERMAL_DISABLE) L("Disable thermal throttling") else L("Fan to maximum")
 
 // ── Preset lines ────────────────────────────────────────────────────────────────────────────────
 
@@ -551,12 +552,12 @@ private fun dangerLabel(key: String) = if (key == PerfRootApplier.KEY_THERMAL_DI
 private fun PresetLines(s: DeckPerformanceSection, kind: PresetKind) {
     val id = s.selected(kind)
     val label = s.kindLabel(kind)
-    val name = s.presetName(kind, id) ?: id.ifEmpty { "No preset" }
+    val name = s.presetName(kind, id) ?: id.ifEmpty { L("No preset") }
     val custom = s.customised(kind, id)
     val where = when (s.owner) {
-        DeckPerformanceSection.Owner.GAME -> if (custom) "Customised for this game" else "Follows the container"
-        DeckPerformanceSection.Owner.CONTAINER -> if (custom) "Customised for this container" else "Follows the shared preset"
-        DeckPerformanceSection.Owner.SHARED -> if (custom) "Shared preset, edited" else "Shared preset"
+        DeckPerformanceSection.Owner.GAME -> if (custom) L("Customised for this game") else L("Follows the container")
+        DeckPerformanceSection.Owner.CONTAINER -> if (custom) L("Customised for this container") else L("Follows the shared preset")
+        DeckPerformanceSection.Owner.SHARED -> if (custom) L("Shared preset, edited") else L("Shared preset")
     }
     DeckLine(
         label = "$label preset values",
@@ -567,15 +568,15 @@ private fun PresetLines(s: DeckPerformanceSection, kind: PresetKind) {
     )
     Column(modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 14.dp)) {
         Text(
-            "The preset list is shared by every container and game.",
+            L("The preset list is shared by every container and game."),
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp),
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DeckSmallButton("New", Icons.Filled.Add) { s.editing = DeckPerformanceSection.Edit(kind, null) }
-            DeckSmallButton("Duplicate", Icons.Filled.ContentCopy, enabled = id.isNotEmpty()) { s.duplicate(kind) }
-            DeckSmallButton("Delete", Icons.Filled.Delete, enabled = s.isCustomPreset(kind, id)) { s.delete(kind) }
-            DeckSmallButton("Export", Icons.Filled.FileUpload, enabled = s.isCustomPreset(kind, id)) { s.export(kind) }
-            DeckSmallButton("Import", Icons.Filled.FileDownload) { s.importFor = kind }
+            DeckSmallButton(L("New"), Icons.Filled.Add) { s.editing = DeckPerformanceSection.Edit(kind, null) }
+            DeckSmallButton(L("Duplicate"), Icons.Filled.ContentCopy, enabled = id.isNotEmpty()) { s.duplicate(kind) }
+            DeckSmallButton(L("Delete"), Icons.Filled.Delete, enabled = s.isCustomPreset(kind, id)) { s.delete(kind) }
+            DeckSmallButton(L("Export"), Icons.Filled.FileUpload, enabled = s.isCustomPreset(kind, id)) { s.export(kind) }
+            DeckSmallButton(L("Import"), Icons.Filled.FileDownload) { s.importFor = kind }
         }
     }
 }
@@ -587,31 +588,31 @@ private fun PresetLines(s: DeckPerformanceSection, kind: PresetKind) {
 private fun PowerLines(s: DeckPerformanceSection) {
     val cs = MaterialTheme.colorScheme
     Column(modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 8.dp)) {
-        Text("Power profile", color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(L("Power profile"), color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(
-            "Sets the power, GPU and root switches above for this game in one go. The profile itself isn't kept.",
+            L("Sets the power, GPU and root switches above for this game in one go. The profile itself isn't kept."),
             color = cs.onSurfaceVariant, fontSize = 13.5.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Off", "Battery", "Balanced", "Performance", "Turbo").forEach { p -> DeckSmallButton(p) { s.applyProfile(p) } }
+            listOf(L("Off"), L("Battery"), L("Balanced"), L("Performance"), L("Turbo")).forEach { p -> DeckSmallButton(p) { s.applyProfile(p) } }
         }
     }
 
     val rootState by RootManager.state.collectAsState()
     val granted = rootState == RootManager.RootState.GRANTED
     DeckLine(
-        label = if (granted) "Root granted" else "No root",
-        hint = if (granted) "Full CPU and GPU control is unlocked." else "The root switches are saved for this game and applied at launch once root is granted.",
+        label = if (granted) L("Root granted") else L("No root"),
+        hint = if (granted) L("Full CPU and GPU control is unlocked.") else L("The root switches are saved for this game and applied at launch once root is granted."),
         icon = Icons.Filled.Security,
-        trailing = if (!granted && rootState != RootManager.RootState.UNAVAILABLE) ({ DeckSmallButton("Grant root") { s.grantGate = true } }) else null,
+        trailing = if (!granted && rootState != RootManager.RootState.UNAVAILABLE) ({ DeckSmallButton(L("Grant root")) { s.grantGate = true } }) else null,
     )
 
     PerformanceRows.DANGER_KEYS.forEach { key ->
         val on = s.dangerOn(key)
         DeckLine(
             label = dangerLabel(key),
-            hint = (if (key == PerfRootApplier.KEY_THERMAL_DISABLE) "Root. The temperature watchdog still guards." else "Root. Forces active cooling to full at launch.") +
-                if (s.dangerSetHere(key)) " Set for this game." else " App setting.",
+            hint = (if (key == PerfRootApplier.KEY_THERMAL_DISABLE) L("Root. The temperature watchdog still guards.") else L("Root. Forces active cooling to full at launch.")) +
+                if (s.dangerSetHere(key)) L(" Set for this game.") else L(" App setting."),
             icon = Icons.Filled.Warning,
             error = on,
             trailing = {
@@ -628,8 +629,8 @@ private fun PowerLines(s: DeckPerformanceSection) {
     val count = s.powerOverrides()
     if (count > 0) {
         DeckLine(
-            label = "Reset power and root to the app's defaults",
-            hint = if (count == 1) "1 switch is set for this game." else "$count switches are set for this game.",
+            label = L("Reset power and root to the app's defaults"),
+            hint = if (count == 1) L("1 switch is set for this game.") else "$count switches are set for this game.",
             icon = Icons.Filled.Restore,
             onClick = { s.resetPower() },
         )
@@ -713,13 +714,13 @@ private fun PresetValuesDialog(s: DeckPerformanceSection, edit: DeckPerformanceS
     val where = when {
         presetId == null -> "A new preset joins the shared list straight away, and this ${if (s.owner == DeckPerformanceSection.Owner.GAME) "game" else "editor"} picks it."
         s.owner == DeckPerformanceSection.Owner.GAME ->
-            (if (modified) "Customised for this game. Reset makes it follow its container again. " else "For this game only: no other game or container changes. ") +
-                "Kept when you save the editor."
+            (if (modified) L("Customised for this game. Reset makes it follow its container again. ") else L("For this game only: no other game or container changes. ")) +
+                L("Kept when you save the editor.")
         s.owner == DeckPerformanceSection.Owner.CONTAINER ->
-            (if (modified) "Customised for this container. Reset makes it follow the shared preset again. " else "For this container only: the shared preset is left alone. ") +
-                "Saved to the container as soon as you press Save here, as in the classic editor."
-        isBuiltIn -> "The shared preset every container follows unless it has its own values. Saved as soon as you press Save; Reset restores the original."
-        else -> "The shared preset every container follows unless it has its own values. Saved as soon as you press Save."
+            (if (modified) L("Customised for this container. Reset makes it follow the shared preset again. ") else L("For this container only: the shared preset is left alone. ")) +
+                L("Saved to the container as soon as you press Save here, as in the classic editor.")
+        isBuiltIn -> L("The shared preset every container follows unless it has its own values. Saved as soon as you press Save; Reset restores the original.")
+        else -> L("The shared preset every container follows unless it has its own values. Saved as soon as you press Save.")
     }
 
     OutlinedAlertDialog(
@@ -738,11 +739,11 @@ private fun PresetValuesDialog(s: DeckPerformanceSection, edit: DeckPerformanceS
                     // Built-in names come from the app's strings; a scope's own copy keeps the preset's name.
                     enabled = presetId == null || (isCustom && !scoped),
                     singleLine = true,
-                    label = { Text("Name") },
+                    label = { Text(L("Name")) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    "Environment variables",
+                    L("Environment variables"),
                     color = cs.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp,
                     modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                 )
@@ -774,7 +775,7 @@ private fun PresetValuesDialog(s: DeckPerformanceSection, edit: DeckPerformanceS
                     s.storeValues(kind, presetId, clean, envVars, unchanged)
                 }
                 onDismiss()
-            }) { Text("Save") }
+            }) { Text(L("Save")) }
         },
         dismissButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -783,9 +784,9 @@ private fun PresetValuesDialog(s: DeckPerformanceSection, edit: DeckPerformanceS
                         s.resetValues(kind, presetId)
                         specs.forEach { values[it.name] = seed(it) }
                         modified = false
-                    }) { Text("Reset", color = cs.error) }
+                    }) { Text(L("Reset"), color = cs.error) }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(L("Cancel")) }
             }
         },
     )

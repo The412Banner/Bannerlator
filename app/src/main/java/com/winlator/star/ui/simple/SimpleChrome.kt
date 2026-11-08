@@ -79,7 +79,7 @@ internal fun SimplePageHeader(onSection: (Int) -> Unit, onBack: () -> Unit, modi
             modifier = Modifier.simpleTap(onBack).padding(end = 18.dp),
         ) {
             SimpleGlyph("B")
-            Text("Back", color = SimpleMuted, fontSize = 13.sp)
+            Text(L("Back"), color = SimpleMuted, fontSize = 13.sp)
         }
         if (layout == AppThemeState.SIMPLE_LAYOUT_FOCUS) {
             // Focus: the section's name and its dots.
@@ -168,11 +168,11 @@ internal fun SimplePageRail(onSection: (Int) -> Unit, modifier: Modifier = Modif
 internal fun SimplePageLegend(subTabLabel: String?, optionsLabel: String?, modifier: Modifier = Modifier, own: List<Pair<String, String>>? = null) {
     SimpleLegend(
         own ?: listOfNotNull(
-            "B" to "Back",
-            "L1" to "Sections",
+            "B" to L("Back"),
+            "L1" to L("Sections"),
             subTabLabel?.let { "L2" to it },
             optionsLabel?.let { "X" to it },
-            "Y" to "Search",
+            "Y" to L("Search"),
         ),
         modifier.padding(end = 26.dp, bottom = 12.dp, top = 6.dp),
     )

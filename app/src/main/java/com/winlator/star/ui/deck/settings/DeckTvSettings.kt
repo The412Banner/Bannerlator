@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import android.view.Display
 import com.winlator.star.display.ExternalDisplay
 import com.winlator.star.ui.deck.settings.SettingLevel.ADVANCED
@@ -43,7 +44,7 @@ internal object TvRows {
     fun defs(): List<SettingDef> = listOf(
         SettingDef(
             id = ID_LAUNCH, category = "display", group = GROUP, level = SIMPLE,
-            label = "Launch this game on the TV", hint = ExternalDisplay.HELP_LAUNCH, tech = ExternalDisplay.EXTRA_LAUNCH,
+            label = L("Launch this game on the TV"), hint = ExternalDisplay.HELP_LAUNCH, tech = ExternalDisplay.EXTRA_LAUNCH,
             help = ExternalDisplay.HELP_LAUNCH + "\n\n" + ExternalDisplay.NOTE_UNPLUG + "\n\n" + ExternalDisplay.NOTE_TOUCH,
             control = { _, _ -> Control.Toggle },
             game = onOff(ExternalDisplay.EXTRA_LAUNCH),
@@ -52,20 +53,20 @@ internal object TvRows {
             // The screen as Android describes it right now, and what it means for HDR.
             note = { env, _ ->
                 val d = display(env)
-                if (d == null) "Nothing is plugged in. This game is still set to start on a TV."
+                if (d == null) L("Nothing is plugged in. This game is still set to start on a TV.")
                 else runCatching {
                     val hdr = ExternalDisplay.hdrUnavailableReason(d)
-                        ?: "HDR: automatic. This screen accepts HDR10, so HDR output switches on for this game."
+                        ?: L("HDR: automatic. This screen accepts HDR10, so HDR output switches on for this game.")
                     "${ExternalDisplay.title(d)} · ${ExternalDisplay.summary(d)}\n$hdr"
                 }.getOrNull()
             },
         ),
         SettingDef(
             id = ID_MODE, category = "display", group = GROUP, level = ADVANCED,
-            label = "Output mode", hint = "What the TV is told to run at.", tech = ExternalDisplay.EXTRA_MODE_ID,
+            label = L("Output mode"), hint = L("What the TV is told to run at."), tech = ExternalDisplay.EXTRA_MODE_ID,
             control = { env, values ->
                 val modes = runCatching { ExternalDisplay.selectableModes(display(env)) }.getOrDefault(emptyList())
-                val opts = listOf(Opt("0", "Default (leave the TV as it is)")) +
+                val opts = listOf(Opt("0", L("Default (leave the TV as it is)"))) +
                     modes.map { Opt("${it.modeId}", ExternalDisplay.modeLabel(it)) }
                 val current = values(ID_MODE)
                 // A mode stored for a TV that isn't plugged in stays listed, so the field never reads blank.
@@ -82,8 +83,8 @@ internal object TvRows {
                 val d = display(env)
                 val modes = runCatching { ExternalDisplay.selectableModes(d) }.getOrDefault(emptyList())
                 when {
-                    d == null -> "Plug a screen in to choose an output mode."
-                    modes.size <= 1 -> "This screen advertises one output mode" +
+                    d == null -> L("Plug a screen in to choose an output mode.")
+                    modes.size <= 1 -> L("This screen advertises one output mode") +
                         (ExternalDisplay.modeLabel(modes.firstOrNull()).takeIf { it.isNotEmpty() }?.let { ": $it." } ?: ".")
                     else -> null
                 }
@@ -92,7 +93,7 @@ internal object TvRows {
         ),
         SettingDef(
             id = ID_MATCH_RES, category = "display", group = GROUP, level = ADVANCED,
-            label = "Match the TV's resolution", hint = ExternalDisplay.HELP_MATCH_RES, tech = ExternalDisplay.EXTRA_MATCH_RES,
+            label = L("Match the TV's resolution"), hint = ExternalDisplay.HELP_MATCH_RES, tech = ExternalDisplay.EXTRA_MATCH_RES,
             control = { _, _ -> Control.Toggle },
             game = onOff(ExternalDisplay.EXTRA_MATCH_RES),
             visible = { env, _ -> shown(env) },

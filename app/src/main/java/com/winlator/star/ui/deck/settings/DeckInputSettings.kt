@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
@@ -43,9 +44,9 @@ internal object InputRows {
 
     // The classic XR section's labels, in Container.XrControllerMapping order.
     private val XR_LABELS = listOf(
-        "Button A", "Button B", "Button X", "Button Y",
-        "Grip", "Trigger",
-        "Thumbstick up", "Thumbstick down", "Thumbstick left", "Thumbstick right",
+        L("Button A"), L("Button B"), L("Button X"), L("Button Y"),
+        L("Grip"), L("Trigger"),
+        L("Thumbstick up"), L("Thumbstick down"), L("Thumbstick left"), L("Thumbstick right"),
     )
 
     fun defs(): List<SettingDef> = listOf(
@@ -61,8 +62,8 @@ internal object InputRows {
             worlds = WINE_LINUX,
         ),
         SettingDef(
-            id = "input.xr.primary", category = "input", group = "XR controller", level = SettingLevel.EXPERT,
-            label = "Primary XR controller", hint = "The hand whose controller drives the mouse in XR.", tech = "Primary controller",
+            id = "input.xr.primary", category = "input", group = L("XR controller"), level = SettingLevel.EXPERT,
+            label = L("Primary XR controller"), hint = L("The hand whose controller drives the mouse in XR."), tech = L("Primary controller"),
             control = { env, _ ->
                 Control.Segmented((env.vm?.primaryControllerEntries ?: emptyList()).mapIndexed { i, name -> Opt("$i", name) })
             },
@@ -76,7 +77,7 @@ internal object InputRows {
 
     /** One XR button's key: the index into the keycode list the classic dropdown shows (XKeycode order). */
     private fun xrRow(i: Int, label: String) = SettingDef(
-        id = "input.xr.map$i", category = "input", group = "XR controller", level = SettingLevel.EXPERT,
+        id = "input.xr.map$i", category = "input", group = L("XR controller"), level = SettingLevel.EXPERT,
         label = label, tech = "Controller Mapping › ${Container.XrControllerMapping.values()[i].name}",
         control = { env, _ -> Control.Select((env.vm?.xrKeycodeNames ?: emptyList()).mapIndexed { k, name -> Opt("$k", name) }) },
         vm = VmBinding(
@@ -116,17 +117,17 @@ internal class DeckInputSection(val env: SettingsEnv, val source: SettingsSource
         val own = source.origin(def) == Origin.SET_HERE
         val game = env.scope == EditorScope.GAME
         val info = when {
-            game && !own -> "Following the container's pins. Changing one gives this game pins of its own."
-            game -> "This game has pins of its own."
-            own && env.scope == EditorScope.CONTAINER -> "This container's own pins, not All containers'."
-            else -> "Applied at launch. The in-game side menu still changes them live."
+            game && !own -> L("Following the container's pins. Changing one gives this game pins of its own.")
+            game -> L("This game has pins of its own.")
+            own && env.scope == EditorScope.CONTAINER -> L("This container's own pins, not All containers'.")
+            else -> L("Applied at launch. The in-game side menu still changes them live.")
         }
-        val items = mutableListOf(PageExtra("slots-label") { GroupLabel("Player slot pins") })
+        val items = mutableListOf(PageExtra("slots-label") { GroupLabel(L("Player slot pins")) })
         items += PageExtra("slots-info") {
             GroupCard(first = true, last = false, highlight = false) {
-                DeckLine(label = "Pin controllers to players", hint = "Two on one player share it. $info") {
+                DeckLine(label = L("Pin controllers to players"), hint = "Two on one player share it. $info") {
                     if (own && editable) {
-                        DeckSmallButton(if (game) "Use the container's" else "Use All containers'", Icons.Filled.Restore) { source.reset(def) }
+                        DeckSmallButton(if (game) L("Use the container's") else L("Use All containers'"), Icons.Filled.Restore) { source.reset(def) }
                     }
                     DeckSmallButton("", Icons.Filled.Refresh) { refresh++ }
                 }
@@ -136,13 +137,13 @@ internal class DeckInputSection(val env: SettingsEnv, val source: SettingsSource
             items += PageExtra("slots:${row.descriptor}") {
                 GroupCard(first = false, last = i == rows.lastIndex, highlight = false) {
                     val status = when {
-                        row.override == WinHandler.SLOT_IGNORE -> "Ignored"
+                        row.override == WinHandler.SLOT_IGNORE -> L("Ignored")
                         row.override >= 0 -> "Player ${row.override + 1}"
-                        else -> "Auto (by connection order)"
+                        else -> L("Auto (by connection order)")
                     }
                     val where = when {
-                        row.isOnScreen -> " · the on-screen controls"
-                        !row.connected -> " · not connected (saved pin)"
+                        row.isOnScreen -> L(" · the on-screen controls")
+                        !row.connected -> L(" · not connected (saved pin)")
                         else -> ""
                     }
                     DeckLine(label = row.displayName, hint = status + where) {
@@ -168,7 +169,7 @@ internal class DeckInputSection(val env: SettingsEnv, val source: SettingsSource
     @Composable
     private fun SlotPicker(current: Int, enabled: Boolean, onPick: (Int) -> Unit) {
         var open by remember { mutableStateOf(false) }
-        val label = SLOT_OPTIONS.firstOrNull { it.second == current }?.first ?: "Auto"
+        val label = SLOT_OPTIONS.firstOrNull { it.second == current }?.first ?: L("Auto")
         Box {
             DeckSmallButton(label, Icons.Filled.UnfoldMore, enabled) { open = true }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

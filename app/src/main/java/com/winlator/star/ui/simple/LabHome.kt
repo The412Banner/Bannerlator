@@ -182,7 +182,7 @@ internal fun LabHome(
         runCatching { playFocus.requestFocus() }
     }
     DisposableEffect(deckActions) {
-        val legend = listOf("A" to "Open", "X" to "Game menu", "L1 R1" to "Section")
+        val legend = listOf("A" to L("Open"), "X" to L("Game menu"), "L1 R1" to L("Section"))
         deckActions.ownLegend.value = legend
         onDispose { if (deckActions.ownLegend.value === legend) deckActions.ownLegend.value = null }
     }
@@ -200,9 +200,9 @@ internal fun LabHome(
         fun ContinueTile(m: Modifier) {
             if (game == null) {
                 LabDashTile(m, onClick = addGame, requester = playFocus) {
-                    LabTileLabel("Get started")
-                    Text("Add your first game", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                    Text("An .exe from your files, or a game from a store.", color = SimpleMuted, fontSize = 13.sp)
+                    LabTileLabel(L("Get started"))
+                    Text(L("Add your first game"), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    Text(L("An .exe from your files, or a game from a store."), color = SimpleMuted, fontSize = 13.sp)
                     Spacer(Modifier.weight(1f))
                     Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                 }
@@ -216,7 +216,7 @@ internal fun LabHome(
             Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabTileLabel(if (game == recent.firstOrNull()) "Continue" else "Selected")
+                    LabTileLabel(if (game == recent.firstOrNull()) L("Continue") else L("Selected"))
                     Text(game.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
@@ -227,8 +227,8 @@ internal fun LabHome(
                     }
                     Spacer(Modifier.weight(1f))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LabButton("Play", primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus) { launcher.requestLaunch(game) }
-                        LabButton("Game page") { onNavigate(LabRoutes.game(game.file.path)) }
+                        LabButton(L("Play"), primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus) { launcher.requestLaunch(game) }
+                        LabButton(L("Game page")) { onNavigate(LabRoutes.game(game.file.path)) }
                         LabButton("", icon = Icons.Filled.MoreHoriz) { menuFor = game }
                     }
                 }
@@ -242,7 +242,7 @@ internal fun LabHome(
             // puts that game in the big tile above; a long press or X opens its menu.
             val coverW = (rowH - 46.dp) * 0.75f
             Column(m.labPanel().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LabTileLabel("Library · ${recent.size} ${if (recent.size == 1) "game" else "games"}")
+                LabTileLabel(if (recent.size == 1) L("Library · 1 game") else L("Library · %1\$s games", recent.size))
                 LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(recent, key = { it.file.path }) { s ->
                         val sel = s.file.path == game?.file?.path
@@ -261,7 +261,7 @@ internal fun LabHome(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
-                                Text("Add a game", color = SimpleMuted, fontSize = 11.sp)
+                                Text(L("Add a game"), color = SimpleMuted, fontSize = 11.sp)
                             }
                         }
                     }
@@ -272,15 +272,15 @@ internal fun LabHome(
         @Composable
         fun StorageTile(m: Modifier) {
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.TOOLS) }) {
-                LabTileLabel("Storage")
+                LabTileLabel(L("Storage"))
                 val f = if (dev != null && dev.diskTotalGb > 0) dev.diskUsedGb / dev.diskTotalGb else 0f
                 // With an SD card or a USB drive in: a bar for each volume. Internal only: the ring.
                 if (dev != null && dev.volumes.size > 1) {
                     dev.volumes.forEach { v ->
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(v.label, color = SimpleInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text("${fmtGb(v.usedGb)} / ${fmtGb(v.totalGb)} GB", color = SimpleMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                Text(L(v.label), color = SimpleInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(L("%1\$s / %2\$s GB", fmtGb(v.usedGb), fmtGb(v.totalGb)), color = SimpleMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                             }
                             LabBar(v.fraction, Modifier.fillMaxWidth())
                         }
@@ -292,7 +292,7 @@ internal fun LabHome(
                         CircularProgressIndicator(progress = { f }, modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.primary, trackColor = SimpleLine, strokeWidth = 7.dp)
                         Text("${(f * 100).roundToInt()}%", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
-                    Text(if (dev != null) "${fmtGb(dev.diskUsedGb)} of ${fmtGb(dev.diskTotalGb)} GB" else "…", color = SimpleMuted, fontSize = 12.sp)
+                    Text(if (dev != null) L("%1\$s of %2\$s GB", fmtGb(dev.diskUsedGb), fmtGb(dev.diskTotalGb)) else "…", color = SimpleMuted, fontSize = 12.sp)
                 }
             }
         }
@@ -300,9 +300,9 @@ internal fun LabHome(
         @Composable
         fun DriverTile(m: Modifier) {
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.DRIVERS) }) {
-                LabTileLabel("GPU drivers")
+                LabTileLabel(L("GPU drivers"))
                 val list = drivers
-                Text(if (list == null) "…" else "${list.size} installed", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(if (list == null) "…" else L("%1\$s installed", list.size), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 list?.take(2)?.forEach { Text(it, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
@@ -310,14 +310,14 @@ internal fun LabHome(
         @Composable
         fun DownloadTile(m: Modifier) {
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.COMPONENTS) }) {
-                LabTileLabel("Downloads")
+                LabTileLabel(L("Downloads"))
                 if (active != null) {
                     Text(active.title, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     LabBar(active.fraction, Modifier.fillMaxWidth())
                     Text("${(active.fraction * 100).roundToInt()}%", color = SimpleMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                 } else {
-                    Text("Nothing downloading", color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Components and drivers", color = SimpleMuted, fontSize = 12.sp)
+                    Text(L("Nothing downloading"), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(L("Components and drivers"), color = SimpleMuted, fontSize = 12.sp)
                 }
             }
         }
@@ -329,27 +329,27 @@ internal fun LabHome(
             val fps = remember(game, resumeTick) { game?.let { com.winlator.star.ui.deck.readFpsStats(context, it) } }
             if (game != null && fps != null) {
                 LabDashTile(m, onClick = { onNavigate(LabRoutes.game(game.file.path)) }) {
-                    LabTileLabel("Last session")
+                    LabTileLabel(L("Last session"))
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${fps.lastAvg.roundToInt()}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, fontFamily = FontFamily.Monospace)
-                        Text("fps avg", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                        if (fps.lastLow > 0) Text("· 1% low ${fps.lastLow}", color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                        Text(L("fps avg"), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                        if (fps.lastLow > 0) Text(L("· 1%% low %1\$s", fps.lastLow), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                     }
                     LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
                 }
                 return
             }
             LabDashTile(m, onClick = { onNavigate(LabRoutes.LIBRARY) }) {
-                LabTileLabel("Playtime")
+                LabTileLabel(L("Playtime"))
                 Text(playtimeLabel(total), color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, maxLines = 1)
-                Text("across ${stats.values.count { it.ms > 0 }} games", color = SimpleMuted, fontSize = 12.sp)
+                Text(L("across %1\$s games", stats.values.count { it.ms > 0 }), color = SimpleMuted, fontSize = 12.sp)
             }
         }
 
         @Composable
         fun SystemTile(m: Modifier) {
             LabDashTile(m, onClick = { onNavigate(com.winlator.star.ui.deck.settings.DeckSettingsRoutes.APP) }) {
-                LabTileLabel("This device")
+                LabTileLabel(L("This device"))
                 if (dev != null) {
                     @Composable fun line(k: String, f: Float, v: String) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -358,9 +358,9 @@ internal fun LabHome(
                             Text(v, color = SimpleInk, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                         }
                     }
-                    if (dev.battery >= 0) line("Battery", dev.battery / 100f, "${dev.battery}%")
+                    if (dev.battery >= 0) line(L("Battery"), dev.battery / 100f, "${dev.battery}%")
                     line("RAM", if (dev.ramTotalGb > 0) dev.ramUsedGb / dev.ramTotalGb else 0f, "${fmtGb(dev.ramUsedGb)} GB")
-                    dev.tempC?.let { line("Temp", it / 90f, "$it°C") }
+                    dev.tempC?.let { line(L("Temp"), it / 90f, L("%1\$s°C", it)) }
                 }
             }
         }
@@ -368,7 +368,7 @@ internal fun LabHome(
         @Composable
         fun ContainersTile(m: Modifier) {
             LabDashTile(m, onClick = { onNavigate(SimpleRoutes.CONTAINERS) }) {
-                LabTileLabel("Containers")
+                LabTileLabel(L("Containers"))
                 Text("${containers?.size ?: "…"}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                 Text(containers?.joinToString(" · ").orEmpty(), color = SimpleMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }

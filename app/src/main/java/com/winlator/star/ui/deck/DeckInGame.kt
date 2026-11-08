@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck
 
+import com.winlator.star.ui.simple.L
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
@@ -134,7 +135,7 @@ fun setupDeckInGame(view: ComposeView) {
             val base = MaterialTheme.colorScheme
             MaterialTheme(colorScheme = if (lab && com.winlator.star.ui.theme.AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(base) else base, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
                 DeckTheme {
-                    DeckInGameOverlay()
+                    if (lab) com.winlator.star.ui.simple.LabDirection { DeckInGameOverlay() } else DeckInGameOverlay()
                 }
             }
         }
@@ -156,7 +157,7 @@ fun setupDeckInGameCorner(view: ComposeView) {
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                             .clickable { DeckInGameState.openQuick() },
                     ) {
-                        Icon(Icons.Outlined.MoreHoriz, contentDescription = "Open the quick menu", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.Outlined.MoreHoriz, contentDescription = L("Open the quick menu"), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -228,9 +229,9 @@ fun DeckInGameOverlay() {
 
     if (confirmExit) {
         IgConfirmDialog(
-            title = "Exit the game?",
-            body = "The game closes and Bannerlator saves and syncs as usual. Progress the game itself hasn't saved is lost.",
-            confirmLabel = "Exit game",
+            title = L("Exit the game?"),
+            body = L("The game closes and Bannerlator saves and syncs as usual. Progress the game itself hasn't saved is lost."),
+            confirmLabel = L("Exit game"),
             confirmIcon = Icons.AutoMirrored.Outlined.Logout,
             onConfirm = {
                 confirmExit = false
@@ -292,7 +293,7 @@ private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             Text(
-                title.ifEmpty { "In game" },
+                title.ifEmpty { L("In game") },
                 color = com.winlator.star.ui.simple.SimpleStrong,
                 fontFamily = SoraFamily,
                 fontWeight = FontWeight.Bold,
@@ -319,7 +320,7 @@ private fun SimpleQuickMenu(modifier: Modifier, onExit: () -> Unit) {
                 .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            IgButton("Game menu", Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")
+            IgButton(L("Game menu"), Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")
             IgButton(null, if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose)
             IgButton(null, Icons.AutoMirrored.Outlined.Logout, onExit, danger = true)
         }
@@ -353,7 +354,7 @@ private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {
         // Header: the game, device temperature and battery.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp)) {
             Text(
-                title.ifEmpty { "In game" },
+                title.ifEmpty { L("In game") },
                 color = cs.onSurface,
                 fontFamily = SoraFamily,
                 fontWeight = FontWeight.Bold,
@@ -431,7 +432,7 @@ private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {
                 .background(cs.surface.copy(alpha = 0.6f))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            IgButton("Game menu", Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")
+            IgButton(L("Game menu"), Icons.Outlined.Menu, { DeckInGameState.openMenu() }, modifier = Modifier.weight(1f), primary = true, glyph = "X")
             IgButton(null, if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose)
             IgButton(null, Icons.AutoMirrored.Outlined.Logout, onExit, danger = true)
         }
@@ -439,10 +440,10 @@ private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {
 }
 
 private fun quickTabTitle(t: QuickTab) = when (t) {
-    QuickTab.QUICK -> "Quick menu"
-    QuickTab.TOOLS -> "Tools"
-    QuickTab.FRIENDS -> "Friends"
-    QuickTab.OPENERS -> "Opening this menu"
+    QuickTab.QUICK -> L("Quick menu")
+    QuickTab.TOOLS -> L("Tools")
+    QuickTab.FRIENDS -> L("Friends")
+    QuickTab.OPENERS -> L("Opening this menu")
 }
 
 private fun quickTabIcon(t: QuickTab): ImageVector = when (t) {
@@ -475,7 +476,7 @@ private fun DeviceStatus() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (tempC >= 0f) {
             Icon(Icons.Outlined.Thermostat, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
-            Text("${tempC.roundToInt()}°C", color = cs.onSurfaceVariant, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(L("%1\$s°C", tempC.roundToInt()), color = cs.onSurfaceVariant, fontFamily = NunitoSansFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Spacer(Modifier.width(12.dp))
         }
         if (level >= 0) {
@@ -503,10 +504,10 @@ private fun QuickControls(kind: InGameSessionKind) {
         BrightnessRow()
         IgDivider()
         IgRow(
-            "Restart audio",
-            hint = "Fixes crackle or silence without restarting the game.",
+            L("Restart audio"),
+            hint = L("Fixes crackle or silence without restarting the game."),
             scopes = listOf(SaveScope.SESSION),
-        ) { IgButton("Restart", Icons.Outlined.VolumeUp, { state.onResetAudio?.run() }) }
+        ) { IgButton(L("Restart"), Icons.Outlined.VolumeUp, { state.onResetAudio?.run() }) }
         if (kind != InGameSessionKind.LINUX_STEAM) {
             IgDivider()
             MouseQuickRows(state)
@@ -547,18 +548,18 @@ private fun FrameLimitRow(state: XServerDrawerState, compactHint: Boolean = fals
         state.setFpsLimit(value)
         state.onFpsLimitChange?.run()
     }
-    val nativeFgName = if (fgEngine == "lsfg-native") "LSFG Native" else "Win-FG Native"
+    val nativeFgName = if (fgEngine == "lsfg-native") L("LSFG Native") else L("Win-FG Native")
     val lsfgVkMultiplying = fgEngine == "lsfg" && fgEnabled && fgMult >= 2
     val hint = when {
-        nativeFgLocks -> "Caps the game's real frames. Locked on while $nativeFgName is generating; you'll see up to $limit × $fgMult = ${limit * fgMult}."
-        lsfgVkMultiplying -> "Not applied while lsfg-vk is multiplying: it paces frames itself."
-        compactHint -> "Steadier frame pacing and a cooler device."
-        else -> "Caps how many frames per second the game draws. Saves battery and evens out stutter."
+        nativeFgLocks -> L("Caps the game's real frames. Locked on while %1\$s is generating; you'll see up to %2\$s × %3\$s = %4\$s.", nativeFgName, limit, fgMult, limit * fgMult)
+        lsfgVkMultiplying -> L("Not applied while lsfg-vk is multiplying: it paces frames itself.")
+        compactHint -> L("Steadier frame pacing and a cooler device.")
+        else -> L("Caps how many frames per second the game draws. Saves battery and evens out stutter.")
     }
-    IgRow("Frame rate limit", hint = hint, scopes = listOf(igGameScope()), wideControl = true) {
+    IgRow(L("Frame rate limit"), hint = hint, scopes = listOf(igGameScope()), wideControl = true) {
         Column(horizontalAlignment = Alignment.End) {
             IgChips(
-                options = listOf(CAP_OFF to "Off") + presets.map { it to "$it" } + listOf(CAP_CUSTOM to "Custom…"),
+                options = listOf(CAP_OFF to L("Off")) + presets.map { it to "$it" } + listOf(CAP_CUSTOM to L("Custom…")),
                 selected = selected,
                 isEnabled = { it != CAP_OFF || !nativeFgLocks },
             ) { v ->
@@ -574,7 +575,7 @@ private fun FrameLimitRow(state: XServerDrawerState, compactHint: Boolean = fals
                     value = sliderVal,
                     range = 10f..200f,
                     step = 1f,
-                    format = { "${it.roundToInt()} fps" },
+                    format = { L("%1\$s fps", it.roundToInt()) },
                     onChange = { sliderVal = it },
                     onFinished = { apply(true, sliderVal.roundToInt()) },
                 )
@@ -594,19 +595,19 @@ private fun FrameGenQuickRow(state: XServerDrawerState) {
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
     val waylandBlocked = wayland && !waylandFgOk
     val scopes = listOf(SaveScope.SESSION)
-    val note = "Starts off each launch; the level you pick is kept for this container."
+    val note = L("Starts off each launch; the level you pick is kept for this container.")
     if (!fgEnabled || waylandBlocked) {
         IgRow(
-            "Frame generation",
-            hint = if (waylandBlocked) "Not on Wayland in this build yet." else "Off for this container. Turn it on in the container's settings to use it here.",
+            L("Frame generation"),
+            hint = if (waylandBlocked) L("Not on Wayland in this build yet.") else L("Off for this container. Turn it on in the container's settings to use it here."),
             enabled = false,
         )
         return
     }
-    val options = if (engine == "bionic") listOf(0 to "Off", 2 to "On") else listOf(0 to "Off", 2 to "2×", 3 to "3×", 4 to "4×")
+    val options = if (engine == "bionic") listOf(0 to L("Off"), 2 to L("On")) else listOf(0 to L("Off"), 2 to "2×", 3 to "3×", 4 to "4×")
     IgRow(
-        "Frame generation",
-        hint = if (unavailable.isNotEmpty()) unavailable else "Inserts extra frames for smoother motion. The game pauses for a moment while it restarts.",
+        L("Frame generation"),
+        hint = if (unavailable.isNotEmpty()) unavailable else L("Inserts extra frames for smoother motion. The game pauses for a moment while it restarts."),
         note = note,
         scopes = scopes,
         wideControl = true,
@@ -654,14 +655,14 @@ private fun HudQuickRows(state: XServerDrawerState) {
     val style = cfg["hudStyle"] ?: "fusion"
     val scope = hudScope()
     IgRow(
-        "Show performance overlay",
-        hint = "FPS, CPU/GPU load and temperatures on top of the game. Tap it in-game to flip or resize it.",
+        L("Show performance overlay"),
+        hint = L("FPS, CPU/GPU load and temperatures on top of the game. Tap it in-game to flip or resize it."),
         scopes = listOf(scope),
     ) {
         IgSwitch(on) { state.onFpsConfigApply?.invoke(hudConfigWith(cfgString, "hudEnabled" to if (it) "1" else "0")) }
     }
     if (on) {
-        IgRow("Overlay style", scopes = listOf(scope), wideControl = true) {
+        IgRow(L("Overlay style"), scopes = listOf(scope), wideControl = true) {
             IgChips(
                 listOf("classic" to "Classic", "gamehub" to "GameHub", "gamenative" to "GameNative", "fusion" to "Fusion"),
                 style,
@@ -673,9 +674,9 @@ private fun HudQuickRows(state: XServerDrawerState) {
 @Composable
 private fun FitToScreenRow(state: XServerDrawerState) {
     val mode by state.fullscreenMode.collectAsState()
-    IgRow("Fit to screen", hint = "How the game picture fills your display.", scopes = listOf(igGameScope()), wideControl = true) {
+    IgRow(L("Fit to screen"), hint = L("How the game picture fills your display."), scopes = listOf(igGameScope()), wideControl = true) {
         IgSegmented(
-            listOf(0 to "Original", 1 to "Fit", 2 to "Stretch", 3 to "Fill (crop)", 4 to "Pixel-perfect"),
+            listOf(0 to L("Original"), 1 to L("Fit"), 2 to L("Stretch"), 3 to L("Fill (crop)"), 4 to L("Pixel-perfect")),
             mode,
         ) { state.onSetFullscreenMode?.accept(it) }
     }
@@ -715,7 +716,7 @@ private fun BrightnessRow() {
         }
     }
     IgDivider()
-    IgRow("Brightness", hint = "Colour-grade brightness on top of the game.", scopes = listOf(SaveScope.SESSION), wideControl = true) {
+    IgRow(L("Brightness"), hint = L("Colour-grade brightness on top of the game."), scopes = listOf(SaveScope.SESSION), wideControl = true) {
         IgSlider(
             value = value,
             range = -100f..100f,
@@ -734,13 +735,13 @@ private fun MouseQuickRows(state: XServerDrawerState) {
     val cursorToTouch by state.moveCursorToTouchpoint.collectAsState()
     val wayland by state.isWaylandMode.collectAsState()
     // The same Wayland note the Classic Mouse chips carry.
-    val relativeHint = if (wayland) "Wayland: mouse deltas go to the compositor; a game that locks the pointer receives them as relative motion."
-        else "For games that lock the pointer (camera look)."
-    IgRow("Relative mouse", hint = relativeHint, scopes = listOf(igGameScope())) {
+    val relativeHint = if (wayland) L("Wayland: mouse deltas go to the compositor; a game that locks the pointer receives them as relative motion.")
+        else L("For games that lock the pointer (camera look).")
+    IgRow(L("Relative mouse"), hint = relativeHint, scopes = listOf(igGameScope())) {
         IgSwitch(relative) { state.onRelativeMouseMovement?.run() }
     }
     IgDivider()
-    IgRow("Cursor to touch", hint = "The pointer jumps to where you touch.", scopes = listOf(SaveScope.ALL)) {
+    IgRow(L("Cursor to touch"), hint = L("The pointer jumps to where you touch."), scopes = listOf(SaveScope.ALL)) {
         IgSwitch(cursorToTouch) { state.onMoveCursorToTouchpoint?.run() }
     }
 }
@@ -750,7 +751,7 @@ private fun MouseQuickRows(state: XServerDrawerState) {
 private fun OnScreenControlsRow() {
     val ds = XServerDialogState
     val shown by ds.showTouchscreen.collectAsState()
-    IgRow("Show on-screen controls", hint = "The touch buttons of the current layout.", scopes = listOf(SaveScope.SESSION)) {
+    IgRow(L("Show on-screen controls"), hint = L("The touch buttons of the current layout."), scopes = listOf(SaveScope.SESSION)) {
         IgSwitch(shown) { v ->
             ds.onInputControlsConfirm?.invoke(ds.selectedProfileIdx.value, v, ds.timeoutEnabled.value, ds.hapticsEnabled.value)
             // The confirm callback applies the flag but doesn't echo it; mirror it so this switch and the Controls page agree.
@@ -771,28 +772,28 @@ private fun QuickTools(kind: InGameSessionKind) {
     var perfDialog by remember { mutableStateOf(false) }
     val compact = LocalIgCompact.current
     val closeThen: (Runnable?) -> Unit = { r -> DeckInGameState.close(); r?.run() }
-    IgSectionLabel("Tools")
+    IgSectionLabel(L("Tools"))
     val tools = buildList<Triple<String, ImageVector, () -> Unit>> {
-        if (kind.isWine) add(Triple("Controller test & remap", Icons.Outlined.SportsEsports) { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) })
-        add(Triple("Performance dashboard", Icons.Outlined.Speed) { perfDialog = true })
+        if (kind.isWine) add(Triple(L("Controller test & remap"), Icons.Outlined.SportsEsports) { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) })
+        add(Triple(L("Performance dashboard"), Icons.Outlined.Speed) { perfDialog = true })
         if (kind.isWine) {
-            add(Triple("Live log", Icons.Outlined.Description) { closeThen(state.onLogs) })
-            add(Triple("Switch window", Icons.Outlined.ViewCarousel) { closeThen(state.onActiveWindows) })
-            add(Triple("Run a program", Icons.Outlined.Terminal) {
+            add(Triple(L("Live log"), Icons.Outlined.Description) { closeThen(state.onLogs) })
+            add(Triple(L("Switch window"), Icons.Outlined.ViewCarousel) { closeThen(state.onActiveWindows) })
+            add(Triple(L("Run a program"), Icons.Outlined.Terminal) {
                 XServerDialogState.onTmDismissed?.run()
                 XServerDialogState.onTmNewTask?.run()
             })
-            add(Triple("Task manager", Icons.Outlined.ListAlt) { DeckInGameState.openMenuAt(MenuTab.TOOLS) })
+            add(Triple(L("Task manager"), Icons.Outlined.ListAlt) { DeckInGameState.openMenuAt(MenuTab.TOOLS) })
         }
-        if (FeatureFlags.TV_OUTPUT_ENABLED && castSupported) add(Triple("Cast to a TV", Icons.Outlined.Cast) { state.onOpenCastPicker?.run() })
+        if (FeatureFlags.TV_OUTPUT_ENABLED && castSupported) add(Triple(L("Cast to a TV"), Icons.Outlined.Cast) { state.onOpenCastPicker?.run() })
     }
     ToolTiles(tools, if (compact) 2 else 3)
-    IgSectionLabel("View")
+    IgSectionLabel(L("View"))
     ToolTiles(
         listOf(
-            Triple("Magnifier", Icons.Outlined.ZoomIn) { closeThen(state.onMagnifier) },
-            Triple("Picture-in-picture", Icons.Outlined.PictureInPictureAlt) { closeThen(state.onPipMode) },
-            Triple("Show keyboard", Icons.Outlined.Keyboard) { closeThen(state.onKeyboard) },
+            Triple(L("Magnifier"), Icons.Outlined.ZoomIn) { closeThen(state.onMagnifier) },
+            Triple(L("Picture-in-picture"), Icons.Outlined.PictureInPictureAlt) { closeThen(state.onPipMode) },
+            Triple(L("Show keyboard"), Icons.Outlined.Keyboard) { closeThen(state.onKeyboard) },
         ),
         if (compact) 2 else 3,
     )
@@ -835,53 +836,53 @@ private fun OpenersPage() {
     val corner by DeckInGameState.cornerButton.collectAsState()
     IgCard {
         IgRow(
-            "Menu button in the corner",
-            hint = "A faint button at the top right that opens the quick menu by touch.",
+            L("Menu button in the corner"),
+            hint = L("A faint button at the top right that opens the quick menu by touch."),
             scopes = listOf(SaveScope.ALL),
         ) { IgSwitch(corner) { DeckInGameState.changeCornerButton(it) } }
     }
-    IgSectionLabel("Ways in")
+    IgSectionLabel(L("Ways in"))
     IgCard {
-        IgRow("Back button", hint = "Opens the full game menu. Press Back again, or B on a controller, to close.")
+        IgRow(L("Back button"), hint = L("Opens the full game menu. Press Back again, or B on a controller, to close."))
         IgDivider()
-        IgRow("Menu button", hint = "The button picked in Input Controls › Device › Menu button opens the quick menu, and closes it.")
+        IgRow(L("Menu button"), hint = L("The button picked in Input Controls › Device › Menu button opens the quick menu, and closes it."))
         IgDivider()
-        IgRow("Tap with four fingers", hint = "Opens the full game menu from the touch screen.")
+        IgRow(L("Tap with four fingers"), hint = L("Opens the full game menu from the touch screen."))
         IgDivider()
-        IgRow("Inside the menus", hint = "L1 / R1 change page, X swaps quick menu and game menu, B closes.")
+        IgRow(L("Inside the menus"), hint = L("L1 / R1 change page, X swaps quick menu and game menu, B closes."))
     }
 }
 
 // ───────────────────────────── Full game menu ─────────────────────────────
 
 private fun menuTabTitle(t: MenuTab) = when (t) {
-    MenuTab.SCREEN -> "Screen"
-    MenuTab.PERFORMANCE -> "Performance"
-    MenuTab.EFFECTS -> "Visual effects"
-    MenuTab.OVERLAY -> "Performance overlay"
-    MenuTab.CONTROLS -> "Controls"
-    MenuTab.AUDIO -> "Audio"
+    MenuTab.SCREEN -> L("Screen")
+    MenuTab.PERFORMANCE -> L("Performance")
+    MenuTab.EFFECTS -> L("Visual effects")
+    MenuTab.OVERLAY -> L("Performance overlay")
+    MenuTab.CONTROLS -> L("Controls")
+    MenuTab.AUDIO -> L("Audio")
     MenuTab.STEAM -> "Steam"
     MenuTab.TV -> "TV"
-    MenuTab.FRIENDS -> "Friends"
-    MenuTab.TOOLS -> "Tools"
+    MenuTab.FRIENDS -> L("Friends")
+    MenuTab.TOOLS -> L("Tools")
 }
 
 private fun menuTabDesc(t: MenuTab, kind: InGameSessionKind) = when (t) {
-    MenuTab.SCREEN -> "Picture size, frame pacing and refresh rate."
-    MenuTab.PERFORMANCE -> "Frame limit, frame generation and device power."
-    MenuTab.EFFECTS -> if (kind.isWine) "Upscaling, sharpening, colour and ReShade." else "Upscaling, sharpening and colour."
-    MenuTab.OVERLAY -> "The FPS/temperature overlay drawn over the game."
+    MenuTab.SCREEN -> L("Picture size, frame pacing and refresh rate.")
+    MenuTab.PERFORMANCE -> L("Frame limit, frame generation and device power.")
+    MenuTab.EFFECTS -> if (kind.isWine) L("Upscaling, sharpening, colour and ReShade.") else L("Upscaling, sharpening and colour.")
+    MenuTab.OVERLAY -> L("The FPS/temperature overlay drawn over the game.")
     MenuTab.CONTROLS -> when (kind) {
-        InGameSessionKind.LINUX_STEAM -> "Rumble and motion aim."
-        InGameSessionKind.LINUX_RUNTIME -> "On-screen controls, mouse, rumble, motion aim."
-        else -> "On-screen controls, mouse, rumble, motion aim, players."
+        InGameSessionKind.LINUX_STEAM -> L("Rumble and motion aim.")
+        InGameSessionKind.LINUX_RUNTIME -> L("On-screen controls, mouse, rumble, motion aim.")
+        else -> L("On-screen controls, mouse, rumble, motion aim, players.")
     }
-    MenuTab.AUDIO -> "Sound profile, and a quick fix for crackle or silence."
-    MenuTab.STEAM -> "The Linux Steam client session."
-    MenuTab.TV -> "Play on a TV or cast to one."
-    MenuTab.FRIENDS -> "Steam friends and chat."
-    MenuTab.TOOLS -> if (kind.isWine) "Magnifier, windows, logs and running programs." else "Magnifier, picture-in-picture, keyboard and performance."
+    MenuTab.AUDIO -> L("Sound profile, and a quick fix for crackle or silence.")
+    MenuTab.STEAM -> L("The Linux Steam client session.")
+    MenuTab.TV -> L("Play on a TV or cast to one.")
+    MenuTab.FRIENDS -> L("Steam friends and chat.")
+    MenuTab.TOOLS -> if (kind.isWine) L("Magnifier, windows, logs and running programs.") else L("Magnifier, picture-in-picture, keyboard and performance.")
 }
 
 private fun menuTabIcon(t: MenuTab): ImageVector = when (t) {
@@ -1008,10 +1009,10 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                     .background(cs.surface.copy(alpha = 0.6f))
                     .padding(horizontal = if (compact) 12.dp else 24.dp, vertical = 12.dp),
             ) {
-                IgButton(if (compact) null else "Quick menu", Icons.Outlined.Bolt, { DeckInGameState.openQuick() })
+                IgButton(if (compact) null else L("Quick menu"), Icons.Outlined.Bolt, { DeckInGameState.openQuick() })
                 Spacer(Modifier.weight(1f))
-                IgButton(if (isPaused) "Resume game" else "Pause game", if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose)
-                IgButton("Exit game", Icons.AutoMirrored.Outlined.Logout, onExit, danger = true)
+                IgButton(if (isPaused) L("Resume game") else L("Pause game"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose)
+                IgButton(L("Exit game"), Icons.AutoMirrored.Outlined.Logout, onExit, danger = true)
             }
         }
     }
@@ -1112,7 +1113,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp)) {
             Text(
-                title.ifEmpty { "In game" }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
+                title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
                 fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
             )
             DeviceStatus()
@@ -1127,14 +1128,14 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 2.dp),
         ) {
             DeckGlyph("L1", GlyphKind.BUMPER)
-            TabChip(Icons.Outlined.Bolt, "Quick", quick) { DeckInGameState.selectLabQuick() }
+            TabChip(Icons.Outlined.Bolt, L("Quick"), quick) { DeckInGameState.selectLabQuick() }
             tabs.forEach { t -> TabChip(menuTabIcon(t), menuTabTitle(t), !quick && t == shown) { DeckInGameState.selectMenuTab(t) } }
             DeckGlyph("R1", GlyphKind.BUMPER)
         }
         Spacer(Modifier.height(6.dp))
         Box(Modifier.fillMaxWidth().height(1.dp).background(com.winlator.star.ui.simple.SimpleLine))
-        val pageTitle = if (quick) "Quick" else menuTabTitle(shown)
-        val pageDesc = if (quick) "The settings changed most during a game." else menuTabDesc(shown, kind)
+        val pageTitle = if (quick) L("Quick") else menuTabTitle(shown)
+        val pageDesc = if (quick) L("The settings changed most during a game.") else menuTabDesc(shown, kind)
         val pageHeader: @Composable () -> Unit = {
             Text(pageTitle, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
             Text(pageDesc, color = com.winlator.star.ui.simple.SimpleMuted, fontFamily = NunitoSansFamily, fontSize = 12.5.sp, lineHeight = 16.sp)
@@ -1177,8 +1178,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                 .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            IgButton(if (isPaused) "Resume" else "Pause", if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
-            IgButton("Exit game", Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
+            IgButton(if (isPaused) L("Resume") else L("Pause"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
+            IgButton(L("Exit game"), Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -1213,34 +1214,34 @@ private fun ScreenPage(state: XServerDrawerState) {
     val kind by DeckInGameState.sessionKind.collectAsState()
     // The Wine architecture and x86 translator mean nothing to a Linux runtime session.
     if (backend.isValid && kind.isWine) {
-        IgSectionLabel("Running on")
+        IgSectionLabel(L("Running on"))
         IgCard {
             val fex = if (backend.showsFexMode) when (backend.fexMode) {
-                FexMode.UNIXLIB -> " · unixlib"
-                FexMode.DLL -> " · DLL"
+                FexMode.UNIXLIB -> L(" · unixlib")
+                FexMode.DLL -> L(" · DLL")
                 FexMode.NA -> ""
             } else ""
-            IgRow("${backend.arch} · ${backend.translator}$fex", hint = "Architecture, translator and how FEX is loaded.")
+            IgRow("${backend.arch} · ${backend.translator}$fex", hint = L("Architecture, translator and how FEX is loaded."))
         }
     }
 
-    IgSectionLabel("Size & position")
+    IgSectionLabel(L("Size & position"))
     IgCard {
         FitToScreenRow(state)
         IgDivider()
         val alignment by state.screenAlignment.collectAsState()
-        IgRow("Position on screen", hint = "Top or Bottom keeps the other half free for on-screen controls.", scopes = listOf(igGameScope()), wideControl = true) {
-            IgSegmented(listOf(0 to "Center", 1 to "Top", 2 to "Bottom"), alignment) { state.onSetScreenAlignment?.accept(it) }
+        IgRow(L("Position on screen"), hint = L("Top or Bottom keeps the other half free for on-screen controls."), scopes = listOf(igGameScope()), wideControl = true) {
+            IgSegmented(listOf(0 to L("Center"), 1 to L("Top"), 2 to L("Bottom")), alignment) { state.onSetScreenAlignment?.accept(it) }
         }
     }
 
     val vulkan by state.rendererIsVulkan.collectAsState()
     if (vulkan) {
-        IgSectionLabel("Frame pacing")
+        IgSectionLabel(L("Frame pacing"))
         IgCard { PresentModeRow(state) }
     }
 
-    IgSectionLabel("Refresh rate")
+    IgSectionLabel(L("Refresh rate"))
     IgCard { RefreshRateRows(state) }
 }
 
@@ -1251,13 +1252,13 @@ private fun PresentModeRow(state: XServerDrawerState) {
     val locked by state.presentModeLocked.collectAsState()
     IgRow(
         stringResource(R.string.renderer_present_mode),
-        hint = "How finished frames reach the screen: V-Sync (FIFO) never tears, Smooth (Mailbox) adds less delay, Fastest (Immediate) is lowest latency but may tear.",
+        hint = L("How finished frames reach the screen: V-Sync (FIFO) never tears, Smooth (Mailbox) adds less delay, Fastest (Immediate) is lowest latency but may tear."),
         note = if (locked) stringResource(R.string.present_mode_fg_locked) else null,
         scopes = listOf(igGameScope()),
         wideControl = true,
     ) {
         IgSegmented(
-            listOf("fifo" to "V-Sync", "mailbox" to "Smooth", "immediate" to "Fastest"),
+            listOf("fifo" to L("V-Sync"), "mailbox" to L("Smooth"), "immediate" to L("Fastest")),
             mode,
             isEnabled = { !locked || it == "mailbox" },
         ) { if (!locked) state.onPresentModeChange?.accept(it) }
@@ -1277,20 +1278,20 @@ private fun RefreshRateRows(state: XServerDrawerState) {
     val fgAutoTurnedOn by state.fgAutoTurnedOn.collectAsState()
     val fgAutoPerGame by state.fgAutoPerGame.collectAsState()
     val explain = when {
-        !vrr -> "Unavailable — this display has a single refresh rate, so there's nothing to match."
+        !vrr -> L("Unavailable — this display has a single refresh rate, so there's nothing to match.")
         match && nativeFgLocks && fgAutoTurnedOn ->
-            "Turned on for frame generation — the display follows the frame limit × multiplier. " +
-                (if (fgAutoPerGame) "Turn it off if you prefer; this game will remember." else "Turn it off if you prefer (for this session).")
-        match && nativeFgLocks -> "On — with frame generation running, the display follows the frame limit × multiplier."
+            L("Turned on for frame generation — the display follows the frame limit × multiplier. ") +
+                (if (fgAutoPerGame) L("Turn it off if you prefer; this game will remember.") else L("Turn it off if you prefer (for this session)."))
+        match && nativeFgLocks -> L("On — with frame generation running, the display follows the frame limit × multiplier.")
         nativeFgLocks ->
-            (if (fgAutoPerGame) "Off for this game while frame generation runs. " else "Off while frame generation runs. ") +
-                "Turn it on to fit the screen to the frame limit × multiplier."
-        match -> "On — the display follows your FPS."
-        else -> "Off — pick a rate below to lock the display."
+            (if (fgAutoPerGame) L("Off for this game while frame generation runs. ") else L("Off while frame generation runs. ")) +
+                L("Turn it on to fit the screen to the frame limit × multiplier.")
+        match -> L("On — the display follows your FPS.")
+        else -> L("Off — pick a rate below to lock the display.")
     }
     // Under native frame generation, Auto is a per-game opt-out (kept on the shortcut); otherwise it is a container setting.
     val matchScope = if (nativeFgLocks) igGameScope() else SaveScope.CONTAINER
-    IgRow("Match refresh rate to FPS", hint = explain, scopes = listOf(matchScope), enabled = vrr) {
+    IgRow(L("Match refresh rate to FPS"), hint = explain, scopes = listOf(matchScope), enabled = vrr) {
         IgSwitch(match && vrr, enabled = vrr) {
             state.setMatchRefreshRate(it)
             state.onMatchRefreshChange?.run()
@@ -1300,13 +1301,13 @@ private fun RefreshRateRows(state: XServerDrawerState) {
         IgDivider()
         val lockOn = vrr && !match
         IgRow(
-            "Lock the display to",
-            hint = if (current > 0) "The screen is at $current Hz now." else null,
+            L("Lock the display to"),
+            hint = if (current > 0) L("The screen is at %1\$s Hz now.", current) else null,
             scopes = listOf(SaveScope.CONTAINER),
             enabled = lockOn,
             wideControl = true,
         ) {
-            IgChips(listOf(0 to "Off") + rates.map { it to "$it Hz" }, manual, enabled = lockOn) {
+            IgChips(listOf(0 to L("Off")) + rates.map { it to L("%1\$s Hz", it) }, manual, enabled = lockOn) {
                 state.setManualRefreshRate(it)
                 state.onManualRefreshChange?.run()
             }
@@ -1317,28 +1318,28 @@ private fun RefreshRateRows(state: XServerDrawerState) {
 // ── Performance ──
 @Composable
 private fun PerformancePage(state: XServerDrawerState) {
-    IgSectionLabel("Frame rate")
+    IgSectionLabel(L("Frame rate"))
     IgCard { FrameLimitRow(state) }
 
-    IgSectionLabel("Frame generation")
+    IgSectionLabel(L("Frame generation"))
     IgHostedCard {
         FrameGenSection(state)
         SaveNotes(
-            "On / off and multiplier (starts off each launch)" to listOf(SaveScope.SESSION),
-            "Level, model, flow scale and performance mode" to listOf(SaveScope.CONTAINER),
+            L("On / off and multiplier (starts off each launch)") to listOf(SaveScope.SESSION),
+            L("Level, model, flow scale and performance mode") to listOf(SaveScope.CONTAINER),
         )
     }
 
-    IgSectionLabel("Device power")
+    IgSectionLabel(L("Device power"))
     var perfDialog by remember { mutableStateOf(false) }
     val fromShortcut by DeckInGameState.launchedFromShortcut.collectAsState()
     IgCard {
         IgRow(
-            "Performance dashboard",
-            hint = "CPU / GPU clocks, thermal, memory and power profile — live gauges, root-aware.",
-            note = if (fromShortcut) "Changes are kept for this game only where they differ from the global default." else null,
+            L("Performance dashboard"),
+            hint = L("CPU / GPU clocks, thermal, memory and power profile — live gauges, root-aware."),
+            note = if (fromShortcut) L("Changes are kept for this game only where they differ from the global default.") else null,
             scopes = if (fromShortcut) listOf(SaveScope.GAME, SaveScope.ALL) else listOf(SaveScope.ALL),
-        ) { IgButton("Open", Icons.Outlined.Speed, { perfDialog = true }) }
+        ) { IgButton(L("Open"), Icons.Outlined.Speed, { perfDialog = true }) }
     }
     if (perfDialog) PerformanceDashboardDialog(state) { perfDialog = false }
 }
@@ -1349,30 +1350,30 @@ private fun EffectsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     val gl by XServerDialogState.effectsSupported.collectAsState()
     val wayland by state.isWaylandMode.collectAsState()
     val game = igGameScope()
-    IgSectionLabel("Upscaling, sharpening & colour")
+    IgSectionLabel(L("Upscaling, sharpening & colour"))
     IgHostedCard {
         GraphicsEffectsSection(state)
         SaveNotes(
-            "Upscaling filter, sharpening and debanding" to listOf(game),
+            L("Upscaling filter, sharpening and debanding") to listOf(game),
             "HDR" to listOf(if (gl) SaveScope.SESSION else game),
-            "Look, brightness, contrast, gamma, saturation, FXAA / CRT / Toon / NTSC" to listOf(SaveScope.SESSION),
-            "Native rendering" to listOf(SaveScope.SESSION),
+            L("Look, brightness, contrast, gamma, saturation, FXAA / CRT / Toon / NTSC") to listOf(SaveScope.SESSION),
+            L("Native rendering") to listOf(SaveScope.SESSION),
         )
         if (wayland) {
             SaveNotes(
-                "Wayland HDR output" to listOf(SaveScope.SESSION),
-                "Zero-copy presentation and OpenGL safe mode" to listOf(game),
+                L("Wayland HDR output") to listOf(SaveScope.SESSION),
+                L("Zero-copy presentation and OpenGL safe mode") to listOf(game),
             )
         }
     }
     // ReShade is a Wine-side layer, as on the Classic rail.
     if (kind.isWine) {
-        IgSectionLabel("ReShade")
+        IgSectionLabel(L("ReShade"))
         IgHostedCard {
             ReshadeSection()
             SaveNotes(
-                "ReShade on / off, Solo / Stack, effects and their settings" to listOf(game),
-                "Live preview" to listOf(SaveScope.ALL),
+                L("ReShade on / off, Solo / Stack, effects and their settings") to listOf(game),
+                L("Live preview") to listOf(SaveScope.ALL),
             )
         }
     }
@@ -1381,17 +1382,17 @@ private fun EffectsPage(state: XServerDrawerState, kind: InGameSessionKind) {
 // ── Performance overlay ──
 @Composable
 private fun OverlayPage(state: XServerDrawerState) {
-    IgSectionLabel("Overlay")
+    IgSectionLabel(L("Overlay"))
     IgHostedCard {
         HudContent(state, embedded = true)
         SaveNotes(
-            "Everything on this page" to listOf(hudScope()),
-            "Turning the overlay on when it wasn't built this launch also switches it on in the container" to listOf(SaveScope.CONTAINER),
+            L("Everything on this page") to listOf(hudScope()),
+            L("Turning the overlay on when it wasn't built this launch also switches it on in the container") to listOf(SaveScope.CONTAINER),
         )
     }
-    IgSectionLabel("On the game")
+    IgSectionLabel(L("On the game"))
     IgCard {
-        IgInfo("Tap the overlay to flip it between vertical and horizontal (Fusion: next size). Drag it to move it; long-press to lock it in place.")
+        IgInfo(L("Tap the overlay to flip it between vertical and horizontal (Fusion: next size). Drag it to move it; long-press to lock it in place."))
     }
 }
 
@@ -1408,26 +1409,26 @@ private fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
         ControlsContent(state, playerSlots = kind.isWine, pointerAndTouch = kind != InGameSessionKind.LINUX_STEAM)
         when (sub) {
             0 -> SaveNotes(
-                "Show on-screen controls and the layout you pick" to listOf(SaveScope.SESSION),
-                "Choosing no layout, timeout, haptics and opacity" to listOf(SaveScope.ALL),
-                "Controls accent" to listOf(SaveScope.other("Saved in the controls profile")),
+                L("Show on-screen controls and the layout you pick") to listOf(SaveScope.SESSION),
+                L("Choosing no layout, timeout, haptics and opacity") to listOf(SaveScope.ALL),
+                L("Controls accent") to listOf(SaveScope.other(L("Saved in the controls profile"))),
             )
             1 -> SaveNotes(
-                "Relative mouse" to listOf(game),
-                "Cursor to touch and its touch gestures" to listOf(SaveScope.ALL),
-                "Disable mouse" to listOf(SaveScope.SESSION),
+                L("Relative mouse") to listOf(game),
+                L("Cursor to touch and its touch gestures") to listOf(SaveScope.ALL),
+                L("Disable mouse") to listOf(SaveScope.SESSION),
             )
             2 -> SaveNotes(
-                "Rumble on / off and per-slot switches" to listOf(SaveScope.ALL),
-                "Rumble target, intensity and motors (Save for, below)" to listOf(padScope),
+                L("Rumble on / off and per-slot switches") to listOf(SaveScope.ALL),
+                L("Rumble target, intensity and motors (Save for, below)") to listOf(padScope),
             )
             3 -> SaveNotes(
-                "Motion aim settings" to listOf(game),
-                "Deadzone and smoothing" to listOf(SaveScope.CONTAINER),
+                L("Motion aim settings") to listOf(game),
+                L("Deadzone and smoothing") to listOf(SaveScope.CONTAINER),
             )
-            4 -> SaveNotes("Player slot for each controller" to listOf(game))
-            6 -> SaveNotes("Controller type, XInput source, DirectInput, stick updates (Save for, below)" to listOf(padScope))
-            5 -> SaveNotes("Swipe between buttons" to listOf(SaveScope.ALL))
+            4 -> SaveNotes(L("Player slot for each controller") to listOf(game))
+            6 -> SaveNotes(L("Controller type, XInput source, DirectInput, stick updates (Save for, below)") to listOf(padScope))
+            5 -> SaveNotes(L("Swipe between buttons") to listOf(SaveScope.ALL))
         }
     }
 }
@@ -1442,31 +1443,31 @@ private fun AudioPage(state: XServerDrawerState) {
     var cfg by remember { mutableStateOf(com.winlator.star.ui.components.loadAudioConfig(ctx, driverId)) }
     var show by remember { mutableStateOf(false) }
     val presetLabel = when (cfg.preset) {
-        com.winlator.star.ui.components.PRESET_AUTO -> "Auto"
-        com.winlator.star.ui.components.PRESET_LOW -> "Low latency"
-        com.winlator.star.ui.components.PRESET_BALANCED -> "Balanced"
-        com.winlator.star.ui.components.PRESET_STABLE -> "No crackle"
-        com.winlator.star.ui.components.PRESET_CUSTOM -> "Custom"
+        com.winlator.star.ui.components.PRESET_AUTO -> L("Auto")
+        com.winlator.star.ui.components.PRESET_LOW -> L("Low latency")
+        com.winlator.star.ui.components.PRESET_BALANCED -> L("Balanced")
+        com.winlator.star.ui.components.PRESET_STABLE -> L("No crackle")
+        com.winlator.star.ui.components.PRESET_CUSTOM -> L("Custom")
         else -> cfg.preset
     }
-    IgSectionLabel("Sound")
+    IgSectionLabel(L("Sound"))
     IgCard {
         IgRow(
-            "Audio profile",
-            hint = (if (engine.isNotBlank()) "$engine · " else "") + "$presetLabel. Balances crackle against delay; applies now, the guest buffer at the next launch.",
+            L("Audio profile"),
+            hint = (if (engine.isNotBlank()) "$engine · " else "") + L("%1\$s. Balances crackle against delay; applies now, the guest buffer at the next launch.", presetLabel),
             scopes = if (fromShortcut) listOf(SaveScope.GAME, SaveScope.ALL) else listOf(SaveScope.ALL),
-        ) { IgButton("Presets & tuning…", Icons.Outlined.VolumeUp, { show = true }) }
+        ) { IgButton(L("Presets & tuning…"), Icons.Outlined.VolumeUp, { show = true }) }
         IgDivider()
         IgRow(
-            "Restart audio",
-            hint = "Fixes crackle or silence without restarting the game.",
+            L("Restart audio"),
+            hint = L("Fixes crackle or silence without restarting the game."),
             scopes = listOf(SaveScope.SESSION),
-        ) { IgButton("Restart audio", null, { state.onResetAudio?.run() }) }
+        ) { IgButton(L("Restart audio"), null, { state.onResetAudio?.run() }) }
     }
     if (show) {
         com.winlator.star.ui.components.AudioSettingsDialog(
             initial = cfg,
-            scopeLabel = if (fromShortcut) "applies now · saved for this game and as this engine's default" else "applies now · saved as this engine's default",
+            scopeLabel = if (fromShortcut) L("applies now · saved for this game and as this engine's default") else L("applies now · saved as this engine's default"),
             latencyLive = false,
             driverLabel = engine,
             driverId = driverId,
@@ -1484,15 +1485,15 @@ private fun AudioPage(state: XServerDrawerState) {
 // ── Steam (Linux) ──
 @Composable
 private fun SteamPage(state: XServerDrawerState) {
-    IgSectionLabel("Steam client")
+    IgSectionLabel(L("Steam client"))
     IgHostedCard {
         LinuxSteamSection(state)
-        SaveNotes("Touch mode and every switch here" to listOf(SaveScope.GAME))
+        SaveNotes(L("Touch mode and every switch here") to listOf(SaveScope.GAME))
     }
-    IgSectionLabel("Components")
+    IgSectionLabel(L("Components"))
     IgHostedCard {
         LinuxComponentsContent(state)
-        SaveNotes("FEX / DXVK / VKD3D choices" to listOf(SaveScope.other("Saved in that Proton, for every game using it")))
+        SaveNotes(L("FEX / DXVK / VKD3D choices") to listOf(SaveScope.other(L("Saved in that Proton, for every game using it"))))
     }
 }
 
@@ -1502,9 +1503,9 @@ private fun TvPage(state: XServerDrawerState) {
     IgHostedCard {
         TvContent(state)
         SaveNotes(
-            "Play on TV, auto-switch, safe area, audio output, dimming and TV resolution" to listOf(SaveScope.CONTAINER),
-            "Display mode" to listOf(SaveScope.SESSION),
-            "Fit, scaling filter, frame pacing, frame cap and frame generation save as on their own pages" to emptyList<SaveScope>(),
+            L("Play on TV, auto-switch, safe area, audio output, dimming and TV resolution") to listOf(SaveScope.CONTAINER),
+            L("Display mode") to listOf(SaveScope.SESSION),
+            L("Fit, scaling filter, frame pacing, frame cap and frame generation save as on their own pages") to emptyList<SaveScope>(),
         )
     }
 }
@@ -1516,45 +1517,45 @@ private fun ToolsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     var perfDialog by remember { mutableStateOf(false) }
     // The XMB style types on its own panel, which a controller opens and closes with Select + X; every other style keeps Android's keyboard.
     val xmbKeyboard = isXmbHome(LocalContext.current)
-    IgSectionLabel("View")
+    IgSectionLabel(L("View"))
     IgCard {
-        IgRow("Magnifier", hint = "Zoom into part of the screen.") { IgButton("Magnifier", Icons.Outlined.ZoomIn, { closeThen(state.onMagnifier) }) }
+        IgRow(L("Magnifier"), hint = L("Zoom into part of the screen.")) { IgButton(L("Magnifier"), Icons.Outlined.ZoomIn, { closeThen(state.onMagnifier) }) }
         IgDivider()
-        IgRow("Picture-in-picture", hint = "Shrink the game into a floating window.") { IgButton("Picture-in-picture", Icons.Outlined.PictureInPictureAlt, { closeThen(state.onPipMode) }) }
+        IgRow(L("Picture-in-picture"), hint = L("Shrink the game into a floating window.")) { IgButton(L("Picture-in-picture"), Icons.Outlined.PictureInPictureAlt, { closeThen(state.onPipMode) }) }
         IgDivider()
-        IgRow("Show keyboard", hint = stringResource(if (xmbKeyboard) R.string.ig_keyboard_hint_xmb else R.string.ig_keyboard_hint_android)) { IgButton("Show keyboard", Icons.Outlined.Keyboard, { closeThen(state.onKeyboard) }) }
+        IgRow(L("Show keyboard"), hint = stringResource(if (xmbKeyboard) R.string.ig_keyboard_hint_xmb else R.string.ig_keyboard_hint_android)) { IgButton(L("Show keyboard"), Icons.Outlined.Keyboard, { closeThen(state.onKeyboard) }) }
     }
 
-    IgSectionLabel(if (kind.isWine) "Windows & logs" else "Performance")
+    IgSectionLabel(if (kind.isWine) L("Windows & logs") else L("Performance"))
     IgCard {
         // Wine's windows, its log and its XInput slots: Wine sessions only.
         if (kind.isWine) {
-            IgRow("Switch window", hint = "Bring another of the game's windows to the front.") { IgButton("Switch window…", Icons.Outlined.ViewCarousel, { closeThen(state.onActiveWindows) }) }
+            IgRow(L("Switch window"), hint = L("Bring another of the game's windows to the front.")) { IgButton(L("Switch window…"), Icons.Outlined.ViewCarousel, { closeThen(state.onActiveWindows) }) }
             IgDivider()
-            IgRow("Live log", hint = "Wine and Box64 / FEX output while logging is on.") { IgButton("Live log", Icons.Outlined.Description, { closeThen(state.onLogs) }) }
+            IgRow(L("Live log"), hint = L("Wine and Box64 / FEX output while logging is on.")) { IgButton(L("Live log"), Icons.Outlined.Description, { closeThen(state.onLogs) }) }
             IgDivider()
-            IgRow("Controller test & remap", hint = "Check buttons and sticks, bind a physical profile, set player slots.") {
-                IgButton("Controller test", Icons.Outlined.SportsEsports, { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) })
+            IgRow(L("Controller test & remap"), hint = L("Check buttons and sticks, bind a physical profile, set player slots.")) {
+                IgButton(L("Controller test"), Icons.Outlined.SportsEsports, { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) })
             }
             IgDivider()
         }
-        IgRow("Performance dashboard", hint = "Clocks, thermals, memory and power profile.") { IgButton("Open", Icons.Outlined.Speed, { perfDialog = true }) }
+        IgRow(L("Performance dashboard"), hint = L("Clocks, thermals, memory and power profile.")) { IgButton(L("Open"), Icons.Outlined.Speed, { perfDialog = true }) }
     }
     if (perfDialog) PerformanceDashboardDialog(state) { perfDialog = false }
 
-    IgSectionLabel("Opening this menu")
+    IgSectionLabel(L("Opening this menu"))
     val corner by DeckInGameState.cornerButton.collectAsState()
     IgCard {
         IgRow(
-            "Menu button in the corner",
-            hint = "A faint button at the top right that opens the quick menu by touch. Back, the Menu button or a four-finger tap work without it.",
+            L("Menu button in the corner"),
+            hint = L("A faint button at the top right that opens the quick menu by touch. Back, the Menu button or a four-finger tap work without it."),
             scopes = listOf(SaveScope.ALL),
         ) { IgSwitch(corner) { DeckInGameState.changeCornerButton(it) } }
     }
 
     // The Task Manager's list is Wine's processes.
     if (kind.isWine) {
-        IgSectionLabel("Running programs")
+        IgSectionLabel(L("Running programs"))
         RunningPrograms(state)
     }
 }
@@ -1581,29 +1582,29 @@ private fun RunningPrograms(state: XServerDrawerState) {
     Spacer(Modifier.height(10.dp))
     IgCard {
         if (processes.isEmpty()) {
-            IgInfo("No programs reported yet.")
+            IgInfo(L("No programs reported yet."))
         } else {
             processes.forEachIndexed { i, p ->
                 if (i > 0) IgDivider()
-                IgRow(p.name + if (p.wow64) " (32-bit)" else "", hint = "PID ${p.pid} · ${p.formattedMemory}", wideControl = true) {
+                IgRow(p.name + if (p.wow64) L(" (32-bit)") else "", hint = L("PID %1\$s · %2\$s", p.pid, p.formattedMemory), wideControl = true) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IgButton("Cores", Icons.Outlined.Memory, { affinityFor = p })
-                        IgButton("Front", Icons.Outlined.FlipToFront, { XServerDialogState.onTmBringToFront?.invoke(p.name, p.pid) })
-                        IgButton("End", Icons.Outlined.Close, { endFor = p }, danger = true)
+                        IgButton(L("Cores"), Icons.Outlined.Memory, { affinityFor = p })
+                        IgButton(L("Front"), Icons.Outlined.FlipToFront, { XServerDialogState.onTmBringToFront?.invoke(p.name, p.pid) })
+                        IgButton(L("End"), Icons.Outlined.Close, { endFor = p }, danger = true)
                     }
                 }
             }
         }
         IgDivider()
-        IgRow("Run a program", hint = "Start another program in this session.") {
-            IgButton("Run…", Icons.Outlined.Terminal, {
+        IgRow(L("Run a program"), hint = L("Start another program in this session.")) {
+            IgButton(L("Run…"), Icons.Outlined.Terminal, {
                 XServerDialogState.onTmDismissed?.run()
                 XServerDialogState.onTmNewTask?.run()
             })
         }
     }
     Text(
-        "CPU core choices last until the program restarts.",
+        L("CPU core choices last until the program restarts."),
         color = cs.onSurfaceVariant,
         fontFamily = NunitoSansFamily,
         fontSize = 12.5.sp,
@@ -1613,9 +1614,9 @@ private fun RunningPrograms(state: XServerDrawerState) {
     affinityFor?.let { p -> ProcessorAffinityDialog(proc = p, onDismiss = { affinityFor = null }) }
     endFor?.let { p ->
         IgConfirmDialog(
-            title = "End ${p.name}?",
-            body = "The program is closed straight away. Anything it hasn't saved is lost.",
-            confirmLabel = "End process",
+            title = L("End %1\$s?", p.name),
+            body = L("The program is closed straight away. Anything it hasn't saved is lost."),
+            confirmLabel = L("End process"),
             confirmIcon = Icons.Outlined.Close,
             onConfirm = {
                 endFor = null

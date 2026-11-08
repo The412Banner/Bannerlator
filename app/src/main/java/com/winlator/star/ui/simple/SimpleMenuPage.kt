@@ -1,5 +1,6 @@
 package com.winlator.star.ui.simple
 
+import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -110,7 +111,7 @@ internal class MenuEntry(
     val play: (() -> Unit)? = null,
     /** The ▶ button's icon and name when it is not Launch (Download, Reinstall). */
     val playIcon: ImageVector? = null,
-    val playLabel: String = "Launch",
+    val playLabel: String = L("Launch"),
     /** Small labels on the right (the component types a download source offers). */
     val pills: List<String> = emptyList(),
     /** A heading over the first row of each run of rows with the same group (GPU drivers, DXVK …). */
@@ -122,7 +123,7 @@ internal class MenuSection(
     val title: String,
     val icon: ImageVector,
     val entries: List<MenuEntry>,
-    val empty: String = "Nothing here yet.",
+    val empty: String = L("Nothing here yet."),
     /** Y on this section, e.g. "New container" or "Install from a file". */
     val primary: MenuAction? = null,
     /** A screen of its own in place of the rows (the Linux runtime); the D-pad then moves through its buttons. */
@@ -190,17 +191,17 @@ private fun SimpleMenuPageBody(
         if (sections.size < 2) return@DisposableEffect onDispose {}
         val step: (Int) -> Unit = { stepTabsNow.value(it) }
         deckActions.subTab.value = step
-        deckActions.subTabLabel.value = "Section"
+        deckActions.subTabLabel.value = L("Section")
         onDispose { if (deckActions.subTab.value === step) deckActions.subTab.value = null }
     }
     val legend = buildList {
-        add("B" to "Back")
-        add("A" to "Open")
+        add("B" to L("Back"))
+        add("A" to L("Open"))
         entries.getOrNull(rowNow)?.takeIf { it.play != null }?.let { add("Start" to it.playLabel) }
-        if (colsOf(entries.getOrNull(rowNow)).size > 1) add("◀▶" to "Buttons")
-        if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to "Options")
+        if (colsOf(entries.getOrNull(rowNow)).size > 1) add("◀▶" to L("Buttons"))
+        if (entries.getOrNull(rowNow)?.actions?.isNotEmpty() == true) add("X" to L("Options"))
         sec?.primary?.let { add("Y" to it.label) }
-        if (sections.size > 1) add("L2" to "Section")
+        if (sections.size > 1) add("L2" to L("Section"))
     }
     DisposableEffect(deckActions, legend) {
         deckActions.ownLegend.value = legend
@@ -463,7 +464,7 @@ private fun EntryPanel(
             Box(Modifier.fillMaxSize()) { content() }
         } else if (entries.isEmpty()) {
             Column(Modifier.padding(24.dp)) {
-                Text(sec?.empty ?: "Nothing here yet.", color = SimpleMuted, fontSize = 14.sp)
+                Text(sec?.empty ?: L("Nothing here yet."), color = SimpleMuted, fontSize = 14.sp)
                 sec?.primary?.let {
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) { SimpleGlyph("Y"); Spacer(Modifier.width(6.dp)); Text(it.label, color = SimpleInk, fontSize = 14.sp) }
@@ -571,7 +572,7 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
                         .background(if (col == 2) accent.copy(alpha = 0.3f) else if (focused) SimpleCard else Color.Transparent, SimpleShape)
                         .then(if (col == 2) Modifier.border(2.dp, accent, SimpleShape) else Modifier)
                         .simpleTap(onMenu),
-                ) { Icon(Icons.Filled.MoreHoriz, contentDescription = "Options", tint = if (focused) SimpleStrong else SimpleMuted, modifier = Modifier.size(20.dp)) }
+                ) { Icon(Icons.Filled.MoreHoriz, contentDescription = L("Options"), tint = if (focused) SimpleStrong else SimpleMuted, modifier = Modifier.size(20.dp)) }
             }
         }
         val p = e.progress
@@ -597,9 +598,12 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
         Column(
             modifier = Modifier
                 .widthIn(min = 300.dp, max = 520.dp)
+                // A long list (the languages) scrolls; the controller's row is kept in view.
+                .heightIn(max = 620.dp)
                 .simpleDepth(high = true)
                 .background(SimplePanelBrush, SimpleShape)
                 .border(1.dp, SimpleLine, SimpleShape)
+                .verticalScroll(rememberScrollState())
                 .padding(14.dp),
         ) {
             Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
@@ -621,9 +625,9 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text("Select", color = SimpleMuted, fontSize = 12.sp)
+                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
                 Spacer(Modifier.width(14.dp))
-                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text("Close", color = SimpleMuted, fontSize = 12.sp)
+                SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text(L("Close"), color = SimpleMuted, fontSize = 12.sp)
             }
         }
     }
@@ -634,7 +638,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
 internal fun SimpleConfirm(title: String, body: String, danger: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     SimpleActionSheet(
         title = title,
-        actions = listOf(MenuAction(title, onConfirm, danger = danger), MenuAction("Cancel", onDismiss)),
+        actions = listOf(MenuAction(title, onConfirm, danger = danger), MenuAction(L("Cancel"), onDismiss)),
         onDismiss = onDismiss,
         message = body,
     ) { it.run() }

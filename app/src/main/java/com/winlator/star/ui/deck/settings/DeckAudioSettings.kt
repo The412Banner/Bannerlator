@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -80,10 +81,10 @@ internal object AudioRows {
 
     fun defs(): List<SettingDef> = listOf(
         SettingDef(
-            id = "audio.latencyPreset", category = "audio", group = "Sound latency", level = ADVANCED,
-            label = "Latency preset", hint = "Auto starts low and grows the buffer only if it hears crackle. Fine-tune below.",
+            id = "audio.latencyPreset", category = "audio", group = L("Sound latency"), level = ADVANCED,
+            label = L("Latency preset"), hint = L("Auto starts low and grows the buffer only if it hears crackle. Fine-tune below."),
             tech = "BANNER_AUDIO_<engine>_PRESET",
-            help = "Each sound system keeps its own preset, so switching between PulseAudio, ALSA and DirectAudio never mixes their settings. A game without its own keeps following its container.",
+            help = L("Each sound system keeps its own preset, so switching between PulseAudio, ALSA and DirectAudio never mixes their settings. A game without its own keeps following its container."),
             control = { _, _ -> Control.Select(AUDIO_PRESETS.map { Opt(it.id, it.name + (it.badge?.let { b -> " · $b" } ?: "")) }) },
             vm = VmBinding(
                 get = { _, vm -> audioConfigFromEnv(vm.envVarsStr, vmDriver(vm)).preset },
@@ -114,8 +115,8 @@ internal object AudioRows {
             worlds = WINE_LINUX,
         ),
         SettingDef(
-            id = ID_MIC, category = "audio", group = "Microphone", level = ADVANCED,
-            label = "Microphone", hint = "Lets games use the mic: DirectAudio captures the input. Android asks for the permission once.",
+            id = ID_MIC, category = "audio", group = L("Microphone"), level = ADVANCED,
+            label = L("Microphone"), hint = L("Lets games use the mic: DirectAudio captures the input. Android asks for the permission once."),
             tech = DirectAudioSupport.MIC_ENV_KEY,
             control = { _, _ -> Control.Toggle },
             vm = VmBinding(
@@ -131,10 +132,10 @@ internal object AudioRows {
             ),
             disabled = { env, values ->
                 when {
-                    values(ID_DRIVER) != "directaudio" || !directAudioSupported(env) -> "Available on the DirectAudio sound system."
+                    values(ID_DRIVER) != "directaudio" || !directAudioSupported(env) -> L("Available on the DirectAudio sound system.")
                     // The launch merges the env strings, so a game can't take away the container's flag.
                     env.scope == EditorScope.GAME && env.vm?.let { DirectAudioSupport.isMicEnabledInEnv(it.envVarsStr) } == true ->
-                        "On for the whole container: switch it off in the container."
+                        L("On for the whole container: switch it off in the container.")
                     else -> null
                 }
             },
@@ -172,7 +173,7 @@ internal class DeckAudioSection(
         val cfg = audioConfigFromEnv(AudioRows.effectiveEnv(source, driver), driver)
         val preset = AUDIO_PRESETS.firstOrNull { it.id == cfg.preset }?.name ?: cfg.preset
         return actionItems("audio-tune", null, listOf(
-            DeckAction("tune", Icons.Filled.Tune, "Fine-tune the sound buffer",
+            DeckAction("tune", Icons.Filled.Tune, L("Fine-tune the sound buffer"),
                 "$preset · ${driverLabel(driver)}. Buffer size, performance mode and adaptive growth.",
                 enabled = access.editable(AudioRows.ID_ENV)) { fineTune = true },
         ))
@@ -180,8 +181,8 @@ internal class DeckAudioSection(
 
     private fun driverLabel(driver: String) = when (driver) {
         "alsa" -> "ALSA"
-        "pulseaudio" -> "PulseAudio"
-        "directaudio" -> "DirectAudio"
+        "pulseaudio" -> L("PulseAudio")
+        "directaudio" -> L("DirectAudio")
         else -> driver
     }
 
@@ -201,7 +202,7 @@ internal class DeckAudioSection(
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) {
                 access.set(AudioRows.ID_MIC, "0")
-                Toast.makeText(context, "Microphone permission denied: the mic stays off.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, L("Microphone permission denied: the mic stays off."), Toast.LENGTH_SHORT).show()
             }
         }
         LaunchedEffect(mic) {
@@ -216,9 +217,9 @@ internal class DeckAudioSection(
             AudioSettingsDialog(
                 initial = audioConfigFromEnv(AudioRows.effectiveEnv(source, driver), driver),
                 scopeLabel = when (env.scope) {
-                    EditorScope.GAME -> "this game"
-                    EditorScope.DEFAULTS -> "new containers"
-                    else -> "this container"
+                    EditorScope.GAME -> L("this game")
+                    EditorScope.DEFAULTS -> L("new containers")
+                    else -> L("this container")
                 },
                 latencyLive = true,
                 driverLabel = driverLabel(driver),

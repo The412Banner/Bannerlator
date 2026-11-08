@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.graphics.Bitmap
@@ -64,10 +65,10 @@ internal class DeckIconSection(
 
     /** The icon file to write, or null with the reason it can't be changed here. */
     private fun target(): Pair<File?, String?> {
-        val s = env.shortcut ?: return null to "No entry."
-        val f = s.iconFile ?: return null to "This entry has no icon file to write to."
+        val s = env.shortcut ?: return null to L("No entry.")
+        val f = s.iconFile ?: return null to L("This entry has no icon file to write to.")
         // A rename saved in this editor moves the .desktop and its icon; this one was read before it.
-        if (!s.file.isFile) return null to "Close and reopen this game's settings to change the icon after renaming it."
+        if (!s.file.isFile) return null to L("Close and reopen this game's settings to change the icon after renaming it.")
         return f to null
     }
 
@@ -78,23 +79,23 @@ internal class DeckIconSection(
         val (file, reason) = target()
         val ok = file != null
         return listOf(
-            PageExtra("icon-label") { GroupLabel("Icon") },
+            PageExtra("icon-label") { GroupLabel(L("Icon")) },
             PageExtra("icon-preview") {
                 GroupCard(first = true, last = false, highlight = false) {
                     DeckLine(
-                        label = "This entry's icon",
-                        hint = reason ?: "Shown in your library and on home-screen shortcuts. A new one is saved as soon as you pick it.",
+                        label = L("This entry's icon"),
+                        hint = reason ?: L("Shown in your library and on home-screen shortcuts. A new one is saved as soon as you pick it."),
                     ) { IconPreview(icon) }
                 }
             },
             PageExtra("icon:files") {
                 GroupCard(first = false, last = false, highlight = false) {
-                    DeckActionRow(DeckAction("files", Icons.Filled.Folder, "Choose an image", "From your files (PNG, JPG, WebP, BMP or GIF).", enabled = ok) { launch = Picker.FILES })
+                    DeckActionRow(DeckAction("files", Icons.Filled.Folder, L("Choose an image"), L("From your files (PNG, JPG, WebP, BMP or GIF)."), enabled = ok) { launch = Picker.FILES })
                 }
             },
             PageExtra("icon:system") {
                 GroupCard(first = false, last = true, highlight = false) {
-                    DeckActionRow(DeckAction("system", Icons.Filled.PhotoLibrary, "Pick with the system picker", "Android's own picker, e.g. for Photos or cloud storage.", enabled = ok) { launch = Picker.SYSTEM })
+                    DeckActionRow(DeckAction("system", Icons.Filled.PhotoLibrary, L("Pick with the system picker"), L("Android's own picker, e.g. for Photos or cloud storage."), enabled = ok) { launch = Picker.SYSTEM })
                 }
             },
         )
@@ -114,7 +115,7 @@ internal class DeckIconSection(
                 }.getOrNull()
             }
             if (bitmap == null) {
-                Toast.makeText(ctx, "Couldn't read that image.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, L("Couldn't read that image."), Toast.LENGTH_SHORT).show()
             } else {
                 env.shortcut?.icon = bitmap
                 icon = bitmap
@@ -132,7 +133,7 @@ internal class DeckIconSection(
         }
         LaunchedEffect(launch) {
             when (launch) {
-                Picker.FILES -> runCatching { files.launch(InAppFilePicker.buildIntent(ctx, InAppFilePicker.IMAGES, "Select icon image")) }
+                Picker.FILES -> runCatching { files.launch(InAppFilePicker.buildIntent(ctx, InAppFilePicker.IMAGES, L("Select icon image"))) }
                 Picker.SYSTEM -> runCatching { system.launch("image/*") }
                 null -> Unit
             }
@@ -150,7 +151,7 @@ private fun IconPreview(icon: Bitmap?) {
         modifier = Modifier.size(56.dp).clip(shape).background(cs.surfaceVariant.copy(alpha = 0.55f)),
     ) {
         if (icon != null) {
-            Image(bitmap = icon.asImageBitmap(), contentDescription = "Icon", modifier = Modifier.size(56.dp))
+            Image(bitmap = icon.asImageBitmap(), contentDescription = L("Icon"), modifier = Modifier.size(56.dp))
         } else {
             Icon(Icons.Filled.Image, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(28.dp))
         }

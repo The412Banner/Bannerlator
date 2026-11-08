@@ -40,7 +40,7 @@ import com.winlator.star.util.InAppFilePicker
 private fun typeName(t: String): String = when (t.lowercase()) {
     "dxvk" -> "DXVK"; "d7vk" -> "D7VK"; "vkd3d" -> "VKD3D"; "box64" -> "Box64"; "wowbox64" -> "WOWBox64"
     "fex", "fexcore" -> "FEXCore"; "wine" -> "Wine"; "proton" -> "Proton"; "box64ec" -> "Box64EC"; "vegas" -> "VEGAS"
-    else -> if (ContentsTypes.isDriver(t)) "GPU drivers" else t
+    else -> if (ContentsTypes.isDriver(t)) L("GPU drivers") else t
 }
 
 /**
@@ -71,12 +71,12 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         val name = displayNameOf(context, uri)
         val lower = name.lowercase()
         val type = if (lower.endsWith(".wcp") || lower.endsWith(".tzst")) "" else ContentsTypes.GPU_DRIVERS
-        toast(context, "Installing $name…")
+        toast(context, L("Installing %1\$s…", name))
         ContentsInstaller.installFromFile(context, type, name, uri) { ok ->
-            (context as? Activity)?.runOnUiThread { toast(context, if (ok) "Installed $name" else "Could not install $name"); vm.refreshStatus(); vm.refreshFolders(); tick++ }
+            (context as? Activity)?.runOnUiThread { toast(context, if (ok) L("Installed %1\$s", name) else L("Could not install %1\$s", name)); vm.refreshStatus(); vm.refreshFolders(); tick++ }
         }
     }
-    val fromFile = { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP + InAppFilePicker.DRIVER, "Select content or driver")) }
+    val fromFile = { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP + InAppFilePicker.DRIVER, L("Select content or driver"))) }
 
     // ── Download components ──
     val download = sources.mapIndexed { i, s ->
@@ -86,19 +86,19 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
             subtitle = s.displayFormat,
             pills = s.typePills.map(::typeName).distinct(),
             icon = if (s.driverOnly) Icons.Filled.Memory else Icons.Filled.CloudDownload,
-            group = if (s.driverOnly) "GPU drivers" else "Components",
+            group = if (s.driverOnly) L("GPU drivers") else L("Components"),
             onA = { onNavigate(SimpleRoutes.componentSource(i)) },
             actions = listOf(
-                MenuAction("Browse", { onNavigate(SimpleRoutes.componentSource(i)) }),
+                MenuAction(L("Browse"), { onNavigate(SimpleRoutes.componentSource(i)) }),
                 MenuAction(
-                    if (s.removeIsHide) "Hide this repository" else "Remove this repository",
+                    if (s.removeIsHide) L("Hide this repository") else L("Remove this repository"),
                     { vm.removeSource(s) }, danger = true,
-                    confirm = if (s.removeIsHide) "Hide ${s.name}? It can be shown again from Classic's Contents settings." else "Remove ${s.name}?",
+                    confirm = if (s.removeIsHide) L("Hide %1\$s? It can be shown again from Classic's Contents settings.", s.name) else L("Remove %1\$s?", s.name),
                 ),
             ),
         )
-    }.sortedBy { if (it.group == "Components") 0 else 1 } +
-        MenuEntry("fromfile", "Install content from file", icon = Icons.Filled.FolderOpen, primary = true, onA = fromFile)
+    }.sortedBy { if (it.group == L("Components")) 0 else 1 } +
+        MenuEntry("fromfile", L("Install content from file"), icon = Icons.Filled.FolderOpen, primary = true, onA = fromFile)
 
     // ── Installed ──
     fun defaultFor(item: SetAsDefault.Item?): Boolean = item != null &&
@@ -110,13 +110,13 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                 val item = SetAsDefault.driverItem(id, name)
                 add(
                     MenuEntry(
-                        key = "d$id", title = name, group = "GPU drivers",
+                        key = "d$id", title = name, group = L("GPU drivers"),
                         subtitle = listOfNotNull(adreno?.getDriverVersion(id), adreno?.getDriverVendor(id)).filter { it.isNotBlank() }.joinToString(" · "),
-                        trailing = if (defaultFor(item)) "Default" else null, current = defaultFor(item),
+                        trailing = if (defaultFor(item)) L("Default") else null, current = defaultFor(item),
                         icon = Icons.Filled.Memory,
                         actions = listOf(
-                            MenuAction("Set as default…", { defaultItem = item }),
-                            MenuAction("Remove", { adreno?.removeDriver(id); tick++; toast(context, "Removed $name") }, danger = true, confirm = "Remove $name? Games set to it go back to their container's driver."),
+                            MenuAction(L("Set as default…"), { defaultItem = item }),
+                            MenuAction(L("Remove"), { adreno?.removeDriver(id); tick++; toast(context, L("Removed %1\$s", name)) }, danger = true, confirm = L("Remove %1\$s? Games set to it go back to their container's driver.", name)),
                         ),
                     ),
                 )
@@ -125,9 +125,9 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                 val name = wayland?.getDriverName(id) ?: id
                 add(
                     MenuEntry(
-                        key = "w$id", title = name, group = "Wayland game drivers",
+                        key = "w$id", title = name, group = L("Wayland game drivers"),
                         subtitle = wayland?.getDriverVersion(id)?.takeIf { it.isNotBlank() }, icon = Icons.Filled.Memory,
-                        actions = listOf(MenuAction("Remove", { wayland?.removeDriver(id); tick++; toast(context, "Removed $name") }, danger = true, confirm = "Remove $name?")),
+                        actions = listOf(MenuAction(L("Remove"), { wayland?.removeDriver(id); tick++; toast(context, L("Removed %1\$s", name)) }, danger = true, confirm = L("Remove %1\$s?", name))),
                     ),
                 )
             }
@@ -135,9 +135,9 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                 val name = linux?.getDriverName(id) ?: id
                 add(
                     MenuEntry(
-                        key = "l$id", title = name, group = "Linux runtime drivers",
+                        key = "l$id", title = name, group = L("Linux runtime drivers"),
                         subtitle = linux?.getDriverVersion(id)?.takeIf { it.isNotBlank() }, icon = Icons.Filled.Memory,
-                        actions = listOf(MenuAction("Remove", { linux?.removeDriver(id); tick++; toast(context, "Removed $name") }, danger = true, confirm = "Remove $name?")),
+                        actions = listOf(MenuAction(L("Remove"), { linux?.removeDriver(id); tick++; toast(context, L("Removed %1\$s", name)) }, danger = true, confirm = L("Remove %1\$s?", name))),
                     ),
                 )
             }
@@ -150,15 +150,15 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                         MenuEntry(
                             key = "i${t.name}-${p.verName}-${p.verCode}", title = "$label ${p.verName}", group = label,
                             subtitle = p.desc?.takeIf { it.isNotBlank() },
-                            trailing = if (def) "Default" else null, current = def,
+                            trailing = if (def) L("Default") else null, current = def,
                             icon = Icons.Filled.Extension,
                             actions = buildList {
-                                if (item != null) add(MenuAction("Set as default…", { defaultItem = item }))
-                                add(MenuAction("Remove", {
+                                if (item != null) add(MenuAction(L("Set as default…"), { defaultItem = item }))
+                                add(MenuAction(L("Remove"), {
                                     runCatching { cm?.removeContent(p); cm?.syncContents() }
                                     vm.refreshStatus(); tick++
-                                    toast(context, "Removed $label ${p.verName}")
-                                }, danger = true, confirm = "Remove $label ${p.verName}? Containers that use it fall back to their other choice."))
+                                    toast(context, L("Removed %1\$s %2\$s", label, p.verName))
+                                }, danger = true, confirm = L("Remove %1\$s %2\$s? Containers that use it fall back to their other choice.", label, p.verName)))
                             },
                         ),
                     )
@@ -171,39 +171,39 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
     val files = saved.entries.flatMap { (folder, list) ->
         list.map { f ->
             val reinstall = {
-                toast(context, "Installing ${f.name}…")
+                toast(context, L("Installing %1\$s…", f.name))
                 ContentsInstaller.installFromFile(context, f.type, f.name, f.uri) { ok ->
-                    (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); toast(context, if (ok) "Installed ${f.name}" else "Could not install ${f.name}"); vm.refreshStatus(); tick++ }
+                    (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); toast(context, if (ok) L("Installed %1\$s", f.name) else L("Could not install %1\$s", f.name)); vm.refreshStatus(); tick++ }
                 }
             }
             MenuEntry(
                 key = "f${f.uri}", title = f.name, group = folder.ifBlank { typeName(f.type) },
-                subtitle = "%.1f MB · saved".format(f.sizeBytes / 1_048_576.0),
+                subtitle = L("%.1f MB · saved").format(f.sizeBytes / 1_048_576.0),
                 icon = Icons.Filled.Save,
-                onA = reinstall, play = reinstall, playIcon = Icons.Filled.Download, playLabel = "Reinstall",
+                onA = reinstall, play = reinstall, playIcon = Icons.Filled.Download, playLabel = L("Reinstall"),
                 actions = listOf(
-                    MenuAction("Reinstall", reinstall),
-                    MenuAction("Delete the saved file", { vm.deleteSaved(f) }, danger = true, confirm = "Delete ${f.name}?"),
+                    MenuAction(L("Reinstall"), reinstall),
+                    MenuAction(L("Delete the saved file"), { vm.deleteSaved(f) }, danger = true, confirm = L("Delete %1\$s?", f.name)),
                 ),
             )
         }
     }
 
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Contents",
+        overline = L("Manage"),
+        title = L("Contents"),
         sections = listOf(
-            MenuSection("download", "Download components", Icons.Filled.Download, download, empty = "No repositories.", primary = MenuAction("Add a repository", { addRepo = true })),
-            MenuSection("installed", "Installed", Icons.Filled.CheckCircle, installed, empty = "Only the built-in components so far.", primary = MenuAction("Install content from file", { fromFile() })),
-            MenuSection("files", "My files", Icons.Filled.Save, files, empty = "No saved files. Use ⋯ › Save the file only on a download."),
-            MenuSection("linux", "Linux runtime", Icons.Filled.Terminal, emptyList(), content = { LinuxRuntimeTab() }),
+            MenuSection("download", L("Download components"), Icons.Filled.Download, download, empty = L("No repositories."), primary = MenuAction(L("Add a repository"), { addRepo = true })),
+            MenuSection("installed", L("Installed"), Icons.Filled.CheckCircle, installed, empty = L("Only the built-in components so far."), primary = MenuAction(L("Install content from file"), { fromFile() })),
+            MenuSection("files", L("My files"), Icons.Filled.Save, files, empty = L("No saved files. Use ⋯ › Save the file only on a download.")),
+            MenuSection("linux", L("Linux runtime"), Icons.Filled.Terminal, emptyList(), content = { LinuxRuntimeTab() }),
         ),
         onBack = onBack,
         banner = com.winlator.star.store.download.ContentDownloadRegistry.states.collectAsState().value.values
-            .firstOrNull { !it.terminal }?.let { "Downloading ${it.title} · ${(it.fraction * 100).toInt()}%" },
+            .firstOrNull { !it.terminal }?.let { L("Downloading %1\$s · %2\$s%%", it.title, (it.fraction * 100).toInt()) },
     )
     defaultItem?.let { item ->
-        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; tick++; toast(context, "Set as default") }
+        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; tick++; toast(context, L("Set as default")) }
     }
     if (addRepo) AddRepoDialog(vm, onDismiss = { addRepo = false })
 }

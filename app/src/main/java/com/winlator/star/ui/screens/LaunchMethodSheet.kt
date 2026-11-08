@@ -1,5 +1,7 @@
 package com.winlator.star.ui.screens
 
+import com.winlator.star.ui.simple.T
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.labTile
 import android.content.Intent
 import android.content.res.Configuration
@@ -429,7 +431,7 @@ fun LaunchMethodSheet(
     val xmbHome = AppThemeState.uiStyle.collectAsState().value == AppThemeState.UI_STYLE_DECK &&
         AppThemeState.deckXmbHome.collectAsState().value
 
-    val rawLabel = when { !notInstalled -> "Raw .exe"; hasPc -> "Download"; else -> "Not on PC" }
+    val rawLabel = when { !notInstalled -> T("Raw .exe"); hasPc -> T("Download"); else -> T("Not on PC") }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
       androidx.compose.runtime.CompositionLocalProvider(LocalRawLabel provides rawLabel) {
         DeckDialogBars()
@@ -527,8 +529,8 @@ private fun LabLaunchCard(
     val shown = if (xbox) listOf(LaunchMethod.RAW, LaunchMethod.STREAM)
         else listOf(LaunchMethod.STEAMLITE, LaunchMethod.APPSTEAM, LaunchMethod.GOLDBERG, LaunchMethod.RAW)
     fun labelOf(m: LaunchMethod) = when (m) {
-        LaunchMethod.STEAMLITE -> "SteamLite"; LaunchMethod.APPSTEAM -> "Headless Steam"; LaunchMethod.GOLDBERG -> "Goldberg"
-        LaunchMethod.RAW -> rawLabel; LaunchMethod.STREAM -> "Stream"
+        LaunchMethod.STEAMLITE -> "SteamLite"; LaunchMethod.APPSTEAM -> L("Headless Steam"); LaunchMethod.GOLDBERG -> "Goldberg"
+        LaunchMethod.RAW -> L(rawLabel); LaunchMethod.STREAM -> L("Stream")
     }
     fun helpOf(m: LaunchMethod) = when (m) {
         LaunchMethod.STEAMLITE -> HELP_STEAMLITE; LaunchMethod.APPSTEAM -> HELP_APPSTEAM; LaunchMethod.GOLDBERG -> HELP_GOLDBERG
@@ -543,7 +545,7 @@ private fun LabLaunchCard(
 
     val methodPart: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            com.winlator.star.ui.simple.LabTileLabel("Launch with")
+            com.winlator.star.ui.simple.LabTileLabel(L("Launch with"))
             Spacer(Modifier.width(8.dp))
             Box(
                 contentAlignment = Alignment.Center,
@@ -637,7 +639,7 @@ private fun LabLaunchCard(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.background(com.winlator.star.ui.simple.SimpleCard, com.winlator.star.ui.simple.SimpleShape).labTile(onClick = onDismiss).padding(horizontal = 18.dp, vertical = 11.dp),
-                ) { Text("Cancel", color = cs.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
+                ) { Text(L("Cancel"), color = cs.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
                 Spacer(Modifier.weight(1f))
                 val go = footer.second
                 Row(
@@ -647,7 +649,7 @@ private fun LabLaunchCard(
                         .then(if (go != null) Modifier.labTile(onClick = go, requester = launchFocus, onAccent = true) else Modifier)
                         .padding(horizontal = 22.dp, vertical = 11.dp),
                 ) {
-                    Text(footer.first, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(L(footer.first), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
@@ -1595,16 +1597,16 @@ private fun footerLaunch(
 ): Pair<String, (() -> Unit)?> {
     if (method == LaunchMethod.APPSTEAM && appSteamClient != null) {
         return when {
-            appSteamClient.updating -> "Updating…" to null
-            appSteamClient.gated -> "Update & Launch" to appSteamClient.onUpdateAndLaunch
-            else -> "Launch" to doLaunch
+            appSteamClient.updating -> T("Updating…") to null
+            appSteamClient.gated -> T("Update & Launch") to appSteamClient.onUpdateAndLaunch
+            else -> T("Launch") to doLaunch
         }
     }
-    if (method != LaunchMethod.STEAMLITE || client == null) return "Launch" to doLaunch
+    if (method != LaunchMethod.STEAMLITE || client == null) return T("Launch") to doLaunch
     return when {
-        client.updating -> "Updating…" to null
-        client.gated -> "Update & Launch" to client.onUpdateAndLaunch
-        else -> "Launch" to doLaunch
+        client.updating -> T("Updating…") to null
+        client.gated -> T("Update & Launch") to client.onUpdateAndLaunch
+        else -> T("Launch") to doLaunch
     }
 }
 

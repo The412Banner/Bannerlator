@@ -528,6 +528,10 @@ private fun DeckShellContent(
             LocalTopBarActions provides topBarActionsState,
             LocalTopBarTransparent provides topBarTransparentState,
             LocalDeckActions provides deckActions,
+            // Lab: laid out in the picked language's direction (right to left for Arabic).
+            androidx.compose.ui.platform.LocalLayoutDirection provides
+                if (AppThemeState.simpleLook && com.winlator.star.ui.simple.LabLang.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
+                else androidx.compose.ui.platform.LocalLayoutDirection.current,
             LocalDeckAmbient provides ambient,
             LocalContentColor provides cs.onBackground,
         ) {

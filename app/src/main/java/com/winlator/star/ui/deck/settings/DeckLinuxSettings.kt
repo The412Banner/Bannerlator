@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,17 +74,17 @@ internal object LinuxRuntimeRows {
 
     fun defs(): List<SettingDef> = listOf(
         cores(
-            "linux.clientCores", "linuxClientCpuList", "Steam client cores",
-            "The client and the compositor drawing its interface. Never the games it launches.",
-            "Which CPU cores the Steam client and the compositor drawing its interface may run on. It reaches the client and its menus only, " +
-                "never the games it launches: those have the list below. Steam holds its own interface renderer to a subset of the cores by default, " +
-                "which is why Big Picture can feel sluggish; what you tick here replaces that choice.",
+            "linux.clientCores", "linuxClientCpuList", L("Steam client cores"),
+            L("The client and the compositor drawing its interface. Never the games it launches."),
+            L("Which CPU cores the Steam client and the compositor drawing its interface may run on. It reaches the client and its menus only, ") +
+                L("never the games it launches: those have the list below. Steam holds its own interface renderer to a subset of the cores by default, ") +
+                L("which is why Big Picture can feel sluggish; what you tick here replaces that choice."),
         ),
         cores(
-            "linux.gameCores", "linuxGameCpuList", "Game cores",
-            "Games launched from the client. All cores lets Android place the work itself.",
-            "Which CPU cores a game launched from the Steam client may run on. It reaches games only: the client and its menus keep the list above. " +
-                "Leaving every core ticked lets Android place the work itself, which is usually the best choice.",
+            "linux.gameCores", "linuxGameCpuList", L("Game cores"),
+            L("Games launched from the client. All cores lets Android place the work itself."),
+            L("Which CPU cores a game launched from the Steam client may run on. It reaches games only: the client and its menus keep the list above. ") +
+                L("Leaving every core ticked lets Android place the work itself, which is usually the best choice."),
         ),
         // The Games folders list (DeckLinuxSection) reads and writes the entry's extra through this row.
         hiddenDef(ID_GAMES_FOLDERS, "linux", vm = null, game = ownExtra(LinuxTuning.EXTRA_GAMES_FOLDERS), worlds = LINUX_ONLY, onDefaults = false),
@@ -91,7 +92,7 @@ internal object LinuxRuntimeRows {
 
     /** A core list of the entry. Unset means every core, as the launch reads it (cpuListOrEmpty). */
     private fun cores(id: String, extra: String, label: String, hint: String, help: String) = SettingDef(
-        id = id, category = "linux", group = "CPU cores", label = label, hint = hint, help = help, tech = extra,
+        id = id, category = "linux", group = L("CPU cores"), label = label, hint = hint, help = help, tech = extra,
         level = SettingLevel.ADVANCED,
         control = { _, _ -> Control.Cores },
         game = GameBinding(
@@ -169,8 +170,8 @@ internal class DeckLinuxSection(
     /** A picked folder, checked as the classic picker checks it. */
     fun addFolder(path: String) {
         when {
-            path.isEmpty() || !File(path).isDirectory -> toast("That folder cannot be used: pick one on internal storage or an SD card")
-            path.contains(LinuxAppGames.FOLDER_SEPARATOR) -> toast("Folder names with | cannot be used")
+            path.isEmpty() || !File(path).isDirectory -> toast(L("That folder cannot be used: pick one on internal storage or an SD card"))
+            path.contains(LinuxAppGames.FOLDER_SEPARATOR) -> toast(L("Folder names with | cannot be used"))
             path !in folders() -> setFolders(folders() + path)
         }
     }
@@ -200,7 +201,7 @@ internal class DeckLinuxSection(
             snapshot = snap ?: LinuxComponents.Snapshot(emptyList(), emptyList())
             if (cat != null && cat.fetchedAt > 0) { catalog = cat.items; catalogAt = cat.fetchedAt }
             if (protonId == null || snap?.protons?.none { it.proton.id == protonId } == true) protonId = snap?.protons?.firstOrNull()?.proton?.id
-            if (applied.isNotEmpty()) toast("Applied: " + applied.joinToString(", "))
+            if (applied.isNotEmpty()) toast(L("Applied: ") + applied.joinToString(", "))
         }
     }
 
@@ -223,7 +224,7 @@ internal class DeckLinuxSection(
         scope.launch {
             val cat = withContext(Dispatchers.IO) { runCatching { LinuxComponents.catalog(context, true) }.getOrNull() }
             checking = false
-            if (cat == null || cat.items.isEmpty()) toast("The Nightlies could not be reached")
+            if (cat == null || cat.items.isEmpty()) toast(L("The Nightlies could not be reached"))
             else { catalog = cat.items; catalogAt = cat.fetchedAt }
         }
     }
@@ -249,7 +250,7 @@ internal class DeckLinuxSection(
 
     fun importWcp(path: String) {
         val context = env.context
-        action("Importing") { "Imported " + LinuxComponents.importPackage(context, File(path), File(path).name).version }
+        action(L("Importing")) { L("Imported ") + LinuxComponents.importPackage(context, File(path), File(path).name).version }
     }
 
     private fun currentView(): LinuxComponents.ProtonView? {
@@ -262,7 +263,7 @@ internal class DeckLinuxSection(
         val build = LinuxComponents.safeName(view.proton.version)
         val stored = snapshot?.packages.orEmpty().filter { it.comp == comp }
         val versions = stored.groupingBy { it.version }.eachCount()
-        return view.originals.filter { it.comp == comp }.map { ("orig:" + it.protonVersion) to (if (it.protonVersion == build) "Original" else "Original · ${it.protonVersion}") } +
+        return view.originals.filter { it.comp == comp }.map { ("orig:" + it.protonVersion) to (if (it.protonVersion == build) L("Original") else "Original · ${it.protonVersion}") } +
             stored.map { it.file to (if ((versions[it.version] ?: 0) > 1) it.file.removeSuffix(".wcp") else it.version) }
     }
 
@@ -278,16 +279,16 @@ internal class DeckLinuxSection(
         val p = view.proton
         val name = LinuxComponents.LABEL[comp] ?: comp
         val label = options(view, comp).firstOrNull { it.first == value }?.second ?: value
-        val waits = if (view.inUseByGame) " A game is running on this Proton, so it waits until the game closes." else " It applies the next time a game starts."
+        val waits = if (view.inUseByGame) L(" A game is running on this Proton, so it waits until the game closes.") else L(" It applies the next time a game starts.")
         val context = env.context
         ask = if (value.startsWith("orig:")) {
             val v = value.removePrefix("orig:")
             LinuxAsk("Restore $name?", "Put the $v original back into ${p.name}?$waits") {
-                action("Restoring") { LinuxComponents.restore(context, p.id, comp, v) }
+                action(L("Restoring")) { LinuxComponents.restore(context, p.id, comp, v) }
             }
         } else {
             LinuxAsk("Swap $name?", "Put $label into ${p.name}? Its shipped files stay saved as an original bundle.$waits") {
-                action("Swapping") { LinuxComponents.swap(context, p.id, value) }
+                action(L("Swapping")) { LinuxComponents.swap(context, p.id, value) }
             }
         }
     }
@@ -301,21 +302,21 @@ internal class DeckLinuxSection(
     private fun bottomItems(): List<PageExtra> = folderItems() + componentItems()
 
     private fun folderItems(): List<PageExtra> = buildList {
-        add(PageExtra("linux-folders-label") { GroupLabel("Games folders") })
+        add(PageExtra("linux-folders-label") { GroupLabel(L("Games folders")) })
         val list = folders()
         list.forEachIndexed { i, f ->
             add(PageExtra("linux-folder:$f") {
                 GroupCard(first = i == 0, last = false, highlight = false) {
                     DeckLine(File(f).name.ifEmpty { f }, f, icon = Icons.Filled.Folder) {
-                        DeckSmallButton("Remove", Icons.Filled.Delete) { removeFolder(f) }
+                        DeckSmallButton(L("Remove"), Icons.Filled.Delete) { removeFolder(f) }
                     }
                 }
             })
         }
         add(PageExtra("linux-folders-add") {
             GroupCard(first = list.isEmpty(), last = true, highlight = false) {
-                DeckActionRow(DeckAction("add", Icons.Filled.CreateNewFolder, "Add a games folder",
-                    "Each folder inside it is one game; the app picks the program to start in it. They show in Steam like your Games-tab games.") { pickFolder = true })
+                DeckActionRow(DeckAction("add", Icons.Filled.CreateNewFolder, L("Add a games folder"),
+                    L("Each folder inside it is one game; the app picks the program to start in it. They show in Steam like your Games-tab games.")) { pickFolder = true })
             }
         })
     }
@@ -324,14 +325,14 @@ internal class DeckLinuxSection(
         val snap = snapshot
         val views = snap?.protons.orEmpty()
         val view = currentView()
-        add(PageExtra("linux-comp-label") { GroupLabel("Proton components") })
+        add(PageExtra("linux-comp-label") { GroupLabel(L("Proton components")) })
         add(PageExtra("linux-comp-about") {
             LaunchedEffect(Unit) { ensureLoaded() }
             GroupCard(first = true, last = false, highlight = false) {
                 DeckLine(
-                    "FEX, DXVK and VKD3D-Proton",
-                    "For each Proton the Steam client runs games with. A swap applies the next time a game starts, and waits for a game running on that Proton to close. " +
-                        "Each Proton build's own files are kept as its original, and your choice is put back before every launch if anything changed them.",
+                    L("FEX, DXVK and VKD3D-Proton"),
+                    L("For each Proton the Steam client runs games with. A swap applies the next time a game starts, and waits for a game running on that Proton to close. ") +
+                        L("Each Proton build's own files are kept as its original, and your choice is put back before every launch if anything changed them."),
                     icon = Icons.Filled.Info,
                 )
             }
@@ -339,30 +340,30 @@ internal class DeckLinuxSection(
         busy?.let { b ->
             add(PageExtra("linux-comp-busy") {
                 GroupCard(first = false, last = false, highlight = false) {
-                    DeckLine("$b…", "One change at a time.") { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
+                    DeckLine("$b…", L("One change at a time.")) { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
                 }
             })
         }
         when {
             snap == null -> add(PageExtra("linux-comp-reading") {
                 GroupCard(first = false, last = true, highlight = false) {
-                    DeckLine("Reading the Protons…") { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
+                    DeckLine(L("Reading the Protons…")) { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
                 }
             })
             view == null -> add(PageExtra("linux-comp-none") {
                 GroupCard(first = false, last = true, highlight = false) {
                     DeckLine(
-                        "No Proton installed yet",
-                        "Start the Steam client once so it downloads its ARM64 Proton, or add GE-Proton / CachyOS from the Linux Protons catalog.",
+                        L("No Proton installed yet"),
+                        L("Start the Steam client once so it downloads its ARM64 Proton, or add GE-Proton / CachyOS from the Linux Protons catalog."),
                     )
                 }
             })
             else -> {
                 val p = view.proton
                 val status = listOfNotNull(
-                    if (p.valve) "Valve's own Proton, replaced when Steam updates it; its originals are kept per build" else "Installed in compatibilitytools.d",
-                    "a game is running on it".takeIf { view.inUseByGame },
-                    view.reappliedAt.takeIf { it > 0 }?.let { "re-applied at launch " + time(it) },
+                    if (p.valve) L("Valve's own Proton, replaced when Steam updates it; its originals are kept per build") else L("Installed in compatibilitytools.d"),
+                    L("a game is running on it").takeIf { view.inUseByGame },
+                    view.reappliedAt.takeIf { it > 0 }?.let { L("re-applied at launch ") + time(it) },
                 ).joinToString(" · ")
                 add(PageExtra("linux-comp-proton") {
                     GroupCard(first = false, last = false, highlight = false) {
@@ -385,7 +386,7 @@ internal class DeckLinuxSection(
                     add(PageExtra("linux-comp:$comp") {
                         GroupCard(first = false, last = last, highlight = false) {
                             if (opts.isEmpty()) {
-                                DeckLine(name, "Nothing stored yet" + (if (details.isNotEmpty()) " · $details" else ""), icon = Icons.Filled.SwapHoriz)
+                                DeckLine(name, L("Nothing stored yet") + (if (details.isNotEmpty()) " · $details" else ""), icon = Icons.Filled.SwapHoriz)
                             } else {
                                 DeckLine(
                                     name,
@@ -413,7 +414,7 @@ internal class DeckLinuxSection(
                                     enabled = busy == null,
                                     onClick = {
                                         val context = env.context
-                                        action("Cancelling") { LinuxComponents.cancelQueued(context, p.id, comp); "The waiting swap was cancelled." }
+                                        action(L("Cancelling")) { LinuxComponents.cancelQueued(context, p.id, comp); L("The waiting swap was cancelled.") }
                                     },
                                 )
                             }
@@ -433,11 +434,11 @@ internal class DeckLinuxSection(
         val olderOriginals = view.originals.filter { it.protonVersion != build }
         val packages = snapshot?.packages.orEmpty()
         val context = env.context
-        add(PageExtra("linux-stored-label") { GroupLabel("Stored") })
+        add(PageExtra("linux-stored-label") { GroupLabel(L("Stored")) })
         if (olderOriginals.isEmpty() && packages.isEmpty()) {
             add(PageExtra("linux-stored-none") {
                 GroupCard(first = true, last = false, highlight = false) {
-                    DeckLine("Nothing stored yet", "Each Proton's own files were saved as its original when this page opened.")
+                    DeckLine(L("Nothing stored yet"), L("Each Proton's own files were saved as its original when this page opened."))
                 }
             })
         }
@@ -446,9 +447,9 @@ internal class DeckLinuxSection(
             add(PageExtra("linux-stored-orig:${o.comp}:${o.protonVersion}") {
                 GroupCard(first = i == 0, last = false, highlight = false) {
                     DeckLine("$name · Original · ${o.protonVersion}", "Earlier build of ${p.name} · ${mb(o.size)}") {
-                        DeckSmallButton("Delete", Icons.Filled.Delete, enabled = busy == null) {
-                            ask = LinuxAsk("Delete this original?", "The ${o.protonVersion} original of $name belongs to an earlier build of ${p.name}. The installed build's original is always kept.") {
-                                action("Deleting") { LinuxComponents.deleteOriginal(context, p.id, o.comp, o.protonVersion) }
+                        DeckSmallButton(L("Delete"), Icons.Filled.Delete, enabled = busy == null) {
+                            ask = LinuxAsk(L("Delete this original?"), "The ${o.protonVersion} original of $name belongs to an earlier build of ${p.name}. The installed build's original is always kept.") {
+                                action(L("Deleting")) { LinuxComponents.deleteOriginal(context, p.id, o.comp, o.protonVersion) }
                             }
                         }
                     }
@@ -461,12 +462,12 @@ internal class DeckLinuxSection(
                 GroupCard(first = i == 0 && olderOriginals.isEmpty(), last = false, highlight = false) {
                     DeckLine(
                         "${LinuxComponents.LABEL[s.comp] ?: s.comp} · ${s.version}",
-                        mb(s.size) + if (inUseBy.isNotEmpty()) " · in use by " + inUseBy.joinToString(", ") else "",
+                        mb(s.size) + if (inUseBy.isNotEmpty()) L(" · in use by ") + inUseBy.joinToString(", ") else "",
                     ) {
                         // A package a Proton runs can't go: restore that Proton's original first.
-                        DeckSmallButton("Delete", Icons.Filled.Delete, enabled = busy == null && inUseBy.isEmpty()) {
-                            ask = LinuxAsk("Delete ${s.version}?", "Its package file is removed from the app. You can download it again any time.") {
-                                action("Deleting") { LinuxComponents.deletePackage(context, s.file) }
+                        DeckSmallButton(L("Delete"), Icons.Filled.Delete, enabled = busy == null && inUseBy.isEmpty()) {
+                            ask = LinuxAsk("Delete ${s.version}?", L("Its package file is removed from the app. You can download it again any time.")) {
+                                action(L("Deleting")) { LinuxComponents.deletePackage(context, s.file) }
                             }
                         }
                     }
@@ -475,7 +476,7 @@ internal class DeckLinuxSection(
         }
         add(PageExtra("linux-stored-import") {
             GroupCard(first = false, last = true, highlight = false) {
-                DeckActionRow(DeckAction("import", Icons.Filled.FileOpen, "Import a .wcp", "A component package from the Nightlies \"-Linux\" releases.", enabled = busy == null) { pickWcp = true })
+                DeckActionRow(DeckAction("import", Icons.Filled.FileOpen, L("Import a .wcp"), L("A component package from the Nightlies \"-Linux\" releases."), enabled = busy == null) { pickWcp = true })
             }
         })
     }
@@ -483,16 +484,16 @@ internal class DeckLinuxSection(
     private fun nightlyItems(): List<PageExtra> = buildList {
         val storedNames = snapshot?.packages.orEmpty().map { it.file }.toSet()
         val available = catalog.filter { LinuxComponents.safeName(it.file) !in storedNames }
-        add(PageExtra("linux-nightlies-label") { GroupLabel("On the Nightlies") })
+        add(PageExtra("linux-nightlies-label") { GroupLabel(L("On the Nightlies")) })
         add(PageExtra("linux-nightlies-check") {
             GroupCard(first = true, last = available.isEmpty(), highlight = false) {
                 DeckActionRow(DeckAction(
                     "check", Icons.Filled.Refresh,
-                    if (checking) "Checking…" else "Check the Nightlies",
+                    if (checking) L("Checking…") else L("Check the Nightlies"),
                     when {
                         catalogAt > 0 && available.isEmpty() -> "Checked ${time(catalogAt)}. Nothing new since then."
                         catalogAt > 0 -> "Checked ${time(catalogAt)}."
-                        else -> "Never checked. Lists the FEX, DXVK and VKD3D-Proton packages to download."
+                        else -> L("Never checked. Lists the FEX, DXVK and VKD3D-Proton packages to download.")
                     },
                     enabled = !checking,
                 ) { refreshCatalog() })
@@ -504,7 +505,7 @@ internal class DeckLinuxSection(
                 GroupCard(first = false, last = i == available.lastIndex, highlight = false) {
                     DeckLine("${LinuxComponents.LABEL[d.comp] ?: d.comp} · " + d.file.removeSuffix(".wcp"), "${d.release} · ${mb(d.size)}") {
                         if (progress == null) {
-                            DeckSmallButton("Download", Icons.Filled.CloudDownload, enabled = busy == null) { download(d) }
+                            DeckSmallButton(L("Download"), Icons.Filled.CloudDownload, enabled = busy == null) { download(d) }
                         } else {
                             Column(modifier = Modifier.width(96.dp)) {
                                 Text(if (progress < 0) "…" else "$progress%", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -535,13 +536,13 @@ internal class DeckLinuxSection(
             pickFolder = false
             startPicker()
             // The built-in picker, not SAF: it returns a real path, so an SD card folder is /storage/<uuid>/...
-            folderPicker.launch(InAppFilePicker.buildDirIntent(context, "Select a games folder"))
+            folderPicker.launch(InAppFilePicker.buildDirIntent(context, L("Select a games folder")))
         }
         LaunchedEffect(pickWcp) {
             if (!pickWcp) return@LaunchedEffect
             pickWcp = false
             startPicker()
-            wcpPicker.launch(InAppFilePicker.buildIntent(context, arrayOf("wcp"), "Choose a component package (-linux .wcp)"))
+            wcpPicker.launch(InAppFilePicker.buildIntent(context, arrayOf("wcp"), L("Choose a component package (-linux .wcp)")))
         }
         choosing?.let { comp ->
             currentView()?.let { view ->
@@ -570,7 +571,7 @@ internal class DeckLinuxSection(
                 title = { Text(a.title) },
                 text = { Text(a.body) },
                 confirmButton = { TextButton(onClick = { ask = null; a.go() }) { Text(a.title.substringBefore(' ')) } },
-                dismissButton = { TextButton(onClick = { ask = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { ask = null }) { Text(L("Cancel")) } },
             )
         }
     }
@@ -595,6 +596,6 @@ private fun LinuxPickDialog(title: String, options: List<Pair<String, String>>, 
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(L("Cancel")) } },
     )
 }

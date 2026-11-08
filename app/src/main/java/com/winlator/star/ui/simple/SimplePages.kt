@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.ViewQuilt
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.HelpOutline
@@ -153,7 +154,7 @@ private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, on
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { if (text.isNotBlank()) onDone(text.trim()) }, enabled = text.isNotBlank()) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(L("Cancel")) } },
         title = { Text(title) },
         text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true) },
     )
@@ -167,30 +168,30 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
     val context = LocalContext.current
     var showHelp by remember { mutableStateOf(false) }
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Tools",
+        overline = L("Manage"),
+        title = L("Tools"),
         sections = listOf(
             MenuSection(
                 key = "tools",
-                title = "Tools",
+                title = L("Tools"),
                 icon = Icons.Filled.Build,
                 entries = listOf(
-                    MenuEntry("files", "File manager", "Internal storage, SD card and every container's drives", icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
-                    MenuEntry("saves", "Save Manager", "Back up, restore and sync game saves", icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
-                    MenuEntry("logs", "Game logs", "What each game printed while it ran", icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
-                    MenuEntry("wrappers", "Wrappers", "Graphics wrappers", icon = Icons.Filled.Layers, onA = { onNavigate(Screen.Wrappers.route) }),
-                    MenuEntry("drivers", "GPU drivers", "Turnip and Qualcomm drivers", icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.DRIVERS) }),
+                    MenuEntry("files", L("File manager"), L("Internal storage, SD card and every container's drives"), icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
+                    MenuEntry("saves", L("Save Manager"), L("Back up, restore and sync game saves"), icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
+                    MenuEntry("logs", L("Game logs"), L("What each game printed while it ran"), icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
+                    MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(Screen.Wrappers.route) }),
+                    MenuEntry("drivers", L("GPU drivers"), L("Turnip and Qualcomm drivers"), icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.DRIVERS) }),
                 ),
             ),
             MenuSection(
                 key = "help",
-                title = "Help",
+                title = L("Help"),
                 icon = Icons.Filled.Info,
                 entries = listOf(
-                    MenuEntry("account", "My account", "Sign in to manage your shared configs", icon = Icons.Filled.AccountCircle, onA = onMyAccount),
-                    MenuEntry("about", "About", "Version, updates and credits", icon = Icons.Filled.Info, onA = onAbout),
-                    MenuEntry("help", "Help and Support", "GitHub, issue tracker and Discord", icon = Icons.Filled.HelpOutline, onA = { showHelp = true }),
-                    MenuEntry("setup", "Run setup again", "Permissions, theme and stores", icon = Icons.Filled.RestartAlt, onA = { DeckSetup.requestRerun() }),
+                    MenuEntry("account", L("My account"), L("Sign in to manage your shared configs"), icon = Icons.Filled.AccountCircle, onA = onMyAccount),
+                    MenuEntry("about", L("About"), L("Version, updates and credits"), icon = Icons.Filled.Info, onA = onAbout),
+                    MenuEntry("help", L("Help and Support"), L("GitHub, issue tracker and Discord"), icon = Icons.Filled.HelpOutline, onA = { showHelp = true }),
+                    MenuEntry("setup", L("Run setup again"), L("Permissions, theme and stores"), icon = Icons.Filled.RestartAlt, onA = { DeckSetup.requestRerun() }),
                 ),
             ),
         ),
@@ -266,21 +267,33 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
         MenuAction(mark("Classic", style == "Classic"), { AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC) }),
     )
     val layouts = listOf(AppThemeState.SIMPLE_LAYOUT_SHELF to "Shelf", AppThemeState.SIMPLE_LAYOUT_RAIL to "Rail", AppThemeState.SIMPLE_LAYOUT_FOCUS to "Focus")
-    val orientations = listOf(AppOrientation.AUTO to "Auto", AppOrientation.PORTRAIT to "Portrait", AppOrientation.LANDSCAPE to "Landscape")
+    val orientations = listOf(AppOrientation.AUTO to L("Auto"), AppOrientation.PORTRAIT to L("Portrait"), AppOrientation.LANDSCAPE to L("Landscape"))
     val scales = listOf(0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f)
     fun pct(f: Float) = "${(f * 100).roundToInt()}%"
 
+    val langTag = LabLang.tag(context)
     val look = listOf(
-        MenuEntry("style", "Interface style", "Lab, Deck, XMB or Classic", trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
+        // Lab's language: every language Lab is translated into, each named in its own language.
         MenuEntry(
-            "look", "Look", "Dark or light; the accent is your theme's", trailing = if (AppThemeState.labLight) "Light" else "Dark", icon = Icons.Filled.Palette,
+            "language", L("Language"), trailing = LabLang.name(context), icon = Icons.Filled.Translate,
+            actions = LabLang.LANGUAGES.map { (t, n) ->
+                MenuAction(
+                    mark(if (t.isEmpty()) L("System default") else n, t == langTag),
+                    { (context as? Activity)?.let { LabLang.set(it, t) } },
+                    confirm = if (t == langTag) null else L("Bannerlator restarts to switch the language."),
+                )
+            },
+        ),
+        MenuEntry("style", L("Interface style"), L("Lab, Deck, XMB or Classic"), trailing = style, icon = Icons.Filled.Dashboard, actions = styles),
+        MenuEntry(
+            "look", L("Look"), L("Dark or light; the accent is your theme's"), trailing = if (AppThemeState.labLight) L("Light") else L("Dark"), icon = Icons.Filled.Palette,
             actions = listOf(
-                MenuAction(mark("Dark", !AppThemeState.labLight), { AppThemeState.setLabLight(false) }),
-                MenuAction(mark("Light", AppThemeState.labLight), { AppThemeState.setLabLight(true) }),
+                MenuAction(mark(L("Dark"), !AppThemeState.labLight), { AppThemeState.setLabLight(false) }),
+                MenuAction(mark(L("Light"), AppThemeState.labLight), { AppThemeState.setLabLight(true) }),
             ),
         ),
         MenuEntry(
-            "orientation", "Orientation", "The app's own screens; games keep theirs", trailing = orientations.firstOrNull { it.first == orientation }?.second,
+            "orientation", L("Orientation"), L("The app's own screens; games keep theirs"), trailing = orientations.firstOrNull { it.first == orientation }?.second,
             icon = Icons.Filled.ScreenRotation,
             actions = orientations.map { (m, l) ->
                 MenuAction(mark(l, m == orientation), {
@@ -290,9 +303,9 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
                 })
             },
         ),
-        MenuEntry("ui", "Interface size", trailing = pct(uiScale), icon = Icons.Filled.ZoomIn,
+        MenuEntry("ui", L("Interface size"), trailing = pct(uiScale), icon = Icons.Filled.ZoomIn,
             actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (uiScale * 100).roundToInt()), { AppThemeState.setUiScale(f) }) }),
-        MenuEntry("font", "Text size", trailing = pct(fontScale), icon = Icons.Filled.TextFields,
+        MenuEntry("font", L("Text size"), trailing = pct(fontScale), icon = Icons.Filled.TextFields,
             actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (fontScale * 100).roundToInt()), { AppThemeState.setFontScale(f) }) }),
     )
     val themes = themePresets.mapIndexed { i, t ->
@@ -300,27 +313,27 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
         MenuEntry(
             key = "t$i",
             title = t.name,
-            subtitle = if (custom) "Your own accent colour · X to pick it" else null,
+            subtitle = if (custom) L("Your own accent colour · X to pick it") else null,
             swatch = if (custom) customAccent else t.primary,
             current = i == preset,
             onA = { AppThemeState.setPreset(i) },
-            actions = if (custom) listOf(MenuAction("Pick the colour", { accentOpen = true })) else emptyList(),
+            actions = if (custom) listOf(MenuAction(L("Pick the colour"), { accentOpen = true })) else emptyList(),
         )
     }
     SimpleMenuPage(
-        overline = "Settings",
-        title = "Appearance",
+        overline = L("Settings"),
+        title = L("Appearance"),
         sections = listOf(
-            MenuSection("look", "Look", Icons.Filled.Dashboard, look),
-            MenuSection("theme", "Theme", Icons.Filled.Palette, themes),
+            MenuSection("look", L("Look"), Icons.Filled.Dashboard, look),
+            MenuSection("theme", L("Theme"), Icons.Filled.Palette, themes),
         ),
         onBack = onBack,
     )
     if (accentOpen) {
         OutlinedAlertDialog(
             onDismissRequest = { accentOpen = false },
-            confirmButton = { TextButton(onClick = { accentOpen = false }) { Text("Done") } },
-            title = { Text("Accent colour") },
+            confirmButton = { TextButton(onClick = { accentOpen = false }) { Text(L("Done")) } },
+            title = { Text(L("Accent colour")) },
             text = { ColorPicker(initialColor = customAccent, onColorChanged = { AppThemeState.setCustomAccent(it) }) },
         )
     }
@@ -359,42 +372,42 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
             onA = { onNavigate(DeckSettingsRoutes.container(c.id)) },
             play = { startDesktop(c) },
             actions = listOf(
-                MenuAction("Settings", { onNavigate(DeckSettingsRoutes.container(c.id)) }),
-                MenuAction("Start its Windows desktop", { startDesktop(c) }),
-                MenuAction("Duplicate", { vm.duplicate(c) { toast(context, "Duplicated ${c.name}") } }, confirm = "Make a copy of ${c.name}, with its games and settings?"),
-                MenuAction("Back up all saves", {
-                    GameSaveBackup.backup(context, c) { r -> (context as? Activity)?.runOnUiThread { toast(context, if (r.ok) "Saves backed up (${r.fileCount} files)" else "Backup failed: ${r.error ?: "unknown"}") } }
+                MenuAction(L("Settings"), { onNavigate(DeckSettingsRoutes.container(c.id)) }),
+                MenuAction(L("Start its Windows desktop"), { startDesktop(c) }),
+                MenuAction(L("Duplicate"), { vm.duplicate(c) { toast(context, L("Duplicated %1\$s", c.name)) } }, confirm = L("Make a copy of %1\$s, with its games and settings?", c.name)),
+                MenuAction(L("Back up all saves"), {
+                    GameSaveBackup.backup(context, c) { r -> (context as? Activity)?.runOnUiThread { toast(context, if (r.ok) L("Saves backed up (%1\$s files)", r.fileCount) else L("Backup failed: %1\$s", r.error ?: L("unknown"))) } }
                 }),
-                MenuAction("Export", { vm.exportContainer(c) { path -> (context as? Activity)?.runOnUiThread { toast(context, if (path != null) "Exported to $path" else "Export failed") } } }),
-                MenuAction("Remove", { vm.remove(c, context) { toast(context, "Removed ${c.name}") } }, danger = true, confirm = "Remove ${c.name} and everything in it? Its games' shortcuts go too."),
+                MenuAction(L("Export"), { vm.exportContainer(c) { path -> (context as? Activity)?.runOnUiThread { toast(context, if (path != null) L("Exported to %1\$s", path) else L("Export failed")) } } }),
+                MenuAction(L("Remove"), { vm.remove(c, context) { toast(context, L("Removed %1\$s", c.name)) } }, danger = true, confirm = L("Remove %1\$s and everything in it? Its games' shortcuts go too.", c.name)),
             ),
         )
     }
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Containers",
+        overline = L("Manage"),
+        title = L("Containers"),
         sections = listOf(
             MenuSection(
-                "containers", "Containers", Icons.Filled.Inventory2, entries,
-                empty = "No containers yet.",
-                primary = MenuAction("New container", {
+                "containers", L("Containers"), Icons.Filled.Inventory2, entries,
+                empty = L("No containers yet."),
+                primary = MenuAction(L("New container"), {
                     if (com.winlator.star.xenvironment.ImageFs.find(context).isValid()) onNavigate(DeckSettingsRoutes.container(DeckSettingsRoutes.NEW_CONTAINER_ID))
-                    else toast(context, "The Windows system files are not installed yet.")
+                    else toast(context, L("The Windows system files are not installed yet."))
                 }),
             ),
             MenuSection(
-                "import", "Backups", Icons.Filled.Restore,
+                "import", L("Backups"), Icons.Filled.Restore,
                 backups.map { f ->
                     MenuEntry(
                         "b${f.absolutePath}", f.name, f.parent, icon = Icons.Filled.Restore,
-                        actions = listOf(MenuAction("Import this container", { vm.importContainer(f) { toast(context, "Imported ${f.name}") } }, confirm = "Import ${f.name} as a new container?")),
+                        actions = listOf(MenuAction(L("Import this container"), { vm.importContainer(f) { toast(context, L("Imported %1\$s", f.name)) } }, confirm = L("Import %1\$s as a new container?", f.name))),
                     )
                 },
-                empty = "No container backups in Downloads/Winlator/Backups/Containers.",
+                empty = L("No container backups in Downloads/Winlator/Backups/Containers."),
             ),
             MenuSection(
-                "defaults", "Defaults", Icons.Filled.Tune,
-                listOf(MenuEntry("defaults", "New container defaults", "What every new container starts with", icon = Icons.Filled.Tune, onA = { onNavigate(DeckSettingsRoutes.DEFAULTS) })),
+                "defaults", L("Defaults"), Icons.Filled.Tune,
+                listOf(MenuEntry("defaults", L("New container defaults"), L("What every new container starts with"), icon = Icons.Filled.Tune, onA = { onNavigate(DeckSettingsRoutes.DEFAULTS) })),
             ),
         ),
         onBack = onBack,
@@ -435,9 +448,9 @@ internal fun SimpleComponentsPage(onNavigate: (String) -> Unit, onBack: () -> Un
         val name = displayNameOf(context, uri)
         val lower = name.lowercase()
         val type = if (lower.endsWith(".wcp") || lower.endsWith(".tzst")) "" else ContentsTypes.GPU_DRIVERS
-        toast(context, "Installing $name…")
+        toast(context, L("Installing %1\$s…", name))
         ContentsInstaller.installFromFile(context, type, name, uri) { ok ->
-            (context as? Activity)?.runOnUiThread { toast(context, if (ok) "Installed $name" else "Could not install $name"); vm.refreshStatus(); tick++ }
+            (context as? Activity)?.runOnUiThread { toast(context, if (ok) L("Installed %1\$s", name) else L("Could not install %1\$s", name)); vm.refreshStatus(); tick++ }
         }
     }
     val installedEntries = installed.map { (t, p) ->
@@ -449,51 +462,51 @@ internal fun SimpleComponentsPage(onNavigate: (String) -> Unit, onBack: () -> Un
             trailing = label,
             icon = Icons.Filled.Extension,
             actions = buildList {
-                cm?.let { m -> runCatching { SetAsDefault.componentItem(context, m, p) }.getOrNull() }?.let { item -> add(MenuAction("Set as default…", { defaultItem = item })) }
-                add(MenuAction("Remove", {
+                cm?.let { m -> runCatching { SetAsDefault.componentItem(context, m, p) }.getOrNull() }?.let { item -> add(MenuAction(L("Set as default…"), { defaultItem = item })) }
+                add(MenuAction(L("Remove"), {
                     runCatching { cm?.removeContent(p); cm?.syncContents() }
                     vm.refreshStatus(); tick++
-                    toast(context, "Removed $label ${p.verName}")
-                }, danger = true, confirm = "Remove $label ${p.verName}? Containers that use it fall back to their other choice."))
+                    toast(context, L("Removed %1\$s %2\$s", label, p.verName))
+                }, danger = true, confirm = L("Remove %1\$s %2\$s? Containers that use it fall back to their other choice.", label, p.verName)))
             },
         )
     }
     val sourceEntries = sources.mapIndexed { i, s ->
-        MenuEntry("s$i-${s.name}", s.name, "Browse and download", icon = Icons.Filled.CloudDownload, onA = { onNavigate(SimpleRoutes.componentSource(i)) })
+        MenuEntry("s$i-${s.name}", s.name, L("Browse and download"), icon = Icons.Filled.CloudDownload, onA = { onNavigate(SimpleRoutes.componentSource(i)) })
     }
     val savedEntries = saved.values.flatten().map { f ->
         MenuEntry(
             key = "f${f.uri}",
             title = f.name,
             subtitle = f.type,
-            trailing = "%.1f MB".format(f.sizeBytes / 1_048_576.0),
+            trailing = L("%.1f MB").format(f.sizeBytes / 1_048_576.0),
             icon = Icons.Filled.Save,
             onA = {
-                toast(context, "Installing ${f.name}…")
+                toast(context, L("Installing %1\$s…", f.name))
                 ContentsInstaller.installFromFile(context, f.type, f.name, f.uri) { ok ->
-                    (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); toast(context, if (ok) "Installed ${f.name}" else "Could not install ${f.name}"); tick++ }
+                    (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); toast(context, if (ok) L("Installed %1\$s", f.name) else L("Could not install %1\$s", f.name)); tick++ }
                 }
             },
-            actions = listOf(MenuAction("Delete the saved file", { vm.deleteSaved(f) }, danger = true, confirm = "Delete ${f.name}?")),
+            actions = listOf(MenuAction(L("Delete the saved file"), { vm.deleteSaved(f) }, danger = true, confirm = L("Delete %1\$s?", f.name))),
         )
     }
-    val fromFile = MenuAction("Install from a file", { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, "Select content pack")) })
+    val fromFile = MenuAction(L("Install from a file"), { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP, L("Select content pack"))) })
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Components",
+        overline = L("Manage"),
+        title = L("Components"),
         sections = listOf(
-            MenuSection("installed", "Installed", Icons.Filled.Extension, installedEntries, empty = "Only the built-in components so far.", primary = fromFile),
-            MenuSection("get", "Get more", Icons.Filled.CloudDownload, sourceEntries, empty = "No download sources.", primary = fromFile),
-            MenuSection("saved", "Saved files", Icons.Filled.Save, savedEntries, empty = "No saved component files."),
+            MenuSection("installed", L("Installed"), Icons.Filled.Extension, installedEntries, empty = L("Only the built-in components so far."), primary = fromFile),
+            MenuSection("get", L("Get more"), Icons.Filled.CloudDownload, sourceEntries, empty = L("No download sources."), primary = fromFile),
+            MenuSection("saved", L("Saved files"), Icons.Filled.Save, savedEntries, empty = L("No saved component files.")),
             MenuSection(
-                "more", "More", Icons.Filled.Terminal,
-                listOf(MenuEntry("linux", "Linux runtime and every list", "The full components screen", icon = Icons.Filled.Terminal, onA = { onNavigate(DeckRoutes.COMPONENTS) })),
+                "more", L("More"), Icons.Filled.Terminal,
+                listOf(MenuEntry("linux", L("Linux runtime and every list"), L("The full components screen"), icon = Icons.Filled.Terminal, onA = { onNavigate(DeckRoutes.COMPONENTS) })),
             ),
         ),
         onBack = onBack,
     )
     defaultItem?.let { item ->
-        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; toast(context, "Set as default") }
+        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; toast(context, L("Set as default")) }
     }
 }
 
@@ -526,7 +539,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                     subtitle = listOfNotNull(item.versionName, item.publishedAt?.take(10)).joinToString(" · "),
                     trailing = when {
                         running -> "${(st!!.fraction * 100).toInt()}%"
-                        isIn -> "Installed"
+                        isIn -> L("Installed")
                         item.sizeBytes != null -> "%.0f MB".format(item.sizeBytes / 1_048_576.0)
                         else -> null
                     },
@@ -544,21 +557,21 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                             vm.refreshStatus(); vm.refreshFolders(); tick++
                         }
                     }),
-                    playIcon = Icons.Filled.Download, playLabel = "Download",
+                    playIcon = Icons.Filled.Download, playLabel = L("Download"),
                     actions = buildList {
-                        if (running) add(MenuAction("Cancel the download", { ContentDownloadRegistry.requestCancel(key) }))
-                        add(MenuAction("Save the file only", { vm.saveArchive(item) }))
+                        if (running) add(MenuAction(L("Cancel the download"), { ContentDownloadRegistry.requestCancel(key) }))
+                        add(MenuAction(L("Save the file only"), { vm.saveArchive(item) }))
                     },
                 )
             },
         )
     }
     SimpleMenuPage(
-        overline = "Contents",
-        title = source?.name ?: "Source",
-        sections = sections.ifEmpty { listOf(MenuSection("none", "Components", Icons.Filled.Extension, emptyList(), empty = if (loading) "Loading the list…" else "Nothing to download here.")) },
+        overline = L("Contents"),
+        title = source?.name ?: L("Source"),
+        sections = sections.ifEmpty { listOf(MenuSection("none", L("Components"), Icons.Filled.Extension, emptyList(), empty = if (loading) L("Loading the list…") else L("Nothing to download here."))) },
         onBack = onBack,
-        banner = states.values.firstOrNull { !it.terminal }?.let { "Downloading ${it.title} · ${(it.fraction * 100).toInt()}%" },
+        banner = states.values.firstOrNull { !it.terminal }?.let { L("Downloading %1\$s · %2\$s%%", it.title, (it.fraction * 100).toInt()) },
     )
 }
 
@@ -578,7 +591,7 @@ internal fun SimpleDriversPage(onNavigate: (String) -> Unit, onBack: () -> Unit)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
         val id = runCatching { manager?.installDriver(uri) }.getOrNull().orEmpty()
-        toast(context, if (id.isNotEmpty()) "Installed ${manager?.getDriverName(id) ?: id}" else "That file is not a driver package")
+        toast(context, if (id.isNotEmpty()) L("Installed %1\$s", manager?.getDriverName(id) ?: id) else L("That file is not a driver package"))
         tick++
     }
     val installed = drivers.map { id ->
@@ -588,33 +601,33 @@ internal fun SimpleDriversPage(onNavigate: (String) -> Unit, onBack: () -> Unit)
             subtitle = listOfNotNull(manager?.getDriverVersion(id), manager?.getDriverVendor(id)).filter { it.isNotBlank() }.joinToString(" · "),
             icon = Icons.Filled.Memory,
             actions = listOf(
-                MenuAction("Set as default…", { defaultItem = SetAsDefault.driverItem(id, name) }),
-                MenuAction("Remove", { manager?.removeDriver(id); tick++; toast(context, "Removed $name") }, danger = true, confirm = "Remove $name? Games set to it go back to their container's driver."),
+                MenuAction(L("Set as default…"), { defaultItem = SetAsDefault.driverItem(id, name) }),
+                MenuAction(L("Remove"), { manager?.removeDriver(id); tick++; toast(context, L("Removed %1\$s", name)) }, danger = true, confirm = L("Remove %1\$s? Games set to it go back to their container's driver.", name)),
             ),
         )
     }
-    val fromFile = MenuAction("Install from a file", { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, "Select GPU driver")) })
+    val fromFile = MenuAction(L("Install from a file"), { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.DRIVER, L("Select GPU driver"))) })
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Drivers & components",
+        overline = L("Manage"),
+        title = L("Drivers & components"),
         sections = listOf(
-            MenuSection("installed", "Installed", Icons.Filled.Memory, installed, empty = "Only the phone's own driver so far.", primary = fromFile),
+            MenuSection("installed", L("Installed"), Icons.Filled.Memory, installed, empty = L("Only the phone's own driver so far."), primary = fromFile),
             MenuSection(
-                "get", "Get drivers", Icons.Filled.CloudDownload,
-                sources.mapIndexed { i, s -> MenuEntry("s$i-${s.name}", s.name, "Browse and download", icon = Icons.Filled.CloudDownload, onA = { onNavigate(SimpleRoutes.driverSource(i)) }) },
-                empty = "No driver sources.", primary = fromFile,
+                "get", L("Get drivers"), Icons.Filled.CloudDownload,
+                sources.mapIndexed { i, s -> MenuEntry("s$i-${s.name}", s.name, L("Browse and download"), icon = Icons.Filled.CloudDownload, onA = { onNavigate(SimpleRoutes.driverSource(i)) }) },
+                empty = L("No driver sources."), primary = fromFile,
             ),
             MenuSection(
-                "components", "Components", Icons.Filled.Extension,
+                "components", L("Components"), Icons.Filled.Extension,
                 listOf(
-                    MenuEntry("comp", "Wine, Proton, DXVK, VKD3D, FEX, Box64", "Installed ones, set as default, download more", icon = Icons.Filled.Extension, onA = { onNavigate(SimpleRoutes.COMPONENTS) }),
+                    MenuEntry("comp", L("Wine, Proton, DXVK, VKD3D, FEX, Box64"), L("Installed ones, set as default, download more"), icon = Icons.Filled.Extension, onA = { onNavigate(SimpleRoutes.COMPONENTS) }),
                 ),
             ),
         ),
         onBack = onBack,
     )
     defaultItem?.let { item ->
-        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; toast(context, "Set as default") }
+        SetAsDefaultSheet(item, onDismiss = { defaultItem = null }) { defaultItem = null; toast(context, L("Set as default")) }
     }
 }
 
@@ -632,7 +645,7 @@ internal fun SimpleDriverSourcePage(index: Int, onBack: () -> Unit) {
         if (source == null) return@LaunchedEffect
         RemoteDriverRepository(context).fetchEntries(source)
             .onSuccess { entries = it }
-            .onFailure { error = it.message ?: "Could not load the list"; entries = emptyList() }
+            .onFailure { error = it.message ?: L("Could not load the list"); entries = emptyList() }
     }
     fun download(e: RemoteDriverEntry) {
         if (progress.containsKey(e.downloadUrl) || activity == null) return
@@ -643,16 +656,16 @@ internal fun SimpleDriverSourcePage(index: Int, onBack: () -> Unit) {
             file.onSuccess { f ->
                 val id = withContext(Dispatchers.IO) { runCatching { AdrenotoolsManager(activity).installDriver(Uri.fromFile(f)) }.getOrNull().orEmpty() }
                 f.delete()
-                toast(context, if (id.isNotEmpty()) "Installed ${e.displayName}" else "Could not install ${e.displayName}")
-            }.onFailure { toast(context, "Download failed: ${it.message ?: "unknown"}") }
+                toast(context, if (id.isNotEmpty()) L("Installed %1\$s", e.displayName) else L("Could not install %1\$s", e.displayName))
+            }.onFailure { toast(context, L("Download failed: %1\$s", it.message ?: L("unknown"))) }
         }
     }
     SimpleMenuPage(
-        overline = "GPU drivers",
-        title = source?.name ?: "Source",
+        overline = L("GPU drivers"),
+        title = source?.name ?: L("Source"),
         sections = listOf(
             MenuSection(
-                "list", "Drivers", Icons.Filled.Memory,
+                "list", L("Drivers"), Icons.Filled.Memory,
                 entries.orEmpty().map { e ->
                     val p = progress[e.downloadUrl]
                     MenuEntry(
@@ -660,13 +673,13 @@ internal fun SimpleDriverSourcePage(index: Int, onBack: () -> Unit) {
                         trailing = p?.let { "${(it * 100).toInt()}%" }, progress = p,
                         icon = Icons.Filled.CloudDownload,
                         onA = { download(e) },
-                        actions = listOf(MenuAction("Download and install", { download(e) })),
+                        actions = listOf(MenuAction(L("Download and install"), { download(e) })),
                     )
                 },
                 empty = when {
-                    entries == null -> "Loading the list…"
+                    entries == null -> L("Loading the list…")
                     error != null -> error!!
-                    else -> "No drivers in this source."
+                    else -> L("No drivers in this source.")
                 },
             ),
         ),
@@ -720,7 +733,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             val json = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
             manager.importProfile(JSONObject(json)) != null
         }.getOrDefault(false)
-        toast(context, if (ok) "Profile imported" else "That file is not a controls profile")
+        toast(context, if (ok) L("Profile imported") else L("That file is not a controls profile"))
         tick++
     }
     fun editLayout(p: ControlsProfile) = context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra("profile_id", p.id))
@@ -731,41 +744,41 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         p.loadControllers()
         val src = p.getController(fromId)
         // Never copy an empty set: it would wipe the target's bindings.
-        if (src == null || src.controllerBindingCount == 0) { toast(context, "Nothing to copy"); return }
-        p.addController(to.id)?.let { it.copyBindingsFrom(src); p.save(); tick++; toast(context, "Bindings copied") }
+        if (src == null || src.controllerBindingCount == 0) { toast(context, L("Nothing to copy")); return }
+        p.addController(to.id)?.let { it.copyBindingsFrom(src); p.save(); tick++; toast(context, L("Bindings copied")) }
     }
-    fun exported(f: java.io.File?) = toast(context, if (f != null) "Exported to ${f.path}" else "Export failed")
+    fun exported(f: java.io.File?) = toast(context, if (f != null) L("Exported to %1\$s", f.path) else L("Export failed"))
 
     // ── On-screen: the profiles (pick one, edit its layout) ──
     val onScreen = profiles.map { p ->
         val on = p.id == sel?.id
         MenuEntry(
             key = "p${p.id}", title = p.name,
-            subtitle = if (layouts[p.id] == true) "On-screen layout" else "No on-screen layout yet",
-            trailing = if (on) "Selected" else null, current = on,
-            icon = Icons.Filled.Gamepad, group = "Profiles",
+            subtitle = if (layouts[p.id] == true) L("On-screen layout") else L("No on-screen layout yet"),
+            trailing = if (on) L("Selected") else null, current = on,
+            icon = Icons.Filled.Gamepad, group = L("Profiles"),
             onA = { selId = p.id },
-            play = { selId = p.id; editLayout(p) }, playIcon = Icons.Filled.Edit, playLabel = "Edit layout",
+            play = { selId = p.id; editLayout(p) }, playIcon = Icons.Filled.Edit, playLabel = L("Edit layout"),
             actions = listOf(
-                MenuAction("Edit the on-screen layout", { selId = p.id; editLayout(p) }),
-                MenuAction("Controller bindings", { selId = p.id; bindings(p) }),
-                MenuAction("Rename", { renaming = p }),
-                MenuAction("Duplicate", { manager.duplicateProfile(p); tick++ }, confirm = "Make a copy of ${p.name}?"),
-                MenuAction("Export (.icpx)", { exported(runCatching { manager.exportProfile(p) }.getOrNull()) }),
-                MenuAction("Export (.icp, older versions)", { exported(runCatching { manager.exportLegacyProfile(p) }.getOrNull()) }),
-                MenuAction("Delete", { manager.removeProfile(p); if (selId == p.id) selId = -1; tick++ }, danger = true, confirm = "Delete ${p.name}?"),
+                MenuAction(L("Edit the on-screen layout"), { selId = p.id; editLayout(p) }),
+                MenuAction(L("Controller bindings"), { selId = p.id; bindings(p) }),
+                MenuAction(L("Rename"), { renaming = p }),
+                MenuAction(L("Duplicate"), { manager.duplicateProfile(p); tick++ }, confirm = L("Make a copy of %1\$s?", p.name)),
+                MenuAction(L("Export (.icpx)"), { exported(runCatching { manager.exportProfile(p) }.getOrNull()) }),
+                MenuAction(L("Export (.icp, older versions)"), { exported(runCatching { manager.exportLegacyProfile(p) }.getOrNull()) }),
+                MenuAction(L("Delete"), { manager.removeProfile(p); if (selId == p.id) selId = -1; tick++ }, danger = true, confirm = L("Delete %1\$s?", p.name)),
             ),
         )
     } + listOf(
-        MenuEntry("import", "Import a profile", ".icp or .icpx file", icon = Icons.Filled.Add, group = "Share / transfer",
-            onA = { importer.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.ICP, "Select controls profile")) }),
-        MenuEntry("community", "Download community profiles", "The online list", icon = Icons.Filled.CloudDownload, group = "Share / transfer",
+        MenuEntry("import", L("Import a profile"), L(".icp or .icpx file"), icon = Icons.Filled.Add, group = L("Share / transfer"),
+            onA = { importer.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.ICP, L("Select controls profile"))) }),
+        MenuEntry("community", L("Download community profiles"), L("The online list"), icon = Icons.Filled.CloudDownload, group = L("Share / transfer"),
             onA = {
                 communityOpen = true
                 if (community == null) HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/index.txt") { content ->
                     (context as? Activity)?.runOnUiThread {
                         community = content?.split("\n")?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
-                        if (content == null) toast(context, "Could not load the list")
+                        if (content == null) toast(context, L("Could not load the list"))
                     }
                 }
             }),
@@ -773,11 +786,11 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
 
     // ── Controller: the selected profile's bindings for each controller ──
     val controllerTab = if (sel == null) emptyList() else buildList {
-        add(MenuEntry("prof", "Profile: ${sel.name}", "The bindings below belong to this profile", icon = Icons.Filled.Gamepad,
+        add(MenuEntry("prof", L("Profile: %1\$s", sel.name), L("The bindings below belong to this profile"), icon = Icons.Filled.Gamepad,
             actions = profiles.map { p -> MenuAction(p.name, { selId = p.id }) }))
-        add(MenuEntry("test", "Test and bind controllers", "Remap buttons and check every input", icon = Icons.Filled.SportsEsports, onA = { testOpen = true }))
-        add(MenuEntry("default", "Default / Any controller", "$defaultBinds bindings · new controllers inherit these", icon = Icons.Filled.SportsEsports,
-            group = "Controllers", onA = { bindings(sel) }))
+        add(MenuEntry("test", L("Test and bind controllers"), L("Remap buttons and check every input"), icon = Icons.Filled.SportsEsports, onA = { testOpen = true }))
+        add(MenuEntry("default", L("Default / Any controller"), L("%1\$s bindings · new controllers inherit these", defaultBinds), icon = Icons.Filled.SportsEsports,
+            group = L("Controllers"), onA = { bindings(sel) }))
         controllers.forEach { c ->
             val dev = if (c.isConnected) android.view.InputDevice.getDevice(c.deviceId) else null
             val battery = runCatching {
@@ -786,21 +799,21 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             val vib = runCatching { dev?.vibrator?.takeIf { it.hasVibrator() } }.getOrNull()
             add(
                 MenuEntry(
-                    key = "c${c.id}", title = c.name ?: c.id, group = "Controllers",
-                    subtitle = listOfNotNull("${c.controllerBindingCount} bindings", if (c.isConnected) "Connected" else "Not connected", battery?.let { "Battery $it%" }).joinToString(" · "),
+                    key = "c${c.id}", title = c.name ?: c.id, group = L("Controllers"),
+                    subtitle = listOfNotNull(L("%1\$s bindings", c.controllerBindingCount), if (c.isConnected) L("Connected") else L("Not connected"), battery?.let { L("Battery %1\$s%%", it) }).joinToString(" · "),
                     current = c.isConnected,
                     icon = Icons.Filled.SportsEsports,
                     onA = { bindings(sel, c.id) },
                     actions = buildList {
-                        add(MenuAction("Edit its bindings", { bindings(sel, c.id) }))
-                        add(MenuAction("Copy bindings from Default / Any controller", { copyBindings(ControlsProfile.DEFAULT_CONTROLLER_ID, c) }))
+                        add(MenuAction(L("Edit its bindings"), { bindings(sel, c.id) }))
+                        add(MenuAction(L("Copy bindings from Default / Any controller"), { copyBindings(ControlsProfile.DEFAULT_CONTROLLER_ID, c) }))
                         controllers.filter { it.id != c.id && it.controllerBindingCount > 0 }.forEach { o ->
-                            add(MenuAction("Copy bindings from ${o.name}", { copyBindings(o.id, c) }))
+                            add(MenuAction(L("Copy bindings from %1\$s", o.name), { copyBindings(o.id, c) }))
                         }
-                        if (vib != null) add(MenuAction("Test rumble", {
+                        if (vib != null) add(MenuAction(L("Test rumble"), {
                             runCatching { vib.vibrate(android.os.VibrationEffect.createOneShot(250, android.os.VibrationEffect.DEFAULT_AMPLITUDE)) }
                         }))
-                        if (c.controllerBindingCount > 0) add(MenuAction("Remove its bindings", { sel.removeController(c); sel.save(); tick++ }, danger = true, confirm = "Remove the bindings of ${c.name}?"))
+                        if (c.controllerBindingCount > 0) add(MenuAction(L("Remove its bindings"), { sel.removeController(c); sel.save(); tick++ }, danger = true, confirm = L("Remove the bindings of %1\$s?", c.name)))
                     },
                 ),
             )
@@ -808,17 +821,17 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     }
 
     SimpleMenuPage(
-        overline = "Manage",
-        title = "Controls",
+        overline = L("Manage"),
+        title = L("Controls"),
         sections = listOf(
-            MenuSection("onscreen", "On-screen", Icons.Filled.TouchApp, onScreen, empty = "No profiles yet.", primary = MenuAction("New profile", { creating = true })),
-            MenuSection("controller", "Controller", Icons.Filled.SportsEsports, controllerTab, empty = "Make a profile first (On-screen tab)."),
-            MenuSection("assign", "Assign", Icons.Filled.People, emptyList(), content = {
+            MenuSection("onscreen", L("On-screen"), Icons.Filled.TouchApp, onScreen, empty = L("No profiles yet."), primary = MenuAction(L("New profile"), { creating = true })),
+            MenuSection("controller", L("Controller"), Icons.Filled.SportsEsports, controllerTab, empty = L("Make a profile first (On-screen tab).")),
+            MenuSection("assign", L("Assign"), Icons.Filled.People, emptyList(), content = {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     com.winlator.star.ui.screens.GlobalPlayerSlotsSection()
                 }
             }),
-            MenuSection("device", "Device", Icons.Filled.Build, emptyList(), content = {
+            MenuSection("device", L("Device"), Icons.Filled.Build, emptyList(), content = {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     com.winlator.star.ui.screens.GyroscopeSection()
                     Spacer(Modifier.height(16.dp))
@@ -830,22 +843,22 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         ),
         onBack = onBack,
     )
-    if (creating) NameDialog("New profile", "Profile ${profiles.size + 1}", onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
-    renaming?.let { p -> NameDialog("Rename", p.name, onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
+    if (creating) NameDialog(L("New profile"), L("Profile %1\$s", profiles.size + 1), onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
+    renaming?.let { p -> NameDialog(L("Rename"), p.name, onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
     if (communityOpen) {
         val items = community
         key(items?.size ?: -1) {
             SimpleActionSheet(
-                title = "Community profiles",
+                title = L("Community profiles"),
                 actions = items.orEmpty().map { f ->
                     MenuAction(f.removeSuffix(".icp"), {
                         HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/$f") { content ->
                             val ok = content != null && runCatching { manager.importProfile(JSONObject(content)) != null }.getOrDefault(false)
-                            (context as? Activity)?.runOnUiThread { toast(context, if (ok) "Imported ${f.removeSuffix(".icp")}" else "Could not import $f"); tick++ }
+                            (context as? Activity)?.runOnUiThread { toast(context, if (ok) L("Imported %1\$s", f.removeSuffix(".icp")) else L("Could not import %1\$s", f)); tick++ }
                         }
                     })
                 },
-                message = if (items == null) "Loading the list…" else if (items.isEmpty()) "Nothing in the list." else null,
+                message = if (items == null) L("Loading the list…") else if (items.isEmpty()) L("Nothing in the list.") else null,
                 onDismiss = { communityOpen = false },
             ) { a -> communityOpen = false; a.run() }
         }

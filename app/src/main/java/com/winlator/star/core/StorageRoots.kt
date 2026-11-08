@@ -132,7 +132,7 @@ object StorageRoots {
         )
     }
 
-    private fun Volume.defaultLabel(): String = if (removable) "SD card" else key
+    private fun Volume.defaultLabel(): String = if (removable) com.winlator.star.ui.simple.T("SD card") else key
 
     /** Appends the volume id to any label used by more than one volume, so entries stay tellable apart. */
     private fun disambiguate(roots: List<StorageRoot>): List<StorageRoot> {
@@ -184,7 +184,7 @@ object StorageRoots {
      */
     private fun labelFor(context: Context, volume: StorageVolume, uuid: String?): String {
         if (volume.isPrimary) return "Internal"
-        if (volume.isRemovable) return "SD card"
+        if (volume.isRemovable) return com.winlator.star.ui.simple.T("SD card")
         val description = volume.getDescription(context)?.trim()
         return description?.takeIf { it.isNotBlank() && !it.equals("android", ignoreCase = true) }
             ?: uuid

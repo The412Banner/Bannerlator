@@ -82,13 +82,13 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
     LaunchedEffect(games.isNotEmpty()) { delay(120); runCatching { first.requestFocus() } }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions) {
-        val legend = listOf("B" to "Back", "A" to "Open", "X" to "Game menu", "L1 R1" to "Section")
+        val legend = listOf("B" to L("Back"), "A" to L("Open"), "X" to L("Game menu"), "L1 R1" to L("Section"))
         deckActions.ownLegend.value = legend
         onDispose { if (deckActions.ownLegend.value === legend) deckActions.ownLegend.value = null }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        Text("Library", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-        Text("${games.size} games · last played first", color = SimpleMuted, fontSize = 13.sp)
+        Text(L("Library"), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        Text(L("%1\$s games · last played first", games.size), color = SimpleMuted, fontSize = 13.sp)
         LazyVerticalGrid(
             columns = GridCells.Adaptive(140.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
@@ -111,7 +111,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
-                        Text("Add a game", color = SimpleMuted, fontSize = 13.sp)
+                        Text(L("Add a game"), color = SimpleMuted, fontSize = 13.sp)
                     }
                 }
             }
@@ -150,8 +150,8 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
         MenuEntry(
             key = st.name,
             title = st.label,
-            subtitle = if (signedIn[st] == true) "Signed in · $owned ${if (owned == 1) "game" else "games"}" else "Not signed in",
-            trailing = if (signedIn[st] == true) "Open ›" else "Sign in ›",
+            subtitle = if (signedIn[st] == true) (if (owned == 1) L("Signed in · 1 game") else L("Signed in · %1\$s games", owned)) else L("Not signed in"),
+            trailing = if (signedIn[st] == true) L("Open ›") else L("Sign in ›"),
             icon = Icons.Filled.Storefront,
             logo = logo,
             brand = brand,
@@ -160,9 +160,9 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
         )
     }
     SimpleMenuPage(
-        overline = "Stores",
-        title = "Your stores",
-        sections = listOf(MenuSection("stores", "Stores", Icons.Filled.Storefront, entries)),
+        overline = L("Stores"),
+        title = L("Your stores"),
+        sections = listOf(MenuSection("stores", L("Stores"), Icons.Filled.Storefront, entries)),
         onBack = onBack,
     )
 }

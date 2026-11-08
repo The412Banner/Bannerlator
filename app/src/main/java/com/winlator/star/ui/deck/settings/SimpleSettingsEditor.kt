@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -780,11 +781,11 @@ internal fun SettingLine(
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(def.label, color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(L(def.label), color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val sub = when {
-                disabled != null -> disabled
-                focused && note != null -> note
-                focused && def.hint != null -> def.hint
+                disabled != null -> L(disabled)
+                focused && note != null -> L(note)
+                focused && def.hint != null -> L(def.hint)
                 else -> origin
             }
             if (sub != null) {
@@ -801,7 +802,7 @@ internal fun SettingLine(
         val stepped = isStepped(control) && editable
         if (stepped) Text("‹", color = if (focused) accent else Color.Transparent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Text(
-            label,
+            L(label),
             color = if (editable) SimpleStrong else SimpleMuted,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
@@ -827,8 +828,8 @@ internal fun LinkLine(title: String, subtitle: String?, focused: Boolean, active
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) Text(subtitle, color = SimpleDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(L(title), color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!subtitle.isNullOrBlank()) Text(L(subtitle), color = SimpleDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("›", color = if (focused) accent else SimpleMuted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
@@ -861,7 +862,7 @@ internal fun SimplePicker(
                 .border(1.dp, SimpleLine, SimpleShape)
                 .padding(14.dp),
         ) {
-            Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            Text(L(title), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
             val state = remember { LazyListState(firstVisibleItemIndex = max(0, start - 3)) }
             LazyColumn(state = state, modifier = Modifier.heightIn(max = 420.dp)) {
                 itemsIndexed(options) { i, o ->
@@ -879,8 +880,8 @@ internal fun SimplePicker(
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(o.label, color = if (enabled) SimpleStrong else SimpleDim, fontSize = 15.sp)
-                            if (o.disabledReason != null) Text(o.disabledReason, color = SimpleDim, fontSize = 12.sp)
+                            Text(L(o.label), color = if (enabled) SimpleStrong else SimpleDim, fontSize = 15.sp)
+                            if (o.disabledReason != null) Text(L(o.disabledReason), color = SimpleDim, fontSize = 12.sp)
                         }
                         if (o.value == current) Text("✓", color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }

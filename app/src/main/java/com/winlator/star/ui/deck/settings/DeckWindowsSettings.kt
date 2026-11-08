@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.deck.deckShape
 import android.app.Activity
 import android.graphics.Bitmap
@@ -81,8 +82,8 @@ internal object WindowsRows {
 
     /** ColorPickerView's palette, in its order. */
     private val PALETTE = listOf(
-        0xff8f00 to "Amber", 0xd32f2f to "Red", 0x9575cd to "Purple", 0x2e7d32 to "Green",
-        0x00838f to "Teal", 0x0277bd to "Blue", 0x607d8b to "Blue grey", 0x000000 to "Black",
+        0xff8f00 to L("Amber"), 0xd32f2f to L("Red"), 0x9575cd to L("Purple"), 0x2e7d32 to L("Green"),
+        0x00838f to L("Teal"), 0x0277bd to L("Blue"), 0x607d8b to L("Blue grey"), 0x000000 to L("Black"),
     )
     private val HEX = Regex("""^#?[0-9A-Fa-f]{6}$""")
 
@@ -91,30 +92,30 @@ internal object WindowsRows {
     fun defs(): List<SettingDef> = listOf(
         SettingDef(
             id = "windows.wineVersion", category = "windows", group = "Wine", level = SettingLevel.ADVANCED,
-            label = "Wine / Proton version", hint = "The Wine layer this container runs. Download more below.", tech = "Wine Version",
+            label = L("Wine / Proton version"), hint = L("The Wine layer this container runs. Download more below."), tech = L("Wine Version"),
             control = { env, _ -> Control.Select((env.vm?.wineVersionEntries ?: emptyList()).map { Opt(it, it) }) },
             vm = VmBinding(get = { _, vm -> vm.selectedWineVersion }, set = { _, vm, v -> vm.onWineVersionChanged(v) }),
             onDefaults = false, showInGame = false,
             visible = { env, _ -> env.scope == EditorScope.CONTAINER },
             // As the classic editor: the layer is chosen when the container is created, and its prefix is built for it.
-            disabled = { env, _ -> if (env.vm?.wineVersionEnabled == false) "Fixed once the container exists: its Windows prefix was built for this layer." else null },
+            disabled = { env, _ -> if (env.vm?.wineVersionEnabled == false) L("Fixed once the container exists: its Windows prefix was built for this layer.") else null },
         ),
         SettingDef(
-            id = ID_BG, category = "windows", group = "Windows desktop", level = SettingLevel.ADVANCED,
-            label = "Desktop background", tech = "Background",
-            control = { _, _ -> Control.Segmented(listOf(Opt("$IMAGE", "Image"), Opt("$COLOR", "Solid colour"))) },
+            id = ID_BG, category = "windows", group = L("Windows desktop"), level = SettingLevel.ADVANCED,
+            label = L("Desktop background"), tech = L("Background"),
+            control = { _, _ -> Control.Segmented(listOf(Opt("$IMAGE", L("Image")), Opt("$COLOR", L("Solid colour")))) },
             vm = VmBinding(get = { _, vm -> vm.desktopBgTypeIndex.toString() }, set = { _, vm, v -> v.toIntOrNull()?.let { vm.desktopBgTypeIndex = it } }),
             showInGame = false,
         ),
         SettingDef(
-            id = "windows.desktopColor", category = "windows", group = "Windows desktop", level = SettingLevel.ADVANCED,
-            label = "Background colour", tech = "Background Color",
+            id = "windows.desktopColor", category = "windows", group = L("Windows desktop"), level = SettingLevel.ADVANCED,
+            label = L("Background colour"), tech = L("Background Color"),
             control = { _, _ ->
                 Control.Select(
                     options = PALETTE.map { (c, name) -> Opt(hex(c), "$name (${hex(c)})") },
-                    customLabel = "Other colour…",
-                    customHint = "A colour as #RRGGBB, e.g. #1E88E5",
-                    validateCustom = { if (HEX.matches(it.trim())) null else "Type six hex digits, e.g. #1E88E5." },
+                    customLabel = L("Other colour…"),
+                    customHint = L("A colour as #RRGGBB, e.g. #1E88E5"),
+                    validateCustom = { if (HEX.matches(it.trim())) null else L("Type six hex digits, e.g. #1E88E5.") },
                     normalizeCustom = { t -> "#" + t.trim().removePrefix("#").uppercase(Locale.ENGLISH) },
                 )
             },
@@ -126,12 +127,12 @@ internal object WindowsRows {
             visible = { _, values -> values(ID_BG) == "$COLOR" },
         ),
         SettingDef(
-            id = "windows.wallpaperScope", category = "windows", group = "Windows desktop", level = SettingLevel.ADVANCED,
-            label = "Wallpaper image for", hint = "One image every container shares, or one for this container only.", tech = "Apply wallpaper to",
+            id = "windows.wallpaperScope", category = "windows", group = L("Windows desktop"), level = SettingLevel.ADVANCED,
+            label = L("Wallpaper image for"), hint = L("One image every container shares, or one for this container only."), tech = L("Apply wallpaper to"),
             control = { _, _ ->
                 Control.Segmented(listOf(
-                    Opt("${WineThemeManager.BackgroundScope.GLOBAL.ordinal}", "All containers"),
-                    Opt("${WineThemeManager.BackgroundScope.CONTAINER.ordinal}", "This container"),
+                    Opt("${WineThemeManager.BackgroundScope.GLOBAL.ordinal}", L("All containers")),
+                    Opt("${WineThemeManager.BackgroundScope.CONTAINER.ordinal}", L("This container")),
                 ))
             },
             vm = VmBinding(
@@ -184,32 +185,32 @@ internal class DeckWindowsSection(
         val vm = vm ?: return@buildList
         if (container) {
             addAll(actionItems("windows-wine", null, listOf(
-                DeckAction("wine", Icons.Filled.CloudDownload, "Download Wine and Proton versions",
-                    "Layers from the catalog, or install one from a file. New containers can use them.") { wineSheet = true },
+                DeckAction("wine", Icons.Filled.CloudDownload, L("Download Wine and Proton versions"),
+                    L("Layers from the catalog, or install one from a file. New containers can use them.")) { wineSheet = true },
             )))
         }
         if (vm.desktopBgTypeIndex == WineThemeManager.BackgroundType.IMAGE.ordinal) {
-            add(PageExtra("windows-wallpaper-label") { GroupLabel("Wallpaper") })
+            add(PageExtra("windows-wallpaper-label") { GroupLabel(L("Wallpaper")) })
             add(PageExtra("windows-wallpaper") { GroupCard(first = true, last = true, highlight = false) { WallpaperLine(this@DeckWindowsSection, vm) } })
         }
         if (container) addAll(driveItems(vm))
         if (env.scope == EditorScope.DEFAULTS) {
-            addAll(actionItems("windows-reset", "Start over", listOf(
-                DeckAction("reset", Icons.Filled.RestartAlt, "Reset to app defaults",
-                    "Forgets this architecture's defaults profile, its \"Set as default\" picks and default layer.") { confirmReset = true },
+            addAll(actionItems("windows-reset", L("Start over"), listOf(
+                DeckAction("reset", Icons.Filled.RestartAlt, L("Reset to app defaults"),
+                    L("Forgets this architecture's defaults profile, its \"Set as default\" picks and default layer.")) { confirmReset = true },
             )))
         }
     }
 
     private fun driveItems(vm: ContainerDetailViewModel): List<PageExtra> = buildList {
-        add(PageExtra("windows-drives-label") { GroupLabel("Drives") })
+        add(PageExtra("windows-drives-label") { GroupLabel(L("Drives")) })
         val drives = vm.drives.toList()
         val dupes = vm.duplicateDriveLetters
         val full = drives.size >= vm.driveLetterOptions.size
         if (drives.isEmpty()) {
             add(PageExtra("windows-drives-none") {
                 GroupCard(first = true, last = false, highlight = false) {
-                    DeckLine("No drives", "Only C: (the Windows prefix) and Z: are there. Add a drive for a folder of games.")
+                    DeckLine(L("No drives"), L("Only C: (the Windows prefix) and Z: are there. Add a drive for a folder of games."))
                 }
             })
         }
@@ -221,14 +222,14 @@ internal class DeckWindowsSection(
         if (dupes.isNotEmpty()) {
             add(PageExtra("windows-drives-dupes") {
                 GroupCard(first = false, last = false, highlight = false) {
-                    DeckLine("Each drive needs its own letter", "Used twice: " + dupes.sorted().joinToString(", ") { "$it:" } + ". Save is refused until they differ.", error = true)
+                    DeckLine(L("Each drive needs its own letter"), L("Used twice: ") + dupes.sorted().joinToString(", ") { "$it:" } + L(". Save is refused until they differ."), error = true)
                 }
             })
         }
         add(PageExtra("windows-drives-add") {
             GroupCard(first = false, last = true, highlight = false) {
-                DeckActionRow(DeckAction("add", Icons.Filled.Add, "Add a drive",
-                    if (full) "Every letter from D: to Z: is in use." else "Takes the first free letter. Pick its folder with Browse.", enabled = !full) { vm.addDrive() })
+                DeckActionRow(DeckAction("add", Icons.Filled.Add, L("Add a drive"),
+                    if (full) L("Every letter from D: to Z: is in use.") else L("Takes the first free letter. Pick its folder with Browse."), enabled = !full) { vm.addDrive() })
             }
         })
     }
@@ -246,7 +247,7 @@ internal class DeckWindowsSection(
                 }.getOrDefault(false)
             }
             if (ok) wallpaperStamp = file.lastModified()
-            else Toast.makeText(env.context, "Couldn't read that image.", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(env.context, L("Couldn't read that image."), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -281,7 +282,7 @@ internal class DeckWindowsSection(
             if (!pickImage) return@LaunchedEffect
             pickImage = false
             startPicker()
-            imagePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, "Select wallpaper"))
+            imagePicker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, L("Select wallpaper")))
         }
         LaunchedEffect(pickImageSystem) {
             if (!pickImageSystem) return@LaunchedEffect
@@ -300,14 +301,14 @@ internal class DeckWindowsSection(
         if (confirmReset) {
             OutlinedAlertDialog(
                 onDismissRequest = { confirmReset = false },
-                confirmButton = { TextButton(onClick = { resetDefaults() }) { Text("Reset") } },
-                dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
-                title = { Text("Reset to app defaults?") },
+                confirmButton = { TextButton(onClick = { resetDefaults() }) { Text(L("Reset")) } },
+                dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(L("Cancel")) } },
+                title = { Text(L("Reset to app defaults?")) },
                 text = {
                     Text(
-                        "The ${if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC"} defaults profile, " +
-                            "its \"Set as default\" picks and its default layer are forgotten now, and this page shows the app's own defaults. " +
-                            "Unsaved changes here are lost. Existing containers keep their settings.",
+                        L("The %1\$s defaults profile, ", if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC") +
+                            L("its \"Set as default\" picks and its default layer are forgotten now, and this page shows the app's own defaults. ") +
+                            L("Unsaved changes here are lost. Existing containers keep their settings."),
                     )
                 },
             )
@@ -329,7 +330,7 @@ private fun DriveLine(section: DeckWindowsSection, vm: ContainerDetailViewModel,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Box {
-            DeckSmallButton("${drive.letter}:" + if (duplicate) " (used twice)" else "") { letters = true }
+            DeckSmallButton("${drive.letter}:" + if (duplicate) L(" (used twice)") else "") { letters = true }
             DropdownMenu(expanded = letters, onDismissRequest = { letters = false }, modifier = Modifier.heightIn(max = 420.dp)) {
                 vm.driveLetterOptions.forEach { opt ->
                     val l = opt.trimEnd(':')
@@ -352,11 +353,11 @@ private fun DriveLine(section: DeckWindowsSection, vm: ContainerDetailViewModel,
             onValueChange = { t -> text = t; vm.updateDrivePath(drive.uid, t) },
             singleLine = true,
             isError = duplicate,
-            placeholder = { Text("Folder, e.g. /storage/emulated/0/Games") },
+            placeholder = { Text(L("Folder, e.g. /storage/emulated/0/Games")) },
             shape = deckShape(14.dp),
             modifier = Modifier.weight(1f).deckFocusRing(deckShape(14.dp), scaleTo = 1f),
         )
-        DeckSmallButton("Browse", Icons.Filled.FolderOpen) { section.browseFor = drive.uid }
+        DeckSmallButton(L("Browse"), Icons.Filled.FolderOpen) { section.browseFor = drive.uid }
         DeckSmallButton("", Icons.Filled.Delete) { vm.removeDrive(drive.uid) }
     }
 }
@@ -373,15 +374,15 @@ private fun WallpaperLine(section: DeckWindowsSection, vm: ContainerDetailViewMo
         }
     }
     DeckLine(
-        label = if (preview != null) "Wallpaper image" else "No wallpaper image yet",
-        hint = (if (scope == WineThemeManager.BackgroundScope.GLOBAL) "Shared by every container" else "This container's own") +
-            ". A new image is used from the next start once you save.",
+        label = if (preview != null) L("Wallpaper image") else L("No wallpaper image yet"),
+        hint = (if (scope == WineThemeManager.BackgroundScope.GLOBAL) L("Shared by every container") else L("This container's own")) +
+            L(". A new image is used from the next start once you save."),
         icon = Icons.Filled.Image,
     ) {
         preview?.let { img ->
             Image(img, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(48.dp).clip(deckShape(8.dp)))
         }
-        DeckSmallButton(if (preview != null) "Change" else "Browse", Icons.Filled.FolderOpen) { section.pickImage = true }
-        DeckSmallButton("System picker", Icons.Filled.PhotoLibrary) { section.pickImageSystem = true }
+        DeckSmallButton(if (preview != null) L("Change") else L("Browse"), Icons.Filled.FolderOpen) { section.pickImage = true }
+        DeckSmallButton(L("System picker"), Icons.Filled.PhotoLibrary) { section.pickImageSystem = true }
     }
 }

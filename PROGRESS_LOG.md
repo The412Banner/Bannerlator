@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 📦 main 31196765 artifacts build, pubg APK staged (NOT installed, NOT device-tested)
+- **User:** "build main as artifacts only" → build-artifacts 42448581860 (headSha 31196765 = main; code == merge 78000ba3 == tested 344d9376). "stage the apk when the build is done, pubg".
+- **pubg job:** success, 0 failed steps, BUILD SUCCESSFUL (standard/antutu still running at staging; ludashi done).
+- **APK check:** classes4.dex has Share logs, classes3.dex the Mali "System" gate, libbannerwayland.so the session-log JNI setter; cert SHA-256 A4:0D:A8:0A… (same as installed).
+- **Staged:** /sdcard/Download/Bannerlator-main-31196765-pubg.apk sha256 7b146311… (host == device). Installed on the Elite: Bannerlator-lab-ui-fe1b32aa.apk (8778024f…) = undo.
+- **Next:** user's yes → install → one Wayland game (save first) → <game>/wayland/, Wayland chip, Share logs zip, logcat FATAL check.
+
 ## 2026-11-08 — ✅ MERGED to main 78000ba3: game Wayland logs + Share logs + "System" on Wayland for Mali (CI-green, NOT device-tested)
 - **User:** "yes rebase both onto main and rebuild and merge".
 - **CI:** fix/wayland-mali-system 6895b064 → 42447350344 success ×4; feat/log-wayland 344d9376 (stacked on 6895b064, = main + both) → 42447351816 success ×4; main's own 42447118936 (Lab languages, 233ab7d4) success ×4 before main was pushed. 0 failed steps.

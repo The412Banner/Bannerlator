@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 lab-fixes after the first device try: crash, 3D, blurry art (3d05a47f; CI blocked by a GitHub 504)
+- **User test of 082c2715 (Elite, portrait):** 3D tilt jerky; **crash** when moving the device on 3D art (logcat crash 03:55:22 + 03:56:01 EST: IllegalStateException "Offset is unspecified" at AndroidViewHolder.layoutAccordingTo → positionInRoot, under BlockGraphicsLayerModifier = the preview player (AndroidView) inside the moving 3D layer with a bad tilt value); backgrounds blurry (screenshots 035753 Samorost 3 = Epic game, no Steam link → cover blurred fallback; 035758 RE2 = 1920x620 hero zoomed ~3x to fill 1080x1920).
+- **User asks:** 3D art should "slowly move like in the preview" (no gyro); backgrounds clear; "can't the games auto scrape from steamgriddb for proper clear game art?" → yes.
+- **Fixes:** 3524e8a0 (glide per frame, Steam 2x hero; superseded), **a54fcf6d** (3D = slow drift, no sensor, ≤60 updates/s; player never under the moving layer; NaN guard), **3d05a47f** (LabArt.resolve per game, once, prefs lab_art_found, miss retried after 7 days: Steam app by name for unlinked games via SteamStoreSearch.findAppIdByName (art/previews only), SteamGridDB hero 3840x1240 first, styles alternate,material, by Steam app or strict title match; background order pick → Steam 2x → SGDB → Steam 1x → cover blurred; drift zoom 4%, 3D +6%; big tile logo area bottom 156dp).
+- **CI:** 42464943758 (3524e8a0) and 42465155326 (a54fcf6d) failed at "Fetch dxvk-nvapi" — github.com release download HTTP 504 (also 504 from the Elite at 04:0x EST), not our code. Background job waits for the URL to return 200, then dispatches build-artifacts for 3d05a47f.
+- **Next:** green → stage /sdcard/Download/Bannerlator-lab-fixes-3d05a47f.apk → ASK install → user retests (3D drift, no crash, sharp art for RE2 / Samorost / MIO, portrait + landscape).
+
 ## 2026-11-08 — ✅ lab-fixes 082c2715 INSTALLED on the Elite 03:50:36 EST (user: "yes install it"; NOT device-tested yet)
 - pm install -r Success; installed base.apk sha256 **c1765f3d…** == staged == CI artifact; logcat crash buffer: no com.tencent.ig / FATAL entries. Peer sessions root-6b / root-e5 told before and "done" after.
 - Replaced the Pocket FIT session's lab-fixes cccee60d (2f723b4a…), which 082c2715 contains.

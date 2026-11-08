@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Avvia il suo desktop Windows</string>
     <string name="lab_4455b74f">Quanto spesso il movimento degli stick arriva al gioco. Modificabile anche in gioco.</string>
     <string name="lab_449c12fb">Dimensione sullo schermo</string>
+    <string name="lab_4500ffeb">Il profilo predefinito %1$s, </string>
     <string name="lab_452013a2">Esporta</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Backend display</string>

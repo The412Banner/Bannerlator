@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">切換語言後 Bannerlator 會重新啟動。</string>
     <string name="lab_22d5b60e">Steam 用戶端及繪製其介面的合成器可使用哪些 CPU 核心。僅作用於用戶端及其選單，</string>
     <string name="lab_22f20854">你的 GOG 收藏庫遊戲將關閉結束時自動上載到雲端。遊戲關閉時，其存檔不會推送到 GOG 雲端，你需要自行在 GOG 存檔管理員分頁或遊戲詳細資料頁面中上載。要繼續嗎？</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">。值不可包含空格。</string>
     <string name="lab_235fa0f3">啟動時停止</string>
     <string name="lab_2379f827">投放到電視</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">啟動其 Windows 桌面</string>
     <string name="lab_4455b74f">搖桿移動傳給遊戲的頻率。也可在遊戲中更改。</string>
     <string name="lab_449c12fb">螢幕顯示大小</string>
+    <string name="lab_4500ffeb">%1$s 預設設定檔</string>
     <string name="lab_452013a2">匯出</string>
     <string name="lab_45536eb8">容器</string>
     <string name="lab_45bf9648">顯示後端</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">「觸控螢幕」會向遊戲傳送真實觸控。</string>
     <string name="lab_ea08e43f">Linux 運行環境和所有列表</string>
     <string name="lab_ea354143">右上角的半透明按鈕，輕按即可開啟快速選單。不用它時，返回鍵、選單按鈕或四指輕觸同樣可以開啟。</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">啟動方式</string>
     <string name="lab_ea83f479">• 用戶端可能會在「系統」下顯示無法安裝的 Steam 用戶端更新。Deck 模式現在使用 Steam Deck 測試版頻道來避免此問題，但如果仍然出現，請不要按「套用」。\n</string>
     <string name="lab_ea954889">繼續</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">遊戲偵測到的 GPU 名稱</string>
     <string name="lab_fbf2e44f">螢幕上的 FPS 和溫度顯示。</string>
     <string name="lab_fd1310b6">X 按鈕</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">顏色</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE（驅動程式追蹤）</string>

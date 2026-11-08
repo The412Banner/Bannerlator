@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Windows 데스크톱 시작</string>
     <string name="lab_4455b74f">스틱 움직임이 게임에 전달되는 빈도. 게임 중에도 바꿀 수 있습니다.</string>
     <string name="lab_449c12fb">화면상 크기</string>
+    <string name="lab_4500ffeb">%1$s 기본값 프로필과 </string>
     <string name="lab_452013a2">내보내기</string>
     <string name="lab_45536eb8">컨테이너</string>
     <string name="lab_45bf9648">디스플레이 백엔드</string>

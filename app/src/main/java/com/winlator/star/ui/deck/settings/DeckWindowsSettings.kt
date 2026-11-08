@@ -306,7 +306,7 @@ internal class DeckWindowsSection(
                 title = { Text(L("Reset to app defaults?")) },
                 text = {
                     Text(
-                        "The ${if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC"} defaults profile, " +
+                        L("The %1\$s defaults profile, ", if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC") +
                             L("its \"Set as default\" picks and its default layer are forgotten now, and this page shows the app's own defaults. ") +
                             L("Unsaved changes here are lost. Existing containers keep their settings."),
                     )

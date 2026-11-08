@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator จะรีสตาร์ทเพื่อเปลี่ยนภาษา</string>
     <string name="lab_22d5b60e">คอร์ CPU ที่ไคลเอนต์ Steam และคอมโพสิเตอร์ที่วาดอินเทอร์เฟซใช้ได้ มีผลกับไคลเอนต์และเมนูของไคลเอนต์เท่านั้น </string>
     <string name="lab_22f20854">การอัปโหลดขึ้นคลาวด์อัตโนมัติเมื่อออกจะถูกปิดสำหรับเกมในไลบรารี GOG เซฟของเกมจะไม่ถูกส่งขึ้นคลาวด์ GOG เมื่อปิดเกม — คุณต้องอัปโหลดเองจากแท็บตัวจัดการเซฟเกม GOG หรือหน้ารายละเอียดของเกม ดำเนินการต่อไหม</string>
-    <string name="lab_22fe9db5">โดยตรง</string>
     <string name="lab_2315b7f2"> ค่าต้องไม่มีช่องว่าง</string>
     <string name="lab_235fa0f3">หยุดตอนเริ่มต้น</string>
     <string name="lab_2379f827">แคสต์ไปยังทีวี</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">เปิดเดสก์ท็อป Windows</string>
     <string name="lab_4455b74f">ความถี่ที่การขยับสติ๊กถูกส่งไปยังเกม เปลี่ยนในเกมได้ด้วย</string>
     <string name="lab_449c12fb">ขนาดบนหน้าจอ</string>
+    <string name="lab_4500ffeb">โปรไฟล์ค่าเริ่มต้น %1$s </string>
     <string name="lab_452013a2">ส่งออก</string>
     <string name="lab_45536eb8">คอนเทนเนอร์</string>
     <string name="lab_45bf9648">แบ็กเอนด์การแสดงผล</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">หน้าจอสัมผัส: ส่งการสัมผัสจริงไปยังเกม</string>
     <string name="lab_ea08e43f">รันไทม์ Linux และทุกรายการ</string>
     <string name="lab_ea354143">ปุ่มจาง ๆ ที่มุมขวาบน แตะเพื่อเปิดเมนูด่วน ปุ่ม Back, ปุ่ม Menu หรือการแตะสี่นิ้วใช้ได้โดยไม่ต้องมีปุ่มนี้</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">วิธีเริ่มเกม</string>
     <string name="lab_ea83f479">• ไคลเอนต์อาจแสดงอัปเดต Steam Client ในส่วน System ที่ติดตั้งไม่ได้ ตอนนี้โหมด Deck ใช้ช่องทางเบต้า Steam Deck เพื่อเลี่ยงปัญหานี้ แต่หากยังขึ้นมา อย่ากด Apply\n</string>
     <string name="lab_ea954889">ดำเนินการต่อ</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">ชื่อ GPU ที่เกมเห็น</string>
     <string name="lab_fbf2e44f">ค่า FPS และอุณหภูมิบนหน้าจอ</string>
     <string name="lab_fd1310b6">ปุ่ม X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">สี</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ติดตามไดรเวอร์)</string>

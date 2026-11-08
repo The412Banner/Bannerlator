@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator repornește pentru a schimba limba.</string>
     <string name="lab_22d5b60e">Pe ce nuclee CPU pot rula clientul Steam și compozitorul care îi desenează interfața. Se aplică doar clientului și meniurilor lui, </string>
     <string name="lab_22f20854">Încărcarea automată în cloud la ieșire va fi DEZACTIVATĂ pentru jocurile din biblioteca ta GOG. Salvările lor nu vor fi trimise în cloudul GOG la închiderea unui joc — va trebui să le încarci singur din fila GOG a Managerului de salvări sau din pagina de detalii a jocului. Continui?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Valorile nu pot conține spații.</string>
     <string name="lab_235fa0f3">Oprește la pornire</string>
     <string name="lab_2379f827">Proiectează pe TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Pornește desktopul Windows al acestuia</string>
     <string name="lab_4455b74f">Cât de des ajunge mișcarea stickului la joc. Se poate schimba și în joc.</string>
     <string name="lab_449c12fb">Dimensiune pe ecran</string>
+    <string name="lab_4500ffeb">Profilul implicit %1$s, </string>
     <string name="lab_452013a2">Exportă</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Backend de afișare</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Ecran tactil trimite atingeri reale către joc.</string>
     <string name="lab_ea08e43f">Mediul de execuție Linux și toate listele</string>
     <string name="lab_ea354143">Un buton discret în dreapta sus care deschide meniul rapid prin atingere. Înapoi, butonul Menu sau o atingere cu patru degete funcționează și fără el.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Cum pornește</string>
     <string name="lab_ea83f479">• Clientul poate afișa la Sistem o actualizare Steam Client care nu se instalează. Modul Deck folosește acum canalul beta Steam Deck ca s-o evite, dar dacă apare, nu apăsa Aplică.\n</string>
     <string name="lab_ea954889">Continuă</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Numele GPU văzut de jocuri</string>
     <string name="lab_fbf2e44f">Afișajul FPS și al temperaturii pe ecran.</string>
     <string name="lab_fd1310b6">Butonul X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Culoare</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (urmărire driver)</string>

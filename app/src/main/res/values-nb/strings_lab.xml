@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Start Windows-skrivebordet</string>
     <string name="lab_4455b74f">Hvor ofte stikkebevegelser når spillet. Kan også endres i spillet.</string>
     <string name="lab_449c12fb">Størrelse på skjermen</string>
+    <string name="lab_4500ffeb">Standardprofilen for %1$s, </string>
     <string name="lab_452013a2">Eksporter</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Visningsbackend</string>

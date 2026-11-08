@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator se kvůli změně jazyka restartuje.</string>
     <string name="lab_22d5b60e">Na kterých jádrech CPU smí běžet klient Steam a kompozitor vykreslující jeho rozhraní. Týká se jen klienta a jeho menu, </string>
     <string name="lab_22f20854">Automatické nahrávání do cloudu při ukončení bude pro hry z vaší knihovny GOG VYPNUTO. Jejich uložené hry se po zavření hry nenahrají do cloudu GOG — budete je muset nahrát sami na kartě Správce uložených her GOG nebo na stránce podrobností hry. Pokračovat?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Hodnoty nesmí obsahovat mezery.</string>
     <string name="lab_235fa0f3">Zastavit při startu</string>
     <string name="lab_2379f827">Promítat na TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Spustit jeho plochu Windows</string>
     <string name="lab_4455b74f">Jak často se pohyb páčky dostane do hry. Lze změnit i ve hře.</string>
     <string name="lab_449c12fb">Velikost na obrazovce</string>
+    <string name="lab_4500ffeb">Výchozí profil %1$s, </string>
     <string name="lab_452013a2">Exportovat</string>
     <string name="lab_45536eb8">Kontejner</string>
     <string name="lab_45bf9648">Backend zobrazení</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Dotyková obrazovka posílá hře skutečné dotyky.</string>
     <string name="lab_ea08e43f">Běhové prostředí Linuxu a všechny seznamy</string>
     <string name="lab_ea354143">Nenápadné tlačítko vpravo nahoře, které dotykem otevře rychlé menu. Zpět, tlačítko Menu nebo klepnutí čtyřmi prsty fungují i bez něj.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Způsob spuštění</string>
     <string name="lab_ea83f479">• Klient může v sekci Systém zobrazit aktualizaci klienta Steam, kterou nelze nainstalovat. Režim Steam Deck nyní používá kanál beta pro Steam Deck, aby se tomu vyhnul, ale pokud se objeví, nemačkejte Použít.\n</string>
     <string name="lab_ea954889">Pokračovat</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Název GPU viditelný pro hry</string>
     <string name="lab_fbf2e44f">Zobrazení FPS a teploty na obrazovce.</string>
     <string name="lab_fd1310b6">Tlačítko X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Barva</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (trasování ovladače)</string>

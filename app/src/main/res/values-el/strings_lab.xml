@@ -177,7 +177,6 @@
     <string name="lab_229b787d">Πίνακας απόδοσης</string>
     <string name="lab_22a5e40a">Λειτουργία σταθερής απόδοσης</string>
     <string name="lab_22a98e01">Το Bannerlator θα επανεκκινηθεί για να αλλάξει η γλώσσα.</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Οι τιμές δεν μπορούν να περιέχουν κενά.</string>
     <string name="lab_235fa0f3">Διακοπή κατά την εκκίνηση</string>
     <string name="lab_2379f827">Μετάδοση σε τηλεόραση</string>
@@ -334,6 +333,7 @@
     <string name="lab_4358e63d">Lab, Deck, XMB ή Classic</string>
     <string name="lab_443d0954">Εκκίνηση της επιφάνειας εργασίας Windows του</string>
     <string name="lab_449c12fb">Μέγεθος στην οθόνη</string>
+    <string name="lab_4500ffeb">Το προφίλ προεπιλογών %1$s, </string>
     <string name="lab_452013a2">Εξαγωγή</string>
     <string name="lab_45536eb8">Κοντέινερ</string>
     <string name="lab_45bf9648">Backend οθόνης</string>
@@ -1143,7 +1143,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) ή off</string>
     <string name="lab_e98a38e0">Μεγεθυντικός φακός, εικόνα σε εικόνα, πληκτρολόγιο και απόδοση.</string>
     <string name="lab_ea08e43f">Runtime Linux και όλες οι λίστες</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Τρόπος εκκίνησης</string>
     <string name="lab_ea954889">Συνέχεια</string>
     <string name="lab_eb391775">Όλες οι τιμές</string>
@@ -1232,7 +1231,6 @@
     <string name="lab_fbd4f98b">Όνομα GPU που βλέπουν τα παιχνίδια</string>
     <string name="lab_fbf2e44f">Η ένδειξη FPS και θερμοκρασίας στην οθόνη.</string>
     <string name="lab_fd1310b6">Κουμπί X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Χρώμα</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ιχνηλάτηση προγράμματος οδήγησης)</string>

@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Start its Windows desktop</string>
     <string name="lab_4455b74f">How often stick movement reaches the game. Also changeable in-game.</string>
     <string name="lab_449c12fb">Size on screen</string>
+    <string name="lab_4500ffeb">The %1$s defaults profile, </string>
     <string name="lab_452013a2">Export</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Display backend</string>

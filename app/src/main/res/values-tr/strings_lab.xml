@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Dili değiştirmek için Bannerlator yeniden başlar.</string>
     <string name="lab_22d5b60e">Steam istemcisinin ve arayüzünü çizen birleştiricinin hangi CPU çekirdeklerinde çalışabileceği. Yalnızca istemciye ve menülerine ulaşır, </string>
     <string name="lab_22f20854">Çıkışta otomatik bulut yükleme, GOG kütüphanenizdeki oyunlar için KAPALI olacak. Bir oyun kapandığında kayıtları GOG bulutuna gönderilmeyecek — bunları GOG Kayıt Yöneticisi sekmesinden veya oyunun ayrıntı sayfasından kendiniz yüklemeniz gerekecek. Devam edilsin mi?</string>
-    <string name="lab_22fe9db5">Doğrudan</string>
     <string name="lab_2315b7f2">. Değerler boşluk içeremez.</string>
     <string name="lab_235fa0f3">Başlangıçta dur</string>
     <string name="lab_2379f827">TV\'ye yansıt</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Windows masaüstünü başlat</string>
     <string name="lab_4455b74f">Çubuk hareketinin oyuna ne sıklıkla ulaştığı. Oyun içinde de değiştirilebilir.</string>
     <string name="lab_449c12fb">Ekrandaki boyut</string>
+    <string name="lab_4500ffeb">%1$s varsayılan profili, </string>
     <string name="lab_452013a2">Dışa aktar</string>
     <string name="lab_45536eb8">Konteyner</string>
     <string name="lab_45bf9648">Görüntü arka ucu</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Dokunmatik ekran, oyuna gerçek dokunuşlar gönderir.</string>
     <string name="lab_ea08e43f">Linux çalışma zamanı ve tüm listeler</string>
     <string name="lab_ea354143">Sağ üstte, dokunarak hızlı menüyü açan soluk bir düğme. Geri, Menü düğmesi veya dört parmakla dokunma onsuz da çalışır.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Başlatma şekli</string>
     <string name="lab_ea83f479">• İstemci, Sistem altında yüklenmeyen bir Steam istemcisi güncellemesi gösterebilir. Deck modu bunu önlemek için artık Steam Deck beta kanalını kullanıyor, ancak görünürse Uygula\'ya basmayın.\n</string>
     <string name="lab_ea954889">Devam</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Oyunların gördüğü GPU adı</string>
     <string name="lab_fbf2e44f">Ekrandaki FPS ve sıcaklık göstergesi.</string>
     <string name="lab_fd1310b6">X düğmesi</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Renk</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (sürücü izleme)</string>

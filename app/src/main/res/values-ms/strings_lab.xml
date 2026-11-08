@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator dimulakan semula untuk menukar bahasa.</string>
     <string name="lab_22d5b60e">Teras CPU yang boleh digunakan klien Steam dan compositor yang melukis antara mukanya. Ia hanya untuk klien dan menunya, </string>
     <string name="lab_22f20854">Muat naik awan automatik semasa keluar akan DIMATIKAN untuk permainan dalam pustaka GOG anda. Simpanannya tidak akan ditolak ke awan GOG apabila permainan ditutup — anda perlu memuat naiknya sendiri daripada tab Pengurus Simpanan GOG atau halaman butiran permainan. Teruskan?</string>
-    <string name="lab_22fe9db5">Mentah</string>
     <string name="lab_2315b7f2">. Nilai tidak boleh mengandungi ruang.</string>
     <string name="lab_235fa0f3">Henti semasa permulaan</string>
     <string name="lab_2379f827">Hantar ke TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Mulakan desktop Windowsnya</string>
     <string name="lab_4455b74f">Kekerapan pergerakan kayu bedik sampai ke permainan. Juga boleh ditukar dalam permainan.</string>
     <string name="lab_449c12fb">Saiz pada skrin</string>
+    <string name="lab_4500ffeb">Profil lalai %1$s, </string>
     <string name="lab_452013a2">Eksport</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Backend paparan</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Skrin sentuh menghantar sentuhan sebenar kepada permainan.</string>
     <string name="lab_ea08e43f">Masa jalan Linux dan setiap senarai</string>
     <string name="lab_ea354143">Butang samar di kanan atas yang membuka menu pantas dengan sentuhan. Kembali, butang Menu atau ketikan empat jari berfungsi tanpanya.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Cara ia bermula</string>
     <string name="lab_ea83f479">• Klien mungkin memaparkan kemas kini Steam Client di bawah System yang tidak dapat dipasang. Mod Deck kini menggunakan saluran beta Steam Deck untuk mengelakkannya, tetapi jika ia muncul, jangan tekan Apply.\n</string>
     <string name="lab_ea954889">Teruskan</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Nama GPU yang dilihat permainan</string>
     <string name="lab_fbf2e44f">Paparan FPS dan suhu pada skrin.</string>
     <string name="lab_fd1310b6">Butang X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Warna</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (pengesanan pemacu)</string>

@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Lancer son bureau Windows</string>
     <string name="lab_4455b74f">Fréquence à laquelle les mouvements des sticks arrivent au jeu. Modifiable aussi en jeu.</string>
     <string name="lab_449c12fb">Taille à l\'écran</string>
+    <string name="lab_4500ffeb">Le profil par défaut %1$s, </string>
     <string name="lab_452013a2">Exporter</string>
     <string name="lab_45536eb8">Conteneur</string>
     <string name="lab_45bf9648">Backend d\'affichage</string>

@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator перезапуститься, щоб змінити мову.</string>
     <string name="lab_22d5b60e">На яких ядрах CPU можуть працювати клієнт Steam і композитор, що малює його інтерфейс. Діє лише на клієнт і його меню, </string>
     <string name="lab_22f20854">Автовивантаження в хмару під час виходу буде ВИМКНЕНО для ігор вашої бібліотеки GOG. Їхні збереження не надсилатимуться в хмару GOG під час закриття гри — вивантажувати їх доведеться самостійно на вкладці «Менеджер збережень GOG» або на сторінці гри. Продовжити?</string>
-    <string name="lab_22fe9db5">Напряму</string>
     <string name="lab_2315b7f2">. Значення не можуть містити пробілів.</string>
     <string name="lab_235fa0f3">Зупиняти під час запуску</string>
     <string name="lab_2379f827">Трансляція на ТВ</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Відкрити робочий стіл Windows</string>
     <string name="lab_4455b74f">Як часто рух стіка передається грі. Можна змінювати й у грі.</string>
     <string name="lab_449c12fb">Розмір на екрані</string>
+    <string name="lab_4500ffeb">Профіль за замовчуванням %1$s, </string>
     <string name="lab_452013a2">Експорт</string>
     <string name="lab_45536eb8">Контейнер</string>
     <string name="lab_45bf9648">Бекенд дисплея</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">«Сенсорний екран» передає грі справжні дотики.</string>
     <string name="lab_ea08e43f">Середовище Linux і всі списки</string>
     <string name="lab_ea354143">Напівпрозора кнопка в правому верхньому куті, що відкриває швидке меню дотиком. Кнопка «Назад», кнопка меню або дотик чотирма пальцями працюють і без неї.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Як запускається</string>
     <string name="lab_ea83f479">• Клієнт може показати в розділі «Система» оновлення клієнта Steam, яке не встановлюється. Щоб цього уникнути, режим Deck тепер використовує бета-канал Steam Deck, але якщо воно з’явиться, не натискайте «Застосувати».\n</string>
     <string name="lab_ea954889">Продовжити</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Назва GPU, яку бачать ігри</string>
     <string name="lab_fbf2e44f">Показ FPS і температури на екрані.</string>
     <string name="lab_fd1310b6">Кнопка X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Колір</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (трасування драйвера)</string>

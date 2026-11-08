@@ -177,7 +177,6 @@
     <string name="lab_229b787d">Teljesítmény-irányítópult</string>
     <string name="lab_22a5e40a">Tartós teljesítmény mód</string>
     <string name="lab_22a98e01">A Bannerlator újraindul a nyelvváltáshoz.</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Az értékek nem tartalmazhatnak szóközt.</string>
     <string name="lab_235fa0f3">Leállítás induláskor</string>
     <string name="lab_2379f827">Kivetítés TV-re</string>
@@ -334,6 +333,7 @@
     <string name="lab_4358e63d">Lab, Deck, XMB vagy Classic</string>
     <string name="lab_443d0954">A Windows asztalának indítása</string>
     <string name="lab_449c12fb">Méret a képernyőn</string>
+    <string name="lab_4500ffeb">A(z) %1$s alapértelmezett profilja, </string>
     <string name="lab_452013a2">Exportálás</string>
     <string name="lab_45536eb8">Konténer</string>
     <string name="lab_45bf9648">Megjelenítési backend</string>
@@ -1143,7 +1143,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) vagy off</string>
     <string name="lab_e98a38e0">Nagyító, kép a képben, billentyűzet és teljesítmény.</string>
     <string name="lab_ea08e43f">Linux futtatókörnyezet és minden lista</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Indítás módja</string>
     <string name="lab_ea954889">Folytatás</string>
     <string name="lab_eb391775">Összes érték</string>
@@ -1232,7 +1231,6 @@
     <string name="lab_fbd4f98b">A játékok által látott GPU-név</string>
     <string name="lab_fbf2e44f">A képernyőn megjelenő FPS- és hőmérséklet-kijelzés.</string>
     <string name="lab_fd1310b6">X gomb</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Szín</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (illesztőprogram-nyomkövetés)</string>

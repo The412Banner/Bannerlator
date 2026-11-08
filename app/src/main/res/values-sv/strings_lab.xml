@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Starta dess Windows-skrivbord</string>
     <string name="lab_4455b74f">Hur ofta spakrörelser når spelet. Kan även ändras i spelet.</string>
     <string name="lab_449c12fb">Storlek på skärmen</string>
+    <string name="lab_4500ffeb">Standardprofilen för %1$s, </string>
     <string name="lab_452013a2">Exportera</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Visningsbackend</string>

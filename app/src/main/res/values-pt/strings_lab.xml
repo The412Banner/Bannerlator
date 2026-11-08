@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">O Bannerlator reinicia para trocar o idioma.</string>
     <string name="lab_22d5b60e">Em quais núcleos da CPU o cliente Steam e o compositor que desenha a interface dele podem rodar. Só afeta o cliente e os menus dele, </string>
     <string name="lab_22f20854">O envio automático para a nuvem ao sair ficará DESATIVADO para os jogos da sua biblioteca do GOG. Os jogos salvos deles não serão enviados para a nuvem do GOG quando um jogo fechar — você precisará enviá-los manualmente na aba GOG do Gerenciador de jogos salvos ou na página de detalhes do jogo. Continuar?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Os valores não podem conter espaços.</string>
     <string name="lab_235fa0f3">Parar na inicialização</string>
     <string name="lab_2379f827">Transmitir para uma TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Iniciar a área de trabalho do Windows</string>
     <string name="lab_4455b74f">Com que frequência o movimento dos analógicos chega ao jogo. Também pode ser alterado no jogo.</string>
     <string name="lab_449c12fb">Tamanho na tela</string>
+    <string name="lab_4500ffeb">O perfil padrão %1$s, </string>
     <string name="lab_452013a2">Exportar</string>
     <string name="lab_45536eb8">Contêiner</string>
     <string name="lab_45bf9648">Backend de exibição</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Touchscreen envia toques reais ao jogo.</string>
     <string name="lab_ea08e43f">Runtime do Linux e todas as listas</string>
     <string name="lab_ea354143">Um botão discreto no canto superior direito que abre o menu rápido pelo toque. Voltar, o botão Menu ou um toque com quatro dedos funcionam sem ele.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Como inicia</string>
     <string name="lab_ea83f479">• O cliente pode mostrar em Sistema uma atualização do cliente Steam que não instala. O modo Deck agora usa o canal beta do Steam Deck para evitar isso, mas se ela aparecer, não pressione Aplicar.\n</string>
     <string name="lab_ea954889">Continuar</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Nome da GPU visto pelos jogos</string>
     <string name="lab_fbf2e44f">A leitura de FPS e temperatura na tela.</string>
     <string name="lab_fd1310b6">Botão X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Cor</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (rastreamento do driver)</string>

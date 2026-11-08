@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">切换语言后 Bannerlator 将重启。</string>
     <string name="lab_22d5b60e">Steam 客户端及绘制其界面的合成器可以使用哪些 CPU 核心。仅作用于客户端及其菜单，</string>
     <string name="lab_22f20854">你的 GOG 游戏库中的游戏将关闭退出时自动云上传。游戏关闭时，其存档不会推送到 GOG 云，你需要自行在 GOG 存档管理器标签页或游戏详情页中上传。要继续吗？</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">。值不能包含空格。</string>
     <string name="lab_235fa0f3">启动时停止</string>
     <string name="lab_2379f827">投屏到电视</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">启动其 Windows 桌面</string>
     <string name="lab_4455b74f">摇杆移动传给游戏的频率。也可在游戏中更改。</string>
     <string name="lab_449c12fb">屏幕显示大小</string>
+    <string name="lab_4500ffeb">%1$s 默认配置文件</string>
     <string name="lab_452013a2">导出</string>
     <string name="lab_45536eb8">容器</string>
     <string name="lab_45bf9648">显示后端</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">“触屏”会向游戏发送真实触摸。</string>
     <string name="lab_ea08e43f">Linux 运行时和所有列表</string>
     <string name="lab_ea354143">右上角的半透明按钮，点按即可打开快捷菜单。不用它时，返回键、菜单键或四指点按同样可以打开。</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">启动方式</string>
     <string name="lab_ea83f479">• 客户端可能会在“系统”下显示一个无法安装的 Steam 客户端更新。Deck 模式现在使用 Steam Deck 测试版渠道来避免此问题，但如果它仍然出现，请不要点“应用”。\n</string>
     <string name="lab_ea954889">继续</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">游戏识别的 GPU 名称</string>
     <string name="lab_fbf2e44f">屏幕上的 FPS 和温度显示。</string>
     <string name="lab_fd1310b6">X 键</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">颜色</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE（驱动跟踪）</string>

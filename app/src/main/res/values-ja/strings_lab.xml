@@ -467,6 +467,7 @@
     <string name="lab_443d0954">Windowsデスクトップを起動</string>
     <string name="lab_4455b74f">スティックの動きをゲームに送る頻度。ゲーム中にも変更できます。</string>
     <string name="lab_449c12fb">画面上のサイズ</string>
+    <string name="lab_4500ffeb">%1$s のデフォルトプロファイルと、</string>
     <string name="lab_452013a2">エクスポート</string>
     <string name="lab_45536eb8">コンテナ</string>
     <string name="lab_45bf9648">ディスプレイバックエンド</string>

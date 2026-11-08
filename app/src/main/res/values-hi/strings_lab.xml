@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">भाषा बदलने के लिए Bannerlator रीस्टार्ट होगा।</string>
     <string name="lab_22d5b60e">Steam क्लाइंट और उसका इंटरफ़ेस बनाने वाला कंपोज़िटर किन CPU कोर पर चल सकते हैं। यह सिर्फ़ क्लाइंट और उसके मेन्यू तक पहुंचता है, </string>
     <string name="lab_22f20854">आपकी GOG लाइब्रेरी के गेम के लिए बाहर निकलने पर ऑटोमैटिक क्लाउड अपलोड बंद हो जाएगा। गेम बंद होने पर उनके सेव GOG क्लाउड पर नहीं भेजे जाएंगे — आपको इन्हें GOG सेव मैनेजर टैब या गेम के विवरण पेज से खुद अपलोड करना होगा। जारी रखें?</string>
-    <string name="lab_22fe9db5">सीधा</string>
     <string name="lab_2315b7f2">। वैल्यू में स्पेस नहीं हो सकते।</string>
     <string name="lab_235fa0f3">स्टार्टअप पर रोकें</string>
     <string name="lab_2379f827">TV पर कास्ट करें</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">इसका Windows डेस्कटॉप शुरू करें</string>
     <string name="lab_4455b74f">स्टिक की हलचल गेम तक कितनी बार पहुंचे। गेम में भी बदला जा सकता है।</string>
     <string name="lab_449c12fb">स्क्रीन पर आकार</string>
+    <string name="lab_4500ffeb">%1$s डिफ़ॉल्ट प्रोफ़ाइल, </string>
     <string name="lab_452013a2">निर्यात</string>
     <string name="lab_45536eb8">कंटेनर</string>
     <string name="lab_45bf9648">डिस्प्ले बैकएंड</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">टचस्क्रीन गेम को असली टच भेजता है।</string>
     <string name="lab_ea08e43f">Linux रनटाइम और हर सूची</string>
     <string name="lab_ea354143">ऊपर दाईं ओर एक हल्का बटन, जो छूने पर क्विक मेन्यू खोलता है। इसके बिना भी Back, Menu बटन या चार उंगलियों से टैप काम करते हैं।</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">यह कैसे शुरू होता है</string>
     <string name="lab_ea83f479">• क्लाइंट System में Steam Client का ऐसा अपडेट दिखा सकता है जो इंस्टॉल नहीं होगा। इससे बचने के लिए Deck मोड अब Steam Deck बीटा चैनल इस्तेमाल करता है, पर अगर यह दिखे, तो Apply न दबाएं।\n</string>
     <string name="lab_ea954889">जारी रखें</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">गेम को दिखने वाला GPU नाम</string>
     <string name="lab_fbf2e44f">स्क्रीन पर FPS और तापमान रीडआउट।</string>
     <string name="lab_fd1310b6">बटन X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">रंग</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ड्राइवर ट्रेसिंग)</string>

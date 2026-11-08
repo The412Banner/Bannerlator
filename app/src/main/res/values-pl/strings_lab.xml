@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator uruchomi się ponownie, aby zmienić język.</string>
     <string name="lab_22d5b60e">Na których rdzeniach CPU mogą działać klient Steam i kompozytor rysujący jego interfejs. Dotyczy tylko klienta i jego menu, </string>
     <string name="lab_22f20854">Automatyczne wysyłanie do chmury przy wyjściu zostanie WYŁĄCZONE dla gier z Twojej biblioteki GOG. Ich zapisy nie będą wysyłane do chmury GOG po zamknięciu gry — trzeba będzie wysłać je samodzielnie z karty Menedżer zapisów GOG lub ze strony szczegółów gry. Kontynuować?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Wartości nie mogą zawierać spacji.</string>
     <string name="lab_235fa0f3">Zatrzymaj przy starcie</string>
     <string name="lab_2379f827">Przesyłaj na telewizor</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Uruchom jego pulpit Windows</string>
     <string name="lab_4455b74f">Jak często ruch drążków trafia do gry. Można też zmienić w grze.</string>
     <string name="lab_449c12fb">Rozmiar na ekranie</string>
+    <string name="lab_4500ffeb">Profil domyślny %1$s, </string>
     <string name="lab_452013a2">Eksportuj</string>
     <string name="lab_45536eb8">Kontener</string>
     <string name="lab_45bf9648">Backend wyświetlania</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Ekran dotykowy przekazuje grze prawdziwe dotknięcia.</string>
     <string name="lab_ea08e43f">Środowisko Linux i wszystkie listy</string>
     <string name="lab_ea354143">Dyskretny przycisk w prawym górnym rogu, który otwiera szybkie menu dotykiem. Wstecz, przycisk Menu lub stuknięcie czterema palcami działają i bez niego.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Sposób uruchamiania</string>
     <string name="lab_ea83f479">• Klient może pokazywać w sekcji System aktualizację klienta Steam, która się nie instaluje. Tryb Decka używa teraz kanału beta Steam Decka, aby tego uniknąć, ale jeśli się pojawi, nie naciskaj Zastosuj.\n</string>
     <string name="lab_ea954889">Dalej</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Nazwa GPU widoczna dla gier</string>
     <string name="lab_fbf2e44f">Ekranowy odczyt FPS i temperatury.</string>
     <string name="lab_fd1310b6">Przycisk X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Kolor</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (śledzenie sterownika)</string>

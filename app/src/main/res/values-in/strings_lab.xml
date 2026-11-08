@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator dimulai ulang untuk mengganti bahasa.</string>
     <string name="lab_22d5b60e">Core CPU yang boleh dipakai klien Steam dan compositor yang menggambar antarmukanya. Hanya berlaku untuk klien dan menunya, </string>
     <string name="lab_22f20854">Unggahan cloud otomatis saat keluar akan NONAKTIF untuk game di pustaka GOG Anda. Save-nya tidak akan dikirim ke cloud GOG saat game ditutup — Anda perlu mengunggahnya sendiri dari tab Pengelola Save GOG atau halaman detail game. Lanjutkan?</string>
-    <string name="lab_22fe9db5">Mentah</string>
     <string name="lab_2315b7f2">. Nilai tidak boleh berisi spasi.</string>
     <string name="lab_235fa0f3">Hentikan saat mulai</string>
     <string name="lab_2379f827">Cast ke TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Mulai desktop Windows-nya</string>
     <string name="lab_4455b74f">Seberapa sering gerakan stik sampai ke game. Juga bisa diubah dalam game.</string>
     <string name="lab_449c12fb">Ukuran di layar</string>
+    <string name="lab_4500ffeb">Profil default %1$s, </string>
     <string name="lab_452013a2">Ekspor</string>
     <string name="lab_45536eb8">Container</string>
     <string name="lab_45bf9648">Backend tampilan</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Layar sentuh mengirim sentuhan asli ke game.</string>
     <string name="lab_ea08e43f">Runtime Linux dan semua daftar</string>
     <string name="lab_ea354143">Tombol samar di kanan atas untuk membuka menu cepat lewat sentuhan. Kembali, tombol Menu, atau ketuk empat jari tetap berfungsi tanpanya.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Cara memulai</string>
     <string name="lab_ea83f479">• Klien mungkin menampilkan pembaruan Steam Client di bagian System yang tidak bisa diinstal. Mode Deck kini memakai kanal beta Steam Deck untuk menghindarinya, tapi jika muncul, jangan tekan Apply.\n</string>
     <string name="lab_ea954889">Lanjutkan</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Nama GPU yang dilihat game</string>
     <string name="lab_fbf2e44f">Tampilan FPS dan suhu di layar.</string>
     <string name="lab_fd1310b6">Tombol X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Warna</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (pelacakan driver)</string>

@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">يُعاد تشغيل Bannerlator لتغيير اللغة.</string>
     <string name="lab_22d5b60e">أنوية CPU التي يمكن أن يعمل عليها عميل Steam والمركّب الذي يرسم واجهته. يصل إلى العميل وقوائمه فقط، </string>
     <string name="lab_22f20854">سيتوقف الرفع التلقائي إلى السحابة عند الخروج لألعاب مكتبة GOG. لن تُرفع ملفات حفظها إلى سحابة GOG عند إغلاق اللعبة — ستحتاج إلى رفعها بنفسك من تبويب مدير ملفات الحفظ لـ GOG أو من صفحة تفاصيل اللعبة. هل تريد المتابعة؟</string>
-    <string name="lab_22fe9db5">مباشر</string>
     <string name="lab_2315b7f2">. لا يمكن أن تحتوي القيم على مسافات.</string>
     <string name="lab_235fa0f3">إيقاف عند البدء</string>
     <string name="lab_2379f827">البث إلى تلفاز</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">تشغيل سطح مكتب Windows الخاص بها</string>
     <string name="lab_4455b74f">عدد مرات وصول حركة العصا إلى اللعبة. يمكن تغييره أيضًا أثناء اللعب.</string>
     <string name="lab_449c12fb">الحجم على الشاشة</string>
+    <string name="lab_4500ffeb">ملف الإعدادات الافتراضية لـ %1$s، </string>
     <string name="lab_452013a2">تصدير</string>
     <string name="lab_45536eb8">الحاوية</string>
     <string name="lab_45bf9648">واجهة العرض الخلفية</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">«شاشة اللمس» ترسل لمسات حقيقية إلى اللعبة.</string>
     <string name="lab_ea08e43f">بيئة تشغيل Linux وكل القوائم</string>
     <string name="lab_ea354143">زر باهت في أعلى اليمين يفتح القائمة السريعة باللمس. يعمل زر الرجوع أو زر القائمة أو النقر بأربعة أصابع من دونه.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">طريقة البدء</string>
     <string name="lab_ea83f479">• قد يعرض العميل تحت «النظام» تحديثًا لعميل Steam لا يُثبَّت. يستخدم وضع Deck الآن قناة بيتا Steam Deck لتجنبه، لكن إن ظهر فلا تضغط «تطبيق».\n</string>
     <string name="lab_ea954889">متابعة</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">اسم GPU الذي تراه الألعاب</string>
     <string name="lab_fbf2e44f">قراءة FPS والحرارة على الشاشة.</string>
     <string name="lab_fd1310b6">الزر X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">اللون</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (تتبع برنامج التشغيل)</string>

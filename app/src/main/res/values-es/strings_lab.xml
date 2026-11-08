@@ -253,7 +253,6 @@
     <string name="lab_22a98e01">Bannerlator se reinicia para cambiar el idioma.</string>
     <string name="lab_22d5b60e">En qué núcleos de CPU pueden ejecutarse el cliente de Steam y el compositor que dibuja su interfaz. Solo afecta al cliente y a sus menús, </string>
     <string name="lab_22f20854">La subida automática a la nube al salir estará DESACTIVADA para los juegos de tu biblioteca de GOG. Sus partidas no se subirán a la nube de GOG al cerrarse un juego — tendrás que subirlas tú desde la pestaña GOG del Gestor de partidas guardadas o desde la página de detalles del juego. ¿Continuar?</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Los valores no pueden contener espacios.</string>
     <string name="lab_235fa0f3">Detener al iniciar</string>
     <string name="lab_2379f827">Transmitir a una TV</string>
@@ -468,6 +467,7 @@
     <string name="lab_443d0954">Iniciar su escritorio de Windows</string>
     <string name="lab_4455b74f">Con qué frecuencia llega al juego el movimiento de los sticks. También se puede cambiar en el juego.</string>
     <string name="lab_449c12fb">Tamaño en pantalla</string>
+    <string name="lab_4500ffeb">El perfil predeterminado de %1$s, </string>
     <string name="lab_452013a2">Exportar</string>
     <string name="lab_45536eb8">Contenedor</string>
     <string name="lab_45bf9648">Backend de pantalla</string>
@@ -1536,7 +1536,6 @@
     <string name="lab_e9e73eeb">Pantalla táctil envía toques reales al juego.</string>
     <string name="lab_ea08e43f">Runtime de Linux y todas las listas</string>
     <string name="lab_ea354143">Un botón tenue arriba a la derecha que abre el menú rápido al tocarlo. Atrás, el botón Menú o un toque con cuatro dedos funcionan sin él.</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Cómo se inicia</string>
     <string name="lab_ea83f479">• El cliente puede mostrar en Sistema una actualización del cliente de Steam que no se instala. El modo Deck ahora usa el canal beta de Steam Deck para evitarlo, pero si aparece, no pulses Aplicar.\n</string>
     <string name="lab_ea954889">Continuar</string>
@@ -1658,7 +1657,6 @@
     <string name="lab_fbd4f98b">Nombre de GPU que ven los juegos</string>
     <string name="lab_fbf2e44f">La lectura de FPS y temperatura en pantalla.</string>
     <string name="lab_fd1310b6">Botón X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Color</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (trazas del controlador)</string>

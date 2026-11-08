@@ -177,7 +177,6 @@
     <string name="lab_229b787d">Табло за производителност</string>
     <string name="lab_22a5e40a">Режим на постоянна производителност</string>
     <string name="lab_22a98e01">Bannerlator ще се рестартира, за да смени езика.</string>
-    <string name="lab_22fe9db5">Raw</string>
     <string name="lab_2315b7f2">. Стойностите не може да съдържат интервали.</string>
     <string name="lab_235fa0f3">Спри при стартиране</string>
     <string name="lab_2379f827">Предавай към телевизор</string>
@@ -334,6 +333,7 @@
     <string name="lab_4358e63d">Lab, Deck, XMB или Classic</string>
     <string name="lab_443d0954">Стартирай неговия работен плот на Windows</string>
     <string name="lab_449c12fb">Размер на екрана</string>
+    <string name="lab_4500ffeb">Профилът по подразбиране за %1$s, </string>
     <string name="lab_452013a2">Експорт</string>
     <string name="lab_45536eb8">Контейнер</string>
     <string name="lab_45bf9648">Бекенд на дисплея</string>
@@ -1143,7 +1143,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) или off</string>
     <string name="lab_e98a38e0">Лупа, картина в картината, клавиатура и производителност.</string>
     <string name="lab_ea08e43f">Linux среда за изпълнение и всички списъци</string>
-    <string name="lab_ea4697e9">RealSteam</string>
     <string name="lab_ea4babd8">Как стартира</string>
     <string name="lab_ea954889">Продължи</string>
     <string name="lab_eb391775">Всички стойности</string>
@@ -1232,7 +1231,6 @@
     <string name="lab_fbd4f98b">Име на GPU, което игрите виждат</string>
     <string name="lab_fbf2e44f">Екранният индикатор за FPS и температура.</string>
     <string name="lab_fd1310b6">Бутон X</string>
-    <string name="lab_fd480ce8">AppSteam</string>
     <string name="lab_fd5460f8">Цвят</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (проследяване на драйвера)</string>

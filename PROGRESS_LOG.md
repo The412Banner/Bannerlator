@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ labpolish ce72b150 INSTALLED on the Elite main app (pubg) 17:29:09 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42529607854 green ×4. Installed base.apk sha256 92866540… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the report at the top of the Wayland game driver page → merge on go.
+
 ## 2026-11-08 — 🔧 lab-settings-polish: adapter report at the top of the page (ce72b150; CI 42529607854 running)
 - **User test of 569502c6 on the main app (screenshots 171740 / 171744, DiRT Showdown game settings):** the row lines, the "?" buttons and the adapter rows all show. The report works (Adreno 830 · turnip Mesa 26.99.99; timing bug no; fences yes; zero-copy safe yes; modifiers yes; high priority accepted). User: "adapter report should be at the top of the menu not its own sub menu".
 - **Fix:** a category extra can now be drawn in place among the rows (CInline → RInline, not focusable). The report is the first item of the Wayland game driver page.

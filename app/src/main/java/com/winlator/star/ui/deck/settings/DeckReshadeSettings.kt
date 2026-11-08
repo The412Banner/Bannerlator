@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.T
 import com.winlator.star.ui.deck.deckShape
 import android.content.Context
 import android.os.Handler
@@ -189,9 +190,9 @@ internal object ReshadeRows {
         ),
         SettingDef(
             id = ID_MODE, category = "visuals", group = GROUP, level = SettingLevel.SIMPLE,
-            label = "How effects combine", hint = "Solo runs one effect at a time, to compare them. Stack layers every effect that is on.",
+            label = T("How effects combine"), hint = T("Solo runs one effect at a time, to compare them. Stack layers every effect that is on."),
             tech = K_MODE,
-            control = { _, _ -> Control.Segmented(listOf(Opt(ReshadeLoadout.MODE_SOLO, "Solo"), Opt(ReshadeLoadout.MODE_STACK, "Stack"))) },
+            control = { _, _ -> Control.Segmented(listOf(Opt(ReshadeLoadout.MODE_SOLO, T("Solo")), Opt(ReshadeLoadout.MODE_STACK, T("Stack")))) },
             vm = VmBinding(get = { _, vm -> vm.reshadeLoadout.mode }, set = { _, vm, v -> vm.reshadeLoadout.changeMode(v) }),
             game = GameBinding(
                 keys = KEYS,
@@ -360,7 +361,7 @@ internal class DeckReshadeSection(
     fun download(entry: ReshadeCatalogEntry) {
         if (downloadingId != null) return
         downloadingId = entry.id
-        phase = "Downloading"
+        phase = T("Downloading")
         progress = 0f
         error = null
         val main = Handler(Looper.getMainLooper())
@@ -368,7 +369,7 @@ internal class DeckReshadeSection(
             val ok = runCatching {
                 ReshadeDownloader.install(env.context, entry) { p, f ->
                     main.post {
-                        phase = if (p == ReshadeDownloader.Phase.EXTRACT) "Installing" else "Downloading"
+                        phase = if (p == ReshadeDownloader.Phase.EXTRACT) T("Installing") else T("Downloading")
                         progress = f
                     }
                 }
@@ -433,10 +434,10 @@ internal class DeckReshadeSection(
         pendingDelete?.let { entry ->
             OutlinedAlertDialog(
                 onDismissRequest = { pendingDelete = null },
-                confirmButton = { TextButton(onClick = { delete(entry) }) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
-                dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+                confirmButton = { TextButton(onClick = { delete(entry) }) { Text(T("Delete"), color = MaterialTheme.colorScheme.error) } },
+                dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(T("Cancel")) } },
                 title = { Text("Delete ${entry.name}?") },
-                text = { Text("This removes the downloaded effect from storage and takes it out of this loadout. You can download it again any time.") },
+                text = { Text(T("This removes the downloaded effect from storage and takes it out of this loadout. You can download it again any time.")) },
             )
         }
         tuning?.let { name ->
@@ -456,14 +457,14 @@ internal class DeckReshadeSection(
 private fun LoadoutCard(sec: DeckReshadeSection, names: List<String>) {
     val cs = MaterialTheme.colorScheme
     DeckLine(
-        label = "Effects",
-        hint = if (names.isEmpty()) "None. Browse the catalog to add some."
+        label = T("Effects"),
+        hint = if (names.isEmpty()) T("None. Browse the catalog to add some.")
                else "${names.size} effect${if (names.size == 1) "" else "s"}, run top to bottom: ${names.joinToString(", ")}",
         icon = Icons.Filled.AutoAwesome,
-        trailing = { DeckSmallButton("Browse", Icons.Filled.CloudDownload) { sec.openCatalog() } },
+        trailing = { DeckSmallButton(T("Browse"), Icons.Filled.CloudDownload) { sec.openCatalog() } },
     )
     val notes = buildList {
-        if (names.isNotEmpty() && !sec.supported()) add("ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DirectX translation." to true)
+        if (names.isNotEmpty() && !sec.supported()) add(T("ReShade only applies to DXVK/VKD3D (Vulkan) games; it has no effect with this DirectX translation.") to true)
         if (names.size > 6) add("${names.size} effects: the game takes longer to compile them at start." to false)
     }
     notes.forEach { (text, bad) ->
@@ -476,9 +477,9 @@ private fun LoadoutCard(sec: DeckReshadeSection, names: List<String>) {
     }
     if (sec.setHere()) {
         DeckLine(
-            label = if (sec.env.scope == EditorScope.GAME) "Set for this game" else "Set for this container",
-            hint = if (sec.env.scope == EditorScope.GAME) "Reset follows the container's effects again." else "Reset goes back to the All containers effects.",
-            trailing = { DeckSmallButton("Reset", Icons.Filled.Restore) { sec.resetToInherited() } },
+            label = if (sec.env.scope == EditorScope.GAME) T("Set for this game") else T("Set for this container"),
+            hint = if (sec.env.scope == EditorScope.GAME) T("Reset follows the container's effects again.") else T("Reset goes back to the All containers effects."),
+            trailing = { DeckSmallButton(T("Reset"), Icons.Filled.Restore) { sec.resetToInherited() } },
         )
     }
 }
@@ -489,10 +490,10 @@ private fun EffectLine(sec: DeckReshadeSection, name: String, index: Int, count:
     val on = s.isEnabled(name)
     val solo = s.mode == ReshadeLoadout.MODE_SOLO
     val status = when {
-        solo && on -> "Active"
-        solo -> "Off (Solo runs one at a time)"
-        on -> "On"
-        else -> "Off"
+        solo && on -> T("Active")
+        solo -> T("Off (Solo runs one at a time)")
+        on -> T("On")
+        else -> T("Off")
     }
     DeckLine(
         label = name,
@@ -505,7 +506,7 @@ private fun EffectLine(sec: DeckReshadeSection, name: String, index: Int, count:
             )
             DeckSmallButton("", Icons.Filled.ArrowUpward, enabled = index > 0) { sec.move(name, -1) }
             DeckSmallButton("", Icons.Filled.ArrowDownward, enabled = index < count - 1) { sec.move(name, 1) }
-            DeckSmallButton("Tune", Icons.Filled.Tune, enabled = paramCount > 0) { sec.tuning = name }
+            DeckSmallButton(T("Tune"), Icons.Filled.Tune, enabled = paramCount > 0) { sec.tuning = name }
             DeckSmallButton("", Icons.Filled.Close) { sec.edit { it.remove(name) } }
         },
     )
@@ -523,7 +524,7 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
     val groups = remember(sec.catalog, sec.installed, query) {
         val q = query.trim()
         val ids = sec.catalog.map { it.id }.toSet()
-        val dropped = sec.installed.filter { it !in ids }.map { ReshadeCatalogEntry(it, it, "", "Installed", "", "", "", 0L, "", 1) }
+        val dropped = sec.installed.filter { it !in ids }.map { ReshadeCatalogEntry(it, it, "", T("Installed"), "", "", "", 0L, "", 1) }
         val all = (sec.catalog + dropped).filter { e ->
             q.isEmpty() || e.name.contains(q, true) || e.author.contains(q, true) || e.category.contains(q, true)
         }
@@ -542,7 +543,7 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
         when {
             isInstalled -> sec.toggle(entry.id, entry.id.lowercase() !in selected)
             sec.downloadingId != null -> {}
-            offline -> sec.error = "Connect to the internet to download effects."
+            offline -> sec.error = T("Connect to the internet to download effects.")
             else -> sec.download(entry)
         }
     }
@@ -552,14 +553,14 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
             Surface(shape = deckShape(22.dp), color = cs.surface, modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.92f)) {
                 Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("ReShade effects", color = cs.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-                        if (selected.isNotEmpty()) DeckSmallButton("Clear all") { sec.clearAll() }
-                        DeckSmallButton("Done", Icons.Filled.Check) { sec.catalogOpen = false }
+                        Text(T("ReShade effects"), color = cs.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.weight(1f))
+                        if (selected.isNotEmpty()) DeckSmallButton(T("Clear all")) { sec.clearAll() }
+                        DeckSmallButton(T("Done"), Icons.Filled.Check) { sec.catalogOpen = false }
                     }
                     if (offline && !sec.catalogLoading) {
                         Text(
-                            if (sec.catalogSource == ReshadeCatalog.Source.CACHE) "Offline: showing a saved list. Connect to download new effects."
-                            else "Offline: showing installed effects only. Connect to browse the catalog.",
+                            if (sec.catalogSource == ReshadeCatalog.Source.CACHE) T("Offline: showing a saved list. Connect to download new effects.")
+                            else T("Offline: showing installed effects only. Connect to browse the catalog."),
                             color = cs.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
                         )
                     }
@@ -569,7 +570,7 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
                             value = query,
                             onValueChange = { query = it },
                             singleLine = true,
-                            placeholder = { Text("Search effects…") },
+                            placeholder = { Text(T("Search effects…")) },
                             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                             shape = deckShape(14.dp),
                             modifier = fieldModifier,
@@ -602,7 +603,7 @@ private fun CatalogDialog(sec: DeckReshadeSection) {
                             }
                             if (installedRows.isEmpty() && availableRows.isEmpty()) item("empty") {
                                 Text(
-                                    if (query.isNotBlank()) "No effects match \"$query\"." else "No effects available. Connect to the internet to browse the catalog.",
+                                    if (query.isNotBlank()) "No effects match \"$query\"." else T("No effects available. Connect to the internet to browse the catalog."),
                                     color = cs.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(24.dp),
                                 )
                             }
@@ -641,7 +642,7 @@ private fun CatalogLine(
                 val sub = listOf(entry.category, entry.author, entry.license).filter { it.isNotBlank() }.joinToString(" · ")
                 if (sub.isNotEmpty()) Text(sub, color = cs.onSurfaceVariant.copy(alpha = alpha), fontSize = 12.5.sp)
                 if (entry.description.isNotBlank()) Text(entry.description, color = cs.onSurfaceVariant.copy(alpha = alpha), fontSize = 12.5.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (!installed && offline && !busy) Text("Needs a connection to download", color = cs.onSurfaceVariant.copy(alpha = alpha), fontSize = 12.5.sp)
+                if (!installed && offline && !busy) Text(T("Needs a connection to download"), color = cs.onSurfaceVariant.copy(alpha = alpha), fontSize = 12.5.sp)
             }
             Spacer(Modifier.width(10.dp))
             when {
@@ -650,8 +651,8 @@ private fun CatalogLine(
                     DeckSmallButton("", Icons.Filled.Delete) { sec.pendingDelete = entry }
                     Checkbox(checked = selected, onCheckedChange = null)
                 }
-                offline -> Icon(Icons.Filled.CloudOff, contentDescription = "Offline", tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                else -> Icon(Icons.Filled.CloudDownload, contentDescription = "Download", tint = cs.primary, modifier = Modifier.size(22.dp))
+                offline -> Icon(Icons.Filled.CloudOff, contentDescription = T("Offline"), tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                else -> Icon(Icons.Filled.CloudDownload, contentDescription = T("Download"), tint = cs.primary, modifier = Modifier.size(22.dp))
             }
         }
         if (busy) {
@@ -683,12 +684,12 @@ private fun TuneDialog(sec: DeckReshadeSection, effect: ReshadeManager.ReshadeEf
                 Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(effect.name, color = cs.onSurface, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        DeckSmallButton("Reset", Icons.Filled.Restore) { sec.resetParams(effect) }
+                        DeckSmallButton(T("Reset"), Icons.Filled.Restore) { sec.resetParams(effect) }
                         Box(modifier = Modifier.focusRequester(first)) {
-                            DeckSmallButton("Done", Icons.Filled.Check) { sec.tuning = null }
+                            DeckSmallButton(T("Done"), Icons.Filled.Check) { sec.tuning = null }
                         }
                     }
-                    Text("Reset puts every value back to the effect's own default.", color = cs.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+                    Text(T("Reset puts every value back to the effect's own default."), color = cs.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
                     LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         items(effect.params, key = { it.name }) { p -> ParamControl(sec, effect.name, p) }
                     }
@@ -729,7 +730,7 @@ private fun ParamControl(sec: DeckReshadeSection, effect: String, p: ReshadeMana
         }
         ReshadeManager.ParamType.COLOR -> Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
             Text(p.label, color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.5.sp, modifier = Modifier.padding(horizontal = 18.dp))
-            val names = listOf("Red", "Green", "Blue", "Alpha")
+            val names = listOf(T("Red"), T("Green"), T("Blue"), T("Alpha"))
             for (c in 0 until p.components) {
                 val k = "${p.name}_$c"
                 val cv = s.paramValue(effect, k, p.componentDefaults?.getOrNull(c) ?: 0f)
@@ -758,7 +759,7 @@ private fun SliderLine(label: String, value: Float, min: Float, max: Float, step
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = cs.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
-            Text(if (int) shown.toInt().toString() else "%.2f".format(shown), color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
+            Text(if (int) shown.toInt().toString() else T("%.2f").format(shown), color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             DeckSmallButton("", Icons.Filled.Remove, enabled = shown > lo) { onChange((shown - step).coerceIn(lo, hi)) }

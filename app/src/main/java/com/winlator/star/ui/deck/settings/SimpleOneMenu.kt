@@ -264,14 +264,14 @@ internal fun SimpleOneMenuSettings(
                 }
                 .padding(start = if (landscape) 28.dp else 12.dp, end = if (landscape) 28.dp else 12.dp, top = 4.dp),
         ) {
-            Text(header.overline.uppercase(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
-            Text(header.title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
+            Text(L(header.overline).uppercase(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+            Text(L(header.title), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 OneTab(L("Settings"), Icons.Filled.Settings, tab == 0) { tab = 0 }
                 tabCats.forEachIndexed { i, c ->
                     Spacer(Modifier.width(6.dp))
-                    OneTab(c.label, c.icon, tab == i + 1) { tab = i + 1 }
+                    OneTab(L(c.label), c.icon, tab == i + 1) { tab = i + 1 }
                 }
                 Spacer(Modifier.width(6.dp))
                 OneTab(L("Logs"), Icons.Filled.Description, tab == logsTab) { tab = logsTab }
@@ -320,7 +320,7 @@ internal fun SimpleOneMenuSettings(
         else OutlinedAlertDialog(
             onDismissRequest = { textFor = null },
             confirmButton = { TextButton(onClick = { textFor = null }) { Text(L("Done")) } },
-            title = { Text(def.label) },
+            title = { Text(L(def.label)) },
             text = { TextControl(control, source.value(def), enabled = true) { v -> pick(def, v) } },
         )
     }
@@ -328,7 +328,7 @@ internal fun SimpleOneMenuSettings(
         OutlinedAlertDialog(
             onDismissRequest = { coresFor = null },
             confirmButton = { TextButton(onClick = { coresFor = null }) { Text(L("Done")) } },
-            title = { Text(def.label) },
+            title = { Text(L(def.label)) },
             text = { CoresControl(source.value(def), enabled = true) { v -> pick(def, v) } },
         )
     }
@@ -355,8 +355,8 @@ internal fun SimpleOneMenuSettings(
         OutlinedAlertDialog(
             onDismissRequest = { helpFor = null },
             confirmButton = { TextButton(onClick = { helpFor = null }) { Text("OK") } },
-            title = { Text(def.label) },
-            text = { Text(listOfNotNull(def.disabled(env, values), def.help ?: def.hint).joinToString("\n\n")) },
+            title = { Text(L(def.label)) },
+            text = { Text(listOfNotNull(def.disabled(env, values), def.help ?: def.hint).map { L(it) }.joinToString("\n\n")) },
         )
     }
     pendingConfirm?.let { (def, v) ->
@@ -367,10 +367,10 @@ internal fun SimpleOneMenuSettings(
         } else {
             OutlinedAlertDialog(
                 onDismissRequest = { pendingConfirm = null },
-                confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(ask.confirmLabel) } },
+                confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(L(ask.confirmLabel)) } },
                 dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text(L("Cancel")) } },
-                title = { Text(ask.title) },
-                text = { Text(ask.body) },
+                title = { Text(L(ask.title)) },
+                text = { Text(L(ask.body)) },
             )
         }
     }
@@ -423,7 +423,7 @@ private fun SectionList(cats: List<SettingsCategory>, current: SettingsCategory?
             ) {
                 Icon(c.icon, contentDescription = null, tint = if (on) accent else SimpleMuted, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
-                Text(c.label, color = if (on) SimpleStrong else SimpleInk.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(L(c.label), color = if (on) SimpleStrong else SimpleInk.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -451,8 +451,8 @@ private fun OneList(
         itemsIndexed(lines) { i, l ->
             when (l) {
                 is OHead -> Column(Modifier.padding(start = 14.dp, top = if (i == 0) 8.dp else 20.dp, bottom = 4.dp)) {
-                    Text(l.cat.label.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
-                    Text(l.cat.desc, color = SimpleDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(L(l.cat.label).uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
+                    Text(L(l.cat.desc), color = SimpleDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 is OSet -> SettingLine(l.def, source, env, values, focused = i == row, active = active) { onTap(i) }
                 is OLink -> LinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }

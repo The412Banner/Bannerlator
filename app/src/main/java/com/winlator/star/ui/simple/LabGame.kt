@@ -187,7 +187,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         @Composable
         fun QuickTile(def: SettingDef, label: String, m: Modifier) {
             val control = def.control(env, values)
-            val v = runCatching { labelFor(control, source.value(def)) }.getOrDefault(source.value(def))
+            val v = L(runCatching { labelFor(control, source.value(def)) }.getOrDefault(source.value(def)))
             val origin = source.origin(def)
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),

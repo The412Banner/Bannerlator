@@ -782,7 +782,7 @@ internal fun SimpleClassicEditor(
         OutlinedAlertDialog(
             onDismissRequest = { coresFor = null },
             confirmButton = { TextButton(onClick = { coresFor = null }) { Text(L("Done")) } },
-            title = { Text(def.label) },
+            title = { Text(L(def.label)) },
             text = { CoresControl(source.value(def), enabled = true) { v -> pick(def, v) } },
         )
     }
@@ -809,13 +809,13 @@ internal fun SimpleClassicEditor(
         OutlinedAlertDialog(
             onDismissRequest = { helpFor = null },
             confirmButton = { TextButton(onClick = { helpFor = null }) { Text("OK") } },
-            title = { Text(def.label) },
+            title = { Text(L(def.label)) },
             text = {
                 Text(
                     listOfNotNull(
                         def.disabled(env, values),
                         if (!source.editable(def)) L("This is a container setting; change it in the container's settings.") else null,
-                        def.help ?: def.hint,
+                        (def.help ?: def.hint)?.let { L(it) },
                     ).joinToString("\n\n"),
                 )
             },
@@ -829,10 +829,10 @@ internal fun SimpleClassicEditor(
         } else {
             OutlinedAlertDialog(
                 onDismissRequest = { pendingConfirm = null },
-                confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(ask.confirmLabel) } },
+                confirmButton = { TextButton(onClick = { pendingConfirm = null; source.set(def, v) }) { Text(L(ask.confirmLabel)) } },
                 dismissButton = { TextButton(onClick = { pendingConfirm = null }) { Text(L("Cancel")) } },
-                title = { Text(ask.title) },
-                text = { Text(ask.body) },
+                title = { Text(L(ask.title)) },
+                text = { Text(L(ask.body)) },
             )
         }
     }
@@ -862,7 +862,7 @@ private fun ClassicTitle(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Column(Modifier.fillMaxWidth()) {
-        if (showOverline) Text(header.overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
+        if (showOverline) Text(L(header.overline).uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp)
         // A fixed height: the Unsaved tag appearing must not move the page.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(if (big) 52.dp else 38.dp)) {
             Text(
@@ -931,8 +931,8 @@ private fun TabTabs(tabs: List<RTab>, index: Int, compact: Boolean = false, onPi
 private fun TabList(header: EditorHeader, tabs: List<RTab>, index: Int, active: Boolean, modifier: Modifier, onPick: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier.simpleDepth(high = true, shape = RectangleShape).background(SimplePanelBrush).padding(start = 10.dp, end = 10.dp, top = 18.dp)) {
-        Text(header.overline.uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(horizontal = 12.dp))
-        Text(header.title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp))
+        Text(L(header.overline).uppercase(), color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(horizontal = 12.dp))
+        Text(L(header.title), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp))
         tabs.forEachIndexed { i, t ->
             val on = i == index
             Row(
@@ -1142,9 +1142,9 @@ private fun ClassicSettingLine(
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(l.label, color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(L(l.label), color = if (editable) (if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f)) else SimpleDim, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val sub = disabled ?: (if (focused) note else null)
-            if (sub != null) Text(sub, color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
+            if (sub != null) Text(L(sub), color = SimpleDim, fontSize = 12.sp, maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
         }
         if (game) {
             val tag = when (origin) {
@@ -1173,7 +1173,7 @@ private fun ClassicSettingLine(
             else -> {
                 if (stepped) Text("‹", color = if (focused) accent else Color.Transparent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    shown.ifBlank { "—" },
+                    L(shown).ifBlank { "—" },
                     color = if (editable) SimpleStrong else SimpleMuted,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
@@ -1222,7 +1222,7 @@ private fun ClassicLinkLine(title: String, summary: String?, focused: Boolean, a
             .simpleTap(onTap)
             .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
-        Text(title, color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(L(title), color = if (focused) SimpleStrong else SimpleInk.copy(alpha = 0.9f), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (!summary.isNullOrBlank()) {
             Text(summary, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 280.dp).padding(start = 10.dp))
         }

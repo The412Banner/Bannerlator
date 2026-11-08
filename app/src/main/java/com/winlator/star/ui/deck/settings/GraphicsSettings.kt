@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.T
 import com.winlator.star.ui.deck.deckShape
 import android.content.Context
 import androidx.compose.foundation.clickable
@@ -236,7 +237,7 @@ internal object GraphicsRows {
         list: List<String>,
         current: String,
         loaded: Boolean,
-        label: (String) -> String = { it.ifEmpty { "Not set" } },
+        label: (String) -> String = { it.ifEmpty { T("Not set") } },
         missing: (String) -> String = { "${label(it)} (not installed)" },
         disabledReason: (String) -> String? = { null },
     ): Control.Select {
@@ -282,27 +283,27 @@ internal object GraphicsRows {
         return c.hasBcnLayer && (imported(env, values) || !c.hasIcd)
     }
     private fun bcnLayerDriver(values: (String) -> String) = values(ID_GFX_DRIVER) in setOf("wrapper-bcn_layer", "wrapper-compat-bcn")
-    private fun adrenoNote(env: SettingsEnv): String? = if (env.graphics.qualcomm) "No effect on Adreno, which decodes BCn itself." else null
+    private fun adrenoNote(env: SettingsEnv): String? = if (env.graphics.qualcomm) T("No effect on Adreno, which decodes BCn itself.") else null
 
     // ── DX wrapper config (DxvkConfigDialog, WineD3DConfigDialog) ────────────────────────────────
 
-    private val ANISOTROPY_LABELS = listOf("Game default", "2×", "4×", "8×", "16×")
-    private val LOD_BIAS_LABELS = listOf("Game default", "Auto (match the scaling)", "Sharper (-0.25)", "Sharper (-0.5)", "Sharper (-0.75)", "Sharpest (-1.0)")
+    private val ANISOTROPY_LABELS = listOf(T("Game default"), "2×", "4×", "8×", "16×")
+    private val LOD_BIAS_LABELS = listOf(T("Game default"), T("Auto (match the scaling)"), T("Sharper (-0.25)"), T("Sharper (-0.5)"), T("Sharper (-0.75)"), T("Sharpest (-1.0)"))
 
     /** Rows of the DX wrapper config, shown under the DirectX translation choice. */
     fun dxDefs(): List<SettingDef> = listOf(
         // DXVK and VKD3D
         packedRow(
-            DX_CFG, ID_DXVK, "version", "DXVK and VKD3D", "DXVK version", ADVANCED,
-            hint = "DirectX 8 to 11 through Vulkan. Builds named async or gplasync can compile shaders in the background.",
+            DX_CFG, ID_DXVK, "version", T("DXVK and VKD3D"), T("DXVK version"), ADVANCED,
+            hint = T("DirectX 8 to 11 through Vulkan. Builds named async or gplasync can compile shaders in the background."),
             control = { env, values ->
                 val g = env.graphics
-                val withVkd3d = values(ID_VKD3D) != "None" && !relaxDxvk(values)
+                val withVkd3d = values(ID_VKD3D) != T("None") && !relaxDxvk(values)
                 // VKD3D-Proton needs DXVK 2.x: the 1.x builds are left out while VKD3D is on (#113).
                 val fits = { v: String -> !withVkd3d || (DXVKConfigDialog.tryGetMajor(v)?.let { it >= 2 } ?: true) }
                 versions(
                     g.dxvk.filter(fits), values(ID_DXVK), g.loaded,
-                    disabledReason = { v -> if (v in g.dxvk && !fits(v)) "DXVK 1.x can't run VKD3D: pick a 2.x build, or set VKD3D to None." else null },
+                    disabledReason = { v -> if (v in g.dxvk && !fits(v)) T("DXVK 1.x can't run VKD3D: pick a 2.x build, or set VKD3D to None.") else null },
                 )
             },
             // The async switches only exist for the builds that have them, as the classic OK writes them.
@@ -310,45 +311,45 @@ internal object GraphicsRows {
             visible = { _, values -> plainDxvk(values) },
         ),
         packedRow(
-            DX_CFG, ID_VEGAS, "version", "DXVK and VKD3D", "VEGAS version", ADVANCED,
-            hint = "The installed VEGAS builds, and the one bundled with the app.",
+            DX_CFG, ID_VEGAS, "version", T("DXVK and VKD3D"), T("VEGAS version"), ADVANCED,
+            hint = T("The installed VEGAS builds, and the one bundled with the app."),
             control = { env, values -> versions(env.graphics.vegas, values(ID_VEGAS), env.graphics.loaded) },
             also = { v, cfg -> asyncFor(v, cfg) },
             visible = { _, values -> vegas(values) },
-            note = { env, values -> if (env.graphics.loaded && env.graphics.vegas.isEmpty()) "No VEGAS build installed: download one below." else null },
+            note = { env, values -> if (env.graphics.loaded && env.graphics.vegas.isEmpty()) T("No VEGAS build installed: download one below.") else null },
         ),
         packedRow(
-            DX_CFG, ID_VKD3D, "vkd3dVersion", "DXVK and VKD3D", "VKD3D version", ADVANCED,
-            hint = "DirectX 12 through Vulkan. None turns DirectX 12 off.",
+            DX_CFG, ID_VKD3D, "vkd3dVersion", T("DXVK and VKD3D"), T("VKD3D version"), ADVANCED,
+            hint = T("DirectX 12 through Vulkan. None turns DirectX 12 off."),
             control = { env, values -> versions(env.graphics.vkd3d, values(ID_VKD3D), env.graphics.loaded) },
-            decode = { _, r -> r?.ifEmpty { null } ?: "None" },
+            decode = { _, r -> r?.ifEmpty { null } ?: T("None") },
             visible = { _, values -> dxvkLike(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.async", "async", "DXVK and VKD3D", "Async shaders", ADVANCED,
-            hint = "Compiles shaders in the background: less stutter, some objects may pop in.",
+            DX_CFG, "graphics.dx.async", "async", T("DXVK and VKD3D"), T("Async shaders"), ADVANCED,
+            hint = T("Compiles shaders in the background: less stutter, some objects may pop in."),
             control = toggle(), decode = { _, r -> on(r) },
             visible = { _, values -> dxvkLike(values) && DXVKConfigDialog.getDXVKType(dxvkBuild(values)) != DXVKConfigDialog.DXVK_TYPE_NONE },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.asyncCache", "asyncCache", "DXVK and VKD3D", "Async shader cache", ADVANCED,
-            hint = "Keeps the compiled shaders for the next start (gplasync builds).",
+            DX_CFG, "graphics.dx.asyncCache", "asyncCache", T("DXVK and VKD3D"), T("Async shader cache"), ADVANCED,
+            hint = T("Keeps the compiled shaders for the next start (gplasync builds)."),
             control = toggle(), decode = { _, r -> on(r) },
             visible = { _, values -> dxvkLike(values) && DXVKConfigDialog.getDXVKType(dxvkBuild(values)) == DXVKConfigDialog.DXVK_TYPE_GPLASYNC },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.framerate", "framerate", "DXVK and VKD3D", "DXVK frame rate cap", ADVANCED,
-            hint = "DXVK's own limit (DXVK_FRAME_RATE). Off leaves pacing to the frame rate limiter.",
+            DX_CFG, "graphics.dx.framerate", "framerate", T("DXVK and VKD3D"), T("DXVK frame rate cap"), ADVANCED,
+            hint = T("DXVK's own limit (DXVK_FRAME_RATE). Off leaves pacing to the frame rate limiter."),
             control = { env, _ ->
-                Control.Select(env.graphics.framerates.map { n -> Opt(n, if (n == "0") "Off" else "$n FPS") })
+                Control.Select(env.graphics.framerates.map { n -> Opt(n, if (n == "0") T("Off") else "$n FPS") })
             },
             // The classic dialog shows (and saves) its first entry, Off, for anything it doesn't list.
             decode = { env, r -> r?.takeIf { it in env.graphics.framerates } ?: "0" },
             visible = { _, values -> dxvkLike(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.vkd3dLevel", "vkd3dLevel", "DXVK and VKD3D", "DirectX 12 feature level", EXPERT,
-            hint = "The feature level VKD3D reports. Lower it only for a game that refuses to start.",
+            DX_CFG, "graphics.dx.vkd3dLevel", "vkd3dLevel", T("DXVK and VKD3D"), T("DirectX 12 feature level"), EXPERT,
+            hint = T("The feature level VKD3D reports. Lower it only for a game that refuses to start."),
             control = { _, _ -> Control.Select(DXVKConfigDialog.VKD3D_FEATURE_LEVEL.map { Opt(it, it.replace('_', '.')) }) },
             decode = { _, r -> r?.takeIf { it in DXVKConfigDialog.VKD3D_FEATURE_LEVEL } ?: DXVKConfigDialog.VKD3D_FEATURE_LEVEL.first() },
             visible = { _, values -> dxvkLike(values) },
@@ -356,15 +357,15 @@ internal object GraphicsRows {
 
         // Texture filtering (DXVK and VEGAS, DirectX 9 to 11)
         packedRow(
-            DX_CFG, "graphics.dx.anisotropy", "anisotropy", "Texture filtering", "Anisotropic filtering", ADVANCED,
-            hint = "Sharper textures at an angle. DirectX 9 to 11 games.",
+            DX_CFG, "graphics.dx.anisotropy", "anisotropy", T("Texture filtering"), T("Anisotropic filtering"), ADVANCED,
+            hint = T("Sharper textures at an angle. DirectX 9 to 11 games."),
             control = { _, _ -> Control.Segmented(DXVKConfigDialog.ANISOTROPY_VALUES.mapIndexed { i, v -> Opt(v, ANISOTROPY_LABELS[i]) }) },
             decode = { _, r -> r?.takeIf { it in DXVKConfigDialog.ANISOTROPY_VALUES } ?: "0" },
             visible = { _, values -> dxvkLike(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.lodBias", "lodBias", "Texture filtering", "Texture sharpness", ADVANCED,
-            hint = "A negative mip bias: sharper textures, some shimmer. Auto follows the scaling the game starts with.",
+            DX_CFG, "graphics.dx.lodBias", "lodBias", T("Texture filtering"), T("Texture sharpness"), ADVANCED,
+            hint = T("A negative mip bias: sharper textures, some shimmer. Auto follows the scaling the game starts with."),
             control = { _, _ -> Control.Select(DXVKConfigDialog.LOD_BIAS_VALUES.mapIndexed { i, v -> Opt(v, LOD_BIAS_LABELS[i]) }) },
             decode = { _, r -> r?.takeIf { it in DXVKConfigDialog.LOD_BIAS_VALUES } ?: "0" },
             visible = { _, values -> dxvkLike(values) },
@@ -372,8 +373,8 @@ internal object GraphicsRows {
 
         // DirectDraw (both dialogs)
         packedRow(
-            DX_CFG, ID_DDRAW, "ddrawrapper", "DirectDraw", "DirectDraw wrapper", ADVANCED,
-            hint = "For DirectDraw and Direct3D 7 games. D7VK runs them on Vulkan.",
+            DX_CFG, ID_DDRAW, "ddrawrapper", T("DirectDraw"), T("DirectDraw wrapper"), ADVANCED,
+            hint = T("For DirectDraw and Direct3D 7 games. D7VK runs them on Vulkan."),
             control = { env, values ->
                 val ids = env.graphics.ddraw.map { StringUtils.parseIdentifier(it) to it }
                 val current = values(ID_DDRAW)
@@ -382,10 +383,10 @@ internal object GraphicsRows {
             decode = { _, r -> r?.ifEmpty { null } ?: Container.DEFAULT_DDRAWRAPPER },
         ),
         packedRow(
-            DX_CFG, "graphics.dx.d7vkVersion", "d7vkVersion", "DirectDraw", "D7VK version", ADVANCED,
+            DX_CFG, "graphics.dx.d7vkVersion", "d7vkVersion", T("DirectDraw"), T("D7VK version"), ADVANCED,
             control = { env, values ->
                 versions(env.graphics.d7vk, values("graphics.dx.d7vkVersion"), env.graphics.loaded,
-                    label = { if (it == DXVKConfigDialog.D7VK_BUNDLED) "Bundled with the app" else it })
+                    label = { if (it == DXVKConfigDialog.D7VK_BUNDLED) T("Bundled with the app") else it })
             },
             decode = { _, r -> r?.ifEmpty { null } ?: DXVKConfigDialog.D7VK_BUNDLED },
             visible = { _, values -> dxvkLike(values) && values(ID_DDRAW) == "d7vk" },
@@ -393,23 +394,23 @@ internal object GraphicsRows {
 
         // VEGAS config file: which one the game reads. Its keys are edited in the VEGAS config editor below the rows.
         packedRow(
-            DX_CFG, ID_VEGAS_CONFIG, "dxvkConfigFile", "VEGAS config", "Config file", ADVANCED,
-            hint = "Which VEGAS config the game reads. A stock config stays untouched: the first edit makes your own copy.",
+            DX_CFG, ID_VEGAS_CONFIG, "dxvkConfigFile", T("VEGAS config"), T("Config file"), ADVANCED,
+            hint = T("Which VEGAS config the game reads. A stock config stays untouched: the first edit makes your own copy."),
             control = { env, values ->
                 val current = values(ID_VEGAS_CONFIG)
-                val opts = mutableListOf(Opt("", "VEGAS built-in defaults (no file)"))
+                val opts = mutableListOf(Opt("", T("VEGAS built-in defaults (no file)")))
                 env.graphics.vegasStock.forEach { s ->
                     val live = stockLive(env, s)
-                    opts += Opt(live.absolutePath, "Stock · ${s.displayLabel()}" + if (live != s.file) " (your copy)" else "")
+                    opts += Opt(live.absolutePath, "Stock · ${s.displayLabel()}" + if (live != s.file) T(" (your copy)") else "")
                 }
                 env.graphics.vegasCustom.forEach { opts += Opt(it, it) }
                 val shown = opts.distinctBy { it.value }
                 Control.Select(
                     options = if (shown.any { it.value == current }) shown
                               else shown + Opt(current, stockOf(env, current)?.let { "Stock · ${it.displayLabel()}" } ?: current),
-                    customLabel = "Another file…",
-                    customHint = "The full path of a .conf file, e.g. /storage/emulated/0/Download/dxvk.conf",
-                    validateCustom = { if (it.trim().startsWith("/")) null else "Type the full path, starting with /." },
+                    customLabel = T("Another file…"),
+                    customHint = T("The full path of a .conf file, e.g. /storage/emulated/0/Download/dxvk.conf"),
+                    validateCustom = { if (it.trim().startsWith("/")) null else T("Type the full path, starting with /.") },
                 )
             },
             visible = { _, values -> vegas(values) },
@@ -421,30 +422,30 @@ internal object GraphicsRows {
 
         // WineD3D (WineD3DConfigDialog)
         packedRow(
-            DX_CFG, "graphics.wined3d.csmt", "csmt", "WineD3D", "Command stream (CSMT)", ADVANCED,
-            hint = "Runs WineD3D's rendering on its own thread. Usually faster.",
+            DX_CFG, "graphics.wined3d.csmt", "csmt", T("WineD3D"), T("Command stream (CSMT)"), ADVANCED,
+            hint = T("Runs WineD3D's rendering on its own thread. Usually faster."),
             control = toggle(),
             decode = { _, r -> if (r == "3") "1" else "0" },
             encode = { v, _ -> if (v == "1") "3" else "0" },
             visible = { _, values -> wineD3D(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.wined3d.renderer", "renderer", "WineD3D", "WineD3D renderer", ADVANCED,
-            control = { _, _ -> seg("gl" to "OpenGL", "vulkan" to "Vulkan", "gdi" to "GDI (software)") },
+            DX_CFG, "graphics.wined3d.renderer", "renderer", T("WineD3D"), T("WineD3D renderer"), ADVANCED,
+            control = { _, _ -> seg("gl" to "OpenGL", "vulkan" to "Vulkan", "gdi" to T("GDI (software)")) },
             decode = { _, r -> r?.ifEmpty { null } ?: "gl" },
             visible = { _, values -> wineD3D(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.wined3d.gpuName", "gpuName", "WineD3D", "GPU the game sees", ADVANCED,
-            hint = "The graphics card WineD3D reports to the game.",
+            DX_CFG, "graphics.wined3d.gpuName", "gpuName", T("WineD3D"), T("GPU the game sees"), ADVANCED,
+            hint = T("The graphics card WineD3D reports to the game."),
             control = { env, values ->
-                versions(env.graphics.wined3dGpus, values("graphics.wined3d.gpuName"), env.graphics.loaded, missing = { it.ifEmpty { "Not set" } })
+                versions(env.graphics.wined3dGpus, values("graphics.wined3d.gpuName"), env.graphics.loaded, missing = { it.ifEmpty { T("Not set") } })
             },
             visible = { _, values -> wineD3D(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.wined3d.videoMemory", "videoMemorySize", "WineD3D", "Video memory", ADVANCED,
-            hint = "How much graphics memory WineD3D reports.",
+            DX_CFG, "graphics.wined3d.videoMemory", "videoMemorySize", T("WineD3D"), T("Video memory"), ADVANCED,
+            hint = T("How much graphics memory WineD3D reports."),
             control = { env, values ->
                 val opts = env.graphics.videoMemory.map { Opt(StringUtils.parseNumber(it), it) }
                 val current = values("graphics.wined3d.videoMemory")
@@ -454,20 +455,20 @@ internal object GraphicsRows {
             visible = { _, values -> wineD3D(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.wined3d.strictShaderMath", "strict_shader_math", "WineD3D", "Strict shader math", EXPERT,
+            DX_CFG, "graphics.wined3d.strictShaderMath", "strict_shader_math", T("WineD3D"), T("Strict shader math"), EXPERT,
             control = toggle(), decode = { _, r -> on(r) },
             visible = { _, values -> wineD3D(values) },
         ),
         packedRow(
-            DX_CFG, "graphics.wined3d.offscreen", "OffscreenRenderingMode", "WineD3D", "Offscreen rendering", EXPERT,
-            control = { _, _ -> seg("fbo" to "FBO", "backbuffer" to "Back buffer") },
+            DX_CFG, "graphics.wined3d.offscreen", T("OffscreenRenderingMode"), T("WineD3D"), T("Offscreen rendering"), EXPERT,
+            control = { _, _ -> seg("fbo" to "FBO", "backbuffer" to T("Back buffer")) },
             decode = { _, r -> r?.ifEmpty { null } ?: "fbo" },
             visible = { _, values -> wineD3D(values) },
         ),
 
         // The whole string, for the VEGAS config file editor (DeckGraphicsState). Never a row of its own.
         SettingDef(
-            id = ID_DX_CONFIG, category = "graphics", group = "VEGAS config", label = "DX wrapper config", level = EXPERT,
+            id = ID_DX_CONFIG, category = "graphics", group = T("VEGAS config"), label = T("DX wrapper config"), level = EXPERT,
             control = { _, _ -> Control.TextField() },
             vm = VmBinding(get = { _, vm -> vm.dxWrapperConfig }, set = { _, vm, v -> vm.dxWrapperConfig = v }),
             game = GameBinding(
@@ -544,15 +545,15 @@ internal object GraphicsRows {
     /** Rows of the X11 driver config, shown under the graphics driver choice. */
     fun driverDefs(): List<SettingDef> = listOf(
         gdcRow(
-            ID_DRIVER_VERSION, "version", "GPU driver", "Driver version", ADVANCED,
-            hint = "The Turnip or Adreno driver the wrapper loads. Import more in Contents › GPU drivers.",
+            ID_DRIVER_VERSION, "version", T("GPU driver"), T("Driver version"), ADVANCED,
+            hint = T("The Turnip or Adreno driver the wrapper loads. Import more in Contents › GPU drivers."),
             control = { env, values ->
                 val g = env.graphics
                 versions(
                     g.drivers + g.driversOther, values(ID_DRIVER_VERSION), g.driversLoaded,
                     label = { v ->
                         when {
-                            v.isEmpty() -> "Not set (System)"
+                            v.isEmpty() -> T("Not set (System)")
                             v in g.driversOther -> "$v (may not run on this GPU)"
                             else -> v
                         }
@@ -565,54 +566,54 @@ internal object GraphicsRows {
             note = { env, values ->
                 val probe = env.graphics.extensions(values(ID_DRIVER_VERSION))
                 when {
-                    probe?.fellBack == true -> "This driver didn't load on this GPU: the system driver answered the check instead."
-                    probe?.custom == true -> "A Qualcomm (Adreno) driver: it loads when the game starts, so its extensions aren't listed here."
+                    probe?.fellBack == true -> T("This driver didn't load on this GPU: the system driver answered the check instead.")
+                    probe?.custom == true -> T("A Qualcomm (Adreno) driver: it loads when the game starts, so its extensions aren't listed here.")
                     else -> null
                 }
             },
         ),
         gdcRow(
-            "graphics.gdc.vulkanVersion", "vulkanVersion", "GPU driver", "Vulkan version", ADVANCED,
-            hint = "The Vulkan version the driver reports to games.",
+            "graphics.gdc.vulkanVersion", "vulkanVersion", T("GPU driver"), T("Vulkan version"), ADVANCED,
+            hint = T("The Vulkan version the driver reports to games."),
             control = { env, _ -> Control.Segmented(env.graphics.vulkanVersions.map { Opt(it, it) }) },
             decode = { _, r -> r?.ifEmpty { null } ?: "1.4" },
         ),
         gdcRow(
-            "graphics.gdc.extensions", "blacklistedExtensions", "GPU driver", "Vulkan extensions", EXPERT,
-            hint = "Hide extensions a game trips over. Changing the driver version shows them all again.",
+            "graphics.gdc.extensions", "blacklistedExtensions", T("GPU driver"), T("Vulkan extensions"), EXPERT,
+            hint = T("Hide extensions a game trips over. Changing the driver version shows them all again."),
             control = { env, values ->
                 val probe = env.graphics.extensions(values(ID_DRIVER_VERSION))
                 Control.Checklist(
                     items = probe?.list,
-                    title = "Vulkan extensions",
-                    waiting = "Reading the driver's extensions…",
-                    empty = "None listed",
+                    title = T("Vulkan extensions"),
+                    waiting = T("Reading the driver's extensions…"),
+                    empty = T("None listed"),
                 )
             },
             decode = { _, r -> (r ?: "").split(",").filter { it.isNotEmpty() }.joinToString(",") },
             disabled = { env, values ->
                 val probe = env.graphics.extensions(values(ID_DRIVER_VERSION))
-                if (values(ID_DRIVER_VERSION).isEmpty()) "Pick a driver version first."
-                else if (probe?.custom == true) "A Qualcomm driver's extensions are only known once the game starts."
+                if (values(ID_DRIVER_VERSION).isEmpty()) T("Pick a driver version first.")
+                else if (probe?.custom == true) T("A Qualcomm driver's extensions are only known once the game starts.")
                 else null
             },
         ),
         gdcRow(
-            "graphics.gdc.gpuName", "gpuName", "GPU driver", "GPU name games see", ADVANCED,
-            hint = "Makes DirectX games see another graphics card. Device keeps the real one.",
+            "graphics.gdc.gpuName", "gpuName", T("GPU driver"), T("GPU name games see"), ADVANCED,
+            hint = T("Makes DirectX games see another graphics card. Device keeps the real one."),
             control = { env, values ->
                 versions(env.graphics.gpuNames, values("graphics.gdc.gpuName"), env.graphics.loaded,
-                    label = { if (it == GpuSpoof.DEVICE) "Device (the real GPU)" else it }, missing = { it })
+                    label = { if (it == GpuSpoof.DEVICE) T("Device (the real GPU)") else it }, missing = { it })
             },
             decode = { _, r -> r?.ifEmpty { null } ?: GpuSpoof.DEVICE },
             note = { env, values -> runCatching { GpuSpoof.vendorWarning(env.context, values("graphics.gdc.gpuName")) }.getOrNull() },
             wayland = true,
         ),
         gdcRow(
-            "graphics.gdc.maxDeviceMemory", "maxDeviceMemory", "GPU driver", "GPU memory games see", ADVANCED,
-            hint = "What DirectX games are told the GPU's memory is (dxgi.maxDeviceMemory).",
+            "graphics.gdc.maxDeviceMemory", "maxDeviceMemory", T("GPU driver"), T("GPU memory games see"), ADVANCED,
+            hint = T("What DirectX games are told the GPU's memory is (dxgi.maxDeviceMemory)."),
             control = { env, values ->
-                val opts = env.graphics.deviceMemory.map { e -> StringUtils.parseNumber(e).let { Opt(it, if (it == "0") "Default" else e) } }
+                val opts = env.graphics.deviceMemory.map { e -> StringUtils.parseNumber(e).let { Opt(it, if (it == "0") T("Default") else e) } }
                 val current = values("graphics.gdc.maxDeviceMemory")
                 Control.Select(opts + if (opts.none { it.value == current }) listOf(Opt(current, "$current MB")) else emptyList())
             },
@@ -620,8 +621,8 @@ internal object GraphicsRows {
             wayland = true,
         ),
         gdcRow(
-            "graphics.gdc.presentMode", "presentMode", "Driver tuning", "Driver present mode", EXPERT,
-            hint = "How the wrapper hands frames over. Not the screen renderer's setting.",
+            "graphics.gdc.presentMode", "presentMode", T("Driver tuning"), T("Driver present mode"), EXPERT,
+            hint = T("How the wrapper hands frames over. Not the screen renderer's setting."),
             control = { env, values ->
                 if (!waylandGame(env, values)) Control.Segmented(env.graphics.presentModes.map { Opt(it, it.replaceFirstChar(Char::uppercase)) })
                 else {
@@ -635,70 +636,70 @@ internal object GraphicsRows {
             },
             decode = { _, r -> r?.ifEmpty { null } ?: "mailbox" },
             note = { env, values ->
-                if (waylandGame(env, values)) "Wayland offers mailbox and fifo only: immediate needs tearing, which the compositor doesn't allow." else null
+                if (waylandGame(env, values)) T("Wayland offers mailbox and fifo only: immediate needs tearing, which the compositor doesn't allow.") else null
             },
             wayland = true,
         ),
         gdcRow(
-            "graphics.gdc.resourceType", "resourceType", "Driver tuning", "Resource type", EXPERT,
-            control = { env, _ -> Control.Segmented(env.graphics.resourceTypes.map { Opt(it, if (it == "auto") "Auto" else it.uppercase()) }) },
+            "graphics.gdc.resourceType", "resourceType", T("Driver tuning"), T("Resource type"), EXPERT,
+            control = { env, _ -> Control.Segmented(env.graphics.resourceTypes.map { Opt(it, if (it == "auto") T("Auto") else it.uppercase()) }) },
             decode = { _, r -> r?.ifEmpty { null } ?: "auto" },
         ),
-        gdcToggle("graphics.gdc.syncFrame", "syncFrame", "Driver tuning", "Sync every frame", EXPERT,
-            hint = "Waits for each frame to finish. Fixes flicker in a few games, costs speed."),
-        gdcToggle("graphics.gdc.disablePresentWait", "disablePresentWait", "Driver tuning", "Disable present wait", EXPERT),
-        gdcToggle("graphics.gdc.fdDevFeatures", "fdDevFeatures", "Driver tuning", "OneUI / HyperOS fix", ADVANCED,
-            hint = "For Samsung and Xiaomi phones whose games show corrupt textures. Leave off otherwise.", wayland = true),
+        gdcToggle("graphics.gdc.syncFrame", "syncFrame", T("Driver tuning"), T("Sync every frame"), EXPERT,
+            hint = T("Waits for each frame to finish. Fixes flicker in a few games, costs speed.")),
+        gdcToggle("graphics.gdc.disablePresentWait", "disablePresentWait", T("Driver tuning"), T("Disable present wait"), EXPERT),
+        gdcToggle("graphics.gdc.fdDevFeatures", "fdDevFeatures", T("Driver tuning"), T("OneUI / HyperOS fix"), ADVANCED,
+            hint = T("For Samsung and Xiaomi phones whose games show corrupt textures. Leave off otherwise."), wayland = true),
 
         // BCn textures
         gdcRow(
-            ID_BCN, "bcnEmulation", "BCn textures", "BCn texture emulation", ADVANCED,
-            hint = "Decodes the compressed textures Windows games use, for GPUs that can't.",
+            ID_BCN, "bcnEmulation", T("BCn textures"), T("BCn texture emulation"), ADVANCED,
+            hint = T("Decodes the compressed textures Windows games use, for GPUs that can't."),
             control = { env, _ -> Control.Segmented(env.graphics.bcnEmulations.map { Opt(it, it.replaceFirstChar(Char::uppercase)) }) },
             decode = { _, r -> r?.ifEmpty { null } ?: "auto" },
             note = { env, _ ->
                 (if (env.graphics.gpuModel.isNotEmpty()) "GPU: ${env.graphics.gpuModel}. " else "") +
-                    (if (env.graphics.qualcomm) "Adreno decodes BCn itself: these apply to Mali and other GPUs." else "BCn and compat layers apply to Mali and other non-Qualcomm GPUs.")
+                    (if (env.graphics.qualcomm) T("Adreno decodes BCn itself: these apply to Mali and other GPUs.") else T("BCn and compat layers apply to Mali and other non-Qualcomm GPUs."))
             },
         ),
         gdcRow(
-            ID_BCN_TYPE, "bcnEmulationType", "BCn textures", "Emulation method", EXPERT,
+            ID_BCN_TYPE, "bcnEmulationType", T("BCn textures"), T("Emulation method"), EXPERT,
             control = { env, _ -> Control.Segmented(env.graphics.bcnTypes.map { Opt(it, it.replaceFirstChar(Char::uppercase)) }) },
             decode = { _, r -> r?.ifEmpty { null } ?: "software" },
         ),
         gdcRow(
-            "graphics.gdc.bcnEmulationCache", "bcnEmulationCache", "BCn textures", "Cache decoded textures", EXPERT,
-            control = { _, _ -> seg("0" to "Off", "1" to "On") },
+            "graphics.gdc.bcnEmulationCache", "bcnEmulationCache", T("BCn textures"), T("Cache decoded textures"), EXPERT,
+            control = { _, _ -> seg("0" to T("Off"), "1" to T("On")) },
             decode = { _, r -> on(r) },
         ),
-        gdcToggle("graphics.gdc.bcnEmulationAstc", "bcnEmulationAstc", "BCn textures", "BCn to ASTC", EXPERT,
+        gdcToggle("graphics.gdc.bcnEmulationAstc", "bcnEmulationAstc", T("BCn textures"), T("BCn to ASTC"), EXPERT,
             visible = { env, values -> integratedBcn(env, values) }, note = { env, _ -> adrenoNote(env) }),
-        gdcToggle("graphics.gdc.bcnTranscodeAstc", "bcnTranscodeAstc", "BCn textures", "Transcode BCn to ASTC", EXPERT,
-            hint = "With the compute method: the decoder writes ASTC instead.",
+        gdcToggle("graphics.gdc.bcnTranscodeAstc", "bcnTranscodeAstc", T("BCn textures"), T("Transcode BCn to ASTC"), EXPERT,
+            hint = T("With the compute method: the decoder writes ASTC instead."),
             visible = { env, values ->
                 bcnLayerSettings(env, values) ||
                     (!bcnLayerDriver(values) && values(ID_BCN_TYPE) == "compute" && values(ID_BCN) in setOf("auto", "full"))
             },
             note = { env, _ -> adrenoNote(env) }),
-        gdcToggle("graphics.gdc.bcnLayerAuto", "bcnLayerAuto", "BCn layer", "Force decode on every GPU", EXPERT, default = true,
+        gdcToggle("graphics.gdc.bcnLayerAuto", "bcnLayerAuto", T("BCn layer"), T("Force decode on every GPU"), EXPERT, default = true,
             visible = { env, values -> bcnLayerSettings(env, values) }, note = { env, _ -> adrenoNote(env) }),
-        gdcToggle("graphics.gdc.bcnTranscodeEtc2", "bcnTranscodeEtc2", "BCn layer", "Transcode BCn to ETC2", EXPERT,
+        gdcToggle("graphics.gdc.bcnTranscodeEtc2", "bcnTranscodeEtc2", T("BCn layer"), T("Transcode BCn to ETC2"), EXPERT,
             visible = { env, values -> bcnLayerSettings(env, values) }),
-        gdcToggle("graphics.gdc.bcnImageView", "bcnImageView", "BCn layer", "Storage image path", EXPERT, default = true,
+        gdcToggle("graphics.gdc.bcnImageView", "bcnImageView", T("BCn layer"), T("Storage image path"), EXPERT, default = true,
             visible = { env, values -> bcnLayerSettings(env, values) }),
-        gdcToggle("graphics.gdc.bcnDebugLog", "bcnDebugLog", "BCn layer", "BCn layer debug log", EXPERT,
+        gdcToggle("graphics.gdc.bcnDebugLog", "bcnDebugLog", T("BCn layer"), T("BCn layer debug log"), EXPERT,
             visible = { env, values -> bcnLayerSettings(env, values) }),
-        gdcToggle("graphics.gdc.compatUseGamenative", "compatUseGamenative", "BCn layer", "Use the GameNative engine (DirectX 12)", EXPERT,
-            hint = "Needs a Valhall Mali GPU.",
+        gdcToggle("graphics.gdc.compatUseGamenative", "compatUseGamenative", T("BCn layer"), T("Use the GameNative engine (DirectX 12)"), EXPERT,
+            hint = T("Needs a Valhall Mali GPU."),
             visible = { env, values -> bcnLayerSettings(env, values) && values(ID_GFX_DRIVER) == "wrapper-compat-bcn" }),
-        gdcToggle("graphics.gdc.bcnCompatSparse", "bcnCompatSparse", "BCn layer", "Emulate DirectX 12 sparse resources", EXPERT,
+        gdcToggle("graphics.gdc.bcnCompatSparse", "bcnCompatSparse", T("BCn layer"), T("Emulate DirectX 12 sparse resources"), EXPERT,
             visible = { env, values -> bcnLayerSettings(env, values) && values(ID_GFX_DRIVER) == "wrapper-compat-bcn" }),
 
         // Turnip (TU_DEBUG)
         gdcRow(
-            ID_GMEM, "turnipGmem", "Turnip", "GMEM tiled rendering", ADVANCED,
-            hint = "Auto uses it on Adreno 710, 720 and 722 only. Change it only if a game misbehaves.",
-            control = { _, _ -> seg("auto" to "Auto", "on" to "Force on", "off" to "Force off") },
+            ID_GMEM, "turnipGmem", "Turnip", T("GMEM tiled rendering"), ADVANCED,
+            hint = T("Auto uses it on Adreno 710, 720 and 722 only. Change it only if a game misbehaves."),
+            control = { _, _ -> seg("auto" to T("Auto"), "on" to T("Force on"), "off" to T("Force off")) },
             decode = { _, r -> r?.takeIf { it == "on" || it == "off" } ?: "auto" },
             // Force on overrides sysmem, so the classic dialog doesn't keep that token with it.
             also = { v, cfg ->
@@ -706,11 +707,11 @@ internal object GraphicsRows {
                 if (v == "on" && "sysmem" in tokensOf(tokens)) mapOf("turnipTokens" to tokensWith(tokens, "sysmem", false)) else emptyMap()
             },
         ),
-        tokenRow("forcecb", "Force concurrent binning (forcecb)", null),
-        tokenRow("nocb", "No concurrent binning (nocb)", null),
-        tokenRow("sysmem", "Force sysmem rendering (sysmem)", "Bypasses GMEM.",
-            disabled = { _, values -> if (values(ID_GMEM) == "on") "GMEM Force on overrides it." else null }),
-        tokenRow("deck_emu", "Report a Steam Deck (deck_emu)", "Banners-Turnip drivers only; stock Turnip ignores it."),
+        tokenRow("forcecb", T("Force concurrent binning (forcecb)"), null),
+        tokenRow("nocb", T("No concurrent binning (nocb)"), null),
+        tokenRow("sysmem", T("Force sysmem rendering (sysmem)"), T("Bypasses GMEM."),
+            disabled = { _, values -> if (values(ID_GMEM) == "on") T("GMEM Force on overrides it.") else null }),
+        tokenRow("deck_emu", T("Report a Steam Deck (deck_emu)"), T("Banners-Turnip drivers only; stock Turnip ignores it.")),
     )
 
     // ── Wayland game driver and the Mali (PanVK) switches (WaylandDriverSettingsDialog) ──────────
@@ -741,7 +742,7 @@ internal object GraphicsRows {
         disabled: (SettingsEnv, (String) -> String) -> String? = { _, _ -> null },
         note: (SettingsEnv, (String) -> String) -> String? = { _, _ -> null },
     ) = packedRow(
-        DRIVER_CFG, id, key, if (level == ADVANCED) "Mali (PanVK)" else "Mali (PanVK) advanced", label, level, control,
+        DRIVER_CFG, id, key, if (level == ADVANCED) T("Mali (PanVK)") else T("Mali (PanVK) advanced"), label, level, control,
         decode, encode, also, hint, help,
         visible = { env, values -> waylandGame(env, values) && env.graphics.mali && (!modeOnly || values(ID_MALI_MODE) == "1") },
         disabled = disabled, note = note, decodeConfig = decodeConfig,
@@ -751,7 +752,7 @@ internal object GraphicsRows {
     private fun mbRow(id: String, key: String, label: String, hint: String, min: Int, max: Int) = maliRow(
         id, key, label, EXPERT,
         control = { _, _ ->
-            Control.TextField("Auto / Default") { t ->
+            Control.TextField(T("Auto / Default")) { t ->
                 if (t.isBlank() || MaliPanvk.validMb(t, min, max) != null) null else "Out of range ($min to $max): not used."
             }
         },
@@ -762,8 +763,8 @@ internal object GraphicsRows {
     /** Rows of the Wayland driver gear, shown under the compositor driver on Wayland. */
     fun waylandDefs(): List<SettingDef> = listOf(
         SettingDef(
-            id = ID_WL_GAME_DRIVER, category = "graphics", group = "GPU driver", level = ADVANCED,
-            label = "Wayland game driver", hint = "The Vulkan driver the game itself renders on with Wayland.",
+            id = ID_WL_GAME_DRIVER, category = "graphics", group = T("GPU driver"), level = ADVANCED,
+            label = T("Wayland game driver"), hint = T("The Vulkan driver the game itself renders on with Wayland."),
             help = WaylandGameDriver.HELP_TEXT + "\n\n" + WAYLAND_DRIVER_SETTINGS_HELP, tech = "waylandGameDriver",
             control = { env, values ->
                 val g = env.graphics
@@ -787,9 +788,9 @@ internal object GraphicsRows {
         ),
 
         maliRow(
-            ID_MALI_MODE, MaliPanvk.KEY_MODE, "Mali (PanVK) mode", ADVANCED,
-            hint = "PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver.",
-            help = "For Arm Mali GPUs. Until it is switched, it follows the driver: on for a PanVK driver, off otherwise.",
+            ID_MALI_MODE, MaliPanvk.KEY_MODE, T("Mali (PanVK) mode"), ADVANCED,
+            hint = T("PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver."),
+            help = T("For Arm Mali GPUs. Until it is switched, it follows the driver: on for a PanVK driver, off otherwise."),
             control = toggle(),
             decodeConfig = { env, cfg -> if (maliModeOn(env, cfg)) "1" else "0" },
             // As the classic gear: on sets BCn emulation to None, off gives back the stored choice.
@@ -797,7 +798,7 @@ internal object GraphicsRows {
             modeOnly = false,
         ),
         maliRow(
-            "graphics.wl.bcnEmulation", "bcnEmulation", "BCn texture emulation", ADVANCED,
+            "graphics.wl.bcnEmulation", "bcnEmulation", T("BCn texture emulation"), ADVANCED,
             control = { env, _ -> Control.Segmented(env.graphics.bcnEmulations.map { Opt(it, it.replaceFirstChar(Char::uppercase)) }) },
             // With no stored switch a PanVK driver runs with None, which is what the launch applies.
             decodeConfig = { env, cfg ->
@@ -808,35 +809,35 @@ internal object GraphicsRows {
             also = { _, cfg -> if (DRIVER_CFG.raw(cfg, MaliPanvk.KEY_MODE).isNullOrEmpty()) mapOf(MaliPanvk.KEY_MODE to "1") else emptyMap() },
             note = { _, values ->
                 if (values("graphics.wl.bcnEmulation") == "none") null
-                else "Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try it if a game shows broken or missing textures."
+                else T("Converting BCn textures to ASTC can freeze or reboot the phone with this driver; only try it if a game shows broken or missing textures.")
             },
         ),
         maliRow(
-            "graphics.wl.maliHideExts", MaliPanvk.KEY_HIDE_EXTS, "Hide present-wait / dynamic-rendering extensions", EXPERT,
+            "graphics.wl.maliHideExts", MaliPanvk.KEY_HIDE_EXTS, T("Hide present-wait / dynamic-rendering extensions"), EXPERT,
             control = toggle(), decode = { _, r -> if (r == "0") "0" else "1" },
         ),
         maliRow(
-            ID_MALI_SUBMIT, MaliPanvk.KEY_NO_SUBMIT_WAITS, "Skip GPU submit waits", EXPERT,
-            hint = "For DXVK games: turn off if a DirectX 12 game misbehaves or you see tearing.",
+            ID_MALI_SUBMIT, MaliPanvk.KEY_NO_SUBMIT_WAITS, T("Skip GPU submit waits"), EXPERT,
+            hint = T("For DXVK games: turn off if a DirectX 12 game misbehaves or you see tearing."),
             control = toggle(), decode = { _, r -> if (r == "0") "0" else "1" },
         ),
         maliRow(
-            "graphics.wl.maliNoAcquireSignal", MaliPanvk.KEY_NO_ACQUIRE_SIGNAL, "Skip frame-acquire signal", EXPERT,
+            "graphics.wl.maliNoAcquireSignal", MaliPanvk.KEY_NO_ACQUIRE_SIGNAL, T("Skip frame-acquire signal"), EXPERT,
             control = toggle(), decode = { _, r -> if (r == "0") "0" else "1" },
-            disabled = { _, values -> if (values(ID_MALI_SUBMIT) == "1") null else "Needs Skip GPU submit waits on." },
+            disabled = { _, values -> if (values(ID_MALI_SUBMIT) == "1") null else T("Needs Skip GPU submit waits on.") },
         ),
-        mbRow("graphics.wl.panvkHeap", MaliPanvk.KEY_HEAP, "PANVK_HEAP_MB", "Default: a quarter of RAM, 1024 to 3072 MB.", MaliPanvk.HEAP_MIN, MaliPanvk.HEAP_MAX),
-        mbRow("graphics.wl.panvkTilerHeap", MaliPanvk.KEY_TILER_HEAP, "PANVK_TILER_HEAP_MB", "Default: 512 MB.", MaliPanvk.TILER_HEAP_MIN, MaliPanvk.TILER_HEAP_MAX),
-        mbRow("graphics.wl.panvkPolyHeap", MaliPanvk.KEY_POLY_HEAP, "PANVK_POLY_HEAP_MB", "Default: 16 MB.", MaliPanvk.POLY_HEAP_MIN, MaliPanvk.POLY_HEAP_MAX),
+        mbRow("graphics.wl.panvkHeap", MaliPanvk.KEY_HEAP, "PANVK_HEAP_MB", T("Default: a quarter of RAM, 1024 to 3072 MB."), MaliPanvk.HEAP_MIN, MaliPanvk.HEAP_MAX),
+        mbRow("graphics.wl.panvkTilerHeap", MaliPanvk.KEY_TILER_HEAP, "PANVK_TILER_HEAP_MB", T("Default: 512 MB."), MaliPanvk.TILER_HEAP_MIN, MaliPanvk.TILER_HEAP_MAX),
+        mbRow("graphics.wl.panvkPolyHeap", MaliPanvk.KEY_POLY_HEAP, "PANVK_POLY_HEAP_MB", T("Default: 16 MB."), MaliPanvk.POLY_HEAP_MIN, MaliPanvk.POLY_HEAP_MAX),
         maliRow(
             "graphics.wl.panvkAtomStride", MaliPanvk.KEY_ATOM_STRIDE, "PANVK_ATOM_STRIDE", EXPERT,
-            hint = "Only if auto-detection fails ([KFAULT] in the log).",
-            control = { _, _ -> Control.Segmented(listOf(Opt("", "Auto")) + MaliPanvk.ATOM_STRIDES.map { Opt(it, it) }) },
+            hint = T("Only if auto-detection fails ([KFAULT] in the log)."),
+            control = { _, _ -> Control.Segmented(listOf(Opt("", T("Auto"))) + MaliPanvk.ATOM_STRIDES.map { Opt(it, it) }) },
             decode = { _, r -> r?.takeIf { it in MaliPanvk.ATOM_STRIDES } ?: "" },
             modeOnly = false,
         ),
         maliRow(
-            "graphics.wl.panvkTrace", MaliPanvk.KEY_TRACE, "PANVK_TRACE (driver tracing)", EXPERT,
+            "graphics.wl.panvkTrace", MaliPanvk.KEY_TRACE, T("PANVK_TRACE (driver tracing)"), EXPERT,
             control = toggle(), decode = { _, r -> on(r) },
             // Off is stored empty, as the classic gear stores it.
             encode = { v, _ -> if (v == "1") "1" else "" },
@@ -874,7 +875,7 @@ internal class GraphicsLists(private val context: Context) {
         private set
     var vegas by mutableStateOf<List<String>>(emptyList())
         private set
-    var vkd3d by mutableStateOf(listOf("None"))
+    var vkd3d by mutableStateOf(listOf(T("None")))
         private set
     var d7vk by mutableStateOf(listOf(DXVKConfigDialog.D7VK_BUNDLED))
         private set
@@ -934,10 +935,10 @@ internal class GraphicsLists(private val context: Context) {
         val blob = runCatching { WaylandAdapter.isProprietaryBlob(context, compositor) }.getOrDefault(false)
         val adapter = choice == Container.WAYLAND_GAME_DRIVER_ADAPTER
         when {
-            blob -> "Qualcomm's own driver can't put Wayland frames on screen, so the screen uses a bundled Turnip" +
-                if (adapter) " and the game renders on the bundled Wayland Turnip (the adapter needs a Turnip driver)." else "."
+            blob -> T("Qualcomm's own driver can't put Wayland frames on screen, so the screen uses a bundled Turnip") +
+                if (adapter) T(" and the game renders on the bundled Wayland Turnip (the adapter needs a Turnip driver).") else "."
             runCatching { WaylandGameDriver.adapterActive(context, choice, compositor) }.getOrDefault(false) ->
-                "The game renders on the graphics driver above, through the Wayland adapter."
+                T("The game renders on the graphics driver above, through the Wayland adapter.")
             else -> null
         }
     }
@@ -971,10 +972,10 @@ internal class GraphicsLists(private val context: Context) {
             Contents(
                 dxvk = runCatching { DXVKConfigDialog.loadDxvkVersionList(context, cm, arm64ec).toList() }.getOrDefault(emptyList()),
                 vegas = runCatching { DXVKConfigDialog.loadVegasVersionList(context, cm).toList() }.getOrDefault(emptyList()),
-                vkd3d = runCatching { DXVKConfigDialog.loadVkd3dVersionList(context, cm).toList() }.getOrDefault(listOf("None")),
+                vkd3d = runCatching { DXVKConfigDialog.loadVkd3dVersionList(context, cm).toList() }.getOrDefault(listOf(T("None"))),
                 d7vk = runCatching { DXVKConfigDialog.loadD7vkVersionList(context, cm).toList() }.getOrDefault(listOf(DXVKConfigDialog.D7VK_BUNDLED)),
                 stock = runCatching { DXVKConfigDialog.loadVegasStockSources(context, cm).toList() }.getOrDefault(emptyList()),
-                custom = runCatching { DXVKConfigDialog.loadVegasConfigSourceList(context).filter { it != "None" } }.getOrDefault(emptyList()),
+                custom = runCatching { DXVKConfigDialog.loadVegasConfigSourceList(context).filter { it != T("None") } }.getOrDefault(emptyList()),
             )
         }
         dxvk = c.dxvk.distinct()
@@ -1173,17 +1174,17 @@ internal class DeckGraphicsState(
 
     private fun bottomItems(): List<PageExtra> {
         val actions = buildList {
-            if (dxvkLike() && !vegas()) add(Action("dxvk", Icons.Filled.CloudDownload, "Download DXVK versions", "Builds from the catalog. Installed ones appear under DXVK version.") { sheet = ContentProfile.ContentType.CONTENT_TYPE_DXVK })
-            if (vegas()) add(Action("vegas", Icons.Filled.CloudDownload, "Download VEGAS builds", "Releases of the VEGAS DXVK fork.") { vegasSheet = true })
-            if (dxvkLike()) add(Action("vkd3d", Icons.Filled.CloudDownload, "Download VKD3D versions", "DirectX 12 builds from the catalog.") { sheet = ContentProfile.ContentType.CONTENT_TYPE_VKD3D })
-            if (dxvkLike() && value(GraphicsRows.ID_DDRAW) == "d7vk") add(Action("d7vk", Icons.Filled.CloudDownload, "Download D7VK versions", "DirectDraw and Direct3D 7 on Vulkan.") { sheet = ContentProfile.ContentType.CONTENT_TYPE_D7VK })
-            if (vegas()) add(Action("stock", Icons.Filled.CloudDownload, "Download stock VEGAS configs", "The config files VEGAS releases ship. They appear under Config file.") { stockSheet = true })
-            if (vegas()) add(Action("vegasEditor", Icons.Filled.Description, "Edit the VEGAS config file", "Performance tier, each key of the file, backups, and deleting or installing VEGAS builds.") { vegasEditor = true })
-            if (x11()) add(Action("wrappers", Icons.Filled.Inventory2, "Manage graphics wrappers", "Download, import or delete the wrappers listed under Graphics driver.") { wrappers = true })
-            if (!env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) add(Action("turnip", Icons.Filled.CloudDownload, "Download a Turnip driver", "Wayland needs an installed Turnip to put the game's frames on screen. New ones appear under Graphics driver.") { turnipSheet = true })
+            if (dxvkLike() && !vegas()) add(Action("dxvk", Icons.Filled.CloudDownload, T("Download DXVK versions"), T("Builds from the catalog. Installed ones appear under DXVK version.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_DXVK })
+            if (vegas()) add(Action("vegas", Icons.Filled.CloudDownload, T("Download VEGAS builds"), T("Releases of the VEGAS DXVK fork.")) { vegasSheet = true })
+            if (dxvkLike()) add(Action("vkd3d", Icons.Filled.CloudDownload, T("Download VKD3D versions"), T("DirectX 12 builds from the catalog.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_VKD3D })
+            if (dxvkLike() && value(GraphicsRows.ID_DDRAW) == "d7vk") add(Action("d7vk", Icons.Filled.CloudDownload, T("Download D7VK versions"), T("DirectDraw and Direct3D 7 on Vulkan.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_D7VK })
+            if (vegas()) add(Action("stock", Icons.Filled.CloudDownload, T("Download stock VEGAS configs"), T("The config files VEGAS releases ship. They appear under Config file.")) { stockSheet = true })
+            if (vegas()) add(Action("vegasEditor", Icons.Filled.Description, T("Edit the VEGAS config file"), T("Performance tier, each key of the file, backups, and deleting or installing VEGAS builds.")) { vegasEditor = true })
+            if (x11()) add(Action("wrappers", Icons.Filled.Inventory2, T("Manage graphics wrappers"), T("Download, import or delete the wrappers listed under Graphics driver.")) { wrappers = true })
+            if (!env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) add(Action("turnip", Icons.Filled.CloudDownload, T("Download a Turnip driver"), T("Wayland needs an installed Turnip to put the game's frames on screen. New ones appear under Graphics driver.")) { turnipSheet = true })
         }
         if (actions.isEmpty()) return emptyList()
-        return listOf(PageExtra("graphics-tools-label") { GroupLabel("Downloads and tools") }) +
+        return listOf(PageExtra("graphics-tools-label") { GroupLabel(T("Downloads and tools")) }) +
             actions.mapIndexed { i, a ->
                 PageExtra("graphics-tool:${a.key}") {
                     GroupCard(first = i == 0, last = i == actions.lastIndex, highlight = false) { ActionRow(a) }

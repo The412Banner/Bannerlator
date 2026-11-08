@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.T
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -172,7 +173,7 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
         }.getOrNull()
     }
     if (loaded == null) {
-        Loading("This game is no longer in your library.")
+        Loading(T("This game is no longer in your library."))
         return
     }
     val shortcutState = remember(path) { mutableStateOf(loaded) }
@@ -231,16 +232,16 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
     // Only a Wine game follows a Wine container: the Linux Steam client entry and Android games are
     // never linked to the container editor.
     val chain = if (env.world != World.WINE) emptyList() else listOf(
-        ChainLink("All containers", Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
+        ChainLink(T("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
         ChainLink(containerName, Icons.Filled.Inventory2) { navController.navigate(DeckSettingsRoutes.container(containerId)) },
-        ChainLink("This game", Icons.Filled.SportsEsports, null),
+        ChainLink(T("This game"), Icons.Filled.SportsEsports, null),
     )
     DeckSettingsEditor(
         header = EditorHeader(
             overline = when (env.world) {
-                World.LINUX -> "Linux Steam client"
-                World.ANDROID -> "Android game"
-                World.WINE -> "Game settings"
+                World.LINUX -> T("Linux Steam client")
+                World.ANDROID -> T("Android game")
+                World.WINE -> T("Game settings")
             },
             title = shortcut.name,
             icon = Icons.Filled.SportsEsports,
@@ -366,7 +367,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         return
     }
     if (!defaultsMode && !createMode && vm.container == null) {
-        Loading("This container no longer exists.")
+        Loading(T("This container no longer exists."))
         return
     }
     val container = vm.container
@@ -380,22 +381,22 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
     val extras = remember(components, graphics, sections) { categoryExtras(components, graphics, sections) }
 
     val header = if (createMode) {
-        EditorHeader(overline = "New container", title = "New Container", icon = Icons.Filled.Inventory2)
+        EditorHeader(overline = T("New container"), title = T("New Container"), icon = Icons.Filled.Inventory2)
     } else if (defaultsMode) {
         EditorHeader(
-            overline = "Defaults for every container",
-            title = "All containers",
+            overline = T("Defaults for every container"),
+            title = T("All containers"),
             icon = Icons.Filled.Layers,
-            subtitle = "New containers start from these values. Existing containers keep their own.",
+            subtitle = T("New containers start from these values. Existing containers keep their own."),
         )
     } else {
         EditorHeader(
-            overline = "Container settings",
+            overline = T("Container settings"),
             title = vm.container?.name ?: vm.containerName,
             icon = Icons.Filled.Inventory2,
             chain = listOf(
-                ChainLink("All containers", Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
-                ChainLink("This container", Icons.Filled.Inventory2, null),
+                ChainLink(T("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
+                ChainLink(T("This container"), Icons.Filled.Inventory2, null),
             ),
             meta = listOf(vm.selectedWineVersion, if (vm.isArm64EC) "arm64ec" else "x86_64").filter { it.isNotEmpty() }.joinToString(" · "),
         )
@@ -410,13 +411,13 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         onHandoff = { h -> if (h.target == SettingsRegistry.TARGET_CLASSIC) navController.navigate("container_detail?id=$id") },
         onChainLink = { link -> link.onClick?.invoke() },
         createMode = createMode,
-        yAction = if (!defaultsMode) null else ("Switch architecture" to {
+        yAction = if (!defaultsMode) null else (T("Switch architecture") to {
             val next = if (arch == NewContainerDefaults.ARCH_ARM64EC) NewContainerDefaults.ARCH_X86_64 else NewContainerDefaults.ARCH_ARM64EC
-            if (source.dirty) Toast.makeText(context, "Save or discard your changes first.", Toast.LENGTH_SHORT).show()
+            if (source.dirty) Toast.makeText(context, T("Save or discard your changes first."), Toast.LENGTH_SHORT).show()
             else {
                 arch = next
                 vm.selectDefaultsArch(next)
-                Toast.makeText(context, if (next == NewContainerDefaults.ARCH_X86_64) "x86-64 defaults" else "ARM64EC defaults", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, if (next == NewContainerDefaults.ARCH_X86_64) T("x86-64 defaults") else T("ARM64EC defaults"), Toast.LENGTH_SHORT).show()
             }
         }),
         headerExtra = if (!defaultsMode) null else ({
@@ -424,7 +425,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
                 // Switching reloads the form from the other profile, so unsaved edits must be saved or discarded first.
                 if (next != arch) {
                     if (source.dirty) {
-                        Toast.makeText(context, "Save or discard your changes first.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, T("Save or discard your changes first."), Toast.LENGTH_SHORT).show()
                     } else {
                         arch = next
                         vm.selectDefaultsArch(next)
@@ -473,7 +474,7 @@ private fun categoryExtras(components: DeckComponentsState?, graphics: DeckGraph
 @Composable
 private fun ArchSwitch(arch: String, onArch: (String) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Container type", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(T("Container type"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         DeckSegmented(
             options = listOf(Opt(NewContainerDefaults.ARCH_ARM64EC, "ARM64EC"), Opt(NewContainerDefaults.ARCH_X86_64, "x86-64")),
             value = arch,
@@ -493,9 +494,9 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
     DeckSettingsEditor(
         header = EditorHeader(
             overline = "Bannerlator",
-            title = "Settings",
+            title = T("Settings"),
             icon = Icons.Filled.Settings,
-            subtitle = "Every app setting applies straight away.",
+            subtitle = T("Every app setting applies straight away."),
         ),
         source = source,
         categories = AppSettingsRegistry.categories,

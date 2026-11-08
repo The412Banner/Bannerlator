@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.ui.simple.T
 import com.winlator.star.ui.deck.deckShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -150,14 +151,14 @@ internal class DeckWrapperDetectedSection(
         if (!env.graphics.isImported(driver)) return emptyList()
         val keys = keysByDriver[driver]
         val head = listOf(
-            PageExtra("wrapper-detected-label") { GroupLabel("Detected in this wrapper") },
+            PageExtra("wrapper-detected-label") { GroupLabel(T("Detected in this wrapper")) },
         )
         if (keys.isNullOrEmpty()) {
             return head + PageExtra("wrapper-detected-none") {
                 GroupCard(first = true, last = true, highlight = false) {
                     DeckLine(
-                        label = if (keys == null) "Reading this wrapper's settings…" else "No extra settings detected",
-                        hint = "Settings scanned from the imported wrapper's files. Hide or show them in Manage graphics wrappers.",
+                        label = if (keys == null) T("Reading this wrapper's settings…") else T("No extra settings detected"),
+                        hint = T("Settings scanned from the imported wrapper's files. Hide or show them in Manage graphics wrappers."),
                     )
                 }
             }
@@ -168,7 +169,7 @@ internal class DeckWrapperDetectedSection(
             }
         } + PageExtra("wrapper-detected-note") {
             Text(
-                "Values are passed to the wrapper as they are; unknown ones are safe to leave blank.",
+                T("Values are passed to the wrapper as they are; unknown ones are safe to leave blank."),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.5.sp,
                 modifier = Modifier.padding(start = 6.dp, top = 8.dp),
@@ -254,7 +255,7 @@ private fun DetectedLine(section: DeckWrapperDetectedSection, key: String) {
         WrapperSettingsDictionary.Type.TEXT -> DeckLine(
             label = def.label, hint = hint, enabled = enabled,
             onClick = { section.textFor = key },
-        ) { ValueText(value.ifEmpty { "Not set" }) }
+        ) { ValueText(value.ifEmpty { T("Not set") }) }
     }
 }
 
@@ -277,7 +278,7 @@ private fun ChoiceDialog(title: String, choices: List<String>, current: String, 
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(T("Cancel")) } },
         title = { Text(title) },
         text = {
             LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
@@ -308,14 +309,14 @@ private fun TextDialog(title: String, hint: String, current: String, onDismiss: 
     LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onUse(text.trim()) }) { Text("Use") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onUse(text.trim()) }) { Text(T("Use")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(T("Cancel")) } },
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    hint.ifBlank { "Passed to the wrapper as it is. Leave blank to leave it unset." } +
-                        " \";\" and \"=\" are left out.",
+                    hint.ifBlank { T("Passed to the wrapper as it is. Leave blank to leave it unset.") } +
+                        T(" \";\" and \"=\" are left out."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.5.sp,
                 )
@@ -327,7 +328,7 @@ private fun TextDialog(title: String, hint: String, current: String, onDismiss: 
                 )
                 if (text.any { it == ';' || it == '=' }) {
                     Text(
-                        "Will be saved as: " + text.replace(";", "").replace("=", "").trim().ifEmpty { "(blank)" }.let {
+                        T("Will be saved as: ") + text.replace(";", "").replace("=", "").trim().ifEmpty { T("(blank)") }.let {
                             if (it.length > 60) it.take(60) + "…" else it
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

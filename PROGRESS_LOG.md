@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🧪 driver-install-status 1fe0ddd6: first device check (Lab › Contents › StevenMXZ, 14:06 EST)
+- User screenshot 14:06:22: v891.14 and v891.11 rows read Installed ✓, toast "891.11 is already installed"; v39 Gen8 V39 / R2-Oneui (installed before, not re-tapped) still show download, as expected (no record yet).
+- logcat 14:06:21.955 `DriverInstaller: install v891.11_891.11.zip: not installed (891.11 is already installed)`; shared_prefs/driver_install_records.xml holds both StevenMXZ URLs → ANDROID|891.11 / ANDROID|891.14; adrenotools folder unchanged (9 drivers, no ".tmp-" leftovers); crash buffer empty.
+- **Device-proven so far:** same-name refusal message, record on refusal, Installed mark from the record. **Not yet:** Download and replace, a "-Linux" / "-Wayland" download, Banners-Turnip plain "-r2" unmarked, two downloads at once, a refused zip's reason, Classic Contents UI.
+
 ## 2026-11-09 — ✅ driver-install-status 1fe0ddd6 INSTALLED on the Elite main app (pubg) 13:50:01 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42675781398 GREEN ×4 (headSha 64ca5162 = 1fe0ddd6 code + log; antutu built this time). Artifact Bannerlator-driver-status-1fe0ddd6-pubg 597,193,400 bytes; com.tencent.ig; DriverInstaller in classes4.dex; "Download and replace" in resources.arsc. Staged /sdcard/Download/Bannerlator-driver-status-1fe0ddd6.apk, sha256 8058b273… (host == device).
 - `pm install -r` done: installed base.apk sha256 8058b273… == staged; lastUpdateTime 2026-11-09 13:50:01; versionName 3.1.9-pre2 (dev build). Crash buffer empty after install. Before: 1b272bc5… (= ca31a4d9), no Wine processes, Termux in front.

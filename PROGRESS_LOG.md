@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart 2aa6ff7c device-proven on the Elite (DiRT Showdown, 21:08 EST)
+- Screenshots 210841 (launch screen, unchanged) and 210853 (in-game menu: icon left, logo centred, art showing through the 42 % cards and 60 % chips; all text readable).
+- logcat since the install: no crash, FATAL or ANR. The game was still running at 21:10.
+- **Next:** translate the 4 strings → merge on go.
+
 ## 2026-11-08 — ✅ igart 2aa6ff7c INSTALLED on the Elite main app (pubg) 21:07:43 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42548252856 green ×4. Installed base.apk sha256 430cb207… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
 - **Next:** the user checks the centred logo and the glass cards and chips → translate the 4 strings → merge on go.

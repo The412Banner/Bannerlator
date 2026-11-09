@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Un nume nu poate conține \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Pentru jocurile lansate de client, nu pentru clientul însuși, și pentru toate deodată: sesiunea are un singur mediu. </string>
     <string name="lab_1e223777">Versiunea, notele de lansare și Download &amp; install (setările Classic).</string>
-    <string name="lab_1e2f8841">Mouse relativ (pentru jocuri cu cameră 3D)</string>
     <string name="lab_1e537526">Lista este goală.</string>
     <string name="lab_1e713627">Client Steam pentru Linux</string>
     <string name="lab_1e765e92">Setări țintire prin mișcare</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automat · un trailer Steam</string>
     <string name="lab_2756404f">Resetează energia și root la valorile implicite ale aplicației</string>
     <string name="lab_27b56d30">Instalează DLL-urile XInput ale Bannerlator indiferent dacă XInput direct e activat sau nu, alături de XInput-ul propriu Wine, ca Comenzi › Pad din meniul din joc să poată comuta între ele în timpul jocului (controllerul se reconectează). Activat implicit. Dezactivat: XInput direct rămâne cum era la pornirea jocului, iar schimbarea lui necesită o repornire.</string>
+    <string name="lab_27bb1078">Direct</string>
     <string name="lab_27bcb120">Adaugă, copiază, șterge, exportă sau importă presetări Box64 și FEX (setările Classic).</string>
     <string name="lab_27beed97">%1$s · sesiuni: %2$s</string>
     <string name="lab_27f2c3fa">Setează frecvența minimă a fiecărui cluster la valoarea maximă.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Ocolește un bug Turnip în care întrebarea „a terminat GPU-ul?” așteaptă tot cadrul (bugul de temporizare din raport). Implicit lasă adaptorul să detecteze bugul; Activat forțează shim-ul, Dezactivat îl oprește.</string>
     <string name="lab_3205bc81">Niciun driver grafic Turnip nu este setat, deci nu e nimic de verificat.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Mod ecran tactil</string>
     <string name="lab_32a7fa00">Gen. cadre</string>
     <string name="lab_334d4744">Salvează o copie a salvărilor din biblioteca Steam în Biblioteca locală când un joc se închide.</string>
     <string name="lab_336d62eb">Preferă nucleele CPU mari</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Niciun depozit.</string>
     <string name="lab_3a1ed8c6">Driver de afișare (partea Android)</string>
     <string name="lab_3a24cc2d">Se setează pentru fiecare container: descrie mâinile tale, nu jocul.</string>
-    <string name="lab_3a589c47">Cursor la atingere</string>
     <string name="lab_3a5c3010">FPS, încărcarea CPU/GPU și temperaturile, peste joc. Atinge HUD-ul în joc ca să-l întorci sau să-l redimensionezi.</string>
     <string name="lab_3a95276d">Intensitate vkBasalt</string>
     <string name="lab_3b02039e">Echilibrat</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Forțează SSBS (remediere viteză CPU)</string>
     <string name="lab_497cf9a3">Joacă pe un televizor sau transmite pe unul.</string>
     <string name="lab_4990b8f5">Claritate (VKBasalt)</string>
-    <string name="lab_499bfdd8">Cursorul sare acolo unde atingi.</string>
     <string name="lab_49cff1c6">Mouse și atingere</string>
     <string name="lab_49d721cc">Suprapunere de performanță</string>
     <string name="lab_49fc80cc">Dezactivat (Individual rulează câte unul)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Descarcă versiuni DXVK</string>
     <string name="lab_542dcdda">Stick la dreapta</string>
     <string name="lab_545e8271">Contează doar când un joc randează sub rezoluția sesiunii.</string>
-    <string name="lab_54739575">Cursor la atingere și gesturile lui tactile</string>
     <string name="lab_5482057e">Sloturi jucători</string>
     <string name="lab_548c6bc1">Dezactivează XInput, ca jocurile să vadă doar mouse-ul și tastatura reale.</string>
     <string name="lab_54ed9898">Conectat · 1 joc</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Stânga sus</string>
     <string name="lab_58a426c9">Dezactivat pentru acest joc cât timp rulează generarea de cadre. </string>
-    <string name="lab_5901a4cd">Wayland: deplasările mouse-ului ajung la compozitor; un joc care blochează cursorul le primește ca mișcare relativă.</string>
     <string name="lab_5946d9c6">Folosește setarea aplicației (%1$s)</string>
     <string name="lab_594a913b">Shadere asincrone</string>
     <string name="lab_595daef9">Componente descărcate: arhivele și lista din catalog.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, încărcarea CPU/GPU și temperaturile, peste joc. Stilul se setează mai jos și în joc, din meniul lateral.</string>
     <string name="lab_5cf98060">Ascunde extensiile present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Mod de țintire</string>
     <string name="lab_5d676a2d">Doar presetările tale pot fi exportate.</string>
     <string name="lab_5d7ee5f8">GitHub, raportare probleme și Discord</string>
     <string name="lab_5db787de">Prieteni și chat Steam.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Nu s-a putut redenumi</string>
     <string name="lab_6a271188">Presetare Box64 / Presetare WOWBox64</string>
     <string name="lab_6a4b2ea4">Energie</string>
-    <string name="lab_6a68da45">Mouse relativ</string>
     <string name="lab_6a87d625">DirectX 8 până la 11 prin Vulkan. Versiunile numite async sau gplasync pot compila shaderele în fundal.</string>
     <string name="lab_6a913533">Root acordat</string>
     <string name="lab_6a98ad5e">Un buton discret în dreapta sus care deschide meniul rapid prin atingere.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Depanare</string>
     <string name="lab_6c15cb41">Butoanele tactile ale aranjamentului curent.</string>
     <string name="lab_6c3656ad">Portret</string>
-    <string name="lab_6c37a76c">Atingerea acționează ca</string>
     <string name="lab_6c5fe717">Sunet previzualizări</string>
     <string name="lab_6c8e3b1f">Setează ca implicit…</string>
     <string name="lab_6c9249ac">Descărcarea automată din cloud la lansare va fi DEZACTIVATĂ pentru jocurile din biblioteca ta GOG. Cele mai recente salvări din cloud nu vor fi aduse înainte de pornirea unui joc — va trebui să le descarci singur din fila GOG a Managerului de salvări sau din pagina de detalii a jocului. Continui?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Modificările nesalvate de aici se pierd. Containerele existente își păstrează setările.</string>
     <string name="lab_8ecc4179"> în locul celor din Wine. Necesare pentru multe wrappere și încărcătoare de moduri. DLL-urile grafice nu sunt incluse niciodată: de ele se ocupă DXVK și VKD3D.</string>
     <string name="lab_8ece40f8">Doar pentru driverele Banners-Turnip; Turnip-ul standard o ignoră.</string>
-    <string name="lab_8ed00ed7">Pentru jocurile care blochează cursorul (rotirea camerei).</string>
     <string name="lab_8ee80fca">Nicio sursă de drivere.</string>
     <string name="lab_8ef37792">Jos</string>
     <string name="lab_8f4a852b">Energie dispozitiv</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Mod de prezentare al adaptorului</string>
     <string name="lab_abb1c367">Nu este conectat nimic. Acest joc este încă setat să pornească pe un televizor.</string>
     <string name="lab_abb20221">Nicio presetare</string>
+    <string name="lab_abd752a4">Gesturi tactile</string>
     <string name="lab_abf1049c">Păstrează arhiva brută implicit</string>
     <string name="lab_ac21d91b">Mod mișcare</string>
     <string name="lab_ac35c85f">Jocul randează pe driverul grafic de mai sus, prin adaptorul Wayland.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Controller XR principal</string>
     <string name="lab_e14156b5">Nuclee pentru clientul Steam</string>
     <string name="lab_e141ca5d">Prioritate pe ecran</string>
-    <string name="lab_e1768a43">Se poate comuta și în joc, din meniul lateral.</string>
     <string name="lab_e18caa5c">Nicio unitate</string>
     <string name="lab_e19da5b2">Adaptor Wayland</string>
     <string name="lab_e1be537c">Nesalvat</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) sau off</string>
     <string name="lab_e98a38e0">Lupă, imagine în imagine, tastatură și performanță.</string>
     <string name="lab_e9bb2501">Permite jocurilor să folosească microfonul: DirectAudio preia intrarea. Android cere permisiunea o singură dată.</string>
-    <string name="lab_e9e73eeb">Ecran tactil trimite atingeri reale către joc.</string>
     <string name="lab_ea08e43f">Mediul de execuție Linux și toate listele</string>
     <string name="lab_ea354143">Un buton discret în dreapta sus care deschide meniul rapid prin atingere. Înapoi, butonul Menu sau o atingere cu patru degete funcționează și fără el.</string>
     <string name="lab_ea4babd8">Cum pornește</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Internă</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mouse / touchpad</string>
     <string name="lab_f2cdcc45">Selectează driverul GPU</string>
     <string name="lab_f2ed832c">Câtă memorie GPU li se spune jocurilor DirectX că există (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latența sunetului</string>

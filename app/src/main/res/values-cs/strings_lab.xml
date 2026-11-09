@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Název nesmí obsahovat \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Pro hry, které klient spouští, ne pro klienta samotného, a to pro všechny: relace má jedno prostředí. </string>
     <string name="lab_1e223777">Verze, poznámky k vydání a Download &amp; install (nastavení Classic).</string>
-    <string name="lab_1e2f8841">Relativní myš (pro hry s 3D kamerou)</string>
     <string name="lab_1e537526">Seznam je prázdný.</string>
     <string name="lab_1e713627">Linuxový klient Steam</string>
     <string name="lab_1e765e92">Nastavení míření pohybem</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automaticky · trailer ze Steamu</string>
     <string name="lab_2756404f">Obnovit napájení a root na výchozí hodnoty aplikace</string>
     <string name="lab_27b56d30">Nainstaluje XInput DLL od Bannerlatoru bez ohledu na to, zda je Přímý XInput zapnutý, a vedle nich vlastní XInput z Wine, takže Controls › Pad v herním menu mezi nimi může přepínat za běhu hry (ovladač se znovu připojí). Ve výchozím stavu zapnuto. Vypnuto: Přímý XInput zůstane tak, jak hra začala, a jeho změna vyžaduje restart.</string>
+    <string name="lab_27bb1078">Přímý</string>
     <string name="lab_27bcb120">Přidávejte, kopírujte, mažte, exportujte nebo importujte předvolby Box64 a FEX (nastavení Classic).</string>
     <string name="lab_27beed97">%1$s · relace: %2$s</string>
     <string name="lab_27f2c3fa">Nastaví minimální frekvenci každého clusteru na jeho maximum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Obchází chybu Turnipu, kdy dotaz „má GPU hotovo?“ čeká na celý snímek (chyba časování ze zprávy). „Výchozí“ nechá adaptér chybu rozpoznat; „Zapnuto“ korekci vynutí, „Vypnuto“ ji vypne.</string>
     <string name="lab_3205bc81">Není nastaven žádný grafický ovladač Turnip, takže není co kontrolovat.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Režim dotykové obrazovky</string>
     <string name="lab_32a7fa00">Gen. snímků</string>
     <string name="lab_334d4744">Po ukončení hry uloží snímek uložených her z knihovny Steam do místní Knihovny.</string>
     <string name="lab_336d62eb">Upřednostnit velká jádra CPU</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Žádné repozitáře.</string>
     <string name="lab_3a1ed8c6">Ovladač displeje (strana Androidu)</string>
     <string name="lab_3a24cc2d">Nastavuje se pro každý kontejner: popisuje vaše ruce, ne hru.</string>
-    <string name="lab_3a589c47">Kurzor na místo dotyku</string>
     <string name="lab_3a5c3010">FPS, zatížení CPU/GPU a teploty přes hru. Klepnutím ve hře ho otočíte nebo změníte jeho velikost.</string>
     <string name="lab_3a95276d">Síla vkBasalt</string>
     <string name="lab_3b02039e">Vyvážené</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Vynutit SSBS (oprava rychlosti CPU)</string>
     <string name="lab_497cf9a3">Hrajte na televizi nebo na ni přenášejte obraz.</string>
     <string name="lab_4990b8f5">Ostrost (VKBasalt)</string>
-    <string name="lab_499bfdd8">Ukazatel skočí tam, kam se dotknete.</string>
     <string name="lab_49cff1c6">Myš a dotyk</string>
     <string name="lab_49d721cc">Výkonový overlay</string>
     <string name="lab_49fc80cc">Vypnuto (Samostatně spouští jeden efekt naráz)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Stáhnout verze DXVK</string>
     <string name="lab_542dcdda">Páčka vpravo</string>
     <string name="lab_545e8271">Má význam, jen když hra vykresluje v nižším rozlišení, než má relace.</string>
-    <string name="lab_54739575">Kurzor na místo dotyku a jeho dotyková gesta</string>
     <string name="lab_5482057e">Sloty hráčů</string>
     <string name="lab_548c6bc1">Vypne XInput, takže hry vidí jen skutečnou myš a klávesnici.</string>
     <string name="lab_54ed9898">Přihlášeno · 1 hra</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Vlevo nahoře</string>
     <string name="lab_58a426c9">Pro tuto hru vypnuto, dokud běží generování snímků. </string>
-    <string name="lab_5901a4cd">Wayland: posuny myši jdou do kompozitoru; hra, která zamyká ukazatel, je dostává jako relativní pohyb.</string>
     <string name="lab_5946d9c6">Použít nastavení aplikace (%1$s)</string>
     <string name="lab_594a913b">Asynchronní shadery</string>
     <string name="lab_595daef9">Stažené komponenty: archivy a seznam katalogu.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, zatížení CPU/GPU a teploty přes hru. Styl nastavíte níže a ve hře z bočního menu.</string>
     <string name="lab_5cf98060">Skrýt rozšíření present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Režim míření</string>
     <string name="lab_5d676a2d">Exportovat lze jen vaše vlastní předvolby.</string>
     <string name="lab_5d7ee5f8">GitHub, hlášení chyb a Discord</string>
     <string name="lab_5db787de">Přátelé a chat na Steamu.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Nepodařilo se přejmenovat</string>
     <string name="lab_6a271188">Předvolba Box64 / předvolba WOWBox64</string>
     <string name="lab_6a4b2ea4">Napájení</string>
-    <string name="lab_6a68da45">Relativní myš</string>
     <string name="lab_6a87d625">DirectX 8 až 11 přes Vulkan. Sestavení s názvem async nebo gplasync umí kompilovat shadery na pozadí.</string>
     <string name="lab_6a913533">Root udělen</string>
     <string name="lab_6a98ad5e">Nenápadné tlačítko vpravo nahoře, které dotykem otevře rychlé menu.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Řešení problémů</string>
     <string name="lab_6c15cb41">Dotyková tlačítka aktuálního rozložení.</string>
     <string name="lab_6c3656ad">Na výšku</string>
-    <string name="lab_6c37a76c">Dotyk funguje jako</string>
     <string name="lab_6c5fe717">Zvuk náhledů</string>
     <string name="lab_6c8e3b1f">Nastavit jako výchozí…</string>
     <string name="lab_6c9249ac">Automatické stahování z cloudu při spuštění bude pro hry z vaší knihovny GOG VYPNUTO. Nejnovější uložené hry z cloudu se před spuštěním hry nestáhnou — budete je muset stáhnout sami na kartě Správce uložených her GOG nebo na stránce podrobností hry. Pokračovat?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Neuložené změny zde budou ztraceny. Stávající kontejnery si ponechají svá nastavení.</string>
     <string name="lab_8ecc4179"> místo verzí z Wine. Potřebuje to mnoho wrapperů a zavaděčů modů. Grafické DLL nejsou nikdy zahrnuty: ty mají na starost DXVK a VKD3D.</string>
     <string name="lab_8ece40f8">Jen ovladače Banners-Turnip; standardní Turnip to ignoruje.</string>
-    <string name="lab_8ed00ed7">Pro hry, které zamykají ukazatel (rozhlížení kamerou).</string>
     <string name="lab_8ee80fca">Žádné zdroje ovladačů.</string>
     <string name="lab_8ef37792">Dole</string>
     <string name="lab_8f4a852b">Napájení zařízení</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Režim prezentace adaptéru</string>
     <string name="lab_abb1c367">Nic není připojeno. Tato hra je stále nastavena ke spuštění na TV.</string>
     <string name="lab_abb20221">Bez předvolby</string>
+    <string name="lab_abd752a4">Dotyková gesta</string>
     <string name="lab_abf1049c">Ve výchozím stavu ponechat surový archiv</string>
     <string name="lab_ac21d91b">Režim pohybu</string>
     <string name="lab_ac35c85f">Hra se vykresluje na grafickém ovladači výše, přes adaptér Wayland.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Hlavní ovladač XR</string>
     <string name="lab_e14156b5">Jádra pro klienta Steam</string>
     <string name="lab_e141ca5d">Priorita na obrazovce</string>
-    <string name="lab_e1768a43">Lze přepnout i ve hře z bočního menu.</string>
     <string name="lab_e18caa5c">Žádné jednotky</string>
     <string name="lab_e19da5b2">Adaptér Wayland</string>
     <string name="lab_e1be537c">Neuloženo</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) nebo off</string>
     <string name="lab_e98a38e0">Lupa, obraz v obraze, klávesnice a výkon.</string>
     <string name="lab_e9bb2501">Umožní hrám používat mikrofon: vstup zachytává DirectAudio. Android se jednou zeptá na oprávnění.</string>
-    <string name="lab_e9e73eeb">Dotyková obrazovka posílá hře skutečné dotyky.</string>
     <string name="lab_ea08e43f">Běhové prostředí Linuxu a všechny seznamy</string>
     <string name="lab_ea354143">Nenápadné tlačítko vpravo nahoře, které dotykem otevře rychlé menu. Zpět, tlačítko Menu nebo klepnutí čtyřmi prsty fungují i bez něj.</string>
     <string name="lab_ea4babd8">Způsob spuštění</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Styl</string>
     <string name="lab_f2857f55">Interní</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Myš / touchpad</string>
     <string name="lab_f2cdcc45">Vybrat ovladač GPU</string>
     <string name="lab_f2ed832c">Kolik paměti GPU se hlásí hrám s DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latence zvuku</string>

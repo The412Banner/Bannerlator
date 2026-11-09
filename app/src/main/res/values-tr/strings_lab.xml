@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Ad şu karakterleri içeremez: \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">İstemcinin kendisi için değil, başlattığı oyunlar için ve hepsi için birden: oturumun tek bir ortamı vardır. </string>
     <string name="lab_1e223777">Sürüm, sürüm notları ve İndir ve yükle (klasik Ayarlar).</string>
-    <string name="lab_1e2f8841">Göreli fare (3D kameralı oyunlar için)</string>
     <string name="lab_1e537526">Listede bir şey yok.</string>
     <string name="lab_1e713627">Linux Steam istemcisi</string>
     <string name="lab_1e765e92">Hareketle nişan ayarları</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Otomatik · bir Steam fragmanı</string>
     <string name="lab_2756404f">Güç ve root ayarlarını uygulama varsayılanlarına sıfırla</string>
     <string name="lab_27b56d30">Doğrudan XInput açık da olsa kapalı da olsa Bannerlator\'ın XInput DLL\'lerini, yanlarında Wine\'ın kendi XInput\'uyla birlikte yükler; böylece oyun içi menüdeki Kontroller › Kumanda, oyun çalışırken ikisi arasında geçiş yapabilir (kumanda yeniden bağlanır). Varsayılan olarak açık. Kapalı: Doğrudan XInput oyun başladığı gibi kalır ve değiştirmek yeniden başlatma gerektirir.</string>
+    <string name="lab_27bb1078">Doğrudan</string>
     <string name="lab_27bcb120">Box64 ve FEX ön ayarlarını ekleyin, kopyalayın, silin, dışa veya içe aktarın (klasik Ayarlar).</string>
     <string name="lab_27beed97">%1$s · %2$s oturum</string>
     <string name="lab_27f2c3fa">Her kümenin en düşük frekansını en yükseğine ayarlar.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Turnip\'teki, \"GPU bitti mi?\" diye sormanın tüm kareyi beklemesine yol açan hatayı giderir (rapordaki zamanlama hatası). Varsayılan, bağdaştırıcının bunu algılamasına izin verir; Açık bunu zorlar, Kapalı devre dışı bırakır.</string>
     <string name="lab_3205bc81">Turnip grafik sürücüsü ayarlanmamış, bu yüzden kontrol edilecek bir şey yok.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Dokunmatik ekran modu</string>
     <string name="lab_32a7fa00">Kare oluşturma</string>
     <string name="lab_334d4744">Bir oyundan çıkıldığında Steam kütüphanesi kayıtlarının anlık kopyasını yerel Kütüphanenize al.</string>
     <string name="lab_336d62eb">Büyük CPU çekirdeklerini tercih et</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Depo yok.</string>
     <string name="lab_3a1ed8c6">Ekran sürücüsü (Android tarafı)</string>
     <string name="lab_3a24cc2d">Konteyner başına ayarlanır: oyunu değil, ellerinizi tanımlar.</string>
-    <string name="lab_3a589c47">İmleç dokunulan yere</string>
     <string name="lab_3a5c3010">Oyunun üzerinde FPS, CPU/GPU yükü ve sıcaklıklar. Döndürmek veya boyutlandırmak için oyun içinde ona dokunun.</string>
     <string name="lab_3a95276d">vkBasalt gücü</string>
     <string name="lab_3b02039e">Dengeli</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS\'yi zorla (CPU hız düzeltmesi)</string>
     <string name="lab_497cf9a3">TV\'de oynayın veya TV\'ye yansıtın.</string>
     <string name="lab_4990b8f5">Keskinlik (VKBasalt)</string>
-    <string name="lab_499bfdd8">İmleç dokunduğunuz yere atlar.</string>
     <string name="lab_49cff1c6">Fare ve dokunma</string>
     <string name="lab_49d721cc">Performans katmanı</string>
     <string name="lab_49fc80cc">Kapalı (Tekli modda bir seferde biri çalışır)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">DXVK sürümlerini indir</string>
     <string name="lab_542dcdda">Analog çubuk sağ</string>
     <string name="lab_545e8271">Yalnızca bir oyun oturumun çözünürlüğünün altında işlendiğinde önemlidir.</string>
-    <string name="lab_54739575">İmleç dokunulan yere ve dokunma hareketleri</string>
     <string name="lab_5482057e">Oyuncu yuvaları</string>
     <string name="lab_548c6bc1">XInput\'u kapatır, böylece oyunlar yalnızca gerçek fare ve klavyeyi görür.</string>
     <string name="lab_54ed9898">Oturum açık · 1 oyun</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Sol üst</string>
     <string name="lab_58a426c9">Kare oluşturma çalışırken bu oyun için kapalı. </string>
-    <string name="lab_5901a4cd">Wayland: fare hareket farkları birleştiriciye gider; imleci kilitleyen bir oyun bunları göreli hareket olarak alır.</string>
     <string name="lab_5946d9c6">Uygulama ayarını kullan (%1$s)</string>
     <string name="lab_594a913b">Eşzamansız gölgelendiriciler</string>
     <string name="lab_595daef9">İndirilen bileşenler: arşivler ve katalog listesi.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">Oyunun üzerinde FPS, CPU/GPU yükü ve sıcaklıklar. Stili aşağıda, oyun içinde ise yan menüden ayarlanır.</string>
     <string name="lab_5cf98060">Present-wait / dynamic-rendering uzantılarını gizle</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Nişan modu</string>
     <string name="lab_5d676a2d">Yalnızca kendi ön ayarlarınız dışa aktarılabilir.</string>
     <string name="lab_5d7ee5f8">GitHub, hata takipçisi ve Discord</string>
     <string name="lab_5db787de">Steam arkadaşları ve sohbet.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Yeniden adlandırılamadı</string>
     <string name="lab_6a271188">Box64 ön ayarı / WOWBox64 ön ayarı</string>
     <string name="lab_6a4b2ea4">Güç</string>
-    <string name="lab_6a68da45">Göreli fare</string>
     <string name="lab_6a87d625">Vulkan üzerinden DirectX 8 ile 11 arası. Adında async veya gplasync geçen derlemeler gölgelendiricileri arka planda derleyebilir.</string>
     <string name="lab_6a913533">Root izni verildi</string>
     <string name="lab_6a98ad5e">Sağ üstte, dokunarak hızlı menüyü açan soluk bir düğme.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Sorun giderme</string>
     <string name="lab_6c15cb41">Geçerli düzenin dokunmatik düğmeleri.</string>
     <string name="lab_6c3656ad">Dikey</string>
-    <string name="lab_6c37a76c">Dokunma işlevi</string>
     <string name="lab_6c5fe717">Önizleme sesi</string>
     <string name="lab_6c8e3b1f">Varsayılan yap…</string>
     <string name="lab_6c9249ac">Başlatırken otomatik bulut indirme, GOG kütüphanenizdeki oyunlar için KAPALI olacak. En son bulut kayıtları oyun başlamadan önce çekilmeyecek — bunları GOG Kayıt Yöneticisi sekmesinden veya oyunun ayrıntı sayfasından kendiniz indirmeniz gerekecek. Devam edilsin mi?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Buradaki kaydedilmemiş değişiklikler kaybolur. Mevcut konteynerler ayarlarını korur.</string>
     <string name="lab_8ecc4179"> (Wine\'ınkiler yerine). Birçok sarmalayıcı ve mod yükleyici için gereklidir. Grafik DLL\'leri asla dahil edilmez: onları DXVK ve VKD3D yönetir.</string>
     <string name="lab_8ece40f8">Yalnızca Banners-Turnip sürücüleri; standart Turnip bunu yok sayar.</string>
-    <string name="lab_8ed00ed7">İmleci kilitleyen oyunlar için (kamerayla bakış).</string>
     <string name="lab_8ee80fca">Sürücü kaynağı yok.</string>
     <string name="lab_8ef37792">Alt</string>
     <string name="lab_8f4a852b">Cihaz gücü</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Bağdaştırıcı sunum modu</string>
     <string name="lab_abb1c367">Hiçbir şey takılı değil. Bu oyun hâlâ TV\'de başlayacak şekilde ayarlı.</string>
     <string name="lab_abb20221">Ön ayar yok</string>
+    <string name="lab_abd752a4">Dokunma hareketleri</string>
     <string name="lab_abf1049c">Ham arşivi varsayılan olarak sakla</string>
     <string name="lab_ac21d91b">Hareket modu</string>
     <string name="lab_ac35c85f">Oyun, Wayland bağdaştırıcısı üzerinden yukarıdaki grafik sürücüsünde işlenir.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Birincil XR kumandası</string>
     <string name="lab_e14156b5">Steam istemcisi çekirdekleri</string>
     <string name="lab_e141ca5d">Ekran kontrolü önceliği</string>
-    <string name="lab_e1768a43">Oyun içinde yan menüden de değiştirilebilir.</string>
     <string name="lab_e18caa5c">Disk yok</string>
     <string name="lab_e19da5b2">Wayland bağdaştırıcısı</string>
     <string name="lab_e1be537c">Kaydedilmedi</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) veya off</string>
     <string name="lab_e98a38e0">Büyüteç, resim içinde resim, klavye ve performans.</string>
     <string name="lab_e9bb2501">Oyunların mikrofonu kullanmasını sağlar: girişi DirectAudio yakalar. Android izni bir kez sorar.</string>
-    <string name="lab_e9e73eeb">Dokunmatik ekran, oyuna gerçek dokunuşlar gönderir.</string>
     <string name="lab_ea08e43f">Linux çalışma zamanı ve tüm listeler</string>
     <string name="lab_ea354143">Sağ üstte, dokunarak hızlı menüyü açan soluk bir düğme. Geri, Menü düğmesi veya dört parmakla dokunma onsuz da çalışır.</string>
     <string name="lab_ea4babd8">Başlatma şekli</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Dahili</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Fare / dokunmatik yüzey</string>
     <string name="lab_f2cdcc45">GPU sürücüsü seçin</string>
     <string name="lab_f2ed832c">DirectX oyunlarına bildirilen GPU bellek miktarı (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Ses gecikmesi</string>

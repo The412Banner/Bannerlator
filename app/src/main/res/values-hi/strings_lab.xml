@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">नाम में ये नहीं हो सकते: \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">क्लाइंट जिन गेम को लॉन्च करता है उनके लिए, खुद क्लाइंट के लिए नहीं, और उन सभी के लिए: सेशन का एक ही एनवायरनमेंट होता है। </string>
     <string name="lab_1e223777">संस्करण, रिलीज़ नोट्स और डाउनलोड और इंस्टॉल (क्लासिक सेटिंग)।</string>
-    <string name="lab_1e2f8841">सापेक्ष माउस (3D कैमरा वाले गेम के लिए)</string>
     <string name="lab_1e537526">सूची में कुछ नहीं है।</string>
     <string name="lab_1e713627">Linux Steam क्लाइंट</string>
     <string name="lab_1e765e92">मोशन एम सेटिंग</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">ऑटोमैटिक · Steam ट्रेलर</string>
     <string name="lab_2756404f">पावर और root को ऐप के डिफ़ॉल्ट पर रीसेट करें</string>
     <string name="lab_27b56d30">डायरेक्ट XInput चालू हो या बंद, Bannerlator की XInput DLL इंस्टॉल करता है, साथ में Wine का अपना XInput भी, ताकि गेम चलते समय इन-गेम मेन्यू का कंट्रोल › पैड इनके बीच बदल सके (कंट्रोलर दोबारा कनेक्ट होता है)। डिफ़ॉल्ट रूप से चालू। बंद: डायरेक्ट XInput वैसा ही रहता है जैसा गेम शुरू होते समय था, और इसे बदलने के लिए रीस्टार्ट चाहिए।</string>
+    <string name="lab_27bb1078">डायरेक्ट</string>
     <string name="lab_27bcb120">Box64 और FEX प्रीसेट जोड़ें, कॉपी करें, हटाएं, निर्यात या इंपोर्ट करें (क्लासिक सेटिंग)।</string>
     <string name="lab_27beed97">%1$s · %2$s सेशन</string>
     <string name="lab_27f2c3fa">हर क्लस्टर की न्यूनतम फ़्रीक्वेंसी को उसकी अधिकतम पर सेट करता है।</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Turnip के एक बग से बचाता है, जिसमें \"क्या GPU का काम हो गया?\" पूछने पर पूरा फ़्रेम खत्म होने का इंतज़ार होता है (रिपोर्ट वाला टाइमिंग बग)। डिफ़ॉल्ट पर एडैप्टर इसे खुद पहचानता है; चालू इसे हमेशा लागू करता है, बंद इसे बंद रखता है।</string>
     <string name="lab_3205bc81">कोई Turnip ग्राफ़िक्स ड्राइवर सेट नहीं है, इसलिए जांचने को कुछ नहीं है।</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">टचस्क्रीन मोड</string>
     <string name="lab_32a7fa00">फ़्रेम जनरेशन</string>
     <string name="lab_334d4744">गेम बंद होने पर Steam लाइब्रेरी के सेव का स्नैपशॉट आपकी लोकल लाइब्रेरी में लें।</string>
     <string name="lab_336d62eb">बड़े CPU कोर को प्राथमिकता दें</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">कोई रिपॉज़िटरी नहीं है।</string>
     <string name="lab_3a1ed8c6">डिस्प्ले ड्राइवर (Android साइड)</string>
     <string name="lab_3a24cc2d">हर कंटेनर के लिए सेट होता है: यह आपके हाथों के बारे में है, गेम के नहीं।</string>
-    <string name="lab_3a589c47">टच पर कर्सर</string>
     <string name="lab_3a5c3010">गेम के ऊपर FPS, CPU/GPU लोड और तापमान। गेम में इसे पलटने या साइज़ बदलने के लिए टैप करें।</string>
     <string name="lab_3a95276d">vkBasalt तीव्रता</string>
     <string name="lab_3b02039e">बैलेंस्ड</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS फ़ोर्स करें (CPU स्पीड फ़िक्स)</string>
     <string name="lab_497cf9a3">TV पर खेलें या उस पर कास्ट करें।</string>
     <string name="lab_4990b8f5">शार्पनेस (VKBasalt)</string>
-    <string name="lab_499bfdd8">पॉइंटर वहीं पहुंच जाता है जहां आप छूते हैं।</string>
     <string name="lab_49cff1c6">माउस और टच</string>
     <string name="lab_49d721cc">परफ़ॉर्मेंस ओवरले</string>
     <string name="lab_49fc80cc">बंद (एकल एक बार में एक चलाता है)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">DXVK संस्करण डाउनलोड करें</string>
     <string name="lab_542dcdda">थंबस्टिक दाएं</string>
     <string name="lab_545e8271">सिर्फ़ तब मायने रखता है जब गेम सेशन के रिज़ॉल्यूशन से कम पर रेंडर करता है।</string>
-    <string name="lab_54739575">टच पर कर्सर और उसके टच जेस्चर</string>
     <string name="lab_5482057e">प्लेयर स्लॉट</string>
     <string name="lab_548c6bc1">XInput बंद करता है, ताकि गेम सिर्फ़ असली माउस और कीबोर्ड देखें।</string>
     <string name="lab_54ed9898">साइन इन है · 1 गेम</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">ऊपर बाएं</string>
     <string name="lab_58a426c9">फ़्रेम जनरेशन चलने के दौरान इस गेम के लिए बंद। </string>
-    <string name="lab_5901a4cd">Wayland: माउस की हलचल कंपोज़िटर को जाती है; पॉइंटर लॉक करने वाले गेम को यह सापेक्ष मूवमेंट के रूप में मिलती है।</string>
     <string name="lab_5946d9c6">ऐप सेटिंग इस्तेमाल करें (%1$s)</string>
     <string name="lab_594a913b">एसिंक शेडर</string>
     <string name="lab_595daef9">डाउनलोड किए गए कॉम्पोनेंट: आर्काइव और कैटलॉग सूची।</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">गेम के ऊपर FPS, CPU/GPU लोड और तापमान। इसकी स्टाइल नीचे है, और गेम में साइड मेन्यू से भी।</string>
     <string name="lab_5cf98060">present-wait / dynamic-rendering एक्सटेंशन छिपाएं</string>
     <string name="lab_5cfcc2ee">नियॉन</string>
+    <string name="lab_5d1ebf1b">निशाना मोड</string>
     <string name="lab_5d676a2d">सिर्फ़ आपके अपने प्रीसेट निर्यात किए जा सकते हैं।</string>
     <string name="lab_5d7ee5f8">GitHub, इश्यू ट्रैकर और Discord</string>
     <string name="lab_5db787de">Steam दोस्त और चैट।</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">नाम नहीं बदला जा सका</string>
     <string name="lab_6a271188">Box64 प्रीसेट / WOWBox64 प्रीसेट</string>
     <string name="lab_6a4b2ea4">पावर</string>
-    <string name="lab_6a68da45">सापेक्ष माउस</string>
     <string name="lab_6a87d625">Vulkan के ज़रिए DirectX 8 से 11। async या gplasync नाम वाले बिल्ड बैकग्राउंड में शेडर कंपाइल कर सकते हैं।</string>
     <string name="lab_6a913533">Root मिल गया</string>
     <string name="lab_6a98ad5e">ऊपर दाईं ओर एक हल्का बटन, जो छूने पर क्विक मेन्यू खोलता है।</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">समस्या निवारण</string>
     <string name="lab_6c15cb41">मौजूदा लेआउट के टच बटन।</string>
     <string name="lab_6c3656ad">पोर्ट्रेट</string>
-    <string name="lab_6c37a76c">टच किस रूप में काम करे</string>
     <string name="lab_6c5fe717">प्रीव्यू की आवाज़</string>
     <string name="lab_6c8e3b1f">डिफ़ॉल्ट सेट करें…</string>
     <string name="lab_6c9249ac">आपकी GOG लाइब्रेरी के गेम के लिए लॉन्च पर ऑटोमैटिक क्लाउड डाउनलोड बंद हो जाएगा। गेम शुरू होने से पहले नए क्लाउड सेव नहीं लाए जाएंगे — आपको इन्हें GOG सेव मैनेजर टैब या गेम के विवरण पेज से खुद डाउनलोड करना होगा। जारी रखें?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">यहां के बिना सेव किए बदलाव खो जाएंगे। मौजूदा कंटेनर अपनी सेटिंग रखते हैं।</string>
     <string name="lab_8ecc4179"> Wine की DLL के बजाय। कई रैपर और मॉड लोडर को इसकी ज़रूरत होती है। ग्राफ़िक्स DLL कभी शामिल नहीं होतीं: उन्हें DXVK और VKD3D संभालते हैं।</string>
     <string name="lab_8ece40f8">सिर्फ़ Banners-Turnip ड्राइवर; स्टॉक Turnip इसे अनदेखा करता है।</string>
-    <string name="lab_8ed00ed7">उन गेम के लिए जो पॉइंटर लॉक करते हैं (कैमरा घुमाना)।</string>
     <string name="lab_8ee80fca">कोई ड्राइवर सोर्स नहीं है।</string>
     <string name="lab_8ef37792">नीचे</string>
     <string name="lab_8f4a852b">डिवाइस पावर</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">एडैप्टर प्रेज़ेंट मोड</string>
     <string name="lab_abb1c367">कुछ भी कनेक्ट नहीं है। यह गेम अब भी TV पर शुरू होने के लिए सेट है।</string>
     <string name="lab_abb20221">कोई प्रीसेट नहीं</string>
+    <string name="lab_abd752a4">टच जेस्चर</string>
     <string name="lab_abf1049c">डिफ़ॉल्ट रूप से रॉ आर्काइव रखें</string>
     <string name="lab_ac21d91b">मोशन मोड</string>
     <string name="lab_ac35c85f">गेम ऊपर वाले ग्राफ़िक्स ड्राइवर पर, Wayland एडैप्टर के ज़रिए रेंडर होता है।</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">मुख्य XR कंट्रोलर</string>
     <string name="lab_e14156b5">Steam क्लाइंट कोर</string>
     <string name="lab_e141ca5d">ऑन-स्क्रीन प्राथमिकता</string>
-    <string name="lab_e1768a43">गेम में साइड मेन्यू से भी बदला जा सकता है।</string>
     <string name="lab_e18caa5c">कोई ड्राइव नहीं</string>
     <string name="lab_e19da5b2">Wayland एडैप्टर</string>
     <string name="lab_e1be537c">सेव नहीं हुआ</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) या off</string>
     <string name="lab_e98a38e0">मैग्निफ़ायर, पिक्चर-इन-पिक्चर, कीबोर्ड और परफ़ॉर्मेंस।</string>
     <string name="lab_e9bb2501">गेम को माइक इस्तेमाल करने देता है: DirectAudio इनपुट कैप्चर करता है। Android एक बार अनुमति मांगता है।</string>
-    <string name="lab_e9e73eeb">टचस्क्रीन गेम को असली टच भेजता है।</string>
     <string name="lab_ea08e43f">Linux रनटाइम और हर सूची</string>
     <string name="lab_ea354143">ऊपर दाईं ओर एक हल्का बटन, जो छूने पर क्विक मेन्यू खोलता है। इसके बिना भी Back, Menu बटन या चार उंगलियों से टैप काम करते हैं।</string>
     <string name="lab_ea4babd8">यह कैसे शुरू होता है</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">स्टाइल</string>
     <string name="lab_f2857f55">इंटरनल</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">माउस / टचपैड</string>
     <string name="lab_f2cdcc45">GPU ड्राइवर चुनें</string>
     <string name="lab_f2ed832c">DirectX गेम को GPU की कितनी मेमोरी बताई जाती है (dxgi.maxDeviceMemory)।</string>
     <string name="lab_f3043a4e">साउंड लेटेंसी</string>

@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Ένα όνομα δεν μπορεί να περιέχει \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Για τα παιχνίδια που εκκινεί το client, όχι για το ίδιο το client, και για όλα μαζί: η συνεδρία έχει ένα περιβάλλον. </string>
     <string name="lab_1e223777">Έκδοση, σημειώσεις έκδοσης και Λήψη και εγκατάσταση (κλασικές Ρυθμίσεις).</string>
-    <string name="lab_1e2f8841">Σχετικό ποντίκι (για παιχνίδια με κάμερα 3D)</string>
     <string name="lab_1e537526">Η λίστα είναι κενή.</string>
     <string name="lab_1e713627">Πρόγραμμα-πελάτης Steam για Linux</string>
     <string name="lab_1e765e92">Ρυθμίσεις στόχευσης με κίνηση</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Αυτόματο · ένα τρέιλερ του Steam</string>
     <string name="lab_2756404f">Επαναφορά ενέργειας και root στις προεπιλογές της εφαρμογής</string>
     <string name="lab_27b56d30">Εγκαθιστά τα XInput DLL του Bannerlator είτε το Άμεσο XInput είναι ενεργό είτε όχι, μαζί με το XInput του ίδιου του Wine, ώστε το Controls › Pad στο μενού του παιχνιδιού να μπορεί να εναλλάσσει ανάμεσά τους όσο τρέχει το παιχνίδι (το χειριστήριο επανασυνδέεται). Ενεργό από προεπιλογή. Ανενεργό: το Άμεσο XInput μένει όπως ξεκίνησε το παιχνίδι, και η αλλαγή του χρειάζεται επανεκκίνηση.</string>
+    <string name="lab_27bb1078">Άμεσο</string>
     <string name="lab_27bcb120">Προσθήκη, αντιγραφή, διαγραφή, εξαγωγή ή εισαγωγή προρρυθμίσεων Box64 και FEX (κλασικές Ρυθμίσεις).</string>
     <string name="lab_27beed97">%1$s · συνεδρίες: %2$s</string>
     <string name="lab_27f2c3fa">Ορίζει την ελάχιστη συχνότητα κάθε cluster ίση με τη μέγιστη.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Παρακάμπτει ένα σφάλμα του Turnip όπου η ερώτηση «τελείωσε η GPU;» περιμένει ολόκληρο το καρέ (το σφάλμα χρονισμού της αναφοράς). Η Προεπιλογή αφήνει τον προσαρμογέα να το εντοπίσει, το Ενεργό επιβάλλει τη διόρθωση και το Ανενεργό την απενεργοποιεί.</string>
     <string name="lab_3205bc81">Δεν έχει οριστεί πρόγραμμα οδήγησης γραφικών Turnip, οπότε δεν υπάρχει τίποτα για έλεγχο.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Λειτουργία οθόνης αφής</string>
     <string name="lab_32a7fa00">Δημ. καρέ</string>
     <string name="lab_334d4744">Στιγμιότυπο των αποθηκεύσεων της βιβλιοθήκης Steam στην τοπική Βιβλιοθήκη όταν κλείνει ένα παιχνίδι.</string>
     <string name="lab_336d62eb">Προτίμηση μεγάλων πυρήνων CPU</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Δεν υπάρχουν αποθετήρια.</string>
     <string name="lab_3a1ed8c6">Πρόγραμμα οδήγησης οθόνης (πλευρά Android)</string>
     <string name="lab_3a24cc2d">Ορίζεται ανά κοντέινερ: περιγράφει τα χέρια σας, όχι το παιχνίδι.</string>
-    <string name="lab_3a589c47">Δείκτης στο σημείο αφής</string>
     <string name="lab_3a5c3010">FPS, φόρτος CPU/GPU και θερμοκρασίες πάνω από το παιχνίδι. Πατήστε το μέσα στο παιχνίδι για να αλλάξετε προσανατολισμό ή μέγεθος.</string>
     <string name="lab_3a95276d">Ένταση vkBasalt</string>
     <string name="lab_3b02039e">Ισορροπημένο</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Επιβολή SSBS (διόρθωση ταχύτητας CPU)</string>
     <string name="lab_497cf9a3">Παίξτε σε τηλεόραση ή κάντε μετάδοση σε αυτή.</string>
     <string name="lab_4990b8f5">Οξύτητα (VKBasalt)</string>
-    <string name="lab_499bfdd8">Ο δείκτης πηγαίνει εκεί που αγγίζετε.</string>
     <string name="lab_49cff1c6">Ποντίκι και αφή</string>
     <string name="lab_49d721cc">Επικάλυψη απόδοσης</string>
     <string name="lab_49fc80cc">Ανενεργό (το Μεμονωμένα τρέχει ένα τη φορά)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Λήψη εκδόσεων DXVK</string>
     <string name="lab_542dcdda">Μοχλός δεξιά</string>
     <string name="lab_545e8271">Έχει σημασία μόνο όταν ένα παιχνίδι κάνει render κάτω από την ανάλυση της συνεδρίας.</string>
-    <string name="lab_54739575">Δείκτης στο σημείο αφής και οι χειρονομίες αφής του</string>
     <string name="lab_5482057e">Θέσεις παικτών</string>
     <string name="lab_548c6bc1">Απενεργοποιεί το XInput ώστε τα παιχνίδια να βλέπουν μόνο το πραγματικό ποντίκι και πληκτρολόγιο.</string>
     <string name="lab_54ed9898">Συνδεδεμένος · 1 παιχνίδι</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Πάνω αριστερά</string>
     <string name="lab_58a426c9">Ανενεργό για αυτό το παιχνίδι όσο τρέχει η δημιουργία καρέ. </string>
-    <string name="lab_5901a4cd">Wayland: οι μετατοπίσεις του ποντικιού πηγαίνουν στον compositor. Ένα παιχνίδι που κλειδώνει τον δείκτη τις λαμβάνει ως σχετική κίνηση.</string>
     <string name="lab_5946d9c6">Χρήση ρύθμισης εφαρμογής (%1$s)</string>
     <string name="lab_594a913b">Ασύγχρονοι shader</string>
     <string name="lab_595daef9">Στοιχεία που έχουν ληφθεί: αρχεία και η λίστα του καταλόγου.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, φόρτος CPU/GPU και θερμοκρασίες πάνω από το παιχνίδι. Το στυλ του ρυθμίζεται παρακάτω, και μέσα στο παιχνίδι από το πλευρικό μενού.</string>
     <string name="lab_5cf98060">Απόκρυψη επεκτάσεων present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Λειτουργία στόχευσης</string>
     <string name="lab_5d676a2d">Μόνο οι δικές σας προρρυθμίσεις μπορούν να εξαχθούν.</string>
     <string name="lab_5d7ee5f8">GitHub, αναφορές προβλημάτων και Discord</string>
     <string name="lab_5db787de">Φίλοι και συνομιλία Steam.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Δεν ήταν δυνατή η μετονομασία</string>
     <string name="lab_6a271188">Προρρύθμιση Box64 / Προρρύθμιση WOWBox64</string>
     <string name="lab_6a4b2ea4">Ενέργεια</string>
-    <string name="lab_6a68da45">Σχετικό ποντίκι</string>
     <string name="lab_6a87d625">DirectX 8 έως 11 μέσω Vulkan. Οι εκδόσεις με όνομα async ή gplasync μπορούν να μεταγλωττίζουν shaders στο παρασκήνιο.</string>
     <string name="lab_6a913533">Παραχωρήθηκε root</string>
     <string name="lab_6a98ad5e">Ένα αχνό κουμπί πάνω δεξιά που ανοίγει το γρήγορο μενού με αφή.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Αντιμετώπιση προβλημάτων</string>
     <string name="lab_6c15cb41">Τα κουμπιά αφής της τρέχουσας διάταξης.</string>
     <string name="lab_6c3656ad">Κατακόρυφος</string>
-    <string name="lab_6c37a76c">Η αφή λειτουργεί ως</string>
     <string name="lab_6c5fe717">Ήχος προεπισκοπήσεων</string>
     <string name="lab_6c8e3b1f">Ορισμός ως προεπιλογή…</string>
     <string name="lab_6c9249ac">Η αυτόματη λήψη από το cloud κατά την εκκίνηση θα είναι ΑΝΕΝΕΡΓΗ για τα παιχνίδια της βιβλιοθήκης σας στο GOG. Οι πιο πρόσφατες αποθηκεύσεις cloud δεν θα κατεβαίνουν πριν ξεκινήσει ένα παιχνίδι — θα πρέπει να τις κατεβάζετε μόνοι σας από την καρτέλα GOG Διαχείριση αποθηκεύσεων ή από τη σελίδα λεπτομερειών του παιχνιδιού. Συνέχεια;</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Οι μη αποθηκευμένες αλλαγές εδώ χάνονται. Τα υπάρχοντα κοντέινερ κρατούν τις ρυθμίσεις τους.</string>
     <string name="lab_8ecc4179"> αντί για αυτά του Wine. Χρειάζεται για πολλά wrapper και mod loader. Τα DLL γραφικών δεν περιλαμβάνονται ποτέ: αυτά τα χειρίζονται το DXVK και το VKD3D.</string>
     <string name="lab_8ece40f8">Μόνο για προγράμματα οδήγησης Banners-Turnip. Το τυπικό Turnip το αγνοεί.</string>
-    <string name="lab_8ed00ed7">Για παιχνίδια που κλειδώνουν τον δείκτη (κίνηση κάμερας).</string>
     <string name="lab_8ee80fca">Δεν υπάρχουν πηγές προγραμμάτων οδήγησης.</string>
     <string name="lab_8ef37792">Κάτω</string>
     <string name="lab_8f4a852b">Ενέργεια συσκευής</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Λειτουργία παρουσίασης προσαρμογέα</string>
     <string name="lab_abb1c367">Δεν είναι συνδεδεμένο τίποτα. Αυτό το παιχνίδι εξακολουθεί να είναι ρυθμισμένο να ξεκινά σε τηλεόραση.</string>
     <string name="lab_abb20221">Χωρίς προρρύθμιση</string>
+    <string name="lab_abd752a4">Χειρονομίες αφής</string>
     <string name="lab_abf1049c">Διατήρηση ακατέργαστου αρχείου από προεπιλογή</string>
     <string name="lab_ac21d91b">Λειτουργία κίνησης</string>
     <string name="lab_ac35c85f">Το παιχνίδι κάνει render στο πρόγραμμα οδήγησης γραφικών παραπάνω, μέσω του προσαρμογέα Wayland.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Κύριο χειριστήριο XR</string>
     <string name="lab_e14156b5">Πυρήνες πελάτη Steam</string>
     <string name="lab_e141ca5d">Προτεραιότητα οθόνης</string>
-    <string name="lab_e1768a43">Αλλάζει και μέσα στο παιχνίδι από το πλευρικό μενού.</string>
     <string name="lab_e18caa5c">Καμία μονάδα δίσκου</string>
     <string name="lab_e19da5b2">Προσαρμογέας Wayland</string>
     <string name="lab_e1be537c">Μη αποθηκευμένο</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) ή off</string>
     <string name="lab_e98a38e0">Μεγεθυντικός φακός, εικόνα σε εικόνα, πληκτρολόγιο και απόδοση.</string>
     <string name="lab_e9bb2501">Επιτρέπει στα παιχνίδια να χρησιμοποιούν το μικρόφωνο: το DirectAudio καταγράφει την είσοδο. Το Android ζητά την άδεια μία φορά.</string>
-    <string name="lab_e9e73eeb">Το Οθόνη αφής στέλνει πραγματικά αγγίγματα στο παιχνίδι.</string>
     <string name="lab_ea08e43f">Runtime Linux και όλες οι λίστες</string>
     <string name="lab_ea354143">Ένα αχνό κουμπί πάνω δεξιά που ανοίγει το γρήγορο μενού με αφή. Το Πίσω, το κουμπί Menu ή ένα πάτημα με τέσσερα δάχτυλα λειτουργούν και χωρίς αυτό.</string>
     <string name="lab_ea4babd8">Τρόπος εκκίνησης</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Στυλ</string>
     <string name="lab_f2857f55">Εσωτερική</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Ποντίκι / πινακίδα αφής</string>
     <string name="lab_f2cdcc45">Επιλογή προγράμματος οδήγησης GPU</string>
     <string name="lab_f2ed832c">Πόση μνήμη GPU αναφέρεται στα παιχνίδια DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Καθυστέρηση ήχου</string>

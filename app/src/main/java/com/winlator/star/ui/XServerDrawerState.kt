@@ -63,8 +63,11 @@ object XServerDrawerState {
     private val _isPaused                = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean>     = _isPaused
 
-    private val _isRelativeMouseMovement = MutableStateFlow(false)
-    val isRelativeMouseMovement: StateFlow<Boolean> = _isRelativeMouseMovement
+    // Controls > Mouse: this session's Touch and Aim mode (TouchAimSettings values).
+    private val _touchMode               = MutableStateFlow("touchpad")
+    val touchMode: StateFlow<String>     = _touchMode
+    private val _aimMode                 = MutableStateFlow("auto")
+    val aimMode: StateFlow<String>       = _aimMode
 
     // True while the session runs on the embedded Wayland compositor. UI-only gate: Relative Mouse
     // needs zwp_pointer_constraints_v1 / zwp_relative_pointer_manager_v1, which the compositor
@@ -151,8 +154,6 @@ object XServerDrawerState {
     private val _isMouseDisabled         = MutableStateFlow(false)
     val isMouseDisabled: StateFlow<Boolean> = _isMouseDisabled
 
-    private val _moveCursorToTouchpoint  = MutableStateFlow(false)
-    val moveCursorToTouchpoint: StateFlow<Boolean> = _moveCursorToTouchpoint
 
     // Controls > Mouse: pointer auto-hide (idle / controller) and its idle delay. Off also shows the
     // Wayland pointer when the game hides its cursor. Seeded from prefs, applied live.
@@ -165,7 +166,7 @@ object XServerDrawerState {
     private val _mods = MutableStateFlow<List<DrawerMod>>(emptyList())
     val mods: StateFlow<List<DrawerMod>> = _mods
 
-    // Per-gesture config, shown in the Controls > Mouse pane whenever Cursor to Touch is on. Each
+    // Per-gesture config, shown in the Controls > Mouse pane whenever Touch is Direct. Each
     // gesture is independently switchable because which of them is welcome is per-game: an RTS wants
     // both, a mouse-look shooter wants neither. Seeded from prefs and pushed to TouchpadView live.
     private val _gestureDragSelect = MutableStateFlow(true)
@@ -522,16 +523,16 @@ object XServerDrawerState {
     @JvmField var onMagnifier:              Runnable? = null
     @JvmField var onLogs:                   Runnable? = null
     @JvmField var onExit:                   Runnable? = null
-    @JvmField var onMoveCursorToTouchpoint: Runnable? = null
+    @JvmField var onTouchMode:              java.util.function.Consumer<String>? = null
+    @JvmField var onAimMode:                java.util.function.Consumer<String>? = null
     // Fired when the Auto-hide Cursor chip or its delay slider changes; the activity reads the flows,
     // persists them and applies them to the live pointer.
     @JvmField var onCursorAutoHideChange:   Runnable? = null
     // Mods tab: shows / hides the in-game menu of the mod with this id (the activity sends its menu key).
     @JvmField var onModMenu:                java.util.function.Consumer<String>? = null
-    // Fired when any gesture chip/slider under the Cursor to Touch cog changes; the activity reads
+    // Fired when any gesture chip/slider shown for Touch Direct changes; the activity reads
     // the flows above, persists them, and pushes the set to the live TouchpadView.
     @JvmField var onGestureConfigChange:    Runnable? = null
-    @JvmField var onRelativeMouseMovement:  Runnable? = null
     @JvmField var onDisableMouse:           Runnable? = null
     @JvmField var onNativeRenderingToggle: Runnable? = null
     // Zero-copy presentation toggle: applies the switch to the RUNNING compositor (nativeSetZeroCopy,
@@ -601,7 +602,8 @@ object XServerDrawerState {
 
     // Setters called from Java
     fun setIsPaused(v: Boolean)                { _isPaused.value = v }
-    fun setIsRelativeMouseMovement(v: Boolean) { _isRelativeMouseMovement.value = v }
+    fun setTouchMode(v: String)                { _touchMode.value = v }
+    fun setAimMode(v: String)                  { _aimMode.value = v }
     fun setIsWaylandMode(v: Boolean)           { _isWaylandMode.value = v }
     fun setWaylandEffectsAvailable(v: Boolean)  { _waylandEffectsAvailable.value = v }
     fun setWaylandFrameGenAvailable(v: Boolean) { _waylandFrameGenAvailable.value = v }
@@ -624,7 +626,6 @@ object XServerDrawerState {
     fun setWaylandHdrToneMapped(v: Boolean)     { _waylandHdrToneMapped.value = v }
     fun setWaylandHdrScreenCapable(v: Boolean)  { _waylandHdrScreenCapable.value = v }
     fun setIsMouseDisabled(v: Boolean)         { _isMouseDisabled.value = v }
-    fun setMoveCursorToTouchpoint(v: Boolean)  { _moveCursorToTouchpoint.value = v }
     fun setCursorAutoHide(v: Boolean)          { _cursorAutoHide.value = v }
     fun setCursorAutoHideMs(v: Int)            { _cursorAutoHideMs.value = v }
     fun getCursorAutoHideValue(): Boolean      = _cursorAutoHide.value
@@ -770,7 +771,8 @@ object XServerDrawerState {
         _selectedTab.value = TabType.GRAPHICS
         _controlsSubTab.value = 0
         _isPaused.value = false
-        _isRelativeMouseMovement.value = false
+        _touchMode.value = "touchpad"
+        _aimMode.value = "auto"
         _isWaylandMode.value = false
         _waylandEffectsAvailable.value = false
         _waylandFrameGenAvailable.value = false
@@ -792,7 +794,6 @@ object XServerDrawerState {
         _waylandHdrToneMapped.value = false
         _waylandHdrScreenCapable.value = true
         _isMouseDisabled.value = false
-        _moveCursorToTouchpoint.value = false
         _cursorAutoHide.value = true
         _cursorAutoHideMs.value = 2500
         _mods.value = emptyList()
@@ -854,8 +855,8 @@ object XServerDrawerState {
         onToggleFullscreen = null; onSetFullscreenMode = null; onSetScreenAlignment = null; onPauseResume = null; onPipMode = null
         onSetSwipeButtons = null; onSetSwipeDpad = null; onSetSwipeSticks = null
         onActiveWindows = null; onTaskManager = null; onMagnifier = null
-        onLogs = null; onExit = null; onMoveCursorToTouchpoint = null; onGestureConfigChange = null
-        onRelativeMouseMovement = null; onDisableMouse = null
+        onLogs = null; onExit = null; onTouchMode = null; onAimMode = null; onGestureConfigChange = null
+        onDisableMouse = null
         onNativeRenderingToggle = null; onFpsConfigApply = null
         onWaylandZeroCopyToggle = null; onWaylandZeroCopyPoll = null
         onWaylandGlSafeModeToggle = null

@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">名前に \\ / : * ? \" &lt; &gt; | は使えません</string>
     <string name="lab_1e1e0a24">クライアント自体ではなく、クライアントが起動するすべてのゲームが対象です（セッションの環境は 1 つです）。 </string>
     <string name="lab_1e223777">バージョン、リリースノート、ダウンロードとインストール（Classic の設定）。</string>
-    <string name="lab_1e2f8841">相対マウス（3D カメラのゲーム向け）</string>
     <string name="lab_1e537526">リストは空です。</string>
     <string name="lab_1e713627">Linux 版 Steam クライアント</string>
     <string name="lab_1e765e92">モーションエイム設定</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">自動 · Steam のトレーラー</string>
     <string name="lab_2756404f">電力と root の設定をアプリのデフォルトに戻す</string>
     <string name="lab_27b56d30">ダイレクトXInput のオン/オフにかかわらず Bannerlator の XInput DLL を Wine 自身の XInput と並べてインストールし、ゲーム実行中にゲーム内メニューの コントロール › パッド で切り替えられるようにします（コントローラーは再接続されます）。デフォルトでオン。オフ: ダイレクトXInput はゲーム起動時の状態のままで、変更には再起動が必要です。</string>
+    <string name="lab_27bb1078">ダイレクト</string>
     <string name="lab_27bcb120">Box64 と FEX のプリセットの追加、コピー、削除、エクスポート、インポート（Classic の設定）。</string>
     <string name="lab_27beed97">%1$s · %2$s回プレイ</string>
     <string name="lab_27f2c3fa">すべてのクラスターの最小周波数を最大値に設定します。</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">「GPU の処理は終わった？」という問い合わせがフレーム全体の完了まで待ってしまう Turnip のバグ（レポートのタイミングバグ）を回避します。「デフォルト」ではアダプターが検出し、「オン」で強制的に有効、「オフ」で無効になります。</string>
     <string name="lab_3205bc81">Turnip グラフィックドライバーが設定されていないため、確認するものがありません。</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">タッチスクリーンモード</string>
     <string name="lab_32a7fa00">フレーム生成</string>
     <string name="lab_334d4744">ゲーム終了時に、Steam ライブラリのセーブデータのスナップショットをローカルのライブラリに保存します。</string>
     <string name="lab_336d62eb">高性能 CPU コアを優先</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">リポジトリがありません。</string>
     <string name="lab_3a1ed8c6">ディスプレイドライバー（Android 側）</string>
     <string name="lab_3a24cc2d">コンテナごとの設定です。ゲームではなく、あなたの手に合わせる設定のためです。</string>
-    <string name="lab_3a589c47">タッチ位置にカーソル</string>
     <string name="lab_3a5c3010">ゲーム画面の上に FPS、CPU/GPU 負荷、温度を表示します。ゲーム中にタップすると向きやサイズを変えられます。</string>
     <string name="lab_3a95276d">vkBasalt の強さ</string>
     <string name="lab_3b02039e">バランス</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBSを強制（CPU速度の修正）</string>
     <string name="lab_497cf9a3">テレビでプレイ、またはテレビにキャスト。</string>
     <string name="lab_4990b8f5">シャープネス（VKBasalt）</string>
-    <string name="lab_499bfdd8">タッチした位置にポインターが移動します。</string>
     <string name="lab_49cff1c6">マウスとタッチ</string>
     <string name="lab_49d721cc">パフォーマンスオーバーレイ</string>
     <string name="lab_49fc80cc">オフ（単独は一度に 1 つだけ実行）</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">DXVK のバージョンをダウンロード</string>
     <string name="lab_542dcdda">スティック右</string>
     <string name="lab_545e8271">ゲームがセッションの解像度より低く描画する場合のみ影響します。</string>
-    <string name="lab_54739575">「タッチ位置にカーソル」とそのタッチジェスチャー</string>
     <string name="lab_5482057e">プレイヤースロット</string>
     <string name="lab_548c6bc1">XInput をオフにし、ゲームから実際のマウスとキーボードだけが見えるようにします。</string>
     <string name="lab_54ed9898">サインイン済み · 1本</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">左上</string>
     <string name="lab_58a426c9">フレーム生成中、このゲームではオフ。 </string>
-    <string name="lab_5901a4cd">Wayland: マウスの移動量はコンポジターに送られ、ポインターを固定するゲームは相対移動として受け取ります。</string>
     <string name="lab_5946d9c6">アプリの設定を使用（%1$s）</string>
     <string name="lab_594a913b">非同期シェーダー</string>
     <string name="lab_595daef9">ダウンロードしたコンポーネント: アーカイブとカタログのリスト。</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">ゲーム画面の上に FPS、CPU/GPU 負荷、温度を表示します。スタイルは下で、ゲーム中はサイドメニューから設定できます。</string>
     <string name="lab_5cf98060">present-wait / dynamic-rendering 拡張を隠す</string>
     <string name="lab_5cfcc2ee">ネオン</string>
+    <string name="lab_5d1ebf1b">エイムモード</string>
     <string name="lab_5d676a2d">エクスポートできるのは自分のプリセットのみです。</string>
     <string name="lab_5d7ee5f8">GitHub、イシュートラッカー、Discord</string>
     <string name="lab_5db787de">Steamのフレンドとチャット。</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">名前を変更できませんでした</string>
     <string name="lab_6a271188">Box64 プリセット / WOWBox64 プリセット</string>
     <string name="lab_6a4b2ea4">電力</string>
-    <string name="lab_6a68da45">相対マウス</string>
     <string name="lab_6a87d625">DirectX 8〜11 を Vulkan で実行します。async または gplasync という名前のビルドは、シェーダーをバックグラウンドでコンパイルできます。</string>
     <string name="lab_6a913533">root 権限あり</string>
     <string name="lab_6a98ad5e">右上に薄く表示される、タッチでクイックメニューを開くボタン。</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">トラブルシューティング</string>
     <string name="lab_6c15cb41">現在のレイアウトのタッチボタン。</string>
     <string name="lab_6c3656ad">縦向き</string>
-    <string name="lab_6c37a76c">タッチの役割</string>
     <string name="lab_6c5fe717">プレビューの音声</string>
     <string name="lab_6c8e3b1f">デフォルトに設定…</string>
     <string name="lab_6c9249ac">GOG ライブラリのゲームで、起動時の自動クラウドダウンロードがオフになります。ゲーム開始前に最新のクラウドセーブが取得されなくなるため、GOG セーブマネージャーのタブかゲームの詳細ページから手動でダウンロードする必要があります。続行しますか？</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">ここで保存していない変更は失われます。既存のコンテナの設定はそのままです。</string>
     <string name="lab_8ecc4179"> を Wine のものの代わりに読み込みます。多くのラッパーや MOD ローダーに必要です。グラフィック DLL は対象外です（DXVK と VKD3D が担当します）。</string>
     <string name="lab_8ece40f8">Banners-Turnip ドライバー専用です。標準の Turnip では無視されます。</string>
-    <string name="lab_8ed00ed7">ポインターを固定するゲーム向け（カメラの視点操作）。</string>
     <string name="lab_8ee80fca">ドライバーの入手元がありません。</string>
     <string name="lab_8ef37792">下</string>
     <string name="lab_8f4a852b">デバイスの電力</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">アダプターのプレゼントモード</string>
     <string name="lab_abb1c367">何も接続されていません。このゲームはテレビで起動する設定のままです。</string>
     <string name="lab_abb20221">プリセットなし</string>
+    <string name="lab_abd752a4">タッチジェスチャー</string>
     <string name="lab_abf1049c">デフォルトで元のアーカイブを残す</string>
     <string name="lab_ac21d91b">モーションモード</string>
     <string name="lab_ac35c85f">ゲームは Wayland アダプターを通して、上のグラフィックドライバーで描画されます。</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">メインの XR コントローラー</string>
     <string name="lab_e14156b5">Steamクライアントコア</string>
     <string name="lab_e141ca5d">オンスクリーンの優先度</string>
-    <string name="lab_e1768a43">ゲーム中にサイドメニューからも切り替えられます。</string>
     <string name="lab_e18caa5c">ドライブなし</string>
     <string name="lab_e19da5b2">Wayland アダプター</string>
     <string name="lab_e1be537c">未保存</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N（20–240）、fixed:N（30–1000）、または off</string>
     <string name="lab_e98a38e0">拡大鏡、ピクチャーインピクチャー、キーボード、パフォーマンス。</string>
     <string name="lab_e9bb2501">ゲームでマイクを使えるようにします。入力は DirectAudio が取り込みます。Android の権限確認は最初の 1 回だけです。</string>
-    <string name="lab_e9e73eeb">タッチスクリーンは実際のタッチをゲームに送ります。</string>
     <string name="lab_ea08e43f">Linux実行環境とすべてのリスト</string>
     <string name="lab_ea354143">右上に薄く表示される、タッチでクイックメニューを開くボタン。これがなくても、戻る、メニューボタン、4 本指タップで開けます。</string>
     <string name="lab_ea4babd8">起動方法</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">スタイル</string>
     <string name="lab_f2857f55">内部</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">マウス / タッチパッド</string>
     <string name="lab_f2cdcc45">GPUドライバーを選択</string>
     <string name="lab_f2ed832c">DirectX のゲームに伝える GPU メモリの容量（dxgi.maxDeviceMemory）。</string>
     <string name="lab_f3043a4e">サウンドの遅延</string>

@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Ein Name darf nicht \\ / : * ? \" &lt; &gt; | enthalten</string>
     <string name="lab_1e1e0a24">Für die Spiele, die der Client startet, nicht für den Client selbst, und zwar für alle: Die Sitzung hat eine einzige Umgebung. </string>
     <string name="lab_1e223777">Version, Versionshinweise und Herunterladen und installieren (Classic-Einstellungen).</string>
-    <string name="lab_1e2f8841">Relative Maus (für Spiele mit 3D-Kamera)</string>
     <string name="lab_1e537526">Die Liste ist leer.</string>
     <string name="lab_1e713627">Linux-Steam-Client</string>
     <string name="lab_1e765e92">Einstellungen für Gyro-Zielen</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatisch · ein Steam-Trailer</string>
     <string name="lab_2756404f">Energie und Root auf die App-Standards zurücksetzen</string>
     <string name="lab_27b56d30">Installiert die XInput-DLLs von Bannerlator unabhängig davon, ob Direktes XInput an oder aus ist, und daneben das eigene XInput von Wine, sodass Steuerung › Pad im Spielmenü während des Spiels zwischen ihnen wechseln kann (der Controller verbindet sich neu). Standardmäßig an. Aus: Direktes XInput bleibt so, wie das Spiel gestartet ist, und eine Änderung erfordert einen Neustart.</string>
+    <string name="lab_27bb1078">Direkt</string>
     <string name="lab_27bcb120">Box64- und FEX-Presets hinzufügen, kopieren, löschen, exportieren oder importieren (Classic-Einstellungen).</string>
     <string name="lab_27beed97">%1$s · %2$s Sitzungen</string>
     <string name="lab_27f2c3fa">Setzt die Mindestfrequenz jedes Clusters auf sein Maximum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Umgeht einen Turnip-Fehler, bei dem die Frage \"Ist die GPU fertig?\" auf den ganzen Frame wartet (der Timing-Fehler im Bericht). Standard lässt den Adapter den Fehler erkennen; An erzwingt den Shim, Aus schaltet ihn ab.</string>
     <string name="lab_3205bc81">Es ist kein Turnip-Grafiktreiber eingestellt, daher gibt es nichts zu prüfen.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Touchscreen-Modus</string>
     <string name="lab_32a7fa00">Frame-Gen</string>
     <string name="lab_334d4744">Beim Beenden eines Spiels einen Schnappschuss der Spielstände aus der Steam-Bibliothek in deiner lokalen Bibliothek anlegen.</string>
     <string name="lab_336d62eb">Große CPU-Kerne bevorzugen</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Keine Repositorys.</string>
     <string name="lab_3a1ed8c6">Anzeigetreiber (Android-Seite)</string>
     <string name="lab_3a24cc2d">Pro Container festgelegt: Es beschreibt deine Hände, nicht das Spiel.</string>
-    <string name="lab_3a589c47">Cursor folgt Berührung</string>
     <string name="lab_3a5c3010">FPS, CPU-/GPU-Last und Temperaturen über dem Spiel. Tippe im Spiel darauf, um es umzuschalten oder seine Größe zu ändern.</string>
     <string name="lab_3a95276d">vkBasalt-Stärke</string>
     <string name="lab_3b02039e">Ausgewogen</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS erzwingen (CPU-Tempo-Fix)</string>
     <string name="lab_497cf9a3">Auf einem TV spielen oder darauf streamen.</string>
     <string name="lab_4990b8f5">Schärfe (VKBasalt)</string>
-    <string name="lab_499bfdd8">Der Mauszeiger springt dorthin, wo du tippst.</string>
     <string name="lab_49cff1c6">Maus &amp; Touch</string>
     <string name="lab_49d721cc">Leistungs-Overlay</string>
     <string name="lab_49fc80cc">Aus (Einzeln führt jeweils einen aus)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">DXVK-Versionen herunterladen</string>
     <string name="lab_542dcdda">Stick nach rechts</string>
     <string name="lab_545e8271">Spielt nur eine Rolle, wenn ein Spiel unter der Auflösung der Sitzung rendert.</string>
-    <string name="lab_54739575">Cursor folgt Berührung und seine Touch-Gesten</string>
     <string name="lab_5482057e">Spieler-Slots</string>
     <string name="lab_548c6bc1">Schaltet XInput aus, sodass Spiele nur die echte Maus und Tastatur sehen.</string>
     <string name="lab_54ed9898">Angemeldet · 1 Spiel</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Oben links</string>
     <string name="lab_58a426c9">Für dieses Spiel aus, solange die Frame-Generierung läuft. </string>
-    <string name="lab_5901a4cd">Wayland: Mausbewegungen gehen an den Compositor; ein Spiel, das den Mauszeiger festhält, erhält sie als relative Bewegung.</string>
     <string name="lab_5946d9c6">App-Einstellung verwenden (%1$s)</string>
     <string name="lab_594a913b">Asynchrone Shader</string>
     <string name="lab_595daef9">Heruntergeladene Komponenten: Archive und die Katalogliste.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU-/GPU-Last und Temperaturen über dem Spiel. Der Stil wird unten festgelegt und im Spiel über das Seitenmenü.</string>
     <string name="lab_5cf98060">Present-Wait-/Dynamic-Rendering-Erweiterungen ausblenden</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Zielmodus</string>
     <string name="lab_5d676a2d">Nur deine eigenen Presets können exportiert werden.</string>
     <string name="lab_5d7ee5f8">GitHub, Issue-Tracker und Discord</string>
     <string name="lab_5db787de">Steam-Freunde und Chat.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Umbenennen fehlgeschlagen</string>
     <string name="lab_6a271188">Box64-Preset / WOWBox64-Preset</string>
     <string name="lab_6a4b2ea4">Energie</string>
-    <string name="lab_6a68da45">Relative Maus</string>
     <string name="lab_6a87d625">DirectX 8 bis 11 über Vulkan. Builds namens async oder gplasync können Shader im Hintergrund kompilieren.</string>
     <string name="lab_6a913533">Root gewährt</string>
     <string name="lab_6a98ad5e">Eine dezente Taste oben rechts, die das Schnellmenü per Touch öffnet.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Fehlerbehebung</string>
     <string name="lab_6c15cb41">Die Touch-Tasten des aktuellen Layouts.</string>
     <string name="lab_6c3656ad">Hochformat</string>
-    <string name="lab_6c37a76c">Berührung wirkt als</string>
     <string name="lab_6c5fe717">Vorschauton</string>
     <string name="lab_6c8e3b1f">Als Standard festlegen…</string>
     <string name="lab_6c9249ac">Der automatische Cloud-Download beim Start wird für deine GOG-Bibliotheksspiele AUS sein. Die neuesten Cloud-Spielstände werden vor dem Spielstart nicht geladen — du musst sie selbst im Tab GOG-Spielstand-Manager oder auf der Detailseite des Spiels herunterladen. Fortfahren?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Nicht gespeicherte Änderungen hier gehen verloren. Bestehende Container behalten ihre Einstellungen.</string>
     <string name="lab_8ecc4179"> statt der Wine-Versionen. Viele Wrapper und Mod-Loader brauchen das. Grafik-DLLs sind nie dabei: Dafür sind DXVK und VKD3D zuständig.</string>
     <string name="lab_8ece40f8">Nur Banners-Turnip-Treiber; Standard-Turnip ignoriert es.</string>
-    <string name="lab_8ed00ed7">Für Spiele, die den Mauszeiger festhalten (Kamerasteuerung).</string>
     <string name="lab_8ee80fca">Keine Treiberquellen.</string>
     <string name="lab_8ef37792">Unten</string>
     <string name="lab_8f4a852b">Geräteleistung</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Präsentationsmodus des Adapters</string>
     <string name="lab_abb1c367">Nichts ist angeschlossen. Dieses Spiel ist weiterhin auf den Start auf einem TV eingestellt.</string>
     <string name="lab_abb20221">Kein Preset</string>
+    <string name="lab_abd752a4">Touch-Gesten</string>
     <string name="lab_abf1049c">Originalarchiv standardmäßig behalten</string>
     <string name="lab_ac21d91b">Bewegungsmodus</string>
     <string name="lab_ac35c85f">Das Spiel rendert über den Wayland-Adapter auf dem Grafiktreiber oben.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Primärer XR-Controller</string>
     <string name="lab_e14156b5">Steam-Client-Kerne</string>
     <string name="lab_e141ca5d">Vorrang Bildschirmsteuerung</string>
-    <string name="lab_e1768a43">Lässt sich auch im Spiel über das Seitenmenü umschalten.</string>
     <string name="lab_e18caa5c">Keine Laufwerke</string>
     <string name="lab_e19da5b2">Wayland-Adapter</string>
     <string name="lab_e1be537c">Nicht gespeichert</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) oder off</string>
     <string name="lab_e98a38e0">Lupe, Bild-im-Bild, Tastatur und Leistung.</string>
     <string name="lab_e9bb2501">Lässt Spiele das Mikrofon nutzen: DirectAudio nimmt die Eingabe auf. Android fragt einmal nach der Berechtigung.</string>
-    <string name="lab_e9e73eeb">Touchscreen sendet echte Berührungen an das Spiel.</string>
     <string name="lab_ea08e43f">Linux-Laufzeit und alle Listen</string>
     <string name="lab_ea354143">Eine dezente Taste oben rechts, die das Schnellmenü per Touch öffnet. Zurück, die Menütaste oder ein Tippen mit vier Fingern funktionieren auch ohne sie.</string>
     <string name="lab_ea4babd8">Wie es startet</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Intern</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Maus / Touchpad</string>
     <string name="lab_f2cdcc45">GPU-Treiber auswählen</string>
     <string name="lab_f2ed832c">Wie viel GPU-Speicher DirectX-Spielen gemeldet wird (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Audiolatenz</string>

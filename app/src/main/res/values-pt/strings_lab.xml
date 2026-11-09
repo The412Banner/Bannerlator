@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Um nome não pode conter \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Para os jogos que o cliente inicia, não para o próprio cliente, e para todos eles: a sessão tem um único ambiente. </string>
     <string name="lab_1e223777">Versão, notas de lançamento e Baixar e instalar (Configurações do Classic).</string>
-    <string name="lab_1e2f8841">Mouse relativo (para jogos com câmera 3D)</string>
     <string name="lab_1e537526">A lista está vazia.</string>
     <string name="lab_1e713627">Cliente Steam para Linux</string>
     <string name="lab_1e765e92">Configurações da mira por movimento</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automático · um trailer da Steam</string>
     <string name="lab_2756404f">Redefinir energia e root para os padrões do app</string>
     <string name="lab_27b56d30">Instala as DLLs de XInput do Bannerlator com o XInput direto ativado ou não, com o XInput do próprio Wine ao lado, para que Controls › Pad no menu do jogo possa alternar entre eles com o jogo rodando (o controle reconecta). Ativado por padrão. Desativado: o XInput direto fica como estava quando o jogo iniciou, e mudar exige reiniciar.</string>
+    <string name="lab_27bb1078">Direto</string>
     <string name="lab_27bcb120">Adicione, copie, exclua, exporte ou importe predefinições do Box64 e do FEX (Configurações do Classic).</string>
     <string name="lab_27beed97">%1$s · %2$s sessões</string>
     <string name="lab_27f2c3fa">Define a frequência mínima de cada cluster como a máxima.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Contorna um bug do Turnip em que perguntar \"a GPU terminou?\" espera o quadro inteiro (o bug de temporização do relatório). \"Padrão\" deixa o adaptador detectar o bug; \"Ativado\" força o shim, \"Desativado\" o desliga.</string>
     <string name="lab_3205bc81">Nenhum driver gráfico Turnip está definido, então não há nada para verificar.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Modo touchscreen</string>
     <string name="lab_32a7fa00">Geração de quadros</string>
     <string name="lab_334d4744">Copia os jogos salvos da biblioteca da Steam para a sua biblioteca local quando um jogo fecha.</string>
     <string name="lab_336d62eb">Preferir os núcleos grandes da CPU</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Nenhum repositório.</string>
     <string name="lab_3a1ed8c6">Driver de exibição (lado do Android)</string>
     <string name="lab_3a24cc2d">Definido por contêiner: descreve as suas mãos, não o jogo.</string>
-    <string name="lab_3a589c47">Cursor no toque</string>
     <string name="lab_3a5c3010">FPS, uso de CPU/GPU e temperaturas sobre o jogo. Toque nele no jogo para girar ou redimensionar.</string>
     <string name="lab_3a95276d">Intensidade do vkBasalt</string>
     <string name="lab_3b02039e">Equilibrado</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Forçar SSBS (correção de velocidade da CPU)</string>
     <string name="lab_497cf9a3">Jogue em uma TV ou transmita para uma.</string>
     <string name="lab_4990b8f5">Nitidez (VKBasalt)</string>
-    <string name="lab_499bfdd8">O ponteiro pula para onde você toca.</string>
     <string name="lab_49cff1c6">Mouse e toque</string>
     <string name="lab_49d721cc">Overlay de desempenho</string>
     <string name="lab_49fc80cc">Desativado (Único roda um por vez)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Baixar versões do DXVK</string>
     <string name="lab_542dcdda">Analógico para a direita</string>
     <string name="lab_545e8271">Só importa quando um jogo renderiza abaixo da resolução da sessão.</string>
-    <string name="lab_54739575">Cursor no toque e seus gestos de toque</string>
     <string name="lab_5482057e">Slots de jogadores</string>
     <string name="lab_548c6bc1">Desativa o XInput para que os jogos vejam só o mouse e o teclado reais.</string>
     <string name="lab_54ed9898">Conectado · 1 jogo</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Em cima à esquerda</string>
     <string name="lab_58a426c9">Desativado para este jogo enquanto a geração de quadros está ativa. </string>
-    <string name="lab_5901a4cd">Wayland: os deslocamentos do mouse vão para o compositor; um jogo que trava o ponteiro os recebe como movimento relativo.</string>
     <string name="lab_5946d9c6">Usar configuração do app (%1$s)</string>
     <string name="lab_594a913b">Shaders assíncronos</string>
     <string name="lab_595daef9">Componentes baixados: arquivos compactados e a lista do catálogo.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, uso de CPU/GPU e temperaturas sobre o jogo. O estilo fica abaixo, e no jogo, no menu lateral.</string>
     <string name="lab_5cf98060">Ocultar extensões present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Modo de mira</string>
     <string name="lab_5d676a2d">Só as suas próprias predefinições podem ser exportadas.</string>
     <string name="lab_5d7ee5f8">GitHub, rastreador de problemas e Discord</string>
     <string name="lab_5db787de">Amigos e chat da Steam.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Não foi possível renomear</string>
     <string name="lab_6a271188">Predefinição do Box64 / Predefinição do WOWBox64</string>
     <string name="lab_6a4b2ea4">Energia</string>
-    <string name="lab_6a68da45">Mouse relativo</string>
     <string name="lab_6a87d625">DirectX 8 a 11 via Vulkan. Builds chamadas async ou gplasync podem compilar shaders em segundo plano.</string>
     <string name="lab_6a913533">Root concedido</string>
     <string name="lab_6a98ad5e">Um botão discreto no canto superior direito que abre o menu rápido pelo toque.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Solução de problemas</string>
     <string name="lab_6c15cb41">Os botões de toque do layout atual.</string>
     <string name="lab_6c3656ad">Retrato</string>
-    <string name="lab_6c37a76c">O toque funciona como</string>
     <string name="lab_6c5fe717">Som das prévias</string>
     <string name="lab_6c8e3b1f">Definir como padrão…</string>
     <string name="lab_6c9249ac">O download automático da nuvem ao iniciar ficará DESATIVADO para os jogos da sua biblioteca do GOG. Os jogos salvos mais recentes da nuvem não serão baixados antes de um jogo começar — você precisará baixá-los manualmente na aba GOG do Gerenciador de jogos salvos ou na página de detalhes do jogo. Continuar?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">As mudanças não salvas aqui são perdidas. Os contêineres existentes mantêm as configurações deles.</string>
     <string name="lab_8ecc4179"> em vez das do Wine. Muitos wrappers e carregadores de mods precisam delas. DLLs gráficas nunca entram: o DXVK e o VKD3D cuidam delas.</string>
     <string name="lab_8ece40f8">Só drivers Banners-Turnip; o Turnip original ignora isso.</string>
-    <string name="lab_8ed00ed7">Para jogos que travam o ponteiro (visão com a câmera).</string>
     <string name="lab_8ee80fca">Nenhuma fonte de drivers.</string>
     <string name="lab_8ef37792">Base</string>
     <string name="lab_8f4a852b">Energia do aparelho</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Modo de apresentação do adaptador</string>
     <string name="lab_abb1c367">Nada está conectado. Este jogo ainda está configurado para iniciar em uma TV.</string>
     <string name="lab_abb20221">Nenhuma predefinição</string>
+    <string name="lab_abd752a4">Gestos de toque</string>
     <string name="lab_abf1049c">Manter o arquivo original por padrão</string>
     <string name="lab_ac21d91b">Modo de movimento</string>
     <string name="lab_ac35c85f">O jogo é renderizado no driver gráfico acima, pelo adaptador Wayland.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Controle XR principal</string>
     <string name="lab_e14156b5">Núcleos do cliente Steam</string>
     <string name="lab_e141ca5d">Prioridade dos controles na tela</string>
-    <string name="lab_e1768a43">Também pode ser trocado no jogo pelo menu lateral.</string>
     <string name="lab_e18caa5c">Nenhuma unidade</string>
     <string name="lab_e19da5b2">Adaptador Wayland</string>
     <string name="lab_e1be537c">Não salvo</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) ou off</string>
     <string name="lab_e98a38e0">Lupa, picture-in-picture, teclado e desempenho.</string>
     <string name="lab_e9bb2501">Permite que os jogos usem o microfone: o DirectAudio captura a entrada. O Android pede a permissão uma vez.</string>
-    <string name="lab_e9e73eeb">Touchscreen envia toques reais ao jogo.</string>
     <string name="lab_ea08e43f">Runtime do Linux e todas as listas</string>
     <string name="lab_ea354143">Um botão discreto no canto superior direito que abre o menu rápido pelo toque. Voltar, o botão Menu ou um toque com quatro dedos funcionam sem ele.</string>
     <string name="lab_ea4babd8">Como inicia</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Estilo</string>
     <string name="lab_f2857f55">Interno</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mouse / touchpad</string>
     <string name="lab_f2cdcc45">Selecionar driver de GPU</string>
     <string name="lab_f2ed832c">Quanta memória de GPU é informada aos jogos DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latência do som</string>

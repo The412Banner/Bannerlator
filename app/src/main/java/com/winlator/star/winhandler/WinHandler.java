@@ -697,6 +697,10 @@ public class WinHandler {
     }
 
     public void mouseEvent(int flags, int dx, int dy, int wheelDelta) {
+        if ((flags & MouseEventFlags.MOVE) != 0 && (flags & MouseEventFlags.ABSOLUTE) == 0 && activity != null) {
+            XServer xs = activity.getXServer();
+            if (xs != null) xs.aimTracker.onMotion(dx, dy, android.os.SystemClock.uptimeMillis());
+        }
         if (waylandMouseRouting) {
             waylandMouseEvent(flags, dx, dy, wheelDelta);
             return;

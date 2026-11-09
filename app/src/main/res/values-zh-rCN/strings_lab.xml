@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">名称不能包含 \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">作用于客户端启动的游戏，而非客户端本身，并且对所有游戏生效：整个会话只有一套环境。</string>
     <string name="lab_1e223777">版本、更新说明以及“下载并安装”（Classic 设置）。</string>
-    <string name="lab_1e2f8841">相对鼠标（适用于 3D 视角游戏）</string>
     <string name="lab_1e537526">列表为空。</string>
     <string name="lab_1e713627">Linux Steam 客户端</string>
     <string name="lab_1e765e92">体感瞄准设置</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">自动 · Steam 预告片</string>
     <string name="lab_2756404f">将电源和 root 设置重置为应用默认值</string>
     <string name="lab_27b56d30">无论直连 XInput 是否开启，都会安装 Bannerlator 的 XInput DLL，并与 Wine 自带的 XInput 并存，这样游戏运行时可在游戏内菜单的“控制 › 手柄”中切换两者（手柄会重新连接）。默认开启。关闭：直连 XInput 保持游戏启动时的状态，更改需要重启。</string>
+    <string name="lab_27bb1078">直接</string>
     <string name="lab_27bcb120">添加、复制、删除、导出或导入 Box64 和 FEX 预设（Classic 设置）。</string>
     <string name="lab_27beed97">%1$s · %2$s 次游玩</string>
     <string name="lab_27f2c3fa">将每个簇的最低频率设为其最高频率。</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">绕过 Turnip 的一个错误：询问“GPU 完成了吗？”时会等待整帧完成（即报告中的计时错误）。“默认”由适配层自动检测；“开启”强制使用，“关闭”禁用。</string>
     <string name="lab_3205bc81">未设置 Turnip 图形驱动，因此没有可检查的内容。</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">触屏模式</string>
     <string name="lab_32a7fa00">帧生成</string>
     <string name="lab_334d4744">游戏退出时，将 Steam 游戏库的存档快照保存到本地存档库。</string>
     <string name="lab_336d62eb">优先使用大核</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">没有仓库。</string>
     <string name="lab_3a1ed8c6">显示驱动（Android 端）</string>
     <string name="lab_3a24cc2d">按容器设置：它描述的是你的手，而不是游戏。</string>
-    <string name="lab_3a589c47">光标跟随触摸</string>
     <string name="lab_3a5c3010">在游戏画面上显示 FPS、CPU/GPU 负载和温度。在游戏中点按它可切换方向或调整大小。</string>
     <string name="lab_3a95276d">vkBasalt 强度</string>
     <string name="lab_3b02039e">均衡</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">强制 SSBS（CPU 速度修复）</string>
     <string name="lab_497cf9a3">在电视上玩或投屏到电视。</string>
     <string name="lab_4990b8f5">锐化（VKBasalt）</string>
-    <string name="lab_499bfdd8">指针会跳到你触摸的位置。</string>
     <string name="lab_49cff1c6">鼠标与触摸</string>
     <string name="lab_49d721cc">性能覆盖层</string>
     <string name="lab_49fc80cc">关闭（“单独”一次只运行一个）</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">下载 DXVK 版本</string>
     <string name="lab_542dcdda">摇杆右</string>
     <string name="lab_545e8271">仅在游戏渲染分辨率低于会话分辨率时才有影响。</string>
-    <string name="lab_54739575">光标跟随触摸及其触摸手势</string>
     <string name="lab_5482057e">玩家槽位</string>
     <string name="lab_548c6bc1">关闭 XInput，让游戏只识别真实的鼠标和键盘。</string>
     <string name="lab_54ed9898">已登录 · 1 个游戏</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">左上</string>
     <string name="lab_58a426c9">帧生成运行时，此游戏会关闭此项。</string>
-    <string name="lab_5901a4cd">Wayland：鼠标位移会发送给合成器；锁定指针的游戏会以相对移动的形式接收它们。</string>
     <string name="lab_5946d9c6">使用应用设置（%1$s）</string>
     <string name="lab_594a913b">异步着色器</string>
     <string name="lab_595daef9">已下载的组件：压缩包和目录列表。</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">在游戏画面上显示 FPS、CPU/GPU 负载和温度。样式在下方设置，也可在游戏中通过侧边菜单设置。</string>
     <string name="lab_5cf98060">隐藏 present-wait / dynamic-rendering 扩展</string>
     <string name="lab_5cfcc2ee">霓虹</string>
+    <string name="lab_5d1ebf1b">瞄准模式</string>
     <string name="lab_5d676a2d">只能导出你自己的预设。</string>
     <string name="lab_5d7ee5f8">GitHub、问题追踪和 Discord</string>
     <string name="lab_5db787de">Steam 好友和聊天。</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">无法重命名</string>
     <string name="lab_6a271188">Box64 预设 / WOWBox64 预设</string>
     <string name="lab_6a4b2ea4">功耗</string>
-    <string name="lab_6a68da45">相对鼠标</string>
     <string name="lab_6a87d625">通过 Vulkan 运行 DirectX 8 到 11。名称含 async 或 gplasync 的版本可在后台编译着色器。</string>
     <string name="lab_6a913533">已获得 root 权限</string>
     <string name="lab_6a98ad5e">右上角的半透明按钮，点按即可打开快捷菜单。</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">故障排除</string>
     <string name="lab_6c15cb41">当前布局的触摸按键。</string>
     <string name="lab_6c3656ad">竖屏</string>
-    <string name="lab_6c37a76c">触摸用作</string>
     <string name="lab_6c5fe717">预览声音</string>
     <string name="lab_6c8e3b1f">设为默认…</string>
     <string name="lab_6c9249ac">你的 GOG 游戏库中的游戏将关闭启动时自动云下载。游戏启动前不会拉取最新的云存档，你需要自行在 GOG 存档管理器标签页或游戏详情页中下载。要继续吗？</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">此处未保存的更改将会丢失。现有容器会保留其设置。</string>
     <string name="lab_8ecc4179">，而不是 Wine 自带的版本。许多封装层和模组加载器都需要它。图形 DLL 从不包含在内：它们由 DXVK 和 VKD3D 负责。</string>
     <string name="lab_8ece40f8">仅适用于 Banners-Turnip 驱动；原版 Turnip 会忽略此项。</string>
-    <string name="lab_8ed00ed7">适用于锁定鼠标指针的游戏（视角控制）。</string>
     <string name="lab_8ee80fca">没有驱动源。</string>
     <string name="lab_8ef37792">底部</string>
     <string name="lab_8f4a852b">设备功耗</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">适配层呈现模式</string>
     <string name="lab_abb1c367">未连接任何设备。此游戏仍设置为在电视上启动。</string>
     <string name="lab_abb20221">无预设</string>
+    <string name="lab_abd752a4">触摸手势</string>
     <string name="lab_abf1049c">默认保留原始压缩包</string>
     <string name="lab_ac21d91b">体感模式</string>
     <string name="lab_ac35c85f">游戏通过 Wayland 适配层在上方的图形驱动上渲染。</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">主 XR 手柄</string>
     <string name="lab_e14156b5">Steam 客户端核心</string>
     <string name="lab_e141ca5d">屏幕按键优先级</string>
-    <string name="lab_e1768a43">也可在游戏中通过侧边菜单切换。</string>
     <string name="lab_e18caa5c">没有驱动器</string>
     <string name="lab_e19da5b2">Wayland 适配层</string>
     <string name="lab_e1be537c">未保存</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N（20–240）、fixed:N（30–1000）或 off</string>
     <string name="lab_e98a38e0">放大镜、画中画、键盘和性能。</string>
     <string name="lab_e9bb2501">让游戏使用麦克风：由 DirectAudio 采集输入。Android 会请求一次权限。</string>
-    <string name="lab_e9e73eeb">“触屏”会向游戏发送真实触摸。</string>
     <string name="lab_ea08e43f">Linux 运行时和所有列表</string>
     <string name="lab_ea354143">右上角的半透明按钮，点按即可打开快捷菜单。不用它时，返回键、菜单键或四指点按同样可以打开。</string>
     <string name="lab_ea4babd8">启动方式</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">样式</string>
     <string name="lab_f2857f55">内部存储</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">鼠标 / 触控板</string>
     <string name="lab_f2cdcc45">选择 GPU 驱动</string>
     <string name="lab_f2ed832c">告诉 DirectX 游戏的 GPU 显存大小（dxgi.maxDeviceMemory）。</string>
     <string name="lab_f3043a4e">声音延迟</string>

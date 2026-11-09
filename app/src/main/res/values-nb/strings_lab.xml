@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Et navn kan ikke inneholde \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">For spillene klienten starter, ikke selve klienten, og for alle sammen: økten har ett miljø. </string>
     <string name="lab_1e223777">Versjon, versjonsmerknader og Last ned og installer (Innstillinger i Classic).</string>
-    <string name="lab_1e2f8841">Relativ mus (for spill med 3D-kamera)</string>
     <string name="lab_1e537526">Ingenting i listen.</string>
     <string name="lab_1e713627">Steam-klient for Linux</string>
     <string name="lab_1e765e92">Innstillinger for bevegelsessikting</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatisk · en Steam-trailer</string>
     <string name="lab_2756404f">Tilbakestill strøm og root til appens standardverdier</string>
     <string name="lab_27b56d30">Installerer Bannerlators XInput-DLL-er enten Direkte XInput er på eller av, med Wines egen XInput ved siden av, slik at Controls › Pad i spillmenyen kan bytte mellom dem mens spillet kjører (kontrolleren kobles til på nytt). På som standard. Av: Direkte XInput forblir slik spillet startet, og en endring krever omstart.</string>
+    <string name="lab_27bb1078">Direkte</string>
     <string name="lab_27bcb120">Legg til, kopier, slett, eksporter eller importer Box64- og FEX-forhåndsinnstillinger (Innstillinger i Classic).</string>
     <string name="lab_27beed97">%1$s · %2$s økter</string>
     <string name="lab_27f2c3fa">Setter hver klynges minimumsfrekvens til maksimum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Omgår en Turnip-feil der spørsmålet \"er GPU-en ferdig?\" venter på hele bildet (timingfeilen i rapporten). Standard lar adapteren oppdage feilen; På tvinger shimen på, Av slår den av.</string>
     <string name="lab_3205bc81">Ingen Turnip-grafikkdriver er valgt, så det er ingenting å sjekke.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Berøringsskjermmodus</string>
     <string name="lab_32a7fa00">Bildegenerering</string>
     <string name="lab_334d4744">Ta et øyeblikksbilde av lagrede spill fra Steam-biblioteket til det lokale biblioteket når et spill avsluttes.</string>
     <string name="lab_336d62eb">Foretrekk store CPU-kjerner</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Ingen depoter.</string>
     <string name="lab_3a1ed8c6">Skjermdriver (Android-siden)</string>
     <string name="lab_3a24cc2d">Angis per container: den beskriver hendene dine, ikke spillet.</string>
-    <string name="lab_3a589c47">Peker til berøringen</string>
     <string name="lab_3a5c3010">FPS, CPU-/GPU-belastning og temperaturer oppå spillet. Trykk på det i spillet for å snu det eller endre størrelsen.</string>
     <string name="lab_3a95276d">vkBasalt-styrke</string>
     <string name="lab_3b02039e">Balansert</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Tving SSBS (CPU-hastighetsfiks)</string>
     <string name="lab_497cf9a3">Spill på en TV eller cast til en.</string>
     <string name="lab_4990b8f5">Skarphet (VKBasalt)</string>
-    <string name="lab_499bfdd8">Pekeren hopper dit du berører.</string>
     <string name="lab_49cff1c6">Mus og berøring</string>
     <string name="lab_49d721cc">Ytelsesoverlegg</string>
     <string name="lab_49fc80cc">Av (Solo kjører én om gangen)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Last ned DXVK-versjoner</string>
     <string name="lab_542dcdda">Stikke høyre</string>
     <string name="lab_545e8271">Har bare betydning når et spill gjengis under øktens oppløsning.</string>
-    <string name="lab_54739575">Peker til berøringen og berøringsbevegelsene</string>
     <string name="lab_5482057e">Spillerplasser</string>
     <string name="lab_548c6bc1">Slår av XInput så spill bare ser den ekte musen og tastaturet.</string>
     <string name="lab_54ed9898">Logget på · 1 spill</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Øverst til venstre</string>
     <string name="lab_58a426c9">Av for dette spillet mens bildegenerering kjører. </string>
-    <string name="lab_5901a4cd">Wayland: musebevegelser går til kompositoren; et spill som låser pekeren, mottar dem som relativ bevegelse.</string>
     <string name="lab_5946d9c6">Bruk appens innstilling (%1$s)</string>
     <string name="lab_594a913b">Asynkrone shadere</string>
     <string name="lab_595daef9">Nedlastede komponenter: arkiver og kataloglisten.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU-/GPU-belastning og temperaturer oppå spillet. Stilen velges nedenfor og i spillet fra sidemenyen.</string>
     <string name="lab_5cf98060">Skjul utvidelsene present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Siktemodus</string>
     <string name="lab_5d676a2d">Bare dine egne forhåndsinnstillinger kan eksporteres.</string>
     <string name="lab_5d7ee5f8">GitHub, feilsporing og Discord</string>
     <string name="lab_5db787de">Steam-venner og chat.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Kunne ikke gi det nytt navn</string>
     <string name="lab_6a271188">Box64-forhåndsinnstilling / WOWBox64-forhåndsinnstilling</string>
     <string name="lab_6a4b2ea4">Strøm</string>
-    <string name="lab_6a68da45">Relativ mus</string>
     <string name="lab_6a87d625">DirectX 8 til 11 via Vulkan. Bygg med async eller gplasync i navnet kan kompilere shadere i bakgrunnen.</string>
     <string name="lab_6a913533">Root gitt</string>
     <string name="lab_6a98ad5e">En diskret knapp øverst til høyre som åpner hurtigmenyen ved berøring.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Feilsøking</string>
     <string name="lab_6c15cb41">Berøringsknappene i gjeldende oppsett.</string>
     <string name="lab_6c3656ad">Stående</string>
-    <string name="lab_6c37a76c">Berøring fungerer som</string>
     <string name="lab_6c5fe717">Lyd i forhåndsvisninger</string>
     <string name="lab_6c8e3b1f">Angi som standard…</string>
     <string name="lab_6c9249ac">Automatisk nedlasting fra skyen ved oppstart blir slått AV for spillene i GOG-biblioteket ditt. De nyeste skylagringene hentes ikke før et spill starter — du må laste dem ned selv fra GOG-fanen i Lagringsbehandler eller fra spillets detaljside. Fortsette?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Endringer her som ikke er lagret, går tapt. Eksisterende containere beholder innstillingene sine.</string>
     <string name="lab_8ecc4179"> i stedet for Wines. Trengs av mange wrappere og mod-lastere. Grafikk-DLL-er tas aldri med: dem står DXVK og VKD3D for.</string>
     <string name="lab_8ece40f8">Bare Banners-Turnip-drivere; vanlig Turnip ignorerer den.</string>
-    <string name="lab_8ed00ed7">For spill som låser pekeren (kamerastyring).</string>
     <string name="lab_8ee80fca">Ingen driverkilder.</string>
     <string name="lab_8ef37792">Nederst</string>
     <string name="lab_8f4a852b">Enhetens strøm</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapterens presentasjonsmodus</string>
     <string name="lab_abb1c367">Ingenting er koblet til. Dette spillet er fortsatt satt til å starte på en TV.</string>
     <string name="lab_abb20221">Ingen forhåndsinnstilling</string>
+    <string name="lab_abd752a4">Berøringsbevegelser</string>
     <string name="lab_abf1049c">Behold råarkivet som standard</string>
     <string name="lab_ac21d91b">Bevegelsesmodus</string>
     <string name="lab_ac35c85f">Spillet gjengis på grafikkdriveren ovenfor, gjennom Wayland-adapteren.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Primær XR-kontroller</string>
     <string name="lab_e14156b5">Steam-klientens kjerner</string>
     <string name="lab_e141ca5d">Prioritet for skjermkontroller</string>
-    <string name="lab_e1768a43">Kan også slås av og på i spillet fra sidemenyen.</string>
     <string name="lab_e18caa5c">Ingen stasjoner</string>
     <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Ikke lagret</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) eller off</string>
     <string name="lab_e98a38e0">Forstørrelsesglass, bilde-i-bilde, tastatur og ytelse.</string>
     <string name="lab_e9bb2501">Lar spill bruke mikrofonen: DirectAudio tar opp inndataene. Android ber om tillatelsen én gang.</string>
-    <string name="lab_e9e73eeb">Berøringsskjerm sender ekte berøringer til spillet.</string>
     <string name="lab_ea08e43f">Linux-kjøretid og alle lister</string>
     <string name="lab_ea354143">En diskret knapp øverst til høyre som åpner hurtigmenyen ved berøring. Tilbake, Menu-knappen eller et trykk med fire fingre fungerer også uten den.</string>
     <string name="lab_ea4babd8">Hvordan det starter</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Intern</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mus / styreflate</string>
     <string name="lab_f2cdcc45">Velg GPU-driver</string>
     <string name="lab_f2ed832c">Hvor mye GPU-minne DirectX-spill får beskjed om at det finnes (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Lydforsinkelse</string>

@@ -310,6 +310,7 @@ public abstract class WindowRequests {
     }
 
     public static void warpPointer(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        client.xServer.aimTracker.onWarp(android.os.SystemClock.uptimeMillis());
         if (client.xServer.isRelativeMouseMovement()) {
             client.skipRequest();
             return;

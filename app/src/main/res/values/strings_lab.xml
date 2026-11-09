@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">A name can\'t contain \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">For the games the client launches, not the client itself, and for every one of them: the session has one environment. </string>
     <string name="lab_1e223777">Version, release notes and Download &amp; install (classic Settings).</string>
-    <string name="lab_1e2f8841">Relative mouse (for 3D camera games)</string>
     <string name="lab_1e537526">Nothing in the list.</string>
     <string name="lab_1e713627">Linux Steam client</string>
     <string name="lab_1e765e92">Motion aim settings</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatic · a Steam trailer</string>
     <string name="lab_2756404f">Reset power and root to the app\'s defaults</string>
     <string name="lab_27b56d30">Installs Bannerlator\'s XInput DLLs whether Direct XInput is on or off, with Wine\'s own XInput beside them, so Controls › Pad in the in-game menu can switch between them while the game runs (the controller reconnects). On by default. Off: Direct XInput stays as the game started, and changing it needs a restart.</string>
+    <string name="lab_27bb1078">Direct</string>
     <string name="lab_27bcb120">Add, copy, delete, export or import Box64 and FEX presets (classic Settings).</string>
     <string name="lab_27beed97">%1$s · %2$s sessions</string>
     <string name="lab_27f2c3fa">Sets every cluster\'s minimum frequency to its maximum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Works around a Turnip bug where asking \"is the GPU done?\" waits for the whole frame (the report\'s timing bug). Default lets the adapter detect it; On forces it, Off disables it.</string>
     <string name="lab_3205bc81">No Turnip graphics driver is set, so there is nothing to check.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Touchscreen Mode</string>
     <string name="lab_32a7fa00">Frame gen</string>
     <string name="lab_334d4744">Snapshot Steam-library saves to your local Library when a game exits.</string>
     <string name="lab_336d62eb">Prefer big CPU cores</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">No repositories.</string>
     <string name="lab_3a1ed8c6">Display driver (Android side)</string>
     <string name="lab_3a24cc2d">Set per container: it describes your hands, not the game.</string>
-    <string name="lab_3a589c47">Cursor to touch</string>
     <string name="lab_3a5c3010">FPS, CPU/GPU load and temperatures on top of the game. Tap it in-game to flip or resize it.</string>
     <string name="lab_3a95276d">vkBasalt strength</string>
     <string name="lab_3b02039e">Balanced</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Force SSBS (CPU speed fix)</string>
     <string name="lab_497cf9a3">Play on a TV or cast to one.</string>
     <string name="lab_4990b8f5">Sharpness (VKBasalt)</string>
-    <string name="lab_499bfdd8">The pointer jumps to where you touch.</string>
     <string name="lab_49cff1c6">Mouse &amp; touch</string>
     <string name="lab_49d721cc">Performance overlay</string>
     <string name="lab_49fc80cc">Off (Solo runs one at a time)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">Download DXVK versions</string>
     <string name="lab_542dcdda">Thumbstick right</string>
     <string name="lab_545e8271">Only matters when a game renders below the session\'s resolution.</string>
-    <string name="lab_54739575">Cursor to touch and its touch gestures</string>
     <string name="lab_5482057e">Player Slots</string>
     <string name="lab_548c6bc1">Turns off XInput so games see only the real mouse and keyboard.</string>
     <string name="lab_54ed9898">Signed in · 1 game</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Top left</string>
     <string name="lab_58a426c9">Off for this game while frame generation runs. </string>
-    <string name="lab_5901a4cd">Wayland: mouse deltas go to the compositor; a game that locks the pointer receives them as relative motion.</string>
     <string name="lab_5946d9c6">Use app setting (%1$s)</string>
     <string name="lab_594a913b">Async shaders</string>
     <string name="lab_595daef9">Downloaded components: archives and the catalog list.</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU/GPU load and temperatures on top of the game. Its style is below, and in-game from the side menu.</string>
     <string name="lab_5cf98060">Hide present-wait / dynamic-rendering extensions</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Aim mode</string>
     <string name="lab_5d676a2d">Only your own presets can be exported.</string>
     <string name="lab_5d7ee5f8">GitHub, issue tracker and Discord</string>
     <string name="lab_5db787de">Steam friends and chat.</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">Could not rename it</string>
     <string name="lab_6a271188">Box64 Preset / WOWBox64 Preset</string>
     <string name="lab_6a4b2ea4">Power</string>
-    <string name="lab_6a68da45">Relative mouse</string>
     <string name="lab_6a87d625">DirectX 8 to 11 through Vulkan. Builds named async or gplasync can compile shaders in the background.</string>
     <string name="lab_6a913533">Root granted</string>
     <string name="lab_6a98ad5e">A faint button at the top right that opens the quick menu by touch.</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">Troubleshooting</string>
     <string name="lab_6c15cb41">The touch buttons of the current layout.</string>
     <string name="lab_6c3656ad">Portrait</string>
-    <string name="lab_6c37a76c">Touch acts as</string>
     <string name="lab_6c5fe717">Preview sound</string>
     <string name="lab_6c8e3b1f">Set as default…</string>
     <string name="lab_6c9249ac">Automatic cloud download on launch will be OFF for your GOG library games. The latest cloud saves won\'t be pulled in before a game starts — you\'ll need to download them yourself from the GOG Save Manager tab or the game\'s detail page. Continue?</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">Unsaved changes here are lost. Existing containers keep their settings.</string>
     <string name="lab_8ecc4179"> instead of Wine\'s. Needed by many wrappers and mod loaders. Graphics DLLs are never included: DXVK and VKD3D own those.</string>
     <string name="lab_8ece40f8">Banners-Turnip drivers only; stock Turnip ignores it.</string>
-    <string name="lab_8ed00ed7">For games that lock the pointer (camera look).</string>
     <string name="lab_8ee80fca">No driver sources.</string>
     <string name="lab_8ef37792">Bottom</string>
     <string name="lab_8f4a852b">Device power</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapter present mode</string>
     <string name="lab_abb1c367">Nothing is plugged in. This game is still set to start on a TV.</string>
     <string name="lab_abb20221">No preset</string>
+    <string name="lab_abd752a4">Touch gestures</string>
     <string name="lab_abf1049c">Keep raw archive by default</string>
     <string name="lab_ac21d91b">Motion Mode</string>
     <string name="lab_ac35c85f">The game renders on the graphics driver above, through the Wayland adapter.</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">Primary XR controller</string>
     <string name="lab_e14156b5">Steam client cores</string>
     <string name="lab_e141ca5d">On-screen priority</string>
-    <string name="lab_e1768a43">Also switchable in-game from the side menu.</string>
     <string name="lab_e18caa5c">No drives</string>
     <string name="lab_e19da5b2">Wayland adapter</string>
     <string name="lab_e1be537c">Unsaved</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) or off</string>
     <string name="lab_e98a38e0">Magnifier, picture-in-picture, keyboard and performance.</string>
     <string name="lab_e9bb2501">Lets games use the mic: DirectAudio captures the input. Android asks for the permission once.</string>
-    <string name="lab_e9e73eeb">Touchscreen sends real touches to the game.</string>
     <string name="lab_ea08e43f">Linux runtime and every list</string>
     <string name="lab_ea354143">A faint button at the top right that opens the quick menu by touch. Back, the Menu button or a four-finger tap work without it.</string>
     <string name="lab_ea4babd8">How it starts</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">Style</string>
     <string name="lab_f2857f55">Internal</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mouse / touchpad</string>
     <string name="lab_f2cdcc45">Select GPU driver</string>
     <string name="lab_f2ed832c">What DirectX games are told the GPU\'s memory is (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Sound latency</string>

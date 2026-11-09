@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">ชื่อต้องไม่มีอักขระ \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">สำหรับเกมที่ไคลเอนต์เปิด ไม่ใช่ตัวไคลเอนต์ และใช้กับทุกเกม: เซสชันมีสภาพแวดล้อมเดียว </string>
     <string name="lab_1e223777">เวอร์ชัน บันทึกประจำรุ่น และ ดาวน์โหลดและติดตั้ง (การตั้งค่า Classic)</string>
-    <string name="lab_1e2f8841">เมาส์แบบสัมพัทธ์ (สำหรับเกมกล้อง 3D)</string>
     <string name="lab_1e537526">ไม่มีรายการ</string>
     <string name="lab_1e713627">ไคลเอนต์ Steam บน Linux</string>
     <string name="lab_1e765e92">การตั้งค่าการเล็งด้วยไจโร</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">อัตโนมัติ · เทรลเลอร์จาก Steam</string>
     <string name="lab_2756404f">รีเซ็ตพลังงานและรูทเป็นค่าเริ่มต้นของแอป</string>
     <string name="lab_27b56d30">ติดตั้ง DLL XInput ของ Bannerlator ไม่ว่า XInput โดยตรง จะเปิดหรือปิด โดยมี XInput ของ Wine อยู่ข้างกัน เพื่อให้ การควบคุม › จอย ในเมนูในเกมสลับได้ขณะเกมทำงาน (คอนโทรลเลอร์จะเชื่อมต่อใหม่) เปิดไว้เป็นค่าเริ่มต้น ปิด: XInput โดยตรง จะคงตามตอนเริ่มเกม และต้องรีสตาร์ตจึงจะเปลี่ยนได้</string>
+    <string name="lab_27bb1078">โดยตรง</string>
     <string name="lab_27bcb120">เพิ่ม คัดลอก ลบ ส่งออก หรือนำเข้าพรีเซ็ต Box64 และ FEX (การตั้งค่า Classic)</string>
     <string name="lab_27beed97">%1$s · %2$s เซสชัน</string>
     <string name="lab_27f2c3fa">ตั้งความถี่ต่ำสุดของทุกคลัสเตอร์ให้เท่ากับความถี่สูงสุด</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">แก้บั๊กของ Turnip ที่การถามว่า \"GPU เสร็จหรือยัง\" ต้องรอทั้งเฟรม (บั๊กการจับเวลาในรายงาน) ค่าเริ่มต้น: ให้อะแดปเตอร์ตรวจหาเอง เปิด: บังคับใช้ ปิด: ไม่ใช้</string>
     <string name="lab_3205bc81">ยังไม่ได้ตั้งไดรเวอร์กราฟิก Turnip จึงไม่มีอะไรให้ตรวจสอบ</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">โหมดหน้าจอสัมผัส</string>
     <string name="lab_32a7fa00">สร้างเฟรม</string>
     <string name="lab_334d4744">เก็บสำเนาเซฟของเกมในไลบรารี Steam ไว้ในไลบรารีในเครื่องเมื่อออกจากเกม</string>
     <string name="lab_336d62eb">ใช้คอร์ CPU ใหญ่ก่อน</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">ไม่มีรีโพสิทอรี</string>
     <string name="lab_3a1ed8c6">ไดรเวอร์การแสดงผล (ฝั่ง Android)</string>
     <string name="lab_3a24cc2d">ตั้งแยกตามคอนเทนเนอร์: ค่านี้ขึ้นกับมือของคุณ ไม่ใช่เกม</string>
-    <string name="lab_3a589c47">เคอร์เซอร์ไปที่จุดสัมผัส</string>
     <string name="lab_3a5c3010">FPS โหลด CPU/GPU และอุณหภูมิแสดงทับเกม แตะในเกมเพื่อพลิกแนวหรือเปลี่ยนขนาด</string>
     <string name="lab_3a95276d">ความแรง vkBasalt</string>
     <string name="lab_3b02039e">สมดุล</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">บังคับ SSBS (แก้ความเร็ว CPU)</string>
     <string name="lab_497cf9a3">เล่นบนทีวีหรือแคสต์ไปยังทีวี</string>
     <string name="lab_4990b8f5">ความคมชัด (VKBasalt)</string>
-    <string name="lab_499bfdd8">ตัวชี้จะกระโดดไปยังจุดที่คุณแตะ</string>
     <string name="lab_49cff1c6">เมาส์และการสัมผัส</string>
     <string name="lab_49d721cc">โอเวอร์เลย์แสดงประสิทธิภาพ</string>
     <string name="lab_49fc80cc">ปิด (เดี่ยวจะรันทีละตัว)</string>
@@ -619,7 +616,6 @@
     <string name="lab_53ca2709">ดาวน์โหลดเวอร์ชัน DXVK</string>
     <string name="lab_542dcdda">สติ๊กขวา</string>
     <string name="lab_545e8271">มีผลเฉพาะเมื่อเกมเรนเดอร์ต่ำกว่าความละเอียดของเซสชัน</string>
-    <string name="lab_54739575">เคอร์เซอร์ไปที่จุดสัมผัส และท่าทางการสัมผัส</string>
     <string name="lab_5482057e">ช่องผู้เล่น</string>
     <string name="lab_548c6bc1">ปิด XInput เพื่อให้เกมเห็นแค่เมาส์และคีย์บอร์ดจริง</string>
     <string name="lab_54ed9898">ลงชื่อเข้าใช้แล้ว · 1 เกม</string>
@@ -649,7 +645,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">ซ้ายบน</string>
     <string name="lab_58a426c9">ปิดสำหรับเกมนี้ขณะการสร้างเฟรมทำงาน </string>
-    <string name="lab_5901a4cd">Wayland: การเคลื่อนเมาส์จะส่งไปยังคอมโพสิเตอร์ เกมที่ล็อกตัวชี้จะได้รับเป็นการเคลื่อนที่แบบสัมพัทธ์</string>
     <string name="lab_5946d9c6">ใช้การตั้งค่าแอป (%1$s)</string>
     <string name="lab_594a913b">เชดเดอร์แบบ async</string>
     <string name="lab_595daef9">คอมโพเนนต์ที่ดาวน์โหลดไว้: ไฟล์บีบอัดและรายการแค็ตตาล็อก</string>
@@ -677,6 +672,7 @@
     <string name="lab_5cdd4dc6">FPS โหลด CPU/GPU และอุณหภูมิแสดงทับเกม ปรับรูปแบบได้ด้านล่าง และในเกมจากเมนูด้านข้าง</string>
     <string name="lab_5cf98060">ซ่อนส่วนขยาย present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">นีออน</string>
+    <string name="lab_5d1ebf1b">โหมดเล็ง</string>
     <string name="lab_5d676a2d">ส่งออกได้เฉพาะพรีเซ็ตของคุณเอง</string>
     <string name="lab_5d7ee5f8">GitHub, ตัวติดตามปัญหา และ Discord</string>
     <string name="lab_5db787de">เพื่อนและแชทใน Steam</string>
@@ -770,7 +766,6 @@
     <string name="lab_69f7d525">ไม่สามารถเปลี่ยนชื่อได้</string>
     <string name="lab_6a271188">พรีเซ็ต Box64 / พรีเซ็ต WOWBox64</string>
     <string name="lab_6a4b2ea4">พลังงาน</string>
-    <string name="lab_6a68da45">เมาส์แบบสัมพัทธ์</string>
     <string name="lab_6a87d625">DirectX 8 ถึง 11 ผ่าน Vulkan บิลด์ที่ชื่อ async หรือ gplasync คอมไพล์เชดเดอร์เบื้องหลังได้</string>
     <string name="lab_6a913533">ได้รับสิทธิ์รูทแล้ว</string>
     <string name="lab_6a98ad5e">ปุ่มจาง ๆ ที่มุมขวาบน แตะเพื่อเปิดเมนูด่วน</string>
@@ -782,7 +777,6 @@
     <string name="lab_6b7fbf69">การแก้ปัญหา</string>
     <string name="lab_6c15cb41">ปุ่มสัมผัสของเค้าโครงปัจจุบัน</string>
     <string name="lab_6c3656ad">แนวตั้ง</string>
-    <string name="lab_6c37a76c">การสัมผัสทำงานเป็น</string>
     <string name="lab_6c5fe717">เสียงตัวอย่าง</string>
     <string name="lab_6c8e3b1f">ตั้งเป็นค่าเริ่มต้น…</string>
     <string name="lab_6c9249ac">การดาวน์โหลดจากคลาวด์อัตโนมัติเมื่อเปิดเกมจะถูกปิดสำหรับเกมในไลบรารี GOG เซฟล่าสุดบนคลาวด์จะไม่ถูกดึงมาก่อนเริ่มเกม — คุณต้องดาวน์โหลดเองจากแท็บตัวจัดการเซฟเกม GOG หรือหน้ารายละเอียดของเกม ดำเนินการต่อไหม</string>
@@ -1028,7 +1022,6 @@
     <string name="lab_8eb9f765">การเปลี่ยนแปลงที่ยังไม่บันทึกที่นี่จะหายไป คอนเทนเนอร์ที่มีอยู่จะคงการตั้งค่าเดิม</string>
     <string name="lab_8ecc4179"> แทนของ Wine แรปเปอร์และตัวโหลดม็อดหลายตัวต้องใช้ ไม่รวม DLL กราฟิกเด็ดขาด: DXVK และ VKD3D เป็นผู้ดูแลส่วนนั้น</string>
     <string name="lab_8ece40f8">เฉพาะไดรเวอร์ Banners-Turnip เท่านั้น Turnip ต้นฉบับจะไม่สนใจค่านี้</string>
-    <string name="lab_8ed00ed7">สำหรับเกมที่ล็อกตัวชี้ (การหมุนมุมกล้อง)</string>
     <string name="lab_8ee80fca">ไม่มีแหล่งไดรเวอร์</string>
     <string name="lab_8ef37792">ล่าง</string>
     <string name="lab_8f4a852b">พลังงานของอุปกรณ์</string>
@@ -1217,6 +1210,7 @@
     <string name="lab_ab8824cb">โหมด Present ของอะแดปเตอร์</string>
     <string name="lab_abb1c367">ไม่มีอะไรเสียบอยู่ เกมนี้ยังตั้งให้เริ่มบนทีวี</string>
     <string name="lab_abb20221">ไม่มีพรีเซ็ต</string>
+    <string name="lab_abd752a4">ท่าทางการสัมผัส</string>
     <string name="lab_abf1049c">เก็บไฟล์บีบอัดต้นฉบับเป็นค่าเริ่มต้น</string>
     <string name="lab_ac21d91b">โหมดการเคลื่อนไหว</string>
     <string name="lab_ac35c85f">เกมจะเรนเดอร์บนไดรเวอร์กราฟิกด้านบนผ่านอะแดปเตอร์ Wayland</string>
@@ -1599,7 +1593,6 @@
     <string name="lab_e140a9e0">คอนโทรลเลอร์ XR หลัก</string>
     <string name="lab_e14156b5">คอร์สำหรับไคลเอนต์ Steam</string>
     <string name="lab_e141ca5d">ลำดับความสำคัญบนหน้าจอ</string>
-    <string name="lab_e1768a43">สลับระหว่างเล่นได้จากเมนูด้านข้างด้วย</string>
     <string name="lab_e18caa5c">ไม่มีไดรฟ์</string>
     <string name="lab_e19da5b2">อะแดปเตอร์ Wayland</string>
     <string name="lab_e1be537c">ยังไม่บันทึก</string>
@@ -1647,7 +1640,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) หรือ off</string>
     <string name="lab_e98a38e0">แว่นขยาย ภาพซ้อนภาพ คีย์บอร์ด และประสิทธิภาพ</string>
     <string name="lab_e9bb2501">ให้เกมใช้ไมค์ได้: DirectAudio จะรับเสียงอินพุต Android จะขอสิทธิ์หนึ่งครั้ง</string>
-    <string name="lab_e9e73eeb">หน้าจอสัมผัส: ส่งการสัมผัสจริงไปยังเกม</string>
     <string name="lab_ea08e43f">รันไทม์ Linux และทุกรายการ</string>
     <string name="lab_ea354143">ปุ่มจาง ๆ ที่มุมขวาบน แตะเพื่อเปิดเมนูด่วน ปุ่ม Back, ปุ่ม Menu หรือการแตะสี่นิ้วใช้ได้โดยไม่ต้องมีปุ่มนี้</string>
     <string name="lab_ea4babd8">วิธีเริ่มเกม</string>
@@ -1705,7 +1697,6 @@
     <string name="lab_f27c976e">สไตล์</string>
     <string name="lab_f2857f55">ภายใน</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">เมาส์ / ทัชแพด</string>
     <string name="lab_f2cdcc45">เลือกไดรเวอร์ GPU</string>
     <string name="lab_f2ed832c">ขนาดหน่วยความจำ GPU ที่บอกเกม DirectX (dxgi.maxDeviceMemory)</string>
     <string name="lab_f3043a4e">ความหน่วงเสียง</string>

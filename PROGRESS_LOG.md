@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart soft edge device-proven + 🌐 translations (63aa55cb; CI 42552610139 running)
+- **Device test of 906ae178 (Elite, DiRT Showdown, screenshot 214255, 21:42 EST):**
+  - The user: "looks good".
+  - The right edge is soft, the logo is centred, and the art shows through the cards and chips.
+  - logcat since the 21:27 install: no crash, FATAL or ANR.
+- **Translations:** the 4 new strings in all 32 languages (fill; check OK; 1800/1800 each), using each language's existing words for app and in-game menu. Only +128 lines, 4 per file.
+- **Next:** green → merge on the user's go (backup ref, --no-ff, tree check). The translations-only commit is not installed; the code under it is the device-tested 906ae178.
+
 ## 2026-11-08 — ✅ igart 906ae178 INSTALLED on the Elite main app (pubg) 21:27:23 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42550063478 green ×4. Installed base.apk sha256 5c18b9f1… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
 - **Next:** the user checks the soft edge → translate the 4 strings → merge on go.

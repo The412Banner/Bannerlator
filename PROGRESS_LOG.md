@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🧪 Latest Windows Steam client set up next to the old one (user test pending, NOT device-tested)
+- **User:** "can you get me latest client to try instead?"
+- **Done (18:40 EST):** Valve's SteamSetup.exe from cdn.akamai.steamstatic.com (sha256 7d365453…, signed "Valve Corp."; full signature hash check not done), unpacked with 7z → bootstrapper Steam.exe + bin/SteamService.exe + public/ in `F:\Download\Steam-latest` (SD). No steam.cfg, so it updates itself to the current client on first run.
+- **Shortcut:** new "Steam Latest" in container 1 (owner u0_a193, mode 600, app_data_file label; cover = copy of Steam.png), Launch options = the same 1.bat list. The old Steam folder and its shortcut are untouched.
+- **Next:** user exits the old Steam session, starts Steam Latest: first run downloads the client, then sign-in. Watch for the white window again (newer CEF may not take `-cef-single-process`), then retry the FlatOut download.
+- **Resume point / undo:** delete the "Steam Latest" shortcut in Bannerlator and the `Steam-latest` folder on the SD card. Memory: bannerlator-steam-client-white.
+
 ## 2026-11-09 — 🔍 Steam client (2024 copy) game download fails: client too old for zstd chunks (investigation)
 - **User (18:32 EST screenshot):** FlatOut download stops at 1.1 GB with "CONTENT SERVERS UNREACHABLE".
 - **Steam content_log:** 1170 of 1186 MB downloaded fine, then the SAME 26 chunks fail `Unpack failed` on all 6 servers (2 Valve caches, Akamai, Fastly, Alibaba, Google) → all marked bad → "No Download Source" → shown as "servers unreachable".

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ touch-aim CI 42626866929 GREEN ×4 (9864394d); installing pubg (user: "install it when it's done, pubg", 08:42 EST)
+- CI: all 4 jobs success (standard, ludashi, pubg, antutu); headSha 9864394d == pushed. pubg job log: BUILD SUCCESSFUL in 6m 20s; skipped steps are the cached / main-only ones; no compile warnings from the changed code (the Kotlin warnings in XServerDrawer.kt / DeckInGame.kt are older lines).
+- Before install (08:47 EST): installed com.tencent.ig 3.1.9-pre2 build, base.apk sha256 5c18b9f1… (= igart 906ae178, 11-08 21:27), app process 7623 open in the background, no Wine processes, Termux in front.
+- **Resume point:** pubg artifact Bannerlator-touch-aim-9864394d-pubg downloading to the scratchpad → stage /sdcard/Download/Bannerlator-touch-aim-9864394d.apk (sha256 host == device) → pm install (approved) → check installed sha + crash buffer. If the session dies after install: the new build is on the device, NOT device-tested; test = a mouse-look game (container 1: A Game About Digging A Hole, DOOM + DOOM II, Resident Evil 2) with on-screen controls, logcat `input: touch …, aim …` / `input: aim auto on|off`.
+
 ## 2026-11-09 — 🔧 feat/touch-aim-mode: Touch + Aim mode built (9864394d; CI 42626866929 running; NOT device-tested)
 - **Built (9864394d):**
   - **Touch:** Touchpad / Direct / Touchscreen. Direct = the old Cursor to Touch. Touchscreen = the old per-game "Touch acts as: Touchscreen" (simTouchScreen), folded in as a third choice instead of a second touch row (reuse; plan had only Touchpad / Direct). App setting (Touchpad / Direct) in Settings › Mouse & keyboard; per game in Mouse & touch (follows the app when unset); drawer Controls › Mouse and Lab in-game menu chips save for the game (else its container).

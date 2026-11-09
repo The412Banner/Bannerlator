@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ main 44d1ac3f pubg INSTALLED on the Pocket FIT 15:21:19 EST (user: "install main pubg on the pocket fit")
+- `pm install -r` (via /data/local/tmp, removed) Success; installed base.apk sha256 b1460b17… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Not device-tested beyond the install.
+
 ## 2026-11-09 — 📦 main 44d1ac3f pubg installing on the Pocket FIT (user: "install main pubg on the pocket fit", 15:2x EST)
 - Main build CI 42685308138 GREEN ×4 (headSha 44d1ac3f). Artifact Bannerlator-main-pubg, APK sha256 b1460b17… staged /sdcard/Download/Bannerlator-main-44d1ac3f-pubg.apk (host == device), com.tencent.ig vc106, cert a40da80a.
 - Before: Pocket FIT had lab-driver-list b1511471 (1b9d8143…); no game running. Undo: /sdcard/Download/Bannerlator-lab-driver-list-b1511471-pubg.apk.

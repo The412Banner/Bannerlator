@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart 2aa6ff7c INSTALLED on the Elite main app (pubg) 21:07:43 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42548252856 green ×4. Installed base.apk sha256 430cb207… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the centred logo and the glass cards and chips → translate the 4 strings → merge on go.
+
 ## 2026-11-08 — 🔧 igart: chips and buttons see-through too (2aa6ff7c; CI 42548252856; 63d1fd34's run cancelled)
 - **User:** "make them see through also, just not as much to be easy to read still".
 - **Change:** LocalIgRaisedAlpha + igRaised(base) in DeckInGameWidgets. The in-game menu provides 0.6 while art shows; IgChips (unselected; was solid), IgSegmented (was .7), IgButton (was .85) and IgScopeChip (was .8) take at most 0.6. The cards stay at 42 % glass.

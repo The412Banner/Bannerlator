@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 feat/lab-parity 91549b4f: all four areas merged + follow-ups (CI 42724334473 running; NOT installed, NOT device-tested)
+- Helper branches (each CI-green ×4, compile only): lab-parity-contents 27b10e68 (CI 42722084373), lab-parity-containers cd00e480 (42722479904), lab-parity-mods-game 45d99a88 (42722340107), lab-parity-library ee7d3ec8 (42722705722). Merged --no-ff into feat/lab-parity with no text conflicts (9c14a70b, 1f2c9aeb, 6d702b34, ad27f8a4); 3-way compile check CI 42723784588.
+- Follow-ups 91549b4f: top-line Search runs the shell search (no fake Y key); Home GPU drivers tile → Contents Installed; SteamStoreSearch.findAppIdByName stops caching a failed request as a week-long "none" (searchOrNull).
+- What's in it: Mods (Lab game page tile + LabModsDialog; Mods page in Lab/Deck in-game menus), game page follows the library, About this game tile, Wine-only Container/Mods tiles; Library sort/filter/card style + select/remove, Xbox not-installed, container line, launch-spec chips, CustomCover picks, Steam link cover/details, art retries, Search/Community/Friends in the top line/drawer, Stores refresh, Linux runtime status; Contents refresh/repo management/search/Set-as-default outcome+Undo/error text/row details/GPU drivers tab, old pages removed; Containers layer update/revert, storage info, save backup/restore, honest toasts, export refresh, busy banner; Controls rename/retry/previews/multi-select/system import; Appearance 50–150 % 5 % steps + side-menu storage switches; Settings › Controllers → Lab; no empty "Detected in this wrapper".
+- Known, not changed: ContainerManager.importContainer never calls back on failure (busy stays on); export says "Exported" when the target existed; SimpleMenuPage action lists start on the first entry; Lab Steam link doesn't rename to Steam's title.
+- **Next:** green → stage pubg → ASK install → user test (long list) → fixes → merge on go.
+
 ## 2026-11-09 — 🚧 feat/lab-parity started: Mods in Lab + the rest of the Lab-vs-Classic gaps (off main 45d3f56c; NOT built yet)
 - **User (~18:5x EST):** "yes add mods to lab on a new branch, any everything else missing please you listed" (list = memory bannerlator-lab-gaps, audit 11-09).
 - **Plan:** integration branch feat/lab-parity. Four helper agents, each in its own worktree + sub-branch off 45d3f56c, disjoint files, each CI-compiles its part:

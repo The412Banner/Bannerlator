@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ⏸ lab-badges-bugs 321d7aed: CI 42707058358 GREEN ×4, download paused (user leaving Wi-Fi, 17:2x EST)
+- User pre-approved the install ("install it when it's done"), then: "stop then we will download it when I get home from work". Partial artifact zip kept at /root/work/bl-dl/lab-badges-bugs-321d7aed-pubg.zip.part (262.6 of ~591.7 MB; artifact 13714850979, expires 2026-11-16) for a curl -C - resume.
+- **Resume point:** Pocket FIT runs 1b4b1951 (8262ebfd…), no background jobs. When home: resume download → verify → stage /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk → install (pre-approved) → hash + crash check → user checks the Home row → merge on go.
+
 ## 2026-11-09 — 🔧 lab-badges-bugs 321d7aed: no store pills on the Home Library row (CI 42707058358 running)
 - **User check of 1b4b1951 (screenshots 165140 portrait Home, 165243 StevenMXZ source page, 16:51–16:52 EST):** pills on the Home row's small covers too big (EOS wraps vertically) → "remove them since it will show in the top larger tile" (big tile meta says the store, e.g. "Added by me"). A on installed v891.14 opened "Download and replace / Save the file only" = bug 3 fix DEVICE-PROVEN.
 - **321d7aed:** LabHome RecentTile back to plain cards (no LabBadged); Library page keeps the pills.

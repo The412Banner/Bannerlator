@@ -79,7 +79,7 @@ Before any **stable release** is published, all changes are **manually debugged 
 |---|---|
 | **App label** | `Bannerlator Bionic` (standard) · `Bannerlator Bionic PuBG` (pubg) · `Bannerlator Bionic Ludashi` (ludashi) · `Bannerlator Bionic AnTuTu` (antutu) |
 | **Packages** | `com.winlator.banner` (standard) · `com.tencent.ig` (pubg) · `com.ludashi.benchmark` (ludashi) · `com.antutu.ABenchMark` (antutu) |
-| **Version** | Bannerlator **V 3.1.9-pre1** — built from Star **marcescence** (`versionName 3.1.9-pre1`, `versionCode 105`) |
+| **Version** | Bannerlator **V 3.1.9-pre2** — built from Star **marcescence** (`versionName 3.1.9-pre2`, `versionCode 106`) |
 | **Android SDK** | `compileSdk 34` · `targetSdk 28` · `minSdk 26` (Android 8.0+) |
 | **Lineage** | Winlator → cmod → Bionic Nightly → Star Bionic → **marcescence** → **Bannerlator** |
 
@@ -111,6 +111,7 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [🤖 AI Disclaimer](#-ai-disclaimer)
 - [ℹ️ Information](#ℹ️-information)
 - [🐛 Report a Mali GPU Issue](#-report-a-mali-gpu-game-issue)
+- [🧪 Lab interface style, game art, first-run setup & 32 languages (3.1.9-pre2)](#-lab-interface-style-game-art-first-run-setup--32-languages-319-pre2)
 - [🗂️ New file manager & text editor, more unpack formats, XMB style, mods & Mali (3.1.9-pre1)](#️-new-file-manager--text-editor-more-unpack-formats-xmb-style-mods--mali-319-pre1)
 - [🧰 GOG prerequisites without the container, Visual C++ fixes & moving games (3.1.8)](#-gog-prerequisites-without-the-container-visual-c-fixes--moving-games-318)
 - [☁️ Xbox Cloud Gaming, v15 layers & Wine Mono (3.1.7)](#️-xbox-cloud-gaming-v15-layers--wine-mono-317)
@@ -137,6 +138,17 @@ Every report gets its own **public discussion thread**. You can reply as the ori
 - [📄 License](#-license)
 
 ---
+
+## 🧪 Lab interface style, game art, first-run setup & 32 languages (3.1.9-pre2)
+
+**[3.1.9-pre2](https://github.com/The412Banner/Bannerlator/releases/tag/3.1.9-pre2) is a test build of everything since 3.1.9-pre1:**
+
+- **Lab interface style** — a controller-first interface (Settings › Appearance › Interface Style): dashboard home, Library, Stores, game pages, settings laid out like the Classic editors, Contents, Controls, Save Manager and one in-game menu; a faint line between options, **?** help on settings, and Classic's Wayland adapter settings with the adapter report.
+- **Game art** — the selected game's art behind Home and the Library (from Steam or SteamGridDB), 3D art, trailers in Home's big tile, and a Game details page to pick each picture.
+- **First-run setup** — new installs start in Lab with Carbon & Ember at 100 % size; a setup step downloads Proton, DXVK, VKD3D, FEXCore, WOWBox64 and a Banners-Turnip driver for your GPU and creates a container. Updates keep their style, theme and sizes.
+- **Lab in 32 languages** — Appearance › Language.
+- **Wayland logs** — each game's Wayland logs in its own folder, Share logs as one zip; on Mali, "System" on Wayland uses the phone's own driver.
+- **File manager** — no crash on phones that list a folder twice ([#659](https://github.com/The412Banner/Bannerlator/issues/659)).
 
 ## 🗂️ New file manager & text editor, more unpack formats, XMB style, mods & Mali (3.1.9-pre1)
 

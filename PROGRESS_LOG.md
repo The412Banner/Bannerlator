@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ lab-badges-bugs 1b4b1951 INSTALLED on the Pocket FIT (pubg) 16:47:28 EST (user: "yes install it"; NOT device-tested yet)
+- CI 42697428457 GREEN ×4 (headSha 1b4b1951). Staged /sdcard/Download/Bannerlator-lab-badges-bugs-1b4b1951-pubg.apk sha256 8262ebfd… (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: main 44d1ac3f (b1460b17…), no game running, Termux in front. `pm install -r` Success; installed base.apk 8262ebfd… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Undo: /sdcard/Download/Bannerlator-main-44d1ac3f-pubg.apk.
+- **User checks:** store badges on Library + Home cards (all card styles), Contents › Installed after a download finishes, A on an installed component (menu, no re-download), Home Downloads tile → Lab Contents, Y search → Lab game page, own-background game keeps logo/wide/preview after an app restart. Merge on the user's go.
+
 ## 2026-11-09 — 🔧 fix/lab-badges-bugs 1b4b1951: Lab store badges + 6 bug fixes (CI 42697428457 running; NOT installed, NOT device-tested)
 - **Why:** user (~15:30 EST) noticed no store badges on Lab cards and asked what else Lab misses vs Classic; audit (code reading, 2 Explore agents + my checks) → memory bannerlator-lab-gaps. User: "yes fix the badges and bugs 1-6 on a new branch".
 - **Built 1b4b1951** (off main cf471826, worktree /root/src/Bannerlator-wt/lab-badges-bugs, sparse ui/simple + ui/deck + log), 5 files +47 −17:

@@ -1,10 +1,11 @@
 # Star-Compose — Progress Log
 
-## 2026-11-09 — 🔧 touch-aim ca31a4d9: in-game menu labels follow Touch / Aim mode (CI 42650998755 running; NOT device-tested)
+## 2026-11-09 — ✅ touch-aim ca31a4d9: in-game menu labels follow Touch / Aim mode (CI 42650998755 GREEN ×4; NOT installed, NOT device-tested)
 - **Why:** user asked "are these settings going to interfere with mouse/touch tabs in the ingame side drawer?" Code read on 4764bd6d: no clash (on-screen controls hand missed fingers to the touch layer; stick / mouse-area / gyro / Steam pad mouse follow Aim On, and on Wayland also Auto via externalRelativeMode; Disable Mouse still wins; Auto-hide Cursor and Aim only hide). Two labels still named the old switches. User: "yes fix both labels".
 - **Built (ca31a4d9):** DeckInGame.kt Controls › Mouse save notes: "Relative mouse" (this game) + "Cursor to touch and its touch gestures" (all games) → "Touch" + "Aim mode" (this game) + "Touch gestures" (all games; prefs gesture_*). XServerDrawer.kt Steam client help line: "Cursor to Touch (Controls > Touch)" → "Touch: Direct (Controls > Mouse)". Stale comment in XServerDisplayActivity Wayland listener updated. Lab strings: "Touch" / "Aim mode" reused; "Touch gestures" new, filled in all 32 languages (missing = [] each); two unused strings dropped; check: 1791 strings, up to date.
 - Left as is (told the user): the Classic drawer has a "Touch" sub-tab (on-screen controls) and a "Touch" row on the Mouse sub-tab; in a Steam (Linux) session the Classic drawer shows both the Steam client Touch picker and the Mouse tab one (the Deck menu hides the Mouse tab there).
-- **Resume point:** CI 42650998755 (headSha ca31a4d9) running; check `gh run view 42650998755 -R The412Banner/Bannerlator --json conclusion,jobs`. Installed on the Elite is still 9864394d (pubg). Install of ca31a4d9 only after the user says so.
+- **CI 42650998755:** all 4 jobs success, headSha ca31a4d9 == pushed; each job log BUILD SUCCESSFUL (4m 57s – 5m 58s), no `e:` / `error:` lines, no warnings on the changed lines.
+- **Resume point:** CI 42650998755 (headSha ca31a4d9) green; check `gh run view 42650998755 -R The412Banner/Bannerlator --json conclusion,jobs`. Installed on the Elite is still 9864394d (pubg). Install of ca31a4d9 only after the user says so.
 
 ## 2026-11-09 — 🧪 touch-aim 9864394d: first user test, A Game About Digging A Hole (Wayland), 08:58–09:04 EST
 - **User:** "tested it in digging game" (no verdict given yet; asked).

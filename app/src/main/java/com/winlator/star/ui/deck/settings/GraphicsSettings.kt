@@ -1247,7 +1247,7 @@ internal class DeckGraphicsState(
 
     // Nothing to see: it reads the lists and probes the driver while the Graphics page is open.
     private fun topItems(): List<PageExtra> = buildList {
-        add(PageExtra("graphics-probes") { GraphicsProbes(this@DeckGraphicsState) })
+        add(PageExtra(GRAPHICS_PROBES) { GraphicsProbes(this@DeckGraphicsState) })
         // The classic gear's adapter report: what the graphics driver used on Wayland can do.
         if (!env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) {
             add(PageExtra(WAYLAND_ADAPTER_REPORT) { WaylandAdapterReport(value("graphics.compositorDriver")) })
@@ -1278,6 +1278,9 @@ internal class DeckGraphicsState(
 }
 
 internal const val WAYLAND_ADAPTER_REPORT = "wayland-adapter-report"
+
+/** The Graphics page's invisible extra that reads the lists (driver versions, DXVK, VKD3D ...) and runs the probes. */
+internal const val GRAPHICS_PROBES = "graphics-probes"
 
 /**
  * The Wayland adapter report of [driverId], as the classic gear shows it: cached per driver and app build,

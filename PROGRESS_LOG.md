@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔍 Steam Latest (2026 client) updates fine but shows a black sign-in window on Wayland; X11 test next
+- **Run 18:40–18:45 EST (user):** the starter updated itself to client 1769731672 (2026-01-30; last build on the 32-bit channel); its steamclient DLLs now contain the zstd chunk marker `VSZa`, so game downloads should work. The updater window drew normally.
+- **Problem:** the sign-in window is black. This client ignores `-cef-single-process` / `-cef-in-process-gpu` (webhelper.txt starts separate gpu-process, renderer and utility processes) → 7 window redraws, then ~1 per 10 s. The logon "Try another CM" lines are only the idle anonymous connection being dropped.
+- **Refined cause (not proven):** Chromium's compositor process draws into a window owned by the browser process; with Wine's Wayland driver a process can only fill its own windows, so nothing shows. Wine's X11 driver draws through the X server, where this works (fits Bruno's X11-only Winlator running current Steam).
+- **Next:** user sets Steam Latest › Display system = X11 (per-game setting) and launches again.
+- **Resume point:** no Steam running; memory: bannerlator-steam-client-white.
+
 ## 2026-11-09 — 🧪 Latest Windows Steam client set up next to the old one (user test pending, NOT device-tested)
 - **User:** "can you get me latest client to try instead?"
 - **Done (18:40 EST):** Valve's SteamSetup.exe from cdn.akamai.steamstatic.com (sha256 7d365453…, signed "Valve Corp."; full signature hash check not done), unpacked with 7z → bootstrapper Steam.exe + bin/SteamService.exe + public/ in `F:\Download\Steam-latest` (SD). No steam.cfg, so it updates itself to the current client on first run.

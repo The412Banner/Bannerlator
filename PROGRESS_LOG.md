@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED fix/lab-badges-bugs → main 822ee6fb (user: "works, merge it to main", ~18:2x EST)
+- **Device-checked** by the user on the Pocket FIT (pubg 321d7aed): "works". Earlier proof: A on installed → actions menu (screenshot 165243); Home row pills removed on request.
+- Main had not moved since the branch base (cf471826) → no conflicts. Backup ref refs/backup/20261109/main-before-lab-badges-bugs = cf471826 (on GitHub, ls-remote checked). --no-ff merge 822ee6fb (parents cf471826 + 1b90d658), merged tree == branch tree; app code == tested 321d7aed.
+- Push note: the first pushes (backup ref + main) failed without a reason shown (flaky network); retried without -q: both OK. GitHub printed "3 of 3 required status checks are expected" (push accepted, as before).
+- Main push build: CI Build (artifacts only) 42718347021 (headSha 822ee6fb) running. No release / tag. Branch fix/lab-badges-bugs kept.
+- Still open from the Lab audit (memory bannerlator-lab-gaps): the "missing" list (Library sort/filter, multi-select, container layer/storage/restore, repo management + refresh, Controls extras, etc.) and smaller bugs (game page after remove, toasts, Controls rename/retry, cover picker).
+
 ## 2026-11-09 — ✅ lab-badges-bugs 321d7aed INSTALLED on the Pocket FIT (pubg) 18:07:21 EST (pre-approved: "install it when it's done"; NOT device-tested yet)
 - Download resumed at home (18:06, 14 MB/s) from the kept partial; artifact zip 591,684,773 B OK. APK sha256 3a5a3504… staged /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk (host == device), com.tencent.ig vc106, cert a40da80a.
 - Before: 1b4b1951 (8262ebfd…), no game running. `pm install -r` Success; installed base.apk 3a5a3504… == staged; crash buffer empty; peers root-66 / root-12 / root-8b told before + "done" after.

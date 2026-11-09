@@ -102,6 +102,13 @@ internal data class SaveScope(val label: String, val icon: ImageVector) {
     }
 }
 
+/** Lab's in-game menu over the game's art: how solid raised things (chips, buttons, segment boxes) may be; null = their own. */
+internal val LocalIgRaisedAlpha = androidx.compose.runtime.staticCompositionLocalOf<Float?> { null }
+
+/** [base], or less over the game's art (see-through, but less than the cards so they stay easy to read). */
+@Composable
+internal fun igRaised(base: Float): Float = LocalIgRaisedAlpha.current?.let { minOf(it, base) } ?: base
+
 /** "Saved for this game" when this session has a shortcut to write to, else "Saved for this container". */
 @Composable
 internal fun igGameScope(): SaveScope {
@@ -116,7 +123,7 @@ internal fun IgScopeChip(scope: SaveScope) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(if (com.winlator.star.ui.theme.AppThemeState.simpleLook) deckShape(3.dp) else RoundedCornerShape(50))
-            .background(cs.surfaceContainerHigh.copy(alpha = 0.8f))
+            .background(cs.surfaceContainerHigh.copy(alpha = igRaised(0.8f)))
             .padding(horizontal = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 7.dp else 9.dp, vertical = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 3.dp else 4.dp),
     ) {
         Icon(scope.icon, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(13.dp))
@@ -304,7 +311,7 @@ internal fun <T> IgChips(
                 modifier = Modifier
                     .deckFocusRing(shape)
                     .clip(shape)
-                    .background(if (sel) cs.primary.copy(alpha = 0.16f) else cs.surfaceContainerHigh)
+                    .background(if (sel) cs.primary.copy(alpha = 0.16f) else cs.surfaceContainerHigh.copy(alpha = igRaised(1f)))
                     .border(if (sel) 2.dp else 1.dp, if (sel) cs.primary else deckLine().copy(alpha = 0.4f), shape)
                     .clickable(enabled = on, role = Role.RadioButton) { onSelect(v) }
                     .heightIn(min = if (lab) 34.dp else 40.dp)
@@ -335,7 +342,7 @@ internal fun <T> IgSegmented(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .clip(track)
-            .background(cs.surfaceContainerHigh.copy(alpha = 0.7f))
+            .background(cs.surfaceContainerHigh.copy(alpha = igRaised(0.7f)))
             .border(1.dp, deckLine().copy(alpha = 0.35f), track)
             .padding(5.dp),
     ) {
@@ -412,7 +419,7 @@ internal fun IgButton(
         modifier = modifier
             .deckFocusRing(shape, scaleTo = 1.04f, onAccent = primary)
             .clip(shape)
-            .background(if (primary) cs.primary else cs.surfaceContainerHigh.copy(alpha = 0.85f))
+            .background(if (primary) cs.primary else cs.surfaceContainerHigh.copy(alpha = igRaised(0.85f)))
             .then(if (primary) Modifier else Modifier.border(1.dp, if (danger) cs.error.copy(alpha = 0.7f) else deckLine().copy(alpha = 0.5f), shape))
             .clickable(enabled = enabled, onClick = onClick)
             .heightIn(min = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 40.dp else 46.dp)

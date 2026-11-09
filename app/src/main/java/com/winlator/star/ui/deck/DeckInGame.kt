@@ -1127,6 +1127,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
         } else {
             Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.97f), panelBottom.copy(alpha = 0.98f)))))
         }
+    // Over the game's art, chips and buttons are see-through too (less than the cards).
+    androidx.compose.runtime.CompositionLocalProvider(LocalIgRaisedAlpha provides if (art.isNotEmpty()) 0.6f else null) {
     Column(
         modifier = Modifier
             .matchParentSize()
@@ -1218,6 +1220,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             IgButton(if (isPaused) L("Resume") else L("Pause"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
             IgButton(L("Exit game"), Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
         }
+    }
     }
     }
 }

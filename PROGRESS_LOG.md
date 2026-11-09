@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 fix/lab-badges-bugs 1b4b1951: Lab store badges + 6 bug fixes (CI 42697428457 running; NOT installed, NOT device-tested)
+- **Why:** user (~15:30 EST) noticed no store badges on Lab cards and asked what else Lab misses vs Classic; audit (code reading, 2 Explore agents + my checks) → memory bannerlator-lab-gaps. User: "yes fix the badges and bugs 1-6 on a new branch".
+- **Built 1b4b1951** (off main cf471826, worktree /root/src/Bannerlator-wt/lab-badges-bugs, sparse ui/simple + ui/deck + log), 5 files +47 −17:
+  1. Badges: LabBadged (LabArt.kt) draws XmbStoreBadges top left on Library (LabGridCard) and Home row cards, all 3 card styles; LabIconCard(badges = true).
+  2. LabHome: `LaunchedEffect(shortcuts) { launcher.resumePendingRelaunch(shortcuts) }` (SteamLite/Goldberg retry, Ubisoft set-up-then-launch).
+  3. LabContents: re-read lists when a ContentDownloadRegistry entry reaches DONE.
+  4. SimpleComponentSourcePage: onA = null when installed → A opens the actions sheet (Download and replace / Save the file only).
+  5. DeckShell SIMPLE_ALIASES: Screen.Contents + DeckRoutes.COMPONENTS → SimpleRoutes.DRIVERS (Lab Contents); Home Downloads tile → DRIVERS.
+  6. DeckShell DeckNav.open (Lab): deck_game?path= → lab_game?path= (Y search, Deck pages).
+  7. LabArt.resolve: own background → still look up the Steam app (findAppIdByName, cached on device), skip only the SteamGridDB background.
+- **Next / resume:** green → stage pubg → ASK install (not pre-approved) → user checks badges, Contents after a download, A on installed, Downloads tile, Y search → merge on go.
+
 ## 2026-11-09 — ✅ main 44d1ac3f pubg INSTALLED on the Pocket FIT 15:21:19 EST (user: "install main pubg on the pocket fit")
 - `pm install -r` (via /data/local/tmp, removed) Success; installed base.apk sha256 b1460b17… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Not device-tested beyond the install.
 

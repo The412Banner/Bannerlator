@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 📦 main 44d1ac3f pubg installing on the Pocket FIT (user: "install main pubg on the pocket fit", 15:2x EST)
+- Main build CI 42685308138 GREEN ×4 (headSha 44d1ac3f). Artifact Bannerlator-main-pubg, APK sha256 b1460b17… staged /sdcard/Download/Bannerlator-main-44d1ac3f-pubg.apk (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: Pocket FIT had lab-driver-list b1511471 (1b9d8143…); no game running. Undo: /sdcard/Download/Bannerlator-lab-driver-list-b1511471-pubg.apk.
+
 ## 2026-11-09 — ✅ MERGED fix/lab-driver-list → main 44d1ac3f (user: "works, merge it to main, make sure it does not conflict with the new work already merged", ~14:4x EST)
 - **Device-proven** (user: "works") on the Pocket FIT, pubg b1511471: Container-2 (X11) Driver version lists the installed drivers.
 - Main had moved to 332ac9d6 (fix/driver-install-status merge 979ce857 from the other session: AdrenotoolsManager / DriverInstaller / Contents + strings_lab). Overlap with this branch: PROGRESS_LOG.md only (both added entries at the top) → kept both sides in full (merged log vs main's = +19 lines, 0 removed). No code file touched by both; main's enumarateInstalledDrivers change (null-safe, skips ".tmp-…" / "tmp") is compatible with GraphicsLists.reloadDrivers.

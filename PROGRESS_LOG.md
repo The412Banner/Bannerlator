@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ lab-driver-list b1511471 INSTALLED on the Pocket FIT (pubg) 14:31:32 EST (user: "install pubg on the pocket fit when green"; NOT device-tested yet)
+- `pm install -r` (copy via /data/local/tmp, removed) Success; installed base.apk sha256 1b9d8143… == staged; crash buffer empty after install; peers root-66 / root-12 / root-d7 told before + "done" after.
+- **User checks:** Container-2 (X11) › General › Driver settings › Driver version (expect all 10 installed drivers), DX wrapper settings › DXVK / VKD3D version lists. Undo: /sdcard/Download/Bannerlator-pubg-before-lab-driver-list-2bf91782.apk.
+- **Next:** merge to main on the user's go (backup ref refs/backup/20261109/main-before-lab-driver-list, --no-ff, merged tree == b1511471 code).
+
 ## 2026-11-09 — 🔧 lab-driver-list b1511471: CI 42676522476 GREEN ×4, staged, installing pubg on the Pocket FIT (14:3x EST)
 - Artifact Bannerlator-lab-driver-list-b1511471-pubg (zip 591,665,039 B; `gh run download` refused it with "would result in path traversal" → API zip + curl resume over a dropping Wi-Fi). APK 597,168,575 B, sha256 1b9d8143… staged /sdcard/Download/Bannerlator-lab-driver-list-b1511471-pubg.apk (host == device); com.tencent.ig, versionCode 106 / 3.1.9-pre2 (dev build keeps release numbers), cert a40da80a….
 - Skipped CI steps = cache hits + main-only cache saves (normal for a branch build).

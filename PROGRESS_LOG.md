@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🚧 feat/touch-aim-mode STARTED (off main a0d3abc1; nothing built yet)
+- **User (07:59 EST):** "yes start it, fix and settings together on one branch off main". Plan = the one parked 11-08 (memory bannerlator-mouse-touch-plan).
+- **Why:** babizigames (Discord, Mali channel, 11-08): CoD MW3 on Wayland, touch aiming with on-screen controls snaps the view sky ↔ ground; arrow never hides; Relative Mouse did not help. Open issues on the same area: #504, #561, #575, #580, #604, #596.
+- **Bug confirmed on main a0d3abc1:** touchscreen mode + Relative Mouse sends the finger's screen position as a relative move (TouchpadView.java:535 handleTouchDown, :551 handleTouchMove) → huge spins, X11 and Wayland. `touchscreen_toggle` is read (TouchpadView:298, XServerDisplayActivity:10371) but no UI writes it.
+- **Plan:**
+  - Settings: **Touch: Touchpad / Direct** and **Aim mode: Auto / On / Off** (default Auto) in App settings › Mouse & keyboard; per game (Mouse & touch: Aim mode replaces the Relative mouse toggle, Touch adds App setting / Touchpad / Direct); drawer Mouse & Cursor: Touch + Aim chips replace Cursor to Touch + Relative Mouse. Disable Mouse, Auto-hide Cursor, Touch Gestures, OSC, Steam (Linux) touch picker, Mouse capture (DirectInput) unchanged.
+  - Migration: Relative Mouse on → Aim On; Cursor to Touch on or old touchscreen_toggle on → Touch Direct; else Touchpad + Aim Auto.
+  - Aim Auto: drags turn into movement and the arrow hides while the game locks or hides the cursor or keeps warping a visible cursor (X11: Java X server warps; Wayland: lock / position-hint pattern); back to a pointer when a normal cursor returns; taps never turn the camera.
+  - Fix the touchscreen + Relative bug in the same branch. Short labels only, no hint lines.
+  - Idea from Max's DroidDeck gamescope patches 0127/0128/0131 (#2053, #2280); own code, credit Max.
+- **Test plan:** Elite, a mouse-look game on X11 + Wayland with on-screen controls; ask before every install/launch.
+
 ## 2026-11-08 — ✅ igart soft edge device-proven + 🌐 translations (63aa55cb; CI 42552610139 running)
 - **Device test of 906ae178 (Elite, DiRT Showdown, screenshot 214255, 21:42 EST):**
   - The user: "looks good".

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED fix/lab-driver-list → main 44d1ac3f (user: "works, merge it to main, make sure it does not conflict with the new work already merged", ~14:4x EST)
+- **Device-proven** (user: "works") on the Pocket FIT, pubg b1511471: Container-2 (X11) Driver version lists the installed drivers.
+- Main had moved to 332ac9d6 (fix/driver-install-status merge 979ce857 from the other session: AdrenotoolsManager / DriverInstaller / Contents + strings_lab). Overlap with this branch: PROGRESS_LOG.md only (both added entries at the top) → kept both sides in full (merged log vs main's = +19 lines, 0 removed). No code file touched by both; main's enumarateInstalledDrivers change (null-safe, skips ".tmp-…" / "tmp") is compatible with GraphicsLists.reloadDrivers.
+- Backup ref refs/backup/20261109/main-before-lab-driver-list = 332ac9d6 (on GitHub, ls-remote checked). --no-ff merge 44d1ac3f (parents 332ac9d6 + c44c5afb). Merge vs main = GraphicsSettings.kt + SimpleClassicEditor.kt + log only; both files byte-identical to tested b1511471. App code vs tested build differs only by the driver-install-status work already on main.
+- Main push build: CI Build (artifacts only) 42685308138 (headSha 44d1ac3f) running. No release / tag. Branch fix/lab-driver-list kept.
+
 ## 2026-11-09 — ✅ lab-driver-list b1511471 INSTALLED on the Pocket FIT (pubg) 14:31:32 EST (user: "install pubg on the pocket fit when green"; NOT device-tested yet)
 - `pm install -r` (copy via /data/local/tmp, removed) Success; installed base.apk sha256 1b9d8143… == staged; crash buffer empty after install; peers root-66 / root-12 / root-d7 told before + "done" after.
 - **User checks:** Container-2 (X11) › General › Driver settings › Driver version (expect all 10 installed drivers), DX wrapper settings › DXVK / VKD3D version lists. Undo: /sdcard/Download/Bannerlator-pubg-before-lab-driver-list-2bf91782.apk.

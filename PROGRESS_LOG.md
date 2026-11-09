@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 MERGED feat/ingame-game-art → main a0d3abc1 (~21:58 EST; main artifacts build 42553504693 running)
+- **User:** "merge it when green" and "then build main as artifacts only after merging".
+- **Checks:**
+  - CI 42552610139 green ×4 on 63aa55cb.
+  - Backup refs/backup/20261108/main-before-ingame-game-art = 8a2f0cab. Main had gained 3 mali-report docs commits, which touch no app code.
+  - --no-ff merge via merge-tree/commit-tree. The merged app/ + tools/ tree equals branch 2121ebdf; docs/ equals main.
+  - No other workflow was running at push time.
+- **Build:** the push auto-started CI Build (artifacts only) 42553504693 on a0d3abc1, so I dispatched none. No release, no tag.
+- The branch is kept. The Elite runs 906ae178 (same code minus the translations).
+
 ## 2026-11-08 — ✅ igart soft edge device-proven + 🌐 translations (63aa55cb; CI 42552610139 running)
 - **Device test of 906ae178 (Elite, DiRT Showdown, screenshot 214255, 21:42 EST):**
   - The user: "looks good".

@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED feat/touch-aim-mode → main 3bcc6128 (user: "merge it to main", ~12:3x EST)
+- Backup ref refs/backup/20261109/main-before-touch-aim-mode = a0d3abc1 (pushed, ls-remote checked). Main had not moved (a0d3abc1 ancestor of the branch). --no-ff merge 3bcc6128 (parents a0d3abc1 + 0f15f5b2), tree == branch tip; diff vs the tested build ca31a4d9 = PROGRESS_LOG.md only. No release workflow running; main push CI 42665817891 started.
+- Proof level at merge: CI green (42650998755) + device-tested on the Elite (pubg ca31a4d9: labels, Touch/Aim settings, per-game save; smooth aim in a Wayland pointer-lock game). NOT device-tested: Aim Auto warp detection, Direct while aiming, X11. Branch feat/touch-aim-mode kept (delete only on the user's word).
+
 ## 2026-11-09 — ✅ touch-aim ca31a4d9: user check — labels right, aiming smooth (11:5x EST)
 - **User:** "labels look right, aiming felt smooth". Labels = device-proven (user saw them, ca31a4d9 pubg). Aiming smooth = A Game About Digging A Hole (Wayland, real pointer lock path) on 9864394d — the same aim code as ca31a4d9.
 - **Proof levels now:** Touch / Aim settings + per-game save + labels: device-proven on the Elite (Wayland, one game). Auto warp detection: NOT device-tested (no game that warps a visible cursor tried). Direct while aiming: NOT device-tested. X11: NOT device-tested.

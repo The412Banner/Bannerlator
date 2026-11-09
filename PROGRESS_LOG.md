@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ⏳ touch-aim ca31a4d9: installing pubg (user: "yes install it, pubg", 11:2x EST)
+- Before install: Elite, installed com.tencent.ig base.apk sha256 0a5724b7… (= 9864394d, 08:57:14), app process 20546 in the background, no Wine processes, launcher in front. No peer sessions (ListAgents empty).
+- **Resume point:** artifact Bannerlator-touch-aim-ca31a4d9-pubg (CI 42650998755) downloading to the scratchpad → stage /sdcard/Download/Bannerlator-touch-aim-ca31a4d9.apk (sha256 host == device) → `pm install -r` (approved) → check installed sha + crash buffer. If the session dies after install: ca31a4d9 is on the device, labels NOT seen on device yet.
+
 ## 2026-11-09 — ✅ touch-aim ca31a4d9: in-game menu labels follow Touch / Aim mode (CI 42650998755 GREEN ×4; NOT installed, NOT device-tested)
 - **Why:** user asked "are these settings going to interfere with mouse/touch tabs in the ingame side drawer?" Code read on 4764bd6d: no clash (on-screen controls hand missed fingers to the touch layer; stick / mouse-area / gyro / Steam pad mouse follow Aim On, and on Wayland also Auto via externalRelativeMode; Disable Mouse still wins; Auto-hide Cursor and Aim only hide). Two labels still named the old switches. User: "yes fix both labels".
 - **Built (ca31a4d9):** DeckInGame.kt Controls › Mouse save notes: "Relative mouse" (this game) + "Cursor to touch and its touch gestures" (all games) → "Touch" + "Aim mode" (this game) + "Touch gestures" (all games; prefs gesture_*). XServerDrawer.kt Steam client help line: "Cursor to Touch (Controls > Touch)" → "Touch: Direct (Controls > Mouse)". Stale comment in XServerDisplayActivity Wayland listener updated. Lab strings: "Touch" / "Aim mode" reused; "Touch gestures" new, filled in all 32 languages (missing = [] each); two unused strings dropped; check: 1791 strings, up to date.

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ Steam client white window SOLVED with launch options (user-found; Elite, Wayland)
+- **Fix (user, run 18:27:47 EST):** shortcut Launch options = the Steam folder's 1.bat set: `-nocrashmonitor -noshaders -no-shared-textures -cef-single-process -cef-in-process-gpu -cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad -cef-disable-gpu`. Logged in; Store and Friends List draw (user screenshots 18:29:08 / 18:29:13). The 2024 client (1731433018) is still accepted.
+- **Evidence:** Wayland log shows ONE steamwebhelper (pid 17784) instead of three, and 735 window redraws in the first 10 s (30–50 fps of shared-memory frames) vs 5–17 per minute in the white runs.
+- **Cause (as far as proven):** in Chromium's normal multi-process layout the page is drawn in a separate renderer process and handed to the browser process; under Wine here that hand-off never fills the window. Single-process mode draws in the window's own process. The single required flag is NOT isolated (candidates `-cef-single-process`, `-no-cef-sandbox` / `-cef-disable-sandbox`).
+- **Open (user decides):** auto-add these options for steam.exe shortcuts; fix the icd.json pin-path bug; optional flag bisect.
+- **Cleanup:** the `.cef-enable-remote-debugging` file I created at 18:29 is removed (verified); the shortcut keeps the user's options. Steam left running in BL.
+
 ## 2026-11-09 — 🔍 Steam client white window: `-cef-disable-gpu` run is still white (Elite, Wayland; investigation)
 - **Run (user launched 18:25–18:26 EST, Launch options `-cef-disable-gpu`):** still a white 705x440 box (user screenshot 18:26:48). The flag took effect (webhelper_gpu.txt: gpu_compositing / rasterization `disabled_software`, ANGLE_SWIFTSHADER).
 - **Wayland log:** 0 GPU frames (expected in software mode); window redraws 5 when the window opened + 17 at 18:26:30 (a 129x131 popup) — software frames reached the window and were still blank. webhelper: "Browser requested transparent background, but it is not supported". No page errors in Steam's logs.

@@ -110,7 +110,7 @@ fun InstallProgressDialog(
                     val label = when {
                         state.cancelled -> "Cancelled"
                         state.phase == ContentDownloadPhase.ERROR -> state.error ?: if (state.saveOnly) "Save failed." else "Install failed."
-                        state.phase == ContentDownloadPhase.DONE -> if (state.saveOnly) "Saved to My Files" else "Installed"
+                        state.phase == ContentDownloadPhase.DONE -> if (state.saveOnly) "Saved to My Files" else state.note ?: "Installed"
                         state.phase == ContentDownloadPhase.DOWNLOADING -> "Downloading ${(frac * 100).toInt()}%"
                         state.saveOnly -> "Saving to My Files"
                         else -> "Installing ${(frac * 100).toInt()}%"

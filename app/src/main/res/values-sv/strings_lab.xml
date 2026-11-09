@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Ta bort</string>
     <string name="lab_3e04658a">Blå</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Ladda ned och ersätt</string>
     <string name="lab_3e5678cd">Snabbast</string>
     <string name="lab_3e86e543">Skickas till wrappern som det är. Lämna tomt för att låta det vara oinställt.</string>
     <string name="lab_3ecd0489">Automatisk säkerhetskopiering av sparfiler vid avslut stängs AV för spelen i ditt Steam-bibliotek. Deras sparfiler sparas inte undan när ett spel stängs — du måste säkerhetskopiera dem själv via en containers säkerhetskopieringsalternativ eller Sparhanteraren. Fortsätta?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Av — välj en frekvens nedan för att låsa skärmen.</string>
     <string name="lab_443d0954">Starta dess Windows-skrivbord</string>
     <string name="lab_4455b74f">Hur ofta spakrörelser når spelet. Kan även ändras i spelet.</string>
+    <string name="lab_44655ec4">Installationen misslyckades: %1$s</string>
     <string name="lab_449c12fb">Storlek på skärmen</string>
     <string name="lab_44bc352d">Logotyp</string>
     <string name="lab_4500ffeb">Standardprofilen för %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Loggar</string>
     <string name="lab_50d905f5">Låg latens</string>
     <string name="lab_50db75d4"> · Välj den för att ge detta spel ett eget värde.</string>
+    <string name="lab_51294f91">%1$s är redan installerad</string>
     <string name="lab_513ecfb1">Vänner och chatt</string>
     <string name="lab_51732071">Profil importerad</string>
     <string name="lab_51a6725d">Vulkan-efterbehandlingseffekt (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS och SGSR skalar upp och skärper; SGSR är Qualcomms, gjord för Adreno.</string>
     <string name="lab_554ed1d4">Ta bort %1$s?</string>
     <string name="lab_558dab54">Detta spel levereras med Microsofts egen Xbox-körmiljö, som kräver Windows Gaming Services. På: appens körmiljö används i stället. Stäng bara av för att prova spelets egen.</string>
-    <string name="lab_55b35170">Filen är inte ett drivrutinspaket</string>
     <string name="lab_55dbea72">Ljud (MIDI)</string>
     <string name="lab_55fb28db">Hittades i spelmappen.</string>
     <string name="lab_56b4c80c">Tema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM-rutrendering</string>
     <string name="lab_7398c748">Din egen accentfärg · X för att välja den</string>
     <string name="lab_73a11f48">Containrar, inställningar och prefix i en fil (klassiska Inställningar).</string>
+    <string name="lab_73add714">Ingen meta.json i zip-filen</string>
     <string name="lab_73e71958">Kärnor som 32-bitarsprogram får använda</string>
     <string name="lab_74350de7">Om</string>
     <string name="lab_749c9e00">Inga containrar än.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafikdrivrutin</string>
     <string name="lab_96125830">Standard / Valfri handkontroll</string>
     <string name="lab_962bd533">Ljusstyrka</string>
+    <string name="lab_963f841c">Samma namn som en inbyggd drivrutin</string>
     <string name="lab_964d1a40">Dela Androids urklipp med spel</string>
     <string name="lab_968b9d49">Tillämpas vid start. Sidomenyn i spelet ändrar dem fortfarande direkt.</string>
     <string name="lab_969dab73">ReShade på / av, Solo / Stapla, effekter och deras inställningar</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Aviseringsljud</string>
     <string name="lab_992421a8">Öppna appen på</string>
     <string name="lab_99273660">Påslaget för bildgenerering — skärmen följer bildgränsen × multiplikatorn. </string>
+    <string name="lab_9927a641">Misslyckades</string>
     <string name="lab_9978b876">Knapp A</string>
     <string name="lab_99853914">Välj med systemets väljare</string>
     <string name="lab_99895147">Standard-MIDI-ljudbank</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Redigera dess bindningar</string>
     <string name="lab_a8b5f392">Hjälp</string>
     <string name="lab_a8b6222f">Systemdrivrutin</string>
+    <string name="lab_a8f9cfcd">Dess meta.json anger inget bibliotek</string>
     <string name="lab_a905f340">Lås CPU-frekvensen på max</string>
     <string name="lab_a92ebeb7">Skärpa (VKBasalt) › Effekt</string>
+    <string name="lab_a9323b0e">%1$s finns inte i zip-filen</string>
     <string name="lab_a960b3ff">Skalar vibrationsstyrkan. Obs: på vissa handhållna enheter minskar en lägre styrka inte spakarnas nedsaktning. Använd Vibrationsmotorer: En för det.</string>
     <string name="lab_a9af1b38">Byter</string>
     <string name="lab_a9f8f50a">Ny profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Stänga av automatisk säkerhetskopiering?</string>
     <string name="lab_c06ade64">Experimentella reglage och visningsserverns interna delar.</string>
     <string name="lab_c088a86d">Justera logotyp</string>
+    <string name="lab_c08afcff">Dess meta.json kan inte läsas</string>
     <string name="lab_c0b26391">Kompatibilitet</string>
     <string name="lab_c0ba51f5">Miljö</string>
     <string name="lab_c0cb7e61">Av som standard, så att spel som läser både XInput och DirectInput ser en handkontroll.</string>

@@ -159,8 +159,11 @@ public class AdrenotoolsManager {
 
     public ArrayList<String> enumarateInstalledDrivers() {
         ArrayList<String> driversList = new ArrayList<>();
-        
-        for (File f : adrenotoolsContentDir.listFiles()) {
+        File[] files = adrenotoolsContentDir.listFiles();
+        if (files == null) return driversList;
+        for (File f : files) {
+            // An install's working folder (".tmp-…", and "tmp" from older builds) is never a driver.
+            if (f.getName().startsWith(".") || f.getName().equals("tmp")) continue;
             boolean fromResources = isFromResources(f.getName());
             if (!fromResources && new File(f, "meta.json").exists())
                 driversList.add(f.getName());
@@ -203,84 +206,156 @@ public class AdrenotoolsManager {
         return hasExtracted;
     }
     
+    /** The new driver's id, or "" when nothing was installed ({@link #install} says why). */
     public String installDriver(Uri driverUri) {
-        File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) tmpDir.delete();
-        tmpDir.mkdirs();
-        ZipInputStream zis;
-        InputStream is;
-        String name = "";
-        
-        try {
-            is = mContext.getContentResolver().openInputStream(driverUri);
-            zis = new ZipInputStream(is);
-            ZipEntry entry = zis.getNextEntry();
-            while (entry != null) {
-                File dstFile = new File(tmpDir, entry.getName());
-                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                entry = zis.getNextEntry();
-            }
-            zis.close();
-            // An AdrenoTools driver is one the Android Vulkan loader can be pointed at: meta.json
-            // names the library in "libraryName" and that library is in the zip. Without this check
-            // ANY zip carrying a meta.json installed here - including our own "-Linux" (glibc) and
-            // "-Wayland" Turnip zips, which name no library on purpose. They then appeared in the
-            // Android display-driver list, where setDriverById quietly sets nothing because
-            // libraryName is empty, so picking one left the compositor on the system Vulkan: a
-            // black screen wearing a driver's name. Refuse them here and say which list they belong in.
-            String rejected = rejectionReason(tmpDir);
-            if (rejected != null) {
-                Log.d("AdrenotoolsManager", "not an AdrenoTools driver: " + rejected);
-                FileUtils.delete(tmpDir);
-                return "";
-            }
-            if (new File(tmpDir, "meta.json").exists()) {
-                name = getDriverName(tmpDir.getName());
-                File dst = new File(adrenotoolsContentDir, name);
-                if (!dst.exists() && !name.equals(""))
-                    tmpDir.renameTo(dst);
-                else {
-                    name = "";
-                    FileUtils.delete(tmpDir);
-                }
-            }
-            else {
-                Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-                tmpDir.delete();
-            }
-        }
-        catch (IOException e) {
-            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-            tmpDir.delete();
-        }
-        
-        return name;
+        return install(driverUri, false).id;
     }
-    
+
+    /** What {@link #install} did: the new driver id, or why nothing was installed. */
+    public static final class InstallResult {
+        public static final String NO_META = "no-meta";
+        public static final String BAD_META = "bad-meta";
+        public static final String LINUX_KIND = "linux-kind";
+        public static final String WAYLAND_KIND = "wayland-kind";
+        public static final String NO_LIBRARY = "no-library";
+        public static final String LIBRARY_MISSING = "library-missing";
+        public static final String BUILT_IN = "built-in";
+        public static final String SAME_NAME = "same-name";
+        public static final String IO = "io";
+
+        /** The installed driver's id (its folder, = meta.json "name"); "" when nothing was installed. */
+        public final String id;
+        /** One of the codes above; null on success. */
+        public final String reason;
+        /** The library name, the driver name or the error text that goes with [reason]. */
+        public final String detail;
+
+        private InstallResult(String id, String reason, String detail) {
+            this.id = id;
+            this.reason = reason;
+            this.detail = detail;
+        }
+
+        static InstallResult ok(String id) { return new InstallResult(id, null, null); }
+        static InstallResult fail(String reason, String detail) { return new InstallResult("", reason, detail); }
+    }
+
+    // Installs run one at a time: two downloads finishing together used to extract into the same
+    // "tmp" folder and could each move the other's files, or a mix of both, into place.
+    private static final Object INSTALL_LOCK = new Object();
+
     /**
-     * Why this extracted zip is not an AdrenoTools driver, or null when it is one. Reads the zip's
-     * own meta.json rather than the installed-driver accessors, which key off an installed id.
+     * Installs a driver zip. A zip whose files all sit in one folder is taken from that folder.
+     * A driver with the same name stays as it is unless [replace]; a bundled driver's name is
+     * never taken over. Blocking.
      */
-    private static String rejectionReason(File dir) {
+    public InstallResult install(Uri driverUri, boolean replace) {
+        synchronized (INSTALL_LOCK) {
+            File tmpDir = new File(adrenotoolsContentDir, ".tmp-" + System.nanoTime());
+            try {
+                if (!tmpDir.mkdirs()) return InstallResult.fail(InstallResult.IO, "cannot create " + tmpDir);
+                try (InputStream is = mContext.getContentResolver().openInputStream(driverUri)) {
+                    if (is == null) return InstallResult.fail(InstallResult.IO, "cannot open " + driverUri);
+                    extractZip(is, tmpDir);
+                }
+                File root = driverRoot(tmpDir);
+                InstallResult rejected = check(root);
+                if (rejected != null) {
+                    Log.d("AdrenotoolsManager", "not installed: " + rejected.reason + " " + rejected.detail);
+                    return rejected;
+                }
+                String name = readMeta(root).optString("name", "").trim();
+                if (name.isEmpty() || name.startsWith(".") || name.contains("/") || name.contains("..") || name.equals("tmp"))
+                    return InstallResult.fail(InstallResult.BAD_META, "name \"" + name + "\"");
+                if (isFromResources(name)) return InstallResult.fail(InstallResult.BUILT_IN, name);
+                File dst = new File(adrenotoolsContentDir, name);
+                if (dst.exists()) {
+                    if (!replace) return InstallResult.fail(InstallResult.SAME_NAME, name);
+                    Log.i("AdrenotoolsManager", "replacing driver " + name);
+                    FileUtils.delete(dst);
+                }
+                if (!root.renameTo(dst)) return InstallResult.fail(InstallResult.IO, "cannot move into " + dst);
+                Log.i("AdrenotoolsManager", "installed driver " + name);
+                return InstallResult.ok(name);
+            }
+            catch (Exception e) {
+                Log.w("AdrenotoolsManager", "driver install failed", e);
+                return InstallResult.fail(InstallResult.IO, e.getMessage() != null ? e.getMessage() : e.toString());
+            }
+            finally {
+                FileUtils.delete(tmpDir);
+            }
+        }
+    }
+
+    /** Unpacks every entry under [dir], keeping folders; an entry that points outside [dir] is refused. */
+    private static void extractZip(InputStream is, File dir) throws IOException {
+        String base = dir.getCanonicalPath() + File.separator;
+        ZipInputStream zis = new ZipInputStream(is);
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            File out = new File(dir, entry.getName());
+            if (!out.getCanonicalPath().startsWith(base)) throw new IOException("bad path in zip: " + entry.getName());
+            if (entry.isDirectory()) {
+                out.mkdirs();
+                continue;
+            }
+            File parent = out.getParentFile();
+            if (parent != null && !parent.isDirectory() && !parent.mkdirs()) throw new IOException("cannot create " + parent);
+            Files.copy(zis, out.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /** The folder holding meta.json: the zip's top level, or its only folder when everything sits in one. */
+    private static File driverRoot(File dir) {
+        if (new File(dir, "meta.json").isFile()) return dir;
+        File only = null;
+        int count = 0;
+        File[] kids = dir.listFiles();
+        if (kids != null) {
+            for (File k : kids) {
+                if (k.getName().equals("__MACOSX")) continue;
+                count++;
+                only = k;
+            }
+        }
+        if (count == 1 && only.isDirectory() && new File(only, "meta.json").isFile()) return only;
+        return dir;
+    }
+
+    private static JSONObject readMeta(File dir) {
+        try {
+            return new JSONObject(FileUtils.readString(new File(dir, "meta.json")));
+        }
+        catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
+    /**
+     * Why this extracted zip is not an AdrenoTools driver, or null when it is one. An AdrenoTools
+     * driver is one the Android Vulkan loader can be pointed at: meta.json names the library in
+     * "libraryName" and that library is in the zip. Without this check ANY zip carrying a meta.json
+     * installed here - including our own "-Linux" (glibc) and "-Wayland" Turnip zips, which name no
+     * library on purpose. They then appeared in the Android display-driver list, where setDriverById
+     * quietly sets nothing because libraryName is empty: a black screen wearing a driver's name.
+     */
+    private static InstallResult check(File dir) {
         File metaFile = new File(dir, "meta.json");
-        if (!metaFile.isFile()) return "no meta.json";
-        String libraryName = "", kind = "";
+        if (!metaFile.isFile()) return InstallResult.fail(InstallResult.NO_META, null);
+        String libraryName, kind;
         try {
             JSONObject meta = new JSONObject(FileUtils.readString(metaFile));
             libraryName = meta.optString("libraryName", "");
             kind = meta.optString("kind", "");
         }
         catch (Exception e) {
-            return "meta.json is unreadable (" + e.getMessage() + ")";
+            return InstallResult.fail(InstallResult.BAD_META, e.getMessage());
         }
-        if ("linux-vulkan-icd".equals(kind))
-            return "this is a Linux runtime driver (import it under \"Linux runtime drivers\")";
-        if ("wayland-game-driver".equals(kind))
-            return "this is a Wayland game driver (import it under \"Wayland game drivers\")";
-        if (libraryName.isEmpty())
-            return "meta.json names no libraryName, so nothing could be handed to AdrenoTools";
-        if (!new File(dir, libraryName).isFile())
-            return "meta.json names " + libraryName + ", which is not in the zip";
+        if ("linux-vulkan-icd".equals(kind)) return InstallResult.fail(InstallResult.LINUX_KIND, null);
+        if ("wayland-game-driver".equals(kind)) return InstallResult.fail(InstallResult.WAYLAND_KIND, null);
+        if (libraryName.isEmpty()) return InstallResult.fail(InstallResult.NO_LIBRARY, null);
+        if (!new File(dir, libraryName).isFile()) return InstallResult.fail(InstallResult.LIBRARY_MISSING, libraryName);
         return null;
     }
 

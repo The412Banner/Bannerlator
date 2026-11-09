@@ -68,9 +68,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.winlator.star.contents.AdrenotoolsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,14 +171,18 @@ fun ColumnScope.AdrenoDriverListPane(
     var downloadStage by remember { mutableStateOf("") }
     var refreshKey by remember { mutableStateOf(0) }
 
-    // Installed adrenotools drivers (folder name == meta.json "name"), normalized, for the card-style
-    // Installed badge. enumarateInstalledDrivers() is a cheap filesDir listing; re-read after each install.
+    // The card-style Installed badge: the download an entry installed is still there (DriverInstaller's
+    // record), else an installed driver named exactly like the entry. Both are cheap filesDir listings;
+    // re-read after each install.
     var installRefreshKey by remember { mutableStateOf(0) }
     val installedNorm = remember(installRefreshKey) {
         runCatching { AdrenotoolsManager(context).enumarateInstalledDrivers() }
             .getOrDefault(arrayListOf())
             .map { normDriver(it) }
             .toSet()
+    }
+    val installedUrls = remember(installRefreshKey) {
+        runCatching { DriverInstaller.installedSourceUrls(context) }.getOrDefault(emptySet())
     }
 
     // Keep the selected chip in range if a source is disabled/removed out from under it.
@@ -243,7 +250,8 @@ fun ColumnScope.AdrenoDriverListPane(
                 items(entries, key = { it.source + "_" + it.downloadUrl }) { entry ->
                     EntryRow(
                         entry = entry,
-                        installed = cardStyle && normDriver(entry.displayName) in installedNorm,
+                        installed = cardStyle && (DriverInstaller.normUrl(entry.downloadUrl) in installedUrls ||
+                            normDriver(entry.displayName) in installedNorm),
                         cardStyle = cardStyle,
                         onClick = { pendingEntry = entry },
                     )
@@ -293,23 +301,18 @@ fun ColumnScope.AdrenoDriverListPane(
                                 .fold(
                                     onSuccess = { file ->
                                         downloadStage = "Installing"
-                                        val activity = context as? Activity ?: context
-                                        val manager = AdrenotoolsManager(activity)
-                                        val driverId = manager.installDriver(Uri.fromFile(file))
-                                        file.delete()
+                                        // A "-Linux" or "-Wayland" zip goes into its own list; the toast says which.
+                                        val r = withContext(Dispatchers.IO) {
+                                            DriverInstaller.install(context, Uri.fromFile(file), file.name, sourceUrl = entry.downloadUrl)
+                                                .also { file.delete() }
+                                        }
                                         downloading = false
                                         pendingEntry = null
-                                        if (driverId.isNotEmpty()) {
-                                            installRefreshKey++ // re-enumerate so the Installed badge picks it up
-                                            Toast.makeText(context, "Installed: $driverId", Toast.LENGTH_SHORT).show()
-                                            onDriverInstalled(driverId)
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "Install failed — invalid driver package",
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                        }
+                                        installRefreshKey++ // re-read so the Installed badge picks it up (a same-name refusal marks it too)
+                                        Toast.makeText(context, DriverInstaller.message(r),
+                                            if (r.ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
+                                        // The caller selects it in a Graphics Driver list, which holds AdrenoTools drivers only.
+                                        if (r.ok && r.place == DriverInstaller.Place.ANDROID) onDriverInstalled(r.id)
                                     },
                                     onFailure = { t ->
                                         downloading = false

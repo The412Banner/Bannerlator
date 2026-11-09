@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Διαγραφή</string>
     <string name="lab_3e04658a">Μπλε</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Λήψη και αντικατάσταση</string>
     <string name="lab_3e5678cd">Ταχύτερο</string>
     <string name="lab_3e86e543">Περνά στο wrapper όπως είναι. Αφήστε το κενό για να μείνει χωρίς τιμή.</string>
     <string name="lab_3ecd0489">Το αυτόματο αντίγραφο ασφαλείας αποθηκεύσεων κατά την έξοδο θα είναι ΑΝΕΝΕΡΓΟ για τα παιχνίδια της βιβλιοθήκης σας στο Steam. Οι αποθηκεύσεις τους δεν θα καταγράφονται όταν κλείνει ένα παιχνίδι — θα πρέπει να κρατάτε αντίγραφα μόνοι σας μέσω της επιλογής αντιγράφου ασφαλείας ενός κοντέινερ ή από τη Διαχείριση αποθηκεύσεων. Συνέχεια;</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Ανενεργό — επιλέξτε έναν ρυθμό παρακάτω για να κλειδώσετε την οθόνη.</string>
     <string name="lab_443d0954">Εκκίνηση της επιφάνειας εργασίας Windows του</string>
     <string name="lab_4455b74f">Πόσο συχνά η κίνηση των μοχλών φτάνει στο παιχνίδι. Αλλάζει και μέσα στο παιχνίδι.</string>
+    <string name="lab_44655ec4">Η εγκατάσταση απέτυχε: %1$s</string>
     <string name="lab_449c12fb">Μέγεθος στην οθόνη</string>
     <string name="lab_44bc352d">Λογότυπο</string>
     <string name="lab_4500ffeb">Το προφίλ προεπιλογών %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Αρχεία καταγραφής</string>
     <string name="lab_50d905f5">Χαμηλή καθυστέρηση</string>
     <string name="lab_50db75d4"> · Επιλέξτε την για να δώσετε σε αυτό το παιχνίδι δική του τιμή.</string>
+    <string name="lab_51294f91">Το %1$s είναι ήδη εγκατεστημένο</string>
     <string name="lab_513ecfb1">Φίλοι και συνομιλία</string>
     <string name="lab_51732071">Το προφίλ εισήχθη</string>
     <string name="lab_51a6725d">Εφέ μετεπεξεργασίας Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">Τα FSR, NIS και SGSR κάνουν upscale και όξυνση. Το SGSR είναι της Qualcomm, φτιαγμένο για Adreno.</string>
     <string name="lab_554ed1d4">Αφαίρεση του %1$s;</string>
     <string name="lab_558dab54">Αυτό το παιχνίδι φέρνει το Xbox runtime της ίδιας της Microsoft, που χρειάζεται τα Gaming Services των Windows. Ενεργό: χρησιμοποιείται στη θέση του το runtime της εφαρμογής. Απενεργοποιήστε το μόνο για να δοκιμάσετε αυτό του παιχνιδιού.</string>
-    <string name="lab_55b35170">Αυτό το αρχείο δεν είναι πακέτο προγράμματος οδήγησης</string>
     <string name="lab_55dbea72">Ήχος (MIDI)</string>
     <string name="lab_55fb28db">Βρέθηκε στον φάκελο του παιχνιδιού.</string>
     <string name="lab_56b4c80c">Θέμα</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Απόδοση σε πλακίδια GMEM</string>
     <string name="lab_7398c748">Δικό σας χρώμα έμφασης · X για επιλογή</string>
     <string name="lab_73a11f48">Κοντέινερ, ρυθμίσεις και prefix σε ένα αρχείο (κλασικές Ρυθμίσεις).</string>
+    <string name="lab_73add714">Δεν υπάρχει meta.json στο zip</string>
     <string name="lab_73e71958">Πυρήνες για προγράμματα 32-bit</string>
     <string name="lab_74350de7">Σχετικά</string>
     <string name="lab_749c9e00">Δεν υπάρχουν ακόμη κοντέινερ.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Πρόγραμμα οδήγησης γραφικών</string>
     <string name="lab_96125830">Προεπιλογή / Οποιοδήποτε χειριστήριο</string>
     <string name="lab_962bd533">Φωτεινότητα</string>
+    <string name="lab_963f841c">Ίδιο όνομα με ενσωματωμένο πρόγραμμα οδήγησης</string>
     <string name="lab_964d1a40">Κοινόχρηστο πρόχειρο Android με τα παιχνίδια</string>
     <string name="lab_968b9d49">Εφαρμόζονται στην εκκίνηση. Το πλευρικό μενού μέσα στο παιχνίδι εξακολουθεί να τις αλλάζει ζωντανά.</string>
     <string name="lab_969dab73">ReShade ενεργό / ανενεργό, Μεμονωμένα / Συνδυαστικά, εφέ και οι ρυθμίσεις τους</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Ήχος ειδοποίησης</string>
     <string name="lab_992421a8">Άνοιγμα της εφαρμογής σε</string>
     <string name="lab_99273660">Ενεργοποιήθηκε για τη δημιουργία καρέ — η οθόνη ακολουθεί το όριο καρέ × πολλαπλασιαστή. </string>
+    <string name="lab_9927a641">Απέτυχε</string>
     <string name="lab_9978b876">Κουμπί A</string>
     <string name="lab_99853914">Επιλογή με το εργαλείο του συστήματος</string>
     <string name="lab_99895147">Προεπιλεγμένη τράπεζα ήχων MIDI</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Επεξεργασία αντιστοιχίσεων</string>
     <string name="lab_a8b5f392">Βοήθεια</string>
     <string name="lab_a8b6222f">Πρόγραμμα οδήγησης συστήματος</string>
+    <string name="lab_a8f9cfcd">Το meta.json του δεν ορίζει βιβλιοθήκη</string>
     <string name="lab_a905f340">Κλείδωμα συχνότητας CPU στο μέγιστο</string>
     <string name="lab_a92ebeb7">Οξύτητα (VKBasalt) › Εφέ</string>
+    <string name="lab_a9323b0e">Το %1$s δεν υπάρχει στο zip</string>
     <string name="lab_a960b3ff">Κλιμακώνει την ένταση της δόνησης. Σημείωση: σε ορισμένες φορητές συσκευές μια χαμηλότερη ένταση δεν μειώνει την επιβράδυνση των μοχλών. Για αυτό χρησιμοποιήστε Μοτέρ δόνησης: Ένα.</string>
     <string name="lab_a9af1b38">Εναλλαγή</string>
     <string name="lab_a9f8f50a">Νέο προφίλ</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Απενεργοποίηση αυτόματου αντιγράφου ασφαλείας;</string>
     <string name="lab_c06ade64">Πειραματικοί διακόπτες και εσωτερικά του διακομιστή οθόνης.</string>
     <string name="lab_c088a86d">Προσαρμογή λογότυπου</string>
+    <string name="lab_c08afcff">Το meta.json του δεν μπορεί να διαβαστεί</string>
     <string name="lab_c0b26391">Συμβατότητα</string>
     <string name="lab_c0ba51f5">Περιβάλλον</string>
     <string name="lab_c0cb7e61">Ανενεργό από προεπιλογή, ώστε τα παιχνίδια που διαβάζουν και XInput και DirectInput να βλέπουν ένα χειριστήριο.</string>

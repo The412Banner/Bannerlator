@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Supprimer</string>
     <string name="lab_3e04658a">Bleu</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Télécharger et remplacer</string>
     <string name="lab_3e5678cd">Le plus rapide</string>
     <string name="lab_3e86e543">Transmis tel quel au wrapper. Laissez vide pour ne pas le définir.</string>
     <string name="lab_3ecd0489">La sauvegarde automatique à la sortie sera DÉSACTIVÉE pour les jeux de votre bibliothèque Steam. Leurs sauvegardes ne seront pas copiées à la fermeture d\'un jeu — vous devrez les sauvegarder vous-même via l\'option de sauvegarde d\'un conteneur ou le Gestionnaire de sauvegardes. Continuer ?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Désactivé — choisissez une fréquence ci-dessous pour verrouiller l\'affichage.</string>
     <string name="lab_443d0954">Lancer son bureau Windows</string>
     <string name="lab_4455b74f">Fréquence à laquelle les mouvements des sticks arrivent au jeu. Modifiable aussi en jeu.</string>
+    <string name="lab_44655ec4">Échec de l\'installation : %1$s</string>
     <string name="lab_449c12fb">Taille à l\'écran</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Le profil par défaut %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Journaux</string>
     <string name="lab_50d905f5">Faible latence</string>
     <string name="lab_50db75d4"> · Choisissez-la pour donner à ce jeu sa propre valeur.</string>
+    <string name="lab_51294f91">%1$s est déjà installé</string>
     <string name="lab_513ecfb1">Amis et chat</string>
     <string name="lab_51732071">Profil importé</string>
     <string name="lab_51a6725d">Post-effet Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS et SGSR agrandissent et affinent l\'image ; SGSR est celui de Qualcomm, conçu pour Adreno.</string>
     <string name="lab_554ed1d4">Retirer %1$s ?</string>
     <string name="lab_558dab54">Ce jeu fournit le runtime Xbox de Microsoft, qui nécessite les Gaming Services de Windows. Activé : le runtime de l\'appli est utilisé à la place. Ne le désactivez que pour essayer celui du jeu.</string>
-    <string name="lab_55b35170">Ce fichier n\'est pas un paquet de pilote</string>
     <string name="lab_55dbea72">Son (MIDI)</string>
     <string name="lab_55fb28db">Trouvé dans le dossier du jeu.</string>
     <string name="lab_56b4c80c">Thème</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Rendu en tuiles GMEM</string>
     <string name="lab_7398c748">Votre couleur d\'accentuation · X pour la choisir</string>
     <string name="lab_73a11f48">Conteneurs, paramètres et préfixe dans un seul fichier (paramètres de Classic).</string>
+    <string name="lab_73add714">Pas de meta.json dans le zip</string>
     <string name="lab_73e71958">Cœurs utilisables par les programmes 32 bits</string>
     <string name="lab_74350de7">À propos</string>
     <string name="lab_749c9e00">Aucun conteneur pour l\'instant.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Pilote graphique</string>
     <string name="lab_96125830">Par défaut / Toute manette</string>
     <string name="lab_962bd533">Luminosité</string>
+    <string name="lab_963f841c">Même nom qu\'un pilote intégré</string>
     <string name="lab_964d1a40">Partager le presse-papiers Android avec les jeux</string>
     <string name="lab_968b9d49">Appliqués au lancement. Le menu latéral en jeu les modifie toujours en direct.</string>
     <string name="lab_969dab73">ReShade activé / désactivé, Seul / Empilé, effets et leurs paramètres</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Son de notification</string>
     <string name="lab_992421a8">Ouvrir l\'appli sur</string>
     <string name="lab_99273660">Activé pour la génération d\'images — l\'affichage suit la limite d\'images × multiplicateur. </string>
+    <string name="lab_9927a641">Échec</string>
     <string name="lab_9978b876">Bouton A</string>
     <string name="lab_99853914">Choisir avec le sélecteur du système</string>
     <string name="lab_99895147">Banque de sons MIDI par défaut</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Modifier ses assignations</string>
     <string name="lab_a8b5f392">Aide</string>
     <string name="lab_a8b6222f">Pilote système</string>
+    <string name="lab_a8f9cfcd">Son meta.json n\'indique aucune bibliothèque</string>
     <string name="lab_a905f340">Bloquer la fréquence CPU au max</string>
     <string name="lab_a92ebeb7">Netteté (VKBasalt) › Effet</string>
+    <string name="lab_a9323b0e">%1$s n\'est pas dans le zip</string>
     <string name="lab_a960b3ff">Ajuste la force des vibrations. Remarque : sur certaines consoles portables, une force plus faible ne réduit pas le ralentissement des sticks. Utilisez pour cela Moteurs de vibration : Unique.</string>
     <string name="lab_a9af1b38">Remplacement</string>
     <string name="lab_a9f8f50a">Nouveau profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Désactiver la sauvegarde auto ?</string>
     <string name="lab_c06ade64">Options expérimentales et réglages internes du serveur d\'affichage.</string>
     <string name="lab_c088a86d">Ajuster le logo</string>
+    <string name="lab_c08afcff">Son meta.json est illisible</string>
     <string name="lab_c0b26391">Compatibilité</string>
     <string name="lab_c0ba51f5">Environnement</string>
     <string name="lab_c0cb7e61">Désactivé par défaut, pour que les jeux qui lisent XInput et DirectInput ne voient qu\'une manette.</string>

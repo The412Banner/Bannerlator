@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Delete</string>
     <string name="lab_3e04658a">Blue</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Download and replace</string>
     <string name="lab_3e5678cd">Fastest</string>
     <string name="lab_3e86e543">Passed to the wrapper as it is. Leave blank to leave it unset.</string>
     <string name="lab_3ecd0489">Automatic save backup on exit will be OFF for your Steam library games. Their saves won\'t be captured when a game closes — you\'ll need to back them up yourself via a container\'s backup option or the Save Manager. Continue?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Off — pick a rate below to lock the display.</string>
     <string name="lab_443d0954">Start its Windows desktop</string>
     <string name="lab_4455b74f">How often stick movement reaches the game. Also changeable in-game.</string>
+    <string name="lab_44655ec4">Install failed: %1$s</string>
     <string name="lab_449c12fb">Size on screen</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">The %1$s defaults profile, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Logs</string>
     <string name="lab_50d905f5">Low latency</string>
     <string name="lab_50db75d4"> · Pick it to give this game its own value.</string>
+    <string name="lab_51294f91">%1$s is already installed</string>
     <string name="lab_513ecfb1">Friends &amp; chat</string>
     <string name="lab_51732071">Profile imported</string>
     <string name="lab_51a6725d">Vulkan post-effect (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS and SGSR upscale and sharpen; SGSR is Qualcomm\'s, made for Adreno.</string>
     <string name="lab_554ed1d4">Remove %1$s?</string>
     <string name="lab_558dab54">This game ships Microsoft\'s own Xbox runtime, which needs Windows\' Gaming Services. On: the app\'s runtime is used instead. Turn off only to try the game\'s own.</string>
-    <string name="lab_55b35170">That file is not a driver package</string>
     <string name="lab_55dbea72">Sound (MIDI)</string>
     <string name="lab_55fb28db">Found in the game folder.</string>
     <string name="lab_56b4c80c">Theme</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM tiled rendering</string>
     <string name="lab_7398c748">Your own accent colour · X to pick it</string>
     <string name="lab_73a11f48">Containers, settings and prefix in one file (classic Settings).</string>
+    <string name="lab_73add714">No meta.json in the zip</string>
     <string name="lab_73e71958">Cores 32-bit programs may use</string>
     <string name="lab_74350de7">About</string>
     <string name="lab_749c9e00">No containers yet.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Graphics driver</string>
     <string name="lab_96125830">Default / Any controller</string>
     <string name="lab_962bd533">Brightness</string>
+    <string name="lab_963f841c">Same name as a built-in driver</string>
     <string name="lab_964d1a40">Share the Android clipboard with games</string>
     <string name="lab_968b9d49">Applied at launch. The in-game side menu still changes them live.</string>
     <string name="lab_969dab73">ReShade on / off, Solo / Stack, effects and their settings</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Notification sound</string>
     <string name="lab_992421a8">Open the app on</string>
     <string name="lab_99273660">Turned on for frame generation — the display follows the frame limit × multiplier. </string>
+    <string name="lab_9927a641">Failed</string>
     <string name="lab_9978b876">Button A</string>
     <string name="lab_99853914">Pick with the system picker</string>
     <string name="lab_99895147">Default MIDI sound bank</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Edit its bindings</string>
     <string name="lab_a8b5f392">Help</string>
     <string name="lab_a8b6222f">System driver</string>
+    <string name="lab_a8f9cfcd">Its meta.json names no library</string>
     <string name="lab_a905f340">Lock CPU frequency to max</string>
     <string name="lab_a92ebeb7">Sharpness (VKBasalt) › Effect</string>
+    <string name="lab_a9323b0e">%1$s is not in the zip</string>
     <string name="lab_a960b3ff">Scales vibration strength. Note: on some handhelds a lower strength does not reduce stick slowdown. Use Rumble motors: Single for that.</string>
     <string name="lab_a9af1b38">Swapping</string>
     <string name="lab_a9f8f50a">New profile</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Turn off auto-backup?</string>
     <string name="lab_c06ade64">Experimental switches and display server internals.</string>
     <string name="lab_c088a86d">Adjust logo</string>
+    <string name="lab_c08afcff">Its meta.json can\'t be read</string>
     <string name="lab_c0b26391">Compatibility</string>
     <string name="lab_c0ba51f5">Environment</string>
     <string name="lab_c0cb7e61">Off by default, so games that read both XInput and DirectInput see one pad.</string>

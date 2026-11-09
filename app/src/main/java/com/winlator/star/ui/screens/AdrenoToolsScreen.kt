@@ -41,12 +41,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.ui.screens.adrenodownload.AdrenoDriverDownloadSheet
 import com.winlator.star.util.InAppFilePicker
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AdrenoToolsScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val activity = context as Activity
     val manager = remember { AdrenotoolsManager(activity) }
     val cs = MaterialTheme.colorScheme
@@ -65,9 +72,13 @@ fun AdrenoToolsScreen() {
         if (result.resultCode == Activity.RESULT_OK) {
             // In-app picker returns a path (wrapped as file:// Uri); SAF returns result.data.data.
             (result.data?.data ?: InAppFilePicker.pickedUri(result.data))?.let { uri ->
-                val driverId = manager.installDriver(uri)
-                if (driverId.isNotEmpty()) {
-                    drivers = drivers + driverId
+                // A "-Linux" or "-Wayland" zip goes into its own list; a refused zip says why.
+                scope.launch {
+                    val r = withContext(Dispatchers.IO) {
+                        DriverInstaller.install(context, uri, uri.lastPathSegment?.substringAfterLast('/'))
+                    }
+                    if (r.ok) drivers = manager.enumarateInstalledDrivers().toList()
+                    Toast.makeText(context, DriverInstaller.message(r), if (r.ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
                 }
             }
         }

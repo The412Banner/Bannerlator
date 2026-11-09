@@ -6,7 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
-import com.winlator.star.contents.AdrenotoolsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.TarCompressorUtils
@@ -32,7 +32,7 @@ import kotlin.coroutines.resume
  * progress published to [ContentDownloadRegistry]) so an install survives backgrounding, and adds
  * two things the plain component downloader doesn't do:
  *   1. the optional "Keep raw archive" copy into [ComponentLibrary] BEFORE the archive is consumed;
- *   2. routing GPU-driver items through [AdrenotoolsManager] instead of the `.wcp` pipeline.
+ *   2. routing GPU-driver items through [DriverInstaller] instead of the `.wcp` pipeline.
  */
 object ContentsInstaller {
 
@@ -53,6 +53,8 @@ object ContentsInstaller {
         versionName: String,
         downloadUrl: String,
         keepRaw: Boolean,
+        // A driver with the same name is installed: overwrite it (the row's Replace).
+        replace: Boolean = false,
         onChanged: () -> Unit = {},
     ) {
         val ctx = appContext.applicationContext
@@ -104,9 +106,10 @@ object ContentsInstaller {
                 }
                 DownloadForegroundService.setProgress(key, "$versionName — Installing")
 
-                val ok = if (isDriver) {
-                    installDriverBlocking(ctx, Uri.fromFile(temp))
-                } else {
+                val driver = if (isDriver) {
+                    DriverInstaller.install(ctx, Uri.fromFile(temp), fileName, replace, sourceUrl = downloadUrl)
+                } else null
+                val ok = if (driver != null) driver.ok else {
                     installComponentBlocking(ctx, Uri.fromFile(temp)) { frac ->
                         ContentDownloadRegistry.update(key) {
                             it.copy(phase = ContentDownloadPhase.INSTALLING, fraction = maxOf(it.fraction, frac))
@@ -115,11 +118,10 @@ object ContentsInstaller {
                     }
                 }
 
-                ContentDownloadRegistry.update(key) {
-                    if (ok) it.copy(phase = ContentDownloadPhase.DONE, fraction = 1f)
-                    else it.copy(phase = ContentDownloadPhase.ERROR, error = "Install failed.")
-                }
-                if (ok) runCatching { onChanged() }
+                ContentDownloadRegistry.update(key) { driverOutcome(it, ok, driver) }
+                if (driver != null) toast(ctx, DriverInstaller.message(driver))
+                // A same-name refusal also changes the list: that entry now reads Installed.
+                if (ok || driver?.sameName == true) runCatching { onChanged() }
             } catch (c: CancellationException) {
                 throw c // user Cancel — requestCancel already set the cancelled-terminal state; keep it.
             } catch (e: Exception) {
@@ -266,16 +268,17 @@ object ContentsInstaller {
 
         val job = DownloadScope.io.launch {
             var ok = false
+            var driver: DriverInstaller.Result? = null
             try {
                 // Up-front best-effort read of the archive's profile.json so the popup shows the real
                 // type/version/desc from the START (one coherent popup), not just at completion. The
                 // end-of-extract onProfile update below still runs as a fallback (covers content:// uris).
                 prescanFileProfile(source, type, key)
-                ok = if (isDriver) {
-                    // GPU drivers carry no profile.json and install non-incrementally — the popup shows
-                    // the passed type + filename and an indeterminate bar until this flips to Installed.
-                    installDriverBlocking(ctx, source)
-                } else {
+                // GPU drivers carry no profile.json and install non-incrementally — the popup shows
+                // the passed type + filename and an indeterminate bar until this flips to Installed.
+                val d = if (isDriver) DriverInstaller.install(ctx, source, displayName) else null
+                driver = d
+                ok = if (d != null) d.ok else {
                     installComponentBlocking(
                         ctx, source,
                         // The archive's parsed profile.json is delivered here at phase 0 (before the file
@@ -300,10 +303,8 @@ object ContentsInstaller {
                         DownloadForegroundService.setProgress(key, "$nm — Installing ${(frac * 100).toInt()}%")
                     }
                 }
-                ContentDownloadRegistry.update(key) {
-                    if (ok) it.copy(phase = ContentDownloadPhase.DONE, fraction = 1f)
-                    else it.copy(phase = ContentDownloadPhase.ERROR, error = "Install failed.")
-                }
+                ContentDownloadRegistry.update(key) { driverOutcome(it, ok, driver) }
+                driver?.let { toast(ctx, DriverInstaller.message(it)) }
             } catch (c: CancellationException) {
                 throw c // user Cancel — requestCancel already set the cancelled-terminal state; keep it.
             } catch (e: Exception) {
@@ -363,39 +364,15 @@ object ContentsInstaller {
     // ── Blocking installers (Activity-free; never touch runOnUiThread) ──────────
 
     /**
-     * A driver zip, routed to the manager that can actually use it. "GPU driver" is three different
-     * things now and only one of them is an AdrenoTools package: the zip's own meta.json says which
-     * ("kind"), so a "-Linux" (glibc ICD, the Linux runtime and its Steam client) or "-Wayland"
-     * (bionic ICD, Wine on Wayland) zip is installed where it belongs instead of landing in the
-     * Android display-driver list, where it can never be loaded.
+     * The finished state of an install. A driver says which list it went into (a "-Linux" zip is
+     * not in the Graphics Driver pickers, so "Installed" alone misled) or why it was not installed.
      */
-    private suspend fun installDriverBlocking(context: Context, uri: Uri): Boolean = runCatching {
-        val name = uri.lastPathSegment?.substringAfterLast('/') ?: "driver.zip"
-        when (driverZipKind(context, uri)) {
-            "linux-vulkan-icd" ->
-                com.winlator.star.contents.LinuxVulkanDriverManager(context).installDriver(uri, name).isNotEmpty()
-            "wayland-game-driver" ->
-                com.winlator.star.contents.WaylandGameDriverManager(context).installDriver(uri, name).isNotEmpty()
-            else -> AdrenotoolsManager(context).installDriver(uri).isNotEmpty()
-        }
-    }.getOrDefault(false)
-
-    /** The zip's meta.json "kind", or "" when it has none (every AdrenoTools driver). Never throws. */
-    private fun driverZipKind(context: Context, uri: Uri): String = runCatching {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            java.util.zip.ZipInputStream(input).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory && File(entry.name).name == "meta.json") {
-                        val text = zis.readBytes().toString(Charsets.UTF_8)
-                        return@runCatching org.json.JSONObject(text).optString("kind", "")
-                    }
-                    entry = zis.nextEntry
-                }
-            }
-        }
-        ""
-    }.getOrDefault("")
+    private fun driverOutcome(st: ContentDownloadState, ok: Boolean, driver: DriverInstaller.Result?): ContentDownloadState =
+        if (ok) st.copy(phase = ContentDownloadPhase.DONE, fraction = 1f,
+            note = driver?.takeIf { it.place != DriverInstaller.Place.ANDROID }?.let { DriverInstaller.message(it) })
+        else st.copy(phase = ContentDownloadPhase.ERROR,
+            error = driver?.let { DriverInstaller.message(it) } ?: "Install failed.",
+            replaceable = driver?.sameName == true)
 
     private suspend fun installComponentBlocking(
         context: Context,

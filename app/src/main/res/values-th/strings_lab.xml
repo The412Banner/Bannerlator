@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">ลบ</string>
     <string name="lab_3e04658a">น้ำเงิน</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">ดาวน์โหลดและแทนที่</string>
     <string name="lab_3e5678cd">เร็วที่สุด</string>
     <string name="lab_3e86e543">ส่งให้แรปเปอร์ตามที่ใส่ เว้นว่างไว้เพื่อไม่ตั้งค่า</string>
     <string name="lab_3ecd0489">การสำรองเซฟอัตโนมัติเมื่อออกจะถูกปิดสำหรับเกมในไลบรารี Steam เซฟของเกมจะไม่ถูกเก็บไว้เมื่อปิดเกม — คุณต้องสำรองเองผ่านตัวเลือกสำรองของคอนเทนเนอร์หรือตัวจัดการเซฟเกม ดำเนินการต่อไหม</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">ปิด — เลือกอัตราด้านล่างเพื่อล็อกหน้าจอ</string>
     <string name="lab_443d0954">เปิดเดสก์ท็อป Windows</string>
     <string name="lab_4455b74f">ความถี่ที่การขยับสติ๊กถูกส่งไปยังเกม เปลี่ยนในเกมได้ด้วย</string>
+    <string name="lab_44655ec4">ติดตั้งไม่สำเร็จ: %1$s</string>
     <string name="lab_449c12fb">ขนาดบนหน้าจอ</string>
     <string name="lab_44bc352d">โลโก้</string>
     <string name="lab_4500ffeb">โปรไฟล์ค่าเริ่มต้น %1$s </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">ล็อก</string>
     <string name="lab_50d905f5">หน่วงต่ำ</string>
     <string name="lab_50db75d4"> · เลือกเพื่อให้เกมนี้มีค่าของตัวเอง</string>
+    <string name="lab_51294f91">%1$s ติดตั้งอยู่แล้ว</string>
     <string name="lab_513ecfb1">เพื่อนและแชท</string>
     <string name="lab_51732071">นำเข้าโปรไฟล์แล้ว</string>
     <string name="lab_51a6725d">โพสต์เอฟเฟกต์ Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS และ SGSR ช่วยอัปสเกลและเพิ่มความคม SGSR เป็นของ Qualcomm ทำมาสำหรับ Adreno</string>
     <string name="lab_554ed1d4">ลบ %1$s?</string>
     <string name="lab_558dab54">เกมนี้มาพร้อมรันไทม์ Xbox ของ Microsoft ซึ่งต้องใช้ Gaming Services ของ Windows เปิด: ใช้รันไทม์ของแอปแทน ปิดเฉพาะเมื่อต้องการลองรันไทม์ของเกมเอง</string>
-    <string name="lab_55b35170">ไฟล์นั้นไม่ใช่แพ็กเกจไดรเวอร์</string>
     <string name="lab_55dbea72">เสียง (MIDI)</string>
     <string name="lab_55fb28db">พบในโฟลเดอร์เกม</string>
     <string name="lab_56b4c80c">ธีม</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">การเรนเดอร์แบบไทล์ GMEM</string>
     <string name="lab_7398c748">สีเน้นของคุณเอง · กด X เพื่อเลือก</string>
     <string name="lab_73a11f48">คอนเทนเนอร์ การตั้งค่า และ prefix ในไฟล์เดียว (การตั้งค่า Classic)</string>
+    <string name="lab_73add714">ไม่มี meta.json ในไฟล์ zip</string>
     <string name="lab_73e71958">คอร์ที่โปรแกรม 32 บิตใช้ได้</string>
     <string name="lab_74350de7">เกี่ยวกับ</string>
     <string name="lab_749c9e00">ยังไม่มีคอนเทนเนอร์</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">ไดรเวอร์กราฟิก</string>
     <string name="lab_96125830">ค่าเริ่มต้น / คอนโทรลเลอร์ใดก็ได้</string>
     <string name="lab_962bd533">ความสว่าง</string>
+    <string name="lab_963f841c">ชื่อซ้ำกับไดรเวอร์ในตัว</string>
     <string name="lab_964d1a40">แชร์คลิปบอร์ด Android กับเกม</string>
     <string name="lab_968b9d49">มีผลเมื่อเปิดเกม เมนูด้านข้างในเกมยังเปลี่ยนค่าเหล่านี้ได้ทันที</string>
     <string name="lab_969dab73">เปิด / ปิด ReShade, เดี่ยว / ซ้อน, เอฟเฟกต์และการตั้งค่า</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">เสียงแจ้งเตือน</string>
     <string name="lab_992421a8">เปิดแอปที่หน้า</string>
     <string name="lab_99273660">เปิดไว้สำหรับการสร้างเฟรม — หน้าจอจะปรับตามขีดจำกัดเฟรม × ตัวคูณ </string>
+    <string name="lab_9927a641">ล้มเหลว</string>
     <string name="lab_9978b876">ปุ่ม A</string>
     <string name="lab_99853914">เลือกด้วยตัวเลือกไฟล์ของระบบ</string>
     <string name="lab_99895147">ซาวด์แบงก์ MIDI เริ่มต้น</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">แก้ไขการกำหนดปุ่ม</string>
     <string name="lab_a8b5f392">ความช่วยเหลือ</string>
     <string name="lab_a8b6222f">ไดรเวอร์ระบบ</string>
+    <string name="lab_a8f9cfcd">meta.json ของไดรเวอร์นี้ไม่ได้ระบุไลบรารี</string>
     <string name="lab_a905f340">ล็อกความถี่ CPU ไว้สูงสุด</string>
     <string name="lab_a92ebeb7">ความคมชัด (VKBasalt) › เอฟเฟกต์</string>
+    <string name="lab_a9323b0e">ไม่มี %1$s ในไฟล์ zip</string>
     <string name="lab_a960b3ff">ปรับความแรงการสั่น หมายเหตุ: บนเครื่องพกพาบางรุ่น การลดความแรงไม่ช่วยลดอาการสติ๊กช้าลง ให้ใช้ มอเตอร์สั่น: ตัวเดียว แทน</string>
     <string name="lab_a9af1b38">กำลังสลับ</string>
     <string name="lab_a9f8f50a">โปรไฟล์ใหม่</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">ปิดการสำรองอัตโนมัติไหม</string>
     <string name="lab_c06ade64">สวิตช์ทดลองและการทำงานภายในของเซิร์ฟเวอร์แสดงผล</string>
     <string name="lab_c088a86d">ปรับโลโก้</string>
+    <string name="lab_c08afcff">อ่าน meta.json ของไดรเวอร์นี้ไม่ได้</string>
     <string name="lab_c0b26391">ความเข้ากันได้</string>
     <string name="lab_c0ba51f5">สภาพแวดล้อม</string>
     <string name="lab_c0cb7e61">ปิดไว้เป็นค่าเริ่มต้น เกมที่อ่านทั้ง XInput และ DirectInput จึงเห็นจอยตัวเดียว</string>

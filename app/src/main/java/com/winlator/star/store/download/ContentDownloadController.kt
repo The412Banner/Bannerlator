@@ -73,6 +73,10 @@ data class ContentDownloadState(
     // Contents hub "Save archive only": the archive is downloaded and filed in My Files, nothing is
     // installed. The popup/row relabel DONE as "Saved" (never "Installed") and INSTALLING as "Saving".
     val saveOnly: Boolean = false,
+    // DONE: shown in place of "Installed" (a GPU driver that went into the Linux or Wayland list says so).
+    val note: String? = null,
+    // ERROR: a driver with the same name is installed; the row offers Replace.
+    val replaceable: Boolean = false,
 ) {
     val terminal: Boolean get() = phase == ContentDownloadPhase.DONE || phase == ContentDownloadPhase.ERROR
 }

@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Șterge</string>
     <string name="lab_3e04658a">Albastru</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Descarcă și înlocuiește</string>
     <string name="lab_3e5678cd">Cel mai rapid</string>
     <string name="lab_3e86e543">Transmis wrapperului așa cum este. Lasă gol ca să rămână nesetat.</string>
     <string name="lab_3ecd0489">Backupul automat al salvărilor la ieșire va fi DEZACTIVAT pentru jocurile din biblioteca ta Steam. Salvările lor nu vor fi preluate la închiderea unui joc — va trebui să le faci singur backup, prin opțiunea de backup a unui container sau din Managerul de salvări. Continui?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Dezactivat — alege o rată mai jos ca să blochezi afișajul.</string>
     <string name="lab_443d0954">Pornește desktopul Windows al acestuia</string>
     <string name="lab_4455b74f">Cât de des ajunge mișcarea stickului la joc. Se poate schimba și în joc.</string>
+    <string name="lab_44655ec4">Instalarea a eșuat: %1$s</string>
     <string name="lab_449c12fb">Dimensiune pe ecran</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Profilul implicit %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Jurnale</string>
     <string name="lab_50d905f5">Latență redusă</string>
     <string name="lab_50db75d4"> · Alege-o ca să dai acestui joc o valoare proprie.</string>
+    <string name="lab_51294f91">%1$s este deja instalat</string>
     <string name="lab_513ecfb1">Prieteni și chat</string>
     <string name="lab_51732071">Profil importat</string>
     <string name="lab_51a6725d">Post-efect Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS și SGSR scalează și accentuează claritatea; SGSR este de la Qualcomm, făcut pentru Adreno.</string>
     <string name="lab_554ed1d4">Elimini %1$s?</string>
     <string name="lab_558dab54">Acest joc include mediul de execuție Xbox al Microsoft, care necesită Gaming Services din Windows. Activat: se folosește în schimb mediul de execuție al aplicației. Dezactivează doar ca să încerci varianta proprie a jocului.</string>
-    <string name="lab_55b35170">Fișierul nu este un pachet de driver</string>
     <string name="lab_55dbea72">Sunet (MIDI)</string>
     <string name="lab_55fb28db">Găsit în folderul jocului.</string>
     <string name="lab_56b4c80c">Temă</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Randare pe dale GMEM</string>
     <string name="lab_7398c748">Culoare de accent proprie · X pentru a o alege</string>
     <string name="lab_73a11f48">Containere, setări și prefix într-un singur fișier (setările Classic).</string>
+    <string name="lab_73add714">Nu există meta.json în zip</string>
     <string name="lab_73e71958">Nuclee pentru programe pe 32 de biți</string>
     <string name="lab_74350de7">Despre</string>
     <string name="lab_749c9e00">Încă nu există containere.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Driver grafic</string>
     <string name="lab_96125830">Implicit / Orice controller</string>
     <string name="lab_962bd533">Luminozitate</string>
+    <string name="lab_963f841c">Același nume ca un driver încorporat</string>
     <string name="lab_964d1a40">Partajează clipboardul Android cu jocurile</string>
     <string name="lab_968b9d49">Aplicate la lansare. Meniul lateral din joc le poate schimba în continuare din mers.</string>
     <string name="lab_969dab73">ReShade activat / dezactivat, Individual / Combinat, efectele și setările lor</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Sunet de notificare</string>
     <string name="lab_992421a8">Deschide aplicația pe</string>
     <string name="lab_99273660">Activat pentru generarea de cadre — afișajul urmează limita de cadre × multiplicatorul. </string>
+    <string name="lab_9927a641">Eșuat</string>
     <string name="lab_9978b876">Butonul A</string>
     <string name="lab_99853914">Alege cu selectorul sistemului</string>
     <string name="lab_99895147">Bancă de sunete MIDI implicită</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Editează mapările</string>
     <string name="lab_a8b5f392">Ajutor</string>
     <string name="lab_a8b6222f">Driver de sistem</string>
+    <string name="lab_a8f9cfcd">Fișierul său meta.json nu numește nicio bibliotecă</string>
     <string name="lab_a905f340">Blochează frecvența CPU la maximum</string>
     <string name="lab_a92ebeb7">Claritate (VKBasalt) › Efect</string>
+    <string name="lab_a9323b0e">%1$s nu este în zip</string>
     <string name="lab_a960b3ff">Scalează puterea vibrațiilor. Notă: pe unele console portabile, o putere mai mică nu reduce încetinirea stick-urilor. Pentru asta, folosește Motoare de vibrații: Unul.</string>
     <string name="lab_a9af1b38">Se comută</string>
     <string name="lab_a9f8f50a">Profil nou</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Dezactivezi backupul automat?</string>
     <string name="lab_c06ade64">Comutatoare experimentale și detalii interne ale serverului de afișare.</string>
     <string name="lab_c088a86d">Ajustează logoul</string>
+    <string name="lab_c08afcff">Fișierul său meta.json nu poate fi citit</string>
     <string name="lab_c0b26391">Compatibilitate</string>
     <string name="lab_c0ba51f5">Mediu</string>
     <string name="lab_c0cb7e61">Dezactivat implicit, ca jocurile care citesc atât XInput, cât și DirectInput să vadă un singur pad.</string>

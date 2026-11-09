@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Видалити</string>
     <string name="lab_3e04658a">Синій</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Завантажити й замінити</string>
     <string name="lab_3e5678cd">Найшвидший</string>
     <string name="lab_3e86e543">Передається обгортці як є. Залиште порожнім, щоб не задавати.</string>
     <string name="lab_3ecd0489">Автоматичне резервне копіювання збережень під час виходу буде ВИМКНЕНО для ігор вашої бібліотеки Steam. Їхні збереження не копіюватимуться під час закриття гри — робити копії доведеться самостійно через резервне копіювання контейнера або в «Менеджері збережень». Продовжити?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Вимк. — виберіть частоту нижче, щоб зафіксувати екран.</string>
     <string name="lab_443d0954">Відкрити робочий стіл Windows</string>
     <string name="lab_4455b74f">Як часто рух стіка передається грі. Можна змінювати й у грі.</string>
+    <string name="lab_44655ec4">Не вдалося встановити: %1$s</string>
     <string name="lab_449c12fb">Розмір на екрані</string>
     <string name="lab_44bc352d">Логотип</string>
     <string name="lab_4500ffeb">Профіль за замовчуванням %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Журнали</string>
     <string name="lab_50d905f5">Низька затримка</string>
     <string name="lab_50db75d4"> · Виберіть, щоб задати цій грі власне значення.</string>
+    <string name="lab_51294f91">%1$s уже встановлено</string>
     <string name="lab_513ecfb1">Друзі й чат</string>
     <string name="lab_51732071">Профіль імпортовано</string>
     <string name="lab_51a6725d">Постефект Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS і SGSR підвищують роздільну здатність і різкість; SGSR — розробка Qualcomm для Adreno.</string>
     <string name="lab_554ed1d4">Видалити %1$s?</string>
     <string name="lab_558dab54">Ця гра постачається з власним середовищем Xbox від Microsoft, якому потрібні Gaming Services з Windows. Увімк.: замість нього використовується середовище додатка. Вимикайте, лише щоб спробувати середовище самої гри.</string>
-    <string name="lab_55b35170">Цей файл не є пакетом драйвера</string>
     <string name="lab_55dbea72">Звук (MIDI)</string>
     <string name="lab_55fb28db">Знайдено в папці гри.</string>
     <string name="lab_56b4c80c">Тема</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Тайловий рендеринг GMEM</string>
     <string name="lab_7398c748">Власний акцентний колір · X — вибрати</string>
     <string name="lab_73a11f48">Контейнери, налаштування й префікс в одному файлі (класичні налаштування).</string>
+    <string name="lab_73add714">У zip-архіві немає meta.json</string>
     <string name="lab_73e71958">Ядра для 32-бітних програм</string>
     <string name="lab_74350de7">Про додаток</string>
     <string name="lab_749c9e00">Контейнерів ще немає.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Графічний драйвер</string>
     <string name="lab_96125830">За замовчуванням / Будь-який контролер</string>
     <string name="lab_962bd533">Яскравість</string>
+    <string name="lab_963f841c">Ім\'я збігається з вбудованим драйвером</string>
     <string name="lab_964d1a40">Спільний буфер обміну Android з іграми</string>
     <string name="lab_968b9d49">Застосовуються під час запуску. Бічне меню в грі й надалі змінює їх на льоту.</string>
     <string name="lab_969dab73">ReShade увімк./вимк., «Один» / «Стек», ефекти та їхні налаштування</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Звук сповіщень</string>
     <string name="lab_992421a8">Відкривати додаток на</string>
     <string name="lab_99273660">Увімкнено для генерації кадрів — екран підлаштовується під ліміт кадрів × множник. </string>
+    <string name="lab_9927a641">Помилка</string>
     <string name="lab_9978b876">Кнопка A</string>
     <string name="lab_99853914">Вибрати системним діалогом</string>
     <string name="lab_99895147">Стандартний звуковий банк MIDI</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Змінити прив’язки</string>
     <string name="lab_a8b5f392">Довідка</string>
     <string name="lab_a8b6222f">Системний драйвер</string>
+    <string name="lab_a8f9cfcd">У його meta.json не вказано бібліотеку</string>
     <string name="lab_a905f340">Зафіксувати частоту CPU на максимумі</string>
     <string name="lab_a92ebeb7">Різкість (VKBasalt) › Ефект</string>
+    <string name="lab_a9323b0e">%1$s немає в zip-архіві</string>
     <string name="lab_a960b3ff">Масштабує силу вібрації. Примітка: на деяких портативних консолях менша сила не зменшує сповільнення стіків. Для цього використовуйте «Вібромотори: Один».</string>
     <string name="lab_a9af1b38">Заміна</string>
     <string name="lab_a9f8f50a">Новий профіль</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Вимкнути автокопіювання?</string>
     <string name="lab_c06ade64">Експериментальні перемикачі й внутрішні параметри сервера дисплея.</string>
     <string name="lab_c088a86d">Налаштувати логотип</string>
+    <string name="lab_c08afcff">Його meta.json не читається</string>
     <string name="lab_c0b26391">Сумісність</string>
     <string name="lab_c0ba51f5">Середовище</string>
     <string name="lab_c0cb7e61">Стандартно вимкнено, щоб ігри, які читають і XInput, і DirectInput, бачили один геймпад.</string>

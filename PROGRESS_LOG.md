@@ -1,8 +1,9 @@
 # Star-Compose — Progress Log
 
-## 2026-11-09 — ⏳ touch-aim ca31a4d9: installing pubg (user: "yes install it, pubg", 11:2x EST)
-- Before install: Elite, installed com.tencent.ig base.apk sha256 0a5724b7… (= 9864394d, 08:57:14), app process 20546 in the background, no Wine processes, launcher in front. No peer sessions (ListAgents empty).
-- **Resume point:** artifact Bannerlator-touch-aim-ca31a4d9-pubg (CI 42650998755) downloading to the scratchpad → stage /sdcard/Download/Bannerlator-touch-aim-ca31a4d9.apk (sha256 host == device) → `pm install -r` (approved) → check installed sha + crash buffer. If the session dies after install: ca31a4d9 is on the device, labels NOT seen on device yet.
+## 2026-11-09 — ✅ touch-aim ca31a4d9 INSTALLED on the Elite main app (pubg) 11:42:16 EST (user: "yes install it, pubg"; labels NOT seen on device yet)
+- Artifact Bannerlator-touch-aim-ca31a4d9-pubg (CI 42650998755), 597,168,798 bytes; manifest has com.tencent.ig; resources.arsc has "Touch gestures", no "Cursor to touch and its touch gestures". Staged /sdcard/Download/Bannerlator-touch-aim-ca31a4d9.apk, sha256 1b272bc5… (host == device).
+- Before: base.apk 0a5724b7… (= 9864394d), no Wine processes, launcher in front; no peer sessions. `pm install -r` Success (one permissive avc line from system_server reading the FUSE file, harmless); installed base.apk sha256 1b272bc5… == staged; lastUpdateTime 2026-11-09 11:42:16; versionName 3.1.9-pre2 (dev build keeps the release numbers). Crash buffer empty after install.
+- **Next:** user looks at Deck menu Controls › Mouse (save notes: Touch / Aim mode = this game, Touch gestures = all games) and the Classic drawer Steam client line (Steam (Linux) session only). Still open from the feature: the user's verdict on aiming, Auto warp path, Direct while aiming, X11. Merge only on the user's go.
 
 ## 2026-11-09 — ✅ touch-aim ca31a4d9: in-game menu labels follow Touch / Aim mode (CI 42650998755 GREEN ×4; NOT installed, NOT device-tested)
 - **Why:** user asked "are these settings going to interfere with mouse/touch tabs in the ingame side drawer?" Code read on 4764bd6d: no clash (on-screen controls hand missed fingers to the touch layer; stick / mouse-area / gyro / Steam pad mouse follow Aim On, and on Wayland also Auto via externalRelativeMode; Disable Mouse still wins; Auto-hide Cursor and Aim only hide). Two labels still named the old switches. User: "yes fix both labels".

@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart 906ae178 INSTALLED on the Elite main app (pubg) 21:27:23 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42550063478 green ×4. Installed base.apk sha256 5c18b9f1… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the soft edge → translate the 4 strings → merge on go.
+
 ## 2026-11-08 — 🔧 igart: soft edge inside the panel (906ae178; CI 42550063478; 4a15d0c6's run cancelled)
 - **User:** "i don't want it to extend, just make it soft where it meets the game, like slightly fuzzy". My 4a15d0c6 had run the art 64 dp past the panel, which was wrong.
 - **Change:** no wider layer. The art layer's last 16 dp fade out (DstIn: 1 → 0.75 → 0.3 → 0). Still no outline or shadow while art shows; the bottom bar keeps its top line only.

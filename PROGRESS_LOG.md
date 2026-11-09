@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔀 fix/fm-duplicate-entries MERGED to main e584506a (user: "good merge it") — #659
+- The user checked the file manager on the Elite (d4b14a0b installed 19:01:29 EST); crash buffer empty.
+- **How:** --no-ff over main bd426a84 (no conflicts). Backup ref refs/backup/20261108/main-before-fm-duplicate-entries → bd426a84. Merged code == tested d4b14a0b. Main push build 42538197001 running.
+- **Pre2:** the checklist is done (Classic check dropped by the user). The cut (3.1.9-pre2, vc 106, notes, update-pre.json) waits for the user's "cut it". Branch kept.
+
 ## 2026-11-08 — ✅ fm659 d4b14a0b INSTALLED on the Elite main app (pubg) 19:01:29 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42537143277 green ×4. Installed base.apk sha256 a076d79f… == staged; the app was not running; crash buffer empty; peer sessions told before and "done" after.
 - **Next:** the user opens the file manager (folders, search, folder sizes) → merge on go → pre2 cut on "cut it".

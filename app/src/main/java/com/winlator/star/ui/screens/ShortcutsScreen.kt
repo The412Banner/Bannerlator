@@ -5238,7 +5238,7 @@ private fun DpCheck(dp: SettingsDpad, id: String, checked: Boolean, onCheckedCha
  * placed in the game folder right away (GameMods.remove, for Special K also its logs; the launch does the
  * same). Lives outside the settings screen (D8 8.8.18 crashed dexing it with state inline).
  */
-private class GameModsSetting(
+internal class GameModsSetting(
     val mods: List<GameMods.Mod>, val machine: Int, val imports: Set<String>,
     initialOn: Map<String, Boolean>, initialSkDll: String, initialStartWith: String,
     private val gameDir: File?,
@@ -5289,7 +5289,7 @@ private class GameModsSetting(
 }
 
 @Composable
-private fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remember(shortcut) {
+internal fun rememberGameModsSetting(shortcut: Shortcut): GameModsSetting = remember(shortcut) {
     val exe = runCatching { WinePath.resolveAndroidPath(shortcut.container, shortcut.path) }.getOrNull()
     val machine = GameMods.peMachine(exe)
     val mods = GameMods.ALL.filter { GameMods.supports(it, shortcut.path, machine) }

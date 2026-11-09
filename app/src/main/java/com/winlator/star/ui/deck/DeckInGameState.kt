@@ -29,8 +29,8 @@ object DeckInGameState {
 
     enum class Panel { NONE, QUICK, MENU }
 
-    /** Full-menu pages, in rail order. STEAM, TV and FRIENDS only show where they apply (see [DeckInGameMenu]). */
-    enum class MenuTab { SCREEN, PERFORMANCE, EFFECTS, OVERLAY, CONTROLS, AUDIO, STEAM, TV, FRIENDS, TOOLS }
+    /** Full-menu pages, in rail order. STEAM, TV, FRIENDS and MODS only show where they apply (see [DeckInGameMenu]). */
+    enum class MenuTab { SCREEN, PERFORMANCE, EFFECTS, OVERLAY, CONTROLS, AUDIO, STEAM, TV, FRIENDS, MODS, TOOLS }
 
     /** Quick-menu pages. FRIENDS only shows while a live friends source exists. */
     enum class QuickTab { QUICK, TOOLS, FRIENDS, OPENERS }
@@ -160,12 +160,16 @@ object DeckInGameState {
 
     fun requestFocus() { _focusRequest.value = _focusRequest.value + 1 }
 
-    /** The full-menu pages that apply to this session: the Steam page only in the Linux Steam client, TV and Friends as the Classic rail shows them. */
-    fun availableMenuTabs(kind: InGameSessionKind, tv: Boolean, friends: Boolean): List<MenuTab> = MenuTab.values().filter {
+    /**
+     * The full-menu pages that apply to this session: the Steam page only in the Linux Steam client, TV, Friends and Mods
+     * as the Classic rail shows them (Mods while the game's EXE can take a mod, XServerDrawerState.mods).
+     */
+    fun availableMenuTabs(kind: InGameSessionKind, tv: Boolean, friends: Boolean, mods: Boolean = modsTabShown()): List<MenuTab> = MenuTab.values().filter {
         when (it) {
             MenuTab.STEAM -> kind == InGameSessionKind.LINUX_STEAM
             MenuTab.TV -> tv
             MenuTab.FRIENDS -> friends
+            MenuTab.MODS -> mods
             else -> true
         }
     }
@@ -178,6 +182,8 @@ object DeckInGameState {
     }
 
     private fun friendsTabShown(): Boolean = InGameFriendsSource.state.value.tabVisible
+
+    private fun modsTabShown(): Boolean = XServerDrawerState.mods.value.isNotEmpty()
 
     /**
      * The panel's own controller buttons while one is open (key-down only): L1 / R1 change page, X swaps the quick menu

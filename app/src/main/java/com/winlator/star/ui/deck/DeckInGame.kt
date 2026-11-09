@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.Cast
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.FlipToFront
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Layers
@@ -868,6 +869,7 @@ private fun menuTabTitle(t: MenuTab) = when (t) {
     MenuTab.STEAM -> "Steam"
     MenuTab.TV -> "TV"
     MenuTab.FRIENDS -> L("Friends")
+    MenuTab.MODS -> L("Mods")
     MenuTab.TOOLS -> L("Tools")
 }
 
@@ -885,6 +887,7 @@ private fun menuTabDesc(t: MenuTab, kind: InGameSessionKind) = when (t) {
     MenuTab.STEAM -> L("The Linux Steam client session.")
     MenuTab.TV -> L("Play on a TV or cast to one.")
     MenuTab.FRIENDS -> L("Steam friends and chat.")
+    MenuTab.MODS -> L("This game's mods and their menus.")
     MenuTab.TOOLS -> if (kind.isWine) L("Magnifier, windows, logs and running programs.") else L("Magnifier, picture-in-picture, keyboard and performance.")
 }
 
@@ -898,6 +901,7 @@ private fun menuTabIcon(t: MenuTab): ImageVector = when (t) {
     MenuTab.STEAM -> Icons.Outlined.Storefront
     MenuTab.TV -> Icons.Outlined.Tv
     MenuTab.FRIENDS -> Icons.Outlined.People
+    MenuTab.MODS -> Icons.Outlined.Extension
     MenuTab.TOOLS -> Icons.Outlined.Build
 }
 
@@ -913,10 +917,12 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     val tvConnected by state.tvConnected.collectAsState()
     val castSupported by state.castSupported.collectAsState()
     val friendsSource by InGameFriendsSource.state.collectAsState()
+    val mods by state.mods.collectAsState()
     val tabs = DeckInGameState.availableMenuTabs(
         kind,
         FeatureFlags.TV_OUTPUT_ENABLED && (tvConnected || castSupported),
         friendsSource.tabVisible,
+        mods.isNotEmpty(),
     )
     // A page that stops applying (the friends source dropped) falls back to the first page rather than an empty one.
     val shown = if (tab in tabs) tab else tabs.first()
@@ -996,6 +1002,7 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                             MenuTab.AUDIO -> AudioPage(state)
                             MenuTab.STEAM -> SteamPage(state)
                             MenuTab.TV -> TvPage(state)
+                            MenuTab.MODS -> ModsPage(state, mods)
                             MenuTab.TOOLS -> ToolsPage(state, kind)
                             MenuTab.FRIENDS -> Unit
                         }
@@ -1078,7 +1085,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     val tvConnected by state.tvConnected.collectAsState()
     val castSupported by state.castSupported.collectAsState()
     val friendsSource by InGameFriendsSource.state.collectAsState()
-    val tabs = DeckInGameState.availableMenuTabs(kind, FeatureFlags.TV_OUTPUT_ENABLED && (tvConnected || castSupported), friendsSource.tabVisible)
+    val mods by state.mods.collectAsState()
+    val tabs = DeckInGameState.availableMenuTabs(kind, FeatureFlags.TV_OUTPUT_ENABLED && (tvConnected || castSupported), friendsSource.tabVisible, mods.isNotEmpty())
     val shown = if (tab in tabs) tab else tabs.first()
     val accent = MaterialTheme.colorScheme.primary
     val stripFocus = remember { FocusRequester() }
@@ -1227,6 +1235,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                         MenuTab.AUDIO -> AudioPage(state)
                         MenuTab.STEAM -> SteamPage(state)
                         MenuTab.TV -> TvPage(state)
+                        MenuTab.MODS -> ModsPage(state, mods)
                         MenuTab.TOOLS -> ToolsPage(state, kind)
                         MenuTab.FRIENDS -> Unit
                     }

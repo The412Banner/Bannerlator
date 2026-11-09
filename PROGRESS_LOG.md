@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ fm659 d4b14a0b INSTALLED on the Elite main app (pubg) 19:01:29 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42537143277 green ×4. Installed base.apk sha256 a076d79f… == staged; the app was not running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user opens the file manager (folders, search, folder sizes) → merge on go → pre2 cut on "cut it".
+
 ## 2026-11-08 — 📝 pre2 checklist: Classic check dropped (user: "forget the classic check")
 - The Classic smoke test for updaters from pre1 is not done, by the user's decision. Remaining: the #659 fix (CI 42537143277) → merge on the user's go → cut 3.1.9-pre2 only on "cut it".
 

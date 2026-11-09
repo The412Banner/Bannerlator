@@ -1,5 +1,15 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔍 Windows Steam client in a Proton container = white login window (Elite, Wayland; investigation, nothing changed)
+- **Why (user, ~18:15 EST):** Steam client in a Proton container shows only a white screen; asked to launch it together and find the cause, and to check Bruno's Winlator for ideas.
+- **Setup (verified):** container 1 "P11 Arm", Proton-11.0-11.9-arm64ec-16, Wayland display, Banners-AIO r3, DXVK 2.4.1 gplasync; shortcut Steam.desktop → `F:\Download\Steam.Ajay\Steam\steam.exe` (2024 client 1731433018, CEF Chrome/126, self-update suppressed), no Launch options. Installed APK base.apk 8058b273… .
+- **Evidence (07:51 EST run):** no crash; CEF GPU process on ANGLE→D3D11→DXVK, "Sign in to Steam" 705x440 opened + shown 07:51:32, a 705x440 wayland swapchain was created — but the Wayland log never has the `is presenting GPU frames through Wayland` line and counts **0 GPU frames from games** for the whole run (a working game has the line and ~19 fps of GPU frames). CEF's frames never reach the compositor; the window shows Wine's blank background.
+- **Hypothesis (not proven):** Chromium's GPU process draws into a child window of the browser process's window (cross-process); winewayland cannot attach another process's Vulkan surface there.
+- **Side bug (verified, not fixed):** `files/wayland_adapter/<id>/icd.json` writes `library_path` with JSON-escaped `\/`; winewayland's pin step uses the raw text → "could not pin …/\/data\/…: dlopen failed" on every Vulkan client (log noise; the loader still loads the ICD).
+- **Bruno's Winlator (brunodev85/winlator, winlator-app 2c33741):** no CEF flags in source; 11.1 "Fixed Steam client startup" has no named commit (rootfs/wine binaries, dll-override cleanup 222ff64, services change 3839846: winebus/winehid no longer disabled); "Steam (Legacy)" installer = closed winaddons.exe; X server XComposite/child-surface fixes (X11 only).
+- **Next (awaits user go):** Launch options `-cef-disable-gpu` → user taps Steam, watch window redraws; then `-cef-in-process-gpu` alone; optional X11 container run.
+- **Resume point:** nothing launched by me; shortcut unchanged; no background jobs. Memory: bannerlator-steam-client-white.
+
 ## 2026-11-09 — ✅ MERGED fix/lab-badges-bugs → main 822ee6fb (user: "works, merge it to main", ~18:2x EST)
 - **Device-checked** by the user on the Pocket FIT (pubg 321d7aed): "works". Earlier proof: A on installed → actions menu (screenshot 165243); Home row pills removed on request.
 - Main had not moved since the branch base (cf471826) → no conflicts. Backup ref refs/backup/20261109/main-before-lab-badges-bugs = cf471826 (on GitHub, ls-remote checked). --no-ff merge 822ee6fb (parents cf471826 + 1b90d658), merged tree == branch tree; app code == tested 321d7aed.

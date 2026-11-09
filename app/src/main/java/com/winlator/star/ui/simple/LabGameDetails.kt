@@ -1,8 +1,6 @@
 package com.winlator.star.ui.simple
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -71,9 +69,11 @@ import com.winlator.star.store.SteamLibraryArt
 import com.winlator.star.store.SteamStoreSearch
 import com.winlator.star.store.download.MediaVideo
 import com.winlator.star.ui.deck.SoraFamily
+import com.winlator.star.ui.screens.CustomCover
 import com.winlator.star.ui.screens.ExeShortcutImporter
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.ShortcutsViewModel
+import com.winlator.star.ui.screens.applySteamCover
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -178,23 +178,43 @@ private fun sgdbChoices(context: Context, s: Shortcut, slot: String): List<ArtCh
 }
 
 /**
+ * An answer from [url]: the body of a 2xx, null when the server says there is nothing there (404 and the like).
+ * Throws when there is no answer: no network, a timeout, a refused key, rate limiting, a server error.
+ */
+private fun httpAnswer(url: String, bearer: String? = null): String? {
+    val c = URL(url).openConnection() as HttpURLConnection
+    c.connectTimeout = 10_000
+    c.readTimeout = 15_000
+    c.setRequestProperty("User-Agent", "Bannerlator")
+    bearer?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+    try {
+        val code = c.responseCode
+        if (code in 200..299) return c.inputStream.bufferedReader().readText()
+        if (code in 400..499 && code !in setOf(401, 403, 408, 429)) return null
+        throw java.io.IOException("HTTP $code from $url")
+    } finally { c.disconnect() }
+}
+
+/**
  * SteamGridDB's sharpest background for a game: by its Steam app when known, else a game titled like [name] (the
- * store's strict title match). 3840x1240 first, then any size; never the blurred style. Null when none. BLOCKING.
+ * store's strict title match). 3840x1240 first, then any size; never the blurred style. Null when SteamGridDB has
+ * none; throws when it could not be asked (so the miss is not remembered). BLOCKING.
  */
 internal fun labSgdbHero(context: Context, steamId: Int?, name: String): String? {
     val p = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
     val key = if (p.getBoolean("enable_custom_api_key", false)) p.getString("custom_api_key", "").orEmpty().ifBlank { SGDB_BUILTIN_KEY } else SGDB_BUILTIN_KEY
     val base = "https://www.steamgriddb.com/api/v2"
+    // A body that is not JSON (a Wi-Fi sign-in page) throws too.
     val bySteam = steamId?.let { sid ->
-        httpText("$base/games/steam/$sid", key)?.let { runCatching { JSONObject(it).optJSONObject("data")?.optInt("id", 0) }.getOrNull() }
+        httpAnswer("$base/games/steam/$sid", key)?.let { JSONObject(it).optJSONObject("data")?.optInt("id", 0) }
     }?.takeIf { it > 0 }
     val id = bySteam ?: run {
-        val hits = httpText("$base/search/autocomplete/" + URLEncoder.encode(name, "UTF-8"), key)?.let { runCatching { JSONObject(it).optJSONArray("data") }.getOrNull() } ?: return null
+        val hits = httpAnswer("$base/search/autocomplete/" + URLEncoder.encode(name, "UTF-8"), key)?.let { JSONObject(it).optJSONArray("data") } ?: return null
         (0 until minOf(hits.length(), 5)).mapNotNull { hits.optJSONObject(it) }
             .firstOrNull { SteamStoreSearch.nameMatch(name, it.optString("name")) >= 2 }?.optInt("id", 0)?.takeIf { it > 0 }
     } ?: return null
-    fun first(query: String): String? = httpText("$base/heroes/game/$id$query", key)?.let { body ->
-        runCatching { JSONObject(body).optJSONArray("data")?.optJSONObject(0)?.optString("url")?.takeIf { it.isNotBlank() } }.getOrNull()
+    fun first(query: String): String? = httpAnswer("$base/heroes/game/$id$query", key)?.let { body ->
+        JSONObject(body).optJSONArray("data")?.optJSONObject(0)?.optString("url")?.takeIf { it.isNotBlank() }
     }
     return first("?dimensions=3840x1240&styles=alternate,material") ?: first("?styles=alternate,material")
 }
@@ -216,17 +236,59 @@ private fun steamChoices(appId: Int, slot: String): List<ArtChoice> {
     return out.values.toList()
 }
 
-/** The game's Steam trailers (HLS), as the Preview clip choices. BLOCKING. */
-internal fun labSteamTrailers(appId: Int): List<MediaVideo.Direct> =
-    runCatching { SteamStoreSearch.fetchMedia(appId, "US") }.getOrNull()?.videos?.filterIsInstance<MediaVideo.Direct>().orEmpty()
+/** The game's Steam trailers (HLS), as the Preview clip choices; null when Steam could not be asked. BLOCKING. */
+internal fun labSteamTrailers(appId: Int): List<MediaVideo.Direct>? =
+    runCatching { SteamStoreSearch.fetchMedia(appId, "US") }.getOrNull()?.videos?.filterIsInstance<MediaVideo.Direct>()
 
-private fun downloadBitmap(url: String): Bitmap? = runCatching {
-    if (!url.startsWith("http")) return BitmapFactory.decodeFile(url)
+/** A picture from the web in a file of the app's cache, for CustomCover to read. BLOCKING. */
+private fun downloadToCache(context: Context, url: String): File? = runCatching {
+    val out = File(context.cacheDir, "lab_cover_${System.currentTimeMillis()}.img")
     val c = URL(url).openConnection() as HttpURLConnection
     c.connectTimeout = 10_000
     c.readTimeout = 20_000
-    try { c.inputStream.use { BitmapFactory.decodeStream(it) } } finally { c.disconnect() }
+    c.setRequestProperty("User-Agent", "Bannerlator")
+    try {
+        if (c.responseCode !in 200..299) return@runCatching null
+        c.inputStream.use { i -> out.outputStream().use { o -> i.copyTo(o) } }
+    } finally { c.disconnect() }
+    out
 }.getOrNull()
+
+/** The Steam / SteamGridDB picture (its URL) or file the cover was last picked from in Lab, for the chooser's outline and the Artwork row. */
+private const val K_COVER_PICK = "labCoverPick"
+
+/**
+ * Makes [src] (a URL or a file) the game's cover the way Classic's "Add your own cover" does (CustomCover): cut to the
+ * cover shape, written as the cover and the 64 px icon the XMB and the Classic list draw, and marked as the user's
+ * (coverSource=user), so a later Steam link or Scrape keeps it. False when the picture can't be read. BLOCKING.
+ */
+private fun labPickCover(context: Context, s: Shortcut, src: String): Boolean {
+    val web = src.startsWith("http")
+    val file = if (web) downloadToCache(context, src) ?: return false else File(src)
+    val before = s.getExtra(K_COVER_PICK, "").ifBlank { null }
+    // Saved with the cover by CustomCover's own write.
+    s.putExtra(K_COVER_PICK, src)
+    return try {
+        val ok = runCatching { CustomCover.apply(s, file) }.getOrNull() != null
+        if (!ok) s.putExtra(K_COVER_PICK, before)
+        ok
+    } finally { if (web) file.delete() }
+}
+
+/**
+ * Reset to automatic. A cover the user picked goes and what the game showed before comes back (Classic's Remove of a
+ * custom cover). Any other cover is the automatic one already: a game linked to Steam gets Steam's again (as Classic's
+ * Game Details "use Steam's art"), any other keeps it. BLOCKING.
+ */
+private fun labResetCover(context: Context, s: Shortcut): Boolean {
+    if (CustomCover.isCustom(s)) {
+        s.putExtra(K_COVER_PICK, null)
+        return CustomCover.remove(context, s)
+    }
+    val id = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 } ?: return true
+    runCatching { applySteamCover(s.container, s.name, id) }
+    return true
+}
 
 /** Copies a picked file into the app's own art folder, so the pick survives the original moving. */
 private fun keepFile(context: Context, src: String, s: Shortcut, slot: String): String? = runCatching {
@@ -254,7 +316,17 @@ private fun slotSource(s: Shortcut, slot: String): String {
     }
     val steam = LabArt.appId(s) != null && slot != "icon"
     return when {
-        slot == "cover" -> if (!s.customCoverArtPath.isNullOrBlank()) L("Your cover") else L("Automatic")
+        slot == "cover" -> {
+            // Only a cover marked as the user's (CustomCover) is a pick; one Steam or the store put there is automatic.
+            val c = s.getExtra(K_COVER_PICK, "")
+            when {
+                !CustomCover.isCustom(s) -> L("Automatic")
+                c.contains("steamgriddb", ignoreCase = true) -> "SteamGridDB"
+                c.startsWith("http") -> "Steam"
+                c.isNotBlank() -> L("Your file")
+                else -> L("Your cover")
+            }
+        }
         p == "none" -> if (slot == "logo") L("None · the name shows") else L("None")
         p != null && p.contains("steamgriddb", ignoreCase = true) -> "SteamGridDB"
         p != null && p.startsWith("http") -> "Steam"
@@ -295,6 +367,7 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
     }
     fun linkSteam(appId: Int) {
         scope.launch {
+            val before = details.steamAppId
             val info = withContext(Dispatchers.IO) { SteamStoreSearch.fetchDetails(appId) }
             saveDetails(
                 GameDetails(
@@ -305,14 +378,36 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
                     info?.metacritic ?: details.metacritic,
                 ),
             )
+            // Steam's cover, as Classic's Game Details saves a link: written after the details (it reads the game's
+            // file again), and not over a cover the user picked unless it is a different Steam app now.
+            val fresh = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (CustomCover.isCustom(s) && appId != before) { s.putExtra(CustomCover.EXTRA_SOURCE, null); s.saveData() }
+                    applySteamCover(s.container, s.name, appId)
+                }
+                runCatching { Shortcut(s.container, s.file) }.getOrNull()
+            }
+            if (fresh != null) { shortcut = fresh; LabArt.selected = fresh }
+            ShortcutsViewModel.notifyContainersChanged()
+            LabArt.changed()
             toast(context, L("Linked to Steam app %1\$s", appId))
         }
     }
-    fun searchSteam() {
+    fun searchSteam(query: String) {
+        val q = query.trim().ifBlank { return }
         scope.launch {
-            val hits = withContext(Dispatchers.IO) { SteamStoreSearch.searchByName(s.name) }
-            if (hits.isEmpty()) toast(context, L("Nothing found on Steam for %1\$s", s.name)) else steamHits = hits
+            val hits = withContext(Dispatchers.IO) { SteamStoreSearch.searchByName(q) }
+            if (hits.isEmpty()) toast(context, L("Nothing found on Steam for %1\$s", q)) else steamHits = hits
         }
+    }
+    // A game linked to Steam with none of its details yet gets them from the store when the page opens (as Classic's
+    // Game Details fills them in); the name stays.
+    LaunchedEffect(s.file.path) {
+        val d = GameDetails.from(s)
+        val id = d.steamAppId ?: return@LaunchedEffect
+        if (d.hasDisplayableDetails()) return@LaunchedEffect
+        val info = withContext(Dispatchers.IO) { SteamStoreSearch.fetchDetails(id) } ?: return@LaunchedEffect
+        saveDetails(GameDetails(id, info.genres, info.shortDescription, info.releaseYear, info.metacritic))
     }
     fun rename(newName: String) {
         val base = newName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
@@ -335,7 +430,7 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
         MenuEntry(
             "d-steam", L("Steam"), details.steamAppId?.let { L("Steam app %1\$s", it) } ?: L("Not linked to Steam"), icon = Icons.Filled.Link,
             actions = listOfNotNull(
-                MenuAction(L("Search Steam by name"), { searchSteam() }),
+                MenuAction(L("Search Steam by name"), { textFor = "steam" }),
                 details.steamAppId?.let { MenuAction(L("Unlink"), { saveDetails(details.copy(steamAppId = null)) }) },
             ),
         ),
@@ -421,12 +516,17 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
             "genres" -> L("Genres") to details.genres.joinToString(", ")
             "year" -> L("Release year") to (details.releaseYear ?: "")
             "meta" -> L("Metacritic") to (details.metacritic?.toString() ?: "")
+            "steam" -> L("Search Steam") to s.name
             else -> L("Description") to (details.description ?: "")
         }
-        LabTextDialog(title, start, hint = when (f) { "genres" -> L("Action, RPG, Strategy"); "meta" -> "1–100"; else -> null }, multiline = f == "desc", onDismiss = { textFor = null }) { v ->
+        LabTextDialog(
+            title, start, hint = when (f) { "genres" -> L("Action, RPG, Strategy"); "meta" -> "1–100"; else -> null }, multiline = f == "desc",
+            confirm = if (f == "steam") L("Search") else L("Save"), onDismiss = { textFor = null },
+        ) { v ->
             textFor = null
             when (f) {
                 "name" -> rename(v)
+                "steam" -> searchSteam(v)
                 "genres" -> saveDetails(details.copy(genres = v.split(",").map { it.trim() }.filter { it.isNotBlank() }))
                 "year" -> saveDetails(details.copy(releaseYear = v.trim().ifBlank { null }))
                 "meta" -> saveDetails(details.copy(metacritic = v.trim().toIntOrNull()?.takeIf { it in 1..100 }))
@@ -439,7 +539,7 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
     }
     slotFor?.let { slot ->
         if (slot == "clip") LabClipChooser(s, onDismiss = { slotFor = null })
-        else LabArtChooser(s, slot, onDismiss = { slotFor = null })
+        else LabArtChooser(s, slot, onDismiss = { slotFor = null }, onReload = { fresh -> shortcut = fresh; LabArt.selected = fresh })
     }
     if (adjustOpen) LabAdjustLogo(s, onDismiss = { adjustOpen = false })
 }
@@ -478,11 +578,11 @@ private fun SlotThumb(s: Shortcut, slot: String) {
 
 /** A text field in a Lab dialog: Save keeps it, Cancel or B leaves it. */
 @Composable
-private fun LabTextDialog(title: String, initial: String, hint: String?, multiline: Boolean, onDismiss: () -> Unit, onDone: (String) -> Unit) {
+private fun LabTextDialog(title: String, initial: String, hint: String?, multiline: Boolean, confirm: String = L("Save"), onDismiss: () -> Unit, onDone: (String) -> Unit) {
     var v by remember { mutableStateOf(initial) }
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onDone(v) }) { Text(L("Save")) } },
+        confirmButton = { TextButton(onClick = { onDone(v) }) { Text(confirm) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(L("Cancel")) } },
         title = { Text(title) },
         text = {
@@ -523,12 +623,12 @@ private fun GroupLabel(text: String) = Text(text, color = SimpleMuted, fontSize 
 
 /**
  * Choosing one picture (DroidDeck's art chooser): Steam's and SteamGridDB's as thumbnails, Pick image…, and Reset to
- * automatic (plus "Show the name instead" for the logo). The cover goes to the app's own cover; the others are kept in
- * the game's Extra Data.
+ * automatic (plus "Show the name instead" for the logo). The cover goes through Classic's custom cover (CustomCover);
+ * the others are kept in the game's Extra Data.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
+private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit, onReload: (Shortcut) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var choices by remember { mutableStateOf<List<ArtChoice>?>(null) }
@@ -544,11 +644,10 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
         busy = true
         scope.launch {
             if (slot == "cover") {
-                val ok = withContext(Dispatchers.IO) {
-                    if (url == null) { runCatching { s.removeCustomCoverArt() }; true }
-                    else downloadBitmap(url)?.let { bmp -> runCatching { s.saveCustomCoverArt(bmp) }.isSuccess } ?: false
-                }
-                if (!ok) toast(context, L("Could not load that picture"))
+                val ok = withContext(Dispatchers.IO) { if (url == null) labResetCover(context, s) else labPickCover(context, s, url) }
+                if (!ok) toast(context, if (url == null) L("Could not reset the cover") else L("Could not load that picture"))
+                // A Steam cover is written to the game's file by applySteamCover: the page reads it again.
+                withContext(Dispatchers.IO) { runCatching { Shortcut(s.container, s.file) }.getOrNull() }?.let(onReload)
                 ShortcutsViewModel.notifyContainersChanged()
                 LabArt.changed()
             } else LabArt.putGame(s, LabArt.slotKey(slot), url)
@@ -567,7 +666,8 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
         val list = choices
         if (list == null) Text(L("Looking for pictures…"), color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
         else {
-            val current = LabArt.pick(s, slot)
+            // The cover's pick is CustomCover's; the other slots keep theirs in the game's Extra Data.
+            val current = if (slot == "cover") s.getExtra(K_COVER_PICK, "").takeIf { CustomCover.isCustom(s) } else LabArt.pick(s, slot)
             var given = false
             for (group in listOf("Steam", "SteamGridDB")) {
                 val inGroup = list.filter { it.group == group }
@@ -605,7 +705,13 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
 private fun LabClipChooser(s: Shortcut, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var trailers by remember { mutableStateOf<List<MediaVideo.Direct>?>(null) }
-    LaunchedEffect(Unit) { trailers = withContext(Dispatchers.IO) { LabArt.appId(s)?.let { labSteamTrailers(it) }.orEmpty() } }
+    var unreachable by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val id = LabArt.appId(s)
+        val got = withContext(Dispatchers.IO) { id?.let { labSteamTrailers(it) } }
+        unreachable = id != null && got == null
+        trailers = got.orEmpty()
+    }
     fun apply(v: String?) { LabArt.putGame(s, LabArt.K_CLIP, v); onDismiss() }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         if (r.resultCode == android.app.Activity.RESULT_OK) InAppFilePicker.pickedPath(r.data)?.let { picked ->
@@ -619,7 +725,14 @@ private fun LabClipChooser(s: Shortcut, onDismiss: () -> Unit) {
         val current = s.getExtra(LabArt.K_CLIP, "")
         when {
             list == null -> Text(L("Looking for trailers…"), color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
-            list.isEmpty() -> Text(if (LabArt.appId(s) == null) L("Not linked to Steam: link it under Details to find trailers.") else L("Steam has no trailers for this game."), color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
+            list.isEmpty() -> Text(
+                when {
+                    LabArt.appId(s) == null -> L("Not linked to Steam: link it under Details to find trailers.")
+                    unreachable -> L("Could not reach Steam.")
+                    else -> L("Steam has no trailers for this game.")
+                },
+                color = SimpleMuted, fontSize = 13.sp, modifier = Modifier.padding(8.dp),
+            )
             else -> {
                 GroupLabel(L("Steam trailers"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 8.dp)) {

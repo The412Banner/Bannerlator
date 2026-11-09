@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 igart: chips and buttons see-through too (2aa6ff7c; CI 42548252856; 63d1fd34's run cancelled)
+- **User:** "make them see through also, just not as much to be easy to read still".
+- **Change:** LocalIgRaisedAlpha + igRaised(base) in DeckInGameWidgets. The in-game menu provides 0.6 while art shows; IgChips (unselected; was solid), IgSegmented (was .7), IgButton (was .85) and IgScopeChip (was .8) take at most 0.6. The cards stay at 42 % glass.
+- **Next:** green → install pubg (pre-approved: "install it when it's done, pubg").
+
 ## 2026-11-08 — 🔧 igart: logo centred, option cards see-through (63d1fd34; CI 42547866973 running)
 - **User test of d5cb91b1 (screenshot 205039, DiRT Showdown):** the art, icon and logo show. User: "logo should be centered, then the menu options need to be see through to see the game art background also since they are solid".
 - **Change:**

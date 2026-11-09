@@ -8,6 +8,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,17 +32,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,15 +60,28 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.winlator.star.store.SteamFriendsActivity
+import com.winlator.star.store.SteamFriendsStore
 import com.winlator.star.store.download.ContentDownloadRegistry
+import com.winlator.star.ui.deck.DeckInput
+import com.winlator.star.ui.deck.DeckStore
 import com.winlator.star.ui.deck.SoraFamily
+import com.winlator.star.ui.deck.isSignedIn
+import com.winlator.star.ui.screens.ShortcutActionDialogs
+import com.winlator.star.ui.screens.ShortcutsViewModel
+import com.winlator.star.ui.screens.rememberShortcutActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -179,10 +199,75 @@ internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier 
 /** Kept apart so the draw lambda reads it at draw time. */
 private val SimpleLineDraw: Color get() = SimpleLine
 
-/** The slim line over every Lab page: (portrait) the menu button, the name and device, then battery, temperature and clock. */
+/** What the drawer asks of the top line, which stays on screen when the drawer closes: open the Community configs browser. */
+internal object LabTopRequests {
+    var community by mutableStateOf(false)
+}
+
+/** The shell's search, as Y opens it: the page's own search where it has one, else the search overlay. */
+internal fun labOpenSearch() {
+    DeckInput.handler?.invoke(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_Y))
+}
+
+/** Opens Steam friends and chat (the Steam store's own screen). */
+internal fun labOpenFriends(context: Context) {
+    runCatching { context.startActivity(Intent(context, SteamFriendsActivity::class.java)) }
+}
+
+/** Whether Steam is signed in (friends and chat need it), read again whenever the app comes back. */
+@Composable
+internal fun rememberSteamSignedIn(): Boolean {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var tick by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) tick++ }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return remember(tick) { isSignedIn(context, DeckStore.STEAM) }
+}
+
+/** Unread Steam chats and friend requests, as the Classic and Deck friends button counts them. */
+@Composable
+internal fun rememberSteamUnread(): Int {
+    val unread by SteamFriendsStore.unread.collectAsState()
+    val incoming by SteamFriendsStore.incomingRequests.collectAsState()
+    val social by SteamFriendsStore.socialEnabled.collectAsState()
+    return if (social) unread.values.sum() + incoming.size else 0
+}
+
+/** A square icon button of the top line, with a count over its corner when [badge] > 0. */
+@Composable
+private fun LabTopIcon(icon: ImageVector, label: String, badge: Int = 0, onClick: () -> Unit) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).labPanel().labTile(onClick = onClick)) {
+        Icon(icon, contentDescription = label, tint = SimpleInk, modifier = Modifier.size(22.dp))
+        if (badge > 0) {
+            Text(
+                if (badge > 99) "99+" else "$badge", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The slim line over every Lab page: back, (portrait) the menu button, the name, then Search (Y's), and in landscape
+ * Community configs and Steam friends (signed in only; in portrait they are in the drawer), then battery, temperature
+ * and clock. Landscape also shows the device's name.
+ */
 @Composable
 internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Unit)?, modifier: Modifier = Modifier) {
     val dev = rememberLabDevice()
+    val context = LocalContext.current
+    // The Community configs browser and its flows are Classic's (ShortcutActionDialogs), mounted here so the drawer
+    // can open it too: the top line stays on screen when the drawer closes.
+    val vm: ShortcutsViewModel = viewModel()
+    val actions = rememberShortcutActions(vm)
+    LaunchedEffect(LabTopRequests.community) {
+        if (LabTopRequests.community) { LabTopRequests.community = false; actions.showCommunityBrowser = true }
+    }
+    val steam = rememberSteamSignedIn()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -201,14 +286,24 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
                 modifier = Modifier.size(40.dp).labPanel().labTile(onClick = onMenu),
             ) { Icon(Icons.Filled.Menu, contentDescription = L("Menu"), tint = SimpleInk, modifier = Modifier.size(22.dp)) }
         }
-        Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1)
-        Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        // Portrait has no room for the device's name (the drawer shows it): the app's name takes the space.
+        Text(
+            "Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = if (portrait) Modifier.weight(1f) else Modifier,
+        )
+        if (!portrait) Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        LabTopIcon(Icons.Filled.Search, L("Search")) { labOpenSearch() }
+        if (!portrait) {
+            LabTopIcon(Icons.Filled.Public, L("Community configs")) { actions.showCommunityBrowser = true }
+            if (steam) LabTopIcon(Icons.Filled.People, L("Steam friends"), badge = rememberSteamUnread()) { labOpenFriends(context) }
+        }
         if (dev != null) {
             if (dev.battery >= 0) Text("${dev.battery}%", color = SimpleMuted, fontSize = 13.sp)
             dev.tempC?.let { Text(L("%1\$s°C", it), color = SimpleMuted, fontSize = 13.sp) }
             Text(dev.time, color = SimpleInk, fontSize = 13.sp)
         }
     }
+    ShortcutActionDialogs(actions)
 }
 
 /**
@@ -304,6 +399,26 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                             Text(L(s.label), color = if (on) SimpleStrong else SimpleInk, fontSize = 15.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
                         }
                     }
+                    // Classic's Community configs and Steam friends buttons (the top line has them in landscape).
+                    val context = LocalContext.current
+                    val steam = rememberSteamSignedIn()
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(SimpleLine))
+                    Spacer(Modifier.height(6.dp))
+                    @Composable
+                    fun extra(icon: ImageVector, label: String, badge: Int = 0, onClick: () -> Unit) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.fillMaxWidth().height(50.dp).labTile(onClick = onClick).padding(horizontal = 12.dp),
+                        ) {
+                            Icon(icon, contentDescription = null, tint = SimpleMuted, modifier = Modifier.size(21.dp))
+                            Text(label, color = SimpleInk, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                            if (badge > 0) Text("$badge", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.background(MaterialTheme.colorScheme.error, CircleShape).padding(horizontal = 7.dp, vertical = 1.dp))
+                        }
+                    }
+                    extra(Icons.Filled.Public, L("Community configs")) { LabTopRequests.community = true; close() }
+                    if (steam) extra(Icons.Filled.People, L("Steam friends"), rememberSteamUnread()) { close(); labOpenFriends(context) }
                     if (active != null) {
                         Spacer(Modifier.height(14.dp))
                         Text(L("Downloading %1\$s · %2\$s%%", active.title, (active.fraction * 100).roundToInt()), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))

@@ -64,14 +64,17 @@ internal object LabClips {
         ).also { cache = it }
     }
 
-    /** The clip for [s] (a URL or a file path), or null. BLOCKING on the first look-up of a Steam app. */
+    /**
+     * The clip for [s] (a URL or a file path), or null. BLOCKING on the first look-up of a Steam app. Steam's answer is
+     * kept for the session; a look-up that got no answer is not, so the next one asks again.
+     */
     fun clipFor(s: Shortcut): String? {
         val pick = s.getExtra(LabArt.K_CLIP, "")
         if (pick == "none") return null
         if (pick.isNotBlank()) return pick
         val id = LabArt.appId(s) ?: return null
         synchronized(auto) { if (auto.containsKey(id)) return auto[id] }
-        val list = labSteamTrailers(id)
+        val list = labSteamTrailers(id) ?: return null
         val url = (list.firstOrNull { it.title.contains("gameplay", ignoreCase = true) } ?: list.firstOrNull())?.url
         synchronized(auto) { auto[id] = url }
         return url

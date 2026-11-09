@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🖼️ feat/ingame-game-art: the game's art, icon and logo in Lab's in-game menu (d5cb91b1; CI 42546587468 running, NOT device-tested)
+- **Why (user, screenshot 202740 of the Lab in-game menu in DiRT Showdown):** "add specific game art and logos to the in game side drawer … game art behind options faded, logo at the top to replace game name, icon used as well"; then "images / logos / icons also need to be available to pick … in games details page for its in-game drawer to use different ones from main app pages".
+- **How:**
+  - XServerDisplayActivity passes shortcut.file to DeckInGameState.setGameShortcutPath. LabInGameMenu loads the shortcut (loadLabShortcut) and calls LabArt.resolve (found SteamGridDB heroes).
+  - A Box underneath: LabArt.inGameBackground (LabPicture) with a fade (panelTop .55 → panelBottom .84 → .96); the plain gradient when there is no art.
+  - Header: LabInGameIcon (40 dp) + the logo (LabArt.inGameModels "logo", Fit); the name as a fallback.
+  - LabArt: IG_SLOTS igbg/iglogo/igicon (extras labArt_ig*); a pick wins, the app pages' slot follows (also when the pick fails to load); "none" hides it; igbg with no pick = look(s) (so Game art background Off = none).
+  - Game details › Artwork: rows grouped App pages / In-game menu; the In-game rows use the same chooser (Steam + SteamGridDB choices of the base slot, Pick image…, None, Same as app pages); SlotThumb shows the in-game result.
+- **Strings:** 4 new English strings extracted (1800); translations to follow.
+- **Next:** green → stage pubg → ASK install → user opens the in-game menu in a game with art → merge on go.
+
 ## 2026-11-08 — ✅ 3.1.9-pre2 PUBLISHED and verified; installed on the Elite + Pocket FIT
 - **Release run 42538588231 success:** prerelease, not draft, Latest still 3.1.8; tag 3.1.9-pre2 == 6885a19b == main HEAD at publish (no drift); 4 APKs + update.json; update.json vc 106 / 3.1.9-pre2 with 5 highlights; manifest update-pre.json = 106 (stable update.json still 3.1.8 / 104); 32 patches on Bannerlator-updates 3.1.9-pre2 (from pre1 ~34 MB, 3.1.8 ~68 MB, mali-pre1 ~40 MB).
 - **Page edit after publishing (user, no rebuild):** game art preview (docs/releases/media/3.1.9-pre2-game-art.webp from the user's video of the Pocket FIT on a TV) linking to Bannerlator-3.1.9-pre2-game-art-preview.mp4 (release asset, H.264); game art marked device-tested; patch sizes in the Small update box. Same edits in docs (efbbfdfc).

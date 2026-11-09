@@ -510,7 +510,9 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
                 )
                 AppSettingsRegistry.TARGET_LOGS -> showLogs = true
                 AppSettingsRegistry.TARGET_ABOUT -> onAbout()
-                AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(Screen.InputControls.route)
+                AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(
+                    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.CONTROLS else Screen.InputControls.route,
+                )
                 AppSettingsRegistry.TARGET_CONTENTS -> navController.navigate(
                     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.DRIVERS else Screen.Contents.route,
                 )

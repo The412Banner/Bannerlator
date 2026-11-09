@@ -50,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,6 +132,9 @@ private fun pre(vararg p: String): (SettingDef) -> Boolean = { d -> p.any { d.id
 
 /** The Wayland compositor's driver (SettingsRegistry's own id; the X11 driver configuration's version is graphics.gdc.version). */
 private const val COMPOSITOR_DRIVER = "graphics.compositorDriver"
+
+/** DeckWrapperDetectedSection's invisible extra that reads the picked wrapper's detected keys (kept running like GRAPHICS_PROBES). */
+private const val WRAPPER_DETECTED_PROBE = "wrapper-detected-probe"
 
 private fun graphicsItems(game: Boolean): List<CItem> = listOf(
     CHead(L("Graphics")),
@@ -401,8 +405,8 @@ private fun resolve(
     val placed = HashSet<SettingDef>()
     val extraItems: Map<String, List<Pair<PageExtra, Boolean>>> =
         extras.mapValues { (_, e) -> e.top().map { it to true } + e.bottom().map { it to false } }
-    // The Graphics lists reader draws nothing; the editor keeps it running itself (see SimpleClassicEditor).
-    val placedExtra = hashSetOf("graphics|$GRAPHICS_PROBES")
+    // The Graphics lists reader and the wrapper keys reader draw nothing; the editor keeps them running itself (see SimpleClassicEditor).
+    val placedExtra = hashSetOf("graphics|$GRAPHICS_PROBES", "graphics|$WRAPPER_DETECTED_PROBE")
     fun res(items: List<CItem>): List<RLine> = buildList {
         for (item in items) when (val it = item) {
             is CHead -> add(RHead(it.title))
@@ -484,6 +488,9 @@ internal fun SimpleClassicEditor(
     // composed. Lab has no Graphics page to host it, so it runs for as long as the editor is open.
     val graphicsProbes = remember(extras) { extras["graphics"]?.top()?.filter { it.key == GRAPHICS_PROBES }.orEmpty() }
     graphicsProbes.forEach { it.content() }
+    // The picked wrapper's detected keys, so "Detected in this wrapper" only shows when it has rows. Read on every
+    // composition: it applies only to X11 Wine containers and games, which the backend row can change.
+    extras["graphics"]?.top()?.filter { it.key == WRAPPER_DETECTED_PROBE }.orEmpty().forEach { p -> key(p.key) { p.content() } }
     val catLabels = remember(categories) { categories.associate { it.id to it.label } }
     val tabs = resolve(
         if (game) gameLayout() else containerLayout(),

@@ -259,7 +259,6 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
     val uiStyle by AppThemeState.uiStyle.collectAsState()
     val xmbHome by AppThemeState.deckXmbHome.collectAsState()
     val simpleHome by AppThemeState.simpleHome.collectAsState()
-    val layout by AppThemeState.simpleLayout.collectAsState()
     val preset by AppThemeState.presetIndex.collectAsState()
     val customAccent by AppThemeState.customAccent.collectAsState()
     val uiScale by AppThemeState.uiScale.collectAsState()
@@ -280,9 +279,7 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
         MenuAction(mark("XMB", style == "XMB"), { AppThemeState.setDeckXmbHome(true); AppThemeState.setUiStyle(AppThemeState.UI_STYLE_DECK) }),
         MenuAction(mark("Classic", style == "Classic"), { AppThemeState.setUiStyle(AppThemeState.UI_STYLE_CLASSIC) }),
     )
-    val layouts = listOf(AppThemeState.SIMPLE_LAYOUT_SHELF to "Shelf", AppThemeState.SIMPLE_LAYOUT_RAIL to "Rail", AppThemeState.SIMPLE_LAYOUT_FOCUS to "Focus")
     val orientations = listOf(AppOrientation.AUTO to L("Auto"), AppOrientation.PORTRAIT to L("Portrait"), AppOrientation.LANDSCAPE to L("Landscape"))
-    val scales = listOf(0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f)
     fun pct(f: Float) = "${(f * 100).roundToInt()}%"
 
     val langTag = LabLang.tag(context)
@@ -339,10 +336,10 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
             },
         ),
         MenuEntry("ui", L("Interface size"), trailing = pct(uiScale), icon = Icons.Filled.ZoomIn,
-            actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (uiScale * 100).roundToInt()), { AppThemeState.setUiScale(f) }) }),
+            actions = labScaleSteps(uiScale).map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (uiScale * 100).roundToInt()), { AppThemeState.setUiScale(f) }) }),
         MenuEntry("font", L("Text size"), trailing = pct(fontScale), icon = Icons.Filled.TextFields,
-            actions = scales.map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (fontScale * 100).roundToInt()), { AppThemeState.setFontScale(f) }) }),
-    )
+            actions = labScaleSteps(fontScale).map { f -> MenuAction(mark(pct(f), (f * 100).roundToInt() == (fontScale * 100).roundToInt()), { AppThemeState.setFontScale(f) }) }),
+    ) + labDrawerEntries()
     val themes = themePresets.mapIndexed { i, t ->
         val custom = i == CUSTOM_PRESET_INDEX
         MenuEntry(
@@ -372,81 +369,6 @@ internal fun SimpleAppearancePage(onBack: () -> Unit) {
             text = { ColorPicker(initialColor = customAccent, onColorChanged = { AppThemeState.setCustomAccent(it) }) },
         )
     }
-}
-
-// ───────────────────────────── Containers ─────────────────────────────
-
-/** Containers: each container (A = its settings, X = start its desktop, duplicate, back up saves, export, remove), backups to import, and the defaults. */
-@Composable
-internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Unit, vm: ContainersViewModel = viewModel()) {
-    val context = LocalContext.current
-    val containers by vm.containers.collectAsState()
-    val message by vm.message.collectAsState()
-    var backups by remember { mutableStateOf(emptyList<java.io.File>()) }
-    OnResume { vm.refresh(); backups = runCatching { vm.availableBackups() }.getOrDefault(emptyList()) }
-    LaunchedEffect(message) { message?.let { toast(context, it); vm.messageShown() } }
-
-    fun startDesktop(c: Container) {
-        val activity = context as? Activity ?: return
-        if (!XrActivity.isEnabled(context)) {
-            val intent = Intent(context, XServerDisplayActivity::class.java).putExtra("container_id", c.id)
-            if (c.displayBackend == Container.DISPLAY_BACKEND_WAYLAND) intent.putExtra("wayland_mode", true)
-            activity.startActivity(intent)
-        } else XrActivity.openIntent(activity, c.id, null)
-    }
-
-    val gameCounts = remember(containers) { containers.associate { it.id to runCatching { vm.shortcutsFor(it).size }.getOrDefault(0) } }
-    val entries = containers.map { c ->
-        val games = gameCounts[c.id] ?: 0
-        MenuEntry(
-            key = "c${c.id}",
-            title = c.name,
-            subtitle = listOf(c.wineVersion, "$games ${if (games == 1) "game" else "games"}").joinToString(" · "),
-            trailing = if (c.displayBackend == Container.DISPLAY_BACKEND_WAYLAND) "Wayland" else "X11",
-            icon = Icons.Filled.Inventory2,
-            onA = { onNavigate(DeckSettingsRoutes.container(c.id)) },
-            play = { startDesktop(c) },
-            actions = listOf(
-                MenuAction(L("Settings"), { onNavigate(DeckSettingsRoutes.container(c.id)) }),
-                MenuAction(L("Start its Windows desktop"), { startDesktop(c) }),
-                MenuAction(L("Duplicate"), { vm.duplicate(c) { toast(context, L("Duplicated %1\$s", c.name)) } }, confirm = L("Make a copy of %1\$s, with its games and settings?", c.name)),
-                MenuAction(L("Back up all saves"), {
-                    GameSaveBackup.backup(context, c) { r -> (context as? Activity)?.runOnUiThread { toast(context, if (r.ok) L("Saves backed up (%1\$s files)", r.fileCount) else L("Backup failed: %1\$s", r.error ?: L("unknown"))) } }
-                }),
-                MenuAction(L("Export"), { vm.exportContainer(c) { path -> (context as? Activity)?.runOnUiThread { toast(context, if (path != null) L("Exported to %1\$s", path) else L("Export failed")) } } }),
-                MenuAction(L("Remove"), { vm.remove(c, context) { toast(context, L("Removed %1\$s", c.name)) } }, danger = true, confirm = L("Remove %1\$s and everything in it? Its games' shortcuts go too.", c.name)),
-            ),
-        )
-    }
-    SimpleMenuPage(
-        overline = L("Manage"),
-        title = L("Containers"),
-        sections = listOf(
-            MenuSection(
-                "containers", L("Containers"), Icons.Filled.Inventory2, entries,
-                empty = L("No containers yet."),
-                primary = MenuAction(L("New container"), {
-                    if (com.winlator.star.xenvironment.ImageFs.find(context).isValid()) onNavigate(DeckSettingsRoutes.container(DeckSettingsRoutes.NEW_CONTAINER_ID))
-                    else toast(context, L("The Windows system files are not installed yet."))
-                }),
-            ),
-            MenuSection(
-                "import", L("Backups"), Icons.Filled.Restore,
-                backups.map { f ->
-                    MenuEntry(
-                        "b${f.absolutePath}", f.name, f.parent, icon = Icons.Filled.Restore,
-                        actions = listOf(MenuAction(L("Import this container"), { vm.importContainer(f) { toast(context, L("Imported %1\$s", f.name)) } }, confirm = L("Import %1\$s as a new container?", f.name))),
-                    )
-                },
-                empty = L("No container backups in Downloads/Winlator/Backups/Containers."),
-            ),
-            MenuSection(
-                "defaults", L("Defaults"), Icons.Filled.Tune,
-                listOf(MenuEntry("defaults", L("New container defaults"), L("What every new container starts with"), icon = Icons.Filled.Tune, onA = { onNavigate(DeckSettingsRoutes.DEFAULTS) })),
-            ),
-        ),
-        onBack = onBack,
-    )
 }
 
 // ───────────────────────────── Components ─────────────────────────────
@@ -501,10 +423,11 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<ControlsProfile?>(null) }
     var testOpen by remember { mutableStateOf(false) }
+    // The online list, kept once it loaded; a failed fetch leaves it unset so opening it again retries.
     var community by remember { mutableStateOf<List<String>?>(null) }
+    var communityLoading by remember { mutableStateOf(false) }
     var communityOpen by remember { mutableStateOf(false) }
-    val importer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
+    fun importFrom(uri: Uri) {
         val ok = runCatching {
             val json = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
             manager.importProfile(JSONObject(json)) != null
@@ -512,6 +435,11 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
         toast(context, if (ok) L("Profile imported") else L("That file is not a controls profile"))
         tick++
     }
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
+        importFrom(uri)
+    }
+    val systemImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) importFrom(uri) }
     fun editLayout(p: ControlsProfile) = context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra("profile_id", p.id))
     fun bindings(p: ControlsProfile, controllerId: String = ControlsProfile.DEFAULT_CONTROLLER_ID) =
         context.startActivity(Intent(context, ExternalControllerBindingsActivity::class.java).putExtra("profile_id", p.id).putExtra("controller_id", controllerId))
@@ -533,6 +461,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             subtitle = if (layouts[p.id] == true) L("On-screen layout") else L("No on-screen layout yet"),
             trailing = if (on) L("Selected") else null, current = on,
             icon = Icons.Filled.Gamepad, group = L("Profiles"),
+            thumb = if (layouts[p.id] == true) ({ LabProfileThumb(p.id, tick) { selId = p.id; editLayout(p) } }) else null,
             onA = { selId = p.id },
             play = { selId = p.id; editLayout(p) }, playIcon = Icons.Filled.Edit, playLabel = L("Edit layout"),
             actions = listOf(
@@ -548,13 +477,19 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     } + listOf(
         MenuEntry("import", L("Import a profile"), L(".icp or .icpx file"), icon = Icons.Filled.Add, group = L("Share / transfer"),
             onA = { importer.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.ICP, L("Select controls profile"))) }),
+        MenuEntry("import-system", L("Pick via system…"), icon = Icons.Filled.FolderOpen, group = L("Share / transfer"),
+            onA = { systemImporter.launch(arrayOf("*/*")) }),
         MenuEntry("community", L("Download community profiles"), L("The online list"), icon = Icons.Filled.CloudDownload, group = L("Share / transfer"),
             onA = {
                 communityOpen = true
-                if (community == null) HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/index.txt") { content ->
-                    (context as? Activity)?.runOnUiThread {
-                        community = content?.split("\n")?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
-                        if (content == null) toast(context, L("Could not load the list"))
+                if (community == null && !communityLoading) {
+                    communityLoading = true
+                    HttpUtils.download(COMMUNITY_PROFILES_URL + "index.txt") { content ->
+                        (context as? Activity)?.runOnUiThread {
+                            communityLoading = false
+                            if (content != null) community = content.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+                            else { communityOpen = false; toast(context, L("Could not load the list")) }
+                        }
                     }
                 }
             }),
@@ -621,24 +556,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
     )
     if (creating) NameDialog(L("New profile"), L("Profile %1\$s", profiles.size + 1), onDismiss = { creating = false }) { name -> creating = false; manager.createProfile(name)?.let { selId = it.id }; tick++ }
     renaming?.let { p -> NameDialog(L("Rename"), p.name, onDismiss = { renaming = null }) { name -> renaming = null; p.name = name; p.save(); tick++ } }
-    if (communityOpen) {
-        val items = community
-        key(items?.size ?: -1) {
-            SimpleActionSheet(
-                title = L("Community profiles"),
-                actions = items.orEmpty().map { f ->
-                    MenuAction(f.removeSuffix(".icp"), {
-                        HttpUtils.download("https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/$f") { content ->
-                            val ok = content != null && runCatching { manager.importProfile(JSONObject(content)) != null }.getOrDefault(false)
-                            (context as? Activity)?.runOnUiThread { toast(context, if (ok) L("Imported %1\$s", f.removeSuffix(".icp")) else L("Could not import %1\$s", f)); tick++ }
-                        }
-                    })
-                },
-                message = if (items == null) L("Loading the list…") else if (items.isEmpty()) L("Nothing in the list.") else null,
-                onDismiss = { communityOpen = false },
-            ) { a -> communityOpen = false; a.run() }
-        }
-    }
+    if (communityOpen) LabCommunityProfilesDialog(items = community, manager = manager, onDismiss = { communityOpen = false }, onImported = { tick++ })
     if (testOpen) {
         SettingsControllerTestDialog(
             onDismiss = { testOpen = false; tick++ },
@@ -646,7 +564,7 @@ internal fun SimpleControlsPage(onBack: () -> Unit) {
             allProfiles = profiles,
             onSelectProfile = { p -> selId = p.id },
             onCreateProfile = { name -> manager.createProfile(name); tick++ },
-            onRenameProfile = { },
+            onRenameProfile = { sel?.let { renaming = it } },
             onBindingsChanged = { tick++ },
             onOpenAllBindings = { sel?.let { bindings(it) } },
         )

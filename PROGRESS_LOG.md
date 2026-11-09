@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart d5cb91b1 INSTALLED on the Elite main app (pubg) 20:48:32 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42546587468 green ×4. Installed base.apk sha256 21828d09… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user starts a game with art (MIO, RE2) and opens Lab's in-game menu; then tries Game details › Artwork › In-game menu → translate the 4 new strings → merge on go.
+
 ## 2026-11-08 — 🖼️ feat/ingame-game-art: the game's art, icon and logo in Lab's in-game menu (d5cb91b1; CI 42546587468 running, NOT device-tested)
 - **Why (user, screenshot 202740 of the Lab in-game menu in DiRT Showdown):** "add specific game art and logos to the in game side drawer … game art behind options faded, logo at the top to replace game name, icon used as well"; then "images / logos / icons also need to be available to pick … in games details page for its in-game drawer to use different ones from main app pages".
 - **How:**

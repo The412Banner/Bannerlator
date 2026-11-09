@@ -155,6 +155,8 @@ internal fun LabHome(
     val shortcuts by vm.shortcuts.collectAsState(initial = SimpleSession.lastShortcuts)
     LaunchedEffect(shortcuts) { if (shortcuts.isNotEmpty()) SimpleSession.lastShortcuts = shortcuts }
     val launcher = rememberShortcutLauncher()
+    // A SteamLite retry / Goldberg relaunch or a Ubisoft set-up-then-launch waits for the restarted app's library, as on the Deck and Games screens.
+    LaunchedEffect(shortcuts) { launcher.resumePendingRelaunch(shortcuts) }
     val actions = rememberShortcutActions(vm)
     val deckActions = LocalDeckActions.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -278,6 +280,7 @@ internal fun LabHome(
                         ) {
                             val inner = Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp)
                             when (style) {
+                                // No store pills on these small covers: the big tile above names the selected game's store.
                                 LabArt.WIDE -> LabWideCard(s, inner, title = false)
                                 LabArt.ICONS -> LabIconCard(s, inner, Modifier.fillMaxWidth().aspectRatio(1f))
                                 else -> SimpleCover(s, inner, title = false)
@@ -339,7 +342,7 @@ internal fun LabHome(
 
         @Composable
         fun DownloadTile(m: Modifier) {
-            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.COMPONENTS) }) {
+            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.DRIVERS) }) {
                 LabTileLabel(L("Downloads"))
                 if (active != null) {
                     Text(active.title, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

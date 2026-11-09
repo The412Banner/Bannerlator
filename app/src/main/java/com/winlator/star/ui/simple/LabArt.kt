@@ -51,6 +51,7 @@ import com.winlator.star.ui.deck.DeckRoutes
 import com.winlator.star.ui.deck.SoraFamily
 import java.io.File
 import kotlinx.coroutines.launch
+import com.winlator.star.ui.screens.XmbStoreBadges
 
 /**
  * Lab's game art. App-wide choices (Settings › Appearance › Look), each game's own (Game details › Background and
@@ -170,16 +171,27 @@ internal object LabArt {
      * The art found for a game automatically: its Steam app by name when it has no link (the store's strict title
      * match, remembered by SteamStoreSearch) and SteamGridDB's sharpest background (3840x1240 first, not the blurred
      * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found; a miss is
-     * retried after a week), so SteamGridDB is asked once per game. Not used when the game has its own background.
+     * retried after a week), so SteamGridDB is asked once per game. A game with its own background only gets its Steam app looked up.
      */
     fun resolve(context: Context, s: Shortcut) {
-        if (pick(s, "bg") != null) return
         val name = s.name
+        val linked = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
+        // A game with its own background still needs its Steam app (logo, wide cover, preview clip, Steam picks);
+        // only the background search is skipped. Its own key, so clearing the background later searches one.
+        if (pick(s, "bg") != null) {
+            if (linked != null) return
+            synchronized(tried) { if (!tried.add("$name|app")) return }
+            val app = context.applicationContext
+            io.launch {
+                val id = runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull() ?: return@launch
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { foundIds[name] = id; changed() }
+            }
+            return
+        }
         synchronized(tried) { if (!tried.add(name)) return }
         val app = context.applicationContext
         val prefs = app.getSharedPreferences("lab_art_found", Context.MODE_PRIVATE)
         prefs.getString("hero:$name", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[name] = it }
-        val linked = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
         io.launch {
             val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
             val cached = prefs.getString("hero:$name", null)
@@ -388,11 +400,20 @@ internal fun LabInGameIcon(s: Shortcut, modifier: Modifier) {
     }
 }
 
-/** An icon card: the icon and the name under it. */
+/** Classic's store pills (Steam, Epic, GOG, Amazon, Xbox, Custom, Linux, Android ...) over the top left of a card's picture. */
 @Composable
-internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier) {
+internal fun LabBadged(s: Shortcut, modifier: Modifier, content: @Composable (Modifier) -> Unit) {
+    Box(modifier) {
+        content(Modifier.fillMaxSize())
+        Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { XmbStoreBadges(s) }
+    }
+}
+
+/** An icon card: the icon and the name under it, with the store pills over the icon when [badges]. */
+@Composable
+internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier, badges: Boolean = false) {
     Column(modifier.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        LabIcon(s, iconModifier)
+        if (badges) LabBadged(s, iconModifier) { LabIcon(s, it) } else LabIcon(s, iconModifier)
         Text(s.name, color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
     }
 }
@@ -401,9 +422,9 @@ internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier
 @Composable
 internal fun LabGridCard(s: Shortcut, modifier: Modifier) {
     when (LabArt.cards) {
-        LabArt.WIDE -> LabWideCard(s, modifier.aspectRatio(460f / 215f), title = true)
-        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f))
-        else -> SimpleCover(s, modifier.aspectRatio(3f / 4f))
+        LabArt.WIDE -> LabBadged(s, modifier.aspectRatio(460f / 215f)) { LabWideCard(s, it, title = true) }
+        LabArt.ICONS -> LabIconCard(s, modifier, Modifier.fillMaxWidth().aspectRatio(1f), badges = true)
+        else -> LabBadged(s, modifier.aspectRatio(3f / 4f)) { SimpleCover(s, it) }
     }
 }
 

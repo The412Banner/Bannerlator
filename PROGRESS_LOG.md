@@ -1,5 +1,36 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ lab-badges-bugs 321d7aed INSTALLED on the Pocket FIT (pubg) 18:07:21 EST (pre-approved: "install it when it's done"; NOT device-tested yet)
+- Download resumed at home (18:06, 14 MB/s) from the kept partial; artifact zip 591,684,773 B OK. APK sha256 3a5a3504… staged /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: 1b4b1951 (8262ebfd…), no game running. `pm install -r` Success; installed base.apk 3a5a3504… == staged; crash buffer empty; peers root-66 / root-12 / root-8b told before + "done" after.
+- **User checks:** Home Library row without pills, Library page with pills, plus the earlier list (Contents after a download, Downloads tile, Y search, art after restart). Merge on the user's go.
+
+## 2026-11-09 — ⏸ lab-badges-bugs 321d7aed: CI 42707058358 GREEN ×4, download paused (user leaving Wi-Fi, 17:2x EST)
+- User pre-approved the install ("install it when it's done"), then: "stop then we will download it when I get home from work". Partial artifact zip kept at /root/work/bl-dl/lab-badges-bugs-321d7aed-pubg.zip.part (262.6 of ~591.7 MB; artifact 13714850979, expires 2026-11-16) for a curl -C - resume.
+- **Resume point:** Pocket FIT runs 1b4b1951 (8262ebfd…), no background jobs. When home: resume download → verify → stage /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk → install (pre-approved) → hash + crash check → user checks the Home row → merge on go.
+
+## 2026-11-09 — 🔧 lab-badges-bugs 321d7aed: no store pills on the Home Library row (CI 42707058358 running)
+- **User check of 1b4b1951 (screenshots 165140 portrait Home, 165243 StevenMXZ source page, 16:51–16:52 EST):** pills on the Home row's small covers too big (EOS wraps vertically) → "remove them since it will show in the top larger tile" (big tile meta says the store, e.g. "Added by me"). A on installed v891.14 opened "Download and replace / Save the file only" = bug 3 fix DEVICE-PROVEN.
+- **321d7aed:** LabHome RecentTile back to plain cards (no LabBadged); Library page keeps the pills.
+- **Next:** green → stage pubg → ASK install → user checks → merge on go.
+
+## 2026-11-09 — ✅ lab-badges-bugs 1b4b1951 INSTALLED on the Pocket FIT (pubg) 16:47:28 EST (user: "yes install it"; NOT device-tested yet)
+- CI 42697428457 GREEN ×4 (headSha 1b4b1951). Staged /sdcard/Download/Bannerlator-lab-badges-bugs-1b4b1951-pubg.apk sha256 8262ebfd… (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: main 44d1ac3f (b1460b17…), no game running, Termux in front. `pm install -r` Success; installed base.apk 8262ebfd… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Undo: /sdcard/Download/Bannerlator-main-44d1ac3f-pubg.apk.
+- **User checks:** store badges on Library + Home cards (all card styles), Contents › Installed after a download finishes, A on an installed component (menu, no re-download), Home Downloads tile → Lab Contents, Y search → Lab game page, own-background game keeps logo/wide/preview after an app restart. Merge on the user's go.
+
+## 2026-11-09 — 🔧 fix/lab-badges-bugs 1b4b1951: Lab store badges + 6 bug fixes (CI 42697428457 running; NOT installed, NOT device-tested)
+- **Why:** user (~15:30 EST) noticed no store badges on Lab cards and asked what else Lab misses vs Classic; audit (code reading, 2 Explore agents + my checks) → memory bannerlator-lab-gaps. User: "yes fix the badges and bugs 1-6 on a new branch".
+- **Built 1b4b1951** (off main cf471826, worktree /root/src/Bannerlator-wt/lab-badges-bugs, sparse ui/simple + ui/deck + log), 5 files +47 −17:
+  1. Badges: LabBadged (LabArt.kt) draws XmbStoreBadges top left on Library (LabGridCard) and Home row cards, all 3 card styles; LabIconCard(badges = true).
+  2. LabHome: `LaunchedEffect(shortcuts) { launcher.resumePendingRelaunch(shortcuts) }` (SteamLite/Goldberg retry, Ubisoft set-up-then-launch).
+  3. LabContents: re-read lists when a ContentDownloadRegistry entry reaches DONE.
+  4. SimpleComponentSourcePage: onA = null when installed → A opens the actions sheet (Download and replace / Save the file only).
+  5. DeckShell SIMPLE_ALIASES: Screen.Contents + DeckRoutes.COMPONENTS → SimpleRoutes.DRIVERS (Lab Contents); Home Downloads tile → DRIVERS.
+  6. DeckShell DeckNav.open (Lab): deck_game?path= → lab_game?path= (Y search, Deck pages).
+  7. LabArt.resolve: own background → still look up the Steam app (findAppIdByName, cached on device), skip only the SteamGridDB background.
+- **Next / resume:** green → stage pubg → ASK install (not pre-approved) → user checks badges, Contents after a download, A on installed, Downloads tile, Y search → merge on go.
+
 ## 2026-11-09 — ✅ main 44d1ac3f pubg INSTALLED on the Pocket FIT 15:21:19 EST (user: "install main pubg on the pocket fit")
 - `pm install -r` (via /data/local/tmp, removed) Success; installed base.apk sha256 b1460b17… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Not device-tested beyond the install.
 

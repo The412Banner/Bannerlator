@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🚧 feat/lab-parity started: Mods in Lab + the rest of the Lab-vs-Classic gaps (off main 45d3f56c; NOT built yet)
+- **User (~18:5x EST):** "yes add mods to lab on a new branch, any everything else missing please you listed" (list = memory bannerlator-lab-gaps, audit 11-09).
+- **Plan:** integration branch feat/lab-parity. Four helper agents, each in its own worktree + sub-branch off 45d3f56c, disjoint files, each CI-compiles its part:
+  - feat/lab-parity-mods-game — Mods (Lab game settings/page + Lab and Deck in-game menus), game page live game after remove/rename, details text, container tile only for Wine games (LabGame/LabGameMenu/DeckInGame/ShortcutsScreen visibility).
+  - feat/lab-parity-library — Library sort/filter/view + multi-select, Xbox not-installed label, setup chips, cover picks via CustomCover + Steam link cover/details, art retry fixes, top-line search/friends/community entries, Stores refresh, Linux runtime tile status (LabPages/LabArt/LabGameDetails/LabPreview/LabFrame/LabHome).
+  - feat/lab-parity-contents — Contents refresh, repository management, cross-repo search, Set-as-default outcome + Undo, failure reasons, row details, Tools GPU drivers tab, dead driver pages (LabContents + SimplePages Contents parts).
+  - feat/lab-parity-containers — Containers layer update/revert, storage info/clear cache, save restore/per-game backup, honest toasts, export refresh, busy state; Controls rename/retry/preview/example/multi-select/system import; Appearance storage toggles + size steps; Settings › Controllers alias; "Detected in this wrapper" empty panel (SimplePages non-Contents parts, DeckSettingsScreens, SimpleClassicEditor).
+- Then I merge the four into feat/lab-parity → CI → stage pubg → ASK install → user test → merge on go. Strings: English L(...) only; translation pass later.
+
 ## 2026-11-09 — 🔍 Windows Steam client in a Proton container = white login window (Elite, Wayland; investigation, nothing changed)
 - **Why (user, ~18:15 EST):** Steam client in a Proton container shows only a white screen; asked to launch it together and find the cause, and to check Bruno's Winlator for ideas.
 - **Setup (verified):** container 1 "P11 Arm", Proton-11.0-11.9-arm64ec-16, Wayland display, Banners-AIO r3, DXVK 2.4.1 gplasync; shortcut Steam.desktop → `F:\Download\Steam.Ajay\Steam\steam.exe` (2024 client 1731433018, CEF Chrome/126, self-update suppressed), no Launch options. Installed APK base.apk 8058b273… .

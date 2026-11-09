@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ lab-badges-bugs 321d7aed INSTALLED on the Pocket FIT (pubg) 18:07:21 EST (pre-approved: "install it when it's done"; NOT device-tested yet)
+- Download resumed at home (18:06, 14 MB/s) from the kept partial; artifact zip 591,684,773 B OK. APK sha256 3a5a3504… staged /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: 1b4b1951 (8262ebfd…), no game running. `pm install -r` Success; installed base.apk 3a5a3504… == staged; crash buffer empty; peers root-66 / root-12 / root-8b told before + "done" after.
+- **User checks:** Home Library row without pills, Library page with pills, plus the earlier list (Contents after a download, Downloads tile, Y search, art after restart). Merge on the user's go.
+
 ## 2026-11-09 — ⏸ lab-badges-bugs 321d7aed: CI 42707058358 GREEN ×4, download paused (user leaving Wi-Fi, 17:2x EST)
 - User pre-approved the install ("install it when it's done"), then: "stop then we will download it when I get home from work". Partial artifact zip kept at /root/work/bl-dl/lab-badges-bugs-321d7aed-pubg.zip.part (262.6 of ~591.7 MB; artifact 13714850979, expires 2026-11-16) for a curl -C - resume.
 - **Resume point:** Pocket FIT runs 1b4b1951 (8262ebfd…), no background jobs. When home: resume download → verify → stage /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk → install (pre-approved) → hash + crash check → user checks the Home row → merge on go.

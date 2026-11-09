@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Изтрий</string>
     <string name="lab_3e04658a">Син</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Изтегляне и замяна</string>
     <string name="lab_3e5678cd">Най-бърз</string>
     <string name="lab_3e86e543">Подава се на wrapper-а както е. Оставете празно, за да остане незададено.</string>
     <string name="lab_3ecd0489">Автоматичното архивиране на записите при изход ще бъде ИЗКЛЮЧЕНО за игрите от библиотеката ви в Steam. Записите им няма да се запазват при затваряне на игра — ще трябва да ги архивирате сами чрез опцията за архивиране на контейнер или от Мениджъра на записите. Продължаване?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Изключено — изберете честота по-долу, за да заключите дисплея.</string>
     <string name="lab_443d0954">Стартирай неговия работен плот на Windows</string>
     <string name="lab_4455b74f">Колко често движението на стиковете стига до играта. Може да се променя и в играта.</string>
+    <string name="lab_44655ec4">Инсталирането е неуспешно: %1$s</string>
     <string name="lab_449c12fb">Размер на екрана</string>
     <string name="lab_44bc352d">Лого</string>
     <string name="lab_4500ffeb">Профилът по подразбиране за %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Журнали</string>
     <string name="lab_50d905f5">Ниска латентност</string>
     <string name="lab_50db75d4"> · Изберете го, за да дадете на тази игра собствена стойност.</string>
+    <string name="lab_51294f91">%1$s вече е инсталиран</string>
     <string name="lab_513ecfb1">Приятели и чат</string>
     <string name="lab_51732071">Профилът е импортиран</string>
     <string name="lab_51a6725d">Vulkan пост-ефект (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS и SGSR мащабират и изострят; SGSR е на Qualcomm, създаден за Adreno.</string>
     <string name="lab_554ed1d4">Премахване на %1$s?</string>
     <string name="lab_558dab54">Тази игра идва със собствената Xbox среда за изпълнение на Microsoft, която изисква Gaming Services на Windows. Включено: вместо нея се използва средата на приложението. Изключете само за да пробвате тази на играта.</string>
-    <string name="lab_55b35170">Този файл не е пакет с драйвер</string>
     <string name="lab_55dbea72">Звук (MIDI)</string>
     <string name="lab_55fb28db">Намерено в папката на играта.</string>
     <string name="lab_56b4c80c">Тема</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Плочково рендериране GMEM</string>
     <string name="lab_7398c748">Собствен акцентен цвят · X за избор</string>
     <string name="lab_73a11f48">Контейнери, настройки и префикс в един файл (класически Настройки).</string>
+    <string name="lab_73add714">Няма meta.json в zip файла</string>
     <string name="lab_73e71958">Ядра за 32-битови програми</string>
     <string name="lab_74350de7">За приложението</string>
     <string name="lab_749c9e00">Все още няма контейнери.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Графичен драйвер</string>
     <string name="lab_96125830">Стандартен / Всеки контролер</string>
     <string name="lab_962bd533">Яркост</string>
+    <string name="lab_963f841c">Същото име като вграден драйвер</string>
     <string name="lab_964d1a40">Споделяй клипборда на Android с игрите</string>
     <string name="lab_968b9d49">Прилага се при стартиране. Страничното меню в играта все още ги променя на живо.</string>
     <string name="lab_969dab73">ReShade вкл. / изкл., Самостоятелно / Наслагване, ефекти и техните настройки</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Звук за известие</string>
     <string name="lab_992421a8">Отваряй приложението на</string>
     <string name="lab_99273660">Включено за генериране на кадри — дисплеят следва ограничението на кадрите × множителя. </string>
+    <string name="lab_9927a641">Неуспешно</string>
     <string name="lab_9978b876">Бутон A</string>
     <string name="lab_99853914">Избор със системния инструмент</string>
     <string name="lab_99895147">Стандартна MIDI звукова банка</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Редактирай назначенията</string>
     <string name="lab_a8b5f392">Помощ</string>
     <string name="lab_a8b6222f">Системен драйвер</string>
+    <string name="lab_a8f9cfcd">Неговият meta.json не посочва библиотека</string>
     <string name="lab_a905f340">Заключи честотата на CPU на максимум</string>
     <string name="lab_a92ebeb7">Острота (VKBasalt) › Ефект</string>
+    <string name="lab_a9323b0e">%1$s не е в zip файла</string>
     <string name="lab_a960b3ff">Мащабира силата на вибрацията. Забележка: на някои преносими устройства по-ниската сила не намалява забавянето на стиковете. За това използвайте Вибромотори: Единичен.</string>
     <string name="lab_a9af1b38">Размяна</string>
     <string name="lab_a9f8f50a">Нов профил</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Изключване на автоматичното архивиране?</string>
     <string name="lab_c06ade64">Експериментални превключватели и вътрешни настройки на сървъра за показване.</string>
     <string name="lab_c088a86d">Настройка на логото</string>
+    <string name="lab_c08afcff">Неговият meta.json не може да бъде прочетен</string>
     <string name="lab_c0b26391">Съвместимост</string>
     <string name="lab_c0ba51f5">Среда</string>
     <string name="lab_c0cb7e61">Изключено по подразбиране, така че игрите, които четат и XInput, и DirectInput, да виждат един контролер.</string>

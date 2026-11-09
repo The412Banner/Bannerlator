@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.ui.screens.adrenodownload.DriverFeed
 import com.winlator.star.ui.screens.adrenodownload.DriverSourceStore
 import com.winlator.star.ui.screens.adrenodownload.DriverSources
@@ -59,6 +60,10 @@ sealed interface HubSource {
  * keep-raw toggle, the My Files library, and installed/saved status for badges.
  */
 class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
+    private companion object {
+        /** Prefix of an installedKeys entry that is a driver download's URL. */
+        const val URL_KEY = "url::"
+    }
 
     private val repo = RemoteSourceRepository(app)
     private val driverRepo = RemoteDriverRepository(app)
@@ -335,17 +340,27 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
                 keys.add(ContentsTypes.normalize(ContentsTypes.GPU_DRIVERS) + "::" + n)
             }
         }
+        // Downloads whose driver is still installed, in any of the three lists. In the key set so a
+        // row observing installedKeys redraws when one is added (a Linux or Wayland driver changes
+        // nothing above).
+        runCatching { DriverInstaller.installedSourceUrls(ctx).forEach { keys.add(URL_KEY + it) } }
         return keys to driverNorms
     }
 
-    /** True if the item's version is already installed (components: exact key; drivers: fuzzy contains). */
+    /**
+     * True if the item is already installed. Components: exact key. Drivers: the download this entry
+     * installed is still there (DriverInstaller's record), else an installed driver with exactly the
+     * entry's name. A list entry's name and the name inside the zip rarely match, and the old
+     * "contains" test marked a plain "-r2" build installed because the "-r2-A8xx" one was.
+     */
     fun isInstalled(item: CatalogItem): Boolean {
         val key = ContentsTypes.normalize(item.type) + "::" + ContentsTypes.normalize(item.versionName)
         if (key in _installedKeys.value) return true
         if (item.isDriver) {
+            if (URL_KEY + DriverInstaller.normUrl(item.downloadUrl) in _installedKeys.value) return true
             val v = ContentsTypes.normalize(item.versionName)
             val d = ContentsTypes.normalize(item.displayName)
-            return _installedDriverNorms.value.any { it == v || it == d || (v.isNotEmpty() && it.contains(v)) }
+            return _installedDriverNorms.value.any { it == v || it == d }
         }
         return false
     }

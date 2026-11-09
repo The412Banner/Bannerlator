@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Törlés</string>
     <string name="lab_3e04658a">Kék</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Letöltés és csere</string>
     <string name="lab_3e5678cd">Leggyorsabb</string>
     <string name="lab_3e86e543">Változtatás nélkül kerül a wrapperhez. Hagyd üresen, ha nem akarod beállítani.</string>
     <string name="lab_3ecd0489">A mentések kilépéskori automatikus biztonsági mentése KI lesz kapcsolva a Steam-könyvtárad játékainál. A mentéseik nem rögzülnek a játék bezárásakor — magadnak kell biztonsági mentést készítened róluk egy konténer biztonsági mentés opciójával vagy a Mentéskezelőben. Folytatod?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Ki — válassz lent egy frekvenciát a kijelző rögzítéséhez.</string>
     <string name="lab_443d0954">A Windows asztalának indítása</string>
     <string name="lab_4455b74f">Milyen gyakran jut el a karmozgás a játékhoz. Játék közben is módosítható.</string>
+    <string name="lab_44655ec4">A telepítés sikertelen: %1$s</string>
     <string name="lab_449c12fb">Méret a képernyőn</string>
     <string name="lab_44bc352d">Logó</string>
     <string name="lab_4500ffeb">A(z) %1$s alapértelmezett profilja, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Naplók</string>
     <string name="lab_50d905f5">Alacsony késleltetés</string>
     <string name="lab_50db75d4"> · Válaszd ki, hogy ez a játék saját értéket kapjon.</string>
+    <string name="lab_51294f91">%1$s már telepítve van</string>
     <string name="lab_513ecfb1">Barátok és csevegés</string>
     <string name="lab_51732071">Profil importálva</string>
     <string name="lab_51a6725d">Vulkan utóeffekt (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">Az FSR, a NIS és az SGSR felskáláz és élesít; az SGSR a Qualcomm Adrenóra készült megoldása.</string>
     <string name="lab_554ed1d4">%1$s eltávolítása?</string>
     <string name="lab_558dab54">Ez a játék a Microsoft saját Xbox-futtatókörnyezetével érkezik, amelyhez a Windows Gaming Services kell. Be: helyette az alkalmazás futtatókörnyezete töltődik be. Csak akkor kapcsold ki, ha a játék sajátját akarod kipróbálni.</string>
-    <string name="lab_55b35170">Ez a fájl nem illesztőprogram-csomag</string>
     <string name="lab_55dbea72">Hang (MIDI)</string>
     <string name="lab_55fb28db">A játék mappájában található.</string>
     <string name="lab_56b4c80c">Téma</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM csempés renderelés</string>
     <string name="lab_7398c748">Saját kiemelőszín · X a kiválasztáshoz</string>
     <string name="lab_73a11f48">Konténerek, beállítások és prefix egy fájlban (klasszikus Beállítások).</string>
+    <string name="lab_73add714">Nincs meta.json a zip-fájlban</string>
     <string name="lab_73e71958">32 bites programok által használható magok</string>
     <string name="lab_74350de7">Névjegy</string>
     <string name="lab_749c9e00">Még nincsenek konténerek.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafikus illesztőprogram</string>
     <string name="lab_96125830">Alapértelmezett / bármely kontroller</string>
     <string name="lab_962bd533">Fényerő</string>
+    <string name="lab_963f841c">Ugyanaz a neve, mint egy beépített illesztőprogramnak</string>
     <string name="lab_964d1a40">Android vágólap megosztása a játékokkal</string>
     <string name="lab_968b9d49">Indításkor lép életbe. Játék közben az oldalsó menüben továbbra is élőben módosíthatók.</string>
     <string name="lab_969dab73">ReShade be / ki, Egyedül / Halmozva, effektek és beállításaik</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Értesítési hang</string>
     <string name="lab_992421a8">Az alkalmazás nyitóképernyője</string>
     <string name="lab_99273660">Bekapcsolva a képkocka-generáláshoz — a kijelző a képkockakorlát × szorzó értéket követi. </string>
+    <string name="lab_9927a641">Sikertelen</string>
     <string name="lab_9978b876">A gomb</string>
     <string name="lab_99853914">Kiválasztás a rendszer választójával</string>
     <string name="lab_99895147">Alapértelmezett MIDI hangbank</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Kiosztások szerkesztése</string>
     <string name="lab_a8b5f392">Súgó</string>
     <string name="lab_a8b6222f">Rendszer-illesztőprogram</string>
+    <string name="lab_a8f9cfcd">A meta.json fájlja nem nevez meg könyvtárat</string>
     <string name="lab_a905f340">CPU-frekvencia rögzítése maximumon</string>
     <string name="lab_a92ebeb7">Élesség (VKBasalt) › Effekt</string>
+    <string name="lab_a9323b0e">%1$s nincs a zip-fájlban</string>
     <string name="lab_a960b3ff">A rezgés erősségét skálázza. Megjegyzés: egyes kézi eszközökön a kisebb erősség nem csökkenti a karok lassulását. Erre a Rezgőmotorok: Egy beállítást használd.</string>
     <string name="lab_a9af1b38">Csere</string>
     <string name="lab_a9f8f50a">Új profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Kikapcsolod az automatikus mentést?</string>
     <string name="lab_c06ade64">Kísérleti kapcsolók és a megjelenítőszerver belső beállításai.</string>
     <string name="lab_c088a86d">Logó beállítása</string>
+    <string name="lab_c08afcff">A meta.json fájlja nem olvasható</string>
     <string name="lab_c0b26391">Kompatibilitás</string>
     <string name="lab_c0ba51f5">Környezet</string>
     <string name="lab_c0cb7e61">Alapból kikapcsolva, így az XInputot és DirectInputot is olvasó játékok egy kontrollert látnak.</string>

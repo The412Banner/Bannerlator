@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Poista</string>
     <string name="lab_3e04658a">Sininen</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Lataa ja korvaa</string>
     <string name="lab_3e5678cd">Nopein</string>
     <string name="lab_3e86e543">Välitetään wrapperille sellaisenaan. Jätä tyhjäksi, jos et halua asettaa sitä.</string>
     <string name="lab_3ecd0489">Tallennusten automaattinen varmuuskopiointi poistuttaessa poistetaan käytöstä Steam-kirjastosi peleiltä. Niiden tallennuksia ei oteta talteen, kun peli suljetaan — sinun on varmuuskopioitava ne itse kontin varmuuskopiointitoiminnolla tai Tallennusten hallinnassa. Jatketaanko?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Pois — valitse taajuus alta lukitaksesi näytön.</string>
     <string name="lab_443d0954">Käynnistä sen Windows-työpöytä</string>
     <string name="lab_4455b74f">Kuinka usein tatin liike välittyy peliin. Voidaan muuttaa myös pelin aikana.</string>
+    <string name="lab_44655ec4">Asennus epäonnistui: %1$s</string>
     <string name="lab_449c12fb">Koko näytöllä</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">%1$s-oletusprofiili, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Lokit</string>
     <string name="lab_50d905f5">Matala viive</string>
     <string name="lab_50db75d4"> · Valitse se antaaksesi tälle pelille oman arvon.</string>
+    <string name="lab_51294f91">%1$s on jo asennettu</string>
     <string name="lab_513ecfb1">Kaverit ja chat</string>
     <string name="lab_51732071">Profiili tuotu</string>
     <string name="lab_51a6725d">Vulkan-jälkitehoste (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS ja SGSR skaalaavat ja terävöittävät; SGSR on Qualcommin, tehty Adrenolle.</string>
     <string name="lab_554ed1d4">Poistetaanko %1$s?</string>
     <string name="lab_558dab54">Tämän pelin mukana tulee Microsoftin oma Xbox-ajoympäristö, joka tarvitsee Windowsin Gaming Services -palvelut. Päällä: sovelluksen ajoympäristöä käytetään sen sijaan. Poista käytöstä vain kokeillaksesi pelin omaa.</string>
-    <string name="lab_55b35170">Tiedosto ei ole ajuripaketti</string>
     <string name="lab_55dbea72">Ääni (MIDI)</string>
     <string name="lab_55fb28db">Löytyi pelikansiosta.</string>
     <string name="lab_56b4c80c">Teema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM-laattarenderöinti</string>
     <string name="lab_7398c748">Oma korostusvärisi · valitse X:llä</string>
     <string name="lab_73a11f48">Kontit, asetukset ja prefiksi yhdessä tiedostossa (Classicin asetukset).</string>
+    <string name="lab_73add714">Zip-tiedostossa ei ole meta.json-tiedostoa</string>
     <string name="lab_73e71958">Ytimet, joita 32-bit ohjelmat voivat käyttää</string>
     <string name="lab_74350de7">Tietoja</string>
     <string name="lab_749c9e00">Ei vielä kontteja.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafiikka-ajuri</string>
     <string name="lab_96125830">Oletus / Mikä tahansa ohjain</string>
     <string name="lab_962bd533">Kirkkaus</string>
+    <string name="lab_963f841c">Sama nimi kuin sisäänrakennetulla ajurilla</string>
     <string name="lab_964d1a40">Jaa Androidin leikepöytä pelien kanssa</string>
     <string name="lab_968b9d49">Otetaan käyttöön käynnistettäessä. Pelin sivuvalikko voi edelleen muuttaa niitä lennossa.</string>
     <string name="lab_969dab73">ReShade päällä / pois, Yksin / Pinoa, tehosteet ja niiden asetukset</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Ilmoitusääni</string>
     <string name="lab_992421a8">Avaa sovellus näkymään</string>
     <string name="lab_99273660">Otettu käyttöön ruutugenerointia varten — näyttö seuraa ruuturajaa × kerrointa. </string>
+    <string name="lab_9927a641">Epäonnistui</string>
     <string name="lab_9978b876">A-painike</string>
     <string name="lab_99853914">Valitse järjestelmän valitsimella</string>
     <string name="lab_99895147">Oletus-MIDI-äänipankki</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Muokkaa sen määrityksiä</string>
     <string name="lab_a8b5f392">Ohje</string>
     <string name="lab_a8b6222f">Järjestelmän ajuri</string>
+    <string name="lab_a8f9cfcd">Sen meta.json ei nimeä kirjastoa</string>
     <string name="lab_a905f340">Lukitse CPU-taajuus maksimiin</string>
     <string name="lab_a92ebeb7">Terävyys (VKBasalt) › Tehoste</string>
+    <string name="lab_a9323b0e">%1$s ei ole zip-tiedostossa</string>
     <string name="lab_a960b3ff">Skaalaa tärinän voimakkuutta. Huomaa: joissakin käsikonsoleissa pienempi voimakkuus ei vähennä tattien hidastumista. Käytä siihen asetusta Tärinämoottorit: Yksi.</string>
     <string name="lab_a9af1b38">Vaihdetaan</string>
     <string name="lab_a9f8f50a">Uusi profiili</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Poistetaanko automaattinen varmuuskopiointi käytöstä?</string>
     <string name="lab_c06ade64">Kokeelliset kytkimet ja näyttöpalvelimen sisäiset asetukset.</string>
     <string name="lab_c088a86d">Säädä logoa</string>
+    <string name="lab_c08afcff">Sen meta.json-tiedostoa ei voi lukea</string>
     <string name="lab_c0b26391">Yhteensopivuus</string>
     <string name="lab_c0ba51f5">Ympäristö</string>
     <string name="lab_c0cb7e61">Oletuksena pois, jotta sekä XInputia että DirectInputia lukevat pelit näkevät yhden ohjaimen.</string>

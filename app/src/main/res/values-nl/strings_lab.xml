@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Verwijderen</string>
     <string name="lab_3e04658a">Blauw</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Downloaden en vervangen</string>
     <string name="lab_3e5678cd">Snelst</string>
     <string name="lab_3e86e543">Ongewijzigd aan de wrapper doorgegeven. Laat leeg om het niet in te stellen.</string>
     <string name="lab_3ecd0489">Automatische back-up van savegames bij het afsluiten gaat UIT voor de games in je Steam-bibliotheek. Hun saves worden niet vastgelegd als een game sluit — je moet zelf een back-up maken via de back-upoptie van een container of via Savebeheer. Doorgaan?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Uit — kies hieronder een frequentie om het scherm vast te zetten.</string>
     <string name="lab_443d0954">Windows-desktop starten</string>
     <string name="lab_4455b74f">Hoe vaak stickbewegingen de game bereiken. Ook in de game te wijzigen.</string>
+    <string name="lab_44655ec4">Installatie mislukt: %1$s</string>
     <string name="lab_449c12fb">Grootte op scherm</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Het %1$s-standaardprofiel, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Logs</string>
     <string name="lab_50d905f5">Lage latentie</string>
     <string name="lab_50db75d4"> · Kies het om deze game een eigen waarde te geven.</string>
+    <string name="lab_51294f91">%1$s is al geïnstalleerd</string>
     <string name="lab_513ecfb1">Vrienden en chat</string>
     <string name="lab_51732071">Profiel geïmporteerd</string>
     <string name="lab_51a6725d">Vulkan-nabewerkingseffect (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS en SGSR schalen op en verscherpen; SGSR is van Qualcomm, gemaakt voor Adreno.</string>
     <string name="lab_554ed1d4">%1$s verwijderen?</string>
     <string name="lab_558dab54">Deze game levert de eigen Xbox-runtime van Microsoft mee, die de Gaming Services van Windows nodig heeft. Aan: in plaats daarvan wordt de runtime van de app gebruikt. Zet alleen uit om die van de game zelf te proberen.</string>
-    <string name="lab_55b35170">Dat bestand is geen driverpakket</string>
     <string name="lab_55dbea72">Geluid (MIDI)</string>
     <string name="lab_55fb28db">Gevonden in de gamemap.</string>
     <string name="lab_56b4c80c">Thema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM-tegelrendering</string>
     <string name="lab_7398c748">Je eigen accentkleur · X om te kiezen</string>
     <string name="lab_73a11f48">Containers, instellingen en prefix in één bestand (klassieke Instellingen).</string>
+    <string name="lab_73add714">Geen meta.json in de zip</string>
     <string name="lab_73e71958">Cores voor 32-bit programma\'s</string>
     <string name="lab_74350de7">Over</string>
     <string name="lab_749c9e00">Nog geen containers.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafische driver</string>
     <string name="lab_96125830">Standaard / Elke controller</string>
     <string name="lab_962bd533">Helderheid</string>
+    <string name="lab_963f841c">Zelfde naam als een ingebouwde driver</string>
     <string name="lab_964d1a40">Android-klembord delen met games</string>
     <string name="lab_968b9d49">Toegepast bij het starten. Het zijmenu in de game wijzigt ze nog steeds live.</string>
     <string name="lab_969dab73">ReShade aan / uit, Solo / Stapelen, effecten en hun instellingen</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Meldingsgeluid</string>
     <string name="lab_992421a8">App openen op</string>
     <string name="lab_99273660">Aangezet voor framegeneratie — het scherm volgt de framelimiet × vermenigvuldiger. </string>
+    <string name="lab_9927a641">Mislukt</string>
     <string name="lab_9978b876">Knop A</string>
     <string name="lab_99853914">Kiezen met de systeemkiezer</string>
     <string name="lab_99895147">Standaard MIDI-klankbank</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Toewijzingen bewerken</string>
     <string name="lab_a8b5f392">Help</string>
     <string name="lab_a8b6222f">Systeemdriver</string>
+    <string name="lab_a8f9cfcd">De meta.json noemt geen bibliotheek</string>
     <string name="lab_a905f340">CPU-frequentie op maximum vastzetten</string>
     <string name="lab_a92ebeb7">Scherpte (VKBasalt) › Effect</string>
+    <string name="lab_a9323b0e">%1$s staat niet in de zip</string>
     <string name="lab_a960b3ff">Schaalt de trillingssterkte. Let op: op sommige handhelds vermindert een lagere sterkte de stickvertraging niet. Gebruik daarvoor Trilmotoren: Enkel.</string>
     <string name="lab_a9af1b38">Wisselen</string>
     <string name="lab_a9f8f50a">Nieuw profiel</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Automatische back-up uitschakelen?</string>
     <string name="lab_c06ade64">Experimentele schakelaars en interne werking van de weergaveserver.</string>
     <string name="lab_c088a86d">Logo aanpassen</string>
+    <string name="lab_c08afcff">De meta.json is niet leesbaar</string>
     <string name="lab_c0b26391">Compatibiliteit</string>
     <string name="lab_c0ba51f5">Omgeving</string>
     <string name="lab_c0cb7e61">Standaard uit, zodat games die zowel XInput als DirectInput lezen één controller zien.</string>

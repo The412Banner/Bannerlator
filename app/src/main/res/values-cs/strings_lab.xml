@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Smazat</string>
     <string name="lab_3e04658a">Modrá</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Stáhnout a nahradit</string>
     <string name="lab_3e5678cd">Nejrychlejší</string>
     <string name="lab_3e86e543">Předá se wrapperu tak, jak je. Ponechte prázdné, aby zůstalo nenastavené.</string>
     <string name="lab_3ecd0489">Automatické zálohování uložených her při ukončení bude pro hry z vaší knihovny Steam VYPNUTO. Jejich uložené hry se po zavření hry nezálohují — budete je muset zálohovat sami pomocí zálohy kontejneru nebo ve Správci uložených her. Pokračovat?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Vypnuto — vyberte níže frekvenci, na kterou se displej zamkne.</string>
     <string name="lab_443d0954">Spustit jeho plochu Windows</string>
     <string name="lab_4455b74f">Jak často se pohyb páčky dostane do hry. Lze změnit i ve hře.</string>
+    <string name="lab_44655ec4">Instalace selhala: %1$s</string>
     <string name="lab_449c12fb">Velikost na obrazovce</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Výchozí profil %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Protokoly</string>
     <string name="lab_50d905f5">Nízká latence</string>
     <string name="lab_50db75d4"> · Vyberte ji, chcete-li této hře dát vlastní hodnotu.</string>
+    <string name="lab_51294f91">%1$s je už nainstalován</string>
     <string name="lab_513ecfb1">Přátelé a chat</string>
     <string name="lab_51732071">Profil importován</string>
     <string name="lab_51a6725d">Post-efekt Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS a SGSR obraz zvětšují a doostřují; SGSR je od Qualcommu, určený pro Adreno.</string>
     <string name="lab_554ed1d4">Odebrat %1$s?</string>
     <string name="lab_558dab54">Tato hra obsahuje vlastní Xbox runtime od Microsoftu, který vyžaduje Gaming Services z Windows. Zapnuto: místo něj se použije runtime aplikace. Vypněte jen pro vyzkoušení vlastního runtime hry.</string>
-    <string name="lab_55b35170">Tento soubor není balíček ovladače</string>
     <string name="lab_55dbea72">Zvuk (MIDI)</string>
     <string name="lab_55fb28db">Nalezeno ve složce hry.</string>
     <string name="lab_56b4c80c">Téma</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Dlaždicové vykreslování GMEM</string>
     <string name="lab_7398c748">Vlastní barva zvýraznění · X pro výběr</string>
     <string name="lab_73a11f48">Kontejnery, nastavení a prefix v jednom souboru (nastavení Classic).</string>
+    <string name="lab_73add714">V zipu není meta.json</string>
     <string name="lab_73e71958">Jádra pro 32bitové programy</string>
     <string name="lab_74350de7">O aplikaci</string>
     <string name="lab_749c9e00">Zatím žádné kontejnery.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafický ovladač</string>
     <string name="lab_96125830">Výchozí / libovolný ovladač</string>
     <string name="lab_962bd533">Jas</string>
+    <string name="lab_963f841c">Stejný název jako vestavěný ovladač</string>
     <string name="lab_964d1a40">Sdílet schránku Androidu s hrami</string>
     <string name="lab_968b9d49">Použijí se při spuštění. Boční menu ve hře je stále mění za běhu.</string>
     <string name="lab_969dab73">ReShade zapnuto / vypnuto, Samostatně / Kombinovaně, efekty a jejich nastavení</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Zvuk oznámení</string>
     <string name="lab_992421a8">Otevřít aplikaci na</string>
     <string name="lab_99273660">Zapnuto kvůli generování snímků — displej se řídí limitem snímků × násobičem. </string>
+    <string name="lab_9927a641">Selhalo</string>
     <string name="lab_9978b876">Tlačítko A</string>
     <string name="lab_99853914">Vybrat systémovým výběrem</string>
     <string name="lab_99895147">Výchozí zvuková banka MIDI</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Upravit přiřazení</string>
     <string name="lab_a8b5f392">Nápověda</string>
     <string name="lab_a8b6222f">Systémový ovladač</string>
+    <string name="lab_a8f9cfcd">Jeho meta.json neuvádí žádnou knihovnu</string>
     <string name="lab_a905f340">Zamknout frekvenci CPU na maximum</string>
     <string name="lab_a92ebeb7">Ostrost (VKBasalt) › Efekt</string>
+    <string name="lab_a9323b0e">%1$s v zipu není</string>
     <string name="lab_a960b3ff">Mění sílu vibrací. Poznámka: na některých handheldech nižší síla nesníží zpomalení páček. K tomu použijte Vibrační motory: Jeden.</string>
     <string name="lab_a9af1b38">Přepínání</string>
     <string name="lab_a9f8f50a">Nový profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Vypnout automatické zálohování?</string>
     <string name="lab_c06ade64">Experimentální přepínače a vnitřnosti zobrazovacího serveru.</string>
     <string name="lab_c088a86d">Upravit logo</string>
+    <string name="lab_c08afcff">Jeho meta.json nelze přečíst</string>
     <string name="lab_c0b26391">Kompatibilita</string>
     <string name="lab_c0ba51f5">Prostředí</string>
     <string name="lab_c0cb7e61">Ve výchozím stavu vypnuto, aby hry, které čtou XInput i DirectInput, viděly jen jeden ovladač.</string>

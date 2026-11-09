@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Hapus</string>
     <string name="lab_3e04658a">Biru</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Unduh dan ganti</string>
     <string name="lab_3e5678cd">Tercepat</string>
     <string name="lab_3e86e543">Diteruskan ke wrapper apa adanya. Kosongkan agar tidak diatur.</string>
     <string name="lab_3ecd0489">Pencadangan save otomatis saat keluar akan NONAKTIF untuk game di pustaka Steam Anda. Save-nya tidak akan diambil saat game ditutup — Anda perlu mencadangkannya sendiri lewat opsi cadangan container atau Pengelola Save. Lanjutkan?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Nonaktif — pilih kecepatan refresh di bawah untuk mengunci layar.</string>
     <string name="lab_443d0954">Mulai desktop Windows-nya</string>
     <string name="lab_4455b74f">Seberapa sering gerakan stik sampai ke game. Juga bisa diubah dalam game.</string>
+    <string name="lab_44655ec4">Pemasangan gagal: %1$s</string>
     <string name="lab_449c12fb">Ukuran di layar</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Profil default %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Log</string>
     <string name="lab_50d905f5">Latensi rendah</string>
     <string name="lab_50db75d4"> · Pilih untuk memberi game ini nilainya sendiri.</string>
+    <string name="lab_51294f91">%1$s sudah terpasang</string>
     <string name="lab_513ecfb1">Teman &amp; obrolan</string>
     <string name="lab_51732071">Profil diimpor</string>
     <string name="lab_51a6725d">Efek pasca Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS, dan SGSR melakukan upscaling dan penajaman; SGSR buatan Qualcomm, dibuat untuk Adreno.</string>
     <string name="lab_554ed1d4">Hapus %1$s?</string>
     <string name="lab_558dab54">Game ini menyertakan runtime Xbox milik Microsoft, yang memerlukan Gaming Services Windows. Aktif: runtime aplikasi yang dipakai. Nonaktifkan hanya untuk mencoba runtime milik game.</string>
-    <string name="lab_55b35170">File itu bukan paket driver</string>
     <string name="lab_55dbea72">Suara (MIDI)</string>
     <string name="lab_55fb28db">Ditemukan di folder game.</string>
     <string name="lab_56b4c80c">Tema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Rendering tile GMEM</string>
     <string name="lab_7398c748">Warna aksen Anda sendiri · X untuk memilih</string>
     <string name="lab_73a11f48">Container, setelan, dan prefix dalam satu file (Setelan Classic).</string>
+    <string name="lab_73add714">Tidak ada meta.json di zip</string>
     <string name="lab_73e71958">Core yang boleh dipakai program 32-bit</string>
     <string name="lab_74350de7">Tentang</string>
     <string name="lab_749c9e00">Belum ada container.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Driver grafis</string>
     <string name="lab_96125830">Default / Semua pengontrol</string>
     <string name="lab_962bd533">Kecerahan</string>
+    <string name="lab_963f841c">Nama sama dengan driver bawaan</string>
     <string name="lab_964d1a40">Bagikan clipboard Android dengan game</string>
     <string name="lab_968b9d49">Diterapkan saat peluncuran. Menu samping dalam game tetap bisa mengubahnya secara langsung.</string>
     <string name="lab_969dab73">ReShade aktif / nonaktif, Solo / Tumpuk, efek dan setelannya</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Suara notifikasi</string>
     <string name="lab_992421a8">Buka aplikasi di</string>
     <string name="lab_99273660">Diaktifkan untuk frame generation — layar mengikuti batas frame × pengali. </string>
+    <string name="lab_9927a641">Gagal</string>
     <string name="lab_9978b876">Tombol A</string>
     <string name="lab_99853914">Pilih dengan pemilih sistem</string>
     <string name="lab_99895147">Bank suara MIDI default</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Edit pemetaan tombolnya</string>
     <string name="lab_a8b5f392">Bantuan</string>
     <string name="lab_a8b6222f">Driver sistem</string>
+    <string name="lab_a8f9cfcd">meta.json-nya tidak menyebutkan pustaka</string>
     <string name="lab_a905f340">Kunci frekuensi CPU ke maksimum</string>
     <string name="lab_a92ebeb7">Ketajaman (VKBasalt) › Efek</string>
+    <string name="lab_a9323b0e">%1$s tidak ada di zip</string>
     <string name="lab_a960b3ff">Mengatur kekuatan getaran. Catatan: di beberapa handheld, kekuatan lebih rendah tidak mengurangi perlambatan stik. Untuk itu, gunakan Motor getar: Tunggal.</string>
     <string name="lab_a9af1b38">Mengganti</string>
     <string name="lab_a9f8f50a">Profil baru</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Matikan pencadangan otomatis?</string>
     <string name="lab_c06ade64">Sakelar eksperimental dan internal server tampilan.</string>
     <string name="lab_c088a86d">Atur logo</string>
+    <string name="lab_c08afcff">meta.json-nya tidak dapat dibaca</string>
     <string name="lab_c0b26391">Kompatibilitas</string>
     <string name="lab_c0ba51f5">Lingkungan</string>
     <string name="lab_c0cb7e61">Nonaktif secara default, agar game yang membaca XInput dan DirectInput hanya melihat satu gamepad.</string>

@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">हटाएं</string>
     <string name="lab_3e04658a">नीला</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">डाउनलोड करें और बदलें</string>
     <string name="lab_3e5678cd">सबसे तेज़</string>
     <string name="lab_3e86e543">रैपर को जैसा है वैसा भेजा जाता है। सेट न करने के लिए खाली छोड़ें।</string>
     <string name="lab_3ecd0489">आपकी Steam लाइब्रेरी के गेम के लिए बाहर निकलने पर ऑटोमैटिक सेव बैकअप बंद हो जाएगा। गेम बंद होने पर उनके सेव सहेजे नहीं जाएंगे — आपको कंटेनर के बैकअप विकल्प या सेव मैनेजर से खुद बैकअप लेना होगा। जारी रखें?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">बंद — डिस्प्ले लॉक करने के लिए नीचे कोई रेट चुनें।</string>
     <string name="lab_443d0954">इसका Windows डेस्कटॉप शुरू करें</string>
     <string name="lab_4455b74f">स्टिक की हलचल गेम तक कितनी बार पहुंचे। गेम में भी बदला जा सकता है।</string>
+    <string name="lab_44655ec4">इंस्टॉल विफल: %1$s</string>
     <string name="lab_449c12fb">स्क्रीन पर आकार</string>
     <string name="lab_44bc352d">लोगो</string>
     <string name="lab_4500ffeb">%1$s डिफ़ॉल्ट प्रोफ़ाइल, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">लॉग</string>
     <string name="lab_50d905f5">कम लेटेंसी</string>
     <string name="lab_50db75d4"> · इस गेम को अपनी अलग वैल्यू देने के लिए इसे चुनें।</string>
+    <string name="lab_51294f91">%1$s पहले से इंस्टॉल है</string>
     <string name="lab_513ecfb1">दोस्त और चैट</string>
     <string name="lab_51732071">प्रोफ़ाइल इंपोर्ट हुई</string>
     <string name="lab_51a6725d">Vulkan पोस्ट-इफ़ेक्ट (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS और SGSR अपस्केल और शार्प करते हैं; SGSR, Qualcomm का है और Adreno के लिए बना है।</string>
     <string name="lab_554ed1d4">%1$s हटाएं?</string>
     <string name="lab_558dab54">यह गेम Microsoft का अपना Xbox रनटाइम साथ लाता है, जिसे Windows की Gaming Services चाहिए। चालू: इसकी जगह ऐप का रनटाइम इस्तेमाल होता है। सिर्फ़ गेम का अपना रनटाइम आज़माने के लिए बंद करें।</string>
-    <string name="lab_55b35170">यह फ़ाइल ड्राइवर पैकेज नहीं है</string>
     <string name="lab_55dbea72">आवाज़ (MIDI)</string>
     <string name="lab_55fb28db">गेम फ़ोल्डर में मिला।</string>
     <string name="lab_56b4c80c">थीम</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM टाइल्ड रेंडरिंग</string>
     <string name="lab_7398c748">आपका अपना एक्सेंट रंग · चुनने के लिए X</string>
     <string name="lab_73a11f48">कंटेनर, सेटिंग और प्रीफ़िक्स एक फ़ाइल में (क्लासिक सेटिंग)।</string>
+    <string name="lab_73add714">zip में meta.json नहीं है</string>
     <string name="lab_73e71958">32-बिट प्रोग्राम के लिए कोर</string>
     <string name="lab_74350de7">परिचय</string>
     <string name="lab_749c9e00">अभी कोई कंटेनर नहीं है।</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">ग्राफ़िक्स ड्राइवर</string>
     <string name="lab_96125830">डिफ़ॉल्ट / कोई भी कंट्रोलर</string>
     <string name="lab_962bd533">ब्राइटनेस</string>
+    <string name="lab_963f841c">बिल्ट-इन ड्राइवर जैसा ही नाम</string>
     <string name="lab_964d1a40">Android क्लिपबोर्ड गेम के साथ शेयर करें</string>
     <string name="lab_968b9d49">लॉन्च पर लागू होते हैं। गेम का साइड मेन्यू अब भी इन्हें तुरंत बदल सकता है।</string>
     <string name="lab_969dab73">ReShade चालू / बंद, एकल / स्टैक, इफ़ेक्ट और उनकी सेटिंग</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">नोटिफ़िकेशन साउंड</string>
     <string name="lab_992421a8">ऐप खुलने की स्क्रीन</string>
     <string name="lab_99273660">फ़्रेम जनरेशन के लिए चालू — डिस्प्ले फ़्रेम लिमिट × मल्टीप्लायर के अनुसार चलता है। </string>
+    <string name="lab_9927a641">विफल</string>
     <string name="lab_9978b876">बटन A</string>
     <string name="lab_99853914">सिस्टम पिकर से चुनें</string>
     <string name="lab_99895147">डिफ़ॉल्ट MIDI साउंड बैंक</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">इसकी बाइंडिंग बदलें</string>
     <string name="lab_a8b5f392">मदद</string>
     <string name="lab_a8b6222f">सिस्टम ड्राइवर</string>
+    <string name="lab_a8f9cfcd">इसकी meta.json में कोई लाइब्रेरी नहीं दी गई</string>
     <string name="lab_a905f340">CPU फ़्रीक्वेंसी अधिकतम पर लॉक करें</string>
     <string name="lab_a92ebeb7">शार्पनेस (VKBasalt) › इफ़ेक्ट</string>
+    <string name="lab_a9323b0e">%1$s zip में नहीं है</string>
     <string name="lab_a960b3ff">वाइब्रेशन की ताकत घटाता-बढ़ाता है। ध्यान दें: कुछ हैंडहेल्ड पर कम ताकत से स्टिक का धीमापन कम नहीं होता। उसके लिए वाइब्रेशन मोटर: एक इस्तेमाल करें।</string>
     <string name="lab_a9af1b38">बदला जा रहा है</string>
     <string name="lab_a9f8f50a">नई प्रोफ़ाइल</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">ऑटो-बैकअप बंद करें?</string>
     <string name="lab_c06ade64">प्रायोगिक स्विच और डिस्प्ले सर्वर की अंदरूनी सेटिंग।</string>
     <string name="lab_c088a86d">लोगो एडजस्ट करें</string>
+    <string name="lab_c08afcff">इसकी meta.json पढ़ी नहीं जा सकती</string>
     <string name="lab_c0b26391">कम्पैटिबिलिटी</string>
     <string name="lab_c0ba51f5">एनवायरनमेंट</string>
     <string name="lab_c0cb7e61">डिफ़ॉल्ट रूप से बंद, ताकि XInput और DirectInput दोनों पढ़ने वाले गेम एक ही पैड देखें।</string>

@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Usuń</string>
     <string name="lab_3e04658a">Niebieski</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Pobierz i zastąp</string>
     <string name="lab_3e5678cd">Najszybszy</string>
     <string name="lab_3e86e543">Przekazywane do wrappera bez zmian. Zostaw puste, aby nie ustawiać.</string>
     <string name="lab_3ecd0489">Automatyczna kopia zapisów przy wyjściu zostanie WYŁĄCZONA dla gier z Twojej biblioteki Steam. Ich zapisy nie będą zabezpieczane po zamknięciu gry — trzeba będzie samodzielnie robić kopię przez opcję kopii zapasowej kontenera lub Menedżer zapisów. Kontynuować?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Wył. — wybierz częstotliwość poniżej, aby zablokować ekran.</string>
     <string name="lab_443d0954">Uruchom jego pulpit Windows</string>
     <string name="lab_4455b74f">Jak często ruch drążków trafia do gry. Można też zmienić w grze.</string>
+    <string name="lab_44655ec4">Instalacja nie powiodła się: %1$s</string>
     <string name="lab_449c12fb">Rozmiar na ekranie</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Profil domyślny %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Logi</string>
     <string name="lab_50d905f5">Niskie opóźnienie</string>
     <string name="lab_50db75d4"> · Wybierz, aby nadać tej grze własną wartość.</string>
+    <string name="lab_51294f91">%1$s jest już zainstalowany</string>
     <string name="lab_513ecfb1">Znajomi i czat</string>
     <string name="lab_51732071">Zaimportowano profil</string>
     <string name="lab_51a6725d">Efekt końcowy Vulkan (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS i SGSR skalują i wyostrzają; SGSR pochodzi od Qualcomma i jest stworzony dla Adreno.</string>
     <string name="lab_554ed1d4">Usunąć %1$s?</string>
     <string name="lab_558dab54">Ta gra zawiera własne środowisko Xbox od Microsoftu, które wymaga usługi Gaming Services z Windows. Włączone: zamiast niego używane jest środowisko aplikacji. Wyłącz tylko, aby wypróbować środowisko gry.</string>
-    <string name="lab_55b35170">Ten plik nie jest pakietem sterownika</string>
     <string name="lab_55dbea72">Dźwięk (MIDI)</string>
     <string name="lab_55fb28db">Znaleziono w folderze gry.</string>
     <string name="lab_56b4c80c">Motyw</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">Renderowanie kafelkowe GMEM</string>
     <string name="lab_7398c748">Własny kolor akcentu · X, aby wybrać</string>
     <string name="lab_73a11f48">Kontenery, ustawienia i prefiks w jednym pliku (Ustawienia Classic).</string>
+    <string name="lab_73add714">Brak meta.json w pliku zip</string>
     <string name="lab_73e71958">Rdzenie dla programów 32-bitowych</string>
     <string name="lab_74350de7">Informacje</string>
     <string name="lab_749c9e00">Brak kontenerów.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Sterownik grafiki</string>
     <string name="lab_96125830">Domyślny / dowolny kontroler</string>
     <string name="lab_962bd533">Jasność</string>
+    <string name="lab_963f841c">Taka sama nazwa jak sterownik wbudowany</string>
     <string name="lab_964d1a40">Udostępniaj schowek Androida grom</string>
     <string name="lab_968b9d49">Stosowane przy uruchomieniu. Menu boczne w grze nadal zmienia je na żywo.</string>
     <string name="lab_969dab73">ReShade wł. / wył., Pojedynczo / Łącznie, efekty i ich ustawienia</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Dźwięk powiadomienia</string>
     <string name="lab_992421a8">Otwieraj aplikację na</string>
     <string name="lab_99273660">Włączone dla generowania klatek — ekran dostosowuje się do limitu klatek × mnożnik. </string>
+    <string name="lab_9927a641">Niepowodzenie</string>
     <string name="lab_9978b876">Przycisk A</string>
     <string name="lab_99853914">Wybierz selektorem systemowym</string>
     <string name="lab_99895147">Domyślny bank dźwięków MIDI</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Edytuj przypisania</string>
     <string name="lab_a8b5f392">Pomoc</string>
     <string name="lab_a8b6222f">Sterownik systemowy</string>
+    <string name="lab_a8f9cfcd">Jego meta.json nie wskazuje biblioteki</string>
     <string name="lab_a905f340">Zablokuj taktowanie CPU na maksimum</string>
     <string name="lab_a92ebeb7">Ostrość (VKBasalt) › Efekt</string>
+    <string name="lab_a9323b0e">Brak %1$s w pliku zip</string>
     <string name="lab_a960b3ff">Skaluje siłę wibracji. Uwaga: na niektórych konsolach przenośnych mniejsza siła nie zmniejsza spowolnienia drążków. Użyj do tego Silniki wibracji: Pojedynczy.</string>
     <string name="lab_a9af1b38">Zamienianie</string>
     <string name="lab_a9f8f50a">Nowy profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Wyłączyć automatyczną kopię?</string>
     <string name="lab_c06ade64">Eksperymentalne przełączniki i wnętrze serwera wyświetlania.</string>
     <string name="lab_c088a86d">Dostosuj logo</string>
+    <string name="lab_c08afcff">Nie można odczytać jego meta.json</string>
     <string name="lab_c0b26391">Zgodność</string>
     <string name="lab_c0ba51f5">Środowisko</string>
     <string name="lab_c0cb7e61">Domyślnie wyłączone, aby gry odczytujące zarówno XInput, jak i DirectInput widziały jeden pad.</string>

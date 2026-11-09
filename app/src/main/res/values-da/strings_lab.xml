@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Slet</string>
     <string name="lab_3e04658a">Blå</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">Download og erstat</string>
     <string name="lab_3e5678cd">Hurtigst</string>
     <string name="lab_3e86e543">Sendes uændret til wrapperen. Lad feltet være tomt for ikke at angive den.</string>
     <string name="lab_3ecd0489">Automatisk sikkerhedskopiering af gemte spil ved afslutning bliver slået FRA for spillene i dit Steam-bibliotek. Deres gemte spil bliver ikke gemt, når et spil lukkes — du skal selv sikkerhedskopiere dem via en containers sikkerhedskopiering eller Håndtering af gemte spil. Fortsæt?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Fra — vælg en hastighed nedenfor for at låse skærmen.</string>
     <string name="lab_443d0954">Start dens Windows-skrivebord</string>
     <string name="lab_4455b74f">Hvor ofte stickbevægelser når spillet. Kan også ændres i spillet.</string>
+    <string name="lab_44655ec4">Installation mislykkedes: %1$s</string>
     <string name="lab_449c12fb">Størrelse på skærmen</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">Standardprofilen for %1$s, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Logfiler</string>
     <string name="lab_50d905f5">Lav latens</string>
     <string name="lab_50db75d4"> · Vælg den for at give dette spil sin egen værdi.</string>
+    <string name="lab_51294f91">%1$s er allerede installeret</string>
     <string name="lab_513ecfb1">Venner og chat</string>
     <string name="lab_51732071">Profil importeret</string>
     <string name="lab_51a6725d">Vulkan-efterbehandlingseffekt (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS og SGSR opskalerer og skærper; SGSR er Qualcomms, lavet til Adreno.</string>
     <string name="lab_554ed1d4">Fjern %1$s?</string>
     <string name="lab_558dab54">Dette spil leveres med Microsofts egen Xbox-runtime, som kræver Windows\' Gaming Services. Til: appens runtime bruges i stedet. Slå kun fra for at prøve spillets egen.</string>
-    <string name="lab_55b35170">Filen er ikke en driverpakke</string>
     <string name="lab_55dbea72">Lyd (MIDI)</string>
     <string name="lab_55fb28db">Fundet i spilmappen.</string>
     <string name="lab_56b4c80c">Tema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM-tile-rendering</string>
     <string name="lab_7398c748">Din egen accentfarve · X for at vælge den</string>
     <string name="lab_73a11f48">Containere, indstillinger og præfiks i én fil (Indstillinger i Classic).</string>
+    <string name="lab_73add714">Ingen meta.json i zip-filen</string>
     <string name="lab_73e71958">Kerner, som 32-bit-programmer må bruge</string>
     <string name="lab_74350de7">Om</string>
     <string name="lab_749c9e00">Ingen containere endnu.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafikdriver</string>
     <string name="lab_96125830">Standard / Enhver controller</string>
     <string name="lab_962bd533">Lysstyrke</string>
+    <string name="lab_963f841c">Samme navn som en indbygget driver</string>
     <string name="lab_964d1a40">Del Androids udklipsholder med spil</string>
     <string name="lab_968b9d49">Anvendes ved start. Sidemenuen i spillet kan stadig ændre dem undervejs.</string>
     <string name="lab_969dab73">ReShade til / fra, Solo / Stak, effekter og deres indstillinger</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Notifikationslyd</string>
     <string name="lab_992421a8">Åbn appen på</string>
     <string name="lab_99273660">Slået til for billedgenerering — skærmen følger billedgrænsen × multiplikatoren. </string>
+    <string name="lab_9927a641">Mislykkedes</string>
     <string name="lab_9978b876">Knap A</string>
     <string name="lab_99853914">Vælg med systemets vælger</string>
     <string name="lab_99895147">Standard-MIDI-lydbank</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Rediger dens tildelinger</string>
     <string name="lab_a8b5f392">Hjælp</string>
     <string name="lab_a8b6222f">Systemdriver</string>
+    <string name="lab_a8f9cfcd">Dens meta.json angiver intet bibliotek</string>
     <string name="lab_a905f340">Lås CPU-frekvensen på maks</string>
     <string name="lab_a92ebeb7">Skarphed (VKBasalt) › Effekt</string>
+    <string name="lab_a9323b0e">%1$s er ikke i zip-filen</string>
     <string name="lab_a960b3ff">Skalerer vibrationsstyrken. Bemærk: på nogle håndholdte enheder mindsker en lavere styrke ikke opbremsningen af sticks. Brug Vibrationsmotorer: Enkelt til det.</string>
     <string name="lab_a9af1b38">Skifter</string>
     <string name="lab_a9f8f50a">Ny profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Slå automatisk sikkerhedskopiering fra?</string>
     <string name="lab_c06ade64">Eksperimentelle kontakter og visningsserverens interne dele.</string>
     <string name="lab_c088a86d">Juster logo</string>
+    <string name="lab_c08afcff">Dens meta.json kan ikke læses</string>
     <string name="lab_c0b26391">Kompatibilitet</string>
     <string name="lab_c0ba51f5">Miljø</string>
     <string name="lab_c0cb7e61">Slået fra som standard, så spil, der læser både XInput og DirectInput, ser én controller.</string>

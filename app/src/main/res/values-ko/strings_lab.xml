@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">삭제</string>
     <string name="lab_3e04658a">파란색</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">다운로드 후 교체</string>
     <string name="lab_3e5678cd">가장 빠름</string>
     <string name="lab_3e86e543">래퍼에 그대로 전달됩니다. 설정하지 않으려면 비워 두세요.</string>
     <string name="lab_3ecd0489">Steam 라이브러리 게임의 종료 시 자동 세이브 백업이 꺼집니다. 게임을 종료할 때 세이브가 저장되지 않으므로, 컨테이너의 백업 옵션이나 세이브 관리자에서 직접 백업해야 합니다. 계속할까요?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">끔 — 아래에서 주사율을 골라 디스플레이를 고정하세요.</string>
     <string name="lab_443d0954">Windows 데스크톱 시작</string>
     <string name="lab_4455b74f">스틱 움직임이 게임에 전달되는 빈도. 게임 중에도 바꿀 수 있습니다.</string>
+    <string name="lab_44655ec4">설치 실패: %1$s</string>
     <string name="lab_449c12fb">화면상 크기</string>
     <string name="lab_44bc352d">로고</string>
     <string name="lab_4500ffeb">%1$s 기본값 프로필과 </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">로그</string>
     <string name="lab_50d905f5">저지연</string>
     <string name="lab_50db75d4"> · 선택하면 이 게임만의 값을 지정합니다.</string>
+    <string name="lab_51294f91">%1$s은(는) 이미 설치되어 있습니다</string>
     <string name="lab_513ecfb1">친구 및 채팅</string>
     <string name="lab_51732071">프로필 가져옴</string>
     <string name="lab_51a6725d">Vulkan 후처리 효과 (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS, SGSR은 업스케일과 샤프닝을 합니다. SGSR은 Qualcomm이 Adreno용으로 만든 것입니다.</string>
     <string name="lab_554ed1d4">%1$s을(를) 제거할까요?</string>
     <string name="lab_558dab54">이 게임에는 Microsoft의 Xbox 런타임이 포함되어 있으며, 이를 쓰려면 Windows의 Gaming Services가 필요합니다. 켬: 대신 앱의 런타임을 사용합니다. 게임 자체 런타임을 시험할 때만 끄세요.</string>
-    <string name="lab_55b35170">드라이버 패키지 파일이 아닙니다</string>
     <string name="lab_55dbea72">사운드 (MIDI)</string>
     <string name="lab_55fb28db">게임 폴더에서 찾았습니다.</string>
     <string name="lab_56b4c80c">테마</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM 타일 렌더링</string>
     <string name="lab_7398c748">나만의 강조 색상 · X로 선택</string>
     <string name="lab_73a11f48">컨테이너, 설정, 프리픽스를 하나의 파일로(Classic 설정).</string>
+    <string name="lab_73add714">zip에 meta.json이 없습니다</string>
     <string name="lab_73e71958">32비트 프로그램이 쓸 수 있는 코어</string>
     <string name="lab_74350de7">정보</string>
     <string name="lab_749c9e00">아직 컨테이너가 없습니다.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">그래픽 드라이버</string>
     <string name="lab_96125830">기본 / 모든 컨트롤러</string>
     <string name="lab_962bd533">밝기</string>
+    <string name="lab_963f841c">내장 드라이버와 이름이 같습니다</string>
     <string name="lab_964d1a40">Android 클립보드를 게임과 공유</string>
     <string name="lab_968b9d49">실행 시 적용됩니다. 게임 중 사이드 메뉴에서도 실시간으로 바꿀 수 있습니다.</string>
     <string name="lab_969dab73">ReShade 켜기 / 끄기, 단독 / 중첩, 효과와 그 설정</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">알림 소리</string>
     <string name="lab_992421a8">앱 시작 화면</string>
     <string name="lab_99273660">프레임 생성을 위해 켜졌습니다 — 디스플레이가 프레임 제한 × 배율을 따릅니다. </string>
+    <string name="lab_9927a641">실패</string>
     <string name="lab_9978b876">A 버튼</string>
     <string name="lab_99853914">시스템 선택기로 선택</string>
     <string name="lab_99895147">기본 MIDI 사운드 뱅크</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">바인딩 편집</string>
     <string name="lab_a8b5f392">도움말</string>
     <string name="lab_a8b6222f">시스템 드라이버</string>
+    <string name="lab_a8f9cfcd">meta.json에 라이브러리가 지정되지 않았습니다</string>
     <string name="lab_a905f340">CPU 주파수 최대로 고정</string>
     <string name="lab_a92ebeb7">선명도 (VKBasalt) › 효과</string>
+    <string name="lab_a9323b0e">%1$s이(가) zip에 없습니다</string>
     <string name="lab_a960b3ff">진동 세기를 조절합니다. 참고: 일부 휴대용 기기에서는 세기를 낮춰도 스틱 지연이 줄지 않습니다. 그럴 때는 진동 모터: 단일을 사용하세요.</string>
     <string name="lab_a9af1b38">교체하는 중</string>
     <string name="lab_a9f8f50a">새 프로필</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">자동 백업을 끌까요?</string>
     <string name="lab_c06ade64">실험적 스위치 및 디스플레이 서버 내부 설정.</string>
     <string name="lab_c088a86d">로고 조정</string>
+    <string name="lab_c08afcff">meta.json을 읽을 수 없습니다</string>
     <string name="lab_c0b26391">호환성</string>
     <string name="lab_c0ba51f5">환경</string>
     <string name="lab_c0cb7e61">기본적으로 꺼져 있어 XInput과 DirectInput을 모두 읽는 게임에서도 패드가 하나로 보입니다.</string>

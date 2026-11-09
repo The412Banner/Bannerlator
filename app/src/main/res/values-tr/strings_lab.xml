@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">Sil</string>
     <string name="lab_3e04658a">Mavi</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">İndir ve değiştir</string>
     <string name="lab_3e5678cd">En hızlı</string>
     <string name="lab_3e86e543">Sarmalayıcıya olduğu gibi aktarılır. Ayarlanmamış bırakmak için boş bırakın.</string>
     <string name="lab_3ecd0489">Çıkışta otomatik kayıt yedekleme, Steam kütüphanenizdeki oyunlar için KAPALI olacak. Bir oyun kapandığında kayıtları yedeklenmeyecek — bunları bir konteynerin yedekleme seçeneğiyle veya Kayıt Yöneticisi\'nden kendiniz yedeklemeniz gerekecek. Devam edilsin mi?</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">Kapalı — ekranı kilitlemek için aşağıdan bir hız seçin.</string>
     <string name="lab_443d0954">Windows masaüstünü başlat</string>
     <string name="lab_4455b74f">Çubuk hareketinin oyuna ne sıklıkla ulaştığı. Oyun içinde de değiştirilebilir.</string>
+    <string name="lab_44655ec4">Yükleme başarısız: %1$s</string>
     <string name="lab_449c12fb">Ekrandaki boyut</string>
     <string name="lab_44bc352d">Logo</string>
     <string name="lab_4500ffeb">%1$s varsayılan profili, </string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">Günlükler</string>
     <string name="lab_50d905f5">Düşük gecikme</string>
     <string name="lab_50db75d4"> · Bu oyuna kendi değerini vermek için seçin.</string>
+    <string name="lab_51294f91">%1$s zaten yüklü</string>
     <string name="lab_513ecfb1">Arkadaşlar ve sohbet</string>
     <string name="lab_51732071">Profil içe aktarıldı</string>
     <string name="lab_51a6725d">Vulkan son işlem efekti (vkBasalt)</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR, NIS ve SGSR ölçekler ve keskinleştirir; SGSR, Qualcomm\'un Adreno için yaptığıdır.</string>
     <string name="lab_554ed1d4">Kaldır: %1$s?</string>
     <string name="lab_558dab54">Bu oyun, Windows\'un Gaming Services\'ini gerektiren Microsoft\'un kendi Xbox çalışma zamanıyla gelir. Açık: onun yerine uygulamanın çalışma zamanı kullanılır. Yalnızca oyunun kendisininkini denemek için kapatın.</string>
-    <string name="lab_55b35170">Bu dosya bir sürücü paketi değil</string>
     <string name="lab_55dbea72">Ses (MIDI)</string>
     <string name="lab_55fb28db">Oyun klasöründe bulundu.</string>
     <string name="lab_56b4c80c">Tema</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM döşemeli işleme</string>
     <string name="lab_7398c748">Kendi vurgu renginiz · seçmek için X</string>
     <string name="lab_73a11f48">Konteynerler, ayarlar ve önek tek dosyada (klasik Ayarlar).</string>
+    <string name="lab_73add714">Zip içinde meta.json yok</string>
     <string name="lab_73e71958">32 bit programların kullanabileceği çekirdekler</string>
     <string name="lab_74350de7">Hakkında</string>
     <string name="lab_749c9e00">Henüz konteyner yok.</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">Grafik sürücüsü</string>
     <string name="lab_96125830">Varsayılan / Herhangi bir kumanda</string>
     <string name="lab_962bd533">Parlaklık</string>
+    <string name="lab_963f841c">Yerleşik bir sürücüyle aynı ad</string>
     <string name="lab_964d1a40">Android panosunu oyunlarla paylaş</string>
     <string name="lab_968b9d49">Başlatmada uygulanır. Oyun içi yan menü bunları yine anında değiştirebilir.</string>
     <string name="lab_969dab73">ReShade açık / kapalı, Tekli / Katmanlı, efektler ve ayarları</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">Bildirim sesi</string>
     <string name="lab_992421a8">Açılış ekranı</string>
     <string name="lab_99273660">Kare oluşturma için açıldı — ekran kare sınırı × çarpanı izler. </string>
+    <string name="lab_9927a641">Başarısız</string>
     <string name="lab_9978b876">A düğmesi</string>
     <string name="lab_99853914">Sistem seçicisiyle seç</string>
     <string name="lab_99895147">Varsayılan MIDI ses bankası</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">Atamalarını düzenle</string>
     <string name="lab_a8b5f392">Yardım</string>
     <string name="lab_a8b6222f">Sistem sürücüsü</string>
+    <string name="lab_a8f9cfcd">meta.json dosyası bir kitaplık belirtmiyor</string>
     <string name="lab_a905f340">CPU frekansını maksimuma kilitle</string>
     <string name="lab_a92ebeb7">Keskinlik (VKBasalt) › Efekt</string>
+    <string name="lab_a9323b0e">%1$s zip içinde yok</string>
     <string name="lab_a960b3ff">Titreşim gücünü ölçekler. Not: bazı el konsollarında daha düşük güç çubuk yavaşlamasını azaltmaz. Bunun için Titreşim motorları: Tek seçeneğini kullanın.</string>
     <string name="lab_a9af1b38">Değiştiriliyor</string>
     <string name="lab_a9f8f50a">Yeni profil</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">Otomatik yedekleme kapatılsın mı?</string>
     <string name="lab_c06ade64">Deneysel anahtarlar ve görüntü sunucusu iç ayarları.</string>
     <string name="lab_c088a86d">Logoyu ayarla</string>
+    <string name="lab_c08afcff">meta.json dosyası okunamıyor</string>
     <string name="lab_c0b26391">Uyumluluk</string>
     <string name="lab_c0ba51f5">Ortam</string>
     <string name="lab_c0cb7e61">Varsayılan olarak kapalı, böylece hem XInput hem DirectInput okuyan oyunlar tek kumanda görür.</string>

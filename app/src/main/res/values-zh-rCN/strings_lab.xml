@@ -463,6 +463,7 @@
     <string name="lab_3dbe79b1">删除</string>
     <string name="lab_3e04658a">蓝色</string>
     <string name="lab_3e523667">Direct3D</string>
+    <string name="lab_3e540424">下载并替换</string>
     <string name="lab_3e5678cd">最快</string>
     <string name="lab_3e86e543">按原样传递给封装层。留空则不设置。</string>
     <string name="lab_3ecd0489">你的 Steam 游戏库中的游戏将关闭退出时自动备份存档。游戏关闭时不会保存其存档快照，你需要自行通过容器的备份选项或存档管理器进行备份。要继续吗？</string>
@@ -498,6 +499,7 @@
     <string name="lab_43c9073b">关闭：在下方选择刷新率以锁定屏幕。</string>
     <string name="lab_443d0954">启动其 Windows 桌面</string>
     <string name="lab_4455b74f">摇杆移动传给游戏的频率。也可在游戏中更改。</string>
+    <string name="lab_44655ec4">安装失败：%1$s</string>
     <string name="lab_449c12fb">屏幕显示大小</string>
     <string name="lab_44bc352d">标志</string>
     <string name="lab_4500ffeb">%1$s 默认配置文件</string>
@@ -592,6 +594,7 @@
     <string name="lab_50bd6962">日志</string>
     <string name="lab_50d905f5">低延迟</string>
     <string name="lab_50db75d4"> · 选择它可为此游戏设置单独的值。</string>
+    <string name="lab_51294f91">%1$s 已安装</string>
     <string name="lab_513ecfb1">好友与聊天</string>
     <string name="lab_51732071">已导入配置文件</string>
     <string name="lab_51a6725d">Vulkan 后处理效果（vkBasalt）</string>
@@ -623,7 +626,6 @@
     <string name="lab_551aa1c7">FSR、NIS 和 SGSR 用于放大和锐化画面；SGSR 来自 Qualcomm，专为 Adreno 打造。</string>
     <string name="lab_554ed1d4">移除 %1$s？</string>
     <string name="lab_558dab54">此游戏自带 Microsoft 的 Xbox 运行库，它需要 Windows 的 Gaming Services。开启：改用应用自带的运行库。仅在想尝试游戏自带的运行库时才关闭。</string>
-    <string name="lab_55b35170">该文件不是驱动包</string>
     <string name="lab_55dbea72">声音（MIDI）</string>
     <string name="lab_55fb28db">在游戏文件夹中找到。</string>
     <string name="lab_56b4c80c">主题</string>
@@ -830,6 +832,7 @@
     <string name="lab_7341f15d">GMEM 分块渲染</string>
     <string name="lab_7398c748">自定义强调色 · 按 X 选择</string>
     <string name="lab_73a11f48">将容器、设置和 Wine 前缀保存为一个文件（Classic 设置）。</string>
+    <string name="lab_73add714">zip 中没有 meta.json</string>
     <string name="lab_73e71958">32 位程序可用的核心</string>
     <string name="lab_74350de7">关于</string>
     <string name="lab_749c9e00">还没有容器。</string>
@@ -1073,6 +1076,7 @@
     <string name="lab_95ca1574">图形驱动</string>
     <string name="lab_96125830">默认 / 任意手柄</string>
     <string name="lab_962bd533">亮度</string>
+    <string name="lab_963f841c">与内置驱动同名</string>
     <string name="lab_964d1a40">与游戏共享 Android 剪贴板</string>
     <string name="lab_968b9d49">启动时应用。仍可通过游戏内侧边菜单实时更改。</string>
     <string name="lab_969dab73">ReShade 开 / 关、单独 / 叠加、效果及其设置</string>
@@ -1094,6 +1098,7 @@
     <string name="lab_99082159">通知声音</string>
     <string name="lab_992421a8">应用启动时打开</string>
     <string name="lab_99273660">已为帧生成开启：屏幕刷新率跟随帧率限制 × 倍数。</string>
+    <string name="lab_9927a641">失败</string>
     <string name="lab_9978b876">A 键</string>
     <string name="lab_99853914">使用系统选择器</string>
     <string name="lab_99895147">默认 MIDI 音色库</string>
@@ -1189,8 +1194,10 @@
     <string name="lab_a872c520">编辑按键绑定</string>
     <string name="lab_a8b5f392">帮助</string>
     <string name="lab_a8b6222f">系统驱动</string>
+    <string name="lab_a8f9cfcd">其 meta.json 未指定库</string>
     <string name="lab_a905f340">将 CPU 频率锁定为最高</string>
     <string name="lab_a92ebeb7">锐化（VKBasalt） › 效果</string>
+    <string name="lab_a9323b0e">zip 中没有 %1$s</string>
     <string name="lab_a960b3ff">调整震动强度。注意：在部分掌机上，降低强度并不能减轻摇杆变慢。如需解决，请将“震动马达”设为“单马达”。</string>
     <string name="lab_a9af1b38">正在替换</string>
     <string name="lab_a9f8f50a">新建配置文件</string>
@@ -1343,6 +1350,7 @@
     <string name="lab_c05f6e32">关闭自动备份？</string>
     <string name="lab_c06ade64">实验性开关和显示服务器内部设置。</string>
     <string name="lab_c088a86d">调整标志</string>
+    <string name="lab_c08afcff">无法读取其 meta.json</string>
     <string name="lab_c0b26391">兼容性</string>
     <string name="lab_c0ba51f5">环境</string>
     <string name="lab_c0cb7e61">默认关闭，以便同时读取 XInput 和 DirectInput 的游戏只识别到一个手柄。</string>

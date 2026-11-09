@@ -90,12 +90,14 @@ import com.winlator.star.XServerDisplayActivity
 import com.winlator.star.XrActivity
 import com.winlator.star.container.Container
 import com.winlator.star.contents.AdrenotoolsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.GameSaveBackup
 import com.winlator.star.inputcontrols.ControlsProfile
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.inputcontrols.InputControlsManager
+import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.ui.controllertest.SettingsControllerTestDialog
 import com.winlator.star.ui.deck.DeckRoutes
@@ -573,6 +575,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                     trailing = when {
                         running -> "${(st!!.fraction * 100).toInt()}%"
                         isIn -> L("Installed")
+                        st != null && st.phase == ContentDownloadPhase.ERROR && !st.cancelled -> L("Failed")
                         item.sizeBytes != null -> "%.0f MB".format(item.sizeBytes / 1_048_576.0)
                         else -> null
                     },
@@ -593,6 +596,12 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                     playIcon = Icons.Filled.Download, playLabel = L("Download"),
                     actions = buildList {
                         if (running) add(MenuAction(L("Cancel the download"), { ContentDownloadRegistry.requestCancel(key) }))
+                        // A driver already installed, or refused because one with its name is: download it again over that one.
+                        if (!running && item.isDriver && (isIn || st?.replaceable == true)) add(MenuAction(L("Download and replace"), {
+                            ContentsInstaller.install(context, item.type, item.sourceName, item.versionName, item.downloadUrl, keepRaw, replace = true) {
+                                vm.refreshStatus(); vm.refreshFolders(); tick++
+                            }
+                        }))
                         add(MenuAction(L("Save the file only"), { vm.saveArchive(item) }))
                     },
                 )
@@ -621,11 +630,15 @@ internal fun SimpleDriversPage(onNavigate: (String) -> Unit, onBack: () -> Unit)
     val drivers = remember(tick) { runCatching { manager?.enumarateInstalledDrivers()?.toList() }.getOrNull().orEmpty() }
     val sources = remember { runCatching { DriverSources.allSources(context) }.getOrDefault(emptyList()) }
     var defaultItem by remember { mutableStateOf<SetAsDefault.Item?>(null) }
+    val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
-        val id = runCatching { manager?.installDriver(uri) }.getOrNull().orEmpty()
-        toast(context, if (id.isNotEmpty()) L("Installed %1\$s", manager?.getDriverName(id) ?: id) else L("That file is not a driver package"))
-        tick++
+        // A "-Linux" or "-Wayland" zip goes into its own list (DriverInstaller), and the toast says which.
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { DriverInstaller.install(context, uri, uri.lastPathSegment?.substringAfterLast('/')) }
+            toast(context, DriverInstaller.message(r))
+            tick++
+        }
     }
     val installed = drivers.map { id ->
         val name = manager?.getDriverName(id) ?: id

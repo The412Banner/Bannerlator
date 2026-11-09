@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ Steam Latest shows its sign-in page on X11: Wayland cross-process limit proven as the cause
+- **Run 18:54 EST (user):** Steam Latest with the per-game Display system = X11, same Launch options → full sign-in page (account name/password + QR code; user screenshot 18:54:38).
+- **Same process layout as the black Wayland run:** webhelper.txt shows 1 gpu-process, 1 renderer, 4 utility processes. So the only difference is the display path: Wine's X11 driver lets one process draw into another's window, our winewayland does not (plan: bannerlator-wayland-cross-process, parked).
+- **Proof level:** device-proven for the sign-in page; sign-in and the FlatOut download on the new client not tested yet.
+- **Resume point:** Steam Latest running on X11 at the sign-in page; peer session hands-off until "done".
+
 ## 2026-11-09 — 📝 Wayland cross-process drawing: fix plan saved (PARKED); Steam Latest X11 test running
 - **Why:** the 2026 Steam client draws from separate Chromium processes; our winewayland only knows its own process's windows (proton-wine banner-proton/11.9: `window.c:141-157` per-process table, `window_surface.c:1390` default surface, `wayland_surface.c:4873` no attach), so the window stays empty on Wayland.
 - **Plan saved (user: "save 3 to memory"):** private protocol in BL's compositor + winewayland patch — window owners register HWND↔surface; another process's drawing gets its own surface placed inside that window by the compositor (GPU and software paths), with fallback when unsupported. New layer (v17) + BL build; several days; not started. Memory: bannerlator-wayland-cross-process.

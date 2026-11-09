@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 igart: soft edge inside the panel (906ae178; CI 42550063478; 4a15d0c6's run cancelled)
+- **User:** "i don't want it to extend, just make it soft where it meets the game, like slightly fuzzy". My 4a15d0c6 had run the art 64 dp past the panel, which was wrong.
+- **Change:** no wider layer. The art layer's last 16 dp fade out (DstIn: 1 → 0.75 → 0.3 → 0). Still no outline or shadow while art shows; the bottom bar keeps its top line only.
+- **Next:** green → stage → ASK install (not pre-approved).
+
 ## 2026-11-08 — 🔧 igart: soft right edge (4a15d0c6; CI 42549765815 running)
 - **User:** "off button is fine, but the hard line at the end of the drawer, could we soften it out". Taken as the drawer's right edge, where the art stops and the game starts.
 - **Change (only while art shows):**

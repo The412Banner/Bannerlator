@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ 3.1.9-pre2 PUBLISHED and verified; installed on the Elite + Pocket FIT
+- **Release run 42538588231 success:** prerelease, not draft, Latest still 3.1.8; tag 3.1.9-pre2 == 6885a19b == main HEAD at publish (no drift); 4 APKs + update.json; update.json vc 106 / 3.1.9-pre2 with 5 highlights; manifest update-pre.json = 106 (stable update.json still 3.1.8 / 104); 32 patches on Bannerlator-updates 3.1.9-pre2 (from pre1 ~34 MB, 3.1.8 ~68 MB, mali-pre1 ~40 MB).
+- **Page edit after publishing (user, no rebuild):** game art preview (docs/releases/media/3.1.9-pre2-game-art.webp from the user's video of the Pocket FIT on a TV) linking to Bannerlator-3.1.9-pre2-game-art-preview.mp4 (release asset, H.264); game art marked device-tested; patch sizes in the Small update box. Same edits in docs (efbbfdfc).
+- **Installed (user: "install pre2 on the elite and pocket fit when done"):** release pubg APK sha256 22c8ebb2… (== update.json) on the Elite 19:35:25 EST and the Pocket FIT 19:35:52 EST (over ssh, xsu); both vc 106; crash buffers empty.
+- **Untested in pre2 (written in the notes):** a game in a setup-made container, the x86_64/Box64 setup path, non-Adreno setup, Mali "System" on Wayland, the 32 languages screen by screen; the #659 fix can't be reproduced here.
+
 ## 2026-11-08 — 🚀 Release 3.1.9-pre2 cut (user: "cut it") — release commit ce7f5b31
 - **Readiness:** #659 fix merged (e584506a). The Classic check was dropped by the user. Everything since 3.1.9-pre1 was merged and CI-green; the device-test state is written per section in docs/releases/3.1.9-pre2.md.
 - **Release commit ce7f5b31:** versionCode 105 → 106, versionName 3.1.9-pre2, docs/releases/3.1.9-pre2.md (house layout, "What's New — since 3.1.9-pre1", honest test boxes, Credits), README version row + section + TOC. The notes generator was dry-run locally (5 highlights, no TODO).

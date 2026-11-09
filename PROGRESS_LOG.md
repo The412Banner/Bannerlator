@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 lab-badges-bugs 321d7aed: no store pills on the Home Library row (CI 42707058358 running)
+- **User check of 1b4b1951 (screenshots 165140 portrait Home, 165243 StevenMXZ source page, 16:51–16:52 EST):** pills on the Home row's small covers too big (EOS wraps vertically) → "remove them since it will show in the top larger tile" (big tile meta says the store, e.g. "Added by me"). A on installed v891.14 opened "Download and replace / Save the file only" = bug 3 fix DEVICE-PROVEN.
+- **321d7aed:** LabHome RecentTile back to plain cards (no LabBadged); Library page keeps the pills.
+- **Next:** green → stage pubg → ASK install → user checks → merge on go.
+
 ## 2026-11-09 — ✅ lab-badges-bugs 1b4b1951 INSTALLED on the Pocket FIT (pubg) 16:47:28 EST (user: "yes install it"; NOT device-tested yet)
 - CI 42697428457 GREEN ×4 (headSha 1b4b1951). Staged /sdcard/Download/Bannerlator-lab-badges-bugs-1b4b1951-pubg.apk sha256 8262ebfd… (host == device), com.tencent.ig vc106, cert a40da80a.
 - Before: main 44d1ac3f (b1460b17…), no game running, Termux in front. `pm install -r` Success; installed base.apk 8262ebfd… == staged; crash buffer empty; peers root-66 / root-12 told before + "done" after. Undo: /sdcard/Download/Bannerlator-main-44d1ac3f-pubg.apk.

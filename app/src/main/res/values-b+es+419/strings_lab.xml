@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lab's text in b+es+419. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
+<!-- Lab's text in es-419. Machine-drafted translation. Corrections welcome: change the text, keep the name and any %1$s / %2$d. Written by tools/i18n/lab_strings.py. -->
 <resources>
     <string name="lab_0008dfaf">Energía (predeterminado para todos los juegos)</string>
     <string name="lab_0016da13">Personalizado empieza con todos los servicios desactivados: activa solo lo que necesite el juego.</string>
@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Descargar versiones de DXVK</string>
     <string name="lab_542dcdda">Stick hacia la derecha</string>
     <string name="lab_545e8271">Solo importa cuando un juego se renderiza por debajo de la resolución de la sesión.</string>
-    <string name="lab_54739575">Cursor al tocar y sus gestos táctiles</string>
     <string name="lab_5482057e">Ranuras de jugadores</string>
     <string name="lab_548c6bc1">Desactiva XInput para que los juegos solo vean el mouse y el teclado reales.</string>
     <string name="lab_54ed9898">Sesión iniciada · 1 juego</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">No se pudo cambiar el nombre</string>
     <string name="lab_6a271188">Preajuste de Box64 / Preajuste de WOWBox64</string>
     <string name="lab_6a4b2ea4">Energía</string>
-    <string name="lab_6a68da45">Ratón relativo</string>
     <string name="lab_6a87d625">DirectX 8 a 11 a través de Vulkan. Las versiones llamadas async o gplasync pueden compilar shaders en segundo plano.</string>
     <string name="lab_6a913533">Root concedido</string>
     <string name="lab_6a98ad5e">Un botón tenue arriba a la derecha que abre el menú rápido al tocarlo.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Modo de presentación del adaptador</string>
     <string name="lab_abb1c367">No hay nada conectado. Este juego sigue configurado para iniciarse en una TV.</string>
     <string name="lab_abb20221">Sin preajuste</string>
+    <string name="lab_abd752a4">Gestos táctiles</string>
     <string name="lab_abf1049c">Conservar el archivo original por defecto</string>
     <string name="lab_ac21d91b">Modo de movimiento</string>
     <string name="lab_ac35c85f">El juego se renderiza con el controlador gráfico de arriba, a través del adaptador Wayland.</string>

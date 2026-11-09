@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Download DXVK versions</string>
     <string name="lab_542dcdda">Thumbstick right</string>
     <string name="lab_545e8271">Only matters when a game renders below the session\'s resolution.</string>
-    <string name="lab_54739575">Cursor to touch and its touch gestures</string>
     <string name="lab_5482057e">Player Slots</string>
     <string name="lab_548c6bc1">Turns off XInput so games see only the real mouse and keyboard.</string>
     <string name="lab_54ed9898">Signed in · 1 game</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Could not rename it</string>
     <string name="lab_6a271188">Box64 Preset / WOWBox64 Preset</string>
     <string name="lab_6a4b2ea4">Power</string>
-    <string name="lab_6a68da45">Relative mouse</string>
     <string name="lab_6a87d625">DirectX 8 to 11 through Vulkan. Builds named async or gplasync can compile shaders in the background.</string>
     <string name="lab_6a913533">Root granted</string>
     <string name="lab_6a98ad5e">A faint button at the top right that opens the quick menu by touch.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapter present mode</string>
     <string name="lab_abb1c367">Nothing is plugged in. This game is still set to start on a TV.</string>
     <string name="lab_abb20221">No preset</string>
+    <string name="lab_abd752a4">Touch gestures</string>
     <string name="lab_abf1049c">Keep raw archive by default</string>
     <string name="lab_ac21d91b">Motion Mode</string>
     <string name="lab_ac35c85f">The game renders on the graphics driver above, through the Wayland adapter.</string>

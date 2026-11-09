@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Λήψη εκδόσεων DXVK</string>
     <string name="lab_542dcdda">Μοχλός δεξιά</string>
     <string name="lab_545e8271">Έχει σημασία μόνο όταν ένα παιχνίδι κάνει render κάτω από την ανάλυση της συνεδρίας.</string>
-    <string name="lab_54739575">Δείκτης στο σημείο αφής και οι χειρονομίες αφής του</string>
     <string name="lab_5482057e">Θέσεις παικτών</string>
     <string name="lab_548c6bc1">Απενεργοποιεί το XInput ώστε τα παιχνίδια να βλέπουν μόνο το πραγματικό ποντίκι και πληκτρολόγιο.</string>
     <string name="lab_54ed9898">Συνδεδεμένος · 1 παιχνίδι</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Δεν ήταν δυνατή η μετονομασία</string>
     <string name="lab_6a271188">Προρρύθμιση Box64 / Προρρύθμιση WOWBox64</string>
     <string name="lab_6a4b2ea4">Ενέργεια</string>
-    <string name="lab_6a68da45">Σχετικό ποντίκι</string>
     <string name="lab_6a87d625">DirectX 8 έως 11 μέσω Vulkan. Οι εκδόσεις με όνομα async ή gplasync μπορούν να μεταγλωττίζουν shaders στο παρασκήνιο.</string>
     <string name="lab_6a913533">Παραχωρήθηκε root</string>
     <string name="lab_6a98ad5e">Ένα αχνό κουμπί πάνω δεξιά που ανοίγει το γρήγορο μενού με αφή.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Λειτουργία παρουσίασης προσαρμογέα</string>
     <string name="lab_abb1c367">Δεν είναι συνδεδεμένο τίποτα. Αυτό το παιχνίδι εξακολουθεί να είναι ρυθμισμένο να ξεκινά σε τηλεόραση.</string>
     <string name="lab_abb20221">Χωρίς προρρύθμιση</string>
+    <string name="lab_abd752a4">Χειρονομίες αφής</string>
     <string name="lab_abf1049c">Διατήρηση ακατέργαστου αρχείου από προεπιλογή</string>
     <string name="lab_ac21d91b">Λειτουργία κίνησης</string>
     <string name="lab_ac35c85f">Το παιχνίδι κάνει render στο πρόγραμμα οδήγησης γραφικών παραπάνω, μέσω του προσαρμογέα Wayland.</string>

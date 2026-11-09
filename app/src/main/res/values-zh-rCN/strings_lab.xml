@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">下载 DXVK 版本</string>
     <string name="lab_542dcdda">摇杆右</string>
     <string name="lab_545e8271">仅在游戏渲染分辨率低于会话分辨率时才有影响。</string>
-    <string name="lab_54739575">光标跟随触摸及其触摸手势</string>
     <string name="lab_5482057e">玩家槽位</string>
     <string name="lab_548c6bc1">关闭 XInput，让游戏只识别真实的鼠标和键盘。</string>
     <string name="lab_54ed9898">已登录 · 1 个游戏</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">无法重命名</string>
     <string name="lab_6a271188">Box64 预设 / WOWBox64 预设</string>
     <string name="lab_6a4b2ea4">功耗</string>
-    <string name="lab_6a68da45">相对鼠标</string>
     <string name="lab_6a87d625">通过 Vulkan 运行 DirectX 8 到 11。名称含 async 或 gplasync 的版本可在后台编译着色器。</string>
     <string name="lab_6a913533">已获得 root 权限</string>
     <string name="lab_6a98ad5e">右上角的半透明按钮，点按即可打开快捷菜单。</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">适配层呈现模式</string>
     <string name="lab_abb1c367">未连接任何设备。此游戏仍设置为在电视上启动。</string>
     <string name="lab_abb20221">无预设</string>
+    <string name="lab_abd752a4">触摸手势</string>
     <string name="lab_abf1049c">默认保留原始压缩包</string>
     <string name="lab_ac21d91b">体感模式</string>
     <string name="lab_ac35c85f">游戏通过 Wayland 适配层在上方的图形驱动上渲染。</string>

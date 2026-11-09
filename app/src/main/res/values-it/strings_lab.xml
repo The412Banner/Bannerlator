@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Scarica versioni DXVK</string>
     <string name="lab_542dcdda">Stick a destra</string>
     <string name="lab_545e8271">Conta solo quando un gioco esegue il rendering sotto la risoluzione della sessione.</string>
-    <string name="lab_54739575">Cursore al tocco e i suoi gesti touch</string>
     <string name="lab_5482057e">Slot giocatori</string>
     <string name="lab_548c6bc1">Disattiva XInput così i giochi vedono solo mouse e tastiera reali.</string>
     <string name="lab_54ed9898">Accesso effettuato · 1 gioco</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Impossibile rinominare</string>
     <string name="lab_6a271188">Preset Box64 / Preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Energia</string>
-    <string name="lab_6a68da45">Mouse relativo</string>
     <string name="lab_6a87d625">Da DirectX 8 a 11 tramite Vulkan. Le build chiamate async o gplasync possono compilare gli shader in background.</string>
     <string name="lab_6a913533">Root concesso</string>
     <string name="lab_6a98ad5e">Un pulsante discreto in alto a destra che apre il menu rapido al tocco.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Modalità di presentazione dell\'adattatore</string>
     <string name="lab_abb1c367">Non è collegato nulla. Questo gioco è ancora impostato per avviarsi su una TV.</string>
     <string name="lab_abb20221">Nessun preset</string>
+    <string name="lab_abd752a4">Gesti touch</string>
     <string name="lab_abf1049c">Mantieni l\'archivio originale di default</string>
     <string name="lab_ac21d91b">Modalità movimento</string>
     <string name="lab_ac35c85f">Il gioco esegue il rendering sul driver grafico qui sopra, tramite l\'adattatore Wayland.</string>

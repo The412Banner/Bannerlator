@@ -1468,7 +1468,7 @@ internal fun LinuxSteamSection(state: XServerDrawerState) {
             }
         }
     }
-    HelperText("Touchscreen: fingers reach Steam as real touches (Big Picture scrolls under one). Touchpad: a drag moves the pointer, a tap clicks. App setting follows the Touchscreen switch every container uses. In Touchpad, Cursor to Touch (Controls > Touch) puts the pointer under the finger instead. Applies now.")
+    HelperText("Touchscreen: fingers reach Steam as real touches (Big Picture scrolls under one). Touchpad: a drag moves the pointer, a tap clicks. App setting follows the Touchscreen switch every container uses. In Touchpad, Touch: Direct (Controls > Mouse) puts the pointer under the finger instead. Applies now.")
 
     Spacer(Modifier.height(6.dp))
     ToggleRow("On-screen Steam and Quick Access buttons", on(LinuxTuning.EXTRA_STEAM_BUTTONS)) {

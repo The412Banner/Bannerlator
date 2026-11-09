@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Muat turun versi DXVK</string>
     <string name="lab_542dcdda">Kayu bedik kanan</string>
     <string name="lab_545e8271">Hanya penting apabila permainan dipaparkan di bawah resolusi sesi.</string>
-    <string name="lab_54739575">Kursor ke titik sentuhan dan gerak isyarat sentuhnya</string>
     <string name="lab_5482057e">Slot Pemain</string>
     <string name="lab_548c6bc1">Mematikan XInput supaya permainan hanya melihat tetikus dan papan kekunci sebenar.</string>
     <string name="lab_54ed9898">Sudah log masuk · 1 permainan</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Tidak dapat menamakannya semula</string>
     <string name="lab_6a271188">Pratetap Box64 / Pratetap WOWBox64</string>
     <string name="lab_6a4b2ea4">Kuasa</string>
-    <string name="lab_6a68da45">Tetikus relatif</string>
     <string name="lab_6a87d625">DirectX 8 hingga 11 melalui Vulkan. Binaan bernama async atau gplasync boleh mengkompil shader di latar belakang.</string>
     <string name="lab_6a913533">Root diberikan</string>
     <string name="lab_6a98ad5e">Butang samar di kanan atas yang membuka menu pantas dengan sentuhan.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Mod present penyesuai</string>
     <string name="lab_abb1c367">Tiada apa-apa yang disambungkan. Permainan ini masih ditetapkan untuk bermula pada TV.</string>
     <string name="lab_abb20221">Tiada pratetap</string>
+    <string name="lab_abd752a4">Gerak isyarat sentuhan</string>
     <string name="lab_abf1049c">Simpan arkib mentah secara lalai</string>
     <string name="lab_ac21d91b">Mod Gerakan</string>
     <string name="lab_ac35c85f">Permainan dipaparkan pada pemacu grafik di atas, melalui penyesuai Wayland.</string>

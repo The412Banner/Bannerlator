@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Изтегли версии на DXVK</string>
     <string name="lab_542dcdda">Стик надясно</string>
     <string name="lab_545e8271">Има значение само когато игра се рендерира под резолюцията на сесията.</string>
-    <string name="lab_54739575">Курсор към докосването и жестовете му с докосване</string>
     <string name="lab_5482057e">Места за играчи</string>
     <string name="lab_548c6bc1">Изключва XInput, така че игрите да виждат само истинските мишка и клавиатура.</string>
     <string name="lab_54ed9898">Влезли сте · 1 игра</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Не можа да се преименува</string>
     <string name="lab_6a271188">Пресет на Box64 / Пресет на WOWBox64</string>
     <string name="lab_6a4b2ea4">Захранване</string>
-    <string name="lab_6a68da45">Относителна мишка</string>
     <string name="lab_6a87d625">DirectX 8 до 11 чрез Vulkan. Компилациите с име async или gplasync могат да компилират шейдъри във фонов режим.</string>
     <string name="lab_6a913533">Root е даден</string>
     <string name="lab_6a98ad5e">Бледен бутон горе вдясно, който отваря бързото меню с докосване.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Режим на представяне на адаптера</string>
     <string name="lab_abb1c367">Нищо не е свързано. Тази игра все още е зададена да стартира на телевизор.</string>
     <string name="lab_abb20221">Без пресет</string>
+    <string name="lab_abd752a4">Жестове с докосване</string>
     <string name="lab_abf1049c">Запазвай суровия архив по подразбиране</string>
     <string name="lab_ac21d91b">Режим на движение</string>
     <string name="lab_ac35c85f">Играта се рендерира на графичния драйвер по-горе, чрез адаптера Wayland.</string>

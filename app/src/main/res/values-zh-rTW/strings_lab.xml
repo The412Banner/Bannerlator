@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">下載 DXVK 版本</string>
     <string name="lab_542dcdda">搖桿右</string>
     <string name="lab_545e8271">僅在遊戲渲染解析度低於工作階段解析度時才有影響。</string>
-    <string name="lab_54739575">游標跟隨觸控及其觸控手勢</string>
     <string name="lab_5482057e">玩家欄位</string>
     <string name="lab_548c6bc1">關閉 XInput，讓遊戲只偵測到實際的滑鼠和鍵盤。</string>
     <string name="lab_54ed9898">已登入 · 1 款遊戲</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">無法重新命名</string>
     <string name="lab_6a271188">Box64 預設集 / WOWBox64 預設集</string>
     <string name="lab_6a4b2ea4">功耗</string>
-    <string name="lab_6a68da45">相對滑鼠</string>
     <string name="lab_6a87d625">透過 Vulkan 執行 DirectX 8 到 11。名稱含 async 或 gplasync 的版本可在背景編譯著色器。</string>
     <string name="lab_6a913533">已取得 root 權限</string>
     <string name="lab_6a98ad5e">右上角的半透明按鈕，點一下即可開啟快速選單。</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">轉接層呈現模式</string>
     <string name="lab_abb1c367">未連接任何裝置。此遊戲仍設定為在電視上啟動。</string>
     <string name="lab_abb20221">無預設集</string>
+    <string name="lab_abd752a4">觸控手勢</string>
     <string name="lab_abf1049c">預設保留原始壓縮檔</string>
     <string name="lab_ac21d91b">體感模式</string>
     <string name="lab_ac35c85f">遊戲透過 Wayland 轉接層在上方的圖形驅動程式上渲染。</string>

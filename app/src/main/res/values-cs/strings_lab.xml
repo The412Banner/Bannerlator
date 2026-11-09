@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Stáhnout verze DXVK</string>
     <string name="lab_542dcdda">Páčka vpravo</string>
     <string name="lab_545e8271">Má význam, jen když hra vykresluje v nižším rozlišení, než má relace.</string>
-    <string name="lab_54739575">Kurzor na místo dotyku a jeho dotyková gesta</string>
     <string name="lab_5482057e">Sloty hráčů</string>
     <string name="lab_548c6bc1">Vypne XInput, takže hry vidí jen skutečnou myš a klávesnici.</string>
     <string name="lab_54ed9898">Přihlášeno · 1 hra</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Nepodařilo se přejmenovat</string>
     <string name="lab_6a271188">Předvolba Box64 / předvolba WOWBox64</string>
     <string name="lab_6a4b2ea4">Napájení</string>
-    <string name="lab_6a68da45">Relativní myš</string>
     <string name="lab_6a87d625">DirectX 8 až 11 přes Vulkan. Sestavení s názvem async nebo gplasync umí kompilovat shadery na pozadí.</string>
     <string name="lab_6a913533">Root udělen</string>
     <string name="lab_6a98ad5e">Nenápadné tlačítko vpravo nahoře, které dotykem otevře rychlé menu.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Režim prezentace adaptéru</string>
     <string name="lab_abb1c367">Nic není připojeno. Tato hra je stále nastavena ke spuštění na TV.</string>
     <string name="lab_abb20221">Bez předvolby</string>
+    <string name="lab_abd752a4">Dotyková gesta</string>
     <string name="lab_abf1049c">Ve výchozím stavu ponechat surový archiv</string>
     <string name="lab_ac21d91b">Režim pohybu</string>
     <string name="lab_ac35c85f">Hra se vykresluje na grafickém ovladači výše, přes adaptér Wayland.</string>

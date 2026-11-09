@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Last ned DXVK-versjoner</string>
     <string name="lab_542dcdda">Stikke høyre</string>
     <string name="lab_545e8271">Har bare betydning når et spill gjengis under øktens oppløsning.</string>
-    <string name="lab_54739575">Peker til berøringen og berøringsbevegelsene</string>
     <string name="lab_5482057e">Spillerplasser</string>
     <string name="lab_548c6bc1">Slår av XInput så spill bare ser den ekte musen og tastaturet.</string>
     <string name="lab_54ed9898">Logget på · 1 spill</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Kunne ikke gi det nytt navn</string>
     <string name="lab_6a271188">Box64-forhåndsinnstilling / WOWBox64-forhåndsinnstilling</string>
     <string name="lab_6a4b2ea4">Strøm</string>
-    <string name="lab_6a68da45">Relativ mus</string>
     <string name="lab_6a87d625">DirectX 8 til 11 via Vulkan. Bygg med async eller gplasync i navnet kan kompilere shadere i bakgrunnen.</string>
     <string name="lab_6a913533">Root gitt</string>
     <string name="lab_6a98ad5e">En diskret knapp øverst til høyre som åpner hurtigmenyen ved berøring.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapterens presentasjonsmodus</string>
     <string name="lab_abb1c367">Ingenting er koblet til. Dette spillet er fortsatt satt til å starte på en TV.</string>
     <string name="lab_abb20221">Ingen forhåndsinnstilling</string>
+    <string name="lab_abd752a4">Berøringsbevegelser</string>
     <string name="lab_abf1049c">Behold råarkivet som standard</string>
     <string name="lab_ac21d91b">Bevegelsesmodus</string>
     <string name="lab_ac35c85f">Spillet gjengis på grafikkdriveren ovenfor, gjennom Wayland-adapteren.</string>

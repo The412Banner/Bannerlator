@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Lataa DXVK-versioita</string>
     <string name="lab_542dcdda">Tatti oikealle</string>
     <string name="lab_545e8271">Merkitsee vain, kun peli renderöi istunnon resoluutiota pienemmällä.</string>
-    <string name="lab_54739575">Osoitin kosketuskohtaan ja sen kosketuseleet</string>
     <string name="lab_5482057e">Pelaajapaikat</string>
     <string name="lab_548c6bc1">Poistaa XInputin käytöstä, joten pelit näkevät vain oikean hiiren ja näppäimistön.</string>
     <string name="lab_54ed9898">Kirjautunut · 1 peli</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Uudelleennimeäminen epäonnistui</string>
     <string name="lab_6a271188">Box64-esiasetus / WOWBox64-esiasetus</string>
     <string name="lab_6a4b2ea4">Virta</string>
-    <string name="lab_6a68da45">Suhteellinen hiiri</string>
     <string name="lab_6a87d625">DirectX 8–11 Vulkanin kautta. Koontiversiot, joiden nimessä on async tai gplasync, voivat kääntää shaderit taustalla.</string>
     <string name="lab_6a913533">Root myönnetty</string>
     <string name="lab_6a98ad5e">Huomaamaton painike oikeassa yläkulmassa, joka avaa pikavalikon kosketuksella.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Sovittimen esitystila</string>
     <string name="lab_abb1c367">Mitään ei ole kytketty. Tämä peli on yhä asetettu käynnistymään televisiossa.</string>
     <string name="lab_abb20221">Ei esiasetusta</string>
+    <string name="lab_abd752a4">Kosketuseleet</string>
     <string name="lab_abf1049c">Säilytä raaka-arkisto oletuksena</string>
     <string name="lab_ac21d91b">Liiketila</string>
     <string name="lab_ac35c85f">Peli renderöidään yllä olevalla grafiikka-ajurilla Wayland-sovittimen kautta.</string>

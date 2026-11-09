@@ -10123,10 +10123,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 return true;
             }
             if (waylandCursorX < 0) { waylandCursorX = vw / 2f; waylandCursorY = vh / 2f; }
-            // The drawer's Cursor to Touch (Controls > Touch): the pointer sits under the finger
-            // instead of moving by the drag, so a tap lands where it is made. The same switch the
-            // X11 touchpad honours; here it was read by nothing, so the chip flipped and changed
-            // nothing in a Steam (Linux) session.
+            // Touch: Direct (Controls > Mouse): the pointer sits under the finger instead of moving
+            // by the drag, so a tap lands where it is made. The same setting the X11 touchpad honours.
             boolean cursorToTouch = com.winlator.star.core.TouchAimSettings.DIRECT.equals(touchMode);
             switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:

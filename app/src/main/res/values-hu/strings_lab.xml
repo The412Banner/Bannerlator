@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">DXVK verziók letöltése</string>
     <string name="lab_542dcdda">Kar jobbra</string>
     <string name="lab_545e8271">Csak akkor számít, ha egy játék a munkamenet felbontásánál kisebben renderel.</string>
-    <string name="lab_54739575">Kurzor az érintéshez és az érintési gesztusai</string>
     <string name="lab_5482057e">Játékoshelyek</string>
     <string name="lab_548c6bc1">Kikapcsolja az XInputot, így a játékok csak a valódi egeret és billentyűzetet látják.</string>
     <string name="lab_54ed9898">Bejelentkezve · 1 játék</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Nem sikerült átnevezni</string>
     <string name="lab_6a271188">Box64 előbeállítás / WOWBox64 előbeállítás</string>
     <string name="lab_6a4b2ea4">Energia</string>
-    <string name="lab_6a68da45">Relatív egér</string>
     <string name="lab_6a87d625">DirectX 8–11 Vulkanon keresztül. Az async vagy gplasync nevű buildek a háttérben is fordíthatják a shadereket.</string>
     <string name="lab_6a913533">Root engedélyezve</string>
     <string name="lab_6a98ad5e">Halvány gomb a jobb felső sarokban, amely érintésre megnyitja a gyorsmenüt.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapter megjelenítési módja</string>
     <string name="lab_abb1c367">Nincs semmi csatlakoztatva. Ez a játék továbbra is tévén való indításra van állítva.</string>
     <string name="lab_abb20221">Nincs előbeállítás</string>
+    <string name="lab_abd752a4">Érintési gesztusok</string>
     <string name="lab_abf1049c">Nyers archívum megtartása alapból</string>
     <string name="lab_ac21d91b">Mozgás módja</string>
     <string name="lab_ac35c85f">A játék a fenti grafikus illesztőprogramon renderel, a Wayland-adapteren keresztül.</string>

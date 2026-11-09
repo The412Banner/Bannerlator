@@ -1485,8 +1485,9 @@ private fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
                 L("Controls accent") to listOf(SaveScope.other(L("Saved in the controls profile"))),
             )
             1 -> SaveNotes(
-                L("Relative mouse") to listOf(game),
-                L("Cursor to touch and its touch gestures") to listOf(SaveScope.ALL),
+                L("Touch") to listOf(game),
+                L("Aim mode") to listOf(game),
+                L("Touch gestures") to listOf(SaveScope.ALL),
                 L("Disable mouse") to listOf(SaveScope.SESSION),
             )
             2 -> SaveNotes(

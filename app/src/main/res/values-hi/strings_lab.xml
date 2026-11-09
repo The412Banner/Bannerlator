@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">DXVK संस्करण डाउनलोड करें</string>
     <string name="lab_542dcdda">थंबस्टिक दाएं</string>
     <string name="lab_545e8271">सिर्फ़ तब मायने रखता है जब गेम सेशन के रिज़ॉल्यूशन से कम पर रेंडर करता है।</string>
-    <string name="lab_54739575">टच पर कर्सर और उसके टच जेस्चर</string>
     <string name="lab_5482057e">प्लेयर स्लॉट</string>
     <string name="lab_548c6bc1">XInput बंद करता है, ताकि गेम सिर्फ़ असली माउस और कीबोर्ड देखें।</string>
     <string name="lab_54ed9898">साइन इन है · 1 गेम</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">नाम नहीं बदला जा सका</string>
     <string name="lab_6a271188">Box64 प्रीसेट / WOWBox64 प्रीसेट</string>
     <string name="lab_6a4b2ea4">पावर</string>
-    <string name="lab_6a68da45">सापेक्ष माउस</string>
     <string name="lab_6a87d625">Vulkan के ज़रिए DirectX 8 से 11। async या gplasync नाम वाले बिल्ड बैकग्राउंड में शेडर कंपाइल कर सकते हैं।</string>
     <string name="lab_6a913533">Root मिल गया</string>
     <string name="lab_6a98ad5e">ऊपर दाईं ओर एक हल्का बटन, जो छूने पर क्विक मेन्यू खोलता है।</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">एडैप्टर प्रेज़ेंट मोड</string>
     <string name="lab_abb1c367">कुछ भी कनेक्ट नहीं है। यह गेम अब भी TV पर शुरू होने के लिए सेट है।</string>
     <string name="lab_abb20221">कोई प्रीसेट नहीं</string>
+    <string name="lab_abd752a4">टच जेस्चर</string>
     <string name="lab_abf1049c">डिफ़ॉल्ट रूप से रॉ आर्काइव रखें</string>
     <string name="lab_ac21d91b">मोशन मोड</string>
     <string name="lab_ac35c85f">गेम ऊपर वाले ग्राफ़िक्स ड्राइवर पर, Wayland एडैप्टर के ज़रिए रेंडर होता है।</string>

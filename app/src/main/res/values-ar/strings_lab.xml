@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">تنزيل إصدارات DXVK</string>
     <string name="lab_542dcdda">العصا لليمين</string>
     <string name="lab_545e8271">لا يهم إلا عندما تُعرض لعبة بدقة أقل من دقة الجلسة.</string>
-    <string name="lab_54739575">«المؤشر إلى موضع اللمس» وإيماءات اللمس الخاصة به</string>
     <string name="lab_5482057e">خانات اللاعبين</string>
     <string name="lab_548c6bc1">يوقف XInput كي لا ترى الألعاب سوى الفأرة ولوحة المفاتيح الحقيقيتين.</string>
     <string name="lab_54ed9898">تم تسجيل الدخول · لعبة واحدة</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">تعذّرت إعادة التسمية</string>
     <string name="lab_6a271188">إعداد Box64 المسبق / إعداد WOWBox64 المسبق</string>
     <string name="lab_6a4b2ea4">الطاقة</string>
-    <string name="lab_6a68da45">فأرة نسبية</string>
     <string name="lab_6a87d625">DirectX 8 إلى 11 عبر Vulkan. الإصدارات التي تحمل اسم async أو gplasync يمكنها ترجمة المظلّلات في الخلفية.</string>
     <string name="lab_6a913533">تم منح root</string>
     <string name="lab_6a98ad5e">زر باهت في أعلى اليمين يفتح القائمة السريعة باللمس.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">وضع العرض للمحوّل</string>
     <string name="lab_abb1c367">لا يوجد شيء موصول. لا تزال هذه اللعبة مضبوطة للبدء على تلفاز.</string>
     <string name="lab_abb20221">بلا إعداد مسبق</string>
+    <string name="lab_abd752a4">إيماءات اللمس</string>
     <string name="lab_abf1049c">الاحتفاظ بالأرشيف الخام افتراضيًا</string>
     <string name="lab_ac21d91b">وضع الحركة</string>
     <string name="lab_ac35c85f">تُعرض اللعبة على برنامج تشغيل الرسومات أعلاه، عبر محوّل Wayland.</string>

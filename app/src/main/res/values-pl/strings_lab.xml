@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Pobierz wersje DXVK</string>
     <string name="lab_542dcdda">Drążek w prawo</string>
     <string name="lab_545e8271">Ma znaczenie tylko wtedy, gdy gra renderuje w rozdzielczości niższej niż sesja.</string>
-    <string name="lab_54739575">Kursor w miejsce dotyku i jego gesty dotykowe</string>
     <string name="lab_5482057e">Miejsca graczy</string>
     <string name="lab_548c6bc1">Wyłącza XInput, aby gry widziały tylko prawdziwą mysz i klawiaturę.</string>
     <string name="lab_54ed9898">Zalogowano · 1 gra</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Nie udało się zmienić nazwy</string>
     <string name="lab_6a271188">Preset Box64 / preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Zasilanie</string>
-    <string name="lab_6a68da45">Mysz względna</string>
     <string name="lab_6a87d625">DirectX 8 do 11 przez Vulkan. Wersje z async lub gplasync w nazwie mogą kompilować shadery w tle.</string>
     <string name="lab_6a913533">Root przyznany</string>
     <string name="lab_6a98ad5e">Dyskretny przycisk w prawym górnym rogu, który otwiera szybkie menu dotykiem.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Tryb prezentacji adaptera</string>
     <string name="lab_abb1c367">Nic nie jest podłączone. Ta gra nadal ma ustawione uruchamianie na telewizorze.</string>
     <string name="lab_abb20221">Brak presetu</string>
+    <string name="lab_abd752a4">Gesty dotykowe</string>
     <string name="lab_abf1049c">Domyślnie zachowuj surowe archiwum</string>
     <string name="lab_ac21d91b">Tryb ruchu</string>
     <string name="lab_ac35c85f">Gra renderuje na powyższym sterowniku grafiki przez adapter Wayland.</string>

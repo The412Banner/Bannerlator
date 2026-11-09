@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">ดาวน์โหลดเวอร์ชัน DXVK</string>
     <string name="lab_542dcdda">สติ๊กขวา</string>
     <string name="lab_545e8271">มีผลเฉพาะเมื่อเกมเรนเดอร์ต่ำกว่าความละเอียดของเซสชัน</string>
-    <string name="lab_54739575">เคอร์เซอร์ไปที่จุดสัมผัส และท่าทางการสัมผัส</string>
     <string name="lab_5482057e">ช่องผู้เล่น</string>
     <string name="lab_548c6bc1">ปิด XInput เพื่อให้เกมเห็นแค่เมาส์และคีย์บอร์ดจริง</string>
     <string name="lab_54ed9898">ลงชื่อเข้าใช้แล้ว · 1 เกม</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">ไม่สามารถเปลี่ยนชื่อได้</string>
     <string name="lab_6a271188">พรีเซ็ต Box64 / พรีเซ็ต WOWBox64</string>
     <string name="lab_6a4b2ea4">พลังงาน</string>
-    <string name="lab_6a68da45">เมาส์แบบสัมพัทธ์</string>
     <string name="lab_6a87d625">DirectX 8 ถึง 11 ผ่าน Vulkan บิลด์ที่ชื่อ async หรือ gplasync คอมไพล์เชดเดอร์เบื้องหลังได้</string>
     <string name="lab_6a913533">ได้รับสิทธิ์รูทแล้ว</string>
     <string name="lab_6a98ad5e">ปุ่มจาง ๆ ที่มุมขวาบน แตะเพื่อเปิดเมนูด่วน</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">โหมด Present ของอะแดปเตอร์</string>
     <string name="lab_abb1c367">ไม่มีอะไรเสียบอยู่ เกมนี้ยังตั้งให้เริ่มบนทีวี</string>
     <string name="lab_abb20221">ไม่มีพรีเซ็ต</string>
+    <string name="lab_abd752a4">ท่าทางการสัมผัส</string>
     <string name="lab_abf1049c">เก็บไฟล์บีบอัดต้นฉบับเป็นค่าเริ่มต้น</string>
     <string name="lab_ac21d91b">โหมดการเคลื่อนไหว</string>
     <string name="lab_ac35c85f">เกมจะเรนเดอร์บนไดรเวอร์กราฟิกด้านบนผ่านอะแดปเตอร์ Wayland</string>

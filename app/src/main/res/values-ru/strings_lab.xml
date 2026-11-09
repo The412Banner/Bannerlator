@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Скачать версии DXVK</string>
     <string name="lab_542dcdda">Стик вправо</string>
     <string name="lab_545e8271">Важно, только когда игра рендерится в разрешении ниже, чем у сеанса.</string>
-    <string name="lab_54739575">«Курсор к касанию» и его жесты</string>
     <string name="lab_5482057e">Слоты игроков</string>
     <string name="lab_548c6bc1">Отключает XInput, чтобы игры видели только настоящие мышь и клавиатуру.</string>
     <string name="lab_54ed9898">Вход выполнен · 1 игра</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Не удалось переименовать</string>
     <string name="lab_6a271188">Пресет Box64 / Пресет WOWBox64</string>
     <string name="lab_6a4b2ea4">Питание</string>
-    <string name="lab_6a68da45">Относительная мышь</string>
     <string name="lab_6a87d625">DirectX 8–11 через Vulkan. Сборки с async или gplasync в названии умеют компилировать шейдеры в фоне.</string>
     <string name="lab_6a913533">Root выдан</string>
     <string name="lab_6a98ad5e">Полупрозрачная кнопка в правом верхнем углу, открывающая быстрое меню касанием.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Режим вывода адаптера</string>
     <string name="lab_abb1c367">Ничего не подключено. Эта игра всё ещё настроена на запуск на ТВ.</string>
     <string name="lab_abb20221">Без пресета</string>
+    <string name="lab_abd752a4">Жесты касания</string>
     <string name="lab_abf1049c">Хранить исходный архив по умолчанию</string>
     <string name="lab_ac21d91b">Режим гироскопа</string>
     <string name="lab_ac35c85f">Игра рендерится на графическом драйвере выше через адаптер Wayland.</string>

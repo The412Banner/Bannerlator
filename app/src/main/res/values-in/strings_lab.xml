@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Unduh versi DXVK</string>
     <string name="lab_542dcdda">Thumbstick kanan</string>
     <string name="lab_545e8271">Hanya berpengaruh saat game dirender di bawah resolusi sesi.</string>
-    <string name="lab_54739575">Kursor ke titik sentuh dan gestur sentuhnya</string>
     <string name="lab_5482057e">Slot Pemain</string>
     <string name="lab_548c6bc1">Menonaktifkan XInput agar game hanya melihat mouse dan keyboard asli.</string>
     <string name="lab_54ed9898">Sudah masuk · 1 game</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Tidak dapat mengganti nama</string>
     <string name="lab_6a271188">Preset Box64 / Preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Daya</string>
-    <string name="lab_6a68da45">Mouse relatif</string>
     <string name="lab_6a87d625">DirectX 8 hingga 11 lewat Vulkan. Build bernama async atau gplasync bisa mengompilasi shader di latar belakang.</string>
     <string name="lab_6a913533">Root diberikan</string>
     <string name="lab_6a98ad5e">Tombol samar di kanan atas untuk membuka menu cepat lewat sentuhan.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Mode present adapter</string>
     <string name="lab_abb1c367">Tidak ada yang tersambung. Game ini masih diatur untuk dimulai di TV.</string>
     <string name="lab_abb20221">Tanpa preset</string>
+    <string name="lab_abd752a4">Gestur sentuh</string>
     <string name="lab_abf1049c">Simpan arsip mentah secara default</string>
     <string name="lab_ac21d91b">Mode Gerak</string>
     <string name="lab_ac35c85f">Game dirender di driver grafis di atas, lewat adapter Wayland.</string>

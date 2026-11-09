@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Tải phiên bản DXVK</string>
     <string name="lab_542dcdda">Cần analog phải</string>
     <string name="lab_545e8271">Chỉ có tác dụng khi game render thấp hơn độ phân giải của phiên.</string>
-    <string name="lab_54739575">Con trỏ theo điểm chạm và các cử chỉ chạm của nó</string>
     <string name="lab_5482057e">Vị trí người chơi</string>
     <string name="lab_548c6bc1">Tắt XInput để game chỉ thấy chuột và bàn phím thật.</string>
     <string name="lab_54ed9898">Đã đăng nhập · 1 game</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Không thể đổi tên</string>
     <string name="lab_6a271188">Preset Box64 / Preset WOWBox64</string>
     <string name="lab_6a4b2ea4">Điện năng</string>
-    <string name="lab_6a68da45">Chuột tương đối</string>
     <string name="lab_6a87d625">DirectX 8 đến 11 qua Vulkan. Các bản build tên async hoặc gplasync có thể biên dịch shader trong nền.</string>
     <string name="lab_6a913533">Đã cấp root</string>
     <string name="lab_6a98ad5e">Nút mờ ở góc trên bên phải, chạm để mở menu nhanh.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Chế độ present của adapter</string>
     <string name="lab_abb1c367">Không có gì được cắm. Game này vẫn được đặt để khởi động trên TV.</string>
     <string name="lab_abb20221">Không có preset</string>
+    <string name="lab_abd752a4">Cử chỉ chạm</string>
     <string name="lab_abf1049c">Mặc định giữ tệp nén gốc</string>
     <string name="lab_ac21d91b">Chế độ chuyển động</string>
     <string name="lab_ac35c85f">Game render trên driver đồ họa ở trên, thông qua adapter Wayland.</string>

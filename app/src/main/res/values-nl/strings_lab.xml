@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">DXVK-versies downloaden</string>
     <string name="lab_542dcdda">Stick naar rechts</string>
     <string name="lab_545e8271">Alleen van belang als een game onder de resolutie van de sessie rendert.</string>
-    <string name="lab_54739575">Cursor naar aanraakpunt en de bijbehorende aanraakgebaren</string>
     <string name="lab_5482057e">Spelersplaatsen</string>
     <string name="lab_548c6bc1">Zet XInput uit zodat games alleen de echte muis en het echte toetsenbord zien.</string>
     <string name="lab_54ed9898">Aangemeld · 1 game</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Kan de naam niet wijzigen</string>
     <string name="lab_6a271188">Box64-preset / WOWBox64-preset</string>
     <string name="lab_6a4b2ea4">Vermogen</string>
-    <string name="lab_6a68da45">Relatieve muis</string>
     <string name="lab_6a87d625">DirectX 8 tot 11 via Vulkan. Builds met async of gplasync in de naam kunnen shaders op de achtergrond compileren.</string>
     <string name="lab_6a913533">Root verleend</string>
     <string name="lab_6a98ad5e">Een onopvallende knop rechtsboven die het snelmenu via aanraking opent.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Presentatiemodus van adapter</string>
     <string name="lab_abb1c367">Er is niets aangesloten. Deze game is nog ingesteld om op een tv te starten.</string>
     <string name="lab_abb20221">Geen preset</string>
+    <string name="lab_abd752a4">Aanraakgebaren</string>
     <string name="lab_abf1049c">Ruw archief standaard bewaren</string>
     <string name="lab_ac21d91b">Bewegingsmodus</string>
     <string name="lab_ac35c85f">De game rendert op de grafische driver hierboven, via de Wayland-adapter.</string>

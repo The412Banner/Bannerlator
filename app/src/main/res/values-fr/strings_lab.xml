@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Télécharger des versions de DXVK</string>
     <string name="lab_542dcdda">Stick vers la droite</string>
     <string name="lab_545e8271">N\'a d\'effet que si un jeu effectue son rendu sous la résolution de la session.</string>
-    <string name="lab_54739575">Curseur au toucher et ses gestes tactiles</string>
     <string name="lab_5482057e">Emplacements des joueurs</string>
     <string name="lab_548c6bc1">Désactive XInput pour que les jeux ne voient que la vraie souris et le vrai clavier.</string>
     <string name="lab_54ed9898">Connecté · 1 jeu</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Impossible de renommer</string>
     <string name="lab_6a271188">Préréglage Box64 / Préréglage WOWBox64</string>
     <string name="lab_6a4b2ea4">Énergie</string>
-    <string name="lab_6a68da45">Souris relative</string>
     <string name="lab_6a87d625">DirectX 8 à 11 via Vulkan. Les builds nommés async ou gplasync peuvent compiler les shaders en arrière-plan.</string>
     <string name="lab_6a913533">Root accordé</string>
     <string name="lab_6a98ad5e">Un bouton discret en haut à droite qui ouvre le menu rapide au toucher.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Mode de présentation de l\'adaptateur</string>
     <string name="lab_abb1c367">Rien n\'est branché. Ce jeu est toujours réglé pour démarrer sur une TV.</string>
     <string name="lab_abb20221">Aucun préréglage</string>
+    <string name="lab_abd752a4">Gestes tactiles</string>
     <string name="lab_abf1049c">Conserver l\'archive brute par défaut</string>
     <string name="lab_ac21d91b">Mode de mouvement</string>
     <string name="lab_ac35c85f">Le jeu effectue son rendu sur le pilote graphique ci-dessus, via l\'adaptateur Wayland.</string>

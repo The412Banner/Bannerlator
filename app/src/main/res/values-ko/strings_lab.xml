@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">DXVK 버전 다운로드</string>
     <string name="lab_542dcdda">스틱 오른쪽</string>
     <string name="lab_545e8271">게임이 세션 해상도보다 낮게 렌더링할 때만 영향이 있습니다.</string>
-    <string name="lab_54739575">\'터치 위치로 커서 이동\'과 해당 터치 제스처</string>
     <string name="lab_5482057e">플레이어 슬롯</string>
     <string name="lab_548c6bc1">XInput을 꺼서 게임이 실제 마우스와 키보드만 인식하게 합니다.</string>
     <string name="lab_54ed9898">로그인됨 · 게임 1개</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">이름을 바꿀 수 없습니다</string>
     <string name="lab_6a271188">Box64 프리셋 / WOWBox64 프리셋</string>
     <string name="lab_6a4b2ea4">전력</string>
-    <string name="lab_6a68da45">상대 마우스</string>
     <string name="lab_6a87d625">Vulkan을 통한 DirectX 8~11. 이름에 async 또는 gplasync가 붙은 빌드는 셰이더를 백그라운드에서 컴파일할 수 있습니다.</string>
     <string name="lab_6a913533">루트 권한 부여됨</string>
     <string name="lab_6a98ad5e">오른쪽 위에 흐리게 표시되며, 터치로 빠른 메뉴를 여는 버튼입니다.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">어댑터 프레젠트 모드</string>
     <string name="lab_abb1c367">연결된 장치가 없습니다. 이 게임은 여전히 TV에서 시작하도록 설정되어 있습니다.</string>
     <string name="lab_abb20221">프리셋 없음</string>
+    <string name="lab_abd752a4">터치 제스처</string>
     <string name="lab_abf1049c">기본적으로 원본 압축 파일 보관</string>
     <string name="lab_ac21d91b">모션 모드</string>
     <string name="lab_ac35c85f">게임은 Wayland 어댑터를 거쳐 위의 그래픽 드라이버에서 렌더링됩니다.</string>

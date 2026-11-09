@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Ladda ned DXVK-versioner</string>
     <string name="lab_542dcdda">Styrspak höger</string>
     <string name="lab_545e8271">Spelar bara roll när ett spel renderar under sessionens upplösning.</string>
-    <string name="lab_54739575">Markören till beröringen och dess pekgester</string>
     <string name="lab_5482057e">Spelarplatser</string>
     <string name="lab_548c6bc1">Stänger av XInput så att spel bara ser den riktiga musen och tangentbordet.</string>
     <string name="lab_54ed9898">Inloggad · 1 spel</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Kunde inte byta namn på det</string>
     <string name="lab_6a271188">Box64-förinställning / WOWBox64-förinställning</string>
     <string name="lab_6a4b2ea4">Energi</string>
-    <string name="lab_6a68da45">Relativ mus</string>
     <string name="lab_6a87d625">DirectX 8 till 11 via Vulkan. Byggen som heter async eller gplasync kan kompilera shaders i bakgrunden.</string>
     <string name="lab_6a913533">Root beviljat</string>
     <string name="lab_6a98ad5e">En diskret knapp uppe till höger som öppnar snabbmenyn med ett tryck.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Adapterns presentationsläge</string>
     <string name="lab_abb1c367">Inget är anslutet. Detta spel är fortfarande inställt på att starta på en TV.</string>
     <string name="lab_abb20221">Ingen förinställning</string>
+    <string name="lab_abd752a4">Pekgester</string>
     <string name="lab_abf1049c">Behåll råarkivet som standard</string>
     <string name="lab_ac21d91b">Rörelseläge</string>
     <string name="lab_ac35c85f">Spelet renderas på grafikdrivrutinen ovan, via Wayland-adaptern.</string>

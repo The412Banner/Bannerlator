@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Завантажити версії DXVK</string>
     <string name="lab_542dcdda">Стик праворуч</string>
     <string name="lab_545e8271">Має значення, лише коли гра рендериться в роздільній здатності, нижчій за сеанс.</string>
-    <string name="lab_54739575">«Курсор до дотику» та його жести</string>
     <string name="lab_5482057e">Слоти гравців</string>
     <string name="lab_548c6bc1">Вимикає XInput, щоб ігри бачили лише справжні мишу й клавіатуру.</string>
     <string name="lab_54ed9898">Вхід виконано · 1 гра</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Не вдалося перейменувати</string>
     <string name="lab_6a271188">Пресет Box64 / Пресет WOWBox64</string>
     <string name="lab_6a4b2ea4">Живлення</string>
-    <string name="lab_6a68da45">Відносна миша</string>
     <string name="lab_6a87d625">DirectX 8–11 через Vulkan. Збірки з async або gplasync у назві вміють компілювати шейдери у фоні.</string>
     <string name="lab_6a913533">Root надано</string>
     <string name="lab_6a98ad5e">Напівпрозора кнопка в правому верхньому куті, що відкриває швидке меню дотиком.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Режим виводу адаптера</string>
     <string name="lab_abb1c367">Нічого не підключено. Ця гра досі налаштована на запуск на ТВ.</string>
     <string name="lab_abb20221">Без пресета</string>
+    <string name="lab_abd752a4">Жести дотику</string>
     <string name="lab_abf1049c">Зберігати вихідний архів за замовчуванням</string>
     <string name="lab_ac21d91b">Режим гіроскопа</string>
     <string name="lab_ac35c85f">Гра рендериться на графічному драйвері вище через адаптер Wayland.</string>

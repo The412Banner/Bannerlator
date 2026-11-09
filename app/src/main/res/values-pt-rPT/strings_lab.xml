@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Transferir versões do DXVK</string>
     <string name="lab_542dcdda">Stick para a direita</string>
     <string name="lab_545e8271">Só importa quando um jogo renderiza abaixo da resolução da sessão.</string>
-    <string name="lab_54739575">Cursor salta para o toque e os respetivos gestos</string>
     <string name="lab_5482057e">Posições dos jogadores</string>
     <string name="lab_548c6bc1">Desativa o XInput para que os jogos vejam apenas o rato e o teclado reais.</string>
     <string name="lab_54ed9898">Sessão iniciada · 1 jogo</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Não foi possível mudar o nome</string>
     <string name="lab_6a271188">Predefinição do Box64 / Predefinição do WOWBox64</string>
     <string name="lab_6a4b2ea4">Energia</string>
-    <string name="lab_6a68da45">Rato relativo</string>
     <string name="lab_6a87d625">DirectX 8 a 11 através de Vulkan. As compilações com async ou gplasync no nome podem compilar shaders em segundo plano.</string>
     <string name="lab_6a913533">Root concedido</string>
     <string name="lab_6a98ad5e">Um botão discreto no canto superior direito que abre o menu rápido ao toque.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Modo de apresentação do adaptador</string>
     <string name="lab_abb1c367">Nada está ligado. Este jogo continua definido para iniciar numa TV.</string>
     <string name="lab_abb20221">Sem predefinição</string>
+    <string name="lab_abd752a4">Gestos de toque</string>
     <string name="lab_abf1049c">Manter o arquivo em bruto por predefinição</string>
     <string name="lab_ac21d91b">Modo de movimento</string>
     <string name="lab_ac35c85f">O jogo é renderizado no controlador gráfico acima, através do adaptador Wayland.</string>

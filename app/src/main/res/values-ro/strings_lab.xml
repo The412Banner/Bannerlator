@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">Descarcă versiuni DXVK</string>
     <string name="lab_542dcdda">Stick la dreapta</string>
     <string name="lab_545e8271">Contează doar când un joc randează sub rezoluția sesiunii.</string>
-    <string name="lab_54739575">Cursor la atingere și gesturile lui tactile</string>
     <string name="lab_5482057e">Sloturi jucători</string>
     <string name="lab_548c6bc1">Dezactivează XInput, ca jocurile să vadă doar mouse-ul și tastatura reale.</string>
     <string name="lab_54ed9898">Conectat · 1 joc</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">Nu s-a putut redenumi</string>
     <string name="lab_6a271188">Presetare Box64 / Presetare WOWBox64</string>
     <string name="lab_6a4b2ea4">Energie</string>
-    <string name="lab_6a68da45">Mouse relativ</string>
     <string name="lab_6a87d625">DirectX 8 până la 11 prin Vulkan. Versiunile numite async sau gplasync pot compila shaderele în fundal.</string>
     <string name="lab_6a913533">Root acordat</string>
     <string name="lab_6a98ad5e">Un buton discret în dreapta sus care deschide meniul rapid prin atingere.</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">Mod de prezentare al adaptorului</string>
     <string name="lab_abb1c367">Nu este conectat nimic. Acest joc este încă setat să pornească pe un televizor.</string>
     <string name="lab_abb20221">Nicio presetare</string>
+    <string name="lab_abd752a4">Gesturi tactile</string>
     <string name="lab_abf1049c">Păstrează arhiva brută implicit</string>
     <string name="lab_ac21d91b">Mod mișcare</string>
     <string name="lab_ac35c85f">Jocul randează pe driverul grafic de mai sus, prin adaptorul Wayland.</string>

@@ -616,7 +616,6 @@
     <string name="lab_53ca2709">DXVK のバージョンをダウンロード</string>
     <string name="lab_542dcdda">スティック右</string>
     <string name="lab_545e8271">ゲームがセッションの解像度より低く描画する場合のみ影響します。</string>
-    <string name="lab_54739575">「タッチ位置にカーソル」とそのタッチジェスチャー</string>
     <string name="lab_5482057e">プレイヤースロット</string>
     <string name="lab_548c6bc1">XInput をオフにし、ゲームから実際のマウスとキーボードだけが見えるようにします。</string>
     <string name="lab_54ed9898">サインイン済み · 1本</string>
@@ -767,7 +766,6 @@
     <string name="lab_69f7d525">名前を変更できませんでした</string>
     <string name="lab_6a271188">Box64 プリセット / WOWBox64 プリセット</string>
     <string name="lab_6a4b2ea4">電力</string>
-    <string name="lab_6a68da45">相対マウス</string>
     <string name="lab_6a87d625">DirectX 8〜11 を Vulkan で実行します。async または gplasync という名前のビルドは、シェーダーをバックグラウンドでコンパイルできます。</string>
     <string name="lab_6a913533">root 権限あり</string>
     <string name="lab_6a98ad5e">右上に薄く表示される、タッチでクイックメニューを開くボタン。</string>
@@ -1212,6 +1210,7 @@
     <string name="lab_ab8824cb">アダプターのプレゼントモード</string>
     <string name="lab_abb1c367">何も接続されていません。このゲームはテレビで起動する設定のままです。</string>
     <string name="lab_abb20221">プリセットなし</string>
+    <string name="lab_abd752a4">タッチジェスチャー</string>
     <string name="lab_abf1049c">デフォルトで元のアーカイブを残す</string>
     <string name="lab_ac21d91b">モーションモード</string>
     <string name="lab_ac35c85f">ゲームは Wayland アダプターを通して、上のグラフィックドライバーで描画されます。</string>

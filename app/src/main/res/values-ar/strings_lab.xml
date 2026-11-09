@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">لا يمكن أن يحتوي الاسم على \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">للألعاب التي يشغّلها العميل، لا للعميل نفسه، ولكل واحدة منها: للجلسة بيئة واحدة. </string>
     <string name="lab_1e223777">الإصدار وملاحظات الإصدار و«تنزيل وتثبيت» (إعدادات Classic).</string>
-    <string name="lab_1e2f8841">فأرة نسبية (لألعاب الكاميرا ثلاثية الأبعاد)</string>
     <string name="lab_1e537526">لا شيء في القائمة.</string>
     <string name="lab_1e713627">عميل Steam لـ Linux</string>
     <string name="lab_1e765e92">إعدادات التصويب بالحركة</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">تلقائي · مقطع دعائي من Steam</string>
     <string name="lab_2756404f">إعادة ضبط الطاقة وroot إلى افتراضيات التطبيق</string>
     <string name="lab_27b56d30">يثبّت ملفات XInput DLL الخاصة بـ Bannerlator سواء كان XInput مباشر مفعّلًا أو متوقفًا، مع XInput الخاص بـ Wine بجانبها، كي يتمكن «عناصر التحكم › يد التحكم» في قائمة اللعب من التبديل بينها أثناء تشغيل اللعبة (يُعاد توصيل وحدة التحكم). مفعّل افتراضيًا. عند الإيقاف: يبقى XInput مباشر على حاله منذ بدء اللعبة، ويتطلب تغييره إعادة التشغيل.</string>
+    <string name="lab_27bb1078">مباشر</string>
     <string name="lab_27bcb120">أضف إعدادات Box64 وFEX المسبقة أو انسخها أو احذفها أو صدّرها أو استوردها (إعدادات Classic).</string>
     <string name="lab_27beed97">%1$s · الجلسات: %2$s</string>
     <string name="lab_27f2c3fa">يضبط الحد الأدنى لتردد كل مجموعة أنوية على حدها الأقصى.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">يتجاوز خللًا في Turnip يجعل السؤال «هل انتهت GPU؟» ينتظر الإطار كاملًا (خلل التوقيت في التقرير). يترك «الافتراضي» للمحوّل اكتشافه؛ ويفرض «تشغيل» الرقعة، ويعطّلها «إيقاف».</string>
     <string name="lab_3205bc81">لم يُعيَّن برنامج تشغيل رسومات Turnip، لذا لا يوجد ما يُفحص.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">وضع شاشة اللمس</string>
     <string name="lab_32a7fa00">توليد الإطارات</string>
     <string name="lab_334d4744">التقاط نسخة من ملفات حفظ مكتبة Steam إلى مكتبتك المحلية عند خروج اللعبة.</string>
     <string name="lab_336d62eb">تفضيل أنوية CPU الكبيرة</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">لا توجد مستودعات.</string>
     <string name="lab_3a1ed8c6">برنامج تشغيل العرض (جانب Android)</string>
     <string name="lab_3a24cc2d">يُضبط لكل حاوية: فهو يصف يديك، لا اللعبة.</string>
-    <string name="lab_3a589c47">المؤشر إلى موضع اللمس</string>
     <string name="lab_3a5c3010">FPS وحمل CPU/GPU ودرجات الحرارة فوق اللعبة. انقر عليه أثناء اللعب لتبديل اتجاهه أو تغيير حجمه.</string>
     <string name="lab_3a95276d">قوة vkBasalt</string>
     <string name="lab_3b02039e">متوازن</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">فرض SSBS (إصلاح سرعة CPU)</string>
     <string name="lab_497cf9a3">العب على تلفاز أو ابثّ إليه.</string>
     <string name="lab_4990b8f5">الحدة (VKBasalt)</string>
-    <string name="lab_499bfdd8">يقفز المؤشر إلى حيث تلمس.</string>
     <string name="lab_49cff1c6">الفأرة واللمس</string>
     <string name="lab_49d721cc">تراكب الأداء</string>
     <string name="lab_49fc80cc">إيقاف (منفرد يشغّل واحدًا في كل مرة)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">أعلى اليسار</string>
     <string name="lab_58a426c9">متوقف لهذه اللعبة أثناء تشغيل توليد الإطارات. </string>
-    <string name="lab_5901a4cd">Wayland: تذهب إزاحات الفأرة إلى المركّب؛ واللعبة التي تقفل المؤشر تتلقاها كحركة نسبية.</string>
     <string name="lab_5946d9c6">استخدام إعداد التطبيق (%1$s)</string>
     <string name="lab_594a913b">مظلّلات غير متزامنة</string>
     <string name="lab_595daef9">المكوّنات المنزّلة: الأرشيفات وقائمة الكتالوج.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS وحمل CPU/GPU ودرجات الحرارة فوق اللعبة. نمطه أدناه، وأثناء اللعب من القائمة الجانبية.</string>
     <string name="lab_5cf98060">إخفاء امتدادات present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">نيون</string>
+    <string name="lab_5d1ebf1b">وضع التصويب</string>
     <string name="lab_5d676a2d">لا يمكن تصدير سوى إعداداتك المسبقة الخاصة.</string>
     <string name="lab_5d7ee5f8">GitHub ومتتبّع المشكلات وDiscord</string>
     <string name="lab_5db787de">أصدقاء Steam والدردشة.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">استكشاف الأخطاء وإصلاحها</string>
     <string name="lab_6c15cb41">أزرار اللمس في التخطيط الحالي.</string>
     <string name="lab_6c3656ad">عمودي</string>
-    <string name="lab_6c37a76c">وظيفة اللمس</string>
     <string name="lab_6c5fe717">صوت المعاينات</string>
     <string name="lab_6c8e3b1f">تعيين كافتراضي…</string>
     <string name="lab_6c9249ac">سيتوقف التنزيل التلقائي من السحابة عند التشغيل لألعاب مكتبة GOG. لن تُجلب أحدث ملفات الحفظ السحابية قبل بدء اللعبة — ستحتاج إلى تنزيلها بنفسك من تبويب مدير ملفات الحفظ لـ GOG أو من صفحة تفاصيل اللعبة. هل تريد المتابعة؟</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">تضيع التغييرات غير المحفوظة هنا. وتحتفظ الحاويات الموجودة بإعداداتها.</string>
     <string name="lab_8ecc4179"> بدلًا من ملفات Wine. تحتاجها كثير من المغلّفات ومحمّلات التعديلات. لا تُضمَّن ملفات DLL الرسومية أبدًا: فهي من اختصاص DXVK وVKD3D.</string>
     <string name="lab_8ece40f8">لبرامج تشغيل Banners-Turnip فقط؛ يتجاهله Turnip الأصلي.</string>
-    <string name="lab_8ed00ed7">للألعاب التي تقفل المؤشر (التحكم بالكاميرا).</string>
     <string name="lab_8ee80fca">لا توجد مصادر لبرامج التشغيل.</string>
     <string name="lab_8ef37792">أسفل</string>
     <string name="lab_8f4a852b">طاقة الجهاز</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">وحدة تحكم XR الأساسية</string>
     <string name="lab_e14156b5">أنوية عميل Steam</string>
     <string name="lab_e141ca5d">أولوية التحكم على الشاشة</string>
-    <string name="lab_e1768a43">يمكن تبديله أيضًا أثناء اللعب من القائمة الجانبية.</string>
     <string name="lab_e18caa5c">لا توجد محركات أقراص</string>
     <string name="lab_e19da5b2">محوّل Wayland</string>
     <string name="lab_e1be537c">غير محفوظ</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240) أو fixed:N (30–1000) أو off</string>
     <string name="lab_e98a38e0">المكبّر وصورة داخل صورة ولوحة المفاتيح والأداء.</string>
     <string name="lab_e9bb2501">يتيح للألعاب استخدام الميكروفون: يلتقط DirectAudio الإدخال. يطلب Android الإذن مرة واحدة.</string>
-    <string name="lab_e9e73eeb">«شاشة اللمس» ترسل لمسات حقيقية إلى اللعبة.</string>
     <string name="lab_ea08e43f">بيئة تشغيل Linux وكل القوائم</string>
     <string name="lab_ea354143">زر باهت في أعلى اليمين يفتح القائمة السريعة باللمس. يعمل زر الرجوع أو زر القائمة أو النقر بأربعة أصابع من دونه.</string>
     <string name="lab_ea4babd8">طريقة البدء</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">النمط</string>
     <string name="lab_f2857f55">التخزين الداخلي</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">الفأرة / لوحة اللمس</string>
     <string name="lab_f2cdcc45">اختر برنامج تشغيل GPU</string>
     <string name="lab_f2ed832c">حجم ذاكرة GPU الذي يُبلَّغ لألعاب DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">زمن استجابة الصوت</string>

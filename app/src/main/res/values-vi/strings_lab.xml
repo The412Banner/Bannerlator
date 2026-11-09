@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Tên không được chứa \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Cho các game mà client khởi chạy, không phải bản thân client, và cho tất cả chúng: phiên chỉ có một môi trường. </string>
     <string name="lab_1e223777">Phiên bản, ghi chú phát hành và Tải xuống &amp; cài đặt (Thiết lập Classic).</string>
-    <string name="lab_1e2f8841">Chuột tương đối (cho game camera 3D)</string>
     <string name="lab_1e537526">Danh sách trống.</string>
     <string name="lab_1e713627">Client Steam Linux</string>
     <string name="lab_1e765e92">Thiết lập ngắm bằng gyro</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Tự động · trailer Steam</string>
     <string name="lab_2756404f">Đặt lại điện năng và root về mặc định của ứng dụng</string>
     <string name="lab_27b56d30">Cài DLL XInput của Bannerlator dù XInput trực tiếp bật hay tắt, cùng với XInput của Wine bên cạnh, để Điều khiển › Tay cầm trong menu game có thể chuyển giữa chúng khi game đang chạy (tay cầm kết nối lại). Bật theo mặc định. Tắt: XInput trực tiếp giữ nguyên như lúc game khởi động, và muốn đổi phải khởi động lại.</string>
+    <string name="lab_27bb1078">Trực tiếp</string>
     <string name="lab_27bcb120">Thêm, sao chép, xóa, xuất hoặc nhập preset Box64 và FEX (Thiết lập Classic).</string>
     <string name="lab_27beed97">%1$s · %2$s phiên</string>
     <string name="lab_27f2c3fa">Đặt tần số tối thiểu của mọi cụm bằng mức tối đa.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Khắc phục lỗi của Turnip khiến câu hỏi \"GPU xong chưa?\" phải chờ cả khung hình (lỗi định thời trong báo cáo). Mặc định để adapter tự phát hiện; Bật sẽ luôn dùng, Tắt sẽ không dùng.</string>
     <string name="lab_3205bc81">Chưa đặt driver đồ họa Turnip nên không có gì để kiểm tra.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Chế độ màn hình cảm ứng</string>
     <string name="lab_32a7fa00">Tạo khung hình</string>
     <string name="lab_334d4744">Chụp bản lưu của game thư viện Steam vào Thư viện cục bộ khi game thoát.</string>
     <string name="lab_336d62eb">Ưu tiên lõi CPU lớn</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Không có kho nào.</string>
     <string name="lab_3a1ed8c6">Driver hiển thị (phía Android)</string>
     <string name="lab_3a24cc2d">Đặt theo từng container: nó mô tả tay của bạn, không phải game.</string>
-    <string name="lab_3a589c47">Con trỏ theo điểm chạm</string>
     <string name="lab_3a5c3010">FPS, tải CPU/GPU và nhiệt độ hiển thị trên game. Chạm vào nó trong game để xoay hoặc đổi kích thước.</string>
     <string name="lab_3a95276d">Cường độ vkBasalt</string>
     <string name="lab_3b02039e">Cân bằng</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Ép SSBS (sửa tốc độ CPU)</string>
     <string name="lab_497cf9a3">Chơi trên TV hoặc truyền lên TV.</string>
     <string name="lab_4990b8f5">Độ sắc nét (VKBasalt)</string>
-    <string name="lab_499bfdd8">Con trỏ nhảy đến chỗ bạn chạm.</string>
     <string name="lab_49cff1c6">Chuột và cảm ứng</string>
     <string name="lab_49d721cc">Lớp phủ hiệu năng</string>
     <string name="lab_49fc80cc">Tắt (Đơn chạy từng hiệu ứng một)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Trên bên trái</string>
     <string name="lab_58a426c9">Tắt cho game này khi đang tạo khung hình. </string>
-    <string name="lab_5901a4cd">Wayland: chuyển động chuột được gửi tới compositor; game khóa con trỏ nhận chúng dưới dạng chuyển động tương đối.</string>
     <string name="lab_5946d9c6">Dùng thiết lập ứng dụng (%1$s)</string>
     <string name="lab_594a913b">Shader bất đồng bộ</string>
     <string name="lab_595daef9">Thành phần đã tải: tệp nén và danh sách danh mục.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, tải CPU/GPU và nhiệt độ hiển thị trên game. Kiểu hiển thị ở bên dưới, và trong game ở menu bên.</string>
     <string name="lab_5cf98060">Ẩn extension present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Chế độ ngắm</string>
     <string name="lab_5d676a2d">Chỉ xuất được preset của riêng bạn.</string>
     <string name="lab_5d7ee5f8">GitHub, trình theo dõi lỗi và Discord</string>
     <string name="lab_5db787de">Bạn bè và trò chuyện Steam.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Khắc phục sự cố</string>
     <string name="lab_6c15cb41">Các nút cảm ứng của bố cục hiện tại.</string>
     <string name="lab_6c3656ad">Dọc</string>
-    <string name="lab_6c37a76c">Chạm hoạt động như</string>
     <string name="lab_6c5fe717">Âm thanh xem trước</string>
     <string name="lab_6c8e3b1f">Đặt làm mặc định…</string>
     <string name="lab_6c9249ac">Tự động tải xuống từ đám mây khi khởi chạy sẽ TẮT cho các game trong thư viện GOG. Bản lưu đám mây mới nhất sẽ không được tải về trước khi game chạy — bạn cần tự tải chúng từ tab Quản lý bản lưu GOG hoặc trang chi tiết của game. Tiếp tục?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Thay đổi chưa lưu ở đây sẽ mất. Container hiện có giữ thiết lập của chúng.</string>
     <string name="lab_8ecc4179"> thay vì bản của Wine. Cần cho nhiều wrapper và trình nạp mod. Không bao gồm DLL đồ họa: DXVK và VKD3D đảm nhận chúng.</string>
     <string name="lab_8ece40f8">Chỉ dành cho driver Banners-Turnip; Turnip gốc bỏ qua tùy chọn này.</string>
-    <string name="lab_8ed00ed7">Cho game khóa con trỏ (xoay camera).</string>
     <string name="lab_8ee80fca">Không có nguồn driver.</string>
     <string name="lab_8ef37792">Dưới</string>
     <string name="lab_8f4a852b">Nguồn điện thiết bị</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Tay cầm XR chính</string>
     <string name="lab_e14156b5">Lõi client Steam</string>
     <string name="lab_e141ca5d">Ưu tiên nút ảo</string>
-    <string name="lab_e1768a43">Cũng chuyển được trong game từ menu bên.</string>
     <string name="lab_e18caa5c">Không có ổ đĩa</string>
     <string name="lab_e19da5b2">Adapter Wayland</string>
     <string name="lab_e1be537c">Chưa lưu</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) hoặc off</string>
     <string name="lab_e98a38e0">Kính lúp, hình trong hình, bàn phím và hiệu năng.</string>
     <string name="lab_e9bb2501">Cho game dùng micro: DirectAudio thu đầu vào. Android chỉ hỏi quyền một lần.</string>
-    <string name="lab_e9e73eeb">Màn hình cảm ứng gửi thao tác chạm thật tới game.</string>
     <string name="lab_ea08e43f">Runtime Linux và mọi danh sách</string>
     <string name="lab_ea354143">Nút mờ ở góc trên bên phải, chạm để mở menu nhanh. Không có nút này vẫn mở được bằng Quay lại, nút Menu hoặc chạm bốn ngón.</string>
     <string name="lab_ea4babd8">Cách khởi chạy</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Kiểu</string>
     <string name="lab_f2857f55">Nội bộ</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Chuột / touchpad</string>
     <string name="lab_f2cdcc45">Chọn driver GPU</string>
     <string name="lab_f2ed832c">Dung lượng bộ nhớ GPU báo cho game DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Độ trễ âm thanh</string>

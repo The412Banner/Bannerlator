@@ -74,7 +74,7 @@ public class TouchpadView extends View {
         public void run() {
             Finger finger = gestureFinger;
             // Still one finger, still parked where it went down, and it hasn't turned into a drag.
-            if (finger == null || numFingers != 1 || dragSelecting) return;
+            if (finger == null || numFingers != 1 || dragSelecting || gestureAim) return;
             if (finger.travelDistance() >= MAX_TAP_TRAVEL_DISTANCE) return;
             xServer.injectPointerMove(finger.x, finger.y);
             pressPointerButtonRight(finger);
@@ -93,6 +93,16 @@ public class TouchpadView extends View {
     private float resolutionScale;
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
     private boolean mouseEnabled = true;
+    // Decided when the first finger of a gesture lands. gestureAim: the game wants camera movement
+    // (XServer.isAiming), so drags are deltas, nothing jumps under the finger and the Direct gestures
+    // are off; it can switch on mid-gesture but never off. gestureSim: Touchscreen (simTouchScreen)
+    // for this gesture.
+    private boolean gestureAim = false;
+    private boolean gestureSim = false;
+    // A mouse that is not captured reports positions; in relative mode they go out as deltas.
+    private int lastMouseX, lastMouseY;
+    private long lastMouseMs;
+    private boolean lastMouseRelative;
     private final Runnable delayedTouchscreenPress = this::performDelayedTouchscreenPress;
 
     private void performDelayedTouchscreenPress() {
@@ -226,10 +236,6 @@ public class TouchpadView extends View {
         }
     }
 
-//    public void setTouchscreenMode(boolean isTouchscreenMode) {
-//        this.isTouchscreenMode = isTouchscreenMode;
-//    }
-
     /**
      * When it answers true, this view takes no fingers and they fall through to the view beneath -
      * the Wayland compositor's surface in a Steam (Linux) session set to Touchscreen, which sends
@@ -295,21 +301,11 @@ public class TouchpadView extends View {
             postDelayed(endWakeGesture, WAKE_GESTURE_TAIL_MS);
         }
 
-        boolean isTouchscreenMode = preferences.getBoolean("touchscreen_toggle", false);
-
         // Reset the timeout timer to keep controls visible
         resetTouchscreenTimeout();  // <-- Ensure the controls stay visible
 
-        // Continue handling touch events as usual
-        int toolType = event.getToolType(0);
-
-        if (toolType == MotionEvent.TOOL_TYPE_STYLUS) {
-            return handleStylusEvent(event);
-        } else if (isTouchscreenMode) {
-            return handleTouchscreenEvent(event);
-        } else {
-            return handleTouchpadEvent(event);
-        }
+        if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) return handleStylusEvent(event);
+        return handleTouchpadEvent(event);
     }
 
     private void resetTouchscreenTimeout() {
@@ -401,18 +397,25 @@ public class TouchpadView extends View {
             if (event.isFromSource(InputDevice.SOURCE_MOUSE)) return true;
             scrollAccumY = 0;
             scrolling = false;
+            if (numFingers == 0 || actionMasked == MotionEvent.ACTION_DOWN) {
+                resetGestureState();
+                gestureAim = xServer.isAiming();
+                gestureSim = simTouchScreen && !gestureAim;
+            } else if (!gestureAim && xServer.isAiming()) {
+                startAimMidGesture();
+            }
             fingers[pointerId] = new Finger(event.getX(actionIndex), event.getY(actionIndex));
             numFingers++;
 
-            // Patch: Move cursor to touchpoint logic
-            if (moveCursorToTouchpoint && pointerId == 0) {
+            // Direct: the pointer goes under the finger. Not while aiming: the game would take the
+            // jump as a turn of the camera.
+            if (moveCursorToTouchpoint && pointerId == 0 && !gestureAim) {
                 xServer.injectPointerMove(fingers[0].x, fingers[0].y);
             }
 
             if (gesturesEnabled()) {
                 if (actionMasked == MotionEvent.ACTION_DOWN) {
                     // First finger down starts a fresh gesture; arm the hold-for-right-click timer.
-                    resetGestureState();
                     gestureFinger = fingers[pointerId];
                     if (gestureLongPressRightClick) postDelayed(longPressRunnable, longPressDelayMs);
                 } else {
@@ -421,7 +424,7 @@ public class TouchpadView extends View {
                 }
             }
 
-            if (simTouchScreen) {
+            if (gestureSim) {
                 if (pointerId == 0) {
                     continueClick = true;
                     if (Math.hypot(fingers[0].x - lastTouchedPosX, fingers[0].y - lastTouchedPosY) * resolutionScale > EFFECTIVE_TOUCH_DISTANCE) {
@@ -447,11 +450,9 @@ public class TouchpadView extends View {
         case MotionEvent.ACTION_MOVE:
             if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
                 float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-                if (xServer.isRelativeMouseMovement())
-                    xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-                else
-                    xServer.injectPointerMove((int)transformedPoint[0], (int)transformedPoint[1]);
+                mouseMoveTo((int)transformedPoint[0], (int)transformedPoint[1]);
             } else {
+                if (!gestureAim && numFingers > 0 && xServer.isAiming()) startAimMidGesture();
                 for (byte i = 0; i < MAX_FINGERS; i++) {
                     if (fingers[i] != null) {
                         int pointerIndex = event.findPointerIndex(i);
@@ -492,102 +493,6 @@ public class TouchpadView extends View {
 }
 
 
-    private boolean handleTouchscreenEvent(MotionEvent event) {
-        int action = event.getActionMasked();
-
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-            case MotionEvent.ACTION_POINTER_DOWN:
-                handleTouchDown(event);
-                break;
-            case MotionEvent.ACTION_MOVE:
-                if (event.getPointerCount() == 2) {
-                    handleTwoFingerScroll(event);
-                } else {
-                    handleTouchMove(event);
-                }
-                break;
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_POINTER_UP:
-                if (event.getPointerCount() == 2) {
-                    handleTwoFingerTap(event);
-                } else {
-                    handleTouchUp(event);
-                }
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                if (xServer.isRelativeMouseMovement()) {
-                    xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-                    xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
-                }
-                else {
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
-                }
-                break;
-        }
-        return true;
-    }
-
-    private void handleTouchDown(MotionEvent event) {
-        float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        if (xServer.isRelativeMouseMovement())
-            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-        else
-            xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
-
-        // Handle long press for right click (or use a dedicated method to detect long press)
-        if (event.getPointerCount() == 1 && pointerButtonLeftEnabled) {
-            if (xServer.isRelativeMouseMovement())
-                xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
-            else
-                xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-        }
-    }
-
-    private void handleTouchMove(MotionEvent event) {
-        float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        if (xServer.isRelativeMouseMovement())
-            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-        else
-            xServer.injectPointerMove((int) transformedPoint[0], (int) transformedPoint[1]);
-    }
-
-    private void handleTouchUp(MotionEvent event) {
-        if (xServer.isRelativeMouseMovement())
-            xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-        else
-            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-    }
-
-    private void handleTwoFingerScroll(MotionEvent event) {
-        float scrollDistance = event.getY(0) - event.getY(1);
-        if (Math.abs(scrollDistance) > 10) {
-            if (scrollDistance > 0) {
-                xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP);
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP);
-            } else {
-                xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN);
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN);
-            }
-        }
-    }
-
-    private void handleTwoFingerTap(MotionEvent event) {
-        if (event.getPointerCount() == 2 && pointerButtonRightEnabled) {
-            if (xServer.isRelativeMouseMovement()) {
-                xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTDOWN, 0, 0, 0);
-                xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
-            }
-            else {
-                xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
-            }
-        }
-    }
-
-
-
     private void handleFingerUp(Finger finger1) {
         handleFingerUp(finger1, false);
     }
@@ -612,7 +517,7 @@ public class TouchpadView extends View {
 
         switch (numFingers) {
             case 1:
-                if (simTouchScreen) {
+                if (gestureSim) {
                     final Runnable clickDelay = () -> {
                         if (continueClick)
                             xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
@@ -711,7 +616,7 @@ public class TouchpadView extends View {
             int dx = finger1.deltaX();
             int dy = finger1.deltaY();
 
-            if (simTouchScreen) {
+            if (gestureSim) {
                 if (System.currentTimeMillis() - finger1.touchTime > CLICK_DELAYED_TIME)
                     xServer.injectPointerMove(finger1.x, finger1.y);
             }
@@ -723,9 +628,33 @@ public class TouchpadView extends View {
         }
     }
 
-    /** Cursor-to-Touch gesture set is live: absolute positioning, and not the simTouchScreen path. */
+    /** Cursor-to-Touch gesture set is live: absolute positioning, and not the simTouchScreen path or aiming. */
     private boolean gesturesEnabled() {
-        return moveCursorToTouchpoint && !simTouchScreen;
+        return moveCursorToTouchpoint && !simTouchScreen && !gestureAim;
+    }
+
+    /** The game started mouse-look while fingers are down: the rest of the gesture is camera movement. */
+    private void startAimMidGesture() {
+        gestureAim = true;
+        removeCallbacks(longPressRunnable);
+    }
+
+    /** A mouse position (not captured): the pointer goes there, or in relative mode it moves by the change. */
+    private void mouseMoveTo(int x, int y) {
+        boolean relative = xServer.isRelativeMouseMovement();
+        long now = android.os.SystemClock.uptimeMillis();
+        if (relative) {
+            if (lastMouseRelative && now - lastMouseMs < 250) {
+                int dx = x - lastMouseX, dy = y - lastMouseY;
+                if (dx != 0 || dy != 0) xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+            }
+        } else {
+            xServer.injectPointerMove(x, y);
+        }
+        lastMouseX = x;
+        lastMouseY = y;
+        lastMouseMs = now;
+        lastMouseRelative = relative;
     }
 
     private void resetGestureState() {
@@ -733,6 +662,8 @@ public class TouchpadView extends View {
         dragSelecting = false;
         longPressFired = false;
         gestureFinger = null;
+        gestureAim = false;
+        gestureSim = false;
     }
 
     private Finger findSecondFinger(Finger finger) {
@@ -866,10 +797,7 @@ public class TouchpadView extends View {
                 case MotionEvent.ACTION_MOVE:
                 case MotionEvent.ACTION_HOVER_MOVE:
                     float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-                    else
-                        xServer.injectPointerMove((int)transformedPoint[0], (int)transformedPoint[1]);
+                    mouseMoveTo((int)transformedPoint[0], (int)transformedPoint[1]);
                     handled = true;
                     break;
                 case MotionEvent.ACTION_SCROLL:

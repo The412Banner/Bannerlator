@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Nimessä ei saa olla merkkejä \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Asiakasohjelman käynnistämille peleille, ei itse asiakasohjelmalle, ja jokaiselle niistä: istunnolla on yksi ympäristö. </string>
     <string name="lab_1e223777">Versio, julkaisutiedot sekä Lataa ja asenna (Classicin asetukset).</string>
-    <string name="lab_1e2f8841">Suhteellinen hiiri (3D-kamerapeleille)</string>
     <string name="lab_1e537526">Luettelo on tyhjä.</string>
     <string name="lab_1e713627">Linuxin Steam-asiakasohjelma</string>
     <string name="lab_1e765e92">Liiketähtäyksen asetukset</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automaattinen · Steam-traileri</string>
     <string name="lab_2756404f">Palauta virta ja root sovelluksen oletuksiin</string>
     <string name="lab_27b56d30">Asentaa Bannerlatorin XInput-DLL:t riippumatta siitä, onko Suora XInput päällä vai pois, ja Winen oman XInputin niiden rinnalle, jotta pelin valikon Controls › Pad voi vaihtaa niiden välillä pelin ollessa käynnissä (ohjain yhdistetään uudelleen). Oletuksena päällä. Pois: Suora XInput pysyy sellaisena kuin peli käynnistyi, ja sen muuttaminen vaatii uudelleenkäynnistyksen.</string>
+    <string name="lab_27bb1078">Suora</string>
     <string name="lab_27bcb120">Lisää, kopioi, poista, vie tai tuo Box64- ja FEX-esiasetuksia (Classicin asetukset).</string>
     <string name="lab_27beed97">%1$s · %2$s istuntoa</string>
     <string name="lab_27f2c3fa">Asettaa jokaisen klusterin vähimmäistaajuuden sen enimmäistaajuuteen.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Kiertää Turnip-bugin, jossa kysymys \"onko GPU valmis?\" odottaa koko ruudun valmistumista (raportin ajoitusbugi). Oletus antaa sovittimen tunnistaa sen; Päällä pakottaa sen käyttöön, Pois poistaa sen käytöstä.</string>
     <string name="lab_3205bc81">Turnip-grafiikka-ajuria ei ole asetettu, joten tarkistettavaa ei ole.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Kosketusnäyttötila</string>
     <string name="lab_32a7fa00">Ruutugenerointi</string>
     <string name="lab_334d4744">Ota tilannevedos Steam-kirjaston tallennuksista paikalliseen kirjastoosi, kun peli päättyy.</string>
     <string name="lab_336d62eb">Suosi suuria CPU-ytimiä</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Ei repositorioita.</string>
     <string name="lab_3a1ed8c6">Näyttöajuri (Android-puoli)</string>
     <string name="lab_3a24cc2d">Asetetaan konttikohtaisesti: se kuvaa käsiäsi, ei peliä.</string>
-    <string name="lab_3a589c47">Osoitin kosketuskohtaan</string>
     <string name="lab_3a5c3010">FPS, CPU:n/GPU:n kuormitus ja lämpötilat pelin päällä. Napauta sitä pelin aikana kääntääksesi sen tai muuttaaksesi sen kokoa.</string>
     <string name="lab_3a95276d">vkBasalt-voimakkuus</string>
     <string name="lab_3b02039e">Tasapainotettu</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Pakota SSBS (CPU-nopeuskorjaus)</string>
     <string name="lab_497cf9a3">Pelaa televisiossa tai suoratoista siihen.</string>
     <string name="lab_4990b8f5">Terävyys (VKBasalt)</string>
-    <string name="lab_499bfdd8">Osoitin hyppää kohtaan, jota kosketat.</string>
     <string name="lab_49cff1c6">Hiiri ja kosketus</string>
     <string name="lab_49d721cc">Suorituskyvyn peittokuva</string>
     <string name="lab_49fc80cc">Pois (Yksin-tila ajaa yhden kerrallaan)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Ylhäällä vasemmalla</string>
     <string name="lab_58a426c9">Pois päältä tässä pelissä ruutugeneroinnin aikana. </string>
-    <string name="lab_5901a4cd">Wayland: hiiren liikkeet menevät kompositorille; osoittimen lukitseva peli saa ne suhteellisena liikkeenä.</string>
     <string name="lab_5946d9c6">Käytä sovelluksen asetusta (%1$s)</string>
     <string name="lab_594a913b">Asynkroniset shaderit</string>
     <string name="lab_595daef9">Ladatut komponentit: arkistot ja luettelolista.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU:n/GPU:n kuormitus ja lämpötilat pelin päällä. Sen tyyli valitaan alla ja pelin aikana sivuvalikosta.</string>
     <string name="lab_5cf98060">Piilota present-wait- / dynamic-rendering-laajennukset</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Tähtäystila</string>
     <string name="lab_5d676a2d">Vain omia esiasetuksiasi voi viedä.</string>
     <string name="lab_5d7ee5f8">GitHub, vianseuranta ja Discord</string>
     <string name="lab_5db787de">Steam-kaverit ja chat.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Vianmääritys</string>
     <string name="lab_6c15cb41">Nykyisen asettelun kosketuspainikkeet.</string>
     <string name="lab_6c3656ad">Pystysuunta</string>
-    <string name="lab_6c37a76c">Kosketuksen toiminta</string>
     <string name="lab_6c5fe717">Esikatselun ääni</string>
     <string name="lab_6c8e3b1f">Aseta oletukseksi…</string>
     <string name="lab_6c9249ac">Automaattinen lataus pilvestä käynnistettäessä poistetaan käytöstä GOG-kirjastosi peleiltä. Uusimpia pilvitallennuksia ei haeta ennen pelin käynnistystä — sinun on ladattava ne itse Tallennusten hallinnan GOG-välilehdeltä tai pelin tietosivulta. Jatketaanko?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Tallentamattomat muutokset tässä menetetään. Olemassa olevat kontit säilyttävät asetuksensa.</string>
     <string name="lab_8ecc4179"> Winen omien sijaan. Monet wrapperit ja modien lataajat tarvitsevat tätä. Grafiikka-DLL:iä ei koskaan oteta mukaan: niistä vastaavat DXVK ja VKD3D.</string>
     <string name="lab_8ece40f8">Vain Banners-Turnip-ajurit; tavallinen Turnip ohittaa sen.</string>
-    <string name="lab_8ed00ed7">Peleille, jotka lukitsevat osoittimen (kameran ohjaus).</string>
     <string name="lab_8ee80fca">Ei ajurilähteitä.</string>
     <string name="lab_8ef37792">Alhaalla</string>
     <string name="lab_8f4a852b">Laitteen virta</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Ensisijainen XR-ohjain</string>
     <string name="lab_e14156b5">Steam-asiakasohjelman ytimet</string>
     <string name="lab_e141ca5d">Näytön ohjainten prioriteetti</string>
-    <string name="lab_e1768a43">Voidaan kytkeä myös pelin aikana sivuvalikosta.</string>
     <string name="lab_e18caa5c">Ei asemia</string>
     <string name="lab_e19da5b2">Wayland-sovitin</string>
     <string name="lab_e1be537c">Tallentamaton</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) tai off</string>
     <string name="lab_e98a38e0">Suurennuslasi, kuva kuvassa, näppäimistö ja suorituskyky.</string>
     <string name="lab_e9bb2501">Antaa pelien käyttää mikrofonia: DirectAudio kaappaa syötteen. Android pyytää käyttöoikeutta kerran.</string>
-    <string name="lab_e9e73eeb">Kosketusnäyttö-tila lähettää oikeita kosketuksia peliin.</string>
     <string name="lab_ea08e43f">Linux-ajoympäristö ja kaikki luettelot</string>
     <string name="lab_ea354143">Huomaamaton painike oikeassa yläkulmassa, joka avaa pikavalikon kosketuksella. Back, Menu-painike tai neljän sormen napautus toimivat myös ilman sitä.</string>
     <string name="lab_ea4babd8">Miten se käynnistyy</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Tyyli</string>
     <string name="lab_f2857f55">Sisäinen</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Hiiri / kosketuslevy</string>
     <string name="lab_f2cdcc45">Valitse GPU-ajuri</string>
     <string name="lab_f2ed832c">Kuinka paljon GPU-muistia DirectX-peleille kerrotaan olevan (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Äänen viive</string>

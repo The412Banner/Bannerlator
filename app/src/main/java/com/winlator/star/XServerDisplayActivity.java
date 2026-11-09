@@ -441,7 +441,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private volatile boolean reshadePulseInProgress = false;
     private static final int RESHADE_PULSE_TARGET_PRESENTS = 2;   // real presents to reveal a change
     private static final long RESHADE_PULSE_FALLBACK_MS = 80L;    // re-freeze if the game isn't presenting
-    private boolean isRelativeMouseMovement = false;
+    private boolean isRelativeMouseMovement = false;   // Aim mode On (the old Relative Mouse)
+    // This session's Touch and Aim mode (TouchAimSettings), resolved at launch, changed from the in-game menu.
+    private String touchMode = com.winlator.star.core.TouchAimSettings.TOUCHPAD;
+    private String aimMode = com.winlator.star.core.TouchAimSettings.AUTO;
+    // Aim Auto: the game is doing mouse-look by moving the pointer back (XServer.aimTracker). Main thread.
+    private volatile boolean autoAimActive = false;
     private boolean isMouseDisabled = false;
     private boolean pointerCaptureRequested = false;
 
@@ -1836,7 +1841,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // The guest asking for no pointer is authoritative - it is what X11 always had and Wayland
         // never did. The idle/controller rules below are only a fallback for when it wants one.
         boolean guestHides = waylandGuestHidesCursor && cursorAutoHide;
-        if (guestHides || padDriving || waylandPointerLocked) {
+        if (guestHides || padDriving || waylandPointerLocked || autoAimActive) {
             if (waylandCursorView.getVisibility() != View.GONE)
                 waylandCursorView.setVisibility(View.GONE);
             return;
@@ -1867,7 +1872,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (xServerView == null) return;
         HostRenderer renderer = xServerView.getRenderer();
         if (renderer == null) return;
-        boolean visible = x11CursorWanted && !x11CursorAutoHidden;
+        boolean visible = x11CursorWanted && !x11CursorAutoHidden && !autoAimActive;
         if (renderer.isCursorVisible() != visible) renderer.setCursorVisible(visible);
     }
 
@@ -1914,6 +1919,61 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandCursorIdle.post(x11CursorHideRunnable);
     }
     private volatile boolean waylandPointerLocked; // a program holds a pointer lock in the compositor
+    private static final long WAYLAND_WARP_MAX_MS = 120L;
+    private boolean waylandLockPending;              // a lock that may still turn out to be a warp
+    private final Runnable waylandLockApply = () -> {
+        if (!waylandLockPending) return;
+        waylandLockPending = false;
+        applyWaylandPointerLock(true, 0, 0);
+    };
+
+    /** The compositor's lock state changed at uptime {@code at} (compositor thread time). Main thread. */
+    private void onWaylandPointerLock(boolean locked, int x, int y, long at) {
+        if (xServer == null) return;
+        if (locked) {
+            waylandLockPending = true;
+            waylandCursorIdle.removeCallbacks(waylandLockApply);
+            waylandCursorIdle.postDelayed(waylandLockApply, WAYLAND_WARP_MAX_MS);
+            return;
+        }
+        if (waylandLockPending) {
+            waylandLockPending = false;
+            waylandCursorIdle.removeCallbacks(waylandLockApply);
+            xServer.syncPointerPosition(x, y);
+            waylandMoveCursorView(x, y);
+            xServer.aimTracker.onWarp(at);
+            return;
+        }
+        applyWaylandPointerLock(false, x, y);
+    }
+
+    private void applyWaylandPointerLock(boolean locked, int x, int y) {
+        waylandPointerLocked = locked;
+        xServer.setExternalRelativeMode(locked || autoAimActive);
+        if (locked) {
+            if (waylandCursorView != null) waylandCursorView.setVisibility(View.GONE);
+            ensurePointerCapture("wayland-pointer-lock");
+        } else {
+            xServer.injectPointerMove(x, y);
+            if (!isRelativeMouseMovement && !cursorLock && touchpadView != null && pointerCaptureRequested) {
+                touchpadView.releasePointerCapture();
+                touchpadView.setOnCapturedPointerListener(null);
+                pointerCaptureRequested = false;
+            }
+        }
+    }
+
+    /** The overlay arrow to scene x,y without showing it (the game moved the pointer, not the player). */
+    private void waylandMoveCursorView(int x, int y) {
+        if (waylandSurfaceView == null || waylandCursorView == null) return;
+        int vw = waylandSurfaceView.getWidth(), vh = waylandSurfaceView.getHeight();
+        if (vw <= 0 || vh <= 0) return;
+        float[] pos = waylandSceneToView(x, y, vw, vh);
+        waylandCursorX = pos[0];
+        waylandCursorY = pos[1];
+        waylandCursorView.setX(waylandCursorX - waylandCursorHotX);
+        waylandCursorView.setY(waylandCursorY - waylandCursorHotY);
+    }
     private EnvVars overrideEnvVars;
 
     private void createNotifcationChannel() {
@@ -2242,9 +2302,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setShowLogs(enableLogs);
         state.setShowMagnifier(allowMagnifier);
         state.setIsPaused(isPaused);
-        state.setIsRelativeMouseMovement(isRelativeMouseMovement);
         state.setIsMouseDisabled(isMouseDisabled);
-        state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
         state.onClose                  = () -> runOnUiThread(this::closeInGameMenu);
         state.onKeyboard               = this::showGuestKeyboard;
         state.onInputControls          = () -> showInputControlsDialog();
@@ -2603,10 +2661,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onMagnifier              = () -> showMagnifierOverlay();
         state.onLogs                   = () -> XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.DEBUG);
         state.onExit                   = () -> exit();
-        // Seed the drawer chip from the persisted preference so it reflects reality on open
-        // (state.reset() above zeroes it, so this has to come after).
-        state.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
-        state.onMoveCursorToTouchpoint = () -> MoveCursorToTouchpoint();
+        // Touch and Aim mode: seeded once the game is known (the launch resolve below).
+        state.onTouchMode = mode -> runOnUiThread(() -> setSessionTouchMode(mode));
+        state.onAimMode = mode -> runOnUiThread(() -> setSessionAimMode(mode));
         state.setCursorAutoHide(preferences.getBoolean("cursor_autohide", true));
         state.setCursorAutoHideMs(Math.max(500, Math.min(10000,
                 preferences.getInt("cursor_autohide_ms", (int) WAYLAND_CURSOR_IDLE_MS))));
@@ -2619,22 +2676,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.setGestureLongPressMs(preferences.getInt("gesture_long_press_ms",
             TouchpadView.DEFAULT_LONG_PRESS_MILLISECONDS));
         state.onGestureConfigChange = this::applyGestureConfig;
-        state.onRelativeMouseMovement  = () -> {
-            isRelativeMouseMovement = !isRelativeMouseMovement;
-            state.setIsRelativeMouseMovement(isRelativeMouseMovement);
-            xServer.setRelativeMouseMovement(isRelativeMouseMovement);
-            // Persist per game (issue #431): titles like ETS2 need Relative Mouse every launch, and this
-            // toggle used to live only in memory so it reset to off each session while the neighbouring
-            // Cursor to Touch survived. Same owner rule as Present Mode / the FPS limiter: write to the
-            // shortcut when launched from one (that is what the launch seed reads back), else the container.
-            if (shortcut != null) {
-                shortcut.putExtra("relativeMouse", isRelativeMouseMovement ? "1" : "0");
-                shortcut.saveData();
-            } else {
-                container.putExtra("relativeMouse", isRelativeMouseMovement ? "1" : "0");
-                container.saveData();
-            }
-        };
         state.onDisableMouse           = () -> {
             isMouseDisabled = !isMouseDisabled;
             state.setIsMouseDisabled(isMouseDisabled);
@@ -3294,18 +3335,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer.setWinHandler(winHandler);
         advertisePanelRefreshRates();
 
-        // Restore the saved Relative Mouse state for this game (issue #431). Read from the same owner
-        // the drawer toggle writes to: shortcut extra first (per-game), container extra as the fallback.
-        // The drawer state was seeded with the in-memory default before the shortcut existed, so echo
-        // the restored value back to it here; pointer capture itself is (re)requested on window focus.
+        // Touch and Aim mode for this game: the shortcut's own, else the container's (a session without
+        // a shortcut saves there), else the app's (Settings › Mouse & keyboard). An old Relative Mouse
+        // "1" reads as Aim On (issue #431: ETS2 and others need it every launch); see TouchAimSettings.
+        // Pointer capture for Aim On is (re)requested on window focus.
         {
-            String savedRelMouse = container.getExtra("relativeMouse", "0");
-            if (shortcut != null) savedRelMouse = shortcut.getExtra("relativeMouse", savedRelMouse);
-            if ("1".equals(savedRelMouse)) {
-                isRelativeMouseMovement = true;
-                xServer.setRelativeMouseMovement(true);
-                XServerDrawerState.INSTANCE.setIsRelativeMouseMovement(true);
-            }
+            final com.winlator.star.container.Shortcut sc = shortcut;
+            final Container ct = container;
+            java.util.function.Function<String, String> game = sc != null ? sc::getExtra : null;
+            java.util.function.Function<String, String> cont = ct != null ? ct::getExtra : null;
+            aimMode = com.winlator.star.core.TouchAimSettings.resolveAim(game, cont,
+                    com.winlator.star.core.TouchAimSettings.appAim(preferences));
+            touchMode = com.winlator.star.core.TouchAimSettings.resolveTouch(game, cont,
+                    com.winlator.star.core.TouchAimSettings.appTouch(preferences));
+            xServer.aimTracker.setListener(active -> runOnUiThread(() -> onAutoAimChanged(active)));
+            applyAimMode();
+            XServerDrawerState.INSTANCE.setTouchMode(touchMode);
+            XServerDrawerState.INSTANCE.setAimMode(aimMode);
+            Log.i("XServerDisplayActivity", "input: touch " + touchMode + ", aim " + aimMode);
         }
 
         // Add the OnWindowModificationListener for dynamic workarounds
@@ -9960,22 +10007,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(exe, hwnd);
             }, 1000L);
         });
-        com.winlator.star.wayland.WaylandCompositor.setPointerLockListener((locked, x, y) -> runOnUiThread(() -> {
-            if (xServer == null) return;
-            waylandPointerLocked = locked;
-            xServer.setExternalRelativeMode(locked);
-            if (locked) {
-                if (waylandCursorView != null) waylandCursorView.setVisibility(View.GONE);
-                ensurePointerCapture("wayland-pointer-lock");
-            } else {
-                xServer.injectPointerMove(x, y);
-                if (!isRelativeMouseMovement && !cursorLock && touchpadView != null && pointerCaptureRequested) {
-                    touchpadView.releasePointerCapture();
-                    touchpadView.setOnCapturedPointerListener(null);
-                    pointerCaptureRequested = false;
-                }
-            }
-        }));
+        // A lock that ends within WAYLAND_WARP_MAX_MS is winewayland's SetCursorPos (lock, position
+        // hint, commit, unlock): the game moved the pointer, nothing was locked for the player. Those
+        // are counted for Aim Auto and only re-sync the pointer; a lock still held after that is a real
+        // one (mouse-look with a hidden cursor) and switches the input path to deltas. Before, every
+        // warp also asked for pointer capture, released it and showed the arrow again.
+        com.winlator.star.wayland.WaylandCompositor.setPointerLockListener((locked, x, y) -> {
+            final long at = android.os.SystemClock.uptimeMillis();
+            runOnUiThread(() -> onWaylandPointerLock(locked, x, y, at));
+        });
         // On-screen controls, a mouse and keys mapped to controller buttons all inject into the X
         // server, which has no client in wayland mode: hand that input to the compositor too.
         if (xServer != null) xServer.setInputSink(new com.winlator.star.xserver.XServer.InputSink() {
@@ -10042,7 +10082,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         waylandSurfaceView.setOnTouchListener((v, ev) -> {
             int vw = v.getWidth(), vh = v.getHeight();
             if (vw <= 0 || vh <= 0) return true;
-            // Touchscreen mode (the same "touchscreen_toggle" X11 uses): every finger goes to the
+            // Touchscreen mode (waylandTouchscreenMode): every finger goes to the
             // guest as a real wl_touch sequence with its own id, so a game gets multi-touch instead
             // of one synthesised mouse. The touchpad cursor is not used in this mode.
             if (waylandTouchscreenMode()) {
@@ -10087,7 +10127,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // instead of moving by the drag, so a tap lands where it is made. The same switch the
             // X11 touchpad honours; here it was read by nothing, so the chip flipped and changed
             // nothing in a Steam (Linux) session.
-            boolean cursorToTouch = preferences != null && preferences.getBoolean("move_cursor_to_touchpoint", false);
+            boolean cursorToTouch = com.winlator.star.core.TouchAimSettings.DIRECT.equals(touchMode);
             switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
                     last[0] = ev.getX(); last[1] = ev.getY(); moved[0] = 0f;
@@ -10362,8 +10402,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
     /**
-     * Touchscreen mode: fingers go to the guest as wl_touch. Shared with X11's setting, unless a
-     * Linux entry chose for itself (its Steam (Linux) settings, or the drawer's Steam client section).
+     * Touchscreen mode: fingers go to the guest as wl_touch. The app's old Touchscreen mode
+     * ("touchscreen_toggle", no longer used by Wine games, which have Touch), unless a Linux entry
+     * chose for itself (its Steam (Linux) settings, or the drawer's Steam client section).
      */
     private boolean waylandTouchscreenMode() {
         SharedPreferences sp = preferences != null ? preferences
@@ -12667,9 +12708,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
         touchpadView.setFourFingersTapCallback(() -> {
             if (!isInGameMenuOpen()) openInGameMenu();
         });
-        // The preference persists across launches but was never restored onto the view, so
-        // Cursor to Touch silently reverted to off every session until it was toggled again.
-        touchpadView.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
+        // Touch for this game (resolved at launch): Direct puts the pointer under the finger,
+        // Touchscreen presses where the finger lands.
+        touchpadView.setSimTouchScreen(com.winlator.star.core.TouchAimSettings.TOUCHSCREEN.equals(touchMode));
+        touchpadView.setMoveCursorToTouchpoint(com.winlator.star.core.TouchAimSettings.DIRECT.equals(touchMode));
         applyGestureConfig(); // wiring ran before this view existed; push the seeded set now
         // A Steam (Linux) session set to Touchscreen: fingers go past this view to the compositor's
         // surface, which hands them to gamescope as real touches (Big Picture scrolls under one).
@@ -12801,8 +12843,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (physical != null) setPhysicalProfile(physical);
             }
 
-            String simTouchScreen = shortcut.getExtra("simTouchScreen");
-            touchpadView.setSimTouchScreen(simTouchScreen.equals("1"));
         }
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
@@ -18045,23 +18085,77 @@ return true;
         this.screenEffectProfile = screenEffectProfile;
     }
 
-    private void MoveCursorToTouchpoint() {
-        // Toggle the preference value
-        boolean currentValue = preferences.getBoolean("move_cursor_to_touchpoint", false);
-        boolean newValue = !currentValue;
-        
-        preferences.edit().putBoolean("move_cursor_to_touchpoint", newValue).apply();
-        XServerDrawerState.INSTANCE.setMoveCursorToTouchpoint(newValue);
-
-        // Update the touchpadView state
+    /** The in-game menu's Touch choice: applied now and saved for this game (else its container). Main thread. */
+    private void setSessionTouchMode(String mode) {
+        if (!com.winlator.star.core.TouchAimSettings.isTouch(mode)) return;
+        touchMode = mode;
+        boolean screen = com.winlator.star.core.TouchAimSettings.TOUCHSCREEN.equals(mode);
         if (touchpadView != null) {
-            touchpadView.setMoveCursorToTouchpoint(newValue);
+            touchpadView.setSimTouchScreen(screen);
+            touchpadView.setMoveCursorToTouchpoint(com.winlator.star.core.TouchAimSettings.DIRECT.equals(mode));
         }
+        XServerDrawerState.INSTANCE.setTouchMode(mode);
+        if (shortcut != null) {
+            shortcut.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_SIM_TOUCH, screen ? "1" : null);
+            shortcut.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_TOUCH, screen ? null : mode);
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_SIM_TOUCH, screen ? "1" : null);
+            container.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_TOUCH, screen ? null : mode);
+            container.saveData();
+        }
+        Log.i("XServerDisplayActivity", "input: touch " + mode);
+    }
 
-        // Push back into the drawer so the chip renders its on/off state (matches the
-        // Relative Mouse / Disable Mouse toggles in setupUI).
-        XServerDrawerState.INSTANCE.setMoveCursorToTouchpoint(newValue);
-    } // Closes MoveCursorToTouchpoint
+    /** The in-game menu's Aim mode choice: applied now and saved for this game (else its container). Main thread. */
+    private void setSessionAimMode(String mode) {
+        if (!com.winlator.star.core.TouchAimSettings.isAim(mode)) return;
+        aimMode = mode;
+        applyAimMode();
+        XServerDrawerState.INSTANCE.setAimMode(mode);
+        // relativeMouse stays in step so a build from before Aim mode reads the same choice.
+        String relative = com.winlator.star.core.TouchAimSettings.ON.equals(mode) ? "1" : "0";
+        if (shortcut != null) {
+            shortcut.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_AIM, mode);
+            shortcut.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_RELATIVE_MOUSE, relative);
+            shortcut.saveData();
+        } else if (container != null) {
+            container.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_AIM, mode);
+            container.putExtra(com.winlator.star.core.TouchAimSettings.EXTRA_RELATIVE_MOUSE, relative);
+            container.saveData();
+        }
+        Log.i("XServerDisplayActivity", "input: aim " + mode);
+    }
+
+    /** On = relative (delta) mouse all the time, as the old Relative Mouse; Auto arms the detector; Off neither. */
+    private void applyAimMode() {
+        boolean on = com.winlator.star.core.TouchAimSettings.ON.equals(aimMode);
+        isRelativeMouseMovement = on;
+        if (xServer != null) {
+            xServer.setRelativeMouseMovement(on);
+            xServer.aimTracker.setMode(com.winlator.star.core.TouchAimSettings.trackerMode(aimMode));
+        }
+    }
+
+    /**
+     * Aim Auto started or ended (the game keeps moving the pointer back, or stopped). While on, the
+     * pointer is hidden and, on Wayland, input goes to the compositor as deltas exactly as under a
+     * pointer lock (on X11 the touch path sends deltas itself and the game's warps keep working).
+     * Main thread.
+     */
+    private void onAutoAimChanged(boolean active) {
+        if (autoAimActive == active) return;
+        autoAimActive = active;
+        Log.i("XServerDisplayActivity", "input: aim auto " + (active ? "on (the game moves the pointer back)" : "off"));
+        if (xServer == null) return;
+        if (waylandMode) {
+            xServer.setExternalRelativeMode(waylandPointerLocked || active);
+            if (active && waylandCursorView != null && waylandCursorView.getVisibility() != View.GONE)
+                waylandCursorView.setVisibility(View.GONE);
+        } else {
+            applyX11CursorVisibility();
+        }
+    }
 
     /** Persist the drawer's gesture settings and apply them to the live touchpad. */
     private void applyGestureConfig() {

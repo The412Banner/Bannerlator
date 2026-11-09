@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Een naam mag geen \\ / : * ? \" &lt; &gt; | bevatten</string>
     <string name="lab_1e1e0a24">Voor de games die de client start, niet de client zelf, en voor allemaal tegelijk: de sessie heeft één omgeving. </string>
     <string name="lab_1e223777">Versie, release-opmerkingen en Downloaden en installeren (klassieke Instellingen).</string>
-    <string name="lab_1e2f8841">Relatieve muis (voor games met 3D-camera)</string>
     <string name="lab_1e537526">Niets in de lijst.</string>
     <string name="lab_1e713627">Linux Steam-client</string>
     <string name="lab_1e765e92">Instellingen bewegingsrichten</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatisch · een Steam-trailer</string>
     <string name="lab_2756404f">Energie en root terugzetten naar de standaardwaarden van de app</string>
     <string name="lab_27b56d30">Installeert de XInput-DLL\'s van Bannerlator, of Directe XInput nu aan of uit staat, met de eigen XInput van Wine ernaast, zodat Bediening › Pad in het gamemenu tijdens het spelen tussen beide kan wisselen (de controller maakt opnieuw verbinding). Standaard aan. Uit: Directe XInput blijft zoals de game startte, en wijzigen vereist een herstart.</string>
+    <string name="lab_27bb1078">Direct</string>
     <string name="lab_27bcb120">Box64- en FEX-presets toevoegen, kopiëren, verwijderen, exporteren of importeren (klassieke Instellingen).</string>
     <string name="lab_27beed97">%1$s · %2$s sessies</string>
     <string name="lab_27f2c3fa">Zet de minimumfrequentie van elk cluster op het maximum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Omzeilt een Turnip-bug waarbij de vraag \"is de GPU klaar?\" op het hele frame wacht (de timingbug uit het rapport). Standaard laat de adapter de bug detecteren; Aan dwingt de shim af, Uit schakelt hem uit.</string>
     <string name="lab_3205bc81">Er is geen Turnip als grafische driver ingesteld, dus er valt niets te controleren.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Touchscreenmodus</string>
     <string name="lab_32a7fa00">Framegeneratie</string>
     <string name="lab_334d4744">Maak een momentopname van saves uit de Steam-bibliotheek in je lokale Bibliotheek als een game stopt.</string>
     <string name="lab_336d62eb">Grote CPU-cores verkiezen</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Geen repository\'s.</string>
     <string name="lab_3a1ed8c6">Weergavedriver (Android-kant)</string>
     <string name="lab_3a24cc2d">Per container ingesteld: het beschrijft je handen, niet de game.</string>
-    <string name="lab_3a589c47">Cursor naar aanraakpunt</string>
     <string name="lab_3a5c3010">FPS, CPU-/GPU-belasting en temperaturen bovenop de game. Tik erop in de game om hem te draaien of van grootte te veranderen.</string>
     <string name="lab_3a95276d">vkBasalt-sterkte</string>
     <string name="lab_3b02039e">Gebalanceerd</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS forceren (CPU-snelheidsfix)</string>
     <string name="lab_497cf9a3">Speel op een tv of cast ernaar.</string>
     <string name="lab_4990b8f5">Scherpte (VKBasalt)</string>
-    <string name="lab_499bfdd8">De aanwijzer springt naar waar je aanraakt.</string>
     <string name="lab_49cff1c6">Muis en aanraking</string>
     <string name="lab_49d721cc">Prestatie-overlay</string>
     <string name="lab_49fc80cc">Uit (Solo draait er één tegelijk)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Linksboven</string>
     <string name="lab_58a426c9">Uit voor deze game zolang framegeneratie draait. </string>
-    <string name="lab_5901a4cd">Wayland: muisbewegingen gaan naar de compositor; een game die de aanwijzer vastzet, krijgt ze als relatieve beweging.</string>
     <string name="lab_5946d9c6">App-instelling gebruiken (%1$s)</string>
     <string name="lab_594a913b">Asynchrone shaders</string>
     <string name="lab_595daef9">Gedownloade componenten: archieven en de cataloguslijst.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU-/GPU-belasting en temperaturen bovenop de game. De stijl staat hieronder, en in de game in het zijmenu.</string>
     <string name="lab_5cf98060">Extensies present-wait / dynamic-rendering verbergen</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Richtmodus</string>
     <string name="lab_5d676a2d">Alleen je eigen presets kunnen worden geëxporteerd.</string>
     <string name="lab_5d7ee5f8">GitHub, issuetracker en Discord</string>
     <string name="lab_5db787de">Steam-vrienden en chat.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Probleemoplossing</string>
     <string name="lab_6c15cb41">De aanraakknoppen van de huidige indeling.</string>
     <string name="lab_6c3656ad">Staand</string>
-    <string name="lab_6c37a76c">Aanraken werkt als</string>
     <string name="lab_6c5fe717">Geluid van previews</string>
     <string name="lab_6c8e3b1f">Als standaard instellen…</string>
     <string name="lab_6c9249ac">Automatisch downloaden uit de cloud bij het starten gaat UIT voor de games in je GOG-bibliotheek. De nieuwste cloudsaves worden niet opgehaald voordat een game start — je moet ze zelf downloaden via het tabblad GOG Savebeheer of de detailpagina van de game. Doorgaan?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Niet-opgeslagen wijzigingen hier gaan verloren. Bestaande containers houden hun instellingen.</string>
     <string name="lab_8ecc4179"> in plaats van die van Wine. Nodig voor veel wrappers en modloaders. Grafische DLL\'s worden nooit meegenomen: die zijn van DXVK en VKD3D.</string>
     <string name="lab_8ece40f8">Alleen Banners-Turnip-drivers; standaard-Turnip negeert het.</string>
-    <string name="lab_8ed00ed7">Voor games die de aanwijzer vastzetten (rondkijken met de camera).</string>
     <string name="lab_8ee80fca">Geen driverbronnen.</string>
     <string name="lab_8ef37792">Onder</string>
     <string name="lab_8f4a852b">Apparaatvermogen</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Primaire XR-controller</string>
     <string name="lab_e14156b5">Cores voor de Steam-client</string>
     <string name="lab_e141ca5d">Prioriteit schermbediening</string>
-    <string name="lab_e1768a43">Ook in de game te schakelen via het zijmenu.</string>
     <string name="lab_e18caa5c">Geen stations</string>
     <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Niet opgeslagen</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) of off</string>
     <string name="lab_e98a38e0">Vergrootglas, beeld-in-beeld, toetsenbord en prestaties.</string>
     <string name="lab_e9bb2501">Laat games de microfoon gebruiken: DirectAudio neemt de invoer op. Android vraagt één keer om toestemming.</string>
-    <string name="lab_e9e73eeb">Touchscreen stuurt echte aanrakingen naar de game.</string>
     <string name="lab_ea08e43f">Linux-runtime en alle lijsten</string>
     <string name="lab_ea354143">Een onopvallende knop rechtsboven die het snelmenu via aanraking opent. Terug, de Menuknop of een tik met vier vingers werken ook zonder.</string>
     <string name="lab_ea4babd8">Hoe het start</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Stijl</string>
     <string name="lab_f2857f55">Intern</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Muis / touchpad</string>
     <string name="lab_f2cdcc45">GPU-driver kiezen</string>
     <string name="lab_f2ed832c">Hoeveel GPU-geheugen DirectX-games te horen krijgen (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Geluidslatentie</string>

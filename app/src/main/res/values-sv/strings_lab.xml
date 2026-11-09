@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Ett namn får inte innehålla \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">För spelen som klienten startar, inte själva klienten, och för alla på en gång: sessionen har en enda miljö. </string>
     <string name="lab_1e223777">Version, versionsinformation och Ladda ned och installera (klassiska Inställningar).</string>
-    <string name="lab_1e2f8841">Relativ mus (för spel med 3D-kamera)</string>
     <string name="lab_1e537526">Inget i listan.</string>
     <string name="lab_1e713627">Steam-klient för Linux</string>
     <string name="lab_1e765e92">Inställningar för rörelsesikte</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatiskt · en Steam-trailer</string>
     <string name="lab_2756404f">Återställ energi och root till appens standardvärden</string>
     <string name="lab_27b56d30">Installerar Bannerlators XInput-DLL:er oavsett om Direkt XInput är på eller av, med Wines egen XInput bredvid, så att Kontroller › Pad i spelmenyn kan växla mellan dem medan spelet körs (handkontrollen återansluts). På som standard. Av: Direkt XInput förblir som när spelet startade, och en ändring kräver omstart.</string>
+    <string name="lab_27bb1078">Direkt</string>
     <string name="lab_27bcb120">Lägg till, kopiera, ta bort, exportera eller importera Box64- och FEX-förinställningar (klassiska Inställningar).</string>
     <string name="lab_27beed97">%1$s · %2$s sessioner</string>
     <string name="lab_27f2c3fa">Sätter varje klusters minimifrekvens till dess maximum.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Kringgår en Turnip-bugg där frågan \"är GPU:n klar?\" väntar på hela bildrutan (tidsbuggen i rapporten). Standard låter adaptern upptäcka den; På slår alltid på den, Av stänger av den.</string>
     <string name="lab_3205bc81">Ingen Turnip-grafikdrivrutin är inställd, så det finns inget att kontrollera.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Pekskärmsläge</string>
     <string name="lab_32a7fa00">Bildgenerering</string>
     <string name="lab_334d4744">Ta en ögonblicksbild av Steam-bibliotekets sparfiler till ditt lokala Bibliotek när ett spel avslutas.</string>
     <string name="lab_336d62eb">Föredra stora CPU-kärnor</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Inga förråd.</string>
     <string name="lab_3a1ed8c6">Skärmdrivrutin (Android-sidan)</string>
     <string name="lab_3a24cc2d">Ställs in per container: den beskriver dina händer, inte spelet.</string>
-    <string name="lab_3a589c47">Markören till beröringen</string>
     <string name="lab_3a5c3010">FPS, CPU-/GPU-belastning och temperaturer ovanpå spelet. Tryck på den i spelet för att vända den eller ändra storlek.</string>
     <string name="lab_3a95276d">vkBasalt-styrka</string>
     <string name="lab_3b02039e">Balanserad</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Tvinga SSBS (CPU-hastighetsfix)</string>
     <string name="lab_497cf9a3">Spela på en TV eller casta till en.</string>
     <string name="lab_4990b8f5">Skärpa (VKBasalt)</string>
-    <string name="lab_499bfdd8">Pekaren hoppar dit du trycker.</string>
     <string name="lab_49cff1c6">Mus och pekskärm</string>
     <string name="lab_49d721cc">Prestandaöverlägg</string>
     <string name="lab_49fc80cc">Av (Solo kör en i taget)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Uppe till vänster</string>
     <string name="lab_58a426c9">Av för detta spel medan bildgenerering körs. </string>
-    <string name="lab_5901a4cd">Wayland: musens förflyttningar går till kompositorn; ett spel som låser pekaren får dem som relativ rörelse.</string>
     <string name="lab_5946d9c6">Använd appens inställning (%1$s)</string>
     <string name="lab_594a913b">Asynkrona shaders</string>
     <string name="lab_595daef9">Nedladdade komponenter: arkiv och kataloglistan.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU-/GPU-belastning och temperaturer ovanpå spelet. Stilen finns nedan, och i spelet i sidomenyn.</string>
     <string name="lab_5cf98060">Dölj tilläggen present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Siktesläge</string>
     <string name="lab_5d676a2d">Bara dina egna förinställningar kan exporteras.</string>
     <string name="lab_5d7ee5f8">GitHub, ärendehantering och Discord</string>
     <string name="lab_5db787de">Steam-vänner och chatt.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Felsökning</string>
     <string name="lab_6c15cb41">Pekknapparna i den aktuella layouten.</string>
     <string name="lab_6c3656ad">Stående</string>
-    <string name="lab_6c37a76c">Beröring fungerar som</string>
     <string name="lab_6c5fe717">Ljud i förhandsvisningar</string>
     <string name="lab_6c8e3b1f">Ange som standard…</string>
     <string name="lab_6c9249ac">Automatisk molnnedladdning vid start stängs AV för spelen i ditt GOG-bibliotek. De senaste molnsparfilerna hämtas inte innan ett spel startar — du måste ladda ned dem själv från fliken GOG Sparhanterare eller spelets detaljsida. Fortsätta?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Osparade ändringar här går förlorade. Befintliga containrar behåller sina inställningar.</string>
     <string name="lab_8ecc4179"> i stället för Wines. Behövs av många wrappers och modladdare. Grafik-DLL:er tas aldrig med: de hör till DXVK och VKD3D.</string>
     <string name="lab_8ece40f8">Endast Banners-Turnip-drivrutiner; vanlig Turnip ignorerar det.</string>
-    <string name="lab_8ed00ed7">För spel som låser pekaren (kamerastyrning).</string>
     <string name="lab_8ee80fca">Inga drivrutinskällor.</string>
     <string name="lab_8ef37792">Nederst</string>
     <string name="lab_8f4a852b">Enhetens energiläge</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Primär XR-handkontroll</string>
     <string name="lab_e14156b5">Steam-klientens kärnor</string>
     <string name="lab_e141ca5d">Prioritet för skärmkontroller</string>
-    <string name="lab_e1768a43">Kan även växlas i spelet från sidomenyn.</string>
     <string name="lab_e18caa5c">Inga enheter</string>
     <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Inte sparat</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) eller off</string>
     <string name="lab_e98a38e0">Förstoringsglas, bild-i-bild, tangentbord och prestanda.</string>
     <string name="lab_e9bb2501">Låter spel använda mikrofonen: DirectAudio fångar ljudet. Android frågar om behörighet en gång.</string>
-    <string name="lab_e9e73eeb">Pekskärm skickar riktiga beröringar till spelet.</string>
     <string name="lab_ea08e43f">Linux-körmiljö och alla listor</string>
     <string name="lab_ea354143">En diskret knapp uppe till höger som öppnar snabbmenyn med ett tryck. Bakåt, Meny-knappen eller ett tryck med fyra fingrar fungerar utan den.</string>
     <string name="lab_ea4babd8">Hur det startar</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Internt</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mus / pekplatta</string>
     <string name="lab_f2cdcc45">Välj GPU-drivrutin</string>
     <string name="lab_f2ed832c">Hur mycket GPU-minne DirectX-spel får veta att det finns (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Ljudlatens</string>

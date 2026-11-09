@@ -3995,9 +3995,9 @@ internal fun ControlsContent(
     val initTimeout by XServerDialogState.timeoutEnabled.collectAsState()
     val initHaptics by XServerDialogState.hapticsEnabled.collectAsState()
 
-    val moveCursorToTouch by state.moveCursorToTouchpoint.collectAsState()
+    val touchMode by state.touchMode.collectAsState()
+    val aimMode by state.aimMode.collectAsState()
     val cursorAutoHide by state.cursorAutoHide.collectAsState()
-    val isRelativeMouse by state.isRelativeMouseMovement.collectAsState()
     val isWaylandSession by state.isWaylandMode.collectAsState()
     val isMouseDisabled by state.isMouseDisabled.collectAsState()
     val initOverlayOpacity by state.overlayOpacity.collectAsState()
@@ -4148,16 +4148,34 @@ internal fun ControlsContent(
             Text("Mouse & Cursor", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
 
+            // Touch and Aim mode are saved for this game (TouchAimSettings); the chips apply at once.
+            Text("Touch", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            ModeChipGrid(
+                listOf(
+                    Triple<String, Boolean, () -> Unit>("Touchpad", touchMode == "touchpad") { state.onTouchMode?.accept("touchpad") },
+                    Triple<String, Boolean, () -> Unit>("Direct", touchMode == "direct") { state.onTouchMode?.accept("direct") },
+                    Triple<String, Boolean, () -> Unit>("Touchscreen", touchMode == "touchscreen") { state.onTouchMode?.accept("touchscreen") },
+                ),
+                perRow = 3
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("Aim", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            ModeChipGrid(
+                listOf(
+                    Triple<String, Boolean, () -> Unit>("Auto", aimMode == "auto") { state.onAimMode?.accept("auto") },
+                    Triple<String, Boolean, () -> Unit>("On", aimMode == "on") { state.onAimMode?.accept("on") },
+                    Triple<String, Boolean, () -> Unit>("Off", aimMode == "off") { state.onAimMode?.accept("off") },
+                ),
+                perRow = 3
+            )
+            Spacer(Modifier.height(6.dp))
+
             // Each of these flips its flag host-side and stays open — like the fullscreen selector, the
             // drawer keeps rendering so the chip's new on/off state is visible where you tapped it.
             ToggleChipGrid(
                 listOf(
-                    ToggleChipItem("Cursor to Touch", moveCursorToTouch) {
-                        state.onMoveCursorToTouchpoint?.run()
-                    },
-                    ToggleChipItem("Relative Mouse", isRelativeMouse) {
-                        state.onRelativeMouseMovement?.run()
-                    },
                     ToggleChipItem("Disable Mouse", isMouseDisabled) {
                         state.onDisableMouse?.run()
                     },
@@ -4190,10 +4208,8 @@ internal fun ControlsContent(
                 )
             }
 
-            // Tied directly to the toggle: the gestures only exist in absolute-cursor mode, so the
-            // pane appears as part of switching Cursor to Touch on and leaves with it. No cog — one
-            // less tap, and turning the mode on now shows you exactly what you turned on.
-            if (moveCursorToTouch) TouchGestureSettings(state)
+            // The gestures only exist with the pointer under the finger, so the pane shows with Direct.
+            if (touchMode == "direct") TouchGestureSettings(state)
         }
 
         // ── Vibration ──
@@ -4708,7 +4724,7 @@ private fun SaveScopeFooter() {
     })
 }
 
-// ───── Touch gesture settings — Controls > Mouse, shown while Cursor to Touch is on ─────
+// ───── Touch gesture settings — Controls > Mouse, shown while Touch is Direct ─────
 // These gestures only exist in absolute-cursor mode, so the pane lives and dies with that toggle
 // rather than behind its own control. Each gesture is independently switchable because the right set
 // is per-game: an RTS wants both, a mouse-look shooter wants neither stealing its drags. Changes

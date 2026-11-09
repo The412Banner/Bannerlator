@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">A név nem tartalmazhatja ezeket: \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">A kliens által indított játékokra vonatkozik, nem magára a kliensre, és mindegyikükre: a munkamenetnek egyetlen környezete van. </string>
     <string name="lab_1e223777">Verzió, kiadási megjegyzések és Letöltés és telepítés (klasszikus Beállítások).</string>
-    <string name="lab_1e2f8841">Relatív egér (3D kamerás játékokhoz)</string>
     <string name="lab_1e537526">A lista üres.</string>
     <string name="lab_1e713627">Linuxos Steam-kliens</string>
     <string name="lab_1e765e92">Mozgásos célzás beállításai</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automatikus · Steam-előzetes</string>
     <string name="lab_2756404f">Energia- és root-beállítások visszaállítása az alkalmazás alapértelmezéseire</string>
     <string name="lab_27b56d30">Telepíti a Bannerlator XInput DLL-jeit a Wine saját XInputja mellé, akár be van kapcsolva a Közvetlen XInput, akár nincs, így a játékmenü Controls › Pad része futás közben válthat köztük (a kontroller újracsatlakozik). Alapból bekapcsolva. Ki: a Közvetlen XInput úgy marad, ahogy a játék indult, és a módosításához újraindítás kell.</string>
+    <string name="lab_27bb1078">Közvetlen</string>
     <string name="lab_27bcb120">Box64 és FEX előbeállítások hozzáadása, másolása, törlése, exportálása vagy importálása (klasszikus Beállítások).</string>
     <string name="lab_27beed97">%1$s · %2$s munkamenet</string>
     <string name="lab_27f2c3fa">Minden klaszter minimális frekvenciáját a maximumára állítja.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Megkerül egy Turnip-hibát, amelyben a „kész van a GPU?” kérdés az egész képkockát kivárja (a jelentés időzítési hibája). Az Alapértelmezett az adapterre bízza az észlelést; a Be kikényszeríti, a Ki letiltja.</string>
     <string name="lab_3205bc81">Nincs beállítva Turnip grafikus illesztőprogram, így nincs mit ellenőrizni.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Érintőképernyő módja</string>
     <string name="lab_32a7fa00">Képkocka-gen.</string>
     <string name="lab_334d4744">A Steam-könyvtár mentéseiről pillanatkép a helyi Könyvtárba, amikor egy játék kilép.</string>
     <string name="lab_336d62eb">Nagy CPU-magok előnyben</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Nincsenek tárolók.</string>
     <string name="lab_3a1ed8c6">Kijelző-illesztőprogram (Android oldal)</string>
     <string name="lab_3a24cc2d">Konténerenként állítható: a kezedet írja le, nem a játékot.</string>
-    <string name="lab_3a589c47">Kurzor az érintéshez</string>
     <string name="lab_3a5c3010">FPS, CPU-/GPU-terhelés és hőmérsékletek a játék fölött. Játék közben koppints rá a tájolás váltásához vagy az átméretezéshez.</string>
     <string name="lab_3a95276d">vkBasalt erőssége</string>
     <string name="lab_3b02039e">Kiegyensúlyozott</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS kényszerítése (CPU-sebesség javítása)</string>
     <string name="lab_497cf9a3">Játssz tévén, vagy küldd át rá a képet.</string>
     <string name="lab_4990b8f5">Élesség (VKBasalt)</string>
-    <string name="lab_499bfdd8">A mutató oda ugrik, ahol megérinted a képernyőt.</string>
     <string name="lab_49cff1c6">Egér és érintés</string>
     <string name="lab_49d721cc">Teljesítmény-overlay</string>
     <string name="lab_49fc80cc">Ki (Egyedül módban egyszerre csak egy fut)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Bal felső</string>
     <string name="lab_58a426c9">Ennél a játéknál kikapcsolva, amíg a képkocka-generálás fut. </string>
-    <string name="lab_5901a4cd">Wayland: az egérelmozdulások a kompozitorhoz jutnak; a mutatót rögzítő játék relatív mozgásként kapja meg őket.</string>
     <string name="lab_5946d9c6">Alkalmazásbeállítás használata (%1$s)</string>
     <string name="lab_594a913b">Aszinkron shaderek</string>
     <string name="lab_595daef9">Letöltött összetevők: archívumok és a katalóguslista.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU-/GPU-terhelés és hőmérsékletek a játék fölött. A stílusa lent, illetve játék közben az oldalsó menüben állítható.</string>
     <string name="lab_5cf98060">present-wait / dynamic-rendering bővítmények elrejtése</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Célzási mód</string>
     <string name="lab_5d676a2d">Csak a saját előbeállításaid exportálhatók.</string>
     <string name="lab_5d7ee5f8">GitHub, hibakövető és Discord</string>
     <string name="lab_5db787de">Steam barátok és csevegés.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Hibaelhárítás</string>
     <string name="lab_6c15cb41">A jelenlegi elrendezés érintőgombjai.</string>
     <string name="lab_6c3656ad">Álló</string>
-    <string name="lab_6c37a76c">Az érintés funkciója</string>
     <string name="lab_6c5fe717">Előnézetek hangja</string>
     <string name="lab_6c8e3b1f">Beállítás alapértelmezettként…</string>
     <string name="lab_6c9249ac">Az indításkori automatikus felhőletöltés KI lesz kapcsolva a GOG-könyvtárad játékainál. A legújabb felhőmentések nem töltődnek le a játék indulása előtt — magadnak kell letöltened őket a GOG Mentéskezelő lapon vagy a játék adatlapján. Folytatod?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Az itt nem mentett módosítások elvesznek. A meglévő konténerek megtartják a beállításaikat.</string>
     <string name="lab_8ecc4179"> a Wine sajátjai helyett. Sok wrapper és modbetöltő igényli. A grafikus DLL-ek sosem tartoznak ide: azokat a DXVK és a VKD3D kezeli.</string>
     <string name="lab_8ece40f8">Csak Banners-Turnip illesztőprogramokhoz; a gyári Turnip figyelmen kívül hagyja.</string>
-    <string name="lab_8ed00ed7">Olyan játékokhoz, amelyek rögzítik a mutatót (kameranézet).</string>
     <string name="lab_8ee80fca">Nincsenek illesztőprogram-források.</string>
     <string name="lab_8ef37792">Lent</string>
     <string name="lab_8f4a852b">Eszköz energiagazdálkodása</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Elsődleges XR-kontroller</string>
     <string name="lab_e14156b5">Steam-kliens magok</string>
     <string name="lab_e141ca5d">Képernyős prioritás</string>
-    <string name="lab_e1768a43">Játék közben az oldalsó menüből is kapcsolható.</string>
     <string name="lab_e18caa5c">Nincsenek meghajtók</string>
     <string name="lab_e19da5b2">Wayland-adapter</string>
     <string name="lab_e1be537c">Nincs mentve</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) vagy off</string>
     <string name="lab_e98a38e0">Nagyító, kép a képben, billentyűzet és teljesítmény.</string>
     <string name="lab_e9bb2501">A játékok használhatják a mikrofont: a DirectAudio rögzíti a bemenetet. Az Android egyszer kér hozzá engedélyt.</string>
-    <string name="lab_e9e73eeb">Az Érintőképernyő valódi érintéseket küld a játéknak.</string>
     <string name="lab_ea08e43f">Linux futtatókörnyezet és minden lista</string>
     <string name="lab_ea354143">Halvány gomb a jobb felső sarokban, amely érintésre megnyitja a gyorsmenüt. Nélküle is működik a Vissza, a Menu gomb vagy a négyujjas koppintás.</string>
     <string name="lab_ea4babd8">Indítás módja</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Stílus</string>
     <string name="lab_f2857f55">Belső</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Egér / érintőpad</string>
     <string name="lab_f2cdcc45">GPU-illesztőprogram kiválasztása</string>
     <string name="lab_f2ed832c">Mekkora GPU-memóriát jelent a DirectX-játékoknak (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Hangkésleltetés</string>

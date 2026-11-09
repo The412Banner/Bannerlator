@@ -731,21 +731,21 @@ private fun BrightnessRow() {
     }
 }
 
-/** Relative mouse and Cursor to Touch: the same toggles as the Classic Controls › Mouse chips. */
+/** Touch and Aim mode: the same choices as the Classic Controls › Mouse chips, saved for this game. */
 @Composable
 private fun MouseQuickRows(state: XServerDrawerState) {
-    val relative by state.isRelativeMouseMovement.collectAsState()
-    val cursorToTouch by state.moveCursorToTouchpoint.collectAsState()
-    val wayland by state.isWaylandMode.collectAsState()
-    // The same Wayland note the Classic Mouse chips carry.
-    val relativeHint = if (wayland) L("Wayland: mouse deltas go to the compositor; a game that locks the pointer receives them as relative motion.")
-        else L("For games that lock the pointer (camera look).")
-    IgRow(L("Relative mouse"), hint = relativeHint, scopes = listOf(igGameScope())) {
-        IgSwitch(relative) { state.onRelativeMouseMovement?.run() }
+    val touch by state.touchMode.collectAsState()
+    val aim by state.aimMode.collectAsState()
+    IgRow(L("Touch"), scopes = listOf(igGameScope()), wideControl = true) {
+        IgSegmented(listOf("touchpad" to L("Touchpad"), "direct" to L("Direct"), "touchscreen" to L("Touchscreen")), touch) {
+            state.onTouchMode?.accept(it)
+        }
     }
     IgDivider()
-    IgRow(L("Cursor to touch"), hint = L("The pointer jumps to where you touch."), scopes = listOf(SaveScope.ALL)) {
-        IgSwitch(cursorToTouch) { state.onMoveCursorToTouchpoint?.run() }
+    IgRow(L("Aim mode"), scopes = listOf(igGameScope()), wideControl = true) {
+        IgSegmented(listOf("auto" to L("Auto"), "on" to L("On"), "off" to L("Off")), aim) {
+            state.onAimMode?.accept(it)
+        }
     }
 }
 

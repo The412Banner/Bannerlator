@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Nama tidak boleh berisi \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Untuk game yang dijalankan klien, bukan klien itu sendiri, dan untuk semuanya: sesi hanya punya satu lingkungan. </string>
     <string name="lab_1e223777">Versi, catatan rilis, dan Unduh &amp; instal (Setelan Classic).</string>
-    <string name="lab_1e2f8841">Mouse relatif (untuk game kamera 3D)</string>
     <string name="lab_1e537526">Daftar kosong.</string>
     <string name="lab_1e713627">Klien Steam Linux</string>
     <string name="lab_1e765e92">Setelan bidik gerak</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Otomatis · trailer Steam</string>
     <string name="lab_2756404f">Setel ulang daya dan root ke default aplikasi</string>
     <string name="lab_27b56d30">Memasang DLL XInput Bannerlator baik XInput langsung aktif maupun nonaktif, bersama XInput bawaan Wine, sehingga Kontrol › Pad di menu dalam game bisa beralih di antaranya saat game berjalan (pengontrol tersambung ulang). Aktif secara default. Nonaktif: XInput langsung tetap seperti saat game dimulai, dan mengubahnya perlu memulai ulang.</string>
+    <string name="lab_27bb1078">Langsung</string>
     <string name="lab_27bcb120">Tambah, salin, hapus, ekspor, atau impor preset Box64 dan FEX (Setelan Classic).</string>
     <string name="lab_27beed97">%1$s · %2$s sesi</string>
     <string name="lab_27f2c3fa">Mengatur frekuensi minimum setiap cluster ke nilai maksimumnya.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Mengatasi bug Turnip saat pertanyaan \"apakah GPU sudah selesai?\" menunggu seluruh frame (bug timing dalam laporan). Default membiarkan adapter mendeteksinya; Aktif memaksanya, Nonaktif mematikannya.</string>
     <string name="lab_3205bc81">Belum ada driver grafis Turnip yang diatur, jadi tidak ada yang perlu diperiksa.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Mode Layar Sentuh</string>
     <string name="lab_32a7fa00">Frame gen</string>
     <string name="lab_334d4744">Simpan salinan save pustaka Steam ke Pustaka lokal Anda saat game keluar.</string>
     <string name="lab_336d62eb">Utamakan core CPU besar</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Tidak ada repositori.</string>
     <string name="lab_3a1ed8c6">Driver tampilan (sisi Android)</string>
     <string name="lab_3a24cc2d">Diatur per container: ini menggambarkan tangan Anda, bukan game-nya.</string>
-    <string name="lab_3a589c47">Kursor ke titik sentuh</string>
     <string name="lab_3a5c3010">FPS, beban CPU/GPU, dan suhu di atas game. Ketuk dalam game untuk mengubah arah atau ukurannya.</string>
     <string name="lab_3a95276d">Kekuatan vkBasalt</string>
     <string name="lab_3b02039e">Seimbang</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Paksa SSBS (perbaikan kecepatan CPU)</string>
     <string name="lab_497cf9a3">Main di TV atau cast ke TV.</string>
     <string name="lab_4990b8f5">Ketajaman (VKBasalt)</string>
-    <string name="lab_499bfdd8">Pointer melompat ke tempat yang Anda sentuh.</string>
     <string name="lab_49cff1c6">Mouse &amp; sentuhan</string>
     <string name="lab_49d721cc">Overlay performa</string>
     <string name="lab_49fc80cc">Nonaktif (Solo menjalankan satu per satu)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Kiri atas</string>
     <string name="lab_58a426c9">Nonaktif untuk game ini selama frame generation berjalan. </string>
-    <string name="lab_5901a4cd">Wayland: delta mouse dikirim ke compositor; game yang mengunci pointer menerimanya sebagai gerakan relatif.</string>
     <string name="lab_5946d9c6">Gunakan setelan aplikasi (%1$s)</string>
     <string name="lab_594a913b">Shader async</string>
     <string name="lab_595daef9">Komponen yang diunduh: arsip dan daftar katalog.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, beban CPU/GPU, dan suhu di atas game. Gayanya diatur di bawah, dan dalam game dari menu samping.</string>
     <string name="lab_5cf98060">Sembunyikan ekstensi present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Mode bidik</string>
     <string name="lab_5d676a2d">Hanya preset buatan Anda yang bisa diekspor.</string>
     <string name="lab_5d7ee5f8">GitHub, pelacak masalah, dan Discord</string>
     <string name="lab_5db787de">Teman dan obrolan Steam.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Pemecahan masalah</string>
     <string name="lab_6c15cb41">Tombol sentuh dari tata letak saat ini.</string>
     <string name="lab_6c3656ad">Potret</string>
-    <string name="lab_6c37a76c">Sentuhan berfungsi sebagai</string>
     <string name="lab_6c5fe717">Suara pratinjau</string>
     <string name="lab_6c8e3b1f">Jadikan default…</string>
     <string name="lab_6c9249ac">Unduhan cloud otomatis saat peluncuran akan NONAKTIF untuk game di pustaka GOG Anda. Save cloud terbaru tidak akan diambil sebelum game dimulai — Anda perlu mengunduhnya sendiri dari tab Pengelola Save GOG atau halaman detail game. Lanjutkan?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Perubahan yang belum disimpan di sini akan hilang. Container yang sudah ada tetap memakai setelannya.</string>
     <string name="lab_8ecc4179"> alih-alih milik Wine. Dibutuhkan banyak wrapper dan mod loader. DLL grafis tidak pernah disertakan: itu milik DXVK dan VKD3D.</string>
     <string name="lab_8ece40f8">Hanya driver Banners-Turnip; Turnip standar mengabaikannya.</string>
-    <string name="lab_8ed00ed7">Untuk game yang mengunci pointer (gerak kamera).</string>
     <string name="lab_8ee80fca">Tidak ada sumber driver.</string>
     <string name="lab_8ef37792">Bawah</string>
     <string name="lab_8f4a852b">Daya perangkat</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Pengontrol XR utama</string>
     <string name="lab_e14156b5">Core klien Steam</string>
     <string name="lab_e141ca5d">Prioritas di layar</string>
-    <string name="lab_e1768a43">Juga bisa diganti dalam game dari menu samping.</string>
     <string name="lab_e18caa5c">Tidak ada drive</string>
     <string name="lab_e19da5b2">Adapter Wayland</string>
     <string name="lab_e1be537c">Belum disimpan</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000), atau off</string>
     <string name="lab_e98a38e0">Kaca pembesar, gambar-dalam-gambar, keyboard, dan performa.</string>
     <string name="lab_e9bb2501">Membuat game bisa memakai mikrofon: DirectAudio menangkap input. Android meminta izin sekali.</string>
-    <string name="lab_e9e73eeb">Layar sentuh mengirim sentuhan asli ke game.</string>
     <string name="lab_ea08e43f">Runtime Linux dan semua daftar</string>
     <string name="lab_ea354143">Tombol samar di kanan atas untuk membuka menu cepat lewat sentuhan. Kembali, tombol Menu, atau ketuk empat jari tetap berfungsi tanpanya.</string>
     <string name="lab_ea4babd8">Cara memulai</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Gaya</string>
     <string name="lab_f2857f55">Internal</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Mouse / touchpad</string>
     <string name="lab_f2cdcc45">Pilih driver GPU</string>
     <string name="lab_f2ed832c">Jumlah memori GPU yang diberitahukan ke game DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latensi suara</string>

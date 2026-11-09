@@ -81,6 +81,14 @@ public class XServer {
 
     private volatile boolean externalRelativeMode;
 
+    /** Aim mode Auto's detector: fed with the game's warps (WarpPointer, Wayland warps) and the player's motion. */
+    public final AimTracker aimTracker = new AimTracker();
+
+    /** Touch should act as camera movement: Relative Mouse / Aim On, a Wayland lock, or Auto detected mouse-look. */
+    public boolean isAiming() {
+        return isRelativeMouseMovement() || aimTracker.isActive();
+    }
+
     /** Wayland mode: a program locked the pointer (zwp_pointer_constraints_v1), so the input path
      *  must deliver deltas while it holds. Leaves the X11 cursor locker alone (no X clients here). */
     public void setExternalRelativeMode(boolean on) {
@@ -229,10 +237,14 @@ public class XServer {
     }
 
     public void injectPointerMove(int x, int y) {
+        int dx, dy;
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+            dx = x - pointer.getX();
+            dy = y - pointer.getY();
             pointer.setPosition(x, y);
             emitRawFromAbsolute(x, y);
         }
+        aimTracker.onMotion(dx, dy, android.os.SystemClock.uptimeMillis());
         sinkPointerMove();
     }
 
@@ -242,7 +254,16 @@ public class XServer {
             XInput2Extension xi = xInput2;
             if (xi != null) xi.emitRawMotion(dx, dy);
         }
+        aimTracker.onMotion(dx, dy, android.os.SystemClock.uptimeMillis());
         sinkPointerMove();
+    }
+
+    /** Wayland: the game moved the pointer (a warp). Follow it without counting it as the player's motion. */
+    public void syncPointerPosition(int x, int y) {
+        try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+            pointer.setPosition(x, y);
+            rawAnchorValid = false;
+        }
     }
 
     // XInput 2 raw motion for absolute moves (touchscreen mode, a hovering mouse or stylus): the

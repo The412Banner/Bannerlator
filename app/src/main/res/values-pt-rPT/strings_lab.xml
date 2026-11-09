@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Um nome não pode conter \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Para os jogos que o cliente inicia, não o próprio cliente, e para todos eles: a sessão tem um único ambiente. </string>
     <string name="lab_1e223777">Versão, notas de lançamento e Transferir e instalar (Definições clássicas).</string>
-    <string name="lab_1e2f8841">Rato relativo (para jogos com câmara 3D)</string>
     <string name="lab_1e537526">Nada na lista.</string>
     <string name="lab_1e713627">Cliente Steam para Linux</string>
     <string name="lab_1e765e92">Definições da mira por movimento</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Automático · um trailer do Steam</string>
     <string name="lab_2756404f">Repor energia e root nas predefinições da app</string>
     <string name="lab_27b56d30">Instala as DLLs XInput do Bannerlator, quer o XInput direto esteja ligado ou desligado, com o XInput do próprio Wine ao lado, para que Controlos › Pad no menu do jogo possa alternar entre eles durante o jogo (o comando volta a ligar-se). Ligado por padrão. Desligado: o XInput direto fica como estava ao iniciar o jogo, e alterá-lo requer reiniciar.</string>
+    <string name="lab_27bb1078">Direto</string>
     <string name="lab_27bcb120">Adicionar, copiar, eliminar, exportar ou importar predefinições do Box64 e do FEX (Definições clássicas).</string>
     <string name="lab_27beed97">%1$s · %2$s sessões</string>
     <string name="lab_27f2c3fa">Define a frequência mínima de cada cluster para o seu máximo.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Contorna um erro do Turnip em que perguntar \"a GPU já terminou?\" espera pelo frame inteiro (o erro de temporização do relatório). Padrão deixa o adaptador detetar o erro; Ligado força o shim, Desligado desativa-o.</string>
     <string name="lab_3205bc81">Não está definido nenhum controlador gráfico Turnip, por isso não há nada para verificar.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Modo de ecrã tátil</string>
     <string name="lab_32a7fa00">Geração de frames</string>
     <string name="lab_334d4744">Guardar um instantâneo das gravações da biblioteca Steam na sua Biblioteca local quando um jogo termina.</string>
     <string name="lab_336d62eb">Preferir núcleos grandes da CPU</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Sem repositórios.</string>
     <string name="lab_3a1ed8c6">Controlador de ecrã (lado Android)</string>
     <string name="lab_3a24cc2d">Definido por contentor: descreve as suas mãos, não o jogo.</string>
-    <string name="lab_3a589c47">Cursor salta para o toque</string>
     <string name="lab_3a5c3010">FPS, carga da CPU/GPU e temperaturas por cima do jogo. Toque nela durante o jogo para a rodar ou redimensionar.</string>
     <string name="lab_3a95276d">Intensidade do vkBasalt</string>
     <string name="lab_3b02039e">Equilibrado</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Forçar SSBS (correção de velocidade da CPU)</string>
     <string name="lab_497cf9a3">Jogue numa TV ou transmita para uma.</string>
     <string name="lab_4990b8f5">Nitidez (VKBasalt)</string>
-    <string name="lab_499bfdd8">O ponteiro salta para onde tocar.</string>
     <string name="lab_49cff1c6">Rato e toque</string>
     <string name="lab_49d721cc">Sobreposição de desempenho</string>
     <string name="lab_49fc80cc">Desligado (Isolado executa um de cada vez)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Em cima à esquerda</string>
     <string name="lab_58a426c9">Desligado para este jogo enquanto a geração de frames está ativa. </string>
-    <string name="lab_5901a4cd">Wayland: os deltas do rato vão para o compositor; um jogo que bloqueia o ponteiro recebe-os como movimento relativo.</string>
     <string name="lab_5946d9c6">Usar definição da app (%1$s)</string>
     <string name="lab_594a913b">Shaders assíncronos</string>
     <string name="lab_595daef9">Componentes transferidos: arquivos e a lista do catálogo.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, carga da CPU/GPU e temperaturas por cima do jogo. O estilo está abaixo, e durante o jogo no menu lateral.</string>
     <string name="lab_5cf98060">Ocultar extensões present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d1ebf1b">Modo de mira</string>
     <string name="lab_5d676a2d">Só as suas próprias predefinições podem ser exportadas.</string>
     <string name="lab_5d7ee5f8">GitHub, registo de problemas e Discord</string>
     <string name="lab_5db787de">Amigos e chat do Steam.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Resolução de problemas</string>
     <string name="lab_6c15cb41">Os botões táteis do esquema atual.</string>
     <string name="lab_6c3656ad">Vertical</string>
-    <string name="lab_6c37a76c">O toque funciona como</string>
     <string name="lab_6c5fe717">Som das pré-visualizações</string>
     <string name="lab_6c8e3b1f">Definir como padrão…</string>
     <string name="lab_6c9249ac">A transferência automática da nuvem ao iniciar fica DESLIGADA para os jogos da sua biblioteca GOG. As gravações mais recentes na nuvem não serão obtidas antes de um jogo iniciar — terá de as transferir manualmente no separador Gestor de gravações GOG ou na página de detalhes do jogo. Continuar?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">As alterações não guardadas aqui perdem-se. Os contentores existentes mantêm as suas definições.</string>
     <string name="lab_8ecc4179"> em vez das do Wine. Necessário para muitos wrappers e carregadores de mods. As DLLs gráficas nunca são incluídas: essas pertencem ao DXVK e ao VKD3D.</string>
     <string name="lab_8ece40f8">Apenas controladores Banners-Turnip; o Turnip normal ignora-o.</string>
-    <string name="lab_8ed00ed7">Para jogos que bloqueiam o ponteiro (controlo da câmara).</string>
     <string name="lab_8ee80fca">Sem origens de controladores.</string>
     <string name="lab_8ef37792">Fundo</string>
     <string name="lab_8f4a852b">Energia do dispositivo</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Comando XR principal</string>
     <string name="lab_e14156b5">Núcleos do cliente Steam</string>
     <string name="lab_e141ca5d">Prioridade no ecrã</string>
-    <string name="lab_e1768a43">Também pode ser alterado durante o jogo no menu lateral.</string>
     <string name="lab_e18caa5c">Sem unidades</string>
     <string name="lab_e19da5b2">Adaptador Wayland</string>
     <string name="lab_e1be537c">Não guardado</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) ou off</string>
     <string name="lab_e98a38e0">Lupa, imagem em imagem, teclado e desempenho.</string>
     <string name="lab_e9bb2501">Permite que os jogos usem o microfone: o DirectAudio capta a entrada. O Android pede a permissão uma vez.</string>
-    <string name="lab_e9e73eeb">Ecrã tátil envia toques reais ao jogo.</string>
     <string name="lab_ea08e43f">Ambiente de execução Linux e todas as listas</string>
     <string name="lab_ea354143">Um botão discreto no canto superior direito que abre o menu rápido ao toque. Voltar, o botão Menu ou um toque com quatro dedos funcionam sem ele.</string>
     <string name="lab_ea4babd8">Como arranca</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Estilo</string>
     <string name="lab_f2857f55">Interno</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Rato / painel tátil</string>
     <string name="lab_f2cdcc45">Selecionar controlador da GPU</string>
     <string name="lab_f2ed832c">A memória da GPU que é indicada aos jogos DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latência do som</string>

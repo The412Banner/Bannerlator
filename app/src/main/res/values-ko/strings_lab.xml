@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">이름에 \\ / : * ? \" &lt; &gt; |는 사용할 수 없습니다</string>
     <string name="lab_1e1e0a24">클라이언트 자체가 아니라 클라이언트가 실행하는 모든 게임에 적용됩니다. 세션의 환경은 하나입니다. </string>
     <string name="lab_1e223777">버전, 릴리스 노트, 다운로드 및 설치(Classic 설정).</string>
-    <string name="lab_1e2f8841">상대 마우스 (3D 카메라 게임용)</string>
     <string name="lab_1e537526">목록이 비어 있습니다.</string>
     <string name="lab_1e713627">Linux Steam 클라이언트</string>
     <string name="lab_1e765e92">모션 조준 설정</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">자동 · Steam 트레일러</string>
     <string name="lab_2756404f">전원 및 루트 설정을 앱 기본값으로 초기화</string>
     <string name="lab_27b56d30">Direct XInput의 켜짐/꺼짐과 상관없이 Bannerlator의 XInput DLL을 Wine 자체 XInput과 함께 설치하여, 게임 실행 중에 게임 내 메뉴의 컨트롤 › 패드에서 둘 사이를 전환할 수 있게 합니다(컨트롤러가 다시 연결됩니다). 기본적으로 켜져 있습니다. 끔: Direct XInput은 게임을 시작한 상태 그대로이며, 바꾸려면 다시 시작해야 합니다.</string>
+    <string name="lab_27bb1078">직접</string>
     <string name="lab_27bcb120">Box64 및 FEX 프리셋 추가, 복사, 삭제, 내보내기, 가져오기(Classic 설정).</string>
     <string name="lab_27beed97">%1$s · %2$s회 플레이</string>
     <string name="lab_27f2c3fa">모든 클러스터의 최소 주파수를 최대값으로 설정합니다.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Turnip 버그를 우회합니다. 이 버그는 \'GPU 작업이 끝났나?\'를 물으면 프레임 전체가 끝날 때까지 기다립니다(보고서의 타이밍 버그). \'기본값\'은 어댑터가 감지하게 하고, \'켬\'은 강제로 적용하며, \'끔\'은 사용하지 않습니다.</string>
     <string name="lab_3205bc81">Turnip 그래픽 드라이버가 설정되지 않아 확인할 것이 없습니다.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">터치스크린 모드</string>
     <string name="lab_32a7fa00">프레임 생성</string>
     <string name="lab_334d4744">게임이 종료될 때 Steam 라이브러리 게임의 세이브 스냅숏을 로컬 라이브러리에 저장합니다.</string>
     <string name="lab_336d62eb">큰 CPU 코어 우선</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">리포지토리가 없습니다.</string>
     <string name="lab_3a1ed8c6">디스플레이 드라이버 (Android 측)</string>
     <string name="lab_3a24cc2d">컨테이너별 설정입니다. 게임이 아니라 사용자의 손에 관한 설정이기 때문입니다.</string>
-    <string name="lab_3a589c47">터치 위치로 커서 이동</string>
     <string name="lab_3a5c3010">게임 위에 FPS, CPU/GPU 부하, 온도를 표시합니다. 게임 중에 탭하면 방향이나 크기를 바꿀 수 있습니다.</string>
     <string name="lab_3a95276d">vkBasalt 강도</string>
     <string name="lab_3b02039e">균형</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">SSBS 강제 (CPU 속도 수정)</string>
     <string name="lab_497cf9a3">TV에서 플레이하거나 TV로 전송.</string>
     <string name="lab_4990b8f5">선명도 (VKBasalt)</string>
-    <string name="lab_499bfdd8">터치한 위치로 포인터가 이동합니다.</string>
     <string name="lab_49cff1c6">마우스 및 터치</string>
     <string name="lab_49d721cc">성능 오버레이</string>
     <string name="lab_49fc80cc">끔(단독은 한 번에 하나만 실행)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">왼쪽 위</string>
     <string name="lab_58a426c9">프레임 생성 중에는 이 게임에서 꺼짐. </string>
-    <string name="lab_5901a4cd">Wayland: 마우스 이동량은 컴포지터로 전달되며, 포인터를 고정하는 게임은 이를 상대 이동으로 받습니다.</string>
     <string name="lab_5946d9c6">앱 설정 사용(%1$s)</string>
     <string name="lab_594a913b">비동기 셰이더</string>
     <string name="lab_595daef9">다운로드한 구성 요소: 아카이브와 카탈로그 목록.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">게임 위에 FPS, CPU/GPU 부하, 온도를 표시합니다. 스타일은 아래에서, 게임 중에는 사이드 메뉴에서 설정합니다.</string>
     <string name="lab_5cf98060">present-wait / dynamic-rendering 확장 숨기기</string>
     <string name="lab_5cfcc2ee">네온</string>
+    <string name="lab_5d1ebf1b">조준 모드</string>
     <string name="lab_5d676a2d">직접 만든 프리셋만 내보낼 수 있습니다.</string>
     <string name="lab_5d7ee5f8">GitHub, 이슈 트래커, Discord</string>
     <string name="lab_5db787de">Steam 친구 및 채팅.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">문제 해결</string>
     <string name="lab_6c15cb41">현재 레이아웃의 터치 버튼.</string>
     <string name="lab_6c3656ad">세로</string>
-    <string name="lab_6c37a76c">터치 동작 방식</string>
     <string name="lab_6c5fe717">미리보기 소리</string>
     <string name="lab_6c8e3b1f">기본값으로 설정…</string>
     <string name="lab_6c9249ac">GOG 라이브러리 게임의 실행 시 자동 클라우드 다운로드가 꺼집니다. 게임 시작 전에 최신 클라우드 세이브를 가져오지 않으므로, GOG 세이브 관리자 탭이나 게임 상세 페이지에서 직접 다운로드해야 합니다. 계속할까요?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">여기서 저장하지 않은 변경 사항은 사라집니다. 기존 컨테이너는 설정을 유지합니다.</string>
     <string name="lab_8ecc4179"> 파일을 Wine 기본 파일 대신 불러옵니다. 많은 래퍼와 모드 로더에 필요합니다. 그래픽 DLL은 포함되지 않습니다(DXVK와 VKD3D가 담당).</string>
     <string name="lab_8ece40f8">Banners-Turnip 드라이버 전용입니다. 기본 Turnip은 이 설정을 무시합니다.</string>
-    <string name="lab_8ed00ed7">포인터를 고정하는 게임용(카메라 시점 조작).</string>
     <string name="lab_8ee80fca">드라이버 소스가 없습니다.</string>
     <string name="lab_8ef37792">아래</string>
     <string name="lab_8f4a852b">기기 전원</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">주 XR 컨트롤러</string>
     <string name="lab_e14156b5">Steam 클라이언트 코어</string>
     <string name="lab_e141ca5d">온스크린 우선순위</string>
-    <string name="lab_e1768a43">게임 중 사이드 메뉴에서도 전환할 수 있습니다.</string>
     <string name="lab_e18caa5c">드라이브 없음</string>
     <string name="lab_e19da5b2">Wayland 어댑터</string>
     <string name="lab_e1be537c">저장 안 됨</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) 또는 off</string>
     <string name="lab_e98a38e0">돋보기, PIP, 키보드, 성능.</string>
     <string name="lab_e9bb2501">게임이 마이크를 쓸 수 있게 합니다. 입력은 DirectAudio가 캡처합니다. Android가 권한을 한 번 요청합니다.</string>
-    <string name="lab_e9e73eeb">터치스크린은 실제 터치를 게임에 보냅니다.</string>
     <string name="lab_ea08e43f">Linux 런타임 및 모든 목록</string>
     <string name="lab_ea354143">오른쪽 위에 흐리게 표시되며, 터치로 빠른 메뉴를 여는 버튼입니다. 이 버튼이 없어도 뒤로, 메뉴 버튼 또는 네 손가락 탭으로 열 수 있습니다.</string>
     <string name="lab_ea4babd8">시작 방식</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">스타일</string>
     <string name="lab_f2857f55">내부</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">마우스 / 터치패드</string>
     <string name="lab_f2cdcc45">GPU 드라이버 선택</string>
     <string name="lab_f2ed832c">DirectX 게임에 알려 주는 GPU 메모리 크기(dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">사운드 지연 시간</string>

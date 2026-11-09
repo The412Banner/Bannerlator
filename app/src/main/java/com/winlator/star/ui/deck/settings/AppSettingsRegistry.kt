@@ -21,6 +21,7 @@ import androidx.preference.PreferenceManager
 import com.winlator.star.box64.Box64Preset
 import com.winlator.star.container.Container
 import com.winlator.star.contents.ContentsManager
+import com.winlator.star.core.TouchAimSettings
 import com.winlator.star.core.UpdateManager
 import com.winlator.star.fexcore.FEXCorePreset
 import com.winlator.star.inputcontrols.SteamControllerBackend
@@ -219,6 +220,23 @@ internal object AppSettingsRegistry {
             ),
         ),
 
+        // Touch and Aim mode for games that have none of their own (TouchAimSettings).
+        app(
+            "app.controllers.touch", "app.controllers", T("Mouse & keyboard (Wine games)"), T("Touch"), ADVANCED, tech = TouchAimSettings.PREF_TOUCH,
+            control = { Control.Segmented(listOf(Opt(TouchAimSettings.TOUCHPAD, T("Touchpad")), Opt(TouchAimSettings.DIRECT, T("Direct")))) },
+            binding = AppBinding(
+                get = { c -> TouchAimSettings.appTouch(prefs(c)) },
+                set = { c, v -> prefs(c).edit().putString(TouchAimSettings.PREF_TOUCH, v).apply() },
+            ),
+        ),
+        app(
+            "app.controllers.aim", "app.controllers", T("Mouse & keyboard (Wine games)"), T("Aim mode"), ADVANCED, tech = TouchAimSettings.PREF_AIM,
+            control = { Control.Segmented(listOf(Opt(TouchAimSettings.AUTO, T("Auto")), Opt(TouchAimSettings.ON, T("On")), Opt(TouchAimSettings.OFF, T("Off")))) },
+            binding = AppBinding(
+                get = { c -> TouchAimSettings.appAim(prefs(c)) },
+                set = { c, v -> prefs(c).edit().putString(TouchAimSettings.PREF_AIM, v).apply() },
+            ),
+        ),
         app(
             "app.controllers.cursorSpeed", "app.controllers", T("Mouse & keyboard (Wine games)"), T("Cursor speed"), ADVANCED, tech = "cursor_speed",
             control = { Control.Slider(0.1f, 2.0f, 0.05f, { "${(it * 100).toInt()}%" }, { String.format(Locale.ENGLISH, "%.2f", it) }) },

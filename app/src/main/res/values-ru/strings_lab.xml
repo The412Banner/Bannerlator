@@ -229,7 +229,6 @@
     <string name="lab_1dfaae77">Имя не может содержать \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Для игр, запускаемых клиентом, а не для самого клиента, и сразу для всех: у сеанса одно окружение. </string>
     <string name="lab_1e223777">Версия, примечания к выпуску и «Скачать и установить» (классические настройки).</string>
-    <string name="lab_1e2f8841">Относительная мышь (для игр с 3D-камерой)</string>
     <string name="lab_1e537526">Список пуст.</string>
     <string name="lab_1e713627">Клиент Steam для Linux</string>
     <string name="lab_1e765e92">Настройки гироприцела</string>
@@ -301,6 +300,7 @@
     <string name="lab_2742f91b">Автоматически · трейлер из Steam</string>
     <string name="lab_2756404f">Сбросить питание и root к настройкам приложения по умолчанию</string>
     <string name="lab_27b56d30">Устанавливает XInput DLL от Bannerlator независимо от того, включён ли прямой XInput, вместе с собственным XInput от Wine, чтобы в игровом меню Управление › Геймпад можно было переключаться между ними во время игры (контроллер переподключается). Включено по умолчанию. Выкл.: прямой XInput остаётся таким, как при запуске игры, а для его изменения нужен перезапуск.</string>
+    <string name="lab_27bb1078">Прямой</string>
     <string name="lab_27bcb120">Добавление, копирование, удаление, экспорт и импорт пресетов Box64 и FEX (классические настройки).</string>
     <string name="lab_27beed97">%1$s · сеансов: %2$s</string>
     <string name="lab_27f2c3fa">Устанавливает минимальную частоту каждого кластера равной максимальной.</string>
@@ -389,7 +389,6 @@
     <string name="lab_32038add">Обходит ошибку Turnip, при которой вопрос «GPU закончил?» ждёт весь кадр (ошибка таймингов из отчёта). «По умолчанию» даёт адаптеру определить её самому; «Вкл.» включает прослойку принудительно, «Выкл.» отключает её.</string>
     <string name="lab_3205bc81">Графический драйвер Turnip не задан, поэтому проверять нечего.</string>
     <string name="lab_32398034">%1$s Hz</string>
-    <string name="lab_328de36e">Режим сенсорного экрана</string>
     <string name="lab_32a7fa00">Генерация кадров</string>
     <string name="lab_334d4744">Копировать сохранения игр из библиотеки Steam в локальную библиотеку при выходе из игры.</string>
     <string name="lab_336d62eb">Предпочитать большие ядра CPU</string>
@@ -446,7 +445,6 @@
     <string name="lab_39e9425b">Нет репозиториев.</string>
     <string name="lab_3a1ed8c6">Драйвер дисплея (сторона Android)</string>
     <string name="lab_3a24cc2d">Задаётся для каждого контейнера: это про ваши руки, а не про игру.</string>
-    <string name="lab_3a589c47">Курсор к касанию</string>
     <string name="lab_3a5c3010">FPS, загрузка CPU/GPU и температуры поверх игры. Коснитесь его в игре, чтобы повернуть или изменить размер.</string>
     <string name="lab_3a95276d">Сила vkBasalt</string>
     <string name="lab_3b02039e">Сбалансированный</string>
@@ -536,7 +534,6 @@
     <string name="lab_496942ff">Принудительно SSBS (фикс скорости CPU)</string>
     <string name="lab_497cf9a3">Играйте на телевизоре или транслируйте на него.</string>
     <string name="lab_4990b8f5">Резкость (VKBasalt)</string>
-    <string name="lab_499bfdd8">Указатель перескакивает туда, где вы касаетесь.</string>
     <string name="lab_49cff1c6">Мышь и касания</string>
     <string name="lab_49d721cc">Оверлей производительности</string>
     <string name="lab_49fc80cc">Выкл. (в режиме «Один» работает только один)</string>
@@ -649,7 +646,6 @@
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Сверху слева</string>
     <string name="lab_58a426c9">Выключено для этой игры, пока работает генерация кадров. </string>
-    <string name="lab_5901a4cd">Wayland: смещения мыши передаются композитору; игра, захватившая указатель, получает их как относительное движение.</string>
     <string name="lab_5946d9c6">Как в приложении (%1$s)</string>
     <string name="lab_594a913b">Асинхронные шейдеры</string>
     <string name="lab_595daef9">Скачанные компоненты: архивы и список каталога.</string>
@@ -677,6 +673,7 @@
     <string name="lab_5cdd4dc6">FPS, загрузка CPU/GPU и температуры поверх игры. Стиль задаётся ниже, а в игре — из бокового меню.</string>
     <string name="lab_5cf98060">Скрыть расширения present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Неон</string>
+    <string name="lab_5d1ebf1b">Режим прицеливания</string>
     <string name="lab_5d676a2d">Экспортировать можно только собственные пресеты.</string>
     <string name="lab_5d7ee5f8">GitHub, баг-трекер и Discord</string>
     <string name="lab_5db787de">Друзья и чат Steam.</string>
@@ -782,7 +779,6 @@
     <string name="lab_6b7fbf69">Устранение неполадок</string>
     <string name="lab_6c15cb41">Сенсорные кнопки текущей раскладки.</string>
     <string name="lab_6c3656ad">Портретная</string>
-    <string name="lab_6c37a76c">Касание работает как</string>
     <string name="lab_6c5fe717">Звук превью</string>
     <string name="lab_6c8e3b1f">Сделать по умолчанию…</string>
     <string name="lab_6c9249ac">Автозагрузка из облака при запуске будет ВЫКЛЮЧЕНА для игр вашей библиотеки GOG. Последние облачные сохранения не будут загружаться перед запуском игры — скачивать их придётся самостоятельно на вкладке «Менеджер сохранений GOG» или на странице игры. Продолжить?</string>
@@ -1028,7 +1024,6 @@
     <string name="lab_8eb9f765">Несохранённые изменения здесь будут потеряны. Существующие контейнеры сохранят свои настройки.</string>
     <string name="lab_8ecc4179"> вместо версий Wine. Нужно многим обёрткам и загрузчикам модов. Графические DLL никогда не включаются: за них отвечают DXVK и VKD3D.</string>
     <string name="lab_8ece40f8">Только для драйверов Banners-Turnip; стандартный Turnip это игнорирует.</string>
-    <string name="lab_8ed00ed7">Для игр, которые захватывают указатель (обзор камерой).</string>
     <string name="lab_8ee80fca">Нет источников драйверов.</string>
     <string name="lab_8ef37792">Снизу</string>
     <string name="lab_8f4a852b">Питание устройства</string>
@@ -1599,7 +1594,6 @@
     <string name="lab_e140a9e0">Основной XR-контроллер</string>
     <string name="lab_e14156b5">Ядра клиента Steam</string>
     <string name="lab_e141ca5d">Приоритет экранного управления</string>
-    <string name="lab_e1768a43">Также переключается в игре из бокового меню.</string>
     <string name="lab_e18caa5c">Нет дисков</string>
     <string name="lab_e19da5b2">Адаптер Wayland</string>
     <string name="lab_e1be537c">Не сохранено</string>
@@ -1647,7 +1641,6 @@
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) или off</string>
     <string name="lab_e98a38e0">Лупа, картинка в картинке, клавиатура и производительность.</string>
     <string name="lab_e9bb2501">Позволяет играм использовать микрофон: DirectAudio захватывает ввод. Android запросит разрешение один раз.</string>
-    <string name="lab_e9e73eeb">«Сенсорный экран» передаёт игре настоящие касания.</string>
     <string name="lab_ea08e43f">Среда выполнения Linux и все списки</string>
     <string name="lab_ea354143">Полупрозрачная кнопка в правом верхнем углу, открывающая быстрое меню касанием. Кнопка «Назад», кнопка меню или касание четырьмя пальцами работают и без неё.</string>
     <string name="lab_ea4babd8">Как запускается</string>
@@ -1705,7 +1698,6 @@
     <string name="lab_f27c976e">Стиль</string>
     <string name="lab_f2857f55">Внутреннее хранилище</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2c28049">Мышь / тачпад</string>
     <string name="lab_f2cdcc45">Выберите драйвер GPU</string>
     <string name="lab_f2ed832c">Объём памяти GPU, который сообщается играм на DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Задержка звука</string>

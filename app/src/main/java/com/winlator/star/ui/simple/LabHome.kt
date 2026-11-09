@@ -280,9 +280,10 @@ internal fun LabHome(
                         ) {
                             val inner = Modifier.fillMaxSize().padding(if (sel) 3.dp else 0.dp)
                             when (style) {
-                                LabArt.WIDE -> LabBadged(s, inner) { LabWideCard(s, it, title = false) }
-                                LabArt.ICONS -> LabIconCard(s, inner, Modifier.fillMaxWidth().aspectRatio(1f), badges = true)
-                                else -> LabBadged(s, inner) { SimpleCover(s, it, title = false) }
+                                // No store pills on these small covers: the big tile above names the selected game's store.
+                                LabArt.WIDE -> LabWideCard(s, inner, title = false)
+                                LabArt.ICONS -> LabIconCard(s, inner, Modifier.fillMaxWidth().aspectRatio(1f))
+                                else -> SimpleCover(s, inner, title = false)
                             }
                         }
                     }

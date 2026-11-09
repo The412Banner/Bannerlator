@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ fm659 d4b14a0b INSTALLED on the Elite main app (pubg) 19:01:29 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42537143277 green ×4. Installed base.apk sha256 a076d79f… == staged; the app was not running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user opens the file manager (folders, search, folder sizes) → merge on go → pre2 cut on "cut it".
+
+## 2026-11-08 — 📝 pre2 checklist: Classic check dropped (user: "forget the classic check")
+- The Classic smoke test for updaters from pre1 is not done, by the user's decision. Remaining: the #659 fix (CI 42537143277) → merge on the user's go → cut 3.1.9-pre2 only on "cut it".
+
+## 2026-11-08 — 🐞 fix/fm-duplicate-entries: file manager crash with duplicated folders, issue #659 (d4b14a0b; CI 42537143277 running, NOT device-tested)
+- **Report (#659, jebran0987, 11-06, against 3.1.9-pre1):** the file manager crashes on open with IllegalArgumentException: Key "/storage/emulated/0/.SHAREit" was already used. The reporter's phone shows duplicated folders (2 Android, 2 DCIM …).
+- **Cause:** FmPane.load lists with File.listFiles(), which on that phone returns some folders twice. Each row's LazyColumn key is the absolute path (FileManager.kt items(shown, key = { it.key })), so two rows share a key and Compose throws. The same duplication also walks those folders twice in deep search and counts them twice in treeSize.
+- **Fix:** distinctBy path for folder listings and archive entries; a seen-set in deep search and treeSize; the Containers backup-folder picker (key = path) is de-duplicated too. GameActionsHost already did distinctBy.
+- **Can't reproduce here:** our devices don't list duplicates. The fix removes duplicates before drawing.
+- **Context:** pre2 readiness check (user: "are we ready for a pre release 2?"). The other pre-cut item, a Classic smoke test for updaters, is still to do.
+
 ## 2026-11-08 — 🔀 feat/lab-polish-strings MERGED to main 7e05a479 (user: "install it when it's done, pubg" + "then merge to main and build as artifacts only")
 - **Built:** CI 42532718306 (120ed323) green ×4; resources.arsc has the new strings (de Adapterprofil, ja アダプタープロファイル) and the fixed labels.
 - **Installed:** on the Elite main app (com.tencent.ig) at 18:07:26 EST; base.apk sha256 263a18a8… == staged; no game was running; crash buffer empty.

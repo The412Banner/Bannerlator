@@ -1253,7 +1253,7 @@ private fun ManualAddDialog(container: Container, onPick: (File) -> Unit, onCanc
     val root = remember(container.id) { SaveLocator.profileDir(container) }
     var cur by remember(container.id) { mutableStateOf(root) }
     val subDirs = remember(cur.path) {
-        cur.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name.lowercase() } ?: emptyList()
+        cur.listFiles()?.filter { it.isDirectory }?.distinctBy { it.path }?.sortedBy { it.name.lowercase() } ?: emptyList()
     }
     OutlinedAlertDialog(
         onDismissRequest = onCancel,

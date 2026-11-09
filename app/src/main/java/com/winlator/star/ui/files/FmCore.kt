@@ -280,12 +280,15 @@ internal fun treeSize(dir: File, cancelled: () -> Boolean = { false }): Pair<Lon
     var bytes = 0L
     var files = 0
     val stack = ArrayDeque<File>().apply { add(dir) }
+    // A folder listed twice (#659) is counted once.
+    val seen = HashSet<String>()
     var n = 0
     while (stack.isNotEmpty()) {
         if (++n and 255 == 0 && cancelled()) break
         val d = stack.removeLast()
         val kids = d.listFiles() ?: continue
         for (k in kids) {
+            if (!seen.add(k.absolutePath)) continue
             // Never follow a link out of the tree (container dosdevices point at /).
             val link = runCatching { java.nio.file.Files.isSymbolicLink(k.toPath()) }.getOrDefault(false)
             if (link) continue

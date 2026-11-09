@@ -186,6 +186,8 @@ class FmPane(
         searchJob = scope.launch {
             val found = ArrayList<FmItem>()
             withContext(Dispatchers.IO) {
+                // A folder listed twice (#659) is walked and reported once.
+                val seen = HashSet<String>()
                 val stack = ArrayDeque<File>().apply { add(root) }
                 var n = 0
                 while (stack.isNotEmpty() && isActive && found.size < 2000) {
@@ -193,6 +195,7 @@ class FmPane(
                     val kids = d.listFiles() ?: continue
                     for (k in kids) {
                         if (!showHidden && k.name.startsWith(".")) continue
+                        if (!seen.add(k.absolutePath)) continue
                         val link = runCatching { java.nio.file.Files.isSymbolicLink(k.toPath()) }.getOrDefault(false)
                         if (k.isDirectory && !link) stack.add(k)
                         if (k.name.contains(q, ignoreCase = true) && admits(k)) found.add(diskItem(k))
@@ -258,7 +261,9 @@ class FmPane(
                     val hidden = showHidden
                     val list = withContext(Dispatchers.IO) {
                         val files = target.dir.listFiles()
+                        // Some phones' storage lists a folder twice (#659); one row per path.
                         files?.asSequence()
+                            ?.distinctBy { it.absolutePath }
                             ?.filter { hidden || !it.name.startsWith(".") }
                             ?.filter { pick == null || (if (pick.dirsOnly) it.isDirectory else admits(it)) }
                             ?.map(::diskItem)
@@ -279,6 +284,7 @@ class FmPane(
                         items = tree.children(target.inner)
                             .filter { showHidden || !it.name.startsWith(".") }
                             .map { e -> FmItem.Entry(target.archive, e, tree.sizeOf(e)) }
+                            .distinctBy { it.key }
                             .sortedFor(sort)
                         error = idx.warning
                     }.onFailure { t ->

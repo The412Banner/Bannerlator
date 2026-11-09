@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Installierte Soundbanks und Exportordner</string>
     <string name="lab_33b3dcd5">Hält die GPU auf ihrem höchsten Takt, solange ein Spiel läuft. Wärmer und stromhungriger; Spiele können das überschreiben.</string>
     <string name="lab_33b5c99c">Erst nachdem du den Haftungshinweis zur Drittanbieter-Cloud akzeptiert hast; löscht nie etwas aus der Cloud.</string>
+    <string name="lab_33cb03bf">Wie auf den App-Seiten</string>
     <string name="lab_33e13543">Adapterbericht</string>
     <string name="lab_340a5eba">Automatische Spielstandsicherungen und Cloud-Synchronisierung für Steam, GOG und deine eigenen Spiele.</string>
     <string name="lab_340d70c2">Download-Engines der Stores, Geschwindigkeit und Steam-Verbindung.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fest 60/s</string>
     <string name="lab_5ecf04b0">Ansicht</string>
     <string name="lab_5edc0296">Die installierten VEGAS-Builds und der in der App enthaltene.</string>
+    <string name="lab_5edc9360">Menü im Spiel · %1$s</string>
     <string name="lab_5ee84880">Codecs</string>
     <string name="lab_5eed9977">Integrierte General-MIDI-Bank</string>
     <string name="lab_5f21d1d0">Coverbild aus deinen Dateien, Steam oder SteamGridDB, der Steam-Link, Genres, Jahr und Beschreibung (Spieldetails).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn-Texturen</string>
     <string name="lab_6563bc96">Schärfer (-0.75)</string>
     <string name="lab_65787fdc">Interner Speicher, SD-Karte und die Laufwerke aller Container</string>
+    <string name="lab_65854b5f">Menü im Spiel</string>
     <string name="lab_659fcd98">Von mir hinzugefügt</string>
     <string name="lab_65f8ea90">Renderer-Treiber</string>
     <string name="lab_65f9e2b8">Deckend</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Name und Startoptionen nur für dieses Spiel.</string>
     <string name="lab_8dc9c516">PanVK-Anpassungen im Wayland-Adapter: blendet present_id, present_wait und dynamic_rendering aus, dazu zwei Sync-Workarounds. Mit einem PanVK-Treiber standardmäßig an.</string>
     <string name="lab_8df575ef">Erfordert den Vulkan-Bildschirm-Renderer (Grafik) oder Wayland.</string>
+    <string name="lab_8e22550f">App-Seiten</string>
     <string name="lab_8e7f9e42">Treiber holen</string>
     <string name="lab_8e81d76e">FEXCore-Preset</string>
     <string name="lab_8e91f337">Root. Die Temperaturüberwachung bleibt aktiv.</string>

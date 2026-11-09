@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">इंस्टॉल किए साउंड बैंक और निर्यात फ़ोल्डर</string>
     <string name="lab_33b3dcd5">गेम चलते समय GPU को सबसे ऊंची क्लॉक पर रखता है। ज़्यादा गर्मी और ज़्यादा बैटरी खपत; गेम इसे ओवरराइड कर सकते हैं।</string>
     <string name="lab_33b5c99c">सिर्फ़ थर्ड-पार्टी क्लाउड डिस्क्लेमर स्वीकार करने के बाद; क्लाउड से कभी कुछ नहीं हटाता।</string>
+    <string name="lab_33cb03bf">ऐप पेज जैसा ही</string>
     <string name="lab_33e13543">एडैप्टर रिपोर्ट</string>
     <string name="lab_340a5eba">Steam, GOG और आपके अपने गेम के लिए ऑटोमैटिक सेव बैकअप और क्लाउड सिंक।</string>
     <string name="lab_340d70c2">स्टोर डाउनलोड इंजन, स्पीड और Steam कनेक्शन।</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">फ़िक्स्ड 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">इंस्टॉल किए गए VEGAS बिल्ड, और ऐप के साथ आया बिल्ड।</string>
+    <string name="lab_5edc9360">इन-गेम मेन्यू · %1$s</string>
     <string name="lab_5ee84880">कोडेक</string>
     <string name="lab_5eed9977">बिल्ट-इन General MIDI बैंक</string>
     <string name="lab_5f21d1d0">आपकी फ़ाइलों, Steam या SteamGridDB से कवर आर्ट, Steam लिंक, शैली, साल और विवरण (गेम विवरण)।</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn टेक्सचर</string>
     <string name="lab_6563bc96">ज़्यादा शार्प (-0.75)</string>
     <string name="lab_65787fdc">इंटरनल स्टोरेज, SD कार्ड और हर कंटेनर की ड्राइव</string>
+    <string name="lab_65854b5f">इन-गेम मेन्यू</string>
     <string name="lab_659fcd98">मेरे द्वारा जोड़ा गया</string>
     <string name="lab_65f8ea90">रेंडरर ड्राइवर</string>
     <string name="lab_65f9e2b8">ठोस</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">सिर्फ़ इस गेम का नाम और लॉन्च विकल्प।</string>
     <string name="lab_8dc9c516">Wayland एडैप्टर में PanVK बदलाव: present_id, present_wait और dynamic_rendering छिपाता है, साथ में सिंक के दो वर्कअराउंड। PanVK ड्राइवर के साथ डिफ़ॉल्ट रूप से चालू।</string>
     <string name="lab_8df575ef">Vulkan स्क्रीन रेंडरर (ग्राफ़िक्स) या Wayland चाहिए।</string>
+    <string name="lab_8e22550f">ऐप पेज</string>
     <string name="lab_8e7f9e42">ड्राइवर पाएं</string>
     <string name="lab_8e81d76e">FEXCore प्रीसेट</string>
     <string name="lab_8e91f337">Root। तापमान वॉचडॉग फिर भी सुरक्षा करता है।</string>

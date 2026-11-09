@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Εγκατεστημένες τράπεζες ήχων και φάκελος εξαγωγής</string>
     <string name="lab_33b3dcd5">Κρατά την GPU στη μέγιστη συχνότητά της όσο τρέχει ένα παιχνίδι. Πιο ζεστό και πιο ενεργοβόρο. Τα παιχνίδια μπορούν να το παρακάμψουν.</string>
     <string name="lab_33b5c99c">Μόνο αφού αποδεχτείτε τη δήλωση αποποίησης για cloud τρίτων. Δεν διαγράφει ποτέ τίποτα από το cloud.</string>
+    <string name="lab_33cb03bf">Όπως στις σελίδες της εφαρμογής</string>
     <string name="lab_33e13543">Αναφορά προσαρμογέα</string>
     <string name="lab_340a5eba">Αυτόματα αντίγραφα ασφαλείας αποθηκεύσεων και συγχρονισμός cloud για Steam, GOG και τα δικά σας παιχνίδια.</string>
     <string name="lab_340d70c2">Μηχανές λήψης καταστημάτων, ταχύτητα και σύνδεση Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Σταθερό 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Οι εγκατεστημένες εκδόσεις VEGAS και αυτή που συνοδεύει την εφαρμογή.</string>
+    <string name="lab_5edc9360">Μενού εντός παιχνιδιού · %1$s</string>
     <string name="lab_5ee84880">Codec</string>
     <string name="lab_5eed9977">Ενσωματωμένη τράπεζα General MIDI</string>
     <string name="lab_5f21d1d0">Εξώφυλλο από τα αρχεία σας, το Steam ή το SteamGridDB, ο σύνδεσμος Steam, είδη, έτος και περιγραφή (Λεπτομέρειες παιχνιδιού).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Υφές BCn</string>
     <string name="lab_6563bc96">Πιο οξύ (-0.75)</string>
     <string name="lab_65787fdc">Εσωτερικός χώρος, κάρτα SD και οι μονάδες κάθε κοντέινερ</string>
+    <string name="lab_65854b5f">Μενού εντός παιχνιδιού</string>
     <string name="lab_659fcd98">Προστέθηκε από εμένα</string>
     <string name="lab_65f8ea90">Πρόγραμμα οδήγησης renderer</string>
     <string name="lab_65f9e2b8">Συμπαγή</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Όνομα και επιλογές εκκίνησης μόνο για αυτό το παιχνίδι.</string>
     <string name="lab_8dc9c516">Τροποποιήσεις PanVK στον προσαρμογέα Wayland: κρύβει τα present_id, present_wait και dynamic_rendering, καθώς και δύο λύσεις παράκαμψης για συγχρονισμό. Ενεργό από προεπιλογή με πρόγραμμα οδήγησης PanVK.</string>
     <string name="lab_8df575ef">Χρειάζεται τον Vulkan renderer οθόνης (Γραφικά) ή Wayland.</string>
+    <string name="lab_8e22550f">Σελίδες εφαρμογής</string>
     <string name="lab_8e7f9e42">Λήψη προγραμμάτων οδήγησης</string>
     <string name="lab_8e81d76e">Προρρύθμιση FEXCore</string>
     <string name="lab_8e91f337">Root. Η επιτήρηση θερμοκρασίας παραμένει ενεργή.</string>

@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Geïnstalleerde klankbanken en exportmap</string>
     <string name="lab_33b3dcd5">Houdt de GPU op zijn hoogste kloksnelheid zolang een game draait. Warmer en verbruikt meer; games kunnen het overschrijven.</string>
     <string name="lab_33b5c99c">Pas nadat je de disclaimer voor de cloud van derden hebt geaccepteerd; verwijdert nooit iets uit de cloud.</string>
+    <string name="lab_33cb03bf">Zelfde als app-pagina\'s</string>
     <string name="lab_33e13543">Adapterrapport</string>
     <string name="lab_340a5eba">Automatische back-ups van savegames en cloudsynchronisatie voor Steam, GOG en je eigen games.</string>
     <string name="lab_340d70c2">Downloadengines van winkels, snelheid en Steam-verbinding.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Vast 60/s</string>
     <string name="lab_5ecf04b0">Weergave</string>
     <string name="lab_5edc0296">De geïnstalleerde VEGAS-builds, en die welke bij de app zit.</string>
+    <string name="lab_5edc9360">Gamemenu · %1$s</string>
     <string name="lab_5ee84880">Codecs</string>
     <string name="lab_5eed9977">Ingebouwde General MIDI-bank</string>
     <string name="lab_5f21d1d0">Hoesafbeelding uit je bestanden, Steam of SteamGridDB, de Steam-koppeling, genres, jaar en beschrijving (Gamedetails).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn-texturen</string>
     <string name="lab_6563bc96">Scherper (-0.75)</string>
     <string name="lab_65787fdc">Interne opslag, SD-kaart en de stations van elke container</string>
+    <string name="lab_65854b5f">Gamemenu</string>
     <string name="lab_659fcd98">Door mij toegevoegd</string>
     <string name="lab_65f8ea90">Rendererdriver</string>
     <string name="lab_65f9e2b8">Dekkend</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Naam en opstartopties voor alleen deze game.</string>
     <string name="lab_8dc9c516">PanVK-aanpassingen in de Wayland-adapter: verbergt present_id, present_wait en dynamic_rendering, plus twee sync-workarounds. Standaard aan met een PanVK-driver.</string>
     <string name="lab_8df575ef">Vereist de Vulkan-schermrenderer (Grafisch) of Wayland.</string>
+    <string name="lab_8e22550f">App-pagina\'s</string>
     <string name="lab_8e7f9e42">Drivers ophalen</string>
     <string name="lab_8e81d76e">FEXCore-preset</string>
     <string name="lab_8e91f337">Root. De temperatuurbewaking blijft actief.</string>

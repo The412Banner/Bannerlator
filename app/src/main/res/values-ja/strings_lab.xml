@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">インストール済みのサウンドバンクとエクスポート先フォルダー</string>
     <string name="lab_33b3dcd5">ゲーム実行中、GPU を最大クロックに固定します。発熱と消費電力が増えます。ゲーム側で上書きされることがあります。</string>
     <string name="lab_33b5c99c">サードパーティのクラウドに関する免責事項に同意した後のみ有効です。クラウドから何かを削除することはありません。</string>
+    <string name="lab_33cb03bf">アプリの画面と同じ</string>
     <string name="lab_33e13543">アダプターレポート</string>
     <string name="lab_340a5eba">Steam、GOG、自分で追加したゲームのセーブデータの自動バックアップとクラウド同期。</string>
     <string name="lab_340d70c2">ストアのダウンロードエンジン、速度、Steam への接続。</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">固定 60回/秒</string>
     <string name="lab_5ecf04b0">ビュー</string>
     <string name="lab_5edc0296">インストール済みの VEGAS ビルドと、アプリに同梱のビルド。</string>
+    <string name="lab_5edc9360">ゲーム中メニュー · %1$s</string>
     <string name="lab_5ee84880">コーデック</string>
     <string name="lab_5eed9977">内蔵 General MIDI バンク</string>
     <string name="lab_5f21d1d0">ファイル、Steam、SteamGridDB からのカバーアート、Steam へのリンク、ジャンル、発売年、説明（ゲームの詳細）。</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn テクスチャ</string>
     <string name="lab_6563bc96">シャープ（-0.75）</string>
     <string name="lab_65787fdc">内部ストレージ、SDカード、各コンテナのドライブ</string>
+    <string name="lab_65854b5f">ゲーム中メニュー</string>
     <string name="lab_659fcd98">自分で追加</string>
     <string name="lab_65f8ea90">レンダラードライバー</string>
     <string name="lab_65f9e2b8">不透明</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">このゲームの名前と起動オプション。</string>
     <string name="lab_8dc9c516">Wayland アダプターでの PanVK 向け調整: present_id、present_wait、dynamic_rendering を隠し、2 つの同期の回避策を適用します。PanVK ドライバーではデフォルトでオン。</string>
     <string name="lab_8df575ef">Vulkan 画面レンダラー（グラフィックス）または Wayland が必要です。</string>
+    <string name="lab_8e22550f">アプリの画面</string>
     <string name="lab_8e7f9e42">ドライバーを入手</string>
     <string name="lab_8e81d76e">FEXCore プリセット</string>
     <string name="lab_8e91f337">root。温度監視は引き続き保護します。</string>

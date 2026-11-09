@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Bank bunyi yang dipasang dan folder eksport</string>
     <string name="lab_33b3dcd5">Mengekalkan GPU pada kelajuan jam tertinggi semasa permainan berjalan. Lebih panas dan lebih kuat makan kuasa; setiap permainan boleh mengatasinya.</string>
     <string name="lab_33b5c99c">Hanya selepas anda menerima penafian awan pihak ketiga; tidak sekali-kali memadam apa-apa daripada awan.</string>
+    <string name="lab_33cb03bf">Sama seperti halaman apl</string>
     <string name="lab_33e13543">Laporan penyesuai</string>
     <string name="lab_340a5eba">Sandaran simpanan automatik dan penyegerakan awan untuk Steam, GOG dan permainan anda sendiri.</string>
     <string name="lab_340d70c2">Enjin muat turun kedai, kelajuan dan sambungan Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Tetap 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Binaan VEGAS yang dipasang, dan yang disertakan dengan apl.</string>
+    <string name="lab_5edc9360">Menu dalam permainan · %1$s</string>
     <string name="lab_5ee84880">Kodek</string>
     <string name="lab_5eed9977">Bank General MIDI terbina dalam</string>
     <string name="lab_5f21d1d0">Seni muka depan daripada fail anda, Steam atau SteamGridDB, pautan Steam, genre, tahun dan penerangan (Butiran Permainan).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Tekstur BCn</string>
     <string name="lab_6563bc96">Lebih tajam (-0.75)</string>
     <string name="lab_65787fdc">Storan dalaman, kad SD dan drive setiap container</string>
+    <string name="lab_65854b5f">Menu dalam permainan</string>
     <string name="lab_659fcd98">Ditambah oleh saya</string>
     <string name="lab_65f8ea90">Pemacu Pemapar</string>
     <string name="lab_65f9e2b8">Legap</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Nama dan pilihan pelancaran untuk permainan ini sahaja.</string>
     <string name="lab_8dc9c516">Penalaan PanVK dalam penyesuai Wayland: menyembunyikan present_id, present_wait dan dynamic_rendering, serta dua penyelesaian segerak. Hidup secara lalai dengan pemacu PanVK.</string>
     <string name="lab_8df575ef">Memerlukan pemapar skrin Vulkan (Grafik) atau Wayland.</string>
+    <string name="lab_8e22550f">Halaman apl</string>
     <string name="lab_8e7f9e42">Dapatkan pemacu</string>
     <string name="lab_8e81d76e">Pratetap FEXCore</string>
     <string name="lab_8e91f337">Root. Pemantau suhu masih berjaga.</string>

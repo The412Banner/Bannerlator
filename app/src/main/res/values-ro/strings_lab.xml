@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Bănci de sunete instalate și folder de export</string>
     <string name="lab_33b3dcd5">Ține GPU-ul la frecvența maximă cât rulează un joc. Mai cald și mai consumator; jocurile pot suprascrie setarea.</string>
     <string name="lab_33b5c99c">Doar după ce accepți avertismentul privind cloudul terț; nu șterge niciodată nimic din cloud.</string>
+    <string name="lab_33cb03bf">La fel ca în paginile aplicației</string>
     <string name="lab_33e13543">Raportul adaptorului</string>
     <string name="lab_340a5eba">Backupuri automate ale salvărilor și sincronizare în cloud pentru Steam, GOG și jocurile tale.</string>
     <string name="lab_340d70c2">Motoarele de descărcare ale magazinelor, viteza și conexiunea Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fix 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Versiunile VEGAS instalate și cea inclusă în aplicație.</string>
+    <string name="lab_5edc9360">Meniul din joc · %1$s</string>
     <string name="lab_5ee84880">Codecuri</string>
     <string name="lab_5eed9977">Bancă General MIDI integrată</string>
     <string name="lab_5f21d1d0">Copertă din fișierele tale, Steam sau SteamGridDB, legătura Steam, genuri, an și descriere (Game Details).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Texturi BCn</string>
     <string name="lab_6563bc96">Mai clar (-0.75)</string>
     <string name="lab_65787fdc">Stocare internă, card SD și unitățile fiecărui container</string>
+    <string name="lab_65854b5f">Meniul din joc</string>
     <string name="lab_659fcd98">Adăugat de mine</string>
     <string name="lab_65f8ea90">Driver renderer</string>
     <string name="lab_65f9e2b8">Opac</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Numele și opțiunile de lansare doar pentru acest joc.</string>
     <string name="lab_8dc9c516">Ajustări PanVK în adaptorul Wayland: ascunde present_id, present_wait și dynamic_rendering, plus două soluții de ocolire pentru sincronizare. Activat implicit cu un driver PanVK.</string>
     <string name="lab_8df575ef">Necesită rendererul de ecran Vulkan (Grafică) sau Wayland.</string>
+    <string name="lab_8e22550f">Paginile aplicației</string>
     <string name="lab_8e7f9e42">Obține drivere</string>
     <string name="lab_8e81d76e">Presetare FEXCore</string>
     <string name="lab_8e91f337">Root. Supravegherea temperaturii rămâne activă.</string>

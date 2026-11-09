@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Telepített hangbankok és exportmappa</string>
     <string name="lab_33b3dcd5">Játék közben a GPU-t a legmagasabb órajelen tartja. Melegebb és többet fogyaszt; a játékok felülbírálhatják.</string>
     <string name="lab_33b5c99c">Csak a külső felhőre vonatkozó nyilatkozat elfogadása után; sosem töröl semmit a felhőből.</string>
+    <string name="lab_33cb03bf">Ugyanaz, mint az alkalmazásoldalakon</string>
     <string name="lab_33e13543">Adapterjelentés</string>
     <string name="lab_340a5eba">Mentések automatikus biztonsági mentése és felhőszinkronizálása Steam-, GOG- és saját játékokhoz.</string>
     <string name="lab_340d70c2">Áruházi letöltőmotorok, sebesség és Steam-kapcsolat.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fix 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">A telepített VEGAS buildek és az alkalmazással szállított build.</string>
+    <string name="lab_5edc9360">Játékon belüli menü · %1$s</string>
     <string name="lab_5ee84880">Kodekek</string>
     <string name="lab_5eed9977">Beépített General MIDI bank</string>
     <string name="lab_5f21d1d0">Borítókép a fájljaidból, a Steamből vagy a SteamGridDB-ből, Steam-hivatkozás, műfajok, év és leírás (Játék részletei).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn-textúrák</string>
     <string name="lab_6563bc96">Élesebb (-0.75)</string>
     <string name="lab_65787fdc">Belső tárhely, SD-kártya és minden konténer meghajtói</string>
+    <string name="lab_65854b5f">Játékon belüli menü</string>
     <string name="lab_659fcd98">Általam hozzáadva</string>
     <string name="lab_65f8ea90">Renderelő illesztőprogram</string>
     <string name="lab_65f9e2b8">Tömör</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Név és indítási beállítások csak ehhez a játékhoz.</string>
     <string name="lab_8dc9c516">PanVK-módosítások a Wayland-adapterben: elrejti a present_id, present_wait és dynamic_rendering bővítményeket, plusz két szinkronizálási kerülőmegoldás. PanVK illesztőprogrammal alapból bekapcsolva.</string>
     <string name="lab_8df575ef">A Vulkan képernyő-renderelő (Grafika) vagy a Wayland kell hozzá.</string>
+    <string name="lab_8e22550f">Alkalmazásoldalak</string>
     <string name="lab_8e7f9e42">Illesztőprogramok beszerzése</string>
     <string name="lab_8e81d76e">FEXCore előbeállítás</string>
     <string name="lab_8e91f337">Root. A hőmérséklet-figyelő továbbra is véd.</string>

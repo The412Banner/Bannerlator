@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Nainstalované zvukové banky a složka exportu</string>
     <string name="lab_33b3dcd5">Drží GPU na nejvyšším taktu, dokud hra běží. Víc hřeje a víc spotřebovává; hry to mohou přepsat.</string>
     <string name="lab_33b5c99c">Jen po přijetí upozornění k cloudu třetí strany; z cloudu nikdy nic nemaže.</string>
+    <string name="lab_33cb03bf">Stejné jako stránky aplikace</string>
     <string name="lab_33e13543">Zpráva adaptéru</string>
     <string name="lab_340a5eba">Automatické zálohy uložených her a synchronizace s cloudem pro Steam, GOG a vaše vlastní hry.</string>
     <string name="lab_340d70c2">Moduly stahování z obchodů, rychlost a připojení ke Steamu.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Pevně 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Nainstalovaná sestavení VEGAS a sestavení dodané s aplikací.</string>
+    <string name="lab_5edc9360">Nabídka ve hře · %1$s</string>
     <string name="lab_5ee84880">Kodeky</string>
     <string name="lab_5eed9977">Vestavěná banka General MIDI</string>
     <string name="lab_5f21d1d0">Obal z vašich souborů, ze Steamu nebo SteamGridDB, odkaz na Steam, žánry, rok a popis (Game Details).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Textury BCn</string>
     <string name="lab_6563bc96">Ostřejší (-0.75)</string>
     <string name="lab_65787fdc">Interní úložiště, SD karta a jednotky všech kontejnerů</string>
+    <string name="lab_65854b5f">Nabídka ve hře</string>
     <string name="lab_659fcd98">Přidáno mnou</string>
     <string name="lab_65f8ea90">Ovladač rendereru</string>
     <string name="lab_65f9e2b8">Plné</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Název a možnosti spuštění jen pro tuto hru.</string>
     <string name="lab_8dc9c516">Úpravy PanVK v adaptéru Wayland: skryje present_id, present_wait a dynamic_rendering a přidá dvě obejití synchronizace. S ovladačem PanVK ve výchozím stavu zapnuto.</string>
     <string name="lab_8df575ef">Vyžaduje renderer obrazovky Vulkan (Grafika) nebo Wayland.</string>
+    <string name="lab_8e22550f">Stránky aplikace</string>
     <string name="lab_8e7f9e42">Získat ovladače</string>
     <string name="lab_8e81d76e">Předvolba FEXCore</string>
     <string name="lab_8e91f337">Root. Hlídání teploty stále běží.</string>

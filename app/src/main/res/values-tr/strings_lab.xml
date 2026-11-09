@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Yüklü ses bankaları ve dışa aktarma klasörü</string>
     <string name="lab_33b3dcd5">Oyun çalışırken GPU\'yu en yüksek saat hızında tutar. Daha sıcak ve daha fazla güç tüketir; oyunlar bunu geçersiz kılabilir.</string>
     <string name="lab_33b5c99c">Yalnızca üçüncü taraf bulut uyarısını kabul ettikten sonra; buluttan asla bir şey silmez.</string>
+    <string name="lab_33cb03bf">Uygulama sayfalarıyla aynı</string>
     <string name="lab_33e13543">Bağdaştırıcı raporu</string>
     <string name="lab_340a5eba">Steam, GOG ve kendi oyunlarınız için otomatik kayıt yedekleri ve bulut eşitleme.</string>
     <string name="lab_340d70c2">Mağaza indirme motorları, hız ve Steam bağlantısı.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Sabit 60/sn</string>
     <string name="lab_5ecf04b0">Görünüm</string>
     <string name="lab_5edc0296">Yüklü VEGAS derlemeleri ve uygulamayla birlikte gelen derleme.</string>
+    <string name="lab_5edc9360">Oyun içi menü · %1$s</string>
     <string name="lab_5ee84880">Kodekler</string>
     <string name="lab_5eed9977">Yerleşik General MIDI bankası</string>
     <string name="lab_5f21d1d0">Dosyalarınızdan, Steam\'den veya SteamGridDB\'den kapak görseli, Steam bağlantısı, türler, yıl ve açıklama (Oyun Ayrıntıları).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn dokuları</string>
     <string name="lab_6563bc96">Daha keskin (-0.75)</string>
     <string name="lab_65787fdc">Dahili depolama, SD kart ve tüm konteynerlerin diskleri</string>
+    <string name="lab_65854b5f">Oyun içi menü</string>
     <string name="lab_659fcd98">Benim eklediğim</string>
     <string name="lab_65f8ea90">İşleyici sürücüsü</string>
     <string name="lab_65f9e2b8">Opak</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Yalnızca bu oyun için ad ve başlatma seçenekleri.</string>
     <string name="lab_8dc9c516">Wayland bağdaştırıcısında PanVK ayarları: present_id, present_wait ve dynamic_rendering\'i gizler, ayrıca iki eşitleme geçici çözümü. PanVK sürücüsüyle varsayılan olarak açık.</string>
     <string name="lab_8df575ef">Vulkan ekran işleyicisi (Grafik) veya Wayland gerekir.</string>
+    <string name="lab_8e22550f">Uygulama sayfaları</string>
     <string name="lab_8e7f9e42">Sürücü edin</string>
     <string name="lab_8e81d76e">FEXCore ön ayarı</string>
     <string name="lab_8e91f337">Root. Sıcaklık bekçisi yine de korur.</string>

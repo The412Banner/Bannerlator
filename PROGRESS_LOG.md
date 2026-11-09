@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 igart: soft right edge (4a15d0c6; CI 42549765815 running)
+- **User:** "off button is fine, but the hard line at the end of the drawer, could we soften it out". Taken as the drawer's right edge, where the art stops and the game starts.
+- **Change (only while art shows):**
+  - No outline and no drop shadow on the panel.
+  - The background layer is measured 64 dp wider (Modifier.layout) and masked with a horizontal DstIn gradient: solid until 80 dp before the end, then 0.7 / 0.25 / 0. That leaves about 80 % at the panel edge and 0 at +64 dp.
+  - The Pause / Exit bar keeps only its top line (drawBehind).
+- Without art: unchanged.
+- **Next:** green → stage pubg → ASK install (this build is not pre-approved).
+
 ## 2026-11-08 — ✅ igart 2aa6ff7c device-proven on the Elite (DiRT Showdown, 21:08 EST)
 - Screenshots 210841 (launch screen, unchanged) and 210853 (in-game menu: icon left, logo centred, art showing through the 42 % cards and 60 % chips; all text readable).
 - logcat since the install: no crash, FATAL or ANR. The game was still running at 21:10.

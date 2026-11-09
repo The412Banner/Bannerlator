@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🧪 touch-aim 9864394d: first user test, A Game About Digging A Hole (Wayland), 08:58–09:04 EST
+- **User:** "tested it in digging game" (no verdict given yet; asked).
+- **Logs:** wayland/wayland-2026-11-09_08-58-40.log: 60 fps; the game (UE, DiggingGame-WinGDK-Shipping.exe) uses a **real persistent pointer lock** for mouse-look (08:59:24.650 → 09:03:23.817, again 09:04:24.657 → exit) with a relative pointer; its SetCursorPos calls arrive as 50 position hints on the held lock, not as lock/unlock pairs. Early locks 08:59:03.369–04.445 (1.08 s) and 08:59:07.332–07.881 (0.55 s) are longer than 120 ms → treated as real locks. So Aim Auto's warp detector had nothing to detect here; aiming went through the lock path (deltas to the compositor).
+- Exit: EXIT_SELF code 0 at 09:04:44 (exit-reasons log), crash buffer empty. App Log.i lines (`input: …`) had rotated out of logcat (256 KiB buffer).
+- Saved on the shortcut at 09:04:09: `aimMode=off`, `relativeMouse=0`, `touchMode=touchpad` → the user changed Aim mode in the menu during the test (Off), and the per-game save works. Under a real lock Off still delivers deltas (by design: the lock is the game's request).
+- **Not yet proven:** the Auto warp path (needs a game that warps a visible cursor, like babizigames' MW3), Direct + aiming, X11.
+
 ## 2026-11-09 — ✅ touch-aim 9864394d INSTALLED on the Elite main app (pubg) 08:57:14 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - Artifact Bannerlator-touch-aim-9864394d-pubg (CI 42626866929), 597,171,783 bytes, has AimTracker / TouchAimSettings in classes4/5.dex. Staged /sdcard/Download/Bannerlator-touch-aim-9864394d.apk, sha256 0a5724b7… (host == device).
 - `pm install -r` Success; installed base.apk sha256 0a5724b7… == staged; lastUpdateTime 2026-11-09 08:57:14; versionName 3.1.9-pre2 (dev build keeps the release numbers). Crash buffer empty, no FATAL. Previous install was 5c18b9f1… (igart 906ae178). Peer session root-59 told before and "done" after. /data free 14 GB.

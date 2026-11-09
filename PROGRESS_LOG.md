@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ touch-aim ca31a4d9: user check — labels right, aiming smooth (11:5x EST)
+- **User:** "labels look right, aiming felt smooth". Labels = device-proven (user saw them, ca31a4d9 pubg). Aiming smooth = A Game About Digging A Hole (Wayland, real pointer lock path) on 9864394d — the same aim code as ca31a4d9.
+- **Proof levels now:** Touch / Aim settings + per-game save + labels: device-proven on the Elite (Wayland, one game). Auto warp detection: NOT device-tested (no game that warps a visible cursor tried). Direct while aiming: NOT device-tested. X11: NOT device-tested.
+- **Next:** user's call — test Auto / X11 first, or merge (CI green 42650998755 + backup ref refs/backup/20261109/main-before-touch-aim-mode first).
+
 ## 2026-11-09 — ✅ touch-aim ca31a4d9 INSTALLED on the Elite main app (pubg) 11:42:16 EST (user: "yes install it, pubg"; labels NOT seen on device yet)
 - Artifact Bannerlator-touch-aim-ca31a4d9-pubg (CI 42650998755), 597,168,798 bytes; manifest has com.tencent.ig; resources.arsc has "Touch gestures", no "Cursor to touch and its touch gestures". Staged /sdcard/Download/Bannerlator-touch-aim-ca31a4d9.apk, sha256 1b272bc5… (host == device).
 - Before: base.apk 0a5724b7… (= 9864394d), no Wine processes, launcher in front; no peer sessions. `pm install -r` Success (one permissive avc line from system_server reading the FUSE file, harmless); installed base.apk sha256 1b272bc5… == staged; lastUpdateTime 2026-11-09 11:42:16; versionName 3.1.9-pre2 (dev build keeps the release numbers). Crash buffer empty after install.

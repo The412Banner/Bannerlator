@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED fix/driver-install-status → main 979ce857 (user: "merge it to main", ~14:1x EST)
+- Backup ref refs/backup/20261109/main-before-driver-install-status = 6bec6bc6 (pushed, ls-remote checked). Main had not moved (6bec6bc6 ancestor of the branch). --no-ff merge 979ce857 (parents 6bec6bc6 + ef687c73), tree == branch tip; diff vs the tested build 1fe0ddd6 = PROGRESS_LOG.md only. No workflow running before the push.
+- First push attempt failed harmlessly (zsh `$VAR:r…` modifier ate the refspec; nothing pushed); redone with `${VAR}`.
+- Proof level at merge: CI green (42675781398) + device-tested on the Elite (pubg 1fe0ddd6: same-name refusal message, record on refusal, Installed mark from the record). NOT device-tested: Download and replace / Replace, "-Linux" / "-Wayland" downloads, two installs at once, refusal reasons, Classic Contents UI. Branch fix/driver-install-status kept.
+
 ## 2026-11-09 — 🧪 driver-install-status 1fe0ddd6: first device check (Lab › Contents › StevenMXZ, 14:06 EST)
 - User screenshot 14:06:22: v891.14 and v891.11 rows read Installed ✓, toast "891.11 is already installed"; v39 Gen8 V39 / R2-Oneui (installed before, not re-tapped) still show download, as expected (no record yet).
 - logcat 14:06:21.955 `DriverInstaller: install v891.11_891.11.zip: not installed (891.11 is already installed)`; shared_prefs/driver_install_records.xml holds both StevenMXZ URLs → ANDROID|891.11 / ANDROID|891.14; adrenotools folder unchanged (9 drivers, no ".tmp-" leftovers); crash buffer empty.

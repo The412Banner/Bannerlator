@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 📝 Wayland cross-process drawing: fix plan saved (PARKED); Steam Latest X11 test running
+- **Why:** the 2026 Steam client draws from separate Chromium processes; our winewayland only knows its own process's windows (proton-wine banner-proton/11.9: `window.c:141-157` per-process table, `window_surface.c:1390` default surface, `wayland_surface.c:4873` no attach), so the window stays empty on Wayland.
+- **Plan saved (user: "save 3 to memory"):** private protocol in BL's compositor + winewayland patch — window owners register HWND↔surface; another process's drawing gets its own surface placed inside that window by the compositor (GPU and software paths), with fallback when unsupported. New layer (v17) + BL build; several days; not started. Memory: bannerlator-wayland-cross-process.
+- **Now (~19:00 EST):** user launches Steam Latest with Display system = X11 (per-shortcut), same Launch options.
+- **Resume point:** results in the newest screenshot, `Download/bannerlator/Steam Latest/` and the Steam-latest logs folder; peer session hands-off until "done".
+
 ## 2026-11-09 — 🔍 Steam Latest (2026 client) updates fine but shows a black sign-in window on Wayland; X11 test next
 - **Run 18:40–18:45 EST (user):** the starter updated itself to client 1769731672 (2026-01-30; last build on the 32-bit channel); its steamclient DLLs now contain the zstd chunk marker `VSZa`, so game downloads should work. The updater window drew normally.
 - **Problem:** the sign-in window is black. This client ignores `-cef-single-process` / `-cef-in-process-gpu` (webhelper.txt starts separate gpu-process, renderer and utility processes) → 7 window redraws, then ~1 per 10 s. The logon "Try another CM" lines are only the idle anonymous connection being dropped.

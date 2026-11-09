@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ touch-aim 9864394d INSTALLED on the Elite main app (pubg) 08:57:14 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- Artifact Bannerlator-touch-aim-9864394d-pubg (CI 42626866929), 597,171,783 bytes, has AimTracker / TouchAimSettings in classes4/5.dex. Staged /sdcard/Download/Bannerlator-touch-aim-9864394d.apk, sha256 0a5724b7… (host == device).
+- `pm install -r` Success; installed base.apk sha256 0a5724b7… == staged; lastUpdateTime 2026-11-09 08:57:14; versionName 3.1.9-pre2 (dev build keeps the release numbers). Crash buffer empty, no FATAL. Previous install was 5c18b9f1… (igart 906ae178). Peer session root-59 told before and "done" after. /data free 14 GB.
+- **Next:** the user tries a mouse-look game with on-screen controls (container 1: A Game About Digging A Hole, DOOM + DOOM II, Resident Evil 2). What to look for: Touchpad / Direct × Aim Auto / On / Off in the drawer (Controls › Mouse) or the Lab in-game menu; logcat `input: touch …, aim …` at launch and `input: aim auto on|off`. Merge only on the user's go.
+
 ## 2026-11-09 — ✅ touch-aim CI 42626866929 GREEN ×4 (9864394d); installing pubg (user: "install it when it's done, pubg", 08:42 EST)
 - CI: all 4 jobs success (standard, ludashi, pubg, antutu); headSha 9864394d == pushed. pubg job log: BUILD SUCCESSFUL in 6m 20s; skipped steps are the cached / main-only ones; no compile warnings from the changed code (the Kotlin warnings in XServerDrawer.kt / DeckInGame.kt are older lines).
 - Before install (08:47 EST): installed com.tencent.ig 3.1.9-pre2 build, base.apk sha256 5c18b9f1… (= igart 906ae178, 11-08 21:27), app process 7623 open in the background, no Wine processes, Termux in front.

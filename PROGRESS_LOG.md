@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ main a0d3abc1 artifacts build 42553504693 GREEN ×4 (22:06 EST)
+- The artifacts are Bannerlator-main-standard / pubg / antutu / ludashi (564 MB each). No release, no tag. Not installed (not asked).
+
 ## 2026-11-08 — 🔀 MERGED feat/ingame-game-art → main a0d3abc1 (~21:58 EST; main artifacts build 42553504693 running)
 - **User:** "merge it when green" and "then build main as artifacts only after merging".
 - **Checks:**

@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Инсталирани звукови банки и папка за експорт</string>
     <string name="lab_33b3dcd5">Държи GPU на максималната му честота, докато играта работи. По-горещо и по-енергоемко; игрите могат да го отменят.</string>
     <string name="lab_33b5c99c">Само след като приемете декларацията за облак на трета страна; никога не изтрива нищо от облака.</string>
+    <string name="lab_33cb03bf">Като страниците на приложението</string>
     <string name="lab_33e13543">Отчет на адаптера</string>
     <string name="lab_340a5eba">Автоматично архивиране на записите и синхронизиране с облака за Steam, GOG и вашите собствени игри.</string>
     <string name="lab_340d70c2">Механизми за изтегляне от магазините, скорост и връзка със Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Фиксирано 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Инсталираните компилации на VEGAS и тази, вградена в приложението.</string>
+    <string name="lab_5edc9360">Меню в играта · %1$s</string>
     <string name="lab_5ee84880">Кодеци</string>
     <string name="lab_5eed9977">Вградена банка General MIDI</string>
     <string name="lab_5f21d1d0">Обложка от вашите файлове, Steam или SteamGridDB, връзката към Steam, жанрове, година и описание (Подробности за играта).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn текстури</string>
     <string name="lab_6563bc96">По-остро (-0.75)</string>
     <string name="lab_65787fdc">Вътрешна памет, SD карта и дисковете на всеки контейнер</string>
+    <string name="lab_65854b5f">Меню в играта</string>
     <string name="lab_659fcd98">Добавено от мен</string>
     <string name="lab_65f8ea90">Драйвер на рендерера</string>
     <string name="lab_65f9e2b8">Плътни</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Име и настройки за стартиране само за тази игра.</string>
     <string name="lab_8dc9c516">Корекции за PanVK в адаптера Wayland: скрива present_id, present_wait и dynamic_rendering, плюс две заобиколни решения за синхронизация. Включено по подразбиране с драйвер PanVK.</string>
     <string name="lab_8df575ef">Изисква екранния рендерер Vulkan (Графика) или Wayland.</string>
+    <string name="lab_8e22550f">Страници на приложението</string>
     <string name="lab_8e7f9e42">Вземи драйвери</string>
     <string name="lab_8e81d76e">Пресет FEXCore</string>
     <string name="lab_8e91f337">Root. Наблюдението на температурата остава активно.</string>

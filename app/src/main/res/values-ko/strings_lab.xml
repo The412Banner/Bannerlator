@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">설치된 사운드 뱅크 및 내보내기 폴더</string>
     <string name="lab_33b3dcd5">게임이 실행되는 동안 GPU를 최고 클럭으로 유지합니다. 발열과 전력 소모가 커지며, 게임이 이를 무시할 수 있습니다.</string>
     <string name="lab_33b5c99c">타사 클라우드 고지 사항에 동의한 후에만 동작하며, 클라우드에서 아무것도 삭제하지 않습니다.</string>
+    <string name="lab_33cb03bf">앱 화면과 동일</string>
     <string name="lab_33e13543">어댑터 보고서</string>
     <string name="lab_340a5eba">Steam, GOG 및 직접 추가한 게임의 세이브 자동 백업과 클라우드 동기화.</string>
     <string name="lab_340d70c2">스토어 다운로드 엔진, 속도, Steam 연결.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">고정 초당 60회</string>
     <string name="lab_5ecf04b0">보기</string>
     <string name="lab_5edc0296">설치된 VEGAS 빌드와 앱에 번들된 빌드.</string>
+    <string name="lab_5edc9360">게임 중 메뉴 · %1$s</string>
     <string name="lab_5ee84880">코덱</string>
     <string name="lab_5eed9977">내장 General MIDI 뱅크</string>
     <string name="lab_5f21d1d0">파일, Steam 또는 SteamGridDB에서 가져온 커버 아트, Steam 링크, 장르, 출시 연도, 설명(게임 상세 정보).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn 텍스처</string>
     <string name="lab_6563bc96">더 선명하게 (-0.75)</string>
     <string name="lab_65787fdc">내부 저장소, SD 카드, 모든 컨테이너의 드라이브</string>
+    <string name="lab_65854b5f">게임 중 메뉴</string>
     <string name="lab_659fcd98">직접 추가함</string>
     <string name="lab_65f8ea90">렌더러 드라이버</string>
     <string name="lab_65f9e2b8">불투명</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">이 게임의 이름과 실행 옵션.</string>
     <string name="lab_8dc9c516">Wayland 어댑터의 PanVK 조정: present_id, present_wait, dynamic_rendering을 숨기고 두 가지 동기화 우회책을 적용합니다. PanVK 드라이버에서는 기본적으로 켜져 있습니다.</string>
     <string name="lab_8df575ef">Vulkan 화면 렌더러(그래픽) 또는 Wayland가 필요합니다.</string>
+    <string name="lab_8e22550f">앱 화면</string>
     <string name="lab_8e7f9e42">드라이버 받기</string>
     <string name="lab_8e81d76e">FEXCore 프리셋</string>
     <string name="lab_8e91f337">루트. 온도 감시는 계속 작동합니다.</string>

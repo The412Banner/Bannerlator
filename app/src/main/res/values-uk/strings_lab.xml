@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Встановлені звукові банки й папка експорту</string>
     <string name="lab_33b3dcd5">Тримає GPU на максимальній частоті, поки працює гра. Більше нагрівання й споживання; ігри можуть це перевизначити.</string>
     <string name="lab_33b5c99c">Лише після прийняття попередження про сторонню хмару; нічого не видаляє з хмари.</string>
+    <string name="lab_33cb03bf">Як на сторінках додатка</string>
     <string name="lab_33e13543">Звіт адаптера</string>
     <string name="lab_340a5eba">Автоматичні резервні копії збережень і хмарна синхронізація для Steam, GOG і ваших власних ігор.</string>
     <string name="lab_340d70c2">Рушії завантаження магазинів, швидкість і підключення до Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Фікс. 60/с</string>
     <string name="lab_5ecf04b0">Перегляд</string>
     <string name="lab_5edc0296">Встановлені збірки VEGAS і збірка, вбудована в додаток.</string>
+    <string name="lab_5edc9360">Ігрове меню · %1$s</string>
     <string name="lab_5ee84880">Кодеки</string>
     <string name="lab_5eed9977">Вбудований банк General MIDI</string>
     <string name="lab_5f21d1d0">Обкладинка з ваших файлів, Steam або SteamGridDB, посилання на Steam, жанри, рік і опис (відомості про гру).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Текстури BCn</string>
     <string name="lab_6563bc96">Різкіше (-0.75)</string>
     <string name="lab_65787fdc">Внутрішня пам’ять, SD-карта й диски всіх контейнерів</string>
+    <string name="lab_65854b5f">Ігрове меню</string>
     <string name="lab_659fcd98">Додано мною</string>
     <string name="lab_65f8ea90">Драйвер рендерера</string>
     <string name="lab_65f9e2b8">Суцільні</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Назва й параметри запуску лише для цієї гри.</string>
     <string name="lab_8dc9c516">Налаштування PanVK в адаптері Wayland: приховує present_id, present_wait і dynamic_rendering, плюс два обхідні рішення для синхронізації. Стандартно ввімкнено з драйвером PanVK.</string>
     <string name="lab_8df575ef">Потрібен екранний рендерер Vulkan (Графіка) або Wayland.</string>
+    <string name="lab_8e22550f">Сторінки додатка</string>
     <string name="lab_8e7f9e42">Отримати драйвери</string>
     <string name="lab_8e81d76e">Пресет FEXCore</string>
     <string name="lab_8e91f337">Root. Контроль температури далі працює.</string>

@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Installerade ljudbanker och exportmapp</string>
     <string name="lab_33b3dcd5">Håller GPU:n på högsta klockfrekvens medan ett spel körs. Varmare och mer strömkrävande; spel kan åsidosätta det.</string>
     <string name="lab_33b5c99c">Först när du har godkänt ansvarsfriskrivningen för tredjepartsmoln; tar aldrig bort något från molnet.</string>
+    <string name="lab_33cb03bf">Samma som appens sidor</string>
     <string name="lab_33e13543">Adapterrapport</string>
     <string name="lab_340a5eba">Automatisk säkerhetskopiering av sparfiler och molnsynk för Steam, GOG och dina egna spel.</string>
     <string name="lab_340d70c2">Butikernas nedladdningsmotorer, hastighet och Steam-anslutning.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fast 60/s</string>
     <string name="lab_5ecf04b0">Visa</string>
     <string name="lab_5edc0296">De installerade VEGAS-byggena, och det som följer med appen.</string>
+    <string name="lab_5edc9360">Meny i spelet · %1$s</string>
     <string name="lab_5ee84880">Kodekar</string>
     <string name="lab_5eed9977">Inbyggd General MIDI-bank</string>
     <string name="lab_5f21d1d0">Omslagsbild från dina filer, Steam eller SteamGridDB, Steam-länken, genrer, år och beskrivning (Speldetaljer).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn-texturer</string>
     <string name="lab_6563bc96">Skarpare (-0.75)</string>
     <string name="lab_65787fdc">Intern lagring, SD-kort och alla containrars enheter</string>
+    <string name="lab_65854b5f">Meny i spelet</string>
     <string name="lab_659fcd98">Tillagt av mig</string>
     <string name="lab_65f8ea90">Renderardrivrutin</string>
     <string name="lab_65f9e2b8">Täckande</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Namn och startalternativ för just detta spel.</string>
     <string name="lab_8dc9c516">PanVK-justeringar i Wayland-adaptern: döljer present_id, present_wait och dynamic_rendering, plus två lösningar för synkronisering. På som standard med en PanVK-drivrutin.</string>
     <string name="lab_8df575ef">Kräver Vulkan-skärmrenderaren (Grafik) eller Wayland.</string>
+    <string name="lab_8e22550f">Appens sidor</string>
     <string name="lab_8e7f9e42">Hämta drivrutiner</string>
     <string name="lab_8e81d76e">FEXCore-förinställning</string>
     <string name="lab_8e91f337">Root. Temperaturvakten skyddar fortfarande.</string>

@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">ซาวด์แบงก์ที่ติดตั้งและโฟลเดอร์ส่งออก</string>
     <string name="lab_33b3dcd5">ตรึง GPU ไว้ที่คล็อกสูงสุดขณะเล่นเกม ร้อนขึ้นและกินไฟมากขึ้น เกมสามารถเปลี่ยนทับได้</string>
     <string name="lab_33b5c99c">เฉพาะหลังจากคุณยอมรับข้อจำกัดความรับผิดชอบของคลาวด์บุคคลที่สาม และไม่ลบสิ่งใดออกจากคลาวด์</string>
+    <string name="lab_33cb03bf">เหมือนหน้าของแอป</string>
     <string name="lab_33e13543">รายงานอะแดปเตอร์</string>
     <string name="lab_340a5eba">สำรองเซฟอัตโนมัติและซิงค์คลาวด์สำหรับเกม Steam, GOG และเกมของคุณเอง</string>
     <string name="lab_340d70c2">เอนจินดาวน์โหลดของร้านค้า ความเร็ว และการเชื่อมต่อ Steam</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">คงที่ 60/วิ</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">บิลด์ VEGAS ที่ติดตั้งไว้ และตัวที่มากับแอป</string>
+    <string name="lab_5edc9360">เมนูในเกม · %1$s</string>
     <string name="lab_5ee84880">โคเดก</string>
     <string name="lab_5eed9977">แบงก์ General MIDI ในตัว</string>
     <string name="lab_5f21d1d0">ภาพปกจากไฟล์ของคุณ, Steam หรือ SteamGridDB, ลิงก์ Steam, ประเภท ปี และคำอธิบาย (รายละเอียดเกม)</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">พื้นผิว BCn</string>
     <string name="lab_6563bc96">คมขึ้น (-0.75)</string>
     <string name="lab_65787fdc">พื้นที่จัดเก็บภายใน การ์ด SD และไดรฟ์ของทุกคอนเทนเนอร์</string>
+    <string name="lab_65854b5f">เมนูในเกม</string>
     <string name="lab_659fcd98">ฉันเพิ่มเอง</string>
     <string name="lab_65f8ea90">ไดรเวอร์เรนเดอเรอร์</string>
     <string name="lab_65f9e2b8">ทึบ</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">ชื่อและตัวเลือกการเปิดเฉพาะเกมนี้</string>
     <string name="lab_8dc9c516">การปรับแต่ง PanVK ในอะแดปเตอร์ Wayland: ซ่อน present_id, present_wait และ dynamic_rendering พร้อมวิธีแก้ปัญหาการซิงค์สองแบบ เปิดเป็นค่าเริ่มต้นเมื่อใช้ไดรเวอร์ PanVK</string>
     <string name="lab_8df575ef">ต้องใช้เรนเดอเรอร์หน้าจอ Vulkan (กราฟิก) หรือ Wayland</string>
+    <string name="lab_8e22550f">หน้าของแอป</string>
     <string name="lab_8e7f9e42">รับไดรเวอร์</string>
     <string name="lab_8e81d76e">พรีเซ็ต FEXCore</string>
     <string name="lab_8e91f337">รูท ตัวเฝ้าระวังอุณหภูมิยังคงทำงาน</string>

@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">بنوك الأصوات المثبّتة ومجلد التصدير</string>
     <string name="lab_33b3dcd5">يُبقي GPU على أعلى تردد له أثناء تشغيل لعبة. حرارة واستهلاك أعلى؛ ويمكن للألعاب تجاوزه.</string>
     <string name="lab_33b5c99c">فقط بعد قبولك إخلاء المسؤولية الخاص بالسحابة التابعة لجهة خارجية؛ ولا يحذف أي شيء من السحابة أبدًا.</string>
+    <string name="lab_33cb03bf">مثل صفحات التطبيق</string>
     <string name="lab_33e13543">تقرير المحوّل</string>
     <string name="lab_340a5eba">نسخ احتياطي تلقائي لملفات الحفظ ومزامنة سحابية لألعاب Steam وGOG وألعابك الخاصة.</string>
     <string name="lab_340d70c2">محركات التنزيل من المتاجر والسرعة واتصال Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">ثابت 60/ث</string>
     <string name="lab_5ecf04b0">العرض</string>
     <string name="lab_5edc0296">إصدارات VEGAS المثبّتة، والإصدار المضمّن مع التطبيق.</string>
+    <string name="lab_5edc9360">القائمة داخل اللعبة · %1$s</string>
     <string name="lab_5ee84880">برامج الترميز</string>
     <string name="lab_5eed9977">بنك General MIDI المدمج</string>
     <string name="lab_5f21d1d0">صورة الغلاف من ملفاتك أو Steam أو SteamGridDB، ورابط Steam، والأنواع، والسنة، والوصف (تفاصيل اللعبة).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">ملامس BCn</string>
     <string name="lab_6563bc96">أكثر حدة (-0.75)</string>
     <string name="lab_65787fdc">التخزين الداخلي وبطاقة SD ومحركات أقراص كل حاوية</string>
+    <string name="lab_65854b5f">القائمة داخل اللعبة</string>
     <string name="lab_659fcd98">أضفتها بنفسي</string>
     <string name="lab_65f8ea90">برنامج تشغيل العارض</string>
     <string name="lab_65f9e2b8">معتمة</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">الاسم وخيارات التشغيل لهذه اللعبة وحدها.</string>
     <string name="lab_8dc9c516">تعديلات PanVK في محوّل Wayland: يُخفي present_id وpresent_wait وdynamic_rendering، إضافةً إلى حلَّين بديلين للمزامنة. مفعّل افتراضيًا مع برنامج تشغيل PanVK.</string>
     <string name="lab_8df575ef">يتطلب عارض الشاشة Vulkan (الرسومات) أو Wayland.</string>
+    <string name="lab_8e22550f">صفحات التطبيق</string>
     <string name="lab_8e7f9e42">الحصول على برامج التشغيل</string>
     <string name="lab_8e81d76e">إعداد FEXCore المسبق</string>
     <string name="lab_8e91f337">يتطلب root. يظل مراقب الحرارة يعمل.</string>

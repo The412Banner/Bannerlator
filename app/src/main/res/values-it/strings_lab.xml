@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Banchi suoni installati e cartella di esportazione</string>
     <string name="lab_33b3dcd5">Mantiene la GPU alla frequenza massima mentre un gioco è in esecuzione. Più calore e consumi; i giochi possono ignorarlo.</string>
     <string name="lab_33b5c99c">Solo dopo aver accettato l\'avviso sul cloud di terze parti; non elimina mai nulla dal cloud.</string>
+    <string name="lab_33cb03bf">Come nelle pagine dell\'app</string>
     <string name="lab_33e13543">Rapporto dell\'adattatore</string>
     <string name="lab_340a5eba">Backup automatici dei salvataggi e sincronizzazione cloud per Steam, GOG e i tuoi giochi.</string>
     <string name="lab_340d70c2">Motori di download dei negozi, velocità e connessione a Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fisso 60/s</string>
     <string name="lab_5ecf04b0">Visualizza</string>
     <string name="lab_5edc0296">Le build VEGAS installate e quella inclusa nell\'app.</string>
+    <string name="lab_5edc9360">Menu di gioco · %1$s</string>
     <string name="lab_5ee84880">Codec</string>
     <string name="lab_5eed9977">Banco General MIDI integrato</string>
     <string name="lab_5f21d1d0">Copertina dai tuoi file, da Steam o SteamGridDB, il link Steam, generi, anno e descrizione (Dettagli del gioco).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Texture BCn</string>
     <string name="lab_6563bc96">Più nitido (-0.75)</string>
     <string name="lab_65787fdc">Memoria interna, scheda SD e unità di ogni container</string>
+    <string name="lab_65854b5f">Menu di gioco</string>
     <string name="lab_659fcd98">Aggiunto da me</string>
     <string name="lab_65f8ea90">Driver del renderer</string>
     <string name="lab_65f9e2b8">Opaco</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Nome e opzioni di avvio solo per questo gioco.</string>
     <string name="lab_8dc9c516">Modifiche PanVK nell\'adattatore Wayland: nasconde present_id, present_wait e dynamic_rendering, più due workaround di sincronizzazione. Attivo per impostazione predefinita con un driver PanVK.</string>
     <string name="lab_8df575ef">Richiede il renderer dello schermo Vulkan (Grafica) o Wayland.</string>
+    <string name="lab_8e22550f">Pagine dell\'app</string>
     <string name="lab_8e7f9e42">Ottieni driver</string>
     <string name="lab_8e81d76e">Preset FEXCore</string>
     <string name="lab_8e91f337">Root. Il controllo della temperatura resta attivo.</string>

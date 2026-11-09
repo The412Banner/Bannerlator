@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Bancos de sons instalados e pasta de exportação</string>
     <string name="lab_33b3dcd5">Mantém a GPU na frequência máxima enquanto um jogo corre. Aquece mais e gasta mais; os jogos podem substituí-lo.</string>
     <string name="lab_33b5c99c">Só depois de aceitar o aviso de nuvem de terceiros; nunca elimina nada da nuvem.</string>
+    <string name="lab_33cb03bf">Igual às páginas da app</string>
     <string name="lab_33e13543">Relatório do adaptador</string>
     <string name="lab_340a5eba">Cópias automáticas das gravações e sincronização na nuvem para Steam, GOG e os seus próprios jogos.</string>
     <string name="lab_340d70c2">Motores de transferência das lojas, velocidade e ligação ao Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fixo 60/s</string>
     <string name="lab_5ecf04b0">Ver</string>
     <string name="lab_5edc0296">As compilações VEGAS instaladas, e a que vem incluída na app.</string>
+    <string name="lab_5edc9360">Menu do jogo · %1$s</string>
     <string name="lab_5ee84880">Codecs</string>
     <string name="lab_5eed9977">Banco General MIDI integrado</string>
     <string name="lab_5f21d1d0">Capa a partir dos seus ficheiros, do Steam ou do SteamGridDB, a ligação Steam, géneros, ano e descrição (Detalhes do jogo).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Texturas BCn</string>
     <string name="lab_6563bc96">Mais nítido (-0.75)</string>
     <string name="lab_65787fdc">Armazenamento interno, cartão SD e unidades de cada contentor</string>
+    <string name="lab_65854b5f">Menu do jogo</string>
     <string name="lab_659fcd98">Adicionado por mim</string>
     <string name="lab_65f8ea90">Controlador do renderizador</string>
     <string name="lab_65f9e2b8">Sólido</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Nome e opções de arranque só para este jogo.</string>
     <string name="lab_8dc9c516">Ajustes PanVK no adaptador Wayland: oculta present_id, present_wait e dynamic_rendering, mais duas soluções de sincronização. Ligado por padrão com um controlador PanVK.</string>
     <string name="lab_8df575ef">Requer o renderizador de ecrã Vulkan (Gráficos) ou Wayland.</string>
+    <string name="lab_8e22550f">Páginas da app</string>
     <string name="lab_8e7f9e42">Obter controladores</string>
     <string name="lab_8e81d76e">Predefinição do FEXCore</string>
     <string name="lab_8e91f337">Root. O vigilante de temperatura continua ativo.</string>

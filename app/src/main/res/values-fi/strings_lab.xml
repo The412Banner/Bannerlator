@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Asennetut äänipankit ja vientikansio</string>
     <string name="lab_33b3dcd5">Pitää GPU:n huippukellotaajuudella, kun peli on käynnissä. Kuumempi ja virtasyöpömpi; pelit voivat ohittaa sen.</string>
     <string name="lab_33b5c99c">Vasta kun olet hyväksynyt kolmannen osapuolen pilven vastuuvapauslausekkeen; ei koskaan poista mitään pilvestä.</string>
+    <string name="lab_33cb03bf">Sama kuin sovelluksen sivuilla</string>
     <string name="lab_33e13543">Sovitinraportti</string>
     <string name="lab_340a5eba">Tallennusten automaattiset varmuuskopiot ja pilvisynkronointi Steamille, GOGille ja omille peleillesi.</string>
     <string name="lab_340d70c2">Kauppojen latausmoottorit, nopeus ja Steam-yhteys.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Kiinteä 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Asennetut VEGAS-koontiversiot ja sovelluksen mukana tuleva.</string>
+    <string name="lab_5edc9360">Pelinaikainen valikko · %1$s</string>
     <string name="lab_5ee84880">Koodekit</string>
     <string name="lab_5eed9977">Sisäänrakennettu General MIDI -pankki</string>
     <string name="lab_5f21d1d0">Kansikuvat tiedostoistasi, Steamista tai SteamGridDB:stä, Steam-linkki, lajityypit, vuosi ja kuvaus (Game Details).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn-tekstuurit</string>
     <string name="lab_6563bc96">Terävämpi (-0.75)</string>
     <string name="lab_65787fdc">Sisäinen tallennustila, SD-kortti ja jokaisen kontin asemat</string>
+    <string name="lab_65854b5f">Pelinaikainen valikko</string>
     <string name="lab_659fcd98">Itse lisätty</string>
     <string name="lab_65f8ea90">Renderöijän ajuri</string>
     <string name="lab_65f9e2b8">Peittävä</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Tämän yhden pelin nimi ja käynnistysasetukset.</string>
     <string name="lab_8dc9c516">PanVK-säädöt Wayland-sovittimessa: piilottaa present_id-, present_wait- ja dynamic_rendering-laajennukset sekä kaksi synkronoinnin kiertotapaa. Oletuksena päällä PanVK-ajurilla.</string>
     <string name="lab_8df575ef">Vaatii Vulkan-näyttörenderöijän (Grafiikka) tai Waylandin.</string>
+    <string name="lab_8e22550f">Sovelluksen sivut</string>
     <string name="lab_8e7f9e42">Hae ajureita</string>
     <string name="lab_8e81d76e">FEXCore-esiasetus</string>
     <string name="lab_8e91f337">Root. Lämpötilavahti valvoo edelleen.</string>

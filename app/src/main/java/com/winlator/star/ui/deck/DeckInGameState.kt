@@ -64,6 +64,10 @@ object DeckInGameState {
     private val _gameTitle = MutableStateFlow("")
     val gameTitle: StateFlow<String> = _gameTitle
 
+    // The running game's shortcut (its .desktop path): Lab's in-game menu draws the game's art, logo and icon from it.
+    private val _gameShortcutPath = MutableStateFlow<String?>(null)
+    val gameShortcutPath: StateFlow<String?> = _gameShortcutPath
+
     // Launched from a shortcut: the "per game" settings are written to it; without one they land on the container.
     private val _launchedFromShortcut = MutableStateFlow(false)
     val launchedFromShortcut: StateFlow<Boolean> = _launchedFromShortcut
@@ -212,6 +216,7 @@ object DeckInGameState {
 
     fun setSessionKind(v: InGameSessionKind) { _sessionKind.value = v }
     fun setGameTitle(v: String) { _gameTitle.value = v }
+    fun setGameShortcutPath(v: String?) { _gameShortcutPath.value = v }
     fun setLaunchedFromShortcut(v: Boolean) { _launchedFromShortcut.value = v }
     fun setHudSavedToShortcut(v: Boolean) { _hudSavedToShortcut.value = v }
     fun setCornerButton(v: Boolean) { _cornerButton.value = v }
@@ -237,6 +242,7 @@ object DeckInGameState {
         _quickTab.value = QuickTab.QUICK
         _sessionKind.value = InGameSessionKind.WINE_X11
         _gameTitle.value = ""
+        _gameShortcutPath.value = null
         _launchedFromShortcut.value = false
         _hudSavedToShortcut.value = false
         onPanelOpenChanged = null

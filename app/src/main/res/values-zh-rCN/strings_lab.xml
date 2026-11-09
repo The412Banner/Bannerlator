@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">已安装的音色库和导出文件夹</string>
     <string name="lab_33b3dcd5">游戏运行时将 GPU 保持在最高频率。发热和耗电更多；游戏可以覆盖此设置。</string>
     <string name="lab_33b5c99c">仅在你接受第三方云服务免责声明后进行；绝不会从云端删除任何内容。</string>
+    <string name="lab_33cb03bf">与应用页面相同</string>
     <string name="lab_33e13543">适配层报告</string>
     <string name="lab_340a5eba">为 Steam、GOG 和你自己的游戏自动备份存档并进行云同步。</string>
     <string name="lab_340d70c2">商店下载引擎、速度和 Steam 连接。</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">固定 60 次/秒</string>
     <string name="lab_5ecf04b0">视图</string>
     <string name="lab_5edc0296">已安装的 VEGAS 版本，以及应用内置的版本。</string>
+    <string name="lab_5edc9360">游戏内菜单 · %1$s</string>
     <string name="lab_5ee84880">编解码器</string>
     <string name="lab_5eed9977">内置 General MIDI 音色库</string>
     <string name="lab_5f21d1d0">来自你的文件、Steam 或 SteamGridDB 的封面，以及 Steam 链接、类型、年份和简介（游戏详情）。</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn 纹理</string>
     <string name="lab_6563bc96">较锐利（-0.75）</string>
     <string name="lab_65787fdc">内部存储、SD 卡和所有容器的驱动器</string>
+    <string name="lab_65854b5f">游戏内菜单</string>
     <string name="lab_659fcd98">我添加的</string>
     <string name="lab_65f8ea90">渲染器驱动</string>
     <string name="lab_65f9e2b8">不透明</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">仅此游戏的名称和启动选项。</string>
     <string name="lab_8dc9c516">Wayland 适配层中的 PanVK 调整：隐藏 present_id、present_wait 和 dynamic_rendering，并加入两项同步变通方案。使用 PanVK 驱动时默认开启。</string>
     <string name="lab_8df575ef">需要 Vulkan 屏幕渲染器（图形）或 Wayland。</string>
+    <string name="lab_8e22550f">应用页面</string>
     <string name="lab_8e7f9e42">获取驱动</string>
     <string name="lab_8e81d76e">FEXCore 预设</string>
     <string name="lab_8e91f337">root。温度监控仍会提供保护。</string>

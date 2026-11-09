@@ -121,9 +121,12 @@ internal const val DECK_UI_SCALE = 0.8f
 @Composable
 internal fun deckGlass(): Color = xmbPageFrost()?.bar ?: MaterialTheme.colorScheme.background.copy(alpha = 0.72f)
 
+/** A card fill a screen sets for the cards inside it (Lab's in-game menu over the game's art: see-through glass). */
+internal val LocalDeckCardFill = androidx.compose.runtime.staticCompositionLocalOf<Color?> { null }
+
 /** Card fill used by shelves and hub tiles: the theme surface at 90%. */
 @Composable
-internal fun deckCardFill(): Color = xmbPageFrost()?.card ?: MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+internal fun deckCardFill(): Color = LocalDeckCardFill.current ?: xmbPageFrost()?.card ?: MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
 
 /** Hairline around cards and bars. */
 @Composable

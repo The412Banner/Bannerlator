@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Sound bank đã cài và thư mục xuất</string>
     <string name="lab_33b3dcd5">Giữ GPU ở xung nhịp cao nhất khi game chạy. Nóng và tốn điện hơn; game có thể ghi đè.</string>
     <string name="lab_33b5c99c">Chỉ sau khi bạn chấp nhận tuyên bố miễn trừ về đám mây bên thứ ba; không bao giờ xóa gì trên đám mây.</string>
+    <string name="lab_33cb03bf">Giống trang ứng dụng</string>
     <string name="lab_33e13543">Báo cáo adapter</string>
     <string name="lab_340a5eba">Tự động sao lưu bản lưu và đồng bộ đám mây cho game Steam, GOG và game của riêng bạn.</string>
     <string name="lab_340d70c2">Bộ máy tải xuống của cửa hàng, tốc độ và kết nối Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Cố định 60/giây</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Các bản build VEGAS đã cài, và bản đi kèm ứng dụng.</string>
+    <string name="lab_5edc9360">Menu trong game · %1$s</string>
     <string name="lab_5ee84880">Codec</string>
     <string name="lab_5eed9977">Bank General MIDI tích hợp</string>
     <string name="lab_5f21d1d0">Ảnh bìa từ tệp của bạn, Steam hoặc SteamGridDB, liên kết Steam, thể loại, năm và mô tả (Chi tiết game).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Texture BCn</string>
     <string name="lab_6563bc96">Nét hơn (-0.75)</string>
     <string name="lab_65787fdc">Bộ nhớ trong, thẻ SD và ổ đĩa của mọi container</string>
+    <string name="lab_65854b5f">Menu trong game</string>
     <string name="lab_659fcd98">Do tôi thêm</string>
     <string name="lab_65f8ea90">Driver renderer</string>
     <string name="lab_65f9e2b8">Đặc</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Tên và tùy chọn khởi chạy cho riêng game này.</string>
     <string name="lab_8dc9c516">Tinh chỉnh PanVK trong adapter Wayland: ẩn present_id, present_wait và dynamic_rendering, kèm hai cách khắc phục đồng bộ. Bật theo mặc định với driver PanVK.</string>
     <string name="lab_8df575ef">Cần Renderer màn hình Vulkan (Đồ họa) hoặc Wayland.</string>
+    <string name="lab_8e22550f">Trang ứng dụng</string>
     <string name="lab_8e7f9e42">Tải driver</string>
     <string name="lab_8e81d76e">Preset FEXCore</string>
     <string name="lab_8e91f337">Root. Bộ giám sát nhiệt độ vẫn bảo vệ.</string>

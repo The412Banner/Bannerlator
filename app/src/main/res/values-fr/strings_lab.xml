@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Banques de sons installées et dossier d\'export</string>
     <string name="lab_33b3dcd5">Maintient le GPU à sa fréquence maximale pendant qu\'un jeu tourne. Plus chaud et plus gourmand ; les jeux peuvent passer outre.</string>
     <string name="lab_33b5c99c">Seulement après acceptation de l\'avertissement sur le cloud tiers ; ne supprime jamais rien du cloud.</string>
+    <string name="lab_33cb03bf">Comme sur les pages de l\'appli</string>
     <string name="lab_33e13543">Rapport de l\'adaptateur</string>
     <string name="lab_340a5eba">Sauvegardes automatiques et synchronisation cloud pour Steam, GOG et vos propres jeux.</string>
     <string name="lab_340d70c2">Moteurs de téléchargement des boutiques, vitesse et connexion Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fixe 60/s</string>
     <string name="lab_5ecf04b0">Affichage</string>
     <string name="lab_5edc0296">Les builds VEGAS installés, et celui fourni avec l\'appli.</string>
+    <string name="lab_5edc9360">Menu en jeu · %1$s</string>
     <string name="lab_5ee84880">Codecs</string>
     <string name="lab_5eed9977">Banque General MIDI intégrée</string>
     <string name="lab_5f21d1d0">Jaquette depuis vos fichiers, Steam ou SteamGridDB, le lien Steam, genres, année et description (Détails du jeu).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Textures BCn</string>
     <string name="lab_6563bc96">Plus net (-0.75)</string>
     <string name="lab_65787fdc">Stockage interne, carte SD et lecteurs de chaque conteneur</string>
+    <string name="lab_65854b5f">Menu en jeu</string>
     <string name="lab_659fcd98">Ajouté par moi</string>
     <string name="lab_65f8ea90">Pilote du moteur de rendu</string>
     <string name="lab_65f9e2b8">Opaque</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Nom et options de lancement pour ce jeu uniquement.</string>
     <string name="lab_8dc9c516">Ajustements PanVK dans l\'adaptateur Wayland : masque present_id, present_wait et dynamic_rendering, plus deux contournements de synchronisation. Activé par défaut avec un pilote PanVK.</string>
     <string name="lab_8df575ef">Nécessite le moteur de rendu d\'écran Vulkan (Graphismes) ou Wayland.</string>
+    <string name="lab_8e22550f">Pages de l\'appli</string>
     <string name="lab_8e7f9e42">Obtenir des pilotes</string>
     <string name="lab_8e81d76e">Préréglage FEXCore</string>
     <string name="lab_8e91f337">Root. La surveillance de température reste active.</string>

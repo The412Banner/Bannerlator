@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Zainstalowane banki dźwięków i folder eksportu</string>
     <string name="lab_33b3dcd5">Utrzymuje GPU na najwyższym taktowaniu podczas gry. Więcej ciepła i poboru energii; gry mogą to nadpisać.</string>
     <string name="lab_33b5c99c">Tylko po zaakceptowaniu zastrzeżenia o nieoficjalnej obsłudze chmury; nigdy niczego nie usuwa z chmury.</string>
+    <string name="lab_33cb03bf">Jak na stronach aplikacji</string>
     <string name="lab_33e13543">Raport adaptera</string>
     <string name="lab_340a5eba">Automatyczne kopie zapisów i synchronizacja z chmurą dla Steam, GOG i Twoich własnych gier.</string>
     <string name="lab_340d70c2">Mechanizmy pobierania sklepów, szybkość i połączenie ze Steam.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Stałe 60/s</string>
     <string name="lab_5ecf04b0">Widok</string>
     <string name="lab_5edc0296">Zainstalowane kompilacje VEGAS oraz ta dołączona do aplikacji.</string>
+    <string name="lab_5edc9360">Menu w grze · %1$s</string>
     <string name="lab_5ee84880">Kodeki</string>
     <string name="lab_5eed9977">Wbudowany bank General MIDI</string>
     <string name="lab_5f21d1d0">Okładka z Twoich plików, Steam lub SteamGridDB, powiązanie ze Steam, gatunki, rok i opis (Game Details).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">Tekstury BCn</string>
     <string name="lab_6563bc96">Ostrzej (-0.75)</string>
     <string name="lab_65787fdc">Pamięć wewnętrzna, karta SD i dyski każdego kontenera</string>
+    <string name="lab_65854b5f">Menu w grze</string>
     <string name="lab_659fcd98">Dodane przeze mnie</string>
     <string name="lab_65f8ea90">Sterownik renderera</string>
     <string name="lab_65f9e2b8">Pełne</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Nazwa i opcje uruchamiania tylko dla tej gry.</string>
     <string name="lab_8dc9c516">Poprawki PanVK w adapterze Wayland: ukrywa present_id, present_wait i dynamic_rendering oraz dodaje dwa obejścia synchronizacji. Domyślnie włączone ze sterownikiem PanVK.</string>
     <string name="lab_8df575ef">Wymaga renderera ekranu Vulkan (Grafika) lub Wayland.</string>
+    <string name="lab_8e22550f">Strony aplikacji</string>
     <string name="lab_8e7f9e42">Pobierz sterowniki</string>
     <string name="lab_8e81d76e">Preset FEXCore</string>
     <string name="lab_8e91f337">Root. Strażnik temperatury nadal czuwa.</string>

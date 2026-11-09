@@ -1,5 +1,68 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — ✅ igart soft edge device-proven + 🌐 translations (63aa55cb; CI 42552610139 running)
+- **Device test of 906ae178 (Elite, DiRT Showdown, screenshot 214255, 21:42 EST):**
+  - The user: "looks good".
+  - The right edge is soft, the logo is centred, and the art shows through the cards and chips.
+  - logcat since the 21:27 install: no crash, FATAL or ANR.
+- **Translations:** the 4 new strings in all 32 languages (fill; check OK; 1800/1800 each), using each language's existing words for app and in-game menu. Only +128 lines, 4 per file.
+- **Next:** green → merge on the user's go (backup ref, --no-ff, tree check). The translations-only commit is not installed; the code under it is the device-tested 906ae178.
+
+## 2026-11-08 — ✅ igart 906ae178 INSTALLED on the Elite main app (pubg) 21:27:23 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42550063478 green ×4. Installed base.apk sha256 5c18b9f1… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the soft edge → translate the 4 strings → merge on go.
+
+## 2026-11-08 — 🔧 igart: soft edge inside the panel (906ae178; CI 42550063478; 4a15d0c6's run cancelled)
+- **User:** "i don't want it to extend, just make it soft where it meets the game, like slightly fuzzy". My 4a15d0c6 had run the art 64 dp past the panel, which was wrong.
+- **Change:** no wider layer. The art layer's last 16 dp fade out (DstIn: 1 → 0.75 → 0.3 → 0). Still no outline or shadow while art shows; the bottom bar keeps its top line only.
+- **Next:** green → stage → ASK install (not pre-approved).
+
+## 2026-11-08 — 🔧 igart: soft right edge (4a15d0c6; CI 42549765815 running)
+- **User:** "off button is fine, but the hard line at the end of the drawer, could we soften it out". Taken as the drawer's right edge, where the art stops and the game starts.
+- **Change (only while art shows):**
+  - No outline and no drop shadow on the panel.
+  - The background layer is measured 64 dp wider (Modifier.layout) and masked with a horizontal DstIn gradient: solid until 80 dp before the end, then 0.7 / 0.25 / 0. That leaves about 80 % at the panel edge and 0 at +64 dp.
+  - The Pause / Exit bar keeps only its top line (drawBehind).
+- Without art: unchanged.
+- **Next:** green → stage pubg → ASK install (this build is not pre-approved).
+
+## 2026-11-08 — ✅ igart 2aa6ff7c device-proven on the Elite (DiRT Showdown, 21:08 EST)
+- Screenshots 210841 (launch screen, unchanged) and 210853 (in-game menu: icon left, logo centred, art showing through the 42 % cards and 60 % chips; all text readable).
+- logcat since the install: no crash, FATAL or ANR. The game was still running at 21:10.
+- **Next:** translate the 4 strings → merge on go.
+
+## 2026-11-08 — ✅ igart 2aa6ff7c INSTALLED on the Elite main app (pubg) 21:07:43 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42548252856 green ×4. Installed base.apk sha256 430cb207… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user checks the centred logo and the glass cards and chips → translate the 4 strings → merge on go.
+
+## 2026-11-08 — 🔧 igart: chips and buttons see-through too (2aa6ff7c; CI 42548252856; 63d1fd34's run cancelled)
+- **User:** "make them see through also, just not as much to be easy to read still".
+- **Change:** LocalIgRaisedAlpha + igRaised(base) in DeckInGameWidgets. The in-game menu provides 0.6 while art shows; IgChips (unselected; was solid), IgSegmented (was .7), IgButton (was .85) and IgScopeChip (was .8) take at most 0.6. The cards stay at 42 % glass.
+- **Next:** green → install pubg (pre-approved: "install it when it's done, pubg").
+
+## 2026-11-08 — 🔧 igart: logo centred, option cards see-through (63d1fd34; CI 42547866973 running)
+- **User test of d5cb91b1 (screenshot 205039, DiRT Showdown):** the art, icon and logo show. User: "logo should be centered, then the menu options need to be see through to see the game art background also since they are solid".
+- **Change:**
+  - Header: the icon left, the logo centred (46 % wide, 50 dp tall), the status right.
+  - deckCardFill() now takes a provided LocalDeckCardFill; LabInGameMenu provides panelBottom @ 42 % while art shows, so GroupCard rows are glass.
+  - The fade is lighter (.45 / .6 / .74).
+- **Next:** green → stage pubg → ASK install → user checks.
+
+## 2026-11-08 — ✅ igart d5cb91b1 INSTALLED on the Elite main app (pubg) 20:48:32 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
+- CI 42546587468 green ×4. Installed base.apk sha256 21828d09… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
+- **Next:** the user starts a game with art (MIO, RE2) and opens Lab's in-game menu; then tries Game details › Artwork › In-game menu → translate the 4 new strings → merge on go.
+
+## 2026-11-08 — 🖼️ feat/ingame-game-art: the game's art, icon and logo in Lab's in-game menu (d5cb91b1; CI 42546587468 running, NOT device-tested)
+- **Why (user, screenshot 202740 of the Lab in-game menu in DiRT Showdown):** "add specific game art and logos to the in game side drawer … game art behind options faded, logo at the top to replace game name, icon used as well"; then "images / logos / icons also need to be available to pick … in games details page for its in-game drawer to use different ones from main app pages".
+- **How:**
+  - XServerDisplayActivity passes shortcut.file to DeckInGameState.setGameShortcutPath. LabInGameMenu loads the shortcut (loadLabShortcut) and calls LabArt.resolve (found SteamGridDB heroes).
+  - A Box underneath: LabArt.inGameBackground (LabPicture) with a fade (panelTop .55 → panelBottom .84 → .96); the plain gradient when there is no art.
+  - Header: LabInGameIcon (40 dp) + the logo (LabArt.inGameModels "logo", Fit); the name as a fallback.
+  - LabArt: IG_SLOTS igbg/iglogo/igicon (extras labArt_ig*); a pick wins, the app pages' slot follows (also when the pick fails to load); "none" hides it; igbg with no pick = look(s) (so Game art background Off = none).
+  - Game details › Artwork: rows grouped App pages / In-game menu; the In-game rows use the same chooser (Steam + SteamGridDB choices of the base slot, Pick image…, None, Same as app pages); SlotThumb shows the in-game result.
+- **Strings:** 4 new English strings extracted (1800); translations to follow.
+- **Next:** green → stage pubg → ASK install → user opens the in-game menu in a game with art → merge on go.
+
 ## 2026-11-08 — ✅ 3.1.9-pre2 PUBLISHED and verified; installed on the Elite + Pocket FIT
 - **Release run 42538588231 success:** prerelease, not draft, Latest still 3.1.8; tag 3.1.9-pre2 == 6885a19b == main HEAD at publish (no drift); 4 APKs + update.json; update.json vc 106 / 3.1.9-pre2 with 5 highlights; manifest update-pre.json = 106 (stable update.json still 3.1.8 / 104); 32 patches on Bannerlator-updates 3.1.9-pre2 (from pre1 ~34 MB, 3.1.8 ~68 MB, mali-pre1 ~40 MB).
 - **Page edit after publishing (user, no rebuild):** game art preview (docs/releases/media/3.1.9-pre2-game-art.webp from the user's video of the Pocket FIT on a TV) linking to Bannerlator-3.1.9-pre2-game-art-preview.mp4 (release asset, H.264); game art marked device-tested; patch sizes in the Small update box. Same edits in docs (efbbfdfc).

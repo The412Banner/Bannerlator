@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🚀 Release 3.1.9-pre2 cut (user: "cut it") — release commit ce7f5b31
+- **Readiness:** #659 fix merged (e584506a). The Classic check was dropped by the user. Everything since 3.1.9-pre1 was merged and CI-green; the device-test state is written per section in docs/releases/3.1.9-pre2.md.
+- **Release commit ce7f5b31:** versionCode 105 → 106, versionName 3.1.9-pre2, docs/releases/3.1.9-pre2.md (house layout, "What's New — since 3.1.9-pre1", honest test boxes, Credits), README version row + section + TOC. The notes generator was dry-run locally (5 highlights, no TODO).
+- **Backup ref:** refs/backup/20261108/main-before-release-3.1.9-pre2 → 404875cc. Peer sessions on the Elite were asked not to push to main during the release.
+- **Next:** release.yml on main (tag 3.1.9-pre2, prerelease) → verify tag == main HEAD, 4 APKs + update.json, update-pre.json on the manifest branch, patches, not Latest.
+
 ## 2026-11-08 — 🔀 fix/fm-duplicate-entries MERGED to main e584506a (user: "good merge it") — #659
 - The user checked the file manager on the Elite (d4b14a0b installed 19:01:29 EST); crash buffer empty.
 - **How:** --no-ff over main bd426a84 (no conflicts). Backup ref refs/backup/20261108/main-before-fm-duplicate-entries → bd426a84. Merged code == tested d4b14a0b. Main push build 42538197001 running.

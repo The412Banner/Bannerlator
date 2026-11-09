@@ -396,6 +396,7 @@
     <string name="lab_33a35a95">Installed sound banks and export folder</string>
     <string name="lab_33b3dcd5">Holds the GPU at its top clock while a game runs. Hotter and hungrier; games can override it.</string>
     <string name="lab_33b5c99c">Only after you accept the third-party cloud disclaimer; never deletes anything from the cloud.</string>
+    <string name="lab_33cb03bf">Same as app pages</string>
     <string name="lab_33e13543">Adapter report</string>
     <string name="lab_340a5eba">Automatic save backups and cloud sync for Steam, GOG and your own games.</string>
     <string name="lab_340d70c2">Store download engines, speed and Steam connection.</string>
@@ -686,6 +687,7 @@
     <string name="lab_5e4af947">Fixed 60/s</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">The installed VEGAS builds, and the one bundled with the app.</string>
+    <string name="lab_5edc9360">In-game menu · %1$s</string>
     <string name="lab_5ee84880">Codecs</string>
     <string name="lab_5eed9977">Built-in General MIDI bank</string>
     <string name="lab_5f21d1d0">Cover art from your files, Steam or SteamGridDB, the Steam link, genres, year and description (Game Details).</string>
@@ -735,6 +737,7 @@
     <string name="lab_655d40f1">BCn textures</string>
     <string name="lab_6563bc96">Sharper (-0.75)</string>
     <string name="lab_65787fdc">Internal storage, SD card and every container\'s drives</string>
+    <string name="lab_65854b5f">In-game menu</string>
     <string name="lab_659fcd98">Added by me</string>
     <string name="lab_65f8ea90">Renderer Driver</string>
     <string name="lab_65f9e2b8">Solid</string>
@@ -1017,6 +1020,7 @@
     <string name="lab_8d6a7747">Name and launch options for this one game.</string>
     <string name="lab_8dc9c516">PanVK tweaks in the Wayland adapter: hides present_id, present_wait and dynamic_rendering, plus two sync workarounds. On by default with a PanVK driver.</string>
     <string name="lab_8df575ef">Needs the Vulkan screen renderer (Graphics) or Wayland.</string>
+    <string name="lab_8e22550f">App pages</string>
     <string name="lab_8e7f9e42">Get drivers</string>
     <string name="lab_8e81d76e">FEXCore Preset</string>
     <string name="lab_8e91f337">Root. The temperature watchdog still guards.</string>

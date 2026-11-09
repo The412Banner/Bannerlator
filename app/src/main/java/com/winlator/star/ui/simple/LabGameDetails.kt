@@ -238,11 +238,20 @@ private fun keepFile(context: Context, src: String, s: Shortcut, slot: String): 
     out.path
 }.getOrNull()
 
-private fun slotLabel(slot: String) = L(LAB_SLOTS.firstOrNull { it.first == slot }?.second ?: slot)
+private fun slotLabel(slot: String): String =
+    if (LabArt.isIgSlot(slot)) L("In-game menu · %1\$s", slotLabel(LabArt.igBase(slot)))
+    else L(LAB_SLOTS.firstOrNull { it.first == slot }?.second ?: slot)
 
 /** Where a slot's picture comes from, as Artwork shows it. */
 private fun slotSource(s: Shortcut, slot: String): String {
     val p = LabArt.pick(s, slot)
+    if (LabArt.isIgSlot(slot)) return when {
+        p == null -> L("Same as app pages")
+        p == "none" -> if (slot == "iglogo") L("None · the name shows") else L("None")
+        p.contains("steamgriddb", ignoreCase = true) -> "SteamGridDB"
+        p.startsWith("http") -> "Steam"
+        else -> L("Your file")
+    }
     val steam = LabArt.appId(s) != null && slot != "icon"
     return when {
         slot == "cover" -> if (!s.customCoverArtPath.isNullOrBlank()) L("Your cover") else L("Automatic")
@@ -336,8 +345,9 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
         MenuEntry("d-desc", L("Description"), details.description ?: notSet, icon = Icons.Filled.Description, onA = { textFor = "desc" }),
     )
     val clipPick = s.getExtra(LabArt.K_CLIP, "")
+    val appGroup = L("App pages")
     val artRows = LAB_SLOTS.map { (slot, label) ->
-        MenuEntry("art-$slot", L(label), slotSource(s, slot), thumb = { SlotThumb(s, slot) }, onA = { slotFor = slot })
+        MenuEntry("art-$slot", L(label), slotSource(s, slot), group = appGroup, thumb = { SlotThumb(s, slot) }, onA = { slotFor = slot })
     } + listOf(
         MenuEntry(
             "art-clip", L("Preview clip"),
@@ -348,14 +358,17 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
                 LabArt.appId(s) != null -> L("Automatic · a Steam trailer")
                 else -> L("None found · not linked to Steam")
             },
-            icon = Icons.Filled.Wallpaper, onA = { slotFor = "clip" },
+            icon = Icons.Filled.Wallpaper, group = appGroup, onA = { slotFor = "clip" },
         ),
         MenuEntry(
             "art-adjust", L("Adjust logo"),
             L(LAB_LOGO_POS.firstOrNull { it.first == s.getExtra(LabArt.K_LOGO_POS, "") }?.second ?: "Default") + " · " + LabArt.label(LabArt.SIZES, s.getExtra(LabArt.K_LOGO_SIZE, "").ifBlank { "m" }),
-            icon = Icons.Filled.Tune, onA = { adjustOpen = true },
+            icon = Icons.Filled.Tune, group = appGroup, onA = { adjustOpen = true },
         ),
-    )
+    ) + LabArt.IG_SLOTS.map { (slot, base) ->
+        // Lab's in-game menu: its own picture for each, or the app pages' until one is picked.
+        MenuEntry("art-$slot", L(LAB_SLOTS.first { it.first == base }.second), slotSource(s, slot), group = L("In-game menu"), thumb = { SlotThumb(s, slot) }, onA = { slotFor = slot })
+    }
     fun appSetting(v: String) = L("Use app setting (%1\$s)", v)
     val mode = s.getExtra(LabArt.K_MODE, "")
     val pic = s.getExtra(LabArt.K_PICTURE, "")
@@ -435,9 +448,18 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
 @Composable
 private fun SlotThumb(s: Shortcut, slot: String) {
     val tick = LabArt.tick
-    val (w, h) = when (slot) { "cover" -> 40.dp to 60.dp; "wide" -> 96.dp to 45.dp; "bg" -> 96.dp to 54.dp; "logo" -> 110.dp to 44.dp; else -> 48.dp to 48.dp }
+    val (w, h) = when (LabArt.igBase(slot)) { "cover" -> 40.dp to 60.dp; "wide" -> 96.dp to 45.dp; "bg" -> 96.dp to 54.dp; "logo" -> 110.dp to 44.dp; else -> 48.dp to 48.dp }
     Box(Modifier.size(w, h).clip(SimpleShape).background(Color(0xFF1A1D24)).border(1.dp, SimpleLine, SimpleShape)) {
         when (slot) {
+            "igicon" -> if (LabArt.pick(s, slot) != "none") LabInGameIcon(s, Modifier.fillMaxSize())
+            "igbg", "iglogo" -> {
+                val pics = remember(s.file.path, tick, slot) {
+                    if (slot == "igbg") LabArt.inGameBackground(s) else LabArt.inGameModels(s, "logo").map { LabArt.Pic(it) }
+                }
+                LabPicture(pics, Modifier.fillMaxSize(), contentScale = if (slot == "iglogo") ContentScale.Fit else ContentScale.Crop, onNone = {
+                    Text(if (slot == "iglogo") s.name else L("None"), color = SimpleMuted, fontSize = 10.sp, maxLines = 2, modifier = Modifier.align(Alignment.Center).padding(4.dp))
+                })
+            }
             "cover" -> SimpleCover(s, Modifier.fillMaxSize(), title = false)
             "icon" -> LabIcon(s, Modifier.fillMaxSize())
             "wide" -> LabWideCard(s, Modifier.fillMaxSize(), title = false)
@@ -511,9 +533,10 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var choices by remember { mutableStateOf<List<ArtChoice>?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val base = LabArt.igBase(slot)
     LaunchedEffect(slot) {
         choices = withContext(Dispatchers.IO) {
-            (LabArt.appId(s)?.let { steamChoices(it, slot) }.orEmpty()) + sgdbChoices(context, s, slot)
+            (LabArt.appId(s)?.let { steamChoices(it, base) }.orEmpty()) + sgdbChoices(context, s, base)
         }
     }
     fun apply(url: String?) {
@@ -552,14 +575,14 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
                 GroupLabel(group)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp)) {
                     inGroup.forEach { c ->
-                        val (w, h) = when (slot) { "cover" -> 84.dp to 126.dp; "icon" -> 72.dp to 72.dp; "logo" -> 160.dp to 64.dp; else -> 160.dp to 75.dp }
+                        val (w, h) = when (base) { "cover" -> 84.dp to 126.dp; "icon" -> 72.dp to 72.dp; "logo" -> 160.dp to 64.dp; else -> 160.dp to 75.dp }
                         val req = if (!given) first.also { given = true } else null
                         Box(
                             Modifier.size(w, h).clip(SimpleShape).background(Color(0xFF1A1D24))
                                 .then(if (current == c.url) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, SimpleShape) else Modifier)
                                 .labTile(onClick = { apply(c.url) }, requester = req),
                         ) {
-                            AsyncImage(model = c.thumb, contentDescription = c.label, contentScale = if (slot == "logo") ContentScale.Fit else ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            AsyncImage(model = c.thumb, contentDescription = c.label, contentScale = if (base == "logo") ContentScale.Fit else ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
@@ -568,8 +591,11 @@ private fun LabArtChooser(s: Shortcut, slot: String, onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(4.dp))
         PickerRow(L("Pick image…"), requester = if (choices?.isEmpty() == true) first else null) { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.IMAGES, L("Pick an image: %1\$s", slotLabel(slot)))) }
-        if (slot == "logo") PickerRow(L("Show the name instead")) { apply("none") }
-        PickerRow(L("Reset to automatic")) { apply(null) }
+        if (base == "logo") PickerRow(L("Show the name instead")) { apply("none") }
+        if (LabArt.isIgSlot(slot)) {
+            if (base != "logo") PickerRow(L("None")) { apply("none") }
+            PickerRow(L("Same as app pages")) { apply(null) }
+        } else PickerRow(L("Reset to automatic")) { apply(null) }
     }
 }
 

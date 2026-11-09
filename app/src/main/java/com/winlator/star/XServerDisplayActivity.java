@@ -12196,6 +12196,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         deckSeed.setSessionKind(inGameSessionKind);
         deckSeed.setGameTitle(shortcut != null && shortcut.name != null ? shortcut.name : (container != null ? container.getName() : ""));
         deckSeed.setLaunchedFromShortcut(shortcut != null);
+        deckSeed.setGameShortcutPath(shortcut != null && shortcut.file != null ? shortcut.file.getPath() : null);
         deckSeed.setHudSavedToShortcut(shortcutOwnsFpsConfig());
         if (isLinuxSteamSession()) setupLinuxSteamDrawerGlue(rootView);
         // Under the Deck layers, which are added after it, so a menu is always on top of the keyboard.

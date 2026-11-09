@@ -234,6 +234,27 @@ internal object LabArt {
 
     fun hasLogo(s: Shortcut) = models(s, "logo").isNotEmpty()
 
+    // ── Lab's in-game menu: its own background, logo and icon picks (Game details › Artwork › In-game menu) ──
+    /** In-game slot → the app pages' slot it follows until it is set. */
+    val IG_SLOTS = listOf("igbg" to "bg", "iglogo" to "logo", "igicon" to "icon")
+    fun igBase(slot: String): String = IG_SLOTS.firstOrNull { it.first == slot }?.second ?: slot
+    fun isIgSlot(slot: String) = IG_SLOTS.any { it.first == slot }
+
+    /** The in-game menu's [base] picture ("logo", "icon"): its own pick first, then the app pages' (also when the pick does not load). */
+    fun inGameModels(s: Shortcut, base: String): List<Any> {
+        val p = pick(s, "ig$base")
+        if (p == "none") return emptyList()
+        return listOfNotNull(p?.let(::model)) + models(s, base)
+    }
+
+    /** The in-game menu's background: its own pick, else the app pages' (none where Game art background is off). */
+    fun inGameBackground(s: Shortcut): List<Pic> {
+        val p = pick(s, "igbg")
+        if (p == "none") return emptyList()
+        val app = look(s)?.pics.orEmpty()
+        return if (p != null) listOf(Pic(model(p))) + app else app
+    }
+
     /** The game's background as the backdrop draws it, or null when this game shows the Lab wallpaper. */
     fun look(s: Shortcut): Look? {
         val m = gameMode(s)
@@ -352,6 +373,16 @@ internal fun LabWideCard(s: Shortcut, modifier: Modifier, title: Boolean) {
 internal fun LabIcon(s: Shortcut, modifier: Modifier) {
     val tick = LabArt.tick
     val pics = remember(s.file.path, tick) { LabArt.models(s, "icon").map { LabArt.Pic(it) } }
+    Box(modifier.clip(RoundedCornerShape(18)).background(Color(0xFF20242E))) {
+        LabPicture(pics, Modifier.fillMaxSize(), onNone = { SimpleCover(s, Modifier.fillMaxSize(), title = false) })
+    }
+}
+
+/** The in-game menu's icon: its own pick, else the app pages' icon, else the cover cropped square. */
+@Composable
+internal fun LabInGameIcon(s: Shortcut, modifier: Modifier) {
+    val tick = LabArt.tick
+    val pics = remember(s.file.path, tick) { LabArt.inGameModels(s, "icon").map { LabArt.Pic(it) } }
     Box(modifier.clip(RoundedCornerShape(18)).background(Color(0xFF20242E))) {
         LabPicture(pics, Modifier.fillMaxSize(), onNone = { SimpleCover(s, Modifier.fillMaxSize(), title = false) })
     }

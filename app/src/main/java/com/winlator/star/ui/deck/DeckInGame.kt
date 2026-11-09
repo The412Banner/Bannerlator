@@ -1103,19 +1103,54 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
         }
     }
 
+    // The running game's pictures (Game details › Artwork › In-game menu, else the app pages'): its art faded behind
+    // the options, its icon and logo at the top in place of the name.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val gamePath by DeckInGameState.gameShortcutPath.collectAsState()
+    val game = remember(gamePath) { gamePath?.let { com.winlator.star.ui.simple.loadLabShortcut(context, it) } }
+    LaunchedEffect(game) { game?.let { com.winlator.star.ui.simple.LabArt.resolve(context, it) } }
+    val artTick = com.winlator.star.ui.simple.LabArt.tick
+    val art = remember(game, artTick) { game?.let { com.winlator.star.ui.simple.LabArt.inGameBackground(it) }.orEmpty() }
+    val logo = remember(game, artTick) {
+        game?.let { g -> com.winlator.star.ui.simple.LabArt.inGameModels(g, "logo").map { com.winlator.star.ui.simple.LabArt.Pic(it) } }.orEmpty()
+    }
+    val panelTop = com.winlator.star.ui.simple.SimplePanelTop
+    val panelBottom = com.winlator.star.ui.simple.SimplePanelBottom
+    Box(modifier.shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)) {
+        if (art.isNotEmpty()) {
+            com.winlator.star.ui.simple.LabPicture(art, Modifier.matchParentSize())
+            Box(
+                Modifier.matchParentSize().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.55f), panelBottom.copy(alpha = 0.84f), panelBottom.copy(alpha = 0.96f))),
+                ),
+            )
+        } else {
+            Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.97f), panelBottom.copy(alpha = 0.98f)))))
+        }
     Column(
-        modifier = modifier
-            .shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(com.winlator.star.ui.simple.SimplePanelTop.copy(alpha = 0.97f), com.winlator.star.ui.simple.SimplePanelBottom.copy(alpha = 0.98f))))
+        modifier = Modifier
+            .matchParentSize()
             .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
             .focusProperties { canFocus = false }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp)) {
-            Text(
-                title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
-                fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+            if (game != null && com.winlator.star.ui.simple.LabArt.pick(game, "igicon") != "none") {
+                com.winlator.star.ui.simple.LabInGameIcon(game, Modifier.size(40.dp))
+                Spacer(Modifier.width(10.dp))
+            }
+            Box(Modifier.weight(1f).height(44.dp), contentAlignment = Alignment.CenterStart) {
+                val name: @Composable () -> Unit = {
+                    Text(
+                        title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (logo.isEmpty()) name()
+                else com.winlator.star.ui.simple.LabPicture(
+                    logo, Modifier.fillMaxSize(0.92f), contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = Alignment.CenterStart, onNone = name,
+                )
+            }
             DeviceStatus()
         }
         Spacer(Modifier.height(8.dp))
@@ -1181,6 +1216,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             IgButton(if (isPaused) L("Resume") else L("Pause"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))
             IgButton(L("Exit game"), Icons.AutoMirrored.Outlined.Logout, onExit, danger = true, modifier = Modifier.weight(1f))
         }
+    }
     }
 }
 

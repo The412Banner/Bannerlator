@@ -1,0 +1,31 @@
+{
+  "id": "2026-11-09T02-04-57-9d1810",
+  "created": "2026-11-09T02:04:57.572Z",
+  "ip_hash": "QpFh5gvve1",
+  "fields": {
+    "reporter_name": "Kuldeep",
+    "device_model": "Redmi a7 pro 5g",
+    "soc": "Unisoc t8300",
+    "gpu": "Mali g57 mc2",
+    "android": "Android 16",
+    "ram": "4",
+    "app_version": "3.1.9 pre 1",
+    "install_source": "GitHub release",
+    "game_name": "Farming simulator 15",
+    "steam_appid": "",
+    "store": "Steam",
+    "exe": "Farmingsimulator15.exe",
+    "symptom": "Crashes / closes to home",
+    "when": "Never launches at all",
+    "graphics_driver": "System and pan vk",
+    "dx_wrapper": "DXVK",
+    "dxvk": "1.10.3 arm64ec sync",
+    "proton": "Proton 11.0.1",
+    "box64": "Performance",
+    "resolution": "1280x720",
+    "framegen": "No",
+    "repro": "Usually i tap to play and no screen come automatically crash and back\nI can't play directx9 games on any baneerlator version help",
+    "tried": "System , pan vk driver etc"
+  },
+  "logs": []
+}

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔍 Steam client white window: `-cef-disable-gpu` run is still white (Elite, Wayland; investigation)
+- **Run (user launched 18:25–18:26 EST, Launch options `-cef-disable-gpu`):** still a white 705x440 box (user screenshot 18:26:48). The flag took effect (webhelper_gpu.txt: gpu_compositing / rasterization `disabled_software`, ANGLE_SWIFTSHADER).
+- **Wayland log:** 0 GPU frames (expected in software mode); window redraws 5 when the window opened + 17 at 18:26:30 (a 129x131 popup) — software frames reached the window and were still blank. webhelper: "Browser requested transparent background, but it is not supported". No page errors in Steam's logs.
+- **So:** the first guess (only the GPU path is broken) does not explain it. Open question: is the sign-in page itself blank (page/JS/2024 client), or does its content never reach the screen?
+- **Next:** empty `.cef-enable-remote-debugging` in the Steam folder → Steam's DevTools on 127.0.0.1:8080 → page screenshot + console from the proot while the white box is up; then maybe the X11 container.
+- **Resume point:** Steam not running; shortcut has Launch options `-cef-disable-gpu` (user set it); undo for the debug file: `rm /storage/6136-3230/Download/Steam.Ajay/Steam/.cef-enable-remote-debugging` (as root). Memory: bannerlator-steam-client-white.
+
 ## 2026-11-09 — 🔍 Windows Steam client in a Proton container = white login window (Elite, Wayland; investigation, nothing changed)
 - **Why (user, ~18:15 EST):** Steam client in a Proton container shows only a white screen; asked to launch it together and find the cause, and to check Bruno's Winlator for ideas.
 - **Setup (verified):** container 1 "P11 Arm", Proton-11.0-11.9-arm64ec-16, Wayland display, Banners-AIO r3, DXVK 2.4.1 gplasync; shortcut Steam.desktop → `F:\Download\Steam.Ajay\Steam\steam.exe` (2024 client 1731433018, CEF Chrome/126, self-update suppressed), no Launch options. Installed APK base.apk 8058b273… .

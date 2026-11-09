@@ -202,8 +202,8 @@ private val DECK_ALIASES = mapOf(
 /** With the Simple style on, these routes open its own pages instead. */
 private val SIMPLE_ALIASES = mapOf(
     Screen.Containers.route to com.winlator.star.ui.simple.SimpleRoutes.CONTAINERS,
-    Screen.Contents.route to com.winlator.star.ui.simple.SimpleRoutes.COMPONENTS,
-    DeckRoutes.COMPONENTS to com.winlator.star.ui.simple.SimpleRoutes.COMPONENTS,
+    Screen.Contents.route to com.winlator.star.ui.simple.SimpleRoutes.DRIVERS,
+    DeckRoutes.COMPONENTS to com.winlator.star.ui.simple.SimpleRoutes.DRIVERS,
     Screen.AdrenoTools.route to com.winlator.star.ui.simple.SimpleRoutes.DRIVERS,
     Screen.InputControls.route to com.winlator.star.ui.simple.SimpleRoutes.CONTROLS,
     DeckRoutes.CONTROLS to com.winlator.star.ui.simple.SimpleRoutes.CONTROLS,
@@ -954,7 +954,9 @@ private class DeckNav(private val navController: NavHostController) {
     fun open(requested: String) {
         if (AppThemeState.simpleLook) {
             // Simple has no tabs: every page is pushed over the Simple home and B pops it.
-            val r = SIMPLE_ALIASES[requested] ?: DECK_ALIASES[requested] ?: requested
+            // Lab has its own game page: a Deck game route (search, the Deck pages) opens it instead.
+            val lab = if (requested.startsWith("deck_game?")) "lab_game?" + requested.removePrefix("deck_game?") else requested
+            val r = SIMPLE_ALIASES[lab] ?: DECK_ALIASES[lab] ?: lab
             if (r == DeckRoutes.HOME) home()
             else if (currentRoute() != r) navController.navigate(r) { launchSingleTop = true }
             return

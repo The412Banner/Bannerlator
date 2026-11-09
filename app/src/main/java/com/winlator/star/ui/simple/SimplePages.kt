@@ -582,11 +582,12 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
                     current = isIn,
                     progress = if (running) st!!.fraction else null,
                     icon = Icons.Filled.CloudDownload,
-                    onA = {
+                    // Installed: A opens the actions (Download and replace, Save the file only) instead of downloading it again.
+                    onA = if (isIn) null else ({
                         if (!running) ContentsInstaller.install(context, item.type, item.sourceName, item.versionName, item.downloadUrl, keepRaw) {
                             vm.refreshStatus(); vm.refreshFolders(); tick++
                         }
-                    },
+                    }),
                     // The download button on the row (Right from the row, or Start), unless it is installed or on its way.
                     play = if (isIn || running) null else ({
                         ContentsInstaller.install(context, item.type, item.sourceName, item.versionName, item.downloadUrl, keepRaw) {

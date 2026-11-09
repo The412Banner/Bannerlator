@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,6 +58,10 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
     val saved by vm.savedFolders.collectAsState()
     var tick by remember { mutableIntStateOf(0) }
     OnResume { vm.refreshStatus(); vm.refreshFolders(); tick++ }
+    // A download started on a repository's page can end after this page is back: read the lists again when one does.
+    val finished = com.winlator.star.store.download.ContentDownloadRegistry.states.collectAsState().value
+        .filterValues { it.phase == com.winlator.star.store.download.ContentDownloadPhase.DONE }.keys
+    LaunchedEffect(finished) { if (finished.isNotEmpty()) { vm.refreshStatus(); vm.refreshFolders(); tick++ } }
     var defaultItem by remember { mutableStateOf<SetAsDefault.Item?>(null) }
     var addRepo by remember { mutableStateOf(false) }
 

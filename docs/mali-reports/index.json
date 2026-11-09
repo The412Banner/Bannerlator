@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-09T02-04-57-9d1810",
+    "created": "2026-11-09T02:04:57.572Z",
+    "reporter": "Kuldeep",
+    "device": "Redmi a7 pro 5g",
+    "gpu": "Mali g57 mc2",
+    "game": "Farming simulator 15",
+    "symptom": "Crashes / closes to home",
+    "logs": 0
+  },
+  {
     "id": "2026-11-03T15-17-51-3eed33",
     "created": "2026-11-03T15:17:51.586Z",
     "reporter": "Leon",

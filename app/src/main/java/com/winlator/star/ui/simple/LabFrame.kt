@@ -257,7 +257,7 @@ private fun LabTopIcon(icon: ImageVector, label: String, badge: Int = 0, onClick
  * and clock. Landscape also shows the device's name.
  */
 @Composable
-internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Unit)?, modifier: Modifier = Modifier) {
+internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Unit)?, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null) {
     val dev = rememberLabDevice()
     val context = LocalContext.current
     // The Community configs browser and its flows are Classic's (ShortcutActionDialogs), mounted here so the drawer
@@ -292,7 +292,7 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
             overflow = TextOverflow.Ellipsis, modifier = if (portrait) Modifier.weight(1f) else Modifier,
         )
         if (!portrait) Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        LabTopIcon(Icons.Filled.Search, L("Search")) { labOpenSearch() }
+        LabTopIcon(Icons.Filled.Search, L("Search")) { onSearch?.invoke() ?: labOpenSearch() }
         if (!portrait) {
             LabTopIcon(Icons.Filled.Public, L("Community configs")) { actions.showCommunityBrowser = true }
             if (steam) LabTopIcon(Icons.Filled.People, L("Steam friends"), badge = rememberSteamUnread()) { labOpenFriends(context) }

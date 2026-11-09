@@ -604,6 +604,8 @@ private fun DeckShellContent(
                             portrait = !rails,
                             onMenu = { labDrawer = true },
                             onBack = if (currentRoute != DeckRoutes.HOME) goBack else null,
+                            // The same search as Y: the page's own where it has one, else the search overlay.
+                            onSearch = { (deckActions.search.value ?: openSearch)() },
                         )
                     }
                     if (floatTabs && !full && !homeBleed) {

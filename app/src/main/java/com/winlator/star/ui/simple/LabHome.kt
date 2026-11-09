@@ -338,7 +338,7 @@ internal fun LabHome(
 
         @Composable
         fun DriverTile(m: Modifier) {
-            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.DRIVERS) }) {
+            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.contents("installed")) }) {
                 LabTileLabel(L("GPU drivers"))
                 val list = drivers
                 Text(if (list == null) "…" else L("%1\$s installed", list.size), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 18.sp)

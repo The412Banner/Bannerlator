@@ -1121,7 +1121,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             com.winlator.star.ui.simple.LabPicture(art, Modifier.matchParentSize())
             Box(
                 Modifier.matchParentSize().background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.55f), panelBottom.copy(alpha = 0.84f), panelBottom.copy(alpha = 0.96f))),
+                    androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.45f), panelBottom.copy(alpha = 0.6f), panelBottom.copy(alpha = 0.74f))),
                 ),
             )
         } else {
@@ -1134,24 +1134,23 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             .focusProperties { canFocus = false }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
-            if (game != null && com.winlator.star.ui.simple.LabArt.pick(game, "igicon") != "none") {
-                com.winlator.star.ui.simple.LabInGameIcon(game, Modifier.size(40.dp))
-                Spacer(Modifier.width(10.dp))
-            }
-            Box(Modifier.weight(1f).height(44.dp), contentAlignment = Alignment.CenterStart) {
-                val name: @Composable () -> Unit = {
-                    Text(
-                        title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (logo.isEmpty()) name()
-                else com.winlator.star.ui.simple.LabPicture(
-                    logo, Modifier.fillMaxSize(0.92f), contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = Alignment.CenterStart, onNone = name,
+        // The icon on the left, the logo in the middle (the name on the left when there is no logo), the status on the right.
+        val hasIcon = game != null && com.winlator.star.ui.simple.LabArt.pick(game, "igicon") != "none"
+        Box(Modifier.fillMaxWidth().height(60.dp).padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
+            val name: @Composable () -> Unit = {
+                Text(
+                    title.ifEmpty { L("In game") }, color = com.winlator.star.ui.simple.SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.CenterStart).padding(start = if (hasIcon && game != null) 52.dp else 0.dp).fillMaxWidth(0.62f),
                 )
             }
-            DeviceStatus()
+            if (hasIcon && game != null) com.winlator.star.ui.simple.LabInGameIcon(game, Modifier.align(Alignment.CenterStart).size(42.dp))
+            if (logo.isEmpty()) name()
+            else com.winlator.star.ui.simple.LabPicture(
+                logo, Modifier.align(Alignment.Center).fillMaxWidth(0.46f).fillMaxHeight(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = Alignment.Center, onNone = name,
+            )
+            Box(Modifier.align(Alignment.CenterEnd)) { DeviceStatus() }
         }
         Spacer(Modifier.height(8.dp))
         Box(Modifier.padding(horizontal = 16.dp).width(30.dp).height(3.dp).background(accent))
@@ -1184,6 +1183,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             }
         } else {
             val scroll = key(quick, shown) { rememberScrollState() }
+            // Over the game's art the cards are glass, so the art shows through the options too.
+            androidx.compose.runtime.CompositionLocalProvider(LocalDeckCardFill provides if (art.isNotEmpty()) panelBottom.copy(alpha = 0.42f) else null) {
             Column(Modifier.weight(1f).fillMaxWidth().igPageScroll(scroll).padding(horizontal = 12.dp, vertical = 10.dp)) {
                 pageHeader()
                 Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) {
@@ -1202,6 +1203,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
+            }
             }
         }
         Row(

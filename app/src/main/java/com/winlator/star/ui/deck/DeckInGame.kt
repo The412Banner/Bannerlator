@@ -85,6 +85,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -1116,14 +1120,43 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     }
     val panelTop = com.winlator.star.ui.simple.SimplePanelTop
     val panelBottom = com.winlator.star.ui.simple.SimplePanelBottom
-    Box(modifier.shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)) {
-        if (art.isNotEmpty()) {
-            com.winlator.star.ui.simple.LabPicture(art, Modifier.matchParentSize())
+    val line = com.winlator.star.ui.simple.SimpleLine
+    val hasArt = art.isNotEmpty()
+    Box(
+        if (hasArt) modifier
+        else modifier.shadow(26.dp, androidx.compose.ui.graphics.RectangleShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black),
+    ) {
+        if (hasArt) {
+            // No hard edge over art: the art and its fade run on past the panel's right side and thin out into the game
+            // (still solid at the options, about 80 % at the edge, gone 64 dp further in).
             Box(
-                Modifier.matchParentSize().background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.45f), panelBottom.copy(alpha = 0.6f), panelBottom.copy(alpha = 0.74f))),
-                ),
-            )
+                Modifier
+                    .matchParentSize()
+                    .layout { m, c ->
+                        val p = m.measure(androidx.compose.ui.unit.Constraints.fixed(c.maxWidth + 64.dp.roundToPx(), c.maxHeight))
+                        layout(c.maxWidth, c.maxHeight) { p.place(0, 0) }
+                    }
+                    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        val from = ((size.width - 80.dp.toPx()) / size.width).coerceIn(0f, 1f)
+                        val span = 1f - from
+                        drawRect(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                0f to Color.Black, from to Color.Black, from + span * 0.35f to Color.Black.copy(alpha = 0.7f),
+                                from + span * 0.7f to Color.Black.copy(alpha = 0.25f), 1f to Color.Transparent,
+                            ),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                        )
+                    },
+            ) {
+                com.winlator.star.ui.simple.LabPicture(art, Modifier.fillMaxSize())
+                Box(
+                    Modifier.fillMaxSize().background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.45f), panelBottom.copy(alpha = 0.6f), panelBottom.copy(alpha = 0.74f))),
+                    ),
+                )
+            }
         } else {
             Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(panelTop.copy(alpha = 0.97f), panelBottom.copy(alpha = 0.98f)))))
         }
@@ -1132,7 +1165,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     Column(
         modifier = Modifier
             .matchParentSize()
-            .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
+            .then(if (hasArt) Modifier else Modifier.border(1.dp, line))
             .focusProperties { canFocus = false }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
     ) {
@@ -1214,7 +1247,10 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(com.winlator.star.ui.simple.SimpleCard)
-                .border(1.dp, com.winlator.star.ui.simple.SimpleLine)
+                .then(
+                    if (hasArt) Modifier.drawBehind { drawLine(line, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx()) }
+                    else Modifier.border(1.dp, line),
+                )
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             IgButton(if (isPaused) L("Resume") else L("Pause"), if (isPaused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause, ::pauseAndClose, modifier = Modifier.weight(1f))

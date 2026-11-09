@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-08 — 🔧 igart: logo centred, option cards see-through (63d1fd34; CI 42547866973 running)
+- **User test of d5cb91b1 (screenshot 205039, DiRT Showdown):** the art, icon and logo show. User: "logo should be centered, then the menu options need to be see through to see the game art background also since they are solid".
+- **Change:**
+  - Header: the icon left, the logo centred (46 % wide, 50 dp tall), the status right.
+  - deckCardFill() now takes a provided LocalDeckCardFill; LabInGameMenu provides panelBottom @ 42 % while art shows, so GroupCard rows are glass.
+  - The fade is lighter (.45 / .6 / .74).
+- **Next:** green → stage pubg → ASK install → user checks.
+
 ## 2026-11-08 — ✅ igart d5cb91b1 INSTALLED on the Elite main app (pubg) 20:48:32 EST (user: "install it when it's done, pubg"; NOT device-tested yet)
 - CI 42546587468 green ×4. Installed base.apk sha256 21828d09… == staged; no game was running; crash buffer empty; peer sessions told before and "done" after.
 - **Next:** the user starts a game with art (MIO, RE2) and opens Lab's in-game menu; then tries Game details › Artwork › In-game menu → translate the 4 new strings → merge on go.

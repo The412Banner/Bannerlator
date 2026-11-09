@@ -401,7 +401,8 @@ private fun resolve(
     val placed = HashSet<SettingDef>()
     val extraItems: Map<String, List<Pair<PageExtra, Boolean>>> =
         extras.mapValues { (_, e) -> e.top().map { it to true } + e.bottom().map { it to false } }
-    val placedExtra = HashSet<String>()
+    // The Graphics lists reader draws nothing; the editor keeps it running itself (see SimpleClassicEditor).
+    val placedExtra = hashSetOf("graphics|$GRAPHICS_PROBES")
     fun res(items: List<CItem>): List<RLine> = buildList {
         for (item in items) when (val it = item) {
             is CHead -> add(RHead(it.title))
@@ -479,6 +480,10 @@ internal fun SimpleClassicEditor(
         handoffs.mapValues { (_, list) -> list.filter { env.world in it.worlds } }.filterValues { it.isNotEmpty() }
     }
     LaunchedEffect(env) { env.loadAsync() }
+    // Driver versions, DXVK/VKD3D/VEGAS/D7VK builds and the GPU names are read by this extra while it is
+    // composed. Lab has no Graphics page to host it, so it runs for as long as the editor is open.
+    val graphicsProbes = remember(extras) { extras["graphics"]?.top()?.filter { it.key == GRAPHICS_PROBES }.orEmpty() }
+    graphicsProbes.forEach { it.content() }
     val catLabels = remember(categories) { categories.associate { it.id to it.label } }
     val tabs = resolve(
         if (game) gameLayout() else containerLayout(),

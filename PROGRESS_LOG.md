@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔍 Steam client (2024 copy) game download fails: client too old for zstd chunks (investigation)
+- **User (18:32 EST screenshot):** FlatOut download stops at 1.1 GB with "CONTENT SERVERS UNREACHABLE".
+- **Steam content_log:** 1170 of 1186 MB downloaded fine, then the SAME 26 chunks fail `Unpack failed` on all 6 servers (2 Valve caches, Akamai, Fastly, Alibaba, Google) → all marked bad → "No Download Source" → shown as "servers unreachable".
+- **Cause (strong evidence; the encrypted chunk bytes were not inspected):** the copied Nov 2024 steamclient(64).dll knows `VZa` (LZMA) but has no `VSZa` (zstd) marker; SteamKit added zstd depot chunks on 2025-05-09; FlatOut's public build 20963611 is from 2025-12-01. That Steam folder blocks its own updates (`steam.cfg`: `BootStrapperInhibitAll=Enable`).
+- **BL's own engine handles it:** `bl-steam-client/rust/src/depot_chunk.rs:43` (VSZa via ruzstd).
+- **Options given to the user:** (A) back up the Steam folder, turn off steam.cfg, let Steam update (the white-window options may need re-testing on the new client); (B) download the game through Bannerlator's Steam store. Nothing changed on the device.
+
 ## 2026-11-09 — ✅ Steam client white window SOLVED with launch options (user-found; Elite, Wayland)
 - **Fix (user, run 18:27:47 EST):** shortcut Launch options = the Steam folder's 1.bat set: `-nocrashmonitor -noshaders -no-shared-textures -cef-single-process -cef-in-process-gpu -cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad -cef-disable-gpu`. Logged in; Store and Friends List draw (user screenshots 18:29:08 / 18:29:13). The 2024 client (1731433018) is still accepted.
 - **Evidence:** Wayland log shows ONE steamwebhelper (pid 17784) instead of three, and 735 window redraws in the first 10 s (30–50 fps of shared-memory frames) vs 5–17 per minute in the white runs.

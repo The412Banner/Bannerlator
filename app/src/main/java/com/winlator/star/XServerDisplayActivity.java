@@ -12044,10 +12044,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
 
             // Epic per-game launch fixes (Feature #7). Runs on the background launch setup thread.
-            //  • applyEnv: merge required WINEDLLOVERRIDES (Kingdom Hearts III) into the launch env,
-            //    after the shortcut env so a user override still wins.
-            //  • applyPreLaunch: write the Bethesda "Installed Path" registry value + wipe the
-            //    Hogwarts Legacy ProgramData cache folder before the guest process starts.
+            //  • applyEnv: merge required WINEDLLOVERRIDES (Kingdom Hearts III) and set default
+            //    variables (Trover) after the shortcut env, so a user value still wins.
+            //  • applyPreLaunch: write the Bethesda "Installed Path" registry value, wipe the
+            //    Hogwarts Legacy ProgramData cache folder and merge Trover's Engine.ini lines
+            //    before the guest process starts.
             // Both no-op for non-Epic shortcuts and Epic games without a registered fix.
             if (shortcut != null) {
                 com.winlator.star.store.EpicGameFixes.applyEnv(this, shortcut, envVars);
@@ -16173,6 +16174,11 @@ return true;
                 && !"0".equals(shortcut.getExtra("epicEos"))) {
             String epicArgs = com.winlator.star.store.EpicLaunchArgs.buildArgString(this, shortcut);
             if (epicArgs != null && !epicArgs.isEmpty()) args += " " + epicArgs;
+        }
+        // Epic per-game launch arguments (EpicGameFixes) the command does not carry yet.
+        if (shortcut != null) {
+            String fixArgs = com.winlator.star.store.EpicGameFixes.launchArgs(shortcut, args);
+            if (!fixArgs.isEmpty()) args += " " + fixArgs;
         }
 
         // Construct the final command

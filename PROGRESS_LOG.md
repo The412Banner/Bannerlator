@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 12:10 EST — 🧪 Quick proof: Windows Steam's web helper with --in-process-gpu (patched layer kernelbase.dll on the Pocket FIT)
+- **User (after 98447478):** Big Picture menu / Quick Access "still invisible until I navigate" → the transparent-window fix alone does not solve it. Asked whether DroidDeck has something: yes, DroidDeck's Linux Steam gets `--no-zygote --in-process-gpu` on steamwebhelper (`tools/linuxfs/preload/webhelper.c`), so GPU drawing stays in the window-owning process.
+- **Windows Steam:** `logs/webhelper.txt` start line maps `-cef-disable-gpu` but drops `-cef-in-process-gpu` / `-cef-single-process`. Wine has no IFEO Debugger. Proton's kernelbase has a CreateProcess command-line append table (`dlls/kernelbase/process.c` ~592, Warhammer2.exe / SummerIslands.exe → ` --in-process-gpu`).
+- **Quick proof (user: "do the quick proof"; root-8b OK as a device-only test):** layer `11.0-12.3-arm64ec-16/lib/wine/aarch64-windows/kernelbase.dll` swapped by rename (owner/mode/SELinux context kept) for a copy where "SummerIslands.exe" reads "webhelper.exe" (32 bytes, both arm64x copies), sha256 f0d01953… Backup `/sdcard/Download/bl-backup-20261110/kernelbase-12.3-aarch64.orig.dll` (b9b121b9…). **Restore after the test** (root-8b: the FIT must match the published v16 layer).
+- **Proper fix if it works:** proton-wine `staging/proton_11.12.3-DroidDeck/<topic>`: table entry for steamwebhelper.exe gated by an env var Bannerlator sets for Windows Steam sessions; root-8b reviews; new layer name/release only on the user's word.
+- **Also:** compact Lab-style Run popup ca49b7e0 (user: "small and minimal with thin lines between options in lab style"), CI 42860657973; install approved.
+
 ## 2026-11-10 11:44 EST — 📲 INSTALLED feat/windows-steam-library 98447478 (all-in-one) on the Pocket FIT (user: "install the all-in-one when it's done")
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-98447478-pubg.apk` sha256 `b5271c9e07c181f891dd238140e25937661bf8d2956718eff4121b0b7bd41e60` (host == device; artifact = run 42849152804 / 98447478).
 - **Installed 11:43:56 EST:** base.apk == staged; crash buffer 0; nothing was running in Bannerlator; Box64EC, xuser-1, xuser-2 intact; Steam shortcut keeps the GPU + OPWR test settings.

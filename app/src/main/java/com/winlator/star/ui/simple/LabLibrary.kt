@@ -46,6 +46,7 @@ internal object LabLibrary {
 
     /** The store filters: Classic's store pills, by the same checks. "" = every game. */
     val FILTERS: List<Triple<String, String, (Shortcut) -> Boolean>> = listOf(
+        Triple("windows_steam", "Windows Steam", { s: Shortcut -> com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(s) }),
         Triple("steam", "Steam", DeckStore.STEAM.owns),
         Triple("epic", "Epic Games", DeckStore.EPIC.owns),
         Triple("gog", "GOG", DeckStore.GOG.owns),

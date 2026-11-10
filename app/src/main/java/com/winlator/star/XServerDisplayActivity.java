@@ -8166,8 +8166,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private int menuButtonKeyCode;
     private boolean menuButtonHeld;
 
-    // Windows Steam session (shortcut target steam.exe): the Menu button is Steam's Guide button on a press and
-    // opens the side menu when held. Set in onCreate.
+    // Windows Steam session (shortcut target steam.exe): a Menu button press is Shift+Tab (Steam's overlay key) and
+    // holding it opens the side menu. Set in onCreate.
     private boolean windowsSteamSession;
     private String windowsSteamDisplayNote;
     private static final long WINDOWS_STEAM_MENU_HOLD_MS = 500;
@@ -8177,6 +8177,32 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamMenuHoldFired = true;
         toggleInGameMenu();
     };
+
+    /**
+     * Windows Steam session, Menu button press: Shift+Tab, Steam's overlay key. Over a running game it opens Steam's overlay;
+     * in the client's own window it only moves the focus. (Steam's Guide button, sent before, started Big Picture there.)
+     * A press, then the release 150 ms later.
+     */
+    private void pressWindowsSteamOverlayKeys() {
+        if (xServer == null) return;
+        try {
+            xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
+            xServer.injectKeyPress(XKeycode.KEY_TAB);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "Steam (Windows): Shift+Tab", t);
+            return;
+        }
+        windowsSteamMenuHandler.postDelayed(() -> {
+            try {
+                if (xServer == null) return;
+                xServer.injectKeyRelease(XKeycode.KEY_TAB);
+                xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
+            } catch (Throwable t) {
+                Log.w("XServerDisplayActivity", "Steam (Windows): Shift+Tab release", t);
+            }
+        }, 150);
+        Log.i("XServerDisplayActivity", "Steam (Windows): Menu button press sent Shift+Tab (Steam overlay)");
+    }
 
     private boolean menuButtonEvent(KeyEvent event) {
         int kc = event.getKeyCode();
@@ -8193,8 +8219,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // A controller-profile binding for the same button wins.
             if (inputControlsView != null && inputControlsView.onKeyEvent(event)) return true;
             menuButtonHeld = true;
-            // Windows Steam: a press is Steam's Guide button and a hold opens the side menu. A menu that is
-            // already up still closes on the press, as everywhere else.
+            // Windows Steam: a press is Shift+Tab and a hold opens the side menu. A menu that is already up still
+            // closes on the press, as everywhere else.
             if (windowsSteamSession && winHandler != null && drawerLayout != null && !isInGameMenuOpen()) {
                 windowsSteamMenuHoldFired = false;
                 windowsSteamMenuHandler.postDelayed(windowsSteamMenuHold, WINDOWS_STEAM_MENU_HOLD_MS);
@@ -8209,7 +8235,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             menuButtonHeld = false;
             if (windowsSteamSession) {
                 windowsSteamMenuHandler.removeCallbacks(windowsSteamMenuHold);
-                if (!windowsSteamMenuHoldFired) pressLinuxSteamButton(false);
+                if (!windowsSteamMenuHoldFired) pressWindowsSteamOverlayKeys();
             }
             return true;
         }

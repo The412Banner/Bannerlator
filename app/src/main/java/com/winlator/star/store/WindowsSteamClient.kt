@@ -1,14 +1,27 @@
 package com.winlator.star.store
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.util.Log
+import com.winlator.star.R
 import com.winlator.star.container.Container
+import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.core.EnvVars
 import com.winlator.star.core.VdfParser
 import com.winlator.star.core.WinePath
 import java.io.File
 import java.io.RandomAccessFile
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
 import java.util.UUID
+import java.util.zip.ZipInputStream
 
 /**
  * Valve's Windows Steam client started from a shortcut whose target is `steam.exe`.
@@ -36,6 +49,197 @@ object WindowsSteamClient {
 
     private const val MACHINE_AMD64 = 0x8664
     private const val DEFAULT_LIBRARY = "SteamLibrary"
+
+    /** storeSource of the shortcut "Add Windows Steam client x64" writes; its badge and its place first in the library key on it. */
+    const val STORE_SOURCE = "windows_steam"
+    const val SHORTCUT_NAME = "Windows Steam Client x64"
+    const val BADGE_LABEL = "Windows Steam"
+
+    // Valve's update server. The steam_client_win64 manifest's steam_win64 package is the 64-bit steam.exe starter
+    // (one file); it downloads the rest of the client on its first start.
+    private const val CLIENT_HOST = "https://client-update.steamstatic.com/"
+    private const val CLIENT_MANIFEST = "steam_client_win64"
+
+    /** Start options of the shortcut that runs the 64-bit client (Pocket FIT Elite, 2026-11-09). */
+    const val EXEC_ARGS = "-nocrashmonitor -noshaders -no-shared-textures -cef-single-process -cef-in-process-gpu " +
+        "-cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad -cef-disable-gpu"
+
+    /** True for the shortcut "Add Windows Steam client x64" writes. */
+    @JvmStatic
+    fun isWindowsSteamShortcut(s: Shortcut?): Boolean = s != null && s.getExtra("storeSource") == STORE_SOURCE
+
+    /** Where the client goes: the container's C:\Program Files\Steam. */
+    @JvmStatic
+    fun installDir(container: Container): File = File(container.rootDir, ".wine/drive_c/Program Files/Steam")
+
+    /** The container's Windows Steam shortcut, or null. */
+    @JvmStatic
+    fun findShortcut(container: Container): File? =
+        container.desktopDir.listFiles { f -> f.isFile && f.name.endsWith(".desktop") }
+            ?.firstOrNull { f -> try { isWindowsSteamShortcut(Shortcut(container, f)) } catch (t: Throwable) { false } }
+
+    sealed class AddResult {
+        data class Added(val shortcut: File, val downloaded: Boolean) : AddResult()
+        data class AlreadyAdded(val shortcut: File) : AddResult()
+        data class Failed(val message: String) : AddResult()
+    }
+
+    /**
+     * Puts the 64-bit client into [container] and writes its shortcut. Downloads Valve's steam.exe starter from Valve's
+     * update server into [installDir] (size and SHA-256 checked against Valve's manifest) unless a 64-bit steam.exe is
+     * already there. A container that already has the shortcut gets no second one. Blocking: call off the main thread.
+     * [progress] gets 0..100 while downloading.
+     */
+    fun addClient(ctx: Context, container: Container, progress: (Int) -> Unit = {}): AddResult {
+        try {
+            findShortcut(container)?.let { return AddResult.AlreadyAdded(it) }
+            val dir = installDir(container)
+            val exe = File(dir, "steam.exe")
+            var downloaded = false
+            if (peMachine(exe) != MACHINE_AMD64) {
+                downloadStarter(ctx, dir, progress)?.let { return AddResult.Failed(it) }
+                if (peMachine(exe) != MACHINE_AMD64) return AddResult.Failed("The download is not the 64-bit steam.exe")
+                downloaded = true
+            }
+            val file = writeShortcut(container, exe)
+            try {
+                coverArt(ctx)?.let { Shortcut(container, file).saveCustomCoverArt(it) }
+            } catch (t: Throwable) {
+                Log.w(TAG, "cover art", t)
+            }
+            Log.i(TAG, "Windows Steam client added to ${container.name}: ${file.absolutePath} (downloaded=$downloaded)")
+            return AddResult.Added(file, downloaded)
+        } catch (e: WinePath.NoFreeDriveLetterException) {
+            return AddResult.Failed("This container has no free drive letters left")
+        } catch (t: Throwable) {
+            Log.w(TAG, "addClient failed", t)
+            return AddResult.Failed(t.message ?: t.javaClass.simpleName)
+        }
+    }
+
+    /** Valve's manifest → the steam_win64 package → steam.exe in [dir]. Returns an error message, or null when done. */
+    private fun downloadStarter(ctx: Context, dir: File, progress: (Int) -> Unit): String? {
+        val manifest = try { httpText(CLIENT_HOST + CLIENT_MANIFEST) } catch (t: Throwable) {
+            return "Could not reach Steam's update server (${t.message ?: t.javaClass.simpleName})"
+        }
+        val pkg = VdfParser.parse(manifest).node("win64")?.node("steam_win64")
+        val name = pkg?.string("file")
+        val sha2 = pkg?.string("sha2")?.lowercase()
+        val size = pkg?.string("size")?.toLongOrNull() ?: -1L
+        if (name.isNullOrBlank() || sha2.isNullOrBlank() || name.contains('/') || name.contains("..")) {
+            return "Steam's update list has no 64-bit client"
+        }
+        val zip = File(ctx.cacheDir, "steam_win64.zip.part")
+        try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val conn = open(CLIENT_HOST + name)
+            try {
+                if (conn.responseCode != 200) return "Steam's update server answered ${conn.responseCode}"
+                val total = if (size > 0) size else conn.contentLengthLong
+                var done = 0L
+                var shown = -1
+                conn.inputStream.use { input ->
+                    zip.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            digest.update(buf, 0, n)
+                            done += n
+                            if (total > 0) {
+                                val pct = (done * 100 / total).toInt().coerceIn(0, 100)
+                                if (pct != shown) { shown = pct; progress(pct) }
+                            }
+                        }
+                    }
+                }
+                if (size > 0 && done != size) return "The download was cut short ($done of $size bytes)"
+            } finally {
+                conn.disconnect()
+            }
+            val got = digest.digest().joinToString("") { "%02x".format(it) }
+            if (got != sha2) return "The download does not match Steam's checksum"
+            Log.i(TAG, "$name: $size bytes, sha256 $got (= Valve's manifest)")
+
+            if (!dir.isDirectory && !dir.mkdirs()) return "Could not create ${dir.absolutePath}"
+            val root = dir.canonicalPath + File.separator
+            ZipInputStream(zip.inputStream()).use { zin ->
+                while (true) {
+                    val entry = zin.nextEntry ?: break
+                    val target = File(dir, entry.name)
+                    if (!target.canonicalPath.startsWith(root)) continue
+                    if (entry.isDirectory) { target.mkdirs(); continue }
+                    target.parentFile?.mkdirs()
+                    val tmp = File(target.parentFile, target.name + ".bl-tmp")
+                    tmp.outputStream().use { zin.copyTo(it) }
+                    if (target.exists()) target.delete()
+                    if (!tmp.renameTo(target)) { tmp.delete(); return "Could not write ${target.name}" }
+                }
+            }
+            return null
+        } catch (t: Throwable) {
+            Log.w(TAG, "download failed", t)
+            return "Download failed (${t.message ?: t.javaClass.simpleName})"
+        } finally {
+            zip.delete()
+        }
+    }
+
+    private fun writeShortcut(container: Container, exe: File): File {
+        val desktopDir = container.desktopDir
+        if (!desktopDir.isDirectory) desktopDir.mkdirs()
+        val winPath = WinePath.resolveWindowsPath(container, exe.absolutePath)
+        val file = File(desktopDir, "$SHORTCUT_NAME.desktop")
+        val content = buildString {
+            append("[Desktop Entry]\n")
+            append("Name=").append(SHORTCUT_NAME).append("\n")
+            append("Exec=wine ").append(WinePath.escapeForExec(winPath)).append("\n")
+            append("Icon=").append(SHORTCUT_NAME).append("\n")
+            append("Type=Application\n")
+            append("StartupWMClass=explorer\n")
+            append("\n")
+            append("[Extra Data]\n")
+            append("storeSource=").append(STORE_SOURCE).append("\n")
+            // The exe itself, never one of the app's Steam modes.
+            append("launchMode=Raw\n")
+            append("execArgs=").append(EXEC_ARGS).append("\n")
+            append(ShortcutOrder.addedAtLine(System.currentTimeMillis()))
+        }
+        file.writeText(content)
+        return file
+    }
+
+    /** Steam's logo on Steam's dark blue, as a 600x900 cover. */
+    private fun coverArt(ctx: Context): Bitmap? {
+        val logo = BitmapFactory.decodeResource(ctx.resources, R.drawable.store_logo_steam) ?: return null
+        val cover = Bitmap.createBitmap(600, 900, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(cover)
+        canvas.drawColor(Color.rgb(0x1B, 0x28, 0x38))
+        val w = 360
+        val h = (logo.height * w.toFloat() / logo.width).toInt().coerceAtLeast(1)
+        val left = (600 - w) / 2
+        val top = (900 - h) / 2
+        canvas.drawBitmap(logo, null, Rect(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
+        return cover
+    }
+
+    private fun open(url: String): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
+        connectTimeout = 15_000
+        readTimeout = 30_000
+        instanceFollowRedirects = true
+        setRequestProperty("User-Agent", "Bannerlator")
+    }
+
+    private fun httpText(url: String): String {
+        val conn = open(url)
+        try {
+            if (conn.responseCode != 200) throw java.io.IOException("HTTP ${conn.responseCode}")
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
 
     /** True when [winPath] (a shortcut's Windows path) names `steam.exe`. */
     @JvmStatic

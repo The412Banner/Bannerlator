@@ -48,7 +48,7 @@ private fun StoreMark.logoRes(): Int? = when (this) {
  * no known store is a plain exe the user added, which runs as a Windows program.
  */
 internal fun storeMarkOfLabel(label: String): StoreMark = when (label) {
-    "Steam", "Linux" -> StoreMark.STEAM
+    "Steam", "Linux", "Windows Steam" -> StoreMark.STEAM
     "Epic Games" -> StoreMark.EPIC
     "GOG" -> StoreMark.GOG
     "Amazon Games" -> StoreMark.AMAZON

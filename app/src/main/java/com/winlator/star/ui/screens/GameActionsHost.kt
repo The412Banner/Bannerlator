@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Search
@@ -69,6 +70,7 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.core.GameFolderScanner
 import com.winlator.star.core.WinePath
 import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.store.WindowsSteamClient
 import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.theme.Divider as DividerColor
@@ -109,6 +111,10 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
     // "Add Android game": the picker, and the write that follows its Add.
     var showAndroidPicker by remember { mutableStateOf(false) }
     var androidAddRunning by remember { mutableStateOf(false) }
+    // "Add Windows Steam client x64": the container it goes into (the download is asked first, -1 = none) and
+    // the download's progress (null = not running).
+    var windowsSteamConfirmIndex by remember { mutableStateOf(-1) }
+    var windowsSteamProgress by remember { mutableStateOf<Int?>(null) }
     var folderScanRunning by remember { mutableStateOf(false) }
     var folderScanResults by remember { mutableStateOf<List<GameFolderScanner.Candidate>>(emptyList()) }
     var folderScanSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -399,6 +405,16 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             ImportKind.FOLDER -> importFolderLauncher.launch(
                 InAppFilePicker.buildDirIntent(context, "Select your games folder", driveCPath = driveC?.absolutePath)
             )
+            // One client per container: a container that has it already gets no second shortcut.
+            ImportKind.WINDOWS_STEAM -> {
+                val c = vm.containers().getOrNull(pendingImportContainerIndex)
+                if (c != null && WindowsSteamClient.findShortcut(c) != null) {
+                    Toast.makeText(context, "${WindowsSteamClient.SHORTCUT_NAME} is already in ${c.name}", Toast.LENGTH_LONG).show()
+                    pendingImportContainerIndex = -1
+                } else {
+                    windowsSteamConfirmIndex = pendingImportContainerIndex
+                }
+            }
         }
     }
 
@@ -437,11 +453,73 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                         showImportMethodPicker = false
                         showAndroidPicker = true
                     }
+                    // Valve's 64-bit Windows Steam, downloaded from Valve into the container picked next.
+                    MenuOptionCard(
+                        title = "Add Windows Steam client x64",
+                        subtitle = "Valve's 64-bit Steam for Windows, downloaded from Steam",
+                        icon = Icons.Filled.DesktopWindows,
+                    ) {
+                        showImportMethodPicker = false
+                        pendingImportKind = ImportKind.WINDOWS_STEAM
+                        showImportContainerPicker = true
+                    }
                 }
             },
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showImportMethodPicker = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (windowsSteamConfirmIndex >= 0) {
+        val target = vm.containers().getOrNull(windowsSteamConfirmIndex)
+        val running = windowsSteamProgress != null
+        val close = {
+            windowsSteamConfirmIndex = -1
+            pendingImportContainerIndex = -1
+        }
+        OutlinedAlertDialog(
+            onDismissRequest = { if (!running) close() },
+            title = { Text(WindowsSteamClient.SHORTCUT_NAME) },
+            text = {
+                val p = windowsSteamProgress
+                if (p != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Downloading Steam… $p%", color = OnSurfaceVariant)
+                    }
+                } else {
+                    Text("Download Steam (64-bit) from Valve into ${target?.name ?: "this container"}?", color = OnSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                if (!running) TextButton(onClick = {
+                    val c = target
+                    if (c == null) {
+                        close()
+                        return@TextButton
+                    }
+                    windowsSteamProgress = 0
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            WindowsSteamClient.addClient(context, c) { pct -> scope.launch { windowsSteamProgress = pct } }
+                        }
+                        windowsSteamProgress = null
+                        close()
+                        vm.refresh()
+                        val message = when (result) {
+                            is WindowsSteamClient.AddResult.Added -> "Added ${WindowsSteamClient.SHORTCUT_NAME}"
+                            is WindowsSteamClient.AddResult.AlreadyAdded -> "${WindowsSteamClient.SHORTCUT_NAME} is already in ${c.name}"
+                            is WindowsSteamClient.AddResult.Failed -> result.message
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                }) { Text("Download") }
+            },
+            dismissButton = {
+                if (!running) TextButton(onClick = close) { Text("Cancel") }
             },
         )
     }

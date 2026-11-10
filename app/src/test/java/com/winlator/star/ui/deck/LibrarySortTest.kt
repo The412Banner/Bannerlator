@@ -40,6 +40,13 @@ class LibrarySortTest {
         assertEquals(listOf("A-game", "d-game", "b-game", "c-game"), order(LibrarySort.STORE))
     }
 
+    @Test fun pinned_firstInEveryOrder() {
+        val withSteam = games + ("z-steam" to GameSortKey("z-steam", 0L, 0L, "Wine Z", "Windows Steam", pinned = true))
+        for (sort in LibrarySort.entries) {
+            assertEquals(sort.name, "z-steam", sortGames(withSteam, sort) { it.second }.first().first)
+        }
+    }
+
     @Test fun emptyList_staysEmpty() {
         assertEquals(emptyList<String>(), sortGames(emptyList<String>(), LibrarySort.RECENT) { key(it) })
     }

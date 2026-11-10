@@ -105,6 +105,7 @@ internal fun XmbStoreBadges(shortcut: Shortcut) {
         showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
         showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
         showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
+        showWindowsSteam = remember(shortcut) { com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(shortcut) },
     )
 }
 

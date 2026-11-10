@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 18:5x EST — 🔧 fix/epic-game-fixes 2b4e3aa5: Epic per-game fixes now apply; Trover added (CI 42925330883)
+- **Why:** the user asked whether Hogwarts Legacy (Epic) is set up properly. `EpicGameFixes` keys its five fixes by ids copied from GameNative's `gamefixes/EPIC_<id>.kt`, which are **catalog ids** (GameNative's `GameFixesRegistry` looks Epic fixes up by catalog id), but looked them up by the shortcut's `epicAppName`. An Epic game's catalog id and appName differ (egdata.app: Hogwarts Legacy catalog `864c7bc2…`, appName `fa4240e5…`; the FIT's WRC Generations shortcut too), so none of the five fixes ever applied: Hogwarts Legacy ProgramData wipe, Bethesda "Installed Path" (Oblivion, Fallout 3, New Vegas), Kingdom Hearts III Media Foundation overrides.
+- **Built:** lookup by `epicCatalogId`, appName alias table for older shortcuts. Trover Saves the Universe (from GameNative #1953 by Mo Kakwan / Wavewash): Engine.ini lines merged into the game's own config (lobby map instead of the startup-movie map, `r.SceneColorFormat=2`, VR plugins + WmfMedia off), `BOX64_AVX`/`BOX64_MMAP32`/`OPENSSL_ia32cap`/`WINEPATH` when unset, `-nohmd -dx11` when missing. GameNative's container-wide Trover changes (its own Box64/Wine/Turnip/DXVK versions, dxvk.conf, 720p + lower quality, DLL overrides) left out. User/container values always win.
+- **Checked:** real `EpicGameFixes.java` compiled with plain-Java stand-ins for the Android classes: 27/27 checks (ids, env, args, ini merge incl. CRLF and UTF-16LE, Hogwarts wipe).
+- **Rest of the Hogwarts path (code-read):** Epic auth args every launch; Denuvo scan → `-epicovt` ownership token.
+- **Next:** CI → stage; install only after the user's Hogwarts download on the FIT finishes and the user says so.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 17:2x EST — 🔀 MERGED feat/windows-steam-library → main e850b0f4 (artifacts-only CI 42914583364)
 - **User:** "merge it"; "after the merge have the main branch build artifacts only".
 - **Backup:** `refs/backup/20261110/main-before-windows-steam-library` = 23269b0b (pushed before the merge).

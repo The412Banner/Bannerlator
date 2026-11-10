@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🌐 feat/lab-parity 90d8089b: translations for all new Lab strings (CI 42736480948 running)
+- ec5fcbed (items 1-3) CI 42734827136 GREEN ×4.
+- 125 new strings × 32 languages from 4 drafting agents (8 locales each), validated by scratchpad i18n3/check.py (every key, placeholders); filled with lab_strings.py: all 32 = 1897/1897, missing 0; 33 strings_lab.xml parse OK, no unescaped apostrophes.
+- **Tool trap (lesson):** lab_strings.py takes `pt-PT` / `zh-CN` / `zh-HK` / `zh-TW` (it adds the "r"); `pt-rPT` / `zh-rCN` map to non-existent values-pt-rrPT / values-zh-rrCN, so `missing` lists everything and `fill` would write a wrong folder. `b+es+419` works as is.
+- Translator notes kept: "Undo" = same word as Cancel in fr/it/ro; "Community configs" chosen per language (no existing term); "Save location" = component file storage (not game saves); cs/bg/ar/el/pl/ru use "label: N" count style like their existing files.
+- **Next:** green → stage pubg → ASK install → user check → merge on go.
+
 ## 2026-11-09 — 🔧 feat/lab-parity ec5fcbed: remaining items 1-3 + translations in progress (CI 42734827136 running)
 - f9c6f492 INSTALLED on the Pocket FIT 20:17:15 EST (pre-approved; 957a8783… == staged; crash buffer empty; peers told + done).
 - User: "yes do 1-3 and the translations on the same branch". ec5fcbed: (1) Steam connection pill in the Lab side menu header; (2) Steam link in Lab Game details renames the game to Steam's title (rename moved above linkSteam; cover/icons move with it); (3) ContainerManager.importContainerResult / exportContainerResult (one main-thread callback with the real result; old Runnable methods delegate), ContainersViewModel busy flag always reset + "Couldn't import" message + export path only when copied; Lab "A backup named … is already in Backups"; SimpleActionSheet opens on the "  ✓" entry.

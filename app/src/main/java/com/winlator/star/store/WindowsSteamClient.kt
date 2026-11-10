@@ -538,6 +538,8 @@ object WindowsSteamClient {
         val container: Container,
         val clientDir: File,
         val keepContainerData: Boolean,
+        /** The removed shortcut's cover picture in the container's app_data/cover_arts, when no other shortcut uses it. */
+        val coverArt: File? = null,
     )
 
     /** What "Uninstall" deletes for an [UninstallOffer], with its size. */
@@ -619,7 +621,11 @@ object WindowsSteamClient {
                 if (target == dirPath || target.startsWith(dirPath + File.separator)) return null
                 if (c.id == container.id && isSteamExe(path)) keepContainerData = true
             }
-            return UninstallOffer(container, dir, keepContainerData)
+            val coverDir = runCatching { File(container.rootDir, "app_data/cover_arts").canonicalPath }.getOrNull()
+            val cover = shortcut.customCoverArtPath?.takeIf { it.isNotBlank() }?.let { File(it) }
+                ?.takeIf { f -> coverDir != null && f.isFile && isWithin(f, coverDir) }
+                ?.takeIf { f -> all.none { it.file?.absolutePath != shortcut.file?.absolutePath && it.customCoverArtPath == f.path } }
+            return UninstallOffer(container, dir, keepContainerData, cover)
         } catch (t: Throwable) {
             Log.w(TAG, "uninstallOffer", t)
             return null
@@ -664,7 +670,7 @@ object WindowsSteamClient {
     /** Deletes what [plan] lists (symbolic links are removed, never followed). Null when done, else a message. */
     fun uninstall(plan: UninstallPlan): String? {
         val failed = ArrayList<String>()
-        for (target in listOf(plan.offer.clientDir) + plan.containerDirs + plan.emptyLibraries) {
+        for (target in listOf(plan.offer.clientDir) + plan.containerDirs + plan.emptyLibraries + listOfNotNull(plan.offer.coverArt)) {
             try {
                 if (target.exists() && !FileUtils.delete(target)) failed.add(target.absolutePath)
             } catch (t: Throwable) {
@@ -706,7 +712,10 @@ object WindowsSteamClient {
             f.isFile && f.name.startsWith("appmanifest_") && f.name.endsWith(".acf") && f.name != "appmanifest_228980.acf"
         }?.size ?: 0
 
-    /** True when no file under [dir] has content besides Steam's own library markers. */
+    /**
+     * True when no file under [dir] has content besides what Steam puts in every library folder: libraryfolder.vdf,
+     * and a copy of its steam.dll in the folder's root.
+     */
     private fun holdsNoFiles(dir: File): Boolean {
         val stack = ArrayDeque<File>().apply { add(dir) }
         var seen = 0
@@ -715,7 +724,8 @@ object WindowsSteamClient {
             for (f in d.listFiles().orEmpty()) {
                 if (++seen > 10_000 || FileUtils.isSymlink(f)) return false
                 if (f.isDirectory) stack.add(f)
-                else if (f.length() > 0 && f.name != "libraryfolder.vdf" && f.name != "libraryfolders.vdf") return false
+                else if (f.length() > 0 && f.name != "libraryfolder.vdf" && f.name != "libraryfolders.vdf" &&
+                    !(d == dir && f.name.equals("steam.dll", ignoreCase = true))) return false
             }
         }
         return true

@@ -928,7 +928,7 @@ private fun FolderCard(
     }
 }
 
-private fun shareArchive(context: Context, f: ComponentLibrary.SavedFile) {
+internal fun shareArchive(context: Context, f: ComponentLibrary.SavedFile) {
     runCatching {
         val shareUri = if (f.uri.scheme == "content") f.uri else {
             val file = java.io.File(f.uri.path!!)

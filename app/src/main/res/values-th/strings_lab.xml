@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">คอนโทรลเลอร์ที่เกมเห็น เปลี่ยนในเกมได้ด้วย (คอนโทรลเลอร์จะเชื่อมต่อใหม่)</string>
     <string name="lab_0312e1a5">พิมพ์ชื่อก่อนเครื่องหมาย =</string>
     <string name="lab_0355373d">ทั้งหมด</string>
+    <string name="lab_03705e75">ลบแล้ว %1$s จาก %2$s รายการที่เหลือลบไม่ได้</string>
     <string name="lab_0397233a">ข้าม GMEM</string>
     <string name="lab_039bee69">การควบคุม</string>
     <string name="lab_03af654a">คอนโทรลเลอร์</string>
     <string name="lab_03af83cf">ในตัว (Wine)</string>
     <string name="lab_03be5b2b">สิ้นสุด %1$s ไหม</string>
     <string name="lab_03dc750a">ไม่มี เรียกดูแค็ตตาล็อกเพื่อเพิ่ม</string>
+    <string name="lab_03eece5a">รวม</string>
     <string name="lab_03f54074">เต็มหน้าจอ</string>
+    <string name="lab_04272d2b">ย้อนเลเยอร์กลับเป็น %1$s</string>
     <string name="lab_04314e37">Steam Controller ค่าเริ่มต้นของปุ่มควบคุมบนหน้าจอ และเมาส์กับคีย์บอร์ดสำหรับเกม Wine</string>
     <string name="lab_04422c9a">เปิด</string>
     <string name="lab_044669c8">คอร์ที่เกมใช้ได้</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">นำเข้าโปรไฟล์</string>
     <string name="lab_05ea4871">ปรับอัตรารีเฟรชตาม FPS</string>
     <string name="lab_05f88f63">เวอร์ชัน Wine / Proton</string>
+    <string name="lab_062deaae">ไม่สามารถติดตั้ง %1$s ได้: %2$s</string>
     <string name="lab_063c1ee9">ซ่อนคอนโทรลเลอร์ Xbox จากเกมนี้</string>
-    <string name="lab_06625dae">ไม่มีแหล่งดาวน์โหลด</string>
     <string name="lab_06681d37">แทร็กแพดที่ใช้เลื่อนเมาส์ การกดแทร็กแพดคือคลิกซ้าย</string>
     <string name="lab_066c2fb1">หน้าเกม</string>
     <string name="lab_0687488a">ไดรเวอร์ Turnip และ Qualcomm</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">เลือกสิ่งที่จะบันทึก (Wine, Box64/FEX, DXVK, SteamLite, Steam แบบเบื้องหลัง, logcat) ตำแหน่งเก็บล็อก และจำนวนที่เก็บไว้ เรียกดูและแชร์ล็อกได้</string>
     <string name="lab_0721ad7c">คอนเทนเนอร์นี้</string>
     <string name="lab_075ffd70">วิดีโอของคุณ</string>
+    <string name="lab_076e01bd">คืนค่าเซฟเกม…</string>
     <string name="lab_07a88d47">กด Back หนึ่งครั้งยังเปิดแถบเมนูในเกมได้</string>
     <string name="lab_07e11363">เปิดอยู่สำหรับทั้งคอนเทนเนอร์: ปิดได้ในคอนเทนเนอร์</string>
     <string name="lab_080615dc">ใช้ของคอนเทนเนอร์</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">ดาวน์โหลดเวอร์ชัน D7VK</string>
     <string name="lab_09683590">ตัวจำกัดอัตราเฟรม</string>
     <string name="lab_09793b21">OpenGL: ปิด Vsync</string>
+    <string name="lab_097af41a">ชื่อ Z–A</string>
     <string name="lab_09b51ad4">ช่อง</string>
     <string name="lab_09cdafe2">ขนาดข้อความ</string>
     <string name="lab_09d2be7b">เบต้าสาธารณะ</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">ตัวจำกัดของ DXVK เอง (DXVK_FRAME_RATE) ปิด: ให้ตัวจำกัดอัตราเฟรมคุมจังหวะแทน</string>
     <string name="lab_0b5eae46">จอยเป็นผู้เล่น 1</string>
     <string name="lab_0b76e940">ลบ %1$s %2$s แล้ว</string>
+    <string name="lab_0bad6f7f">กำลังดาวน์โหลด %1$s โปรไฟล์…</string>
     <string name="lab_0bd8b542">ขนาดภาพ จังหวะเฟรม และอัตรารีเฟรช</string>
+    <string name="lab_0be4a3d7">ลบ 1 เกมแล้ว</string>
     <string name="lab_0be7a72d">โหมดการปรับขนาด</string>
     <string name="lab_0bece985">ข้อมูลสำรอง</string>
     <string name="lab_0c451500">ความละเอียดการจับภาพ</string>
     <string name="lab_0c64d11e">ติดตั้งเนื้อหาจากไฟล์</string>
+    <string name="lab_0c88e27c">ลบเฉพาะทางลัด ไฟล์ของเกมยังอยู่</string>
     <string name="lab_0cd26a5e">ไม่มีการดาวน์โหลด</string>
-    <string name="lab_0ce16a57">สำรองข้อมูลล้มเหลว: %1$s</string>
     <string name="lab_0cfb7a3b">แก้กล้องหมุนเองหรือค้างในเกมเก่าบางเกม</string>
+    <string name="lab_0d0fc080">กำลังทำสำเนา %1$s…</string>
     <string name="lab_0d5a2b34">คำเพิ่มเติมที่ต่อท้ายชื่อโปรแกรม เช่น -windowed -dx11</string>
     <string name="lab_0da00171">• เกมจะไม่ได้รับคอนโทรลเลอร์ เมนูของ Steam ยังใช้ได้ แต่ในเกมจอยจะไม่ทำงาน\n</string>
     <string name="lab_0dc541d5">รีเซ็ตเป็นค่าเริ่มต้น</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">อัตโนมัติ (เบต้า Steam Deck สำหรับโหมด Deck)</string>
     <string name="lab_0fed0c63">การตั้งค่าไดรเวอร์</string>
     <string name="lab_10091d64">เวอร์ชัน VEGAS</string>
-    <string name="lab_10125440">ไดรเวอร์และคอมโพเนนต์</string>
     <string name="lab_101d1386">คีย์ API ของ SteamGridDB</string>
     <string name="lab_101f5ed2">เอฟเฟกต์ ReShade</string>
     <string name="lab_1054fdc3">บน Wayland เกมจะเรนเดอร์ผ่านคอมโพสิเตอร์ในตัว ซึ่งต้องมี Turnip ที่ติดตั้งไว้เพื่อนำเข้าเฟรม \"ระบบ\" มีให้เลือกเฉพาะบน GPU Mali ส่วนอื่นจะแสดงจอดำ ไดรเวอร์ที่เกมใช้เรนเดอร์จริงคือ ไดรเวอร์เกม Wayland ด้านล่าง</string>
     <string name="lab_105c504c">แก้ไขสำหรับ OneUI / HyperOS</string>
     <string name="lab_1079be1d">ไม่พบ %1$s ใน Steam</string>
     <string name="lab_10a08356">อนุญาตให้สลับระหว่างเล่น</string>
+    <string name="lab_10b7b953">สำรองเซฟเกม…</string>
     <string name="lab_10cb69ae">เลือกรูปไอคอน</string>
     <string name="lab_1121166e">อัลฟา</string>
     <string name="lab_112d429f">กลับแกน Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">พรีเซ็ตและการปรับแต่ง…</string>
     <string name="lab_165bbde9">หยุดชั่วคราว</string>
     <string name="lab_1689f76a">ปิด: ซ่อนใน เนื้อหา แต่หน้าคอนเทนเนอร์และหน้าเกมยังแสดงอยู่</string>
+    <string name="lab_16a69772">กำลังค้นหา…</string>
     <string name="lab_16c90680">ตำแหน่งภาพ</string>
     <string name="lab_16d40373">ไดรเวอร์เสียง</string>
     <string name="lab_16ff819d">อัตรารีเฟรช</string>
-    <string name="lab_170eab83">ไฟล์ที่บันทึกไว้</string>
     <string name="lab_1777bbf2">กำหนดเอง</string>
     <string name="lab_177847bc">ไม่มีอะไรให้คัดลอก</string>
     <string name="lab_17a0dfae">ออฟไลน์</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">เกมนี้</string>
     <string name="lab_188dc386">ตั้งค่าโดย ประสิทธิภาพ › ซิงค์</string>
     <string name="lab_18991a24">อื่น ๆ</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">โหมด Deck เปิดอยู่: เกมจะไม่ได้รับคอนโทรลเลอร์ หากมีอัปเดต Steam Client ที่ติดตั้งไม่ได้แสดงในส่วน System อย่ากด Apply</string>
     <string name="lab_189ddac0">ไฟล์แพ็กเกจจะถูกลบออกจากแอป ดาวน์โหลดใหม่ได้ทุกเมื่อ</string>
     <string name="lab_18c07921">ปุ่ม Menu ปุ่มเพิ่มเติม และการปรับเทียบไจโร</string>
     <string name="lab_18e6df7b">ข้ามการลงชื่อเข้าใช้ Epic สำหรับเกมนี้ (ไม่มีฟีเจอร์ออนไลน์)</string>
+    <string name="lab_191f6609">เลือกเกม</string>
     <string name="lab_19377f1f">ภูมิภาคการเชื่อมต่อ Steam และทดสอบเครือข่าย</string>
     <string name="lab_19532aa0">จะลบเอฟเฟกต์ที่ดาวน์โหลดไว้ออกจากที่เก็บข้อมูลและนำออกจากชุดนี้ ดาวน์โหลดใหม่ได้ทุกเมื่อ</string>
     <string name="lab_1955f21e">คอร์ CPU</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">เปิดการเล็งด้วยไจโร</string>
     <string name="lab_1acaa40c">บันทึกอะไร เก็บไว้ที่ไหน และเก็บนานเท่าไร</string>
     <string name="lab_1acd9ee4">ถูกล็อกเป็น Fast V-Sync ขณะการสร้างเฟรมทำงาน</string>
+    <string name="lab_1b1ee750">นำเข้า %1$s โปรไฟล์แล้ว</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">ไฟล์ของ Proton แต่ละตัวถูกบันทึกเป็นต้นฉบับเมื่อเปิดหน้านี้</string>
     <string name="lab_1b4c8948">โหมด Present</string>
     <string name="lab_1bbf10a9"> (สำเนาของคุณ)</string>
     <string name="lab_1bc2538c">ตัวแก้การจับเวลา KGSL</string>
     <string name="lab_1bdd2734">ค่าเริ่มต้นของเกม</string>
+    <string name="lab_1be37b64">คืนค่าไม่สำเร็จ: %1$s</string>
     <string name="lab_1bfb31a3">สีพื้นหลัง</string>
     <string name="lab_1bfc578f">การแจ้งเตือนแชท</string>
     <string name="lab_1bfe2edd">จำกัดอัตราเฟรม DXVK</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">พื้นหลังเดสก์ท็อป</string>
     <string name="lab_1c765923">อัตโนมัติ (ตามลำดับการเชื่อมต่อ)</string>
     <string name="lab_1ce56dac">อีมูเลเตอร์ (64 บิต)</string>
-    <string name="lab_1d039d18">ดาวน์โหลดและติดตั้ง</string>
     <string name="lab_1d4948df">ไม่ใช้ GPU กับเฟรมวิดีโอ ลองใช้เมื่อวิดีโอดำแต่มีเสียง</string>
     <string name="lab_1d4a9752">ตัวจัดการเซฟเกม</string>
     <string name="lab_1dafe1ef">เปิด ›</string>
     <string name="lab_1dcd6efb">ทั่วไป (ค่าเริ่มต้น): ใช้ได้กับทุกอย่าง เหมือนเดิม Xbox 360 / One / Series: เกมจะมองจอยเป็นคอนโทรลเลอร์ Xbox ใช้คู่กับ XInput โดยตรงจะดีที่สุดเพื่ออินพุตสดและการสั่น จอย DirectInput แบบคลาสสิก: สำหรับเกมเก่าที่ไม่รับจอย Xbox และทำให้เกม DirectInput เห็นคอนโทรลเลอร์เสมอ PlayStation / Nintendo / Joy-Con / Steam Deck (ทดลอง): เกมอาจแสดงไอคอนปุ่มของจอยเหล่านั้น ไม่มีไจโร ทัชแพด แถบไฟ หรือแทร็กแพด และบางเกมอาจตรวจไม่พบจอย หากเป็นเช่นนั้นให้สลับกลับไปเป็นทั่วไปหรือ Xbox\n\nหากคอนโทรลเลอร์หายไปในเกม ให้สลับกลับไปเป็นทั่วไป</string>
     <string name="lab_1dd0373a">ลบ %1$s และทุกอย่างในนั้นไหม ทางลัดของเกมจะถูกลบด้วย</string>
     <string name="lab_1dd4a128">การควบคุมด้วยรูท</string>
-    <string name="lab_1df4901e">ทำสำเนา %1$s แล้ว</string>
     <string name="lab_1df4bc73">อัตโนมัติ: บอกเกมว่าไดรเวอร์ Mesa ของคุณรองรับการดำเนินการซับกรุ๊ปแบบใดบ้าง (DOOM Eternal และเกมอื่นที่ต้องใช้จึงเปิดได้) ปิด: ซ่อนไว้เหมือนที่อะแดปเตอร์รุ่นเก่าทำ ลองใช้หากเกมมีภาพผิดเพี้ยนหรือแครชซึ่งไม่เคยเป็นมาก่อน</string>
     <string name="lab_1dfaae77">ชื่อต้องไม่มีอักขระ \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">สำหรับเกมที่ไคลเอนต์เปิด ไม่ใช่ตัวไคลเอนต์ และใช้กับทุกเกม: เซสชันมีสภาพแวดล้อมเดียว </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">ไม่มีรายการ</string>
     <string name="lab_1e713627">ไคลเอนต์ Steam บน Linux</string>
     <string name="lab_1e765e92">การตั้งค่าการเล็งด้วยไจโร</string>
+    <string name="lab_1e7d16fc">ล้างแคช</string>
     <string name="lab_1e9a6134">ปิดอยู่สำหรับคอนเทนเนอร์นี้ เปิดในการตั้งค่าคอนเทนเนอร์เพื่อใช้ที่นี่</string>
     <string name="lab_1f050928">ค่าเริ่มต้น (ไม่เปลี่ยนการตั้งค่าทีวี)</string>
     <string name="lab_1f13e4b9">รีโพสิทอรี</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">เกมที่เปิดจากไคลเอนต์ ทุกคอร์: ให้ Android จัดสรรงานเอง</string>
     <string name="lab_1fccd93f">อัตโนมัติจะเริ่มจากบัฟเฟอร์ต่ำและเพิ่มขึ้นเฉพาะเมื่อได้ยินเสียงแตก ปรับละเอียดได้ด้านล่าง</string>
     <string name="lab_1ff9ec48">เซสชัน</string>
+    <string name="lab_1ffa163f">ค้นหาในทุกรีโพสิทอรี</string>
     <string name="lab_2012067c">มาพร้อมแอป</string>
     <string name="lab_20226dfe"> · ไม่ได้เชื่อมต่อ (ช่องที่ล็อกไว้)</string>
     <string name="lab_2062fe79">จำกัด FPS</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">คอนเทนเนอร์ใหม่</string>
     <string name="lab_2166d8ab">สำรองหรือคืนค่าข้อมูลแอปทั้งหมด</string>
     <string name="lab_21e9b52f">เลือกเนื้อหาหรือไดรเวอร์</string>
+    <string name="lab_21ede2b8">%1$s ยังติดตั้งอยู่ จึงย้อนกลับได้</string>
     <string name="lab_21feab48">แมปปุ่มใหม่และตรวจสอบทุกอินพุต</string>
     <string name="lab_22270e04">เส้นทาง storage image</string>
     <string name="lab_2246a8bd">สลับเปิด/ปิด</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2"> ค่าต้องไม่มีช่องว่าง</string>
     <string name="lab_235fa0f3">หยุดตอนเริ่มต้น</string>
     <string name="lab_2379f827">แคสต์ไปยังทีวี</string>
-    <string name="lab_23b4ddb2">ที่ติดตั้งแล้ว ตั้งเป็นค่าเริ่มต้น ดาวน์โหลดเพิ่ม</string>
     <string name="lab_23b56f8c">เรียกใช้โปรแกรมในฐานะผู้ดูแลระบบ</string>
     <string name="lab_23d05606">เมาส์และคีย์บอร์ด (เกม Wine)</string>
     <string name="lab_23d11cc7">แสดงตัวนับ FPS</string>
     <string name="lab_23deaf7c">จัดการ</string>
     <string name="lab_23e9383c">เวอร์ชัน เทคโนโลยีเบื้องหลัง และเครดิต</string>
+    <string name="lab_243c4264">รีเฟรชรายการ</string>
     <string name="lab_2453405d">ใช้ auto:N, fixed:N หรือ off</string>
     <string name="lab_2470de02">ใส</string>
     <string name="lab_24720798">แก้สีที่สลับกัน</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">บิลด์นี้ยังไม่รองรับบน Wayland</string>
     <string name="lab_2742f91b">อัตโนมัติ · เทรลเลอร์จาก Steam</string>
     <string name="lab_2756404f">รีเซ็ตพลังงานและรูทเป็นค่าเริ่มต้นของแอป</string>
+    <string name="lab_278c89b0">ไม่สามารถเชื่อมต่อ Steam ได้</string>
     <string name="lab_27b56d30">ติดตั้ง DLL XInput ของ Bannerlator ไม่ว่า XInput โดยตรง จะเปิดหรือปิด โดยมี XInput ของ Wine อยู่ข้างกัน เพื่อให้ การควบคุม › จอย ในเมนูในเกมสลับได้ขณะเกมทำงาน (คอนโทรลเลอร์จะเชื่อมต่อใหม่) เปิดไว้เป็นค่าเริ่มต้น ปิด: XInput โดยตรง จะคงตามตอนเริ่มเกม และต้องรีสตาร์ตจึงจะเปลี่ยนได้</string>
     <string name="lab_27bb1078">โดยตรง</string>
     <string name="lab_27bcb120">เพิ่ม คัดลอก ลบ ส่งออก หรือนำเข้าพรีเซ็ต Box64 และ FEX (การตั้งค่า Classic)</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">ค่าเริ่มต้นในตัวของ VEGAS (ไม่มีไฟล์)</string>
     <string name="lab_286dae57">อัตโนมัติ · จากภาพปก</string>
     <string name="lab_287eabc8">แสดง FPS</string>
+    <string name="lab_289585af">พร้อม</string>
     <string name="lab_28d51363">อัตรารีเฟรชที่เกมเลือกได้</string>
     <string name="lab_28f727b0">ส่งออกข้อมูลวินิจฉัย HUD</string>
     <string name="lab_29198bb7">ไม่ได้ตั้งค่า (ระบบ)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">ไดรเวอร์เกม Wayland</string>
     <string name="lab_2a88fd3c">เริ่มระบบเสียงใหม่</string>
     <string name="lab_2ab94a31">ปัดระหว่างปุ่ม</string>
+    <string name="lab_2ad53987">ลบ 1 เกมไหม</string>
     <string name="lab_2ad5a458">การล็อกช่องผู้เล่น</string>
     <string name="lab_2adf1ef0">กระดาษกราฟและสัญญาณของ Lab บนภาพ</string>
+    <string name="lab_2af0d6a1">ดูตัวอย่าง</string>
     <string name="lab_2b01a79e">อ่านรูปภาพนั้นไม่ได้</string>
     <string name="lab_2b3bf173">เครื่องมือ</string>
     <string name="lab_2b605d42">เพิ่มเติม</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">สติ๊กขึ้น</string>
     <string name="lab_2c6448d6">ตั้งค่าสำหรับคอนเทนเนอร์นี้</string>
     <string name="lab_2c768f35">คอนเทนเนอร์ใหม่เริ่มด้วย</string>
+    <string name="lab_2c8896f5">แสดงพื้นที่จัดเก็บการ์ด SD</string>
     <string name="lab_2c963a33">มีผลทันที · บันทึกเป็นค่าเริ่มต้นของเอนจินนี้</string>
     <string name="lab_2ce33943">ค่าเริ่มต้น</string>
     <string name="lab_2ced81bf">ออฟไลน์: แสดงรายการที่บันทึกไว้ เชื่อมต่อเพื่อดาวน์โหลดเอฟเฟกต์ใหม่</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">หรือพิมพ์ค่าใดก็ได้</string>
     <string name="lab_2dad13e3">ภาษา</string>
     <string name="lab_2dc2e901">โมโน</string>
-    <string name="lab_2df5d0e3">%1$s เกม · เล่นล่าสุดขึ้นก่อน</string>
     <string name="lab_2e1b1382">ใดก็ได้ (ไม่จำกัด)</string>
     <string name="lab_2e1ff85b">การสร้างเฟรม</string>
     <string name="lab_2e257663">ภายในเมนู</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">หน้าจอนี้เปลี่ยนอัตรารีเฟรชไม่ได้</string>
     <string name="lab_2e57dd1f">ไฟล์อื่น…</string>
     <string name="lab_2eae4031">สติ๊กลง</string>
+    <string name="lab_2ec7b25e">แชร์</string>
     <string name="lab_2ec97d85">เกม Xbox สื่อสารกับบริการ Xbox ผ่าน xgameruntime.dll เกมนี้มีสำเนาของ Microsoft มาในโฟลเดอร์ และ Wine จะโหลดสำเนานั้นก่อนของแอป (Xodus Nexus) สำเนาของ Microsoft ต้องใช้ Gaming Services ของ Windows ซึ่ง Wine ไม่มี เกมจึงมักหยุดตอนเริ่ม (Cyberpunk 2077 เป็นแบบนั้น) เปิด: ทุกครั้งที่เปิดเกมจะใช้สำเนาของแอป โดยไม่เปลี่ยนไฟล์ของเกม ปิด: ใช้สำเนาของเกมเอง</string>
     <string name="lab_2ed04089">บังคับเรนเดอร์แบบ sysmem (sysmem)</string>
     <string name="lab_2f23b6d1">พิมพ์เลขฐานสิบหก 6 หลัก เช่น #1E88E5</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">แก้บั๊กของ Turnip ที่การถามว่า \"GPU เสร็จหรือยัง\" ต้องรอทั้งเฟรม (บั๊กการจับเวลาในรายงาน) ค่าเริ่มต้น: ให้อะแดปเตอร์ตรวจหาเอง เปิด: บังคับใช้ ปิด: ไม่ใช้</string>
     <string name="lab_3205bc81">ยังไม่ได้ตั้งไดรเวอร์กราฟิก Turnip จึงไม่มีอะไรให้ตรวจสอบ</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">มีข้อมูลสำรองชื่อ %1$s อยู่ในหน้าข้อมูลสำรองแล้ว</string>
+    <string name="lab_32725e5a">ดาวน์โหลด (%1$s)</string>
     <string name="lab_32a7fa00">สร้างเฟรม</string>
     <string name="lab_334d4744">เก็บสำเนาเซฟของเกมในไลบรารี Steam ไว้ในไลบรารีในเครื่องเมื่อออกจากเกม</string>
+    <string name="lab_33689924">เลือกโฟลเดอร์บันทึก</string>
     <string name="lab_336d62eb">ใช้คอร์ CPU ใหญ่ก่อน</string>
     <string name="lab_33a35a95">ซาวด์แบงก์ที่ติดตั้งและโฟลเดอร์ส่งออก</string>
+    <string name="lab_33ad7c60">ล้างการค้นหา</string>
     <string name="lab_33b3dcd5">ตรึง GPU ไว้ที่คล็อกสูงสุดขณะเล่นเกม ร้อนขึ้นและกินไฟมากขึ้น เกมสามารถเปลี่ยนทับได้</string>
     <string name="lab_33b5c99c">เฉพาะหลังจากคุณยอมรับข้อจำกัดความรับผิดชอบของคลาวด์บุคคลที่สาม และไม่ลบสิ่งใดออกจากคลาวด์</string>
     <string name="lab_33cb03bf">เหมือนหน้าของแอป</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">ความเร็วเคอร์เซอร์</string>
     <string name="lab_346090f3">ยังไม่ได้ติดตั้ง Box64EC ดาวน์โหลดได้ด้านล่าง (ดาวน์โหลดตัวแปล)</string>
     <string name="lab_3482cb34">ค่าเริ่มต้น ARM64EC</string>
-    <string name="lab_34928086">สำรองเซฟเกมแล้ว (%1$s ไฟล์)</string>
     <string name="lab_34dee5b9">ลงชื่อเข้าใช้แล้ว · %1$s เกม</string>
     <string name="lab_35795680">คอนเทนเนอร์ใหม่จะเริ่มจากค่าเหล่านี้ คอนเทนเนอร์ที่มีอยู่จะใช้ค่าของตัวเองต่อไป</string>
     <string name="lab_361899c4">ไม่สามารถเข้าถึง Nightlies ได้</string>
     <string name="lab_362888df">เอียงเพื่อเล็ง</string>
     <string name="lab_36348dce">ปรับแต่งสำหรับคอนเทนเนอร์นี้ รีเซ็ตเพื่อกลับไปตามพรีเซ็ตที่ใช้ร่วมกัน </string>
+    <string name="lab_363c53cf">ส่งออกรีโพสิทอรี</string>
     <string name="lab_3661ddfd">เฉพาะรายการไคลเอนต์ Steam บน Linux: ไดรเวอร์ ตัวเลือกไคลเอนต์ Steam และการปรับแต่งความเร็ว</string>
     <string name="lab_366e8f9a">สำหรับโทรศัพท์ Samsung และ Xiaomi ที่เกมแสดงพื้นผิวเสียหาย กรณีอื่นให้ปิดไว้</string>
     <string name="lab_36936d70">จำกัดจำนวนเฟรมต่อวินาทีที่เกมวาด ประหยัดแบตเตอรี่และลดอาการกระตุก</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">การสัมผัส</string>
     <string name="lab_37ad98ec">คอร์ CPU ที่เลือกจะคงอยู่จนกว่าโปรแกรมจะรีสตาร์ต</string>
     <string name="lab_37b97721">ไดรเวอร์ของ Qualcomm เองแสดงเฟรม Wayland บนหน้าจอไม่ได้ หน้าจอจึงใช้ Turnip ที่มากับแอป</string>
+    <string name="lab_37c2b051">รูปแบบข้อมูลสำรอง</string>
     <string name="lab_37f22874">แต่ละไดรฟ์ต้องมีอักษรของตัวเอง</string>
+    <string name="lab_3822fc21">บันทึกแล้ว</string>
     <string name="lab_3855543c">ส่งออก (.icpx)</string>
     <string name="lab_385e1a80">แตะโอเวอร์เลย์เพื่อสลับแนวตั้งและแนวนอน (Fusion: ขนาดถัดไป) ลากเพื่อย้าย กดค้างเพื่อล็อกตำแหน่ง</string>
     <string name="lab_386c72a7">ไม่สามารถใช้ไฟล์นั้นได้</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">เปิด</string>
     <string name="lab_39da5009">เกม XInput อ่านคอนโทรลเลอร์ตรงจาก Bannerlator แทนการผ่านคิวคอนโทรลเลอร์ของ Wine: ได้ตำแหน่งสติ๊กสดเสมอ ไม่เพิ่มความหน่วง รวมการสั่นด้วย ปิด: XInput ผ่าน Wine เหมือนเดิม หากเกมทำงานผิดปกติ ให้ปิดสำหรับเกมนั้น</string>
     <string name="lab_39e9425b">ไม่มีรีโพสิทอรี</string>
+    <string name="lab_39ffa0a5">เลือก</string>
     <string name="lab_3a1ed8c6">ไดรเวอร์การแสดงผล (ฝั่ง Android)</string>
     <string name="lab_3a24cc2d">ตั้งแยกตามคอนเทนเนอร์: ค่านี้ขึ้นกับมือของคุณ ไม่ใช่เกม</string>
     <string name="lab_3a5c3010">FPS โหลด CPU/GPU และอุณหภูมิแสดงทับเกม แตะในเกมเพื่อพลิกแนวหรือเปลี่ยนขนาด</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">ภาพ 3D</string>
     <string name="lab_3d2c22d4">โหมด Present ของไดรเวอร์</string>
     <string name="lab_3d40c46a">การสั่น</string>
+    <string name="lab_3d7fa0a6">การตั้งค่าจากชุมชน</string>
     <string name="lab_3d9862bb">mip bias ติดลบ: พื้นผิวคมขึ้น แต่อาจมีภาพระยิบ อัตโนมัติจะตามการปรับขนาดที่เกมใช้ตอนเริ่ม</string>
     <string name="lab_3dbe79b1">ลบ</string>
     <string name="lab_3e04658a">น้ำเงิน</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">ดาวน์โหลดและแทนที่</string>
     <string name="lab_3e5678cd">เร็วที่สุด</string>
     <string name="lab_3e86e543">ส่งให้แรปเปอร์ตามที่ใส่ เว้นว่างไว้เพื่อไม่ตั้งค่า</string>
+    <string name="lab_3e967773">สโตร์</string>
     <string name="lab_3ecd0489">การสำรองเซฟอัตโนมัติเมื่อออกจะถูกปิดสำหรับเกมในไลบรารี Steam เซฟของเกมจะไม่ถูกเก็บไว้เมื่อปิดเกม — คุณต้องสำรองเองผ่านตัวเลือกสำรองของคอนเทนเนอร์หรือตัวจัดการเซฟเกม ดำเนินการต่อไหม</string>
+    <string name="lab_3edc001f">อัปเดตเลเยอร์เป็น %1$s</string>
     <string name="lab_3edcf27d">คมที่สุด (-1.0)</string>
     <string name="lab_3ee20435">เกม</string>
+    <string name="lab_3ee2f717">ไฟล์นั้นไม่ใช่รายการรีโพสิทอรี</string>
     <string name="lab_3f0b280a">อัตราเฟรม</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">นำขึ้นหน้า</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">อนุญาตแว่น XR / VR</string>
     <string name="lab_41017c94">คอนเทนเนอร์ใหม่</string>
     <string name="lab_410fcc62">เลือกตัวแปรที่รู้จัก หรือพิมพ์เอง: NAME หรือ NAME=VALUE</string>
+    <string name="lab_4150d5a6">1 ผลลัพธ์</string>
     <string name="lab_415a93a6">ใหม่สุดชนะ: ไม่เขียนทับเซฟในเครื่องที่ใหม่กว่า</string>
     <string name="lab_41f05e04">การกำหนดปุ่มด้านล่างเป็นของโปรไฟล์นี้</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">ทดลอง: โอเวอร์เลย์ของ Epic ในเกมด้วย Shift+F3 คอนเทนเนอร์ต้องอนุญาตเซอร์วิสทั้งหมด</string>
     <string name="lab_42ca94f9">คอนโทรลเลอร์หลัก</string>
     <string name="lab_43316731">มีแค่ C: (Windows prefix) และ Z: เพิ่มไดรฟ์สำหรับโฟลเดอร์เกม</string>
+    <string name="lab_434214cc">เลิกทำ</string>
     <string name="lab_4358e63d">Lab, Deck, XMB หรือ Classic</string>
     <string name="lab_43c9073b">ปิด — เลือกอัตราด้านล่างเพื่อล็อกหน้าจอ</string>
+    <string name="lab_44343bcf">รีโพสิทอรีในตัวที่ซ่อนไว้จะกลับมา รีโพสิทอรีของคุณยังอยู่</string>
     <string name="lab_443d0954">เปิดเดสก์ท็อป Windows</string>
     <string name="lab_4455b74f">ความถี่ที่การขยับสติ๊กถูกส่งไปยังเกม เปลี่ยนในเกมได้ด้วย</string>
     <string name="lab_44655ec4">ติดตั้งไม่สำเร็จ: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">คอนเทนเนอร์</string>
     <string name="lab_455f1d53">UBWC / บัฟเฟอร์แบบบีบอัด</string>
     <string name="lab_45bf9648">แบ็กเอนด์การแสดงผล</string>
+    <string name="lab_45d1fcf9">ค้นหาอีกครั้ง</string>
     <string name="lab_45e5d14f">ส่งออกล้มเหลว</string>
     <string name="lab_45f80a27">ขั้นสูง</string>
     <string name="lab_4611b1a8">แนวนอน</string>
     <string name="lab_463dbb35">ภาษาและภูมิภาค</string>
+    <string name="lab_4653869e">ดาวน์โหลดไม่สำเร็จ</string>
     <string name="lab_466171a5">ลบ %1$s แล้ว</string>
     <string name="lab_467d1fc1">เซฟและคลาวด์</string>
+    <string name="lab_46f7f5f5">ยังไม่ได้ติดตั้ง · สตรีม</string>
     <string name="lab_46fd73ef">การเลือกทุกคอร์ไว้จะให้ Android จัดสรรงานเอง ซึ่งมักเป็นตัวเลือกที่ดีที่สุด</string>
     <string name="lab_471552db">แก้ไขไฟล์การตั้งค่า VEGAS</string>
     <string name="lab_475cee12">กลาง</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">ซูเปอร์แซมปลิง</string>
     <string name="lab_4cb2f934">ใช้งานอยู่</string>
     <string name="lab_4cc9a9c1">ภาพปก</string>
+    <string name="lab_4d04f825">แสดง / ซ่อนเมนู</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">กลับบน/ล่าง</string>
     <string name="lab_4d8c7321">เนื้อหา</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">การส่งข้อมูลที่บันทึกไว้และล็อกวินิจฉัย win-fg (การตั้งค่า Classic)</string>
     <string name="lab_4fd05bc3">ควบคุมเมาส์จริง</string>
     <string name="lab_50089f1e">ถอดรหัสด้วยซอฟต์แวร์</string>
+    <string name="lab_507318fd">นำเข้ารายการจากไฟล์</string>
     <string name="lab_507883a8">ตั้งโดย BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX ในตัวแปรสภาพแวดล้อม</string>
     <string name="lab_507b3c74">เต็มจอ (ครอป)</string>
     <string name="lab_50bd6962">ล็อก</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">ส่งออกไปยัง %1$s แล้ว</string>
     <string name="lab_52023fb7">ไม่มีข้อมูลสำรองคอนเทนเนอร์ใน Downloads/Winlator/Backups/Containers</string>
     <string name="lab_522ca2a0">เรนเดอร์ใหญ่ขึ้นแล้วย่อลงเพื่อภาพที่เนียนขึ้น แลกกับประสิทธิภาพ</string>
+    <string name="lab_524717e1">เลือกข้อมูลสำรอง (.zip)</string>
     <string name="lab_5254f3be">เกมที่คุณเพิ่มในแท็บเกมจะแสดงในไลบรารี Steam ใต้ Non-Steam และรันด้วย Proton ของ Steam</string>
     <string name="lab_526060cd">ติดตั้งรันไทม์และไลบรารีลงในคอนเทนเนอร์ และเลือก DLL แบบ builtin หรือ native สำหรับ DirectX เสียง และรันไทม์</string>
     <string name="lab_52eb74b5">แสดง HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">การสั่นและการเล็งด้วยไจโร</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">ซ้ายบน</string>
+    <string name="lab_58749370">%1$s ไม่ได้ติดตั้งอยู่แล้ว จึงย้อนกลับไม่ได้</string>
     <string name="lab_58a426c9">ปิดสำหรับเกมนี้ขณะการสร้างเฟรมทำงาน </string>
     <string name="lab_5946d9c6">ใช้การตั้งค่าแอป (%1$s)</string>
     <string name="lab_594a913b">เชดเดอร์แบบ async</string>
     <string name="lab_595daef9">คอมโพเนนต์ที่ดาวน์โหลดไว้: ไฟล์บีบอัดและรายการแค็ตตาล็อก</string>
     <string name="lab_5983ab11">โหมดออฟไลน์ (ไม่ลงชื่อเข้าใช้ Valve)</string>
+    <string name="lab_5996c8c7">ดาวน์โหลดและอัปเดตเลเยอร์เป็น %1$s</string>
     <string name="lab_59db09f5">ล็อกสด</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">บันทึกลงคอนเทนเนอร์ทันทีที่คุณกด บันทึก ที่นี่ เหมือนในตัวแก้ไขแบบ Classic</string>
     <string name="lab_5aa9e082">แหล่งที่หน้าคอมโพเนนต์ใช้ค้นหาไฟล์ดาวน์โหลด</string>
     <string name="lab_5ac7d266">เวอร์ชัน VKD3D</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS โหลด CPU/GPU และอุณหภูมิแสดงทับเกม ปรับรูปแบบได้ด้านล่าง และในเกมจากเมนูด้านข้าง</string>
     <string name="lab_5cf98060">ซ่อนส่วนขยาย present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">นีออน</string>
+    <string name="lab_5d04f79c">กำลังดำเนินการ…</string>
     <string name="lab_5d1ebf1b">โหมดเล็ง</string>
     <string name="lab_5d676a2d">ส่งออกได้เฉพาะพรีเซ็ตของคุณเอง</string>
     <string name="lab_5d7ee5f8">GitHub, ตัวติดตามปัญหา และ Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">คอมโพเนนต์ Proton</string>
     <string name="lab_5e190a08">บันทึกหรือยกเลิกการเปลี่ยนแปลงก่อน</string>
     <string name="lab_5e4af947">คงที่ 60/วิ</string>
+    <string name="lab_5eb87a8b">เริ่ม</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">บิลด์ VEGAS ที่ติดตั้งไว้ และตัวที่มากับแอป</string>
     <string name="lab_5edc9360">เมนูในเกม · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">โฟลเดอร์ Documents, AppData และ Saved Games ของเกมคือโฟลเดอร์เดียวกับที่คอนเทนเนอร์ใช้ อย่ารันเกมเดียวกันในทั้งสองที่พร้อมกัน</string>
     <string name="lab_63319830">รุ่นพรีรีลีสอาจเสถียรน้อยกว่า</string>
+    <string name="lab_633def1d">%1$s · 1 เซสชัน</string>
     <string name="lab_634ae6b3">วิธีที่แรปเปอร์ส่งต่อเฟรม ไม่ใช่การตั้งค่าของเรนเดอเรอร์หน้าจอ</string>
     <string name="lab_63791c91">โฟลเดอร์ เช่น /storage/emulated/0/Games</string>
     <string name="lab_6381687c">ใช้ซ้ำตอนเปิดเกม </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">เบต้า Steam Deck</string>
     <string name="lab_641b9c9d">บัฟเฟอร์ของเกมเองจะขึ้นหน้าจอโดยไม่ต้องคัดลอก (หน่วงต่ำที่สุด ร้อนน้อยลง) ต้องมี fence แบบ sync-file ในไดรเวอร์ (ดูรายงานอะแดปเตอร์) ปิดหากเห็นภาพฉีกหรือเฟรมเก่าค้าง</string>
     <string name="lab_643b2baf">แชร์ / โอนย้าย</string>
-    <string name="lab_64903a6c">รับเพิ่ม</string>
     <string name="lab_64c5e98f">ภาพซ้อนภาพ</string>
     <string name="lab_65306cbd">โปรไฟล์ ทุกคอนเทนเนอร์ ที่คอนเทนเนอร์ใหม่ใช้เป็นจุดเริ่มต้น มีลำดับก่อนพรีเซ็ตเริ่มต้นด้านบน</string>
     <string name="lab_655c4f8a">การเปิดเมนูนี้</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">แปลง BCn เป็น ETC2</string>
     <string name="lab_66500371">ใช้ร่วมกันทุกคอนเทนเนอร์</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s ผลลัพธ์</string>
     <string name="lab_66a48fe7">พิกเซลเพอร์เฟกต์</string>
     <string name="lab_66d69f41">เปลี่ยนโปรแกรมที่จะรัน</string>
     <string name="lab_66e416b8">โหมดเอาต์พุต</string>
     <string name="lab_676dd596">ดำเนินการต่อ</string>
+    <string name="lab_67771d1b">ม็อดของเกมนี้และเมนูของม็อด</string>
     <string name="lab_67805216">เวอร์ชัน Box64EC</string>
     <string name="lab_67c5a895">เมื่อวาน</string>
     <string name="lab_67d87dd3">พาธเต็มของไฟล์ .conf เช่น /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">เพิ่มไฟล์ .sf2 และเลือกตำแหน่งส่งออกทางลัด (การตั้งค่า Classic)</string>
     <string name="lab_6f6109df">แทรกเฟรมเพิ่มเพื่อภาพที่ลื่นขึ้น เกมจะหยุดชั่วครู่ขณะเริ่มใหม่</string>
     <string name="lab_6f63a302">เมนูเกม</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (ค่าเริ่มต้น)</string>
     <string name="lab_6fb5700f">ให้เกม DirectInput (เกมเก่าหลายเกม เกมแข่งรถ พวงมาลัย) เห็นคอนโทรลเลอร์ ปิด: ซ่อนจาก DirectInput เพื่อให้เกมที่รองรับทั้ง XInput และ DirectInput ไม่เห็นซ้ำสองตัว ตัวตนจอย DirectInput แบบคลาสสิกจะเปิดค่านี้เสมอ</string>
     <string name="lab_6fce3567">เลี่ยงหน้าต่างขอสิทธิ์ใน Windows (ปิด UAC)</string>
     <string name="lab_6fd5eace">การเพิ่มความคมและโพสต์เอฟเฟกต์อื่น ๆ</string>
     <string name="lab_701948cd">แสดงในหน้าคอนเทนเนอร์และในป้าย \"จากคอนเทนเนอร์\" ของแต่ละเกม</string>
+    <string name="lab_701e81e5">กำลังนำเข้า %1$s…</string>
     <string name="lab_70455f1b">จำเป็นสำหรับเข้าเซิร์ฟเวอร์ที่มี VAC ป้องกัน ตรวจหา: ตามข้อมูลแอปของ Steam</string>
     <string name="lab_70802fb2">การซิงค์ของ Wine</string>
     <string name="lab_70a1ea5f">เวอร์ชัน</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">หน่วยความจำ GPU ที่เกมเห็น</string>
     <string name="lab_71d5a5d7">ดาวน์โหลดไดรเวอร์ Turnip</string>
     <string name="lab_721589c1">วันนี้</string>
+    <string name="lab_721da611">ไม่พบเกมในคอนเทนเนอร์นี้</string>
     <string name="lab_72395178">เกมและไลบรารี</string>
     <string name="lab_7246e766">โปรไฟล์</string>
     <string name="lab_72550119">การอัปเดตสติ๊ก</string>
+    <string name="lab_725f7c3b">รอจนกว่างานปัจจุบันจะเสร็จ</string>
     <string name="lab_728e56d6">ลื่นไหล</string>
     <string name="lab_72b16281">ใช้อักษรว่างตัวแรก เลือกโฟลเดอร์ด้วย เรียกดู</string>
     <string name="lab_72b89c6d">รีเซ็ตเป็นค่าเริ่มต้นของแอป</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">โอเวอร์เลย์</string>
     <string name="lab_76471f06">ค่าเหล่านี้ส่งถึงไคลเอนต์ Steam และทุกเกมที่ไคลเอนต์เปิด ตัวแปรที่นี่จะแทนที่ตัวแปรชื่อเดียวกันจากพรีเซ็ต FEXCore</string>
     <string name="lab_7656e144">เทาอมฟ้า</string>
-    <string name="lab_76705189">ไม่สามารถนำเข้า %1$s ได้</string>
     <string name="lab_76ad015a">ให้ LSFG Native ทำงานบนไดรเวอร์ที่รายงานแค่ Vulkan 1.1 แต่มีส่วนขยายที่จำเป็น มีผลกับค่าที่ตั้งแยกรายเกมด้วย</string>
     <string name="lab_76b4a740">Optical flow</string>
     <string name="lab_76b8a57c">กำลังอ่านการตั้งค่าของแรปเปอร์นี้…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">เลือกพรีเซ็ต</string>
     <string name="lab_79162646">ยังไม่มีโปรไฟล์</string>
     <string name="lab_791d1125">หน้าจอเริ่มต้นและการอัปเดต</string>
+    <string name="lab_79780a3c">กำลังส่งออก %1$s…</string>
     <string name="lab_7982eb6b"> ตามรายการด้านล่าง</string>
     <string name="lab_79b6d4c7">โหมด Steam ออฟไลน์ การตรวจไฟล์ และการอัปเดต</string>
     <string name="lab_79c7988a">ไม่มี · แสดงชื่อแทน</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">เวอร์ชัน D7VK</string>
     <string name="lab_7a377726">วิธีที่ภาพไปถึงหน้าจอ</string>
     <string name="lab_7a54182d">โอเวอร์เลย์ FPS</string>
+    <string name="lab_7a7662fb">เล่นล่าสุด</string>
     <string name="lab_7b0d957b">ล้างทั้งหมด</string>
     <string name="lab_7b34b221">เพิ่มตัวแปร</string>
     <string name="lab_7b719f09">เรียกดู</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">ภาพวอลเปเปอร์</string>
     <string name="lab_7caf4da8">BCn และเลเยอร์ความเข้ากันได้ใช้กับ Mali และ GPU อื่นที่ไม่ใช่ Qualcomm</string>
     <string name="lab_7ccc17cd">แบ็กบัฟเฟอร์</string>
-    <string name="lab_7ceefd00">ดาวน์โหลดล้มเหลว: %1$s</string>
     <string name="lab_7d24ed15">ยังไม่มีอะไรที่นี่</string>
     <string name="lab_7d50777a">แอ็กชัน, RPG, วางแผน</string>
     <string name="lab_7d6bff72">ใช้ได้กับระบบเสียง DirectAudio</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">ตัวแปล x86</string>
     <string name="lab_7e3548ee">แสดงเกมจากแท็บเกมใน Steam</string>
     <string name="lab_7e38b599">การอัปโหลดขึ้นคลาวด์อัตโนมัติเมื่อออกจะถูกปิดสำหรับเกมในไลบรารี Steam เซฟของเกมจะไม่ถูกส่งขึ้น Steam Cloud เมื่อปิดเกม — คุณต้องอัปโหลดเองจากส่วนเซฟบนคลาวด์ในหน้ารายละเอียดของเกม ดำเนินการต่อไหม</string>
+    <string name="lab_7e4777f5">เลือกเกมที่จะลบก่อน</string>
     <string name="lab_7e6d7e33">การ์ดในไลบรารี</string>
     <string name="lab_7e9c00ea">อัตโนมัติ (ตาม FPS)</string>
     <string name="lab_7e9eede5">โปรไฟล์ %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">ต้องเปิดแบบปลอดภัย (VAC)</string>
     <string name="lab_7f13060c">โหมดการแสดงผล</string>
     <string name="lab_7f7743c4">ตั้งสวิตช์ไว้ 1 ตัวสำหรับเกมนี้</string>
+    <string name="lab_7f871f0c">เริ่มพร้อมเกม</string>
     <string name="lab_7fa23600">เก็บเชดเดอร์ที่คอมไพล์แล้วไว้ใช้ครั้งถัดไป (บิลด์ gplasync)</string>
     <string name="lab_7fba9196">นาฬิกา</string>
     <string name="lab_7ff85140">วาดเดสก์ท็อป Windows บน Android ส่วน Wayland ใช้ Vulkan เสมอ</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">พิมพ์พาธเต็ม โดยเริ่มด้วย /</string>
     <string name="lab_8069546e">ซ้อน</string>
     <string name="lab_8070a23b">ตำแหน่งบันทึกและรีโพสิทอรี</string>
+    <string name="lab_808644e3">แคช</string>
     <string name="lab_8124b894">ดาวน์โหลดจาก Steam Cloud อัตโนมัติเมื่อเปิด</string>
     <string name="lab_81297e77">ข้อความที่แต่ละเกมแสดงออกมาขณะทำงาน</string>
     <string name="lab_816ce026">ดาวน์โหลด</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">เกม</string>
     <string name="lab_83548a23">รูปลักษณ์ ความสว่าง คอนทราสต์ แกมมา ความอิ่มตัวของสี FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">นำเข้าหรือส่งออกรายการ</string>
     <string name="lab_83713095">โลแคลอื่น…</string>
+    <string name="lab_8371c265">กำลังดาวน์โหลด %1$s…</string>
     <string name="lab_838501df">ออฟไลน์: แสดงเฉพาะเอฟเฟกต์ที่ติดตั้งแล้ว เชื่อมต่อเพื่อเรียกดูแค็ตตาล็อก</string>
     <string name="lab_83ce15dd">fps เฉลี่ย</string>
     <string name="lab_83f0742a">โฟลเดอร์เกม</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">โปรไฟล์อะแดปเตอร์</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · บันทึกแล้ว</string>
     <string name="lab_8521db60">เมนูด่วน</string>
+    <string name="lab_85379d71">กำลังคืนค่า %1$s…</string>
     <string name="lab_85486938">ล็อกและการวินิจฉัย</string>
     <string name="lab_8554e6fa">เร็ว</string>
     <string name="lab_85558be1">ค่าเริ่มต้นสำหรับทุกคอนเทนเนอร์</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">ค่าเริ่มต้น · %1$s</string>
     <string name="lab_85a12a5f">สลับ</string>
     <string name="lab_85ab5712">เกม XInput อ่านคอนโทรลเลอร์โดยตรง ไม่มีคิวอินพุต (สติ๊กไม่ค้างค่าเก่าหลังปล่อย) เปิดสำหรับคอนเทนเนอร์ใหม่</string>
     <string name="lab_85e5a021">สำรอง</string>
     <string name="lab_85eb8db0">ทั้งคู่ควบคุมผู้เล่น 1</string>
     <string name="lab_85efabfb">จาก %1$s เกม</string>
+    <string name="lab_85f9f5e1">ไดรฟ์ C</string>
     <string name="lab_861c1b03">โหมดสัมผัสและทุกสวิตช์ที่นี่</string>
     <string name="lab_86369691">แสดงแค็ตตาล็อกทางการในรีโพสิทอรี</string>
+    <string name="lab_8636cba2">กำลังโหลด…</string>
     <string name="lab_866dbc9c">ลงชื่อเข้าใช้ ›</string>
     <string name="lab_86865d1d">เวอร์ชัน Vulkan</string>
     <string name="lab_868b6596">ไม่มีรูท</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">อัตโนมัติ · ภาพปกแบบเบลอ</string>
     <string name="lab_8844e521">ค่าพรีเซ็ต</string>
     <string name="lab_8850c516">ให้เกม DirectInput สั่งให้คอนโทรลเลอร์สั่นได้: ทั้งการสั่นธรรมดา และเอฟเฟกต์แรงที่เกมแข่งรถและเกมจำลองการบินส่งไปยังพวงมาลัยหรือจอยสติ๊ก ซึ่งจะรู้สึกได้ผ่านมอเตอร์สองตัวของคอนโทรลเลอร์ ทำงานตามการตั้งค่า การสั่น (ตำแหน่งที่สั่นและความแรง) แรงคงที่ (เช่น เกมแข่งรถที่ดึงพวงมาลัยให้ตรง) จะค่อย ๆ หายไปหลังสองสามวินาที คอนโทรลเลอร์จึงไม่สั่นค้าง เกม DirectInput จะสั่งได้เฉพาะเมื่อมองเห็นคอนโทรลเลอร์ การเปลี่ยนแปลงจะมีผลเมื่อคอนโทรลเลอร์เชื่อมต่อใหม่ (ในเกม การควบคุม › จอย ทำสิ่งนี้ได้) หรือเมื่อเปิดครั้งถัดไป BANNERIN_DINPUT_FF ในตัวแปรสภาพแวดล้อมมีผลเหนือการตั้งค่านี้</string>
+    <string name="lab_8855c603">ลบ %1$s เกมไหม</string>
     <string name="lab_8861fdef">การตั้งค่าเสียง</string>
     <string name="lab_887ae5cd">สร้าง</string>
     <string name="lab_88819a36">เส้นตารางบนภาพ</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">สีแบบ #RRGGBB เช่น #1E88E5</string>
     <string name="lab_8907b290">เรียกดูไฟล์</string>
     <string name="lab_892b7b55">ภาพปกแนวกว้าง</string>
+    <string name="lab_8946594d">เลือกแล้ว %1$s</string>
     <string name="lab_8965e6c7">เซอร์วิสน้อยลง = เริ่มเร็วขึ้นและมี RAM ว่างมากขึ้น</string>
     <string name="lab_8998f446">ไอคอนของรายการนี้</string>
     <string name="lab_89f43a0d">ค่าพรีเซ็ตตัวแปล</string>
     <string name="lab_89f953b4">เป้าหมายการสั่น</string>
     <string name="lab_8a142020">ปุ่ม Y</string>
+    <string name="lab_8a459c00">ค้นหาใน Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">แรปเปอร์</string>
     <string name="lab_8a8bb4d3">สตรีมคำสั่ง (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">บน Nightlies</string>
     <string name="lab_8ce1bc2a">ปุ่ม</string>
     <string name="lab_8d04c8e0">คอนโทรลเลอร์</string>
+    <string name="lab_8d5acd32">.zip ที่เข้ากันได้กับ GameHub (ค่าเริ่มต้น)</string>
     <string name="lab_8d6a7747">ชื่อและตัวเลือกการเปิดเฉพาะเกมนี้</string>
     <string name="lab_8dc9c516">การปรับแต่ง PanVK ในอะแดปเตอร์ Wayland: ซ่อน present_id, present_wait และ dynamic_rendering พร้อมวิธีแก้ปัญหาการซิงค์สองแบบ เปิดเป็นค่าเริ่มต้นเมื่อใช้ไดรเวอร์ PanVK</string>
     <string name="lab_8df575ef">ต้องใช้เรนเดอเรอร์หน้าจอ Vulkan (กราฟิก) หรือ Wayland</string>
     <string name="lab_8e22550f">หน้าของแอป</string>
-    <string name="lab_8e7f9e42">รับไดรเวอร์</string>
     <string name="lab_8e81d76e">พรีเซ็ต FEXCore</string>
     <string name="lab_8e91f337">รูท ตัวเฝ้าระวังอุณหภูมิยังคงทำงาน</string>
     <string name="lab_8ea27f15">ลบ %1$s ไหม</string>
     <string name="lab_8eb9f765">การเปลี่ยนแปลงที่ยังไม่บันทึกที่นี่จะหายไป คอนเทนเนอร์ที่มีอยู่จะคงการตั้งค่าเดิม</string>
     <string name="lab_8ecc4179"> แทนของ Wine แรปเปอร์และตัวโหลดม็อดหลายตัวต้องใช้ ไม่รวม DLL กราฟิกเด็ดขาด: DXVK และ VKD3D เป็นผู้ดูแลส่วนนั้น</string>
     <string name="lab_8ece40f8">เฉพาะไดรเวอร์ Banners-Turnip เท่านั้น Turnip ต้นฉบับจะไม่สนใจค่านี้</string>
-    <string name="lab_8ee80fca">ไม่มีแหล่งไดรเวอร์</string>
     <string name="lab_8ef37792">ล่าง</string>
     <string name="lab_8f4a852b">พลังงานของอุปกรณ์</string>
     <string name="lab_8f4c06ce">ค่าจะถูกส่งให้แรปเปอร์ตามที่ใส่ ค่าที่ไม่รู้จักเว้นว่างไว้ได้อย่างปลอดภัย</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">เรนเดอเรอร์ SurfaceFlinger — ทดลอง</string>
     <string name="lab_909603fb">กำลังอัปเดต…</string>
     <string name="lab_90b603b8">ทำสำเนา</string>
+    <string name="lab_90d7bedf">ตำแหน่งบันทึก</string>
     <string name="lab_91104123">รันโค้ด x86 32 บิตของเกมบน CPU ARM ของคุณ</string>
     <string name="lab_914624be">ซิงค์กับ Steam Cloud ระหว่างการเปิดแบบ Goldberg</string>
     <string name="lab_915c9049">รีเซ็ต</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">เปิดเส้นทางเร็ว speculative-store ของ CPU ไว้สำหรับเธรดของเกม (เฉพาะ Proton arm64ec) เปิดไว้เป็นค่าเริ่มต้น</string>
     <string name="lab_934c8903">DLL แบบ builtin หรือ native สำหรับ DirectX เสียง และรันไทม์ รวมถึงโคเดกสื่อ</string>
     <string name="lab_93c6f86e">เกม Android</string>
+    <string name="lab_942f9b65">ชื่อ A–Z</string>
     <string name="lab_94436fab">พิมพ์โลแคล เช่น pl_PL หรือ pl_PL.UTF-8</string>
     <string name="lab_944e1f72">ระบบเสียง</string>
     <string name="lab_947c1567">ความสำเร็จ Steam</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">ความสว่าง</string>
     <string name="lab_963f841c">ชื่อซ้ำกับไดรเวอร์ในตัว</string>
     <string name="lab_964d1a40">แชร์คลิปบอร์ด Android กับเกม</string>
+    <string name="lab_96526c2a">บันทึกไฟล์อีกครั้ง</string>
     <string name="lab_968b9d49">มีผลเมื่อเปิดเกม เมนูด้านข้างในเกมยังเปลี่ยนค่าเหล่านี้ได้ทันที</string>
     <string name="lab_969dab73">เปิด / ปิด ReShade, เดี่ยว / ซ้อน, เอฟเฟกต์และการตั้งค่า</string>
     <string name="lab_969fd520">Fence การเรนเดอร์ของไคลเอนต์</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">เพิ่มลำดับความสำคัญเธรดเกม</string>
     <string name="lab_9f612c9d">ไดรเวอร์ GPU</string>
     <string name="lab_9f713ecd">ไม่มีในรายการ</string>
+    <string name="lab_9fd345af">กำลังลบ %1$s…</string>
     <string name="lab_9fea5158">การตั้งค่าคอนเทนเนอร์</string>
     <string name="lab_a00d34e8">ตรวจสอบ Nightlies</string>
     <string name="lab_a011bb4c">การตั้งค่าแอปทุกอย่างมีผลทันที</string>
     <string name="lab_a01444fb">สไตล์โอเวอร์เลย์</string>
     <string name="lab_a01ea521">ลบการกำหนดปุ่มของ %1$s ไหม</string>
     <string name="lab_a05a9689">ทุกอย่างในหน้านี้</string>
+    <string name="lab_a081a3ed">ส่งออกรายการ</string>
     <string name="lab_a0d93d63">CPU รายคอร์</string>
     <string name="lab_a0f06f2a">ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อดาวน์โหลด</string>
     <string name="lab_a0f72982">การแสดงผลแบบ zero-copy และโหมดปลอดภัย OpenGL</string>
     <string name="lab_a108392d">เสมอ</string>
     <string name="lab_a115f62d">คอมโพเนนต์</string>
+    <string name="lab_a11756a4">ข้อมูลพื้นที่จัดเก็บ</string>
     <string name="lab_a1edd479">BCn เป็น ASTC</string>
     <string name="lab_a24bc720">สกิน</string>
     <string name="lab_a26b7e90">บันทึกไว้ใน Proton นั้น สำหรับทุกเกมที่ใช้</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">กดค้างปุ่มนี้เพื่อเล็ง</string>
     <string name="lab_a396cfaa">ไม่สามารถโหลดภาพนั้นได้</string>
     <string name="lab_a3c61ce1">หน้าต่างและล็อก</string>
+    <string name="lab_a3dbadc2">เกี่ยวกับเกมนี้</string>
     <string name="lab_a3f6a50d">พอดีหน้าจอ</string>
     <string name="lab_a40c85ce">บริการที่เริ่มพร้อม Windows</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">อัตรารีเฟรชแบบกำหนดเอง</string>
     <string name="lab_a4d1de01">จับเมาส์ (DirectInput)</string>
     <string name="lab_a4d4c41a">การล็อกช่องของคอนเทนเนอร์นี้เอง ไม่ใช่ของ ทุกคอนเทนเนอร์</string>
+    <string name="lab_a4f06c81">นำเข้าโปรไฟล์ไม่ได้ %1$s จาก %2$s รายการ</string>
     <string name="lab_a4f1cbaf">ช่องว่างจะถูกตัดออก: ตัวแปรคั่นด้วยช่องว่าง</string>
     <string name="lab_a523a4e1">มอเตอร์สั่น</string>
     <string name="lab_a559e736">คอนโทรลเลอร์ XR</string>
     <string name="lab_a57ba715">ความสัมพันธ์ของตัวประมวลผล (cpuList)</string>
+    <string name="lab_a591cbcb">เกมที่ต้องการ…</string>
     <string name="lab_a593c4da">ไฟล์ของคุณ</string>
     <string name="lab_a59e2986">ปิด Xalia (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">ทำให้ไคลเอนต์ทำงานเหมือนบน Steam Deck พร้อม Quick Access Menu เกมจะไม่ได้รับคอนโทรลเลอร์อีก</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">ส่งจอยตรงไปที่เกมแทน Steam Input สำหรับเกมคลาสสิก (Half-Life 2, CS:S) จะปิด Steam Input</string>
     <string name="lab_a6902569">ปุ่มบนหน้าจอกับจอยจริง</string>
     <string name="lab_a6e62e9e">การแปล DirectX</string>
+    <string name="lab_a6fe8b9a">คืนค่ารีโพสิทอรีเริ่มต้น</string>
     <string name="lab_a71846fe">ธีมและสี</string>
     <string name="lab_a74f5b6d">ปิด, ภาพเกม, ภาพ 3D ที่ค่อยๆ เคลื่อนในเชิงลึก หรือแบบมีตัวอย่าง: เทรลเลอร์ในไทล์ใหญ่ของ Home</string>
     <string name="lab_a7a4aed7">หน้าจอสัมผัส: ส่งนิ้วไปยัง Steam เป็นการสัมผัสจริง ทัชแพด: ลากเพื่อเลื่อนตัวชี้และแตะเพื่อคลิก</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">บังคับ</string>
     <string name="lab_aa61eeea">เลือกโปรไฟล์การควบคุม</string>
     <string name="lab_aa9bd991">นำเข้า %1$s แล้ว</string>
-    <string name="lab_aaae690f">หน้าคอมโพเนนต์แบบเต็ม</string>
     <string name="lab_aac2b52c">ติดตั้ง Wine หรือ Proton ก่อน (คอมโพเนนต์)</string>
     <string name="lab_aadb73f3">สว่าง</string>
     <string name="lab_aaf410b8">ยังไม่ได้ลงชื่อเข้าใช้</string>
     <string name="lab_ab00bfda">เกม Steam</string>
+    <string name="lab_ab20a9e4">จะดาวน์โหลดเลเยอร์ก่อน</string>
     <string name="lab_ab2ea144">DirectX 12 ผ่าน Vulkan ไม่มี: ปิด DirectX 12</string>
     <string name="lab_ab612af4">อุณหภูมิ</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">ลงชื่อเข้าใช้เพื่อจัดการการตั้งค่าที่แชร์ไว้</string>
     <string name="lab_ab8824cb">โหมด Present ของอะแดปเตอร์</string>
+    <string name="lab_abac19ba">เปิดหน้าของแหล่งที่มา</string>
     <string name="lab_abb1c367">ไม่มีอะไรเสียบอยู่ เกมนี้ยังตั้งให้เริ่มบนทีวี</string>
     <string name="lab_abb20221">ไม่มีพรีเซ็ต</string>
     <string name="lab_abd752a4">ท่าทางการสัมผัส</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">ยังไม่มีโปรแกรมที่รายงาน</string>
     <string name="lab_ad26a7c7">ไม่ทราบ</string>
     <string name="lab_adcb307d">วิธีแปลงคำสั่ง DirectX ของ Windows เป็น Vulkan สำหรับ GPU ของคุณ</string>
+    <string name="lab_add714f7">ยังไม่ได้ติดตั้ง</string>
     <string name="lab_adf82850">เซิร์ฟเวอร์แสดงผล (X11)</string>
     <string name="lab_adfa74ef">เปิดโหมด Steam Deck ไหม</string>
     <string name="lab_ae483014">กำลังติดตั้ง</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">เกมที่ติดตั้งแล้วยังเปิดได้ ต้องลงชื่อเข้าใช้แบบออนไลน์บนอุปกรณ์นี้ก่อนหนึ่งครั้ง มีผลในเซสชันถัดไป</string>
     <string name="lab_af32ab2f">เดี่ยว</string>
     <string name="lab_af39be20">เครือข่าย</string>
+    <string name="lab_af3c9967">รีเฟรช</string>
     <string name="lab_af3f8345">ไม่พบภาพสำหรับเกมนี้ เลือกรูปภาพ หรือลิงก์เกมกับ Steam ในรายละเอียด</string>
     <string name="lab_af456994">ป้องกันเคอร์เนลปิดคอร์</string>
     <string name="lab_af47e020">ประเภท</string>
     <string name="lab_afb57bd1">ฟิลเตอร์อัปสเกล การเพิ่มความคม และการลดแถบสี</string>
+    <string name="lab_aff587ab">ข้อมูลสำรอง GameHub (.zip)</string>
     <string name="lab_b01a2f1b">ตัวแปรสภาพแวดล้อม</string>
     <string name="lab_b01c4a81">การวางแนว</string>
     <string name="lab_b01f4f95">เสร็จแล้ว</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">ช่องผู้เล่นของแต่ละคอนโทรลเลอร์</string>
     <string name="lab_b0beed23">เกมของคุณใน Steam</string>
     <string name="lab_b0daa272">ความช่วยเหลือและการสนับสนุน</string>
+    <string name="lab_b0e351e0">รีเฟรชแล้ว</string>
+    <string name="lab_b0f4240e">สำรองเซฟเกม</string>
     <string name="lab_b0fab841">กราฟ GPU</string>
     <string name="lab_b0fc42e2">แชร์เซฟเกมกับแอป</string>
     <string name="lab_b132aa74">Turnip ที่ติดตั้งไว้ซึ่งคอมโพสิเตอร์ Wayland ใช้แสดงเฟรมของเกมบนหน้าจอ</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">ประเภทคอนเทนเนอร์</string>
     <string name="lab_b312c895">เปิดเมนูด่วน</string>
     <string name="lab_b32171e6">หยุดเกมชั่วคราว</string>
-    <string name="lab_b323b10b">ซ่อน %1$s ไหม แสดงอีกครั้งได้จากการตั้งค่าเนื้อหาของ Classic</string>
     <string name="lab_b32cbb53">นำเข้า %1$s เป็นคอนเทนเนอร์ใหม่ไหม</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">เปิดเลย</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">สวิตช์รูทจะถูกบันทึกไว้สำหรับเกมนี้ และมีผลเมื่อเปิดเกมหลังได้รับสิทธิ์รูท</string>
     <string name="lab_b543f270">การกำหนดปุ่มคอนโทรลเลอร์</string>
     <string name="lab_b5681ffc">ปุ่ม Steam และ Quick Access บนหน้าจอ</string>
-    <string name="lab_b56fe256">ไม่มีไดรเวอร์ในแหล่งนี้</string>
     <string name="lab_b5b9d14a">เปิดหรือปิด XInput โดยตรง จากเมนูในเกมได้โดยไม่ต้องรีสตาร์ต</string>
     <string name="lab_b5c5920e">เปิดตัวจัดการล็อก</string>
     <string name="lab_b6024573">ลบ %1$s ไหม เกมที่ตั้งไว้จะกลับไปใช้ไดรเวอร์ของคอนเทนเนอร์</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">สโตร์ของคุณ</string>
     <string name="lab_b73987a8">ค่าเริ่มต้นของระบบ</string>
     <string name="lab_b739e60c">การสั่น</string>
+    <string name="lab_b759a7ac">ข้อมูลสำรองนี้สำหรับเครื่องมือใด</string>
     <string name="lab_b7636944">ใช้เมื่อปิดการปรับตาม FPS</string>
     <string name="lab_b7c337c7">พิมพ์เป็น กว้าง x สูง เช่น 1600x900</string>
     <string name="lab_b7d4edb2">ระดับฟีเจอร์ DirectX 12</string>
     <string name="lab_b7e2758f">การจำลอง</string>
     <string name="lab_b885aba0">กำลังยกเลิก</string>
     <string name="lab_b89607f1">สำรองและคืนค่า</string>
-    <string name="lab_b8afe1d2">ติดตั้งจากไฟล์</string>
     <string name="lab_b90673bf">เวอร์ชัน DXVK</string>
     <string name="lab_b9106d81">สีเส้นขอบ</string>
     <string name="lab_b9384128">ล็อกหน้าจอไว้ที่</string>
+    <string name="lab_b9462894">ขนาดการ์ด · %1$s</string>
     <string name="lab_b9825547">ยังไม่มีข้อมูลที่เก็บไว้</string>
     <string name="lab_ba3b6032">เรนเดอเรอร์ WineD3D</string>
     <string name="lab_ba4f23ec">เพิ่มโฟลเดอร์เกม</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">เซฟเกม</string>
     <string name="lab_bcf34837">ไม่คุมจังหวะ</string>
     <string name="lab_bcfb356d">จากคอนเทนเนอร์</string>
+    <string name="lab_bd4ab43f">1 เกม</string>
     <string name="lab_bd50227c">ยังไม่ได้ติดตั้งบิลด์ VEGAS: ดาวน์โหลดได้ด้านล่าง</string>
     <string name="lab_bd63a37d">ภาพวอลเปเปอร์</string>
     <string name="lab_bd87c7d9">แคชพื้นผิวที่ถอดรหัสแล้ว</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">เลือกรูปภาพ…</string>
     <string name="lab_be45a0e0">ไม่พบ · ไม่ได้ลิงก์กับ Steam</string>
     <string name="lab_be638831">แว่นขยาย หน้าต่าง ล็อก และโปรแกรมที่กำลังทำงาน</string>
+    <string name="lab_be80b01d">ซ่อน %1$s ไหม คืนค่ารีโพสิทอรีเริ่มต้นจะแสดงกลับมาอีกครั้ง</string>
+    <string name="lab_be8d2116">ปิดทุกอย่างที่กำลังทำงานอยู่ในนั้นก่อน</string>
+    <string name="lab_be906409">.zip แบบดั้งเดิมของ Winlator</string>
     <string name="lab_be998b7c">ซิงค์ทุกเฟรม</string>
     <string name="lab_be9a2a59">กด Back สองครั้งเพื่อเปิด Quick Access</string>
     <string name="lab_be9d8c7a">ตัวเลือกการเปิด</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">กลาง</string>
     <string name="lab_c120c6bb">ปลดล็อกการควบคุม CPU และ GPU เต็มรูปแบบแล้ว</string>
     <string name="lab_c14faa17">XInput โดยตรง (BANNERIN)</string>
+    <string name="lab_c15bb42a">เลือกโฟลเดอร์อื่น…</string>
     <string name="lab_c171e496">อัตโนมัติ (เบต้าสาธารณะ)</string>
     <string name="lab_c172ec97">การเปลี่ยนแปลงจะเก็บไว้สำหรับเกมนี้เฉพาะส่วนที่ต่างจากค่าเริ่มต้นส่วนกลาง</string>
     <string name="lab_c1bc6675">แรปเปอร์ Vulkan ที่เกมใช้บน X11 แรปเปอร์ที่นำเข้าจะแสดงที่นี่ด้วย</string>
     <string name="lab_c1c757e2">ล็อกดีบักเลเยอร์ BCn</string>
     <string name="lab_c1df4081">ปานกลาง</string>
-    <string name="lab_c206cdbf">สำรองเซฟเกมทั้งหมด</string>
     <string name="lab_c22c196f">แดง</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c"> จะบันทึกไม่ได้จนกว่าค่าจะต่างกัน</string>
     <string name="lab_c2928e24">แว่นขยาย</string>
     <string name="lab_c2f74c47">เวอร์ชันไดรเวอร์</string>
     <string name="lab_c2fdbf25">กำลังนำเข้า</string>
+    <string name="lab_c32c5dc4">ม็อด</string>
     <string name="lab_c34f4640"> · เก็บไว้จากก่อนมีการตั้งค่าซิงค์ ประสิทธิภาพ › ซิงค์ จะอ่านค่าเหล่านี้และล้างออกเมื่อคุณตั้งค่า</string>
     <string name="lab_c36c4b3f">หน้าจอ</string>
     <string name="lab_c3db5a25">หน้าจอ (ค่าเริ่มต้น)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">รองรับ Steam Controller</string>
     <string name="lab_c6521528">ต้องใช้ GPU Mali รุ่น Valhall</string>
     <string name="lab_c664401e">คอนเทนเนอร์ = ตามคอนเทนเนอร์ เกมนี้ = ตั้งค่าที่นี่</string>
+    <string name="lab_c669581b">คืนค่าเซฟเกม</string>
     <string name="lab_c66c17c3">พรีเซ็ตตัวแปล</string>
     <string name="lab_c6888ac4">อัตโนมัติ</string>
     <string name="lab_c6a02e29">ใช้เลย</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">ปุ่มบนหน้าจอ เมาส์ การสั่น การเล็งด้วยไจโร</string>
     <string name="lab_c7b49d50">แอป Steam %1$s</string>
     <string name="lab_c7fad197">ไม่พบการตั้งค่าเพิ่มเติม</string>
+    <string name="lab_c82c4a5b">อัปเดตเป็น %1$s</string>
     <string name="lab_c82e7e67">บิลด์จากแค็ตตาล็อก บิลด์ที่ติดตั้งแล้วจะแสดงใน เวอร์ชัน DXVK</string>
+    <string name="lab_c83f23bf">ไม่สามารถรีเซ็ตภาพปกได้</string>
     <string name="lab_c844d41c">สำหรับเกม Denuvo ที่แอปตรวจไม่พบเอง</string>
     <string name="lab_c84956c1">บริการกำหนดเอง</string>
     <string name="lab_c85b9376">สะดุดน้อยลง ความหน่วงเพิ่มขึ้นเล็กน้อย ตั้งแยกตามคอนเทนเนอร์</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">ปุ่มบนหน้าจอยังเป็นผู้เล่น 1</string>
     <string name="lab_c8b7e3fa">ไดรเวอร์นี้แสดงเซสชันไม่ได้ \"ระบบ\" หรือไดรเวอร์ที่ไม่ได้ติดตั้งแล้วจะทำให้คอมโพสิเตอร์ใช้ Vulkan ของระบบ ซึ่งแสดงจอดำ</string>
     <string name="lab_c8c4d663">เปิด — ขณะการสร้างเฟรมทำงาน หน้าจอจะปรับตามขีดจำกัดเฟรม × ตัวคูณ</string>
-    <string name="lab_c8d5043b">เลือกแพ็กเนื้อหา</string>
     <string name="lab_c8d52d67">ลบพรีเซ็ต</string>
     <string name="lab_c936ff11">เช่น th_TH.UTF-8</string>
     <string name="lab_c94d19de">อัปโหลดไป Steam Cloud อัตโนมัติเมื่อออก</string>
+    <string name="lab_c961a1bf">%1$s (อัตโนมัติ)</string>
     <string name="lab_c9822616">ดาวน์โหลด</string>
     <string name="lab_c9a07f62"> · ปุ่มควบคุมบนหน้าจอ</string>
     <string name="lab_c9ae8103">โหมด Mali (PanVK)</string>
+    <string name="lab_c9ef821f">เซฟเกมทั้งหมด (ทั้งโปรไฟล์)</string>
     <string name="lab_ca16bb77">มีผลทันที · บันทึกสำหรับเกมนี้และเป็นค่าเริ่มต้นของเอนจินนี้</string>
     <string name="lab_ca45d5a4">คอนเทนเนอร์นี้</string>
     <string name="lab_ca62f862">ดาวน์โหลดและเครือข่าย</string>
     <string name="lab_cabf747a">การคัดลอกแบบ async</string>
     <string name="lab_caf7d4a3">พรีเซ็ตที่ใช้ร่วมกัน (แก้ไขแล้ว)</string>
     <string name="lab_cb5fc4d5">การตั้งค่า VEGAS</string>
+    <string name="lab_cb6124f5">อัปเดตเลเยอร์</string>
     <string name="lab_cb6d604d">ลาก HUD ระหว่างเล่นเกมไม่ได้</string>
     <string name="lab_cbab7f7a">ไอคอน</string>
     <string name="lab_cbb98111">อนาล็อกขวา</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">ภาพเดียวที่ทุกคอนเทนเนอร์ใช้ร่วมกัน หรือภาพเฉพาะคอนเทนเนอร์นี้</string>
     <string name="lab_cc7362b0">บนหรือล่าง: เว้นอีกครึ่งไว้สำหรับปุ่มควบคุมบนหน้าจอ</string>
     <string name="lab_cc9e753f">เรียกดูและติดตั้งคอมโพเนนต์</string>
+    <string name="lab_cc9f0c95">แสดงพื้นที่จัดเก็บภายใน</string>
+    <string name="lab_ccb4b062">จะดาวน์โหลดเลเยอร์ก่อน (%1$s)</string>
     <string name="lab_cce939fc">OpenGL แบบเร็ว</string>
     <string name="lab_cd871c13">รายงานเป็น Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">ตัวถอดรหัสวิดีโอ</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">ทดลอง</string>
     <string name="lab_d261efe4">ตัวเดียวช่วยให้สติ๊กลื่นบนเครื่องพกพาที่ช้าลงเมื่อมอเตอร์ทั้งสองทำงาน</string>
     <string name="lab_d2651812">การตั้งค่าเกม</string>
+    <string name="lab_d27c84ad">สลับบัญชีอีมูเลเตอร์เป็นบัญชีในข้อมูลสำรองแล้ว เปิดเกมใหม่อีกครั้ง</string>
     <string name="lab_d27d3648">LSFG Native</string>
     <string name="lab_d2895d94">สำรอง คืนค่า และซิงค์เซฟเกม</string>
     <string name="lab_d2b6baa8">แก้ข้อความเพี้ยนในเกมภาษาญี่ปุ่น จีน เกาหลี และรัสเซีย</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">ทริกเกอร์</string>
     <string name="lab_d5e887b8">%1$s ชม.</string>
     <string name="lab_d60412d3">ต้นฉบับ</string>
+    <string name="lab_d60d149d">นำเข้ารีโพสิทอรีแล้ว</string>
     <string name="lab_d620ef74">ภาพปกแบบเบลอ</string>
     <string name="lab_d653f990">ตัวแปล x86 สำหรับโค้ด 32 บิต</string>
     <string name="lab_d6d3fe68">เลือกแพ็กเกจคอมโพเนนต์ (-linux .wcp)</string>
     <string name="lab_d7060afb">นำเข้าคอนเทนเนอร์นี้</string>
+    <string name="lab_d736d92d">ตกลง</string>
     <string name="lab_d73ee22e">ไดรเวอร์ Turnip หรือ Adreno ที่แรปเปอร์โหลด นำเข้าเพิ่มได้ใน เนื้อหา › ไดรเวอร์ GPU</string>
     <string name="lab_d801cf49">ไฟล์การตั้งค่าที่มากับรีลีสของ VEGAS จะแสดงใน ไฟล์การตั้งค่า</string>
     <string name="lab_d809a959">คงไว้เมื่อบันทึกในตัวแก้ไข</string>
     <string name="lab_d8321a59">ไม่มีเสียงแตก</string>
+    <string name="lab_d832ee19">เมนูด้านข้าง</string>
     <string name="lab_d834a1cf">กำลังตรวจว่าไดรเวอร์ที่ติดตั้งตัวไหนแสดงเกมได้…</string>
     <string name="lab_d870ae5e">ไดรเวอร์นี้ไม่ได้โหลดบน GPU นี้: ไดรเวอร์ระบบตอบการตรวจแทน</string>
     <string name="lab_d8e06406">หน้าจอ</string>
+    <string name="lab_d8e601e7">บางเกมเก็บเซฟไว้ที่อื่น (โฟลเดอร์ติดตั้ง รีจิสทรี Steam Cloud) ตรวจสอบข้อมูลสำรองก่อนลบสิ่งใด</string>
     <string name="lab_d8e621c2">เพิ่มไดรฟ์</string>
     <string name="lab_d90a905b">กระจก</string>
     <string name="lab_d91754f0">ไม่มีรายการ</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">บริการเบื้องหลังของ Windows</string>
     <string name="lab_db6d6f28">รวมรุ่นพรีรีลีส</string>
     <string name="lab_db745b05"> ภาพใหม่จะถูกใช้ตั้งแต่การเริ่มครั้งถัดไปเมื่อคุณบันทึก</string>
+    <string name="lab_db7be531">ดาวน์โหลดไม่ได้</string>
     <string name="lab_db89b158">เซสชันล่าสุด</string>
     <string name="lab_dbce82c8">ใช้ของทุกคอนเทนเนอร์</string>
     <string name="lab_dbd5d59f">ตัวแปรของเกมนี้</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">ซิงค์การปลดล็อกไปยังโปรไฟล์ Steam</string>
     <string name="lab_de0c0eb8"> \";\" และ \"=\" จะถูกตัดออก</string>
     <string name="lab_de315178">เปลี่ยนชื่อ</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">ถูกสลับพร้อมกับ \"ใช้ DLL ในโฟลเดอร์เกมก่อน\" ด้านบนด้วย</string>
     <string name="lab_de72753f">ปริมาณหน่วยความจำกราฟิกที่ WineD3D รายงาน</string>
+    <string name="lab_de75d40c">%1$s จะย้อนกลับจาก %2$s เป็น %3$s รีจิสทรีจะถูกคืนค่าจากข้อมูลสำรองที่สร้างไว้ก่อนอัปเดต เกม เซฟเกม ทางลัด และการตั้งค่าจะยังอยู่ ต้องยังติดตั้ง %4$s ไว้</string>
     <string name="lab_dec4dc19">เฉพาะคอนเทนเนอร์</string>
     <string name="lab_def1a7db">คอนเทนเนอร์</string>
     <string name="lab_def6b48c">ตัวแปรที่รู้จัก</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">อะแดปเตอร์ Wayland</string>
     <string name="lab_e1be537c">ยังไม่บันทึก</string>
     <string name="lab_e22a8ea9">Wayland ต้องมี Turnip ที่ติดตั้งไว้เพื่อแสดงเฟรมของเกมบนหน้าจอ ตัวใหม่จะแสดงใน ไดรเวอร์กราฟิก</string>
-    <string name="lab_e2410f47">เรียกดูและดาวน์โหลด</string>
     <string name="lab_e2421520">ดาวน์โหลดเวอร์ชัน WOWBox64</string>
     <string name="lab_e280d375">ขนาดการ์ด</string>
     <string name="lab_e2a7f23e">บนหน้าจอ</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">รายการนี้ไม่มีไฟล์ไอคอนให้เขียน</string>
     <string name="lab_e2ce4373">ส่วน</string>
     <string name="lab_e2e95fcd">ล็อกเกม</string>
+    <string name="lab_e2f09271">คืนค่าข้อมูลสำรองของ %1$s ลงใน %2$s ไหม ข้อมูลเซฟเกมที่นั่นอาจถูกเขียนทับ</string>
+    <string name="lab_e3af6ca0">เลือกรายการรีโพสิทอรี</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">สำหรับเกมที่เห็นจอยผ่าน Steam เท่านั้น (No Man\'s Sky) ปิดไว้สำหรับเกมที่อ่านจอยเอง จะปิดการส่งผ่านคอนโทรลเลอร์</string>
     <string name="lab_e3e80b58">โปรไฟล์การควบคุม</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">ปิดได้หากต้องการ เกมนี้จะจำไว้</string>
     <string name="lab_e841eed8">ไม่ได้รับสิทธิ์ไมโครโฟน: ไมค์จะปิดอยู่</string>
     <string name="lab_e8a0175e">ดาวน์โหลดเวอร์ชัน Box64EC</string>
-    <string name="lab_e8a5f633">ไม่มีไฟล์คอมโพเนนต์ที่บันทึกไว้</string>
     <string name="lab_e8c91356">ใช้การล็อกช่องของคอนเทนเนอร์ การเปลี่ยนค่าใดค่าหนึ่งจะทำให้เกมนี้มีการล็อกของตัวเอง</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">ยังไม่มีเค้าโครงบนหน้าจอ</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) หรือ off</string>
     <string name="lab_e98a38e0">แว่นขยาย ภาพซ้อนภาพ คีย์บอร์ด และประสิทธิภาพ</string>
     <string name="lab_e9bb2501">ให้เกมใช้ไมค์ได้: DirectAudio จะรับเสียงอินพุต Android จะขอสิทธิ์หนึ่งครั้ง</string>
-    <string name="lab_ea08e43f">รันไทม์ Linux และทุกรายการ</string>
     <string name="lab_ea354143">ปุ่มจาง ๆ ที่มุมขวาบน แตะเพื่อเปิดเมนูด่วน ปุ่ม Back, ปุ่ม Menu หรือการแตะสี่นิ้วใช้ได้โดยไม่ต้องมีปุ่มนี้</string>
     <string name="lab_ea4babd8">วิธีเริ่มเกม</string>
     <string name="lab_ea83f479">• ไคลเอนต์อาจแสดงอัปเดต Steam Client ในส่วน System ที่ติดตั้งไม่ได้ ตอนนี้โหมด Deck ใช้ช่องทางเบต้า Steam Deck เพื่อเลี่ยงปัญหานี้ แต่หากยังขึ้นมา อย่ากด Apply\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">ตัวชี้วัด</string>
     <string name="lab_ed41d675">ไดรเวอร์วาดภาพ (รันไทม์ Linux)</string>
     <string name="lab_ed779ba6">ดาวน์โหลดเวอร์ชัน Wine และ Proton</string>
+    <string name="lab_eda50b73">%1$s เกม</string>
     <string name="lab_edfcb4b9">เมาส์และคีย์บอร์ดแบบเฉพาะ</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">แบตเตอรี่แดงที่</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">ความโปร่งใส</string>
     <string name="lab_efdeb1c6">รายการพรีเซ็ตใช้ร่วมกันทุกคอนเทนเนอร์และทุกเกม</string>
     <string name="lab_efdfc7e5">จำกัด FPS</string>
-    <string name="lab_efeacf52">ตอนนี้มีเฉพาะไดรเวอร์ของโทรศัพท์</string>
     <string name="lab_f04c78b9">การตั้งค่าเสียง · เกมนี้</string>
     <string name="lab_f05053e7">อ่าน Steam Controller โดยตรง (แทร็กแพดและปุ่มเพิ่มเติม) ปิด: เส้นทางอินพุตปกติไม่เปลี่ยน</string>
     <string name="lab_f0520965">mailbox = เฟรมใหม่ล่าสุด หน่วงต่ำที่สุด; fifo = vsync จังหวะสม่ำเสมอ ค่าเริ่มต้น: ใช้ตามโปรไฟล์ ถ้าไม่มีจะใช้โหมด Present ที่บันทึกไว้ immediate ต้องยอมให้ภาพฉีก ซึ่ง Wayland ไม่มีให้</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">การสั่นของ DirectInput</string>
     <string name="lab_f10b2876">ความสัมพันธ์ของตัวประมวลผล</string>
     <string name="lab_f115c775">เปิดแบบปลอดภัยสำหรับระบบกันโกง (VAC)</string>
+    <string name="lab_f1165d1c">เรียงลำดับ</string>
     <string name="lab_f123362f">แอป</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">อนาล็อกซ้าย</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">สไตล์</string>
     <string name="lab_f2857f55">ภายใน</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">เลือกไดรเวอร์ GPU</string>
     <string name="lab_f2ed832c">ขนาดหน่วยความจำ GPU ที่บอกเกม DirectX (dxgi.maxDeviceMemory)</string>
     <string name="lab_f3043a4e">ความหน่วงเสียง</string>
     <string name="lab_f304d21f">เล็กเกินไปสำหรับเดสก์ท็อป Windows</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">เฉพาะเกมนี้: เกมหรือคอนเทนเนอร์อื่นจะไม่เปลี่ยน </string>
     <string name="lab_f40ccd04">เปิดใช้</string>
     <string name="lab_f44d5610">เปิด / ปิดการสั่น และสวิตช์แยกตามช่อง</string>
+    <string name="lab_f46b910b">พื้นที่จัดเก็บส่วนตัวของแอป</string>
     <string name="lab_f485cfbf">การตั้งค่าที่สแกนจากไฟล์ของแรปเปอร์ที่นำเข้า ซ่อนหรือแสดงได้ใน จัดการแรปเปอร์กราฟิก</string>
     <string name="lab_f4abcaf2">นี่เป็นการตั้งค่าของคอนเทนเนอร์ เปลี่ยนได้ในการตั้งค่าคอนเทนเนอร์</string>
     <string name="lab_f4f73c18">ค่าเริ่มต้น</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">บันทึก</string>
     <string name="lab_f576fb2d">เลเยอร์จากแค็ตตาล็อก หรือติดตั้งจากไฟล์ คอนเทนเนอร์ใหม่ใช้ได้</string>
     <string name="lab_f57b35ee">เดดโซนและการปรับให้นุ่มนวล</string>
+    <string name="lab_f581508f">ลบ %1$s เกมแล้ว</string>
     <string name="lab_f5864edc">การดาวน์โหลดจากคลาวด์อัตโนมัติเมื่อเปิดเกมจะถูกปิดสำหรับเกมในไลบรารี Steam เซฟล่าสุดบนคลาวด์จะไม่ถูกดึงมาก่อนเริ่มเกม — คุณต้องดาวน์โหลดเองจากส่วนเซฟบนคลาวด์ในหน้ารายละเอียดของเกม ดำเนินการต่อไหม</string>
     <string name="lab_f593aa90">ไดรเวอร์ที่คอมโพสิเตอร์ของแอปใช้แสดงเซสชันบนหน้าจอ ไม่ใช่ตัวที่ไคลเอนต์ใช้วาด</string>
     <string name="lab_f59e59da">แสดงในไลบรารี การเปลี่ยนชื่อจะคงภาพปกและไอคอนไว้</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">เริ่มจากค่าเริ่มต้นคอนเทนเนอร์ใหม่ของคุณ กด X เพื่อสร้าง</string>
     <string name="lab_f783e029">แบตเตอรี่คู่</string>
     <string name="lab_f81efa4a">FEX, DXVK และ VKD3D-Proton</string>
+    <string name="lab_f826d6b4">คืนค่า %1$s ไฟล์ไปยัง %2$s แล้ว</string>
     <string name="lab_f8283624">ขนาดอินเทอร์เฟซ</string>
     <string name="lab_f8507a8c">แก้สี SurfaceFlinger</string>
     <string name="lab_f8e0d68c">ไดรเวอร์คอมโพสิเตอร์ (graphicsDriverConfig version)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">บางเกมไม่อ่านคอนโทรลเลอร์เอง แต่ขอจาก Steam ใน SteamLite ไม่มีใครตอบ เกมเหล่านั้นจึงไม่เห็นจอย เปิด: เอเจนต์ SteamLite จะเปิดเลเยอร์คอนโทรลเลอร์ของ Steam ให้เกมนี้พร้อมเค้าโครงที่เหมาะสม ปิดไว้สำหรับเกมที่อ่านจอยเองอยู่แล้ว ไม่อย่างนั้นทุกการกดจะเข้าซ้ำสองครั้ง ตรงข้ามกับการส่งผ่านคอนโทรลเลอร์ จึงเปิดได้ทีละอย่าง เฉพาะ SteamLite</string>
     <string name="lab_fa859fc7">โหมด Goldberg, ตรวจสอบไฟล์ และตรวจหาอัปเดต อยู่ในเมนูเปิดเกม ปิด \"ข้ามเมนูเปิดเกม\" เพื่อให้เห็นเมนูนี้ในการเริ่มครั้งถัดไป</string>
     <string name="lab_fac0fe64">ตัวควบคุมการปรับขนาดทำส่วนที่มีประโยชน์ได้โดยไม่ต้องใช้โหมดนี้ และการจำกัด FPS ในแถบเมนูในเกมช่วยจำกัดอัตราเฟรม ปิดโหมด Deck อีกครั้งหากเกมไม่ตอบสนองต่อคอนโทรลเลอร์</string>
+    <string name="lab_fac102a7">FPS · เซสชันล่าสุด</string>
     <string name="lab_fad0baa9">ค่าเริ่มต้น (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton ของ Valve เอง จะถูกแทนที่เมื่อ Steam อัปเดต ไฟล์ต้นฉบับถูกเก็บแยกตามบิลด์</string>
     <string name="lab_fae62cc0">ล็อกตัวชี้ไว้กับเกม กดปุ่มลดเสียงเพื่อปลดล็อก</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">เวอร์ชัน DirectX</string>
     <string name="lab_fbd4f98b">ชื่อ GPU ที่เกมเห็น</string>
     <string name="lab_fbf2e44f">ค่า FPS และอุณหภูมิบนหน้าจอ</string>
+    <string name="lab_fbfb437a">%1$s จะเปลี่ยนจาก %2$s เป็น %3$s เกม เซฟเกม ทางลัด และการตั้งค่าจะยังอยู่</string>
     <string name="lab_fd1310b6">ปุ่ม X</string>
     <string name="lab_fd5460f8">สี</string>
+    <string name="lab_fdc15162">ยังไม่ได้โหลด</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ติดตามไดรเวอร์)</string>
     <string name="lab_fe11d138">ชื่อ</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">เป็นข้อความ คั่นด้วยจุลภาค</string>
     <string name="lab_ffb9855e">ไฟล์นั้นไม่ใช่โปรไฟล์การควบคุม</string>
     <string name="lab_ffcd863d">เล่นแล้ว %1$s นาที</string>
+    <string name="lab_ffe2f089">ไม่พบ Wayland WSI</string>
 </resources>

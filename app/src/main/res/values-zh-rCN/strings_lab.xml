@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">游戏识别到的手柄类型。也可在游戏中更改（手柄会重新连接）。</string>
     <string name="lab_0312e1a5">请在 = 前输入名称。</string>
     <string name="lab_0355373d">全部</string>
+    <string name="lab_03705e75">已移除 %1$s 个（共 %2$s 个）；其余无法删除</string>
     <string name="lab_0397233a">绕过 GMEM。</string>
     <string name="lab_039bee69">控制</string>
     <string name="lab_03af654a">手柄</string>
     <string name="lab_03af83cf">内置（Wine）</string>
     <string name="lab_03be5b2b">结束 %1$s？</string>
     <string name="lab_03dc750a">无。浏览目录来添加。</string>
+    <string name="lab_03eece5a">总计</string>
     <string name="lab_03f54074">填满屏幕</string>
+    <string name="lab_04272d2b">将层回退到 %1$s</string>
     <string name="lab_04314e37">Steam Controller、屏幕按键默认设置，以及 Wine 游戏的鼠标和键盘。</string>
     <string name="lab_04422c9a">打开</string>
     <string name="lab_044669c8">游戏可用的核心</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">导入配置文件</string>
     <string name="lab_05ea4871">刷新率匹配 FPS</string>
     <string name="lab_05f88f63">Wine / Proton 版本</string>
+    <string name="lab_062deaae">无法安装 %1$s：%2$s</string>
     <string name="lab_063c1ee9">对此游戏隐藏 Xbox 手柄。</string>
-    <string name="lab_06625dae">没有下载源。</string>
     <string name="lab_06681d37">用哪个触控板移动鼠标。按下它即为左键单击。</string>
     <string name="lab_066c2fb1">游戏页面</string>
     <string name="lab_0687488a">Turnip 和 Qualcomm 驱动</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">选择要记录的内容（Wine、Box64/FEX、DXVK、SteamLite、无界面 Steam、logcat）、日志保存位置及保留数量；浏览并分享日志。</string>
     <string name="lab_0721ad7c">此容器</string>
     <string name="lab_075ffd70">你的视频</string>
+    <string name="lab_076e01bd">还原存档…</string>
     <string name="lab_07a88d47">按一次返回键仍会打开游戏内抽屉菜单。</string>
     <string name="lab_07e11363">已对整个容器开启：请在容器中关闭。</string>
     <string name="lab_080615dc">使用容器设置</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">下载 D7VK 版本</string>
     <string name="lab_09683590">帧率限制器</string>
     <string name="lab_09793b21">OpenGL：关闭垂直同步</string>
+    <string name="lab_097af41a">名称 Z–A</string>
     <string name="lab_09b51ad4">槽位</string>
     <string name="lab_09cdafe2">文字大小</string>
     <string name="lab_09d2be7b">公开测试版</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">DXVK 自带的限制（DXVK_FRAME_RATE）。关闭时由帧率限制器负责帧节奏。</string>
     <string name="lab_0b5eae46">手柄成为玩家 1</string>
     <string name="lab_0b76e940">已移除 %1$s %2$s</string>
+    <string name="lab_0bad6f7f">正在下载 %1$s 个配置文件…</string>
     <string name="lab_0bd8b542">画面尺寸、帧节奏和刷新率。</string>
+    <string name="lab_0be4a3d7">已移除 1 个游戏</string>
     <string name="lab_0be7a72d">缩放模式</string>
     <string name="lab_0bece985">备份</string>
     <string name="lab_0c451500">捕获分辨率</string>
     <string name="lab_0c64d11e">从文件安装内容</string>
+    <string name="lab_0c88e27c">只会移除快捷方式，游戏文件会保留。</string>
     <string name="lab_0cd26a5e">没有正在下载的内容</string>
-    <string name="lab_0ce16a57">备份失败：%1$s</string>
     <string name="lab_0cfb7a3b">修复部分老游戏中镜头乱转或卡住的问题。</string>
+    <string name="lab_0d0fc080">正在创建 %1$s 的副本…</string>
     <string name="lab_0d5a2b34">添加在程序名称后的额外参数，例如 -windowed -dx11。</string>
     <string name="lab_0da00171">• 游戏将不再接收手柄输入。Steam 自身的菜单仍可使用，但在游戏中手柄不起作用。\n</string>
     <string name="lab_0dc541d5">重置为默认</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">自动（Steam Deck 测试版，用于 Deck 模式）</string>
     <string name="lab_0fed0c63">驱动设置</string>
     <string name="lab_10091d64">VEGAS 版本</string>
-    <string name="lab_10125440">驱动和组件</string>
     <string name="lab_101d1386">SteamGridDB API 密钥</string>
     <string name="lab_101f5ed2">ReShade 效果</string>
     <string name="lab_1054fdc3">在 Wayland 下，游戏通过内嵌合成器渲染，需要已安装的 Turnip 来导入其画面。“系统”仅在 Mali GPU 上提供；在其他 GPU 上会显示黑屏。游戏本身用于渲染的驱动是下方的 Wayland 游戏驱动。</string>
     <string name="lab_105c504c">OneUI / HyperOS 修复</string>
     <string name="lab_1079be1d">在 Steam 上找不到“%1$s”</string>
     <string name="lab_10a08356">允许游戏中切换</string>
+    <string name="lab_10b7b953">备份存档…</string>
     <string name="lab_10cb69ae">选择图标图片</string>
     <string name="lab_1121166e">Alpha</string>
     <string name="lab_112d429f">反转 Y 轴</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">预设与调节…</string>
     <string name="lab_165bbde9">暂停</string>
     <string name="lab_1689f76a">关闭后会在“内容”中隐藏；容器和游戏设置页中仍会保留。</string>
+    <string name="lab_16a69772">正在搜索…</string>
     <string name="lab_16c90680">画面位置</string>
     <string name="lab_16d40373">音频驱动</string>
     <string name="lab_16ff819d">刷新率</string>
-    <string name="lab_170eab83">已保存的文件</string>
     <string name="lab_1777bbf2">手动</string>
     <string name="lab_177847bc">没有可复制的内容</string>
     <string name="lab_17a0dfae">离线</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">此游戏</string>
     <string name="lab_188dc386">由“性能 › 同步”设置。</string>
     <string name="lab_18991a24">其他</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">Deck 模式已开启：游戏不会接收手柄输入。如果“系统”下出现一个无法安装的 Steam 客户端更新，请不要对它点“应用”。</string>
     <string name="lab_189ddac0">其安装包文件将从应用中删除。你可以随时重新下载。</string>
     <string name="lab_18c07921">菜单键、额外按键和陀螺仪校准</string>
     <string name="lab_18e6df7b">此游戏跳过 Epic 登录（无在线功能）。</string>
+    <string name="lab_191f6609">选择游戏</string>
     <string name="lab_19377f1f">Steam 连接地区和网络测试</string>
     <string name="lab_19532aa0">这会从存储中删除已下载的效果，并将其从此配置中移除。你可以随时重新下载。</string>
     <string name="lab_1955f21e">CPU 核心</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">启用体感瞄准</string>
     <string name="lab_1acaa40c">记录哪些内容、保存到哪里、保留多久。</string>
     <string name="lab_1acd9ee4">帧生成运行时锁定为快速 V-Sync。</string>
+    <string name="lab_1b1ee750">已导入 %1$s 个配置文件</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">打开此页面时，每个 Proton 自带的文件已保存为原件。</string>
     <string name="lab_1b4c8948">呈现模式</string>
     <string name="lab_1bbf10a9">（你的副本）</string>
     <string name="lab_1bc2538c">KGSL 计时修正</string>
     <string name="lab_1bdd2734">游戏默认</string>
+    <string name="lab_1be37b64">还原失败：%1$s</string>
     <string name="lab_1bfb31a3">背景颜色</string>
     <string name="lab_1bfc578f">聊天通知</string>
     <string name="lab_1bfe2edd">DXVK 帧率上限</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">桌面背景</string>
     <string name="lab_1c765923">自动（按连接顺序）</string>
     <string name="lab_1ce56dac">模拟器（64 位）</string>
-    <string name="lab_1d039d18">下载并安装</string>
     <string name="lab_1d4948df">不使用 GPU 处理视频帧。视频黑屏但有声音时可以试试。</string>
     <string name="lab_1d4a9752">存档管理器</string>
     <string name="lab_1dafe1ef">打开 ›</string>
     <string name="lab_1dcd6efb">通用（默认）：适用于所有情况，与之前相同。Xbox 360 / One / Series：游戏会将手柄视为 Xbox 手柄；最好搭配直连 XInput，以获得实时输入和震动。经典 DirectInput 手柄：适用于不接受 Xbox 手柄的老游戏；它始终让 DirectInput 游戏识别到手柄。PlayStation / Nintendo / Joy-Con / Steam Deck（实验性）：游戏可能会显示对应的按键图标；不支持陀螺仪、触摸板、灯条或轨迹板，少数游戏可能无法识别手柄。如果出现这种情况，请切换回通用或 Xbox。\n\n如果手柄在游戏中消失，请切换回通用。</string>
     <string name="lab_1dd0373a">移除 %1$s 及其中所有内容？其游戏的快捷方式也会一并移除。</string>
     <string name="lab_1dd4a128">root 控制</string>
-    <string name="lab_1df4901e">已创建 %1$s 的副本</string>
     <string name="lab_1df4bc73">“自动”会告诉游戏你的 Mesa 驱动支持哪些子组操作（DOOM Eternal 等需要这些操作的游戏因此能够启动）。“关闭”会像旧版适配层一样隐藏它们；如果游戏出现以前没有的画面错误或崩溃，可以试试。</string>
     <string name="lab_1dfaae77">名称不能包含 \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">作用于客户端启动的游戏，而非客户端本身，并且对所有游戏生效：整个会话只有一套环境。</string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">列表为空。</string>
     <string name="lab_1e713627">Linux Steam 客户端</string>
     <string name="lab_1e765e92">体感瞄准设置</string>
+    <string name="lab_1e7d16fc">清除缓存</string>
     <string name="lab_1e9a6134">此容器已关闭此项。请先在容器设置中开启，才能在此使用。</string>
     <string name="lab_1f050928">默认（不更改电视设置）</string>
     <string name="lab_1f13e4b9">仓库</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">从客户端启动的游戏。选择全部核心可让 Android 自行分配任务。</string>
     <string name="lab_1fccd93f">“自动”从较小的缓冲区开始，只在检测到爆音时才增大。可在下方微调。</string>
     <string name="lab_1ff9ec48">会话</string>
+    <string name="lab_1ffa163f">搜索所有仓库</string>
     <string name="lab_2012067c">随应用附带</string>
     <string name="lab_20226dfe"> · 未连接（已保存固定）</string>
     <string name="lab_2062fe79">FPS 限制器</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">新容器</string>
     <string name="lab_2166d8ab">备份或还原所有应用数据</string>
     <string name="lab_21e9b52f">选择内容或驱动</string>
+    <string name="lab_21ede2b8">%1$s 会保持安装，因此可以回退。</string>
     <string name="lab_21feab48">重新映射按键并检查所有输入</string>
     <string name="lab_22270e04">存储镜像路径</string>
     <string name="lab_2246a8bd">切换</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">。值不能包含空格。</string>
     <string name="lab_235fa0f3">启动时停止</string>
     <string name="lab_2379f827">投屏到电视</string>
-    <string name="lab_23b4ddb2">已安装项、设为默认、下载更多</string>
     <string name="lab_23b56f8c">以管理员身份运行程序</string>
     <string name="lab_23d05606">鼠标和键盘（Wine 游戏）</string>
     <string name="lab_23d11cc7">显示 FPS 计数器</string>
     <string name="lab_23deaf7c">管理</string>
     <string name="lab_23e9383c">版本、底层技术和致谢。</string>
+    <string name="lab_243c4264">刷新列表</string>
     <string name="lab_2453405d">请使用 auto:N、fixed:N 或 off</string>
     <string name="lab_2470de02">透明</string>
     <string name="lab_24720798">修正颜色互换</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">此版本中暂不支持 Wayland。</string>
     <string name="lab_2742f91b">自动 · Steam 预告片</string>
     <string name="lab_2756404f">将电源和 root 设置重置为应用默认值</string>
+    <string name="lab_278c89b0">无法连接到 Steam。</string>
     <string name="lab_27b56d30">无论直连 XInput 是否开启，都会安装 Bannerlator 的 XInput DLL，并与 Wine 自带的 XInput 并存，这样游戏运行时可在游戏内菜单的“控制 › 手柄”中切换两者（手柄会重新连接）。默认开启。关闭：直连 XInput 保持游戏启动时的状态，更改需要重启。</string>
     <string name="lab_27bb1078">直接</string>
     <string name="lab_27bcb120">添加、复制、删除、导出或导入 Box64 和 FEX 预设（Classic 设置）。</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">VEGAS 内置默认值（无文件）</string>
     <string name="lab_286dae57">自动 · 取自封面</string>
     <string name="lab_287eabc8">显示 FPS</string>
+    <string name="lab_289585af">就绪</string>
     <string name="lab_28d51363">游戏可选的刷新率</string>
     <string name="lab_28f727b0">导出 HUD 诊断</string>
     <string name="lab_29198bb7">未设置（系统）</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Wayland 游戏驱动</string>
     <string name="lab_2a88fd3c">重启音频</string>
     <string name="lab_2ab94a31">在按键间滑动</string>
+    <string name="lab_2ad53987">移除 1 个游戏？</string>
     <string name="lab_2ad5a458">玩家槽位固定</string>
     <string name="lab_2adf1ef0">在图像上方叠加 Lab 的方格纸和信号</string>
+    <string name="lab_2af0d6a1">查看示例</string>
     <string name="lab_2b01a79e">无法读取该图片。</string>
     <string name="lab_2b3bf173">工具</string>
     <string name="lab_2b605d42">更多</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">摇杆上</string>
     <string name="lab_2c6448d6">为此容器设置</string>
     <string name="lab_2c768f35">新容器的初始值</string>
+    <string name="lab_2c8896f5">显示 SD 卡存储</string>
     <string name="lab_2c963a33">立即生效 · 保存为此引擎的默认值</string>
     <string name="lab_2ce33943">默认</string>
     <string name="lab_2ced81bf">离线：显示已保存的列表。连接网络以下载新效果。</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">或输入任意值</string>
     <string name="lab_2dad13e3">语言</string>
     <string name="lab_2dc2e901">单色</string>
-    <string name="lab_2df5d0e3">%1$s 个游戏 · 按最近游玩排序</string>
     <string name="lab_2e1b1382">任意（不限）</string>
     <string name="lab_2e1ff85b">帧生成</string>
     <string name="lab_2e257663">菜单内</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">此屏幕无法更改刷新率。</string>
     <string name="lab_2e57dd1f">其他文件…</string>
     <string name="lab_2eae4031">摇杆下</string>
+    <string name="lab_2ec7b25e">分享</string>
     <string name="lab_2ec97d85">Xbox 游戏通过 xgameruntime.dll 与 Xbox 服务通信。此游戏在其文件夹中自带 Microsoft 的版本，而 Wine 会优先加载它而不是应用的版本（Xodus Nexus）。Microsoft 的版本需要 Windows 的 Gaming Services，而 Wine 没有，因此游戏通常会在启动时卡住（Cyberpunk 2077 就是如此）。开启：每次启动都使用应用的版本；游戏文件不会被修改。关闭：使用游戏自带的版本。</string>
     <string name="lab_2ed04089">强制 sysmem 渲染（sysmem）</string>
     <string name="lab_2f23b6d1">请输入六位十六进制数，例如 #1E88E5。</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">绕过 Turnip 的一个错误：询问“GPU 完成了吗？”时会等待整帧完成（即报告中的计时错误）。“默认”由适配层自动检测；“开启”强制使用，“关闭”禁用。</string>
     <string name="lab_3205bc81">未设置 Turnip 图形驱动，因此没有可检查的内容。</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">“备份”中已有名为 %1$s 的备份</string>
+    <string name="lab_32725e5a">下载（%1$s）</string>
     <string name="lab_32a7fa00">帧生成</string>
     <string name="lab_334d4744">游戏退出时，将 Steam 游戏库的存档快照保存到本地存档库。</string>
+    <string name="lab_33689924">选择保存文件夹</string>
     <string name="lab_336d62eb">优先使用大核</string>
     <string name="lab_33a35a95">已安装的音色库和导出文件夹</string>
+    <string name="lab_33ad7c60">清除搜索</string>
     <string name="lab_33b3dcd5">游戏运行时将 GPU 保持在最高频率。发热和耗电更多；游戏可以覆盖此设置。</string>
     <string name="lab_33b5c99c">仅在你接受第三方云服务免责声明后进行；绝不会从云端删除任何内容。</string>
     <string name="lab_33cb03bf">与应用页面相同</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">光标速度</string>
     <string name="lab_346090f3">未安装 Box64EC。请在下方下载（转译器下载）。</string>
     <string name="lab_3482cb34">ARM64EC 默认值</string>
-    <string name="lab_34928086">存档已备份（%1$s 个文件）</string>
     <string name="lab_34dee5b9">已登录 · %1$s 个游戏</string>
     <string name="lab_35795680">新容器以这些值为初始设置。现有容器保留各自的设置。</string>
     <string name="lab_361899c4">无法连接 Nightlies</string>
     <string name="lab_362888df">倾斜瞄准</string>
     <string name="lab_36348dce">已为此容器自定义。重置后将重新跟随共享预设。</string>
+    <string name="lab_363c53cf">导出仓库</string>
     <string name="lab_3661ddfd">仅适用于 Linux Steam 客户端条目：其驱动、Steam 客户端选项和速度优化。</string>
     <string name="lab_366e8f9a">适用于游戏纹理显示损坏的三星和小米手机。其他情况请保持关闭。</string>
     <string name="lab_36936d70">限制游戏每秒绘制的帧数。可省电并减少卡顿。</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">触摸</string>
     <string name="lab_37ad98ec">CPU 核心选择会保持到程序重新启动为止。</string>
     <string name="lab_37b97721">Qualcomm 自带的驱动无法将 Wayland 画面输出到屏幕，因此屏幕显示使用内置的 Turnip</string>
+    <string name="lab_37c2b051">备份格式</string>
     <string name="lab_37f22874">每个驱动器都需要不同的盘符</string>
+    <string name="lab_3822fc21">已保存</string>
     <string name="lab_3855543c">导出（.icpx）</string>
     <string name="lab_385e1a80">点按覆盖层可在竖向和横向之间切换（Fusion：切换到下一个尺寸）。拖动可移动它；长按可锁定位置。</string>
     <string name="lab_386c72a7">无法使用该文件</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">开启</string>
     <string name="lab_39da5009">XInput 游戏直接从 Bannerlator 读取手柄，而不经过 Wine 的手柄队列：始终是实时摇杆位置，不增加延迟，并包含震动。关闭：XInput 照旧经过 Wine。如果某个游戏运行异常，请为该游戏关闭此项。</string>
     <string name="lab_39e9425b">没有仓库。</string>
+    <string name="lab_39ffa0a5">选择</string>
     <string name="lab_3a1ed8c6">显示驱动（Android 端）</string>
     <string name="lab_3a24cc2d">按容器设置：它描述的是你的手，而不是游戏。</string>
     <string name="lab_3a5c3010">在游戏画面上显示 FPS、CPU/GPU 负载和温度。在游戏中点按它可切换方向或调整大小。</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">3D 图像</string>
     <string name="lab_3d2c22d4">驱动呈现模式</string>
     <string name="lab_3d40c46a">震动</string>
+    <string name="lab_3d7fa0a6">社区配置</string>
     <string name="lab_3d9862bb">负 mip 偏移：纹理更清晰，但会有些闪烁。“自动”会跟随游戏启动时的缩放设置。</string>
     <string name="lab_3dbe79b1">删除</string>
     <string name="lab_3e04658a">蓝色</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">下载并替换</string>
     <string name="lab_3e5678cd">最快</string>
     <string name="lab_3e86e543">按原样传递给封装层。留空则不设置。</string>
+    <string name="lab_3e967773">商店</string>
     <string name="lab_3ecd0489">你的 Steam 游戏库中的游戏将关闭退出时自动备份存档。游戏关闭时不会保存其存档快照，你需要自行通过容器的备份选项或存档管理器进行备份。要继续吗？</string>
+    <string name="lab_3edc001f">将层更新到 %1$s</string>
     <string name="lab_3edcf27d">最锐利（-1.0）</string>
     <string name="lab_3ee20435">游戏</string>
+    <string name="lab_3ee2f717">该文件不是仓库列表</string>
     <string name="lab_3f0b280a">帧率</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">移到前台</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">允许 XR / VR 头显</string>
     <string name="lab_41017c94">新建容器</string>
     <string name="lab_410fcc62">选择一个已知变量或自行输入：NAME 或 NAME=VALUE。</string>
+    <string name="lab_4150d5a6">1 个结果</string>
     <string name="lab_415a93a6">以最新为准：绝不会覆盖较新的本地存档。</string>
     <string name="lab_41f05e04">以下绑定属于此配置文件</string>
     <string name="lab_41fc25ab">Win-FG 原生</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">实验性：在游戏中按 Shift+F3 打开 Epic 覆盖层。需要容器允许全部服务。</string>
     <string name="lab_42ca94f9">主手柄</string>
     <string name="lab_43316731">目前只有 C:（Windows 前缀）和 Z:。可为游戏文件夹添加一个驱动器。</string>
+    <string name="lab_434214cc">撤销</string>
     <string name="lab_4358e63d">Lab、Deck、XMB 或 Classic</string>
     <string name="lab_43c9073b">关闭：在下方选择刷新率以锁定屏幕。</string>
+    <string name="lab_44343bcf">已隐藏的内置仓库会重新显示。你添加的仓库会保留。</string>
     <string name="lab_443d0954">启动其 Windows 桌面</string>
     <string name="lab_4455b74f">摇杆移动传给游戏的频率。也可在游戏中更改。</string>
     <string name="lab_44655ec4">安装失败：%1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">容器</string>
     <string name="lab_455f1d53">UBWC / 压缩缓冲区</string>
     <string name="lab_45bf9648">显示后端</string>
+    <string name="lab_45d1fcf9">重新搜索</string>
     <string name="lab_45e5d14f">导出失败</string>
     <string name="lab_45f80a27">高级</string>
     <string name="lab_4611b1a8">横屏</string>
     <string name="lab_463dbb35">语言与地区</string>
+    <string name="lab_4653869e">下载失败</string>
     <string name="lab_466171a5">已移除 %1$s</string>
     <string name="lab_467d1fc1">存档和云</string>
+    <string name="lab_46f7f5f5">未安装 · 串流</string>
     <string name="lab_46fd73ef">勾选所有核心可让 Android 自行分配任务，这通常是最佳选择。</string>
     <string name="lab_471552db">编辑 VEGAS 配置文件</string>
     <string name="lab_475cee12">居中</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">超采样</string>
     <string name="lab_4cb2f934">使用中</string>
     <string name="lab_4cc9a9c1">封面</string>
+    <string name="lab_4d04f825">显示 / 隐藏菜单</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">反转上下</string>
     <string name="lab_4d8c7321">内容</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">贡献捕获数据和 win-fg 诊断日志（Classic 设置）。</string>
     <string name="lab_4fd05bc3">真实鼠标控制</string>
     <string name="lab_50089f1e">软件解码</string>
+    <string name="lab_507318fd">从文件导入列表</string>
     <string name="lab_507883a8">由环境变量中的 BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX 设置。</string>
     <string name="lab_507b3c74">填充（裁剪）</string>
     <string name="lab_50bd6962">日志</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">已导出到 %1$s</string>
     <string name="lab_52023fb7">Downloads/Winlator/Backups/Containers 中没有容器备份。</string>
     <string name="lab_522ca2a0">以更大尺寸渲染，再缩小以获得更干净的画面。会消耗性能。</string>
+    <string name="lab_524717e1">选择备份（.zip）</string>
     <string name="lab_5254f3be">你在“游戏”标签页中添加的游戏会显示在 Steam 游戏库的“非 Steam”分类下，并使用 Steam 的 Proton 运行。</string>
     <string name="lab_526060cd">将运行库和库安装到容器中，并为 DirectX、音频和运行库选择内置或原生 DLL。</string>
     <string name="lab_52eb74b5">显示 HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">震动和体感瞄准。</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">左上</string>
+    <string name="lab_58749370">%1$s 已不再安装，因此无法回退。</string>
     <string name="lab_58a426c9">帧生成运行时，此游戏会关闭此项。</string>
     <string name="lab_5946d9c6">使用应用设置（%1$s）</string>
     <string name="lab_594a913b">异步着色器</string>
     <string name="lab_595daef9">已下载的组件：压缩包和目录列表。</string>
     <string name="lab_5983ab11">离线模式（不登录 Valve）</string>
+    <string name="lab_5996c8c7">下载并将层更新到 %1$s</string>
     <string name="lab_59db09f5">实时日志</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">在此按“保存”后会立即保存到容器，与 Classic 编辑器相同。</string>
     <string name="lab_5aa9e082">“组件”界面查找下载的位置。</string>
     <string name="lab_5ac7d266">VKD3D 版本</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">在游戏画面上显示 FPS、CPU/GPU 负载和温度。样式在下方设置，也可在游戏中通过侧边菜单设置。</string>
     <string name="lab_5cf98060">隐藏 present-wait / dynamic-rendering 扩展</string>
     <string name="lab_5cfcc2ee">霓虹</string>
+    <string name="lab_5d04f79c">处理中…</string>
     <string name="lab_5d1ebf1b">瞄准模式</string>
     <string name="lab_5d676a2d">只能导出你自己的预设。</string>
     <string name="lab_5d7ee5f8">GitHub、问题追踪和 Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Proton 组件</string>
     <string name="lab_5e190a08">请先保存或放弃更改。</string>
     <string name="lab_5e4af947">固定 60 次/秒</string>
+    <string name="lab_5eb87a8b">启动</string>
     <string name="lab_5ecf04b0">视图</string>
     <string name="lab_5edc0296">已安装的 VEGAS 版本，以及应用内置的版本。</string>
     <string name="lab_5edc9360">游戏内菜单 · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">游戏的 Documents、AppData 和 Saved Games 文件夹与其容器使用的相同。不要同时在两处运行同一个游戏。</string>
     <string name="lab_63319830">预发布版可能不太稳定。</string>
+    <string name="lab_633def1d">%1$s · 1 次游玩</string>
     <string name="lab_634ae6b3">封装层交付帧的方式。不是屏幕渲染器的设置。</string>
     <string name="lab_63791c91">文件夹，例如 /storage/emulated/0/Games</string>
     <string name="lab_6381687c">启动时重新应用 </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Steam Deck 测试版</string>
     <string name="lab_641b9c9d">游戏自己的缓冲区无需复制即可显示到屏幕上（延迟最低、发热更少）。需要驱动支持 sync-file 栅栏（参见适配层报告）。如果出现画面撕裂或旧帧，请关闭。</string>
     <string name="lab_643b2baf">分享 / 传输</string>
-    <string name="lab_64903a6c">获取更多</string>
     <string name="lab_64c5e98f">画中画</string>
     <string name="lab_65306cbd">新容器起始使用的“所有容器”配置。它优先于上方设置的默认预设。</string>
     <string name="lab_655c4f8a">打开此菜单的方式</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">将 BCn 转码为 ETC2</string>
     <string name="lab_66500371">所有容器共享</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s 个结果</string>
     <string name="lab_66a48fe7">像素完美</string>
     <string name="lab_66d69f41">更改要运行的程序</string>
     <string name="lab_66e416b8">输出模式</string>
     <string name="lab_676dd596">恢复</string>
+    <string name="lab_67771d1b">此游戏的模组及其菜单。</string>
     <string name="lab_67805216">Box64EC 版本</string>
     <string name="lab_67c5a895">昨天</string>
     <string name="lab_67d87dd3">.conf 文件的完整路径，例如 /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">添加 .sf2 文件并选择快捷方式的导出位置（Classic 设置）。</string>
     <string name="lab_6f6109df">插入额外帧，让画面运动更流畅。重启时游戏会短暂暂停。</string>
     <string name="lab_6f63a302">游戏菜单</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator（默认）</string>
     <string name="lab_6fb5700f">让 DirectInput 游戏（许多老游戏、赛车游戏、方向盘）识别手柄。关闭后会对 DirectInput 隐藏手柄，以免同时支持 XInput 和 DirectInput 的游戏识别到两次。“经典 DirectInput 手柄”标识始终会开启此项。</string>
     <string name="lab_6fce3567">避免 Windows 内的权限提示（关闭 UAC）。</string>
     <string name="lab_6fd5eace">锐化和其他后处理效果。</string>
     <string name="lab_701948cd">显示在“容器”界面以及每个游戏的“来自容器”标签中。</string>
+    <string name="lab_701e81e5">正在导入 %1$s…</string>
     <string name="lab_70455f1b">加入受 VAC 保护的服务器时需要。“自动检测”会依据 Steam 的应用信息。</string>
     <string name="lab_70802fb2">Wine 同步</string>
     <string name="lab_70a1ea5f">版本</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">游戏识别的 GPU 显存</string>
     <string name="lab_71d5a5d7">下载 Turnip 驱动</string>
     <string name="lab_721589c1">今天</string>
+    <string name="lab_721da611">此容器中未找到游戏。</string>
     <string name="lab_72395178">游戏与游戏库</string>
     <string name="lab_7246e766">配置文件</string>
     <string name="lab_72550119">摇杆更新</string>
+    <string name="lab_725f7c3b">请等待当前任务完成</string>
     <string name="lab_728e56d6">流畅</string>
     <string name="lab_72b16281">使用第一个可用的盘符。用“浏览”选择其文件夹。</string>
     <string name="lab_72b89c6d">重置为应用默认值</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">覆盖层</string>
     <string name="lab_76471f06">这些变量会作用于 Steam 客户端及其启动的所有游戏。此处的变量会覆盖 FEXCore 预设中的同名变量。</string>
     <string name="lab_7656e144">蓝灰色</string>
-    <string name="lab_76705189">无法导入 %1$s</string>
     <string name="lab_76ad015a">让“LSFG 原生”能在只报告 Vulkan 1.1 但具备所需扩展的驱动上运行。也适用于单个游戏的覆盖设置。</string>
     <string name="lab_76b4a740">光流</string>
     <string name="lab_76b8a57c">正在读取此封装层的设置…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">选择预设</string>
     <string name="lab_79162646">还没有配置文件。</string>
     <string name="lab_791d1125">启动画面和更新。</string>
+    <string name="lab_79780a3c">正在导出 %1$s…</string>
     <string name="lab_7982eb6b">，如下所列。</string>
     <string name="lab_79b6d4c7">离线 Steam 模式、文件检查和更新</string>
     <string name="lab_79c7988a">无 · 显示名称</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">D7VK 版本</string>
     <string name="lab_7a377726">画面输出到屏幕的方式</string>
     <string name="lab_7a54182d">FPS 覆盖层</string>
+    <string name="lab_7a7662fb">最近游玩</string>
     <string name="lab_7b0d957b">全部清除</string>
     <string name="lab_7b34b221">添加变量</string>
     <string name="lab_7b719f09">浏览</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">壁纸图片</string>
     <string name="lab_7caf4da8">BCn 和兼容层适用于 Mali 及其他非 Qualcomm GPU。</string>
     <string name="lab_7ccc17cd">后台缓冲区</string>
-    <string name="lab_7ceefd00">下载失败：%1$s</string>
     <string name="lab_7d24ed15">这里还没有内容。</string>
     <string name="lab_7d50777a">动作, RPG, 策略</string>
     <string name="lab_7d6bff72">在 DirectAudio 声音系统下可用。</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">x86 转译器</string>
     <string name="lab_7e3548ee">在 Steam 中显示“游戏”标签页的游戏</string>
     <string name="lab_7e38b599">你的 Steam 游戏库中的游戏将关闭退出时自动云上传。游戏关闭时，其存档不会推送到 Steam 云，你需要自行在游戏详情页的“云存档”部分上传。要继续吗？</string>
+    <string name="lab_7e4777f5">请先选择要移除的游戏</string>
     <string name="lab_7e6d7e33">游戏库卡片</string>
     <string name="lab_7e9c00ea">自动（匹配 FPS）</string>
     <string name="lab_7e9eede5">配置文件 %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">需要安全（VAC）启动</string>
     <string name="lab_7f13060c">显示模式</string>
     <string name="lab_7f7743c4">已为此游戏设置 1 个开关。</string>
+    <string name="lab_7f871f0c">随游戏启动</string>
     <string name="lab_7fa23600">保留已编译的着色器供下次启动使用（gplasync 版本）。</string>
     <string name="lab_7fba9196">时钟</string>
     <string name="lab_7ff85140">将 Windows 桌面绘制到 Android 上。Wayland 始终使用 Vulkan。</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">输入以 / 开头的完整路径。</string>
     <string name="lab_8069546e">叠加</string>
     <string name="lab_8070a23b">保存位置和仓库</string>
+    <string name="lab_808644e3">缓存</string>
     <string name="lab_8124b894">启动时从 Steam 云自动下载</string>
     <string name="lab_81297e77">每个游戏运行时输出的内容</string>
     <string name="lab_816ce026">下载</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">游戏</string>
     <string name="lab_83548a23">外观、亮度、对比度、伽马、饱和度、FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">导入或导出列表</string>
     <string name="lab_83713095">其他区域设置…</string>
+    <string name="lab_8371c265">正在下载 %1$s…</string>
     <string name="lab_838501df">离线：仅显示已安装的效果。连接网络以浏览目录。</string>
     <string name="lab_83ce15dd">平均 fps</string>
     <string name="lab_83f0742a">游戏文件夹</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">适配层配置</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · 已保存</string>
     <string name="lab_8521db60">快捷菜单</string>
+    <string name="lab_85379d71">正在还原 %1$s…</string>
     <string name="lab_85486938">日志与诊断</string>
     <string name="lab_8554e6fa">快速</string>
     <string name="lab_85558be1">所有容器的默认值</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">默认 · %1$s</string>
     <string name="lab_85a12a5f">替换</string>
     <string name="lab_85ab5712">XInput 游戏直接读取手柄，没有输入队列（松开后摇杆不会残留旧值）。新容器默认开启。</string>
     <string name="lab_85e5a021">备份</string>
     <string name="lab_85eb8db0">两者都控制玩家 1</string>
     <string name="lab_85efabfb">共 %1$s 个游戏</string>
+    <string name="lab_85f9f5e1">C 盘</string>
     <string name="lab_861c1b03">触摸模式和此处所有开关</string>
     <string name="lab_86369691">在仓库中显示官方目录</string>
+    <string name="lab_8636cba2">正在加载…</string>
     <string name="lab_866dbc9c">登录 ›</string>
     <string name="lab_86865d1d">Vulkan 版本</string>
     <string name="lab_868b6596">无 root</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">自动 · 模糊处理的封面</string>
     <string name="lab_8844e521">预设值</string>
     <string name="lab_8850c516">让 DirectInput 游戏能使手柄震动：包括普通震动，以及赛车和飞行游戏发送给方向盘或飞行摇杆的力反馈效果，通过手柄的两个马达感受。它遵循震动设置（震动目标和强度）。持续的力（例如赛车游戏让方向盘保持回正）会在几秒后减弱，以免手柄一直嗡嗡作响。DirectInput 游戏只有在识别到手柄时才能产生震动。更改会在手柄重新连接时（在游戏中，“控制 › 手柄”会执行此操作）或下次启动时生效。环境变量中的 BANNERIN_DINPUT_FF 优先于此设置。</string>
+    <string name="lab_8855c603">移除 %1$s 个游戏？</string>
     <string name="lab_8861fdef">音频设置</string>
     <string name="lab_887ae5cd">创建</string>
     <string name="lab_88819a36">图像上的网格</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">#RRGGBB 格式的颜色，例如 #1E88E5</string>
     <string name="lab_8907b290">浏览文件</string>
     <string name="lab_892b7b55">宽封面</string>
+    <string name="lab_8946594d">已选 %1$s 个</string>
     <string name="lab_8965e6c7">服务越少 = 启动越快、可用 RAM 越多。</string>
     <string name="lab_8998f446">此条目的图标</string>
     <string name="lab_89f43a0d">转译器预设值</string>
     <string name="lab_89f953b4">震动目标</string>
     <string name="lab_8a142020">Y 键</string>
+    <string name="lab_8a459c00">搜索 Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">封装层</string>
     <string name="lab_8a8bb4d3">命令流（CSMT）</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">在 Nightlies 上</string>
     <string name="lab_8ce1bc2a">按键</string>
     <string name="lab_8d04c8e0">控制器</string>
+    <string name="lab_8d5acd32">兼容 GameHub 的 .zip（默认）</string>
     <string name="lab_8d6a7747">仅此游戏的名称和启动选项。</string>
     <string name="lab_8dc9c516">Wayland 适配层中的 PanVK 调整：隐藏 present_id、present_wait 和 dynamic_rendering，并加入两项同步变通方案。使用 PanVK 驱动时默认开启。</string>
     <string name="lab_8df575ef">需要 Vulkan 屏幕渲染器（图形）或 Wayland。</string>
     <string name="lab_8e22550f">应用页面</string>
-    <string name="lab_8e7f9e42">获取驱动</string>
     <string name="lab_8e81d76e">FEXCore 预设</string>
     <string name="lab_8e91f337">root。温度监控仍会提供保护。</string>
     <string name="lab_8ea27f15">删除 %1$s？</string>
     <string name="lab_8eb9f765">此处未保存的更改将会丢失。现有容器会保留其设置。</string>
     <string name="lab_8ecc4179">，而不是 Wine 自带的版本。许多封装层和模组加载器都需要它。图形 DLL 从不包含在内：它们由 DXVK 和 VKD3D 负责。</string>
     <string name="lab_8ece40f8">仅适用于 Banners-Turnip 驱动；原版 Turnip 会忽略此项。</string>
-    <string name="lab_8ee80fca">没有驱动源。</string>
     <string name="lab_8ef37792">底部</string>
     <string name="lab_8f4a852b">设备功耗</string>
     <string name="lab_8f4c06ce">数值会按原样传递给封装层；不了解的项目可以放心留空。</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">SurfaceFlinger 渲染器 — 实验性</string>
     <string name="lab_909603fb">正在更新…</string>
     <string name="lab_90b603b8">创建副本</string>
+    <string name="lab_90d7bedf">保存位置</string>
     <string name="lab_91104123">在你的 ARM CPU 上运行游戏的 32 位 x86 代码。</string>
     <string name="lab_914624be">通过 Goldberg 启动时与 Steam 云同步</string>
     <string name="lab_915c9049">重置</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">为游戏线程保持 CPU 的推测存储快速路径开启（仅限 arm64ec Proton）。默认开启。</string>
     <string name="lab_934c8903">DirectX、音频和运行库使用内置还是原生 DLL，以及媒体编解码器。</string>
     <string name="lab_93c6f86e">Android 游戏</string>
+    <string name="lab_942f9b65">名称 A–Z</string>
     <string name="lab_94436fab">输入区域设置，如 pl_PL 或 pl_PL.UTF-8。</string>
     <string name="lab_944e1f72">声音系统</string>
     <string name="lab_947c1567">Steam 成就</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">亮度</string>
     <string name="lab_963f841c">与内置驱动同名</string>
     <string name="lab_964d1a40">与游戏共享 Android 剪贴板</string>
+    <string name="lab_96526c2a">重新保存文件</string>
     <string name="lab_968b9d49">启动时应用。仍可通过游戏内侧边菜单实时更改。</string>
     <string name="lab_969dab73">ReShade 开 / 关、单独 / 叠加、效果及其设置</string>
     <string name="lab_969fd520">客户端渲染栅栏</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">提高游戏线程优先级</string>
     <string name="lab_9f612c9d">GPU 驱动</string>
     <string name="lab_9f713ecd">未列出任何项</string>
+    <string name="lab_9fd345af">正在移除 %1$s…</string>
     <string name="lab_9fea5158">容器设置</string>
     <string name="lab_a00d34e8">查看 Nightlies</string>
     <string name="lab_a011bb4c">所有应用设置都会立即生效。</string>
     <string name="lab_a01444fb">覆盖层样式</string>
     <string name="lab_a01ea521">移除 %1$s 的绑定？</string>
     <string name="lab_a05a9689">此页面上的所有内容</string>
+    <string name="lab_a081a3ed">导出列表</string>
     <string name="lab_a0d93d63">每核心 CPU</string>
     <string name="lab_a0f06f2a">需要联网才能下载</string>
     <string name="lab_a0f72982">零拷贝呈现和 OpenGL 安全模式</string>
     <string name="lab_a108392d">始终</string>
     <string name="lab_a115f62d">组件</string>
+    <string name="lab_a11756a4">存储信息</string>
     <string name="lab_a1edd479">BCn 转 ASTC</string>
     <string name="lab_a24bc720">皮肤</string>
     <string name="lab_a26b7e90">保存在该 Proton 中，对所有使用它的游戏生效</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">按住此键瞄准</string>
     <string name="lab_a396cfaa">无法加载该图片</string>
     <string name="lab_a3c61ce1">窗口与日志</string>
+    <string name="lab_a3dbadc2">关于此游戏</string>
     <string name="lab_a3f6a50d">适应屏幕</string>
     <string name="lab_a40c85ce">随 Windows 启动的服务</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">手动刷新率</string>
     <string name="lab_a4d1de01">鼠标捕获（DirectInput）</string>
     <string name="lab_a4d4c41a">这是此容器自己的固定设置，而非“所有容器”的。</string>
+    <string name="lab_a4f06c81">%2$s 个配置文件中有 %1$s 个无法导入</string>
     <string name="lab_a4f1cbaf">空格会被去除：变量之间以空格分隔。</string>
     <string name="lab_a523a4e1">震动马达</string>
     <string name="lab_a559e736">XR 手柄</string>
     <string name="lab_a57ba715">处理器相关性（cpuList）</string>
+    <string name="lab_a591cbcb">指定游戏…</string>
     <string name="lab_a593c4da">你的文件</string>
     <string name="lab_a59e2986">关闭 Xalia（PROTON_USE_XALIA=0）</string>
     <string name="lab_a5a1eccc">让客户端表现得像在 Steam Deck 上一样，并带有快速访问菜单。游戏将不再接收手柄输入。</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">将手柄直接交给游戏，而不经过 Steam 输入。适用于经典游戏（Half-Life 2、CS:S）。会关闭 Steam 输入。</string>
     <string name="lab_a6902569">屏幕按键与实体手柄</string>
     <string name="lab_a6e62e9e">DirectX 转译</string>
+    <string name="lab_a6fe8b9a">还原默认仓库</string>
     <string name="lab_a71846fe">主题与颜色</string>
     <string name="lab_a74f5b6d">关闭、游戏图像、在纵深方向缓慢漂移的 3D 图像，或带预览：在首页的大图块中播放预告片</string>
     <string name="lab_a7a4aed7">“触屏”将手指操作作为真实触摸发送给 Steam；“触控板”通过拖动移动指针，点按即点击。</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">强制</string>
     <string name="lab_aa61eeea">选择控制配置文件</string>
     <string name="lab_aa9bd991">已导入 %1$s</string>
-    <string name="lab_aaae690f">完整的组件界面</string>
     <string name="lab_aac2b52c">请先安装 Wine 或 Proton 版本（组件）。</string>
     <string name="lab_aadb73f3">浅色</string>
     <string name="lab_aaf410b8">未登录</string>
     <string name="lab_ab00bfda">Steam 游戏</string>
+    <string name="lab_ab20a9e4">会先下载该层。</string>
     <string name="lab_ab2ea144">通过 Vulkan 运行 DirectX 12。“无”会关闭 DirectX 12。</string>
     <string name="lab_ab612af4">温度</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">登录以管理你分享的配置</string>
     <string name="lab_ab8824cb">适配层呈现模式</string>
+    <string name="lab_abac19ba">打开来源页面</string>
     <string name="lab_abb1c367">未连接任何设备。此游戏仍设置为在电视上启动。</string>
     <string name="lab_abb20221">无预设</string>
     <string name="lab_abd752a4">触摸手势</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">尚无程序报告。</string>
     <string name="lab_ad26a7c7">未知</string>
     <string name="lab_adcb307d">Windows DirectX 调用如何转换为适用于你 GPU 的 Vulkan。</string>
+    <string name="lab_add714f7">未安装</string>
     <string name="lab_adf82850">显示服务器（X11）</string>
     <string name="lab_adfa74ef">开启 Steam Deck 模式？</string>
     <string name="lab_ae483014">正在安装</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">已安装的游戏仍可启动。需要先在此设备上在线登录一次。在下次会话时生效。</string>
     <string name="lab_af32ab2f">单独</string>
     <string name="lab_af39be20">网络</string>
+    <string name="lab_af3c9967">刷新</string>
     <string name="lab_af3f8345">未找到此游戏的图片。请选择一张图片，或在“详情”中将其关联到 Steam。</string>
     <string name="lab_af456994">阻止内核让核心离线。</string>
     <string name="lab_af47e020">类型</string>
     <string name="lab_afb57bd1">放大滤镜、锐化和去色带</string>
+    <string name="lab_aff587ab">GameHub 备份（.zip）</string>
     <string name="lab_b01a2f1b">环境变量</string>
     <string name="lab_b01c4a81">屏幕方向</string>
     <string name="lab_b01f4f95">完成</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">每个手柄的玩家槽位</string>
     <string name="lab_b0beed23">你在 Steam 中的游戏</string>
     <string name="lab_b0daa272">帮助与支持</string>
+    <string name="lab_b0e351e0">已刷新</string>
+    <string name="lab_b0f4240e">备份存档</string>
     <string name="lab_b0fab841">GPU 图表</string>
     <string name="lab_b0fc42e2">与应用共享存档</string>
     <string name="lab_b132aa74">Wayland 合成器用来将游戏画面输出到屏幕的已安装 Turnip。</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">容器类型</string>
     <string name="lab_b312c895">打开快捷菜单</string>
     <string name="lab_b32171e6">暂停游戏</string>
-    <string name="lab_b323b10b">隐藏 %1$s？可在 Classic 的“内容”设置中重新显示。</string>
     <string name="lab_b32cbb53">将 %1$s 导入为新容器？</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">仍然开启</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">root 开关会为此游戏保存，并在获得 root 权限后于启动时应用。</string>
     <string name="lab_b543f270">手柄按键绑定</string>
     <string name="lab_b5681ffc">屏幕上的 Steam 和快速访问按钮</string>
-    <string name="lab_b56fe256">此来源中没有驱动。</string>
     <string name="lab_b5b9d14a">无需重启即可在游戏内菜单中开启或关闭直连 XInput。</string>
     <string name="lab_b5c5920e">打开日志管理器</string>
     <string name="lab_b6024573">移除 %1$s？使用它的游戏将改回容器的驱动。</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">我的商店</string>
     <string name="lab_b73987a8">系统默认</string>
     <string name="lab_b739e60c">震动</string>
+    <string name="lab_b759a7ac">此备份用于哪个工具？</string>
     <string name="lab_b7636944">匹配关闭时使用。</string>
     <string name="lab_b7c337c7">以“宽x高”的格式输入，例如 1600x900。</string>
     <string name="lab_b7d4edb2">DirectX 12 功能级别</string>
     <string name="lab_b7e2758f">模拟</string>
     <string name="lab_b885aba0">正在取消</string>
     <string name="lab_b89607f1">备份与还原</string>
-    <string name="lab_b8afe1d2">从文件安装</string>
     <string name="lab_b90673bf">DXVK 版本</string>
     <string name="lab_b9106d81">描边颜色</string>
     <string name="lab_b9384128">将显示锁定为</string>
+    <string name="lab_b9462894">卡片大小 · %1$s</string>
     <string name="lab_b9825547">尚未存储任何内容</string>
     <string name="lab_ba3b6032">WineD3D 渲染器</string>
     <string name="lab_ba4f23ec">添加游戏文件夹</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">存档</string>
     <string name="lab_bcf34837">无节奏控制</string>
     <string name="lab_bcfb356d">来自容器</string>
+    <string name="lab_bd4ab43f">1 个游戏</string>
     <string name="lab_bd50227c">未安装 VEGAS 版本：请在下方下载。</string>
     <string name="lab_bd63a37d">壁纸图片</string>
     <string name="lab_bd87c7d9">缓存已解码的纹理</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">选择图片…</string>
     <string name="lab_be45a0e0">未找到 · 未关联 Steam</string>
     <string name="lab_be638831">放大镜、窗口、日志和运行中的程序。</string>
+    <string name="lab_be80b01d">隐藏 %1$s？“还原默认仓库”可让它重新显示。</string>
+    <string name="lab_be8d2116">请先关闭其中正在运行的所有程序。</string>
+    <string name="lab_be906409">Winlator 原生 .zip</string>
     <string name="lab_be998b7c">每帧同步</string>
     <string name="lab_be9a2a59">按两次返回打开快速访问</string>
     <string name="lab_be9d8c7a">启动选项</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">居中</string>
     <string name="lab_c120c6bb">已解锁完整的 CPU 和 GPU 控制。</string>
     <string name="lab_c14faa17">直连 XInput（BANNERIN）</string>
+    <string name="lab_c15bb42a">选择其他文件夹…</string>
     <string name="lab_c171e496">自动（公开测试版）</string>
     <string name="lab_c172ec97">只有与全局默认值不同的更改才会为此游戏保存。</string>
     <string name="lab_c1bc6675">游戏在 X11 上使用的 Vulkan 封装层。导入的封装层也会显示在这里。</string>
     <string name="lab_c1c757e2">BCn 层调试日志</string>
     <string name="lab_c1df4081">中</string>
-    <string name="lab_c206cdbf">备份所有存档</string>
     <string name="lab_c22c196f">红色</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">。在它们互不相同之前无法保存。</string>
     <string name="lab_c2928e24">放大镜</string>
     <string name="lab_c2f74c47">驱动版本</string>
     <string name="lab_c2fdbf25">正在导入</string>
+    <string name="lab_c32c5dc4">模组</string>
     <string name="lab_c34f4640"> · 来自“同步”设置推出之前的旧值；设置“性能 › 同步”时会读取并清除它们。</string>
     <string name="lab_c36c4b3f">显示</string>
     <string name="lab_c3db5a25">面板（默认）</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Steam Controller 支持</string>
     <string name="lab_c6521528">需要 Valhall 架构的 Mali GPU。</string>
     <string name="lab_c664401e">容器 = 跟随容器。此游戏 = 在此设置。</string>
+    <string name="lab_c669581b">还原存档</string>
     <string name="lab_c66c17c3">转译器预设</string>
     <string name="lab_c6888ac4">自动</string>
     <string name="lab_c6a02e29">仍然使用</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">屏幕按键、鼠标、震动、体感瞄准。</string>
     <string name="lab_c7b49d50">Steam 应用 %1$s</string>
     <string name="lab_c7fad197">未检测到额外设置</string>
+    <string name="lab_c82c4a5b">更新到 %1$s</string>
     <string name="lab_c82e7e67">目录中的版本。已安装的版本会显示在“DXVK 版本”下。</string>
+    <string name="lab_c83f23bf">无法重置封面</string>
     <string name="lab_c844d41c">用于应用无法自动检测到的 Denuvo 游戏。</string>
     <string name="lab_c84956c1">自定义服务</string>
     <string name="lab_c85b9376">抖动更少，延迟略高。按容器设置。</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">屏幕按键保持为玩家 1</string>
     <string name="lab_c8b7e3fa">此驱动无法显示会话。选择“系统”或已不再安装的驱动时，合成器会使用系统 Vulkan，从而显示黑屏。</string>
     <string name="lab_c8c4d663">开启：帧生成运行时，屏幕刷新率跟随帧率限制 × 倍数。</string>
-    <string name="lab_c8d5043b">选择内容包</string>
     <string name="lab_c8d52d67">删除预设</string>
     <string name="lab_c936ff11">例如 pl_PL.UTF-8</string>
     <string name="lab_c94d19de">退出时自动上传到 Steam 云</string>
+    <string name="lab_c961a1bf">%1$s（自动）</string>
     <string name="lab_c9822616">下载</string>
     <string name="lab_c9a07f62"> · 屏幕按键</string>
     <string name="lab_c9ae8103">Mali (PanVK) 模式</string>
+    <string name="lab_c9ef821f">所有游戏存档（整个用户配置文件）</string>
     <string name="lab_ca16bb77">立即生效 · 为此游戏保存，并保存为此引擎的默认值</string>
     <string name="lab_ca45d5a4">此容器</string>
     <string name="lab_ca62f862">下载与网络</string>
     <string name="lab_cabf747a">异步复制</string>
     <string name="lab_caf7d4a3">共享预设（已编辑）</string>
     <string name="lab_cb5fc4d5">VEGAS 配置</string>
+    <string name="lab_cb6124f5">层更新</string>
     <string name="lab_cb6d604d">游戏中无法拖动 HUD。</string>
     <string name="lab_cbab7f7a">图标</string>
     <string name="lab_cbb98111">右摇杆</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">所有容器共用一张图片，或仅此容器使用一张。</string>
     <string name="lab_cc7362b0">选择“置顶”或“置底”可将另一半屏幕留给屏幕按键。</string>
     <string name="lab_cc9e753f">浏览并安装组件</string>
+    <string name="lab_cc9f0c95">显示内部存储</string>
+    <string name="lab_ccb4b062">会先下载该层（%1$s）。</string>
     <string name="lab_cce939fc">快速 OpenGL</string>
     <string name="lab_cd871c13">报告为 Steam Deck（deck_emu）</string>
     <string name="lab_cdc70ec3">视频解码器</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">实验性</string>
     <string name="lab_d261efe4">在两个马达同时运转时会变慢的掌机上，“单马达”可让摇杆保持流畅。</string>
     <string name="lab_d2651812">游戏设置</string>
+    <string name="lab_d27c84ad">模拟器账户已切换为备份中的账户。请重新启动游戏。</string>
     <string name="lab_d27d3648">LSFG 原生</string>
     <string name="lab_d2895d94">备份、还原和同步游戏存档</string>
     <string name="lab_d2b6baa8">修复日文、中文、韩文和俄文游戏中的乱码。</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">扳机键</string>
     <string name="lab_d5e887b8">%1$s 小时</string>
     <string name="lab_d60412d3">原件</string>
+    <string name="lab_d60d149d">已导入仓库</string>
     <string name="lab_d620ef74">封面（模糊）</string>
     <string name="lab_d653f990">32 位代码的 x86 转译器</string>
     <string name="lab_d6d3fe68">选择组件包（-linux .wcp）</string>
     <string name="lab_d7060afb">导入此容器</string>
+    <string name="lab_d736d92d">确定</string>
     <string name="lab_d73ee22e">封装层加载的 Turnip 或 Adreno 驱动。可在“内容 › GPU 驱动”中导入更多。</string>
     <string name="lab_d801cf49">VEGAS 发布版附带的配置文件。它们会显示在“配置文件”下。</string>
     <string name="lab_d809a959">在编辑器中保存时会保留。</string>
     <string name="lab_d8321a59">防爆音</string>
+    <string name="lab_d832ee19">侧边菜单</string>
     <string name="lab_d834a1cf">正在检查哪些已安装的驱动可以显示游戏…</string>
     <string name="lab_d870ae5e">此驱动未能在此 GPU 上加载：响应检查的是系统驱动。</string>
     <string name="lab_d8e06406">屏幕</string>
+    <string name="lab_d8e601e7">有些游戏会把存档放在别处（安装文件夹、注册表、Steam 云）。删除任何内容前请先检查备份。</string>
     <string name="lab_d8e621c2">添加驱动器</string>
     <string name="lab_d90a905b">玻璃</string>
     <string name="lab_d91754f0">没有条目。</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Windows 后台服务</string>
     <string name="lab_db6d6f28">包括预发布版</string>
     <string name="lab_db745b05">。保存后，新图片将从下次启动起使用。</string>
+    <string name="lab_db7be531">无法下载。</string>
     <string name="lab_db89b158">上次游玩</string>
     <string name="lab_dbce82c8">使用“所有容器”的设置</string>
     <string name="lab_dbd5d59f">此游戏的变量</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">将解锁同步到你的 Steam 个人资料</string>
     <string name="lab_de0c0eb8"> \";\" 和 \"=\" 会被去除。</string>
     <string name="lab_de315178">重命名</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">也会受上方“优先使用游戏文件夹中的 DLL”控制</string>
     <string name="lab_de72753f">WineD3D 报告的显存大小。</string>
+    <string name="lab_de75d40c">%1$s 将从 %2$s 退回到 %3$s。注册表会从更新前创建的备份中还原；游戏、存档、快捷方式和设置都会保留。%4$s 必须仍处于已安装状态。</string>
     <string name="lab_dec4dc19">仅限容器</string>
     <string name="lab_def1a7db">容器</string>
     <string name="lab_def6b48c">已知变量</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Wayland 适配层</string>
     <string name="lab_e1be537c">未保存</string>
     <string name="lab_e22a8ea9">Wayland 需要已安装的 Turnip 才能将游戏画面输出到屏幕。新安装的会显示在“图形驱动”下。</string>
-    <string name="lab_e2410f47">浏览并下载</string>
     <string name="lab_e2421520">下载 WOWBox64 版本</string>
     <string name="lab_e280d375">卡片大小</string>
     <string name="lab_e2a7f23e">屏幕按键</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">此条目没有可写入的图标文件。</string>
     <string name="lab_e2ce4373">分区</string>
     <string name="lab_e2e95fcd">游戏日志</string>
+    <string name="lab_e2f09271">将 %1$s 的备份还原到 %2$s？这可能会覆盖其中的存档数据。</string>
+    <string name="lab_e3af6ca0">选择仓库列表</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">适用于只能通过 Steam 识别手柄的游戏（No Man\'s Sky）。对于自行读取手柄的游戏请保持关闭。会关闭手柄直通。</string>
     <string name="lab_e3e80b58">控制配置文件</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">如有需要，可以将其关闭；此游戏会记住该选择。</string>
     <string name="lab_e841eed8">麦克风权限被拒绝：麦克风保持关闭。</string>
     <string name="lab_e8a0175e">下载 Box64EC 版本</string>
-    <string name="lab_e8a5f633">没有已保存的组件文件。</string>
     <string name="lab_e8c91356">正在沿用容器的玩家槽位固定设置。更改任一项会让此游戏拥有自己的固定设置。</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">还没有屏幕按键布局</string>
     <string name="lab_e9686e6d">auto:N（20–240）、fixed:N（30–1000）或 off</string>
     <string name="lab_e98a38e0">放大镜、画中画、键盘和性能。</string>
     <string name="lab_e9bb2501">让游戏使用麦克风：由 DirectAudio 采集输入。Android 会请求一次权限。</string>
-    <string name="lab_ea08e43f">Linux 运行时和所有列表</string>
     <string name="lab_ea354143">右上角的半透明按钮，点按即可打开快捷菜单。不用它时，返回键、菜单键或四指点按同样可以打开。</string>
     <string name="lab_ea4babd8">启动方式</string>
     <string name="lab_ea83f479">• 客户端可能会在“系统”下显示一个无法安装的 Steam 客户端更新。Deck 模式现在使用 Steam Deck 测试版渠道来避免此问题，但如果它仍然出现，请不要点“应用”。\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">指标</string>
     <string name="lab_ed41d675">绘制驱动（Linux 运行时）</string>
     <string name="lab_ed779ba6">下载 Wine 和 Proton 版本</string>
+    <string name="lab_eda50b73">%1$s 个游戏</string>
     <string name="lab_edfcb4b9">独占鼠标和键盘</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">电池变红温度</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">透明度</string>
     <string name="lab_efdeb1c6">预设列表由所有容器和游戏共用。</string>
     <string name="lab_efdfc7e5">FPS 限制器</string>
-    <string name="lab_efeacf52">目前只有手机自带的驱动。</string>
     <string name="lab_f04c78b9">音频设置 · 此游戏</string>
     <string name="lab_f05053e7">直接读取 Steam Controller（其触控板和额外按键）。关闭：常规输入路径不变。</string>
     <string name="lab_f0520965">mailbox = 最新帧，延迟最低；fifo = vsync，帧节奏均匀。“默认”跟随配置，否则使用已保存的呈现模式。immediate 需要允许画面撕裂，而 Wayland 不提供。</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">DirectInput 震动</string>
     <string name="lab_f10b2876">处理器相关性</string>
     <string name="lab_f115c775">反作弊（VAC）安全启动</string>
+    <string name="lab_f1165d1c">排序</string>
     <string name="lab_f123362f">应用</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">左摇杆</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">样式</string>
     <string name="lab_f2857f55">内部存储</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">选择 GPU 驱动</string>
     <string name="lab_f2ed832c">告诉 DirectX 游戏的 GPU 显存大小（dxgi.maxDeviceMemory）。</string>
     <string name="lab_f3043a4e">声音延迟</string>
     <string name="lab_f304d21f">这对于 Windows 桌面来说太小了。</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">仅用于此游戏：其他游戏或容器不受影响。</string>
     <string name="lab_f40ccd04">启用</string>
     <string name="lab_f44d5610">震动开 / 关和各玩家槽位的开关</string>
+    <string name="lab_f46b910b">应用私有存储</string>
     <string name="lab_f485cfbf">从导入的封装层文件中扫描到的设置。可在“管理图形封装层”中隐藏或显示。</string>
     <string name="lab_f4abcaf2">这是容器设置；请在容器设置中更改。</string>
     <string name="lab_f4f73c18">默认值</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">保存</string>
     <string name="lab_f576fb2d">目录中的层，或从文件安装。新容器可以使用它们。</string>
     <string name="lab_f57b35ee">死区和平滑</string>
+    <string name="lab_f581508f">已移除 %1$s 个游戏</string>
     <string name="lab_f5864edc">你的 Steam 游戏库中的游戏将关闭启动时自动云下载。游戏启动前不会拉取最新的云存档，你需要自行在游戏详情页的“云存档”部分下载。要继续吗？</string>
     <string name="lab_f593aa90">应用的合成器将会话输出到屏幕所用的驱动。不是客户端绘制所用的驱动。</string>
     <string name="lab_f59e59da">显示在你的游戏库中。重命名会保留封面和图标。</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">以你的新容器默认设置为起点。按 X 创建。</string>
     <string name="lab_f783e029">双电池</string>
     <string name="lab_f81efa4a">FEX、DXVK 和 VKD3D-Proton</string>
+    <string name="lab_f826d6b4">已将 %1$s 个文件还原到 %2$s</string>
     <string name="lab_f8283624">界面大小</string>
     <string name="lab_f8507a8c">校正 SurfaceFlinger 颜色</string>
     <string name="lab_f8e0d68c">合成器驱动（graphicsDriverConfig version）</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">有些游戏从不自行读取手柄，而是向 Steam 请求。在 SteamLite 中没有程序响应，因此这些游戏识别不到手柄。开启：SteamLite 代理会为此游戏开启 Steam 的手柄层，并使用合适的布局。对于已自行读取手柄的游戏请保持关闭，否则每次按键都会被识别两次。它与手柄直通相反，因此两者只能开启一个。仅限 SteamLite。</string>
     <string name="lab_fa859fc7">Goldberg 模式、验证文件和检查更新都在启动菜单中。关闭“跳过启动菜单”即可在下次启动时看到它。</string>
     <string name="lab_fac0fe64">即使不开启它，缩放控制也能完成有用的部分，游戏内抽屉菜单的 FPS 限制也能限制帧率。如果游戏不再响应手柄，请再次关闭 Deck 模式。</string>
+    <string name="lab_fac102a7">FPS · 最近一次游玩</string>
     <string name="lab_fad0baa9">默认（Steam：%1$s）</string>
     <string name="lab_fae2666b">Valve 自己的 Proton，Steam 更新时会被替换；其原件按各版本分别保留</string>
     <string name="lab_fae62cc0">将鼠标指针锁定在游戏中。按音量减键释放。</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">DirectX 版本</string>
     <string name="lab_fbd4f98b">游戏识别的 GPU 名称</string>
     <string name="lab_fbf2e44f">屏幕上的 FPS 和温度显示。</string>
+    <string name="lab_fbfb437a">%1$s 将从 %2$s 切换到 %3$s。游戏、存档、快捷方式和设置都会保留。</string>
     <string name="lab_fd1310b6">X 键</string>
     <string name="lab_fd5460f8">颜色</string>
+    <string name="lab_fdc15162">未加载</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE（驱动跟踪）</string>
     <string name="lab_fe11d138">名称</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">文本，以逗号分隔</string>
     <string name="lab_ffb9855e">该文件不是控制配置文件</string>
     <string name="lab_ffcd863d">已玩 %1$s 分钟</string>
+    <string name="lab_ffe2f089">未检测到 Wayland WSI</string>
 </resources>

@@ -604,9 +604,11 @@ private fun EntryLine(e: MenuEntry, focused: Boolean, active: Boolean, onMenu: (
 internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismiss: () -> Unit, message: String? = null, onRun: (MenuAction) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val requesters = remember(actions.size) { List(actions.size) { FocusRequester() } }
+    // A choice list starts on the current choice (the pages mark it "label  ✓"), else on the first entry.
+    val start = remember(actions) { actions.indexOfFirst { it.label.trimEnd().endsWith("✓") }.coerceAtLeast(0) }
     LaunchedEffect(Unit) {
         delay(60)
-        runCatching { requesters.firstOrNull()?.requestFocus() }
+        runCatching { requesters.getOrNull(start)?.requestFocus() }
     }
     Dialog(onDismissRequest = onDismiss) {
         Column(

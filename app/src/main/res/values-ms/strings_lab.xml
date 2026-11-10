@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">Pengawal yang dilihat permainan. Juga boleh ditukar dalam permainan (pengawal bersambung semula).</string>
     <string name="lab_0312e1a5">Taip nama sebelum =.</string>
     <string name="lab_0355373d">Semua</string>
+    <string name="lab_03705e75">%1$s daripada %2$s dialih keluar; selebihnya tidak dapat dipadam</string>
     <string name="lab_0397233a">Memintas GMEM.</string>
     <string name="lab_039bee69">Kawalan</string>
     <string name="lab_03af654a">Pengawal</string>
     <string name="lab_03af83cf">Terbina dalam (Wine)</string>
     <string name="lab_03be5b2b">Tamatkan %1$s?</string>
     <string name="lab_03dc750a">Tiada. Layari katalog untuk menambah.</string>
+    <string name="lab_03eece5a">Jumlah</string>
     <string name="lab_03f54074">Penuhi skrin</string>
+    <string name="lab_04272d2b">Balikkan lapisan ke %1$s</string>
     <string name="lab_04314e37">Steam Controller, lalai kawalan pada skrin, serta tetikus dan papan kekunci untuk permainan Wine.</string>
     <string name="lab_04422c9a">Buka</string>
     <string name="lab_044669c8">Teras yang boleh digunakan permainan</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">Import profil</string>
     <string name="lab_05ea4871">Padankan kadar segar semula dengan FPS</string>
     <string name="lab_05f88f63">Versi Wine / Proton</string>
+    <string name="lab_062deaae">Tidak dapat memasang %1$s: %2$s</string>
     <string name="lab_063c1ee9">Menyembunyikan pengawal Xbox daripada permainan ini.</string>
-    <string name="lab_06625dae">Tiada sumber muat turun.</string>
     <string name="lab_06681d37">Trackpad yang menggerakkan tetikus. Mengkliknya ialah klik kiri.</string>
     <string name="lab_066c2fb1">Halaman permainan</string>
     <string name="lab_0687488a">Pemacu Turnip dan Qualcomm</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">Pilih apa yang direkodkan (Wine, Box64/FEX, DXVK, SteamLite, Steam tanpa paparan, logcat), ke mana log disimpan dan berapa banyak disimpan; layari dan kongsikannya.</string>
     <string name="lab_0721ad7c">Container ini</string>
     <string name="lab_075ffd70">Video anda</string>
+    <string name="lab_076e01bd">Pulihkan simpanan…</string>
     <string name="lab_07a88d47">Satu tekanan Kembali masih membuka panel dalam permainan.</string>
     <string name="lab_07e11363">Hidup untuk seluruh container: matikan dalam container.</string>
     <string name="lab_080615dc">Guna milik container</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">Muat turun versi D7VK</string>
     <string name="lab_09683590">Pengehad kadar bingkai</string>
     <string name="lab_09793b21">OpenGL: Vsync mati</string>
+    <string name="lab_097af41a">Nama Z–A</string>
     <string name="lab_09b51ad4">Slot</string>
     <string name="lab_09cdafe2">Saiz teks</string>
     <string name="lab_09d2be7b">Beta awam</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">Had DXVK sendiri (DXVK_FRAME_RATE). Mati menyerahkan rentak kepada pengehad kadar bingkai.</string>
     <string name="lab_0b5eae46">Pad menjadi Pemain 1</string>
     <string name="lab_0b76e940">%1$s %2$s dialih keluar</string>
+    <string name="lab_0bad6f7f">Memuat turun %1$s profil…</string>
     <string name="lab_0bd8b542">Saiz gambar, rentak bingkai dan kadar segar semula.</string>
+    <string name="lab_0be4a3d7">1 permainan dialih keluar</string>
     <string name="lab_0be7a72d">Mod penskalaan</string>
     <string name="lab_0bece985">Sandaran</string>
     <string name="lab_0c451500">Resolusi tangkapan</string>
     <string name="lab_0c64d11e">Pasang kandungan daripada fail</string>
+    <string name="lab_0c88e27c">Hanya pintasan dibuang; fail permainan kekal.</string>
     <string name="lab_0cd26a5e">Tiada muat turun</string>
-    <string name="lab_0ce16a57">Sandaran gagal: %1$s</string>
     <string name="lab_0cfb7a3b">Membetulkan kamera yang berpusing atau tersekat dalam sesetengah permainan lama.</string>
+    <string name="lab_0d0fc080">Menduakan %1$s…</string>
     <string name="lab_0d5a2b34">Perkataan tambahan selepas nama program, cth. -windowed -dx11.</string>
     <string name="lab_0da00171">• Permainan berhenti menerima pengawal. Menu Steam sendiri masih berfungsi, tetapi dalam permainan gamepad tidak berbuat apa-apa.\n</string>
     <string name="lab_0dc541d5">Set semula ke lalai</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">Automatik (beta Steam Deck, untuk mod Deck)</string>
     <string name="lab_0fed0c63">Tetapan pemacu</string>
     <string name="lab_10091d64">Versi VEGAS</string>
-    <string name="lab_10125440">Pemacu &amp; komponen</string>
     <string name="lab_101d1386">Kunci API SteamGridDB</string>
     <string name="lab_101f5ed2">Kesan ReShade</string>
     <string name="lab_1054fdc3">Pada Wayland, permainan dipaparkan melalui compositor terbenam, yang memerlukan Turnip yang dipasang untuk mengimport bingkainya. \"Sistem\" hanya ditawarkan pada GPU Mali; di tempat lain ia memaparkan skrin hitam. Pemacu yang digunakan permainan itu sendiri ialah Pemacu permainan Wayland di bawah.</string>
     <string name="lab_105c504c">Pembaikan OneUI / HyperOS</string>
     <string name="lab_1079be1d">Tiada hasil di Steam untuk %1$s</string>
     <string name="lab_10a08356">Benarkan tukar dalam permainan</string>
+    <string name="lab_10b7b953">Sandarkan simpanan…</string>
     <string name="lab_10cb69ae">Pilih imej ikon</string>
     <string name="lab_1121166e">Alfa</string>
     <string name="lab_112d429f">Songsangkan Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">Pratetap &amp; penalaan…</string>
     <string name="lab_165bbde9">Jeda</string>
     <string name="lab_1689f76a">Mati menyembunyikannya dalam Kandungan; helaian container dan permainan masih memaparkannya.</string>
+    <string name="lab_16a69772">Mencari…</string>
     <string name="lab_16c90680">Kedudukan gambar</string>
     <string name="lab_16d40373">Pemacu Audio</string>
     <string name="lab_16ff819d">Kadar penyegaran</string>
-    <string name="lab_170eab83">Fail disimpan</string>
     <string name="lab_1777bbf2">Manual</string>
     <string name="lab_177847bc">Tiada apa-apa untuk disalin</string>
     <string name="lab_17a0dfae">Luar talian</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">permainan ini</string>
     <string name="lab_188dc386">Ditetapkan oleh Prestasi › Penyegerakan.</string>
     <string name="lab_18991a24">Lain-lain</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">Mod Deck hidup: permainan tidak menerima pengawal. Jika kemas kini Steam Client muncul di bawah System dan tidak dapat dipasang, jangan tekan Apply padanya.</string>
     <string name="lab_189ddac0">Fail pakejnya dialih keluar daripada apl. Anda boleh memuat turunnya semula bila-bila masa.</string>
     <string name="lab_18c07921">Butang Menu, butang tambahan dan penentukuran giro</string>
     <string name="lab_18e6df7b">Melangkau log masuk Epic untuk permainan ini (tiada ciri dalam talian).</string>
+    <string name="lab_191f6609">Pilih permainan</string>
     <string name="lab_19377f1f">Wilayah sambungan Steam dan ujian rangkaian</string>
     <string name="lab_19532aa0">Ini membuang kesan yang dimuat turun daripada storan dan mengeluarkannya daripada set ini. Anda boleh memuat turunnya semula bila-bila masa.</string>
     <string name="lab_1955f21e">Teras CPU</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">Dayakan Bidikan Gerak</string>
     <string name="lab_1acaa40c">Apa yang direkodkan, ke mana ia pergi, berapa lama ia disimpan.</string>
     <string name="lab_1acd9ee4">Dikunci kepada Fast V-Sync semasa penjanaan bingkai berjalan.</string>
+    <string name="lab_1b1ee750">%1$s profil diimport</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">Fail asal setiap Proton disimpan sebagai asalnya apabila halaman ini dibuka.</string>
     <string name="lab_1b4c8948">Mod Present</string>
     <string name="lab_1bbf10a9"> (salinan anda)</string>
     <string name="lab_1bc2538c">Shim pemasaan KGSL</string>
     <string name="lab_1bdd2734">Lalai permainan</string>
+    <string name="lab_1be37b64">Pemulihan gagal: %1$s</string>
     <string name="lab_1bfb31a3">Warna Latar Belakang</string>
     <string name="lab_1bfc578f">Pemberitahuan sembang</string>
     <string name="lab_1bfe2edd">Had kadar bingkai DXVK</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">Latar belakang desktop</string>
     <string name="lab_1c765923">Auto (ikut susunan sambungan)</string>
     <string name="lab_1ce56dac">Emulator (64-bit)</string>
-    <string name="lab_1d039d18">Muat turun dan pasang</string>
     <string name="lab_1d4948df">Tidak memproses bingkai video pada GPU. Cuba jika video hitam tetapi ada bunyi.</string>
     <string name="lab_1d4a9752">Pengurus Simpanan</string>
     <string name="lab_1dafe1ef">Buka ›</string>
     <string name="lab_1dcd6efb">Generik (lalai): berfungsi dengan semua, sama seperti sebelum ini. Xbox 360 / One / Series: permainan menganggap gamepad sebagai pengawal Xbox; paling sesuai dipadankan dengan XInput terus untuk input langsung dan getaran. Pad DirectInput klasik: untuk permainan lama yang tidak menerima gamepad Xbox; ia sentiasa membolehkan permainan DirectInput melihat pengawal. PlayStation / Nintendo / Joy-Con / Steam Deck (percubaan): permainan mungkin memaparkan ikon butang tersebut; tiada giro, pad sentuh, bar lampu atau trackpad, dan beberapa permainan mungkin tidak mengesan gamepad. Jika begitu, tukar kembali ke Generik atau Xbox.\n\nJika pengawal hilang dalam permainan, tukar kembali ke Generik.</string>
     <string name="lab_1dd0373a">Alih keluar %1$s dan semua isinya? Pintasan permainannya turut dibuang.</string>
     <string name="lab_1dd4a128">Kawalan root</string>
-    <string name="lab_1df4901e">%1$s diduakan</string>
     <string name="lab_1df4bc73">Auto memberitahu permainan operasi subkumpulan yang disokong pemacu Mesa anda (DOOM Eternal dan permainan lain yang memerlukannya dapat bermula). Mati menyembunyikannya, seperti penyesuai lama; cuba jika permainan menunjukkan gangguan grafik atau ranap yang tidak berlaku sebelum ini.</string>
     <string name="lab_1dfaae77">Nama tidak boleh mengandungi \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Untuk permainan yang dilancarkan klien, bukan klien itu sendiri, dan untuk setiap satunya: sesi mempunyai satu persekitaran. </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">Senarai kosong.</string>
     <string name="lab_1e713627">Klien Steam Linux</string>
     <string name="lab_1e765e92">Tetapan bidikan gerak</string>
+    <string name="lab_1e7d16fc">Kosongkan cache</string>
     <string name="lab_1e9a6134">Mati untuk container ini. Hidupkan dalam tetapan container untuk menggunakannya di sini.</string>
     <string name="lab_1f050928">Lalai (biarkan TV seperti sedia ada)</string>
     <string name="lab_1f13e4b9">Repositori</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">Permainan yang dilancarkan daripada klien. Semua teras membiarkan Android mengagihkan kerja sendiri.</string>
     <string name="lab_1fccd93f">Auto bermula rendah dan membesarkan penimbal hanya jika ia mengesan bunyi berderak. Laraskan di bawah.</string>
     <string name="lab_1ff9ec48">Sesi</string>
+    <string name="lab_1ffa163f">Cari semua repositori</string>
     <string name="lab_2012067c">Disertakan dengan apl</string>
     <string name="lab_20226dfe"> · tidak disambungkan (pin disimpan)</string>
     <string name="lab_2062fe79">Pengehad FPS</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">container baharu</string>
     <string name="lab_2166d8ab">Sandarkan atau pulihkan semua data apl</string>
     <string name="lab_21e9b52f">Pilih kandungan atau pemacu</string>
+    <string name="lab_21ede2b8">%1$s kekal dipasang, jadi anda boleh membalikkannya.</string>
     <string name="lab_21feab48">Petakan semula butang dan semak setiap input</string>
     <string name="lab_22270e04">Laluan storage image</string>
     <string name="lab_2246a8bd">Togol</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">. Nilai tidak boleh mengandungi ruang.</string>
     <string name="lab_235fa0f3">Henti semasa permulaan</string>
     <string name="lab_2379f827">Hantar ke TV</string>
-    <string name="lab_23b4ddb2">Yang dipasang, tetapkan sebagai lalai, muat turun lagi</string>
     <string name="lab_23b56f8c">Jalankan program sebagai pentadbir</string>
     <string name="lab_23d05606">Tetikus &amp; papan kekunci (permainan Wine)</string>
     <string name="lab_23d11cc7">Tunjuk Pembilang FPS</string>
     <string name="lab_23deaf7c">Urus</string>
     <string name="lab_23e9383c">Versi, teknologi di sebaliknya dan penghargaan.</string>
+    <string name="lab_243c4264">Segar semula senarai</string>
     <string name="lab_2453405d">Gunakan auto:N, fixed:N atau off</string>
     <string name="lab_2470de02">Jernih</string>
     <string name="lab_24720798">Betulkan warna tertukar</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">Belum tersedia pada Wayland dalam binaan ini.</string>
     <string name="lab_2742f91b">Automatik · treler Steam</string>
     <string name="lab_2756404f">Set semula kuasa dan root kepada lalai apl</string>
+    <string name="lab_278c89b0">Tidak dapat menghubungi Steam.</string>
     <string name="lab_27b56d30">Memasang DLL XInput Bannerlator sama ada XInput terus hidup atau mati, bersama XInput Wine sendiri di sebelahnya, supaya Kawalan › Pad dalam menu dalam permainan boleh bertukar antaranya semasa permainan berjalan (pengawal bersambung semula). Hidup secara lalai. Mati: XInput terus kekal seperti semasa permainan bermula, dan menukarnya memerlukan mula semula.</string>
     <string name="lab_27bb1078">Terus</string>
     <string name="lab_27bcb120">Tambah, salin, padam, eksport atau import pratetap Box64 dan FEX (Tetapan Classic).</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">Lalai terbina dalam VEGAS (tiada fail)</string>
     <string name="lab_286dae57">Automatik · daripada kulit</string>
     <string name="lab_287eabc8">Tunjuk FPS</string>
+    <string name="lab_289585af">sedia</string>
     <string name="lab_28d51363">Kadar segar semula yang boleh dipilih permainan</string>
     <string name="lab_28f727b0">Eksport diagnostik HUD</string>
     <string name="lab_29198bb7">Tidak ditetapkan (Sistem)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Pemacu permainan Wayland</string>
     <string name="lab_2a88fd3c">Mulakan semula audio</string>
     <string name="lab_2ab94a31">Leret antara butang</string>
+    <string name="lab_2ad53987">Alih keluar 1 permainan?</string>
     <string name="lab_2ad5a458">Pin slot pemain</string>
     <string name="lab_2adf1ef0">Kertas graf dan isyarat Lab di atas gambar</string>
+    <string name="lab_2af0d6a1">Lihat contoh</string>
     <string name="lab_2b01a79e">Tidak dapat membaca imej itu.</string>
     <string name="lab_2b3bf173">Alatan</string>
     <string name="lab_2b605d42">Lagi</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">Kayu bedik atas</string>
     <string name="lab_2c6448d6">Ditetapkan untuk container ini</string>
     <string name="lab_2c768f35">Container baharu bermula dengan</string>
+    <string name="lab_2c8896f5">Papar storan kad SD</string>
     <string name="lab_2c963a33">berkuat kuasa sekarang · disimpan sebagai lalai enjin ini</string>
     <string name="lab_2ce33943">Lalai</string>
     <string name="lab_2ced81bf">Luar talian: memaparkan senarai yang disimpan. Sambung untuk memuat turun kesan baharu.</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">Atau taip sebarang nilai</string>
     <string name="lab_2dad13e3">Bahasa</string>
     <string name="lab_2dc2e901">Mono</string>
-    <string name="lab_2df5d0e3">%1$s permainan · terakhir dimain di atas</string>
     <string name="lab_2e1b1382">Mana-mana (tanpa had)</string>
     <string name="lab_2e1ff85b">Penjanaan Bingkai</string>
     <string name="lab_2e257663">Di dalam menu</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">Skrin ini tidak boleh menukar kadar segar semulanya.</string>
     <string name="lab_2e57dd1f">Fail lain…</string>
     <string name="lab_2eae4031">Kayu bedik bawah</string>
+    <string name="lab_2ec7b25e">Kongsi</string>
     <string name="lab_2ec97d85">Permainan Xbox berhubung dengan perkhidmatan Xbox melalui xgameruntime.dll. Permainan ini membawa salinan Microsoft dalam foldernya, dan Wine akan memuatkannya sebelum salinan apl (Xodus Nexus). Salinan Microsoft memerlukan Gaming Services Windows, yang tiada dalam Wine, jadi permainan biasanya berhenti semasa bermula (seperti Cyberpunk 2077). Hidup: setiap pelancaran menggunakan salinan apl; fail permainan tidak diubah. Mati: salinan permainan itu sendiri digunakan.</string>
     <string name="lab_2ed04089">Paksa pemaparan sysmem (sysmem)</string>
     <string name="lab_2f23b6d1">Taip enam digit heks, cth. #1E88E5.</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">Mengelak pepijat Turnip di mana pertanyaan \"adakah GPU sudah selesai?\" menunggu seluruh bingkai (pepijat pemasaan dalam laporan). Lalai membiarkan penyesuai mengesannya; Hidup memaksanya, Mati melumpuhkannya.</string>
     <string name="lab_3205bc81">Tiada pemacu grafik Turnip ditetapkan, jadi tiada apa-apa untuk disemak.</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">Sandaran bernama %1$s sudah ada dalam Sandaran</string>
+    <string name="lab_32725e5a">Muat turun (%1$s)</string>
     <string name="lab_32a7fa00">Jana bingkai</string>
     <string name="lab_334d4744">Simpan salinan simpanan pustaka Steam ke Pustaka tempatan anda apabila permainan keluar.</string>
+    <string name="lab_33689924">Pilih folder simpanan</string>
     <string name="lab_336d62eb">Utamakan teras CPU besar</string>
     <string name="lab_33a35a95">Bank bunyi yang dipasang dan folder eksport</string>
+    <string name="lab_33ad7c60">Kosongkan carian</string>
     <string name="lab_33b3dcd5">Mengekalkan GPU pada kelajuan jam tertinggi semasa permainan berjalan. Lebih panas dan lebih kuat makan kuasa; setiap permainan boleh mengatasinya.</string>
     <string name="lab_33b5c99c">Hanya selepas anda menerima penafian awan pihak ketiga; tidak sekali-kali memadam apa-apa daripada awan.</string>
     <string name="lab_33cb03bf">Sama seperti halaman apl</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">Kelajuan kursor</string>
     <string name="lab_346090f3">Tiada Box64EC dipasang. Muat turun satu di bawah (Muat turun penterjemah).</string>
     <string name="lab_3482cb34">Lalai ARM64EC</string>
-    <string name="lab_34928086">Simpanan disandarkan (%1$s fail)</string>
     <string name="lab_34dee5b9">Sudah log masuk · %1$s permainan</string>
     <string name="lab_35795680">Container baharu bermula daripada nilai ini. Container sedia ada mengekalkan milik sendiri.</string>
     <string name="lab_361899c4">Nightlies tidak dapat dihubungi</string>
     <string name="lab_362888df">Condong untuk membidik</string>
     <string name="lab_36348dce">Disesuaikan untuk container ini. Set semula menjadikannya mengikut pratetap kongsi semula. </string>
+    <string name="lab_363c53cf">Eksport repositori</string>
     <string name="lab_3661ddfd">Hanya untuk entri klien Steam Linux: pemacunya, pilihan klien Steam dan penalaan kelajuan.</string>
     <string name="lab_366e8f9a">Untuk telefon Samsung dan Xiaomi yang permainannya menunjukkan tekstur rosak. Biarkan mati jika tidak.</string>
     <string name="lab_36936d70">Mengehadkan bilangan bingkai sesaat yang dilukis permainan. Menjimatkan bateri dan mengurangkan sentakan.</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">Sentuhan</string>
     <string name="lab_37ad98ec">Pilihan teras CPU kekal sehingga program dimulakan semula.</string>
     <string name="lab_37b97721">Pemacu Qualcomm sendiri tidak boleh memaparkan bingkai Wayland pada skrin, jadi skrin menggunakan Turnip yang disertakan</string>
+    <string name="lab_37c2b051">Format sandaran</string>
     <string name="lab_37f22874">Setiap drive perlukan huruf sendiri</string>
+    <string name="lab_3822fc21">Disimpan</string>
     <string name="lab_3855543c">Eksport (.icpx)</string>
     <string name="lab_385e1a80">Ketik overlay untuk menukarnya antara menegak dan melintang (Fusion: saiz seterusnya). Seret untuk mengalihkannya; tekan lama untuk menguncinya di tempat.</string>
     <string name="lab_386c72a7">Tidak dapat menggunakan fail itu</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">Hidupkan</string>
     <string name="lab_39da5009">Permainan XInput membaca pengawal terus daripada Bannerlator dan bukannya melalui baris gilir pengawal Wine: sentiasa kedudukan kayu bedik semasa, tiada kelewatan tambahan, termasuk getaran. Mati: XInput melalui Wine seperti sebelum ini. Jika permainan bermasalah, matikannya untuk permainan itu.</string>
     <string name="lab_39e9425b">Tiada repositori.</string>
+    <string name="lab_39ffa0a5">Pilih</string>
     <string name="lab_3a1ed8c6">Pemacu paparan (sisi Android)</string>
     <string name="lab_3a24cc2d">Ditetapkan bagi setiap container: ia menggambarkan tangan anda, bukan permainan.</string>
     <string name="lab_3a5c3010">FPS, beban CPU/GPU dan suhu di atas permainan. Ketik dalam permainan untuk menukar arah atau saiznya.</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">Gambar 3D</string>
     <string name="lab_3d2c22d4">Mod present pemacu</string>
     <string name="lab_3d40c46a">Getaran</string>
+    <string name="lab_3d7fa0a6">Konfigurasi komuniti</string>
     <string name="lab_3d9862bb">Bias mip negatif: tekstur lebih tajam, sedikit berkelip. Auto mengikut penskalaan semasa permainan bermula.</string>
     <string name="lab_3dbe79b1">Padam</string>
     <string name="lab_3e04658a">Biru</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">Muat turun dan ganti</string>
     <string name="lab_3e5678cd">Terpantas</string>
     <string name="lab_3e86e543">Dihantar kepada wrapper seadanya. Biarkan kosong untuk tidak menetapkannya.</string>
+    <string name="lab_3e967773">Kedai</string>
     <string name="lab_3ecd0489">Sandaran simpanan automatik semasa keluar akan DIMATIKAN untuk permainan dalam pustaka Steam anda. Simpanannya tidak akan diambil apabila permainan ditutup — anda perlu menyandarkannya sendiri melalui pilihan sandaran container atau Pengurus Simpanan. Teruskan?</string>
+    <string name="lab_3edc001f">Kemas kini lapisan ke %1$s</string>
     <string name="lab_3edcf27d">Paling tajam (-1.0)</string>
     <string name="lab_3ee20435">Permainan</string>
+    <string name="lab_3ee2f717">Fail itu bukan senarai repositori</string>
     <string name="lab_3f0b280a">Kadar bingkai</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">Ke hadapan</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">Benarkan set kepala XR / VR</string>
     <string name="lab_41017c94">Container baharu</string>
     <string name="lab_410fcc62">Pilih pemboleh ubah yang dikenali atau taip sendiri: NAME, atau NAME=VALUE.</string>
+    <string name="lab_4150d5a6">1 hasil</string>
     <string name="lab_415a93a6">Yang terbaharu menang: tidak sekali-kali menulis ganti simpanan tempatan yang lebih baharu.</string>
     <string name="lab_41f05e04">Pemetaan butang di bawah milik profil ini</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">Percubaan: overlay Epic dalam permainan pada Shift+F3. Container perlu membenarkan perkhidmatan penuh.</string>
     <string name="lab_42ca94f9">Pengawal utama</string>
     <string name="lab_43316731">Hanya C: (prefix Windows) dan Z: yang ada. Tambah drive untuk folder permainan.</string>
+    <string name="lab_434214cc">Buat asal</string>
     <string name="lab_4358e63d">Lab, Deck, XMB atau Classic</string>
     <string name="lab_43c9073b">Mati — pilih kadar di bawah untuk mengunci paparan.</string>
+    <string name="lab_44343bcf">Repositori terbina dalam yang disembunyikan akan kembali. Repositori anda kekal.</string>
     <string name="lab_443d0954">Mulakan desktop Windowsnya</string>
     <string name="lab_4455b74f">Kekerapan pergerakan kayu bedik sampai ke permainan. Juga boleh ditukar dalam permainan.</string>
     <string name="lab_44655ec4">Pemasangan gagal: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">Container</string>
     <string name="lab_455f1d53">UBWC / penimbal termampat</string>
     <string name="lab_45bf9648">Backend paparan</string>
+    <string name="lab_45d1fcf9">Cari semula</string>
     <string name="lab_45e5d14f">Eksport gagal</string>
     <string name="lab_45f80a27">Lanjutan</string>
     <string name="lab_4611b1a8">Lanskap</string>
     <string name="lab_463dbb35">Bahasa &amp; wilayah</string>
+    <string name="lab_4653869e">muat turun gagal</string>
     <string name="lab_466171a5">%1$s dialih keluar</string>
     <string name="lab_467d1fc1">Simpanan &amp; awan</string>
+    <string name="lab_46f7f5f5">Tidak dipasang · Strim</string>
     <string name="lab_46fd73ef">Membiarkan semua teras ditanda membolehkan Android mengagihkan kerja sendiri, yang biasanya pilihan terbaik.</string>
     <string name="lab_471552db">Edit fail konfigurasi VEGAS</string>
     <string name="lab_475cee12">Tengah</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Aktif</string>
     <string name="lab_4cc9a9c1">Kulit</string>
+    <string name="lab_4d04f825">Tunjuk / sembunyi menu</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Songsangkan atas/bawah</string>
     <string name="lab_4d8c7321">Kandungan</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">Sumbangan tangkapan dan log diagnostik win-fg (Tetapan Classic).</string>
     <string name="lab_4fd05bc3">Kawalan tetikus sebenar</string>
     <string name="lab_50089f1e">Penyahkodan perisian</string>
+    <string name="lab_507318fd">Import senarai daripada fail</string>
     <string name="lab_507883a8">Ditetapkan oleh BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX dalam pemboleh ubah persekitaran.</string>
     <string name="lab_507b3c74">Isi (pangkas)</string>
     <string name="lab_50bd6962">Log</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">Dieksport ke %1$s</string>
     <string name="lab_52023fb7">Tiada sandaran container dalam Downloads/Winlator/Backups/Containers.</string>
     <string name="lab_522ca2a0">Memapar lebih besar, kemudian mengecilkan untuk imej lebih bersih. Menjejaskan prestasi.</string>
+    <string name="lab_524717e1">Pilih sandaran (.zip)</string>
     <string name="lab_5254f3be">Permainan yang anda tambah dalam tab Permainan dipaparkan dalam pustaka Steam di bawah Non-Steam dan berjalan dengan Proton Steam.</string>
     <string name="lab_526060cd">Pasang masa jalan dan pustaka ke dalam container, dan pilih DLL builtin atau native untuk DirectX, audio dan masa jalan.</string>
     <string name="lab_52eb74b5">Tunjuk HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">Getaran dan bidikan gerak.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Kiri atas</string>
+    <string name="lab_58749370">%1$s tidak lagi dipasang, jadi ini tidak boleh dibalikkan.</string>
     <string name="lab_58a426c9">Mati untuk permainan ini semasa penjanaan bingkai berjalan. </string>
     <string name="lab_5946d9c6">Guna tetapan apl (%1$s)</string>
     <string name="lab_594a913b">Shader async</string>
     <string name="lab_595daef9">Komponen yang dimuat turun: arkib dan senarai katalog.</string>
     <string name="lab_5983ab11">Mod luar talian (tanpa log masuk ke Valve)</string>
+    <string name="lab_5996c8c7">Muat turun dan kemas kini lapisan ke %1$s</string>
     <string name="lab_59db09f5">Log langsung</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">Disimpan ke container sebaik sahaja anda menekan Simpan di sini, seperti dalam editor klasik.</string>
     <string name="lab_5aa9e082">Tempat skrin Komponen mencari muat turun.</string>
     <string name="lab_5ac7d266">Versi VKD3D</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS, beban CPU/GPU dan suhu di atas permainan. Gayanya di bawah, dan dalam permainan daripada menu sisi.</string>
     <string name="lab_5cf98060">Sembunyikan sambungan present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d04f79c">Sedang diproses…</string>
     <string name="lab_5d1ebf1b">Mod bidikan</string>
     <string name="lab_5d676a2d">Hanya pratetap anda sendiri boleh dieksport.</string>
     <string name="lab_5d7ee5f8">GitHub, penjejak isu dan Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Komponen Proton</string>
     <string name="lab_5e190a08">Simpan atau buang perubahan anda dahulu.</string>
     <string name="lab_5e4af947">Tetap 60/s</string>
+    <string name="lab_5eb87a8b">Mula</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Binaan VEGAS yang dipasang, dan yang disertakan dengan apl.</string>
     <string name="lab_5edc9360">Menu dalam permainan · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">Folder Documents, AppData dan Saved Games permainan ialah yang digunakan containernya. Jangan jalankan permainan yang sama dalam kedua-duanya serentak.</string>
     <string name="lab_63319830">Pra-keluaran mungkin kurang stabil.</string>
+    <string name="lab_633def1d">%1$s · 1 sesi</string>
     <string name="lab_634ae6b3">Cara wrapper menyerahkan bingkai. Bukan tetapan pemapar skrin.</string>
     <string name="lab_63791c91">Folder, cth. /storage/emulated/0/Games</string>
     <string name="lab_6381687c">digunakan semula semasa pelancaran </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Beta Steam Deck</string>
     <string name="lab_641b9c9d">Penimbal permainan itu sendiri dipaparkan pada skrin tanpa salinan (kependaman terendah, kurang haba). Memerlukan fence sync-file dalam pemacu (lihat laporan penyesuai). Matikan jika berlaku tearing atau bingkai lapuk muncul.</string>
     <string name="lab_643b2baf">Kongsi / pindah</string>
-    <string name="lab_64903a6c">Dapatkan lagi</string>
     <string name="lab_64c5e98f">Gambar dalam gambar</string>
     <string name="lab_65306cbd">Profil Semua container yang menjadi permulaan container baharu. Ia didahulukan sebelum pratetap lalai di atas.</string>
     <string name="lab_655c4f8a">Membuka menu ini</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">Transkod BCn ke ETC2</string>
     <string name="lab_66500371">Dikongsi oleh setiap container</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s hasil</string>
     <string name="lab_66a48fe7">Piksel sempurna</string>
     <string name="lab_66d69f41">Tukar program untuk dijalankan</string>
     <string name="lab_66e416b8">Mod output</string>
     <string name="lab_676dd596">Sambung</string>
+    <string name="lab_67771d1b">Mod permainan ini dan menunya.</string>
     <string name="lab_67805216">Versi Box64EC</string>
     <string name="lab_67c5a895">Semalam</string>
     <string name="lab_67d87dd3">Laluan penuh fail .conf, cth. /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">Tambah fail .sf2 dan pilih tempat pintasan dieksport (Tetapan Classic).</string>
     <string name="lab_6f6109df">Menyisipkan bingkai tambahan untuk pergerakan lebih lancar. Permainan berhenti seketika semasa ciri ini dimulakan semula.</string>
     <string name="lab_6f63a302">Menu permainan</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (lalai)</string>
     <string name="lab_6fb5700f">Membolehkan permainan DirectInput (banyak judul lama, permainan lumba, stereng) melihat pengawal. Mati menyembunyikannya daripada DirectInput supaya permainan yang menyokong XInput dan DirectInput tidak melihatnya dua kali. Identiti Pad DirectInput klasik sentiasa menghidupkan ini.</string>
     <string name="lab_6fce3567">Mengelakkan gesaan kebenaran dalam Windows (mematikan UAC).</string>
     <string name="lab_6fd5eace">Penajaman dan kesan pasca lain.</string>
     <string name="lab_701948cd">Dipaparkan pada skrin Container dan dalam label \"Daripada container\" setiap permainan.</string>
+    <string name="lab_701e81e5">Mengimport %1$s…</string>
     <string name="lab_70455f1b">Diperlukan untuk menyertai pelayan yang dilindungi VAC. Kesan auto mengikut maklumat apl Steam.</string>
     <string name="lab_70802fb2">Segerak Wine</string>
     <string name="lab_70a1ea5f">Versi</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">Memori GPU yang dilihat permainan</string>
     <string name="lab_71d5a5d7">Muat turun pemacu Turnip</string>
     <string name="lab_721589c1">Hari ini</string>
+    <string name="lab_721da611">Tiada permainan ditemui dalam container ini.</string>
     <string name="lab_72395178">Permainan &amp; pustaka</string>
     <string name="lab_7246e766">Profil</string>
     <string name="lab_72550119">Kemas kini kayu bedik</string>
+    <string name="lab_725f7c3b">Tunggu sehingga tugas semasa selesai</string>
     <string name="lab_728e56d6">Lancar</string>
     <string name="lab_72b16281">Mengambil huruf kosong pertama. Pilih foldernya dengan Layari.</string>
     <string name="lab_72b89c6d">Set semula ke lalai apl</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">Overlay</string>
     <string name="lab_76471f06">Ini sampai ke klien Steam dan setiap permainan yang dilancarkannya. Pemboleh ubah di sini mengatasi nama yang sama daripada pratetap FEXCore.</string>
     <string name="lab_7656e144">Kelabu kebiruan</string>
-    <string name="lab_76705189">Tidak dapat mengimport %1$s</string>
     <string name="lab_76ad015a">Membolehkan LSFG Native berjalan pada pemacu yang hanya melaporkan Vulkan 1.1 tetapi mempunyai sambungan yang diperlukan. Juga digunakan untuk tetapan khusus setiap permainan.</string>
     <string name="lab_76b4a740">Optical flow</string>
     <string name="lab_76b8a57c">Membaca tetapan wrapper ini…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">Pilih pratetap</string>
     <string name="lab_79162646">Belum ada profil.</string>
     <string name="lab_791d1125">Skrin permulaan dan kemas kini.</string>
+    <string name="lab_79780a3c">Mengeksport %1$s…</string>
     <string name="lab_7982eb6b">, disenaraikan di bawah.</string>
     <string name="lab_79b6d4c7">Mod Steam luar talian, semakan fail dan kemas kini</string>
     <string name="lab_79c7988a">Tiada · nama dipaparkan</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">Versi D7VK</string>
     <string name="lab_7a377726">Cara gambar sampai ke skrin</string>
     <string name="lab_7a54182d">Overlay FPS</string>
+    <string name="lab_7a7662fb">Terakhir dimainkan</string>
     <string name="lab_7b0d957b">Kosongkan semua</string>
     <string name="lab_7b34b221">Tambah pemboleh ubah</string>
     <string name="lab_7b719f09">Layari</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">Imej Kertas Dinding</string>
     <string name="lab_7caf4da8">BCn dan lapisan keserasian digunakan untuk Mali dan GPU bukan Qualcomm yang lain.</string>
     <string name="lab_7ccc17cd">Back buffer</string>
-    <string name="lab_7ceefd00">Muat turun gagal: %1$s</string>
     <string name="lab_7d24ed15">Belum ada apa-apa di sini.</string>
     <string name="lab_7d50777a">Aksi, RPG, Strategi</string>
     <string name="lab_7d6bff72">Tersedia pada sistem bunyi DirectAudio.</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">Penterjemah x86</string>
     <string name="lab_7e3548ee">Tunjuk permainan tab Permainan dalam Steam</string>
     <string name="lab_7e38b599">Muat naik awan automatik semasa keluar akan DIMATIKAN untuk permainan dalam pustaka Steam anda. Simpanannya tidak akan ditolak ke Steam Cloud apabila permainan ditutup — anda perlu memuat naiknya sendiri daripada bahagian Simpanan Awan di halaman butiran permainan. Teruskan?</string>
+    <string name="lab_7e4777f5">Pilih permainan untuk dialih keluar dahulu</string>
     <string name="lab_7e6d7e33">Kad Pustaka</string>
     <string name="lab_7e9c00ea">Auto (ikut FPS)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">Memerlukan pelancaran selamat (VAC)</string>
     <string name="lab_7f13060c">Mod paparan</string>
     <string name="lab_7f7743c4">1 suis ditetapkan untuk permainan ini.</string>
+    <string name="lab_7f871f0c">Mula bersama permainan</string>
     <string name="lab_7fa23600">Menyimpan shader yang telah dikompil untuk permulaan seterusnya (binaan gplasync).</string>
     <string name="lab_7fba9196">Jam</string>
     <string name="lab_7ff85140">Melukis desktop Windows ke Android. Wayland sentiasa menggunakan Vulkan.</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">Taip laluan penuh, bermula dengan /.</string>
     <string name="lab_8069546e">Tindan</string>
     <string name="lab_8070a23b">Lokasi simpanan dan repositori</string>
+    <string name="lab_808644e3">Cache</string>
     <string name="lab_8124b894">Muat turun automatik dari Steam Cloud semasa dilancarkan</string>
     <string name="lab_81297e77">Output setiap permainan semasa ia berjalan</string>
     <string name="lab_816ce026">Muat turun</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">Permainan</string>
     <string name="lab_83548a23">Rupa, kecerahan, kontras, gamma, ketepuan, FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">Import atau eksport senarai</string>
     <string name="lab_83713095">Tempatan lain…</string>
+    <string name="lab_8371c265">Memuat turun %1$s…</string>
     <string name="lab_838501df">Luar talian: memaparkan kesan yang dipasang sahaja. Sambung untuk melayari katalog.</string>
     <string name="lab_83ce15dd">purata fps</string>
     <string name="lab_83f0742a">Folder permainan</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">Profil penyesuai</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · disimpan</string>
     <string name="lab_8521db60">Menu pantas</string>
+    <string name="lab_85379d71">Memulihkan %1$s…</string>
     <string name="lab_85486938">Log &amp; diagnostik</string>
     <string name="lab_8554e6fa">Pantas</string>
     <string name="lab_85558be1">Lalai untuk setiap container</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">Lalai · %1$s</string>
     <string name="lab_85a12a5f">Tukar</string>
     <string name="lab_85ab5712">Permainan XInput membaca pengawal secara terus, tanpa baris gilir input (tiada kedudukan kayu bedik lama selepas dilepaskan). Hidup untuk container baharu.</string>
     <string name="lab_85e5a021">Sandarkan</string>
     <string name="lab_85eb8db0">Kedua-dua mengawal Pemain 1</string>
     <string name="lab_85efabfb">merentasi %1$s permainan</string>
+    <string name="lab_85f9f5e1">Drive C</string>
     <string name="lab_861c1b03">Mod sentuhan dan setiap suis di sini</string>
     <string name="lab_86369691">Tunjuk katalog Rasmi dalam repositori</string>
+    <string name="lab_8636cba2">Memuatkan…</string>
     <string name="lab_866dbc9c">Log masuk ›</string>
     <string name="lab_86865d1d">Versi Vulkan</string>
     <string name="lab_868b6596">Tiada root</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">Automatik · kulit yang dikaburkan</string>
     <string name="lab_8844e521">Nilai pratetap</string>
     <string name="lab_8850c516">Membolehkan permainan DirectInput menggetarkan pengawal: getaran biasa, dan kesan daya (force feedback) yang dihantar permainan lumba dan penerbangan ke stereng atau joystick, dirasai melalui dua motor pengawal. Ia mengikut tetapan Getaran (sasaran dan keamatan getaran). Daya yang berterusan (contohnya permainan lumba yang memegang stereng lurus) pudar selepas beberapa saat, supaya pengawal tidak terus bergetar. Ia hanya berfungsi semasa permainan DirectInput boleh melihat pengawal. Perubahan berkuat kuasa apabila pengawal bersambung semula (dalam permainan, Kawalan › Pad melakukannya) atau pada pelancaran seterusnya. BANNERIN_DINPUT_FF dalam pemboleh ubah persekitaran mengatasi tetapan ini.</string>
+    <string name="lab_8855c603">Alih keluar %1$s permainan?</string>
     <string name="lab_8861fdef">Tetapan audio</string>
     <string name="lab_887ae5cd">Cipta</string>
     <string name="lab_88819a36">Grid di atas gambar</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">Warna sebagai #RRGGBB, cth. #1E88E5</string>
     <string name="lab_8907b290">Layari fail</string>
     <string name="lab_892b7b55">Kulit lebar</string>
+    <string name="lab_8946594d">%1$s dipilih</string>
     <string name="lab_8965e6c7">Kurang perkhidmatan = permulaan lebih pantas dan lebih banyak RAM bebas.</string>
     <string name="lab_8998f446">Ikon entri ini</string>
     <string name="lab_89f43a0d">Nilai pratetap penterjemah</string>
     <string name="lab_89f953b4">Sasaran Getaran</string>
     <string name="lab_8a142020">Butang Y</string>
+    <string name="lab_8a459c00">Cari Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper</string>
     <string name="lab_8a8bb4d3">Strim arahan (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">Di Nightlies</string>
     <string name="lab_8ce1bc2a">Butang</string>
     <string name="lab_8d04c8e0">Pengawal</string>
+    <string name="lab_8d5acd32">.zip serasi GameHub (lalai)</string>
     <string name="lab_8d6a7747">Nama dan pilihan pelancaran untuk permainan ini sahaja.</string>
     <string name="lab_8dc9c516">Penalaan PanVK dalam penyesuai Wayland: menyembunyikan present_id, present_wait dan dynamic_rendering, serta dua penyelesaian segerak. Hidup secara lalai dengan pemacu PanVK.</string>
     <string name="lab_8df575ef">Memerlukan pemapar skrin Vulkan (Grafik) atau Wayland.</string>
     <string name="lab_8e22550f">Halaman apl</string>
-    <string name="lab_8e7f9e42">Dapatkan pemacu</string>
     <string name="lab_8e81d76e">Pratetap FEXCore</string>
     <string name="lab_8e91f337">Root. Pemantau suhu masih berjaga.</string>
     <string name="lab_8ea27f15">Padam %1$s?</string>
     <string name="lab_8eb9f765">Perubahan yang belum disimpan di sini akan hilang. Container sedia ada mengekalkan tetapannya.</string>
     <string name="lab_8ecc4179"> dan bukannya milik Wine. Diperlukan oleh banyak wrapper dan pemuat mod. DLL grafik tidak pernah disertakan: ia milik DXVK dan VKD3D.</string>
     <string name="lab_8ece40f8">Pemacu Banners-Turnip sahaja; Turnip asal mengabaikannya.</string>
-    <string name="lab_8ee80fca">Tiada sumber pemacu.</string>
     <string name="lab_8ef37792">Bawah</string>
     <string name="lab_8f4a852b">Kuasa peranti</string>
     <string name="lab_8f4c06ce">Nilai dihantar kepada wrapper seadanya; yang tidak diketahui selamat dibiarkan kosong.</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">Pemapar SurfaceFlinger — Percubaan</string>
     <string name="lab_909603fb">Mengemas kini…</string>
     <string name="lab_90b603b8">Pendua</string>
+    <string name="lab_90d7bedf">Lokasi simpanan</string>
     <string name="lab_91104123">Menjalankan kod x86 32-bit permainan pada CPU ARM anda.</string>
     <string name="lab_914624be">Segerakkan dengan Steam Cloud semasa pelancaran Goldberg</string>
     <string name="lab_915c9049">Set semula</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">Mengekalkan laluan pantas speculative-store CPU hidup untuk thread permainan (Proton arm64ec sahaja). Hidup secara lalai.</string>
     <string name="lab_934c8903">DLL builtin atau native untuk DirectX, audio dan masa jalan, serta kodek media.</string>
     <string name="lab_93c6f86e">Permainan Android</string>
+    <string name="lab_942f9b65">Nama A–Z</string>
     <string name="lab_94436fab">Taip lokal seperti pl_PL atau pl_PL.UTF-8.</string>
     <string name="lab_944e1f72">Sistem bunyi</string>
     <string name="lab_947c1567">Pencapaian Steam</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">Kecerahan</string>
     <string name="lab_963f841c">Nama sama dengan pemacu terbina dalam</string>
     <string name="lab_964d1a40">Kongsi papan keratan Android dengan permainan</string>
+    <string name="lab_96526c2a">Simpan fail sekali lagi</string>
     <string name="lab_968b9d49">Digunakan semasa pelancaran. Menu sisi dalam permainan masih boleh menukarnya secara langsung.</string>
     <string name="lab_969dab73">ReShade hidup / mati, Solo / Tindan, kesan dan tetapannya</string>
     <string name="lab_969fd520">Fence pemaparan klien</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">Tingkatkan keutamaan thread permainan</string>
     <string name="lab_9f612c9d">Pemacu GPU</string>
     <string name="lab_9f713ecd">Tiada dalam senarai</string>
+    <string name="lab_9fd345af">Mengalih keluar %1$s…</string>
     <string name="lab_9fea5158">Tetapan container</string>
     <string name="lab_a00d34e8">Semak Nightlies</string>
     <string name="lab_a011bb4c">Setiap tetapan apl berkuat kuasa serta-merta.</string>
     <string name="lab_a01444fb">Gaya overlay</string>
     <string name="lab_a01ea521">Alih keluar pemetaan butang %1$s?</string>
     <string name="lab_a05a9689">Semua di halaman ini</string>
+    <string name="lab_a081a3ed">Eksport senarai</string>
     <string name="lab_a0d93d63">CPU setiap teras</string>
     <string name="lab_a0f06f2a">Perlukan sambungan untuk muat turun</string>
     <string name="lab_a0f72982">Persembahan zero-copy dan mod selamat OpenGL</string>
     <string name="lab_a108392d">Sentiasa</string>
     <string name="lab_a115f62d">Komponen</string>
+    <string name="lab_a11756a4">Maklumat storan</string>
     <string name="lab_a1edd479">BCn ke ASTC</string>
     <string name="lab_a24bc720">Kulit</string>
     <string name="lab_a26b7e90">Disimpan dalam Proton itu, untuk setiap permainan yang menggunakannya</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">Tahan ini untuk membidik</string>
     <string name="lab_a396cfaa">Tidak dapat memuatkan gambar itu</string>
     <string name="lab_a3c61ce1">Tetingkap &amp; log</string>
+    <string name="lab_a3dbadc2">Perihal permainan ini</string>
     <string name="lab_a3f6a50d">Muat ke skrin</string>
     <string name="lab_a40c85ce">Perkhidmatan yang bermula bersama Windows</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">Kadar segar semula manual</string>
     <string name="lab_a4d1de01">Tangkap tetikus (DirectInput)</string>
     <string name="lab_a4d4c41a">Pin container ini sendiri, bukan milik Semua container.</string>
+    <string name="lab_a4f06c81">%1$s daripada %2$s profil tidak dapat diimport</string>
     <string name="lab_a4f1cbaf">Ruang dibuang: pemboleh ubah dipisahkan dengan ruang.</string>
     <string name="lab_a523a4e1">Motor getaran</string>
     <string name="lab_a559e736">Pengawal XR</string>
     <string name="lab_a57ba715">Afiniti Pemproses (cpuList)</string>
+    <string name="lab_a591cbcb">Permainan tertentu…</string>
     <string name="lab_a593c4da">Fail anda</string>
     <string name="lab_a59e2986">Xalia dimatikan (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Menjadikan klien berkelakuan seperti pada Steam Deck, dengan Quick Access Menu. Permainan berhenti menerima pengawal.</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">Menyerahkan gamepad terus kepada permainan dan bukannya Steam Input. Untuk permainan klasik (Half-Life 2, CS:S). Mematikan Steam Input.</string>
     <string name="lab_a6902569">Kawalan skrin lwn. pad sebenar</string>
     <string name="lab_a6e62e9e">Terjemahan DirectX</string>
+    <string name="lab_a6fe8b9a">Pulihkan repositori lalai</string>
     <string name="lab_a71846fe">Tema dan warna</string>
     <string name="lab_a74f5b6d">Mati, gambar permainan, gambar 3D yang bergerak perlahan dalam kedalaman, atau dengan pratonton: treler dalam jubin besar Laman Utama</string>
     <string name="lab_a7a4aed7">Skrin sentuh menghantar jari kepada Steam sebagai sentuhan sebenar; Pad sentuh menggerakkan penuding dengan seretan dan mengklik dengan ketikan.</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">Dipaksa</string>
     <string name="lab_aa61eeea">Pilih profil kawalan</string>
     <string name="lab_aa9bd991">%1$s diimport</string>
-    <string name="lab_aaae690f">Skrin komponen penuh</string>
     <string name="lab_aac2b52c">Pasang versi Wine atau Proton dahulu (Komponen).</string>
     <string name="lab_aadb73f3">Cerah</string>
     <string name="lab_aaf410b8">Belum log masuk</string>
     <string name="lab_ab00bfda">Permainan Steam</string>
+    <string name="lab_ab20a9e4">Lapisan dimuat turun dahulu.</string>
     <string name="lab_ab2ea144">DirectX 12 melalui Vulkan. Pilihan Tiada mematikan DirectX 12.</string>
     <string name="lab_ab612af4">Suhu</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">Log masuk untuk mengurus konfigurasi kongsian anda</string>
     <string name="lab_ab8824cb">Mod present penyesuai</string>
+    <string name="lab_abac19ba">Buka halaman sumber</string>
     <string name="lab_abb1c367">Tiada apa-apa yang disambungkan. Permainan ini masih ditetapkan untuk bermula pada TV.</string>
     <string name="lab_abb20221">Tiada pratetap</string>
     <string name="lab_abd752a4">Gerak isyarat sentuhan</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">Belum ada program dilaporkan.</string>
     <string name="lab_ad26a7c7">tidak diketahui</string>
     <string name="lab_adcb307d">Cara panggilan DirectX Windows ditukar kepada Vulkan untuk GPU anda.</string>
+    <string name="lab_add714f7">Tidak dipasang</string>
     <string name="lab_adf82850">Pelayan paparan (X11)</string>
     <string name="lab_adfa74ef">Hidupkan mod Steam Deck?</string>
     <string name="lab_ae483014">Memasang</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">Permainan yang dipasang masih boleh dilancarkan. Perlu sekali log masuk dalam talian pada peranti ini dahulu. Berkuat kuasa pada sesi seterusnya.</string>
     <string name="lab_af32ab2f">Solo</string>
     <string name="lab_af39be20">Rangkaian</string>
+    <string name="lab_af3c9967">Segar semula</string>
     <string name="lab_af3f8345">Tiada apa-apa ditemui untuk permainan ini. Pilih imej, atau pautkannya ke Steam di bawah Butiran.</string>
     <string name="lab_af456994">Menghalang kernel mematikan teras.</string>
     <string name="lab_af47e020">Genre</string>
     <string name="lab_afb57bd1">Penapis penskalaan, penajaman dan nyah-jalur</string>
+    <string name="lab_aff587ab">Sandaran GameHub (.zip)</string>
     <string name="lab_b01a2f1b">Pemboleh Ubah Persekitaran</string>
     <string name="lab_b01c4a81">Orientasi</string>
     <string name="lab_b01f4f95">Selesai</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">Slot pemain untuk setiap pengawal</string>
     <string name="lab_b0beed23">Permainan anda dalam Steam</string>
     <string name="lab_b0daa272">Bantuan dan Sokongan</string>
+    <string name="lab_b0e351e0">Disegar semula</string>
+    <string name="lab_b0f4240e">Sandarkan simpanan</string>
     <string name="lab_b0fab841">Graf GPU</string>
     <string name="lab_b0fc42e2">Kongsi simpanan dengan apl</string>
     <string name="lab_b132aa74">Turnip yang dipasang yang digunakan compositor Wayland untuk memaparkan bingkai permainan pada skrin.</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">Jenis container</string>
     <string name="lab_b312c895">Buka menu pantas</string>
     <string name="lab_b32171e6">Jeda permainan</string>
-    <string name="lab_b323b10b">Sembunyikan %1$s? Ia boleh dipaparkan semula daripada tetapan Kandungan Classic.</string>
     <string name="lab_b32cbb53">Import %1$s sebagai container baharu?</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">Hidupkan juga</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">Suis root disimpan untuk permainan ini dan digunakan semasa pelancaran sebaik root diberikan.</string>
     <string name="lab_b543f270">Pemetaan butang pengawal</string>
     <string name="lab_b5681ffc">Butang Steam dan Quick Access pada skrin</string>
-    <string name="lab_b56fe256">Tiada pemacu dalam sumber ini.</string>
     <string name="lab_b5b9d14a">Hidupkan atau matikan XInput terus daripada menu dalam permainan tanpa memulakan semula.</string>
     <string name="lab_b5c5920e">Buka Pengurus Log</string>
     <string name="lab_b6024573">Alih keluar %1$s? Permainan yang menggunakannya kembali ke pemacu container.</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">Kedai anda</string>
     <string name="lab_b73987a8">Lalai sistem</string>
     <string name="lab_b739e60c">Getaran</string>
+    <string name="lab_b759a7ac">Sandaran ini untuk alat yang mana?</string>
     <string name="lab_b7636944">Digunakan semasa pemadanan dimatikan.</string>
     <string name="lab_b7c337c7">Taip sebagai lebar x tinggi, cth. 1600x900.</string>
     <string name="lab_b7d4edb2">Tahap ciri DirectX 12</string>
     <string name="lab_b7e2758f">Emulasi</string>
     <string name="lab_b885aba0">Membatalkan</string>
     <string name="lab_b89607f1">Sandaran &amp; pemulihan</string>
-    <string name="lab_b8afe1d2">Pasang daripada fail</string>
     <string name="lab_b90673bf">Versi DXVK</string>
     <string name="lab_b9106d81">Warna garis luar</string>
     <string name="lab_b9384128">Kunci paparan pada</string>
+    <string name="lab_b9462894">Saiz kad · %1$s</string>
     <string name="lab_b9825547">Belum ada apa-apa disimpan</string>
     <string name="lab_ba3b6032">Pemapar WineD3D</string>
     <string name="lab_ba4f23ec">Tambah folder permainan</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">Simpanan</string>
     <string name="lab_bcf34837">Tanpa rentak</string>
     <string name="lab_bcfb356d">Daripada container</string>
+    <string name="lab_bd4ab43f">1 permainan</string>
     <string name="lab_bd50227c">Tiada binaan VEGAS dipasang: muat turun satu di bawah.</string>
     <string name="lab_bd63a37d">Imej kertas dinding</string>
     <string name="lab_bd87c7d9">Cache tekstur yang dinyahkod</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">Pilih imej…</string>
     <string name="lab_be45a0e0">Tiada ditemui · tidak dipautkan ke Steam</string>
     <string name="lab_be638831">Kanta pembesar, tetingkap, log dan program yang sedang berjalan.</string>
+    <string name="lab_be80b01d">Sembunyikan %1$s? Pulihkan repositori lalai akan memaparkannya semula.</string>
+    <string name="lab_be8d2116">Tutup apa-apa yang sedang berjalan di dalamnya dahulu.</string>
+    <string name="lab_be906409">.zip asli Winlator</string>
     <string name="lab_be998b7c">Segerak setiap bingkai</string>
     <string name="lab_be9a2a59">Back dua kali membuka Quick Access</string>
     <string name="lab_be9d8c7a">Pilihan pelancaran</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">Tengah</string>
     <string name="lab_c120c6bb">Kawalan penuh CPU dan GPU dibuka.</string>
     <string name="lab_c14faa17">XInput terus (BANNERIN)</string>
+    <string name="lab_c15bb42a">Pilih folder lain…</string>
     <string name="lab_c171e496">Automatik (beta awam)</string>
     <string name="lab_c172ec97">Perubahan disimpan untuk permainan ini hanya jika berbeza daripada lalai global.</string>
     <string name="lab_c1bc6675">Wrapper Vulkan yang digunakan permainan pada X11. Wrapper yang diimport juga muncul di sini.</string>
     <string name="lab_c1c757e2">Log nyahpepijat lapisan BCn</string>
     <string name="lab_c1df4081">Sederhana</string>
-    <string name="lab_c206cdbf">Sandarkan semua simpanan</string>
     <string name="lab_c22c196f">Merah</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">. Simpan ditolak sehingga kedua-duanya berbeza.</string>
     <string name="lab_c2928e24">Kanta pembesar</string>
     <string name="lab_c2f74c47">Versi pemacu</string>
     <string name="lab_c2fdbf25">Mengimport</string>
+    <string name="lab_c32c5dc4">Mod</string>
     <string name="lab_c34f4640"> · Disimpan dari sebelum tetapan Penyegerakan wujud; Prestasi › Penyegerakan membacanya dan mengosongkannya apabila anda menetapkannya.</string>
     <string name="lab_c36c4b3f">Paparan</string>
     <string name="lab_c3db5a25">Panel (lalai)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Sokongan Steam Controller</string>
     <string name="lab_c6521528">Perlukan GPU Mali Valhall.</string>
     <string name="lab_c664401e">Container = ikut container. Permainan ini = tetapkan di sini.</string>
+    <string name="lab_c669581b">Pulihkan simpanan</string>
     <string name="lab_c66c17c3">Pratetap penterjemah</string>
     <string name="lab_c6888ac4">Auto</string>
     <string name="lab_c6a02e29">Guna juga</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">Kawalan skrin, tetikus, getaran, bidikan gerak.</string>
     <string name="lab_c7b49d50">Apl Steam %1$s</string>
     <string name="lab_c7fad197">Tiada tetapan tambahan dikesan</string>
+    <string name="lab_c82c4a5b">Kemas kini ke %1$s</string>
     <string name="lab_c82e7e67">Binaan daripada katalog. Yang dipasang muncul di bawah Versi DXVK.</string>
+    <string name="lab_c83f23bf">Tidak dapat menetapkan semula kulit</string>
     <string name="lab_c844d41c">Untuk permainan Denuvo yang tidak dikesan sendiri oleh apl.</string>
     <string name="lab_c84956c1">Perkhidmatan Tersuai</string>
     <string name="lab_c85b9376">Kurang ketaran, sedikit lebih kelewatan. Ditetapkan bagi setiap container.</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">Kawalan skrin kekal Pemain 1</string>
     <string name="lab_c8b7e3fa">Pemacu ini tidak boleh memaparkan sesi. \"Sistem\" atau pemacu yang tidak lagi dipasang membiarkan compositor pada Vulkan sistem, yang memaparkan skrin hitam.</string>
     <string name="lab_c8c4d663">Hidup — semasa penjanaan bingkai berjalan, paparan mengikut had bingkai × pendarab.</string>
-    <string name="lab_c8d5043b">Pilih pek kandungan</string>
     <string name="lab_c8d52d67">Padam pratetap</string>
     <string name="lab_c936ff11">cth. ms_MY.UTF-8</string>
     <string name="lab_c94d19de">Muat naik automatik ke Steam Cloud semasa keluar</string>
+    <string name="lab_c961a1bf">%1$s (auto)</string>
     <string name="lab_c9822616">Muat turun</string>
     <string name="lab_c9a07f62"> · kawalan pada skrin</string>
     <string name="lab_c9ae8103">Mod Mali (PanVK)</string>
+    <string name="lab_c9ef821f">Semua simpanan permainan (seluruh profil)</string>
     <string name="lab_ca16bb77">berkuat kuasa sekarang · disimpan untuk permainan ini dan sebagai lalai enjin ini</string>
     <string name="lab_ca45d5a4">container ini</string>
     <string name="lab_ca62f862">Muat turun &amp; rangkaian</string>
     <string name="lab_cabf747a">Salinan tak segerak</string>
     <string name="lab_caf7d4a3">Pratetap kongsi, diedit</string>
     <string name="lab_cb5fc4d5">Konfigurasi VEGAS</string>
+    <string name="lab_cb6124f5">Kemas kini lapisan</string>
     <string name="lab_cb6d604d">HUD tidak boleh diseret dalam permainan.</string>
     <string name="lab_cbab7f7a">Ikon</string>
     <string name="lab_cbb98111">Kayu bedik kanan</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">Satu imej yang dikongsi setiap container, atau satu untuk container ini sahaja.</string>
     <string name="lab_cc7362b0">Atas atau Bawah mengosongkan separuh lagi untuk kawalan pada skrin.</string>
     <string name="lab_cc9e753f">Layari &amp; pasang komponen</string>
+    <string name="lab_cc9f0c95">Papar storan dalaman</string>
+    <string name="lab_ccb4b062">Lapisan dimuat turun dahulu (%1$s).</string>
     <string name="lab_cce939fc">OpenGL Pantas</string>
     <string name="lab_cd871c13">Laporkan sebagai Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">Penyahkod video</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">Percubaan</string>
     <string name="lab_d261efe4">Tunggal memastikan kayu bedik kekal lancar pada peranti pegang tangan yang menjadi perlahan semasa kedua-dua motor berjalan.</string>
     <string name="lab_d2651812">Tetapan permainan</string>
+    <string name="lab_d27c84ad">Akaun emulator ditukar kepada akaun daripada sandaran. Lancarkan semula permainan.</string>
     <string name="lab_d27d3648">LSFG Native</string>
     <string name="lab_d2895d94">Sandar, pulih dan segerakkan simpanan permainan</string>
     <string name="lab_d2b6baa8">Membetulkan teks bercelaru dalam permainan Jepun, Cina, Korea dan Rusia.</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">Picu</string>
     <string name="lab_d5e887b8">%1$s j</string>
     <string name="lab_d60412d3">Asal</string>
+    <string name="lab_d60d149d">Repositori diimport</string>
     <string name="lab_d620ef74">Kulit, dikaburkan</string>
     <string name="lab_d653f990">Penterjemah x86 untuk kod 32-bit</string>
     <string name="lab_d6d3fe68">Pilih pakej komponen (-linux .wcp)</string>
     <string name="lab_d7060afb">Import container ini</string>
+    <string name="lab_d736d92d">OK</string>
     <string name="lab_d73ee22e">Pemacu Turnip atau Adreno yang dimuatkan wrapper. Import lagi dalam Kandungan › Pemacu GPU.</string>
     <string name="lab_d801cf49">Fail konfigurasi yang disertakan keluaran VEGAS. Ia muncul di bawah Fail konfigurasi.</string>
     <string name="lab_d809a959">Dikekalkan apabila anda menyimpan editor.</string>
     <string name="lab_d8321a59">Tiada bunyi berderak</string>
+    <string name="lab_d832ee19">Menu sisi</string>
     <string name="lab_d834a1cf">Menyemak pemacu yang dipasang yang boleh memaparkan permainan…</string>
     <string name="lab_d870ae5e">Pemacu ini tidak dimuatkan pada GPU ini: pemacu sistem yang menjawab semakan sebaliknya.</string>
     <string name="lab_d8e06406">Skrin</string>
+    <string name="lab_d8e601e7">Sesetengah permainan menyimpan simpanan di tempat lain (folder pemasangan, registri, Steam Cloud). Semak sandaran sebelum anda memadam apa-apa.</string>
     <string name="lab_d8e621c2">Tambah drive</string>
     <string name="lab_d90a905b">Kaca</string>
     <string name="lab_d91754f0">Tiada entri.</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Perkhidmatan latar belakang Windows</string>
     <string name="lab_db6d6f28">Sertakan pra-keluaran</string>
     <string name="lab_db745b05">. Imej baharu digunakan mulai permulaan seterusnya selepas anda menyimpan.</string>
+    <string name="lab_db7be531">Tidak dapat memuat turunnya.</string>
     <string name="lab_db89b158">Sesi terakhir</string>
     <string name="lab_dbce82c8">Guna milik Semua container</string>
     <string name="lab_dbd5d59f">Pemboleh ubah permainan ini</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">Segerakkan pencapaian ke profil Steam anda</string>
     <string name="lab_de0c0eb8"> \";\" dan \"=\" dibuang.</string>
     <string name="lab_de315178">Namakan semula</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">Juga ditukar oleh Utamakan DLL folder permainan di atas</string>
     <string name="lab_de72753f">Jumlah memori grafik yang dilaporkan WineD3D.</string>
+    <string name="lab_de75d40c">%1$s kembali daripada %2$s ke %3$s. Registri dipulihkan daripada sandaran yang diambil sebelum kemas kini; permainan, simpanan, pintasan dan tetapan dikekalkan. %4$s mesti masih dipasang.</string>
     <string name="lab_dec4dc19">Container sahaja</string>
     <string name="lab_def1a7db">Container</string>
     <string name="lab_def6b48c">Pemboleh ubah dikenali</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Penyesuai Wayland</string>
     <string name="lab_e1be537c">Belum disimpan</string>
     <string name="lab_e22a8ea9">Wayland memerlukan Turnip yang dipasang untuk memaparkan bingkai permainan pada skrin. Yang baharu muncul di bawah Pemacu grafik.</string>
-    <string name="lab_e2410f47">Layari dan muat turun</string>
     <string name="lab_e2421520">Muat turun versi WOWBox64</string>
     <string name="lab_e280d375">Saiz kad</string>
     <string name="lab_e2a7f23e">Pada skrin</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">Entri ini tiada fail ikon untuk ditulis.</string>
     <string name="lab_e2ce4373">Bahagian</string>
     <string name="lab_e2e95fcd">Log permainan</string>
+    <string name="lab_e2f09271">Pulihkan sandaran %1$s ke dalam %2$s? Ini mungkin menulis ganti data simpanan di sana.</string>
+    <string name="lab_e3af6ca0">Pilih senarai repositori</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Untuk permainan yang hanya melihat gamepad melalui Steam (No Man\'s Sky). Biarkan mati untuk permainan yang membaca gamepad sendiri. Mematikan Laluan terus pengawal.</string>
     <string name="lab_e3e80b58">Profil Kawalan</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">Matikan jika anda mahu; permainan ini akan mengingatinya.</string>
     <string name="lab_e841eed8">Kebenaran mikrofon ditolak: mikrofon kekal mati.</string>
     <string name="lab_e8a0175e">Muat turun versi Box64EC</string>
-    <string name="lab_e8a5f633">Tiada fail komponen yang disimpan.</string>
     <string name="lab_e8c91356">Mengikut pin container. Menukar salah satu memberikan permainan ini pin sendiri.</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">Belum ada susun atur pada skrin</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) atau off</string>
     <string name="lab_e98a38e0">Kanta pembesar, gambar dalam gambar, papan kekunci dan prestasi.</string>
     <string name="lab_e9bb2501">Membolehkan permainan menggunakan mikrofon: DirectAudio menangkap input. Android meminta kebenaran sekali.</string>
-    <string name="lab_ea08e43f">Masa jalan Linux dan setiap senarai</string>
     <string name="lab_ea354143">Butang samar di kanan atas yang membuka menu pantas dengan sentuhan. Kembali, butang Menu atau ketikan empat jari berfungsi tanpanya.</string>
     <string name="lab_ea4babd8">Cara ia bermula</string>
     <string name="lab_ea83f479">• Klien mungkin memaparkan kemas kini Steam Client di bawah System yang tidak dapat dipasang. Mod Deck kini menggunakan saluran beta Steam Deck untuk mengelakkannya, tetapi jika ia muncul, jangan tekan Apply.\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">Metrik</string>
     <string name="lab_ed41d675">Pemacu lukisan (masa jalan Linux)</string>
     <string name="lab_ed779ba6">Muat turun versi Wine dan Proton</string>
+    <string name="lab_eda50b73">%1$s permainan</string>
     <string name="lab_edfcb4b9">Tetikus &amp; papan kekunci eksklusif</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">Bateri merah pada</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">Ketelusan</string>
     <string name="lab_efdeb1c6">Senarai pratetap dikongsi oleh setiap container dan permainan.</string>
     <string name="lab_efdfc7e5">Pengehad FPS</string>
-    <string name="lab_efeacf52">Setakat ini hanya pemacu telefon sendiri.</string>
     <string name="lab_f04c78b9">Tetapan audio · permainan ini</string>
     <string name="lab_f05053e7">Membaca Steam Controller secara terus (trackpad dan butang tambahannya). Mati: laluan input biasa tidak berubah.</string>
     <string name="lab_f0520965">mailbox = bingkai terbaharu, kependaman terendah; fifo = vsync, rentak sekata. Lalai mengikut profil, jika tidak, mod present yang disimpan. Immediate memerlukan tearing, yang tidak ditawarkan Wayland.</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">Getaran DirectInput</string>
     <string name="lab_f10b2876">Afiniti Pemproses</string>
     <string name="lab_f115c775">Pelancaran selamat anti-tipu (VAC)</string>
+    <string name="lab_f1165d1c">Isih</string>
     <string name="lab_f123362f">Apl</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">Kayu bedik kiri</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">Gaya</string>
     <string name="lab_f2857f55">Dalaman</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">Pilih pemacu GPU</string>
     <string name="lab_f2ed832c">Saiz memori GPU yang diberitahu kepada permainan DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Kependaman bunyi</string>
     <string name="lab_f304d21f">Itu terlalu kecil untuk desktop Windows.</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">Untuk permainan ini sahaja: tiada permainan atau container lain yang berubah. </string>
     <string name="lab_f40ccd04">Dayakan</string>
     <string name="lab_f44d5610">Getaran hidup / mati dan suis setiap slot</string>
+    <string name="lab_f46b910b">Storan peribadi apl</string>
     <string name="lab_f485cfbf">Tetapan yang diimbas daripada fail wrapper yang diimport. Sembunyikan atau paparkannya dalam Urus wrapper grafik.</string>
     <string name="lab_f4abcaf2">Ini tetapan container; tukar dalam tetapan container.</string>
     <string name="lab_f4f73c18">Lalai</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">Simpan</string>
     <string name="lab_f576fb2d">Lapisan daripada katalog, atau pasang daripada fail. Container baharu boleh menggunakannya.</string>
     <string name="lab_f57b35ee">Zon mati dan pelicinan</string>
+    <string name="lab_f581508f">%1$s permainan dialih keluar</string>
     <string name="lab_f5864edc">Muat turun awan automatik semasa pelancaran akan DIMATIKAN untuk permainan dalam pustaka Steam anda. Simpanan awan terkini tidak akan ditarik sebelum permainan bermula — anda perlu memuat turunnya sendiri daripada bahagian Simpanan Awan di halaman butiran permainan. Teruskan?</string>
     <string name="lab_f593aa90">Pemacu yang digunakan compositor apl untuk memaparkan sesi pada skrin. Bukan yang digunakan klien untuk melukis.</string>
     <string name="lab_f59e59da">Dipaparkan dalam pustaka anda. Menamakan semula mengekalkan seni muka depan dan ikon.</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">Bermula daripada Lalai Container Baharu anda. X untuk menciptanya.</string>
     <string name="lab_f783e029">Bateri berganda</string>
     <string name="lab_f81efa4a">FEX, DXVK dan VKD3D-Proton</string>
+    <string name="lab_f826d6b4">%1$s fail dipulihkan ke %2$s</string>
     <string name="lab_f8283624">Saiz antara muka</string>
     <string name="lab_f8507a8c">Betulkan warna SurfaceFlinger</string>
     <string name="lab_f8e0d68c">Pemacu compositor (graphicsDriverConfig version)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">Sesetengah permainan tidak pernah membaca pengawal sendiri: ia memintanya daripada Steam. Dalam SteamLite tiada yang menjawab, jadi permainan itu tidak melihat gamepad. Hidup: ejen SteamLite menghidupkan lapisan pengawal Steam untuk permainan ini dengan susun atur yang sesuai. Biarkan mati untuk permainan yang sudah membaca gamepad, atau setiap tekanan diterima dua kali. Bertentangan dengan Laluan terus pengawal, jadi hanya satu boleh hidup. SteamLite sahaja.</string>
     <string name="lab_fa859fc7">Mod Goldberg, Sahkan fail dan Semak kemas kini berada dalam menu pelancaran. Matikan \"Langkau menu pelancaran\" untuk melihatnya pada permulaan seterusnya.</string>
     <string name="lab_fac0fe64">Kawalan penskalaan melakukan bahagian yang berguna tanpanya, dan had FPS panel dalam permainan mengehadkan kadar bingkai. Matikan semula mod Deck jika permainan berhenti bertindak balas kepada pengawal.</string>
+    <string name="lab_fac102a7">FPS · sesi terakhir</string>
     <string name="lab_fad0baa9">Lalai (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton Valve sendiri, diganti apabila Steam mengemas kininya; fail asalnya disimpan bagi setiap binaan</string>
     <string name="lab_fae62cc0">Mengunci penuding pada permainan. Tekan Kelantangan Turun untuk melepaskan.</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">Versi DirectX</string>
     <string name="lab_fbd4f98b">Nama GPU yang dilihat permainan</string>
     <string name="lab_fbf2e44f">Paparan FPS dan suhu pada skrin.</string>
+    <string name="lab_fbfb437a">%1$s beralih daripada %2$s ke %3$s. Permainan, simpanan, pintasan dan tetapan dikekalkan.</string>
     <string name="lab_fd1310b6">Butang X</string>
     <string name="lab_fd5460f8">Warna</string>
+    <string name="lab_fdc15162">Tidak dimuatkan</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (pengesanan pemacu)</string>
     <string name="lab_fe11d138">Nama</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">Sebagai teks, dipisahkan koma</string>
     <string name="lab_ffb9855e">Fail itu bukan profil kawalan</string>
     <string name="lab_ffcd863d">Dimainkan %1$s min</string>
+    <string name="lab_ffe2f089">Tiada WSI Wayland dikesan</string>
 </resources>

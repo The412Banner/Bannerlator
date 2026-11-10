@@ -1,5 +1,75 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED feat/lab-parity → main (user: "works, merge it to main", ~21:3x EST)
+- **Device-checked by the user** on the Pocket FIT (pubg 898774db): "works". Earlier proof: my UI drive of 91549b4f (19:55–20:04 EST, menus only) + user checks of later builds.
+- What it brings: Mods in Lab (game page + Lab/Deck in-game menus), Library sort/filter/card style/select-remove, Xbox not-installed, container line, launch-spec chips, CustomCover picks, Steam link cover/details/title, art retries, top-line Search/Community/Friends, account picture, Steam pill, Contents refresh/repos/search/Set-as-default outcome + Undo/error text/row details, Containers layer update/revert, Lab storage dialog, save backup/restore, honest import/export (shared ContainerManager result methods), busy banner, Controls rename/retry/previews/multi-select/system import, Appearance 5 % sizes + side-menu storage switches, compact pills, plurals, lists open on the current choice, 125 new strings × 32 languages.
+- Main had moved to d3f7eec0 (11 log-only commits from the Steam client session) → overlap PROGRESS_LOG only, both sides kept in full. Backup ref refs/backup/20261109/main-before-lab-parity = d3f7eec0 (on GitHub, ls-remote checked).
+- **Lesson:** in zsh `$M:refs/...` is read as the `:r` modifier on $M (mangles the refspec, "src refspec … does not match any") — write `"${M}:refs/..."`. That was the cause of tonight's earlier silent backup-push failures too.
+
+## 2026-11-09 — ✅ feat/lab-parity 898774db INSTALLED on the Pocket FIT (pubg) 21:20:59 EST (user: "yes install it"; NOT device-checked yet)
+- CI 42740697939 GREEN ×4. Staged /sdcard/Download/Bannerlator-lab-parity-898774db-pubg.apk sha256 713f2ed1… (host == device), cert a40da80a. Before: 90d8089b; no game running. `pm install -r` Success; installed == staged; crash buffer empty; peers told + "done".
+- **User checks:** account picture (portrait side menu header right end next to the Steam pill; landscape top-line right corner), tap → My account. Merge on go.
+
+## 2026-11-09 — 🔧 feat/lab-parity 898774db: account picture in the Lab side menu header + landscape top line (CI 42740697939 running)
+- User (screenshots 210404 landscape Home, 210413 portrait drawer with the new "Online" pill): show the Community configs profile picture when signed in, else the Steam profile picture — portrait at the top of the side menu next to the Steam pill, landscape in the top line's right corner.
+- LabAccountButton (LabFrame.kt): url = AccountUiBus.account.displayAvatarUrl → SteamFriendsStore.self.avatarUrl → SteamAccountStore saved avatar of the active account → AccountAvatar's sign-in figure; tap → AccountUiBus.requestMyAccount() (DeckGameActionsHost opens My account; the drawer closes first). Portrait: right end of the drawer header row; landscape: after the clock.
+- **Next:** green → stage pubg → ASK install → user check → merge on go.
+
+## 2026-11-09 — ✅ feat/lab-parity 90d8089b INSTALLED on the Pocket FIT (pubg) 21:03:02 EST (user: "yes install it"; NOT device-checked yet)
+- CI 42736480948 GREEN ×4 (headSha 90d8089b). Staged /sdcard/Download/Bannerlator-lab-parity-90d8089b-pubg.apk sha256 f80ffd05… (host == device), cert a40da80a; resources.arsc has the de strings.
+- Before: f9c6f492 (957a8783…); no game running, Termux in front. `pm install -r` Success; installed base.apk f80ffd05… == staged; crash buffer empty; peers told + "done".
+- **User checks:** Steam pill in the Lab side menu header (signed in), choice lists open on the ticked entry (Interface size → 100 %), Lab Storage dialog, "1 session", a translated language (Settings › Appearance › Language). Merge on go (backup ref refs/backup/<date>/main-before-lab-parity; check main first).
+
+## 2026-11-09 — 🌐 feat/lab-parity 90d8089b: translations for all new Lab strings (CI 42736480948 running)
+- ec5fcbed (items 1-3) CI 42734827136 GREEN ×4.
+- 125 new strings × 32 languages from 4 drafting agents (8 locales each), validated by scratchpad i18n3/check.py (every key, placeholders); filled with lab_strings.py: all 32 = 1897/1897, missing 0; 33 strings_lab.xml parse OK, no unescaped apostrophes.
+- **Tool trap (lesson):** lab_strings.py takes `pt-PT` / `zh-CN` / `zh-HK` / `zh-TW` (it adds the "r"); `pt-rPT` / `zh-rCN` map to non-existent values-pt-rrPT / values-zh-rrCN, so `missing` lists everything and `fill` would write a wrong folder. `b+es+419` works as is.
+- Translator notes kept: "Undo" = same word as Cancel in fr/it/ro; "Community configs" chosen per language (no existing term); "Save location" = component file storage (not game saves); cs/bg/ar/el/pl/ru use "label: N" count style like their existing files.
+- **Next:** green → stage pubg → ASK install → user check → merge on go.
+
+## 2026-11-09 — 🔧 feat/lab-parity ec5fcbed: remaining items 1-3 + translations in progress (CI 42734827136 running)
+- f9c6f492 INSTALLED on the Pocket FIT 20:17:15 EST (pre-approved; 957a8783… == staged; crash buffer empty; peers told + done).
+- User: "yes do 1-3 and the translations on the same branch". ec5fcbed: (1) Steam connection pill in the Lab side menu header; (2) Steam link in Lab Game details renames the game to Steam's title (rename moved above linkSteam; cover/icons move with it); (3) ContainerManager.importContainerResult / exportContainerResult (one main-thread callback with the real result; old Runnable methods delegate), ContainersViewModel busy flag always reset + "Couldn't import" message + export path only when copied; Lab "A backup named … is already in Backups"; SimpleActionSheet opens on the "  ✓" entry.
+- Translations: lab_strings.py extract → 1897 strings (125 new per locale; 4 locales slightly fewer); 4 agents drafting 8 locales each into scratchpad i18n3/draft_<locale>.json (check.py validates placeholders/coverage). Next: fill all 32 → commit → CI → stage pubg → ASK install → merge on go.
+
+## 2026-11-09 — 🔧 feat/lab-parity f9c6f492: small issues from the UI drive (CI 42733575018 running)
+- User: "fix those small issues on the same branch".
+- LabBadged → BoxWithConstraints: under 84 dp (or 120 dp with the selection mark) only the store's own pill (LabStoreBadges, no EA/EOS beside it) — Icons cards no longer wrap "EO S".
+- LabGame: "%1$s · 1 session" and "FPS · last session" for a count of 1.
+- New ui/simple/LabStorage.kt LabStorageDialog (Lab frame: container name, Drive C, Cache, Total, Clear cache, Done; Classic's getSizeAsync sizes + Clear cache steps) replaces Classic's StorageInfoDialog on Lab Containers.
+- **Next:** green → stage pubg → ASK install → user checks → merge on go. Translations for the new Lab strings still to do (lab_strings.py) before/after merge.
+
+## 2026-11-09 — 🧪 feat/lab-parity 91549b4f: UI drive on the Pocket FIT, 19:55–20:04 EST (menus only, no game launch)
+- **Seen working on the device:** Home: top-line Search, no pills on the row, big-tile chips from the launch spec (driver version, DXVK version). Drawer: Community configs + Steam friends. Library: Sort (Last played / Name A–Z / Z–A / Container), store filter (only present stores; Xbox = 7 games), card-style sheet; Covers style shows pills + container line + "Not installed · Stream" on an un-downloaded Xbox game. Game page (Prototype): Mods tile "Special K" → Mods dialog (Special K on, DLL d3d9.dll (auto), Start with the game), Container tile, About this game (2009 · Action, Adventure · Metacritic 79 + description). Contents: Search all repositories, Refresh the lists, Manage (Import or export, Save location, Restore default repositories, Add a repository); Installed shows "Default · arm64ec". Containers ⋯: Revert layer to 11.0-11.1 v16, Back up saves…, Restore a save…, Storage info (Drive C 8.05 GB, cache 273 MB, total 8.31 GB). Controls: layout previews, Pick via system…, community list = checkbox + eye + Download dialog. Appearance: Side menu storage switches, Interface size 50 % up in 5 % steps (100 % ticked). Settings controller link → Lab Controls. Y-search → Lab game page. Container-2 (X11, wrapper-original) › Wrapper settings and tools: only Downloads and tools (no empty Detected panel).
+- logcat: crash buffer empty, no FATAL/ANR for com.tencent.ig. All my test changes put back (filter All, cards Icons). Termux back in front; peers told done.
+- **Not checked (needs a game launch or changes data):** in-game Mods page, Set as default result + Undo, game page after remove/rename, select-and-remove, save backup/restore, layer revert.
+- **Small issues seen:** EPIC + EOS pills wrap ("EO S") on narrow Icons cards; playtime tile says "1 sessions"; Storage info is Classic's purple dialog.
+
+## 2026-11-09 — 🧪 feat/lab-parity 91549b4f: driving the Lab UI on the Pocket FIT (user: "drive the device to make sure all the fixes are there correctly", ~20:0x EST)
+- Resume point: Pocket FIT runs 91549b4f (fa4e605c…). I open Bannerlator (Lab) and check each new item by screen (uiautomator dump + screencap), menus only — no game launches, no remove/restore/layer update/downloads. No background jobs. If cut: bring Termux back, send peers "done".
+
+## 2026-11-09 — ✅ feat/lab-parity 91549b4f INSTALLED on the Pocket FIT (pubg) 19:54:24 EST (user: "yes install it" / "go ahead and install it"; NOT device-tested yet)
+- CI 42724334473 GREEN ×4 (headSha 91549b4f). Staged /sdcard/Download/Bannerlator-lab-parity-91549b4f-pubg.apk sha256 fa4e605c… (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: 321d7aed (3a5a3504…); Bannerlator UI was open (pid 25282, no game). Held the install to ask root-8b (busy) — it was not using BL; the user said go. `pm install -r` Success; installed base.apk fa4e605c… == staged; crash buffer empty; peers told + "done".
+- Undo: /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk (== main 822ee6fb code).
+- **User tests:** see the 91549b4f entry below (Mods tile/dialog + in-game Mods page, About tile, Library sort/filter/card style/select, top-line Search/Community/Friends, Contents Refresh/search/Manage/Set as default + Undo/error text, Containers layer/storage/saves/busy, Controls rename/previews/multi-select/system import, Appearance sizes + side-menu switches, Settings › Controllers). Merge on go.
+
+## 2026-11-09 — 🔧 feat/lab-parity 91549b4f: all four areas merged + follow-ups (CI 42724334473 running; NOT installed, NOT device-tested)
+- Helper branches (each CI-green ×4, compile only): lab-parity-contents 27b10e68 (CI 42722084373), lab-parity-containers cd00e480 (42722479904), lab-parity-mods-game 45d99a88 (42722340107), lab-parity-library ee7d3ec8 (42722705722). Merged --no-ff into feat/lab-parity with no text conflicts (9c14a70b, 1f2c9aeb, 6d702b34, ad27f8a4); 3-way compile check CI 42723784588.
+- Follow-ups 91549b4f: top-line Search runs the shell search (no fake Y key); Home GPU drivers tile → Contents Installed; SteamStoreSearch.findAppIdByName stops caching a failed request as a week-long "none" (searchOrNull).
+- What's in it: Mods (Lab game page tile + LabModsDialog; Mods page in Lab/Deck in-game menus), game page follows the library, About this game tile, Wine-only Container/Mods tiles; Library sort/filter/card style + select/remove, Xbox not-installed, container line, launch-spec chips, CustomCover picks, Steam link cover/details, art retries, Search/Community/Friends in the top line/drawer, Stores refresh, Linux runtime status; Contents refresh/repo management/search/Set-as-default outcome+Undo/error text/row details/GPU drivers tab, old pages removed; Containers layer update/revert, storage info, save backup/restore, honest toasts, export refresh, busy banner; Controls rename/retry/previews/multi-select/system import; Appearance 50–150 % 5 % steps + side-menu storage switches; Settings › Controllers → Lab; no empty "Detected in this wrapper".
+- Known, not changed: ContainerManager.importContainer never calls back on failure (busy stays on); export says "Exported" when the target existed; SimpleMenuPage action lists start on the first entry; Lab Steam link doesn't rename to Steam's title.
+- **Next:** green → stage pubg → ASK install → user test (long list) → fixes → merge on go.
+
+## 2026-11-09 — 🚧 feat/lab-parity started: Mods in Lab + the rest of the Lab-vs-Classic gaps (off main 45d3f56c; NOT built yet)
+- **User (~18:5x EST):** "yes add mods to lab on a new branch, any everything else missing please you listed" (list = memory bannerlator-lab-gaps, audit 11-09).
+- **Plan:** integration branch feat/lab-parity. Four helper agents, each in its own worktree + sub-branch off 45d3f56c, disjoint files, each CI-compiles its part:
+  - feat/lab-parity-mods-game — Mods (Lab game settings/page + Lab and Deck in-game menus), game page live game after remove/rename, details text, container tile only for Wine games (LabGame/LabGameMenu/DeckInGame/ShortcutsScreen visibility).
+  - feat/lab-parity-library — Library sort/filter/view + multi-select, Xbox not-installed label, setup chips, cover picks via CustomCover + Steam link cover/details, art retry fixes, top-line search/friends/community entries, Stores refresh, Linux runtime tile status (LabPages/LabArt/LabGameDetails/LabPreview/LabFrame/LabHome).
+  - feat/lab-parity-contents — Contents refresh, repository management, cross-repo search, Set-as-default outcome + Undo, failure reasons, row details, Tools GPU drivers tab, dead driver pages (LabContents + SimplePages Contents parts).
+  - feat/lab-parity-containers — Containers layer update/revert, storage info/clear cache, save restore/per-game backup, honest toasts, export refresh, busy state; Controls rename/retry/preview/example/multi-select/system import; Appearance storage toggles + size steps; Settings › Controllers alias; "Detected in this wrapper" empty panel (SimplePages non-Contents parts, DeckSettingsScreens, SimpleClassicEditor).
+- Then I merge the four into feat/lab-parity → CI → stage pubg → ASK install → user test → merge on go. Strings: English L(...) only; translation pass later.
+
 ## 2026-11-09 — 🧪 Steam x64 (64-bit Windows client) set up next to Steam Latest (user test pending, NOT device-tested)
 - **User:** "switch us, make the shortcut, can you copy my login credentials also".
 - **Why it works without a Wine fix:** Valve's 64-bit starter (`steam_win64.zip`, steam.exe x86-64, 2026-10-21) always picks the win64 channel; only the 32-bit starter asks `GetMachineTypeAttributes`. That function is in no Proton tree we checked (Valve proton_11.0, bleeding-edge 11-07, experimental_11.0, proton_10.0; our DroidDeck 11.9, banner-proton/11.12, GE 11.9, CachyOS); upstream has it since wine-11.7.
@@ -73,6 +143,7 @@
 - **So:** the first guess (only the GPU path is broken) does not explain it. Open question: is the sign-in page itself blank (page/JS/2024 client), or does its content never reach the screen?
 - **Next:** empty `.cef-enable-remote-debugging` in the Steam folder → Steam's DevTools on 127.0.0.1:8080 → page screenshot + console from the proot while the white box is up; then maybe the X11 container.
 - **Resume point:** Steam not running; shortcut has Launch options `-cef-disable-gpu` (user set it); undo for the debug file: `rm /storage/6136-3230/Download/Steam.Ajay/Steam/.cef-enable-remote-debugging` (as root). Memory: bannerlator-steam-client-white.
+
 
 ## 2026-11-09 — 🔍 Windows Steam client in a Proton container = white login window (Elite, Wayland; investigation, nothing changed)
 - **Why (user, ~18:15 EST):** Steam client in a Proton container shows only a white screen; asked to launch it together and find the cause, and to check Bruno's Winlator for ideas.

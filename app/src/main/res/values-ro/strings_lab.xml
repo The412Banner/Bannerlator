@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">Ce controller vede jocul. Se poate schimba și în joc (controllerul se reconectează).</string>
     <string name="lab_0312e1a5">Scrie un nume înainte de =.</string>
     <string name="lab_0355373d">Toate</string>
+    <string name="lab_03705e75">Eliminate %1$s din %2$s; restul nu au putut fi șterse</string>
     <string name="lab_0397233a">Ocolește GMEM.</string>
     <string name="lab_039bee69">Comenzi</string>
     <string name="lab_03af654a">Controller</string>
     <string name="lab_03af83cf">Integrat (Wine)</string>
     <string name="lab_03be5b2b">Oprești %1$s?</string>
     <string name="lab_03dc750a">Niciunul. Răsfoiește catalogul ca să adaugi.</string>
+    <string name="lab_03eece5a">Total</string>
     <string name="lab_03f54074">Umple ecranul</string>
+    <string name="lab_04272d2b">Revino la stratul %1$s</string>
     <string name="lab_04314e37">Steam Controller, setările implicite ale comenzilor pe ecran și mouse-ul și tastatura pentru jocurile Wine.</string>
     <string name="lab_04422c9a">Deschide</string>
     <string name="lab_044669c8">Nuclee permise jocului</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">Importă un profil</string>
     <string name="lab_05ea4871">Potrivește rata de reîmprospătare cu FPS</string>
     <string name="lab_05f88f63">Versiune Wine / Proton</string>
+    <string name="lab_062deaae">%1$s nu a putut fi instalat: %2$s</string>
     <string name="lab_063c1ee9">Ascunde controllerele Xbox de acest joc.</string>
-    <string name="lab_06625dae">Nicio sursă de descărcare.</string>
     <string name="lab_06681d37">Ce trackpad mișcă mouse-ul. Apăsarea lui este clic stânga.</string>
     <string name="lab_066c2fb1">Pagina jocului</string>
     <string name="lab_0687488a">Drivere Turnip și Qualcomm</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">Alege ce se înregistrează (Wine, Box64/FEX, DXVK, SteamLite, Steam fără interfață, logcat), unde ajung jurnalele și câte se păstrează; răsfoiește-le și partajează-le.</string>
     <string name="lab_0721ad7c">Acest container</string>
     <string name="lab_075ffd70">Videoclipul tău</string>
+    <string name="lab_076e01bd">Restaurează o salvare…</string>
     <string name="lab_07a88d47">O apăsare pe Înapoi deschide în continuare panoul din joc.</string>
     <string name="lab_07e11363">Activat pentru tot containerul: dezactivează-l în container.</string>
     <string name="lab_080615dc">Ca în container</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">Descarcă versiuni D7VK</string>
     <string name="lab_09683590">Limitator de cadre</string>
     <string name="lab_09793b21">OpenGL: Vsync oprit</string>
+    <string name="lab_097af41a">Nume Z–A</string>
     <string name="lab_09b51ad4">Sloturi</string>
     <string name="lab_09cdafe2">Dimensiune text</string>
     <string name="lab_09d2be7b">Beta publică</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">Limita proprie a DXVK (DXVK_FRAME_RATE). Dezactivat lasă ritmul cadrelor în seama limitatorului de cadre.</string>
     <string name="lab_0b5eae46">Controllerul devine Jucătorul 1</string>
     <string name="lab_0b76e940">%1$s %2$s eliminat</string>
+    <string name="lab_0bad6f7f">Se descarcă %1$s profiluri…</string>
     <string name="lab_0bd8b542">Dimensiunea imaginii, ritmul cadrelor și rata de reîmprospătare.</string>
+    <string name="lab_0be4a3d7">1 joc eliminat</string>
     <string name="lab_0be7a72d">Mod de scalare</string>
     <string name="lab_0bece985">Backupuri</string>
     <string name="lab_0c451500">Rezoluție de captură</string>
     <string name="lab_0c64d11e">Instalează conținut din fișier</string>
+    <string name="lab_0c88e27c">Dispar doar scurtăturile; fișierele jocurilor rămân.</string>
     <string name="lab_0cd26a5e">Nicio descărcare în curs</string>
-    <string name="lab_0ce16a57">Backup eșuat: %1$s</string>
     <string name="lab_0cfb7a3b">Repară camerele care se rotesc singure sau se blochează în unele jocuri mai vechi.</string>
+    <string name="lab_0d0fc080">Se duplică %1$s…</string>
     <string name="lab_0d5a2b34">Cuvinte suplimentare adăugate după numele programului, de ex. -windowed -dx11.</string>
     <string name="lab_0da00171">• Jocurile nu mai primesc controllerul. Meniurile Steam funcționează în continuare, dar în joc padul nu face nimic.\n</string>
     <string name="lab_0dc541d5">Resetează la implicit</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">Automat (beta Steam Deck, pentru modul Deck)</string>
     <string name="lab_0fed0c63">Setări driver</string>
     <string name="lab_10091d64">Versiune VEGAS</string>
-    <string name="lab_10125440">Drivere și componente</string>
     <string name="lab_101d1386">Cheie API SteamGridDB</string>
     <string name="lab_101f5ed2">Efecte ReShade</string>
     <string name="lab_1054fdc3">Pe Wayland, jocul randează prin compozitorul integrat, care are nevoie de un Turnip instalat ca să-i importe cadrele. „Sistem” e oferit doar pe GPU-urile Mali; în rest afișează un ecran negru. Driverul pe care randează jocul însuși este Driver de joc Wayland, mai jos.</string>
     <string name="lab_105c504c">Remediere OneUI / HyperOS</string>
     <string name="lab_1079be1d">Nu s-a găsit nimic pe Steam pentru %1$s</string>
     <string name="lab_10a08356">Permite schimbarea în joc</string>
+    <string name="lab_10b7b953">Fă backup salvărilor…</string>
     <string name="lab_10cb69ae">Selectează imaginea pictogramei</string>
     <string name="lab_1121166e">Alfa</string>
     <string name="lab_112d429f">Inversează Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">Presetări și reglaje…</string>
     <string name="lab_165bbde9">Pauză</string>
     <string name="lab_1689f76a">Dezactivat îl ascunde în Conținut; paginile containerului și ale jocului îl păstrează.</string>
+    <string name="lab_16a69772">Se caută…</string>
     <string name="lab_16c90680">Poziția imaginii</string>
     <string name="lab_16d40373">Driver audio</string>
     <string name="lab_16ff819d">Rată de reîmprospătare</string>
-    <string name="lab_170eab83">Fișiere salvate</string>
     <string name="lab_1777bbf2">Manual</string>
     <string name="lab_177847bc">Nimic de copiat</string>
     <string name="lab_17a0dfae">Offline</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">acest joc</string>
     <string name="lab_188dc386">Setat din Performanță › Sincronizare.</string>
     <string name="lab_18991a24">Altele</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">Modul Deck este activ: jocurile nu primesc controllerul. Dacă la Sistem apare o actualizare Steam Client care nu se instalează, nu apăsa Aplică pe ea.</string>
     <string name="lab_189ddac0">Fișierul său de pachet este eliminat din aplicație. Îl poți descărca din nou oricând.</string>
     <string name="lab_18c07921">Butonul Menu, butoane suplimentare și calibrarea giroscopului</string>
     <string name="lab_18e6df7b">Omite conectarea Epic pentru acest joc (fără funcții online).</string>
+    <string name="lab_191f6609">Alege un joc</string>
     <string name="lab_19377f1f">Regiune de conexiune Steam și test de rețea</string>
     <string name="lab_19532aa0">Efectul descărcat va fi șters din stocare și scos din acest set. Îl poți descărca din nou oricând.</string>
     <string name="lab_1955f21e">Nuclee CPU</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">Activează țintirea prin mișcare</string>
     <string name="lab_1acaa40c">Ce se înregistrează, unde ajunge și cât timp se păstrează.</string>
     <string name="lab_1acd9ee4">Blocat pe V-Sync rapid cât timp rulează generarea de cadre.</string>
+    <string name="lab_1b1ee750">Profiluri importate: %1$s</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">Fișierele proprii ale fiecărui Proton au fost salvate ca original la deschiderea acestei pagini.</string>
     <string name="lab_1b4c8948">Mod de prezentare</string>
     <string name="lab_1bbf10a9"> (copia ta)</string>
     <string name="lab_1bc2538c">Shim de temporizare KGSL</string>
     <string name="lab_1bdd2734">Implicitul jocului</string>
+    <string name="lab_1be37b64">Restaurarea a eșuat: %1$s</string>
     <string name="lab_1bfb31a3">Culoare de fundal</string>
     <string name="lab_1bfc578f">Notificări de chat</string>
     <string name="lab_1bfe2edd">Limită cadre DXVK</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">Fundal desktop</string>
     <string name="lab_1c765923">Auto (după ordinea conectării)</string>
     <string name="lab_1ce56dac">Emulator (64-bit)</string>
-    <string name="lab_1d039d18">Descarcă și instalează</string>
     <string name="lab_1d4948df">Ține cadrele video departe de GPU. Încearcă dacă videoclipurile sunt negre, dar au sunet.</string>
     <string name="lab_1d4a9752">Manager de salvări</string>
     <string name="lab_1dafe1ef">Deschide ›</string>
     <string name="lab_1dcd6efb">Generic (implicit): funcționează cu orice, ca înainte. Xbox 360 / One / Series: jocurile tratează padul ca pe un controller Xbox; merge cel mai bine împreună cu XInput direct, pentru intrare live și vibrații. Classic DirectInput pad: pentru jocurile vechi care nu acceptă paduri Xbox; permite mereu jocurilor DirectInput să vadă controllerul. PlayStation / Nintendo / Joy-Con / Steam Deck (experimental): jocurile pot afișa iconițele acelor butoane; fără giroscop, touchpad, bară luminoasă sau trackpaduri, iar câteva jocuri s-ar putea să nu detecteze padul. În acest caz, revino la Generic sau Xbox.\n\nDacă controllerul dispare într-un joc, revino la Generic.</string>
     <string name="lab_1dd0373a">Elimini %1$s și tot ce conține? Dispar și scurtăturile jocurilor sale.</string>
     <string name="lab_1dd4a128">Comenzi root</string>
-    <string name="lab_1df4901e">%1$s duplicat</string>
     <string name="lab_1df4bc73">Automat îi spune jocului ce operații de subgrup suportă driverul tău Mesa (astfel pornesc DOOM Eternal și alte jocuri care au nevoie de ele). Dezactivat le ascunde, ca adaptoarele mai vechi; încearcă asta dacă un joc are erori grafice sau închideri bruște pe care înainte nu le avea.</string>
     <string name="lab_1dfaae77">Un nume nu poate conține \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Pentru jocurile lansate de client, nu pentru clientul însuși, și pentru toate deodată: sesiunea are un singur mediu. </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">Lista este goală.</string>
     <string name="lab_1e713627">Client Steam pentru Linux</string>
     <string name="lab_1e765e92">Setări țintire prin mișcare</string>
+    <string name="lab_1e7d16fc">Golește cache-ul</string>
     <string name="lab_1e9a6134">Dezactivat pentru acest container. Activează-l în setările containerului ca să-l folosești aici.</string>
     <string name="lab_1f050928">Implicit (lasă televizorul cum este)</string>
     <string name="lab_1f13e4b9">Depozite</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">Jocurile lansate din client. Cu toate nucleele, Android distribuie singur munca.</string>
     <string name="lab_1fccd93f">Auto pornește de jos și mărește bufferul doar dacă detectează pârâituri. Reglaje fine mai jos.</string>
     <string name="lab_1ff9ec48">Sesiune</string>
+    <string name="lab_1ffa163f">Caută în toate depozitele</string>
     <string name="lab_2012067c">Inclus în aplicație</string>
     <string name="lab_20226dfe"> · neconectat (fixare salvată)</string>
     <string name="lab_2062fe79">Limitator FPS</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">containerele noi</string>
     <string name="lab_2166d8ab">Fă backup sau restaurează toate datele aplicației</string>
     <string name="lab_21e9b52f">Selectează conținut sau driver</string>
+    <string name="lab_21ede2b8">%1$s rămâne instalat, deci poți reveni.</string>
     <string name="lab_21feab48">Remapează butoanele și verifică fiecare intrare</string>
     <string name="lab_22270e04">Cale imagine de stocare</string>
     <string name="lab_2246a8bd">Comutare</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">. Valorile nu pot conține spații.</string>
     <string name="lab_235fa0f3">Oprește la pornire</string>
     <string name="lab_2379f827">Proiectează pe TV</string>
-    <string name="lab_23b4ddb2">Cele instalate, setare implicită, descarcă altele</string>
     <string name="lab_23b56f8c">Rulează programele ca administrator</string>
     <string name="lab_23d05606">Mouse și tastatură (jocuri Wine)</string>
     <string name="lab_23d11cc7">Afișează contorul FPS</string>
     <string name="lab_23deaf7c">Gestionează</string>
     <string name="lab_23e9383c">Versiune, pe ce rulează și credite.</string>
+    <string name="lab_243c4264">Reîmprospătează listele</string>
     <string name="lab_2453405d">Folosește auto:N, fixed:N sau off</string>
     <string name="lab_2470de02">Transparent</string>
     <string name="lab_24720798">Corectează culorile inversate</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">Încă nu e disponibil pe Wayland în această versiune.</string>
     <string name="lab_2742f91b">Automat · un trailer Steam</string>
     <string name="lab_2756404f">Resetează energia și root la valorile implicite ale aplicației</string>
+    <string name="lab_278c89b0">Steam nu a putut fi contactat.</string>
     <string name="lab_27b56d30">Instalează DLL-urile XInput ale Bannerlator indiferent dacă XInput direct e activat sau nu, alături de XInput-ul propriu Wine, ca Comenzi › Pad din meniul din joc să poată comuta între ele în timpul jocului (controllerul se reconectează). Activat implicit. Dezactivat: XInput direct rămâne cum era la pornirea jocului, iar schimbarea lui necesită o repornire.</string>
     <string name="lab_27bb1078">Direct</string>
     <string name="lab_27bcb120">Adaugă, copiază, șterge, exportă sau importă presetări Box64 și FEX (setările Classic).</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">Valori implicite VEGAS integrate (fără fișier)</string>
     <string name="lab_286dae57">Automat · din copertă</string>
     <string name="lab_287eabc8">Arată FPS</string>
+    <string name="lab_289585af">gata</string>
     <string name="lab_28d51363">Rata de reîmprospătare pe care o poate alege jocul</string>
     <string name="lab_28f727b0">Exportă diagnosticul HUD</string>
     <string name="lab_29198bb7">Nesetat (sistem)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Driver de joc Wayland</string>
     <string name="lab_2a88fd3c">Repornește sunetul</string>
     <string name="lab_2ab94a31">Glisare între butoane</string>
+    <string name="lab_2ad53987">Elimini 1 joc?</string>
     <string name="lab_2ad5a458">Fixări sloturi jucători</string>
     <string name="lab_2adf1ef0">Hârtia milimetrică și semnalele Lab peste grafică</string>
+    <string name="lab_2af0d6a1">Vezi exemplul</string>
     <string name="lab_2b01a79e">Imaginea nu a putut fi citită.</string>
     <string name="lab_2b3bf173">Instrumente</string>
     <string name="lab_2b605d42">Mai mult</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">Stick în sus</string>
     <string name="lab_2c6448d6">Setat pentru acest container</string>
     <string name="lab_2c768f35">Containerele noi pornesc cu</string>
+    <string name="lab_2c8896f5">Afișează stocarea cardului SD</string>
     <string name="lab_2c963a33">se aplică acum · salvat ca implicit pentru acest motor</string>
     <string name="lab_2ce33943">Implicit</string>
     <string name="lab_2ced81bf">Offline: se afișează o listă salvată. Conectează-te ca să descarci efecte noi.</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">Sau scrie orice valoare</string>
     <string name="lab_2dad13e3">Limbă</string>
     <string name="lab_2dc2e901">Mono</string>
-    <string name="lab_2df5d0e3">Jocuri: %1$s · ultimele jucate primele</string>
     <string name="lab_2e1b1382">Oricât (nelimitat)</string>
     <string name="lab_2e1ff85b">Generare de cadre</string>
     <string name="lab_2e257663">În meniuri</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">Acest ecran nu își poate schimba rata de reîmprospătare.</string>
     <string name="lab_2e57dd1f">Alt fișier…</string>
     <string name="lab_2eae4031">Stick în jos</string>
+    <string name="lab_2ec7b25e">Partajează</string>
     <string name="lab_2ec97d85">Jocurile Xbox comunică cu serviciile Xbox prin xgameruntime.dll. Acest joc aduce copia Microsoft în folderul său, iar Wine ar încărca-o înaintea celei a aplicației (Xodus Nexus). Copia Microsoft necesită Gaming Services din Windows, pe care Wine nu le are, așa că de obicei jocul se oprește la pornire (așa a făcut Cyberpunk 2077). Activat: fiecare lansare folosește copia aplicației; fișierele jocului nu sunt modificate. Dezactivat: se folosește copia proprie a jocului.</string>
     <string name="lab_2ed04089">Forțează randarea sysmem (sysmem)</string>
     <string name="lab_2f23b6d1">Scrie șase cifre hexazecimale, de ex. #1E88E5.</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">Ocolește un bug Turnip în care întrebarea „a terminat GPU-ul?” așteaptă tot cadrul (bugul de temporizare din raport). Implicit lasă adaptorul să detecteze bugul; Activat forțează shim-ul, Dezactivat îl oprește.</string>
     <string name="lab_3205bc81">Niciun driver grafic Turnip nu este setat, deci nu e nimic de verificat.</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">Un backup numit %1$s există deja în Backupuri</string>
+    <string name="lab_32725e5a">Descarcă (%1$s)</string>
     <string name="lab_32a7fa00">Gen. cadre</string>
     <string name="lab_334d4744">Salvează o copie a salvărilor din biblioteca Steam în Biblioteca locală când un joc se închide.</string>
+    <string name="lab_33689924">Selectează folderul de salvare</string>
     <string name="lab_336d62eb">Preferă nucleele CPU mari</string>
     <string name="lab_33a35a95">Bănci de sunete instalate și folder de export</string>
+    <string name="lab_33ad7c60">Șterge căutarea</string>
     <string name="lab_33b3dcd5">Ține GPU-ul la frecvența maximă cât rulează un joc. Mai cald și mai consumator; jocurile pot suprascrie setarea.</string>
     <string name="lab_33b5c99c">Doar după ce accepți avertismentul privind cloudul terț; nu șterge niciodată nimic din cloud.</string>
     <string name="lab_33cb03bf">La fel ca în paginile aplicației</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">Viteza cursorului</string>
     <string name="lab_346090f3">Niciun Box64EC instalat. Descarcă unul mai jos (Descărcări translatoare).</string>
     <string name="lab_3482cb34">Implicite ARM64EC</string>
-    <string name="lab_34928086">Backup la salvări realizat (%1$s fișiere)</string>
     <string name="lab_34dee5b9">Conectat · %1$s jocuri</string>
     <string name="lab_35795680">Containerele noi pornesc de la aceste valori. Containerele existente le păstrează pe ale lor.</string>
     <string name="lab_361899c4">Versiunile nightly nu au putut fi accesate</string>
     <string name="lab_362888df">Țintire prin înclinare</string>
     <string name="lab_36348dce">Personalizat pentru acest container. Resetarea îl face să urmeze din nou presetarea comună. </string>
+    <string name="lab_363c53cf">Exportă depozitele</string>
     <string name="lab_3661ddfd">Doar pentru intrarea clientului Steam pentru Linux: driverele ei, opțiunile clientului Steam și ajustările de viteză.</string>
     <string name="lab_366e8f9a">Pentru telefoanele Samsung și Xiaomi pe care jocurile au texturi corupte. Altfel, lasă dezactivat.</string>
     <string name="lab_36936d70">Limitează câte cadre pe secundă desenează jocul. Economisește bateria și netezește sacadările.</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">Atingere</string>
     <string name="lab_37ad98ec">Nucleele CPU alese rămân valabile până la repornirea programului.</string>
     <string name="lab_37b97721">Driverul propriu Qualcomm nu poate afișa cadrele Wayland pe ecran, așa că ecranul folosește un Turnip inclus</string>
+    <string name="lab_37c2b051">Formatul backupului</string>
     <string name="lab_37f22874">Fiecare unitate are nevoie de propria literă</string>
+    <string name="lab_3822fc21">Salvat</string>
     <string name="lab_3855543c">Exportă (.icpx)</string>
     <string name="lab_385e1a80">Atinge suprapunerea ca s-o comuți între vertical și orizontal (Fusion: dimensiunea următoare). Trage-o ca s-o muți; apasă lung ca s-o blochezi pe loc.</string>
     <string name="lab_386c72a7">Fișierul nu a putut fi folosit</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">Activează</string>
     <string name="lab_39da5009">Jocurile XInput citesc controllerul direct din Bannerlator, nu prin coada de controller a Wine: mereu poziția live a stickului, fără întârziere adăugată, inclusiv vibrații. Dezactivat: XInput trece prin Wine, ca înainte. Dacă un joc se comportă ciudat, dezactivează-l pentru acel joc.</string>
     <string name="lab_39e9425b">Niciun depozit.</string>
+    <string name="lab_39ffa0a5">Alege</string>
     <string name="lab_3a1ed8c6">Driver de afișare (partea Android)</string>
     <string name="lab_3a24cc2d">Se setează pentru fiecare container: descrie mâinile tale, nu jocul.</string>
     <string name="lab_3a5c3010">FPS, încărcarea CPU/GPU și temperaturile, peste joc. Atinge HUD-ul în joc ca să-l întorci sau să-l redimensionezi.</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">Grafică 3D</string>
     <string name="lab_3d2c22d4">Mod de prezentare al driverului</string>
     <string name="lab_3d40c46a">Vibrații</string>
+    <string name="lab_3d7fa0a6">Configurații din comunitate</string>
     <string name="lab_3d9862bb">Un mip bias negativ: texturi mai clare, ceva pâlpâire. Auto urmează scalarea cu care pornește jocul.</string>
     <string name="lab_3dbe79b1">Șterge</string>
     <string name="lab_3e04658a">Albastru</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">Descarcă și înlocuiește</string>
     <string name="lab_3e5678cd">Cel mai rapid</string>
     <string name="lab_3e86e543">Transmis wrapperului așa cum este. Lasă gol ca să rămână nesetat.</string>
+    <string name="lab_3e967773">Magazin</string>
     <string name="lab_3ecd0489">Backupul automat al salvărilor la ieșire va fi DEZACTIVAT pentru jocurile din biblioteca ta Steam. Salvările lor nu vor fi preluate la închiderea unui joc — va trebui să le faci singur backup, prin opțiunea de backup a unui container sau din Managerul de salvări. Continui?</string>
+    <string name="lab_3edc001f">Actualizează stratul la %1$s</string>
     <string name="lab_3edcf27d">Cel mai clar (-1.0)</string>
     <string name="lab_3ee20435">Jocuri</string>
+    <string name="lab_3ee2f717">Fișierul nu este o listă de depozite</string>
     <string name="lab_3f0b280a">Rată de cadre</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">În față</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">Permite căștile XR / VR</string>
     <string name="lab_41017c94">Container nou</string>
     <string name="lab_410fcc62">Alege o variabilă cunoscută sau scrie una proprie: NAME sau NAME=VALUE.</string>
+    <string name="lab_4150d5a6">1 rezultat</string>
     <string name="lab_415a93a6">Câștigă cea mai nouă: nu suprascrie niciodată o salvare locală mai nouă.</string>
     <string name="lab_41f05e04">Mapările de mai jos aparțin acestui profil</string>
     <string name="lab_41fc25ab">Win-FG nativ</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">Experimental: suprapunerea Epic în joc, cu Shift+F3. Necesită ca containerul să permită toate serviciile.</string>
     <string name="lab_42ca94f9">Controller principal</string>
     <string name="lab_43316731">Există doar C: (prefixul Windows) și Z:. Adaugă o unitate pentru un folder de jocuri.</string>
+    <string name="lab_434214cc">Anulează</string>
     <string name="lab_4358e63d">Lab, Deck, XMB sau Classic</string>
     <string name="lab_43c9073b">Dezactivat — alege o rată mai jos ca să blochezi afișajul.</string>
+    <string name="lab_44343bcf">Depozitele încorporate ascunse revin. Ale tale rămân.</string>
     <string name="lab_443d0954">Pornește desktopul Windows al acestuia</string>
     <string name="lab_4455b74f">Cât de des ajunge mișcarea stickului la joc. Se poate schimba și în joc.</string>
     <string name="lab_44655ec4">Instalarea a eșuat: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">Container</string>
     <string name="lab_455f1d53">UBWC / buffere comprimate</string>
     <string name="lab_45bf9648">Backend de afișare</string>
+    <string name="lab_45d1fcf9">Caută din nou</string>
     <string name="lab_45e5d14f">Exportul a eșuat</string>
     <string name="lab_45f80a27">Avansat</string>
     <string name="lab_4611b1a8">Peisaj</string>
     <string name="lab_463dbb35">Limbă și regiune</string>
+    <string name="lab_4653869e">descărcare eșuată</string>
     <string name="lab_466171a5">%1$s eliminat</string>
     <string name="lab_467d1fc1">Salvări și cloud</string>
+    <string name="lab_46f7f5f5">Neinstalat · Streaming</string>
     <string name="lab_46fd73ef">Dacă lași toate nucleele bifate, Android distribuie singur munca, ceea ce de obicei e cea mai bună alegere.</string>
     <string name="lab_471552db">Editează fișierul de configurare VEGAS</string>
     <string name="lab_475cee12">Centru</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Activ</string>
     <string name="lab_4cc9a9c1">Copertă</string>
+    <string name="lab_4d04f825">Afișează / ascunde meniul</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Inversează sus/jos</string>
     <string name="lab_4d8c7321">Conținut</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">Contribuția cu capturi și jurnalul de diagnosticare win-fg (setările Classic).</string>
     <string name="lab_4fd05bc3">Control complet al mouse-ului</string>
     <string name="lab_50089f1e">Decodare software</string>
+    <string name="lab_507318fd">Importă o listă dintr-un fișier</string>
     <string name="lab_507883a8">Setat de BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX din variabilele de mediu.</string>
     <string name="lab_507b3c74">Umple (decupează)</string>
     <string name="lab_50bd6962">Jurnale</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">Exportat în %1$s</string>
     <string name="lab_52023fb7">Niciun backup de container în Downloads/Winlator/Backups/Containers.</string>
     <string name="lab_522ca2a0">Randează la o dimensiune mai mare, apoi micșorează pentru o imagine mai curată. Costă performanță.</string>
+    <string name="lab_524717e1">Selectează backupul (.zip)</string>
     <string name="lab_5254f3be">Jocurile adăugate în fila Jocuri apar în biblioteca Steam la Non-Steam și rulează cu Proton-ul din Steam.</string>
     <string name="lab_526060cd">Instalează medii de execuție și biblioteci în container și alege DLL-uri integrate sau native pentru DirectX, audio și medii de execuție.</string>
     <string name="lab_52eb74b5">Arată HUD-ul</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">Vibrații și țintire prin mișcare.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Stânga sus</string>
+    <string name="lab_58749370">%1$s nu mai este instalat, deci nu se poate reveni.</string>
     <string name="lab_58a426c9">Dezactivat pentru acest joc cât timp rulează generarea de cadre. </string>
     <string name="lab_5946d9c6">Folosește setarea aplicației (%1$s)</string>
     <string name="lab_594a913b">Shadere asincrone</string>
     <string name="lab_595daef9">Componente descărcate: arhivele și lista din catalog.</string>
     <string name="lab_5983ab11">Mod offline (fără autentificare la Valve)</string>
+    <string name="lab_5996c8c7">Descarcă și actualizează stratul la %1$s</string>
     <string name="lab_59db09f5">Jurnal live</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">Salvat în container imediat ce apeși Salvează aici, ca în editorul Classic.</string>
     <string name="lab_5aa9e082">Unde caută ecranul Componente descărcări.</string>
     <string name="lab_5ac7d266">Versiune VKD3D</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS, încărcarea CPU/GPU și temperaturile, peste joc. Stilul se setează mai jos și în joc, din meniul lateral.</string>
     <string name="lab_5cf98060">Ascunde extensiile present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d04f79c">Se lucrează…</string>
     <string name="lab_5d1ebf1b">Mod de țintire</string>
     <string name="lab_5d676a2d">Doar presetările tale pot fi exportate.</string>
     <string name="lab_5d7ee5f8">GitHub, raportare probleme și Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Componente Proton</string>
     <string name="lab_5e190a08">Salvează sau renunță mai întâi la modificări.</string>
     <string name="lab_5e4af947">Fix 60/s</string>
+    <string name="lab_5eb87a8b">Pornește</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Versiunile VEGAS instalate și cea inclusă în aplicație.</string>
     <string name="lab_5edc9360">Meniul din joc · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">Folderele Documents, AppData și Saved Games ale jocului sunt cele folosite de containerul său. Nu rula același joc în ambele în același timp.</string>
     <string name="lab_63319830">Pre-lansările pot fi mai puțin stabile.</string>
+    <string name="lab_633def1d">%1$s · 1 sesiune</string>
     <string name="lab_634ae6b3">Cum predă wrapperul cadrele. Nu este setarea rendererului de ecran.</string>
     <string name="lab_63791c91">Folder, de ex. /storage/emulated/0/Games</string>
     <string name="lab_6381687c">reaplicat la lansare </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Beta Steam Deck</string>
     <string name="lab_641b9c9d">Bufferul propriu al jocului ajunge pe ecran fără copiere (latență minimă, mai puțină căldură). Necesită fence-uri sync-file în driver (vezi raportul adaptorului). Dezactivează dacă vezi imaginea ruptă (tearing) sau cadre vechi.</string>
     <string name="lab_643b2baf">Partajează / transferă</string>
-    <string name="lab_64903a6c">Obține mai multe</string>
     <string name="lab_64c5e98f">Imagine în imagine</string>
     <string name="lab_65306cbd">Profilul Toate containerele, de la care pornesc containerele noi. Vine înaintea presetărilor implicite de mai sus.</string>
     <string name="lab_655c4f8a">Deschiderea acestui meniu</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">Transcodează BCn în ETC2</string>
     <string name="lab_66500371">Comun pentru toate containerele</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">Rezultate: %1$s</string>
     <string name="lab_66a48fe7">Pixel perfect</string>
     <string name="lab_66d69f41">Schimbă programul de rulat</string>
     <string name="lab_66e416b8">Mod de ieșire</string>
     <string name="lab_676dd596">Reluare</string>
+    <string name="lab_67771d1b">Modurile acestui joc și meniurile lor.</string>
     <string name="lab_67805216">Versiune Box64EC</string>
     <string name="lab_67c5a895">Ieri</string>
     <string name="lab_67d87dd3">Calea completă a unui fișier .conf, de ex. /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">Adaugă fișiere .sf2 și alege unde se exportă scurtăturile (setările Classic).</string>
     <string name="lab_6f6109df">Inserează cadre suplimentare pentru o mișcare mai fluidă. Jocul se oprește o clipă cât repornește.</string>
     <string name="lab_6f63a302">Meniul jocului</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (implicit)</string>
     <string name="lab_6fb5700f">Permite jocurilor DirectInput (multe titluri mai vechi, jocuri de curse, volane) să vadă controllerul. Dezactivat îl ascunde de DirectInput, ca jocurile care suportă atât XInput, cât și DirectInput să nu-l vadă de două ori. Identitatea Classic DirectInput pad activează mereu această opțiune.</string>
     <string name="lab_6fce3567">Evită cererile de permisiune din Windows (dezactivează UAC).</string>
     <string name="lab_6fd5eace">Accentuare și alte post-efecte.</string>
     <string name="lab_701948cd">Afișat pe ecranul Containere și în etichetele „Din container” ale fiecărui joc.</string>
+    <string name="lab_701e81e5">Se importă %1$s…</string>
     <string name="lab_70455f1b">Necesar pentru a intra pe servere protejate de VAC. Detectează urmează informațiile aplicației din Steam.</string>
     <string name="lab_70802fb2">Sincronizare Wine</string>
     <string name="lab_70a1ea5f">Versiune</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">Memoria GPU văzută de jocuri</string>
     <string name="lab_71d5a5d7">Descarcă un driver Turnip</string>
     <string name="lab_721589c1">Azi</string>
+    <string name="lab_721da611">Niciun joc găsit în acest container.</string>
     <string name="lab_72395178">Jocuri și bibliotecă</string>
     <string name="lab_7246e766">Profiluri</string>
     <string name="lab_72550119">Actualizări stick</string>
+    <string name="lab_725f7c3b">Așteaptă până se termină sarcina curentă</string>
     <string name="lab_728e56d6">Fluid</string>
     <string name="lab_72b16281">Primește prima literă liberă. Alege-i folderul cu Răsfoiește.</string>
     <string name="lab_72b89c6d">Resetează la valorile implicite ale aplicației</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">Suprapunere</string>
     <string name="lab_76471f06">Acestea ajung la clientul Steam și la fiecare joc pe care îl lansează. O variabilă de aici o suprascrie pe cea cu același nume din presetarea FEXCore.</string>
     <string name="lab_7656e144">Gri-albastru</string>
-    <string name="lab_76705189">%1$s nu a putut fi importat</string>
     <string name="lab_76ad015a">Permite LSFG nativ să ruleze pe drivere care raportează doar Vulkan 1.1, dar au extensiile necesare. Se aplică și setărilor specifice fiecărui joc.</string>
     <string name="lab_76b4a740">Flux optic</string>
     <string name="lab_76b8a57c">Se citesc setările acestui wrapper…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">Selectează presetarea</string>
     <string name="lab_79162646">Încă nu există profiluri.</string>
     <string name="lab_791d1125">Ecran de pornire și actualizări.</string>
+    <string name="lab_79780a3c">Se exportă %1$s…</string>
     <string name="lab_7982eb6b">, listate mai jos.</string>
     <string name="lab_79b6d4c7">Modul Steam offline, verificarea fișierelor și actualizările</string>
     <string name="lab_79c7988a">Niciunul · se afișează numele</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">Versiune D7VK</string>
     <string name="lab_7a377726">Cum ajunge imaginea pe ecran</string>
     <string name="lab_7a54182d">Suprapunere FPS</string>
+    <string name="lab_7a7662fb">Jucate recent</string>
     <string name="lab_7b0d957b">Șterge tot</string>
     <string name="lab_7b34b221">Adaugă o variabilă</string>
     <string name="lab_7b719f09">Răsfoiește</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">Imagine de fundal</string>
     <string name="lab_7caf4da8">BCn și straturile de compatibilitate se aplică pentru Mali și alte GPU-uri non-Qualcomm.</string>
     <string name="lab_7ccc17cd">Back buffer</string>
-    <string name="lab_7ceefd00">Descărcarea a eșuat: %1$s</string>
     <string name="lab_7d24ed15">Nimic aici încă.</string>
     <string name="lab_7d50777a">Acțiune, RPG, Strategie</string>
     <string name="lab_7d6bff72">Disponibil cu sistemul de sunet DirectAudio.</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">Translatoare x86</string>
     <string name="lab_7e3548ee">Arată jocurile din fila Jocuri în Steam</string>
     <string name="lab_7e38b599">Încărcarea automată în cloud la ieșire va fi DEZACTIVATĂ pentru jocurile din biblioteca ta Steam. Salvările lor nu vor fi trimise în Steam Cloud la închiderea unui joc — va trebui să le încarci singur din secțiunea Cloud Saves a paginii de detalii a jocului. Continui?</string>
+    <string name="lab_7e4777f5">Alege mai întâi jocurile de eliminat</string>
     <string name="lab_7e6d7e33">Carduri bibliotecă</string>
     <string name="lab_7e9c00ea">Auto (după FPS)</string>
     <string name="lab_7e9eede5">Profil %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">Necesită lansare securizată (VAC)</string>
     <string name="lab_7f13060c">Mod de afișare</string>
     <string name="lab_7f7743c4">Un comutator este setat pentru acest joc.</string>
+    <string name="lab_7f871f0c">Pornește odată cu jocul</string>
     <string name="lab_7fa23600">Păstrează shaderele compilate pentru următoarea pornire (versiunile gplasync).</string>
     <string name="lab_7fba9196">Ceas</string>
     <string name="lab_7ff85140">Desenează desktopul Windows pe Android. Wayland folosește întotdeauna Vulkan.</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">Scrie calea completă, începând cu /.</string>
     <string name="lab_8069546e">Combinat</string>
     <string name="lab_8070a23b">Locație de salvare și depozite</string>
+    <string name="lab_808644e3">Cache</string>
     <string name="lab_8124b894">Descarcă automat din Steam Cloud la lansare</string>
     <string name="lab_81297e77">Ce a afișat fiecare joc în timpul rulării</string>
     <string name="lab_816ce026">Descărcare</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">Joc</string>
     <string name="lab_83548a23">Aspect, luminozitate, contrast, gamma, saturație, FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">Importă sau exportă lista</string>
     <string name="lab_83713095">Altă setare regională…</string>
+    <string name="lab_8371c265">Se descarcă %1$s…</string>
     <string name="lab_838501df">Offline: se afișează doar efectele instalate. Conectează-te ca să răsfoiești catalogul.</string>
     <string name="lab_83ce15dd">fps mediu</string>
     <string name="lab_83f0742a">Foldere de jocuri</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">Profilul adaptorului</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · salvat</string>
     <string name="lab_8521db60">Meniu rapid</string>
+    <string name="lab_85379d71">Se restaurează %1$s…</string>
     <string name="lab_85486938">Jurnale și diagnosticare</string>
     <string name="lab_8554e6fa">Rapid</string>
     <string name="lab_85558be1">Implicite pentru fiecare container</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">Implicit · %1$s</string>
     <string name="lab_85a12a5f">Schimbă</string>
     <string name="lab_85ab5712">Jocurile XInput citesc controllerul direct, fără coadă de intrare (fără poziții vechi ale stickului după eliberare). Activat pentru containerele noi.</string>
     <string name="lab_85e5a021">Fă backup</string>
     <string name="lab_85eb8db0">Ambele controlează Jucătorul 1</string>
     <string name="lab_85efabfb">în %1$s jocuri</string>
+    <string name="lab_85f9f5e1">Unitatea C</string>
     <string name="lab_861c1b03">Modul de atingere și fiecare comutator de aici</string>
     <string name="lab_86369691">Arată catalogul oficial în depozite</string>
+    <string name="lab_8636cba2">Se încarcă…</string>
     <string name="lab_866dbc9c">Conectează-te ›</string>
     <string name="lab_86865d1d">Versiune Vulkan</string>
     <string name="lab_868b6596">Fără root</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">Automat · coperta, estompată</string>
     <string name="lab_8844e521">Valori presetare</string>
     <string name="lab_8850c516">Permite jocurilor DirectInput să facă controllerul să vibreze: vibrații simple și efectele de forță pe care jocurile de curse și de zbor le trimit unui volan sau joystick, simțite prin cele două motoare ale controllerului. Urmează setările Vibrații (ținta și intensitatea vibrațiilor). O forță constantă (de exemplu, un joc de curse care ține volanul drept) se estompează după câteva secunde, ca controllerul să nu vibreze continuu. Vibrațiile ajung din jocurile DirectInput doar cât timp acestea văd controllerul. O schimbare se aplică la reconectarea controllerului (în joc, Comenzi › Pad face asta) sau la următoarea lansare. BANNERIN_DINPUT_FF din variabilele de mediu are prioritate față de această setare.</string>
+    <string name="lab_8855c603">Elimini %1$s jocuri?</string>
     <string name="lab_8861fdef">Setări audio</string>
     <string name="lab_887ae5cd">Creează</string>
     <string name="lab_88819a36">Grilă peste grafică</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">O culoare ca #RRGGBB, de ex. #1E88E5</string>
     <string name="lab_8907b290">Răsfoiește fișiere</string>
     <string name="lab_892b7b55">Copertă lată</string>
+    <string name="lab_8946594d">Alese: %1$s</string>
     <string name="lab_8965e6c7">Mai puține servicii = pornire mai rapidă și mai mult RAM liber.</string>
     <string name="lab_8998f446">Pictograma acestei intrări</string>
     <string name="lab_89f43a0d">Valori presetare translator</string>
     <string name="lab_89f953b4">Țintă vibrații</string>
     <string name="lab_8a142020">Butonul Y</string>
+    <string name="lab_8a459c00">Caută pe Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrappere</string>
     <string name="lab_8a8bb4d3">Flux de comenzi (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">Pe Nightlies</string>
     <string name="lab_8ce1bc2a">Butoane</string>
     <string name="lab_8d04c8e0">Controllere</string>
+    <string name="lab_8d5acd32">.zip compatibil GameHub (implicit)</string>
     <string name="lab_8d6a7747">Numele și opțiunile de lansare doar pentru acest joc.</string>
     <string name="lab_8dc9c516">Ajustări PanVK în adaptorul Wayland: ascunde present_id, present_wait și dynamic_rendering, plus două soluții de ocolire pentru sincronizare. Activat implicit cu un driver PanVK.</string>
     <string name="lab_8df575ef">Necesită rendererul de ecran Vulkan (Grafică) sau Wayland.</string>
     <string name="lab_8e22550f">Paginile aplicației</string>
-    <string name="lab_8e7f9e42">Obține drivere</string>
     <string name="lab_8e81d76e">Presetare FEXCore</string>
     <string name="lab_8e91f337">Root. Supravegherea temperaturii rămâne activă.</string>
     <string name="lab_8ea27f15">Ștergi %1$s?</string>
     <string name="lab_8eb9f765">Modificările nesalvate de aici se pierd. Containerele existente își păstrează setările.</string>
     <string name="lab_8ecc4179"> în locul celor din Wine. Necesare pentru multe wrappere și încărcătoare de moduri. DLL-urile grafice nu sunt incluse niciodată: de ele se ocupă DXVK și VKD3D.</string>
     <string name="lab_8ece40f8">Doar pentru driverele Banners-Turnip; Turnip-ul standard o ignoră.</string>
-    <string name="lab_8ee80fca">Nicio sursă de drivere.</string>
     <string name="lab_8ef37792">Jos</string>
     <string name="lab_8f4a852b">Energie dispozitiv</string>
     <string name="lab_8f4c06ce">Valorile sunt transmise wrapperului așa cum sunt; pe cele necunoscute le poți lăsa goale fără grijă.</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">Renderer SurfaceFlinger — experimental</string>
     <string name="lab_909603fb">Se actualizează…</string>
     <string name="lab_90b603b8">Duplică</string>
+    <string name="lab_90d7bedf">Locație de salvare</string>
     <string name="lab_91104123">Rulează codul x86 pe 32 de biți al jocului pe CPU-ul tău ARM.</string>
     <string name="lab_914624be">Sincronizează cu Steam Cloud la lansările Goldberg</string>
     <string name="lab_915c9049">Resetează</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">Menține activă calea rapidă speculative-store a CPU-ului pentru firele jocului (doar Proton arm64ec). Activat implicit.</string>
     <string name="lab_934c8903">DLL-uri integrate sau native pentru DirectX, audio și medii de execuție, plus codecurile media.</string>
     <string name="lab_93c6f86e">Joc Android</string>
+    <string name="lab_942f9b65">Nume A–Z</string>
     <string name="lab_94436fab">Scrie o setare regională ca pl_PL sau pl_PL.UTF-8.</string>
     <string name="lab_944e1f72">Sistem de sunet</string>
     <string name="lab_947c1567">Realizări Steam</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">Luminozitate</string>
     <string name="lab_963f841c">Același nume ca un driver încorporat</string>
     <string name="lab_964d1a40">Partajează clipboardul Android cu jocurile</string>
+    <string name="lab_96526c2a">Salvează din nou fișierul</string>
     <string name="lab_968b9d49">Aplicate la lansare. Meniul lateral din joc le poate schimba în continuare din mers.</string>
     <string name="lab_969dab73">ReShade activat / dezactivat, Individual / Combinat, efectele și setările lor</string>
     <string name="lab_969fd520">Fence-uri de randare ale clientului</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">Crește prioritatea firului jocului</string>
     <string name="lab_9f612c9d">Driver GPU</string>
     <string name="lab_9f713ecd">Niciunul listat</string>
+    <string name="lab_9fd345af">Se elimină %1$s…</string>
     <string name="lab_9fea5158">Setări container</string>
     <string name="lab_a00d34e8">Verifică Nightlies</string>
     <string name="lab_a011bb4c">Fiecare setare a aplicației se aplică imediat.</string>
     <string name="lab_a01444fb">Stil suprapunere</string>
     <string name="lab_a01ea521">Elimini mapările pentru %1$s?</string>
     <string name="lab_a05a9689">Tot de pe această pagină</string>
+    <string name="lab_a081a3ed">Exportă lista</string>
     <string name="lab_a0d93d63">CPU per nucleu</string>
     <string name="lab_a0f06f2a">Necesită conexiune pentru descărcare</string>
     <string name="lab_a0f72982">Prezentare zero-copy și mod sigur OpenGL</string>
     <string name="lab_a108392d">Întotdeauna</string>
     <string name="lab_a115f62d">Componente</string>
+    <string name="lab_a11756a4">Informații stocare</string>
     <string name="lab_a1edd479">BCn în ASTC</string>
     <string name="lab_a24bc720">Skin</string>
     <string name="lab_a26b7e90">Salvat în acel Proton, pentru fiecare joc care îl folosește</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">Ține apăsat pentru țintire</string>
     <string name="lab_a396cfaa">Imaginea nu a putut fi încărcată</string>
     <string name="lab_a3c61ce1">Ferestre și jurnale</string>
+    <string name="lab_a3dbadc2">Despre acest joc</string>
     <string name="lab_a3f6a50d">Potrivire pe ecran</string>
     <string name="lab_a40c85ce">Servicii pornite cu Windows</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">Rată de reîmprospătare manuală</string>
     <string name="lab_a4d1de01">Captură mouse (DirectInput)</string>
     <string name="lab_a4d4c41a">Fixările proprii ale acestui container, nu cele din Toate containerele.</string>
+    <string name="lab_a4f06c81">%1$s din %2$s profiluri nu au putut fi importate</string>
     <string name="lab_a4f1cbaf">Spațiile sunt eliminate: variabilele sunt separate prin spații.</string>
     <string name="lab_a523a4e1">Motoare de vibrații</string>
     <string name="lab_a559e736">Controller XR</string>
     <string name="lab_a57ba715">Afinitate procesor (cpuList)</string>
+    <string name="lab_a591cbcb">Un anumit joc…</string>
     <string name="lab_a593c4da">Fișierul tău</string>
     <string name="lab_a59e2986">Xalia dezactivat (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Face clientul să se comporte ca pe un Steam Deck, cu Meniul de acces rapid. Jocurile nu mai primesc controllerul.</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">Dă padul direct jocului, în locul Steam Input. Pentru jocuri clasice (Half-Life 2, CS:S). Dezactivează Steam Input.</string>
     <string name="lab_a6902569">Comenzi pe ecran vs. un controller real</string>
     <string name="lab_a6e62e9e">Traducere DirectX</string>
+    <string name="lab_a6fe8b9a">Restaurează depozitele implicite</string>
     <string name="lab_a71846fe">Temă și culori</string>
     <string name="lab_a74f5b6d">Dezactivat, grafica jocului, grafică 3D care plutește lent în adâncime sau cu previzualizări: un trailer în dala mare din Home</string>
     <string name="lab_a7a4aed7">Ecran tactil trimite degetele către Steam ca atingeri reale; Touchpad mișcă cursorul prin glisare și face clic prin atingere.</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">Forțat</string>
     <string name="lab_aa61eeea">Selectează profilul de comenzi</string>
     <string name="lab_aa9bd991">Importat %1$s</string>
-    <string name="lab_aaae690f">Ecranul complet al componentelor</string>
     <string name="lab_aac2b52c">Instalează mai întâi o versiune Wine sau Proton (Componente).</string>
     <string name="lab_aadb73f3">Luminoasă</string>
     <string name="lab_aaf410b8">Neconectat</string>
     <string name="lab_ab00bfda">Jocuri Steam</string>
+    <string name="lab_ab20a9e4">Mai întâi se descarcă stratul.</string>
     <string name="lab_ab2ea144">DirectX 12 prin Vulkan. Niciuna dezactivează DirectX 12.</string>
     <string name="lab_ab612af4">Temp.</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">Conectează-te pentru a gestiona configurațiile partajate</string>
     <string name="lab_ab8824cb">Mod de prezentare al adaptorului</string>
+    <string name="lab_abac19ba">Deschide pagina sursei</string>
     <string name="lab_abb1c367">Nu este conectat nimic. Acest joc este încă setat să pornească pe un televizor.</string>
     <string name="lab_abb20221">Nicio presetare</string>
     <string name="lab_abd752a4">Gesturi tactile</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">Niciun program raportat încă.</string>
     <string name="lab_ad26a7c7">necunoscut</string>
     <string name="lab_adcb307d">Cum sunt transformate apelurile DirectX din Windows în Vulkan pentru GPU-ul tău.</string>
+    <string name="lab_add714f7">Neinstalat</string>
     <string name="lab_adf82850">Server de afișare (X11)</string>
     <string name="lab_adfa74ef">Activezi modul Steam Deck?</string>
     <string name="lab_ae483014">Se instalează</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">Jocurile instalate se lansează în continuare. Necesită mai întâi o conectare online pe acest dispozitiv. Se aplică la următoarea sesiune.</string>
     <string name="lab_af32ab2f">Individual</string>
     <string name="lab_af39be20">Rețea</string>
+    <string name="lab_af3c9967">Reîmprospătează</string>
     <string name="lab_af3f8345">Nu s-a găsit nimic pentru acest joc. Alege o imagine sau leagă-l de Steam în Detalii.</string>
     <string name="lab_af456994">Împiedică kernelul să dezactiveze nucleele.</string>
     <string name="lab_af47e020">Genuri</string>
     <string name="lab_afb57bd1">Filtru de scalare, accentuare și eliminare banding</string>
+    <string name="lab_aff587ab">Backup GameHub (.zip)</string>
     <string name="lab_b01a2f1b">Var. de mediu</string>
     <string name="lab_b01c4a81">Orientare</string>
     <string name="lab_b01f4f95">Finalizat</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">Slot de jucător pentru fiecare controller</string>
     <string name="lab_b0beed23">Jocurile tale în Steam</string>
     <string name="lab_b0daa272">Ajutor și asistență</string>
+    <string name="lab_b0e351e0">Reîmprospătat</string>
+    <string name="lab_b0f4240e">Fă backup salvărilor</string>
     <string name="lab_b0fab841">Grafic GPU</string>
     <string name="lab_b0fc42e2">Partajează salvările cu aplicația</string>
     <string name="lab_b132aa74">Turnip-ul instalat cu care compozitorul Wayland afișează cadrele jocului pe ecran.</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">Tip container</string>
     <string name="lab_b312c895">Deschide meniul rapid</string>
     <string name="lab_b32171e6">Pune jocul pe pauză</string>
-    <string name="lab_b323b10b">Ascunzi %1$s? Poate fi afișat din nou din setările Conținut din Classic.</string>
     <string name="lab_b32cbb53">Imporți %1$s ca un container nou?</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">Activează oricum</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">Comutatoarele root sunt salvate pentru acest joc și aplicate la lansare după ce root-ul este acordat.</string>
     <string name="lab_b543f270">Mapări controller</string>
     <string name="lab_b5681ffc">Butoane Steam și Acces rapid pe ecran</string>
-    <string name="lab_b56fe256">Niciun driver în această sursă.</string>
     <string name="lab_b5b9d14a">Activează sau dezactivează XInput direct din meniul din joc, fără repornire.</string>
     <string name="lab_b5c5920e">Deschide Managerul de jurnale</string>
     <string name="lab_b6024573">Elimini %1$s? Jocurile setate pe el revin la driverul containerului lor.</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">Magazinele tale</string>
     <string name="lab_b73987a8">Cea implicită a sistemului</string>
     <string name="lab_b739e60c">Vibrații</string>
+    <string name="lab_b759a7ac">Pentru ce instrument este acest backup?</string>
     <string name="lab_b7636944">Folosit cât potrivirea este dezactivată.</string>
     <string name="lab_b7c337c7">Scrie-o ca lățime x înălțime, de ex. 1600x900.</string>
     <string name="lab_b7d4edb2">Nivel de funcții DirectX 12</string>
     <string name="lab_b7e2758f">Emulare</string>
     <string name="lab_b885aba0">Se anulează</string>
     <string name="lab_b89607f1">Backup și restaurare</string>
-    <string name="lab_b8afe1d2">Instalează dintr-un fișier</string>
     <string name="lab_b90673bf">Versiune DXVK</string>
     <string name="lab_b9106d81">Culoare contur</string>
     <string name="lab_b9384128">Blochează afișajul la</string>
+    <string name="lab_b9462894">Dimensiune carduri · %1$s</string>
     <string name="lab_b9825547">Nimic stocat încă</string>
     <string name="lab_ba3b6032">Renderer WineD3D</string>
     <string name="lab_ba4f23ec">Adaugă un folder de jocuri</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">Salvări</string>
     <string name="lab_bcf34837">Fără ritm</string>
     <string name="lab_bcfb356d">Din container</string>
+    <string name="lab_bd4ab43f">1 joc</string>
     <string name="lab_bd50227c">Nicio versiune VEGAS instalată: descarcă una mai jos.</string>
     <string name="lab_bd63a37d">Imagine de fundal</string>
     <string name="lab_bd87c7d9">Păstrează în cache texturile decodate</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">Alege o imagine…</string>
     <string name="lab_be45a0e0">Nimic găsit · nelegat de Steam</string>
     <string name="lab_be638831">Lupă, ferestre, jurnale și programe în execuție.</string>
+    <string name="lab_be80b01d">Ascunzi %1$s? Restaurează depozitele implicite îl afișează din nou.</string>
+    <string name="lab_be8d2116">Închide mai întâi tot ce rulează în el.</string>
+    <string name="lab_be906409">.zip nativ Winlator</string>
     <string name="lab_be998b7c">Sincronizează fiecare cadru</string>
     <string name="lab_be9a2a59">Dublu Înapoi deschide Acces rapid</string>
     <string name="lab_be9d8c7a">Opțiuni de lansare</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">Centru</string>
     <string name="lab_c120c6bb">Controlul complet asupra CPU și GPU este deblocat.</string>
     <string name="lab_c14faa17">XInput direct (BANNERIN)</string>
+    <string name="lab_c15bb42a">Alege alt folder…</string>
     <string name="lab_c171e496">Automat (beta publică)</string>
     <string name="lab_c172ec97">Modificările se păstrează pentru acest joc doar acolo unde diferă de valoarea implicită globală.</string>
     <string name="lab_c1bc6675">Wrapperul Vulkan folosit de jocuri pe X11. Wrapperele importate apar și aici.</string>
     <string name="lab_c1c757e2">Jurnal de depanare strat BCn</string>
     <string name="lab_c1df4081">Mediu</string>
-    <string name="lab_c206cdbf">Backup la toate salvările</string>
     <string name="lab_c22c196f">Roșu</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">. Salvarea este refuzată până când diferă.</string>
     <string name="lab_c2928e24">Lupă</string>
     <string name="lab_c2f74c47">Versiune driver</string>
     <string name="lab_c2fdbf25">Se importă</string>
+    <string name="lab_c32c5dc4">Moduri</string>
     <string name="lab_c34f4640"> · Păstrate de dinainte de setarea Sincronizare; Performanță › Sincronizare le citește și le șterge când o setezi.</string>
     <string name="lab_c36c4b3f">Afișaj</string>
     <string name="lab_c3db5a25">Panou (implicit)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Suport Steam Controller</string>
     <string name="lab_c6521528">Necesită un GPU Mali Valhall.</string>
     <string name="lab_c664401e">Container = urmează containerul. Acest joc = setat aici.</string>
+    <string name="lab_c669581b">Restaurează o salvare</string>
     <string name="lab_c66c17c3">Presetări translator</string>
     <string name="lab_c6888ac4">Automat</string>
     <string name="lab_c6a02e29">Folosește oricum</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">Comenzi pe ecran, mouse, vibrații, țintire prin mișcare.</string>
     <string name="lab_c7b49d50">Aplicația Steam %1$s</string>
     <string name="lab_c7fad197">Nu s-au detectat setări suplimentare</string>
+    <string name="lab_c82c4a5b">Actualizează la %1$s</string>
     <string name="lab_c82e7e67">Versiuni din catalog. Cele instalate apar la Versiune DXVK.</string>
+    <string name="lab_c83f23bf">Coperta nu a putut fi resetată</string>
     <string name="lab_c844d41c">Pentru jocurile Denuvo pe care aplicația nu le detectează singură.</string>
     <string name="lab_c84956c1">Servicii personalizate</string>
     <string name="lab_c85b9376">Mai puține fluctuații, puțin mai multă întârziere. Se setează pentru fiecare container.</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">Comenzile pe ecran rămân Jucătorul 1</string>
     <string name="lab_c8b7e3fa">Acest driver nu poate afișa sesiunea. „Sistem” sau un driver care nu mai e instalat lasă compozitorul pe Vulkan-ul de sistem, care afișează un ecran negru.</string>
     <string name="lab_c8c4d663">Activat — cu generarea de cadre pornită, afișajul urmează limita de cadre × multiplicatorul.</string>
-    <string name="lab_c8d5043b">Selectează pachetul de conținut</string>
     <string name="lab_c8d52d67">Șterge presetarea</string>
     <string name="lab_c936ff11">de ex. ro_RO.UTF-8</string>
     <string name="lab_c94d19de">Încarcă automat în Steam Cloud la ieșire</string>
+    <string name="lab_c961a1bf">%1$s (auto)</string>
     <string name="lab_c9822616">Descărcări</string>
     <string name="lab_c9a07f62"> · comenzile pe ecran</string>
     <string name="lab_c9ae8103">Mod Mali (PanVK)</string>
+    <string name="lab_c9ef821f">Toate salvările jocurilor (tot profilul)</string>
     <string name="lab_ca16bb77">se aplică acum · salvat pentru acest joc și ca implicit pentru acest motor</string>
     <string name="lab_ca45d5a4">acest container</string>
     <string name="lab_ca62f862">Descărcări și rețea</string>
     <string name="lab_cabf747a">Copiere asincronă</string>
     <string name="lab_caf7d4a3">Presetare comună, editată</string>
     <string name="lab_cb5fc4d5">Configurare VEGAS</string>
+    <string name="lab_cb6124f5">Actualizare strat</string>
     <string name="lab_cb6d604d">HUD-ul nu poate fi tras în joc.</string>
     <string name="lab_cbab7f7a">Iconițe</string>
     <string name="lab_cbb98111">Stick dreapta</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">O imagine comună pentru toate containerele sau una doar pentru acest container.</string>
     <string name="lab_cc7362b0">Sus sau Jos lasă cealaltă jumătate liberă pentru comenzile pe ecran.</string>
     <string name="lab_cc9e753f">Răsfoiește și instalează componente</string>
+    <string name="lab_cc9f0c95">Afișează stocarea internă</string>
+    <string name="lab_ccb4b062">Mai întâi se descarcă stratul (%1$s).</string>
     <string name="lab_cce939fc">OpenGL rapid</string>
     <string name="lab_cd871c13">Raportează un Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">Decodor video</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">Experimental</string>
     <string name="lab_d261efe4">Unul păstrează stick-urile fluide pe consolele portabile care încetinesc cât timp merg ambele motoare.</string>
     <string name="lab_d2651812">Setări joc</string>
+    <string name="lab_d27c84ad">Contul emulatorului a fost schimbat cu cel din backup. Repornește jocul.</string>
     <string name="lab_d27d3648">LSFG nativ</string>
     <string name="lab_d2895d94">Backup, restaurare și sincronizare pentru salvări</string>
     <string name="lab_d2b6baa8">Repară textul stricat în jocurile japoneze, chinezești, coreene și rusești.</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">Trăgaci</string>
     <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Original</string>
+    <string name="lab_d60d149d">Depozite importate</string>
     <string name="lab_d620ef74">Copertă, estompată</string>
     <string name="lab_d653f990">Translator x86 pentru cod pe 32 de biți</string>
     <string name="lab_d6d3fe68">Alege un pachet de componente (-linux .wcp)</string>
     <string name="lab_d7060afb">Importă acest container</string>
+    <string name="lab_d736d92d">OK</string>
     <string name="lab_d73ee22e">Driverul Turnip sau Adreno pe care îl încarcă wrapperul. Importă altele în Conținut › Drivere GPU.</string>
     <string name="lab_d801cf49">Fișierele de configurare incluse în lansările VEGAS. Apar la Fișier de configurare.</string>
     <string name="lab_d809a959">Păstrat când salvezi editorul.</string>
     <string name="lab_d8321a59">Fără pârâituri</string>
+    <string name="lab_d832ee19">Meniul lateral</string>
     <string name="lab_d834a1cf">Se verifică ce drivere instalate pot afișa jocul…</string>
     <string name="lab_d870ae5e">Acest driver nu s-a încărcat pe acest GPU: în locul lui a răspuns la verificare driverul de sistem.</string>
     <string name="lab_d8e06406">Ecran</string>
+    <string name="lab_d8e601e7">Unele jocuri țin salvările în altă parte (folderul de instalare, registrul, Steam Cloud). Verifică un backup înainte să ștergi ceva.</string>
     <string name="lab_d8e621c2">Adaugă o unitate</string>
     <string name="lab_d90a905b">Sticlă</string>
     <string name="lab_d91754f0">Nicio intrare.</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Servicii Windows în fundal</string>
     <string name="lab_db6d6f28">Include pre-lansările</string>
     <string name="lab_db745b05">. O imagine nouă se folosește de la următoarea pornire, după ce salvezi.</string>
+    <string name="lab_db7be531">Nu s-a putut descărca.</string>
     <string name="lab_db89b158">Ultima sesiune</string>
     <string name="lab_dbce82c8">Ca în Toate containerele</string>
     <string name="lab_dbd5d59f">Variabilele acestui joc</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">Sincronizează deblocările cu profilul Steam</string>
     <string name="lab_de0c0eb8"> \";\" și \"=\" sunt omise.</string>
     <string name="lab_de315178">Redenumește</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">Comutat și de Preferă DLL-urile din folderul jocului, mai sus</string>
     <string name="lab_de72753f">Câtă memorie grafică raportează WineD3D.</string>
+    <string name="lab_de75d40c">%1$s revine de la %2$s la %3$s. Registrul este restaurat din backupul făcut înainte de actualizare; jocurile, salvările, scurtăturile și setările se păstrează. %4$s trebuie să fie încă instalat.</string>
     <string name="lab_dec4dc19">Doar containerul</string>
     <string name="lab_def1a7db">Containere</string>
     <string name="lab_def6b48c">Variabile cunoscute</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Adaptor Wayland</string>
     <string name="lab_e1be537c">Nesalvat</string>
     <string name="lab_e22a8ea9">Wayland are nevoie de un Turnip instalat ca să afișeze cadrele jocului pe ecran. Cele noi apar la Driver grafic.</string>
-    <string name="lab_e2410f47">Răsfoiește și descarcă</string>
     <string name="lab_e2421520">Descarcă versiuni WOWBox64</string>
     <string name="lab_e280d375">Dimensiune carduri</string>
     <string name="lab_e2a7f23e">Pe ecran</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">Această intrare nu are un fișier de iconiță în care să se scrie.</string>
     <string name="lab_e2ce4373">Secțiune</string>
     <string name="lab_e2e95fcd">Jurnale de joc</string>
+    <string name="lab_e2f09271">Restaurezi backupul pentru %1$s în %2$s? Asta poate suprascrie datele salvate de acolo.</string>
+    <string name="lab_e3af6ca0">Selectează lista de depozite</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Pentru jocurile care văd un pad doar prin Steam (No Man\'s Sky). Lasă dezactivat pentru jocurile care citesc singure padul. Dezactivează Passthrough controller.</string>
     <string name="lab_e3e80b58">Profil de comenzi</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">Dezactivează-l dacă preferi; acest joc va ține minte.</string>
     <string name="lab_e841eed8">Permisiunea pentru microfon a fost refuzată: microfonul rămâne oprit.</string>
     <string name="lab_e8a0175e">Descarcă versiuni Box64EC</string>
-    <string name="lab_e8a5f633">Niciun fișier de componentă salvat.</string>
     <string name="lab_e8c91356">Urmează fixările containerului. Dacă schimbi una, acest joc primește fixări proprii.</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">Încă nu există un aranjament pe ecran</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) sau off</string>
     <string name="lab_e98a38e0">Lupă, imagine în imagine, tastatură și performanță.</string>
     <string name="lab_e9bb2501">Permite jocurilor să folosească microfonul: DirectAudio preia intrarea. Android cere permisiunea o singură dată.</string>
-    <string name="lab_ea08e43f">Mediul de execuție Linux și toate listele</string>
     <string name="lab_ea354143">Un buton discret în dreapta sus care deschide meniul rapid prin atingere. Înapoi, butonul Menu sau o atingere cu patru degete funcționează și fără el.</string>
     <string name="lab_ea4babd8">Cum pornește</string>
     <string name="lab_ea83f479">• Clientul poate afișa la Sistem o actualizare Steam Client care nu se instalează. Modul Deck folosește acum canalul beta Steam Deck ca s-o evite, dar dacă apare, nu apăsa Aplică.\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">Metrici</string>
     <string name="lab_ed41d675">Driver de desenare (mediul Linux)</string>
     <string name="lab_ed779ba6">Descarcă versiuni Wine și Proton</string>
+    <string name="lab_eda50b73">%1$s jocuri</string>
     <string name="lab_edfcb4b9">Mouse și tastatură exclusive</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">Baterie roșie de la</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">Transparență</string>
     <string name="lab_efdeb1c6">Lista de presetări este comună tuturor containerelor și jocurilor.</string>
     <string name="lab_efdfc7e5">Limitator FPS</string>
-    <string name="lab_efeacf52">Deocamdată doar driverul propriu al telefonului.</string>
     <string name="lab_f04c78b9">Setări audio · acest joc</string>
     <string name="lab_f05053e7">Citește direct un Steam Controller (trackpadurile și butoanele suplimentare). Dezactivat: calea normală de intrare rămâne neschimbată.</string>
     <string name="lab_f0520965">mailbox = cel mai nou cadru, latență minimă; fifo = vsync, ritm uniform. Implicit urmează profilul, altfel modul de prezentare salvat. Immediate necesită tearing, pe care Wayland nu îl oferă.</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">Vibrații DirectInput</string>
     <string name="lab_f10b2876">Afinitate procesor</string>
     <string name="lab_f115c775">Lansare securizată anti-cheat (VAC)</string>
+    <string name="lab_f1165d1c">Sortare</string>
     <string name="lab_f123362f">Aplicație</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">Stick stânga</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">Stil</string>
     <string name="lab_f2857f55">Internă</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">Selectează driverul GPU</string>
     <string name="lab_f2ed832c">Câtă memorie GPU li se spune jocurilor DirectX că există (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latența sunetului</string>
     <string name="lab_f304d21f">Valoarea este prea mică pentru un desktop Windows.</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">Doar pentru acest joc: niciun alt joc sau container nu se schimbă. </string>
     <string name="lab_f40ccd04">Activează</string>
     <string name="lab_f44d5610">Vibrații activate / dezactivate și comutatoare pentru fiecare slot</string>
+    <string name="lab_f46b910b">Stocare privată a aplicației</string>
     <string name="lab_f485cfbf">Setări citite din fișierele wrapperului importat. Ascunde-le sau afișează-le în Gestionează wrapperele grafice.</string>
     <string name="lab_f4abcaf2">Aceasta este o setare a containerului; schimb-o în setările containerului.</string>
     <string name="lab_f4f73c18">Implicite</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">Salvează</string>
     <string name="lab_f576fb2d">Straturi din catalog sau instalează unul dintr-un fișier. Containerele noi le pot folosi.</string>
     <string name="lab_f57b35ee">Zonă moartă și netezire</string>
+    <string name="lab_f581508f">Jocuri eliminate: %1$s</string>
     <string name="lab_f5864edc">Descărcarea automată din cloud la lansare va fi DEZACTIVATĂ pentru jocurile din biblioteca ta Steam. Cele mai recente salvări din cloud nu vor fi aduse înainte de pornirea unui joc — va trebui să le descarci singur din secțiunea Cloud Saves a paginii de detalii a jocului. Continui?</string>
     <string name="lab_f593aa90">Driverul cu care compozitorul aplicației afișează sesiunea pe ecran. Nu cel cu care desenează clientul.</string>
     <string name="lab_f59e59da">Afișat în biblioteca ta. Redenumirea păstrează coperta și iconița.</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">Pornește de la setările implicite pentru containere noi. X îl creează.</string>
     <string name="lab_f783e029">Baterie dublă</string>
     <string name="lab_f81efa4a">FEX, DXVK și VKD3D-Proton</string>
+    <string name="lab_f826d6b4">Fișiere restaurate în %2$s: %1$s</string>
     <string name="lab_f8283624">Dimensiune interfață</string>
     <string name="lab_f8507a8c">Corectează culorile SurfaceFlinger</string>
     <string name="lab_f8e0d68c">Driver compozitor (versiune graphicsDriverConfig)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">Unele jocuri nu citesc niciodată singure controllerul: îl cer de la Steam. În SteamLite nu răspunde nimeni, așa că acele jocuri nu văd niciun pad. Activat: agentul SteamLite pornește stratul de controller Steam pentru acest joc, cu un aranjament potrivit. Lasă dezactivat pentru jocurile care citesc deja un pad, altfel primesc fiecare apăsare de două ori. Opusul opțiunii Passthrough controller, deci doar una poate fi activă. Doar SteamLite.</string>
     <string name="lab_fa859fc7">Goldberg mode, Verify files și Check for updates se află în meniul de lansare. Dezactivează „Omite meniul de lansare” ca să-l vezi la următoarea pornire.</string>
     <string name="lab_fac0fe64">Comenzile de scalare fac partea utilă și fără ea, iar limita FPS din panoul din joc limitează rata de cadre. Dezactivează din nou modul Deck dacă un joc nu mai răspunde la controller.</string>
+    <string name="lab_fac102a7">FPS · ultima sesiune</string>
     <string name="lab_fad0baa9">Implicit (Steam: %1$s)</string>
     <string name="lab_fae2666b">Proton-ul propriu Valve, înlocuit când Steam îl actualizează; originalele sunt păstrate pentru fiecare versiune</string>
     <string name="lab_fae62cc0">Blochează cursorul în joc. Apasă Volum jos ca să-l eliberezi.</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">Versiune DirectX</string>
     <string name="lab_fbd4f98b">Numele GPU văzut de jocuri</string>
     <string name="lab_fbf2e44f">Afișajul FPS și al temperaturii pe ecran.</string>
+    <string name="lab_fbfb437a">%1$s trece de la %2$s la %3$s. Jocurile, salvările, scurtăturile și setările se păstrează.</string>
     <string name="lab_fd1310b6">Butonul X</string>
     <string name="lab_fd5460f8">Culoare</string>
+    <string name="lab_fdc15162">Neîncărcat</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (urmărire driver)</string>
     <string name="lab_fe11d138">Nume</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">Ca text, separat prin virgule</string>
     <string name="lab_ffb9855e">Fișierul nu este un profil de comenzi</string>
     <string name="lab_ffcd863d">%1$s min jucate</string>
+    <string name="lab_ffe2f089">Niciun WSI Wayland detectat</string>
 </resources>

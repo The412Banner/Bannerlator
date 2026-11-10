@@ -41,13 +41,16 @@ object SteamStoreSearch {
      * Searches the Steam store for [query]; returns up to 12 candidates (appId + name), best
      * match first. Empty on any failure or blank query. BLOCKING — call off the main thread.
      */
-    fun searchByName(query: String): List<SteamSuggestion> {
+    fun searchByName(query: String): List<SteamSuggestion> = searchOrNull(query) ?: emptyList()
+
+    /** [searchByName], but null when the store could not be asked or answered with something unreadable. */
+    private fun searchOrNull(query: String): List<SteamSuggestion>? {
         val term = query.trim()
         if (term.isEmpty()) return emptyList()
         val encoded = URLEncoder.encode(term, "UTF-8")
         val json = httpGet(
             "https://store.steampowered.com/api/storesearch/?term=$encoded&l=english&cc=US",
-        ) ?: return emptyList()
+        ) ?: return null
         return try {
             val items = JSONObject(json).optJSONArray("items") ?: return emptyList()
             buildList {
@@ -60,7 +63,7 @@ object SteamStoreSearch {
             }
         } catch (e: Exception) {
             Log.w(TAG, "searchByName failed for \"$term\": ${e.message}")
-            emptyList()
+            null
         }
     }
 
@@ -107,7 +110,9 @@ object SteamStoreSearch {
         // Steam's search finds nothing for "Serious Sam - Shatterverse": punctuation goes before searching.
         val term = name.replace(EDITION, " ").replace(Regex("[^\\p{L}\\p{N}' ]+"), " ")
             .replace(Regex("\\s+"), " ").trim().ifEmpty { name }
-        val found = searchByName(term)
+        // A failed request is not "no such game": nothing is remembered, so the next call asks again.
+        val results = searchOrNull(term) ?: return null
+        val found = results
             .map { it to nameMatch(name, it.name) }
             .filter { it.second >= 2 }
             .maxByOrNull { it.second }?.first?.appId

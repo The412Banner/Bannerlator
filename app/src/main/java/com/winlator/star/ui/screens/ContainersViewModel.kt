@@ -263,26 +263,27 @@ class ContainersViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** [onDone] gets the folder written, or null when nothing was copied (e.g. a backup with that name is already there). */
     fun exportContainer(container: Container, onDone: (exportPath: String?) -> Unit) {
         _isLoading.value = true
-        val exportDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Winlator/Backups/Containers"
-        )
-        manager.exportContainer(container) {
+        manager.exportContainerResult(container) { dir ->
             _isLoading.value = false
-            val path = File(exportDir, container.getRootDir().name)
-            onDone(if (path.exists()) path.absolutePath else null)
+            onDone(dir?.absolutePath)
         }
     }
 
+    /** [onDone] runs (on the main thread) only when the import worked; a failure ends the busy state and says so. */
     fun importContainer(dir: File, onDone: () -> Unit) {
         _isLoading.value = true
-        manager.importContainer(dir) {
+        manager.importContainerResult(dir) { ok ->
             _isLoading.value = false
-            refresh()
-            ShortcutsViewModel.notifyContainersChanged()
-            onDone()
+            if (ok) {
+                refresh()
+                ShortcutsViewModel.notifyContainersChanged()
+                onDone()
+            } else {
+                _message.value = "Couldn't import ${dir.name}"
+            }
         }
     }
 

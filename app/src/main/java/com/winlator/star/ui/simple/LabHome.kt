@@ -62,6 +62,7 @@ import com.winlator.star.container.ContainerManager
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.store.download.ContentDownloadRegistry
+import com.winlator.star.store.xbox.XboxCloudShortcuts
 import com.winlator.star.ui.deck.LibrarySort
 import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
@@ -69,7 +70,6 @@ import com.winlator.star.ui.deck.gameSortKeyOf
 import com.winlator.star.ui.deck.lastPlayedLabel
 import com.winlator.star.ui.deck.playtimeLabel
 import com.winlator.star.ui.deck.readPlayStats
-import com.winlator.star.ui.deck.setupSummary
 import com.winlator.star.ui.deck.sortGames
 import com.winlator.star.ui.deck.storeLabelOf
 import com.winlator.star.ui.screens.GameMenuAction
@@ -109,7 +109,7 @@ private fun LabDashTile(
     )
 }
 
-/** A text button the controller can reach: the accent one for the main action. */
+/** A text button the controller can reach: the accent one for the main action, red text and icon when it removes something. */
 @Composable
 internal fun LabButton(
     label: String,
@@ -117,9 +117,11 @@ internal fun LabButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     requester: FocusRequester? = null,
     modifier: Modifier = Modifier,
+    danger: Boolean = false,
     onClick: () -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    val red = MaterialTheme.colorScheme.error
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -129,8 +131,8 @@ internal fun LabButton(
             .labTile(onClick = onClick, requester = requester, onAccent = primary)
             .padding(horizontal = 16.dp),
     ) {
-        if (icon != null) Icon(icon, contentDescription = null, tint = if (primary) Color.White else SimpleInk, modifier = Modifier.size(18.dp))
-        Text(label, color = if (primary) Color.White else SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+        if (icon != null) Icon(icon, contentDescription = null, tint = if (primary) Color.White else if (danger) red else SimpleInk, modifier = Modifier.size(18.dp))
+        Text(label, color = if (primary) Color.White else if (danger) red else SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
     }
 }
 
@@ -223,13 +225,19 @@ internal fun LabHome(
             // tile took the whole row (the library row and the tiles beside it had no room left).
             androidx.compose.animation.Crossfade(targetState = game, modifier = m, animationSpec = androidx.compose.animation.core.tween(220), label = "labContinue") { game ->
             val st = stats[game.file.path]
+            // The setup as Classic's list card and the launch screen read it (the driver's version, Wayland only when it really runs on it).
+            val chips = remember(game.file.path, LabArt.tick, resumeTick) { labSetupChips(context, game) }
+            val meta = listOfNotNull(
+                if (XboxCloudShortcuts.isNotInstalled(game)) L("Not installed") else null,
+                playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game),
+            ).joinToString(" · ")
             // Art and previews: the tile becomes the game's art with its trailer behind the logo, info and buttons.
             if (LabArt.hasClips(LabArt.gameMode(game))) {
                 LabHeroTile(
                     game,
                     label = if (game == recent.firstOrNull()) L("Continue") else L("Selected"),
-                    meta = listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
-                    chips = setupSummary(game).split(" · ").filter { it.isNotBlank() },
+                    meta = meta,
+                    chips = chips,
                     playFocus = playFocus,
                     onPlay = { launcher.requestLaunch(game) },
                     onPage = { onNavigate(LabRoutes.game(game.file.path)) },
@@ -242,12 +250,10 @@ internal fun LabHome(
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == recent.firstOrNull()) L("Continue") else L("Selected"))
                     LabTitle(game, 56.dp, 22.sp)
-                    Text(
-                        listOfNotNull(playtimeLabel(st?.ms ?: 0L), lastPlayedLabel(context, st?.lastPlayed ?: 0L), storeLabelOf(game)).joinToString(" · "),
-                        color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
+                    Text(meta, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LabRuntimeStatus(game, fontSize = 12.sp, color = SimpleMuted)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        setupSummary(game).split(" · ").filter { it.isNotBlank() }.take(4).forEach { LabChip(it) }
+                        chips.take(4).forEach { LabChip(it) }
                     }
                     Spacer(Modifier.weight(1f))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -332,7 +338,7 @@ internal fun LabHome(
 
         @Composable
         fun DriverTile(m: Modifier) {
-            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.DRIVERS) }) {
+            LabDashTile(m, onClick = { onNavigate(SimpleRoutes.contents("installed")) }) {
                 LabTileLabel(L("GPU drivers"))
                 val list = drivers
                 Text(if (list == null) "…" else L("%1\$s installed", list.size), color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -493,6 +499,7 @@ internal fun LabHeroTile(
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
             Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LabRuntimeStatus(game, fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 chips.take(4).forEach {
                     Text(it, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.background(Color.Black.copy(alpha = 0.38f), SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))

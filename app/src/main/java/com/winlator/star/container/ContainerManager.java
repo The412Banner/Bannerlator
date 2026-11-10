@@ -658,7 +658,13 @@ public class ContainerManager {
     }
 
         public void importContainer(File importDir, Runnable callback) {
+        importContainerResult(importDir, ok -> { if (ok && callback != null) callback.run(); });
+    }
+
+    /** Like {@link #importContainer(File, Runnable)}, but always answers once, on the main thread: true when the container was imported. */
+    public void importContainerResult(File importDir, java.util.function.Consumer<Boolean> onResult) {
         Executors.newSingleThreadExecutor().execute(() -> {
+            boolean ok = false;
             try {
                 if (!importDir.exists() || !importDir.isDirectory()) {
                     Log.e("ContainerManager", "Invalid container directory for import: " + importDir.getPath());
@@ -698,60 +704,54 @@ public class ContainerManager {
                 }
 
                 Log.d("ContainerManager", "Container imported successfully to: " + newContainerDir.getPath());
-                // Make sure to run the callback after successful import
-                if (callback != null) {
-                    callback.run();
-                }
+                ok = true;
             } catch (Exception e) {
                 Log.e("ContainerManager", "Failed to import container from: " + importDir.getPath(), e);
+            } finally {
+                final boolean result = ok;
+                runOnUiThread(() -> onResult.accept(result));
             }
         });
     }
 
     public void exportContainer(Container container, Runnable callback) {
+        exportContainerResult(container, dir -> { if (callback != null) callback.run(); });
+    }
+
+    /**
+     * Copies [container] to Downloads/Winlator/Backups/Containers/<its folder name> and answers once, on the main
+     * thread, with the folder written, or null when nothing was copied (no export folder, a backup with that name
+     * already there, or the copy failed).
+     */
+    public void exportContainerResult(Container container, java.util.function.Consumer<File> onResult) {
         Executors.newSingleThreadExecutor().execute(() -> {
+            File written = null;
             try {
-                // Create the export directory path
                 File exportDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Winlator/Backups/Containers");
-
-                if (!exportDir.exists() && !exportDir.mkdirs()) {
-                    Log.e("ContainerManager", "Failed to create export directory: " + exportDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
-                    return;
-                }
-
                 File containerDir = container.getRootDir();
                 File destinationDir = new File(exportDir, containerDir.getName());
-
-                if (destinationDir.exists()) {
+                if (!exportDir.exists() && !exportDir.mkdirs()) {
+                    Log.e("ContainerManager", "Failed to create export directory: " + exportDir.getPath());
+                } else if (destinationDir.exists()) {
                     Log.e("ContainerManager", "Export directory already exists: " + destinationDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
-                    return;
-                }
-
-                if (!destinationDir.mkdirs()) {
+                } else if (!destinationDir.mkdirs()) {
                     Log.e("ContainerManager", "Failed to create directory: " + destinationDir.getPath());
-                    runOnUiThread(() -> callback.run()); // Close the preloader dialog
-                    return;
-                }
-
-                // copyContainer tolerates individual unreadable/locked files (skips them instead
-                // of aborting the whole export — the "sometimes works sometimes not" failure) and
-                // preserves symlinks. Symlink recreation no-ops gracefully on the export FS
-                // (Os.symlink ErrnoException is swallowed by FileUtils.symlink). Fails only if the
-                // destination root itself can't be created.
-                if (!FileUtils.copyContainer(containerDir, destinationDir,
+                } else if (FileUtils.copyContainer(containerDir, destinationDir,
                         containerDir.getAbsolutePath(), destinationDir.getAbsolutePath(),
                         file -> FileUtils.chmod(file, 0771))) {
+                    // copyContainer skips unreadable/locked files and keeps symlinks; it fails only when the
+                    // destination root can't be written.
+                    written = destinationDir;
+                    Log.d("ContainerManager", "Container exported successfully to: " + destinationDir.getPath());
+                } else {
                     Log.e("ContainerManager", "Failed to export container files to: " + destinationDir.getPath());
-                    FileUtils.delete(destinationDir); // Optional: Delete partially copied directory
+                    FileUtils.delete(destinationDir);
                 }
-
-                Log.d("ContainerManager", "Container exported successfully to: " + destinationDir.getPath());
             } catch (Exception e) {
                 Log.e("ContainerManager", "Failed to export container: " + container.getName(), e);
             } finally {
-                runOnUiThread(callback); // Ensure the callback runs and preloader dialog closes
+                final File result = written;
+                runOnUiThread(() -> onResult.accept(result));
             }
         });
     }

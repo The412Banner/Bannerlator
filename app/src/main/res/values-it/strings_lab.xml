@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">Quale controller vede il gioco. Modificabile anche in gioco (il controller si ricollega).</string>
     <string name="lab_0312e1a5">Digita un nome prima di =.</string>
     <string name="lab_0355373d">Tutte</string>
+    <string name="lab_03705e75">Rimossi %1$s su %2$s; gli altri non sono stati eliminati</string>
     <string name="lab_0397233a">Aggira GMEM.</string>
     <string name="lab_039bee69">Controlli</string>
     <string name="lab_03af654a">Controller</string>
     <string name="lab_03af83cf">Integrato (Wine)</string>
     <string name="lab_03be5b2b">Terminare %1$s?</string>
     <string name="lab_03dc750a">Nessuno. Sfoglia il catalogo per aggiungerne.</string>
+    <string name="lab_03eece5a">Totale</string>
     <string name="lab_03f54074">Riempi lo schermo</string>
+    <string name="lab_04272d2b">Riporta il layer a %1$s</string>
     <string name="lab_04314e37">Steam Controller, predefiniti dei controlli a schermo, e mouse e tastiera per i giochi Wine.</string>
     <string name="lab_04422c9a">Apri</string>
     <string name="lab_044669c8">Core utilizzabili dal gioco</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">Importa un profilo</string>
     <string name="lab_05ea4871">Adatta la frequenza di aggiornamento agli FPS</string>
     <string name="lab_05f88f63">Versione Wine / Proton</string>
+    <string name="lab_062deaae">Impossibile installare %1$s: %2$s</string>
     <string name="lab_063c1ee9">Nasconde i controller Xbox a questo gioco.</string>
-    <string name="lab_06625dae">Nessuna fonte di download.</string>
     <string name="lab_06681d37">Quale trackpad muove il mouse. Premerlo equivale a un clic sinistro.</string>
     <string name="lab_066c2fb1">Pagina del gioco</string>
     <string name="lab_0687488a">Driver Turnip e Qualcomm</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">Scegli cosa registrare (Wine, Box64/FEX, DXVK, SteamLite, Steam headless, logcat), dove vanno i log e quanti conservarne; sfogliali e condividili.</string>
     <string name="lab_0721ad7c">Questo container</string>
     <string name="lab_075ffd70">Il tuo video</string>
+    <string name="lab_076e01bd">Ripristina un salvataggio…</string>
     <string name="lab_07a88d47">Una pressione di Indietro apre comunque il menu laterale in gioco.</string>
     <string name="lab_07e11363">Attivo per tutto il container: disattivalo nel container.</string>
     <string name="lab_080615dc">Usa quello del container</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">Scarica versioni D7VK</string>
     <string name="lab_09683590">Limitatore di fotogrammi</string>
     <string name="lab_09793b21">OpenGL: VSync disattivato</string>
+    <string name="lab_097af41a">Nome Z–A</string>
     <string name="lab_09b51ad4">Slot</string>
     <string name="lab_09cdafe2">Dimensione testo</string>
     <string name="lab_09d2be7b">Beta pubblica</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">Il limite proprio di DXVK (DXVK_FRAME_RATE). Disattivato lascia il pacing al limitatore di frame.</string>
     <string name="lab_0b5eae46">Il controller diventa giocatore 1</string>
     <string name="lab_0b76e940">%1$s %2$s rimosso</string>
+    <string name="lab_0bad6f7f">Download di %1$s profili…</string>
     <string name="lab_0bd8b542">Dimensione immagine, frame pacing e frequenza di aggiornamento.</string>
+    <string name="lab_0be4a3d7">1 gioco rimosso</string>
     <string name="lab_0be7a72d">Modalità di ridimensionamento</string>
     <string name="lab_0bece985">Backup</string>
     <string name="lab_0c451500">Risoluzione di cattura</string>
     <string name="lab_0c64d11e">Installa contenuti da file</string>
+    <string name="lab_0c88e27c">Vengono rimossi solo i collegamenti; i file dei giochi restano.</string>
     <string name="lab_0cd26a5e">Nessun download in corso</string>
-    <string name="lab_0ce16a57">Backup non riuscito: %1$s</string>
     <string name="lab_0cfb7a3b">Corregge le telecamere che girano o restano bloccate in alcuni giochi più vecchi.</string>
+    <string name="lab_0d0fc080">Duplicazione di %1$s…</string>
     <string name="lab_0d5a2b34">Parole aggiunte dopo il nome del programma, ad es. -windowed -dx11.</string>
     <string name="lab_0da00171">• I giochi non ricevono più il controller. I menu di Steam funzionano ancora, ma in gioco il pad non fa nulla.\n</string>
     <string name="lab_0dc541d5">Ripristina i predefiniti</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">Automatico (beta di Steam Deck, per la modalità Deck)</string>
     <string name="lab_0fed0c63">Impostazioni driver</string>
     <string name="lab_10091d64">Versione VEGAS</string>
-    <string name="lab_10125440">Driver e componenti</string>
     <string name="lab_101d1386">Chiave API SteamGridDB</string>
     <string name="lab_101f5ed2">Effetti ReShade</string>
     <string name="lab_1054fdc3">Su Wayland il gioco esegue il rendering tramite il compositor integrato, che ha bisogno di un Turnip installato per importarne i frame. \"Sistema\" è offerto solo sulle GPU Mali; altrove mostra uno schermo nero. Il driver su cui esegue il rendering il gioco stesso è il driver di gioco Wayland qui sotto.</string>
     <string name="lab_105c504c">Fix OneUI / HyperOS</string>
     <string name="lab_1079be1d">Nessun risultato su Steam per %1$s</string>
     <string name="lab_10a08356">Consenti il cambio in gioco</string>
+    <string name="lab_10b7b953">Backup dei salvataggi…</string>
     <string name="lab_10cb69ae">Seleziona l\'immagine dell\'icona</string>
     <string name="lab_1121166e">Alfa</string>
     <string name="lab_112d429f">Inverti Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">Preset e regolazioni…</string>
     <string name="lab_165bbde9">Pausa</string>
     <string name="lab_1689f76a">Disattivato lo nasconde in Contenuti; le schede del container e del gioco lo mantengono.</string>
+    <string name="lab_16a69772">Ricerca…</string>
     <string name="lab_16c90680">Posizione immagine</string>
     <string name="lab_16d40373">Driver audio</string>
     <string name="lab_16ff819d">Frequenza di aggiornamento</string>
-    <string name="lab_170eab83">File salvati</string>
     <string name="lab_1777bbf2">Manuale</string>
     <string name="lab_177847bc">Niente da copiare</string>
     <string name="lab_17a0dfae">Offline</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">questo gioco</string>
     <string name="lab_188dc386">Impostato da Prestazioni › Sincronizzazione.</string>
     <string name="lab_18991a24">Altro</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">La modalità Deck è attiva: i giochi non ricevono il controller. Se in Sistema compare un aggiornamento del client Steam che non si installa, non premere Applica.</string>
     <string name="lab_189ddac0">Il suo file pacchetto viene rimosso dall\'app. Puoi scaricarlo di nuovo in qualsiasi momento.</string>
     <string name="lab_18c07921">Pulsante Menu, tasti extra e calibrazione del giroscopio</string>
     <string name="lab_18e6df7b">Salta l\'accesso a Epic per questo gioco (nessuna funzione online).</string>
+    <string name="lab_191f6609">Scegli un gioco</string>
     <string name="lab_19377f1f">Regione di connessione Steam e test di rete</string>
     <string name="lab_19532aa0">Questo elimina l\'effetto scaricato dalla memoria e lo toglie da questo set. Puoi scaricarlo di nuovo in qualsiasi momento.</string>
     <string name="lab_1955f21e">Core CPU</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">Attiva mira giroscopica</string>
     <string name="lab_1acaa40c">Cosa viene registrato, dove va, per quanto tempo viene conservato.</string>
     <string name="lab_1acd9ee4">Bloccato su V-Sync veloce mentre è attiva la generazione di frame.</string>
+    <string name="lab_1b1ee750">%1$s profili importati</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">I file propri di ogni Proton sono stati salvati come suo originale all\'apertura di questa pagina.</string>
     <string name="lab_1b4c8948">Modalità di presentazione</string>
     <string name="lab_1bbf10a9"> (la tua copia)</string>
     <string name="lab_1bc2538c">Correzione timing KGSL</string>
     <string name="lab_1bdd2734">Predefinito del gioco</string>
+    <string name="lab_1be37b64">Ripristino non riuscito: %1$s</string>
     <string name="lab_1bfb31a3">Colore di sfondo</string>
     <string name="lab_1bfc578f">Notifiche della chat</string>
     <string name="lab_1bfe2edd">Limite fotogrammi DXVK</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">Sfondo del desktop</string>
     <string name="lab_1c765923">Auto (ordine di connessione)</string>
     <string name="lab_1ce56dac">Emulatore (64 bit)</string>
-    <string name="lab_1d039d18">Scarica e installa</string>
     <string name="lab_1d4948df">Tiene i frame video fuori dalla GPU. Provalo per video neri con audio.</string>
     <string name="lab_1d4a9752">Gestione salvataggi</string>
     <string name="lab_1dafe1ef">Apri ›</string>
     <string name="lab_1dcd6efb">Generico (predefinito): funziona con tutto, come prima. Xbox 360 / One / Series: i giochi trattano il pad come un controller Xbox; meglio abbinato a XInput diretto per input in tempo reale e vibrazione. Pad DirectInput classico: per i vecchi giochi che non accettano pad Xbox; fa sempre vedere il controller ai giochi DirectInput. PlayStation / Nintendo / Joy-Con / Steam Deck (sperimentale): i giochi potrebbero mostrare le icone dei tasti corrispondenti; niente giroscopio, touchpad, barra luminosa o trackpad, e alcuni giochi potrebbero non rilevare il pad. In tal caso torna a Generico o Xbox.\n\nSe il controller scompare in un gioco, torna a Generico.</string>
     <string name="lab_1dd0373a">Rimuovere %1$s e tutto il suo contenuto? Anche i collegamenti dei suoi giochi verranno rimossi.</string>
     <string name="lab_1dd4a128">Opzioni root</string>
-    <string name="lab_1df4901e">%1$s duplicato</string>
     <string name="lab_1df4bc73">Auto comunica al gioco quali operazioni subgroup supporta il tuo driver Mesa (così DOOM Eternal e gli altri giochi che le richiedono si avviano). Disattivato le nasconde, come facevano gli adattatori precedenti; prova questa opzione se un gioco mostra glitch o crash che prima non dava.</string>
     <string name="lab_1dfaae77">Un nome non può contenere \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Per i giochi che il client avvia, non per il client stesso, e per tutti: la sessione ha un unico ambiente. </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">L\'elenco è vuoto.</string>
     <string name="lab_1e713627">Client Steam per Linux</string>
     <string name="lab_1e765e92">Impostazioni mira giroscopica</string>
+    <string name="lab_1e7d16fc">Svuota cache</string>
     <string name="lab_1e9a6134">Disattivato per questo container. Attivalo nelle impostazioni del container per usarlo qui.</string>
     <string name="lab_1f050928">Predefinito (lascia la TV com\'è)</string>
     <string name="lab_1f13e4b9">Repository</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">Giochi avviati dal client. Tutti i core lascia che sia Android a distribuire il lavoro.</string>
     <string name="lab_1fccd93f">Auto parte basso e aumenta il buffer solo se rileva crepitii. Regolazione fine qui sotto.</string>
     <string name="lab_1ff9ec48">Sessione</string>
+    <string name="lab_1ffa163f">Cerca in tutti i repository</string>
     <string name="lab_2012067c">Incluso nell\'app</string>
     <string name="lab_20226dfe"> · non collegato (assegnazione salvata)</string>
     <string name="lab_2062fe79">Limitatore FPS</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">nuovi container</string>
     <string name="lab_2166d8ab">Backup o ripristino di tutti i dati dell\'app</string>
     <string name="lab_21e9b52f">Seleziona contenuto o driver</string>
+    <string name="lab_21ede2b8">%1$s resta installato, quindi puoi tornare indietro.</string>
     <string name="lab_21feab48">Rimappa i tasti e verifica ogni input</string>
     <string name="lab_22270e04">Percorso storage image</string>
     <string name="lab_2246a8bd">Attiva/disattiva</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">. I valori non possono contenere spazi.</string>
     <string name="lab_235fa0f3">Ferma all\'avvio</string>
     <string name="lab_2379f827">Trasmetti a una TV</string>
-    <string name="lab_23b4ddb2">Installati, imposta come predefinito, scaricane altri</string>
     <string name="lab_23b56f8c">Esegui i programmi come amministratore</string>
     <string name="lab_23d05606">Mouse e tastiera (giochi Wine)</string>
     <string name="lab_23d11cc7">Mostra contatore FPS</string>
     <string name="lab_23deaf7c">Gestisci</string>
     <string name="lab_23e9383c">Versione, tecnologie usate e riconoscimenti.</string>
+    <string name="lab_243c4264">Aggiorna gli elenchi</string>
     <string name="lab_2453405d">Usa auto:N, fixed:N o off</string>
     <string name="lab_2470de02">Trasparente</string>
     <string name="lab_24720798">Correggi i colori invertiti</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">Non ancora disponibile su Wayland in questa build.</string>
     <string name="lab_2742f91b">Automatico · un trailer di Steam</string>
     <string name="lab_2756404f">Ripristina alimentazione e root ai predefiniti dell\'app</string>
+    <string name="lab_278c89b0">Impossibile raggiungere Steam.</string>
     <string name="lab_27b56d30">Installa le DLL XInput di Bannerlator sia con XInput diretto attivo sia disattivato, con accanto l\'XInput di Wine, così Controlli › Pad nel menu di gioco può passare dall\'uno all\'altro mentre il gioco è in esecuzione (il controller si ricollega). Attivo per impostazione predefinita. Disattivato: XInput diretto resta come all\'avvio del gioco e cambiarlo richiede un riavvio.</string>
     <string name="lab_27bb1078">Diretto</string>
     <string name="lab_27bcb120">Aggiungi, copia, elimina, esporta o importa preset Box64 e FEX (impostazioni di Classic).</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">Predefiniti integrati di VEGAS (nessun file)</string>
     <string name="lab_286dae57">Automatico · dalla copertina</string>
     <string name="lab_287eabc8">Mostra FPS</string>
+    <string name="lab_289585af">pronto</string>
     <string name="lab_28d51363">Frequenza di aggiornamento selezionabile dal gioco</string>
     <string name="lab_28f727b0">Esporta diagnostica HUD</string>
     <string name="lab_29198bb7">Non impostato (Sistema)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Driver di gioco Wayland</string>
     <string name="lab_2a88fd3c">Riavvia l\'audio</string>
     <string name="lab_2ab94a31">Scorri tra i pulsanti</string>
+    <string name="lab_2ad53987">Rimuovere 1 gioco?</string>
     <string name="lab_2ad5a458">Slot giocatore assegnati</string>
     <string name="lab_2adf1ef0">La carta millimetrata e i segnali di Lab sopra l\'artwork</string>
+    <string name="lab_2af0d6a1">Vedi esempio</string>
     <string name="lab_2b01a79e">Impossibile leggere questa immagine.</string>
     <string name="lab_2b3bf173">Strumenti</string>
     <string name="lab_2b605d42">Altro</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">Stick in alto</string>
     <string name="lab_2c6448d6">Impostato per questo container</string>
     <string name="lab_2c768f35">I nuovi container partono con</string>
+    <string name="lab_2c8896f5">Mostra memoria della scheda SD</string>
     <string name="lab_2c963a33">si applica subito · salvato come predefinito di questo motore</string>
     <string name="lab_2ce33943">Predefinito</string>
     <string name="lab_2ced81bf">Offline: viene mostrato un elenco salvato. Connettiti per scaricare nuovi effetti.</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">O digita un valore qualsiasi</string>
     <string name="lab_2dad13e3">Lingua</string>
     <string name="lab_2dc2e901">Mono</string>
-    <string name="lab_2df5d0e3">%1$s giochi · ultimi giocati per primi</string>
     <string name="lab_2e1b1382">Qualsiasi (illimitata)</string>
     <string name="lab_2e1ff85b">Generazione di frame</string>
     <string name="lab_2e257663">Nei menu</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">Questo schermo non può cambiare la frequenza di aggiornamento.</string>
     <string name="lab_2e57dd1f">Altro file…</string>
     <string name="lab_2eae4031">Stick in basso</string>
+    <string name="lab_2ec7b25e">Condividi</string>
     <string name="lab_2ec97d85">I giochi Xbox comunicano con i servizi Xbox tramite xgameruntime.dll. Questo gioco porta la copia di Microsoft nella sua cartella e Wine la caricherebbe prima di quella dell\'app (Xodus Nexus). La copia di Microsoft richiede i Gaming Services di Windows, che Wine non ha, quindi di solito il gioco si blocca all\'avvio (è successo con Cyberpunk 2077). Attivato: ogni avvio usa la copia dell\'app; i file del gioco non vengono modificati. Disattivato: viene usata la copia del gioco.</string>
     <string name="lab_2ed04089">Forza rendering sysmem (sysmem)</string>
     <string name="lab_2f23b6d1">Digita sei cifre esadecimali, es. #1E88E5.</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">Aggira un bug di Turnip per cui chiedere \"la GPU ha finito?\" attende l\'intero frame (il bug di timing del rapporto). Predefinito lascia che sia l\'adattatore a rilevarlo; Attivato lo forza, Disattivato lo disattiva.</string>
     <string name="lab_3205bc81">Nessun driver grafico Turnip impostato, quindi non c\'è nulla da controllare.</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">Esiste già un backup chiamato %1$s in Backup</string>
+    <string name="lab_32725e5a">Scarica (%1$s)</string>
     <string name="lab_32a7fa00">Generazione frame</string>
     <string name="lab_334d4744">Crea un\'istantanea dei salvataggi della libreria Steam nella tua Libreria locale quando un gioco termina.</string>
+    <string name="lab_33689924">Seleziona cartella di salvataggio</string>
     <string name="lab_336d62eb">Preferisci i core CPU grandi</string>
     <string name="lab_33a35a95">Banchi suoni installati e cartella di esportazione</string>
+    <string name="lab_33ad7c60">Cancella la ricerca</string>
     <string name="lab_33b3dcd5">Mantiene la GPU alla frequenza massima mentre un gioco è in esecuzione. Più calore e consumi; i giochi possono ignorarlo.</string>
     <string name="lab_33b5c99c">Solo dopo aver accettato l\'avviso sul cloud di terze parti; non elimina mai nulla dal cloud.</string>
     <string name="lab_33cb03bf">Come nelle pagine dell\'app</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">Velocità del cursore</string>
     <string name="lab_346090f3">Nessun Box64EC installato. Scaricane uno qui sotto (Download dei traduttori).</string>
     <string name="lab_3482cb34">Predefiniti ARM64EC</string>
-    <string name="lab_34928086">Backup dei salvataggi eseguito (%1$s file)</string>
     <string name="lab_34dee5b9">Accesso effettuato · %1$s giochi</string>
     <string name="lab_35795680">I nuovi container partono da questi valori. I container esistenti mantengono i propri.</string>
     <string name="lab_361899c4">Impossibile raggiungere le build Nightly</string>
     <string name="lab_362888df">Inclina per mirare</string>
     <string name="lab_36348dce">Personalizzato per questo container. Ripristina lo fa tornare a seguire il preset condiviso. </string>
+    <string name="lab_363c53cf">Esporta repository</string>
     <string name="lab_3661ddfd">Solo per la voce client Steam per Linux: i suoi driver, le opzioni del client Steam e le ottimizzazioni di velocità.</string>
     <string name="lab_366e8f9a">Per i telefoni Samsung e Xiaomi i cui giochi mostrano texture corrotte. Altrimenti lascialo disattivato.</string>
     <string name="lab_36936d70">Limita quanti fotogrammi al secondo disegna il gioco. Risparmia batteria e riduce gli scatti.</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">Tocco</string>
     <string name="lab_37ad98ec">Le scelte dei core CPU valgono fino al riavvio del programma.</string>
     <string name="lab_37b97721">Il driver di Qualcomm non può mostrare a schermo i frame Wayland, quindi lo schermo usa un Turnip incluso</string>
+    <string name="lab_37c2b051">Formato del backup</string>
     <string name="lab_37f22874">Ogni unità richiede una lettera diversa</string>
+    <string name="lab_3822fc21">Salvato</string>
     <string name="lab_3855543c">Esporta (.icpx)</string>
     <string name="lab_385e1a80">Tocca l\'overlay per passare da verticale a orizzontale (Fusion: dimensione successiva). Trascinalo per spostarlo; tieni premuto per bloccarlo in posizione.</string>
     <string name="lab_386c72a7">Impossibile usare questo file</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">Attiva</string>
     <string name="lab_39da5009">I giochi XInput leggono il controller direttamente da Bannerlator invece che dalla coda dei controller di Wine: sempre la posizione attuale dello stick, nessun ritardo aggiunto, vibrazione inclusa. Disattivato: XInput passa da Wine come prima. Se un gioco si comporta male, disattivalo per quel gioco.</string>
     <string name="lab_39e9425b">Nessun repository.</string>
+    <string name="lab_39ffa0a5">Scegli</string>
     <string name="lab_3a1ed8c6">Driver display (lato Android)</string>
     <string name="lab_3a24cc2d">Impostato per container: descrive le tue mani, non il gioco.</string>
     <string name="lab_3a5c3010">FPS, carico CPU/GPU e temperature sopra il gioco. Toccalo in gioco per girarlo o ridimensionarlo.</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">Artwork 3D</string>
     <string name="lab_3d2c22d4">Modalità di presentazione del driver</string>
     <string name="lab_3d40c46a">Vibrazione</string>
+    <string name="lab_3d7fa0a6">Configurazioni della community</string>
     <string name="lab_3d9862bb">Un mip bias negativo: texture più nitide, un po\' di sfarfallio. Auto segue il ridimensionamento con cui parte il gioco.</string>
     <string name="lab_3dbe79b1">Elimina</string>
     <string name="lab_3e04658a">Blu</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">Scarica e sostituisci</string>
     <string name="lab_3e5678cd">Più veloce</string>
     <string name="lab_3e86e543">Passato al wrapper così com\'è. Lascia vuoto per non impostarlo.</string>
+    <string name="lab_3e967773">Negozio</string>
     <string name="lab_3ecd0489">Il backup automatico dei salvataggi all\'uscita sarà DISATTIVATO per i giochi della tua libreria Steam. I loro salvataggi non verranno copiati alla chiusura di un gioco — dovrai farne il backup tu tramite l\'opzione di backup di un container o la Gestione salvataggi. Continuare?</string>
+    <string name="lab_3edc001f">Aggiorna il layer a %1$s</string>
     <string name="lab_3edcf27d">Massima nitidezza (-1.0)</string>
     <string name="lab_3ee20435">Giochi</string>
+    <string name="lab_3ee2f717">Quel file non è un elenco di repository</string>
     <string name="lab_3f0b280a">Frequenza fotogrammi</string>
     <string name="lab_3f373a64">SoundFont MIDI</string>
     <string name="lab_3f3a4df2">In primo piano</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">Consenti visori XR / VR</string>
     <string name="lab_41017c94">Nuovo container</string>
     <string name="lab_410fcc62">Scegli una variabile nota o scrivine una tua: NAME, o NAME=VALUE.</string>
+    <string name="lab_4150d5a6">1 risultato</string>
     <string name="lab_415a93a6">Vince il più recente: non sovrascrive mai un salvataggio locale più nuovo.</string>
     <string name="lab_41f05e04">Le assegnazioni qui sotto appartengono a questo profilo</string>
     <string name="lab_41fc25ab">Win-FG nativo</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">Sperimentale: l\'overlay di Epic in gioco con Maiusc+F3. Il container deve consentire tutti i servizi.</string>
     <string name="lab_42ca94f9">Controller principale</string>
     <string name="lab_43316731">Ci sono solo C: (il prefisso Windows) e Z:. Aggiungi un\'unità per una cartella di giochi.</string>
+    <string name="lab_434214cc">Annulla</string>
     <string name="lab_4358e63d">Lab, Deck, XMB o Classic</string>
     <string name="lab_43c9073b">Disattivato — scegli una frequenza qui sotto per bloccare lo schermo.</string>
+    <string name="lab_44343bcf">I repository integrati nascosti tornano. I tuoi restano.</string>
     <string name="lab_443d0954">Avvia il suo desktop Windows</string>
     <string name="lab_4455b74f">Quanto spesso il movimento degli stick arriva al gioco. Modificabile anche in gioco.</string>
     <string name="lab_44655ec4">Installazione non riuscita: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">Container</string>
     <string name="lab_455f1d53">UBWC / buffer compressi</string>
     <string name="lab_45bf9648">Backend display</string>
+    <string name="lab_45d1fcf9">Cerca di nuovo</string>
     <string name="lab_45e5d14f">Esportazione non riuscita</string>
     <string name="lab_45f80a27">Avanzate</string>
     <string name="lab_4611b1a8">Orizzontale</string>
     <string name="lab_463dbb35">Lingua e regione</string>
+    <string name="lab_4653869e">download non riuscito</string>
     <string name="lab_466171a5">%1$s rimosso</string>
     <string name="lab_467d1fc1">Salvataggi e cloud</string>
+    <string name="lab_46f7f5f5">Non installato · Streaming</string>
     <string name="lab_46fd73ef">Lasciare tutti i core selezionati permette ad Android di distribuire il lavoro da solo, di solito la scelta migliore.</string>
     <string name="lab_471552db">Modifica il file di configurazione VEGAS</string>
     <string name="lab_475cee12">Centro</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Attivo</string>
     <string name="lab_4cc9a9c1">Copertina</string>
+    <string name="lab_4d04f825">Mostra / nascondi menu</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Inverti su/giù</string>
     <string name="lab_4d8c7321">Contenuti</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">Invio di catture e log diagnostico win-fg (impostazioni di Classic).</string>
     <string name="lab_4fd05bc3">Controllo reale del mouse</string>
     <string name="lab_50089f1e">Decodifica software</string>
+    <string name="lab_507318fd">Importa un elenco da file</string>
     <string name="lab_507883a8">Impostato da BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX nelle variabili d\'ambiente.</string>
     <string name="lab_507b3c74">Riempi (ritaglia)</string>
     <string name="lab_50bd6962">Log</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">Esportato in %1$s</string>
     <string name="lab_52023fb7">Nessun backup dei container in Downloads/Winlator/Backups/Containers.</string>
     <string name="lab_522ca2a0">Esegue il rendering più grande, poi rimpicciolisce per un\'immagine più pulita. Costa prestazioni.</string>
+    <string name="lab_524717e1">Seleziona backup (.zip)</string>
     <string name="lab_5254f3be">I giochi aggiunti nella scheda Giochi compaiono nella libreria di Steam sotto Non di Steam e girano con il Proton di Steam.</string>
     <string name="lab_526060cd">Installa runtime e librerie nel container e scegli DLL integrate o native per DirectX, audio e runtime.</string>
     <string name="lab_52eb74b5">Mostra l\'HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">Vibrazione e mira giroscopica.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">In alto a sinistra</string>
+    <string name="lab_58749370">%1$s non è più installato, quindi non si può tornare indietro.</string>
     <string name="lab_58a426c9">Disattivato per questo gioco mentre è attiva la generazione di frame. </string>
     <string name="lab_5946d9c6">Usa impostazione dell\'app (%1$s)</string>
     <string name="lab_594a913b">Shader asincroni</string>
     <string name="lab_595daef9">Componenti scaricati: archivi ed elenco del catalogo.</string>
     <string name="lab_5983ab11">Modalità offline (nessun accesso a Valve)</string>
+    <string name="lab_5996c8c7">Scarica e aggiorna il layer a %1$s</string>
     <string name="lab_59db09f5">Log in tempo reale</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">Salvato nel container appena premi Salva qui, come nell\'editor classico.</string>
     <string name="lab_5aa9e082">Dove la schermata Componenti cerca i download.</string>
     <string name="lab_5ac7d266">Versione VKD3D</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS, carico CPU/GPU e temperature sopra il gioco. Lo stile si imposta qui sotto e in gioco dal menu laterale.</string>
     <string name="lab_5cf98060">Nascondi le estensioni present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d04f79c">Elaborazione…</string>
     <string name="lab_5d1ebf1b">Modalità mira</string>
     <string name="lab_5d676a2d">Si possono esportare solo i tuoi preset.</string>
     <string name="lab_5d7ee5f8">GitHub, issue tracker e Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Componenti Proton</string>
     <string name="lab_5e190a08">Salva o scarta prima le modifiche.</string>
     <string name="lab_5e4af947">Fisso 60/s</string>
+    <string name="lab_5eb87a8b">Avvia</string>
     <string name="lab_5ecf04b0">Visualizza</string>
     <string name="lab_5edc0296">Le build VEGAS installate e quella inclusa nell\'app.</string>
     <string name="lab_5edc9360">Menu di gioco · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">Le cartelle Documents, AppData e Saved Games del gioco sono quelle usate dal suo container. Non avviare lo stesso gioco in entrambi contemporaneamente.</string>
     <string name="lab_63319830">Le pre-release possono essere meno stabili.</string>
+    <string name="lab_633def1d">%1$s · 1 sessione</string>
     <string name="lab_634ae6b3">Come il wrapper consegna i frame. Non è l\'impostazione del renderer dello schermo.</string>
     <string name="lab_63791c91">Cartella, es. /storage/emulated/0/Games</string>
     <string name="lab_6381687c">riapplicato all\'avvio alle </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Beta Steam Deck</string>
     <string name="lab_641b9c9d">Il buffer del gioco va a schermo senza copia (latenza minima, meno calore). Richiede fence sync-file nel driver (vedi il rapporto dell\'adattatore). Disattivalo se vedi tearing o frame vecchi.</string>
     <string name="lab_643b2baf">Condividi / trasferisci</string>
-    <string name="lab_64903a6c">Ottieni altro</string>
     <string name="lab_64c5e98f">Picture-in-picture</string>
     <string name="lab_65306cbd">Il profilo Tutti i container da cui partono i nuovi container. Viene prima dei preset predefiniti qui sopra.</string>
     <string name="lab_655c4f8a">Aprire questo menu</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">Transcodifica BCn in ETC2</string>
     <string name="lab_66500371">Condiviso da tutti i container</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s risultati</string>
     <string name="lab_66a48fe7">Pixel perfect</string>
     <string name="lab_66d69f41">Cambia il programma da eseguire</string>
     <string name="lab_66e416b8">Modalità di uscita</string>
     <string name="lab_676dd596">Riprendi</string>
+    <string name="lab_67771d1b">Le mod di questo gioco e i loro menu.</string>
     <string name="lab_67805216">Versione Box64EC</string>
     <string name="lab_67c5a895">Ieri</string>
     <string name="lab_67d87dd3">Il percorso completo di un file .conf, ad es. /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">Aggiungi file .sf2 e scegli dove esportare i collegamenti (impostazioni di Classic).</string>
     <string name="lab_6f6109df">Inserisce frame extra per un movimento più fluido. Il gioco si ferma un attimo mentre si riavvia.</string>
     <string name="lab_6f63a302">Menu del gioco</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (predefinito)</string>
     <string name="lab_6fb5700f">Permette ai giochi DirectInput (molti titoli più vecchi, giochi di corse, volanti) di vedere il controller. Disattivato lo nasconde a DirectInput, così i giochi che supportano sia XInput sia DirectInput non lo vedono due volte. L\'identità Pad DirectInput classico lo attiva sempre.</string>
     <string name="lab_6fce3567">Evita le richieste di autorizzazione in Windows (disattiva l\'UAC).</string>
     <string name="lab_6fd5eace">Nitidezza e altri effetti di post-elaborazione.</string>
     <string name="lab_701948cd">Mostrato nella schermata Container e nelle etichette \"Dal container\" di ogni gioco.</string>
+    <string name="lab_701e81e5">Importazione di %1$s…</string>
     <string name="lab_70455f1b">Necessario per entrare nei server protetti da VAC. Rileva segue le informazioni dell\'app di Steam.</string>
     <string name="lab_70802fb2">Sincronizzazione Wine</string>
     <string name="lab_70a1ea5f">Versione</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">Memoria GPU vista dai giochi</string>
     <string name="lab_71d5a5d7">Scarica un driver Turnip</string>
     <string name="lab_721589c1">Oggi</string>
+    <string name="lab_721da611">Nessun gioco trovato in questo container.</string>
     <string name="lab_72395178">Giochi e libreria</string>
     <string name="lab_7246e766">Profili</string>
     <string name="lab_72550119">Aggiornamento stick</string>
+    <string name="lab_725f7c3b">Attendi la fine dell\'operazione in corso</string>
     <string name="lab_728e56d6">Fluido</string>
     <string name="lab_72b16281">Prende la prima lettera libera. Scegli la sua cartella con Sfoglia.</string>
     <string name="lab_72b89c6d">Ripristina i predefiniti dell\'app</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">Overlay</string>
     <string name="lab_76471f06">Queste arrivano al client Steam e a ogni gioco che avvia. Una variabile qui sostituisce quella con lo stesso nome del preset FEXCore.</string>
     <string name="lab_7656e144">Grigio blu</string>
-    <string name="lab_76705189">Impossibile importare %1$s</string>
     <string name="lab_76ad015a">Permette a LSFG Native di funzionare sui driver che dichiarano solo Vulkan 1.1 ma hanno le estensioni necessarie. Vale anche per le impostazioni specifiche per gioco.</string>
     <string name="lab_76b4a740">Flusso ottico</string>
     <string name="lab_76b8a57c">Lettura delle impostazioni di questo wrapper…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">Seleziona preset</string>
     <string name="lab_79162646">Ancora nessun profilo.</string>
     <string name="lab_791d1125">Schermata di avvio e aggiornamenti.</string>
+    <string name="lab_79780a3c">Esportazione di %1$s…</string>
     <string name="lab_7982eb6b">, elencate sotto.</string>
     <string name="lab_79b6d4c7">Modalità Steam offline, controllo dei file e aggiornamenti</string>
     <string name="lab_79c7988a">Nessuno · viene mostrato il nome</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">Versione D7VK</string>
     <string name="lab_7a377726">Come l\'immagine arriva allo schermo</string>
     <string name="lab_7a54182d">Overlay FPS</string>
+    <string name="lab_7a7662fb">Giocati di recente</string>
     <string name="lab_7b0d957b">Cancella tutto</string>
     <string name="lab_7b34b221">Aggiungi una variabile</string>
     <string name="lab_7b719f09">Sfoglia</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">Immagine di sfondo</string>
     <string name="lab_7caf4da8">BCn e i layer di compatibilità valgono per Mali e altre GPU non Qualcomm.</string>
     <string name="lab_7ccc17cd">Back buffer</string>
-    <string name="lab_7ceefd00">Download non riuscito: %1$s</string>
     <string name="lab_7d24ed15">Ancora niente qui.</string>
     <string name="lab_7d50777a">Azione, GDR, Strategia</string>
     <string name="lab_7d6bff72">Disponibile con il sistema audio DirectAudio.</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">Traduttori x86</string>
     <string name="lab_7e3548ee">Mostra in Steam i giochi della scheda Giochi</string>
     <string name="lab_7e38b599">Il caricamento automatico sul cloud all\'uscita sarà DISATTIVATO per i giochi della tua libreria Steam. I loro salvataggi non verranno inviati a Steam Cloud alla chiusura di un gioco — dovrai caricarli tu dalla sezione Salvataggi cloud della pagina dei dettagli del gioco. Continuare?</string>
+    <string name="lab_7e4777f5">Prima scegli i giochi da rimuovere</string>
     <string name="lab_7e6d7e33">Schede della libreria</string>
     <string name="lab_7e9c00ea">Auto (come gli FPS)</string>
     <string name="lab_7e9eede5">Profilo %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">Richiede avvio sicuro (VAC)</string>
     <string name="lab_7f13060c">Modalità di visualizzazione</string>
     <string name="lab_7f7743c4">1 opzione è impostata per questo gioco.</string>
+    <string name="lab_7f871f0c">Avvia con il gioco</string>
     <string name="lab_7fa23600">Conserva gli shader compilati per il prossimo avvio (build gplasync).</string>
     <string name="lab_7fba9196">Orologio</string>
     <string name="lab_7ff85140">Disegna il desktop di Windows su Android. Wayland usa sempre Vulkan.</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">Scrivi il percorso completo, iniziando con /.</string>
     <string name="lab_8069546e">Impilato</string>
     <string name="lab_8070a23b">Percorso di salvataggio e repository</string>
+    <string name="lab_808644e3">Cache</string>
     <string name="lab_8124b894">Scarica automaticamente da Steam Cloud all\'avvio</string>
     <string name="lab_81297e77">L\'output di ogni gioco durante l\'esecuzione</string>
     <string name="lab_816ce026">Download</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">Gioco</string>
     <string name="lab_83548a23">Aspetto, luminosità, contrasto, gamma, saturazione, FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">Importa o esporta l\'elenco</string>
     <string name="lab_83713095">Altra impostazione locale…</string>
+    <string name="lab_8371c265">Download di %1$s…</string>
     <string name="lab_838501df">Offline: vengono mostrati solo gli effetti installati. Connettiti per sfogliare il catalogo.</string>
     <string name="lab_83ce15dd">fps medi</string>
     <string name="lab_83f0742a">Cartelle dei giochi</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">Profilo dell\'adattatore</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · salvato</string>
     <string name="lab_8521db60">Menu rapido</string>
+    <string name="lab_85379d71">Ripristino di %1$s…</string>
     <string name="lab_85486938">Log e diagnostica</string>
     <string name="lab_8554e6fa">Veloce</string>
     <string name="lab_85558be1">Predefiniti per tutti i container</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">Predefinito · %1$s</string>
     <string name="lab_85a12a5f">Sostituisci</string>
     <string name="lab_85ab5712">I giochi XInput leggono il controller direttamente, senza coda di input (nessuno stick bloccato dopo il rilascio). Attivo per i nuovi container.</string>
     <string name="lab_85e5a021">Backup</string>
     <string name="lab_85eb8db0">Entrambi controllano il giocatore 1</string>
     <string name="lab_85efabfb">su %1$s giochi</string>
+    <string name="lab_85f9f5e1">Unità C</string>
     <string name="lab_861c1b03">Modalità touch e tutti gli interruttori qui</string>
     <string name="lab_86369691">Mostra il catalogo ufficiale nei repository</string>
+    <string name="lab_8636cba2">Caricamento…</string>
     <string name="lab_866dbc9c">Accedi ›</string>
     <string name="lab_86865d1d">Versione Vulkan</string>
     <string name="lab_868b6596">Senza root</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">Automatico · la copertina, sfocata</string>
     <string name="lab_8844e521">Valori del preset</string>
     <string name="lab_8850c516">Permette ai giochi DirectInput di far vibrare il controller: vibrazione semplice e gli effetti di forza che i giochi di corse e di volo inviano a un volante o a un joystick, percepiti tramite i due motori del controller. Segue le impostazioni di Vibrazione (destinazione e intensità della vibrazione). Una forza costante (ad esempio un gioco di corse che tiene il volante dritto) svanisce dopo un paio di secondi, così il controller non continua a vibrare. I giochi DirectInput la producono solo mentre vedono il controller. Una modifica si applica quando il controller si ricollega (in gioco lo fa Controlli › Pad) o al prossimo avvio. BANNERIN_DINPUT_FF nelle variabili d\'ambiente ha la precedenza su questa impostazione.</string>
+    <string name="lab_8855c603">Rimuovere %1$s giochi?</string>
     <string name="lab_8861fdef">Impostazioni audio</string>
     <string name="lab_887ae5cd">Crea</string>
     <string name="lab_88819a36">Griglia sull\'artwork</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">Un colore come #RRGGBB, es. #1E88E5</string>
     <string name="lab_8907b290">Sfoglia file</string>
     <string name="lab_892b7b55">Copertina larga</string>
+    <string name="lab_8946594d">%1$s selezionati</string>
     <string name="lab_8965e6c7">Meno servizi = avvio più rapido e più RAM libera.</string>
     <string name="lab_8998f446">Icona di questa voce</string>
     <string name="lab_89f43a0d">Valori dei preset del traduttore</string>
     <string name="lab_89f953b4">Destinazione vibrazione</string>
     <string name="lab_8a142020">Tasto Y</string>
+    <string name="lab_8a459c00">Cerca su Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper</string>
     <string name="lab_8a8bb4d3">Flusso di comandi (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">Nelle build Nightly</string>
     <string name="lab_8ce1bc2a">Tasti</string>
     <string name="lab_8d04c8e0">Controller</string>
+    <string name="lab_8d5acd32">.zip compatibile con GameHub (predefinito)</string>
     <string name="lab_8d6a7747">Nome e opzioni di avvio solo per questo gioco.</string>
     <string name="lab_8dc9c516">Modifiche PanVK nell\'adattatore Wayland: nasconde present_id, present_wait e dynamic_rendering, più due workaround di sincronizzazione. Attivo per impostazione predefinita con un driver PanVK.</string>
     <string name="lab_8df575ef">Richiede il renderer dello schermo Vulkan (Grafica) o Wayland.</string>
     <string name="lab_8e22550f">Pagine dell\'app</string>
-    <string name="lab_8e7f9e42">Ottieni driver</string>
     <string name="lab_8e81d76e">Preset FEXCore</string>
     <string name="lab_8e91f337">Root. Il controllo della temperatura resta attivo.</string>
     <string name="lab_8ea27f15">Eliminare %1$s?</string>
     <string name="lab_8eb9f765">Le modifiche non salvate qui vanno perse. I container esistenti mantengono le loro impostazioni.</string>
     <string name="lab_8ecc4179"> invece di quelle di Wine. Serve a molti wrapper e mod loader. Le DLL grafiche non sono mai incluse: se ne occupano DXVK e VKD3D.</string>
     <string name="lab_8ece40f8">Solo driver Banners-Turnip; il Turnip standard lo ignora.</string>
-    <string name="lab_8ee80fca">Nessuna fonte di driver.</string>
     <string name="lab_8ef37792">In basso</string>
     <string name="lab_8f4a852b">Alimentazione del dispositivo</string>
     <string name="lab_8f4c06ce">I valori vengono passati al wrapper così come sono; quelli sconosciuti si possono lasciare vuoti senza problemi.</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">Renderer SurfaceFlinger — Sperimentale</string>
     <string name="lab_909603fb">Aggiornamento…</string>
     <string name="lab_90b603b8">Duplica</string>
+    <string name="lab_90d7bedf">Percorso di salvataggio</string>
     <string name="lab_91104123">Esegue il codice x86 a 32 bit del gioco sulla tua CPU ARM.</string>
     <string name="lab_914624be">Sincronizza con Steam Cloud durante gli avvii con Goldberg</string>
     <string name="lab_915c9049">Ripristina</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">Mantiene attivo il percorso rapido degli store speculativi della CPU per i thread di gioco (solo Proton arm64ec). Attivo per impostazione predefinita.</string>
     <string name="lab_934c8903">DLL integrate o native per DirectX, audio e runtime, e i codec multimediali.</string>
     <string name="lab_93c6f86e">Gioco Android</string>
+    <string name="lab_942f9b65">Nome A–Z</string>
     <string name="lab_94436fab">Scrivi una locale come pl_PL o pl_PL.UTF-8.</string>
     <string name="lab_944e1f72">Sistema audio</string>
     <string name="lab_947c1567">Obiettivi di Steam</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">Luminosità</string>
     <string name="lab_963f841c">Stesso nome di un driver integrato</string>
     <string name="lab_964d1a40">Condividi gli appunti di Android con i giochi</string>
+    <string name="lab_96526c2a">Salva di nuovo il file</string>
     <string name="lab_968b9d49">Applicate all\'avvio. Il menu laterale in gioco le modifica comunque in tempo reale.</string>
     <string name="lab_969dab73">ReShade attivo / disattivo, Singolo / Impilato, effetti e relative impostazioni</string>
     <string name="lab_969fd520">Fence di rendering del client</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">Aumenta la priorità del thread di gioco</string>
     <string name="lab_9f612c9d">Driver GPU</string>
     <string name="lab_9f713ecd">Nessuno elencato</string>
+    <string name="lab_9fd345af">Rimozione di %1$s…</string>
     <string name="lab_9fea5158">Impostazioni del container</string>
     <string name="lab_a00d34e8">Controlla le build Nightly</string>
     <string name="lab_a011bb4c">Ogni impostazione dell\'app si applica subito.</string>
     <string name="lab_a01444fb">Stile overlay</string>
     <string name="lab_a01ea521">Rimuovere le assegnazioni di %1$s?</string>
     <string name="lab_a05a9689">Tutto in questa pagina</string>
+    <string name="lab_a081a3ed">Esporta l\'elenco</string>
     <string name="lab_a0d93d63">CPU per core</string>
     <string name="lab_a0f06f2a">Serve una connessione per scaricare</string>
     <string name="lab_a0f72982">Presentazione zero-copy e modalità sicura OpenGL</string>
     <string name="lab_a108392d">Sempre</string>
     <string name="lab_a115f62d">Componenti</string>
+    <string name="lab_a11756a4">Info memoria</string>
     <string name="lab_a1edd479">Da BCn ad ASTC</string>
     <string name="lab_a24bc720">Skin</string>
     <string name="lab_a26b7e90">Salvato in quel Proton, per ogni gioco che lo usa</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">Tieni premuto per mirare</string>
     <string name="lab_a396cfaa">Impossibile caricare questa immagine</string>
     <string name="lab_a3c61ce1">Finestre e log</string>
+    <string name="lab_a3dbadc2">Info sul gioco</string>
     <string name="lab_a3f6a50d">Adatta allo schermo</string>
     <string name="lab_a40c85ce">Servizi avviati con Windows</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">Frequenza di aggiornamento manuale</string>
     <string name="lab_a4d1de01">Cattura del mouse (DirectInput)</string>
     <string name="lab_a4d4c41a">Le assegnazioni proprie di questo container, non quelle di Tutti i container.</string>
+    <string name="lab_a4f06c81">Impossibile importare %1$s profili su %2$s</string>
     <string name="lab_a4f1cbaf">Gli spazi vengono rimossi: le variabili sono separate da spazi.</string>
     <string name="lab_a523a4e1">Motori di vibrazione</string>
     <string name="lab_a559e736">Controller XR</string>
     <string name="lab_a57ba715">Affinità processore (cpuList)</string>
+    <string name="lab_a591cbcb">Un gioco specifico…</string>
     <string name="lab_a593c4da">Il tuo file</string>
     <string name="lab_a59e2986">Xalia disattivato (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Fa funzionare il client come su uno Steam Deck, con il menu di accesso rapido. I giochi non ricevono più il controller.</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">Passa il controller direttamente al gioco invece che a Steam Input. Per i giochi classici (Half-Life 2, CS:S). Disattiva Steam Input.</string>
     <string name="lab_a6902569">Controlli a schermo vs. controller reale</string>
     <string name="lab_a6e62e9e">Traduzione DirectX</string>
+    <string name="lab_a6fe8b9a">Ripristina repository predefiniti</string>
     <string name="lab_a71846fe">Tema e colori</string>
     <string name="lab_a74f5b6d">Disattivato, artwork del gioco, artwork 3D che si sposta lentamente in profondità, o con anteprime: un trailer nel riquadro grande della Home</string>
     <string name="lab_a7a4aed7">Touchscreen invia le dita a Steam come veri tocchi; Touchpad muove il puntatore trascinando e clicca con un tocco.</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">Forzato</string>
     <string name="lab_aa61eeea">Seleziona profilo controlli</string>
     <string name="lab_aa9bd991">Importato %1$s</string>
-    <string name="lab_aaae690f">La schermata completa dei componenti</string>
     <string name="lab_aac2b52c">Installa prima una versione di Wine o Proton (Componenti).</string>
     <string name="lab_aadb73f3">Chiara</string>
     <string name="lab_aaf410b8">Accesso non effettuato</string>
     <string name="lab_ab00bfda">Giochi Steam</string>
+    <string name="lab_ab20a9e4">Prima viene scaricato il layer.</string>
     <string name="lab_ab2ea144">DirectX 12 tramite Vulkan. Nessuno disattiva DirectX 12.</string>
     <string name="lab_ab612af4">Temp.</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">Accedi per gestire le tue configurazioni condivise</string>
     <string name="lab_ab8824cb">Modalità di presentazione dell\'adattatore</string>
+    <string name="lab_abac19ba">Apri la pagina della fonte</string>
     <string name="lab_abb1c367">Non è collegato nulla. Questo gioco è ancora impostato per avviarsi su una TV.</string>
     <string name="lab_abb20221">Nessun preset</string>
     <string name="lab_abd752a4">Gesti touch</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">Nessun programma ancora segnalato.</string>
     <string name="lab_ad26a7c7">sconosciuto</string>
     <string name="lab_adcb307d">Come le chiamate DirectX di Windows vengono convertite in Vulkan per la tua GPU.</string>
+    <string name="lab_add714f7">Non installato</string>
     <string name="lab_adf82850">Server grafico (X11)</string>
     <string name="lab_adfa74ef">Attivare la modalità Steam Deck?</string>
     <string name="lab_ae483014">Installazione</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">I giochi installati si avviano comunque. Richiede prima un accesso online su questo dispositivo. Si applica dalla prossima sessione.</string>
     <string name="lab_af32ab2f">Singolo</string>
     <string name="lab_af39be20">Rete</string>
+    <string name="lab_af3c9967">Aggiorna</string>
     <string name="lab_af3f8345">Nessun risultato per questo gioco. Scegli un\'immagine o collegalo a Steam in Dettagli.</string>
     <string name="lab_af456994">Impedisce al kernel di disattivare i core.</string>
     <string name="lab_af47e020">Generi</string>
     <string name="lab_afb57bd1">Filtro di upscaling, nitidezza e debanding</string>
+    <string name="lab_aff587ab">Backup GameHub (.zip)</string>
     <string name="lab_b01a2f1b">Variabili d\'ambiente</string>
     <string name="lab_b01c4a81">Orientamento</string>
     <string name="lab_b01f4f95">Fatto</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">Slot giocatore per ogni controller</string>
     <string name="lab_b0beed23">I tuoi giochi in Steam</string>
     <string name="lab_b0daa272">Aiuto e supporto</string>
+    <string name="lab_b0e351e0">Aggiornato</string>
+    <string name="lab_b0f4240e">Backup dei salvataggi</string>
     <string name="lab_b0fab841">Grafico GPU</string>
     <string name="lab_b0fc42e2">Condividi i salvataggi con l\'app</string>
     <string name="lab_b132aa74">Il Turnip installato con cui il compositor Wayland mostra a schermo i frame del gioco.</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">Tipo di container</string>
     <string name="lab_b312c895">Apri il menu rapido</string>
     <string name="lab_b32171e6">Metti in pausa il gioco</string>
-    <string name="lab_b323b10b">Nascondere %1$s? Puoi mostrarlo di nuovo dalle impostazioni Contenuti di Classic.</string>
     <string name="lab_b32cbb53">Importare %1$s come nuovo container?</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">Attiva comunque</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">Gli interruttori root vengono salvati per questo gioco e applicati all\'avvio una volta concesso il root.</string>
     <string name="lab_b543f270">Assegnazioni controller</string>
     <string name="lab_b5681ffc">Pulsanti Steam e Accesso rapido a schermo</string>
-    <string name="lab_b56fe256">Nessun driver in questa fonte.</string>
     <string name="lab_b5b9d14a">Attiva o disattiva XInput diretto dal menu di gioco senza riavviare.</string>
     <string name="lab_b5c5920e">Apri il gestore dei log</string>
     <string name="lab_b6024573">Rimuovere %1$s? I giochi che lo usano tornano al driver del loro container.</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">I tuoi negozi</string>
     <string name="lab_b73987a8">Predefinita di sistema</string>
     <string name="lab_b739e60c">Vibrazione</string>
+    <string name="lab_b759a7ac">Per quale strumento è questo backup?</string>
     <string name="lab_b7636944">Usata quando l\'adattamento è disattivato.</string>
     <string name="lab_b7c337c7">Scrivila come larghezza x altezza, ad es. 1600x900.</string>
     <string name="lab_b7d4edb2">Livello di funzionalità DirectX 12</string>
     <string name="lab_b7e2758f">Emulazione</string>
     <string name="lab_b885aba0">Annullamento</string>
     <string name="lab_b89607f1">Backup e ripristino</string>
-    <string name="lab_b8afe1d2">Installa da un file</string>
     <string name="lab_b90673bf">Versione DXVK</string>
     <string name="lab_b9106d81">Colore del contorno</string>
     <string name="lab_b9384128">Blocca lo schermo a</string>
+    <string name="lab_b9462894">Dimensione schede · %1$s</string>
     <string name="lab_b9825547">Ancora niente salvato</string>
     <string name="lab_ba3b6032">Renderer WineD3D</string>
     <string name="lab_ba4f23ec">Aggiungi una cartella di giochi</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">Salvataggi</string>
     <string name="lab_bcf34837">Senza pacing</string>
     <string name="lab_bcfb356d">Dal container</string>
+    <string name="lab_bd4ab43f">1 gioco</string>
     <string name="lab_bd50227c">Nessuna build VEGAS installata: scaricane una qui sotto.</string>
     <string name="lab_bd63a37d">Immagine di sfondo</string>
     <string name="lab_bd87c7d9">Metti in cache le texture decodificate</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">Scegli immagine…</string>
     <string name="lab_be45a0e0">Nessun risultato · non collegato a Steam</string>
     <string name="lab_be638831">Lente, finestre, log e programmi in esecuzione.</string>
+    <string name="lab_be80b01d">Nascondere %1$s? Ripristina repository predefiniti lo mostra di nuovo.</string>
+    <string name="lab_be8d2116">Prima chiudi tutto ciò che è in esecuzione al suo interno.</string>
+    <string name="lab_be906409">.zip nativo Winlator</string>
     <string name="lab_be998b7c">Sincronizza ogni frame</string>
     <string name="lab_be9a2a59">Doppio Indietro apre Accesso rapido</string>
     <string name="lab_be9d8c7a">Opzioni di avvio</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">Centro</string>
     <string name="lab_c120c6bb">Il controllo completo di CPU e GPU è sbloccato.</string>
     <string name="lab_c14faa17">XInput diretto (BANNERIN)</string>
+    <string name="lab_c15bb42a">Scegli un\'altra cartella…</string>
     <string name="lab_c171e496">Automatico (beta pubblica)</string>
     <string name="lab_c172ec97">Le modifiche vengono mantenute per questo gioco solo dove differiscono dal predefinito globale.</string>
     <string name="lab_c1bc6675">Il wrapper Vulkan usato dai giochi su X11. Anche i wrapper importati compaiono qui.</string>
     <string name="lab_c1c757e2">Log di debug del layer BCn</string>
     <string name="lab_c1df4081">Media</string>
-    <string name="lab_c206cdbf">Backup di tutti i salvataggi</string>
     <string name="lab_c22c196f">Rosso</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">. Il salvataggio è rifiutato finché non sono diversi.</string>
     <string name="lab_c2928e24">Lente</string>
     <string name="lab_c2f74c47">Versione driver</string>
     <string name="lab_c2fdbf25">Importazione</string>
+    <string name="lab_c32c5dc4">Mod</string>
     <string name="lab_c34f4640"> · Conservate da prima dell\'impostazione Sincronizzazione; Prestazioni › Sincronizzazione le legge e le cancella quando la imposti.</string>
     <string name="lab_c36c4b3f">Schermo</string>
     <string name="lab_c3db5a25">Pannello (predefinito)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Supporto Steam Controller</string>
     <string name="lab_c6521528">Richiede una GPU Mali Valhall.</string>
     <string name="lab_c664401e">Container = segue il container. Questo gioco = impostato qui.</string>
+    <string name="lab_c669581b">Ripristina un salvataggio</string>
     <string name="lab_c66c17c3">Preset del traduttore</string>
     <string name="lab_c6888ac4">Auto</string>
     <string name="lab_c6a02e29">Usalo comunque</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">Controlli a schermo, mouse, vibrazione, mira giroscopica.</string>
     <string name="lab_c7b49d50">App Steam %1$s</string>
     <string name="lab_c7fad197">Nessuna impostazione aggiuntiva rilevata</string>
+    <string name="lab_c82c4a5b">Aggiorna a %1$s</string>
     <string name="lab_c82e7e67">Build dal catalogo. Quelle installate compaiono in Versione DXVK.</string>
+    <string name="lab_c83f23bf">Impossibile ripristinare la copertina</string>
     <string name="lab_c844d41c">Per i giochi Denuvo che l\'app non rileva da sola.</string>
     <string name="lab_c84956c1">Servizi personalizzati</string>
     <string name="lab_c85b9376">Meno jitter, un po\' più di ritardo. Impostato per container.</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">I controlli a schermo restano giocatore 1</string>
     <string name="lab_c8b7e3fa">Questo driver non può mostrare la sessione. \"Sistema\" o un driver non più installato lascia il compositor sul Vulkan di sistema, che mostra uno schermo nero.</string>
     <string name="lab_c8c4d663">Attivo — con la generazione di frame attiva, lo schermo segue il limite dei frame × moltiplicatore.</string>
-    <string name="lab_c8d5043b">Seleziona pacchetto di contenuti</string>
     <string name="lab_c8d52d67">Elimina preset</string>
     <string name="lab_c936ff11">es. it_IT.UTF-8</string>
     <string name="lab_c94d19de">Carica automaticamente su Steam Cloud all\'uscita</string>
+    <string name="lab_c961a1bf">%1$s (auto)</string>
     <string name="lab_c9822616">Download</string>
     <string name="lab_c9a07f62"> · i controlli a schermo</string>
     <string name="lab_c9ae8103">Modalità Mali (PanVK)</string>
+    <string name="lab_c9ef821f">Tutti i salvataggi (intero profilo)</string>
     <string name="lab_ca16bb77">si applica subito · salvato per questo gioco e come predefinito di questo motore</string>
     <string name="lab_ca45d5a4">questo container</string>
     <string name="lab_ca62f862">Download e rete</string>
     <string name="lab_cabf747a">Copia asincrona</string>
     <string name="lab_caf7d4a3">Preset condiviso, modificato</string>
     <string name="lab_cb5fc4d5">Configurazione VEGAS</string>
+    <string name="lab_cb6124f5">Aggiornamento del layer</string>
     <string name="lab_cb6d604d">L\'HUD non si può trascinare in gioco.</string>
     <string name="lab_cbab7f7a">Icone</string>
     <string name="lab_cbb98111">Stick destro</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">Un\'immagine condivisa da tutti i container, o una solo per questo container.</string>
     <string name="lab_cc7362b0">In alto o In basso lascia l\'altra metà libera per i controlli a schermo.</string>
     <string name="lab_cc9e753f">Sfoglia e installa componenti</string>
+    <string name="lab_cc9f0c95">Mostra memoria interna</string>
+    <string name="lab_ccb4b062">Prima viene scaricato il layer (%1$s).</string>
     <string name="lab_cce939fc">OpenGL veloce</string>
     <string name="lab_cd871c13">Dichiararsi come Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">Decoder video</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">Sperimentale</string>
     <string name="lab_d261efe4">Singolo mantiene fluidi gli stick sulle console portatili che rallentano quando girano entrambi i motori.</string>
     <string name="lab_d2651812">Impostazioni del gioco</string>
+    <string name="lab_d27c84ad">Account dell\'emulatore passato a quello del backup. Riavvia il gioco.</string>
     <string name="lab_d27d3648">LSFG nativo</string>
     <string name="lab_d2895d94">Backup, ripristino e sincronizzazione dei salvataggi</string>
     <string name="lab_d2b6baa8">Corregge il testo illeggibile nei giochi giapponesi, cinesi, coreani e russi.</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">Grilletto</string>
     <string name="lab_d5e887b8">%1$s h</string>
     <string name="lab_d60412d3">Originale</string>
+    <string name="lab_d60d149d">Repository importati</string>
     <string name="lab_d620ef74">Copertina sfocata</string>
     <string name="lab_d653f990">Traduttore x86 per codice a 32 bit</string>
     <string name="lab_d6d3fe68">Scegli un pacchetto di componenti (-linux .wcp)</string>
     <string name="lab_d7060afb">Importa questo container</string>
+    <string name="lab_d736d92d">OK</string>
     <string name="lab_d73ee22e">Il driver Turnip o Adreno caricato dal wrapper. Importane altri in Contenuti › Driver GPU.</string>
     <string name="lab_d801cf49">I file di configurazione inclusi nelle release di VEGAS. Compaiono in File di configurazione.</string>
     <string name="lab_d809a959">Mantenuto quando salvi l\'editor.</string>
     <string name="lab_d8321a59">Senza crepitii</string>
+    <string name="lab_d832ee19">Menu laterale</string>
     <string name="lab_d834a1cf">Verifica dei driver installati in grado di mostrare il gioco…</string>
     <string name="lab_d870ae5e">Questo driver non si è caricato su questa GPU: al controllo ha risposto invece il driver di sistema.</string>
     <string name="lab_d8e06406">Schermo</string>
+    <string name="lab_d8e601e7">Alcuni giochi tengono i salvataggi altrove (cartella di installazione, registro, Steam Cloud). Controlla un backup prima di eliminare qualcosa.</string>
     <string name="lab_d8e621c2">Aggiungi un\'unità</string>
     <string name="lab_d90a905b">Vetro</string>
     <string name="lab_d91754f0">Nessuna voce.</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Servizi Windows in background</string>
     <string name="lab_db6d6f28">Includi pre-release</string>
     <string name="lab_db745b05">. Una nuova immagine viene usata dal prossimo avvio, dopo il salvataggio.</string>
+    <string name="lab_db7be531">Impossibile scaricarlo.</string>
     <string name="lab_db89b158">Ultima sessione</string>
     <string name="lab_dbce82c8">Usa quello di Tutti i container</string>
     <string name="lab_dbd5d59f">Variabili di questo gioco</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">Sincronizza gli sblocchi con il tuo profilo Steam</string>
     <string name="lab_de0c0eb8"> \";\" e \"=\" vengono omessi.</string>
     <string name="lab_de315178">Rinomina</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">Attivato anche da \"Preferisci le DLL della cartella del gioco\" qui sopra</string>
     <string name="lab_de72753f">Quanta memoria grafica dichiara WineD3D.</string>
+    <string name="lab_de75d40c">%1$s torna da %2$s a %3$s. Il registro viene ripristinato dal backup creato prima dell\'aggiornamento; giochi, salvataggi, collegamenti e impostazioni restano. %4$s deve essere ancora installato.</string>
     <string name="lab_dec4dc19">Solo container</string>
     <string name="lab_def1a7db">Container</string>
     <string name="lab_def6b48c">Variabili note</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Adattatore Wayland</string>
     <string name="lab_e1be537c">Non salvato</string>
     <string name="lab_e22a8ea9">Wayland richiede un Turnip installato per mostrare a schermo i frame del gioco. Quelli nuovi compaiono in Driver grafico.</string>
-    <string name="lab_e2410f47">Sfoglia e scarica</string>
     <string name="lab_e2421520">Scarica versioni WOWBox64</string>
     <string name="lab_e280d375">Dimensione schede</string>
     <string name="lab_e2a7f23e">A schermo</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">Questa voce non ha un file icona su cui scrivere.</string>
     <string name="lab_e2ce4373">Sezione</string>
     <string name="lab_e2e95fcd">Log dei giochi</string>
+    <string name="lab_e2f09271">Ripristinare il backup di %1$s in %2$s? Potrebbe sovrascrivere i salvataggi presenti.</string>
+    <string name="lab_e3af6ca0">Seleziona elenco di repository</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Per i giochi che vedono un controller solo tramite Steam (No Man\'s Sky). Lascialo disattivato per i giochi che leggono il controller da soli. Disattiva il passthrough del controller.</string>
     <string name="lab_e3e80b58">Profilo controlli</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">Disattivalo se preferisci; questo gioco lo ricorderà.</string>
     <string name="lab_e841eed8">Permesso del microfono negato: il microfono resta disattivato.</string>
     <string name="lab_e8a0175e">Scarica versioni Box64EC</string>
-    <string name="lab_e8a5f633">Nessun file di componente salvato.</string>
     <string name="lab_e8c91356">Segue le assegnazioni del container. Cambiarne una dà a questo gioco assegnazioni proprie.</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">Ancora nessun layout a schermo</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) o off</string>
     <string name="lab_e98a38e0">Lente, picture-in-picture, tastiera e prestazioni.</string>
     <string name="lab_e9bb2501">Permette ai giochi di usare il microfono: DirectAudio cattura l\'input. Android chiede il permesso una volta.</string>
-    <string name="lab_ea08e43f">Runtime Linux e tutti gli elenchi</string>
     <string name="lab_ea354143">Un pulsante discreto in alto a destra che apre il menu rapido al tocco. Indietro, il pulsante Menu o un tocco con quattro dita funzionano anche senza.</string>
     <string name="lab_ea4babd8">Come si avvia</string>
     <string name="lab_ea83f479">• Il client potrebbe mostrare in Sistema un aggiornamento del client Steam che non si installa. La modalità Deck ora usa il canale beta di Steam Deck per evitarlo, ma se compare non premere Applica.\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">Metriche</string>
     <string name="lab_ed41d675">Driver di disegno (runtime Linux)</string>
     <string name="lab_ed779ba6">Scarica versioni Wine e Proton</string>
+    <string name="lab_eda50b73">%1$s giochi</string>
     <string name="lab_edfcb4b9">Mouse e tastiera esclusivi</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">Batteria in rosso da</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">Trasparenza</string>
     <string name="lab_efdeb1c6">L\'elenco dei preset è condiviso da tutti i container e giochi.</string>
     <string name="lab_efdfc7e5">Limitatore FPS</string>
-    <string name="lab_efeacf52">Per ora solo il driver del telefono.</string>
     <string name="lab_f04c78b9">Impostazioni audio · questo gioco</string>
     <string name="lab_f05053e7">Legge direttamente uno Steam Controller (i suoi trackpad e tasti extra). Disattivato: il normale percorso di input resta invariato.</string>
     <string name="lab_f0520965">mailbox = frame più recente, latenza minima; fifo = vsync, pacing uniforme. Predefinito segue il profilo, altrimenti la modalità di presentazione salvata. Immediate richiede il tearing, che Wayland non offre.</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">Vibrazione DirectInput</string>
     <string name="lab_f10b2876">Affinità processore</string>
     <string name="lab_f115c775">Avvio sicuro anti-cheat (VAC)</string>
+    <string name="lab_f1165d1c">Ordina</string>
     <string name="lab_f123362f">App</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">Stick sinistro</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">Stile</string>
     <string name="lab_f2857f55">Interna</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">Seleziona driver GPU</string>
     <string name="lab_f2ed832c">La memoria della GPU dichiarata ai giochi DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Latenza audio</string>
     <string name="lab_f304d21f">È troppo piccolo per un desktop Windows.</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">Solo per questo gioco: nessun altro gioco o container cambia. </string>
     <string name="lab_f40ccd04">Attiva</string>
     <string name="lab_f44d5610">Vibrazione attiva / disattiva e interruttori per slot</string>
+    <string name="lab_f46b910b">Memoria privata dell\'app</string>
     <string name="lab_f485cfbf">Impostazioni ricavate dai file del wrapper importato. Nascondile o mostrale in Gestisci wrapper grafici.</string>
     <string name="lab_f4abcaf2">Questa è un\'impostazione del container; modificala nelle impostazioni del container.</string>
     <string name="lab_f4f73c18">Predefiniti</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">Salva</string>
     <string name="lab_f576fb2d">Layer dal catalogo, oppure installane uno da un file. I nuovi container possono usarli.</string>
     <string name="lab_f57b35ee">Zona morta e livellamento</string>
+    <string name="lab_f581508f">%1$s giochi rimossi</string>
     <string name="lab_f5864edc">Il download automatico dal cloud all\'avvio sarà DISATTIVATO per i giochi della tua libreria Steam. I salvataggi cloud più recenti non verranno scaricati prima dell\'avvio di un gioco — dovrai scaricarli tu dalla sezione Salvataggi cloud della pagina dei dettagli del gioco. Continuare?</string>
     <string name="lab_f593aa90">Il driver con cui il compositor dell\'app mostra la sessione sullo schermo. Non quello con cui disegna il client.</string>
     <string name="lab_f59e59da">Mostrato nella libreria. La rinomina mantiene copertina e icona.</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">Parte dai tuoi predefiniti dei nuovi container. X lo crea.</string>
     <string name="lab_f783e029">Doppia batteria</string>
     <string name="lab_f81efa4a">FEX, DXVK e VKD3D-Proton</string>
+    <string name="lab_f826d6b4">%1$s file ripristinati in %2$s</string>
     <string name="lab_f8283624">Dimensione interfaccia</string>
     <string name="lab_f8507a8c">Correggi i colori di SurfaceFlinger</string>
     <string name="lab_f8e0d68c">Driver del compositor (graphicsDriverConfig version)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">Alcuni giochi non leggono mai il controller da soli: lo chiedono a Steam. In SteamLite nessuno risponde, quindi quei giochi non vedono alcun controller. Attivato: l\'agente SteamLite attiva il livello controller di Steam per questo gioco con un layout adatto. Lascialo disattivato per i giochi che leggono già un controller, altrimenti ricevono ogni pressione due volte. È l\'opposto del passthrough del controller, quindi solo uno dei due può essere attivo. Solo SteamLite.</string>
     <string name="lab_fa859fc7">Modalità Goldberg, Verifica file e Cerca aggiornamenti si trovano nel menu di avvio. Disattiva \"Salta il menu di avvio\" per vederlo al prossimo avvio.</string>
     <string name="lab_fac0fe64">I controlli di ridimensionamento fanno la parte utile anche senza, e il limite FPS del menu laterale in gioco limita la frequenza dei fotogrammi. Disattiva di nuovo la modalità Deck se un gioco smette di rispondere al controller.</string>
+    <string name="lab_fac102a7">FPS · ultima sessione</string>
     <string name="lab_fad0baa9">Predefinita (Steam: %1$s)</string>
     <string name="lab_fae2666b">Il Proton di Valve, sostituito quando Steam lo aggiorna; i suoi originali sono conservati per build</string>
     <string name="lab_fae62cc0">Blocca il puntatore nel gioco. Premi Volume giù per rilasciarlo.</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">Versione DirectX</string>
     <string name="lab_fbd4f98b">Nome GPU visto dai giochi</string>
     <string name="lab_fbf2e44f">Il riquadro FPS e temperatura a schermo.</string>
+    <string name="lab_fbfb437a">%1$s passa da %2$s a %3$s. Giochi, salvataggi, collegamenti e impostazioni restano.</string>
     <string name="lab_fd1310b6">Tasto X</string>
     <string name="lab_fd5460f8">Colore</string>
+    <string name="lab_fdc15162">Non caricato</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (tracing del driver)</string>
     <string name="lab_fe11d138">Nome</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">Come testo, separato da virgole</string>
     <string name="lab_ffb9855e">Quel file non è un profilo controlli</string>
     <string name="lab_ffcd863d">%1$s min giocati</string>
+    <string name="lab_ffe2f089">Nessun WSI Wayland rilevato</string>
 </resources>

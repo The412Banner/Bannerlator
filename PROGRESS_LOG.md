@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 09:59 EST — 🧪 Big Picture test 1 on the Pocket FIT: Windows Steam without -cef-disable-gpu
+- **Video 09:52 (fd7e6e7e, 20 s):** Menu press in Big Picture opens its left menu (works); double press opens the Quick Access Menu, which draws one full frame and then is no longer repainted (only the focused icon's area updates); hold → drawer works. Overlay: CPU 26–46 %, GPU 5–15 %. Logcat of the test lost (256 KiB main buffer) → `logcat -G 16M` set (until reboot).
+- **Test 1 (user: "yes set up test 1"):** container 1 "Windows Steam Client x64.desktop" backed up to `/sdcard/Download/bl-backup-20261110/Windows Steam Client x64.desktop.before-gpu-test` (sha256 e1e85d95…); after the user closed Steam, execArgs written without `-cef-disable-gpu` (only change; owner/context kept). Undo: copy the backup back with `cat >`.
+- **Resume point:** user starts Steam (Big Picture on), tries Quick Access/Friends and browsing; then logcat "Steam (Windows)", wine_debug.log, dxgi logs, video.
+
 ## 2026-11-10 10:0x EST — 🔧 feat/windows-steam-library 795c0033: in-game "Run a program" opens a file picker (CI 42838176028 running)
 - **User (screenshots 09:37):** in-game drawer Run… opens the typed New Task box; "can we make this a file picker … device wide/storage options?" → plan → "yes build it on the same branch". Asked whether it runs a second exe with the game: yes, same winhandler EXEC in the running session.
 - **Built:** Run… (drawer) and "Run a program" (quick menu) open the app's file picker (internal storage, SD cards, the container's C:; .exe .bat .cmd .msi .lnk). The pick gets a Windows path via `WinePath.resolveWindowsPath` (a new drive letter when needed, its dosdevices link created live) and starts with `winHandler.execInFolder` (from its own folder). The New Task box keeps typed commands and gets Browse…, which fills the box with the picked path.

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 07:15 EST — ✅ Elite (a7febd02): non-Steam games list written by the 04:09 Steam x64 start (file check, read-only)
+- **Found (Elite session root-af, checking after the FIT catch-up):** the user started Steam x64 on the Elite at ~04:09 EST after the 04:08 install (CS:S d3d9 log 04:11, controller.txt 04:26). `F:\Download\Steam-x64\userdata\2932373\config\shortcuts.vdf` (2,823 B, 04:09) holds **8 entries, all tagged Bannerlator**: A Game About Digging A Hole™, aio, DiRT Showdown, DOOM + DOOM II, MIO Memories in Orbit, Resident Evil 2, Samorost 3, Sonic Mania (Exe paths on Z:/E:/F:); `config/grid/` has 8 covers (04:09).
+- **Left out as designed:** Brawlhalla + FlatOut (Steam's own `start.exe steam://rungameid/…` shortcuts), Steam / Steam Latest / Steam x64 (steam.exe).
+- **Not seen:** the `Non-Steam games: N listed` note is not in `Steam x64/wine_debug.log` (grep 0 hits) — where the note lands is not checked yet. Not confirmed on screen (no screenshot); Menu = Shift+Tab not confirmed on the Elite.
+- **Elite still runs a7febd02** (lastUpdateTime 04:08:12): older than main 2e7456c4 (no zip fix, storage choice, uninstall, Box64EC fix). Proof level for the sync: device-proven at file level on the Elite.
+
 ## 2026-11-10 06:4x EST — 🔀 MERGED fix/box64ec-default-version → main 53cad678 (user: "install the log line build when it's staged and merge to main when green, then build main as artifacts only")
 - **Bug (user screenshots 05:29, Pocket FIT):** a game set to Box64EC showed "Box64EC Version 0.4.5-c415ed7a4-experimental-0" in its settings but ran on FEXCore. The screen fills the row with the first installed Box64EC when nothing is saved (ContainerDetailViewModel), the launcher only copied box64ec.dll for a saved version, and with one version installed there is nothing to "change", so nothing got saved.
 - **164172fe:** applyX64Translator uses the saved Box64EC version when it is installed, otherwise the first installed Box64EC component (install dir must exist; the profile list can hold catalog entries), and copies box64ec.dll again when it is missing from system32.

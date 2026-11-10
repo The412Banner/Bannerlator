@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 06:4x EST — 🔀 MERGED fix/box64ec-default-version → main 53cad678 (user: "install the log line build when it's staged and merge to main when green, then build main as artifacts only")
+- **Bug (user screenshots 05:29, Pocket FIT):** a game set to Box64EC showed "Box64EC Version 0.4.5-c415ed7a4-experimental-0" in its settings but ran on FEXCore. The screen fills the row with the first installed Box64EC when nothing is saved (ContainerDetailViewModel), the launcher only copied box64ec.dll for a saved version, and with one version installed there is nothing to "change", so nothing got saved.
+- **164172fe:** applyX64Translator uses the saved Box64EC version when it is installed, otherwise the first installed Box64EC component (install dir must exist; the profile list can hold catalog entries), and copies box64ec.dll again when it is missing from system32.
+- **66cc2700:** one "x86" line per launch through logSessionLine (Wayland session log in the game's log folder, wine_debug.log on X11 when logging is on, logcat always): 32-bit translator (FEXCore/WOWBox64) and 64-bit translator (Box64EC/FEXCore) with versions and DLL names; says when Box64EC was picked but box64ec.dll is not available. A box64ec.dll left by a removed component is no longer used.
+- **CI:** 42804325443 (164172fe) and 42807895126 (66cc2700) green 4/4, 15 skipped each, 0 failed.
+- **Device (Pocket FIT, 164172fe installed 06:31:23 EST, base.apk 838a2bd0…):** MIO's shortcut with only emulator64=box64ec and xuser-1 system32/box64ec.dll deleted → 06:37 launch: box64ec.dll copied back, system.reg Wow64\amd64 = box64ec.dll, MIO log "cpu: Box64EC", no crash entries. 66cc2700 (log line) not device-tested yet.
+- **Merge:** backup `refs/backup/20261110/main-before-box64ec-default-version` = 1f22cbeb7; `--no-ff`; main had not moved; merged tree == 66cc2700 tree.
+
 ## 2026-11-10 05:46 EST — 🔀 MERGED feat/windows-steam-client → main 2ccaacf5 (user: "merge when green also and tell me"); 64c14f7e installed on the Pocket FIT
 - **CI 42800339918** (headSha 64c14f7e): 4/4 success.
 - **Install (user: "install anyway nothing is running in bannerlator"; root-8b's ok request was held by its session):** 05:44:59 EST, base.apk sha256 `d3008b6c07a90a849a801214394724601cb9702b7a09dcac918278f2fab25021` == staged `/sdcard/Download/Bannerlator-windows-steam-client-64c14f7e-pubg.apk`; app was not running; crash buffer 0; Box64EC, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact.

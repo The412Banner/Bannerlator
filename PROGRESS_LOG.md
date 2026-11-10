@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 09:0x EST — 🔧 feat/windows-steam-library fd7e6e7e: Menu press in Big Picture = Steam button, double press = Quick Access Menu (CI 42828613162 running)
+- **User:** "when guide button … is used in big picture, nothing happens, drawer only opens when held … open big picture side menu with a press and when non big picture mode is running in game it opens in game overlay" + "can you make the same button open qam with a double press?"
+- **Built:** short press → if the focused X window's title (or a named parent's; WM_NAME, then _NET_WM_NAME) contains "Big Picture": wait 300 ms, then the Steam button on player one's pad (`pressLinuxSteamButton(false)`, Guide through BANNERIN); a second press in that time → Steam held + A tapped (`pressLinuxSteamButton(true)`, the Linux session's QAM chord). Otherwise Shift+Tab as before. Hold → side drawer, unchanged. Each press logs "Steam (Windows): focused window '…'".
+- **Not verified:** Big Picture's window title on Wine ("Steam Big Picture Mode" assumed; the log line will show it); the Guide+A chord opening QAM in Windows Big Picture.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 08:37 EST — 📲 INSTALLED feat/windows-steam-library 58238b63 on the Pocket FIT (user: "install it when it's done")
 - **CI 42820036587** (headSha 58238b63): 4/4 success; artifact checked = run 42820036587 / 58238b63.
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-58238b63-pubg.apk` sha256 `b2dfd1ac67036b08ca5373cef6e8e9bdb1c218f1e353e3bb72cc5a8f4c86561e` (host == device).

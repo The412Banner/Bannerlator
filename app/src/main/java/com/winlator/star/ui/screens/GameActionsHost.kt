@@ -575,6 +575,10 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
         )
     }
 
+    // After a Windows Steam shortcut is removed (any layout): "Also uninstall Steam?".
+    val steamUninstallOffers by WindowsSteamClient.uninstallOffers.collectAsState()
+    steamUninstallOffers.firstOrNull()?.let { offer -> WindowsSteamUninstallDialog(offer) }
+
     if (showAndroidPicker) {
         val added = remember(shortcuts) { AndroidGames.addedPackages(shortcuts) }
         AndroidGamePickerDialog(
@@ -985,6 +989,66 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             },
         )
     }
+}
+
+/** "Also uninstall Steam?" for a removed Windows Steam shortcut whose client folder nothing else uses. */
+@Composable
+private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer) {
+    val context = LocalContext.current
+    var plan by remember(offer) { mutableStateOf<WindowsSteamClient.UninstallPlan?>(null) }
+    val running = offer.clientDir in WindowsSteamClient.uninstalling.collectAsState().value
+    LaunchedEffect(offer) {
+        plan = withContext(Dispatchers.IO) { WindowsSteamClient.planUninstall(offer) }
+    }
+    val keep = { WindowsSteamClient.dismissUninstall(offer) }
+    OutlinedAlertDialog(
+        onDismissRequest = { if (!running) keep() },
+        title = { Text("Also uninstall Steam?") },
+        text = {
+            val p = plan
+            if (running || p == null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(if (running) "Uninstalling Steam…" else "Checking Steam's folder…", color = OnSurfaceVariant)
+                }
+            } else {
+                Column {
+                    Text("Deletes Steam from ${p.where} (${SteamSdInstall.fmtBytes(p.bytes)}).", color = OnSurfaceVariant)
+                    if (p.games > 0) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (p.games == 1) "Includes 1 game installed in Steam's folder." else "Includes ${p.games} games installed in Steam's folder.",
+                            color = OnSurfaceVariant,
+                        )
+                    }
+                    if (p.keptLibraries > 0) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (p.keptLibraries == 1) "1 library folder with games is kept." else "${p.keptLibraries} library folders with games are kept.",
+                            color = OnSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (!running) TextButton(enabled = plan != null, onClick = {
+                val p = plan ?: return@TextButton
+                val app = context.applicationContext
+                WindowsSteamClient.uninstallAsync(p) { error ->
+                    Toast.makeText(
+                        app,
+                        error ?: "Steam uninstalled (${SteamSdInstall.fmtBytes(p.bytes)} freed)",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }) { Text("Uninstall") }
+        },
+        dismissButton = {
+            if (!running) TextButton(onClick = keep) { Text("Keep Steam") }
+        },
+    )
 }
 
 /**

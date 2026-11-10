@@ -13,8 +13,13 @@ import com.winlator.star.container.Container
 import com.winlator.star.container.Shortcut
 import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.core.EnvVars
+import com.winlator.star.core.FileUtils
 import com.winlator.star.core.VdfParser
 import com.winlator.star.core.WinePath
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
@@ -521,5 +526,203 @@ object WindowsSteamClient {
             Log.w(TAG, "could not write ${target.absolutePath}: ${t.message}")
             false
         }
+    }
+
+    // ── Uninstall ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A removed Windows Steam shortcut whose client folder no other shortcut uses. [keepContainerData] = another
+     * steam.exe shortcut in the same container still needs its sign-in data and service files.
+     */
+    data class UninstallOffer(
+        val container: Container,
+        val clientDir: File,
+        val keepContainerData: Boolean,
+    )
+
+    /** What "Uninstall" deletes for an [UninstallOffer], with its size. */
+    data class UninstallPlan(
+        val offer: UninstallOffer,
+        /** "internal storage", "the SD card" or "<container>'s C: drive". */
+        val where: String,
+        /** Bytes of everything deleted. */
+        val bytes: Long,
+        /** Games installed in the client's own folder (deleted with it). */
+        val games: Int,
+        /** AppData\Local\Steam (sign-in data, web cache) and Common Files\Steam (Steam service) of the container. */
+        val containerDirs: List<File>,
+        /** SteamLibrary folders that hold no game. */
+        val emptyLibraries: List<File>,
+        /** Library folders outside the client that hold games: kept. */
+        val keptLibraries: Int,
+    )
+
+    private val offers = MutableStateFlow<List<UninstallOffer>>(emptyList())
+
+    /** Removed Windows Steam shortcuts waiting for the "Also uninstall Steam?" question, oldest first. */
+    val uninstallOffers: StateFlow<List<UninstallOffer>> = offers.asStateFlow()
+
+    @JvmStatic
+    fun offerUninstall(offer: UninstallOffer) {
+        offers.update { list -> if (list.any { it.clientDir == offer.clientDir }) list else list + offer }
+    }
+
+    @JvmStatic
+    fun dismissUninstall(offer: UninstallOffer) {
+        offers.update { it - offer }
+    }
+
+    private val running = MutableStateFlow<Set<File>>(emptySet())
+
+    /** Client folders being deleted right now. */
+    val uninstalling: StateFlow<Set<File>> = running.asStateFlow()
+
+    /**
+     * [uninstall] on its own thread, so it finishes even when the screen that started it goes away. [onDone] gets
+     * null or an error message, on the main thread, after the offer is dismissed.
+     */
+    fun uninstallAsync(plan: UninstallPlan, onDone: (String?) -> Unit) {
+        val dir = plan.offer.clientDir
+        var started = false
+        running.update { if (dir in it) it else { started = true; it + dir } }
+        if (!started) return
+        Thread({
+            val error = uninstall(plan)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                running.update { it - dir }
+                dismissUninstall(plan.offer)
+                onDone(error)
+            }
+        }, "WindowsSteamUninstall").start()
+    }
+
+    /**
+     * Call BEFORE [shortcut]'s file is deleted (its client folder is found through the shortcut and its container's
+     * drives). Null unless [shortcut] is a Windows Steam shortcut whose folder is Steam's own and no other shortcut in
+     * [all] (every container's) points into it.
+     */
+    @JvmStatic
+    fun uninstallOffer(shortcut: Shortcut, all: List<Shortcut>): UninstallOffer? {
+        try {
+            if (!isWindowsSteamShortcut(shortcut)) return null
+            val container = shortcut.container ?: return null
+            val exe = WinePath.resolveAndroidPath(container, shortcut.path ?: return null) ?: return null
+            val dir = exe.parentFile ?: return null
+            if (!looksLikeClient(container, dir)) return null
+            val dirPath = dir.canonicalPath
+            var keepContainerData = false
+            for (s in all) {
+                if (s.file?.absolutePath == shortcut.file?.absolutePath) continue
+                val c = s.container ?: continue
+                val path = s.path ?: continue
+                val target = try { WinePath.resolveAndroidPath(c, path)?.canonicalPath } catch (t: Throwable) { null } ?: continue
+                if (target == dirPath || target.startsWith(dirPath + File.separator)) return null
+                if (c.id == container.id && isSteamExe(path)) keepContainerData = true
+            }
+            return UninstallOffer(container, dir, keepContainerData)
+        } catch (t: Throwable) {
+            Log.w(TAG, "uninstallOffer", t)
+            return null
+        }
+    }
+
+    /** Sizes up [offer]. Reads the disk: call off the main thread. */
+    fun planUninstall(offer: UninstallOffer): UninstallPlan {
+        val dir = offer.clientDir
+        val dirPath = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
+        val driveC = File(offer.container.rootDir, ".wine/drive_c")
+        val containerDirs = if (offer.keepContainerData) emptyList() else
+            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"))
+                .filter { it.exists() && !isWithin(it, dirPath) }
+
+        val emptyLibraries = ArrayList<File>()
+        var kept = 0
+        try {
+            val vdf = File(dir, "steamapps/libraryfolders.vdf")
+            val folders = if (vdf.isFile) VdfParser.parse(vdf.readText()).node("libraryfolders") else null
+            for ((_, node) in folders?.childNodes().orEmpty()) {
+                val lib = node.string("path")?.let { WinePath.resolveAndroidPath(offer.container, it) } ?: continue
+                if (!lib.isDirectory || isWithin(lib, dirPath) || runCatching { lib.canonicalPath }.getOrNull() == dirPath) continue
+                when {
+                    countGames(lib) > 0 -> kept++
+                    lib.name == DEFAULT_LIBRARY && holdsNoFiles(lib) -> emptyLibraries.add(lib)
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "planUninstall libraries", t)
+        }
+
+        val where = when {
+            isWithin(dir, runCatching { driveC.canonicalPath }.getOrDefault(driveC.absolutePath)) -> "${offer.container.name}'s C: drive"
+            dirPath.startsWith("/storage/emulated/") -> "internal storage"
+            else -> "the SD card"
+        }
+        val bytes = FileUtils.totalSize(dir) + containerDirs.sumOf { FileUtils.totalSize(it) } + emptyLibraries.sumOf { FileUtils.totalSize(it) }
+        return UninstallPlan(offer, where, bytes, countGames(dir), containerDirs, emptyLibraries, kept)
+    }
+
+    /** Deletes what [plan] lists (symbolic links are removed, never followed). Null when done, else a message. */
+    fun uninstall(plan: UninstallPlan): String? {
+        val failed = ArrayList<String>()
+        for (target in listOf(plan.offer.clientDir) + plan.containerDirs + plan.emptyLibraries) {
+            try {
+                if (target.exists() && !FileUtils.delete(target)) failed.add(target.absolutePath)
+            } catch (t: Throwable) {
+                Log.w(TAG, "uninstall ${target.absolutePath}", t)
+                failed.add(target.absolutePath)
+            }
+        }
+        Log.i(TAG, "Windows Steam uninstalled from ${plan.offer.clientDir.absolutePath} (${plan.bytes} bytes, failed: ${failed.size})")
+        return if (failed.isEmpty()) null else "Could not delete ${failed.first()}"
+    }
+
+    /**
+     * True when [dir] holds Steam's client and nothing else the user keeps: steam.exe plus Steam's own files (or the
+     * folder this app puts it in), and never a storage root, a drive's root, a Download folder or the C: drive itself.
+     */
+    private fun looksLikeClient(container: Container, dir: File): Boolean {
+        if (!File(dir, "steam.exe").isFile) return false
+        val path = try { dir.canonicalPath } catch (t: Throwable) { return false }
+        val volume = WinePath.storageVolumeRootOf(path)
+        if (volume == path) return false
+        val driveC = File(container.rootDir, ".wine/drive_c")
+        val keep = arrayListOf(
+            driveC, File(driveC, "Program Files"), File(driveC, "Program Files (x86)"),
+            android.os.Environment.getExternalStorageDirectory(),
+            File(android.os.Environment.getExternalStorageDirectory(), "Download"),
+        )
+        if (volume != null) keep.add(File(volume, "Download"))
+        for (d in container.drivesIterator()) keep.add(File(d[1]))
+        if (keep.any { runCatching { it.canonicalPath }.getOrNull() == path }) return false
+        val steamOwn = listOf("steamclient64.dll", "steamclient.dll", "SteamUI.dll", "package")
+        return steamOwn.any { File(dir, it).exists() } ||
+            path.endsWith("/$STORAGE_SUBDIR") ||
+            path == runCatching { File(driveC, "Program Files/Steam").canonicalPath }.getOrNull()
+    }
+
+    /** appmanifest files in [libraryRoot]/steamapps, without Steamworks Common Redistributables (228980). */
+    private fun countGames(libraryRoot: File): Int =
+        File(libraryRoot, "steamapps").listFiles { f ->
+            f.isFile && f.name.startsWith("appmanifest_") && f.name.endsWith(".acf") && f.name != "appmanifest_228980.acf"
+        }?.size ?: 0
+
+    /** True when no file under [dir] has content besides Steam's own library markers. */
+    private fun holdsNoFiles(dir: File): Boolean {
+        val stack = ArrayDeque<File>().apply { add(dir) }
+        var seen = 0
+        while (stack.isNotEmpty()) {
+            val d = stack.removeLast()
+            for (f in d.listFiles().orEmpty()) {
+                if (++seen > 10_000 || FileUtils.isSymlink(f)) return false
+                if (f.isDirectory) stack.add(f)
+                else if (f.length() > 0 && f.name != "libraryfolder.vdf" && f.name != "libraryfolders.vdf") return false
+            }
+        }
+        return true
+    }
+
+    private fun isWithin(file: File, dirPath: String): Boolean {
+        val p = runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
+        return p == dirPath || p.startsWith(dirPath + File.separator)
     }
 }

@@ -43,6 +43,7 @@ import com.winlator.star.core.GameFolderScanner
 import com.winlator.star.core.GameIdentifier
 import com.winlator.star.core.WinePath
 import com.winlator.star.store.UbisoftSupport
+import com.winlator.star.store.WindowsSteamClient
 import com.winlator.star.ui.screens.adrenodownload.DriverSources
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -1234,6 +1235,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun remove(shortcut: Shortcut, context: Context): Boolean {
+        // Found before the file goes: the client folder is reached through the shortcut and its container's drives.
+        val steamUninstall = WindowsSteamClient.uninstallOffer(shortcut, _shortcuts.value)
         val deleted = shortcut.file.delete()
         val lnkPath = shortcut.file.path.substringBeforeLast('.') + ".lnk"
         val lnk = File(lnkPath)
@@ -1242,6 +1245,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             disableOnScreen(context, shortcut)
             if (AndroidGames.isHome(shortcut.container)) AndroidGames.deleteArt(shortcut)
             refresh()
+            // "Also uninstall Steam?" is asked by GameActionsHost.
+            steamUninstall?.let { WindowsSteamClient.offerUninstall(it) }
         }
         return deleted
     }

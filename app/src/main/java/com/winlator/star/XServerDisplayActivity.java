@@ -2937,6 +2937,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.i("XServerDisplayActivity", "runtime: gamescope (Linux), display server: Wayland");
         }
 
+        // Valve's Windows Steam client (a shortcut whose target is steam.exe). Its Chromium pages are drawn by
+        // one process into another's window, which the Wayland driver cannot show yet, so it starts on X11
+        // unless the game has a display system of its own set. See WindowsSteamClient.
+        windowsSteamSession = !gamescopeMode && shortcut != null
+                && com.winlator.star.store.WindowsSteamClient.isSteamExe(shortcut.path);
+        if (windowsSteamSession && waylandMode && shortcut.getExtra("displayBackend", "").isEmpty()) {
+            waylandMode = false;
+            windowsSteamDisplayNote = "steam.exe starts on X11 (its pages do not draw on Wayland yet)";
+            Log.i("XServerDisplayActivity", "Windows Steam: " + windowsSteamDisplayNote);
+        }
+
         // In-game Friends tab (drawer): read the friends/chat opt-in once for this launch and start
         // watching for a live source. The RealSteam hint keeps the app-session source from flashing up
         // before maybeStageRealSteam() arms the plan (which confirms or withdraws it); disarmed in onDestroy.
@@ -7951,7 +7962,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
      */
     private void pressLinuxSteamButton(boolean qam) {
         final WinHandler buttons = winHandler;
-        if (buttons == null || !isLinuxSteamSession()) return;
+        // Windows Steam reads the same player-one pad (Guide through BANNERIN's XInputGetStateEx).
+        if (buttons == null || !(isLinuxSteamSession() || windowsSteamSession)) return;
+        final String client = windowsSteamSession ? "Steam (Windows)" : "Steam (Linux)";
         // Whichever in-game menu is up (the drawer or the Deck panel) closes first.
         boolean menuWasOpen = drawerLayout != null && isInGameMenuOpen();
         if (menuWasOpen) closeInGameMenu();
@@ -7967,13 +7980,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 h.postDelayed(() -> buttons.setSystemButtons(true, true), lead);
                 h.postDelayed(() -> buttons.setSystemButtons(true, false), lead + LINUX_QAM_A_HOLD_MS);
                 h.postDelayed(() -> buttons.setSystemButtons(false, false), lead + LINUX_QAM_A_HOLD_MS + LINUX_QAM_GUIDE_TAIL_MS);
-                Log.i("XServerDisplayActivity", "Steam (Linux): Quick Access Menu chord with a " + lead + " ms Guide lead");
+                Log.i("XServerDisplayActivity", client + ": Quick Access Menu chord with a " + lead + " ms Guide lead");
             }, t);
         } else {
             h.postDelayed(() -> buttons.setSystemButtons(true, false), t);
             h.postDelayed(() -> buttons.setSystemButtons(false, false), t + LINUX_STEAM_BUTTON_HOLD_MS);
         }
-        Log.i("XServerDisplayActivity", "Steam (Linux): " + (qam ? "Quick Access Menu" : "Steam button") + " pressed for the client");
+        Log.i("XServerDisplayActivity", client + ": " + (qam ? "Quick Access Menu" : "Steam button") + " pressed for the client");
     }
 
     /** The switches the drawer's Steam client section mirrors from the entry's Steam (Linux) settings. */
@@ -8153,6 +8166,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private int menuButtonKeyCode;
     private boolean menuButtonHeld;
 
+    // Windows Steam session (shortcut target steam.exe): the Menu button is Steam's Guide button on a press and
+    // opens the side menu when held. Set in onCreate.
+    private boolean windowsSteamSession;
+    private String windowsSteamDisplayNote;
+    private static final long WINDOWS_STEAM_MENU_HOLD_MS = 500;
+    private final Handler windowsSteamMenuHandler = new Handler(Looper.getMainLooper());
+    private boolean windowsSteamMenuHoldFired;
+    private final Runnable windowsSteamMenuHold = () -> {
+        windowsSteamMenuHoldFired = true;
+        toggleInGameMenu();
+    };
+
     private boolean menuButtonEvent(KeyEvent event) {
         int kc = event.getKeyCode();
         if (menuButtonKeyCode <= 0 || kc != menuButtonKeyCode || kc == KeyEvent.KEYCODE_BUTTON_B) return false;
@@ -8168,12 +8193,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // A controller-profile binding for the same button wins.
             if (inputControlsView != null && inputControlsView.onKeyEvent(event)) return true;
             menuButtonHeld = true;
+            // Windows Steam: a press is Steam's Guide button and a hold opens the side menu. A menu that is
+            // already up still closes on the press, as everywhere else.
+            if (windowsSteamSession && winHandler != null && drawerLayout != null && !isInGameMenuOpen()) {
+                windowsSteamMenuHoldFired = false;
+                windowsSteamMenuHandler.postDelayed(windowsSteamMenuHold, WINDOWS_STEAM_MENU_HOLD_MS);
+                return true;
+            }
+            windowsSteamMenuHoldFired = true;
             toggleInGameMenu();
             return true;
         }
         if (event.getAction() == KeyEvent.ACTION_UP && menuButtonHeld) {
             // The release of a press that toggled the menu belongs to nobody else.
             menuButtonHeld = false;
+            if (windowsSteamSession) {
+                windowsSteamMenuHandler.removeCallbacks(windowsSteamMenuHold);
+                if (!windowsSteamMenuHoldFired) pressLinuxSteamButton(false);
+            }
             return true;
         }
         return false;
@@ -11548,6 +11585,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 if (shortcut != null) {
                     wineDebugWriter.println("Shortcut file: " + shortcut.file.getPath());
                     wineDebugWriter.println("Shortcut path (resolved): " + shortcut.path);
+                    if (windowsSteamDisplayNote != null)
+                        wineDebugWriter.println("Windows Steam: " + windowsSteamDisplayNote);
                 } else {
                     wineDebugWriter.println("Shortcut: null (launching Wine File Manager)");
                 }
@@ -11873,6 +11912,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // switches (PROTON_DISABLE_LSTEAMCLIENT must be UNSET so ntdll redirects steamclient64.dll
             // to lsteamclient.dll) and adds WINESTEAMCLIENTPATH64 / Steam3Master / SteamAppId… so the
             // game's genuine steam_api reaches the app's session host. No-op unless a plan is armed.
+            // Windows Steam client (shortcut target steam.exe): the 64-bit client's environment switch and a
+            // Steam library on every mapped storage. Before the plan merges below, so the app's own Steam modes
+            // keep the last word; after the container and shortcut env, so a value the user set is seen.
+            if (windowsSteamSession && appSteamPlan == null && realSteamPlan == null) {
+                for (String note : com.winlator.star.store.WindowsSteamClient.prepareLaunch(
+                        this, container, shortcut.path, envVars)) {
+                    Log.i("XServerDisplayActivity", "Windows Steam: " + note);
+                    if (wineDebugWriter != null) wineDebugWriter.println("Windows Steam: " + note);
+                }
+            }
             if (appSteamPlan != null) {
                 for (String k : appSteamPlan.envRemove) envVars.remove(k);
                 for (Map.Entry<String, String> e : appSteamPlan.env.entrySet())

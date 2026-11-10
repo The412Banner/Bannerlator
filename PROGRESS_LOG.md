@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 17:15 EST — ✅ 961f32b1 device-proven: store games show as installed in Windows Steam (feat/windows-steam-library)
+- **User:** "counter strike shows installed now".
+- **Log:** "Store games in Steam: 4 linked in C:\\BannerlatorSteamLibrary"; "Non-Steam games: 27 listed, 2 already installed in Steam" (Half-Life + MIO, the only installed store games with shortcuts); GPU drawing on (automatic). Links: Brawlhalla → SD, Counter-Strike / Lossless Scaling / MIO → internal; Counter-Strike's appmanifest StateFlags 4; libraryfolders.vdf lists `C:\\BannerlatorSteamLibrary`; crash buffer empty.
+- **Not tested:** Play on a linked game from Steam; client uninstall keeping store games.
+- **Next:** merge to main on the user's go.
+
 ## 2026-11-10 17:08 EST — 📦 961f32b1 installed on the Pocket FIT: store games as installed games in Windows Steam (CI 42909848059)
 - ef37b6cd's CI run 42909013339 was cancelled; **961f32b1** replaces the hand-written libraryfolders.vdf entry with `WindowsSteamClient.addLibraryFolder` (existing `libraryEntry`/`serialize`/`writeAtomic`).
 - Checked before install: uninstall deletes only the links (`FileUtils.delete` and `totalSize` never follow links); the non-Steam list reads every library in libraryfolders.vdf, so linked games are not listed twice; the FIT's Steam libraries are F: and E: only, so C: may hold this one. Counter-Strike has no Goldberg setting (off), so it is linked.

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 15:4x EST — 🔧 e5566300: Windows Steam GPU drawing automatic on the GL renderer; diagnostics removed (CI 42894723372)
+- **User:** "do it" (auto GPU mode + remove diagnostics, then the store-download test, then merge).
+- **Built:** `windowsSteamGpuDrawing()` — Windows Steam session, X11, GL renderer outside native mode, and no user `WINE_DISABLE_VULKAN_OPWR` other than 0 → steam.exe starts without `-cef-disable-gpu` and with `WINE_DISABLE_VULKAN_OPWR=0`; other renderers keep CPU drawing; the launch log says which. Decided before the launch command is built (it is built before the environment merge).
+- **Removed:** BLXDiag (XDiag.java and every hook); four files are back to their pre-diagnostic content.
+- **Next:** install (user's yes) → put the FIT's Steam shortcut back to its original options (no hand-made GPU settings) → Steam starts on GPU drawing by itself → store-download test → merge.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 15:2x EST — ✅ 63a7eaeb device-proven: Start in Big Picture via steam://open/bigpicture, exit returns to the desktop window
 - **User:** "works, big picture opens and exiting goes back to desktop". Logcat 15:16:25 "Steam (Windows): desktop window up, asked Steam to open Big Picture".
 - **Device-proven on the FIT (feat/windows-steam-library):** Big Picture menus / Quick Access in GPU mode (fix B), Big Picture start and exit, Menu press / double press in Big Picture, Run popup.

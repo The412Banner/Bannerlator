@@ -69,9 +69,36 @@ object WindowsSteamClient {
     @JvmStatic
     fun isWindowsSteamShortcut(s: Shortcut?): Boolean = s != null && s.getExtra("storeSource") == STORE_SOURCE
 
-    /** Where the client goes: the container's C:\Program Files\Steam. */
-    @JvmStatic
-    fun installDir(container: Container): File = File(container.rootDir, ".wine/drive_c/Program Files/Steam")
+    /** The client's folder on the storage the user picks: `<volume>/bannerlator/windows_steam`. */
+    const val STORAGE_SUBDIR = "bannerlator/windows_steam"
+
+    /** Space the client takes once it has updated itself (1.1 GB on the Pocket FIT, 2026-11-10). */
+    private const val CLIENT_BYTES = 1_200L * 1024 * 1024
+
+    /**
+     * A storage the client can go on. [dir] is the client's folder there; [hasClient] = a 64-bit steam.exe is already
+     * in it (put there for another container), so adding it needs no download.
+     */
+    data class Place(val label: String, val dir: File, val freeBytes: Long, val removable: Boolean, val hasClient: Boolean) {
+        val fits: Boolean get() = hasClient || freeBytes >= CLIENT_BYTES + SteamSdInstall.FREE_SPACE_MARGIN
+    }
+
+    /** Internal storage, then the SD card when one is in. Reads the disk: call off the main thread. */
+    fun places(ctx: Context): List<Place> {
+        val out = ArrayList<Place>()
+        out.add(place("Internal storage", android.os.Environment.getExternalStorageDirectory(), removable = false))
+        try {
+            SteamSdInstall.detect(ctx)?.let { out.add(place(it.label, it.root, removable = true)) }
+        } catch (t: Throwable) {
+            Log.w(TAG, "SD card", t)
+        }
+        return out
+    }
+
+    private fun place(label: String, root: File, removable: Boolean): Place {
+        val dir = File(root, STORAGE_SUBDIR)
+        return Place(label, dir, SteamSdInstall.freeBytes(root), removable, peMachine(File(dir, "steam.exe")) == MACHINE_AMD64)
+    }
 
     /** The container's Windows Steam shortcut, or null. */
     @JvmStatic
@@ -86,15 +113,15 @@ object WindowsSteamClient {
     }
 
     /**
-     * Puts the 64-bit client into [container] and writes its shortcut. Downloads Valve's steam.exe starter from Valve's
-     * update server into [installDir] (size and SHA-256 checked against Valve's manifest) unless a 64-bit steam.exe is
-     * already there. A container that already has the shortcut gets no second one. Blocking: call off the main thread.
-     * [progress] gets 0..100 while downloading.
+     * Puts the 64-bit client into [dir] (a [Place.dir]) and writes [container]'s shortcut to it; the shortcut reaches
+     * [dir] through a drive letter, mapped on the container when it has none for that storage. Downloads Valve's
+     * steam.exe starter from Valve's update server (size and SHA-256 checked against Valve's manifest) unless a 64-bit
+     * steam.exe is already there, so containers can share one client. A container that already has the shortcut gets
+     * no second one. Blocking: call off the main thread. [progress] gets 0..100 while downloading.
      */
-    fun addClient(ctx: Context, container: Container, progress: (Int) -> Unit = {}): AddResult {
+    fun addClient(ctx: Context, container: Container, dir: File, progress: (Int) -> Unit = {}): AddResult {
         try {
             findShortcut(container)?.let { return AddResult.AlreadyAdded(it) }
-            val dir = installDir(container)
             val exe = File(dir, "steam.exe")
             var downloaded = false
             if (peMachine(exe) != MACHINE_AMD64) {

@@ -8166,8 +8166,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private int menuButtonKeyCode;
     private boolean menuButtonHeld;
 
-    // Windows Steam session (shortcut target steam.exe): a Menu button press is Shift+Tab (Steam's overlay key) and
-    // holding it opens the side menu. Set in onCreate.
+    // Windows Steam session (shortcut target steam.exe): a Menu button press is Shift+Tab (Steam's overlay key), or over
+    // Big Picture the Steam button (a double press: the Quick Access Menu); holding it opens the side menu. Set in onCreate.
     private boolean windowsSteamSession;
     private String windowsSteamDisplayNote;
     private static final long WINDOWS_STEAM_MENU_HOLD_MS = 500;
@@ -8177,6 +8177,57 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamMenuHoldFired = true;
         toggleInGameMenu();
     };
+    // Big Picture: a second press within this time of the first opens the Quick Access Menu instead.
+    private static final long WINDOWS_STEAM_DOUBLE_PRESS_MS = 300;
+    private boolean windowsSteamPressPending;
+    private final Runnable windowsSteamSinglePress = () -> {
+        windowsSteamPressPending = false;
+        pressLinuxSteamButton(false);
+    };
+
+    /**
+     * Windows Steam session, a Menu button press (released before the hold). Over Big Picture: the Steam button, which
+     * opens its side menu, or with a second press within WINDOWS_STEAM_DOUBLE_PRESS_MS the Quick Access Menu (Steam held,
+     * A tapped). Anywhere else: Shift+Tab, the overlay key (in normal Steam the Steam button would start Big Picture).
+     */
+    private void onWindowsSteamMenuPress() {
+        if (windowsSteamPressPending) {
+            windowsSteamPressPending = false;
+            windowsSteamMenuHandler.removeCallbacks(windowsSteamSinglePress);
+            pressLinuxSteamButton(true);
+            return;
+        }
+        if (!windowsSteamBigPictureFocused()) {
+            pressWindowsSteamOverlayKeys();
+            return;
+        }
+        windowsSteamPressPending = true;
+        windowsSteamMenuHandler.postDelayed(windowsSteamSinglePress, WINDOWS_STEAM_DOUBLE_PRESS_MS);
+    }
+
+    /**
+     * True when the focused window (or the nearest named window above it) is Steam's Big Picture, whose title is
+     * "Steam Big Picture Mode". Logs the title it went by.
+     */
+    private boolean windowsSteamBigPictureFocused() {
+        String name = "";
+        try {
+            Window w = xServer != null ? xServer.windowManager.getFocusedWindow() : null;
+            for (int i = 0; w != null && i < 8 && name.isEmpty(); i++, w = w.getParent()) {
+                name = w.getName();
+                if (name == null || name.isEmpty()) {
+                    Property utf8 = w.getProperty(Atom.getId("_NET_WM_NAME"));
+                    name = utf8 != null ? utf8.toString() : "";
+                }
+                if (name == null) name = "";
+            }
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Steam (Windows): focused window", e);
+        }
+        boolean bigPicture = name.toLowerCase(java.util.Locale.ROOT).contains("big picture");
+        Log.i("XServerDisplayActivity", "Steam (Windows): focused window '" + name + "'" + (bigPicture ? " = Big Picture" : ""));
+        return bigPicture;
+    }
 
     /**
      * Windows Steam session, Menu button press: Shift+Tab, Steam's overlay key. Over a running game it opens Steam's overlay;
@@ -8223,6 +8274,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // closes on the press, as everywhere else.
             if (windowsSteamSession && winHandler != null && drawerLayout != null && !isInGameMenuOpen()) {
                 windowsSteamMenuHoldFired = false;
+                // The second press of a double press: the single press waiting for it is dropped.
+                if (windowsSteamPressPending) windowsSteamMenuHandler.removeCallbacks(windowsSteamSinglePress);
                 windowsSteamMenuHandler.postDelayed(windowsSteamMenuHold, WINDOWS_STEAM_MENU_HOLD_MS);
                 return true;
             }
@@ -8235,7 +8288,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             menuButtonHeld = false;
             if (windowsSteamSession) {
                 windowsSteamMenuHandler.removeCallbacks(windowsSteamMenuHold);
-                if (!windowsSteamMenuHoldFired) pressWindowsSteamOverlayKeys();
+                if (!windowsSteamMenuHoldFired) onWindowsSteamMenuPress();
+                else windowsSteamPressPending = false;
             }
             return true;
         }

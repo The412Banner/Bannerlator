@@ -36,7 +36,6 @@ public abstract class DrawRequests {
 
         Drawable drawable =  client.xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.write(drawableId, "put", client, 0, dstX, dstY, width, height);
 
         GraphicsContext graphicsContext = client.xServer.graphicsContextManager.getGraphicsContext(gcId);
         if (graphicsContext == null) throw new BadGraphicsContext(gcId);
@@ -123,7 +122,6 @@ public abstract class DrawRequests {
 
         if (srcDrawable.visual.depth != dstDrawable.visual.depth) throw new BadMatch();
 
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.write(dstDrawableId, "copy", client, srcDrawableId, dstX, dstY, width, height);
         dstDrawable.copyArea(srcX, srcY, dstX, dstY, width, height, srcDrawable, graphicsContext.getFunction());
         if (client.xServer.keepOverlayCopies) {
             client.xServer.overlayCopies.afterCopy(client.xServer, srcDrawableId, dstDrawableId, srcX, srcY, dstX, dstY,

@@ -51,6 +51,14 @@ object WindowsSteamClient {
     private const val TAG = "WindowsSteamClient"
 
     const val ENV_DISABLE_LSTEAMCLIENT = "PROTON_DISABLE_LSTEAMCLIENT"
+    /** "0" turns on Proton's other-process window rendering, off by default in our layers on Android. */
+    const val ENV_OTHER_PROCESS_RENDERING = "WINE_DISABLE_VULKAN_OPWR"
+
+    /** [execArgs] without Steam's `-cef-disable-gpu`, for sessions where the client draws on the GPU. */
+    @JvmStatic
+    fun withoutCefDisableGpu(execArgs: String?): String =
+        execArgs.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotEmpty() && !it.equals("-cef-disable-gpu", ignoreCase = true) }
+            .joinToString(" ")
     const val ENV_LSTEAMCLIENT_OPT_IN = "WINE_LSTEAMCLIENT"
 
     private const val MACHINE_AMD64 = 0x8664
@@ -373,9 +381,17 @@ object WindowsSteamClient {
      * the per-storage libraries. Returns one line per decision, for the launch log.
      */
     @JvmStatic
-    fun prepareLaunch(ctx: Context, container: Container, winPath: String, env: EnvVars): List<String> {
+    fun prepareLaunch(ctx: Context, container: Container, winPath: String, env: EnvVars, gpuDrawing: Boolean = false): List<String> {
         val notes = ArrayList<String>()
         try {
+            // GPU drawing: Chromium's GPU process draws into windows of the browser process, which Proton's
+            // other-process rendering copies over; the launcher leaves -cef-disable-gpu out of the arguments.
+            if (gpuDrawing) {
+                if (!env.has(ENV_OTHER_PROCESS_RENDERING)) env.put(ENV_OTHER_PROCESS_RENDERING, "0")
+                notes.add("GPU drawing on: $ENV_OTHER_PROCESS_RENDERING=${env.get(ENV_OTHER_PROCESS_RENDERING)}, -cef-disable-gpu left out")
+            } else {
+                notes.add("GPU drawing off (only with the GL renderer on X11): Steam draws on the CPU")
+            }
             if (is64Bit(container, winPath)) {
                 when {
                     env.has(ENV_DISABLE_LSTEAMCLIENT) ->

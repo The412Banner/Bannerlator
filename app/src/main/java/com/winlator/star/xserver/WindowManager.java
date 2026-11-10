@@ -193,7 +193,6 @@ public class WindowManager extends XResourceManager {
         }
 
         if (resized && window.isInputOutput()) {
-            if (XDiag.enabled) XDiag.log("content-reset " + XDiag.describe(window) + " -> " + width + "x" + height);
             Drawable oldContent = window.getContent();
             drawableManager.removeDrawable(oldContent.id);
             Drawable newContent = drawableManager.createDrawable(oldContent.id, width, height, oldContent.visual);

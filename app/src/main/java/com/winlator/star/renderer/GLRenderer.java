@@ -531,13 +531,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             renderableWindows.clear();
             collectRenderableWindows(xServer.windowManager.rootWindow, xServer.windowManager.rootWindow.getX(), xServer.windowManager.rootWindow.getY());
-            if (com.winlator.star.xserver.XDiag.enabled) {
-                java.util.ArrayList<String> scene = new java.util.ArrayList<>();
-                for (RenderableWindow rw : renderableWindows)
-                    scene.add((rw.content != null ? Integer.toHexString(rw.content.id) : "-") + "@" + rw.rootX + "," + rw.rootY
-                            + (rw.content != null ? ":" + rw.content.width + "x" + rw.content.height : ""));
-                com.winlator.star.xserver.XDiag.scene(scene);
-            }
         }
     }
 

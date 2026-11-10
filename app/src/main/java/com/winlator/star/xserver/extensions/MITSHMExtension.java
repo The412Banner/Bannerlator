@@ -103,7 +103,6 @@ public class MITSHMExtension implements Extension {
             throw new UnsupportedOperationException("GC Function other than COPY is not supported.");
         }
 
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.write(drawableId, "shmput", client, 0, dstX, dstY, srcWidth, srcHeight);
         drawable.drawImage(srcX, srcY, dstX, dstY, srcWidth, srcHeight, depth, data, totalWidth, totalHeight);
     }
 

@@ -78,7 +78,6 @@ public final class OverlayCopies {
             Drawable picture = xServer.drawableManager.getDrawable(other.src);
             if (picture == null || picture.getData() == null || picture.visual.depth != dst.visual.depth) continue;
             dst.copyArea(other.srcX, other.srcY, other.dstX, other.dstY, other.width, other.height, picture, function);
-            if (XDiag.enabled) XDiag.write(dstId, "reapply", null, other.src, other.dstX, other.dstY, other.width, other.height);
         }
         while (copies.size() > MAX_PER_WINDOW) {
             Iterator<Integer> oldest = copies.keySet().iterator();

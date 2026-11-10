@@ -3353,8 +3353,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamBigPicturePending = windowsSteamSession && shortcut != null
                 && "1".equals(shortcut.getExtra(com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE));
         if (windowsSteamBigPicturePending) windowsSteamMenuHandler.postDelayed(windowsSteamBigPictureWatch, 2000);
-        // Diagnostic build: log what the X server does with Steam's windows (logcat tag BLXDiag).
-        com.winlator.star.xserver.XDiag.enabled = windowsSteamSession;
         advertisePanelRefreshRates();
 
         // Touch and Aim mode for this game: the shortcut's own, else the container's (a session without
@@ -8216,6 +8214,32 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamMenuHandler.postDelayed(windowsSteamSinglePress, WINDOWS_STEAM_DOUBLE_PRESS_MS);
     }
 
+    private Boolean windowsSteamGpuDrawing;
+
+    /**
+     * Windows Steam draws its pages on the GPU: X11 with the GL renderer outside native mode, where a presented frame
+     * lands in the window's own picture so Wine's other-process copies (WINE_DISABLE_VULKAN_OPWR=0) and OverlayCopies
+     * work. Elsewhere it keeps -cef-disable-gpu (CPU drawing). WINE_DISABLE_VULKAN_OPWR set to anything but 0 in the
+     * shortcut's or the container's environment keeps CPU drawing too. Decided once per session.
+     */
+    private boolean windowsSteamGpuDrawing() {
+        if (windowsSteamGpuDrawing != null) return windowsSteamGpuDrawing;
+        boolean on = false;
+        try {
+            HostRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+            if (windowsSteamSession && !waylandMode && r instanceof GLRenderer && !((GLRenderer) r).isNativeMode()) {
+                EnvVars user = new EnvVars(container != null ? container.getEnvVars() : "");
+                if (shortcut != null) user.putAll(shortcut.getExtra("envVars"));
+                String opwr = user.get(com.winlator.star.store.WindowsSteamClient.ENV_OTHER_PROCESS_RENDERING);
+                on = opwr == null || opwr.trim().isEmpty() || opwr.trim().equals("0");
+            }
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Windows Steam: GPU drawing check", e);
+        }
+        windowsSteamGpuDrawing = on;
+        return on;
+    }
+
     /** A window's title: WM_NAME, else _NET_WM_NAME (Wine sets both), "" when it has none. */
     private static String windowTitle(Window w) {
         String name = w.getName();
@@ -12056,7 +12080,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // keep the last word; after the container and shortcut env, so a value the user set is seen.
             if (windowsSteamSession && appSteamPlan == null && realSteamPlan == null) {
                 for (String note : com.winlator.star.store.WindowsSteamClient.prepareLaunch(
-                        this, container, shortcut.path, envVars)) {
+                        this, container, shortcut.path, envVars, windowsSteamGpuDrawing())) {
                     Log.i("XServerDisplayActivity", "Windows Steam: " + note);
                     if (wineDebugWriter != null) wineDebugWriter.println("Windows Steam: " + note);
                 }
@@ -16093,6 +16117,9 @@ return true;
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");
+            // Windows Steam with GPU drawing: Steam's -cef-disable-gpu is left out (see windowsSteamGpuDrawing).
+            if (windowsSteamSession && windowsSteamGpuDrawing())
+                execArgs = com.winlator.star.store.WindowsSteamClient.withoutCefDisableGpu(execArgs);
             execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
 
             if (xboxLaunch != null) {

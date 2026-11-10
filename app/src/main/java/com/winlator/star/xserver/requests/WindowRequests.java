@@ -54,7 +54,6 @@ public abstract class WindowRequests {
         client.setEventListenerForWindow(window, window.attributes.getEventMask());
         client.registerAsOwnerOfResource(window);
         parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new CreateNotify(parent, window));
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("create", window, client);
     }
 
     public static void getWindowAttributes(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
@@ -113,7 +112,6 @@ public abstract class WindowRequests {
 
     public static void destroyWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) {
         int windowId = inputStream.readInt();
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("destroy", client.xServer.windowManager.getWindow(windowId), client);
         if (client.xServer.keepOverlayCopies) client.xServer.overlayCopies.forget(windowId);
         client.xServer.windowManager.destroyWindow(windowId);
     }
@@ -134,7 +132,6 @@ public abstract class WindowRequests {
         if (parent == null) throw new BadWindow(parentId);
 
         client.xServer.windowManager.reparentWindow(window, parent);
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("reparent", window, client);
     }
 
     public static void mapWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -142,7 +139,6 @@ public abstract class WindowRequests {
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
         client.xServer.windowManager.mapWindow(window);
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("map", window, client);
     }
 
     public static void mapSubWindows(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -167,7 +163,6 @@ public abstract class WindowRequests {
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
         client.xServer.windowManager.unmapWindow(window);
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("unmap", window, client);
     }
 
     public static void changeProperty(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -194,12 +189,6 @@ public abstract class WindowRequests {
         if (property == null) throw new BadMatch();
 
         client.xServer.windowManager.triggerOnModifyWindowProperty(window, property);
-        if (com.winlator.star.xserver.XDiag.enabled) {
-            String atomName = com.winlator.star.xserver.Atom.getName(atom);
-            if ("WM_NAME".equals(atomName) || "_NET_WM_NAME".equals(atomName) || "_NET_WM_WINDOW_OPACITY".equals(atomName)
-                    || "WM_CLASS".equals(atomName))
-                com.winlator.star.xserver.XDiag.event("prop " + atomName, window, client);
-        }
     }
 
     public static void deleteProperty(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -398,7 +387,6 @@ public abstract class WindowRequests {
         Bitmask valueMask = new Bitmask(inputStream.readShort());
         inputStream.skip(2);
         if (!valueMask.isEmpty()) client.xServer.windowManager.configureWindow(window, valueMask, inputStream);
-        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("configure", window, client);
     }
 
     public static void getGeometry(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {

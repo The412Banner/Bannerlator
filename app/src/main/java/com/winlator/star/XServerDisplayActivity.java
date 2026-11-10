@@ -13879,29 +13879,27 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
 
 
-    // "Run a program": Bannerlator's file picker over internal storage, SD cards and the container's C: drive.
-    private static final String[] RUN_PROGRAM_EXTENSIONS = {"exe", "bat", "cmd", "msi", "lnk"};
-    // True: the picked program goes back into the New Task box (Browse…); false: it starts at once.
-    private boolean runProgramPickerFillsNewTask;
-    private final ActivityResultLauncher<Intent> runProgramPickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                String path = result.getResultCode() == RESULT_OK
-                        ? com.winlator.star.util.InAppFilePicker.INSTANCE.pickedPath(result.getData()) : null;
-                if (path != null) runPickedProgram(path, runProgramPickerFillsNewTask);
-            });
-
+    /**
+     * "Run a program": the in-game browser popup (RunProgramDialog) over the device's storage, then the container's C:
+     * drive and the game's folder. The game keeps running. With [fillNewTask] the picked file's path goes into the New
+     * Task box instead of starting.
+     */
     private void openRunProgramPicker(boolean fillNewTask) {
         if (container == null) return;
-        runProgramPickerFillsNewTask = fillNewTask;
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        ds.runBrowserDriveC = new File(container.getRootDir(), ".wine/drive_c").getAbsolutePath();
+        String gameDir = null;
         try {
-            String driveC = new File(container.getRootDir(), ".wine/drive_c").getAbsolutePath();
-            runProgramPickerLauncher.launch(com.winlator.star.util.InAppFilePicker.INSTANCE.buildIntent(
-                    this, RUN_PROGRAM_EXTENSIONS, "Run a program", null, driveC));
+            if (shortcut != null && shortcut.path != null) {
+                File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+                if (exe != null && exe.getParentFile() != null) gameDir = exe.getParentFile().getAbsolutePath();
+            }
         } catch (Exception e) {
-            Log.w("XServerDisplayActivity", "Run a program: picker", e);
-            XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.NEW_TASK);
+            Log.w("XServerDisplayActivity", "Run a program: game folder", e);
         }
+        ds.runBrowserGameDir = gameDir;
+        ds.onRunBrowserPick = path -> runPickedProgram(path, fillNewTask);
+        ds.show(XServerDialogState.ActiveDialog.RUN_PROGRAM);
     }
 
     /**

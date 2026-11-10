@@ -4188,6 +4188,7 @@ private fun ShortcutItemLayoutL(
                     showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
                                     showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
                                     showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
+                    showWindowsSteam = remember(shortcut) { com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(shortcut) },
                     modifier = Modifier.padding(start = 6.dp),
                 )
             }
@@ -4495,6 +4496,7 @@ private fun ShortcutGridItem(
             showCustom = remember(shortcut) { isCustomOriginShortcut(shortcut) },
             showLinux = remember(shortcut) { LinuxShortcuts.isLinuxEntry(shortcut) },
             showAndroid = remember(shortcut) { AndroidGames.isAndroidEntry(shortcut) },
+            showWindowsSteam = remember(shortcut) { com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(shortcut) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(6.dp),
@@ -10180,6 +10182,24 @@ private fun GogBadge(modifier: Modifier = Modifier) {
     }
 }
 
+/** Valve's Windows Steam client (storeSource=windows_steam): Steam's navy, sized like the other pills. */
+@Composable
+private fun WindowsSteamBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF1B2838))
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "WINDOWS STEAM",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
 /**
  * Marks a shortcut whose store source is Steam (storeSource=steam, or — for untagged legacy Steam
  * installs — an exec path under `steam_games`; see [isSteamOriginShortcut]). Steam-brand dark navy
@@ -10351,7 +10371,7 @@ private val AMAZON_ROOT_RE = Regex("""(^|[\\/])Amazon[\\/]""")
 // The stages of the "Copy to Drive C" flow, in order: confirm the source root, resolve a
 // destination collision, run the background copy, then offer to delete the original.
 // The two "+" imports that run in a Wine container, and so ask for one after being picked.
-internal enum class ImportKind { EXE, FOLDER }
+internal enum class ImportKind { EXE, FOLDER, WINDOWS_STEAM }
 
 /** Shown when the game's container is the only one. */
 private const val NO_OTHER_CONTAINER = "There's no other container. Create one in Containers first."
@@ -10973,12 +10993,18 @@ internal fun ShortcutBadgeOverlay(
     showEa: Boolean = false,
     showLinux: Boolean = false,
     showAndroid: Boolean = false,
+    showWindowsSteam: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // An Android game is only ever that: its package name can look like a store path to the
     // path-based rules above it, so it gets its own pill and nothing else.
     if (showAndroid) {
         Row(modifier = modifier) { AndroidBadge() }
+        return
+    }
+    // Valve's Windows Steam client ("Add games" → Add Windows Steam client x64): its own pill only.
+    if (showWindowsSteam) {
+        Row(modifier = modifier) { WindowsSteamBadge() }
         return
     }
     if (!showSteam && !showEpic && !showEos && !showGog && !showAmazon && !showXbox && !showCustom && !showEa

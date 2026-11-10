@@ -115,6 +115,8 @@ internal fun continuePlayingOrder(shortcuts: List<Shortcut>, stats: Map<String, 
 
 /** Store shelves in the order the Stores tab lists them, then Android games. Linux runtime entries sit in no store shelf. */
 internal val STORE_SHELVES: List<Pair<String, (Shortcut) -> Boolean>> = listOf(
+    // Valve's Windows client added from "Add games" (checked first: it is no store game).
+    com.winlator.star.store.WindowsSteamClient.BADGE_LABEL to { s: Shortcut -> com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(s) },
     "Steam" to { s: Shortcut -> isSteamOriginShortcut(s) && !LinuxShortcuts.isLinuxEntry(s) },
     "Epic Games" to { s: Shortcut -> s.getExtra("storeSource") == "epic" },
     "GOG" to { s: Shortcut -> isGogShortcut(s) },

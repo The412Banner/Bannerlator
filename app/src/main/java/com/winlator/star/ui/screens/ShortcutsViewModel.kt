@@ -43,6 +43,7 @@ import com.winlator.star.core.GameFolderScanner
 import com.winlator.star.core.GameIdentifier
 import com.winlator.star.core.WinePath
 import com.winlator.star.store.UbisoftSupport
+import com.winlator.star.store.WindowsSteamClient
 import com.winlator.star.ui.screens.adrenodownload.DriverSources
 import com.winlator.star.ui.screens.adrenodownload.RemoteDriverRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -202,9 +203,11 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                     compareBy<Shortcut>({ AndroidGames.isHome(it.container) }, { (it.container?.name ?: "").lowercase() })
                 )
             }
-            // The Steam entry is a launcher for everything else, not one game among many, so it
-            // stays at the front of every view and sort order rather than being hunted for.
-            sorted.sortedBy { if (LinuxShortcuts.isLinuxEntry(it)) 0 else 1 }
+            // The Steam entries (the Linux runtime's and the Windows Steam client) are launchers for everything
+            // else, not games among many, so they stay at the front of every view and sort order.
+            sorted.sortedBy {
+                if (LinuxShortcuts.isLinuxEntry(it) || com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(it)) 0 else 1
+            }
         }
 
     private val manager = ContainerManager(app)
@@ -1232,6 +1235,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun remove(shortcut: Shortcut, context: Context): Boolean {
+        // Found before the file goes: the client folder is reached through the shortcut and its container's drives.
+        val steamUninstall = WindowsSteamClient.uninstallOffer(shortcut, _shortcuts.value)
         val deleted = shortcut.file.delete()
         val lnkPath = shortcut.file.path.substringBeforeLast('.') + ".lnk"
         val lnk = File(lnkPath)
@@ -1240,6 +1245,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
             disableOnScreen(context, shortcut)
             if (AndroidGames.isHome(shortcut.container)) AndroidGames.deleteArt(shortcut)
             refresh()
+            // "Also uninstall Steam?" is asked by GameActionsHost.
+            steamUninstall?.let { WindowsSteamClient.offerUninstall(it) }
         }
         return deleted
     }

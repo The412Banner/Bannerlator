@@ -24,6 +24,10 @@ class StoreMarkTest {
         assertEquals(StoreMark.STEAM, storeMarkOfLabel("Linux"))
     }
 
+    @Test fun windowsSteamClient_wearsTheSteamMark() {
+        assertEquals(StoreMark.STEAM, storeMarkOfLabel("Windows Steam"))
+    }
+
     @Test fun unknownLabel_isAPlainWindowsExe() {
         assertEquals(StoreMark.WINDOWS, storeMarkOfLabel(""))
         assertEquals(StoreMark.WINDOWS, storeMarkOfLabel("Itch.io"))

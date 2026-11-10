@@ -487,6 +487,7 @@ private fun LabStoreBadges(s: Shortcut, compact: Boolean) {
     ShortcutBadgeOverlay(
         showSteam = first == 0, showEa = first == 1, showEpic = first == 2, showEos = false, showGog = first == 3,
         showAmazon = first == 4, showXbox = first == 5, showCustom = first == 6, showLinux = first == 7, showAndroid = android,
+        showWindowsSteam = remember(s) { com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(s) },
     )
 }
 

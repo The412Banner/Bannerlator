@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Search
@@ -68,7 +69,9 @@ import com.winlator.star.components.GameRecommendations
 import com.winlator.star.container.Shortcut
 import com.winlator.star.core.GameFolderScanner
 import com.winlator.star.core.WinePath
+import com.winlator.star.store.SteamSdInstall
 import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.store.WindowsSteamClient
 import com.winlator.star.ui.AccountUiBus
 import com.winlator.star.ui.ComponentReturnBus
 import com.winlator.star.ui.theme.Divider as DividerColor
@@ -109,6 +112,12 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
     // "Add Android game": the picker, and the write that follows its Add.
     var showAndroidPicker by remember { mutableStateOf(false) }
     var androidAddRunning by remember { mutableStateOf(false) }
+    // "Add Windows Steam client x64": the container it goes into (the storage is asked first, -1 = none), the
+    // storages offered and the one picked, and the download's progress (null = not running).
+    var windowsSteamConfirmIndex by remember { mutableStateOf(-1) }
+    var windowsSteamPlaces by remember { mutableStateOf<List<WindowsSteamClient.Place>>(emptyList()) }
+    var windowsSteamPick by remember { mutableStateOf(-1) }
+    var windowsSteamProgress by remember { mutableStateOf<Int?>(null) }
     var folderScanRunning by remember { mutableStateOf(false) }
     var folderScanResults by remember { mutableStateOf<List<GameFolderScanner.Candidate>>(emptyList()) }
     var folderScanSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -399,6 +408,16 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             ImportKind.FOLDER -> importFolderLauncher.launch(
                 InAppFilePicker.buildDirIntent(context, "Select your games folder", driveCPath = driveC?.absolutePath)
             )
+            // One client per container: a container that has it already gets no second shortcut.
+            ImportKind.WINDOWS_STEAM -> {
+                val c = vm.containers().getOrNull(pendingImportContainerIndex)
+                if (c != null && WindowsSteamClient.findShortcut(c) != null) {
+                    Toast.makeText(context, "${WindowsSteamClient.SHORTCUT_NAME} is already in ${c.name}", Toast.LENGTH_LONG).show()
+                    pendingImportContainerIndex = -1
+                } else {
+                    windowsSteamConfirmIndex = pendingImportContainerIndex
+                }
+            }
         }
     }
 
@@ -437,6 +456,16 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                         showImportMethodPicker = false
                         showAndroidPicker = true
                     }
+                    // Valve's 64-bit Windows Steam, downloaded from Valve onto the storage picked after the container.
+                    MenuOptionCard(
+                        title = "Add Windows Steam client x64",
+                        subtitle = "Valve's 64-bit Steam for Windows, downloaded from Steam",
+                        icon = Icons.Filled.DesktopWindows,
+                    ) {
+                        showImportMethodPicker = false
+                        pendingImportKind = ImportKind.WINDOWS_STEAM
+                        showImportContainerPicker = true
+                    }
                 }
             },
             confirmButton = {},
@@ -445,6 +474,110 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             },
         )
     }
+
+    // Storages are read off the main thread each time the dialog opens; the SD card is picked when it has room.
+    LaunchedEffect(windowsSteamConfirmIndex) {
+        windowsSteamPlaces = emptyList()
+        windowsSteamPick = -1
+        if (windowsSteamConfirmIndex < 0) return@LaunchedEffect
+        val places = withContext(Dispatchers.IO) { WindowsSteamClient.places(context) }
+        windowsSteamPlaces = places
+        windowsSteamPick = places.indexOfFirst { it.removable && it.fits }.takeIf { it >= 0 }
+            ?: places.indexOfFirst { it.fits }
+    }
+
+    if (windowsSteamConfirmIndex >= 0) {
+        val target = vm.containers().getOrNull(windowsSteamConfirmIndex)
+        val running = windowsSteamProgress != null
+        val picked = windowsSteamPlaces.getOrNull(windowsSteamPick)
+        val close = {
+            windowsSteamConfirmIndex = -1
+            pendingImportContainerIndex = -1
+        }
+        OutlinedAlertDialog(
+            onDismissRequest = { if (!running) close() },
+            title = { Text(WindowsSteamClient.SHORTCUT_NAME) },
+            text = {
+                val p = windowsSteamProgress
+                if (p != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Downloading Steam… $p%", color = OnSurfaceVariant)
+                    }
+                } else {
+                    Column {
+                        Text("Where should Steam go?", color = OnSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        windowsSteamPlaces.forEachIndexed { i, place ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = place.fits) { windowsSteamPick = i }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = windowsSteamPick == i,
+                                    onClick = { windowsSteamPick = i },
+                                    enabled = place.fits,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        place.label,
+                                        color = if (place.fits) OnSurface else OnSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        when {
+                                            place.hasClient -> "Steam is already here"
+                                            place.fits -> "${SteamSdInstall.fmtBytes(place.freeBytes)} free"
+                                            else -> "Not enough space (${SteamSdInstall.fmtBytes(place.freeBytes)} free)"
+                                        },
+                                        color = OnSurfaceVariant,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (!running) TextButton(enabled = picked != null && picked.fits, onClick = {
+                    val c = target
+                    val place = picked
+                    if (c == null || place == null) {
+                        close()
+                        return@TextButton
+                    }
+                    windowsSteamProgress = 0
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            WindowsSteamClient.addClient(context, c, place.dir) { pct -> scope.launch { windowsSteamProgress = pct } }
+                        }
+                        windowsSteamProgress = null
+                        close()
+                        vm.refresh()
+                        val message = when (result) {
+                            is WindowsSteamClient.AddResult.Added -> "Added ${WindowsSteamClient.SHORTCUT_NAME}"
+                            is WindowsSteamClient.AddResult.AlreadyAdded -> "${WindowsSteamClient.SHORTCUT_NAME} is already in ${c.name}"
+                            is WindowsSteamClient.AddResult.Failed -> result.message
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                }) { Text(if (picked?.hasClient == true) "Add" else "Download") }
+            },
+            dismissButton = {
+                if (!running) TextButton(onClick = close) { Text("Cancel") }
+            },
+        )
+    }
+
+    // After a Windows Steam shortcut is removed (any layout): "Also uninstall Steam?".
+    val steamUninstallOffers by WindowsSteamClient.uninstallOffers.collectAsState()
+    steamUninstallOffers.firstOrNull()?.let { offer -> WindowsSteamUninstallDialog(offer) }
 
     if (showAndroidPicker) {
         val added = remember(shortcuts) { AndroidGames.addedPackages(shortcuts) }
@@ -856,6 +989,66 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             },
         )
     }
+}
+
+/** "Also uninstall Steam?" for a removed Windows Steam shortcut whose client folder nothing else uses. */
+@Composable
+private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer) {
+    val context = LocalContext.current
+    var plan by remember(offer) { mutableStateOf<WindowsSteamClient.UninstallPlan?>(null) }
+    val running = offer.clientDir in WindowsSteamClient.uninstalling.collectAsState().value
+    LaunchedEffect(offer) {
+        plan = withContext(Dispatchers.IO) { WindowsSteamClient.planUninstall(offer) }
+    }
+    val keep = { WindowsSteamClient.dismissUninstall(offer) }
+    OutlinedAlertDialog(
+        onDismissRequest = { if (!running) keep() },
+        title = { Text("Also uninstall Steam?") },
+        text = {
+            val p = plan
+            if (running || p == null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(if (running) "Uninstalling Steam…" else "Checking Steam's folder…", color = OnSurfaceVariant)
+                }
+            } else {
+                Column {
+                    Text("Deletes Steam from ${p.where} (${SteamSdInstall.fmtBytes(p.bytes)}).", color = OnSurfaceVariant)
+                    if (p.games > 0) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (p.games == 1) "Includes 1 game installed in Steam's folder." else "Includes ${p.games} games installed in Steam's folder.",
+                            color = OnSurfaceVariant,
+                        )
+                    }
+                    if (p.keptLibraries > 0) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (p.keptLibraries == 1) "1 library folder with games is kept." else "${p.keptLibraries} library folders with games are kept.",
+                            color = OnSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (!running) TextButton(enabled = plan != null, onClick = {
+                val p = plan ?: return@TextButton
+                val app = context.applicationContext
+                WindowsSteamClient.uninstallAsync(p) { error ->
+                    Toast.makeText(
+                        app,
+                        error ?: "Steam uninstalled (${SteamSdInstall.fmtBytes(p.bytes)} freed)",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }) { Text("Uninstall") }
+        },
+        dismissButton = {
+            if (!running) TextButton(onClick = keep) { Text("Keep Steam") }
+        },
+    )
 }
 
 /**

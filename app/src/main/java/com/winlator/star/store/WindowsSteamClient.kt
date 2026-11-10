@@ -1,14 +1,32 @@
 package com.winlator.star.store
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.util.Log
+import com.winlator.star.R
 import com.winlator.star.container.Container
+import com.winlator.star.container.Shortcut
+import com.winlator.star.container.ShortcutOrder
 import com.winlator.star.core.EnvVars
+import com.winlator.star.core.FileUtils
 import com.winlator.star.core.VdfParser
 import com.winlator.star.core.WinePath
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.io.File
 import java.io.RandomAccessFile
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
 import java.util.UUID
+import java.util.zip.ZipInputStream
 
 /**
  * Valve's Windows Steam client started from a shortcut whose target is `steam.exe`.
@@ -25,6 +43,7 @@ import java.util.UUID
  *    64-bit names, so the 32-bit client needs nothing.
  *  - A Steam library on every storage the container maps (internal storage, SD card): Steam offers
  *    only library folders it has registered, never drives ([ensureStorageLibraries]).
+ *  - The app's games listed as non-Steam games ([SteamShortcutsSync]).
  *
  * Nothing here throws.
  */
@@ -36,6 +55,248 @@ object WindowsSteamClient {
 
     private const val MACHINE_AMD64 = 0x8664
     private const val DEFAULT_LIBRARY = "SteamLibrary"
+
+    /** storeSource of the shortcut "Add Windows Steam client x64" writes; its badge and its place first in the library key on it. */
+    const val STORE_SOURCE = "windows_steam"
+    const val SHORTCUT_NAME = "Windows Steam Client x64"
+    const val BADGE_LABEL = "Windows Steam"
+
+    // Valve's update server. The steam_client_win64 manifest's steam_win64 package is the 64-bit steam.exe starter
+    // (one file); it downloads the rest of the client on its first start.
+    private const val CLIENT_HOST = "https://client-update.steamstatic.com/"
+    private const val CLIENT_MANIFEST = "steam_client_win64"
+
+    /** Start options of the shortcut that runs the 64-bit client (Pocket FIT Elite, 2026-11-09). */
+    const val EXEC_ARGS = "-nocrashmonitor -noshaders -no-shared-textures -cef-single-process -cef-in-process-gpu " +
+        "-cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad -cef-disable-gpu"
+
+    /** True for the shortcut "Add Windows Steam client x64" writes. */
+    @JvmStatic
+    fun isWindowsSteamShortcut(s: Shortcut?): Boolean = s != null && s.getExtra("storeSource") == STORE_SOURCE
+
+    /** The client's folder on the storage the user picks: `<volume>/bannerlator/windows_steam`. */
+    const val STORAGE_SUBDIR = "bannerlator/windows_steam"
+
+    /** Space the client takes once it has updated itself (1.1 GB on the Pocket FIT, 2026-11-10). */
+    private const val CLIENT_BYTES = 1_200L * 1024 * 1024
+
+    /**
+     * A storage the client can go on. [dir] is the client's folder there; [hasClient] = a 64-bit steam.exe is already
+     * in it (put there for another container), so adding it needs no download.
+     */
+    data class Place(val label: String, val dir: File, val freeBytes: Long, val removable: Boolean, val hasClient: Boolean) {
+        val fits: Boolean get() = hasClient || freeBytes >= CLIENT_BYTES + SteamSdInstall.FREE_SPACE_MARGIN
+    }
+
+    /** Internal storage, then the SD card when one is in. Reads the disk: call off the main thread. */
+    fun places(ctx: Context): List<Place> {
+        val out = ArrayList<Place>()
+        out.add(place("Internal storage", android.os.Environment.getExternalStorageDirectory(), removable = false))
+        try {
+            SteamSdInstall.detect(ctx)?.let { out.add(place(it.label, it.root, removable = true)) }
+        } catch (t: Throwable) {
+            Log.w(TAG, "SD card", t)
+        }
+        return out
+    }
+
+    private fun place(label: String, root: File, removable: Boolean): Place {
+        val dir = File(root, STORAGE_SUBDIR)
+        return Place(label, dir, SteamSdInstall.freeBytes(root), removable, peMachine(File(dir, "steam.exe")) == MACHINE_AMD64)
+    }
+
+    /** The container's Windows Steam shortcut, or null. */
+    @JvmStatic
+    fun findShortcut(container: Container): File? =
+        container.desktopDir.listFiles { f -> f.isFile && f.name.endsWith(".desktop") }
+            ?.firstOrNull { f -> try { isWindowsSteamShortcut(Shortcut(container, f)) } catch (t: Throwable) { false } }
+
+    sealed class AddResult {
+        data class Added(val shortcut: File, val downloaded: Boolean) : AddResult()
+        data class AlreadyAdded(val shortcut: File) : AddResult()
+        data class Failed(val message: String) : AddResult()
+    }
+
+    /**
+     * Puts the 64-bit client into [dir] (a [Place.dir]) and writes [container]'s shortcut to it; the shortcut reaches
+     * [dir] through a drive letter, mapped on the container when it has none for that storage. Downloads Valve's
+     * steam.exe starter from Valve's update server (size and SHA-256 checked against Valve's manifest) unless a 64-bit
+     * steam.exe is already there, so containers can share one client. A container that already has the shortcut gets
+     * no second one. Blocking: call off the main thread. [progress] gets 0..100 while downloading.
+     */
+    fun addClient(ctx: Context, container: Container, dir: File, progress: (Int) -> Unit = {}): AddResult {
+        try {
+            findShortcut(container)?.let { return AddResult.AlreadyAdded(it) }
+            val exe = File(dir, "steam.exe")
+            var downloaded = false
+            if (peMachine(exe) != MACHINE_AMD64) {
+                downloadStarter(ctx, dir, progress)?.let { return AddResult.Failed(it) }
+                if (peMachine(exe) != MACHINE_AMD64) return AddResult.Failed("The download is not the 64-bit steam.exe")
+                downloaded = true
+            }
+            val file = writeShortcut(container, exe)
+            try {
+                coverArt(ctx)?.let { Shortcut(container, file).saveCustomCoverArt(it) }
+            } catch (t: Throwable) {
+                Log.w(TAG, "cover art", t)
+            }
+            Log.i(TAG, "Windows Steam client added to ${container.name}: ${file.absolutePath} (downloaded=$downloaded)")
+            return AddResult.Added(file, downloaded)
+        } catch (e: WinePath.NoFreeDriveLetterException) {
+            return AddResult.Failed("This container has no free drive letters left")
+        } catch (t: Throwable) {
+            Log.w(TAG, "addClient failed", t)
+            return AddResult.Failed(t.message ?: t.javaClass.simpleName)
+        }
+    }
+
+    /** Valve's manifest → the steam_win64 package → steam.exe in [dir]. Returns an error message, or null when done. */
+    private fun downloadStarter(ctx: Context, dir: File, progress: (Int) -> Unit): String? {
+        val manifest = try { httpText(CLIENT_HOST + CLIENT_MANIFEST) } catch (t: Throwable) {
+            return "Could not reach Steam's update server (${t.message ?: t.javaClass.simpleName})"
+        }
+        val pkg = VdfParser.parse(manifest).node("win64")?.node("steam_win64")
+        val name = pkg?.string("file")
+        val sha2 = pkg?.string("sha2")?.lowercase()
+        val size = pkg?.string("size")?.toLongOrNull() ?: -1L
+        if (name.isNullOrBlank() || sha2.isNullOrBlank() || name.contains('/') || name.contains("..")) {
+            return "Steam's update list has no 64-bit client"
+        }
+        val zip = File(ctx.cacheDir, "steam_win64.zip.part")
+        try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val conn = open(CLIENT_HOST + name)
+            try {
+                if (conn.responseCode != 200) return "Steam's update server answered ${conn.responseCode}"
+                val total = if (size > 0) size else conn.contentLengthLong
+                var done = 0L
+                var shown = -1
+                conn.inputStream.use { input ->
+                    zip.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            digest.update(buf, 0, n)
+                            done += n
+                            if (total > 0) {
+                                val pct = (done * 100 / total).toInt().coerceIn(0, 100)
+                                if (pct != shown) { shown = pct; progress(pct) }
+                            }
+                        }
+                    }
+                }
+                if (size > 0 && done != size) return "The download was cut short ($done of $size bytes)"
+            } finally {
+                conn.disconnect()
+            }
+            val got = digest.digest().joinToString("") { "%02x".format(it) }
+            if (got != sha2) return "The download does not match Steam's checksum"
+            Log.i(TAG, "$name: $size bytes, sha256 $got (= Valve's manifest)")
+
+            if (!dir.isDirectory && !dir.mkdirs()) return "Could not create ${dir.absolutePath}"
+            val start = firstEntryOffset(zip)
+            if (start < 0) return "The download is not a zip file"
+            val root = dir.canonicalPath + File.separator
+            ZipInputStream(zip.inputStream().also { it.channel.position(start) }).use { zin ->
+                while (true) {
+                    val entry = zin.nextEntry ?: break
+                    val target = File(dir, entry.name)
+                    if (!target.canonicalPath.startsWith(root)) continue
+                    if (entry.isDirectory) { target.mkdirs(); continue }
+                    target.parentFile?.mkdirs()
+                    val tmp = File(target.parentFile, target.name + ".bl-tmp")
+                    tmp.outputStream().use { zin.copyTo(it) }
+                    if (target.exists()) target.delete()
+                    if (!tmp.renameTo(target)) { tmp.delete(); return "Could not write ${target.name}" }
+                }
+            }
+            return null
+        } catch (t: Throwable) {
+            Log.w(TAG, "download failed", t)
+            return "Download failed (${t.message ?: t.javaClass.simpleName})"
+        } finally {
+            zip.delete()
+        }
+    }
+
+    /**
+     * Offset of the zip's first entry header, or -1. Valve's client packages start with 20 bytes of their own before
+     * it, and ZipInputStream reads no entry at all unless the stream starts at a header.
+     */
+    private fun firstEntryOffset(zip: File): Long {
+        val head = ByteArray(64 * 1024)
+        var n = 0
+        zip.inputStream().use { input ->
+            while (n < head.size) {
+                val r = input.read(head, n, head.size - n)
+                if (r <= 0) break
+                n += r
+            }
+        }
+        for (i in 0..n - 4) {
+            if (head[i] == 0x50.toByte() && head[i + 1] == 0x4B.toByte() && head[i + 2] == 0x03.toByte() && head[i + 3] == 0x04.toByte()) {
+                return i.toLong()
+            }
+        }
+        return -1
+    }
+
+    private fun writeShortcut(container: Container, exe: File): File {
+        val desktopDir = container.desktopDir
+        if (!desktopDir.isDirectory) desktopDir.mkdirs()
+        val winPath = WinePath.resolveWindowsPath(container, exe.absolutePath)
+        val file = File(desktopDir, "$SHORTCUT_NAME.desktop")
+        val content = buildString {
+            append("[Desktop Entry]\n")
+            append("Name=").append(SHORTCUT_NAME).append("\n")
+            append("Exec=wine ").append(WinePath.escapeForExec(winPath)).append("\n")
+            append("Icon=").append(SHORTCUT_NAME).append("\n")
+            append("Type=Application\n")
+            append("StartupWMClass=explorer\n")
+            append("\n")
+            append("[Extra Data]\n")
+            append("storeSource=").append(STORE_SOURCE).append("\n")
+            // The exe itself, never one of the app's Steam modes.
+            append("launchMode=Raw\n")
+            append("execArgs=").append(EXEC_ARGS).append("\n")
+            append(ShortcutOrder.addedAtLine(System.currentTimeMillis()))
+        }
+        file.writeText(content)
+        return file
+    }
+
+    /** Steam's logo on Steam's dark blue, as a 600x900 cover. */
+    private fun coverArt(ctx: Context): Bitmap? {
+        val logo = BitmapFactory.decodeResource(ctx.resources, R.drawable.store_logo_steam) ?: return null
+        val cover = Bitmap.createBitmap(600, 900, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(cover)
+        canvas.drawColor(Color.rgb(0x1B, 0x28, 0x38))
+        val w = 360
+        val h = (logo.height * w.toFloat() / logo.width).toInt().coerceAtLeast(1)
+        val left = (600 - w) / 2
+        val top = (900 - h) / 2
+        canvas.drawBitmap(logo, null, Rect(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
+        return cover
+    }
+
+    private fun open(url: String): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
+        connectTimeout = 15_000
+        readTimeout = 30_000
+        instanceFollowRedirects = true
+        setRequestProperty("User-Agent", "Bannerlator")
+    }
+
+    private fun httpText(url: String): String {
+        val conn = open(url)
+        try {
+            if (conn.responseCode != 200) throw java.io.IOException("HTTP ${conn.responseCode}")
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
 
     /** True when [winPath] (a shortcut's Windows path) names `steam.exe`. */
     @JvmStatic
@@ -97,6 +358,9 @@ object WindowsSteamClient {
             val added = ensureStorageLibraries(ctx, container, winPath)
             notes.add(if (added.isEmpty()) "Steam libraries: every mapped storage already has one"
                       else "Steam libraries added: " + added.joinToString(", "))
+            // The app's games as non-Steam games, written while the client is not running yet.
+            val steamRoot = try { WinePath.resolveAndroidPath(container, winPath)?.parentFile } catch (t: Throwable) { null }
+            if (steamRoot != null) notes.add(SteamShortcutsSync.sync(ctx, container, steamRoot))
         } catch (t: Throwable) {
             Log.w(TAG, "prepareLaunch failed", t)
             notes.add("Steam client preparation failed: ${t.message}")
@@ -262,5 +526,213 @@ object WindowsSteamClient {
             Log.w(TAG, "could not write ${target.absolutePath}: ${t.message}")
             false
         }
+    }
+
+    // ── Uninstall ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A removed Windows Steam shortcut whose client folder no other shortcut uses. [keepContainerData] = another
+     * steam.exe shortcut in the same container still needs its sign-in data and service files.
+     */
+    data class UninstallOffer(
+        val container: Container,
+        val clientDir: File,
+        val keepContainerData: Boolean,
+        /** The removed shortcut's cover picture in the container's app_data/cover_arts, when no other shortcut uses it. */
+        val coverArt: File? = null,
+    )
+
+    /** What "Uninstall" deletes for an [UninstallOffer], with its size. */
+    data class UninstallPlan(
+        val offer: UninstallOffer,
+        /** "internal storage", "the SD card" or "<container>'s C: drive". */
+        val where: String,
+        /** Bytes of everything deleted. */
+        val bytes: Long,
+        /** Games installed in the client's own folder (deleted with it). */
+        val games: Int,
+        /** AppData\Local\Steam (sign-in data, web cache) and Common Files\Steam (Steam service) of the container. */
+        val containerDirs: List<File>,
+        /** SteamLibrary folders that hold no game. */
+        val emptyLibraries: List<File>,
+        /** Library folders outside the client that hold games: kept. */
+        val keptLibraries: Int,
+    )
+
+    private val offers = MutableStateFlow<List<UninstallOffer>>(emptyList())
+
+    /** Removed Windows Steam shortcuts waiting for the "Also uninstall Steam?" question, oldest first. */
+    val uninstallOffers: StateFlow<List<UninstallOffer>> = offers.asStateFlow()
+
+    @JvmStatic
+    fun offerUninstall(offer: UninstallOffer) {
+        offers.update { list -> if (list.any { it.clientDir == offer.clientDir }) list else list + offer }
+    }
+
+    @JvmStatic
+    fun dismissUninstall(offer: UninstallOffer) {
+        offers.update { it - offer }
+    }
+
+    private val running = MutableStateFlow<Set<File>>(emptySet())
+
+    /** Client folders being deleted right now. */
+    val uninstalling: StateFlow<Set<File>> = running.asStateFlow()
+
+    /**
+     * [uninstall] on its own thread, so it finishes even when the screen that started it goes away. [onDone] gets
+     * null or an error message, on the main thread, after the offer is dismissed.
+     */
+    fun uninstallAsync(plan: UninstallPlan, onDone: (String?) -> Unit) {
+        val dir = plan.offer.clientDir
+        var started = false
+        running.update { if (dir in it) it else { started = true; it + dir } }
+        if (!started) return
+        Thread({
+            val error = uninstall(plan)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                running.update { it - dir }
+                dismissUninstall(plan.offer)
+                onDone(error)
+            }
+        }, "WindowsSteamUninstall").start()
+    }
+
+    /**
+     * Call BEFORE [shortcut]'s file is deleted (its client folder is found through the shortcut and its container's
+     * drives). Null unless [shortcut] is a Windows Steam shortcut whose folder is Steam's own and no other shortcut in
+     * [all] (every container's) points into it.
+     */
+    @JvmStatic
+    fun uninstallOffer(shortcut: Shortcut, all: List<Shortcut>): UninstallOffer? {
+        try {
+            if (!isWindowsSteamShortcut(shortcut)) return null
+            val container = shortcut.container ?: return null
+            val exe = WinePath.resolveAndroidPath(container, shortcut.path ?: return null) ?: return null
+            val dir = exe.parentFile ?: return null
+            if (!looksLikeClient(container, dir)) return null
+            val dirPath = dir.canonicalPath
+            var keepContainerData = false
+            for (s in all) {
+                if (s.file?.absolutePath == shortcut.file?.absolutePath) continue
+                val c = s.container ?: continue
+                val path = s.path ?: continue
+                val target = try { WinePath.resolveAndroidPath(c, path)?.canonicalPath } catch (t: Throwable) { null } ?: continue
+                if (target == dirPath || target.startsWith(dirPath + File.separator)) return null
+                if (c.id == container.id && isSteamExe(path)) keepContainerData = true
+            }
+            val coverDir = runCatching { File(container.rootDir, "app_data/cover_arts").canonicalPath }.getOrNull()
+            val cover = shortcut.customCoverArtPath?.takeIf { it.isNotBlank() }?.let { File(it) }
+                ?.takeIf { f -> coverDir != null && f.isFile && isWithin(f, coverDir) }
+                ?.takeIf { f -> all.none { it.file?.absolutePath != shortcut.file?.absolutePath && it.customCoverArtPath == f.path } }
+            return UninstallOffer(container, dir, keepContainerData, cover)
+        } catch (t: Throwable) {
+            Log.w(TAG, "uninstallOffer", t)
+            return null
+        }
+    }
+
+    /** Sizes up [offer]. Reads the disk: call off the main thread. */
+    fun planUninstall(offer: UninstallOffer): UninstallPlan {
+        val dir = offer.clientDir
+        val dirPath = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
+        val driveC = File(offer.container.rootDir, ".wine/drive_c")
+        val containerDirs = if (offer.keepContainerData) emptyList() else
+            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"))
+                .filter { it.exists() && !isWithin(it, dirPath) }
+
+        val emptyLibraries = ArrayList<File>()
+        var kept = 0
+        try {
+            val vdf = File(dir, "steamapps/libraryfolders.vdf")
+            val folders = if (vdf.isFile) VdfParser.parse(vdf.readText()).node("libraryfolders") else null
+            for ((_, node) in folders?.childNodes().orEmpty()) {
+                val lib = node.string("path")?.let { WinePath.resolveAndroidPath(offer.container, it) } ?: continue
+                if (!lib.isDirectory || isWithin(lib, dirPath) || runCatching { lib.canonicalPath }.getOrNull() == dirPath) continue
+                when {
+                    countGames(lib) > 0 -> kept++
+                    lib.name == DEFAULT_LIBRARY && holdsNoFiles(lib) -> emptyLibraries.add(lib)
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "planUninstall libraries", t)
+        }
+
+        val where = when {
+            isWithin(dir, runCatching { driveC.canonicalPath }.getOrDefault(driveC.absolutePath)) -> "${offer.container.name}'s C: drive"
+            dirPath.startsWith("/storage/emulated/") -> "internal storage"
+            else -> "the SD card"
+        }
+        val bytes = FileUtils.totalSize(dir) + containerDirs.sumOf { FileUtils.totalSize(it) } + emptyLibraries.sumOf { FileUtils.totalSize(it) }
+        return UninstallPlan(offer, where, bytes, countGames(dir), containerDirs, emptyLibraries, kept)
+    }
+
+    /** Deletes what [plan] lists (symbolic links are removed, never followed). Null when done, else a message. */
+    fun uninstall(plan: UninstallPlan): String? {
+        val failed = ArrayList<String>()
+        for (target in listOf(plan.offer.clientDir) + plan.containerDirs + plan.emptyLibraries + listOfNotNull(plan.offer.coverArt)) {
+            try {
+                if (target.exists() && !FileUtils.delete(target)) failed.add(target.absolutePath)
+            } catch (t: Throwable) {
+                Log.w(TAG, "uninstall ${target.absolutePath}", t)
+                failed.add(target.absolutePath)
+            }
+        }
+        Log.i(TAG, "Windows Steam uninstalled from ${plan.offer.clientDir.absolutePath} (${plan.bytes} bytes, failed: ${failed.size})")
+        return if (failed.isEmpty()) null else "Could not delete ${failed.first()}"
+    }
+
+    /**
+     * True when [dir] holds Steam's client and nothing else the user keeps: steam.exe plus Steam's own files (or the
+     * folder this app puts it in), and never a storage root, a drive's root, a Download folder or the C: drive itself.
+     */
+    private fun looksLikeClient(container: Container, dir: File): Boolean {
+        if (!File(dir, "steam.exe").isFile) return false
+        val path = try { dir.canonicalPath } catch (t: Throwable) { return false }
+        val volume = WinePath.storageVolumeRootOf(path)
+        if (volume == path) return false
+        val driveC = File(container.rootDir, ".wine/drive_c")
+        val keep = arrayListOf(
+            driveC, File(driveC, "Program Files"), File(driveC, "Program Files (x86)"),
+            android.os.Environment.getExternalStorageDirectory(),
+            File(android.os.Environment.getExternalStorageDirectory(), "Download"),
+        )
+        if (volume != null) keep.add(File(volume, "Download"))
+        for (d in container.drivesIterator()) keep.add(File(d[1]))
+        if (keep.any { runCatching { it.canonicalPath }.getOrNull() == path }) return false
+        val steamOwn = listOf("steamclient64.dll", "steamclient.dll", "SteamUI.dll", "package")
+        return steamOwn.any { File(dir, it).exists() } ||
+            path.endsWith("/$STORAGE_SUBDIR") ||
+            path == runCatching { File(driveC, "Program Files/Steam").canonicalPath }.getOrNull()
+    }
+
+    /** appmanifest files in [libraryRoot]/steamapps, without Steamworks Common Redistributables (228980). */
+    private fun countGames(libraryRoot: File): Int =
+        File(libraryRoot, "steamapps").listFiles { f ->
+            f.isFile && f.name.startsWith("appmanifest_") && f.name.endsWith(".acf") && f.name != "appmanifest_228980.acf"
+        }?.size ?: 0
+
+    /**
+     * True when no file under [dir] has content besides what Steam puts in every library folder: libraryfolder.vdf,
+     * and a copy of its steam.dll in the folder's root.
+     */
+    private fun holdsNoFiles(dir: File): Boolean {
+        val stack = ArrayDeque<File>().apply { add(dir) }
+        var seen = 0
+        while (stack.isNotEmpty()) {
+            val d = stack.removeLast()
+            for (f in d.listFiles().orEmpty()) {
+                if (++seen > 10_000 || FileUtils.isSymlink(f)) return false
+                if (f.isDirectory) stack.add(f)
+                else if (f.length() > 0 && f.name != "libraryfolder.vdf" && f.name != "libraryfolders.vdf" &&
+                    !(d == dir && f.name.equals("steam.dll", ignoreCase = true))) return false
+            }
+        }
+        return true
+    }
+
+    private fun isWithin(file: File, dirPath: String): Boolean {
+        val p = runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
+        return p == dirPath || p.startsWith(dirPath + File.separator)
     }
 }

@@ -22,13 +22,15 @@ internal class GameSortKey(
     val playMs: Long,
     container: String,
     val store: String,
+    /** Listed before everything else in every order (the Windows Steam client). */
+    val pinned: Boolean = false,
 ) {
     val nameKey: String = name.lowercase()
     val containerKey: String = container.lowercase()
 }
 
 // The Stores tab's order, then the entries no store owns. The labels are the ones storeLabelOf returns.
-private val STORE_ORDER = listOf("Steam", "Epic Games", "GOG", "Amazon Games", "Xbox", "Android", "Linux", "Added by me")
+private val STORE_ORDER = listOf("Windows Steam", "Steam", "Epic Games", "GOG", "Amazon Games", "Xbox", "Android", "Linux", "Added by me")
 
 /** Where a [storeLabelOf] label sorts; a label nobody knows goes last. */
 internal fun storeRank(label: String): Int = STORE_ORDER.indexOf(label).let { if (it < 0) STORE_ORDER.size else it }
@@ -44,7 +46,8 @@ internal fun <T> sortGames(list: List<T>, sort: LibrarySort, key: (T) -> GameSor
         LibrarySort.CONTAINER -> compareBy<Pair<T, GameSortKey>> { it.second.containerKey }.thenBy { it.second.nameKey }
         LibrarySort.STORE -> compareBy<Pair<T, GameSortKey>> { storeRank(it.second.store) }.thenBy { it.second.nameKey }
     }
-    return keyed.sortedWith(order).map { it.first }
+    val pinnedFirst = compareByDescending<Pair<T, GameSortKey>> { it.second.pinned }
+    return keyed.sortedWith(pinnedFirst.then(order)).map { it.first }
 }
 
 /** A shortcut's sort key, from the play stats read for the library ([readPlayStats]). */
@@ -56,5 +59,6 @@ internal fun gameSortKeyOf(s: Shortcut, stats: Map<String, PlayStats>): GameSort
         playMs = st?.ms ?: 0L,
         container = s.container?.name.orEmpty(),
         store = storeLabelOf(s),
+        pinned = com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(s),
     )
 }

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 11:30 EST — 📲 INSTALLED d1fdecf8 (hide transparent windows) on the Pocket FIT; 98447478 (run-program popup) CI green
+- **98447478** (feat/windows-steam-library): in-game "Run a program" popup over the running game (no pause), always opening on the device's storage, then C: and the game folder; every file listed and opened with its Windows program (user + Discord request: Cheat Engine .CT). CI 42849152804 green 4/4; contains d1fdecf8.
+- **d1fdecf8 installed 11:29:57 EST** (user: "install it", after being told it closes the running AIO-Graphics-Test session, which was the user's own, not root-8b's): base.apk sha256 0f71f275… == staged; crash buffer 0; Box64EC, xuser-1, xuser-2 intact; the Steam shortcut keeps the GPU + `WINE_DISABLE_VULKAN_OPWR=0` test settings.
+- **Next:** user tests Big Picture (menu / Quick Access without flicker); 98447478 installs when its download finishes (user: "install the all-in-one when it's done").
+
 ## 2026-11-10 10:4x EST — 🔧 feat/windows-steam-library d1fdecf8: don't draw fully transparent windows (Windows Steam); picker 795c0033 installed
 - **Test 1b result (user video 10:08 + "qam and steam menu flicker. dashboard is smoother now"):** with `WINE_DISABLE_VULKAN_OPWR=0` and no `-cef-disable-gpu`, Big Picture draws through DXVK (~120 fps, GPU 15–26 %) and scrolls smoother; the left menu shows only in single frames, Quick Access never. Logcat: focused window "Steam Big Picture Mode", Steam button / Quick Access chord sent as designed.
 - **Investigation:** Wine's offscreen surfaces live in its dummy parent (1×1 override-redirect at 0,0, empty shape, `_NET_WM_WINDOW_OPACITY` 0) and Wine copies their pictures into the real windows. All three renderers draw every mapped window at full size (no parent clipping, no shape, no opacity), so those surfaces covered Steam's windows from the screen origin. Container 1 uses the GL renderer, whose Present path copies frames into the window's CPU content, so Wine's copy can read them.

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 16:3x EST — 🔧 ef37b6cd: every Steam-store game listed as installed in Windows Steam (CI 42909013339)
+- **Device results first:** e5566300 installed 15:40:22 EST; the FIT's Steam shortcut back to its original options (backup of the hand-made state `…desktop.test1b`); launch log "Windows Steam: GPU drawing on: WINE_DISABLE_VULKAN_OPWR=0, -cef-disable-gpu left out" — automatic GPU drawing device-proven. "Windows Steam" offered in Move to… and the download dialog; Half-Life moved there shows installed in Steam (user).
+- **User:** Counter-Strike downloaded to Internal storage was not installed in Steam → chose option 3 (every store game, wherever it lives).
+- **Built:** `store/SteamLibraryMirror` — `C:\BannerlatorSteamLibrary` in the client's container: `steamapps/common/<folder>` links to the store game's real folder, `SteamAppManifest.recordInstall` writes the appmanifest, the library is added to libraryfolders.vdf; synced at each client start before the non-Steam list. Skips games already in a client library, Goldberg-on games, missing folders; removes its own stale entries; uninstalling the client removes the folder (links only). Steam's updates/verify/uninstall act on the store's files (told to the user).
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 15:4x EST — 🔧 e5566300: Windows Steam GPU drawing automatic on the GL renderer; diagnostics removed (CI 42894723372)
 - **User:** "do it" (auto GPU mode + remove diagnostics, then the store-download test, then merge).
 - **Built:** `windowsSteamGpuDrawing()` — Windows Steam session, X11, GL renderer outside native mode, and no user `WINE_DISABLE_VULKAN_OPWR` other than 0 → steam.exe starts without `-cef-disable-gpu` and with `WINE_DISABLE_VULKAN_OPWR=0`; other renderers keep CPU drawing; the launch log says which. Decided before the launch command is built (it is built before the environment merge).

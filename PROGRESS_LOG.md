@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:3x EST — 🔧 feat/windows-steam-client dd7eadd5: offer to uninstall Steam when its shortcut is removed (CI 42797900190 running)
+- **User:** "when removing the shortcut, can we offer to totally uninstall and remove the full client so it doesn't linger" → plan given → "yes build the uninstall on the same branch".
+- **Built:** `ShortcutsViewModel.remove` (every layout and bulk remove go through it) asks `WindowsSteamClient.uninstallOffer` before the .desktop is deleted: client folder found through the shortcut + container drives; no offer when any other shortcut in any container points into it. The offer goes to a process-wide StateFlow; `GameActionsHost` (Deck shell + Classic) shows "Also uninstall Steam?" with where, size, games installed in Steam's folder and kept library count; Uninstall / Keep Steam.
+- **Deletes:** the client folder (guard: steam.exe + Steam's own files, or bannerlator/windows_steam, or C:\Program Files\Steam; never a storage root, drive mount, Download folder, drive_c or Program Files), the container's AppData\Local\Steam + Common Files\Steam (kept when another steam.exe shortcut in that container uses them), and SteamLibrary folders with no files. Libraries with games kept; registry left. `FileUtils.delete` (symlinks removed, not followed) on its own thread.
+- **Lesson logged (memory device-launch-tests):** 05:12 install went ahead ~1 min after messaging root-8b, without its ack; no harm (nothing running, its Box64EC intact). Rule: wait for the holding peer's ack.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+- **Resume point:** CI 42797900190 → stage pubg `/sdcard/Download/Bannerlator-windows-steam-client-dd7eadd5-pubg.apk` → ASK the user (no pre-approval for this build) → check with root-8b first → test: remove the container 1 "Windows Steam Client x64" shortcut → dialog → Uninstall → C:\Program Files\Steam, AppData\Local\Steam gone; E:/F:\SteamLibrary removed if empty.
+
 ## 2026-11-10 05:12 EST — 📲 INSTALLED feat/windows-steam-client 74778b25 (storage choice) on the Pocket FIT (user: "install it when it's done" / "install")
 - **CI 42795645739** (headSha 74778b25): pubg/standard/antutu/ludashi success; no failed steps.
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-74778b25-pubg.apk` sha256 `a01d13fb65952602f081dbbe1a036abe7e0d30a13762e857340d37363e3358a4` (host == device), "Where should Steam go?" in classes5.dex.

@@ -1,5 +1,8 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🧪 feat/lab-parity 91549b4f: driving the Lab UI on the Pocket FIT (user: "drive the device to make sure all the fixes are there correctly", ~20:0x EST)
+- Resume point: Pocket FIT runs 91549b4f (fa4e605c…). I open Bannerlator (Lab) and check each new item by screen (uiautomator dump + screencap), menus only — no game launches, no remove/restore/layer update/downloads. No background jobs. If cut: bring Termux back, send peers "done".
+
 ## 2026-11-09 — ✅ feat/lab-parity 91549b4f INSTALLED on the Pocket FIT (pubg) 19:54:24 EST (user: "yes install it" / "go ahead and install it"; NOT device-tested yet)
 - CI 42724334473 GREEN ×4 (headSha 91549b4f). Staged /sdcard/Download/Bannerlator-lab-parity-91549b4f-pubg.apk sha256 fa4e605c… (host == device), com.tencent.ig vc106, cert a40da80a.
 - Before: 321d7aed (3a5a3504…); Bannerlator UI was open (pid 25282, no game). Held the install to ask root-8b (busy) — it was not using BL; the user said go. `pm install -r` Success; installed base.apk fa4e605c… == staged; crash buffer empty; peers told + "done".

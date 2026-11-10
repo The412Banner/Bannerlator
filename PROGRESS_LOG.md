@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 15:13 EST — 📲 63a7eaeb installed on the Pocket FIT: "Start in Big Picture" opens Big Picture after Steam's desktop window
+- **Problem (user 14:0x):** Exit Big Picture → black screen with sound. BLXDiag: the Big Picture window was minimized, no new window followed. Steam's webhelper.txt: after "SP BPM_uid0 WasHidden 1" no "CreatingPopup name:SP Desktop_uid0" — started with `-gamepadui`, the client never makes its desktop window. User checks: with the toggle off the desktop window shows (GPU mode); desktop → Big Picture button → exit → desktop comes back.
+- **Fix 63a7eaeb** (user: "build it on the same branch"): no `-gamepadui`; the session waits for a mapped steamwebhelper window titled "Steam" (≥ 640×360) and then runs `steam.exe steam://open/bigpicture` once. CI 42889377322 green 4/4.
+- **Installed 15:13:03 EST** (user: "install it"): base.apk sha256 e90b967a… == staged, crash buffer 0, data intact.
+- **Proof level:** CI-green + installed; NOT device-tested.
+
 ## 2026-11-10 13:58 EST — ✅ Big Picture menus drawn with GPU drawing: fix B 118636d3 device-proven on the Pocket FIT
 - **Installed 13:54:09 EST** (CI 42877757631 green 4/4; base.apk sha256 a65f2af0… == staged; crash buffer 0).
 - **User screenshots 13:57:** Big Picture side menu and Quick Access (Help panel) fully drawn over the page, GPU drawing (D3D11 · DXVK).

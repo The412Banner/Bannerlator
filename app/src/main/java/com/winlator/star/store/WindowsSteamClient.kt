@@ -38,6 +38,7 @@ import java.util.zip.ZipInputStream
  *    64-bit names, so the 32-bit client needs nothing.
  *  - A Steam library on every storage the container maps (internal storage, SD card): Steam offers
  *    only library folders it has registered, never drives ([ensureStorageLibraries]).
+ *  - The app's games listed as non-Steam games ([SteamShortcutsSync]).
  *
  * Nothing here throws.
  */
@@ -301,6 +302,9 @@ object WindowsSteamClient {
             val added = ensureStorageLibraries(ctx, container, winPath)
             notes.add(if (added.isEmpty()) "Steam libraries: every mapped storage already has one"
                       else "Steam libraries added: " + added.joinToString(", "))
+            // The app's games as non-Steam games, written while the client is not running yet.
+            val steamRoot = try { WinePath.resolveAndroidPath(container, winPath)?.parentFile } catch (t: Throwable) { null }
+            if (steamRoot != null) notes.add(SteamShortcutsSync.sync(ctx, container, steamRoot))
         } catch (t: Throwable) {
             Log.w(TAG, "prepareLaunch failed", t)
             notes.add("Steam client preparation failed: ${t.message}")

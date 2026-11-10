@@ -785,7 +785,7 @@ private fun QuickTools(kind: InGameSessionKind) {
             add(Triple(L("Switch window"), Icons.Outlined.ViewCarousel) { closeThen(state.onActiveWindows) })
             add(Triple(L("Run a program"), Icons.Outlined.Terminal) {
                 XServerDialogState.onTmDismissed?.run()
-                XServerDialogState.onTmNewTask?.run()
+                (XServerDialogState.onRunProgramPicker ?: XServerDialogState.onTmNewTask)?.run()
             })
             add(Triple(L("Task manager"), Icons.Outlined.ListAlt) { DeckInGameState.openMenuAt(MenuTab.TOOLS) })
         }
@@ -1680,7 +1680,7 @@ private fun RunningPrograms(state: XServerDrawerState) {
         IgRow(L("Run a program"), hint = L("Start another program in this session.")) {
             IgButton(L("Run…"), Icons.Outlined.Terminal, {
                 XServerDialogState.onTmDismissed?.run()
-                XServerDialogState.onTmNewTask?.run()
+                (XServerDialogState.onRunProgramPicker ?: XServerDialogState.onTmNewTask)?.run()
             })
         }
     }

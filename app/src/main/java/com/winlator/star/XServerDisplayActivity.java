@@ -13877,6 +13877,75 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
 
 
+    // "Run a program": Bannerlator's file picker over internal storage, SD cards and the container's C: drive.
+    private static final String[] RUN_PROGRAM_EXTENSIONS = {"exe", "bat", "cmd", "msi", "lnk"};
+    // True: the picked program goes back into the New Task box (Browse…); false: it starts at once.
+    private boolean runProgramPickerFillsNewTask;
+    private final ActivityResultLauncher<Intent> runProgramPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                String path = result.getResultCode() == RESULT_OK
+                        ? com.winlator.star.util.InAppFilePicker.INSTANCE.pickedPath(result.getData()) : null;
+                if (path != null) runPickedProgram(path, runProgramPickerFillsNewTask);
+            });
+
+    private void openRunProgramPicker(boolean fillNewTask) {
+        if (container == null) return;
+        runProgramPickerFillsNewTask = fillNewTask;
+        try {
+            String driveC = new File(container.getRootDir(), ".wine/drive_c").getAbsolutePath();
+            runProgramPickerLauncher.launch(com.winlator.star.util.InAppFilePicker.INSTANCE.buildIntent(
+                    this, RUN_PROGRAM_EXTENSIONS, "Run a program", null, driveC));
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Run a program: picker", e);
+            XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.NEW_TASK);
+        }
+    }
+
+    /**
+     * A program picked for "Run a program", by its Android path: its Windows path in this session (a drive the container
+     * has, or a new letter for its storage, linked into the running prefix at once), then started from its own folder,
+     * or with [fillNewTask] put into the New Task box instead.
+     */
+    private void runPickedProgram(String path, boolean fillNewTask) {
+        final Container c = container;
+        if (c == null) return;
+        new Thread(() -> {
+            String win;
+            try {
+                win = com.winlator.star.core.WinePath.INSTANCE.resolveWindowsPath(c, path);
+                linkMissingDrives(c);
+            } catch (Exception e) {
+                Log.w("XServerDisplayActivity", "Run a program: no Windows path for " + path, e);
+                runOnUiThread(() -> Toast.makeText(this, "Can't reach " + new File(path).getName() + " from this container", Toast.LENGTH_LONG).show());
+                return;
+            }
+            final String windowsPath = win;
+            Log.i("XServerDisplayActivity", "Run a program: " + path + " -> " + windowsPath + (fillNewTask ? " (into New Task)" : ""));
+            if (fillNewTask) {
+                runOnUiThread(() -> {
+                    XServerDialogState.INSTANCE.newTaskPrefill = "\"" + windowsPath + "\"";
+                    XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.NEW_TASK);
+                });
+                return;
+            }
+            boolean sent = winHandler != null && winHandler.execInFolder(windowsPath, "");
+            runOnUiThread(() -> Toast.makeText(this,
+                    (sent ? "Starting " : "Couldn't start ") + new File(path).getName(), Toast.LENGTH_SHORT).show());
+        }, "RunProgram").start();
+    }
+
+    /** Links every drive of [c] that has no dosdevices entry yet, so a letter added during the session works at once. */
+    private static void linkMissingDrives(Container c) {
+        File dosdevices = new File(c.getRootDir(), ".wine/dosdevices");
+        for (String[] drive : c.drivesIterator()) {
+            File link = new File(dosdevices, drive[0].toLowerCase(java.util.Locale.ENGLISH) + ":");
+            if (link.exists() || FileUtils.isSymlink(link)) continue;
+            FileUtils.symlink(new File(drive[1]).getAbsolutePath(), link.getPath());
+            Log.i("XServerDisplayActivity", "Run a program: linked drive " + drive[0] + ": -> " + drive[1]);
+        }
+    }
+
     private final ActivityResultLauncher<String> inGameIconPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -18702,6 +18771,8 @@ return true;
         // killed the old Task Manager confirm). The submit path is unchanged: OK runs winHandler.exec.
         ds.onTmNewTask = () -> ds.show(XServerDialogState.ActiveDialog.NEW_TASK);
         ds.onTmNewTaskSubmit = command -> { if (winHandler != null) winHandler.exec(command); };
+        ds.onRunProgramPicker = () -> openRunProgramPicker(false);
+        ds.onNewTaskBrowse = () -> openRunProgramPicker(true);
 
         // Bring to Front: drive it host-side (renderer-agnostic). Look up the real X window for the
         // target Windows pid, set X-server input focus on it, and send bringToFront with the REAL

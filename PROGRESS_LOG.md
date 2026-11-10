@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 04:42 EST — 📦 feat/windows-steam-client 5bad2962 CI GREEN 4/4, staged on the Pocket FIT; awaiting the user's yes to install
+- **CI 42791080613** (headSha 5bad2962): pubg/standard/antutu/ludashi success; non-success steps are only the usual skipped cache / main-only steps.
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-5bad2962-pubg.apk` sha256 `b161d1c14e93df8d40636bd5fd464588e1b9376ab059f08614eb3e581f8ef9a8` (host == device), com.tencent.ig vc106, "The download is not a zip file" in classes4.dex.
+- **Installed now on the FIT:** a7febd02 (`3ebae481…`, lastUpdateTime 04:20:17). Rollback file on the FIT: `Bannerlator-lab-parity-91549b4f-pubg.apk`.
+- **Proof level:** CI-green, staged; NOT device-tested.
+- **Resume point:** user yes → no game running + tell peers → `rootsh` pm install -r via /data/local/tmp → base.apk sha256 == b161d1c1… + crash buffer → user retries Add a game → Add Windows Steam client x64 (container 1).
+
 ## 2026-11-10 04:30 EST — 🔧 feat/windows-steam-client 5bad2962: "Add Windows Steam client x64" unpacked nothing (fix pushed, CI 42791080613 running)
 - **User (Pocket FIT, 04:21 EST, screenshot Screenshot_20261110-042155.png):** installed a7febd02 pubg themselves (base.apk sha256 `3ebae481…a97`, lastUpdateTime 04:20:17), Add a game → Add Windows Steam client x64 → toast "The download is not the 64-bit steam.exe". Container 1 `drive_c/Program Files/Steam` created 04:20, EMPTY.
 - **Cause (verified):** the manifest lookup is fine (`steam_win64` has a direct file/size/sha2 after its steamrow/steamchina blocks) and the download passes the size + sha256 check (`steam_win64.zip.9ddc7f40…`, 2,692,595 B, `9a5aba7f…`). The file has 20 bytes before the first `PK\3\4` local header (python zipfile: one entry steam.exe, header_offset 20). `ZipInputStream` returns no entry unless the stream starts at a header → nothing written → the PE check fails. Reproduced on the host with OpenJDK 25 `ZipInputStream` on Valve's file: 0 entries as-is; started at offset 20: steam.exe 5,823,128 B, PE machine 0x8664.

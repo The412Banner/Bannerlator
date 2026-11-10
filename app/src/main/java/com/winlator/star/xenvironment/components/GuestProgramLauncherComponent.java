@@ -196,15 +196,19 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         boolean box64ec = Container.EMULATOR64_BOX64EC.equalsIgnoreCase(emulator64);
         boolean changed = false;
 
-        if (box64ec && box64ecVersion != null && !box64ecVersion.isEmpty()
-                && !box64ecVersion.equals(container.getExtra("box64ecVersion"))) {
-            ContentProfile profile = contentsManager.getProfileByEntryName("box64ec-" + box64ecVersion);
+        if (box64ec) {
+            ContentProfile profile = resolveBox64ECProfile(box64ecVersion);
             if (profile != null) {
-                contentsManager.applyContent(profile);
-                container.putExtra("box64ecVersion", box64ecVersion);
-                changed = true;
+                String entryName = ContentsManager.getEntryName(profile);
+                String version = entryName.substring(entryName.indexOf('-') + 1);
+                if (!version.equals(container.getExtra("box64ecVersion"))
+                        || !new File(system32dir, "box64ec.dll").exists()) {
+                    contentsManager.applyContent(profile);
+                    container.putExtra("box64ecVersion", version);
+                    changed = true;
+                }
             } else {
-                Log.w("GuestProgramLauncherComponent", "Box64EC " + box64ecVersion + " is not installed");
+                Log.w("GuestProgramLauncherComponent", "Box64EC selected but no Box64EC component is installed");
             }
         }
         if (box64ec && !new File(system32dir, "box64ec.dll").exists()) {
@@ -224,6 +228,26 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             }
         }
         return changed;
+    }
+
+    /**
+     * The Box64EC component to use: the saved version when it is installed, otherwise the first
+     * installed one. The settings screens show that same first installed version when nothing is
+     * saved (ContainerDetailViewModel), so this makes the shown version the one that runs.
+     */
+    private ContentProfile resolveBox64ECProfile(String version) {
+        if (version != null && !version.isEmpty()) {
+            ContentProfile profile = contentsManager.getProfileByEntryName("box64ec-" + version);
+            if (profile != null) return profile;
+            Log.w("GuestProgramLauncherComponent", "Box64EC " + version + " is not installed, using the first installed one");
+        }
+        java.util.List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64EC);
+        if (profiles == null) return null;
+        for (ContentProfile profile : profiles) {
+            // The list can also hold catalog entries that are not downloaded.
+            if (ContentsManager.getInstallDir(environment.getContext(), profile).exists()) return profile;
+        }
+        return null;
     }
 
     // The FEX unixlib .so names we own. The truncated variants are defensive: old testing produced

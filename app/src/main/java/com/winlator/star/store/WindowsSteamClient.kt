@@ -501,6 +501,34 @@ object WindowsSteamClient {
         }
     }
 
+    /**
+     * Adds the library [winPath] (the folder [hostDir]) to the client's `steamapps/libraryfolders.vdf` and its `config/`
+     * copy when it is not listed yet. True when it is listed afterwards.
+     */
+    @JvmStatic
+    fun addLibraryFolder(steamRoot: File, winPath: String, hostDir: File): Boolean {
+        try {
+            val primary = File(steamRoot, "steamapps/libraryfolders.vdf")
+            if (!primary.isFile) return false
+            val doc = VdfParser.parse(primary.readText())
+            val folders = doc.node("libraryfolders") ?: return false
+            var nextKey = 0
+            for ((key, node) in folders.childNodes()) {
+                key.toIntOrNull()?.let { if (it >= nextKey) nextKey = it + 1 }
+                if (node.string("path")?.trimEnd('\\').equals(winPath.trimEnd('\\'), ignoreCase = true)) return true
+            }
+            folders.add(nextKey.toString(), libraryEntry(winPath, hostDir))
+            val text = StringBuilder().also { serialize(doc, it, 0) }.toString()
+            if (!writeAtomic(primary, text)) return false
+            writeAtomic(File(steamRoot, "config/libraryfolders.vdf"), text)
+            Log.i(TAG, "libraryfolders.vdf in ${steamRoot.absolutePath}: added $winPath")
+            return true
+        } catch (t: Throwable) {
+            Log.w(TAG, "addLibraryFolder $winPath", t)
+            return false
+        }
+    }
+
     /** The user's Bannerlator Steam library on [volume], as (folder, Windows path) through an existing drive, or null. */
     private fun userLibraryOn(ctx: Context, container: Container, volume: String): Pair<File, String>? {
         val libraries = try { SteamLibraryLocations.libraries(ctx) } catch (t: Throwable) { emptyList() }

@@ -100,10 +100,11 @@ object SteamLibraryMirror {
                 made[appId] = dir.name
             }
             writeList(listFile, made)
-            addToLibraryFolders(steamRoot, lib)
+            val inList = WindowsSteamClient.addLibraryFolder(steamRoot, WIN_PATH, lib)
 
             return "Store games in Steam: ${made.size} linked in $WIN_PATH" +
-                (if (goldberg > 0) ", $goldberg left out (Goldberg on)" else "")
+                (if (goldberg > 0) ", $goldberg left out (Goldberg on)" else "") +
+                (if (!inList) ", but the library is not in Steam's libraryfolders.vdf" else "")
         } catch (t: Throwable) {
             Log.w(TAG, "sync failed", t)
             return "Store games in Steam: not updated (${t.message ?: t.javaClass.simpleName})"
@@ -128,31 +129,6 @@ object SteamLibraryMirror {
             Log.w(TAG, "libraryfolders", t)
         }
         return out
-    }
-
-    /** Adds [lib] to the client's libraryfolders.vdf (and config/libraryfolders.vdf) when it is not listed yet. */
-    private fun addToLibraryFolders(steamRoot: File, lib: File) {
-        for (vdf in listOf(File(steamRoot, "steamapps/libraryfolders.vdf"), File(steamRoot, "config/libraryfolders.vdf"))) {
-            try {
-                if (!vdf.isFile) continue
-                val text = vdf.readText()
-                val folders = VdfParser.parse(text).node("libraryfolders") ?: continue
-                if (folders.childNodes().any { (_, n) -> n.string("path")?.trimEnd('\\').equals(WIN_PATH, ignoreCase = true) }) continue
-                val next = (folders.childNodes().mapNotNull { it.first.toIntOrNull() }.maxOrNull() ?: -1) + 1
-                val contentId = java.util.UUID.nameUUIDFromBytes(lib.absolutePath.toByteArray(Charsets.UTF_8)).mostSignificantBits and Long.MAX_VALUE
-                val entry = "\t\"$next\"\n\t{\n\t\t\"path\"\t\t\"C:\\\\$DIR\"\n\t\t\"label\"\t\t\"\"\n\t\t\"contentid\"\t\t\"$contentId\"\n" +
-                    "\t\t\"totalsize\"\t\t\"0\"\n\t\t\"update_clean_bytes_tally\"\t\t\"0\"\n\t\t\"time_last_update_verified\"\t\t\"0\"\n" +
-                    "\t\t\"apps\"\n\t\t{\n\t\t}\n\t}\n"
-                val close = text.lastIndexOf('}')
-                if (close < 0) continue
-                val updated = text.substring(0, close) + entry + text.substring(close)
-                val tmp = File(vdf.parentFile, vdf.name + ".bl-tmp")
-                tmp.writeText(updated)
-                if (!tmp.renameTo(vdf)) tmp.delete()
-            } catch (t: Throwable) {
-                Log.w(TAG, "libraryfolders write ${vdf.absolutePath}", t)
-            }
-        }
     }
 
     private fun readList(file: File): Map<Int, String> {

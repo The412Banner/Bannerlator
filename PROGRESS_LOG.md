@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 10:06 EST — 🧪 Big Picture test 1 = white screen; cause found; test 1b (other-process rendering on) set up
+- **Test 1 result (user 10:01, screenshot):** white screen + sound, overlay "D3D11 · DXVK 1.8 fps", 564 ms.
+- **Cause (wine_debug.log):** `x11drv_client_surface_create HACK: Failing surface creation for other process window` → DXVK `Failed to recreate surface: VK_ERROR_OUT_OF_HOST_MEMORY` → `CreateSwapChainForHwnd: Failed`. Chromium's GPU process draws into the browser process's window. Our layer (proton_11.12.3-DroidDeck) carries `android/patches/dlls_winex11.drv_init.c_opwr.patch` (GameNative #82, Dmage22 via Utkarsh Dalal): Proton's other-process window rendering (OPWR) is off on Android unless `WINE_DISABLE_VULKAN_OPWR=0`, because it needs XComposite to keep the offscreen surface hidden ("the surface shows up at the screen origin"). Bannerlator's X server has only a bookkeeping XComposite (`extensions/XComposite.java`), registered only with `BANNER_X11_GLX=1`.
+- **Steam GPU log:** ANGLE D3D11 on "Wrapper(Adreno (TM) 750)", GPU compositing on, accelerated rasterization off (Chromium blocklist).
+- **Test 1b (user: "do the quick experiment"):** shortcut = test 1 + `envVars=WINE_DISABLE_VULKAN_OPWR=0`. Backups in `/sdcard/Download/bl-backup-20261110/` (`.before-gpu-test` = original, `.test1`).
+- **If it is promising:** real XComposite in Bannerlator's X server (keep redirected windows off screen, support the copy) — not started.
+
 ## 2026-11-10 09:59 EST — 🧪 Big Picture test 1 on the Pocket FIT: Windows Steam without -cef-disable-gpu
 - **Video 09:52 (fd7e6e7e, 20 s):** Menu press in Big Picture opens its left menu (works); double press opens the Quick Access Menu, which draws one full frame and then is no longer repainted (only the focused icon's area updates); hold → drawer works. Overlay: CPU 26–46 %, GPU 5–15 %. Logcat of the test lost (256 KiB main buffer) → `logcat -G 16M` set (until reboot).
 - **Test 1 (user: "yes set up test 1"):** container 1 "Windows Steam Client x64.desktop" backed up to `/sdcard/Download/bl-backup-20261110/Windows Steam Client x64.desktop.before-gpu-test` (sha256 e1e85d95…); after the user closed Steam, execArgs written without `-cef-disable-gpu` (only change; owner/context kept). Undo: copy the backup back with `cat >`.

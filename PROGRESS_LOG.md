@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 feat/lab-parity ec5fcbed: remaining items 1-3 + translations in progress (CI 42734827136 running)
+- f9c6f492 INSTALLED on the Pocket FIT 20:17:15 EST (pre-approved; 957a8783… == staged; crash buffer empty; peers told + done).
+- User: "yes do 1-3 and the translations on the same branch". ec5fcbed: (1) Steam connection pill in the Lab side menu header; (2) Steam link in Lab Game details renames the game to Steam's title (rename moved above linkSteam; cover/icons move with it); (3) ContainerManager.importContainerResult / exportContainerResult (one main-thread callback with the real result; old Runnable methods delegate), ContainersViewModel busy flag always reset + "Couldn't import" message + export path only when copied; Lab "A backup named … is already in Backups"; SimpleActionSheet opens on the "  ✓" entry.
+- Translations: lab_strings.py extract → 1897 strings (125 new per locale; 4 locales slightly fewer); 4 agents drafting 8 locales each into scratchpad i18n3/draft_<locale>.json (check.py validates placeholders/coverage). Next: fill all 32 → commit → CI → stage pubg → ASK install → merge on go.
+
 ## 2026-11-09 — 🔧 feat/lab-parity f9c6f492: small issues from the UI drive (CI 42733575018 running)
 - User: "fix those small issues on the same branch".
 - LabBadged → BoxWithConstraints: under 84 dp (or 120 dp with the selection mark) only the store's own pill (LabStoreBadges, no EA/EOS beside it) — Icons cards no longer wrap "EO S".

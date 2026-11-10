@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Computer
@@ -41,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.core.StorageRoots
 import com.winlator.star.ui.XServerDialogState
+import com.winlator.star.ui.deck.NunitoSansFamily
+import com.winlator.star.ui.simple.SimpleRowDivider
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -89,17 +93,19 @@ fun RunProgramDialog(state: XServerDialogState) {
 
     OutlinedAlertDialog(
         onDismissRequest = up,
-        modifier = Modifier.fillMaxWidth(0.72f),
+        modifier = Modifier.fillMaxWidth(0.42f).widthIn(max = 480.dp),
         properties = DialogProperties(usePlatformDefaultWidth = false),
+        shape = RoundedCornerShape(4.dp),
         title = {
             Column {
-                Text("Run a program")
+                Text("Run a program", fontFamily = NunitoSansFamily, style = MaterialTheme.typography.titleMedium)
                 val d = dir
                 val p = place
                 if (d != null && p != null) {
                     val rel = d.absolutePath.removePrefix(p.dir.absolutePath).trimStart('/')
                     Text(
                         if (rel.isEmpty()) p.label else p.label + " / " + rel.replace("/", " / "),
+                        fontFamily = NunitoSansFamily,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -109,26 +115,31 @@ fun RunProgramDialog(state: XServerDialogState) {
             }
         },
         text = {
-            LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+            LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                 val d = dir
                 if (d == null) {
-                    items(places, key = { it.dir.absolutePath + "|" + it.label }) { p ->
-                        RunRow(p.icon, p.label, p.dir.absolutePath) { place = p; dir = p.dir }
+                    itemsIndexed(places, key = { _, p -> p.dir.absolutePath + "|" + p.label }) { i, p ->
+                        if (i > 0) SimpleRowDivider()
+                        RunRow(p.icon, p.label) { place = p; dir = p.dir }
                     }
                 } else {
-                    item(key = "..") { RunRow(Icons.AutoMirrored.Filled.ArrowBack, "Up", null, onClick = up) }
-                    items(entries, key = { it.absolutePath }) { f ->
+                    item(key = "..") { RunRow(Icons.AutoMirrored.Filled.ArrowBack, "Up", onClick = up) }
+                    itemsIndexed(entries, key = { _, f -> f.absolutePath }) { _, f ->
+                        SimpleRowDivider()
                         when {
-                            f.isDirectory -> RunRow(Icons.Filled.Folder, f.name, null) { dir = f }
-                            isProgram(f) -> RunRow(Icons.Filled.PlayArrow, f.name, null) { pick(f) }
-                            else -> RunRow(Icons.Outlined.Description, f.name, null) { pick(f) }
+                            f.isDirectory -> RunRow(Icons.Filled.Folder, f.name) { dir = f }
+                            isProgram(f) -> RunRow(Icons.Filled.PlayArrow, f.name) { pick(f) }
+                            else -> RunRow(Icons.Outlined.Description, f.name) { pick(f) }
                         }
                     }
                     if (entries.isEmpty()) item(key = "empty") {
+                        SimpleRowDivider()
                         Text(
                             "Nothing here",
+                            fontFamily = NunitoSansFamily,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier.padding(10.dp),
                         )
                     }
                 }
@@ -139,28 +150,24 @@ fun RunProgramDialog(state: XServerDialogState) {
 }
 
 @Composable
-private fun RunRow(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) {
+private fun RunRow(icon: ImageVector, title: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(horizontal = 6.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) {
-                Text(
-                    subtitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            title,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontFamily = NunitoSansFamily,
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

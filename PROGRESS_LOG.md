@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 04:30 EST — 🔧 feat/windows-steam-client 5bad2962: "Add Windows Steam client x64" unpacked nothing (fix pushed, CI 42791080613 running)
+- **User (Pocket FIT, 04:21 EST, screenshot Screenshot_20261110-042155.png):** installed a7febd02 pubg themselves (base.apk sha256 `3ebae481…a97`, lastUpdateTime 04:20:17), Add a game → Add Windows Steam client x64 → toast "The download is not the 64-bit steam.exe". Container 1 `drive_c/Program Files/Steam` created 04:20, EMPTY.
+- **Cause (verified):** the manifest lookup is fine (`steam_win64` has a direct file/size/sha2 after its steamrow/steamchina blocks) and the download passes the size + sha256 check (`steam_win64.zip.9ddc7f40…`, 2,692,595 B, `9a5aba7f…`). The file has 20 bytes before the first `PK\3\4` local header (python zipfile: one entry steam.exe, header_offset 20). `ZipInputStream` returns no entry unless the stream starts at a header → nothing written → the PE check fails. Reproduced on the host with OpenJDK 25 `ZipInputStream` on Valve's file: 0 entries as-is; started at offset 20: steam.exe 5,823,128 B, PE machine 0x8664.
+- **Elite never hit it:** its "Steam x64" shortcut was switched to windows_steam by hand (04:08), the download path never ran there.
+- **Fix 5bad2962:** `WindowsSteamClient.firstEntryOffset` finds the first local header in the first 64 KB; the unpack starts there (FileInputStream channel position); no header → "The download is not a zip file".
+- **CI:** 42791080613 (headSha 5bad2962) running.
+- **Proof level:** pushed; fix logic proven on the host against Valve's file; NOT built yet; NOT device-tested.
+- **Resume point:** CI 42791080613 → stage `/sdcard/Download/Bannerlator-windows-steam-client-5bad2962-pubg.apk` on the Pocket FIT (sha256 host == device) → ask the user before installing → test: Add a game → Add Windows Steam client x64 in container 1 (empty Steam folder there is harmless) → steam.exe written, shortcut "Windows Steam Client x64" with badge, pinned first. Rollback on the FIT: a7febd02 (installed now) / `Bannerlator-main-b121585e-pubg.apk` is NOT on the FIT; `Bannerlator-lab-parity-91549b4f-pubg.apk` is.
+
 ## 2026-11-10 04:08 EST — 📲 INSTALLED feat/windows-steam-client a7febd02 on the Elite (user: "yes install it"); user tests next
 - **User (04:07 EST):** "yes install it".
 - **Before:** installed ce29246d (lastUpdateTime 2026-11-09 23:11:26); staged APK sha256 re-checked on the device 04:07 = `3ebae481…a97`. No other Claude session running (ListAgents).

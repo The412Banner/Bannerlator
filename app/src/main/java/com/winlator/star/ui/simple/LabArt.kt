@@ -59,6 +59,15 @@ import com.winlator.star.ui.deck.SoraFamily
 import java.io.File
 import kotlinx.coroutines.launch
 import com.winlator.star.ui.screens.XmbStoreBadges
+import com.winlator.star.ui.screens.ShortcutBadgeOverlay
+import com.winlator.star.ui.screens.isAmazonShortcut
+import com.winlator.star.ui.screens.isCustomOriginShortcut
+import com.winlator.star.ui.screens.isGogShortcut
+import com.winlator.star.ui.screens.isSteamOriginShortcut
+import com.winlator.star.ui.screens.isXboxShortcut
+import com.winlator.star.androidgames.AndroidGames
+import com.winlator.star.linux.LinuxShortcuts
+import com.winlator.star.store.EaSupport
 
 /**
  * Lab's game art. App-wide choices (Settings › Appearance › Look), each game's own (Game details › Background and
@@ -442,9 +451,11 @@ internal fun LabInGameIcon(s: Shortcut, modifier: Modifier) {
  */
 @Composable
 internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null, content: @Composable (Modifier) -> Unit) {
-    Box(modifier) {
+    BoxWithConstraints(modifier) {
         content(Modifier.fillMaxSize())
-        Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { XmbStoreBadges(s) }
+        // Two pills (EPIC + EOS, STEAM + EA) need about 80 dp, more beside the selection mark.
+        val compact = maxWidth < 84.dp || (picked != null && maxWidth < 120.dp)
+        Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { LabStoreBadges(s, compact) }
         if (picked != null) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -454,6 +465,29 @@ internal fun LabBadged(s: Shortcut, modifier: Modifier, picked: Boolean? = null,
             ) { if (picked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
         }
     }
+}
+
+/** The store pills; on a card too narrow for two ([compact]) only the store's own pill, without EA / EOS beside it. */
+@Composable
+private fun LabStoreBadges(s: Shortcut, compact: Boolean) {
+    if (!compact) {
+        XmbStoreBadges(s)
+        return
+    }
+    val steam = remember(s) { isSteamOriginShortcut(s) }
+    val ea = remember(s) { EaSupport.isTagged(s) }
+    val epic = remember(s) { s.getExtra("storeSource") == "epic" }
+    val gog = remember(s) { isGogShortcut(s) }
+    val amazon = remember(s) { isAmazonShortcut(s) }
+    val xbox = remember(s) { isXboxShortcut(s) }
+    val custom = remember(s) { isCustomOriginShortcut(s) }
+    val linux = remember(s) { LinuxShortcuts.isLinuxEntry(s) }
+    val android = remember(s) { AndroidGames.isAndroidEntry(s) }
+    val first = listOf(steam, ea, epic, gog, amazon, xbox, custom, linux).indexOfFirst { it }
+    ShortcutBadgeOverlay(
+        showSteam = first == 0, showEa = first == 1, showEpic = first == 2, showEos = false, showGog = first == 3,
+        showAmazon = first == 4, showXbox = first == 5, showCustom = first == 6, showLinux = first == 7, showAndroid = android,
+    )
 }
 
 /** An icon card: the icon and the name (and [line]) under it, with the store pills over the icon when [badges]. */

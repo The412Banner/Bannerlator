@@ -294,7 +294,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                     val fps = remember(resumeTick) { com.winlator.star.ui.deck.readFpsStats(context, shortcut) }
                     Column(Modifier.weight(1f).height(if (fps != null) 110.dp else tileH).labPanel().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (fps != null) {
-                            LabTileLabel(L("FPS · last %1\$s sessions", fps.history.size))
+                            LabTileLabel(if (fps.history.size == 1) L("FPS · last session") else L("FPS · last %1\$s sessions", fps.history.size))
                             Text(
                                 L("%1\$s avg", fps.lastAvg.roundToInt()) + (if (fps.lastLow > 0) L(" · 1%% low %1\$s", fps.lastLow) else "") + " · ${playtimeLabel(stats?.ms ?: 0L)}",
                                 color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1,
@@ -303,7 +303,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                         } else {
                             LabTileLabel(L("Playtime"))
                             Text(
-                                L("%1\$s · %2\$s sessions", playtimeLabel(stats?.ms ?: 0L), stats?.count ?: 0),
+                                (stats?.count ?: 0).let { n -> if (n == 1) L("%1\$s · 1 session", playtimeLabel(stats?.ms ?: 0L)) else L("%1\$s · %2\$s sessions", playtimeLabel(stats?.ms ?: 0L), n) },
                                 color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1,
                             )
                         }

@@ -37,7 +37,6 @@ import com.winlator.star.ui.screens.ContainersViewModel
 import com.winlator.star.ui.screens.GameSavesDialog
 import com.winlator.star.ui.screens.SaveFlow
 import com.winlator.star.ui.screens.SaveFlowProgressDialog
-import com.winlator.star.ui.screens.StorageInfoDialog
 import com.winlator.star.ui.screens.runScopedBackup
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
@@ -325,7 +324,7 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
     layerBusy?.let { SaveFlowProgressDialog(message = it) }
     // The catalog download before a remote layer update; on success the view model closes it and updates.
     layerDownload?.let { st -> InstallProgressDialog(state = st, onCancel = { vm.cancelLayerDownload() }, onDismiss = { vm.layerDownloadDismissed() }) }
-    storageFor?.let { c -> StorageInfoDialog(container = c, onDismiss = { storageFor = null }) }
+    storageFor?.let { c -> LabStorageDialog(container = c, onDismiss = { storageFor = null }) }
     EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
         emuConflicts = emptyList()
         if (applied > 0) toast(context, L("Emulator account switched to the backup's. Relaunch the game."))

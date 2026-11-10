@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 11:44 EST — 📲 INSTALLED feat/windows-steam-library 98447478 (all-in-one) on the Pocket FIT (user: "install the all-in-one when it's done")
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-98447478-pubg.apk` sha256 `b5271c9e07c181f891dd238140e25937661bf8d2956718eff4121b0b7bd41e60` (host == device; artifact = run 42849152804 / 98447478).
+- **Installed 11:43:56 EST:** base.apk == staged; crash buffer 0; nothing was running in Bannerlator; Box64EC, xuser-1, xuser-2 intact; Steam shortcut keeps the GPU + OPWR test settings.
+- **Proof level:** CI-green + installed; flicker fix and Run popup NOT device-tested.
+
 ## 2026-11-10 11:30 EST — 📲 INSTALLED d1fdecf8 (hide transparent windows) on the Pocket FIT; 98447478 (run-program popup) CI green
 - **98447478** (feat/windows-steam-library): in-game "Run a program" popup over the running game (no pause), always opening on the device's storage, then C: and the game folder; every file listed and opened with its Windows program (user + Discord request: Cheat Engine .CT). CI 42849152804 green 4/4; contains d1fdecf8.
 - **d1fdecf8 installed 11:29:57 EST** (user: "install it", after being told it closes the running AIO-Graphics-Test session, which was the user's own, not root-8b's): base.apk sha256 0f71f275… == staged; crash buffer 0; Box64EC, xuser-1, xuser-2 intact; the Steam shortcut keeps the GPU + `WINE_DISABLE_VULKAN_OPWR=0` test settings.

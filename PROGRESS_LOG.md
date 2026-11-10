@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ feat/lab-parity 91549b4f INSTALLED on the Pocket FIT (pubg) 19:54:24 EST (user: "yes install it" / "go ahead and install it"; NOT device-tested yet)
+- CI 42724334473 GREEN ×4 (headSha 91549b4f). Staged /sdcard/Download/Bannerlator-lab-parity-91549b4f-pubg.apk sha256 fa4e605c… (host == device), com.tencent.ig vc106, cert a40da80a.
+- Before: 321d7aed (3a5a3504…); Bannerlator UI was open (pid 25282, no game). Held the install to ask root-8b (busy) — it was not using BL; the user said go. `pm install -r` Success; installed base.apk fa4e605c… == staged; crash buffer empty; peers told + "done".
+- Undo: /sdcard/Download/Bannerlator-lab-badges-bugs-321d7aed-pubg.apk (== main 822ee6fb code).
+- **User tests:** see the 91549b4f entry below (Mods tile/dialog + in-game Mods page, About tile, Library sort/filter/card style/select, top-line Search/Community/Friends, Contents Refresh/search/Manage/Set as default + Undo/error text, Containers layer/storage/saves/busy, Controls rename/previews/multi-select/system import, Appearance sizes + side-menu switches, Settings › Controllers). Merge on go.
+
 ## 2026-11-09 — 🔧 feat/lab-parity 91549b4f: all four areas merged + follow-ups (CI 42724334473 running; NOT installed, NOT device-tested)
 - Helper branches (each CI-green ×4, compile only): lab-parity-contents 27b10e68 (CI 42722084373), lab-parity-containers cd00e480 (42722479904), lab-parity-mods-game 45d99a88 (42722340107), lab-parity-library ee7d3ec8 (42722705722). Merged --no-ff into feat/lab-parity with no text conflicts (9c14a70b, 1f2c9aeb, 6d702b34, ad27f8a4); 3-way compile check CI 42723784588.
 - Follow-ups 91549b4f: top-line Search runs the shell search (no fake Y key); Home GPU drivers tile → Contents Installed; SteamStoreSearch.findAppIdByName stops caching a failed request as a week-long "none" (searchOrNull).

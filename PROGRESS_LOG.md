@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 13:5x EST — 🔧 Big Picture menus: root cause found (BLXDiag), fix 118636d3 (CI 42877757631)
+- **Diagnostic build d19568bc installed 13:30:40 EST**; user ran Big Picture, opened the menu and Quick Access, closed Steam ("closed steam, read the log").
+- **BLXDiag log (13:32:57–13:34:07):** all Wine windows are children of the explorer desktop window; the GL renderer drew only Steam's main window 0x3800005; the GPU process's offscreen windows sit in its transparent dummy parent (hidden, as intended). The side menu and Quick Access are not X windows: Chromium draws them as overlay child windows into their own offscreen windows (e.g. 229×721, 812×645, made and destroyed per opening), and Wine copies them into the same window 0x3800005 only when they change, while the page is copied there ~24×/s over the whole window (box 0,0–1280,720). Cause in Wine: `X11DRV_client_surface_present` — `region = 0; /* window is exclusive fullscreen, ignore everything else */` — no child-window clipping for a fullscreen toplevel. The resize content reset was not the cause.
+- **Fix B (user: "yes do B on the same branch, install when done"):** `xserver/OverlayCopies` — per destination window, the last copy from each source window; after each copy the smaller overlapping copies from other live, mapped sources are copied again from their current picture; destroyed/unmapped sources are forgotten. `XServer.keepOverlayCopies` for Windows Steam sessions only. Diagnostics stay on (op "reapply").
+- **Proper fix A (later, root-8b review, new layer only on the user's word):** winex11 skips the fullscreen shortcut when the toplevel has child windows.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 12:5x EST — 🔬 Quick proof failed (layer restored); compact popup installed; diagnostic build d19568bc for the Big Picture menus
 - **Quick proof result (user video 12:22):** Wine appended `--in-process-gpu` (6 "HACK: appending" lines) but Windows Steam's web helper ignored it (still `--type=gpu-process`, switch absent from its logged start line); menus as before. Original layer kernelbase.dll restored 12:26 EST (sha256 b9b121b9…), root-8b told.
 - **Compact popup ca49b7e0 installed 12:41:50 EST** (user: "install anyway"; closed the running Steam session): base.apk sha256 ca83f22e… == staged, crash buffer 0, data intact.

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ feat/lab-parity 90d8089b INSTALLED on the Pocket FIT (pubg) 21:03:02 EST (user: "yes install it"; NOT device-checked yet)
+- CI 42736480948 GREEN ×4 (headSha 90d8089b). Staged /sdcard/Download/Bannerlator-lab-parity-90d8089b-pubg.apk sha256 f80ffd05… (host == device), cert a40da80a; resources.arsc has the de strings.
+- Before: f9c6f492 (957a8783…); no game running, Termux in front. `pm install -r` Success; installed base.apk f80ffd05… == staged; crash buffer empty; peers told + "done".
+- **User checks:** Steam pill in the Lab side menu header (signed in), choice lists open on the ticked entry (Interface size → 100 %), Lab Storage dialog, "1 session", a translated language (Settings › Appearance › Language). Merge on go (backup ref refs/backup/<date>/main-before-lab-parity; check main first).
+
 ## 2026-11-09 — 🌐 feat/lab-parity 90d8089b: translations for all new Lab strings (CI 42736480948 running)
 - ec5fcbed (items 1-3) CI 42734827136 GREEN ×4.
 - 125 new strings × 32 languages from 4 drafting agents (8 locales each), validated by scratchpad i18n3/check.py (every key, placeholders); filled with lab_strings.py: all 32 = 1897/1897, missing 0; 33 strings_lab.xml parse OK, no unescaped apostrophes.

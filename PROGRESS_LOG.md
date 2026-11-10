@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 07:4x EST — ✅ Storage choice works on the Pocket FIT; non-Steam games appear from the second Steam start; correction about the SD leftover
+- **User (screenshot 07:41:56):** Big Picture "NON-STEAM 0", "my games added in app are not showing up".
+- **Storage choice device-proven:** the re-added client is at `F:\bannerlator\windows_steam\steam.exe` (F: = `/storage/7B7F-E3AA`, the FIT's SD card; 2.0 GB); libraryfolders = that folder + `E:\SteamLibrary`.
+- **Why 0 non-Steam games:** wine_debug.log at the 07:37 start: "Non-Steam games: no signed-in account yet (listed on the next start)". The user signed in at 07:38 (loginusers.vdf; `userdata/2932373` 07:38–07:40). `SteamShortcutsSync` writes `userdata/<account>/config/shortcuts.vdf` just before Steam starts, for each account folder, so the list appears from the next start. Same on the 05:04 run (fresh C: client).
+- **CORRECTION:** the 05:4x entry said F:\SteamLibrary was gone after the uninstall. I had checked `/storage/6136-3230` (the Elite's SD card). The FIT's SD is `7B7F-E3AA`, and its `SteamLibrary` was still there (Steam's steam.dll kept it, same cause as the internal one, fixed in 64c14f7e). Deleted now (steam.dll + libraryfolder.vdf + empty steamapps/common; not in the new client's list).
+- **Lesson:** SD card IDs differ per device (FIT 7B7F-E3AA, Elite 6136-3230). Take the path from the container's drive map, not from notes.
+
 ## 2026-11-10 07:27 EST — ✅ Elite (main 2e7456c4): WINDOWS STEAM badge + pinned first seen; "+" add refuses P11 Arm as designed
 - **User screenshot** /sdcard/Pictures/Screenshots/Screenshot_20261110-072516.png (07:25 EST): Library 13 games, sort "Last played": "Steam x64" (P11 Arm) first with the WINDOWS STEAM badge; Steam Latest / Steam = CUSTOM; toast "Windows Steam Client x64 is already in P11 Arm".
 - **Why the toast:** GameActionsHost.kt:415 (main) — the picked container already has a shortcut with storeSource=windows_steam (findShortcut, WindowsSteamClient.kt:110); P11 Arm has "Steam x64", converted 04:08. One client shortcut per container = intended.

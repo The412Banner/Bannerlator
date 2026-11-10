@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:4x EST — ✅ Uninstall offer works on the Pocket FIT (dd7eadd5); 🔧 64c14f7e removes the two leftovers (CI 42800339918 running)
+- **User screenshots 05:33:** container 1 "Windows Steam Client x64" → Remove → "Also uninstall Steam? Deletes Steam from DD P11-12.3 Arm's C: drive (1.1 GB)." → Uninstall → toast "Steam uninstalled (1.1 GB freed)" (appeared over the launcher after the user left the app, so the separate thread finished on its own). Library 37 → 36.
+- **Disk check:** C:\Program Files\Steam, AppData\Local\Steam, Common Files\Steam, the .desktop and F:\SteamLibrary gone; log `Windows Steam uninstalled … (1220403135 bytes, failed: 0)`; crash buffer empty.
+- **Left behind:** `/storage/emulated/0/SteamLibrary` (Steam had copied its steam.dll, 545,944 B, into the library root, so the "no files" check kept it) and `app_data/cover_arts/Windows Steam Client x64.png`.
+- **Fix 64c14f7e:** steam.dll in a library root counts as Steam's own (like libraryfolder.vdf); the removed shortcut's cover picture (customCoverArtPath inside the container's app_data/cover_arts, not used by another shortcut) is deleted too.
+- **Proof level:** uninstall device-proven (dd7eadd5); 64c14f7e pushed, NOT built yet; storage choice NOT device-tested.
+- **Resume point:** CI 42800339918 → stage → ASK before installing (no pre-approval) → the FIT's leftover folder + PNG can be deleted by hand if the user wants.
+
 ## 2026-11-10 05:28 EST — 📲 INSTALLED feat/windows-steam-client dd7eadd5 (storage choice + uninstall offer) on the Pocket FIT (user: "install it when it's done")
 - **Peer:** root-8b (holding the FIT for Box64EC/AIO) gave its ok before the install; root-66/root-12 told before and after.
 - **CI 42797900190** (headSha dd7eadd5): 4/4 success. Artifact 13753959164 checked = run 42797900190 / dd7eadd5.

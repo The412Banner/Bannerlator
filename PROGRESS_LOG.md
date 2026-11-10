@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:1x EST — 🔧 feat/windows-steam-client 74778b25: pick internal storage or the SD card for the Windows Steam client (CI 42795645739 running)
+- **User:** "can we allow the user to select internal or external storage? then proceed to create the shortcut" → plan given (drop the C: option) → "yes build the storage choice on the same branch".
+- **Built:** `WindowsSteamClient.places()` = Internal storage + the SD card (`SteamSdInstall.detect`), each `<root>/bannerlator/windows_steam`, free space, and whether a 64-bit steam.exe is already there (then no download: containers share one client). A storage fits with ≥ 1.2 GB + 250 MB free (client was 1.1 GB on the FIT). `addClient(ctx, container, dir)`; the container C: path (`installDir`) is gone. Dialog after the container picker: "Where should Steam go?" with radio rows (free space / "Steam is already here" / "Not enough space"), SD picked by default when it fits, button Download or Add. The shortcut reaches the folder through the storage's drive letter (`WinePath.resolveWindowsPath` maps one when the container has none).
+- **Proof level:** pushed; NOT built yet; NOT device-tested. The FIT's container 1 keeps its C: client from the 5bad2962 test.
+- **Resume point:** CI 42795645739 → stage `/sdcard/Download/Bannerlator-windows-steam-client-74778b25-pubg.apk` on the FIT (sha256 host == device) → ask the user → test in container 2 (container 1 already has the shortcut): SD default, free space shown, download into `<sd>/bannerlator/windows_steam`, shortcut path on the SD drive letter; then container 1 after removing its shortcut → "Steam is already here" + Add without download.
+
 ## 2026-11-10 04:58 EST — ✅ 5bad2962 on the Pocket FIT: "Add Windows Steam client x64" now works (download, unpack, shortcut, client start)
 - **Checked read-only while the user tested** (peer root-8b holding the device): container 1 `drive_c/Program Files/Steam/steam.exe` 5,823,128 B, PE machine 0x8664; `drive_c/users/xuser/Desktop/Windows Steam Client x64.desktop` with storeSource=windows_steam, launchMode=Raw, Exec `C:\Program Files\Steam\steam.exe` (same escaping as the other shortcuts); cover `app_data/cover_arts/Windows Steam Client x64.png`.
 - **Client start:** bootstrap_log "Verification complete" 04:56:31 EST; Steam folder 1.1 GB / 79 entries by 04:57.

@@ -1,11 +1,14 @@
 # Star-Compose — Progress Log
 
-## 2026-11-10 07:20 EST — ⏳ Elite: installing main 2e7456c4 pubg (user: "yes install main on the elite")
+## 2026-11-10 07:22 EST — 📲 Elite: INSTALLED main 2e7456c4 pubg (user: "yes install main on the elite")
 - **User (07:1x EST):** "yes install main on the elite" (explicit yes for this build).
 - **Build:** CI build-artifacts 42809389053 (workflow_dispatch, headSha 2e7456c4, pubg/antutu/standard/ludashi success); artifact Bannerlator-main-2e7456c4-pubg id 13761533162 (591,865,282 B zip), downloading in 8 range parts (scratchpad main-2e74-pubg/, script rangedl.sh).
 - **Plan:** unzip → check manifest com.tencent.ig + cert → stage `/sdcard/Download/Bannerlator-main-2e7456c4-pubg.apk` (sha256 host == device) → ListAgents → `pm install -r` over a7febd02 (3ebae481…) → installed base.apk == staged, crash buffer → check Steam x64.desktop still storeSource=windows_steam.
 - **Staged 07:2x EST:** download 32 s (8 parts); `/sdcard/Download/Bannerlator-main-2e7456c4-pubg.apk` sha256 `ea08878faf81b7c1940a9f2e6a7ef4c92855c3a8998778355dcf30bc83d4ccad` (host == device, 597,516,631 B); manifest com.tencent.ig; cert SHA-256 A4:0D:A8:0A… (same as earlier builds); strings in dex: "Non-Steam games" (classes4), "32-bit code: ", "Where should Steam go?", "Also uninstall Steam?" (classes5). App process up (pid 780), no Wine/.exe running, Discord in front.
 - **Hold:** new local peer root-4c (started 07:2x) asked for an ok before the install (rule from the 11-10 05:12 FIT incident); install waits for its reply.
+- **Peer ok:** root-4c "ok" (only syncing DroidDeck git, not touching the device).
+- **Installed 07:22:10 EST:** `pm install -r` Success; installed base.apk sha256 `ea08878f…ccad` == staged; versionCode 106 / 3.1.9-pre2; crash buffer 0 lines; no Wine running before. Steam x64.desktop kept (storeSource=windows_steam, owner 10193); xuser-1/2 present, 15 Desktop entries. root-4c told "done".
+- **Elite now = main 2e7456c4 code** (same code as the FIT 66cc2700). Proof level: installed; new parts NOT tested on the Elite (zip fix, storage choice, uninstall, Box64EC fix).
 - **Undo:** `/sdcard/Download/Bannerlator-windows-steam-client-a7febd02-pubg.apk`.
 - **Resume point:** if cut mid-download, rerun rangedl.sh (it restarts parts); if cut after install, compare `dumpsys package com.tencent.ig | grep lastUpdateTime` (later than 04:08:12 = installed) and the base.apk hash.
 

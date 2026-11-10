@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 feat/lab-parity f9c6f492: small issues from the UI drive (CI 42733575018 running)
+- User: "fix those small issues on the same branch".
+- LabBadged → BoxWithConstraints: under 84 dp (or 120 dp with the selection mark) only the store's own pill (LabStoreBadges, no EA/EOS beside it) — Icons cards no longer wrap "EO S".
+- LabGame: "%1$s · 1 session" and "FPS · last session" for a count of 1.
+- New ui/simple/LabStorage.kt LabStorageDialog (Lab frame: container name, Drive C, Cache, Total, Clear cache, Done; Classic's getSizeAsync sizes + Clear cache steps) replaces Classic's StorageInfoDialog on Lab Containers.
+- **Next:** green → stage pubg → ASK install → user checks → merge on go. Translations for the new Lab strings still to do (lab_strings.py) before/after merge.
+
 ## 2026-11-09 — 🧪 feat/lab-parity 91549b4f: UI drive on the Pocket FIT, 19:55–20:04 EST (menus only, no game launch)
 - **Seen working on the device:** Home: top-line Search, no pills on the row, big-tile chips from the launch spec (driver version, DXVK version). Drawer: Community configs + Steam friends. Library: Sort (Last played / Name A–Z / Z–A / Container), store filter (only present stores; Xbox = 7 games), card-style sheet; Covers style shows pills + container line + "Not installed · Stream" on an un-downloaded Xbox game. Game page (Prototype): Mods tile "Special K" → Mods dialog (Special K on, DLL d3d9.dll (auto), Start with the game), Container tile, About this game (2009 · Action, Adventure · Metacritic 79 + description). Contents: Search all repositories, Refresh the lists, Manage (Import or export, Save location, Restore default repositories, Add a repository); Installed shows "Default · arm64ec". Containers ⋯: Revert layer to 11.0-11.1 v16, Back up saves…, Restore a save…, Storage info (Drive C 8.05 GB, cache 273 MB, total 8.31 GB). Controls: layout previews, Pick via system…, community list = checkbox + eye + Download dialog. Appearance: Side menu storage switches, Interface size 50 % up in 5 % steps (100 % ticked). Settings controller link → Lab Controls. Y-search → Lab game page. Container-2 (X11, wrapper-original) › Wrapper settings and tools: only Downloads and tools (no empty Detected panel).
 - logcat: crash buffer empty, no FATAL/ANR for com.tencent.ig. All my test changes put back (filter All, cards Icons). Termux back in front; peers told done.

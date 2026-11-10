@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔍 Steam x64: FEX 2611 + Compatibility doesn't help — the crash is identical every run; logging run next
+- **User runs 22:17–22:18 EST:** FEX-2611+26 nightly for the Steam x64 shortcut (confirmed in use: container `libarm64ecfex.dll` = that build), with Performance and then Compatibility. Same failure.
+- **Evidence:** in all three runs (2610 Performance + TSO, 2611 twice) the 64-bit steamwebhelper faults at exactly `0x5FFFF05188` and steam.exe overflows its stack in exception setup at exactly `0x5ffff0ad74`. A crash that repeats exactly like this rules out memory ordering and the FEX build; the address is outside FEX's DLL. Bannerlator b121585e itself: crash buffer empty.
+- **Step 2 (set 22:20):** the Steam x64 shortcut gets `WINEDEBUG=+warn,+err,+fixme,+seh,+loaddll` (shortcut env vars override the global setting) so one run shows every DLL's load address and the exception chain.
+- **Resume point:** nothing running; user launches Steam x64 once; undo = remove the shortcut's `envVars` line.
+
 ## 2026-11-09 — 📦 main b121585e installed on the Elite; Steam x64 test 1: FEX "Compatibility" preset for that shortcut only
 - **Installed 22:11:45 EST (user: "yes install it"):** main code `b121585e` (feat/lab-parity merge; later main commits are log-only), CI 42745526415 (headSha b121585e, 4/4 jobs green), pubg APK sha256 `4bac96a1…0c7b` — staged file, device copy and installed base.apk all match; crash buffer empty at install. Peer session told and hands-off.
 - **Steam x64 plan, step 1a:** the "Steam x64" shortcut now has `fexcorePreset=COMPATIBILITY` (all FEX memory-ordering emulation on; the container stays on Performance + TSO). If it still fails: 1b = FEXCore-2611 for this shortcut, then 2 = one launch with `+seh` logging to pin the crashing function.

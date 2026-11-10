@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ Brawlhalla downloads, runs and goes online through 64-bit Windows Steam (device-proven); Steam service installed
+- **User 22:47–22:50 EST:** Brawlhalla (291550) downloaded through Steam x64 into the SD library (build 26465982, 1.57 GB, "Fully Installed" 22:47:25), started from Steam ("App Running" 22:49:14, DXVK D3D11) and got online.
+- **Steam Client Service:** the user pressed "Install Service" (22:35): registered in container 1 (`SteamService.exe /RunAsService`, LocalSystem, demand start) and running; Wine logged only semi-stub notes.
+- **"No internet connection" on the first install try:** Steam's server link dropped 5 s before (`I/O Operation Failed` 22:39:36, back 22:39:59). Such drops also at 22:34:53 and once on the 32-bit client (21:22) — cause not known yet (not the layer, which is unchanged). Retrying worked.
+- **Crash buffer:** one `fdsan` line at 22:26:52 (warn-only for targetSdk 28, no tombstone) — not a crash.
+- **Next:** branch `feat/steam-x64-auto` (switch + X11 + per-storage Steam libraries), in progress.
+
 ## 2026-11-09 — ✅ 64-bit Windows Steam runs in Bannerlator (PROTON_DISABLE_LSTEAMCLIENT=1), device-proven sign-in + Store
 - **Run 22:26–22:27 EST (user screenshots):** "Logging in… The412Banner" then the Store; no password asked (the sign-in token in the container's Windows user folder carried over). Wine log: `lsteamclient disabled`, no crash, steamclient64 stays loaded. Client 1792618285 (64-bit, 2026-10-21), connection log "Logged On … OK" at 22:27:09, the red 32-bit banner is gone, and the second library (FlatOut) is kept.
 - **New prompt:** "Steam Service Error — the Steam Service requires some maintenance" (the Steam Client Service is not installed in the prefix). Advice to the user: Cancel for now; install it only if a game install or anti-cheat needs it.

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 18:51 EST — 📦 fix/epic-game-fixes 2b4e3aa5 installed on the Pocket FIT (CI 42925330883)
+- CI 42925330883 green (4/4); APK sha256 3a3d4ddf…2eea, host == device == installed; installed 18:51:11 EST after root-d2's ok; crash buffer empty; Hogwarts Legacy files and Epic records intact.
+- Hogwarts Legacy (Epic) finished downloading 18:43:02 EST (76.7 GB, EOS detected). Bannerlator's own Epic record shows appName `fa4240e5…` with catalogItemId `864c7bc2…` — the id mismatch the fix addresses.
+- Epic comparison with DroidDeck and GameNative done (read-only): ranked list given to the user; awaiting their pick.
+- **Next:** the user launches Hogwarts Legacy → check BH_EPIC_GAMEFIX / BH_DENUVO / BH_EPIC_LAUNCH and the crash buffer.
+- **Proof level:** CI-green, installed; NOT device-tested.
+
 ## 2026-11-10 18:5x EST — 🔧 fix/epic-game-fixes 2b4e3aa5: Epic per-game fixes now apply; Trover added (CI 42925330883)
 - **Why:** the user asked whether Hogwarts Legacy (Epic) is set up properly. `EpicGameFixes` keys its five fixes by ids copied from GameNative's `gamefixes/EPIC_<id>.kt`, which are **catalog ids** (GameNative's `GameFixesRegistry` looks Epic fixes up by catalog id), but looked them up by the shortcut's `epicAppName`. An Epic game's catalog id and appName differ (egdata.app: Hogwarts Legacy catalog `864c7bc2…`, appName `fa4240e5…`; the FIT's WRC Generations shortcut too), so none of the five fixes ever applied: Hogwarts Legacy ProgramData wipe, Bethesda "Installed Path" (Oblivion, Fallout 3, New Vegas), Kingdom Hearts III Media Foundation overrides.
 - **Built:** lookup by `epicCatalogId`, appName alias table for older shortcuts. Trover Saves the Universe (from GameNative #1953 by Mo Kakwan / Wavewash): Engine.ini lines merged into the game's own config (lobby map instead of the startup-movie map, `r.SceneColorFormat=2`, VR plugins + WmfMedia off), `BOX64_AVX`/`BOX64_MMAP32`/`OPENSSL_ia32cap`/`WINEPATH` when unset, `-nohmd -dx11` when missing. GameNative's container-wide Trover changes (its own Box64/Wine/Turnip/DXVK versions, dxvk.conf, 720p + lower quality, DLL overrides) left out. User/container values always win.

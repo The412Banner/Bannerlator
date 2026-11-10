@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Caps how many frames per second the game draws. Saves battery and evens out stutter.</string>
     <string name="lab_36ef1cc0">Follows the container</string>
     <string name="lab_37232683">Panels over art</string>
+    <string name="lab_3760451e">Start in Big Picture</string>
     <string name="lab_3776c976">Native rendering</string>
     <string name="lab_377702f6">Touch</string>
     <string name="lab_37ad98ec">CPU core choices last until the program restarts.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Download, import or delete the wrappers listed under Graphics driver.</string>
     <string name="lab_71080fcf">This game needs</string>
     <string name="lab_715f3f8e">Which backend Media Foundation plays cutscenes with. FFmpeg needs an arm64ec layer built with it (Proton 11.0-2 vc12+); elsewhere it falls back to GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU memory games see</string>
     <string name="lab_71d5a5d7">Download a Turnip driver</string>
     <string name="lab_721589c1">Today</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Sync every frame</string>
     <string name="lab_be9a2a59">Double Back opens Quick Access</string>
     <string name="lab_be9d8c7a">Launch options</string>
+    <string name="lab_be9df5b0">Opens Steam in Big Picture mode.</string>
     <string name="lab_bec1ccfe"> It applies the next time a game starts.</string>
     <string name="lab_bed0286f">Hide this repository</string>
     <string name="lab_bef10a2e">Move to another container</string>

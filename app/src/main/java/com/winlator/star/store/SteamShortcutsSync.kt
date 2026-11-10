@@ -5,6 +5,7 @@ import android.util.Log
 import com.winlator.star.container.Container
 import com.winlator.star.container.ContainerManager
 import com.winlator.star.core.StringUtils
+import com.winlator.star.core.VdfParser
 import com.winlator.star.core.WinePath
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -44,12 +45,17 @@ object SteamShortcutsSync {
 
             val games = ArrayList<Game>()
             var unreachable = 0
+            // Steam store games this client already lists as installed (the app's store put them in one of its
+            // library folders) are not added a second time as non-Steam games.
+            val installed = installedAppIds(steamContainer, steamRoot)
+            var inSteam = 0
             val manager = ContainerManager(ctx)
             for (container in manager.containers) {
                 val files = container.desktopDir.listFiles { f -> f.isFile && f.name.endsWith(".desktop") } ?: continue
                 for (file in files.sortedBy { it.name.lowercase() }) {
                     val entry = readDesktop(file) ?: continue
                     if (!isListable(entry)) continue
+                    if (entry.extras["steamAppId"]?.toIntOrNull()?.let { it in installed } == true) { inSteam++; continue }
                     val exe = steamSidePath(steamContainer, container, entry.winPath)
                     if (exe == null) { unreachable++; continue }
                     games.add(Game(entry, container, exe))
@@ -58,12 +64,43 @@ object SteamShortcutsSync {
 
             for (account in accounts) writeAccount(account, games)
             return "Non-Steam games: ${games.size} listed" +
+                (if (inSteam > 0) ", $inSteam already installed in Steam" else "") +
                 (if (unreachable > 0) ", $unreachable left out (not reachable from this container)" else "") +
                 " for account " + accounts.joinToString(", ") { it.name }
         } catch (t: Throwable) {
             Log.w(TAG, "sync failed", t)
             return "Non-Steam games: not updated (${t.message ?: t.javaClass.simpleName})"
         }
+    }
+
+    /**
+     * App ids with an installed appmanifest in [steamRoot]'s own library and in the library folders its
+     * libraryfolders.vdf lists (reached through [steamContainer]'s drives).
+     */
+    private fun installedAppIds(steamContainer: Container, steamRoot: File): Set<Int> {
+        val roots = LinkedHashSet<File>()
+        roots.add(steamRoot)
+        try {
+            val vdf = File(steamRoot, "steamapps/libraryfolders.vdf")
+            if (vdf.isFile) {
+                val folders = VdfParser.parse(vdf.readText()).node("libraryfolders")
+                for ((_, node) in folders?.childNodes().orEmpty()) {
+                    val path = node.string("path") ?: continue
+                    WinePath.resolveAndroidPath(steamContainer, path)?.let { roots.add(it) }
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "libraryfolders", t)
+        }
+        val ids = HashSet<Int>()
+        for (root in roots) {
+            val steamapps = File(root, "steamapps")
+            for (acf in steamapps.listFiles { f -> f.isFile && f.name.startsWith("appmanifest_") && f.name.endsWith(".acf") }.orEmpty()) {
+                val info = SteamAppManifest.readInfo(acf) ?: continue
+                if (info.isInstalled) ids.add(info.appId)
+            }
+        }
+        return ids
     }
 
     private class Entry(val file: File, val name: String, val winPath: String, val extras: Map<String, String>)

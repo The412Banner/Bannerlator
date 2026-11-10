@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Beperkt hoeveel frames per seconde de game tekent. Spaart de accu en vlakt haperingen af.</string>
     <string name="lab_36ef1cc0">Volgt de container</string>
     <string name="lab_37232683">Panelen over artwork</string>
+    <string name="lab_3760451e">Starten in Big Picture</string>
     <string name="lab_3776c976">Native rendering</string>
     <string name="lab_377702f6">Aanraken</string>
     <string name="lab_37ad98ec">Keuzes voor CPU-cores gelden tot het programma opnieuw start.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Download, importeer of verwijder de wrappers onder Grafische driver.</string>
     <string name="lab_71080fcf">Deze game heeft nodig</string>
     <string name="lab_715f3f8e">Met welke backend Media Foundation tussenfilmpjes afspeelt. FFmpeg vereist een arm64ec-laag die ermee is gebouwd (Proton 11.0-2 vc12+); elders valt het terug op GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU-geheugen dat games zien</string>
     <string name="lab_71d5a5d7">Een Turnip-driver downloaden</string>
     <string name="lab_721589c1">Vandaag</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Elk frame synchroniseren</string>
     <string name="lab_be9a2a59">Twee keer Terug opent Snelle toegang</string>
     <string name="lab_be9d8c7a">Opstartopties</string>
+    <string name="lab_be9df5b0">Opent Steam in de Big Picture-modus.</string>
     <string name="lab_bec1ccfe"> Dit geldt vanaf de volgende keer dat een game start.</string>
     <string name="lab_bed0286f">Deze repository verbergen</string>
     <string name="lab_bef10a2e">Naar andere container verplaatsen</string>

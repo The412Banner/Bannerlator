@@ -5514,6 +5514,8 @@ internal fun ShortcutSettingsDialogScreen(
     // Epic Friends Overlay (Phase 3) — provision Epic's real EOS overlay into the prefix so the game's
     // own EOS SDK renders friends/notifications on Shift+F3. Default OFF (opt-in per game).
     var epicOverlayEnabled by remember { mutableStateOf(shortcut.getExtra("epicOverlay", "0") == "1") }
+    // Windows Steam client: start in Big Picture. null = not a Windows Steam shortcut.
+    var steamBigPicture by remember { mutableStateOf(if (com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(shortcut)) shortcut.getExtra(com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE) == "1" else null) }
     // Xbox game whose install ships Microsoft's xgameruntime.dll: use the app's (Xodus Nexus) instead. Default ON.
     val xboxShipsRuntime = remember {
         shortcut.getExtra("storeSource") == "xbox" && shortcut.getExtra("xboxProductId").let { id ->
@@ -6338,6 +6340,7 @@ internal fun ShortcutSettingsDialogScreen(
             if (isEpicShortcut) putExtra("epicOvtForce", if (epicOvtForce) "1" else "0")
             if (isEpicShortcut) putExtra("epicOffline", if (epicOffline) "1" else "0")
             if (isEpicShortcut) putExtra("epicOverlay", if (epicOverlayEnabled) "1" else "0")
+            steamBigPicture?.let { putExtra(com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE, if (it) "1" else "0") }
             if (xboxShipsRuntime) putExtra(com.winlator.star.store.xbox.XboxRuntime.NEXUS_RUNTIME_EXTRA, if (xboxNexusRuntime) "1" else "0")
             putExtra("screenSize", screenSize)
             // #413: "" (Container Default) -> null -> putExtra removes the key, so launch re-inherits the
@@ -6795,6 +6798,7 @@ internal fun ShortcutSettingsDialogScreen(
                             isEpicShortcut, epicEosEnabled, { epicEosEnabled = it }, epicOvtForce, { epicOvtForce = it },
                             epicOffline, { epicOffline = it }, epicOverlayEnabled, { epicOverlayEnabled = it },
                             xboxShipsRuntime, xboxNexusRuntime, { xboxNexusRuntime = it },
+                            steamBigPicture, { steamBigPicture = it },
                         )
 
                         // Screen size
@@ -11334,7 +11338,26 @@ private fun StoreOptionRows(
     epicOffline: Boolean, onEpicOffline: (Boolean) -> Unit,
     epicOverlayEnabled: Boolean, onEpicOverlay: (Boolean) -> Unit,
     xboxShipsRuntime: Boolean, xboxNexusRuntime: Boolean, onXboxNexusRuntime: (Boolean) -> Unit,
+    steamBigPicture: Boolean?, onSteamBigPicture: (Boolean) -> Unit,
 ) {
+    // Windows Steam client: start in Big Picture (-gamepadui).
+    if (steamBigPicture != null) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Start in Big Picture", fontSize = 14.sp)
+                Text(
+                    "Opens Steam in Big Picture mode",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Switch(checked = steamBigPicture, onCheckedChange = onSteamBigPicture)
+        }
+    }
     // Epic Online Services (EOS) auth toggle — only for Epic-origin shortcuts.
     // When ON, the launcher injects real-Epic auth args (-EpicPortal + a fresh
     // exchange code) so EOS-requiring titles authenticate against the user's

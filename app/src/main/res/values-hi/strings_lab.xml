@@ -437,6 +437,7 @@
     <string name="lab_36936d70">गेम प्रति सेकंड कितने फ़्रेम बनाए, इसकी सीमा तय करता है। बैटरी बचाता है और रुक-रुककर चलना कम करता है।</string>
     <string name="lab_36ef1cc0">कंटेनर के अनुसार</string>
     <string name="lab_37232683">आर्ट पर पैनल</string>
+    <string name="lab_3760451e">Big Picture में शुरू करें</string>
     <string name="lab_3776c976">नेटिव रेंडरिंग</string>
     <string name="lab_377702f6">टच</string>
     <string name="lab_37ad98ec">CPU कोर के चुनाव प्रोग्राम दोबारा शुरू होने तक बने रहते हैं।</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">ग्राफ़िक्स ड्राइवर में दिखने वाले रैपर डाउनलोड, इंपोर्ट या डिलीट करें।</string>
     <string name="lab_71080fcf">इस गेम को चाहिए</string>
     <string name="lab_715f3f8e">Media Foundation कटसीन किस बैकएंड से चलाता है। FFmpeg के लिए उसके साथ बनी arm64ec लेयर चाहिए (Proton 11.0-2 vc12+); बाकी जगह यह GStreamer पर लौट आता है।</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">गेम को दिखने वाली GPU मेमोरी</string>
     <string name="lab_71d5a5d7">Turnip ड्राइवर डाउनलोड करें</string>
     <string name="lab_721589c1">आज</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">हर फ़्रेम सिंक करें</string>
     <string name="lab_be9a2a59">डबल Back से क्विक एक्सेस खोलें</string>
     <string name="lab_be9d8c7a">लॉन्च विकल्प</string>
+    <string name="lab_be9df5b0">Steam को Big Picture मोड में खोलता है।</string>
     <string name="lab_bec1ccfe"> यह अगली बार गेम शुरू होने पर लागू होता है।</string>
     <string name="lab_bed0286f">यह रिपॉज़िटरी छिपाएं</string>
     <string name="lab_bef10a2e">दूसरे कंटेनर में ले जाएं</string>

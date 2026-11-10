@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Begränsar hur många bildrutor per sekund spelet ritar. Sparar batteri och jämnar ut hack.</string>
     <string name="lab_36ef1cc0">Följer containern</string>
     <string name="lab_37232683">Paneler över bilden</string>
+    <string name="lab_3760451e">Starta i Big Picture</string>
     <string name="lab_3776c976">Inbyggd rendering</string>
     <string name="lab_377702f6">Pekskärm</string>
     <string name="lab_37ad98ec">Val av CPU-kärnor gäller tills programmet startas om.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Ladda ned, importera eller ta bort de wrappers som listas under Grafikdrivrutin.</string>
     <string name="lab_71080fcf">Detta spel behöver</string>
     <string name="lab_715f3f8e">Vilken backend Media Foundation spelar mellansekvenser med. FFmpeg kräver ett arm64ec-lager byggt med det (Proton 11.0-2 vc12+); annars faller det tillbaka på GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU-minne som spel ser</string>
     <string name="lab_71d5a5d7">Ladda ned en Turnip-drivrutin</string>
     <string name="lab_721589c1">Idag</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synkronisera varje bildruta</string>
     <string name="lab_be9a2a59">Dubbeltryck på Bakåt öppnar Snabbåtkomst</string>
     <string name="lab_be9d8c7a">Startalternativ</string>
+    <string name="lab_be9df5b0">Öppnar Steam i Big Picture-läge.</string>
     <string name="lab_bec1ccfe"> Det gäller från nästa gång ett spel startar.</string>
     <string name="lab_bed0286f">Dölj detta förråd</string>
     <string name="lab_bef10a2e">Flytta till en annan container</string>

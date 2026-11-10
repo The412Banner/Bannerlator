@@ -192,6 +192,12 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         value = c.name, subtitle = "Move this game to another container") { xmbMoveToContainerMenu(xmb, s, host) }
     rows += XmbRow.Link("icon", "Icon", Icons.Filled.Image, subtitle = "Pick an image for this game") { iconPickerMenu(xmb, s) }
 
+    if (com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(s)) {
+        val k = com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE
+        rows += XmbRow.Header("hWinSteam", "Windows Steam")
+        rows += XmbRow.Toggle(k, "Start in Big Picture", Icons.Filled.Layers, p.ex(k, "0") == "1",
+            subtitle = "Open Steam in Big Picture mode") { xmb.set(p, k, if (it) "1" else "0") }
+    }
     if (s.getExtra("storeSource") == "epic") {
         val eos = p.ex("epicEos", "1") != "0"
         rows += XmbRow.Header("hEpic", "Epic")

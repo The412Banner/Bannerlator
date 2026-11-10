@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Limita quantos frames por segundo o jogo desenha. Poupa bateria e atenua os engasgos.</string>
     <string name="lab_36ef1cc0">Segue o contentor</string>
     <string name="lab_37232683">Painéis sobre a arte</string>
+    <string name="lab_3760451e">Iniciar no Big Picture</string>
     <string name="lab_3776c976">Renderização nativa</string>
     <string name="lab_377702f6">Toque</string>
     <string name="lab_37ad98ec">As escolhas de núcleos da CPU duram até o programa reiniciar.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Transfira, importe ou elimine os wrappers listados em Controlador gráfico.</string>
     <string name="lab_71080fcf">Este jogo precisa de</string>
     <string name="lab_715f3f8e">Com que backend o Media Foundation reproduz as cenas animadas. O FFmpeg requer uma camada arm64ec criada com ele (Proton 11.0-2 vc12+); nos restantes casos recorre ao GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Memória da GPU vista pelos jogos</string>
     <string name="lab_71d5a5d7">Transferir um controlador Turnip</string>
     <string name="lab_721589c1">Hoje</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Sincronizar cada frame</string>
     <string name="lab_be9a2a59">Voltar duas vezes abre o Acesso rápido</string>
     <string name="lab_be9d8c7a">Opções de arranque</string>
+    <string name="lab_be9df5b0">Abre o Steam no modo Big Picture.</string>
     <string name="lab_bec1ccfe"> Aplica-se na próxima vez que um jogo iniciar.</string>
     <string name="lab_bed0286f">Ocultar este repositório</string>
     <string name="lab_bef10a2e">Mover para outro contentor</string>

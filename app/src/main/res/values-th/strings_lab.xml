@@ -437,6 +437,7 @@
     <string name="lab_36936d70">จำกัดจำนวนเฟรมต่อวินาทีที่เกมวาด ประหยัดแบตเตอรี่และลดอาการกระตุก</string>
     <string name="lab_36ef1cc0">ตามคอนเทนเนอร์</string>
     <string name="lab_37232683">แผงบนภาพ</string>
+    <string name="lab_3760451e">เริ่มในโหมด Big Picture</string>
     <string name="lab_3776c976">เรนเดอร์แบบเนทีฟ</string>
     <string name="lab_377702f6">การสัมผัส</string>
     <string name="lab_37ad98ec">คอร์ CPU ที่เลือกจะคงอยู่จนกว่าโปรแกรมจะรีสตาร์ต</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">ดาวน์โหลด นำเข้า หรือลบแรปเปอร์ที่แสดงใน ไดรเวอร์กราฟิก</string>
     <string name="lab_71080fcf">เกมนี้ต้องการ</string>
     <string name="lab_715f3f8e">แบ็กเอนด์ที่ Media Foundation ใช้เล่นคัตซีน FFmpeg ต้องใช้เลเยอร์ arm64ec ที่สร้างมาพร้อม FFmpeg (Proton 11.0-2 vc12+) กรณีอื่นจะกลับไปใช้ GStreamer</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">หน่วยความจำ GPU ที่เกมเห็น</string>
     <string name="lab_71d5a5d7">ดาวน์โหลดไดรเวอร์ Turnip</string>
     <string name="lab_721589c1">วันนี้</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">ซิงค์ทุกเฟรม</string>
     <string name="lab_be9a2a59">กด Back สองครั้งเพื่อเปิด Quick Access</string>
     <string name="lab_be9d8c7a">ตัวเลือกการเปิด</string>
+    <string name="lab_be9df5b0">เปิด Steam ในโหมด Big Picture</string>
     <string name="lab_bec1ccfe"> มีผลเมื่อเริ่มเกมครั้งถัดไป</string>
     <string name="lab_bed0286f">ซ่อนรีโพสิทอรีนี้</string>
     <string name="lab_bef10a2e">ย้ายไปคอนเทนเนอร์อื่น</string>

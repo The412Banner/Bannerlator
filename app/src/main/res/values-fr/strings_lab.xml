@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Limite le nombre d\'images par seconde dessinées par le jeu. Économise la batterie et atténue les saccades.</string>
     <string name="lab_36ef1cc0">Suit le conteneur</string>
     <string name="lab_37232683">Panneaux sur l\'illustration</string>
+    <string name="lab_3760451e">Démarrer en Big Picture</string>
     <string name="lab_3776c976">Rendu natif</string>
     <string name="lab_377702f6">Tactile</string>
     <string name="lab_37ad98ec">Les choix de cœurs CPU restent valables jusqu\'au redémarrage du programme.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Télécharger, importer ou supprimer les wrappers listés sous Pilote graphique.</string>
     <string name="lab_71080fcf">Ce jeu nécessite</string>
     <string name="lab_715f3f8e">Le backend avec lequel Media Foundation lit les cinématiques. FFmpeg nécessite une couche arm64ec compilée avec lui (Proton 11.0-2 vc12+) ; sinon, il se rabat sur GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Mémoire GPU vue par les jeux</string>
     <string name="lab_71d5a5d7">Télécharger un pilote Turnip</string>
     <string name="lab_721589c1">Aujourd\'hui</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synchroniser chaque image</string>
     <string name="lab_be9a2a59">Double Retour ouvre l\'Accès rapide</string>
     <string name="lab_be9d8c7a">Options de lancement</string>
+    <string name="lab_be9df5b0">Ouvre Steam en mode Big Picture.</string>
     <string name="lab_bec1ccfe"> Il s\'applique au prochain lancement d\'un jeu.</string>
     <string name="lab_bed0286f">Masquer ce dépôt</string>
     <string name="lab_bef10a2e">Déplacer vers un autre conteneur</string>

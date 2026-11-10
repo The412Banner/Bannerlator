@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Limitează câte cadre pe secundă desenează jocul. Economisește bateria și netezește sacadările.</string>
     <string name="lab_36ef1cc0">Ca în container</string>
     <string name="lab_37232683">Panouri peste grafică</string>
+    <string name="lab_3760451e">Pornește în Big Picture</string>
     <string name="lab_3776c976">Randare nativă</string>
     <string name="lab_377702f6">Atingere</string>
     <string name="lab_37ad98ec">Nucleele CPU alese rămân valabile până la repornirea programului.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Descarcă, importă sau șterge wrapperele listate la Driver grafic.</string>
     <string name="lab_71080fcf">Acest joc are nevoie de</string>
     <string name="lab_715f3f8e">Cu ce backend redă Media Foundation secvențele video. FFmpeg necesită un strat arm64ec construit cu el (Proton 11.0-2 vc12+); în rest revine la GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Memoria GPU văzută de jocuri</string>
     <string name="lab_71d5a5d7">Descarcă un driver Turnip</string>
     <string name="lab_721589c1">Azi</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Sincronizează fiecare cadru</string>
     <string name="lab_be9a2a59">Dublu Înapoi deschide Acces rapid</string>
     <string name="lab_be9d8c7a">Opțiuni de lansare</string>
+    <string name="lab_be9df5b0">Deschide Steam în modul Big Picture.</string>
     <string name="lab_bec1ccfe"> Se aplică la următoarea pornire a unui joc.</string>
     <string name="lab_bed0286f">Ascunde acest depozit</string>
     <string name="lab_bef10a2e">Mută în alt container</string>

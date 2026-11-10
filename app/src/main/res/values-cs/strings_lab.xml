@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Omezuje, kolik snímků za sekundu hra vykreslí. Šetří baterii a vyrovnává zasekávání.</string>
     <string name="lab_36ef1cc0">Podle kontejneru</string>
     <string name="lab_37232683">Panely nad grafikou</string>
+    <string name="lab_3760451e">Spustit v režimu Big Picture</string>
     <string name="lab_3776c976">Nativní vykreslování</string>
     <string name="lab_377702f6">Dotyk</string>
     <string name="lab_37ad98ec">Volba jader CPU platí do restartu programu.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Stahujte, importujte nebo mažte wrappery uvedené v nastavení Grafický ovladač.</string>
     <string name="lab_71080fcf">Tato hra potřebuje</string>
     <string name="lab_715f3f8e">Kterým backendem Media Foundation přehrává cutscény. FFmpeg vyžaduje vrstvu arm64ec sestavenou s ním (Proton 11.0-2 vc12+); jinde se vrátí ke GStreameru.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Paměť GPU viditelná pro hry</string>
     <string name="lab_71d5a5d7">Stáhnout ovladač Turnip</string>
     <string name="lab_721589c1">Dnes</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synchronizovat každý snímek</string>
     <string name="lab_be9a2a59">Dvojité Zpět otevře Rychlý přístup</string>
     <string name="lab_be9d8c7a">Možnosti spuštění</string>
+    <string name="lab_be9df5b0">Otevře Steam v režimu Big Picture.</string>
     <string name="lab_bec1ccfe"> Projeví se při příštím spuštění hry.</string>
     <string name="lab_bed0286f">Skrýt tento repozitář</string>
     <string name="lab_bef10a2e">Přesunout do jiného kontejneru</string>

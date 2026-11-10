@@ -437,6 +437,7 @@
     <string name="lab_36936d70">يحدّ عدد الإطارات التي ترسمها اللعبة في الثانية. يوفّر البطارية ويخفف التقطّع.</string>
     <string name="lab_36ef1cc0">يتبع الحاوية</string>
     <string name="lab_37232683">اللوحات فوق الصور</string>
+    <string name="lab_3760451e">ابدأ في وضع Big Picture</string>
     <string name="lab_3776c976">العرض الأصلي</string>
     <string name="lab_377702f6">اللمس</string>
     <string name="lab_37ad98ec">تبقى اختيارات أنوية CPU حتى إعادة تشغيل البرنامج.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">نزّل المغلّفات المدرجة تحت «برنامج تشغيل الرسومات» أو استوردها أو احذفها.</string>
     <string name="lab_71080fcf">تحتاج هذه اللعبة</string>
     <string name="lab_715f3f8e">الواجهة الخلفية التي يشغّل بها Media Foundation المشاهد السينمائية. يحتاج FFmpeg إلى طبقة arm64ec مبنية معه (Proton 11.0-2 vc12+)؛ وفي غير ذلك يعود إلى GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">ذاكرة GPU التي تراها الألعاب</string>
     <string name="lab_71d5a5d7">تنزيل برنامج تشغيل Turnip</string>
     <string name="lab_721589c1">اليوم</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">المزامنة مع كل إطار</string>
     <string name="lab_be9a2a59">الضغط مرتين على الرجوع يفتح الوصول السريع</string>
     <string name="lab_be9d8c7a">خيارات التشغيل</string>
+    <string name="lab_be9df5b0">يفتح Steam في وضع Big Picture.</string>
     <string name="lab_bec1ccfe"> يُطبَّق في المرة القادمة التي تبدأ فيها لعبة.</string>
     <string name="lab_bed0286f">إخفاء هذا المستودع</string>
     <string name="lab_bef10a2e">نقل إلى حاوية أخرى</string>

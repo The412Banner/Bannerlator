@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Ogranicza liczbę klatek na sekundę rysowanych przez grę. Oszczędza baterię i wyrównuje przycięcia.</string>
     <string name="lab_36ef1cc0">Jak w kontenerze</string>
     <string name="lab_37232683">Panele nad grafiką</string>
+    <string name="lab_3760451e">Uruchamiaj w trybie Big Picture</string>
     <string name="lab_3776c976">Renderowanie natywne</string>
     <string name="lab_377702f6">Dotyk</string>
     <string name="lab_37ad98ec">Wybór rdzeni CPU obowiązuje do ponownego uruchomienia programu.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Pobieraj, importuj lub usuwaj wrappery wymienione w opcji Sterownik grafiki.</string>
     <string name="lab_71080fcf">Ta gra wymaga</string>
     <string name="lab_715f3f8e">Którym backendem Media Foundation odtwarza przerywniki. FFmpeg wymaga warstwy arm64ec zbudowanej z jego obsługą (Proton 11.0-2 vc12+); w innym przypadku używany jest GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Pamięć GPU widoczna dla gier</string>
     <string name="lab_71d5a5d7">Pobierz sterownik Turnip</string>
     <string name="lab_721589c1">Dzisiaj</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synchronizuj każdą klatkę</string>
     <string name="lab_be9a2a59">Podwójne Wstecz otwiera Szybki dostęp</string>
     <string name="lab_be9d8c7a">Opcje uruchamiania</string>
+    <string name="lab_be9df5b0">Otwiera Steam w trybie Big Picture.</string>
     <string name="lab_bec1ccfe"> Zadziała przy następnym uruchomieniu gry.</string>
     <string name="lab_bed0286f">Ukryj to repozytorium</string>
     <string name="lab_bef10a2e">Przenieś do innego kontenera</string>

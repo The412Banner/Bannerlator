@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Περιορίζει πόσα καρέ ανά δευτερόλεπτο σχεδιάζει το παιχνίδι. Εξοικονομεί μπαταρία και εξομαλύνει τα κολλήματα.</string>
     <string name="lab_36ef1cc0">Του κοντέινερ</string>
     <string name="lab_37232683">Πάνελ πάνω από τις εικόνες</string>
+    <string name="lab_3760451e">Εκκίνηση σε Big Picture</string>
     <string name="lab_3776c976">Εγγενής απόδοση</string>
     <string name="lab_377702f6">Αφή</string>
     <string name="lab_37ad98ec">Οι επιλογές πυρήνων CPU ισχύουν μέχρι την επανεκκίνηση του προγράμματος.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Λήψη, εισαγωγή ή διαγραφή των wrapper που εμφανίζονται στο Πρόγραμμα οδήγησης γραφικών.</string>
     <string name="lab_71080fcf">Αυτό το παιχνίδι χρειάζεται</string>
     <string name="lab_715f3f8e">Με ποιο backend το Media Foundation αναπαράγει τα cutscenes. Το FFmpeg χρειάζεται ένα επίπεδο arm64ec φτιαγμένο με αυτό (Proton 11.0-2 vc12+). Αλλού επιστρέφει στο GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Μνήμη GPU που βλέπουν τα παιχνίδια</string>
     <string name="lab_71d5a5d7">Λήψη προγράμματος οδήγησης Turnip</string>
     <string name="lab_721589c1">Σήμερα</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Συγχρονισμός σε κάθε καρέ</string>
     <string name="lab_be9a2a59">Διπλό Πίσω ανοίγει τη Γρήγορη πρόσβαση</string>
     <string name="lab_be9d8c7a">Επιλογές εκκίνησης</string>
+    <string name="lab_be9df5b0">Ανοίγει το Steam σε λειτουργία Big Picture.</string>
     <string name="lab_bec1ccfe"> Εφαρμόζεται στην επόμενη εκκίνηση παιχνιδιού.</string>
     <string name="lab_bed0286f">Απόκρυψη αποθετηρίου</string>
     <string name="lab_bef10a2e">Μετακίνηση σε άλλο κοντέινερ</string>

@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Giới hạn số khung hình mỗi giây game vẽ. Tiết kiệm pin và giảm giật.</string>
     <string name="lab_36ef1cc0">Theo container</string>
     <string name="lab_37232683">Bảng trên ảnh</string>
+    <string name="lab_3760451e">Khởi động ở Big Picture</string>
     <string name="lab_3776c976">Kết xuất gốc</string>
     <string name="lab_377702f6">Chạm</string>
     <string name="lab_37ad98ec">Lựa chọn lõi CPU giữ nguyên đến khi chương trình khởi động lại.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Tải, nhập hoặc xóa các wrapper hiện trong Driver đồ họa.</string>
     <string name="lab_71080fcf">Game này cần</string>
     <string name="lab_715f3f8e">Backend mà Media Foundation dùng để phát đoạn cắt cảnh. FFmpeg cần lớp arm64ec được build kèm nó (Proton 11.0-2 vc12+); ở nơi khác sẽ quay về GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Bộ nhớ GPU mà game thấy</string>
     <string name="lab_71d5a5d7">Tải driver Turnip</string>
     <string name="lab_721589c1">Hôm nay</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Đồng bộ mỗi khung hình</string>
     <string name="lab_be9a2a59">Nhấn Back hai lần mở Quick Access</string>
     <string name="lab_be9d8c7a">Tùy chọn khởi chạy</string>
+    <string name="lab_be9df5b0">Mở Steam ở chế độ Big Picture.</string>
     <string name="lab_bec1ccfe"> Thay đổi áp dụng từ lần khởi động game tiếp theo.</string>
     <string name="lab_bed0286f">Ẩn kho này</string>
     <string name="lab_bef10a2e">Chuyển sang container khác</string>

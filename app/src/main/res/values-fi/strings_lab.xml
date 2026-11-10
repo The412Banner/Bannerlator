@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Rajoittaa, montako ruutua sekunnissa peli piirtää. Säästää akkua ja tasoittaa nykimistä.</string>
     <string name="lab_36ef1cc0">Seuraa konttia</string>
     <string name="lab_37232683">Paneelit kuvan päällä</string>
+    <string name="lab_3760451e">Käynnistä Big Picture -tilassa</string>
     <string name="lab_3776c976">Natiivi renderöinti</string>
     <string name="lab_377702f6">Kosketus</string>
     <string name="lab_37ad98ec">CPU-ydinvalinnat ovat voimassa, kunnes ohjelma käynnistetään uudelleen.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Lataa, tuo tai poista wrappereita, jotka on lueteltu kohdassa Grafiikka-ajuri.</string>
     <string name="lab_71080fcf">Tämä peli tarvitsee</string>
     <string name="lab_715f3f8e">Millä taustajärjestelmällä Media Foundation toistaa välivideot. FFmpeg vaatii arm64ec-kerroksen, joka on käännetty sen kanssa (Proton 11.0-2 vc12+); muualla se palaa GStreameriin.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Peleille näkyvä GPU-muisti</string>
     <string name="lab_71d5a5d7">Lataa Turnip-ajuri</string>
     <string name="lab_721589c1">Tänään</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synkronoi jokainen ruutu</string>
     <string name="lab_be9a2a59">Back kahdesti avaa pikakäytön</string>
     <string name="lab_be9d8c7a">Käynnistysasetukset</string>
+    <string name="lab_be9df5b0">Avaa Steamin Big Picture -tilassa.</string>
     <string name="lab_bec1ccfe"> Muutos tulee voimaan, kun peli käynnistetään seuraavan kerran.</string>
     <string name="lab_bed0286f">Piilota tämä repositorio</string>
     <string name="lab_bef10a2e">Siirrä toiseen konttiin</string>

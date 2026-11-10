@@ -15914,6 +15914,8 @@ return true;
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");
+            // Windows Steam client: "Start in Big Picture" adds Steam's own switch (-gamepadui).
+            if (windowsSteamSession) execArgs = com.winlator.star.store.WindowsSteamClient.withBigPicture(shortcut, execArgs);
             execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
 
             if (xboxLaunch != null) {

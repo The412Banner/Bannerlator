@@ -254,7 +254,7 @@ object SteamLibraryLocations {
      * `libraryfolders.vdf` only when there is none ([SteamAppManifest.ensureLibrary]). An existing
      * `steamapps` is built upon, never reset — nothing already there is moved, renamed or rewritten.
      */
-    fun add(ctx: Context, rawPath: String): AddResult {
+    fun add(ctx: Context, rawPath: String, label: String? = null): AddResult {
         fun reject(res: Int, vararg args: Any) = AddResult.Rejected(ctx.getString(res, *args))
 
         val dir = File(normalize(rawPath))
@@ -275,7 +275,7 @@ object SteamLibraryLocations {
         val lowSpace = SteamSdInstall.freeBytes(dir) < SteamSdInstall.FREE_SPACE_MARGIN
         if (!SteamAppManifest.ensureLibrary(steamapps) || !canWriteInto(common)) return reject(R.string.steam_lib_err_write)
 
-        val baseLabel = dir.name.ifBlank { abs }
+        val baseLabel = label?.takeIf { it.isNotBlank() } ?: dir.name.ifBlank { abs }
         val usedLabels = libs.map { it.label }.toSet()
         var label = baseLabel
         var n = 2

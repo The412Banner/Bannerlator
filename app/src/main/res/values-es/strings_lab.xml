@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Limita cuántos fotogramas por segundo dibuja el juego. Ahorra batería y suaviza los tirones.</string>
     <string name="lab_36ef1cc0">Sigue al contenedor</string>
     <string name="lab_37232683">Paneles sobre el arte</string>
+    <string name="lab_3760451e">Iniciar en Big Picture</string>
     <string name="lab_3776c976">Renderizado nativo</string>
     <string name="lab_377702f6">Táctil</string>
     <string name="lab_37ad98ec">La elección de núcleos de CPU dura hasta que el programa se reinicia.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Descarga, importa o elimina los wrappers que aparecen en Controlador gráfico.</string>
     <string name="lab_71080fcf">Este juego necesita</string>
     <string name="lab_715f3f8e">Con qué backend reproduce Media Foundation las cinemáticas. FFmpeg requiere una capa arm64ec compilada con él (Proton 11.0-2 vc12+); en otros casos se usa GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Memoria de GPU que ven los juegos</string>
     <string name="lab_71d5a5d7">Descargar un controlador Turnip</string>
     <string name="lab_721589c1">Hoy</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Sincronizar cada fotograma</string>
     <string name="lab_be9a2a59">Doble Atrás abre el Acceso rápido</string>
     <string name="lab_be9d8c7a">Opciones de lanzamiento</string>
+    <string name="lab_be9df5b0">Abre Steam en el modo Big Picture.</string>
     <string name="lab_bec1ccfe"> Se aplica la próxima vez que se inicie un juego.</string>
     <string name="lab_bed0286f">Ocultar este repositorio</string>
     <string name="lab_bef10a2e">Mover a otro contenedor</string>

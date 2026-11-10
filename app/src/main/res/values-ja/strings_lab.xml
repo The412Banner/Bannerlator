@@ -437,6 +437,7 @@
     <string name="lab_36936d70">ゲームが 1 秒間に描画するフレーム数を制限します。バッテリーを節約し、カクつきを抑えます。</string>
     <string name="lab_36ef1cc0">コンテナに従う</string>
     <string name="lab_37232683">アート上のパネル</string>
+    <string name="lab_3760451e">Big Picture で起動</string>
     <string name="lab_3776c976">ネイティブレンダリング</string>
     <string name="lab_377702f6">タッチ</string>
     <string name="lab_37ad98ec">CPU コアの選択は、プログラムを再起動するまで有効です。</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">「グラフィックドライバー」に表示されるラッパーのダウンロード、インポート、削除。</string>
     <string name="lab_71080fcf">このゲームに必要なもの</string>
     <string name="lab_715f3f8e">Media Foundation がムービーの再生に使うバックエンド。FFmpeg には FFmpeg 入りでビルドされた arm64ec レイヤー（Proton 11.0-2 vc12+）が必要です。それ以外では GStreamer に戻ります。</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">ゲームから見える GPU メモリ</string>
     <string name="lab_71d5a5d7">Turnip ドライバーをダウンロード</string>
     <string name="lab_721589c1">今日</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">毎フレーム同期</string>
     <string name="lab_be9a2a59">戻るを2回押してクイックアクセスを開く</string>
     <string name="lab_be9d8c7a">起動オプション</string>
+    <string name="lab_be9df5b0">Steam を Big Picture モードで開きます。</string>
     <string name="lab_bec1ccfe"> 次にゲームを起動したときに適用されます。</string>
     <string name="lab_bed0286f">このリポジトリを非表示</string>
     <string name="lab_bef10a2e">別のコンテナに移動</string>

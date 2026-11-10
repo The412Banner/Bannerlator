@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 12:5x EST — 🔬 Quick proof failed (layer restored); compact popup installed; diagnostic build d19568bc for the Big Picture menus
+- **Quick proof result (user video 12:22):** Wine appended `--in-process-gpu` (6 "HACK: appending" lines) but Windows Steam's web helper ignored it (still `--type=gpu-process`, switch absent from its logged start line); menus as before. Original layer kernelbase.dll restored 12:26 EST (sha256 b9b121b9…), root-8b told.
+- **Compact popup ca49b7e0 installed 12:41:50 EST** (user: "install anyway"; closed the running Steam session): base.apk sha256 ca83f22e… == staged, crash buffer 0, data intact.
+- **Lead (code):** `WindowManager.changeWindowGeometry` replaces a resized window's drawable with a new blank one. A real X server keeps the picture (Wine asks for NorthWest bit gravity). Pictures copied in by Wine's other-process rendering only come back on the GPU process's next present, so slide-in menus stay blank after each resize until something changes.
+- **Diagnostic build d19568bc** (user: "make the diagnostic build"): `xserver/XDiag` logs to logcat tag BLXDiag in Windows Steam sessions only — window create/map/unmap/reparent/configure/destroy, "content-reset" on resize, name/opacity changes, a per-second summary of PutImage/ShmPutImage/CopyArea/Present per window and client, and the GL renderer's window list on change. CI 42868077100.
+- **Next:** install (needs the user's yes) → one Steam Big Picture run opening the menu and Quick Access → read BLXDiag → fix (likely: keep the old picture on resize).
+
 ## 2026-11-10 12:10 EST — 🧪 Quick proof: Windows Steam's web helper with --in-process-gpu (patched layer kernelbase.dll on the Pocket FIT)
 - **User (after 98447478):** Big Picture menu / Quick Access "still invisible until I navigate" → the transparent-window fix alone does not solve it. Asked whether DroidDeck has something: yes, DroidDeck's Linux Steam gets `--no-zygote --in-process-gpu` on steamwebhelper (`tools/linuxfs/preload/webhelper.c`), so GPU drawing stays in the window-owning process.
 - **Windows Steam:** `logs/webhelper.txt` start line maps `-cef-disable-gpu` but drops `-cef-in-process-gpu` / `-cef-single-process`. Wine has no IFEO Debugger. Proton's kernelbase has a CreateProcess command-line append table (`dlls/kernelbase/process.c` ~592, Warhammer2.exe / SummerIslands.exe → ` --in-process-gpu`).

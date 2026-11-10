@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 17:08 EST — 📦 961f32b1 installed on the Pocket FIT: store games as installed games in Windows Steam (CI 42909848059)
+- ef37b6cd's CI run 42909013339 was cancelled; **961f32b1** replaces the hand-written libraryfolders.vdf entry with `WindowsSteamClient.addLibraryFolder` (existing `libraryEntry`/`serialize`/`writeAtomic`).
+- Checked before install: uninstall deletes only the links (`FileUtils.delete` and `totalSize` never follow links); the non-Steam list reads every library in libraryfolders.vdf, so linked games are not listed twice; the FIT's Steam libraries are F: and E: only, so C: may hold this one. Counter-Strike has no Goldberg setting (off), so it is linked.
+- CI 42909848059 green (4/4); APK sha256 ac51f363…8137, host == device == installed; installed 17:08:31 EST after root-d2's ok; crash buffer empty.
+- **Next:** the user starts Windows Steam → Counter-Strike, Brawlhalla, MIO and Lossless Scaling should be installed, Counter-Strike gone from Non-Steam; then merge on the user's go.
+- **Proof level:** CI-green, installed; NOT device-tested.
+
 ## 2026-11-10 16:3x EST — 🔧 ef37b6cd: every Steam-store game listed as installed in Windows Steam (CI 42909013339)
 - **Device results first:** e5566300 installed 15:40:22 EST; the FIT's Steam shortcut back to its original options (backup of the hand-made state `…desktop.test1b`); launch log "Windows Steam: GPU drawing on: WINE_DISABLE_VULKAN_OPWR=0, -cef-disable-gpu left out" — automatic GPU drawing device-proven. "Windows Steam" offered in Move to… and the download dialog; Half-Life moved there shows installed in Steam (user).
 - **User:** Counter-Strike downloaded to Internal storage was not installed in Steam → chose option 3 (every store game, wherever it lives).

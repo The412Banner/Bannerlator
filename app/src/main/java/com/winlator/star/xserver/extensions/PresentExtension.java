@@ -259,6 +259,8 @@ public class PresentExtension implements Extension {
 
         final Pixmap pixmap = client.xServer.pixmapManager.getPixmap(pixmapId);
         if (pixmap == null) throw new BadPixmap(pixmapId);
+        if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.write(windowId, "present", client, pixmapId,
+                xOff, yOff, pixmap.drawable.width, pixmap.drawable.height);
 
         Drawable content = window.getContent();
         int contentDepth = content.visual.depth;

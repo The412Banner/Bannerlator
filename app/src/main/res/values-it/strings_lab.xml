@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Limita quanti fotogrammi al secondo disegna il gioco. Risparmia batteria e riduce gli scatti.</string>
     <string name="lab_36ef1cc0">Segue il container</string>
     <string name="lab_37232683">Pannelli sull\'artwork</string>
+    <string name="lab_3760451e">Avvia in Big Picture</string>
     <string name="lab_3776c976">Rendering nativo</string>
     <string name="lab_377702f6">Tocco</string>
     <string name="lab_37ad98ec">Le scelte dei core CPU valgono fino al riavvio del programma.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Scarica, importa o elimina i wrapper elencati in Driver grafico.</string>
     <string name="lab_71080fcf">Questo gioco richiede</string>
     <string name="lab_715f3f8e">Con quale backend Media Foundation riproduce le scene di intermezzo. FFmpeg richiede un layer arm64ec compilato con esso (Proton 11.0-2 vc12+); altrimenti ripiega su GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Memoria GPU vista dai giochi</string>
     <string name="lab_71d5a5d7">Scarica un driver Turnip</string>
     <string name="lab_721589c1">Oggi</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Sincronizza ogni frame</string>
     <string name="lab_be9a2a59">Doppio Indietro apre Accesso rapido</string>
     <string name="lab_be9d8c7a">Opzioni di avvio</string>
+    <string name="lab_be9df5b0">Apre Steam in modalità Big Picture.</string>
     <string name="lab_bec1ccfe"> Si applica al prossimo avvio di un gioco.</string>
     <string name="lab_bed0286f">Nascondi questo repository</string>
     <string name="lab_bef10a2e">Sposta in un altro container</string>

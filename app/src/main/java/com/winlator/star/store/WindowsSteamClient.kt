@@ -51,6 +51,14 @@ object WindowsSteamClient {
     private const val TAG = "WindowsSteamClient"
 
     const val ENV_DISABLE_LSTEAMCLIENT = "PROTON_DISABLE_LSTEAMCLIENT"
+    /** "0" turns on Proton's other-process window rendering, off by default in our layers on Android. */
+    const val ENV_OTHER_PROCESS_RENDERING = "WINE_DISABLE_VULKAN_OPWR"
+
+    /** [execArgs] without Steam's `-cef-disable-gpu`, for sessions where the client draws on the GPU. */
+    @JvmStatic
+    fun withoutCefDisableGpu(execArgs: String?): String =
+        execArgs.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotEmpty() && !it.equals("-cef-disable-gpu", ignoreCase = true) }
+            .joinToString(" ")
     const val ENV_LSTEAMCLIENT_OPT_IN = "WINE_LSTEAMCLIENT"
 
     private const val MACHINE_AMD64 = 0x8664
@@ -60,6 +68,40 @@ object WindowsSteamClient {
     const val STORE_SOURCE = "windows_steam"
     const val SHORTCUT_NAME = "Windows Steam Client x64"
     const val BADGE_LABEL = "Windows Steam"
+
+    /** Name of the client's folder among the app's Steam library folders (Steam store download and move targets). */
+    const val LIBRARY_LABEL = "Windows Steam"
+
+    /**
+     * Shortcut extra: "1" = the session opens Big Picture once the client's desktop window is up (steam://open/bigpicture,
+     * XServerDisplayActivity). Not -gamepadui: started that way the client never makes its desktop window, so leaving
+     * Big Picture showed nothing.
+     */
+    const val EXTRA_BIG_PICTURE = "steamBigPicture"
+
+    /**
+     * Makes the client's folder [steamRoot] one of the app's Steam library folders, so the app's Steam store can
+     * download and move games into its `steamapps/common`; their appmanifest files ([SteamAppManifest]) make Steam
+     * list them as installed. Only for a folder on internal storage or an SD card. Returns a line for the launch
+     * log, or null when nothing changed.
+     */
+    @JvmStatic
+    fun registerLibrary(ctx: Context, steamRoot: File): String? {
+        return try {
+            if (WinePath.storageVolumeRootOf(steamRoot.absolutePath) == null) return null
+            val steamapps = SteamInstallPaths.steamappsDirOf(steamRoot).absolutePath
+            if (SteamLibraryLocations.libraries(ctx).any { SteamLibraryLocations.steamappsOf(it.path).absolutePath == steamapps }) {
+                return null
+            }
+            when (val r = SteamLibraryLocations.add(ctx, steamRoot.absolutePath, LIBRARY_LABEL)) {
+                is SteamLibraryLocations.AddResult.Added -> "Steam store library added: ${r.library.label} (${steamRoot.absolutePath})"
+                is SteamLibraryLocations.AddResult.Rejected -> "Steam store library not added: ${r.reason}"
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "registerLibrary", t)
+            null
+        }
+    }
 
     // Valve's update server. The steam_client_win64 manifest's steam_win64 package is the 64-bit steam.exe starter
     // (one file); it downloads the rest of the client on its first start.
@@ -135,6 +177,7 @@ object WindowsSteamClient {
                 downloaded = true
             }
             val file = writeShortcut(container, exe)
+            registerLibrary(ctx, dir)?.let { Log.i(TAG, it) }
             try {
                 coverArt(ctx)?.let { Shortcut(container, file).saveCustomCoverArt(it) }
             } catch (t: Throwable) {
@@ -338,9 +381,17 @@ object WindowsSteamClient {
      * the per-storage libraries. Returns one line per decision, for the launch log.
      */
     @JvmStatic
-    fun prepareLaunch(ctx: Context, container: Container, winPath: String, env: EnvVars): List<String> {
+    fun prepareLaunch(ctx: Context, container: Container, winPath: String, env: EnvVars, gpuDrawing: Boolean = false): List<String> {
         val notes = ArrayList<String>()
         try {
+            // GPU drawing: Chromium's GPU process draws into windows of the browser process, which Proton's
+            // other-process rendering copies over; the launcher leaves -cef-disable-gpu out of the arguments.
+            if (gpuDrawing) {
+                if (!env.has(ENV_OTHER_PROCESS_RENDERING)) env.put(ENV_OTHER_PROCESS_RENDERING, "0")
+                notes.add("GPU drawing on: $ENV_OTHER_PROCESS_RENDERING=${env.get(ENV_OTHER_PROCESS_RENDERING)}, -cef-disable-gpu left out")
+            } else {
+                notes.add("GPU drawing off (only with the GL renderer on X11): Steam draws on the CPU")
+            }
             if (is64Bit(container, winPath)) {
                 when {
                     env.has(ENV_DISABLE_LSTEAMCLIENT) ->
@@ -360,7 +411,12 @@ object WindowsSteamClient {
                       else "Steam libraries added: " + added.joinToString(", "))
             // The app's games as non-Steam games, written while the client is not running yet.
             val steamRoot = try { WinePath.resolveAndroidPath(container, winPath)?.parentFile } catch (t: Throwable) { null }
-            if (steamRoot != null) notes.add(SteamShortcutsSync.sync(ctx, container, steamRoot))
+            if (steamRoot != null) {
+                registerLibrary(ctx, steamRoot)?.let { notes.add(it) }
+                // Store games as installed games, before the non-Steam list (which leaves those out).
+                notes.add(SteamLibraryMirror.sync(ctx, container, steamRoot))
+                notes.add(SteamShortcutsSync.sync(ctx, container, steamRoot))
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "prepareLaunch failed", t)
             notes.add("Steam client preparation failed: ${t.message}")
@@ -442,6 +498,34 @@ object WindowsSteamClient {
         } catch (t: Throwable) {
             Log.w(TAG, "ensureStorageLibraries failed", t)
             return emptyList()
+        }
+    }
+
+    /**
+     * Adds the library [winPath] (the folder [hostDir]) to the client's `steamapps/libraryfolders.vdf` and its `config/`
+     * copy when it is not listed yet. True when it is listed afterwards.
+     */
+    @JvmStatic
+    fun addLibraryFolder(steamRoot: File, winPath: String, hostDir: File): Boolean {
+        try {
+            val primary = File(steamRoot, "steamapps/libraryfolders.vdf")
+            if (!primary.isFile) return false
+            val doc = VdfParser.parse(primary.readText())
+            val folders = doc.node("libraryfolders") ?: return false
+            var nextKey = 0
+            for ((key, node) in folders.childNodes()) {
+                key.toIntOrNull()?.let { if (it >= nextKey) nextKey = it + 1 }
+                if (node.string("path")?.trimEnd('\\').equals(winPath.trimEnd('\\'), ignoreCase = true)) return true
+            }
+            folders.add(nextKey.toString(), libraryEntry(winPath, hostDir))
+            val text = StringBuilder().also { serialize(doc, it, 0) }.toString()
+            if (!writeAtomic(primary, text)) return false
+            writeAtomic(File(steamRoot, "config/libraryfolders.vdf"), text)
+            Log.i(TAG, "libraryfolders.vdf in ${steamRoot.absolutePath}: added $winPath")
+            return true
+        } catch (t: Throwable) {
+            Log.w(TAG, "addLibraryFolder $winPath", t)
+            return false
         }
     }
 
@@ -557,6 +641,10 @@ object WindowsSteamClient {
         val emptyLibraries: List<File>,
         /** Library folders outside the client that hold games: kept. */
         val keptLibraries: Int,
+        /** Games the app's Steam store installed (or is downloading) in the client's folder: kept, with their appmanifest. */
+        val keptGames: Int = 0,
+        val keepDirs: Set<String> = emptySet(),
+        val keepAppIds: Set<Int> = emptySet(),
     )
 
     private val offers = MutableStateFlow<List<UninstallOffer>>(emptyList())
@@ -583,13 +671,13 @@ object WindowsSteamClient {
      * [uninstall] on its own thread, so it finishes even when the screen that started it goes away. [onDone] gets
      * null or an error message, on the main thread, after the offer is dismissed.
      */
-    fun uninstallAsync(plan: UninstallPlan, onDone: (String?) -> Unit) {
+    fun uninstallAsync(ctx: Context, plan: UninstallPlan, onDone: (String?) -> Unit) {
         val dir = plan.offer.clientDir
         var started = false
         running.update { if (dir in it) it else { started = true; it + dir } }
         if (!started) return
         Thread({
-            val error = uninstall(plan)
+            val error = uninstall(ctx, plan)
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 running.update { it - dir }
                 dismissUninstall(plan.offer)
@@ -632,13 +720,15 @@ object WindowsSteamClient {
         }
     }
 
-    /** Sizes up [offer]. Reads the disk: call off the main thread. */
-    fun planUninstall(offer: UninstallOffer): UninstallPlan {
+    /** Sizes up [offer]. Reads the disk and the app's Steam database: call off the main thread. */
+    fun planUninstall(ctx: Context, offer: UninstallOffer): UninstallPlan {
         val dir = offer.clientDir
         val dirPath = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
+        val (keepDirs, keepAppIds) = storeGamesIn(ctx, dir, dirPath)
         val driveC = File(offer.container.rootDir, ".wine/drive_c")
         val containerDirs = if (offer.keepContainerData) emptyList() else
-            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"))
+            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"),
+                SteamLibraryMirror.libraryDir(offer.container))
                 .filter { it.exists() && !isWithin(it, dirPath) }
 
         val emptyLibraries = ArrayList<File>()
@@ -663,14 +753,33 @@ object WindowsSteamClient {
             dirPath.startsWith("/storage/emulated/") -> "internal storage"
             else -> "the SD card"
         }
-        val bytes = FileUtils.totalSize(dir) + containerDirs.sumOf { FileUtils.totalSize(it) } + emptyLibraries.sumOf { FileUtils.totalSize(it) }
-        return UninstallPlan(offer, where, bytes, countGames(dir), containerDirs, emptyLibraries, kept)
+        val keptBytes = keepDirs.sumOf { FileUtils.totalSize(File(it)) }
+        val bytes = FileUtils.totalSize(dir) - keptBytes + containerDirs.sumOf { FileUtils.totalSize(it) } + emptyLibraries.sumOf { FileUtils.totalSize(it) }
+        val steamGames = countGames(dir) - keepAppIds.count { File(dir, "steamapps/appmanifest_$it.acf").isFile }
+        return UninstallPlan(offer, where, bytes.coerceAtLeast(0L), steamGames.coerceAtLeast(0), containerDirs, emptyLibraries, kept,
+            keepAppIds.size, keepDirs, keepAppIds)
     }
 
-    /** Deletes what [plan] lists (symbolic links are removed, never followed). Null when done, else a message. */
-    fun uninstall(plan: UninstallPlan): String? {
+    /**
+     * Deletes what [plan] lists (symbolic links are removed, never followed). Games of the app's Steam store in the
+     * client's folder stay, with their appmanifest, and the folder stays one of the app's library folders for them;
+     * without such games the folder goes entirely and is forgotten as a library folder. Null when done, else a message.
+     */
+    fun uninstall(ctx: Context, plan: UninstallPlan): String? {
         val failed = ArrayList<String>()
-        for (target in listOf(plan.offer.clientDir) + plan.containerDirs + plan.emptyLibraries + listOfNotNull(plan.offer.coverArt)) {
+        val client = plan.offer.clientDir
+        if (plan.keepDirs.isEmpty()) {
+            try {
+                if (client.exists() && !FileUtils.delete(client)) failed.add(client.absolutePath)
+            } catch (t: Throwable) {
+                Log.w(TAG, "uninstall ${client.absolutePath}", t)
+                failed.add(client.absolutePath)
+            }
+            forgetLibrary(ctx, client)
+        } else {
+            deleteKeeping(client, plan.keepDirs, plan.keepAppIds, failed)
+        }
+        for (target in plan.containerDirs + plan.emptyLibraries + listOfNotNull(plan.offer.coverArt)) {
             try {
                 if (target.exists() && !FileUtils.delete(target)) failed.add(target.absolutePath)
             } catch (t: Throwable) {
@@ -680,6 +789,72 @@ object WindowsSteamClient {
         }
         Log.i(TAG, "Windows Steam uninstalled from ${plan.offer.clientDir.absolutePath} (${plan.bytes} bytes, failed: ${failed.size})")
         return if (failed.isEmpty()) null else "Could not delete ${failed.first()}"
+    }
+
+    /** Install folders (canonical) and app ids of the app's Steam store games installed in, or downloading into, [dir]. */
+    private fun storeGamesIn(ctx: Context, dir: File, dirPath: String): Pair<Set<String>, Set<Int>> {
+        val dirs = HashSet<String>()
+        val ids = HashSet<Int>()
+        try {
+            val db = SteamDatabase.getInstance(ctx)
+            val rows = db.installedGames.map { it.appId to it.installDir } + db.activeDownloads.map { it.appId to it.installDir }
+            for ((appId, installDir) in rows) {
+                if (installDir.isNullOrBlank()) continue
+                val f = File(installDir)
+                val canonical = runCatching { f.canonicalPath }.getOrDefault(f.absolutePath)
+                if (canonical != dirPath && canonical.startsWith(dirPath + File.separator)) {
+                    dirs.add(canonical)
+                    ids.add(appId)
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "storeGamesIn", t)
+        }
+        return dirs to ids
+    }
+
+    /**
+     * Deletes the client in [dir] but keeps `steamapps` with the app's store games: their folders under `common`
+     * ([keepDirs]), their appmanifest files ([keepAppIds]) and libraryfolders.vdf.
+     */
+    private fun deleteKeeping(dir: File, keepDirs: Set<String>, keepAppIds: Set<Int>, failed: MutableList<String>) {
+        fun del(f: File) {
+            try {
+                if (f.exists() && !FileUtils.delete(f)) failed.add(f.absolutePath)
+            } catch (t: Throwable) {
+                Log.w(TAG, "uninstall ${f.absolutePath}", t)
+                failed.add(f.absolutePath)
+            }
+        }
+        for (child in dir.listFiles().orEmpty()) {
+            if (child.name != "steamapps" || FileUtils.isSymlink(child)) { del(child); continue }
+            for (s in child.listFiles().orEmpty()) {
+                when {
+                    s.name == "common" && !FileUtils.isSymlink(s) -> for (g in s.listFiles().orEmpty()) {
+                        val p = runCatching { g.canonicalPath }.getOrDefault(g.absolutePath)
+                        if (p !in keepDirs) del(g)
+                    }
+                    s.name.startsWith("appmanifest_") && s.name.endsWith(".acf") -> {
+                        val id = s.name.removePrefix("appmanifest_").removeSuffix(".acf").toIntOrNull()
+                        if (id == null || id !in keepAppIds) del(s)
+                    }
+                    s.name == "libraryfolders.vdf" -> Unit
+                    else -> del(s)
+                }
+            }
+        }
+    }
+
+    /** Removes the app's library-folder entry for the client in [steamRoot]; refused by it while store games are recorded there. */
+    private fun forgetLibrary(ctx: Context, steamRoot: File) {
+        try {
+            val steamapps = SteamInstallPaths.steamappsDirOf(steamRoot).absolutePath
+            SteamLibraryLocations.libraries(ctx)
+                .filter { SteamLibraryLocations.steamappsOf(it.path).absolutePath == steamapps }
+                .forEach { Log.i(TAG, "forget library ${it.label}: ${SteamLibraryLocations.remove(ctx, it.id)}") }
+        } catch (t: Throwable) {
+            Log.w(TAG, "forgetLibrary", t)
+        }
     }
 
     /**

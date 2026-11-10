@@ -536,6 +536,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     private void collectRenderableWindows(Window window, int x, int y) {
         if (!window.attributes.isMapped()) return;
+        if (xServer.hideTransparentWindows && window.isFullyTransparent()) return;
         if (window != xServer.windowManager.rootWindow) {
             boolean viewable = true;
             if (unviewableWMClasses != null) {

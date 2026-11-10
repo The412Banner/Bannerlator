@@ -123,6 +123,10 @@ public abstract class DrawRequests {
         if (srcDrawable.visual.depth != dstDrawable.visual.depth) throw new BadMatch();
 
         dstDrawable.copyArea(srcX, srcY, dstX, dstY, width, height, srcDrawable, graphicsContext.getFunction());
+        if (client.xServer.keepOverlayCopies) {
+            client.xServer.overlayCopies.afterCopy(client.xServer, srcDrawableId, dstDrawableId, srcX, srcY, dstX, dstY,
+                    width, height, dstDrawable, graphicsContext.getFunction());
+        }
     }
 
     public static void polyLine(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {

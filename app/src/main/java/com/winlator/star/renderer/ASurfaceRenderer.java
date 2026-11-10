@@ -233,6 +233,7 @@ public class ASurfaceRenderer implements HostRenderer,
 
     private void collectWindows(Window window, int x, int y) {
         if (!window.attributes.isMapped()) return;
+        if (xServer.hideTransparentWindows && window.isFullyTransparent()) return;
         if (window != xServer.windowManager.rootWindow) {
             RenderableWindow rw;
             if (renderList.size() <= renderListSize) {

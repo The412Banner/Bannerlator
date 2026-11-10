@@ -1,5 +1,6 @@
 package com.winlator.star.ui.dialogs
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
@@ -22,7 +23,11 @@ import com.winlator.star.ui.XServerDialogState
 // host dialogs and runs the exact same submit path on OK (onTmNewTaskSubmit -> winHandler.exec).
 @Composable
 fun NewTaskDialog(state: XServerDialogState) {
-    var command by remember { mutableStateOf("taskmgr.exe") }
+    var command by remember {
+        val prefill = state.newTaskPrefill
+        state.newTaskPrefill = null
+        mutableStateOf(prefill ?: "taskmgr.exe")
+    }
 
     OutlinedAlertDialog(
         onDismissRequest = { state.dismiss() },
@@ -43,7 +48,13 @@ fun NewTaskDialog(state: XServerDialogState) {
             }) { Text("OK") }
         },
         dismissButton = {
-            TextButton(onClick = { state.dismiss() }) { Text("Cancel") }
+            Row {
+                if (state.onNewTaskBrowse != null) TextButton(onClick = {
+                    state.dismiss()
+                    state.onNewTaskBrowse?.run()
+                }) { Text("Browse…") }
+                TextButton(onClick = { state.dismiss() }) { Text("Cancel") }
+            }
         }
     )
 }

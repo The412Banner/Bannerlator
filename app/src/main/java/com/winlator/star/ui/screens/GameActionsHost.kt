@@ -998,7 +998,7 @@ private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer
     var plan by remember(offer) { mutableStateOf<WindowsSteamClient.UninstallPlan?>(null) }
     val running = offer.clientDir in WindowsSteamClient.uninstalling.collectAsState().value
     LaunchedEffect(offer) {
-        plan = withContext(Dispatchers.IO) { WindowsSteamClient.planUninstall(offer) }
+        plan = withContext(Dispatchers.IO) { WindowsSteamClient.planUninstall(context, offer) }
     }
     val keep = { WindowsSteamClient.dismissUninstall(offer) }
     OutlinedAlertDialog(
@@ -1022,6 +1022,13 @@ private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer
                             color = OnSurfaceVariant,
                         )
                     }
+                    if (p.keptGames > 0) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (p.keptGames == 1) "Keeps 1 game from Bannerlator's Steam store." else "Keeps ${p.keptGames} games from Bannerlator's Steam store.",
+                            color = OnSurfaceVariant,
+                        )
+                    }
                     if (p.keptLibraries > 0) {
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -1036,7 +1043,7 @@ private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer
             if (!running) TextButton(enabled = plan != null, onClick = {
                 val p = plan ?: return@TextButton
                 val app = context.applicationContext
-                WindowsSteamClient.uninstallAsync(p) { error ->
+                WindowsSteamClient.uninstallAsync(app, p) { error ->
                     Toast.makeText(
                         app,
                         error ?: "Steam uninstalled (${SteamSdInstall.fmtBytes(p.bytes)} freed)",

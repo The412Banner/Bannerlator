@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Korlátozza, hány képkockát rajzol a játék másodpercenként. Kíméli az akkumulátort, és kisimítja az akadozást.</string>
     <string name="lab_36ef1cc0">Konténer szerint</string>
     <string name="lab_37232683">Panelek a grafika felett</string>
+    <string name="lab_3760451e">Indítás Big Picture módban</string>
     <string name="lab_3776c976">Natív renderelés</string>
     <string name="lab_377702f6">Érintés</string>
     <string name="lab_37ad98ec">A CPU-magok kiválasztása a program újraindításáig marad érvényben.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">A Grafikus illesztőprogram alatt felsorolt wrapperek letöltése, importálása vagy törlése.</string>
     <string name="lab_71080fcf">A játékhoz szükséges</string>
     <string name="lab_715f3f8e">Melyik háttérrendszerrel játssza le a Media Foundation az átvezető videókat. Az FFmpeghez vele épített arm64ec réteg kell (Proton 11.0-2 vc12+); máshol GStreamerre vált vissza.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">A játékok által látott GPU-memória</string>
     <string name="lab_71d5a5d7">Turnip illesztőprogram letöltése</string>
     <string name="lab_721589c1">Ma</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Szinkronizálás minden képkockánál</string>
     <string name="lab_be9a2a59">Dupla Vissza megnyitja a Gyors elérést</string>
     <string name="lab_be9d8c7a">Indítási beállítások</string>
+    <string name="lab_be9df5b0">Big Picture módban nyitja meg a Steamet.</string>
     <string name="lab_bec1ccfe"> A következő játékindításkor lép életbe.</string>
     <string name="lab_bed0286f">Tároló elrejtése</string>
     <string name="lab_bef10a2e">Áthelyezés másik konténerbe</string>

@@ -3344,6 +3344,15 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(new ScreenInfo(screenSize));
         xServer.setWinHandler(winHandler);
+        // Windows Steam: Wine's offscreen surfaces sit in a fully transparent window; drawn, they cover Steam's menus.
+        if (windowsSteamSession) xServer.hideTransparentWindows = true;
+        // Windows Steam: Wine copies the fullscreen page over Big Picture's menus every frame; lay them back on top.
+        xServer.keepOverlayCopies = windowsSteamSession;
+        // "Start in Big Picture": Steam starts on its desktop window and is then asked to open Big Picture (see
+        // windowsSteamBigPictureWatch), so leaving Big Picture has the desktop window to go back to.
+        windowsSteamBigPicturePending = windowsSteamSession && shortcut != null
+                && "1".equals(shortcut.getExtra(com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE));
+        if (windowsSteamBigPicturePending) windowsSteamMenuHandler.postDelayed(windowsSteamBigPictureWatch, 2000);
         advertisePanelRefreshRates();
 
         // Touch and Aim mode for this game: the shortcut's own, else the container's (a session without
@@ -8166,8 +8175,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private int menuButtonKeyCode;
     private boolean menuButtonHeld;
 
-    // Windows Steam session (shortcut target steam.exe): a Menu button press is Shift+Tab (Steam's overlay key) and
-    // holding it opens the side menu. Set in onCreate.
+    // Windows Steam session (shortcut target steam.exe): a Menu button press is Shift+Tab (Steam's overlay key), or over
+    // Big Picture the Steam button (a double press: the Quick Access Menu); holding it opens the side menu. Set in onCreate.
     private boolean windowsSteamSession;
     private String windowsSteamDisplayNote;
     private static final long WINDOWS_STEAM_MENU_HOLD_MS = 500;
@@ -8177,6 +8186,130 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamMenuHoldFired = true;
         toggleInGameMenu();
     };
+    // Big Picture: a second press within this time of the first opens the Quick Access Menu instead.
+    private static final long WINDOWS_STEAM_DOUBLE_PRESS_MS = 300;
+    private boolean windowsSteamPressPending;
+    private final Runnable windowsSteamSinglePress = () -> {
+        windowsSteamPressPending = false;
+        pressLinuxSteamButton(false);
+    };
+
+    /**
+     * Windows Steam session, a Menu button press (released before the hold). Over Big Picture: the Steam button, which
+     * opens its side menu, or with a second press within WINDOWS_STEAM_DOUBLE_PRESS_MS the Quick Access Menu (Steam held,
+     * A tapped). Anywhere else: Shift+Tab, the overlay key (in normal Steam the Steam button would start Big Picture).
+     */
+    private void onWindowsSteamMenuPress() {
+        if (windowsSteamPressPending) {
+            windowsSteamPressPending = false;
+            windowsSteamMenuHandler.removeCallbacks(windowsSteamSinglePress);
+            pressLinuxSteamButton(true);
+            return;
+        }
+        if (!windowsSteamBigPictureFocused()) {
+            pressWindowsSteamOverlayKeys();
+            return;
+        }
+        windowsSteamPressPending = true;
+        windowsSteamMenuHandler.postDelayed(windowsSteamSinglePress, WINDOWS_STEAM_DOUBLE_PRESS_MS);
+    }
+
+    private Boolean windowsSteamGpuDrawing;
+
+    /**
+     * Windows Steam draws its pages on the GPU: X11 with the GL renderer outside native mode, where a presented frame
+     * lands in the window's own picture so Wine's other-process copies (WINE_DISABLE_VULKAN_OPWR=0) and OverlayCopies
+     * work. Elsewhere it keeps -cef-disable-gpu (CPU drawing). WINE_DISABLE_VULKAN_OPWR set to anything but 0 in the
+     * shortcut's or the container's environment keeps CPU drawing too. Decided once per session.
+     */
+    private boolean windowsSteamGpuDrawing() {
+        if (windowsSteamGpuDrawing != null) return windowsSteamGpuDrawing;
+        boolean on = false;
+        try {
+            HostRenderer r = xServerView != null ? xServerView.getRenderer() : null;
+            if (windowsSteamSession && !waylandMode && r instanceof GLRenderer && !((GLRenderer) r).isNativeMode()) {
+                EnvVars user = new EnvVars(container != null ? container.getEnvVars() : "");
+                if (shortcut != null) user.putAll(shortcut.getExtra("envVars"));
+                String opwr = user.get(com.winlator.star.store.WindowsSteamClient.ENV_OTHER_PROCESS_RENDERING);
+                on = opwr == null || opwr.trim().isEmpty() || opwr.trim().equals("0");
+            }
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Windows Steam: GPU drawing check", e);
+        }
+        windowsSteamGpuDrawing = on;
+        return on;
+    }
+
+    /** A window's title: WM_NAME, else _NET_WM_NAME (Wine sets both), "" when it has none. */
+    private static String windowTitle(Window w) {
+        String name = w.getName();
+        if (name == null || name.isEmpty()) {
+            Property utf8 = w.getProperty(Atom.getId("_NET_WM_NAME"));
+            name = utf8 != null ? utf8.toString() : "";
+        }
+        return name != null ? name : "";
+    }
+
+    // Windows Steam, "Start in Big Picture": waiting for Steam's desktop window (title "Steam") to ask it to open
+    // Big Picture. Started with -gamepadui instead, Steam never makes its desktop window, so leaving Big Picture
+    // showed nothing.
+    private boolean windowsSteamBigPicturePending;
+    private int windowsSteamBigPictureTries;
+    private final Runnable windowsSteamBigPictureWatch = new Runnable() {
+        @Override
+        public void run() {
+            if (!windowsSteamBigPicturePending || isFinishing() || isDestroyed()) return;
+            if (++windowsSteamBigPictureTries > 300) {
+                windowsSteamBigPicturePending = false;
+                Log.i("XServerDisplayActivity", "Steam (Windows): no desktop window in 5 min, Big Picture not opened");
+                return;
+            }
+            boolean shown = false;
+            if (xServer != null) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                    shown = hasMappedWindowTitled(xServer.windowManager.rootWindow, "Steam", 0);
+                } catch (Exception e) {
+                    Log.w("XServerDisplayActivity", "Steam (Windows): desktop window check", e);
+                }
+            }
+            if (!shown) {
+                windowsSteamMenuHandler.postDelayed(this, 1000);
+                return;
+            }
+            windowsSteamBigPicturePending = false;
+            windowsSteamMenuHandler.postDelayed(() -> {
+                if (winHandler == null || shortcut == null || isFinishing()) return;
+                winHandler.exec("\"" + shortcut.path + "\" steam://open/bigpicture");
+                Log.i("XServerDisplayActivity", "Steam (Windows): desktop window up, asked Steam to open Big Picture");
+            }, 1500);
+        }
+    };
+
+    /** A mapped window of Steam's web helper, at least 640x360, titled [title] (the desktop window is titled "Steam"). */
+    private static boolean hasMappedWindowTitled(Window w, String title, int depth) {
+        if (w == null || depth > 6) return false;
+        if (depth > 0 && w.attributes.isMapped() && w.getWidth() >= 640 && w.getHeight() >= 360
+                && title.equals(windowTitle(w)) && w.getClassName().toLowerCase(java.util.Locale.ROOT).contains("steamwebhelper")) return true;
+        for (Window child : w.getChildren()) if (hasMappedWindowTitled(child, title, depth + 1)) return true;
+        return false;
+    }
+
+    /**
+     * True when the focused window (or the nearest named window above it) is Steam's Big Picture, whose title is
+     * "Steam Big Picture Mode". Logs the title it went by.
+     */
+    private boolean windowsSteamBigPictureFocused() {
+        String name = "";
+        try {
+            Window w = xServer != null ? xServer.windowManager.getFocusedWindow() : null;
+            for (int i = 0; w != null && i < 8 && name.isEmpty(); i++, w = w.getParent()) name = windowTitle(w);
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Steam (Windows): focused window", e);
+        }
+        boolean bigPicture = name.toLowerCase(java.util.Locale.ROOT).contains("big picture");
+        Log.i("XServerDisplayActivity", "Steam (Windows): focused window '" + name + "'" + (bigPicture ? " = Big Picture" : ""));
+        return bigPicture;
+    }
 
     /**
      * Windows Steam session, Menu button press: Shift+Tab, Steam's overlay key. Over a running game it opens Steam's overlay;
@@ -8223,6 +8356,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // closes on the press, as everywhere else.
             if (windowsSteamSession && winHandler != null && drawerLayout != null && !isInGameMenuOpen()) {
                 windowsSteamMenuHoldFired = false;
+                // The second press of a double press: the single press waiting for it is dropped.
+                if (windowsSteamPressPending) windowsSteamMenuHandler.removeCallbacks(windowsSteamSinglePress);
                 windowsSteamMenuHandler.postDelayed(windowsSteamMenuHold, WINDOWS_STEAM_MENU_HOLD_MS);
                 return true;
             }
@@ -8235,7 +8370,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             menuButtonHeld = false;
             if (windowsSteamSession) {
                 windowsSteamMenuHandler.removeCallbacks(windowsSteamMenuHold);
-                if (!windowsSteamMenuHoldFired) pressWindowsSteamOverlayKeys();
+                if (!windowsSteamMenuHoldFired) onWindowsSteamMenuPress();
+                else windowsSteamPressPending = false;
             }
             return true;
         }
@@ -11944,7 +12080,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // keep the last word; after the container and shortcut env, so a value the user set is seen.
             if (windowsSteamSession && appSteamPlan == null && realSteamPlan == null) {
                 for (String note : com.winlator.star.store.WindowsSteamClient.prepareLaunch(
-                        this, container, shortcut.path, envVars)) {
+                        this, container, shortcut.path, envVars, windowsSteamGpuDrawing())) {
                     Log.i("XServerDisplayActivity", "Windows Steam: " + note);
                     if (wineDebugWriter != null) wineDebugWriter.println("Windows Steam: " + note);
                 }
@@ -13822,6 +13958,73 @@ public class XServerDisplayActivity extends AppCompatActivity {
     }
 
 
+
+    /**
+     * "Run a program": the in-game browser popup (RunProgramDialog) over the device's storage, then the container's C:
+     * drive and the game's folder. The game keeps running. With [fillNewTask] the picked file's path goes into the New
+     * Task box instead of starting.
+     */
+    private void openRunProgramPicker(boolean fillNewTask) {
+        if (container == null) return;
+        XServerDialogState ds = XServerDialogState.INSTANCE;
+        ds.runBrowserDriveC = new File(container.getRootDir(), ".wine/drive_c").getAbsolutePath();
+        String gameDir = null;
+        try {
+            if (shortcut != null && shortcut.path != null) {
+                File exe = com.winlator.star.core.WinePath.INSTANCE.resolveAndroidPath(container, shortcut.path);
+                if (exe != null && exe.getParentFile() != null) gameDir = exe.getParentFile().getAbsolutePath();
+            }
+        } catch (Exception e) {
+            Log.w("XServerDisplayActivity", "Run a program: game folder", e);
+        }
+        ds.runBrowserGameDir = gameDir;
+        ds.onRunBrowserPick = path -> runPickedProgram(path, fillNewTask);
+        ds.show(XServerDialogState.ActiveDialog.RUN_PROGRAM);
+    }
+
+    /**
+     * A program picked for "Run a program", by its Android path: its Windows path in this session (a drive the container
+     * has, or a new letter for its storage, linked into the running prefix at once), then started from its own folder,
+     * or with [fillNewTask] put into the New Task box instead.
+     */
+    private void runPickedProgram(String path, boolean fillNewTask) {
+        final Container c = container;
+        if (c == null) return;
+        new Thread(() -> {
+            String win;
+            try {
+                win = com.winlator.star.core.WinePath.INSTANCE.resolveWindowsPath(c, path);
+                linkMissingDrives(c);
+            } catch (Exception e) {
+                Log.w("XServerDisplayActivity", "Run a program: no Windows path for " + path, e);
+                runOnUiThread(() -> Toast.makeText(this, "Can't reach " + new File(path).getName() + " from this container", Toast.LENGTH_LONG).show());
+                return;
+            }
+            final String windowsPath = win;
+            Log.i("XServerDisplayActivity", "Run a program: " + path + " -> " + windowsPath + (fillNewTask ? " (into New Task)" : ""));
+            if (fillNewTask) {
+                runOnUiThread(() -> {
+                    XServerDialogState.INSTANCE.newTaskPrefill = "\"" + windowsPath + "\"";
+                    XServerDialogState.INSTANCE.show(XServerDialogState.ActiveDialog.NEW_TASK);
+                });
+                return;
+            }
+            boolean sent = winHandler != null && winHandler.execInFolder(windowsPath, "");
+            runOnUiThread(() -> Toast.makeText(this,
+                    (sent ? "Starting " : "Couldn't start ") + new File(path).getName(), Toast.LENGTH_SHORT).show());
+        }, "RunProgram").start();
+    }
+
+    /** Links every drive of [c] that has no dosdevices entry yet, so a letter added during the session works at once. */
+    private static void linkMissingDrives(Container c) {
+        File dosdevices = new File(c.getRootDir(), ".wine/dosdevices");
+        for (String[] drive : c.drivesIterator()) {
+            File link = new File(dosdevices, drive[0].toLowerCase(java.util.Locale.ENGLISH) + ":");
+            if (link.exists() || FileUtils.isSymlink(link)) continue;
+            FileUtils.symlink(new File(drive[1]).getAbsolutePath(), link.getPath());
+            Log.i("XServerDisplayActivity", "Run a program: linked drive " + drive[0] + ": -> " + drive[1]);
+        }
+    }
 
     private final ActivityResultLauncher<String> inGameIconPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -15914,6 +16117,9 @@ return true;
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");
+            // Windows Steam with GPU drawing: Steam's -cef-disable-gpu is left out (see windowsSteamGpuDrawing).
+            if (windowsSteamSession && windowsSteamGpuDrawing())
+                execArgs = com.winlator.star.store.WindowsSteamClient.withoutCefDisableGpu(execArgs);
             execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
 
             if (xboxLaunch != null) {
@@ -18646,6 +18852,8 @@ return true;
         // killed the old Task Manager confirm). The submit path is unchanged: OK runs winHandler.exec.
         ds.onTmNewTask = () -> ds.show(XServerDialogState.ActiveDialog.NEW_TASK);
         ds.onTmNewTaskSubmit = command -> { if (winHandler != null) winHandler.exec(command); };
+        ds.onRunProgramPicker = () -> openRunProgramPicker(false);
+        ds.onNewTaskBrowse = () -> openRunProgramPicker(true);
 
         // Bring to Front: drive it host-side (renderer-agnostic). Look up the real X window for the
         // target Windows pid, set X-server input focus on it, and send bringToFront with the REAL

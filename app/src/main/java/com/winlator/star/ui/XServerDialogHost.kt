@@ -10,6 +10,7 @@ import com.winlator.star.ui.dialogs.ControllerTestDialog
 import com.winlator.star.ui.dialogs.DebugDialogContent
 import com.winlator.star.ui.dialogs.InputControlsDialog
 import com.winlator.star.ui.dialogs.NewTaskDialog
+import com.winlator.star.ui.dialogs.RunProgramDialog
 import com.winlator.star.ui.dialogs.ScreenEffectsDialog
 import com.winlator.star.ui.dialogs.VibrationDialog
 import com.winlator.star.ui.overlays.AchievementPillStackOverlay
@@ -48,6 +49,7 @@ fun XServerDialogHost() {
         XServerDialogState.ActiveDialog.NEW_TASK       -> NewTaskDialog(state)
         XServerDialogState.ActiveDialog.CAST           -> CastDialog(state)
         XServerDialogState.ActiveDialog.CONTROLLER_TEST -> ControllerTestDialog(state)
+        XServerDialogState.ActiveDialog.RUN_PROGRAM    -> RunProgramDialog(state)
         XServerDialogState.ActiveDialog.NONE           -> Unit
     }
 

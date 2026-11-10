@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Begrenzt, wie viele Bilder pro Sekunde das Spiel zeichnet. Spart Akku und gleicht Ruckler aus.</string>
     <string name="lab_36ef1cc0">Folgt dem Container</string>
     <string name="lab_37232683">Panels über dem Artwork</string>
+    <string name="lab_3760451e">In Big Picture starten</string>
     <string name="lab_3776c976">Natives Rendering</string>
     <string name="lab_377702f6">Touch</string>
     <string name="lab_37ad98ec">Die Auswahl der CPU-Kerne gilt, bis das Programm neu startet.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Die unter Grafiktreiber aufgeführten Wrapper herunterladen, importieren oder löschen.</string>
     <string name="lab_71080fcf">Dieses Spiel braucht</string>
     <string name="lab_715f3f8e">Mit welchem Backend Media Foundation Zwischensequenzen abspielt. FFmpeg erfordert einen damit gebauten arm64ec-Layer (Proton 11.0-2 vc12+); anderswo fällt es auf GStreamer zurück.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU-Speicher für Spiele</string>
     <string name="lab_71d5a5d7">Turnip-Treiber herunterladen</string>
     <string name="lab_721589c1">Heute</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Jeden Frame synchronisieren</string>
     <string name="lab_be9a2a59">Doppelt Zurück öffnet Schnellzugriff</string>
     <string name="lab_be9d8c7a">Startoptionen</string>
+    <string name="lab_be9df5b0">Öffnet Steam im Big-Picture-Modus.</string>
     <string name="lab_bec1ccfe"> Das gilt ab dem nächsten Spielstart.</string>
     <string name="lab_bed0286f">Dieses Repository ausblenden</string>
     <string name="lab_bef10a2e">In anderen Container verschieben</string>

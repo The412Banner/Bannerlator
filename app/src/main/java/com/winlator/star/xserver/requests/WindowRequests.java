@@ -111,7 +111,9 @@ public abstract class WindowRequests {
     }
 
     public static void destroyWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) {
-        client.xServer.windowManager.destroyWindow(inputStream.readInt());
+        int windowId = inputStream.readInt();
+        if (client.xServer.keepOverlayCopies) client.xServer.overlayCopies.forget(windowId);
+        client.xServer.windowManager.destroyWindow(windowId);
     }
 
     public static void destroySubWindows(XClient client, XInputStream inputStream, XOutputStream outputStream) {

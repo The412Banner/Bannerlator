@@ -8,7 +8,7 @@ object XServerDialogState {
 
     enum class ActiveDialog {
         NONE, VIBRATION, DEBUG, INPUT_CONTROLS, SCREEN_EFFECTS, ACTIVE_WINDOWS, NEW_TASK, CAST,
-        CONTROLLER_TEST
+        CONTROLLER_TEST, RUN_PROGRAM
     }
 
     // -------------------------------------------------------------------------
@@ -975,6 +975,17 @@ object XServerDialogState {
     // Runs the command entered in the New Task dialog (same path the native prompt's OK ran:
     // winHandler.exec(command)).
     @JvmField var onTmNewTaskSubmit: TmStringCallback? = null
+    // Opens the file picker for "Run a program": the picked program starts in this session from its own folder.
+    @JvmField var onRunProgramPicker: Runnable? = null
+    // The New Task box's Browse…: the picked program's Windows path comes back into the box (for start options).
+    @JvmField var onNewTaskBrowse: Runnable? = null
+    // Text the New Task box opens with once (set by Browse…), instead of taskmgr.exe.
+    @JvmField var newTaskPrefill: String? = null
+    // The "Run a program" popup (RUN_PROGRAM): the container's C: drive and the game's folder (Android paths, null when
+    // unknown) offered after the device's storage, and what picking a file does.
+    @JvmField var runBrowserDriveC: String? = null
+    @JvmField var runBrowserGameDir: String? = null
+    @JvmField var onRunBrowserPick: TmStringCallback? = null
 
     fun interface TmStringCallback { fun invoke(name: String) }
     fun interface TmFrontCallback { fun invoke(name: String, pid: Int) }

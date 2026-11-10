@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Mengehadkan bilangan bingkai sesaat yang dilukis permainan. Menjimatkan bateri dan mengurangkan sentakan.</string>
     <string name="lab_36ef1cc0">Ikut container</string>
     <string name="lab_37232683">Panel di atas gambar</string>
+    <string name="lab_3760451e">Mula dalam Big Picture</string>
     <string name="lab_3776c976">Pemaparan asli</string>
     <string name="lab_377702f6">Sentuhan</string>
     <string name="lab_37ad98ec">Pilihan teras CPU kekal sehingga program dimulakan semula.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Muat turun, import atau padam wrapper yang disenaraikan di bawah Pemacu grafik.</string>
     <string name="lab_71080fcf">Permainan ini memerlukan</string>
     <string name="lab_715f3f8e">Backend yang digunakan Media Foundation untuk memainkan cutscene. FFmpeg memerlukan lapisan arm64ec yang dibina dengannya (Proton 11.0-2 vc12+); di tempat lain ia beralih ke GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Memori GPU yang dilihat permainan</string>
     <string name="lab_71d5a5d7">Muat turun pemacu Turnip</string>
     <string name="lab_721589c1">Hari ini</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Segerak setiap bingkai</string>
     <string name="lab_be9a2a59">Back dua kali membuka Quick Access</string>
     <string name="lab_be9d8c7a">Pilihan pelancaran</string>
+    <string name="lab_be9df5b0">Membuka Steam dalam mod Big Picture.</string>
     <string name="lab_bec1ccfe"> Ia berkuat kuasa apabila permainan seterusnya dimulakan.</string>
     <string name="lab_bed0286f">Sembunyikan repositori ini</string>
     <string name="lab_bef10a2e">Pindah ke container lain</string>

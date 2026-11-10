@@ -437,6 +437,7 @@
     <string name="lab_36936d70">게임이 초당 그리는 프레임 수를 제한합니다. 배터리를 아끼고 끊김을 고르게 합니다.</string>
     <string name="lab_36ef1cc0">컨테이너를 따름</string>
     <string name="lab_37232683">아트 위 패널</string>
+    <string name="lab_3760451e">Big Picture로 시작</string>
     <string name="lab_3776c976">네이티브 렌더링</string>
     <string name="lab_377702f6">터치</string>
     <string name="lab_37ad98ec">CPU 코어 선택은 프로그램을 다시 시작할 때까지 유지됩니다.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">그래픽 드라이버 아래에 표시되는 래퍼 다운로드, 가져오기, 삭제.</string>
     <string name="lab_71080fcf">이 게임에 필요한 항목</string>
     <string name="lab_715f3f8e">Media Foundation이 컷신 재생에 쓰는 백엔드. FFmpeg는 FFmpeg를 포함해 빌드된 arm64ec 레이어(Proton 11.0-2 vc12+)가 필요하며, 그 외에는 GStreamer로 대체됩니다.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">게임에 보이는 GPU 메모리</string>
     <string name="lab_71d5a5d7">Turnip 드라이버 다운로드</string>
     <string name="lab_721589c1">오늘</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">매 프레임 동기화</string>
     <string name="lab_be9a2a59">뒤로 두 번 눌러 빠른 액세스 열기</string>
     <string name="lab_be9d8c7a">실행 옵션</string>
+    <string name="lab_be9df5b0">Steam을 Big Picture 모드로 엽니다.</string>
     <string name="lab_bec1ccfe"> 다음에 게임을 시작할 때 적용됩니다.</string>
     <string name="lab_bed0286f">이 리포지토리 숨기기</string>
     <string name="lab_bef10a2e">다른 컨테이너로 이동</string>

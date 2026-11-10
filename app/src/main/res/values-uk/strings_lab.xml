@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Обмежує кількість кадрів за секунду, які малює гра. Заощаджує батарею й згладжує ривки.</string>
     <string name="lab_36ef1cc0">Як у контейнері</string>
     <string name="lab_37232683">Панелі поверх арту</string>
+    <string name="lab_3760451e">Запускати в Big Picture</string>
     <string name="lab_3776c976">Нативний рендеринг</string>
     <string name="lab_377702f6">Сенсорне введення</string>
     <string name="lab_37ad98ec">Вибір ядер CPU діє до перезапуску програми.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Завантаження, імпорт і видалення обгорток зі списку «Графічний драйвер».</string>
     <string name="lab_71080fcf">Цій грі потрібно</string>
     <string name="lab_715f3f8e">Через який бекенд Media Foundation відтворює відеоролики. Для FFmpeg потрібен шар arm64ec, зібраний із ним (Proton 11.0-2 vc12+); в інших випадках використовується GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Відеопам’ять, яку бачать ігри</string>
     <string name="lab_71d5a5d7">Завантажити драйвер Turnip</string>
     <string name="lab_721589c1">Сьогодні</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Синхронізація кожного кадру</string>
     <string name="lab_be9a2a59">Подвійне «Назад» відкриває швидкий доступ</string>
     <string name="lab_be9d8c7a">Параметри запуску</string>
+    <string name="lab_be9df5b0">Відкриває Steam у режимі Big Picture.</string>
     <string name="lab_bec1ccfe"> Застосується під час наступного запуску гри.</string>
     <string name="lab_bed0286f">Приховати цей репозиторій</string>
     <string name="lab_bef10a2e">Перемістити в інший контейнер</string>

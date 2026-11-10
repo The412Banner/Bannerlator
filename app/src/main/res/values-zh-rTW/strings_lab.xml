@@ -437,6 +437,7 @@
     <string name="lab_36936d70">限制遊戲每秒繪製的幀數。可省電並減少卡頓。</string>
     <string name="lab_36ef1cc0">跟隨容器</string>
     <string name="lab_37232683">圖像上的面板</string>
+    <string name="lab_3760451e">以大螢幕模式啟動</string>
     <string name="lab_3776c976">原生渲染</string>
     <string name="lab_377702f6">觸控</string>
     <string name="lab_37ad98ec">CPU 核心選擇會維持到程式重新啟動為止。</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">下載、匯入或刪除「圖形驅動程式」下列出的封裝層。</string>
     <string name="lab_71080fcf">此遊戲需要</string>
     <string name="lab_715f3f8e">Media Foundation 播放過場動畫所用的後端。FFmpeg 需要內含它的 arm64ec 層（Proton 11.0-2 vc12+）；其他情況下會改用 GStreamer。</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">遊戲偵測到的 GPU 記憶體</string>
     <string name="lab_71d5a5d7">下載 Turnip 驅動程式</string>
     <string name="lab_721589c1">今天</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">每個畫格同步</string>
     <string name="lab_be9a2a59">按兩下返回開啟快速存取</string>
     <string name="lab_be9d8c7a">啟動選項</string>
+    <string name="lab_be9df5b0">以大螢幕模式開啟 Steam。</string>
     <string name="lab_bec1ccfe">下次啟動遊戲時生效。</string>
     <string name="lab_bed0286f">隱藏此存放庫</string>
     <string name="lab_bef10a2e">移至其他容器</string>

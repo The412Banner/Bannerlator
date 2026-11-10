@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Ограничава колко кадъра в секунда рисува играта. Пести батерия и изглажда накъсването.</string>
     <string name="lab_36ef1cc0">Като в контейнера</string>
     <string name="lab_37232683">Панели върху арта</string>
+    <string name="lab_3760451e">Стартиране в Big Picture</string>
     <string name="lab_3776c976">Нативно рендериране</string>
     <string name="lab_377702f6">Докосване</string>
     <string name="lab_37ad98ec">Изборът на ядра на CPU важи до рестартиране на програмата.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Изтегляне, импортиране или изтриване на wrapper-ите, изброени под Графичен драйвер.</string>
     <string name="lab_71080fcf">Тази игра изисква</string>
     <string name="lab_715f3f8e">С кой бекенд Media Foundation възпроизвежда видеоклиповете. FFmpeg изисква слой arm64ec, компилиран с него (Proton 11.0-2 vc12+); иначе се връща към GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU памет, която игрите виждат</string>
     <string name="lab_71d5a5d7">Изтегли драйвер Turnip</string>
     <string name="lab_721589c1">Днес</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Синхронизирай всеки кадър</string>
     <string name="lab_be9a2a59">Двойно Назад отваря Бърз достъп</string>
     <string name="lab_be9d8c7a">Настройки за стартиране</string>
+    <string name="lab_be9df5b0">Отваря Steam в режим Big Picture.</string>
     <string name="lab_bec1ccfe"> Прилага се при следващото стартиране на игра.</string>
     <string name="lab_bed0286f">Скрий това хранилище</string>
     <string name="lab_bef10a2e">Премести в друг контейнер</string>

@@ -437,6 +437,7 @@
     <string name="lab_36936d70">限制游戏每秒绘制的帧数。可省电并减少卡顿。</string>
     <string name="lab_36ef1cc0">跟随容器</string>
     <string name="lab_37232683">图像上的面板</string>
+    <string name="lab_3760451e">以大屏幕模式启动</string>
     <string name="lab_3776c976">原生渲染</string>
     <string name="lab_377702f6">触摸</string>
     <string name="lab_37ad98ec">CPU 核心选择会保持到程序重新启动为止。</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">下载、导入或删除“图形驱动”下列出的封装层。</string>
     <string name="lab_71080fcf">此游戏需要</string>
     <string name="lab_715f3f8e">Media Foundation 播放过场动画所用的后端。FFmpeg 需要包含它的 arm64ec 层（Proton 11.0-2 vc12+）；其他情况下会回退到 GStreamer。</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">游戏识别的 GPU 显存</string>
     <string name="lab_71d5a5d7">下载 Turnip 驱动</string>
     <string name="lab_721589c1">今天</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">每帧同步</string>
     <string name="lab_be9a2a59">按两次返回打开快速访问</string>
     <string name="lab_be9d8c7a">启动选项</string>
+    <string name="lab_be9df5b0">以大屏幕模式打开 Steam。</string>
     <string name="lab_bec1ccfe">下次启动游戏时生效。</string>
     <string name="lab_bed0286f">隐藏此仓库</string>
     <string name="lab_bef10a2e">移到其他容器</string>

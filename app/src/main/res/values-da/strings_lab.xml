@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Begrænser, hvor mange billeder pr. sekund spillet tegner. Sparer batteri og udjævner hakken.</string>
     <string name="lab_36ef1cc0">Følger containeren</string>
     <string name="lab_37232683">Paneler over billedet</string>
+    <string name="lab_3760451e">Start i Big Picture</string>
     <string name="lab_3776c976">Indbygget rendering</string>
     <string name="lab_377702f6">Berøring</string>
     <string name="lab_37ad98ec">Valg af CPU-kerner gælder, indtil programmet genstartes.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Download, importér eller slet de wrappere, der vises under Grafikdriver.</string>
     <string name="lab_71080fcf">Dette spil kræver</string>
     <string name="lab_715f3f8e">Hvilken backend Media Foundation afspiller mellemsekvenser med. FFmpeg kræver et arm64ec-lag, der er bygget med det (Proton 11.0-2 vc12+); ellers falder den tilbage til GStreamer.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">GPU-hukommelse, som spil ser</string>
     <string name="lab_71d5a5d7">Download en Turnip-driver</string>
     <string name="lab_721589c1">I dag</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Synkroniser hvert billede</string>
     <string name="lab_be9a2a59">Dobbelt Tilbage åbner Hurtig adgang</string>
     <string name="lab_be9d8c7a">Startindstillinger</string>
+    <string name="lab_be9df5b0">Åbner Steam i Big Picture-tilstand.</string>
     <string name="lab_bec1ccfe"> Det træder i kraft, næste gang et spil starter.</string>
     <string name="lab_bed0286f">Skjul dette repository</string>
     <string name="lab_bef10a2e">Flyt til en anden container</string>

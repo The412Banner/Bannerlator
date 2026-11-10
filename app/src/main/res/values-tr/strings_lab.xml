@@ -437,6 +437,7 @@
     <string name="lab_36936d70">Oyunun saniyede çizdiği kare sayısını sınırlar. Pil tasarrufu sağlar ve takılmaları dengeler.</string>
     <string name="lab_36ef1cc0">Konteyneri izler</string>
     <string name="lab_37232683">Görsel üzerindeki paneller</string>
+    <string name="lab_3760451e">Big Picture\'da başlat</string>
     <string name="lab_3776c976">Yerel işleme</string>
     <string name="lab_377702f6">Dokunma</string>
     <string name="lab_37ad98ec">CPU çekirdeği seçimleri program yeniden başlayana kadar geçerlidir.</string>
@@ -863,6 +864,7 @@
     <string name="lab_70e0406c">Grafik sürücüsü altında listelenen sarmalayıcıları indirin, içe aktarın veya silin.</string>
     <string name="lab_71080fcf">Bu oyunun ihtiyaçları</string>
     <string name="lab_715f3f8e">Media Foundation\'ın ara sahneleri hangi arka uçla oynattığı. FFmpeg, onunla derlenmiş bir arm64ec katmanı gerektirir (Proton 11.0-2 vc12+); diğerlerinde GStreamer\'a geri döner.</string>
+    <string name="lab_71aced62">Windows Steam</string>
     <string name="lab_71bf97b4">Oyunların gördüğü GPU belleği</string>
     <string name="lab_71d5a5d7">Turnip sürücüsü indir</string>
     <string name="lab_721589c1">Bugün</string>
@@ -1415,6 +1417,7 @@
     <string name="lab_be998b7c">Her karede eşitle</string>
     <string name="lab_be9a2a59">Çift Geri, Hızlı Erişim\'i açar</string>
     <string name="lab_be9d8c7a">Başlatma seçenekleri</string>
+    <string name="lab_be9df5b0">Steam\'i Big Picture modunda açar.</string>
     <string name="lab_bec1ccfe"> Bir sonraki oyun başlatmada uygulanır.</string>
     <string name="lab_bed0286f">Bu depoyu gizle</string>
     <string name="lab_bef10a2e">Başka bir konteynere taşı</string>

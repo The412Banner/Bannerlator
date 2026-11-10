@@ -11683,6 +11683,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
             guestProgramLauncherComponent.setWaylandMode(waylandMode);
+            guestProgramLauncherComponent.setSessionLog(this::logSessionLine);
 
             // Real-Steam (VAC) launch (feature M3) — STAGE + build the plan BEFORE getWineStartCommand()
             // below reads realSteamPlan to rewrite the launch target. ONLY for a genuine-Steam shortcut

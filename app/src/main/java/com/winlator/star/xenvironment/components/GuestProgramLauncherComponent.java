@@ -97,6 +97,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private boolean waylandMode = false;
     public void setWaylandMode(boolean v) { this.waylandMode = v; }
 
+    // One line into this game's session log (XServerDisplayActivity.logSessionLine), set by the
+    // activity before start; null = logcat only.
+    private java.util.function.BiConsumer<String, String> sessionLog;
+    public void setSessionLog(java.util.function.BiConsumer<String, String> sessionLog) { this.sessionLog = sessionLog; }
+
+    // What applyX64Translator chose this launch, for the session-log line.
+    private String appliedBox64ECVersion;
+    private boolean box64ecUnavailable;
+
     private void extractBox64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
@@ -174,8 +183,30 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         reconcileFexUnixlib(fexcoreVersion);
 
         if (applyX64Translator(system32dir)) containerDataChanged = true;
+        logTranslators(wowbox64Version, fexcoreVersion);
 
         if (containerDataChanged) container.saveData();
+    }
+
+    /** One session-log line naming the x86 translators Wine loads this launch (arm64ec layers). */
+    private void logTranslators(String wowbox64Version, String fexcoreVersion) {
+        String emulator = container.getEmulator();
+        if (shortcut != null) emulator = shortcut.getExtra("emulator", container.getEmulator());
+        String x86 = "fexcore".equalsIgnoreCase(emulator)
+                ? "FEXCore (" + fexcoreVersion + ", libwow64fex.dll)"
+                : "WOWBox64 (" + wowbox64Version + ", wowbox64.dll)";
+        String x64 = appliedBox64ECVersion != null
+                ? "Box64EC (" + appliedBox64ECVersion + ", box64ec.dll)"
+                : "FEXCore (" + fexcoreVersion + ", libarm64ecfex.dll)"
+                        + (box64ecUnavailable ? ", Box64EC was picked but box64ec.dll is not available" : "");
+        String line = "32-bit code: " + x86 + " · 64-bit code: " + x64;
+        if (sessionLog == null) {
+            Log.i("GuestProgramLauncherComponent", "x86: " + line);
+            return;
+        }
+        try { sessionLog.accept("x86", line); } catch (Throwable t) {
+            Log.w("GuestProgramLauncherComponent", "x86 translator line not logged", t);
+        }
     }
 
     /**
@@ -195,22 +226,34 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         boolean box64ec = Container.EMULATOR64_BOX64EC.equalsIgnoreCase(emulator64);
         boolean changed = false;
+        String version = null;
+        appliedBox64ECVersion = null;
+        box64ecUnavailable = false;
 
-        if (box64ec && box64ecVersion != null && !box64ecVersion.isEmpty()
-                && !box64ecVersion.equals(container.getExtra("box64ecVersion"))) {
-            ContentProfile profile = contentsManager.getProfileByEntryName("box64ec-" + box64ecVersion);
+        if (box64ec) {
+            ContentProfile profile = resolveBox64ECProfile(box64ecVersion);
             if (profile != null) {
-                contentsManager.applyContent(profile);
-                container.putExtra("box64ecVersion", box64ecVersion);
-                changed = true;
+                String entryName = ContentsManager.getEntryName(profile);
+                version = entryName.substring(entryName.indexOf('-') + 1);
+                if (!version.equals(container.getExtra("box64ecVersion"))
+                        || !new File(system32dir, "box64ec.dll").exists()) {
+                    contentsManager.applyContent(profile);
+                    container.putExtra("box64ecVersion", version);
+                    changed = true;
+                }
             } else {
-                Log.w("GuestProgramLauncherComponent", "Box64EC " + box64ecVersion + " is not installed");
+                // A box64ec.dll left in system32 by a removed component is not used either.
+                Log.w("GuestProgramLauncherComponent", "Box64EC selected but no Box64EC component is installed, using FEXCore");
+                box64ec = false;
+                box64ecUnavailable = true;
             }
         }
         if (box64ec && !new File(system32dir, "box64ec.dll").exists()) {
             Log.w("GuestProgramLauncherComponent", "Box64EC selected but system32/box64ec.dll is missing, using FEXCore");
             box64ec = false;
+            box64ecUnavailable = true;
         }
+        if (box64ec) appliedBox64ECVersion = version;
 
         String wanted = box64ec ? "box64ec.dll" : "libarm64ecfex.dll";
         File systemRegFile = new File(system32dir.getParentFile().getParentFile().getParentFile(), "system.reg");
@@ -224,6 +267,26 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             }
         }
         return changed;
+    }
+
+    /**
+     * The Box64EC component to use: the saved version when it is installed, otherwise the first
+     * installed one. The settings screens show that same first installed version when nothing is
+     * saved (ContainerDetailViewModel), so this makes the shown version the one that runs.
+     */
+    private ContentProfile resolveBox64ECProfile(String version) {
+        if (version != null && !version.isEmpty()) {
+            ContentProfile profile = contentsManager.getProfileByEntryName("box64ec-" + version);
+            if (profile != null) return profile;
+            Log.w("GuestProgramLauncherComponent", "Box64EC " + version + " is not installed, using the first installed one");
+        }
+        java.util.List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64EC);
+        if (profiles == null) return null;
+        for (ContentProfile profile : profiles) {
+            // The list can also hold catalog entries that are not downloaded.
+            if (ContentsManager.getInstallDir(environment.getContext(), profile).exists()) return profile;
+        }
+        return null;
     }
 
     // The FEX unixlib .so names we own. The truncated variants are defensive: old testing produced

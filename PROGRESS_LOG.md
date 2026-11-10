@@ -5,7 +5,7 @@
 - **Install (user: "install anyway nothing is running in bannerlator"; root-8b's ok request was held by its session):** 05:44:59 EST, base.apk sha256 `d3008b6c07a90a849a801214394724601cb9702b7a09dcac918278f2fab25021` == staged `/sdcard/Download/Bannerlator-windows-steam-client-64c14f7e-pubg.apk`; app was not running; crash buffer 0; Box64EC, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact.
 - **Leftovers from the uninstall test deleted by hand (user asked):** `/storage/emulated/0/SteamLibrary` (steam.dll + libraryfolder.vdf + empty steamapps/common) and `xuser-1/app_data/cover_arts/Windows Steam Client x64.png`, both re-checked first.
 - **Merge:** backup `refs/backup/20261110/main-before-windows-steam-client` = 85b2d83d; `--no-ff`; main had only PROGRESS_LOG commits since the branch base 985560ce and the branch does not touch the log → no conflicts; merged `app/` tree 856e7c53 == 64c14f7e's. Branch kept.
-- **Main CI:** 42801832350 (push, headSha 2ccaacf5) running.
+- **Main CI:** 42801832350 (push, headSha 2ccaacf5) GREEN 4/4 (pubg/standard/antutu/ludashi), no failed steps.
 - **Proof level:** add client + uninstall device-proven on the FIT; storage choice and the 64c14f7e leftover fix NOT device-tested; Elite still runs a7febd02.
 
 ## 2026-11-10 05:4x EST — ✅ Uninstall offer works on the Pocket FIT (dd7eadd5); 🔧 64c14f7e removes the two leftovers (CI 42800339918 running)

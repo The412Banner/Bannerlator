@@ -1,9 +1,13 @@
 # Star-Compose — Progress Log
 
-## 2026-11-10 04:08 EST — ⏳ installing feat/windows-steam-client a7febd02 on the Elite (user: "yes install it")
+## 2026-11-10 04:08 EST — 📲 INSTALLED feat/windows-steam-client a7febd02 on the Elite (user: "yes install it"); user tests next
 - **User (04:07 EST):** "yes install it".
 - **Before:** installed ce29246d (lastUpdateTime 2026-11-09 23:11:26); staged APK sha256 re-checked on the device 04:07 = `3ebae481…a97`. No other Claude session running (ListAgents).
 - **Plan:** `pm install -r` → check base.apk sha256 + crash buffer → back up `Steam x64.desktop` to `/sdcard/Download/bl-backup-20261110/` → storeSource custom→windows_steam (in place, owner u0_a193 kept) → user tests: (1) start Steam x64 → Bannerlator games listed as non-Steam games (log `Windows Steam: Non-Steam games: N listed…`, `userdata/2932373/config/shortcuts.vdf`, `config/grid/`), (2) Menu press over a game = Shift+Tab overlay, (3) "+" → Add Windows Steam client x64 in a container without it, (4) badge + pinned first.
+- **Installed 04:08:12 EST:** `pm install -r` Success; installed base.apk sha256 `3ebae481…a97` == staged; crash buffer 0 lines.
+- **Steam x64 shortcut switched:** backup `/sdcard/Download/bl-backup-20261110/Steam x64.desktop` (sha256 60dbab87… == original); only change `storeSource=custom` → `storeSource=windows_steam` (written in place, owner 10193 kept, app not running). Undo: copy the backup back with `cat >`.
+- **Baseline before the first Steam start:** `F:\Download\Steam-x64` = /storage/6136-3230/Download/Steam-x64; `userdata/2932373/config/` has cloudstorage, librarycache, licensecache, localconfig.vdf — no shortcuts.vdf, no grid/.
+- **Proof level:** CI-green + installed; NOT device-tested yet.
 - **Resume point:** if the session dies: check `dumpsys package com.tencent.ig | grep lastUpdateTime` (newer than 23:11:26 = installed) and whether the .desktop backup exists; rollback APK `Bannerlator-steam-x64-auto-ce29246d-pubg.apk`.
 
 ## 2026-11-09 23:58 EST — 📦 feat/windows-steam-client a7febd02 CI GREEN 4/4, staged; awaiting the user's yes to install

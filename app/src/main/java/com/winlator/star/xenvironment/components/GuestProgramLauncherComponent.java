@@ -97,6 +97,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private boolean waylandMode = false;
     public void setWaylandMode(boolean v) { this.waylandMode = v; }
 
+    // One line into this game's session log (XServerDisplayActivity.logSessionLine), set by the
+    // activity before start; null = logcat only.
+    private java.util.function.BiConsumer<String, String> sessionLog;
+    public void setSessionLog(java.util.function.BiConsumer<String, String> sessionLog) { this.sessionLog = sessionLog; }
+
+    // What applyX64Translator chose this launch, for the session-log line.
+    private String appliedBox64ECVersion;
+    private boolean box64ecUnavailable;
+
     private void extractBox64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
@@ -174,8 +183,30 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         reconcileFexUnixlib(fexcoreVersion);
 
         if (applyX64Translator(system32dir)) containerDataChanged = true;
+        logTranslators(wowbox64Version, fexcoreVersion);
 
         if (containerDataChanged) container.saveData();
+    }
+
+    /** One session-log line naming the x86 translators Wine loads this launch (arm64ec layers). */
+    private void logTranslators(String wowbox64Version, String fexcoreVersion) {
+        String emulator = container.getEmulator();
+        if (shortcut != null) emulator = shortcut.getExtra("emulator", container.getEmulator());
+        String x86 = "fexcore".equalsIgnoreCase(emulator)
+                ? "FEXCore (" + fexcoreVersion + ", libwow64fex.dll)"
+                : "WOWBox64 (" + wowbox64Version + ", wowbox64.dll)";
+        String x64 = appliedBox64ECVersion != null
+                ? "Box64EC (" + appliedBox64ECVersion + ", box64ec.dll)"
+                : "FEXCore (" + fexcoreVersion + ", libarm64ecfex.dll)"
+                        + (box64ecUnavailable ? ", Box64EC was picked but box64ec.dll is not available" : "");
+        String line = "32-bit code: " + x86 + " · 64-bit code: " + x64;
+        if (sessionLog == null) {
+            Log.i("GuestProgramLauncherComponent", "x86: " + line);
+            return;
+        }
+        try { sessionLog.accept("x86", line); } catch (Throwable t) {
+            Log.w("GuestProgramLauncherComponent", "x86 translator line not logged", t);
+        }
     }
 
     /**
@@ -195,12 +226,15 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         boolean box64ec = Container.EMULATOR64_BOX64EC.equalsIgnoreCase(emulator64);
         boolean changed = false;
+        String version = null;
+        appliedBox64ECVersion = null;
+        box64ecUnavailable = false;
 
         if (box64ec) {
             ContentProfile profile = resolveBox64ECProfile(box64ecVersion);
             if (profile != null) {
                 String entryName = ContentsManager.getEntryName(profile);
-                String version = entryName.substring(entryName.indexOf('-') + 1);
+                version = entryName.substring(entryName.indexOf('-') + 1);
                 if (!version.equals(container.getExtra("box64ecVersion"))
                         || !new File(system32dir, "box64ec.dll").exists()) {
                     contentsManager.applyContent(profile);
@@ -208,13 +242,18 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     changed = true;
                 }
             } else {
-                Log.w("GuestProgramLauncherComponent", "Box64EC selected but no Box64EC component is installed");
+                // A box64ec.dll left in system32 by a removed component is not used either.
+                Log.w("GuestProgramLauncherComponent", "Box64EC selected but no Box64EC component is installed, using FEXCore");
+                box64ec = false;
+                box64ecUnavailable = true;
             }
         }
         if (box64ec && !new File(system32dir, "box64ec.dll").exists()) {
             Log.w("GuestProgramLauncherComponent", "Box64EC selected but system32/box64ec.dll is missing, using FEXCore");
             box64ec = false;
+            box64ecUnavailable = true;
         }
+        if (box64ec) appliedBox64ECVersion = version;
 
         String wanted = box64ec ? "box64ec.dll" : "libarm64ecfex.dll";
         File systemRegFile = new File(system32dir.getParentFile().getParentFile().getParentFile(), "system.reg");

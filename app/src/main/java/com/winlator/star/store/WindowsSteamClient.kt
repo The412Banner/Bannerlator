@@ -164,8 +164,10 @@ object WindowsSteamClient {
             Log.i(TAG, "$name: $size bytes, sha256 $got (= Valve's manifest)")
 
             if (!dir.isDirectory && !dir.mkdirs()) return "Could not create ${dir.absolutePath}"
+            val start = firstEntryOffset(zip)
+            if (start < 0) return "The download is not a zip file"
             val root = dir.canonicalPath + File.separator
-            ZipInputStream(zip.inputStream()).use { zin ->
+            ZipInputStream(zip.inputStream().also { it.channel.position(start) }).use { zin ->
                 while (true) {
                     val entry = zin.nextEntry ?: break
                     val target = File(dir, entry.name)
@@ -185,6 +187,28 @@ object WindowsSteamClient {
         } finally {
             zip.delete()
         }
+    }
+
+    /**
+     * Offset of the zip's first entry header, or -1. Valve's client packages start with 20 bytes of their own before
+     * it, and ZipInputStream reads no entry at all unless the stream starts at a header.
+     */
+    private fun firstEntryOffset(zip: File): Long {
+        val head = ByteArray(64 * 1024)
+        var n = 0
+        zip.inputStream().use { input ->
+            while (n < head.size) {
+                val r = input.read(head, n, head.size - n)
+                if (r <= 0) break
+                n += r
+            }
+        }
+        for (i in 0..n - 4) {
+            if (head[i] == 0x50.toByte() && head[i + 1] == 0x4B.toByte() && head[i + 2] == 0x03.toByte() && head[i + 3] == 0x04.toByte()) {
+                return i.toLong()
+            }
+        }
+        return -1
     }
 
     private fun writeShortcut(container: Container, exe: File): File {

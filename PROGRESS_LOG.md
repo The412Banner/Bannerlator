@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 07:20 EST — ⏳ Elite: installing main 2e7456c4 pubg (user: "yes install main on the elite")
+- **User (07:1x EST):** "yes install main on the elite" (explicit yes for this build).
+- **Build:** CI build-artifacts 42809389053 (workflow_dispatch, headSha 2e7456c4, pubg/antutu/standard/ludashi success); artifact Bannerlator-main-2e7456c4-pubg id 13761533162 (591,865,282 B zip), downloading in 8 range parts (scratchpad main-2e74-pubg/, script rangedl.sh).
+- **Plan:** unzip → check manifest com.tencent.ig + cert → stage `/sdcard/Download/Bannerlator-main-2e7456c4-pubg.apk` (sha256 host == device) → ListAgents → `pm install -r` over a7febd02 (3ebae481…) → installed base.apk == staged, crash buffer → check Steam x64.desktop still storeSource=windows_steam.
+- **Undo:** `/sdcard/Download/Bannerlator-windows-steam-client-a7febd02-pubg.apk`.
+- **Resume point:** if cut mid-download, rerun rangedl.sh (it restarts parts); if cut after install, compare `dumpsys package com.tencent.ig | grep lastUpdateTime` (later than 04:08:12 = installed) and the base.apk hash.
+
 ## 2026-11-10 07:15 EST — ✅ Elite (a7febd02): non-Steam games list written by the 04:09 Steam x64 start (file check, read-only)
 - **Found (Elite session root-af, checking after the FIT catch-up):** the user started Steam x64 on the Elite at ~04:09 EST after the 04:08 install (CS:S d3d9 log 04:11, controller.txt 04:26). `F:\Download\Steam-x64\userdata\2932373\config\shortcuts.vdf` (2,823 B, 04:09) holds **8 entries, all tagged Bannerlator**: A Game About Digging A Hole™, aio, DiRT Showdown, DOOM + DOOM II, MIO Memories in Orbit, Resident Evil 2, Samorost 3, Sonic Mania (Exe paths on Z:/E:/F:); `config/grid/` has 8 covers (04:09).
 - **Left out as designed:** Brawlhalla + FlatOut (Steam's own `start.exe steam://rungameid/…` shortcuts), Steam / Steam Latest / Steam x64 (steam.exe).

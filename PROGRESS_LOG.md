@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:28 EST — 📲 INSTALLED feat/windows-steam-client dd7eadd5 (storage choice + uninstall offer) on the Pocket FIT (user: "install it when it's done")
+- **Peer:** root-8b (holding the FIT for Box64EC/AIO) gave its ok before the install; root-66/root-12 told before and after.
+- **CI 42797900190** (headSha dd7eadd5): 4/4 success. Artifact 13753959164 checked = run 42797900190 / dd7eadd5.
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-dd7eadd5-pubg.apk` sha256 `c8e8495df729e96bc5f73a3303ffda4db271f75d3f898b1849bbd268235d71a7` (host == device), "Also uninstall Steam?" in classes5.dex.
+- **Installed 05:28:13 EST:** base.apk == staged; crash buffer 0; only the app process was running; Box64EC component, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact.
+- **Proof level:** CI-green + installed; storage choice and uninstall offer NOT device-tested.
+- **Resume point:** user tests (1) Add Windows Steam client x64 in container 2 → storage choice; (2) remove container 1's "Windows Steam Client x64" → "Also uninstall Steam?" → Uninstall → check C:\Program Files\Steam, AppData\Local\Steam, E:/F:\SteamLibrary. Rollback APKs in Download: 74778b25, 5bad2962.
+
 ## 2026-11-10 05:3x EST — 🔧 feat/windows-steam-client dd7eadd5: offer to uninstall Steam when its shortcut is removed (CI 42797900190 running)
 - **User:** "when removing the shortcut, can we offer to totally uninstall and remove the full client so it doesn't linger" → plan given → "yes build the uninstall on the same branch".
 - **Built:** `ShortcutsViewModel.remove` (every layout and bulk remove go through it) asks `WindowsSteamClient.uninstallOffer` before the .desktop is deleted: client folder found through the shortcut + container drives; no offer when any other shortcut in any container points into it. The offer goes to a process-wide StateFlow; `GameActionsHost` (Deck shell + Classic) shows "Also uninstall Steam?" with where, size, games installed in Steam's folder and kept library count; Uninstall / Keep Steam.

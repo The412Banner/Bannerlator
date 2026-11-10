@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ feat/lab-parity 898774db INSTALLED on the Pocket FIT (pubg) 21:20:59 EST (user: "yes install it"; NOT device-checked yet)
+- CI 42740697939 GREEN ×4. Staged /sdcard/Download/Bannerlator-lab-parity-898774db-pubg.apk sha256 713f2ed1… (host == device), cert a40da80a. Before: 90d8089b; no game running. `pm install -r` Success; installed == staged; crash buffer empty; peers told + "done".
+- **User checks:** account picture (portrait side menu header right end next to the Steam pill; landscape top-line right corner), tap → My account. Merge on go.
+
 ## 2026-11-09 — 🔧 feat/lab-parity 898774db: account picture in the Lab side menu header + landscape top line (CI 42740697939 running)
 - User (screenshots 210404 landscape Home, 210413 portrait drawer with the new "Online" pill): show the Community configs profile picture when signed in, else the Steam profile picture — portrait at the top of the side menu next to the Steam pill, landscape in the top line's right corner.
 - LabAccountButton (LabFrame.kt): url = AccountUiBus.account.displayAvatarUrl → SteamFriendsStore.self.avatarUrl → SteamAccountStore saved avatar of the active account → AccountAvatar's sign-in figure; tap → AccountUiBus.requestMyAccount() (DeckGameActionsHost opens My account; the drawer closes first). Portrait: right end of the drawer header row; landscape: after the clock.

@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">Ποιο χειριστήριο βλέπει το παιχνίδι. Αλλάζει και μέσα στο παιχνίδι (το χειριστήριο επανασυνδέεται).</string>
     <string name="lab_0312e1a5">Πληκτρολογήστε ένα όνομα πριν από το =.</string>
     <string name="lab_0355373d">Όλα</string>
+    <string name="lab_03705e75">Αφαιρέθηκαν %1$s από %2$s. Τα υπόλοιπα δεν ήταν δυνατό να διαγραφούν</string>
     <string name="lab_0397233a">Παρακάμπτει τη GMEM.</string>
     <string name="lab_039bee69">Χειριστήρια</string>
     <string name="lab_03af654a">Χειριστήριο</string>
     <string name="lab_03af83cf">Ενσωματωμένο (Wine)</string>
     <string name="lab_03be5b2b">Τερματισμός του %1$s;</string>
     <string name="lab_03dc750a">Κανένα. Περιηγηθείτε στον κατάλογο για να προσθέσετε.</string>
+    <string name="lab_03eece5a">Σύνολο</string>
     <string name="lab_03f54074">Γέμισμα οθόνης</string>
+    <string name="lab_04272d2b">Επαναφορά επιπέδου σε %1$s</string>
     <string name="lab_04314e37">Steam Controller, προεπιλογές χειριστηρίων οθόνης, και ποντίκι και πληκτρολόγιο για παιχνίδια Wine.</string>
     <string name="lab_04422c9a">Άνοιγμα</string>
     <string name="lab_044669c8">Πυρήνες που μπορεί να χρησιμοποιεί το παιχνίδι</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">Εισαγωγή προφίλ</string>
     <string name="lab_05ea4871">Ταίριασμα ρυθμού ανανέωσης με τα FPS</string>
     <string name="lab_05f88f63">Έκδοση Wine / Proton</string>
+    <string name="lab_062deaae">Δεν ήταν δυνατή η εγκατάσταση του %1$s: %2$s</string>
     <string name="lab_063c1ee9">Κρύβει τα χειριστήρια Xbox από αυτό το παιχνίδι.</string>
-    <string name="lab_06625dae">Δεν υπάρχουν πηγές λήψης.</string>
     <string name="lab_06681d37">Ποιο trackpad κινεί το ποντίκι. Το πάτημά του είναι αριστερό κλικ.</string>
     <string name="lab_066c2fb1">Σελίδα παιχνιδιού</string>
     <string name="lab_0687488a">Προγράμματα οδήγησης Turnip και Qualcomm</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">Επιλέξτε τι καταγράφεται (Wine, Box64/FEX, DXVK, SteamLite, Steam χωρίς διεπαφή, logcat), πού πηγαίνουν τα αρχεία καταγραφής και πόσα κρατιούνται. Περιηγηθείτε σε αυτά και μοιραστείτε τα.</string>
     <string name="lab_0721ad7c">Αυτό το κοντέινερ</string>
     <string name="lab_075ffd70">Δικό σας βίντεο</string>
+    <string name="lab_076e01bd">Επαναφορά αποθήκευσης…</string>
     <string name="lab_07a88d47">Ένα πάτημα του Πίσω εξακολουθεί να ανοίγει το πλευρικό μενού μέσα στο παιχνίδι.</string>
     <string name="lab_07e11363">Ενεργό για ολόκληρο το κοντέινερ: απενεργοποιήστε το στο κοντέινερ.</string>
     <string name="lab_080615dc">Του κοντέινερ</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">Λήψη εκδόσεων D7VK</string>
     <string name="lab_09683590">Περιοριστής καρέ</string>
     <string name="lab_09793b21">OpenGL: Vsync ανενεργό</string>
+    <string name="lab_097af41a">Όνομα Z–A</string>
     <string name="lab_09b51ad4">Θέσεις</string>
     <string name="lab_09cdafe2">Μέγεθος κειμένου</string>
     <string name="lab_09d2be7b">Δημόσια beta</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">Το δικό όριο του DXVK (DXVK_FRAME_RATE). Το Ανενεργό αφήνει τον χρονισμό στον περιοριστή ρυθμού καρέ.</string>
     <string name="lab_0b5eae46">Το χειριστήριο γίνεται Παίκτης 1</string>
     <string name="lab_0b76e940">Αφαιρέθηκε το %1$s %2$s</string>
+    <string name="lab_0bad6f7f">Λήψη %1$s προφίλ…</string>
     <string name="lab_0bd8b542">Μέγεθος εικόνας, ρυθμός καρέ και ρυθμός ανανέωσης.</string>
+    <string name="lab_0be4a3d7">Αφαιρέθηκε 1 παιχνίδι</string>
     <string name="lab_0be7a72d">Λειτουργία κλιμάκωσης</string>
     <string name="lab_0bece985">Αντίγραφα ασφαλείας</string>
     <string name="lab_0c451500">Ανάλυση καταγραφής</string>
     <string name="lab_0c64d11e">Εγκατάσταση περιεχομένου από αρχείο</string>
+    <string name="lab_0c88e27c">Αφαιρούνται μόνο οι συντομεύσεις. Τα αρχεία των παιχνιδιών μένουν.</string>
     <string name="lab_0cd26a5e">Καμία λήψη σε εξέλιξη</string>
-    <string name="lab_0ce16a57">Το αντίγραφο ασφαλείας απέτυχε: %1$s</string>
     <string name="lab_0cfb7a3b">Διορθώνει κάμερες που γυρίζουν ή κολλάνε σε ορισμένα παλαιότερα παιχνίδια.</string>
+    <string name="lab_0d0fc080">Δημιουργία αντιγράφου του %1$s…</string>
     <string name="lab_0d5a2b34">Επιπλέον λέξεις μετά το όνομα του προγράμματος, π.χ. -windowed -dx11.</string>
     <string name="lab_0da00171">• Τα παιχνίδια σταματούν να λαμβάνουν το χειριστήριο. Τα μενού του ίδιου του Steam λειτουργούν, αλλά μέσα σε παιχνίδι το χειριστήριο δεν κάνει τίποτα.\n</string>
     <string name="lab_0dc541d5">Επαναφορά στην προεπιλογή</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">Αυτόματο (Steam Deck beta, για τη λειτουργία Deck)</string>
     <string name="lab_0fed0c63">Ρυθμίσεις προγράμματος οδήγησης</string>
     <string name="lab_10091d64">Έκδοση VEGAS</string>
-    <string name="lab_10125440">Προγράμματα οδήγησης και στοιχεία</string>
     <string name="lab_101d1386">Κλειδί API SteamGridDB</string>
     <string name="lab_101f5ed2">Εφέ ReShade</string>
     <string name="lab_1054fdc3">Σε Wayland το παιχνίδι κάνει render μέσω του ενσωματωμένου compositor, που χρειάζεται εγκατεστημένο Turnip για να εισαγάγει τα καρέ του. Το «Συστήματος» προσφέρεται μόνο σε GPU Mali. Αλλού δείχνει μαύρη οθόνη. Το πού κάνει render το ίδιο το παιχνίδι το ορίζει το πρόγραμμα οδήγησης παιχνιδιών Wayland παρακάτω.</string>
     <string name="lab_105c504c">Διόρθωση OneUI / HyperOS</string>
     <string name="lab_1079be1d">Δεν βρέθηκε τίποτα στο Steam για %1$s</string>
     <string name="lab_10a08356">Αλλαγή μέσα στο παιχνίδι</string>
+    <string name="lab_10b7b953">Αντίγραφο ασφαλείας αποθηκεύσεων…</string>
     <string name="lab_10cb69ae">Επιλογή εικόνας εικονιδίου</string>
     <string name="lab_1121166e">Άλφα</string>
     <string name="lab_112d429f">Αντιστροφή Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">Προρρυθμίσεις και ρύθμιση…</string>
     <string name="lab_165bbde9">Παύση</string>
     <string name="lab_1689f76a">Το Ανενεργό το κρύβει στα Περιεχόμενα. Τα φύλλα κοντέινερ και παιχνιδιού το κρατούν.</string>
+    <string name="lab_16a69772">Αναζήτηση…</string>
     <string name="lab_16c90680">Θέση εικόνας</string>
     <string name="lab_16d40373">Πρόγραμμα οδήγησης ήχου</string>
     <string name="lab_16ff819d">Ρυθμός ανανέωσης</string>
-    <string name="lab_170eab83">Αποθηκευμένα αρχεία</string>
     <string name="lab_1777bbf2">Μη αυτόματο</string>
     <string name="lab_177847bc">Τίποτα για αντιγραφή</string>
     <string name="lab_17a0dfae">Εκτός σύνδεσης</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">αυτό το παιχνίδι</string>
     <string name="lab_188dc386">Ορίζεται από Απόδοση › Συγχρονισμός.</string>
     <string name="lab_18991a24">Άλλα</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">Η λειτουργία Deck είναι ενεργή: τα παιχνίδια δεν λαμβάνουν το χειριστήριο. Αν στο Σύστημα εμφανιστεί μια ενημέρωση του Steam client που δεν εγκαθίσταται, μην πατήσετε Εφαρμογή σε αυτή.</string>
     <string name="lab_189ddac0">Το αρχείο πακέτου του αφαιρείται από την εφαρμογή. Μπορείτε να το κατεβάσετε ξανά οποιαδήποτε στιγμή.</string>
     <string name="lab_18c07921">Κουμπί Menu, επιπλέον κουμπιά και βαθμονόμηση γυροσκοπίου</string>
     <string name="lab_18e6df7b">Παραλείπει τη σύνδεση Epic για αυτό το παιχνίδι (χωρίς online λειτουργίες).</string>
+    <string name="lab_191f6609">Επιλογή παιχνιδιού</string>
     <string name="lab_19377f1f">Περιοχή σύνδεσης Steam και δοκιμή δικτύου</string>
     <string name="lab_19532aa0">Αυτό αφαιρεί το εφέ που έχει ληφθεί από τον χώρο αποθήκευσης και το βγάζει από αυτό το σετ. Μπορείτε να το κατεβάσετε ξανά οποιαδήποτε στιγμή.</string>
     <string name="lab_1955f21e">Πυρήνες CPU</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">Ενεργοποίηση στόχευσης με κίνηση</string>
     <string name="lab_1acaa40c">Τι καταγράφεται, πού πηγαίνει, πόσο καιρό κρατιέται.</string>
     <string name="lab_1acd9ee4">Κλειδωμένο σε Γρήγορο V-Sync όσο τρέχει η δημιουργία καρέ.</string>
+    <string name="lab_1b1ee750">Εισήχθησαν %1$s προφίλ</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">Τα αρχεία κάθε Proton αποθηκεύτηκαν ως πρωτότυπο όταν άνοιξε αυτή η σελίδα.</string>
     <string name="lab_1b4c8948">Λειτουργία παρουσίασης</string>
     <string name="lab_1bbf10a9"> (το αντίγραφό σας)</string>
     <string name="lab_1bc2538c">Διόρθωση χρονισμού KGSL</string>
     <string name="lab_1bdd2734">Προεπιλογή παιχνιδιού</string>
+    <string name="lab_1be37b64">Η επαναφορά απέτυχε: %1$s</string>
     <string name="lab_1bfb31a3">Χρώμα φόντου</string>
     <string name="lab_1bfc578f">Ειδοποιήσεις συνομιλίας</string>
     <string name="lab_1bfe2edd">Όριο καρέ DXVK</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">Φόντο επιφάνειας εργασίας</string>
     <string name="lab_1c765923">Αυτόματο (κατά σειρά σύνδεσης)</string>
     <string name="lab_1ce56dac">Εξομοιωτής (64-bit)</string>
-    <string name="lab_1d039d18">Λήψη και εγκατάσταση</string>
     <string name="lab_1d4948df">Κρατά τα καρέ βίντεο έξω από την GPU. Δοκιμάστε το για μαύρο βίντεο με ήχο.</string>
     <string name="lab_1d4a9752">Διαχείριση αποθηκεύσεων</string>
     <string name="lab_1dafe1ef">Άνοιγμα ›</string>
     <string name="lab_1dcd6efb">Generic (προεπιλογή): λειτουργεί με όλα, όπως πριν. Xbox 360 / One / Series: τα παιχνίδια βλέπουν το χειριστήριο ως χειριστήριο Xbox. Ταιριάζει καλύτερα με το Άμεσο XInput για ζωντανή είσοδο και δόνηση. Classic DirectInput pad: για παλιά παιχνίδια που δεν δέχονται χειριστήρια Xbox. Με αυτό τα παιχνίδια DirectInput βλέπουν πάντα το χειριστήριο. PlayStation / Nintendo / Joy-Con / Steam Deck (πειραματικό): τα παιχνίδια μπορεί να δείχνουν τα αντίστοιχα εικονίδια κουμπιών. Χωρίς γυροσκόπιο, touchpad, φωτεινή μπάρα ή trackpad, και λίγα παιχνίδια μπορεί να μην εντοπίσουν το χειριστήριο. Σε αυτή την περίπτωση, επιστρέψτε σε Generic ή Xbox.\n\nΑν το χειριστήριο εξαφανιστεί σε ένα παιχνίδι, επιστρέψτε σε Generic.</string>
     <string name="lab_1dd0373a">Αφαίρεση του %1$s και όλου του περιεχομένου του; Αφαιρούνται και οι συντομεύσεις των παιχνιδιών του.</string>
     <string name="lab_1dd4a128">Λειτουργίες root</string>
-    <string name="lab_1df4901e">Δημιουργήθηκε διπλότυπο του %1$s</string>
     <string name="lab_1df4bc73">Το Αυτόματο λέει στο παιχνίδι ποιες λειτουργίες subgroup υποστηρίζει το πρόγραμμα οδήγησης Mesa σας (έτσι ξεκινούν το DOOM Eternal και άλλα παιχνίδια που τις χρειάζονται). Το Ανενεργό τις κρύβει, όπως έκαναν οι παλαιότεροι προσαρμογείς. Δοκιμάστε το αν ένα παιχνίδι εμφανίζει γραφικά σφάλματα ή κλείνει απότομα, ενώ πριν δεν το έκανε.</string>
     <string name="lab_1dfaae77">Ένα όνομα δεν μπορεί να περιέχει \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Για τα παιχνίδια που εκκινεί το client, όχι για το ίδιο το client, και για όλα μαζί: η συνεδρία έχει ένα περιβάλλον. </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">Η λίστα είναι κενή.</string>
     <string name="lab_1e713627">Πρόγραμμα-πελάτης Steam για Linux</string>
     <string name="lab_1e765e92">Ρυθμίσεις στόχευσης με κίνηση</string>
+    <string name="lab_1e7d16fc">Εκκαθάριση κρυφής μνήμης</string>
     <string name="lab_1e9a6134">Ανενεργό για αυτό το κοντέινερ. Ενεργοποιήστε το στις ρυθμίσεις του κοντέινερ για να το χρησιμοποιήσετε εδώ.</string>
     <string name="lab_1f050928">Προεπιλογή (η τηλεόραση μένει όπως είναι)</string>
     <string name="lab_1f13e4b9">Αποθετήρια</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">Παιχνίδια που εκκινούνται από το client. Με όλους τους πυρήνες, το Android κατανέμει μόνο του τη δουλειά.</string>
     <string name="lab_1fccd93f">Το Αυτόματο ξεκινά χαμηλά και μεγαλώνει το buffer μόνο αν ακούσει τριξίματα. Λεπτομερής ρύθμιση παρακάτω.</string>
     <string name="lab_1ff9ec48">Συνεδρία</string>
+    <string name="lab_1ffa163f">Αναζήτηση σε όλα τα αποθετήρια</string>
     <string name="lab_2012067c">Συνοδεύει την εφαρμογή</string>
     <string name="lab_20226dfe"> · μη συνδεδεμένο (αποθηκευμένη αντιστοίχιση)</string>
     <string name="lab_2062fe79">Περιοριστής FPS</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">νέα κοντέινερ</string>
     <string name="lab_2166d8ab">Αντίγραφο ασφαλείας ή επαναφορά όλων των δεδομένων της εφαρμογής</string>
     <string name="lab_21e9b52f">Επιλογή περιεχομένου ή προγράμματος οδήγησης</string>
+    <string name="lab_21ede2b8">Το %1$s παραμένει εγκατεστημένο, οπότε μπορείτε να επιστρέψετε.</string>
     <string name="lab_21feab48">Αλλαγή αντιστοίχισης κουμπιών και έλεγχος κάθε εισόδου</string>
     <string name="lab_22270e04">Διαδρομή εικόνας αποθηκευτικού χώρου</string>
     <string name="lab_2246a8bd">Εναλλαγή</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">. Οι τιμές δεν μπορούν να περιέχουν κενά.</string>
     <string name="lab_235fa0f3">Διακοπή κατά την εκκίνηση</string>
     <string name="lab_2379f827">Μετάδοση σε τηλεόραση</string>
-    <string name="lab_23b4ddb2">Εγκατεστημένα, ορισμός προεπιλογής, λήψη περισσότερων</string>
     <string name="lab_23b56f8c">Εκτέλεση προγραμμάτων ως διαχειριστής</string>
     <string name="lab_23d05606">Ποντίκι και πληκτρολόγιο (παιχνίδια Wine)</string>
     <string name="lab_23d11cc7">Εμφάνιση μετρητή FPS</string>
     <string name="lab_23deaf7c">Διαχείριση</string>
     <string name="lab_23e9383c">Έκδοση, σε τι βασίζεται και συντελεστές.</string>
+    <string name="lab_243c4264">Ανανέωση λιστών</string>
     <string name="lab_2453405d">Χρησιμοποιήστε auto:N, fixed:N ή off</string>
     <string name="lab_2470de02">Διάφανα</string>
     <string name="lab_24720798">Διόρθωση αντεστραμμένων χρωμάτων</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">Δεν είναι ακόμη διαθέσιμο σε Wayland σε αυτή την έκδοση.</string>
     <string name="lab_2742f91b">Αυτόματο · ένα τρέιλερ του Steam</string>
     <string name="lab_2756404f">Επαναφορά ενέργειας και root στις προεπιλογές της εφαρμογής</string>
+    <string name="lab_278c89b0">Δεν ήταν δυνατή η σύνδεση με το Steam.</string>
     <string name="lab_27b56d30">Εγκαθιστά τα XInput DLL του Bannerlator είτε το Άμεσο XInput είναι ενεργό είτε όχι, μαζί με το XInput του ίδιου του Wine, ώστε το Controls › Pad στο μενού του παιχνιδιού να μπορεί να εναλλάσσει ανάμεσά τους όσο τρέχει το παιχνίδι (το χειριστήριο επανασυνδέεται). Ενεργό από προεπιλογή. Ανενεργό: το Άμεσο XInput μένει όπως ξεκίνησε το παιχνίδι, και η αλλαγή του χρειάζεται επανεκκίνηση.</string>
     <string name="lab_27bb1078">Άμεσο</string>
     <string name="lab_27bcb120">Προσθήκη, αντιγραφή, διαγραφή, εξαγωγή ή εισαγωγή προρρυθμίσεων Box64 και FEX (κλασικές Ρυθμίσεις).</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">Ενσωματωμένες προεπιλογές VEGAS (χωρίς αρχείο)</string>
     <string name="lab_286dae57">Αυτόματο · από το εξώφυλλο</string>
     <string name="lab_287eabc8">Εμφάνιση FPS</string>
+    <string name="lab_289585af">έτοιμο</string>
     <string name="lab_28d51363">Ρυθμός ανανέωσης που μπορεί να επιλέξει το παιχνίδι</string>
     <string name="lab_28f727b0">Εξαγωγή διαγνωστικών HUD</string>
     <string name="lab_29198bb7">Δεν έχει οριστεί (σύστημα)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Πρόγραμμα οδήγησης παιχνιδιών Wayland</string>
     <string name="lab_2a88fd3c">Επανεκκίνηση ήχου</string>
     <string name="lab_2ab94a31">Ολίσθηση μεταξύ κουμπιών</string>
+    <string name="lab_2ad53987">Αφαίρεση 1 παιχνιδιού;</string>
     <string name="lab_2ad5a458">Αντιστοιχίσεις θέσεων παικτών</string>
     <string name="lab_2adf1ef0">Μιλιμετρέ χαρτί και σήματα του Lab πάνω από τις εικόνες</string>
+    <string name="lab_2af0d6a1">Προβολή παραδείγματος</string>
     <string name="lab_2b01a79e">Δεν ήταν δυνατή η ανάγνωση της εικόνας.</string>
     <string name="lab_2b3bf173">Εργαλεία</string>
     <string name="lab_2b605d42">Περισσότερα</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">Μοχλός πάνω</string>
     <string name="lab_2c6448d6">Ορίστηκε για αυτό το κοντέινερ</string>
     <string name="lab_2c768f35">Τα νέα κοντέινερ ξεκινούν με</string>
+    <string name="lab_2c8896f5">Εμφάνιση κάρτας SD</string>
     <string name="lab_2c963a33">εφαρμόζεται αμέσως · αποθηκεύεται ως προεπιλογή αυτής της μηχανής</string>
     <string name="lab_2ce33943">Προεπιλογή</string>
     <string name="lab_2ced81bf">Εκτός σύνδεσης: εμφανίζεται μια αποθηκευμένη λίστα. Συνδεθείτε για να κατεβάσετε νέα εφέ.</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">Ή πληκτρολογήστε οποιαδήποτε τιμή</string>
     <string name="lab_2dad13e3">Γλώσσα</string>
     <string name="lab_2dc2e901">Μονόχρωμο</string>
-    <string name="lab_2df5d0e3">Παιχνίδια: %1$s · πρώτα τα πιο πρόσφατα</string>
     <string name="lab_2e1b1382">Οποιοδήποτε (απεριόριστο)</string>
     <string name="lab_2e1ff85b">Δημιουργία καρέ</string>
     <string name="lab_2e257663">Μέσα στα μενού</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">Αυτή η οθόνη δεν μπορεί να αλλάξει τον ρυθμό ανανέωσής της.</string>
     <string name="lab_2e57dd1f">Άλλο αρχείο…</string>
     <string name="lab_2eae4031">Μοχλός κάτω</string>
+    <string name="lab_2ec7b25e">Κοινή χρήση</string>
     <string name="lab_2ec97d85">Τα παιχνίδια Xbox επικοινωνούν με τις υπηρεσίες Xbox μέσω του xgameruntime.dll. Αυτό το παιχνίδι φέρνει το αντίγραφο της Microsoft στον φάκελό του, και το Wine θα το φόρτωνε πριν από αυτό της εφαρμογής (Xodus Nexus). Το αντίγραφο της Microsoft χρειάζεται τα Gaming Services των Windows, που το Wine δεν έχει, οπότε το παιχνίδι συνήθως σταματά στην εκκίνηση (όπως έγινε με το Cyberpunk 2077). Ενεργό: κάθε εκκίνηση χρησιμοποιεί το αντίγραφο της εφαρμογής. Τα αρχεία του παιχνιδιού δεν αλλάζουν. Ανενεργό: χρησιμοποιείται το αντίγραφο του ίδιου του παιχνιδιού.</string>
     <string name="lab_2ed04089">Επιβολή απόδοσης sysmem (sysmem)</string>
     <string name="lab_2f23b6d1">Πληκτρολογήστε έξι δεκαεξαδικά ψηφία, π.χ. #1E88E5.</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">Παρακάμπτει ένα σφάλμα του Turnip όπου η ερώτηση «τελείωσε η GPU;» περιμένει ολόκληρο το καρέ (το σφάλμα χρονισμού της αναφοράς). Η Προεπιλογή αφήνει τον προσαρμογέα να το εντοπίσει, το Ενεργό επιβάλλει τη διόρθωση και το Ανενεργό την απενεργοποιεί.</string>
     <string name="lab_3205bc81">Δεν έχει οριστεί πρόγραμμα οδήγησης γραφικών Turnip, οπότε δεν υπάρχει τίποτα για έλεγχο.</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">Υπάρχει ήδη αντίγραφο ασφαλείας με όνομα %1$s στα Αντίγραφα ασφαλείας</string>
+    <string name="lab_32725e5a">Λήψη (%1$s)</string>
     <string name="lab_32a7fa00">Δημ. καρέ</string>
     <string name="lab_334d4744">Στιγμιότυπο των αποθηκεύσεων της βιβλιοθήκης Steam στην τοπική Βιβλιοθήκη όταν κλείνει ένα παιχνίδι.</string>
+    <string name="lab_33689924">Επιλογή φακέλου αποθήκευσης</string>
     <string name="lab_336d62eb">Προτίμηση μεγάλων πυρήνων CPU</string>
     <string name="lab_33a35a95">Εγκατεστημένες τράπεζες ήχων και φάκελος εξαγωγής</string>
+    <string name="lab_33ad7c60">Εκκαθάριση αναζήτησης</string>
     <string name="lab_33b3dcd5">Κρατά την GPU στη μέγιστη συχνότητά της όσο τρέχει ένα παιχνίδι. Πιο ζεστό και πιο ενεργοβόρο. Τα παιχνίδια μπορούν να το παρακάμψουν.</string>
     <string name="lab_33b5c99c">Μόνο αφού αποδεχτείτε τη δήλωση αποποίησης για cloud τρίτων. Δεν διαγράφει ποτέ τίποτα από το cloud.</string>
     <string name="lab_33cb03bf">Όπως στις σελίδες της εφαρμογής</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">Ταχύτητα δείκτη</string>
     <string name="lab_346090f3">Δεν υπάρχει εγκατεστημένο Box64EC. Κατεβάστε ένα παρακάτω (Λήψεις μεταφραστών).</string>
     <string name="lab_3482cb34">Προεπιλογές ARM64EC</string>
-    <string name="lab_34928086">Έγινε αντίγραφο αποθηκεύσεων (%1$s αρχεία)</string>
     <string name="lab_34dee5b9">Συνδεδεμένος · %1$s παιχνίδια</string>
     <string name="lab_35795680">Τα νέα κοντέινερ ξεκινούν από αυτές τις τιμές. Τα υπάρχοντα κοντέινερ κρατούν τις δικές τους.</string>
     <string name="lab_361899c4">Δεν ήταν δυνατή η πρόσβαση στα Nightlies</string>
     <string name="lab_362888df">Στόχευση με κλίση</string>
     <string name="lab_36348dce">Προσαρμοσμένο για αυτό το κοντέινερ. Η Επαναφορά το κάνει να ακολουθεί ξανά την κοινή προρρύθμιση. </string>
+    <string name="lab_363c53cf">Εξαγωγή αποθετηρίων</string>
     <string name="lab_3661ddfd">Μόνο για την καταχώριση του Steam client για Linux: τα προγράμματα οδήγησής του, επιλογές του Steam client και βελτιώσεις ταχύτητας.</string>
     <string name="lab_366e8f9a">Για τηλέφωνα Samsung και Xiaomi στα οποία τα παιχνίδια δείχνουν αλλοιωμένες υφές. Αλλιώς αφήστε το ανενεργό.</string>
     <string name="lab_36936d70">Περιορίζει πόσα καρέ ανά δευτερόλεπτο σχεδιάζει το παιχνίδι. Εξοικονομεί μπαταρία και εξομαλύνει τα κολλήματα.</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">Αφή</string>
     <string name="lab_37ad98ec">Οι επιλογές πυρήνων CPU ισχύουν μέχρι την επανεκκίνηση του προγράμματος.</string>
     <string name="lab_37b97721">Το πρόγραμμα οδήγησης της ίδιας της Qualcomm δεν μπορεί να βγάλει καρέ Wayland στην οθόνη, οπότε η οθόνη χρησιμοποιεί ένα ενσωματωμένο Turnip</string>
+    <string name="lab_37c2b051">Μορφή αντιγράφου ασφαλείας</string>
     <string name="lab_37f22874">Κάθε μονάδα χρειάζεται δικό της γράμμα</string>
+    <string name="lab_3822fc21">Αποθηκεύτηκε</string>
     <string name="lab_3855543c">Εξαγωγή (.icpx)</string>
     <string name="lab_385e1a80">Πατήστε το overlay για εναλλαγή ανάμεσα σε κάθετο και οριζόντιο (Fusion: επόμενο μέγεθος). Σύρετέ το για να το μετακινήσετε. Πατήστε παρατεταμένα για να το κλειδώσετε στη θέση του.</string>
     <string name="lab_386c72a7">Δεν ήταν δυνατή η χρήση του αρχείου</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">Ενεργοποίηση</string>
     <string name="lab_39da5009">Τα παιχνίδια XInput διαβάζουν το χειριστήριο απευθείας από το Bannerlator αντί μέσω της ουράς χειριστηρίων του Wine: πάντα η τρέχουσα θέση του μοχλού, χωρίς πρόσθετη καθυστέρηση, μαζί με τη δόνηση. Ανενεργό: το XInput περνά μέσω του Wine όπως πριν. Αν ένα παιχνίδι δυσλειτουργεί, απενεργοποιήστε το για εκείνο το παιχνίδι.</string>
     <string name="lab_39e9425b">Δεν υπάρχουν αποθετήρια.</string>
+    <string name="lab_39ffa0a5">Επιλογή</string>
     <string name="lab_3a1ed8c6">Πρόγραμμα οδήγησης οθόνης (πλευρά Android)</string>
     <string name="lab_3a24cc2d">Ορίζεται ανά κοντέινερ: περιγράφει τα χέρια σας, όχι το παιχνίδι.</string>
     <string name="lab_3a5c3010">FPS, φόρτος CPU/GPU και θερμοκρασίες πάνω από το παιχνίδι. Πατήστε το μέσα στο παιχνίδι για να αλλάξετε προσανατολισμό ή μέγεθος.</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">3D εικόνες</string>
     <string name="lab_3d2c22d4">Λειτουργία παρουσίασης προγράμματος οδήγησης</string>
     <string name="lab_3d40c46a">Δόνηση</string>
+    <string name="lab_3d7fa0a6">Ρυθμίσεις κοινότητας</string>
     <string name="lab_3d9862bb">Αρνητικό mip bias: πιο καθαρές υφές, λίγο τρεμόπαιγμα. Το Αυτόματο ακολουθεί την κλιμάκωση με την οποία ξεκινά το παιχνίδι.</string>
     <string name="lab_3dbe79b1">Διαγραφή</string>
     <string name="lab_3e04658a">Μπλε</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">Λήψη και αντικατάσταση</string>
     <string name="lab_3e5678cd">Ταχύτερο</string>
     <string name="lab_3e86e543">Περνά στο wrapper όπως είναι. Αφήστε το κενό για να μείνει χωρίς τιμή.</string>
+    <string name="lab_3e967773">Κατάστημα</string>
     <string name="lab_3ecd0489">Το αυτόματο αντίγραφο ασφαλείας αποθηκεύσεων κατά την έξοδο θα είναι ΑΝΕΝΕΡΓΟ για τα παιχνίδια της βιβλιοθήκης σας στο Steam. Οι αποθηκεύσεις τους δεν θα καταγράφονται όταν κλείνει ένα παιχνίδι — θα πρέπει να κρατάτε αντίγραφα μόνοι σας μέσω της επιλογής αντιγράφου ασφαλείας ενός κοντέινερ ή από τη Διαχείριση αποθηκεύσεων. Συνέχεια;</string>
+    <string name="lab_3edc001f">Ενημέρωση επιπέδου σε %1$s</string>
     <string name="lab_3edcf27d">Οξύτατο (-1.0)</string>
     <string name="lab_3ee20435">Παιχνίδια</string>
+    <string name="lab_3ee2f717">Αυτό το αρχείο δεν είναι λίστα αποθετηρίων</string>
     <string name="lab_3f0b280a">Ρυθμός καρέ</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">Στο προσκήνιο</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">Να επιτρέπονται σετ XR / VR</string>
     <string name="lab_41017c94">Νέο κοντέινερ</string>
     <string name="lab_410fcc62">Επιλέξτε μια γνωστή μεταβλητή ή πληκτρολογήστε τη δική σας: NAME ή NAME=VALUE.</string>
+    <string name="lab_4150d5a6">1 αποτέλεσμα</string>
     <string name="lab_415a93a6">Νικά το νεότερο: δεν αντικαθιστά ποτέ μια νεότερη τοπική αποθήκευση.</string>
     <string name="lab_41f05e04">Οι παρακάτω αντιστοιχίσεις ανήκουν σε αυτό το προφίλ</string>
     <string name="lab_41fc25ab">Win-FG εγγενές</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">Πειραματικό: το overlay της Epic μέσα στο παιχνίδι με Shift+F3. Το κοντέινερ πρέπει να επιτρέπει όλες τις υπηρεσίες.</string>
     <string name="lab_42ca94f9">Κύριο χειριστήριο</string>
     <string name="lab_43316731">Υπάρχουν μόνο το C: (το prefix των Windows) και το Z:. Προσθέστε μια μονάδα για έναν φάκελο παιχνιδιών.</string>
+    <string name="lab_434214cc">Αναίρεση</string>
     <string name="lab_4358e63d">Lab, Deck, XMB ή Classic</string>
     <string name="lab_43c9073b">Ανενεργό — επιλέξτε έναν ρυθμό παρακάτω για να κλειδώσετε την οθόνη.</string>
+    <string name="lab_44343bcf">Τα κρυμμένα ενσωματωμένα αποθετήρια επιστρέφουν. Τα δικά σας μένουν.</string>
     <string name="lab_443d0954">Εκκίνηση της επιφάνειας εργασίας Windows του</string>
     <string name="lab_4455b74f">Πόσο συχνά η κίνηση των μοχλών φτάνει στο παιχνίδι. Αλλάζει και μέσα στο παιχνίδι.</string>
     <string name="lab_44655ec4">Η εγκατάσταση απέτυχε: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">Κοντέινερ</string>
     <string name="lab_455f1d53">UBWC / συμπιεσμένα buffers</string>
     <string name="lab_45bf9648">Backend οθόνης</string>
+    <string name="lab_45d1fcf9">Νέα αναζήτηση</string>
     <string name="lab_45e5d14f">Η εξαγωγή απέτυχε</string>
     <string name="lab_45f80a27">Για προχωρημένους</string>
     <string name="lab_4611b1a8">Οριζόντιος προσανατολισμός</string>
     <string name="lab_463dbb35">Γλώσσα και περιοχή</string>
+    <string name="lab_4653869e">η λήψη απέτυχε</string>
     <string name="lab_466171a5">Αφαιρέθηκε το %1$s</string>
     <string name="lab_467d1fc1">Αποθηκεύσεις και cloud</string>
+    <string name="lab_46f7f5f5">Μη εγκατεστημένο · Ροή</string>
     <string name="lab_46fd73ef">Αν αφήσετε όλους τους πυρήνες επιλεγμένους, το Android κατανέμει μόνο του τη δουλειά, που συνήθως είναι η καλύτερη επιλογή.</string>
     <string name="lab_471552db">Επεξεργασία αρχείου ρυθμίσεων VEGAS</string>
     <string name="lab_475cee12">Κέντρο</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Ενεργό</string>
     <string name="lab_4cc9a9c1">Εξώφυλλο</string>
+    <string name="lab_4d04f825">Εμφάνιση / απόκρυψη μενού</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Αντιστροφή πάνω/κάτω</string>
     <string name="lab_4d8c7321">Περιεχόμενα</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">Αποστολή καταγραφών και το διαγνωστικό αρχείο καταγραφής του win-fg (κλασικές Ρυθμίσεις).</string>
     <string name="lab_4fd05bc3">Πλήρης έλεγχος ποντικιού</string>
     <string name="lab_50089f1e">Αποκωδικοποίηση λογισμικού</string>
+    <string name="lab_507318fd">Εισαγωγή λίστας από αρχείο</string>
     <string name="lab_507883a8">Ορίζεται από τα BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX στις μεταβλητές περιβάλλοντος.</string>
     <string name="lab_507b3c74">Γέμισμα (περικοπή)</string>
     <string name="lab_50bd6962">Αρχεία καταγραφής</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">Εξήχθη στο %1$s</string>
     <string name="lab_52023fb7">Δεν υπάρχουν αντίγραφα κοντέινερ στο Downloads/Winlator/Backups/Containers.</string>
     <string name="lab_522ca2a0">Κάνει render σε μεγαλύτερο μέγεθος και μετά σμικρύνει για καθαρότερη εικόνα. Κοστίζει σε απόδοση.</string>
+    <string name="lab_524717e1">Επιλογή αντιγράφου ασφαλείας (.zip)</string>
     <string name="lab_5254f3be">Τα παιχνίδια που προσθέσατε στην καρτέλα Παιχνίδια εμφανίζονται στη βιβλιοθήκη του Steam στα Non-Steam και τρέχουν με το Proton του Steam.</string>
     <string name="lab_526060cd">Εγκατάσταση runtime και βιβλιοθηκών στο κοντέινερ και επιλογή ενσωματωμένων ή εγγενών DLL για DirectX, ήχο και runtime.</string>
     <string name="lab_52eb74b5">Εμφάνιση HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">Δόνηση και στόχευση με κίνηση.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Πάνω αριστερά</string>
+    <string name="lab_58749370">Το %1$s δεν είναι πλέον εγκατεστημένο, οπότε αυτό δεν μπορεί να αναιρεθεί.</string>
     <string name="lab_58a426c9">Ανενεργό για αυτό το παιχνίδι όσο τρέχει η δημιουργία καρέ. </string>
     <string name="lab_5946d9c6">Χρήση ρύθμισης εφαρμογής (%1$s)</string>
     <string name="lab_594a913b">Ασύγχρονοι shader</string>
     <string name="lab_595daef9">Στοιχεία που έχουν ληφθεί: αρχεία και η λίστα του καταλόγου.</string>
     <string name="lab_5983ab11">Λειτουργία εκτός σύνδεσης (χωρίς σύνδεση στη Valve)</string>
+    <string name="lab_5996c8c7">Λήψη και ενημέρωση επιπέδου σε %1$s</string>
     <string name="lab_59db09f5">Ζωντανό αρχείο καταγραφής</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f MB</string>
     <string name="lab_5a596cd0">Αποθηκεύεται στο κοντέινερ μόλις πατήσετε Αποθήκευση εδώ, όπως στον κλασικό επεξεργαστή.</string>
     <string name="lab_5aa9e082">Πού αναζητά λήψεις η οθόνη Στοιχεία.</string>
     <string name="lab_5ac7d266">Έκδοση VKD3D</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS, φόρτος CPU/GPU και θερμοκρασίες πάνω από το παιχνίδι. Το στυλ του ρυθμίζεται παρακάτω, και μέσα στο παιχνίδι από το πλευρικό μενού.</string>
     <string name="lab_5cf98060">Απόκρυψη επεκτάσεων present-wait / dynamic-rendering</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d04f79c">Επεξεργασία…</string>
     <string name="lab_5d1ebf1b">Λειτουργία στόχευσης</string>
     <string name="lab_5d676a2d">Μόνο οι δικές σας προρρυθμίσεις μπορούν να εξαχθούν.</string>
     <string name="lab_5d7ee5f8">GitHub, αναφορές προβλημάτων και Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Στοιχεία Proton</string>
     <string name="lab_5e190a08">Αποθηκεύστε ή απορρίψτε πρώτα τις αλλαγές.</string>
     <string name="lab_5e4af947">Σταθερό 60/s</string>
+    <string name="lab_5eb87a8b">Έναρξη</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Οι εγκατεστημένες εκδόσεις VEGAS και αυτή που συνοδεύει την εφαρμογή.</string>
     <string name="lab_5edc9360">Μενού εντός παιχνιδιού · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">Οι φάκελοι Documents, AppData και Saved Games του παιχνιδιού είναι αυτοί που χρησιμοποιεί το κοντέινερ του. Μην τρέχετε το ίδιο παιχνίδι και στα δύο ταυτόχρονα.</string>
     <string name="lab_63319830">Οι προεκδόσεις μπορεί να είναι λιγότερο σταθερές.</string>
+    <string name="lab_633def1d">%1$s · 1 συνεδρία</string>
     <string name="lab_634ae6b3">Πώς το wrapper παραδίδει τα καρέ. Δεν είναι ρύθμιση του renderer οθόνης.</string>
     <string name="lab_63791c91">Φάκελος, π.χ. /storage/emulated/0/Games</string>
     <string name="lab_6381687c">εφαρμόστηκε ξανά στην εκκίνηση </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Steam Deck beta</string>
     <string name="lab_641b9c9d">Το ίδιο το buffer του παιχνιδιού πηγαίνει στην οθόνη χωρίς αντιγραφή (χαμηλότερη καθυστέρηση, λιγότερη θερμότητα). Χρειάζεται sync-file fences στο πρόγραμμα οδήγησης (δείτε την αναφορά προσαρμογέα). Απενεργοποιήστε το αν βλέπετε tearing ή παλιά καρέ.</string>
     <string name="lab_643b2baf">Κοινή χρήση / μεταφορά</string>
-    <string name="lab_64903a6c">Λήψη περισσότερων</string>
     <string name="lab_64c5e98f">Εικόνα σε εικόνα</string>
     <string name="lab_65306cbd">Το προφίλ Όλα τα κοντέινερ από το οποίο ξεκινούν τα νέα κοντέινερ. Προηγείται των προεπιλεγμένων προρρυθμίσεων παραπάνω.</string>
     <string name="lab_655c4f8a">Άνοιγμα αυτού του μενού</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">Μετατροπή BCn σε ETC2</string>
     <string name="lab_66500371">Κοινό για όλα τα κοντέινερ</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s αποτελέσματα</string>
     <string name="lab_66a48fe7">Ακρίβεια pixel</string>
     <string name="lab_66d69f41">Αλλαγή προγράμματος εκτέλεσης</string>
     <string name="lab_66e416b8">Λειτουργία εξόδου</string>
     <string name="lab_676dd596">Συνέχιση</string>
+    <string name="lab_67771d1b">Τα mod αυτού του παιχνιδιού και τα μενού τους.</string>
     <string name="lab_67805216">Έκδοση Box64EC</string>
     <string name="lab_67c5a895">Χθες</string>
     <string name="lab_67d87dd3">Η πλήρης διαδρομή ενός αρχείου .conf, π.χ. /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">Προσθήκη αρχείων .sf2 και επιλογή του πού εξάγονται οι συντομεύσεις (κλασικές Ρυθμίσεις).</string>
     <string name="lab_6f6109df">Προσθέτει επιπλέον καρέ για πιο ομαλή κίνηση. Το παιχνίδι σταματά για μια στιγμή όσο επανεκκινείται.</string>
     <string name="lab_6f63a302">Μενού παιχνιδιού</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (προεπιλογή)</string>
     <string name="lab_6fb5700f">Επιτρέπει στα παιχνίδια DirectInput (πολλοί παλαιότεροι τίτλοι, παιχνίδια αγώνων, τιμόνια) να βλέπουν το χειριστήριο. Το Ανενεργό το κρύβει από το DirectInput, ώστε τα παιχνίδια που υποστηρίζουν και XInput και DirectInput να μην το βλέπουν δύο φορές. Η ταυτότητα Classic DirectInput pad το ενεργοποιεί πάντα.</string>
     <string name="lab_6fce3567">Αποφεύγει τα αιτήματα αδειών μέσα στα Windows (απενεργοποιεί το UAC).</string>
     <string name="lab_6fd5eace">Όξυνση και άλλα εφέ μετεπεξεργασίας.</string>
     <string name="lab_701948cd">Εμφανίζεται στην οθόνη Κοντέινερ και στις ετικέτες «Από κοντέινερ» κάθε παιχνιδιού.</string>
+    <string name="lab_701e81e5">Εισαγωγή του %1$s…</string>
     <string name="lab_70455f1b">Χρειάζεται για σύνδεση σε διακομιστές με προστασία VAC. Το Ανίχνευση ακολουθεί τις πληροφορίες εφαρμογής του Steam.</string>
     <string name="lab_70802fb2">Συγχρονισμός Wine</string>
     <string name="lab_70a1ea5f">Έκδοση</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">Μνήμη GPU που βλέπουν τα παιχνίδια</string>
     <string name="lab_71d5a5d7">Λήψη προγράμματος οδήγησης Turnip</string>
     <string name="lab_721589c1">Σήμερα</string>
+    <string name="lab_721da611">Δεν βρέθηκαν παιχνίδια σε αυτό το κοντέινερ.</string>
     <string name="lab_72395178">Παιχνίδια και βιβλιοθήκη</string>
     <string name="lab_7246e766">Προφίλ</string>
     <string name="lab_72550119">Ενημερώσεις αναλογικών</string>
+    <string name="lab_725f7c3b">Περιμένετε να ολοκληρωθεί η τρέχουσα εργασία</string>
     <string name="lab_728e56d6">Ομαλό</string>
     <string name="lab_72b16281">Παίρνει το πρώτο ελεύθερο γράμμα. Επιλέξτε τον φάκελό του με Περιήγηση.</string>
     <string name="lab_72b89c6d">Επαναφορά στις προεπιλογές της εφαρμογής</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">Επικάλυψη</string>
     <string name="lab_76471f06">Αυτές φτάνουν στο Steam client και σε κάθε παιχνίδι που εκκινεί. Μια μεταβλητή εδώ υπερισχύει της ομώνυμης από την προρρύθμιση FEXCore.</string>
     <string name="lab_7656e144">Γκριζομπλέ</string>
-    <string name="lab_76705189">Δεν ήταν δυνατή η εισαγωγή του %1$s</string>
     <string name="lab_76ad015a">Επιτρέπει στο LSFG Native να τρέχει σε προγράμματα οδήγησης που αναφέρουν μόνο Vulkan 1.1 αλλά έχουν τις απαραίτητες επεκτάσεις. Ισχύει και για τις παρακάμψεις ανά παιχνίδι.</string>
     <string name="lab_76b4a740">Οπτική ροή</string>
     <string name="lab_76b8a57c">Ανάγνωση ρυθμίσεων αυτού του wrapper…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">Επιλογή προρρύθμισης</string>
     <string name="lab_79162646">Δεν υπάρχουν ακόμη προφίλ.</string>
     <string name="lab_791d1125">Οθόνη εκκίνησης και ενημερώσεις.</string>
+    <string name="lab_79780a3c">Εξαγωγή του %1$s…</string>
     <string name="lab_7982eb6b">, που αναφέρονται παρακάτω.</string>
     <string name="lab_79b6d4c7">Λειτουργία Steam εκτός σύνδεσης, έλεγχοι αρχείων και ενημερώσεις</string>
     <string name="lab_79c7988a">Κανένα · εμφανίζεται το όνομα</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">Έκδοση D7VK</string>
     <string name="lab_7a377726">Πώς φτάνει η εικόνα στην οθόνη</string>
     <string name="lab_7a54182d">Επικάλυψη FPS</string>
+    <string name="lab_7a7662fb">Πρόσφατα παιγμένα</string>
     <string name="lab_7b0d957b">Εκκαθάριση όλων</string>
     <string name="lab_7b34b221">Προσθήκη μεταβλητής</string>
     <string name="lab_7b719f09">Περιήγηση</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">Εικόνα ταπετσαρίας</string>
     <string name="lab_7caf4da8">Το BCn και τα επίπεδα συμβατότητας ισχύουν για Mali και άλλες GPU εκτός Qualcomm.</string>
     <string name="lab_7ccc17cd">Back buffer</string>
-    <string name="lab_7ceefd00">Η λήψη απέτυχε: %1$s</string>
     <string name="lab_7d24ed15">Τίποτα εδώ ακόμη.</string>
     <string name="lab_7d50777a">Δράση, RPG, στρατηγική</string>
     <string name="lab_7d6bff72">Διαθέσιμο με το σύστημα ήχου DirectAudio.</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">Μεταφραστές x86</string>
     <string name="lab_7e3548ee">Εμφάνιση των παιχνιδιών της καρτέλας Παιχνίδια στο Steam</string>
     <string name="lab_7e38b599">Η αυτόματη μεταφόρτωση στο cloud κατά την έξοδο θα είναι ΑΝΕΝΕΡΓΗ για τα παιχνίδια της βιβλιοθήκης σας στο Steam. Οι αποθηκεύσεις τους δεν θα ανεβαίνουν στο Steam Cloud όταν κλείνει ένα παιχνίδι — θα πρέπει να τις ανεβάζετε μόνοι σας από την ενότητα Αποθηκεύσεις cloud στη σελίδα λεπτομερειών του παιχνιδιού. Συνέχεια;</string>
+    <string name="lab_7e4777f5">Επιλέξτε πρώτα τα παιχνίδια προς αφαίρεση</string>
     <string name="lab_7e6d7e33">Κάρτες βιβλιοθήκης</string>
     <string name="lab_7e9c00ea">Αυτόματο (βάσει FPS)</string>
     <string name="lab_7e9eede5">Προφίλ %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">Απαιτεί ασφαλή εκκίνηση (VAC)</string>
     <string name="lab_7f13060c">Λειτουργία οθόνης</string>
     <string name="lab_7f7743c4">1 διακόπτης έχει οριστεί για αυτό το παιχνίδι.</string>
+    <string name="lab_7f871f0c">Έναρξη μαζί με το παιχνίδι</string>
     <string name="lab_7fa23600">Κρατά τα μεταγλωττισμένα shaders για την επόμενη εκκίνηση (εκδόσεις gplasync).</string>
     <string name="lab_7fba9196">Ρολόι</string>
     <string name="lab_7ff85140">Σχεδιάζει την επιφάνεια εργασίας των Windows στο Android. Το Wayland χρησιμοποιεί πάντα Vulkan.</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">Πληκτρολογήστε την πλήρη διαδρομή, ξεκινώντας με /.</string>
     <string name="lab_8069546e">Συνδυαστικά</string>
     <string name="lab_8070a23b">Θέση αποθήκευσης και αποθετήρια</string>
+    <string name="lab_808644e3">Κρυφή μνήμη</string>
     <string name="lab_8124b894">Αυτόματη λήψη από το Steam Cloud κατά την εκκίνηση</string>
     <string name="lab_81297e77">Τι εμφάνισε κάθε παιχνίδι κατά την εκτέλεση</string>
     <string name="lab_816ce026">Λήψη</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">Παιχνίδι</string>
     <string name="lab_83548a23">Εμφάνιση, φωτεινότητα, αντίθεση, γάμμα, κορεσμός, FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">Εισαγωγή ή εξαγωγή λίστας</string>
     <string name="lab_83713095">Άλλη τοπική ρύθμιση…</string>
+    <string name="lab_8371c265">Λήψη %1$s…</string>
     <string name="lab_838501df">Εκτός σύνδεσης: εμφανίζονται μόνο τα εγκατεστημένα εφέ. Συνδεθείτε για να περιηγηθείτε στον κατάλογο.</string>
     <string name="lab_83ce15dd">μ.ό. fps</string>
     <string name="lab_83f0742a">Φάκελοι παιχνιδιών</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">Προφίλ προσαρμογέα</string>
     <string name="lab_84cba1d0" formatted="false">%.1f MB · αποθηκεύτηκε</string>
     <string name="lab_8521db60">Γρήγορο μενού</string>
+    <string name="lab_85379d71">Επαναφορά του %1$s…</string>
     <string name="lab_85486938">Αρχεία καταγραφής και διαγνωστικά</string>
     <string name="lab_8554e6fa">Γρήγορο</string>
     <string name="lab_85558be1">Προεπιλογές για κάθε κοντέινερ</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">Προεπιλογή · %1$s</string>
     <string name="lab_85a12a5f">Αντικατάσταση</string>
     <string name="lab_85ab5712">Τα παιχνίδια XInput διαβάζουν το χειριστήριο απευθείας, χωρίς ουρά εισόδου (χωρίς κολλημένο μοχλό μετά την απελευθέρωση). Ενεργό για νέα κοντέινερ.</string>
     <string name="lab_85e5a021">Αντίγραφο ασφαλείας</string>
     <string name="lab_85eb8db0">Και τα δύο ελέγχουν τον Παίκτη 1</string>
     <string name="lab_85efabfb">σε %1$s παιχνίδια</string>
+    <string name="lab_85f9f5e1">Μονάδα C</string>
     <string name="lab_861c1b03">Λειτουργία αφής και κάθε διακόπτης εδώ</string>
     <string name="lab_86369691">Εμφάνιση επίσημου καταλόγου στα αποθετήρια</string>
+    <string name="lab_8636cba2">Φόρτωση…</string>
     <string name="lab_866dbc9c">Σύνδεση ›</string>
     <string name="lab_86865d1d">Έκδοση Vulkan</string>
     <string name="lab_868b6596">Χωρίς root</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">Αυτόματο · το εξώφυλλο, θολωμένο</string>
     <string name="lab_8844e521">Τιμές προρρύθμισης</string>
     <string name="lab_8850c516">Επιτρέπει στα παιχνίδια DirectInput να κάνουν το χειριστήριο να δονείται: απλή δόνηση, καθώς και τα εφέ δύναμης που στέλνουν τα παιχνίδια αγώνων και πτήσεων σε τιμόνι ή joystick, τα οποία νιώθετε μέσω των δύο μοτέρ του χειριστηρίου. Ακολουθεί τις ρυθμίσεις Δόνησης (στόχος και ένταση δόνησης). Μια σταθερή δύναμη (για παράδειγμα, ένα παιχνίδι αγώνων που κρατά το τιμόνι ίσιο) σβήνει μετά από μερικά δευτερόλεπτα, ώστε το χειριστήριο να μη βουίζει συνέχεια. Τα παιχνίδια DirectInput τη στέλνουν μόνο όσο βλέπουν το χειριστήριο. Μια αλλαγή εφαρμόζεται όταν το χειριστήριο επανασυνδεθεί (μέσα στο παιχνίδι το κάνει το Controls › Pad) ή στην επόμενη εκκίνηση. Το BANNERIN_DINPUT_FF στις μεταβλητές περιβάλλοντος υπερισχύει αυτής της ρύθμισης.</string>
+    <string name="lab_8855c603">Αφαίρεση %1$s παιχνιδιών;</string>
     <string name="lab_8861fdef">Ρυθμίσεις ήχου</string>
     <string name="lab_887ae5cd">Δημιουργία</string>
     <string name="lab_88819a36">Πλέγμα πάνω από τις εικόνες</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">Χρώμα ως #RRGGBB, π.χ. #1E88E5</string>
     <string name="lab_8907b290">Περιήγηση αρχείων</string>
     <string name="lab_892b7b55">Φαρδύ εξώφυλλο</string>
+    <string name="lab_8946594d">Επιλέχθηκαν: %1$s</string>
     <string name="lab_8965e6c7">Λιγότερες υπηρεσίες = ταχύτερη εκκίνηση και περισσότερη ελεύθερη RAM.</string>
     <string name="lab_8998f446">Εικονίδιο αυτής της καταχώρισης</string>
     <string name="lab_89f43a0d">Τιμές προρρύθμισης μεταφραστή</string>
     <string name="lab_89f953b4">Στόχος δόνησης</string>
     <string name="lab_8a142020">Κουμπί Y</string>
+    <string name="lab_8a459c00">Αναζήτηση στο Steam</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapper</string>
     <string name="lab_8a8bb4d3">Ροή εντολών (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">Στα Nightlies</string>
     <string name="lab_8ce1bc2a">Κουμπιά</string>
     <string name="lab_8d04c8e0">Χειριστήρια</string>
+    <string name="lab_8d5acd32">.zip συμβατό με GameHub (προεπιλογή)</string>
     <string name="lab_8d6a7747">Όνομα και επιλογές εκκίνησης μόνο για αυτό το παιχνίδι.</string>
     <string name="lab_8dc9c516">Τροποποιήσεις PanVK στον προσαρμογέα Wayland: κρύβει τα present_id, present_wait και dynamic_rendering, καθώς και δύο λύσεις παράκαμψης για συγχρονισμό. Ενεργό από προεπιλογή με πρόγραμμα οδήγησης PanVK.</string>
     <string name="lab_8df575ef">Χρειάζεται τον Vulkan renderer οθόνης (Γραφικά) ή Wayland.</string>
     <string name="lab_8e22550f">Σελίδες εφαρμογής</string>
-    <string name="lab_8e7f9e42">Λήψη προγραμμάτων οδήγησης</string>
     <string name="lab_8e81d76e">Προρρύθμιση FEXCore</string>
     <string name="lab_8e91f337">Root. Η επιτήρηση θερμοκρασίας παραμένει ενεργή.</string>
     <string name="lab_8ea27f15">Διαγραφή του %1$s;</string>
     <string name="lab_8eb9f765">Οι μη αποθηκευμένες αλλαγές εδώ χάνονται. Τα υπάρχοντα κοντέινερ κρατούν τις ρυθμίσεις τους.</string>
     <string name="lab_8ecc4179"> αντί για αυτά του Wine. Χρειάζεται για πολλά wrapper και mod loader. Τα DLL γραφικών δεν περιλαμβάνονται ποτέ: αυτά τα χειρίζονται το DXVK και το VKD3D.</string>
     <string name="lab_8ece40f8">Μόνο για προγράμματα οδήγησης Banners-Turnip. Το τυπικό Turnip το αγνοεί.</string>
-    <string name="lab_8ee80fca">Δεν υπάρχουν πηγές προγραμμάτων οδήγησης.</string>
     <string name="lab_8ef37792">Κάτω</string>
     <string name="lab_8f4a852b">Ενέργεια συσκευής</string>
     <string name="lab_8f4c06ce">Οι τιμές περνούν στο wrapper όπως είναι. Όσες δεν γνωρίζετε μπορούν να μείνουν κενές με ασφάλεια.</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">Renderer SurfaceFlinger — Πειραματικό</string>
     <string name="lab_909603fb">Ενημέρωση…</string>
     <string name="lab_90b603b8">Διπλότυπο</string>
+    <string name="lab_90d7bedf">Θέση αποθήκευσης</string>
     <string name="lab_91104123">Εκτελεί τον κώδικα x86 32-bit του παιχνιδιού στην ARM CPU σας.</string>
     <string name="lab_914624be">Συγχρονισμός με το Steam Cloud στις εκκινήσεις με Goldberg</string>
     <string name="lab_915c9049">Επαναφορά</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">Κρατά ενεργή τη γρήγορη διαδρομή speculative store της CPU για τα νήματα του παιχνιδιού (μόνο arm64ec Proton). Ενεργό από προεπιλογή.</string>
     <string name="lab_934c8903">Ενσωματωμένα ή εγγενή DLL για DirectX, ήχο και runtime, καθώς και τα codec πολυμέσων.</string>
     <string name="lab_93c6f86e">Παιχνίδι Android</string>
+    <string name="lab_942f9b65">Όνομα A–Z</string>
     <string name="lab_94436fab">Πληκτρολογήστε μια τοπική ρύθμιση όπως pl_PL ή pl_PL.UTF-8.</string>
     <string name="lab_944e1f72">Σύστημα ήχου</string>
     <string name="lab_947c1567">Επιτεύγματα Steam</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">Φωτεινότητα</string>
     <string name="lab_963f841c">Ίδιο όνομα με ενσωματωμένο πρόγραμμα οδήγησης</string>
     <string name="lab_964d1a40">Κοινόχρηστο πρόχειρο Android με τα παιχνίδια</string>
+    <string name="lab_96526c2a">Αποθήκευση αρχείου ξανά</string>
     <string name="lab_968b9d49">Εφαρμόζονται στην εκκίνηση. Το πλευρικό μενού μέσα στο παιχνίδι εξακολουθεί να τις αλλάζει ζωντανά.</string>
     <string name="lab_969dab73">ReShade ενεργό / ανενεργό, Μεμονωμένα / Συνδυαστικά, εφέ και οι ρυθμίσεις τους</string>
     <string name="lab_969fd520">Render fences του client</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">Αύξηση προτεραιότητας νήματος παιχνιδιού</string>
     <string name="lab_9f612c9d">Πρόγραμμα οδήγησης GPU</string>
     <string name="lab_9f713ecd">Κανένα στη λίστα</string>
+    <string name="lab_9fd345af">Αφαίρεση του %1$s…</string>
     <string name="lab_9fea5158">Ρυθμίσεις κοντέινερ</string>
     <string name="lab_a00d34e8">Έλεγχος των Nightlies</string>
     <string name="lab_a011bb4c">Κάθε ρύθμιση εφαρμογής ισχύει αμέσως.</string>
     <string name="lab_a01444fb">Στυλ επικάλυψης</string>
     <string name="lab_a01ea521">Αφαίρεση των αντιστοιχίσεων του %1$s;</string>
     <string name="lab_a05a9689">Όλα σε αυτή τη σελίδα</string>
+    <string name="lab_a081a3ed">Εξαγωγή λίστας</string>
     <string name="lab_a0d93d63">CPU ανά πυρήνα</string>
     <string name="lab_a0f06f2a">Χρειάζεται σύνδεση για λήψη</string>
     <string name="lab_a0f72982">Παρουσίαση zero-copy και ασφαλής λειτουργία OpenGL</string>
     <string name="lab_a108392d">Πάντα</string>
     <string name="lab_a115f62d">Στοιχεία</string>
+    <string name="lab_a11756a4">Πληροφορίες χώρου αποθήκευσης</string>
     <string name="lab_a1edd479">BCn σε ASTC</string>
     <string name="lab_a24bc720">Skin</string>
     <string name="lab_a26b7e90">Αποθηκεύεται σε εκείνο το Proton, για κάθε παιχνίδι που το χρησιμοποιεί</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">Κρατήστε για στόχευση</string>
     <string name="lab_a396cfaa">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
     <string name="lab_a3c61ce1">Παράθυρα και αρχεία καταγραφής</string>
+    <string name="lab_a3dbadc2">Σχετικά με το παιχνίδι</string>
     <string name="lab_a3f6a50d">Προσαρμογή στην οθόνη</string>
     <string name="lab_a40c85ce">Υπηρεσίες που ξεκινούν με τα Windows</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">Χειροκίνητος ρυθμός ανανέωσης</string>
     <string name="lab_a4d1de01">Σύλληψη ποντικιού (DirectInput)</string>
     <string name="lab_a4d4c41a">Οι δικές αντιστοιχίσεις αυτού του κοντέινερ, όχι του Όλα τα κοντέινερ.</string>
+    <string name="lab_a4f06c81">Δεν ήταν δυνατή η εισαγωγή %1$s από %2$s προφίλ</string>
     <string name="lab_a4f1cbaf">Τα κενά αφαιρούνται: οι μεταβλητές χωρίζονται με κενά.</string>
     <string name="lab_a523a4e1">Μοτέρ δόνησης</string>
     <string name="lab_a559e736">Χειριστήριο XR</string>
     <string name="lab_a57ba715">Συνάφεια επεξεργαστή (cpuList)</string>
+    <string name="lab_a591cbcb">Συγκεκριμένο παιχνίδι…</string>
     <string name="lab_a593c4da">Δικό σας αρχείο</string>
     <string name="lab_a59e2986">Xalia ανενεργό (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Κάνει το client να συμπεριφέρεται όπως σε Steam Deck, με το μενού Γρήγορης πρόσβασης. Τα παιχνίδια σταματούν να λαμβάνουν το χειριστήριο.</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">Δίνει το χειριστήριο απευθείας στο παιχνίδι αντί για το Steam Input. Για κλασικά παιχνίδια (Half-Life 2, CS:S). Απενεργοποιεί το Steam Input.</string>
     <string name="lab_a6902569">Χειριστήρια οθόνης ή πραγματικό χειριστήριο</string>
     <string name="lab_a6e62e9e">Μετάφραση DirectX</string>
+    <string name="lab_a6fe8b9a">Επαναφορά προεπιλεγμένων αποθετηρίων</string>
     <string name="lab_a71846fe">Θέμα και χρώματα</string>
     <string name="lab_a74f5b6d">Ανενεργό, εικόνες παιχνιδιού, 3D εικόνες που κινούνται αργά σε βάθος ή με προεπισκοπήσεις: ένα τρέιλερ στο μεγάλο πλακίδιο του Home</string>
     <string name="lab_a7a4aed7">Το Οθόνη αφής στέλνει τα δάχτυλα στο Steam ως πραγματικά αγγίγματα. Το Πινακίδα αφής κινεί τον δείκτη με σύρσιμο και κάνει κλικ με πάτημα.</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">Επιβολή</string>
     <string name="lab_aa61eeea">Επιλογή προφίλ χειρισμού</string>
     <string name="lab_aa9bd991">Έγινε εισαγωγή %1$s</string>
-    <string name="lab_aaae690f">Η πλήρης οθόνη στοιχείων</string>
     <string name="lab_aac2b52c">Εγκαταστήστε πρώτα μια έκδοση Wine ή Proton (Στοιχεία).</string>
     <string name="lab_aadb73f3">Ανοιχτό</string>
     <string name="lab_aaf410b8">Δεν έχετε συνδεθεί</string>
     <string name="lab_ab00bfda">Παιχνίδια Steam</string>
+    <string name="lab_ab20a9e4">Πρώτα γίνεται λήψη του επιπέδου.</string>
     <string name="lab_ab2ea144">DirectX 12 μέσω Vulkan. Το Κανένα απενεργοποιεί το DirectX 12.</string>
     <string name="lab_ab612af4">Θερμ.</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">Συνδεθείτε για να διαχειριστείτε τις κοινόχρηστες ρυθμίσεις σας</string>
     <string name="lab_ab8824cb">Λειτουργία παρουσίασης προσαρμογέα</string>
+    <string name="lab_abac19ba">Άνοιγμα σελίδας πηγής</string>
     <string name="lab_abb1c367">Δεν είναι συνδεδεμένο τίποτα. Αυτό το παιχνίδι εξακολουθεί να είναι ρυθμισμένο να ξεκινά σε τηλεόραση.</string>
     <string name="lab_abb20221">Χωρίς προρρύθμιση</string>
     <string name="lab_abd752a4">Χειρονομίες αφής</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">Δεν έχουν αναφερθεί προγράμματα ακόμα.</string>
     <string name="lab_ad26a7c7">άγνωστο</string>
     <string name="lab_adcb307d">Πώς οι κλήσεις DirectX των Windows μετατρέπονται σε Vulkan για την GPU σας.</string>
+    <string name="lab_add714f7">Μη εγκατεστημένο</string>
     <string name="lab_adf82850">Διακομιστής οθόνης (X11)</string>
     <string name="lab_adfa74ef">Ενεργοποίηση λειτουργίας Steam Deck;</string>
     <string name="lab_ae483014">Εγκατάσταση</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">Τα εγκατεστημένα παιχνίδια ξεκινούν κανονικά. Χρειάζεται πρώτα μία online σύνδεση σε αυτή τη συσκευή. Εφαρμόζεται στην επόμενη συνεδρία.</string>
     <string name="lab_af32ab2f">Μεμονωμένα</string>
     <string name="lab_af39be20">Δίκτυο</string>
+    <string name="lab_af3c9967">Ανανέωση</string>
     <string name="lab_af3f8345">Δεν βρέθηκε τίποτα για αυτό το παιχνίδι. Επιλέξτε μια εικόνα ή συνδέστε το με το Steam στις Λεπτομέρειες.</string>
     <string name="lab_af456994">Εμποδίζει τον kernel να απενεργοποιεί πυρήνες.</string>
     <string name="lab_af47e020">Είδη</string>
     <string name="lab_afb57bd1">Φίλτρο κλιμάκωσης, όξυνση και αφαίρεση banding</string>
+    <string name="lab_aff587ab">Αντίγραφο ασφαλείας GameHub (.zip)</string>
     <string name="lab_b01a2f1b">Μεταβλητές περιβ.</string>
     <string name="lab_b01c4a81">Προσανατολισμός</string>
     <string name="lab_b01f4f95">Έγινε</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">Θέση παίκτη για κάθε χειριστήριο</string>
     <string name="lab_b0beed23">Τα παιχνίδια σας στο Steam</string>
     <string name="lab_b0daa272">Βοήθεια και υποστήριξη</string>
+    <string name="lab_b0e351e0">Ανανεώθηκε</string>
+    <string name="lab_b0f4240e">Αντίγραφο ασφαλείας αποθηκεύσεων</string>
     <string name="lab_b0fab841">Γράφημα GPU</string>
     <string name="lab_b0fc42e2">Κοινή χρήση αποθηκεύσεων με την εφαρμογή</string>
     <string name="lab_b132aa74">Το εγκατεστημένο Turnip με το οποίο ο compositor Wayland βγάζει τα καρέ του παιχνιδιού στην οθόνη.</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">Τύπος κοντέινερ</string>
     <string name="lab_b312c895">Άνοιγμα γρήγορου μενού</string>
     <string name="lab_b32171e6">Παύση παιχνιδιού</string>
-    <string name="lab_b323b10b">Απόκρυψη του %1$s; Μπορεί να εμφανιστεί ξανά από τις ρυθμίσεις Περιεχόμενα του Classic.</string>
     <string name="lab_b32cbb53">Εισαγωγή του %1$s ως νέο κοντέινερ;</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">Ενεργοποίηση ούτως ή άλλως</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">Οι διακόπτες root αποθηκεύονται για αυτό το παιχνίδι και εφαρμόζονται στην εκκίνηση μόλις δοθεί root.</string>
     <string name="lab_b543f270">Αντιστοιχίσεις χειριστηρίου</string>
     <string name="lab_b5681ffc">Κουμπιά Steam και Γρήγορης πρόσβασης στην οθόνη</string>
-    <string name="lab_b56fe256">Δεν υπάρχουν προγράμματα οδήγησης σε αυτή την πηγή.</string>
     <string name="lab_b5b9d14a">Ενεργοποίηση ή απενεργοποίηση του Άμεσου XInput από το μενού του παιχνιδιού χωρίς επανεκκίνηση.</string>
     <string name="lab_b5c5920e">Άνοιγμα Διαχείρισης αρχείων καταγραφής</string>
     <string name="lab_b6024573">Αφαίρεση του %1$s; Τα παιχνίδια που το χρησιμοποιούν επιστρέφουν στο πρόγραμμα οδήγησης του κοντέινερ τους.</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">Τα καταστήματά σας</string>
     <string name="lab_b73987a8">Προεπιλογή συστήματος</string>
     <string name="lab_b739e60c">Δόνηση</string>
+    <string name="lab_b759a7ac">Για ποιο εργαλείο είναι αυτό το αντίγραφο ασφαλείας;</string>
     <string name="lab_b7636944">Χρησιμοποιείται όταν το ταίριασμα είναι ανενεργό.</string>
     <string name="lab_b7c337c7">Πληκτρολογήστε το ως πλάτος x ύψος, π.χ. 1600x900.</string>
     <string name="lab_b7d4edb2">Επίπεδο λειτουργιών DirectX 12</string>
     <string name="lab_b7e2758f">Εξομοίωση</string>
     <string name="lab_b885aba0">Ακύρωση</string>
     <string name="lab_b89607f1">Αντίγραφα ασφαλείας και επαναφορά</string>
-    <string name="lab_b8afe1d2">Εγκατάσταση από αρχείο</string>
     <string name="lab_b90673bf">Έκδοση DXVK</string>
     <string name="lab_b9106d81">Χρώμα περιγράμματος</string>
     <string name="lab_b9384128">Κλείδωμα οθόνης στα</string>
+    <string name="lab_b9462894">Μέγεθος καρτών · %1$s</string>
     <string name="lab_b9825547">Τίποτα αποθηκευμένο ακόμα</string>
     <string name="lab_ba3b6032">Renderer WineD3D</string>
     <string name="lab_ba4f23ec">Προσθήκη φακέλου παιχνιδιών</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">Αποθηκεύσεις</string>
     <string name="lab_bcf34837">Χωρίς χρονισμό</string>
     <string name="lab_bcfb356d">Από το κοντέινερ</string>
+    <string name="lab_bd4ab43f">1 παιχνίδι</string>
     <string name="lab_bd50227c">Δεν υπάρχει εγκατεστημένη έκδοση VEGAS: κατεβάστε μία παρακάτω.</string>
     <string name="lab_bd63a37d">Εικόνα ταπετσαρίας</string>
     <string name="lab_bd87c7d9">Κρυφή μνήμη αποκωδικοποιημένων υφών</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">Επιλογή εικόνας…</string>
     <string name="lab_be45a0e0">Δεν βρέθηκε · χωρίς σύνδεση με το Steam</string>
     <string name="lab_be638831">Μεγεθυντικός φακός, παράθυρα, αρχεία καταγραφής και προγράμματα σε εκτέλεση.</string>
+    <string name="lab_be80b01d">Απόκρυψη του %1$s; Η «Επαναφορά προεπιλεγμένων αποθετηρίων» το εμφανίζει ξανά.</string>
+    <string name="lab_be8d2116">Κλείστε πρώτα ό,τι εκτελείται σε αυτό.</string>
+    <string name="lab_be906409">Εγγενές .zip του Winlator</string>
     <string name="lab_be998b7c">Συγχρονισμός σε κάθε καρέ</string>
     <string name="lab_be9a2a59">Διπλό Πίσω ανοίγει τη Γρήγορη πρόσβαση</string>
     <string name="lab_be9d8c7a">Επιλογές εκκίνησης</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">Κέντρο</string>
     <string name="lab_c120c6bb">Ο πλήρης έλεγχος CPU και GPU ξεκλειδώθηκε.</string>
     <string name="lab_c14faa17">Άμεσο XInput (BANNERIN)</string>
+    <string name="lab_c15bb42a">Επιλογή άλλου φακέλου…</string>
     <string name="lab_c171e496">Αυτόματο (δημόσια beta)</string>
     <string name="lab_c172ec97">Οι αλλαγές κρατιούνται για αυτό το παιχνίδι μόνο όπου διαφέρουν από τη γενική προεπιλογή.</string>
     <string name="lab_c1bc6675">Το wrapper Vulkan που χρησιμοποιούν τα παιχνίδια σε X11. Τα εισαγμένα wrapper εμφανίζονται επίσης εδώ.</string>
     <string name="lab_c1c757e2">Αρχείο εντοπισμού σφαλμάτων επιπέδου BCn</string>
     <string name="lab_c1df4081">Μεσαίο</string>
-    <string name="lab_c206cdbf">Αντίγραφο όλων των αποθηκεύσεων</string>
     <string name="lab_c22c196f">Κόκκινο</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">. Η αποθήκευση απορρίπτεται μέχρι να διαφέρουν.</string>
     <string name="lab_c2928e24">Μεγεθυντικός φακός</string>
     <string name="lab_c2f74c47">Έκδοση προγράμματος οδήγησης</string>
     <string name="lab_c2fdbf25">Εισαγωγή</string>
+    <string name="lab_c32c5dc4">Mod</string>
     <string name="lab_c34f4640"> · Διατηρήθηκαν από πριν από τη ρύθμιση Συγχρονισμός. Το Απόδοση › Συγχρονισμός τις διαβάζει και τις διαγράφει όταν τη ρυθμίσετε.</string>
     <string name="lab_c36c4b3f">Οθόνη</string>
     <string name="lab_c3db5a25">Πάνελ (προεπιλογή)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Υποστήριξη Steam Controller</string>
     <string name="lab_c6521528">Χρειάζεται GPU Mali Valhall.</string>
     <string name="lab_c664401e">Κοντέινερ = όπως το κοντέινερ. Αυτό το παιχνίδι = ορίζεται εδώ.</string>
+    <string name="lab_c669581b">Επαναφορά αποθήκευσης</string>
     <string name="lab_c66c17c3">Προρρυθμίσεις μεταφραστή</string>
     <string name="lab_c6888ac4">Αυτόματο</string>
     <string name="lab_c6a02e29">Χρήση ούτως ή άλλως</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">Χειριστήρια οθόνης, ποντίκι, δόνηση, στόχευση με κίνηση.</string>
     <string name="lab_c7b49d50">Εφαρμογή Steam %1$s</string>
     <string name="lab_c7fad197">Δεν εντοπίστηκαν επιπλέον ρυθμίσεις</string>
+    <string name="lab_c82c4a5b">Ενημέρωση σε %1$s</string>
     <string name="lab_c82e7e67">Εκδόσεις από τον κατάλογο. Οι εγκατεστημένες εμφανίζονται στο Έκδοση DXVK.</string>
+    <string name="lab_c83f23bf">Δεν ήταν δυνατή η επαναφορά του εξωφύλλου</string>
     <string name="lab_c844d41c">Για παιχνίδια Denuvo που η εφαρμογή δεν εντοπίζει μόνη της.</string>
     <string name="lab_c84956c1">Προσαρμοσμένες υπηρεσίες</string>
     <string name="lab_c85b9376">Λιγότερο jitter, λίγο περισσότερη καθυστέρηση. Ορίζεται ανά κοντέινερ.</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">Τα χειριστήρια οθόνης μένουν Παίκτης 1</string>
     <string name="lab_c8b7e3fa">Αυτό το πρόγραμμα οδήγησης δεν μπορεί να εμφανίσει τη συνεδρία. Το «Συστήματος» ή ένα πρόγραμμα οδήγησης που δεν είναι πλέον εγκατεστημένο αφήνει τον compositor στο Vulkan του συστήματος, που δείχνει μαύρη οθόνη.</string>
     <string name="lab_c8c4d663">Ενεργό — με τη δημιουργία καρέ σε λειτουργία, η οθόνη ακολουθεί το όριο καρέ × πολλαπλασιαστή.</string>
-    <string name="lab_c8d5043b">Επιλογή πακέτου περιεχομένου</string>
     <string name="lab_c8d52d67">Διαγραφή προρρύθμισης</string>
     <string name="lab_c936ff11">π.χ. el_GR.UTF-8</string>
     <string name="lab_c94d19de">Αυτόματη αποστολή στο Steam Cloud στην έξοδο</string>
+    <string name="lab_c961a1bf">%1$s (αυτόματο)</string>
     <string name="lab_c9822616">Λήψεις</string>
     <string name="lab_c9a07f62"> · τα χειριστήρια στην οθόνη</string>
     <string name="lab_c9ae8103">Λειτουργία Mali (PanVK)</string>
+    <string name="lab_c9ef821f">Όλες οι αποθηκεύσεις παιχνιδιών (ολόκληρο το προφίλ)</string>
     <string name="lab_ca16bb77">εφαρμόζεται αμέσως · αποθηκεύεται για αυτό το παιχνίδι και ως προεπιλογή αυτής της μηχανής</string>
     <string name="lab_ca45d5a4">αυτό το κοντέινερ</string>
     <string name="lab_ca62f862">Λήψεις και δίκτυο</string>
     <string name="lab_cabf747a">Ασύγχρονη αντιγραφή</string>
     <string name="lab_caf7d4a3">Κοινή προρρύθμιση, τροποποιημένη</string>
     <string name="lab_cb5fc4d5">Ρυθμίσεις VEGAS</string>
+    <string name="lab_cb6124f5">Ενημέρωση επιπέδου</string>
     <string name="lab_cb6d604d">Το HUD δεν μετακινείται μέσα στο παιχνίδι.</string>
     <string name="lab_cbab7f7a">Εικονίδια</string>
     <string name="lab_cbb98111">Δεξί στικ</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">Μία εικόνα κοινή για όλα τα κοντέινερ ή μία μόνο για αυτό το κοντέινερ.</string>
     <string name="lab_cc7362b0">Το Πάνω ή το Κάτω αφήνει το άλλο μισό ελεύθερο για τα χειριστήρια οθόνης.</string>
     <string name="lab_cc9e753f">Περιήγηση και εγκατάσταση στοιχείων</string>
+    <string name="lab_cc9f0c95">Εμφάνιση εσωτερικού χώρου αποθήκευσης</string>
+    <string name="lab_ccb4b062">Πρώτα γίνεται λήψη του επιπέδου (%1$s).</string>
     <string name="lab_cce939fc">Γρήγορο OpenGL</string>
     <string name="lab_cd871c13">Αναφορά ως Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">Αποκωδικοποιητής βίντεο</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">Πειραματικά</string>
     <string name="lab_d261efe4">Το Ένα κρατά τους μοχλούς ομαλούς σε φορητές συσκευές που επιβραδύνονται όσο λειτουργούν και τα δύο μοτέρ.</string>
     <string name="lab_d2651812">Ρυθμίσεις παιχνιδιού</string>
+    <string name="lab_d27c84ad">Ο λογαριασμός του εξομοιωτή άλλαξε σε αυτόν του αντιγράφου ασφαλείας. Εκκινήστε ξανά το παιχνίδι.</string>
     <string name="lab_d27d3648">LSFG εγγενές</string>
     <string name="lab_d2895d94">Αντίγραφα, επαναφορά και συγχρονισμός αποθηκεύσεων</string>
     <string name="lab_d2b6baa8">Διορθώνει αλλοιωμένο κείμενο σε ιαπωνικά, κινεζικά, κορεατικά και ρωσικά παιχνίδια.</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">Σκανδάλη</string>
     <string name="lab_d5e887b8">%1$s ώ.</string>
     <string name="lab_d60412d3">Πρωτότυπο</string>
+    <string name="lab_d60d149d">Έγινε εισαγωγή αποθετηρίων</string>
     <string name="lab_d620ef74">Εξώφυλλο, θολωμένο</string>
     <string name="lab_d653f990">Μεταφραστής x86 για κώδικα 32-bit</string>
     <string name="lab_d6d3fe68">Επιλέξτε ένα πακέτο στοιχείων (-linux .wcp)</string>
     <string name="lab_d7060afb">Εισαγωγή αυτού του κοντέινερ</string>
+    <string name="lab_d736d92d">OK</string>
     <string name="lab_d73ee22e">Το πρόγραμμα οδήγησης Turnip ή Adreno που φορτώνει το wrapper. Εισαγάγετε περισσότερα στα Περιεχόμενα › Προγράμματα οδήγησης GPU.</string>
     <string name="lab_d801cf49">Τα αρχεία ρυθμίσεων που συνοδεύουν τις εκδόσεις VEGAS. Εμφανίζονται στο Αρχείο ρυθμίσεων.</string>
     <string name="lab_d809a959">Διατηρείται όταν αποθηκεύετε τον επεξεργαστή.</string>
     <string name="lab_d8321a59">Χωρίς τριξίματα</string>
+    <string name="lab_d832ee19">Πλευρικό μενού</string>
     <string name="lab_d834a1cf">Έλεγχος ποια εγκατεστημένα προγράμματα οδήγησης μπορούν να εμφανίσουν το παιχνίδι…</string>
     <string name="lab_d870ae5e">Αυτό το πρόγραμμα οδήγησης δεν φορτώθηκε σε αυτή την GPU: στον έλεγχο απάντησε στη θέση του το πρόγραμμα οδήγησης του συστήματος.</string>
     <string name="lab_d8e06406">Οθόνη</string>
+    <string name="lab_d8e601e7">Ορισμένα παιχνίδια κρατούν τις αποθηκεύσεις αλλού (στον φάκελο εγκατάστασης, στο μητρώο, στο Steam Cloud). Ελέγξτε ένα αντίγραφο ασφαλείας πριν διαγράψετε οτιδήποτε.</string>
     <string name="lab_d8e621c2">Προσθήκη μονάδας δίσκου</string>
     <string name="lab_d90a905b">Γυάλινα</string>
     <string name="lab_d91754f0">Καμία καταχώριση.</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Υπηρεσίες παρασκηνίου των Windows</string>
     <string name="lab_db6d6f28">Συμπερίληψη προεκδόσεων</string>
     <string name="lab_db745b05">. Μια νέα εικόνα χρησιμοποιείται από την επόμενη εκκίνηση, αφού αποθηκεύσετε.</string>
+    <string name="lab_db7be531">Δεν ήταν δυνατή η λήψη.</string>
     <string name="lab_db89b158">Τελευταία συνεδρία</string>
     <string name="lab_dbce82c8">Όπως στα Όλα τα κοντέινερ</string>
     <string name="lab_dbd5d59f">Μεταβλητές αυτού του παιχνιδιού</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">Συγχρονισμός ξεκλειδωμάτων με το προφίλ Steam</string>
     <string name="lab_de0c0eb8"> Τα \";\" και \"=\" παραλείπονται.</string>
     <string name="lab_de315178">Μετονομασία</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">Αλλάζει επίσης από την Προτίμηση DLL από τον φάκελο του παιχνιδιού παραπάνω</string>
     <string name="lab_de72753f">Πόση μνήμη γραφικών αναφέρει το WineD3D.</string>
+    <string name="lab_de75d40c">Το %1$s επιστρέφει από το %2$s στο %3$s. Το μητρώο επαναφέρεται από το αντίγραφο ασφαλείας που δημιουργήθηκε πριν από την ενημέρωση. Τα παιχνίδια, οι αποθηκεύσεις, οι συντομεύσεις και οι ρυθμίσεις διατηρούνται. Το %4$s πρέπει να είναι ακόμα εγκατεστημένο.</string>
     <string name="lab_dec4dc19">Μόνο κοντέινερ</string>
     <string name="lab_def1a7db">Κοντέινερ</string>
     <string name="lab_def6b48c">Γνωστές μεταβλητές</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Προσαρμογέας Wayland</string>
     <string name="lab_e1be537c">Μη αποθηκευμένο</string>
     <string name="lab_e22a8ea9">Το Wayland χρειάζεται εγκατεστημένο Turnip για να βγάλει τα καρέ του παιχνιδιού στην οθόνη. Τα νέα εμφανίζονται στο Πρόγραμμα οδήγησης γραφικών.</string>
-    <string name="lab_e2410f47">Περιήγηση και λήψη</string>
     <string name="lab_e2421520">Λήψη εκδόσεων WOWBox64</string>
     <string name="lab_e280d375">Μέγεθος καρτών</string>
     <string name="lab_e2a7f23e">Στην οθόνη</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">Αυτή η καταχώριση δεν έχει αρχείο εικονιδίου για εγγραφή.</string>
     <string name="lab_e2ce4373">Ενότητα</string>
     <string name="lab_e2e95fcd">Αρχεία καταγραφής παιχνιδιών</string>
+    <string name="lab_e2f09271">Επαναφορά του αντιγράφου ασφαλείας του %1$s στο %2$s; Μπορεί να αντικατασταθούν αποθηκευμένα δεδομένα εκεί.</string>
+    <string name="lab_e3af6ca0">Επιλογή λίστας αποθετηρίων</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Για παιχνίδια που βλέπουν χειριστήριο μόνο μέσω του Steam (No Man\'s Sky). Αφήστε το ανενεργό για παιχνίδια που διαβάζουν μόνα τους το χειριστήριο. Απενεργοποιεί την απευθείας μεταβίβαση.</string>
     <string name="lab_e3e80b58">Προφίλ χειρισμού</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">Απενεργοποιήστε το αν προτιμάτε. Αυτό το παιχνίδι θα το θυμάται.</string>
     <string name="lab_e841eed8">Η άδεια μικροφώνου απορρίφθηκε: το μικρόφωνο μένει ανενεργό.</string>
     <string name="lab_e8a0175e">Λήψη εκδόσεων Box64EC</string>
-    <string name="lab_e8a5f633">Δεν υπάρχουν αποθηκευμένα αρχεία στοιχείων.</string>
     <string name="lab_e8c91356">Ακολουθεί τις αντιστοιχίσεις του κοντέινερ. Αν αλλάξετε μία, αυτό το παιχνίδι αποκτά δικές του αντιστοιχίσεις.</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">Δεν υπάρχει ακόμη διάταξη οθόνης</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) ή off</string>
     <string name="lab_e98a38e0">Μεγεθυντικός φακός, εικόνα σε εικόνα, πληκτρολόγιο και απόδοση.</string>
     <string name="lab_e9bb2501">Επιτρέπει στα παιχνίδια να χρησιμοποιούν το μικρόφωνο: το DirectAudio καταγράφει την είσοδο. Το Android ζητά την άδεια μία φορά.</string>
-    <string name="lab_ea08e43f">Runtime Linux και όλες οι λίστες</string>
     <string name="lab_ea354143">Ένα αχνό κουμπί πάνω δεξιά που ανοίγει το γρήγορο μενού με αφή. Το Πίσω, το κουμπί Menu ή ένα πάτημα με τέσσερα δάχτυλα λειτουργούν και χωρίς αυτό.</string>
     <string name="lab_ea4babd8">Τρόπος εκκίνησης</string>
     <string name="lab_ea83f479">• Το client μπορεί να δείξει στο Σύστημα μια ενημέρωση του Steam Client που δεν εγκαθίσταται. Η λειτουργία Deck χρησιμοποιεί πλέον το κανάλι beta του Steam Deck για να την αποφύγει, αλλά αν εμφανιστεί, μην πατήσετε Εφαρμογή.\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">Μετρήσεις</string>
     <string name="lab_ed41d675">Πρόγραμμα οδήγησης σχεδίασης (runtime Linux)</string>
     <string name="lab_ed779ba6">Λήψη εκδόσεων Wine και Proton</string>
+    <string name="lab_eda50b73">%1$s παιχνίδια</string>
     <string name="lab_edfcb4b9">Αποκλειστικό ποντίκι και πληκτρολόγιο</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">Μπαταρία κόκκινο από</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">Διαφάνεια</string>
     <string name="lab_efdeb1c6">Η λίστα προρρυθμίσεων είναι κοινή για όλα τα κοντέινερ και τα παιχνίδια.</string>
     <string name="lab_efdfc7e5">Περιοριστής FPS</string>
-    <string name="lab_efeacf52">Μόνο το πρόγραμμα οδήγησης του τηλεφώνου προς το παρόν.</string>
     <string name="lab_f04c78b9">Ρυθμίσεις ήχου · αυτό το παιχνίδι</string>
     <string name="lab_f05053e7">Διαβάζει απευθείας ένα Steam Controller (τα trackpad και τα επιπλέον κουμπιά του). Ανενεργό: η κανονική διαδρομή εισόδου μένει ως έχει.</string>
     <string name="lab_f0520965">mailbox = νεότερο καρέ, χαμηλότερη καθυστέρηση. fifo = vsync, σταθερός χρονισμός. Η Προεπιλογή ακολουθεί το προφίλ, αλλιώς την αποθηκευμένη λειτουργία παρουσίασης. Το Immediate χρειάζεται tearing, που το Wayland δεν προσφέρει.</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">Δόνηση DirectInput</string>
     <string name="lab_f10b2876">Συνάφεια επεξεργαστή</string>
     <string name="lab_f115c775">Ασφαλής εκκίνηση anti-cheat (VAC)</string>
+    <string name="lab_f1165d1c">Ταξινόμηση</string>
     <string name="lab_f123362f">Εφαρμογή</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">Αριστερό στικ</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">Στυλ</string>
     <string name="lab_f2857f55">Εσωτερική</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">Επιλογή προγράμματος οδήγησης GPU</string>
     <string name="lab_f2ed832c">Πόση μνήμη GPU αναφέρεται στα παιχνίδια DirectX (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Καθυστέρηση ήχου</string>
     <string name="lab_f304d21f">Είναι πολύ μικρό για επιφάνεια εργασίας Windows.</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">Μόνο για αυτό το παιχνίδι: κανένα άλλο παιχνίδι ή κοντέινερ δεν αλλάζει. </string>
     <string name="lab_f40ccd04">Ενεργοποίηση</string>
     <string name="lab_f44d5610">Δόνηση ενεργή / ανενεργή και διακόπτες ανά θέση</string>
+    <string name="lab_f46b910b">Ιδιωτικός χώρος της εφαρμογής</string>
     <string name="lab_f485cfbf">Ρυθμίσεις που διαβάστηκαν από τα αρχεία του εισαγμένου wrapper. Κρύψτε ή εμφανίστε τες στη Διαχείριση wrapper γραφικών.</string>
     <string name="lab_f4abcaf2">Αυτή είναι ρύθμιση του κοντέινερ. Αλλάξτε την στις ρυθμίσεις του κοντέινερ.</string>
     <string name="lab_f4f73c18">Προεπιλογές</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">Αποθήκευση</string>
     <string name="lab_f576fb2d">Επίπεδα από τον κατάλογο ή εγκατάσταση ενός από αρχείο. Τα νέα κοντέινερ μπορούν να τα χρησιμοποιήσουν.</string>
     <string name="lab_f57b35ee">Νεκρή ζώνη και εξομάλυνση</string>
+    <string name="lab_f581508f">Αφαιρέθηκαν %1$s παιχνίδια</string>
     <string name="lab_f5864edc">Η αυτόματη λήψη από το cloud κατά την εκκίνηση θα είναι ΑΝΕΝΕΡΓΗ για τα παιχνίδια της βιβλιοθήκης σας στο Steam. Οι πιο πρόσφατες αποθηκεύσεις cloud δεν θα κατεβαίνουν πριν ξεκινήσει ένα παιχνίδι — θα πρέπει να τις κατεβάζετε μόνοι σας από την ενότητα Αποθηκεύσεις cloud στη σελίδα λεπτομερειών του παιχνιδιού. Συνέχεια;</string>
     <string name="lab_f593aa90">Το πρόγραμμα οδήγησης με το οποίο ο compositor της εφαρμογής βγάζει τη συνεδρία στην οθόνη. Όχι αυτό με το οποίο σχεδιάζει το client.</string>
     <string name="lab_f59e59da">Εμφανίζεται στη βιβλιοθήκη σας. Η μετονομασία κρατά το εξώφυλλο και το εικονίδιο.</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">Ξεκινά από τις Προεπιλογές νέου κοντέινερ. Το X το δημιουργεί.</string>
     <string name="lab_f783e029">Διπλή μπαταρία</string>
     <string name="lab_f81efa4a">FEX, DXVK και VKD3D-Proton</string>
+    <string name="lab_f826d6b4">Επαναφέρθηκαν %1$s αρχεία στο %2$s</string>
     <string name="lab_f8283624">Μέγεθος διεπαφής</string>
     <string name="lab_f8507a8c">Διόρθωση χρωμάτων SurfaceFlinger</string>
     <string name="lab_f8e0d68c">Πρόγραμμα οδήγησης compositor (έκδοση graphicsDriverConfig)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">Ορισμένα παιχνίδια δεν διαβάζουν ποτέ μόνα τους το χειριστήριο: το ζητούν από το Steam. Στο SteamLite δεν απαντά κανείς, οπότε αυτά τα παιχνίδια δεν βλέπουν χειριστήριο. Ενεργό: ο agent του SteamLite ενεργοποιεί το επίπεδο χειριστηρίων του Steam για αυτό το παιχνίδι με κατάλληλη διάταξη. Αφήστε το ανενεργό για παιχνίδια που ήδη διαβάζουν χειριστήριο, αλλιώς λαμβάνουν κάθε πάτημα δύο φορές. Είναι το αντίθετο της απευθείας μεταβίβασης χειριστηρίου, οπότε μόνο ένα από τα δύο μπορεί να είναι ενεργό. Μόνο για SteamLite.</string>
     <string name="lab_fa859fc7">Η λειτουργία Goldberg, ο Έλεγχος αρχείων και ο Έλεγχος για ενημερώσεις βρίσκονται στο μενού εκκίνησης. Απενεργοποιήστε το «Παράλειψη μενού εκκίνησης» για να το δείτε στην επόμενη εκκίνηση.</string>
     <string name="lab_fac0fe64">Οι ρυθμίσεις κλιμάκωσης κάνουν το χρήσιμο κομμάτι και χωρίς αυτό, και το όριο FPS του πλευρικού μενού μέσα στο παιχνίδι περιορίζει τον ρυθμό καρέ. Απενεργοποιήστε ξανά τη λειτουργία Deck αν ένα παιχνίδι σταματήσει να ανταποκρίνεται στο χειριστήριο.</string>
+    <string name="lab_fac102a7">FPS · τελευταία συνεδρία</string>
     <string name="lab_fad0baa9">Προεπιλογή (Steam: %1$s)</string>
     <string name="lab_fae2666b">Το Proton της ίδιας της Valve, που αντικαθίσταται όταν το ενημερώνει το Steam. Τα πρωτότυπά του κρατιούνται ανά έκδοση</string>
     <string name="lab_fae62cc0">Κλειδώνει τον δείκτη στο παιχνίδι. Πατήστε Μείωση έντασης για να τον απελευθερώσετε.</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">Έκδοση DirectX</string>
     <string name="lab_fbd4f98b">Όνομα GPU που βλέπουν τα παιχνίδια</string>
     <string name="lab_fbf2e44f">Η ένδειξη FPS και θερμοκρασίας στην οθόνη.</string>
+    <string name="lab_fbfb437a">Το %1$s μεταβαίνει από το %2$s στο %3$s. Τα παιχνίδια, οι αποθηκεύσεις, οι συντομεύσεις και οι ρυθμίσεις διατηρούνται.</string>
     <string name="lab_fd1310b6">Κουμπί X</string>
     <string name="lab_fd5460f8">Χρώμα</string>
+    <string name="lab_fdc15162">Δεν φορτώθηκε</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ιχνηλάτηση προγράμματος οδήγησης)</string>
     <string name="lab_fe11d138">Όνομα</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">Ως κείμενο, διαχωρισμένο με κόμματα</string>
     <string name="lab_ffb9855e">Αυτό το αρχείο δεν είναι προφίλ χειρισμού</string>
     <string name="lab_ffcd863d">%1$s λεπ. παιχνίδι</string>
+    <string name="lab_ffe2f089">Δεν εντοπίστηκε Wayland WSI</string>
 </resources>

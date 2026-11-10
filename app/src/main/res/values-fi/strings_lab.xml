@@ -30,13 +30,16 @@
     <string name="lab_02fd88bf">Minkä ohjaimen peli näkee. Voidaan muuttaa myös pelin aikana (ohjain yhdistetään uudelleen).</string>
     <string name="lab_0312e1a5">Kirjoita nimi ennen =-merkkiä.</string>
     <string name="lab_0355373d">Kaikki</string>
+    <string name="lab_03705e75">Poistettu %1$s/%2$s; loppuja ei voitu poistaa</string>
     <string name="lab_0397233a">Ohittaa GMEMin.</string>
     <string name="lab_039bee69">Ohjaimet</string>
     <string name="lab_03af654a">Ohjain</string>
     <string name="lab_03af83cf">Sisäinen (Wine)</string>
     <string name="lab_03be5b2b">Lopetetaanko %1$s?</string>
     <string name="lab_03dc750a">Ei mitään. Selaa luetteloa lisätäksesi joitakin.</string>
+    <string name="lab_03eece5a">Yhteensä</string>
     <string name="lab_03f54074">Täytä näyttö</string>
+    <string name="lab_04272d2b">Palauta kerros versioon %1$s</string>
     <string name="lab_04314e37">Steam Controller, näytön ohjainten oletukset sekä hiiri ja näppäimistö Wine-peleille.</string>
     <string name="lab_04422c9a">Avaa</string>
     <string name="lab_044669c8">Ytimet, joita peli voi käyttää</string>
@@ -54,8 +57,8 @@
     <string name="lab_05e087ba">Tuo profiili</string>
     <string name="lab_05ea4871">Sovita virkistystaajuus FPS:ään</string>
     <string name="lab_05f88f63">Wine-/Proton-versio</string>
+    <string name="lab_062deaae">Kohdetta %1$s ei voitu asentaa: %2$s</string>
     <string name="lab_063c1ee9">Piilottaa Xbox-ohjaimet tältä peliltä.</string>
-    <string name="lab_06625dae">Ei latauslähteitä.</string>
     <string name="lab_06681d37">Mikä kosketuslevy liikuttaa hiirtä. Sen painaminen on vasen napsautus.</string>
     <string name="lab_066c2fb1">Pelisivu</string>
     <string name="lab_0687488a">Turnip- ja Qualcomm-ajurit</string>
@@ -65,6 +68,7 @@
     <string name="lab_070cecae">Valitse, mitä kirjataan (Wine, Box64/FEX, DXVK, SteamLite, Steam ilman käyttöliittymää, logcat), minne lokit tallennetaan ja montako säilytetään; selaa ja jaa niitä.</string>
     <string name="lab_0721ad7c">Tämä kontti</string>
     <string name="lab_075ffd70">Oma video</string>
+    <string name="lab_076e01bd">Palauta tallennus…</string>
     <string name="lab_07a88d47">Yksi Back-painallus avaa edelleen pelin valikon.</string>
     <string name="lab_07e11363">Päällä koko kontissa: poista se käytöstä kontista.</string>
     <string name="lab_080615dc">Käytä kontin arvoa</string>
@@ -80,6 +84,7 @@
     <string name="lab_090cd470">Lataa D7VK-versioita</string>
     <string name="lab_09683590">Kuvataajuuden rajoitin</string>
     <string name="lab_09793b21">OpenGL: Vsync pois</string>
+    <string name="lab_097af41a">Nimi Z–A</string>
     <string name="lab_09b51ad4">Paikat</string>
     <string name="lab_09cdafe2">Tekstin koko</string>
     <string name="lab_09d2be7b">Julkinen beta</string>
@@ -95,14 +100,17 @@
     <string name="lab_0b4e200e">DXVK:n oma raja (DXVK_FRAME_RATE). Pois jättää tahdistuksen kuvataajuuden rajoittimelle.</string>
     <string name="lab_0b5eae46">Ohjaimesta tulee pelaaja 1</string>
     <string name="lab_0b76e940">Poistettu: %1$s %2$s</string>
+    <string name="lab_0bad6f7f">Ladataan %1$s profiilia…</string>
     <string name="lab_0bd8b542">Kuvan koko, ruutujen tahdistus ja virkistystaajuus.</string>
+    <string name="lab_0be4a3d7">Poistettu 1 peli</string>
     <string name="lab_0be7a72d">Skaalaustila</string>
     <string name="lab_0bece985">Varmuuskopiot</string>
     <string name="lab_0c451500">Kaappausresoluutio</string>
     <string name="lab_0c64d11e">Asenna sisältöä tiedostosta</string>
+    <string name="lab_0c88e27c">Vain pikakuvakkeet poistuvat; pelien tiedostot säilyvät.</string>
     <string name="lab_0cd26a5e">Mitään ei ladata</string>
-    <string name="lab_0ce16a57">Varmuuskopiointi epäonnistui: %1$s</string>
     <string name="lab_0cfb7a3b">Korjaa pyörivät tai jumittuneet kamerat joissakin vanhemmissa peleissä.</string>
+    <string name="lab_0d0fc080">Monistetaan %1$s…</string>
     <string name="lab_0d5a2b34">Ohjelman nimen perään lisättävät sanat, esim. -windowed -dx11.</string>
     <string name="lab_0da00171">• Pelit lakkaavat saamasta ohjainta. Steamin omat valikot toimivat edelleen, mutta pelissä ohjain ei tee mitään.\n</string>
     <string name="lab_0dc541d5">Palauta oletus</string>
@@ -118,13 +126,13 @@
     <string name="lab_0f940948">Automaattinen (Steam Deck -beta, Deck-tilaa varten)</string>
     <string name="lab_0fed0c63">Ajurin asetukset</string>
     <string name="lab_10091d64">VEGAS-versio</string>
-    <string name="lab_10125440">Ajurit ja komponentit</string>
     <string name="lab_101d1386">SteamGridDB-API-avain</string>
     <string name="lab_101f5ed2">ReShade-tehosteet</string>
     <string name="lab_1054fdc3">Waylandissa peli renderöidään sulautetun kompositorin kautta, joka tarvitsee asennetun Turnipin tuodakseen sen ruudut. \"System\" tarjotaan vain Mali-GPU:illa; muualla se näyttää mustan ruudun. Se, millä peli itse renderöi, on alla oleva Waylandin peliajuri.</string>
     <string name="lab_105c504c">OneUI / HyperOS -korjaus</string>
     <string name="lab_1079be1d">Steamista ei löytynyt mitään: %1$s</string>
     <string name="lab_10a08356">Salli vaihto pelin aikana</string>
+    <string name="lab_10b7b953">Varmuuskopioi tallennukset…</string>
     <string name="lab_10cb69ae">Valitse kuvakkeen kuva</string>
     <string name="lab_1121166e">Alfa</string>
     <string name="lab_112d429f">Käännä Y</string>
@@ -164,10 +172,10 @@
     <string name="lab_1634efe6">Esiasetukset ja hienosäätö…</string>
     <string name="lab_165bbde9">Keskeytä</string>
     <string name="lab_1689f76a">Pois piilottaa sen Sisältö-näkymästä; kontin ja pelin sivut säilyttävät sen.</string>
+    <string name="lab_16a69772">Haetaan…</string>
     <string name="lab_16c90680">Kuvan sijainti</string>
     <string name="lab_16d40373">Ääniajuri</string>
     <string name="lab_16ff819d">Virkistystaajuus</string>
-    <string name="lab_170eab83">Tallennetut tiedostot</string>
     <string name="lab_1777bbf2">Manuaalinen</string>
     <string name="lab_177847bc">Ei mitään kopioitavaa</string>
     <string name="lab_17a0dfae">Offline</string>
@@ -180,10 +188,12 @@
     <string name="lab_187e8ab4">tämä peli</string>
     <string name="lab_188dc386">Asetetaan kohdassa Suorituskyky › Synkronointi.</string>
     <string name="lab_18991a24">Muu</string>
+    <string name="lab_189c9ae3">Metacritic %1$s</string>
     <string name="lab_189cd0dc">Deck-tila on päällä: pelit eivät saa ohjainta. Jos System-kohdassa näkyy Steam Client -päivitys, joka ei asennu, älä paina sen kohdalla Apply.</string>
     <string name="lab_189ddac0">Sen pakettitiedosto poistetaan sovelluksesta. Voit ladata sen uudelleen milloin tahansa.</string>
     <string name="lab_18c07921">Menu-painike, lisäpainikkeet ja gyron kalibrointi</string>
     <string name="lab_18e6df7b">Ohittaa Epic-kirjautumisen tässä pelissä (ei verkko-ominaisuuksia).</string>
+    <string name="lab_191f6609">Valitse peli</string>
     <string name="lab_19377f1f">Steam-yhteyden alue ja verkkotesti</string>
     <string name="lab_19532aa0">Tämä poistaa ladatun tehosteen tallennustilasta ja ottaa sen pois tästä kokoonpanosta. Voit ladata sen uudelleen milloin tahansa.</string>
     <string name="lab_1955f21e">CPU-ytimet</string>
@@ -201,12 +211,14 @@
     <string name="lab_1aca8454">Ota liiketähtäys käyttöön</string>
     <string name="lab_1acaa40c">Mitä kirjataan, minne se tallennetaan ja kuinka kauan sitä säilytetään.</string>
     <string name="lab_1acd9ee4">Lukittu tilaan Nopea V-Sync, kun ruutugenerointi on käynnissä.</string>
+    <string name="lab_1b1ee750">Tuotiin %1$s profiilia</string>
     <string name="lab_1b3f6747">%1$s°C</string>
     <string name="lab_1b4a4a98">Jokaisen Protonin omat tiedostot tallennettiin sen alkuperäisinä, kun tämä sivu avattiin.</string>
     <string name="lab_1b4c8948">Esitystila</string>
     <string name="lab_1bbf10a9"> (oma kopiosi)</string>
     <string name="lab_1bc2538c">KGSL-ajoituskorjaus</string>
     <string name="lab_1bdd2734">Pelin oletus</string>
+    <string name="lab_1be37b64">Palautus epäonnistui: %1$s</string>
     <string name="lab_1bfb31a3">Taustaväri</string>
     <string name="lab_1bfc578f">Chat-ilmoitukset</string>
     <string name="lab_1bfe2edd">DXVK:n kuvataajuusraja</string>
@@ -217,14 +229,12 @@
     <string name="lab_1c65d66f">Työpöydän tausta</string>
     <string name="lab_1c765923">Auto (yhdistämisjärjestyksessä)</string>
     <string name="lab_1ce56dac">Emulaattori (64-bit)</string>
-    <string name="lab_1d039d18">Lataa ja asenna</string>
     <string name="lab_1d4948df">Pitää videoruudut poissa GPU:lta. Kokeile, jos video on musta mutta ääni kuuluu.</string>
     <string name="lab_1d4a9752">Tallennusten hallinta</string>
     <string name="lab_1dafe1ef">Avaa ›</string>
     <string name="lab_1dcd6efb">Yleinen (oletus): toimii kaiken kanssa, kuten ennenkin. Xbox 360 / One / Series: pelit käsittelevät ohjainta Xbox-ohjaimena; paras yhdessä Suoran XInputin kanssa reaaliaikaista syötettä ja tärinää varten. Klassinen DirectInput-ohjain: vanhoille peleille, jotka eivät hyväksy Xbox-ohjaimia; se antaa aina DirectInput-pelien nähdä ohjaimen. PlayStation / Nintendo / Joy-Con / Steam Deck (kokeellinen): pelit voivat näyttää kyseisten painikkeiden kuvakkeet; ei gyroa, kosketuslevyä, valopalkkia tai ohjauslevyjä, ja jotkin pelit eivät ehkä tunnista ohjainta. Vaihda siinä tapauksessa takaisin Yleiseen tai Xboxiin.\n\nJos ohjain katoaa pelissä, vaihda takaisin Yleiseen.</string>
     <string name="lab_1dd0373a">Poistetaanko %1$s ja kaikki sen sisältö? Sen pelien pikakuvakkeet poistuvat myös.</string>
     <string name="lab_1dd4a128">Root-säätimet</string>
-    <string name="lab_1df4901e">Monistettu: %1$s</string>
     <string name="lab_1df4bc73">Automaattinen kertoo pelille, mitä aliryhmäoperaatioita Mesa-ajurisi tukee (DOOM Eternal ja muut niitä tarvitsevat pelit käynnistyvät). Pois piilottaa ne, kuten vanhemmat sovittimet tekivät; kokeile sitä, jos pelissä on grafiikkavirheitä tai kaatumisia, joita ei ennen ollut.</string>
     <string name="lab_1dfaae77">Nimessä ei saa olla merkkejä \\ / : * ? \" &lt; &gt; |</string>
     <string name="lab_1e1e0a24">Asiakasohjelman käynnistämille peleille, ei itse asiakasohjelmalle, ja jokaiselle niistä: istunnolla on yksi ympäristö. </string>
@@ -232,6 +242,7 @@
     <string name="lab_1e537526">Luettelo on tyhjä.</string>
     <string name="lab_1e713627">Linuxin Steam-asiakasohjelma</string>
     <string name="lab_1e765e92">Liiketähtäyksen asetukset</string>
+    <string name="lab_1e7d16fc">Tyhjennä välimuisti</string>
     <string name="lab_1e9a6134">Pois päältä tässä kontissa. Ota se käyttöön kontin asetuksissa, jotta voit käyttää sitä tässä.</string>
     <string name="lab_1f050928">Oletus (jätä televisio ennalleen)</string>
     <string name="lab_1f13e4b9">Repositoriot</string>
@@ -248,6 +259,7 @@
     <string name="lab_1fb686b0">Asiakasohjelmasta käynnistetyt pelit. Kaikki ytimet -valinta antaa Androidin jakaa työn itse.</string>
     <string name="lab_1fccd93f">Auto aloittaa pienestä ja kasvattaa puskuria vain, jos se kuulee rätinää. Hienosäädä alla.</string>
     <string name="lab_1ff9ec48">Istunto</string>
+    <string name="lab_1ffa163f">Hae kaikista repositorioista</string>
     <string name="lab_2012067c">Sovelluksen mukana</string>
     <string name="lab_20226dfe"> · ei yhdistetty (tallennettu kiinnitys)</string>
     <string name="lab_2062fe79">FPS-rajoitin</string>
@@ -260,6 +272,7 @@
     <string name="lab_2149e1f2">uudet kontit</string>
     <string name="lab_2166d8ab">Varmuuskopioi tai palauta kaikki sovelluksen tiedot</string>
     <string name="lab_21e9b52f">Valitse sisältö tai ajuri</string>
+    <string name="lab_21ede2b8">%1$s pysyy asennettuna, joten voit palata siihen.</string>
     <string name="lab_21feab48">Määritä painikkeet uudelleen ja tarkista jokainen syöte</string>
     <string name="lab_22270e04">Storage image -polku</string>
     <string name="lab_2246a8bd">Päälle/pois</string>
@@ -271,12 +284,12 @@
     <string name="lab_2315b7f2">. Arvoissa ei saa olla välilyöntejä.</string>
     <string name="lab_235fa0f3">Pysäytä käynnistyksessä</string>
     <string name="lab_2379f827">Suoratoista televisioon</string>
-    <string name="lab_23b4ddb2">Asennetut, aseta oletukseksi, lataa lisää</string>
     <string name="lab_23b56f8c">Suorita ohjelmat järjestelmänvalvojana</string>
     <string name="lab_23d05606">Hiiri ja näppäimistö (Wine-pelit)</string>
     <string name="lab_23d11cc7">Näytä FPS-laskuri</string>
     <string name="lab_23deaf7c">Hallitse</string>
     <string name="lab_23e9383c">Versio, mitä sen taustalla on ja kiitokset.</string>
+    <string name="lab_243c4264">Päivitä luettelot</string>
     <string name="lab_2453405d">Käytä muotoa auto:N, fixed:N tai off</string>
     <string name="lab_2470de02">Läpinäkyvä</string>
     <string name="lab_24720798">Korjaa vaihtuneet värit</string>
@@ -299,6 +312,7 @@
     <string name="lab_274284a1">Ei vielä Waylandissa tässä koontiversiossa.</string>
     <string name="lab_2742f91b">Automaattinen · Steam-traileri</string>
     <string name="lab_2756404f">Palauta virta ja root sovelluksen oletuksiin</string>
+    <string name="lab_278c89b0">Steamiin ei saatu yhteyttä.</string>
     <string name="lab_27b56d30">Asentaa Bannerlatorin XInput-DLL:t riippumatta siitä, onko Suora XInput päällä vai pois, ja Winen oman XInputin niiden rinnalle, jotta pelin valikon Controls › Pad voi vaihtaa niiden välillä pelin ollessa käynnissä (ohjain yhdistetään uudelleen). Oletuksena päällä. Pois: Suora XInput pysyy sellaisena kuin peli käynnistyi, ja sen muuttaminen vaatii uudelleenkäynnistyksen.</string>
     <string name="lab_27bb1078">Suora</string>
     <string name="lab_27bcb120">Lisää, kopioi, poista, vie tai tuo Box64- ja FEX-esiasetuksia (Classicin asetukset).</string>
@@ -311,6 +325,7 @@
     <string name="lab_28502118">VEGASin sisäiset oletukset (ei tiedostoa)</string>
     <string name="lab_286dae57">Automaattinen · kansikuvasta</string>
     <string name="lab_287eabc8">Näytä FPS</string>
+    <string name="lab_289585af">valmis</string>
     <string name="lab_28d51363">Virkistystaajuus, jonka peli voi valita</string>
     <string name="lab_28f727b0">Vie HUD-diagnostiikka</string>
     <string name="lab_29198bb7">Ei asetettu (järjestelmä)</string>
@@ -332,8 +347,10 @@
     <string name="lab_2a8810fb">Waylandin peliajuri</string>
     <string name="lab_2a88fd3c">Käynnistä ääni uudelleen</string>
     <string name="lab_2ab94a31">Pyyhkäise painikkeiden välillä</string>
+    <string name="lab_2ad53987">Poistetaanko 1 peli?</string>
     <string name="lab_2ad5a458">Kiinnitetyt pelaajapaikat</string>
     <string name="lab_2adf1ef0">Labin ruutupaperi ja signaalit kuvan päällä</string>
+    <string name="lab_2af0d6a1">Näytä esimerkki</string>
     <string name="lab_2b01a79e">Kuvaa ei voitu lukea.</string>
     <string name="lab_2b3bf173">Työkalut</string>
     <string name="lab_2b605d42">Lisää</string>
@@ -349,6 +366,7 @@
     <string name="lab_2c5622e9">Tatti ylös</string>
     <string name="lab_2c6448d6">Asetettu tälle kontille</string>
     <string name="lab_2c768f35">Uusien konttien aloitusarvo</string>
+    <string name="lab_2c8896f5">Näytä SD-kortin tallennustila</string>
     <string name="lab_2c963a33">tulee voimaan heti · tallennettu tämän moottorin oletukseksi</string>
     <string name="lab_2ce33943">Oletus</string>
     <string name="lab_2ced81bf">Offline: näytetään tallennettu luettelo. Muodosta yhteys ladataksesi uusia tehosteita.</string>
@@ -357,7 +375,6 @@
     <string name="lab_2d6ee59d">Tai kirjoita mikä tahansa arvo</string>
     <string name="lab_2dad13e3">Kieli</string>
     <string name="lab_2dc2e901">Mono</string>
-    <string name="lab_2df5d0e3">%1$s peliä · viimeksi pelatut ensin</string>
     <string name="lab_2e1b1382">Mikä tahansa (rajaton)</string>
     <string name="lab_2e1ff85b">Ruutugenerointi</string>
     <string name="lab_2e257663">Valikoissa</string>
@@ -365,6 +382,7 @@
     <string name="lab_2e4a40d6">Tämä näyttö ei voi vaihtaa virkistystaajuuttaan.</string>
     <string name="lab_2e57dd1f">Toinen tiedosto…</string>
     <string name="lab_2eae4031">Tatti alas</string>
+    <string name="lab_2ec7b25e">Jaa</string>
     <string name="lab_2ec97d85">Xbox-pelit keskustelevat Xbox-palveluiden kanssa xgameruntime.dll-tiedoston kautta. Tämä peli tuo Microsoftin kopion kansiossaan, ja Wine lataisi sen ennen sovelluksen kopiota (Xodus Nexus). Microsoftin kopio tarvitsee Windowsin Gaming Services -palvelut, joita Winessä ei ole, joten peli yleensä pysähtyy käynnistyessään (Cyberpunk 2077 teki niin). Päällä: jokainen käynnistys käyttää sovelluksen kopiota; pelin tiedostoja ei muuteta. Pois: käytetään pelin omaa kopiota.</string>
     <string name="lab_2ed04089">Pakota sysmem-renderöinti (sysmem)</string>
     <string name="lab_2f23b6d1">Kirjoita kuusi heksadesimaalinumeroa, esim. #1E88E5.</string>
@@ -389,10 +407,14 @@
     <string name="lab_32038add">Kiertää Turnip-bugin, jossa kysymys \"onko GPU valmis?\" odottaa koko ruudun valmistumista (raportin ajoitusbugi). Oletus antaa sovittimen tunnistaa sen; Päällä pakottaa sen käyttöön, Pois poistaa sen käytöstä.</string>
     <string name="lab_3205bc81">Turnip-grafiikka-ajuria ei ole asetettu, joten tarkistettavaa ei ole.</string>
     <string name="lab_32398034">%1$s Hz</string>
+    <string name="lab_325098a5">Varmuuskopioissa on jo varmuuskopio nimeltä %1$s</string>
+    <string name="lab_32725e5a">Lataa (%1$s)</string>
     <string name="lab_32a7fa00">Ruutugenerointi</string>
     <string name="lab_334d4744">Ota tilannevedos Steam-kirjaston tallennuksista paikalliseen kirjastoosi, kun peli päättyy.</string>
+    <string name="lab_33689924">Valitse tallennuskansio</string>
     <string name="lab_336d62eb">Suosi suuria CPU-ytimiä</string>
     <string name="lab_33a35a95">Asennetut äänipankit ja vientikansio</string>
+    <string name="lab_33ad7c60">Tyhjennä haku</string>
     <string name="lab_33b3dcd5">Pitää GPU:n huippukellotaajuudella, kun peli on käynnissä. Kuumempi ja virtasyöpömpi; pelit voivat ohittaa sen.</string>
     <string name="lab_33b5c99c">Vasta kun olet hyväksynyt kolmannen osapuolen pilven vastuuvapauslausekkeen; ei koskaan poista mitään pilvestä.</string>
     <string name="lab_33cb03bf">Sama kuin sovelluksen sivuilla</string>
@@ -404,12 +426,12 @@
     <string name="lab_345b88a3">Osoittimen nopeus</string>
     <string name="lab_346090f3">Box64EC:tä ei ole asennettu. Lataa sellainen alta (Kääntäjien lataukset).</string>
     <string name="lab_3482cb34">ARM64EC-oletukset</string>
-    <string name="lab_34928086">Tallennukset varmuuskopioitu (%1$s tiedostoa)</string>
     <string name="lab_34dee5b9">Kirjautunut · %1$s peliä</string>
     <string name="lab_35795680">Uudet kontit alkavat näillä arvoilla. Olemassa olevat kontit pitävät omansa.</string>
     <string name="lab_361899c4">Nightlies-julkaisuihin ei saatu yhteyttä</string>
     <string name="lab_362888df">Kallista tähdätäksesi</string>
     <string name="lab_36348dce">Mukautettu tälle kontille. Palauta saa sen seuraamaan taas jaettua esiasetusta. </string>
+    <string name="lab_363c53cf">Vie repositoriot</string>
     <string name="lab_3661ddfd">Vain Linuxin Steam-asiakasohjelman merkinnälle: sen ajurit, Steam-asiakasohjelman asetukset ja nopeussäädöt.</string>
     <string name="lab_366e8f9a">Samsungin ja Xiaomin puhelimille, joissa pelit näyttävät rikkinäisiä tekstuureja. Jätä muuten pois päältä.</string>
     <string name="lab_36936d70">Rajoittaa, montako ruutua sekunnissa peli piirtää. Säästää akkua ja tasoittaa nykimistä.</string>
@@ -419,7 +441,9 @@
     <string name="lab_377702f6">Kosketus</string>
     <string name="lab_37ad98ec">CPU-ydinvalinnat ovat voimassa, kunnes ohjelma käynnistetään uudelleen.</string>
     <string name="lab_37b97721">Qualcommin oma ajuri ei pysty tuomaan Wayland-ruutuja näytölle, joten näyttö käyttää mukana tulevaa Turnipia</string>
+    <string name="lab_37c2b051">Varmuuskopion muoto</string>
     <string name="lab_37f22874">Jokainen asema tarvitsee oman kirjaimen</string>
+    <string name="lab_3822fc21">Tallennettu</string>
     <string name="lab_3855543c">Vie (.icpx)</string>
     <string name="lab_385e1a80">Napauta peittokuvaa vaihtaaksesi pysty- ja vaakasuunnan välillä (Fusion: seuraava koko). Siirrä sitä vetämällä; lukitse se paikalleen pitkällä painalluksella.</string>
     <string name="lab_386c72a7">Tiedostoa ei voitu käyttää</string>
@@ -443,6 +467,7 @@
     <string name="lab_39d0c0e0">Ota käyttöön</string>
     <string name="lab_39da5009">XInput-pelit lukevat ohjainta suoraan Bannerlatorista Winen ohjainjonon sijaan: aina tatin todellinen asento, ei lisäviivettä, tärinä mukaan lukien. Pois: XInput kulkee Winen kautta kuten ennenkin. Jos peli toimii väärin, poista se käytöstä kyseiseltä peliltä.</string>
     <string name="lab_39e9425b">Ei repositorioita.</string>
+    <string name="lab_39ffa0a5">Valitse</string>
     <string name="lab_3a1ed8c6">Näyttöajuri (Android-puoli)</string>
     <string name="lab_3a24cc2d">Asetetaan konttikohtaisesti: se kuvaa käsiäsi, ei peliä.</string>
     <string name="lab_3a5c3010">FPS, CPU:n/GPU:n kuormitus ja lämpötilat pelin päällä. Napauta sitä pelin aikana kääntääksesi sen tai muuttaaksesi sen kokoa.</string>
@@ -459,6 +484,7 @@
     <string name="lab_3d198a51">3D-kuva</string>
     <string name="lab_3d2c22d4">Ajurin esitystila</string>
     <string name="lab_3d40c46a">Tärinä</string>
+    <string name="lab_3d7fa0a6">Yhteisön asetukset</string>
     <string name="lab_3d9862bb">Negatiivinen mip-bias: terävämmät tekstuurit, hieman välkettä. Auto seuraa skaalausta, jolla peli käynnistyy.</string>
     <string name="lab_3dbe79b1">Poista</string>
     <string name="lab_3e04658a">Sininen</string>
@@ -466,9 +492,12 @@
     <string name="lab_3e540424">Lataa ja korvaa</string>
     <string name="lab_3e5678cd">Nopein</string>
     <string name="lab_3e86e543">Välitetään wrapperille sellaisenaan. Jätä tyhjäksi, jos et halua asettaa sitä.</string>
+    <string name="lab_3e967773">Kauppa</string>
     <string name="lab_3ecd0489">Tallennusten automaattinen varmuuskopiointi poistuttaessa poistetaan käytöstä Steam-kirjastosi peleiltä. Niiden tallennuksia ei oteta talteen, kun peli suljetaan — sinun on varmuuskopioitava ne itse kontin varmuuskopiointitoiminnolla tai Tallennusten hallinnassa. Jatketaanko?</string>
+    <string name="lab_3edc001f">Päivitä kerros versioon %1$s</string>
     <string name="lab_3edcf27d">Terävin (-1.0)</string>
     <string name="lab_3ee20435">Pelit</string>
+    <string name="lab_3ee2f717">Tiedosto ei ole repositorioluettelo</string>
     <string name="lab_3f0b280a">Kuvataajuus</string>
     <string name="lab_3f373a64">MIDI SoundFont</string>
     <string name="lab_3f3a4df2">Eteen</string>
@@ -488,6 +517,7 @@
     <string name="lab_40ef4dfb">Salli XR-/VR-lasit</string>
     <string name="lab_41017c94">Uusi kontti</string>
     <string name="lab_410fcc62">Valitse tunnettu muuttuja tai kirjoita oma: NAME tai NAME=VALUE.</string>
+    <string name="lab_4150d5a6">1 tulos</string>
     <string name="lab_415a93a6">Uusin voittaa: ei koskaan korvaa uudempaa paikallista tallennusta.</string>
     <string name="lab_41f05e04">Alla olevat määritykset kuuluvat tähän profiiliin</string>
     <string name="lab_41fc25ab">Win-FG Native</string>
@@ -495,8 +525,10 @@
     <string name="lab_42bbc821">Kokeellinen: Epicin peittokuva pelissä näppäimillä Shift+F3. Vaatii, että kontti sallii kaikki palvelut.</string>
     <string name="lab_42ca94f9">Ensisijainen ohjain</string>
     <string name="lab_43316731">Vain C: (Windows-prefiksi) ja Z: ovat olemassa. Lisää asema pelikansiota varten.</string>
+    <string name="lab_434214cc">Kumoa</string>
     <string name="lab_4358e63d">Lab, Deck, XMB tai Classic</string>
     <string name="lab_43c9073b">Pois — valitse taajuus alta lukitaksesi näytön.</string>
+    <string name="lab_44343bcf">Piilotetut sisäänrakennetut repositoriot palaavat. Omasi säilyvät.</string>
     <string name="lab_443d0954">Käynnistä sen Windows-työpöytä</string>
     <string name="lab_4455b74f">Kuinka usein tatin liike välittyy peliin. Voidaan muuttaa myös pelin aikana.</string>
     <string name="lab_44655ec4">Asennus epäonnistui: %1$s</string>
@@ -507,12 +539,15 @@
     <string name="lab_45536eb8">Kontti</string>
     <string name="lab_455f1d53">UBWC / pakatut puskurit</string>
     <string name="lab_45bf9648">Näytön taustajärjestelmä</string>
+    <string name="lab_45d1fcf9">Hae uudelleen</string>
     <string name="lab_45e5d14f">Vienti epäonnistui</string>
     <string name="lab_45f80a27">Lisäasetukset</string>
     <string name="lab_4611b1a8">Vaakasuunta</string>
     <string name="lab_463dbb35">Kieli ja alue</string>
+    <string name="lab_4653869e">lataus epäonnistui</string>
     <string name="lab_466171a5">Poistettu: %1$s</string>
     <string name="lab_467d1fc1">Tallennukset ja pilvi</string>
+    <string name="lab_46f7f5f5">Ei asennettu · Striimaus</string>
     <string name="lab_46fd73ef">Kun kaikki ytimet ovat valittuina, Android jakaa työn itse, mikä on yleensä paras valinta.</string>
     <string name="lab_471552db">Muokkaa VEGAS-asetustiedostoa</string>
     <string name="lab_475cee12">Keskellä</string>
@@ -569,6 +604,7 @@
     <string name="lab_4c9cbae2">Supersampling</string>
     <string name="lab_4cb2f934">Aktiivinen</string>
     <string name="lab_4cc9a9c1">Kansikuva</string>
+    <string name="lab_4d04f825">Näytä / piilota valikko</string>
     <string name="lab_4d2f1928">Big Picture</string>
     <string name="lab_4d681963">Käännä ylös/alas</string>
     <string name="lab_4d8c7321">Sisältö</string>
@@ -589,6 +625,7 @@
     <string name="lab_4fce8ee1">Kaappausten lähettäminen ja win-fg-diagnostiikkaloki (Classicin asetukset).</string>
     <string name="lab_4fd05bc3">Todellinen hiiren hallinta</string>
     <string name="lab_50089f1e">Ohjelmistodekoodaus</string>
+    <string name="lab_507318fd">Tuo luettelo tiedostosta</string>
     <string name="lab_507883a8">Asetettu ympäristömuuttujissa BANNERIN_AXIS_HZ / BANNERIN_AXIS_AUTO_MAX.</string>
     <string name="lab_507b3c74">Täytä (rajaa)</string>
     <string name="lab_50bd6962">Lokit</string>
@@ -605,6 +642,7 @@
     <string name="lab_51fdfe54">Viety: %1$s</string>
     <string name="lab_52023fb7">Ei konttien varmuuskopioita kansiossa Downloads/Winlator/Backups/Containers.</string>
     <string name="lab_522ca2a0">Renderöi suurempana ja pienentää sitten siistimmän kuvan saamiseksi. Maksaa suorituskykyä.</string>
+    <string name="lab_524717e1">Valitse varmuuskopio (.zip)</string>
     <string name="lab_5254f3be">Pelit-välilehdellä lisäämäsi pelit näkyvät Steamin kirjastossa kohdassa Non-Steam ja toimivat Steamin Protonilla.</string>
     <string name="lab_526060cd">Asenna ajoympäristöjä ja kirjastoja konttiin ja valitse sisäiset tai natiivit DLL:t DirectX:lle, äänelle ja ajoympäristöille.</string>
     <string name="lab_52eb74b5">Näytä HUD</string>
@@ -646,13 +684,14 @@
     <string name="lab_58627009">Tärinä ja liiketähtäys.</string>
     <string name="lab_586f37a0">DXVK + VKD3D</string>
     <string name="lab_587004e8">Ylhäällä vasemmalla</string>
+    <string name="lab_58749370">%1$s ei ole enää asennettuna, joten tätä ei voi perua.</string>
     <string name="lab_58a426c9">Pois päältä tässä pelissä ruutugeneroinnin aikana. </string>
     <string name="lab_5946d9c6">Käytä sovelluksen asetusta (%1$s)</string>
     <string name="lab_594a913b">Asynkroniset shaderit</string>
     <string name="lab_595daef9">Ladatut komponentit: arkistot ja luettelolista.</string>
     <string name="lab_5983ab11">Offline-tila (ei kirjautumista Valvelle)</string>
+    <string name="lab_5996c8c7">Lataa ja päivitä kerros versioon %1$s</string>
     <string name="lab_59db09f5">Reaaliaikainen loki</string>
-    <string name="lab_5a0bc3fe" formatted="false">%.1f Mt</string>
     <string name="lab_5a596cd0">Tallennetaan konttiin heti, kun painat tässä Tallenna, kuten klassisessa editorissa.</string>
     <string name="lab_5aa9e082">Mistä Komponentit-näkymä etsii latauksia.</string>
     <string name="lab_5ac7d266">VKD3D-versio</string>
@@ -674,6 +713,7 @@
     <string name="lab_5cdd4dc6">FPS, CPU:n/GPU:n kuormitus ja lämpötilat pelin päällä. Sen tyyli valitaan alla ja pelin aikana sivuvalikosta.</string>
     <string name="lab_5cf98060">Piilota present-wait- / dynamic-rendering-laajennukset</string>
     <string name="lab_5cfcc2ee">Neon</string>
+    <string name="lab_5d04f79c">Käsitellään…</string>
     <string name="lab_5d1ebf1b">Tähtäystila</string>
     <string name="lab_5d676a2d">Vain omia esiasetuksiasi voi viedä.</string>
     <string name="lab_5d7ee5f8">GitHub, vianseuranta ja Discord</string>
@@ -683,6 +723,7 @@
     <string name="lab_5df5834f">Proton-komponentit</string>
     <string name="lab_5e190a08">Tallenna tai hylkää muutokset ensin.</string>
     <string name="lab_5e4af947">Kiinteä 60/s</string>
+    <string name="lab_5eb87a8b">Käynnistä</string>
     <string name="lab_5ecf04b0">View</string>
     <string name="lab_5edc0296">Asennetut VEGAS-koontiversiot ja sovelluksen mukana tuleva.</string>
     <string name="lab_5edc9360">Pelinaikainen valikko · %1$s</string>
@@ -721,6 +762,7 @@
     <string name="lab_62f52fcf">SurfaceFlinger</string>
     <string name="lab_630877c4">Pelin Documents-, AppData- ja Saved Games -kansiot ovat samat, joita sen kontti käyttää. Älä aja samaa peliä molemmissa yhtä aikaa.</string>
     <string name="lab_63319830">Esijulkaisut voivat olla epävakaampia.</string>
+    <string name="lab_633def1d">%1$s · 1 istunto</string>
     <string name="lab_634ae6b3">Miten wrapper luovuttaa ruudut. Ei näyttörenderöijän asetus.</string>
     <string name="lab_63791c91">Kansio, esim. /storage/emulated/0/Games</string>
     <string name="lab_6381687c">otettu uudelleen käyttöön käynnistyksessä klo </string>
@@ -728,7 +770,6 @@
     <string name="lab_63ce8179">Steam Deck -beta</string>
     <string name="lab_641b9c9d">Pelin oma puskuri menee näytölle ilman kopiota (pienin viive, vähemmän lämpöä). Vaatii ajurilta sync-file-fence-tuen (katso sovitinraportti). Poista käytöstä, jos näet repeilyä tai vanhentuneita ruutuja.</string>
     <string name="lab_643b2baf">Jaa / siirrä</string>
-    <string name="lab_64903a6c">Hae lisää</string>
     <string name="lab_64c5e98f">Kuva kuvassa</string>
     <string name="lab_65306cbd">Kaikki kontit -profiili, josta uudet kontit alkavat. Se on etusijalla ennen yllä olevia oletusesiasetuksia.</string>
     <string name="lab_655c4f8a">Tämän valikon avaaminen</string>
@@ -744,10 +785,12 @@
     <string name="lab_6637ca24">Muunna BCn ETC2:ksi</string>
     <string name="lab_66500371">Kaikkien konttien yhteinen</string>
     <string name="lab_667a25ae">°C</string>
+    <string name="lab_6682fbdd">%1$s tulosta</string>
     <string name="lab_66a48fe7">Pikselintarkka</string>
     <string name="lab_66d69f41">Vaihda suoritettava ohjelma</string>
     <string name="lab_66e416b8">Lähtötila</string>
     <string name="lab_676dd596">Jatka</string>
+    <string name="lab_67771d1b">Tämän pelin modit ja niiden valikot.</string>
     <string name="lab_67805216">Box64EC-versio</string>
     <string name="lab_67c5a895">Eilen</string>
     <string name="lab_67d87dd3">Koko polku .conf-tiedostoon, esim. /storage/emulated/0/Download/dxvk.conf</string>
@@ -805,10 +848,12 @@
     <string name="lab_6f5dc1ed">Lisää .sf2-tiedostoja ja valitse, minne pikakuvakkeet viedään (Classicin asetukset).</string>
     <string name="lab_6f6109df">Lisää ylimääräisiä ruutuja sulavampaa liikettä varten. Peli pysähtyy hetkeksi, kun se käynnistyy uudelleen.</string>
     <string name="lab_6f63a302">Pelivalikko</string>
+    <string name="lab_6fb2d3cd">Downloads › bannerlator (oletus)</string>
     <string name="lab_6fb5700f">Antaa DirectInput-pelien (monet vanhemmat pelit, ajopelit, rattiohjaimet) nähdä ohjaimen. Pois piilottaa sen DirectInputilta, jotta pelit, jotka tukevat sekä XInputia että DirectInputia, eivät näe sitä kahdesti. Ohjaimen identiteetti Klassinen DirectInput-ohjain ottaa tämän aina käyttöön.</string>
     <string name="lab_6fce3567">Välttää käyttöoikeuskehotteet Windowsissa (poistaa UAC:n käytöstä).</string>
     <string name="lab_6fd5eace">Terävöinti ja muut jälkitehosteet.</string>
     <string name="lab_701948cd">Näytetään Kontit-näkymässä ja jokaisen pelin \"From container\" -merkinnöissä.</string>
+    <string name="lab_701e81e5">Tuodaan %1$s…</string>
     <string name="lab_70455f1b">Tarvitaan VAC-suojatuille palvelimille liittymiseen. Tunnista-valinta seuraa Steamin sovellustietoja.</string>
     <string name="lab_70802fb2">Wine-synkronointi</string>
     <string name="lab_70a1ea5f">Versio</string>
@@ -821,9 +866,11 @@
     <string name="lab_71bf97b4">Peleille näkyvä GPU-muisti</string>
     <string name="lab_71d5a5d7">Lataa Turnip-ajuri</string>
     <string name="lab_721589c1">Tänään</string>
+    <string name="lab_721da611">Tästä kontista ei löytynyt pelejä.</string>
     <string name="lab_72395178">Pelit ja kirjasto</string>
     <string name="lab_7246e766">Profiilit</string>
     <string name="lab_72550119">Tikun päivitykset</string>
+    <string name="lab_725f7c3b">Odota, että nykyinen työ valmistuu</string>
     <string name="lab_728e56d6">Sulava</string>
     <string name="lab_72b16281">Ottaa ensimmäisen vapaan kirjaimen. Valitse sen kansio Selaa-painikkeella.</string>
     <string name="lab_72b89c6d">Palauta sovelluksen oletukset</string>
@@ -848,7 +895,6 @@
     <string name="lab_76420522">Peittokuva</string>
     <string name="lab_76471f06">Nämä välittyvät Steam-asiakasohjelmalle ja jokaiselle sen käynnistämälle pelille. Tässä oleva muuttuja ohittaa samannimisen FEXCore-esiasetuksesta.</string>
     <string name="lab_7656e144">Siniharmaa</string>
-    <string name="lab_76705189">Kohdetta %1$s ei voitu tuoda</string>
     <string name="lab_76ad015a">Antaa LSFG Nativen toimia ajureilla, jotka ilmoittavat vain Vulkan 1.1:n mutta joilla on tarvittavat laajennukset. Koskee myös pelikohtaisia ohituksia.</string>
     <string name="lab_76b4a740">Optinen vuo</string>
     <string name="lab_76b8a57c">Luetaan wrapperin asetuksia…</string>
@@ -871,6 +917,7 @@
     <string name="lab_791193e8">Valitse esiasetus</string>
     <string name="lab_79162646">Ei vielä profiileja.</string>
     <string name="lab_791d1125">Aloitusnäkymä ja päivitykset.</string>
+    <string name="lab_79780a3c">Viedään %1$s…</string>
     <string name="lab_7982eb6b">, jotka näkyvät alla.</string>
     <string name="lab_79b6d4c7">Steamin offline-tila, tiedostojen tarkistus ja päivitykset</string>
     <string name="lab_79c7988a">Ei mitään · nimi näytetään</string>
@@ -882,6 +929,7 @@
     <string name="lab_7a2a1141">D7VK-versio</string>
     <string name="lab_7a377726">Miten kuva päätyy näytölle</string>
     <string name="lab_7a54182d">FPS-peittokuva</string>
+    <string name="lab_7a7662fb">Viimeksi pelattu</string>
     <string name="lab_7b0d957b">Tyhjennä kaikki</string>
     <string name="lab_7b34b221">Lisää muuttuja</string>
     <string name="lab_7b719f09">Selaa</string>
@@ -891,7 +939,6 @@
     <string name="lab_7ca28c79">Taustakuva</string>
     <string name="lab_7caf4da8">BCn- ja yhteensopivuuskerrokset koskevat Malia ja muita kuin Qualcommin GPU:ita.</string>
     <string name="lab_7ccc17cd">Taustapuskuri</string>
-    <string name="lab_7ceefd00">Lataus epäonnistui: %1$s</string>
     <string name="lab_7d24ed15">Täällä ei ole vielä mitään.</string>
     <string name="lab_7d50777a">Toiminta, RPG, Strategia</string>
     <string name="lab_7d6bff72">Käytettävissä DirectAudio-äänijärjestelmässä.</string>
@@ -904,6 +951,7 @@
     <string name="lab_7e2d2eb0">x86-kääntäjät</string>
     <string name="lab_7e3548ee">Näytä Pelit-välilehden pelit Steamissa</string>
     <string name="lab_7e38b599">Automaattinen lähetys pilveen poistuttaessa poistetaan käytöstä Steam-kirjastosi peleiltä. Niiden tallennuksia ei lähetetä Steam Cloudiin, kun peli suljetaan — sinun on lähetettävä ne itse pelin tietosivun Cloud Saves -osiosta. Jatketaanko?</string>
+    <string name="lab_7e4777f5">Valitse ensin poistettavat pelit</string>
     <string name="lab_7e6d7e33">Kirjaston kortit</string>
     <string name="lab_7e9c00ea">Auto (FPS:n mukaan)</string>
     <string name="lab_7e9eede5">Profiili %1$s</string>
@@ -911,6 +959,7 @@
     <string name="lab_7ed31522">Vaatii suojatun käynnistyksen (VAC)</string>
     <string name="lab_7f13060c">Näyttötila</string>
     <string name="lab_7f7743c4">1 kytkin on asetettu tälle pelille.</string>
+    <string name="lab_7f871f0c">Käynnistä pelin kanssa</string>
     <string name="lab_7fa23600">Säilyttää käännetyt shaderit seuraavaa käynnistystä varten (gplasync-koontiversiot).</string>
     <string name="lab_7fba9196">Kello</string>
     <string name="lab_7ff85140">Piirtää Windows-työpöydän Androidiin. Wayland käyttää aina Vulkania.</string>
@@ -919,6 +968,7 @@
     <string name="lab_8064020a">Kirjoita koko polku, joka alkaa merkillä /.</string>
     <string name="lab_8069546e">Pinoa</string>
     <string name="lab_8070a23b">Tallennussijainti ja repositoriot</string>
+    <string name="lab_808644e3">Välimuisti</string>
     <string name="lab_8124b894">Lataa automaattisesti Steam Cloudista käynnistettäessä</string>
     <string name="lab_81297e77">Mitä kukin peli tulosti ajon aikana</string>
     <string name="lab_816ce026">Lataus</string>
@@ -935,7 +985,9 @@
     <string name="lab_82aa9f24">DirectShow</string>
     <string name="lab_83199eb2">Peli</string>
     <string name="lab_83548a23">Ulkoasu, kirkkaus, kontrasti, gamma, värikylläisyys, FXAA / CRT / Toon / NTSC</string>
+    <string name="lab_836605ce">Tuo tai vie luettelo</string>
     <string name="lab_83713095">Muu alueasetus…</string>
+    <string name="lab_8371c265">Ladataan %1$s…</string>
     <string name="lab_838501df">Offline: näytetään vain asennetut tehosteet. Muodosta yhteys selataksesi luetteloa.</string>
     <string name="lab_83ce15dd">fps keskim.</string>
     <string name="lab_83f0742a">Pelikansiot</string>
@@ -945,17 +997,21 @@
     <string name="lab_84a0335e">Sovitinprofiili</string>
     <string name="lab_84cba1d0" formatted="false">%.1f Mt · tallennettu</string>
     <string name="lab_8521db60">Pikavalikko</string>
+    <string name="lab_85379d71">Palautetaan %1$s…</string>
     <string name="lab_85486938">Lokit ja diagnostiikka</string>
     <string name="lab_8554e6fa">Nopea</string>
     <string name="lab_85558be1">Oletukset kaikille konteille</string>
     <string name="lab_8562499d">ReShade</string>
+    <string name="lab_8571a079">Oletus · %1$s</string>
     <string name="lab_85a12a5f">Vaihda</string>
     <string name="lab_85ab5712">XInput-pelit lukevat ohjainta suoraan ilman syötejonoa (ei jumittunutta tattia vapautuksen jälkeen). Päällä uusissa konteissa.</string>
     <string name="lab_85e5a021">Varmuuskopioi</string>
     <string name="lab_85eb8db0">Molemmat ohjaavat pelaajaa 1</string>
     <string name="lab_85efabfb">%1$s pelissä</string>
+    <string name="lab_85f9f5e1">Asema C</string>
     <string name="lab_861c1b03">Kosketustila ja kaikki täällä olevat kytkimet</string>
     <string name="lab_86369691">Näytä virallinen luettelo repositorioissa</string>
+    <string name="lab_8636cba2">Ladataan…</string>
     <string name="lab_866dbc9c">Kirjaudu ›</string>
     <string name="lab_86865d1d">Vulkan-versio</string>
     <string name="lab_868b6596">Ei rootia</string>
@@ -974,6 +1030,7 @@
     <string name="lab_88328343">Automaattinen · kansikuva sumennettuna</string>
     <string name="lab_8844e521">Esiasetuksen arvot</string>
     <string name="lab_8850c516">Antaa DirectInput-pelien saada ohjaimen värisemään: tavallinen tärinä sekä voimapalaute-efektit, joita ajo- ja lentopelit lähettävät rattiin tai ohjaussauvaan, tuntuvat ohjaimen kahden moottorin kautta. Se noudattaa tärinäasetuksia (tärinän kohde ja voimakkuus). Tasainen voima (esimerkiksi ajopeli, joka pitää ratin suorassa) vaimenee parin sekunnin kuluttua, joten ohjain ei jää surisemaan. DirectInput-pelit tuntevat sen vain, kun ne näkevät ohjaimen. Muutos tulee voimaan, kun ohjain yhdistetään uudelleen (pelin aikana Controls › Pad tekee sen), tai seuraavassa käynnistyksessä. Ympäristömuuttujien BANNERIN_DINPUT_FF ohittaa tämän asetuksen.</string>
+    <string name="lab_8855c603">Poistetaanko %1$s peliä?</string>
     <string name="lab_8861fdef">Ääniasetukset</string>
     <string name="lab_887ae5cd">Luo</string>
     <string name="lab_88819a36">Ruudukko kuvan päällä</string>
@@ -986,11 +1043,13 @@
     <string name="lab_88f8aeb8">Väri muodossa #RRGGBB, esim. #1E88E5</string>
     <string name="lab_8907b290">Selaa tiedostoja</string>
     <string name="lab_892b7b55">Leveä kansikuva</string>
+    <string name="lab_8946594d">%1$s valittu</string>
     <string name="lab_8965e6c7">Vähemmän palveluita = nopeampi käynnistys ja enemmän vapaata RAM-muistia.</string>
     <string name="lab_8998f446">Tämän kohteen kuvake</string>
     <string name="lab_89f43a0d">Kääntäjän esiasetusten arvot</string>
     <string name="lab_89f953b4">Tärinän kohde</string>
     <string name="lab_8a142020">Y-painike</string>
+    <string name="lab_8a459c00">Hae Steamista</string>
     <string name="lab_8a55859e">Steam Controller</string>
     <string name="lab_8a6a4a21">Wrapperit</string>
     <string name="lab_8a8bb4d3">Komentovirta (CSMT)</string>
@@ -1014,18 +1073,17 @@
     <string name="lab_8cab17b3">Nightlies-julkaisuissa</string>
     <string name="lab_8ce1bc2a">Painikkeet</string>
     <string name="lab_8d04c8e0">Ohjaimet</string>
+    <string name="lab_8d5acd32">GameHub-yhteensopiva .zip (oletus)</string>
     <string name="lab_8d6a7747">Tämän yhden pelin nimi ja käynnistysasetukset.</string>
     <string name="lab_8dc9c516">PanVK-säädöt Wayland-sovittimessa: piilottaa present_id-, present_wait- ja dynamic_rendering-laajennukset sekä kaksi synkronoinnin kiertotapaa. Oletuksena päällä PanVK-ajurilla.</string>
     <string name="lab_8df575ef">Vaatii Vulkan-näyttörenderöijän (Grafiikka) tai Waylandin.</string>
     <string name="lab_8e22550f">Sovelluksen sivut</string>
-    <string name="lab_8e7f9e42">Hae ajureita</string>
     <string name="lab_8e81d76e">FEXCore-esiasetus</string>
     <string name="lab_8e91f337">Root. Lämpötilavahti valvoo edelleen.</string>
     <string name="lab_8ea27f15">Poistetaanko %1$s?</string>
     <string name="lab_8eb9f765">Tallentamattomat muutokset tässä menetetään. Olemassa olevat kontit säilyttävät asetuksensa.</string>
     <string name="lab_8ecc4179"> Winen omien sijaan. Monet wrapperit ja modien lataajat tarvitsevat tätä. Grafiikka-DLL:iä ei koskaan oteta mukaan: niistä vastaavat DXVK ja VKD3D.</string>
     <string name="lab_8ece40f8">Vain Banners-Turnip-ajurit; tavallinen Turnip ohittaa sen.</string>
-    <string name="lab_8ee80fca">Ei ajurilähteitä.</string>
     <string name="lab_8ef37792">Alhaalla</string>
     <string name="lab_8f4a852b">Laitteen virta</string>
     <string name="lab_8f4c06ce">Arvot välitetään wrapperille sellaisenaan; tuntemattomat voi turvallisesti jättää tyhjiksi.</string>
@@ -1040,6 +1098,7 @@
     <string name="lab_90878ca4">SurfaceFlinger-renderöijä — Kokeellinen</string>
     <string name="lab_909603fb">Päivitetään…</string>
     <string name="lab_90b603b8">Monista</string>
+    <string name="lab_90d7bedf">Tallennussijainti</string>
     <string name="lab_91104123">Ajaa pelin 32-bittistä x86-koodia ARM-suorittimellasi.</string>
     <string name="lab_914624be">Synkronoi Steam Cloudin kanssa Goldberg-käynnistyksissä</string>
     <string name="lab_915c9049">Palauta</string>
@@ -1059,6 +1118,7 @@
     <string name="lab_9344ae9b">Pitää CPU:n spekulatiivisten tallennusten pikapolun käytössä pelisäikeille (vain arm64ec-Proton). Oletuksena päällä.</string>
     <string name="lab_934c8903">Sisäiset tai natiivit DLL:t DirectX:lle, äänelle ja ajoympäristöille sekä mediakoodekit.</string>
     <string name="lab_93c6f86e">Android-peli</string>
+    <string name="lab_942f9b65">Nimi A–Z</string>
     <string name="lab_94436fab">Kirjoita kieliasetus, kuten pl_PL tai pl_PL.UTF-8.</string>
     <string name="lab_944e1f72">Äänijärjestelmä</string>
     <string name="lab_947c1567">Steam-saavutukset</string>
@@ -1078,6 +1138,7 @@
     <string name="lab_962bd533">Kirkkaus</string>
     <string name="lab_963f841c">Sama nimi kuin sisäänrakennetulla ajurilla</string>
     <string name="lab_964d1a40">Jaa Androidin leikepöytä pelien kanssa</string>
+    <string name="lab_96526c2a">Tallenna tiedosto uudelleen</string>
     <string name="lab_968b9d49">Otetaan käyttöön käynnistettäessä. Pelin sivuvalikko voi edelleen muuttaa niitä lennossa.</string>
     <string name="lab_969dab73">ReShade päällä / pois, Yksin / Pinoa, tehosteet ja niiden asetukset</string>
     <string name="lab_969fd520">Asiakkaan render-fencet</string>
@@ -1140,17 +1201,20 @@
     <string name="lab_9f28dbb0">Nosta pelisäikeen prioriteettia</string>
     <string name="lab_9f612c9d">GPU-ajuri</string>
     <string name="lab_9f713ecd">Ei yhtään listattuna</string>
+    <string name="lab_9fd345af">Poistetaan %1$s…</string>
     <string name="lab_9fea5158">Kontin asetukset</string>
     <string name="lab_a00d34e8">Tarkista Nightlies</string>
     <string name="lab_a011bb4c">Jokainen sovelluksen asetus tulee voimaan heti.</string>
     <string name="lab_a01444fb">Peittokuvan tyyli</string>
     <string name="lab_a01ea521">Poistetaanko ohjaimen %1$s määritykset?</string>
     <string name="lab_a05a9689">Kaikki tällä sivulla</string>
+    <string name="lab_a081a3ed">Vie luettelo</string>
     <string name="lab_a0d93d63">CPU ytimittäin</string>
     <string name="lab_a0f06f2a">Lataaminen vaatii yhteyden</string>
     <string name="lab_a0f72982">Zero-copy-esitys ja OpenGL:n vikasietotila</string>
     <string name="lab_a108392d">Aina</string>
     <string name="lab_a115f62d">Komponentit</string>
+    <string name="lab_a11756a4">Tallennustilan tiedot</string>
     <string name="lab_a1edd479">BCn ASTC:ksi</string>
     <string name="lab_a24bc720">Skini</string>
     <string name="lab_a26b7e90">Tallennetaan kyseiseen Protoniin kaikille sitä käyttäville peleille</string>
@@ -1165,6 +1229,7 @@
     <string name="lab_a3904026">Pidä pohjassa tähdätäksesi</string>
     <string name="lab_a396cfaa">Kuvaa ei voitu ladata</string>
     <string name="lab_a3c61ce1">Ikkunat ja lokit</string>
+    <string name="lab_a3dbadc2">Tietoja pelistä</string>
     <string name="lab_a3f6a50d">Sovita näyttöön</string>
     <string name="lab_a40c85ce">Windowsin mukana käynnistyvät palvelut</string>
     <string name="lab_a46bc192"> · unixlib</string>
@@ -1172,10 +1237,12 @@
     <string name="lab_a4c45dae">Manuaalinen virkistystaajuus</string>
     <string name="lab_a4d1de01">Hiiren kaappaus (DirectInput)</string>
     <string name="lab_a4d4c41a">Tämän kontin omat kiinnitykset, ei Kaikki kontit -kiinnitykset.</string>
+    <string name="lab_a4f06c81">%1$s/%2$s profiilia ei voitu tuoda</string>
     <string name="lab_a4f1cbaf">Välilyönnit poistetaan: muuttujat erotetaan välilyönneillä.</string>
     <string name="lab_a523a4e1">Tärinämoottorit</string>
     <string name="lab_a559e736">XR-ohjain</string>
     <string name="lab_a57ba715">Suoritinaffiniteetti (cpuList)</string>
+    <string name="lab_a591cbcb">Tietty peli…</string>
     <string name="lab_a593c4da">Oma tiedosto</string>
     <string name="lab_a59e2986">Xalia pois (PROTON_USE_XALIA=0)</string>
     <string name="lab_a5a1eccc">Saa asiakasohjelman toimimaan kuten Steam Deckillä, Quick Access Menun kanssa. Pelit lakkaavat saamasta ohjainta.</string>
@@ -1184,6 +1251,7 @@
     <string name="lab_a641a184">Antaa ohjaimen suoraan pelille Steam Inputin sijaan. Klassisille peleille (Half-Life 2, CS:S). Poistaa Steam Inputin käytöstä.</string>
     <string name="lab_a6902569">Näytön ohjaimet vs. oikea ohjain</string>
     <string name="lab_a6e62e9e">DirectX-käännös</string>
+    <string name="lab_a6fe8b9a">Palauta oletusrepositoriot</string>
     <string name="lab_a71846fe">Teema ja värit</string>
     <string name="lab_a74f5b6d">Pois, pelikuva, hitaasti syvyyssuunnassa liukuva 3D-kuva tai esikatseluilla: traileri Home-näkymän isossa ruudussa</string>
     <string name="lab_a7a4aed7">Kosketusnäyttö-tila lähettää sormet Steamille oikeina kosketuksina; Kosketuslevy-tila liikuttaa osoitinta vetämällä ja napsauttaa napautuksella.</string>
@@ -1206,15 +1274,17 @@
     <string name="lab_aa538f83">Pakotettu</string>
     <string name="lab_aa61eeea">Valitse ohjausprofiili</string>
     <string name="lab_aa9bd991">Tuotiin %1$s</string>
-    <string name="lab_aaae690f">Koko komponenttinäkymä</string>
     <string name="lab_aac2b52c">Asenna ensin Wine- tai Proton-versio (Komponentit).</string>
     <string name="lab_aadb73f3">Vaalea</string>
     <string name="lab_aaf410b8">Ei kirjautunut</string>
     <string name="lab_ab00bfda">Steam-pelit</string>
+    <string name="lab_ab20a9e4">Kerros ladataan ensin.</string>
     <string name="lab_ab2ea144">DirectX 12 Vulkanin kautta. Ei mitään -valinta poistaa DirectX 12:n käytöstä.</string>
     <string name="lab_ab612af4">Lämpö</string>
+    <string name="lab_ab74f1bc">DLL</string>
     <string name="lab_ab78a04b">Kirjaudu sisään hallitaksesi jaettuja asetuksiasi</string>
     <string name="lab_ab8824cb">Sovittimen esitystila</string>
+    <string name="lab_abac19ba">Avaa lähteen sivu</string>
     <string name="lab_abb1c367">Mitään ei ole kytketty. Tämä peli on yhä asetettu käynnistymään televisiossa.</string>
     <string name="lab_abb20221">Ei esiasetusta</string>
     <string name="lab_abd752a4">Kosketuseleet</string>
@@ -1229,6 +1299,7 @@
     <string name="lab_ad23e110">Ohjelmia ei ole vielä ilmoitettu.</string>
     <string name="lab_ad26a7c7">tuntematon</string>
     <string name="lab_adcb307d">Miten Windowsin DirectX-kutsut muunnetaan Vulkaniksi GPU:llesi.</string>
+    <string name="lab_add714f7">Ei asennettu</string>
     <string name="lab_adf82850">Näyttöpalvelin (X11)</string>
     <string name="lab_adfa74ef">Otetaanko Steam Deck -tila käyttöön?</string>
     <string name="lab_ae483014">Asennusta</string>
@@ -1237,10 +1308,12 @@
     <string name="lab_af0804da">Asennetut pelit käynnistyvät edelleen. Vaatii ensin yhden verkkokirjautumisen tällä laitteella. Tulee voimaan seuraavassa istunnossa.</string>
     <string name="lab_af32ab2f">Yksin</string>
     <string name="lab_af39be20">Verkko</string>
+    <string name="lab_af3c9967">Päivitä</string>
     <string name="lab_af3f8345">Tälle pelille ei löytynyt mitään. Valitse kuva tai linkitä peli Steamiin kohdassa Tiedot.</string>
     <string name="lab_af456994">Estää kerneliä sammuttamasta ytimiä.</string>
     <string name="lab_af47e020">Lajityypit</string>
     <string name="lab_afb57bd1">Skaalaussuodatin, terävöinti ja raidanpoisto</string>
+    <string name="lab_aff587ab">GameHub-varmuuskopio (.zip)</string>
     <string name="lab_b01a2f1b">Ympäristömuuttujat</string>
     <string name="lab_b01c4a81">Suunta</string>
     <string name="lab_b01f4f95">Valmis</string>
@@ -1248,6 +1321,8 @@
     <string name="lab_b06318d3">Pelaajapaikka kullekin ohjaimelle</string>
     <string name="lab_b0beed23">Pelisi Steamissa</string>
     <string name="lab_b0daa272">Ohje ja tuki</string>
+    <string name="lab_b0e351e0">Päivitetty</string>
+    <string name="lab_b0f4240e">Varmuuskopioi tallennukset</string>
     <string name="lab_b0fab841">GPU-kaavio</string>
     <string name="lab_b0fc42e2">Jaa tallennukset sovelluksen kanssa</string>
     <string name="lab_b132aa74">Asennettu Turnip, jolla Wayland-kompositori tuo pelin ruudut näytölle.</string>
@@ -1264,7 +1339,6 @@
     <string name="lab_b2c3b860">Kontin tyyppi</string>
     <string name="lab_b312c895">Avaa pikavalikko</string>
     <string name="lab_b32171e6">Keskeytä peli</string>
-    <string name="lab_b323b10b">Piilotetaanko %1$s? Sen voi näyttää taas Classicin Sisältö-asetuksista.</string>
     <string name="lab_b32cbb53">Tuodaanko %1$s uutena konttina?</string>
     <string name="lab_b33ab385">DirectSound</string>
     <string name="lab_b353815d">Ota käyttöön silti</string>
@@ -1282,7 +1356,6 @@
     <string name="lab_b5352cc9">Root-kytkimet tallennetaan tälle pelille ja otetaan käyttöön käynnistettäessä, kun root on myönnetty.</string>
     <string name="lab_b543f270">Ohjaimen määritykset</string>
     <string name="lab_b5681ffc">Näytön Steam- ja pikakäyttöpainikkeet</string>
-    <string name="lab_b56fe256">Tässä lähteessä ei ole ajureita.</string>
     <string name="lab_b5b9d14a">Kytke Suora XInput päälle tai pois pelin valikosta käynnistämättä uudelleen.</string>
     <string name="lab_b5c5920e">Avaa lokienhallinta</string>
     <string name="lab_b6024573">Poistetaanko %1$s? Sitä käyttävät pelit palaavat kontin ajuriin.</string>
@@ -1298,16 +1371,17 @@
     <string name="lab_b736f934">Omat kauppasi</string>
     <string name="lab_b73987a8">Järjestelmän oletus</string>
     <string name="lab_b739e60c">Tärinä</string>
+    <string name="lab_b759a7ac">Mille työkalulle tämä varmuuskopio on?</string>
     <string name="lab_b7636944">Käytetään, kun sovitus on pois päältä.</string>
     <string name="lab_b7c337c7">Kirjoita muodossa leveys x korkeus, esim. 1600x900.</string>
     <string name="lab_b7d4edb2">DirectX 12 -ominaisuustaso</string>
     <string name="lab_b7e2758f">Emulointi</string>
     <string name="lab_b885aba0">Perutaan</string>
     <string name="lab_b89607f1">Varmuuskopiointi ja palautus</string>
-    <string name="lab_b8afe1d2">Asenna tiedostosta</string>
     <string name="lab_b90673bf">DXVK-versio</string>
     <string name="lab_b9106d81">Ääriviivan väri</string>
     <string name="lab_b9384128">Lukitse näyttö taajuuteen</string>
+    <string name="lab_b9462894">Korttien koko · %1$s</string>
     <string name="lab_b9825547">Ei vielä tallennettu mitään</string>
     <string name="lab_ba3b6032">WineD3D-renderöijä</string>
     <string name="lab_ba4f23ec">Lisää pelikansio</string>
@@ -1326,6 +1400,7 @@
     <string name="lab_bbf179e6">Tallennukset</string>
     <string name="lab_bcf34837">Tahdistamaton</string>
     <string name="lab_bcfb356d">Kontista</string>
+    <string name="lab_bd4ab43f">1 peli</string>
     <string name="lab_bd50227c">VEGAS-koontiversiota ei ole asennettu: lataa sellainen alta.</string>
     <string name="lab_bd63a37d">Taustakuva</string>
     <string name="lab_bd87c7d9">Tallenna puretut tekstuurit välimuistiin</string>
@@ -1334,6 +1409,9 @@
     <string name="lab_be12d609">Valitse kuva…</string>
     <string name="lab_be45a0e0">Ei löytynyt · ei linkitetty Steamiin</string>
     <string name="lab_be638831">Suurennuslasi, ikkunat, lokit ja käynnissä olevat ohjelmat.</string>
+    <string name="lab_be80b01d">Piilotetaanko %1$s? Palauta oletusrepositoriot näyttää sen uudelleen.</string>
+    <string name="lab_be8d2116">Sulje ensin kaikki, mikä siinä on käynnissä.</string>
+    <string name="lab_be906409">Winlatorin oma .zip</string>
     <string name="lab_be998b7c">Synkronoi jokainen ruutu</string>
     <string name="lab_be9a2a59">Back kahdesti avaa pikakäytön</string>
     <string name="lab_be9d8c7a">Käynnistysasetukset</string>
@@ -1358,18 +1436,19 @@
     <string name="lab_c10cef43">Keskellä</string>
     <string name="lab_c120c6bb">Täysi CPU:n ja GPU:n hallinta on avattu.</string>
     <string name="lab_c14faa17">Suora XInput (BANNERIN)</string>
+    <string name="lab_c15bb42a">Valitse toinen kansio…</string>
     <string name="lab_c171e496">Automaattinen (julkinen beta)</string>
     <string name="lab_c172ec97">Muutokset tallennetaan tälle pelille vain siltä osin kuin ne poikkeavat yleisestä oletuksesta.</string>
     <string name="lab_c1bc6675">Vulkan-wrapper, jota pelit käyttävät X11:ssä. Myös tuodut wrapperit näkyvät tässä.</string>
     <string name="lab_c1c757e2">BCn-kerroksen vianetsintäloki</string>
     <string name="lab_c1df4081">Keskikokoinen</string>
-    <string name="lab_c206cdbf">Varmuuskopioi kaikki tallennukset</string>
     <string name="lab_c22c196f">Punainen</string>
     <string name="lab_c23081c7">tempBands / tempAuto</string>
     <string name="lab_c268d56c">. Tallennus estetään, kunnes ne eroavat toisistaan.</string>
     <string name="lab_c2928e24">Suurennuslasi</string>
     <string name="lab_c2f74c47">Ajurin versio</string>
     <string name="lab_c2fdbf25">Tuodaan</string>
+    <string name="lab_c32c5dc4">Modit</string>
     <string name="lab_c34f4640"> · Säilytetty ajalta ennen Synkronointi-asetusta; Suorituskyky › Synkronointi lukee ne ja tyhjentää ne, kun asetat sen.</string>
     <string name="lab_c36c4b3f">Näyttö</string>
     <string name="lab_c3db5a25">Paneeli (oletus)</string>
@@ -1396,6 +1475,7 @@
     <string name="lab_c60ddb05">Steam Controller -tuki</string>
     <string name="lab_c6521528">Vaatii Valhall Mali -GPU:n.</string>
     <string name="lab_c664401e">Kontti = seuraa konttia. Tämä peli = asetettu tässä.</string>
+    <string name="lab_c669581b">Palauta tallennus</string>
     <string name="lab_c66c17c3">Kääntäjän esiasetukset</string>
     <string name="lab_c6888ac4">Automaattinen</string>
     <string name="lab_c6a02e29">Käytä silti</string>
@@ -1409,7 +1489,9 @@
     <string name="lab_c78bbaf5">Näytön ohjaimet, hiiri, tärinä, liiketähtäys.</string>
     <string name="lab_c7b49d50">Steam-sovellus %1$s</string>
     <string name="lab_c7fad197">Lisäasetuksia ei löytynyt</string>
+    <string name="lab_c82c4a5b">Päivitä versioon %1$s</string>
     <string name="lab_c82e7e67">Koontiversiot luettelosta. Asennetut näkyvät kohdassa DXVK-versio.</string>
+    <string name="lab_c83f23bf">Kansikuvan palautus epäonnistui</string>
     <string name="lab_c844d41c">Denuvo-peleille, joita sovellus ei tunnista itse.</string>
     <string name="lab_c84956c1">Mukautetut palvelut</string>
     <string name="lab_c85b9376">Vähemmän värinää, hieman enemmän viivettä. Asetetaan konttikohtaisesti.</string>
@@ -1417,19 +1499,21 @@
     <string name="lab_c8a08d3e">Näytön ohjaimet pysyvät pelaajana 1</string>
     <string name="lab_c8b7e3fa">Tämä ajuri ei pysty näyttämään istuntoa. \"System\" tai ajuri, jota ei enää ole asennettu, jättää kompositorin järjestelmän Vulkanille, joka näyttää mustan ruudun.</string>
     <string name="lab_c8c4d663">Päällä — kun ruutugenerointi on käynnissä, näyttö seuraa ruuturajaa × kerrointa.</string>
-    <string name="lab_c8d5043b">Valitse sisältöpaketti</string>
     <string name="lab_c8d52d67">Poista esiasetus</string>
     <string name="lab_c936ff11">esim. fi_FI.UTF-8</string>
     <string name="lab_c94d19de">Lähetä automaattisesti Steam Cloudiin poistuttaessa</string>
+    <string name="lab_c961a1bf">%1$s (automaattinen)</string>
     <string name="lab_c9822616">Lataukset</string>
     <string name="lab_c9a07f62"> · näytön ohjaimet</string>
     <string name="lab_c9ae8103">Mali (PanVK) -tila</string>
+    <string name="lab_c9ef821f">Kaikki pelitallennukset (koko profiili)</string>
     <string name="lab_ca16bb77">tulee voimaan heti · tallennettu tälle pelille ja tämän moottorin oletukseksi</string>
     <string name="lab_ca45d5a4">tämä kontti</string>
     <string name="lab_ca62f862">Lataukset ja verkko</string>
     <string name="lab_cabf747a">Asynkroninen kopiointi</string>
     <string name="lab_caf7d4a3">Jaettu esiasetus, muokattu</string>
     <string name="lab_cb5fc4d5">VEGAS-asetukset</string>
+    <string name="lab_cb6124f5">Kerroksen päivitys</string>
     <string name="lab_cb6d604d">HUDia ei voi vetää pelin aikana.</string>
     <string name="lab_cbab7f7a">Kuvakkeet</string>
     <string name="lab_cbb98111">Oikea tatti</string>
@@ -1440,6 +1524,8 @@
     <string name="lab_cc29917c">Yksi kuva, jonka kaikki kontit jakavat, tai yksi vain tälle kontille.</string>
     <string name="lab_cc7362b0">Ylhäällä- tai Alhaalla-valinta jättää toisen puoliskon vapaaksi näytön ohjaimille.</string>
     <string name="lab_cc9e753f">Selaa ja asenna komponentteja</string>
+    <string name="lab_cc9f0c95">Näytä sisäinen tallennustila</string>
+    <string name="lab_ccb4b062">Kerros ladataan ensin (%1$s).</string>
     <string name="lab_cce939fc">Nopea OpenGL</string>
     <string name="lab_cd871c13">Ilmoita Steam Deckiksi (deck_emu)</string>
     <string name="lab_cdc70ec3">Videodekooderi</string>
@@ -1490,6 +1576,7 @@
     <string name="lab_d249b801">Kokeellinen</string>
     <string name="lab_d261efe4">Yksi pitää tatit tasaisina käsikonsoleissa, jotka hidastuvat, kun molemmat moottorit käyvät.</string>
     <string name="lab_d2651812">Pelin asetukset</string>
+    <string name="lab_d27c84ad">Emulaattorin tili vaihdettiin varmuuskopion tiliin. Käynnistä peli uudelleen.</string>
     <string name="lab_d27d3648">LSFG Native</string>
     <string name="lab_d2895d94">Tallennusten varmuuskopiointi, palautus ja synkronointi</string>
     <string name="lab_d2b6baa8">Korjaa sotkuisen tekstin japanilaisissa, kiinalaisissa, korealaisissa ja venäläisissä peleissä.</string>
@@ -1517,17 +1604,21 @@
     <string name="lab_d5d636c1">Liipaisin</string>
     <string name="lab_d5e887b8">%1$s t</string>
     <string name="lab_d60412d3">Alkuperäinen</string>
+    <string name="lab_d60d149d">Repositoriot tuotu</string>
     <string name="lab_d620ef74">Kansikuva, sumennettu</string>
     <string name="lab_d653f990">x86-kääntäjä 32-bittiselle koodille</string>
     <string name="lab_d6d3fe68">Valitse komponenttipaketti (-linux .wcp)</string>
     <string name="lab_d7060afb">Tuo tämä kontti</string>
+    <string name="lab_d736d92d">OK</string>
     <string name="lab_d73ee22e">Turnip- tai Adreno-ajuri, jonka wrapper lataa. Tuo lisää kohdassa Sisältö › GPU-ajurit.</string>
     <string name="lab_d801cf49">VEGAS-julkaisujen mukana tulevat asetustiedostot. Ne näkyvät kohdassa Asetustiedosto.</string>
     <string name="lab_d809a959">Säilyy, kun tallennat editorin.</string>
     <string name="lab_d8321a59">Ei rätinää</string>
+    <string name="lab_d832ee19">Sivuvalikko</string>
     <string name="lab_d834a1cf">Tarkistetaan, mitkä asennetut ajurit voivat näyttää pelin…</string>
     <string name="lab_d870ae5e">Tämä ajuri ei latautunut tällä GPU:lla: järjestelmän ajuri vastasi tarkistukseen sen sijaan.</string>
     <string name="lab_d8e06406">Näyttö</string>
+    <string name="lab_d8e601e7">Jotkin pelit säilyttävät tallennuksia muualla (asennuskansiossa, rekisterissä, Steam Cloudissa). Tarkista varmuuskopio ennen kuin poistat mitään.</string>
     <string name="lab_d8e621c2">Lisää asema</string>
     <string name="lab_d90a905b">Lasi</string>
     <string name="lab_d91754f0">Ei merkintää.</string>
@@ -1553,6 +1644,7 @@
     <string name="lab_db3c72a5">Windowsin taustapalvelut</string>
     <string name="lab_db6d6f28">Sisällytä esijulkaisut</string>
     <string name="lab_db745b05">. Uutta kuvaa käytetään seuraavasta käynnistyksestä alkaen, kun olet tallentanut.</string>
+    <string name="lab_db7be531">Lataus epäonnistui.</string>
     <string name="lab_db89b158">Viimeisin istunto</string>
     <string name="lab_dbce82c8">Käytä Kaikki kontit -arvoa</string>
     <string name="lab_dbd5d59f">Tämän pelin muuttujat</string>
@@ -1572,9 +1664,9 @@
     <string name="lab_dd761410">Synkronoi avaukset Steam-profiiliisi</string>
     <string name="lab_de0c0eb8"> \";\" ja \"=\" jätetään pois.</string>
     <string name="lab_de315178">Nimeä uudelleen</string>
-    <string name="lab_de65b765">Wine, Proton, DXVK, VKD3D, FEX, Box64</string>
     <string name="lab_de6d994e">Kytketään myös yllä olevalla asetuksella Suosi pelikansion DLL-tiedostoja</string>
     <string name="lab_de72753f">Kuinka paljon grafiikkamuistia WineD3D ilmoittaa.</string>
+    <string name="lab_de75d40c">%1$s palaa versiosta %2$s versioon %3$s. Rekisteri palautetaan ennen päivitystä otetusta varmuuskopiosta; pelit, tallennukset, pikakuvakkeet ja asetukset säilyvät. %4$s on oltava yhä asennettuna.</string>
     <string name="lab_dec4dc19">Vain kontti</string>
     <string name="lab_def1a7db">Kontit</string>
     <string name="lab_def6b48c">Tunnetut muuttujat</string>
@@ -1605,7 +1697,6 @@
     <string name="lab_e19da5b2">Wayland-sovitin</string>
     <string name="lab_e1be537c">Tallentamaton</string>
     <string name="lab_e22a8ea9">Wayland tarvitsee asennetun Turnipin tuodakseen pelin ruudut näytölle. Uudet näkyvät kohdassa Grafiikka-ajuri.</string>
-    <string name="lab_e2410f47">Selaa ja lataa</string>
     <string name="lab_e2421520">Lataa WOWBox64-versioita</string>
     <string name="lab_e280d375">Korttien koko</string>
     <string name="lab_e2a7f23e">Näytöllä</string>
@@ -1613,6 +1704,8 @@
     <string name="lab_e2c38520">Tällä merkinnällä ei ole kuvaketiedostoa, johon kirjoittaa.</string>
     <string name="lab_e2ce4373">Osio</string>
     <string name="lab_e2e95fcd">Pelien lokit</string>
+    <string name="lab_e2f09271">Palautetaanko pelin %1$s varmuuskopio konttiin %2$s? Tämä voi korvata siellä olevat tallennustiedot.</string>
+    <string name="lab_e3af6ca0">Valitse repositorioluettelo</string>
     <string name="lab_e3c1aee4">Metacritic</string>
     <string name="lab_e3c1f26f">Peleille, jotka näkevät ohjaimen vain Steamin kautta (No Man\'s Sky). Pidä pois päältä peleissä, jotka lukevat ohjainta itse. Poistaa läpiviennin käytöstä.</string>
     <string name="lab_e3e80b58">Ohjausprofiili</string>
@@ -1641,14 +1734,12 @@
     <string name="lab_e801ba28">Poista se käytöstä, jos haluat; tämä peli muistaa valinnan.</string>
     <string name="lab_e841eed8">Mikrofonin käyttöoikeus evätty: mikrofoni pysyy pois päältä.</string>
     <string name="lab_e8a0175e">Lataa Box64EC-versioita</string>
-    <string name="lab_e8a5f633">Ei tallennettuja komponenttitiedostoja.</string>
     <string name="lab_e8c91356">Seuraa kontin kiinnityksiä. Yhden muuttaminen antaa tälle pelille omat kiinnitykset.</string>
     <string name="lab_e94b7455">DirectX</string>
     <string name="lab_e9524f7b">Ei vielä näytön asettelua</string>
     <string name="lab_e9686e6d">auto:N (20–240), fixed:N (30–1000) tai off</string>
     <string name="lab_e98a38e0">Suurennuslasi, kuva kuvassa, näppäimistö ja suorituskyky.</string>
     <string name="lab_e9bb2501">Antaa pelien käyttää mikrofonia: DirectAudio kaappaa syötteen. Android pyytää käyttöoikeutta kerran.</string>
-    <string name="lab_ea08e43f">Linux-ajoympäristö ja kaikki luettelot</string>
     <string name="lab_ea354143">Huomaamaton painike oikeassa yläkulmassa, joka avaa pikavalikon kosketuksella. Back, Menu-painike tai neljän sormen napautus toimivat myös ilman sitä.</string>
     <string name="lab_ea4babd8">Miten se käynnistyy</string>
     <string name="lab_ea83f479">• Asiakasohjelma voi näyttää System-kohdassa Steam Client -päivityksen, joka ei asennu. Deck-tila käyttää nyt Steam Deckin beetakanavaa sen välttämiseksi, mutta jos se ilmestyy, älä paina Apply.\n</string>
@@ -1672,6 +1763,7 @@
     <string name="lab_ed37937b">Mittarit</string>
     <string name="lab_ed41d675">Piirtoajuri (Linux-ajoympäristö)</string>
     <string name="lab_ed779ba6">Lataa Wine- ja Proton-versioita</string>
+    <string name="lab_eda50b73">%1$s peliä</string>
     <string name="lab_edfcb4b9">Yksinomainen hiiri ja näppäimistö</string>
     <string name="lab_ee2d989f">DirectPlay</string>
     <string name="lab_ee38d87a">Akun punainen raja</string>
@@ -1684,7 +1776,6 @@
     <string name="lab_efd740b9">Läpinäkyvyys</string>
     <string name="lab_efdeb1c6">Kaikki kontit ja pelit jakavat esiasetusluettelon.</string>
     <string name="lab_efdfc7e5">FPS-rajoitin</string>
-    <string name="lab_efeacf52">Toistaiseksi vain puhelimen oma ajuri.</string>
     <string name="lab_f04c78b9">Ääniasetukset · tämä peli</string>
     <string name="lab_f05053e7">Lukee Steam Controlleria suoraan (sen kosketuslevyt ja lisäpainikkeet). Pois: tavallinen syötereitti pysyy ennallaan.</string>
     <string name="lab_f0520965">mailbox = uusin ruutu, pienin viive; fifo = vsync, tasainen tahdistus. Oletus seuraa profiilia, muuten tallennettua esitystilaa. Immediate vaatii repeilyä, jota Wayland ei tarjoa.</string>
@@ -1695,6 +1786,7 @@
     <string name="lab_f10b2051">DirectInput-tärinä</string>
     <string name="lab_f10b2876">Suoritinaffiniteetti</string>
     <string name="lab_f115c775">Suojattu käynnistys (VAC-huijauksenesto)</string>
+    <string name="lab_f1165d1c">Järjestä</string>
     <string name="lab_f123362f">Sovellus</string>
     <string name="lab_f160597b">VEGAS + VKD3D</string>
     <string name="lab_f16ece4e">Vasen tatti</string>
@@ -1705,7 +1797,6 @@
     <string name="lab_f27c976e">Tyyli</string>
     <string name="lab_f2857f55">Sisäinen</string>
     <string name="lab_f2b4815e">%1$s fps</string>
-    <string name="lab_f2cdcc45">Valitse GPU-ajuri</string>
     <string name="lab_f2ed832c">Kuinka paljon GPU-muistia DirectX-peleille kerrotaan olevan (dxgi.maxDeviceMemory).</string>
     <string name="lab_f3043a4e">Äänen viive</string>
     <string name="lab_f304d21f">Se on liian pieni Windows-työpöydälle.</string>
@@ -1727,6 +1818,7 @@
     <string name="lab_f407bf19">Vain tälle pelille: mikään muu peli tai kontti ei muutu. </string>
     <string name="lab_f40ccd04">Ota käyttöön</string>
     <string name="lab_f44d5610">Tärinä päällä / pois ja paikkakohtaiset kytkimet</string>
+    <string name="lab_f46b910b">Sovelluksen oma tallennustila</string>
     <string name="lab_f485cfbf">Tuodun wrapperin tiedostoista löydetyt asetukset. Piilota tai näytä ne kohdassa Hallitse grafiikkawrappereita.</string>
     <string name="lab_f4abcaf2">Tämä on kontin asetus; muuta sitä kontin asetuksissa.</string>
     <string name="lab_f4f73c18">Oletukset</string>
@@ -1736,6 +1828,7 @@
     <string name="lab_f55495e0">Tallenna</string>
     <string name="lab_f576fb2d">Kerroksia luettelosta, tai asenna sellainen tiedostosta. Uudet kontit voivat käyttää niitä.</string>
     <string name="lab_f57b35ee">Kuollut alue ja pehmennys</string>
+    <string name="lab_f581508f">Poistettu %1$s peliä</string>
     <string name="lab_f5864edc">Automaattinen lataus pilvestä käynnistettäessä poistetaan käytöstä Steam-kirjastosi peleiltä. Uusimpia pilvitallennuksia ei haeta ennen pelin käynnistystä — sinun on ladattava ne itse pelin tietosivun Cloud Saves -osiosta. Jatketaanko?</string>
     <string name="lab_f593aa90">Ajuri, jolla sovelluksen kompositori tuo istunnon näytölle. Ei se, jolla asiakasohjelma piirtää.</string>
     <string name="lab_f59e59da">Näytetään kirjastossasi. Uudelleennimeäminen säilyttää kansikuvan ja kuvakkeen.</string>
@@ -1751,6 +1844,7 @@
     <string name="lab_f7578887">Alkaa uusien konttien oletuksista. X luo sen.</string>
     <string name="lab_f783e029">Kaksoisakku</string>
     <string name="lab_f81efa4a">FEX, DXVK ja VKD3D-Proton</string>
+    <string name="lab_f826d6b4">Palautettiin %1$s tiedostoa konttiin %2$s</string>
     <string name="lab_f8283624">Käyttöliittymän koko</string>
     <string name="lab_f8507a8c">Korjaa SurfaceFlingerin värit</string>
     <string name="lab_f8e0d68c">Kompositorin ajuri (graphicsDriverConfig-versio)</string>
@@ -1768,6 +1862,7 @@
     <string name="lab_fa700875">Jotkin pelit eivät koskaan lue ohjainta itse: ne kysyvät sitä Steamilta. SteamLitessa kukaan ei vastaa, joten nämä pelit eivät näe ohjainta. Päällä: SteamLite-agentti ottaa Steamin ohjainkerroksen käyttöön tälle pelille sopivalla asettelulla. Pidä pois päältä peleissä, jotka jo lukevat ohjainta, tai ne saavat jokaisen painalluksen kahdesti. Ohjaimen läpiviennin vastakohta, joten vain toinen voi olla päällä. Vain SteamLite.</string>
     <string name="lab_fa859fc7">Goldberg-tila, Tarkista tiedostot ja Tarkista päivitykset löytyvät käynnistysvalikosta. Poista \"Ohita käynnistysvalikko\" käytöstä nähdäksesi sen seuraavalla käynnistyskerralla.</string>
     <string name="lab_fac0fe64">Skaalausasetukset hoitavat hyödyllisen osan ilman sitä, ja pelin valikon FPS-raja rajoittaa kuvataajuutta. Poista Deck-tila taas käytöstä, jos peli lakkaa reagoimasta ohjaimeen.</string>
+    <string name="lab_fac102a7">FPS · viimeisin istunto</string>
     <string name="lab_fad0baa9">Oletus (Steam: %1$s)</string>
     <string name="lab_fae2666b">Valven oma Proton, joka korvataan, kun Steam päivittää sen; sen alkuperäiset säilytetään koontiversiokohtaisesti</string>
     <string name="lab_fae62cc0">Lukitsee osoittimen peliin. Vapauta painamalla Äänenvoimakkuus alas.</string>
@@ -1781,8 +1876,10 @@
     <string name="lab_fb9ee719">DirectX-versio</string>
     <string name="lab_fbd4f98b">Peleille näkyvä GPU:n nimi</string>
     <string name="lab_fbf2e44f">Näytöllä näkyvät FPS- ja lämpötilalukemat.</string>
+    <string name="lab_fbfb437a">%1$s siirtyy versiosta %2$s versioon %3$s. Pelit, tallennukset, pikakuvakkeet ja asetukset säilyvät.</string>
     <string name="lab_fd1310b6">X-painike</string>
     <string name="lab_fd5460f8">Väri</string>
+    <string name="lab_fdc15162">Ei ladattu</string>
     <string name="lab_fdc96783">PulseAudio</string>
     <string name="lab_fe06558e">PANVK_TRACE (ajurin jäljitys)</string>
     <string name="lab_fe11d138">Nimi</string>
@@ -1800,4 +1897,5 @@
     <string name="lab_ff9f6b19">Tekstinä, pilkuin eroteltuna</string>
     <string name="lab_ffb9855e">Tiedosto ei ole ohjausprofiili</string>
     <string name="lab_ffcd863d">pelattu %1$s min</string>
+    <string name="lab_ffe2f089">Wayland WSI:tä ei havaittu</string>
 </resources>

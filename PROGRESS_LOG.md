@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ feat/steam-x64-auto ce29246d: user confirms Steam x64 starts with only the branch's automatic fixes; Menu button hold works
+- **User (~23:20 EST):** "guide hold button works, and client launches after bannerlator fixes for steam in a new branch" → the Steam x64 shortcut (manual `PROTON_DISABLE_LSTEAMCLIENT=1` and `displayBackend=x11` removed for this test) starts the 64-bit client with what the branch adds at launch; Menu button hold → side menu works.
+- **Proof level:** device-proven by the user (client start, Menu hold) + logs (entry below). Still not confirmed: Menu button short press → Steam guide, CS:S shown as installed / starting.
+- **Open (user decides):** merge feat/steam-x64-auto to main (CI green 42753083274, device-proven) → backup ref first.
+
 ## 2026-11-09 — ✅ feat/steam-x64-auto ce29246d: auto X11 + 64-bit switch + E:\SteamLibrary work, Steam took CS:S as installed (logs); first run lost to a low-memory kill storm
 - **Logged by session root-af** (GenieX session): root-7c's session was closed by Android at 23:13:10 EST (Termux killed, `exit-info` reason LOW_MEMORY), so the user's report "ok launched steam x64 after install and counter strike source move" (~23:17) came to me. Read-only: I launched, installed and force-stopped nothing.
 - **Run 1 (Bannerlator start 23:12:22, log `Steam x64/previous/2026-11-09_23-13-10/wine_debug.log`):** header `Windows Steam: steam.exe starts on X11 (its pages do not draw on Wayland yet)`, `Windows Steam: 64-bit client: PROTON_DISABLE_LSTEAMCLIENT=1, so steamclient64.dll keeps Steam's own tier0_s64.dll`, `Windows Steam: Steam libraries added: E:\SteamLibrary`; Wine `use_lsteamclient lsteamclient disabled`. Steam content_log 23:12:55 loaded libraryfolders.vdf, 3 libraries. **Ended by lmkd 23:13:10:** 28 kills in 23:12–23:13 (`killinfo`), Termux (pid 13502, adj 50) at 23:13:10.347 and Bannerlator itself (pid 18539, adj 0, foreground) at 23:13:10.557 (`exit-info` LOW_MEMORY). Discord (~0.58 GB), claude (0.40 GB), Gboard, GMS, Play Store were open.

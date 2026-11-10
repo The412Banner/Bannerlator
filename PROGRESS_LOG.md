@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:12 EST — 📲 INSTALLED feat/windows-steam-client 74778b25 (storage choice) on the Pocket FIT (user: "install it when it's done" / "install")
+- **CI 42795645739** (headSha 74778b25): pubg/standard/antutu/ludashi success; no failed steps.
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-74778b25-pubg.apk` sha256 `a01d13fb65952602f081dbbe1a036abe7e0d30a13762e857340d37363e3358a4` (host == device), "Where should Steam go?" in classes5.dex.
+- **Installed 05:12:26 EST:** installed base.apk == staged; crash buffer 0; only the app process was running; app data kept (Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2); peers root-8b/root-66/root-12 told before and after.
+- **Screenshots 04:56–04:57 (5bad2962 run):** Windows Steam badge + pinned first; Steam sign-in → Store as the user's account, controller P1. Launch card pill said "Vulkan (Wayland)" but wine_debug.log: "Windows Steam: steam.exe starts on X11" → the card shows the container's backend, not the session override (cosmetic, open). Libraries added E:\SteamLibrary, F:\SteamLibrary; non-Steam games listed from the next start (no account at first start).
+- **Open user ask:** offer a full Steam uninstall when the shortcut is removed (plan given, awaits answer).
+- **Proof level:** CI-green + installed; storage choice NOT device-tested.
+- **Resume point:** user tests Add in container 2 → check `<sd>/bannerlator/windows_steam/steam.exe`, shortcut Exec on the SD drive letter, wine_debug.log notes.
+
 ## 2026-11-10 05:1x EST — 🔧 feat/windows-steam-client 74778b25: pick internal storage or the SD card for the Windows Steam client (CI 42795645739 running)
 - **User:** "can we allow the user to select internal or external storage? then proceed to create the shortcut" → plan given (drop the C: option) → "yes build the storage choice on the same branch".
 - **Built:** `WindowsSteamClient.places()` = Internal storage + the SD card (`SteamSdInstall.detect`), each `<root>/bannerlator/windows_steam`, free space, and whether a 64-bit steam.exe is already there (then no download: containers share one client). A storage fits with ≥ 1.2 GB + 250 MB free (client was 1.1 GB on the FIT). `addClient(ctx, container, dir)`; the container C: path (`installDir`) is gone. Dialog after the container picker: "Where should Steam go?" with radio rows (free space / "Steam is already here" / "Not enough space"), SD picked by default when it fits, button Download or Add. The shortcut reaches the folder through the storage's drive letter (`WinePath.resolveWindowsPath` maps one when the container has none).

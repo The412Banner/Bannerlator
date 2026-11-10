@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 04:08 EST — ⏳ installing feat/windows-steam-client a7febd02 on the Elite (user: "yes install it")
+- **User (04:07 EST):** "yes install it".
+- **Before:** installed ce29246d (lastUpdateTime 2026-11-09 23:11:26); staged APK sha256 re-checked on the device 04:07 = `3ebae481…a97`. No other Claude session running (ListAgents).
+- **Plan:** `pm install -r` → check base.apk sha256 + crash buffer → back up `Steam x64.desktop` to `/sdcard/Download/bl-backup-20261110/` → storeSource custom→windows_steam (in place, owner u0_a193 kept) → user tests: (1) start Steam x64 → Bannerlator games listed as non-Steam games (log `Windows Steam: Non-Steam games: N listed…`, `userdata/2932373/config/shortcuts.vdf`, `config/grid/`), (2) Menu press over a game = Shift+Tab overlay, (3) "+" → Add Windows Steam client x64 in a container without it, (4) badge + pinned first.
+- **Resume point:** if the session dies: check `dumpsys package com.tencent.ig | grep lastUpdateTime` (newer than 23:11:26 = installed) and whether the .desktop backup exists; rollback APK `Bannerlator-steam-x64-auto-ce29246d-pubg.apk`.
+
 ## 2026-11-09 23:58 EST — 📦 feat/windows-steam-client a7febd02 CI GREEN 4/4, staged; awaiting the user's yes to install
 - **Correction:** this entry and the one below first said 2026-11-10 / "~00:05 EST"; the real times are 11-09 23:45 EST (user's "all games" message, 04:45 UTC) and 23:58 EST (staged). Fixed.
 - **CI 42758239019** (headSha a7febd02): pubg/antutu/standard/ludashi success, no failed steps. Also green: 42757422741 (1b93606d).

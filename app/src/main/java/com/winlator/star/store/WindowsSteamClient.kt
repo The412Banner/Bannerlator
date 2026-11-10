@@ -413,6 +413,8 @@ object WindowsSteamClient {
             val steamRoot = try { WinePath.resolveAndroidPath(container, winPath)?.parentFile } catch (t: Throwable) { null }
             if (steamRoot != null) {
                 registerLibrary(ctx, steamRoot)?.let { notes.add(it) }
+                // Store games as installed games, before the non-Steam list (which leaves those out).
+                notes.add(SteamLibraryMirror.sync(ctx, container, steamRoot))
                 notes.add(SteamShortcutsSync.sync(ctx, container, steamRoot))
             }
         } catch (t: Throwable) {
@@ -697,7 +699,8 @@ object WindowsSteamClient {
         val (keepDirs, keepAppIds) = storeGamesIn(ctx, dir, dirPath)
         val driveC = File(offer.container.rootDir, ".wine/drive_c")
         val containerDirs = if (offer.keepContainerData) emptyList() else
-            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"))
+            listOf(File(driveC, "users/xuser/AppData/Local/Steam"), File(driveC, "Program Files (x86)/Common Files/Steam"),
+                SteamLibraryMirror.libraryDir(offer.container))
                 .filter { it.exists() && !isWithin(it, dirPath) }
 
         val emptyLibraries = ArrayList<File>()

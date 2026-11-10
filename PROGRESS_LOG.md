@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 07:27 EST — ✅ Elite (main 2e7456c4): WINDOWS STEAM badge + pinned first seen; "+" add refuses P11 Arm as designed
+- **User screenshot** /sdcard/Pictures/Screenshots/Screenshot_20261110-072516.png (07:25 EST): Library 13 games, sort "Last played": "Steam x64" (P11 Arm) first with the WINDOWS STEAM badge; Steam Latest / Steam = CUSTOM; toast "Windows Steam Client x64 is already in P11 Arm".
+- **Why the toast:** GameActionsHost.kt:415 (main) — the picked container already has a shortcut with storeSource=windows_steam (findShortcut, WindowsSteamClient.kt:110); P11 Arm has "Steam x64", converted 04:08. One client shortcut per container = intended.
+- **To test the add flow on the Elite:** pick Container-2 (xuser-2, no shortcuts).
+- **Proof level:** badge + first place device-proven on the Elite (screenshot); first place under other sorts not checked.
+
 ## 2026-11-10 07:22 EST — 📲 Elite: INSTALLED main 2e7456c4 pubg (user: "yes install main on the elite")
 - **User (07:1x EST):** "yes install main on the elite" (explicit yes for this build).
 - **Build:** CI build-artifacts 42809389053 (workflow_dispatch, headSha 2e7456c4, pubg/antutu/standard/ludashi success); artifact Bannerlator-main-2e7456c4-pubg id 13761533162 (591,865,282 B zip), downloading in 8 range parts (scratchpad main-2e74-pubg/, script rangedl.sh).

@@ -365,6 +365,19 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
         details = d
         LabArt.changed()
     }
+    fun rename(newName: String) {
+        val base = newName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
+        if (base.isBlank() || base == s.name) return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) { runCatching { ExeShortcutImporter.renameShortcutFiles(s.container, s.name, base) }.getOrDefault(false) }
+            if (!ok) { toast(context, L("Could not rename it")); return@launch }
+            val file = File(s.container.desktopDir, "$base.desktop")
+            shortcut = Shortcut(s.container, file)
+            LabArt.selected = shortcut
+            LabArt.changed()
+            ShortcutsViewModel.notifyContainersChanged()
+        }
+    }
     fun linkSteam(appId: Int) {
         scope.launch {
             val before = details.steamAppId
@@ -391,6 +404,8 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
             ShortcutsViewModel.notifyContainersChanged()
             LabArt.changed()
             toast(context, L("Linked to Steam app %1\$s", appId))
+            // As Classic's Game Details does when a result is picked: the game takes Steam's title (its cover and icons move with it).
+            info?.name?.takeIf { it.isNotBlank() }?.let { rename(it) }
         }
     }
     fun searchSteam(query: String) {
@@ -408,19 +423,6 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
         if (d.hasDisplayableDetails()) return@LaunchedEffect
         val info = withContext(Dispatchers.IO) { SteamStoreSearch.fetchDetails(id) } ?: return@LaunchedEffect
         saveDetails(GameDetails(id, info.genres, info.shortDescription, info.releaseYear, info.metacritic))
-    }
-    fun rename(newName: String) {
-        val base = newName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim()
-        if (base.isBlank() || base == s.name) return
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) { runCatching { ExeShortcutImporter.renameShortcutFiles(s.container, s.name, base) }.getOrDefault(false) }
-            if (!ok) { toast(context, L("Could not rename it")); return@launch }
-            val file = File(s.container.desktopDir, "$base.desktop")
-            shortcut = Shortcut(s.container, file)
-            LabArt.selected = shortcut
-            LabArt.changed()
-            ShortcutsViewModel.notifyContainersChanged()
-        }
     }
     fun setGame(key: String, v: String?) = LabArt.putGame(s, key, v)
 

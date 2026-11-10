@@ -167,7 +167,11 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
                     MenuAction(L("Export"), guarded(L("Exporting %1\$s…", c.name)) {
                         vm.exportContainer(c) { path ->
                             (context as? Activity)?.runOnUiThread {
-                                toast(context, if (path != null) L("Exported to %1\$s", path) else L("Export failed"))
+                                toast(context, when {
+                                    path != null -> L("Exported to %1\$s", path)
+                                    vm.availableBackups().any { it.name == c.rootDir.name } -> L("A backup named %1\$s is already in Backups", c.rootDir.name)
+                                    else -> L("Export failed")
+                                })
                                 reloadBackups()
                             }
                         }
@@ -203,7 +207,7 @@ internal fun SimpleContainersPage(onNavigate: (String) -> Unit, onBack: () -> Un
                         actions = listOf(
                             MenuAction(
                                 L("Import this container"),
-                                // ContainerManager calls back only when the import worked, and not on the main thread.
+                                // The view model calls back only when the import worked; a failure shows its message.
                                 guarded(L("Importing %1\$s…", f.name)) { vm.importContainer(f) { (context as? Activity)?.runOnUiThread { toast(context, L("Imported %1\$s", f.name)) } } },
                                 confirm = L("Import %1\$s as a new container?", f.name),
                             ),

@@ -356,7 +356,12 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                         .padding(horizontal = 12.dp, vertical = 18.dp),
                 ) {
                     Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 12.dp)) {
-                        Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Spacer(Modifier.width(8.dp))
+                            // Classic's Steam connection status (only while signed in; tap when offline to retry).
+                            com.winlator.star.store.SteamConnectionPill()
+                        }
                         Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
                         if (dev != null) {
                             val showInternal by com.winlator.star.ui.theme.AppThemeState.showInternalStorage.collectAsState()

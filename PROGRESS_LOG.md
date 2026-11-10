@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 08:37 EST — 📲 INSTALLED feat/windows-steam-library 58238b63 on the Pocket FIT (user: "install it when it's done")
+- **CI 42820036587** (headSha 58238b63): 4/4 success; artifact checked = run 42820036587 / 58238b63.
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-58238b63-pubg.apk` sha256 `b2dfd1ac67036b08ca5373cef6e8e9bdb1c218f1e353e3bb72cc5a8f4c86561e` (host == device).
+- **Installed 08:37:21 EST:** base.apk == staged; crash buffer 0; only the app process was running; Box64EC component, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact; peers told before and after.
+- **Proof level:** CI-green + installed; NOT device-tested.
+- **Resume point:** user tests: (1) Windows Steam shortcut settings → Start in Big Picture on → Steam opens in Big Picture; (2) Steam store: "Windows Steam" offered as download location / Move target → Steam lists the game installed, no download; (3) that game no longer in the non-Steam list. Log check: wine_debug.log "Windows Steam: Steam store library added: Windows Steam".
+
 ## 2026-11-10 08:3x EST — 🔧 feat/windows-steam-library 58238b63: Steam store games installed in Windows Steam's library + "Start in Big Picture" (CI 42820036587 running)
 - **User:** "if a user installs or downloads a game using the steam app store can we make it show up in the windows steam client also" + "can we give it a toggle to launch in Big picture mode" → plan given → "yes build both on a new branch, keep it a choice".
 - **Store games:** the client's folder becomes an app Steam library location "Windows Steam" (when added, and at each start of an existing client; storage volumes only). The store's existing library path (steamapps/common + appmanifest via SteamAppManifest) makes Steam list downloads/moves there as installed. Not the default location. Non-Steam list skips games already installed in the client's libraries. Uninstall keeps the store's games (files, appmanifest, libraryfolders.vdf, library entry); otherwise deletes the folder and forgets the entry.

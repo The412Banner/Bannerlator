@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 08:3x EST — 🔧 feat/windows-steam-library 58238b63: Steam store games installed in Windows Steam's library + "Start in Big Picture" (CI 42820036587 running)
+- **User:** "if a user installs or downloads a game using the steam app store can we make it show up in the windows steam client also" + "can we give it a toggle to launch in Big picture mode" → plan given → "yes build both on a new branch, keep it a choice".
+- **Store games:** the client's folder becomes an app Steam library location "Windows Steam" (when added, and at each start of an existing client; storage volumes only). The store's existing library path (steamapps/common + appmanifest via SteamAppManifest) makes Steam list downloads/moves there as installed. Not the default location. Non-Steam list skips games already installed in the client's libraries. Uninstall keeps the store's games (files, appmanifest, libraryfolders.vdf, library entry); otherwise deletes the folder and forgets the entry.
+- **Big Picture:** shortcut extra `steamBigPicture`; launch adds `-gamepadui` to steam.exe's arguments; toggle in Lab/Deck settings (Windows Steam group), XMB and the Classic editor; off by default. 3 Lab strings in all 32 languages.
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+- **Resume point:** CI 42820036587 → stage pubg on the FIT → ASK the user → tests: Big Picture toggle on → Steam opens in Big Picture; Steam store → download/move a game to "Windows Steam" → Steam shows it installed (no download), Play works; non-Steam list without it; uninstall keeps it.
+
 ## 2026-11-10 07:4x EST — ✅ Storage choice works on the Pocket FIT; non-Steam games appear from the second Steam start; correction about the SD leftover
 - **User (screenshot 07:41:56):** Big Picture "NON-STEAM 0", "my games added in app are not showing up".
 - **Storage choice device-proven:** the re-added client is at `F:\bannerlator\windows_steam\steam.exe` (F: = `/storage/7B7F-E3AA`, the FIT's SD card; 2.0 GB); libraryfolders = that folder + `E:\SteamLibrary`.

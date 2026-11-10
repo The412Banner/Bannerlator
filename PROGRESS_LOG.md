@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
+- **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).
+- Backup `refs/backup/20261110/main-before-epic-game-fixes` = 33526bd1; `--no-ff` e8cf80bb (parents 33526bd1 + 2b4e3aa5); code identical to 2b4e3aa5; no AI trailer. The push started only the artifacts build (42927706039) + GitHub Pages.
+- Pocket FIT runs 2b4e3aa5 = main code. Hogwarts Legacy launch not done yet.
+- **Next:** new branch for the Epic small bugs (JSON manifests, manifest launch command, token refresh, library sync, launch language, "Up to date").
+
 ## 2026-11-10 18:51 EST — 📦 fix/epic-game-fixes 2b4e3aa5 installed on the Pocket FIT (CI 42925330883)
 - CI 42925330883 green (4/4); APK sha256 3a3d4ddf…2eea, host == device == installed; installed 18:51:11 EST after root-d2's ok; crash buffer empty; Hogwarts Legacy files and Epic records intact.
 - Hogwarts Legacy (Epic) finished downloading 18:43:02 EST (76.7 GB, EOS detected). Bannerlator's own Epic record shows appName `fa4240e5…` with catalogItemId `864c7bc2…` — the id mismatch the fix addresses.

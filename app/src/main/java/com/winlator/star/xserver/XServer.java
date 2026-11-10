@@ -353,6 +353,13 @@ public class XServer {
         extensions.put(RandrExtension.MAJOR_OPCODE, new RandrExtension(screenInfo));
     }
 
+    /**
+     * Renderers leave out windows that are fully transparent (_NET_WM_WINDOW_OPACITY 0) together with the windows
+     * inside them, as a compositing X server does. Set for Windows Steam sessions, where Wine's offscreen surfaces
+     * (children of its transparent dummy parent) would otherwise cover Steam's own windows at the screen origin.
+     */
+    public volatile boolean hideTransparentWindows = false;
+
     private volatile boolean serverGlx = false;
 
     /** Opt-in server-side GLX (BANNER_X11_GLX=1): registers the GLX + Composite extensions and makes

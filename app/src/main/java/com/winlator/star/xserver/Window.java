@@ -185,6 +185,21 @@ public class Window extends XResource {
         return property != null ? property.toString() : "";
     }
 
+    /**
+     * True when _NET_WM_WINDOW_OPACITY is 0: a compositing X server shows nothing of this window or of the windows
+     * inside it. Wine's "dummy parent" (winex11 get_dummy_parent) carries it; its children are the offscreen surfaces
+     * whose pictures Wine copies into the real windows itself (other-process / offscreen rendering).
+     */
+    public boolean isFullyTransparent() {
+        Property property = getProperty(Atom.getId("_NET_WM_WINDOW_OPACITY"));
+        if (property == null || property.data == null || property.data.capacity() < 4) return false;
+        try {
+            return property.getInt(0) == 0;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     public String getClassName() {
         Property property = getProperty(Atom.getId("WM_CLASS"));
         return property != null ? property.toString() : "";

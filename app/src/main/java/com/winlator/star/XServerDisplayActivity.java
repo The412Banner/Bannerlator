@@ -3344,6 +3344,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(new ScreenInfo(screenSize));
         xServer.setWinHandler(winHandler);
+        // Windows Steam: Wine's offscreen surfaces sit in a fully transparent window; drawn, they cover Steam's menus.
+        if (windowsSteamSession) xServer.hideTransparentWindows = true;
         advertisePanelRefreshRates();
 
         // Touch and Aim mode for this game: the shortcut's own, else the container's (a session without

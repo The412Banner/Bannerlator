@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 15:2x EST — ✅ 63a7eaeb device-proven: Start in Big Picture via steam://open/bigpicture, exit returns to the desktop window
+- **User:** "works, big picture opens and exiting goes back to desktop". Logcat 15:16:25 "Steam (Windows): desktop window up, asked Steam to open Big Picture".
+- **Device-proven on the FIT (feat/windows-steam-library):** Big Picture menus / Quick Access in GPU mode (fix B), Big Picture start and exit, Menu press / double press in Big Picture, Run popup.
+- **Not device-tested:** "Windows Steam" as Steam-store download/move target, non-Steam skip of installed games, uninstall keeping store games.
+- **Open (user decides):** GPU mode automatic for Windows Steam on the GL renderer (today hand-edited on the FIT's shortcut), remove the BLXDiag logging, winex11 fix proposal for root-8b, merge.
+
 ## 2026-11-10 15:13 EST — 📲 63a7eaeb installed on the Pocket FIT: "Start in Big Picture" opens Big Picture after Steam's desktop window
 - **Problem (user 14:0x):** Exit Big Picture → black screen with sound. BLXDiag: the Big Picture window was minimized, no new window followed. Steam's webhelper.txt: after "SP BPM_uid0 WasHidden 1" no "CreatingPopup name:SP Desktop_uid0" — started with `-gamepadui`, the client never makes its desktop window. User checks: with the toggle off the desktop window shows (GPU mode); desktop → Big Picture button → exit → desktop comes back.
 - **Fix 63a7eaeb** (user: "build it on the same branch"): no `-gamepadui`; the session waits for a mapped steamwebhelper window titled "Steam" (≥ 640×360) and then runs `steam.exe steam://open/bigpicture` once. CI 42889377322 green 4/4.

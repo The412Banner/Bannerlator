@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 09:38 EST — 📲 INSTALLED feat/windows-steam-library fd7e6e7e on the Pocket FIT (user: "install it when it's done")
+- **CI 42828613162** (headSha fd7e6e7e): 4/4 success; artifact checked = run 42828613162 / fd7e6e7e.
+- **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-fd7e6e7e-pubg.apk` sha256 `035324060fa5e0ad08b10c49622027504c2d6d269ca9529464c32a9944317720` (host == device).
+- **Installed 09:38:36 EST:** base.apk == staged; crash buffer 0; Bannerlator was open on its library (no Wine session); Box64EC, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact; peers told before and after.
+- **Proof level:** CI-green + installed; NOT device-tested (Big Picture toggle, Windows Steam library target, Big Picture Menu press / double-press QAM).
+- **Resume point:** after the user's test: `logcat -d | grep "Steam (Windows)"` for the focused window title and which action ran; screenshots.
+
 ## 2026-11-10 09:0x EST — 🔧 feat/windows-steam-library fd7e6e7e: Menu press in Big Picture = Steam button, double press = Quick Access Menu (CI 42828613162 running)
 - **User:** "when guide button … is used in big picture, nothing happens, drawer only opens when held … open big picture side menu with a press and when non big picture mode is running in game it opens in game overlay" + "can you make the same button open qam with a double press?"
 - **Built:** short press → if the focused X window's title (or a named parent's; WM_NAME, then _NET_WM_NAME) contains "Big Picture": wait 300 ms, then the Steam button on player one's pad (`pressLinuxSteamButton(false)`, Guide through BANNERIN); a second press in that time → Steam held + A tapped (`pressLinuxSteamButton(true)`, the Linux session's QAM chord). Otherwise Shift+Tab as before. Hold → side drawer, unchanged. Each press logs "Steam (Windows): focused window '…'".

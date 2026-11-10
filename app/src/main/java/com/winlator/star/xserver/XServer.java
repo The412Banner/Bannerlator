@@ -360,6 +360,13 @@ public class XServer {
      */
     public volatile boolean hideTransparentWindows = false;
 
+    /**
+     * Lays overlay pictures (Chromium's side menu / Quick Access in the Windows Steam client) back over a window after
+     * Wine copies a fullscreen page frame over all of it; see OverlayCopies. Set for Windows Steam sessions.
+     */
+    public volatile boolean keepOverlayCopies = false;
+    public final OverlayCopies overlayCopies = new OverlayCopies();
+
     private volatile boolean serverGlx = false;
 
     /** Opt-in server-side GLX (BANNER_X11_GLX=1): registers the GLX + Composite extensions and makes

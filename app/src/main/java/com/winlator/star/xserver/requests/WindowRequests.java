@@ -114,6 +114,7 @@ public abstract class WindowRequests {
     public static void destroyWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) {
         int windowId = inputStream.readInt();
         if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.event("destroy", client.xServer.windowManager.getWindow(windowId), client);
+        if (client.xServer.keepOverlayCopies) client.xServer.overlayCopies.forget(windowId);
         client.xServer.windowManager.destroyWindow(windowId);
     }
 

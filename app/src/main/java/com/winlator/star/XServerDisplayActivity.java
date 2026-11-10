@@ -3346,6 +3346,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         xServer.setWinHandler(winHandler);
         // Windows Steam: Wine's offscreen surfaces sit in a fully transparent window; drawn, they cover Steam's menus.
         if (windowsSteamSession) xServer.hideTransparentWindows = true;
+        // Windows Steam: Wine copies the fullscreen page over Big Picture's menus every frame; lay them back on top.
+        xServer.keepOverlayCopies = windowsSteamSession;
         // Diagnostic build: log what the X server does with Steam's windows (logcat tag BLXDiag).
         com.winlator.star.xserver.XDiag.enabled = windowsSteamSession;
         advertisePanelRefreshRates();

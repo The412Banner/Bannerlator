@@ -125,6 +125,10 @@ public abstract class DrawRequests {
 
         if (com.winlator.star.xserver.XDiag.enabled) com.winlator.star.xserver.XDiag.write(dstDrawableId, "copy", client, srcDrawableId, dstX, dstY, width, height);
         dstDrawable.copyArea(srcX, srcY, dstX, dstY, width, height, srcDrawable, graphicsContext.getFunction());
+        if (client.xServer.keepOverlayCopies) {
+            client.xServer.overlayCopies.afterCopy(client.xServer, srcDrawableId, dstDrawableId, srcX, srcY, dstX, dstY,
+                    width, height, dstDrawable, graphicsContext.getFunction());
+        }
     }
 
     public static void polyLine(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {

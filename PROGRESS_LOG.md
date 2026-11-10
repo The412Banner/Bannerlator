@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 17:2x EST — 🔀 MERGED feat/windows-steam-library → main e850b0f4 (artifacts-only CI 42914583364)
+- **User:** "merge it"; "after the merge have the main branch build artifacts only".
+- **Backup:** `refs/backup/20261110/main-before-windows-steam-library` = 23269b0b (pushed before the merge).
+- **Merge:** `--no-ff` e850b0f4 (parents 23269b0b + 961f32b1); main had only PROGRESS_LOG commits since the branch point, so the merged code is identical to the device-proven 961f32b1 (checked with `git diff`). Author The412Banner, no AI trailer.
+- **In it:** store games in Windows Steam (library location + `C:\\BannerlatorSteamLibrary` links), Start in Big Picture + exit to desktop, Menu press/double press in Big Picture, compact Run program picker, automatic GPU drawing on the GL renderer with the overlay-menu fix, diagnostics removed.
+- **CI:** the push started only "CI Build (artifacts only)" run 42914583364 (plus GitHub's own pages deployment); release.yml is manual and was not run. No tag, no release.
+- **Devices:** Pocket FIT 961f32b1 = main code; Elite 2e7456c4 (older main).
+- **Branch** feat/windows-steam-library kept.
+
 ## 2026-11-10 17:15 EST — ✅ 961f32b1 device-proven: store games show as installed in Windows Steam (feat/windows-steam-library)
 - **User:** "counter strike shows installed now".
 - **Log:** "Store games in Steam: 4 linked in C:\\BannerlatorSteamLibrary"; "Non-Steam games: 27 listed, 2 already installed in Steam" (Half-Life + MIO, the only installed store games with shortcuts); GPU drawing on (automatic). Links: Brawlhalla → SD, Counter-Strike / Lossless Scaling / MIO → internal; Counter-Strike's appmanifest StateFlags 4; libraryfolders.vdf lists `C:\\BannerlatorSteamLibrary`; crash buffer empty.

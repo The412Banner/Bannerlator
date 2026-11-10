@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 📦 main b121585e installed on the Elite; Steam x64 test 1: FEX "Compatibility" preset for that shortcut only
+- **Installed 22:11:45 EST (user: "yes install it"):** main code `b121585e` (feat/lab-parity merge; later main commits are log-only), CI 42745526415 (headSha b121585e, 4/4 jobs green), pubg APK sha256 `4bac96a1…0c7b` — staged file, device copy and installed base.apk all match; crash buffer empty at install. Peer session told and hands-off.
+- **Steam x64 plan, step 1a:** the "Steam x64" shortcut now has `fexcorePreset=COMPATIBILITY` (all FEX memory-ordering emulation on; the container stays on Performance + TSO). If it still fails: 1b = FEXCore-2611 for this shortcut, then 2 = one launch with `+seh` logging to pin the crashing function.
+- **Proof level:** install verified; app start and Steam x64 NOT tested yet.
+- **Resume point:** nothing running; user launches Steam x64; logs in `Download/bannerlator/Steam x64/` and `F:\Download\Steam-x64\logs`.
+
 ## 2026-11-09 — ❌ Steam x64 downloads fine but fails at start ("problem with your Steam installation"); Steam Latest (32-bit) stays
 - **Run 21:47–21:50 EST (user):** the 64-bit starter downloaded client 1792618285 (win64 channel) and verified it, then SteamUI showed "There was a problem with your Steam installation. Please reinstall steam."
 - **Cause as far as read:** the message comes from `SteamUI.dll` when `CSteamGamesUIModule::LoadSteamClient` returns an error other than "no network" (disassembly at 0x13a606648). No missing DLL or import in the Wine log. In the same run the 64-bit `steamwebhelper.exe` crashed (page fault at 0x5FFFF05188) and steam.exe's main thread overflowed its stack while handling an exception (0x5ffff0ad74), both in the same memory region. Likely a problem running 64-bit Windows code through the arm64ec emulation (exception handling); NOT proven, module not identified. Reinstalling would not help.

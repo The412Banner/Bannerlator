@@ -202,9 +202,11 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                     compareBy<Shortcut>({ AndroidGames.isHome(it.container) }, { (it.container?.name ?: "").lowercase() })
                 )
             }
-            // The Steam entry is a launcher for everything else, not one game among many, so it
-            // stays at the front of every view and sort order rather than being hunted for.
-            sorted.sortedBy { if (LinuxShortcuts.isLinuxEntry(it)) 0 else 1 }
+            // The Steam entries (the Linux runtime's and the Windows Steam client) are launchers for everything
+            // else, not games among many, so they stay at the front of every view and sort order.
+            sorted.sortedBy {
+                if (LinuxShortcuts.isLinuxEntry(it) || com.winlator.star.store.WindowsSteamClient.isWindowsSteamShortcut(it)) 0 else 1
+            }
         }
 
     private val manager = ContainerManager(app)

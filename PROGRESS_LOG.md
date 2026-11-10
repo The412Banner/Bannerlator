@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 05:46 EST — 🔀 MERGED feat/windows-steam-client → main 2ccaacf5 (user: "merge when green also and tell me"); 64c14f7e installed on the Pocket FIT
+- **CI 42800339918** (headSha 64c14f7e): 4/4 success.
+- **Install (user: "install anyway nothing is running in bannerlator"; root-8b's ok request was held by its session):** 05:44:59 EST, base.apk sha256 `d3008b6c07a90a849a801214394724601cb9702b7a09dcac918278f2fab25021` == staged `/sdcard/Download/Bannerlator-windows-steam-client-64c14f7e-pubg.apk`; app was not running; crash buffer 0; Box64EC, Proton 11.0-12.3-arm64ec-16, xuser-1, xuser-2 intact.
+- **Leftovers from the uninstall test deleted by hand (user asked):** `/storage/emulated/0/SteamLibrary` (steam.dll + libraryfolder.vdf + empty steamapps/common) and `xuser-1/app_data/cover_arts/Windows Steam Client x64.png`, both re-checked first.
+- **Merge:** backup `refs/backup/20261110/main-before-windows-steam-client` = 85b2d83d; `--no-ff`; main had only PROGRESS_LOG commits since the branch base 985560ce and the branch does not touch the log → no conflicts; merged `app/` tree 856e7c53 == 64c14f7e's. Branch kept.
+- **Main CI:** 42801832350 (push, headSha 2ccaacf5) running.
+- **Proof level:** add client + uninstall device-proven on the FIT; storage choice and the 64c14f7e leftover fix NOT device-tested; Elite still runs a7febd02.
+
 ## 2026-11-10 05:4x EST — ✅ Uninstall offer works on the Pocket FIT (dd7eadd5); 🔧 64c14f7e removes the two leftovers (CI 42800339918 running)
 - **User screenshots 05:33:** container 1 "Windows Steam Client x64" → Remove → "Also uninstall Steam? Deletes Steam from DD P11-12.3 Arm's C: drive (1.1 GB)." → Uninstall → toast "Steam uninstalled (1.1 GB freed)" (appeared over the launcher after the user left the app, so the separate thread finished on its own). Library 37 → 36.
 - **Disk check:** C:\Program Files\Steam, AppData\Local\Steam, Common Files\Steam, the .desktop and F:\SteamLibrary gone; log `Windows Steam uninstalled … (1220403135 bytes, failed: 0)`; crash buffer empty.

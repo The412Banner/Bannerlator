@@ -1,5 +1,18 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — 🔧 feat/windows-steam-client 3b4d58dc pushed (CI 42757256289 running): "Add Windows Steam client x64", badge, pinned first, Menu press = Shift+Tab
+- **User asks (~23:30–23:45 EST):** a 4th entry in "+"/Add games → pick container → download the x64 Steam client "legit from Steam" → shortcut "Windows Steam Client x64" with a "Windows Steam" badge like the store games, always first in the library. "go with your recommendations" = client in the container's C:\Program Files\Steam; existing "Steam x64" shortcut also badged + pinned (data change on the Elite after install, not code). Also: "after the desktop client launches and I press my guide side menu button it automatically launches big picture, it shouldn't. it is only supposed to open the in-game overlay after launching a game similar to shift tab".
+- **Built (branch off main 985560ce, worktree /root/src/Bannerlator-wt/windows-steam-client):**
+  - `store/WindowsSteamClient.kt`: `addClient()` — manifest `https://client-update.steamstatic.com/steam_client_win64` (live 23:4x: v1792618285) → `win64/steam_win64` package (`steam_win64.zip.9ddc7f40…`, 2,692,595 B, sha256 9a5aba7f… = the starter used for the working Steam x64; the zip holds only steam.exe, 5,823,128 B) → size + SHA-256 check → unzip (canonical-path check) into `C:\Program Files\Steam` → PE must be x64 → `Windows Steam Client x64.desktop` (storeSource=windows_steam, launchMode=Raw, execArgs = the working shortcut's CEF options, addedAt) + 600x900 cover (Steam logo on #1B2838). Already has the shortcut → no second one; x64 steam.exe already there → no download. `isWindowsSteamShortcut`, `findShortcut`, `installDir`.
+  - `GameActionsHost.kt`: 4th MenuOptionCard (DesktopWindows icon) → container picker (ImportKind.WINDOWS_STEAM) → "Download Steam (64-bit) from Valve into <container>?" → progress % → toast; refresh.
+  - Badge: STORE_SHELVES first entry "Windows Steam", STORE_ORDER, storeMarkOfLabel → Steam mark, Lab filter "Windows Steam", `ShortcutBadgeOverlay(showWindowsSteam)` pill "WINDOWS STEAM" at all 4 call sites (Classic ×2, XMB, Lab).
+  - Pinned: `GameSortKey.pinned` (= windows_steam shortcut) sorts first in every `sortGames` order (Lab, Deck, XMB, Simple). Classic list order not changed (not via sortGames) — to check.
+  - Menu button press in Windows Steam sessions: Shift+Tab (press, release +150 ms) instead of `pressLinuxSteamButton` (Guide → Big Picture); hold → side menu unchanged.
+  - Tests added (LibrarySortTest pinned-first, StoreMarkTest) — not run (no local toolchain; CI has no unit-test step).
+- **Proof level:** pushed; CI 42757256289 (headSha 3b4d58dc) running; NOT device-tested.
+- **Also asked (open, not started):** list the app's existing games in Windows Steam as non-Steam games.
+- **Resume point:** wait for CI → stage pubg APK → ask install → test the add flow in a container without Steam, the badge/pin, Shift+Tab over a game.
+
 ## 2026-11-09 — ✅ MERGED feat/steam-x64-auto → main be84e768 (user: "merge it to main", ~23:22 EST)
 - **Proof before merge:** CI 42753083274 green 4/4 on ce29246d; device-proven on the Elite by the user (Steam x64 starts with only the automatic fixes, Menu button hold works) + logs (two entries below).
 - **Merge:** `--no-ff` of ce29246d onto main 4ed855a7 (4 log-only commits since the branch point) → **be84e768**, authored The412Banner. Code tree == tested ce29246d (`git diff ce29246d be84e768` outside PROGRESS_LOG is empty). Backup ref `refs/backup/20261109/main-before-steam-x64-auto` → 4ed855a7 (on GitHub, ls-remote checked).

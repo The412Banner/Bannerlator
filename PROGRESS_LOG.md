@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 13:58 EST — ✅ Big Picture menus drawn with GPU drawing: fix B 118636d3 device-proven on the Pocket FIT
+- **Installed 13:54:09 EST** (CI 42877757631 green 4/4; base.apk sha256 a65f2af0… == staged; crash buffer 0).
+- **User screenshots 13:57:** Big Picture side menu and Quick Access (Help panel) fully drawn over the page, GPU drawing (D3D11 · DXVK).
+- **Log:** 38 BLXDiag "reapply" summaries — the Quick Access copy (box 950,38–1280,683) and the menu strip (0,0–229,720) laid back over each page frame.
+- **Still hand-made on the FIT's shortcut:** no `-cef-disable-gpu`, `WINE_DISABLE_VULKAN_OPWR=0`. Open: make that automatic for Windows Steam on the GL renderer, remove the diagnostics, propose the winex11 fix to root-8b, merge (user decides).
+
 ## 2026-11-10 13:5x EST — 🔧 Big Picture menus: root cause found (BLXDiag), fix 118636d3 (CI 42877757631)
 - **Diagnostic build d19568bc installed 13:30:40 EST**; user ran Big Picture, opened the menu and Quick Access, closed Steam ("closed steam, read the log").
 - **BLXDiag log (13:32:57–13:34:07):** all Wine windows are children of the explorer desktop window; the GL renderer drew only Steam's main window 0x3800005; the GPU process's offscreen windows sit in its transparent dummy parent (hidden, as intended). The side menu and Quick Access are not X windows: Chromium draws them as overlay child windows into their own offscreen windows (e.g. 229×721, 812×645, made and destroyed per opening), and Wine copies them into the same window 0x3800005 only when they change, while the page is copied there ~24×/s over the whole window (box 0,0–1280,720). Cause in Wine: `X11DRV_client_surface_present` — `region = 0; /* window is exclusive fullscreen, ignore everything else */` — no child-window clipping for a fullscreen toplevel. The resize content reset was not the cause.

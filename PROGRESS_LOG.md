@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-09 — ✅ MERGED feat/steam-x64-auto → main be84e768 (user: "merge it to main", ~23:22 EST)
+- **Proof before merge:** CI 42753083274 green 4/4 on ce29246d; device-proven on the Elite by the user (Steam x64 starts with only the automatic fixes, Menu button hold works) + logs (two entries below).
+- **Merge:** `--no-ff` of ce29246d onto main 4ed855a7 (4 log-only commits since the branch point) → **be84e768**, authored The412Banner. Code tree == tested ce29246d (`git diff ce29246d be84e768` outside PROGRESS_LOG is empty). Backup ref `refs/backup/20261109/main-before-steam-x64-auto` → 4ed855a7 (on GitHub, ls-remote checked).
+- **Main CI:** push build 42755343999 (headSha be84e768) started; result to check.
+- **Still not confirmed:** Menu button short press → Steam guide; CS:S shown as installed / starting.
+- **Branch** feat/steam-x64-auto kept (delete only on the user's word). The Elite runs ce29246d = main code.
+- **Merged by session root-af** (root-7c's session was killed with Termux at 23:13:10).
+
 ## 2026-11-09 — ✅ feat/steam-x64-auto ce29246d: user confirms Steam x64 starts with only the branch's automatic fixes; Menu button hold works
 - **User (~23:20 EST):** "guide hold button works, and client launches after bannerlator fixes for steam in a new branch" → the Steam x64 shortcut (manual `PROTON_DISABLE_LSTEAMCLIENT=1` and `displayBackend=x11` removed for this test) starts the 64-bit client with what the branch adds at launch; Menu button hold → side menu works.
 - **Proof level:** device-proven by the user (client start, Menu hold) + logs (entry below). Still not confirmed: Menu button short press → Steam guide, CS:S shown as installed / starting.

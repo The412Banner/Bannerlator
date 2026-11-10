@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 10:4x EST — 🔧 feat/windows-steam-library d1fdecf8: don't draw fully transparent windows (Windows Steam); picker 795c0033 installed
+- **Test 1b result (user video 10:08 + "qam and steam menu flicker. dashboard is smoother now"):** with `WINE_DISABLE_VULKAN_OPWR=0` and no `-cef-disable-gpu`, Big Picture draws through DXVK (~120 fps, GPU 15–26 %) and scrolls smoother; the left menu shows only in single frames, Quick Access never. Logcat: focused window "Steam Big Picture Mode", Steam button / Quick Access chord sent as designed.
+- **Investigation:** Wine's offscreen surfaces live in its dummy parent (1×1 override-redirect at 0,0, empty shape, `_NET_WM_WINDOW_OPACITY` 0) and Wine copies their pictures into the real windows. All three renderers draw every mapped window at full size (no parent clipping, no shape, no opacity), so those surfaces covered Steam's windows from the screen origin. Container 1 uses the GL renderer, whose Present path copies frames into the window's CPU content, so Wine's copy can read them.
+- **Fix d1fdecf8:** `Window.isFullyTransparent()` + `XServer.hideTransparentWindows` (Windows Steam sessions only); GL, Vulkan and ASR renderers skip such a window and its children. CI 42846752326.
+- **Picker 795c0033 installed 10:38:52 EST** (user asked): base.apk sha256 3b54c452… == staged, crash buffer 0, Bannerlator not running, data intact.
+- **Proof level:** d1fdecf8 pushed, NOT built yet; NOT device-tested. Shortcut keeps the test-1b settings for the test.
+
 ## 2026-11-10 10:06 EST — 🧪 Big Picture test 1 = white screen; cause found; test 1b (other-process rendering on) set up
 - **Test 1 result (user 10:01, screenshot):** white screen + sound, overlay "D3D11 · DXVK 1.8 fps", 564 ms.
 - **Cause (wine_debug.log):** `x11drv_client_surface_create HACK: Failing surface creation for other process window` → DXVK `Failed to recreate surface: VK_ERROR_OUT_OF_HOST_MEMORY` → `CreateSwapChainForHwnd: Failed`. Chromium's GPU process draws into the browser process's window. Our layer (proton_11.12.3-DroidDeck) carries `android/patches/dlls_winex11.drv_init.c_opwr.patch` (GameNative #82, Dmage22 via Utkarsh Dalal): Proton's other-process window rendering (OPWR) is off on Android unless `WINE_DISABLE_VULKAN_OPWR=0`, because it needs XComposite to keep the offscreen surface hidden ("the surface shows up at the screen origin"). Bannerlator's X server has only a bookkeeping XComposite (`extensions/XComposite.java`), registered only with `BANNER_X11_GLX=1`.

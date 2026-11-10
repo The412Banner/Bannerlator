@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 04:43 EST — 📲 INSTALLED feat/windows-steam-client 5bad2962 on the Pocket FIT (user: "yes install it"); user tests Add client next
+- **Before:** a7febd02 installed (04:20:17); only the app process was running (no game); peers root-66/root-12/root-8b told before and after.
+- **Installed 04:43:52 EST:** `pm install -r` Success; installed base.apk sha256 `b161d1c1…f9a8` == staged; crash buffer 0 lines.
+- **Proof level:** CI-green + installed; NOT device-tested.
+- **Resume point:** user retries Add a game → Add Windows Steam client x64 in container 1 → check `drive_c/Program Files/Steam/steam.exe` (PE 0x8664), `Windows Steam Client x64.desktop` (storeSource=windows_steam), logcat tag WindowsSteamClient, crash buffer. Rollback: `Bannerlator-lab-parity-91549b4f-pubg.apk`.
+
 ## 2026-11-10 04:42 EST — 📦 feat/windows-steam-client 5bad2962 CI GREEN 4/4, staged on the Pocket FIT; awaiting the user's yes to install
 - **CI 42791080613** (headSha 5bad2962): pubg/standard/antutu/ludashi success; non-success steps are only the usual skipped cache / main-only steps.
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-5bad2962-pubg.apk` sha256 `b161d1c14e93df8d40636bd5fd464588e1b9376ab059f08614eb3e581f8ef9a8` (host == device), com.tencent.ig vc106, "The download is not a zip file" in classes4.dex.

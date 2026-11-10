@@ -3348,6 +3348,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (windowsSteamSession) xServer.hideTransparentWindows = true;
         // Windows Steam: Wine copies the fullscreen page over Big Picture's menus every frame; lay them back on top.
         xServer.keepOverlayCopies = windowsSteamSession;
+        // "Start in Big Picture": Steam starts on its desktop window and is then asked to open Big Picture (see
+        // windowsSteamBigPictureWatch), so leaving Big Picture has the desktop window to go back to.
+        windowsSteamBigPicturePending = windowsSteamSession && shortcut != null
+                && "1".equals(shortcut.getExtra(com.winlator.star.store.WindowsSteamClient.EXTRA_BIG_PICTURE));
+        if (windowsSteamBigPicturePending) windowsSteamMenuHandler.postDelayed(windowsSteamBigPictureWatch, 2000);
         // Diagnostic build: log what the X server does with Steam's windows (logcat tag BLXDiag).
         com.winlator.star.xserver.XDiag.enabled = windowsSteamSession;
         advertisePanelRefreshRates();
@@ -8211,6 +8216,60 @@ public class XServerDisplayActivity extends AppCompatActivity {
         windowsSteamMenuHandler.postDelayed(windowsSteamSinglePress, WINDOWS_STEAM_DOUBLE_PRESS_MS);
     }
 
+    /** A window's title: WM_NAME, else _NET_WM_NAME (Wine sets both), "" when it has none. */
+    private static String windowTitle(Window w) {
+        String name = w.getName();
+        if (name == null || name.isEmpty()) {
+            Property utf8 = w.getProperty(Atom.getId("_NET_WM_NAME"));
+            name = utf8 != null ? utf8.toString() : "";
+        }
+        return name != null ? name : "";
+    }
+
+    // Windows Steam, "Start in Big Picture": waiting for Steam's desktop window (title "Steam") to ask it to open
+    // Big Picture. Started with -gamepadui instead, Steam never makes its desktop window, so leaving Big Picture
+    // showed nothing.
+    private boolean windowsSteamBigPicturePending;
+    private int windowsSteamBigPictureTries;
+    private final Runnable windowsSteamBigPictureWatch = new Runnable() {
+        @Override
+        public void run() {
+            if (!windowsSteamBigPicturePending || isFinishing() || isDestroyed()) return;
+            if (++windowsSteamBigPictureTries > 300) {
+                windowsSteamBigPicturePending = false;
+                Log.i("XServerDisplayActivity", "Steam (Windows): no desktop window in 5 min, Big Picture not opened");
+                return;
+            }
+            boolean shown = false;
+            if (xServer != null) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                    shown = hasMappedWindowTitled(xServer.windowManager.rootWindow, "Steam", 0);
+                } catch (Exception e) {
+                    Log.w("XServerDisplayActivity", "Steam (Windows): desktop window check", e);
+                }
+            }
+            if (!shown) {
+                windowsSteamMenuHandler.postDelayed(this, 1000);
+                return;
+            }
+            windowsSteamBigPicturePending = false;
+            windowsSteamMenuHandler.postDelayed(() -> {
+                if (winHandler == null || shortcut == null || isFinishing()) return;
+                winHandler.exec("\"" + shortcut.path + "\" steam://open/bigpicture");
+                Log.i("XServerDisplayActivity", "Steam (Windows): desktop window up, asked Steam to open Big Picture");
+            }, 1500);
+        }
+    };
+
+    /** A mapped window of Steam's web helper, at least 640x360, titled [title] (the desktop window is titled "Steam"). */
+    private static boolean hasMappedWindowTitled(Window w, String title, int depth) {
+        if (w == null || depth > 6) return false;
+        if (depth > 0 && w.attributes.isMapped() && w.getWidth() >= 640 && w.getHeight() >= 360
+                && title.equals(windowTitle(w)) && w.getClassName().toLowerCase(java.util.Locale.ROOT).contains("steamwebhelper")) return true;
+        for (Window child : w.getChildren()) if (hasMappedWindowTitled(child, title, depth + 1)) return true;
+        return false;
+    }
+
     /**
      * True when the focused window (or the nearest named window above it) is Steam's Big Picture, whose title is
      * "Steam Big Picture Mode". Logs the title it went by.
@@ -8219,14 +8278,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         String name = "";
         try {
             Window w = xServer != null ? xServer.windowManager.getFocusedWindow() : null;
-            for (int i = 0; w != null && i < 8 && name.isEmpty(); i++, w = w.getParent()) {
-                name = w.getName();
-                if (name == null || name.isEmpty()) {
-                    Property utf8 = w.getProperty(Atom.getId("_NET_WM_NAME"));
-                    name = utf8 != null ? utf8.toString() : "";
-                }
-                if (name == null) name = "";
-            }
+            for (int i = 0; w != null && i < 8 && name.isEmpty(); i++, w = w.getParent()) name = windowTitle(w);
         } catch (Exception e) {
             Log.w("XServerDisplayActivity", "Steam (Windows): focused window", e);
         }
@@ -16041,8 +16093,6 @@ return true;
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");
-            // Windows Steam client: "Start in Big Picture" adds Steam's own switch (-gamepadui).
-            if (windowsSteamSession) execArgs = com.winlator.star.store.WindowsSteamClient.withBigPicture(shortcut, execArgs);
             execArgs = !execArgs.isEmpty() ? " " + execArgs : "";
 
             if (xboxLaunch != null) {

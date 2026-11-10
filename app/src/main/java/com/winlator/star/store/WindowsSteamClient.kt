@@ -64,18 +64,12 @@ object WindowsSteamClient {
     /** Name of the client's folder among the app's Steam library folders (Steam store download and move targets). */
     const val LIBRARY_LABEL = "Windows Steam"
 
-    /** Shortcut extra: "1" = the client starts in Big Picture (`-gamepadui`). */
+    /**
+     * Shortcut extra: "1" = the session opens Big Picture once the client's desktop window is up (steam://open/bigpicture,
+     * XServerDisplayActivity). Not -gamepadui: started that way the client never makes its desktop window, so leaving
+     * Big Picture showed nothing.
+     */
     const val EXTRA_BIG_PICTURE = "steamBigPicture"
-
-    /** [execArgs] of a Windows Steam shortcut, with Steam's Big Picture switch added when [EXTRA_BIG_PICTURE] is on. */
-    @JvmStatic
-    fun withBigPicture(shortcut: Shortcut, execArgs: String?): String {
-        val args = execArgs.orEmpty()
-        if (shortcut.getExtra(EXTRA_BIG_PICTURE) != "1") return args
-        val words = args.trim().split(Regex("\\s+"))
-        if (words.any { it.equals("-gamepadui", ignoreCase = true) || it.equals("-bigpicture", ignoreCase = true) }) return args
-        return if (args.isBlank()) "-gamepadui" else "${args.trim()} -gamepadui"
-    }
 
     /**
      * Makes the client's folder [steamRoot] one of the app's Steam library folders, so the app's Steam store can

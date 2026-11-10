@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 10:0x EST — 🔧 feat/windows-steam-library 795c0033: in-game "Run a program" opens a file picker (CI 42838176028 running)
+- **User (screenshots 09:37):** in-game drawer Run… opens the typed New Task box; "can we make this a file picker … device wide/storage options?" → plan → "yes build it on the same branch". Asked whether it runs a second exe with the game: yes, same winhandler EXEC in the running session.
+- **Built:** Run… (drawer) and "Run a program" (quick menu) open the app's file picker (internal storage, SD cards, the container's C:; .exe .bat .cmd .msi .lnk). The pick gets a Windows path via `WinePath.resolveWindowsPath` (a new drive letter when needed, its dosdevices link created live) and starts with `winHandler.execInFolder` (from its own folder). The New Task box keeps typed commands and gets Browse…, which fills the box with the picked path.
+- **Not verified:** a drive letter added while Wine runs is usable at once (dosdevices link created live).
+- **Proof level:** pushed; NOT built yet; NOT device-tested.
+
 ## 2026-11-10 09:38 EST — 📲 INSTALLED feat/windows-steam-library fd7e6e7e on the Pocket FIT (user: "install it when it's done")
 - **CI 42828613162** (headSha fd7e6e7e): 4/4 success; artifact checked = run 42828613162 / fd7e6e7e.
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-library-fd7e6e7e-pubg.apk` sha256 `035324060fa5e0ad08b10c49622027504c2d6d269ca9529464c32a9944317720` (host == device).

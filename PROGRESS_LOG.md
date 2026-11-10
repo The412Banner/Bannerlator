@@ -1,13 +1,14 @@
 # Star-Compose — Progress Log
 
-## 2026-11-10 — 📦 feat/windows-steam-client a7febd02 CI GREEN 4/4, staged; awaiting the user's yes to install
+## 2026-11-09 23:58 EST — 📦 feat/windows-steam-client a7febd02 CI GREEN 4/4, staged; awaiting the user's yes to install
+- **Correction:** this entry and the one below first said 2026-11-10 / "~00:05 EST"; the real times are 11-09 23:45 EST (user's "all games" message, 04:45 UTC) and 23:58 EST (staged). Fixed.
 - **CI 42758239019** (headSha a7febd02): pubg/antutu/standard/ludashi success, no failed steps. Also green: 42757422741 (1b93606d).
 - **Staged** `/sdcard/Download/Bannerlator-windows-steam-client-a7febd02-pubg.apk` sha256 `3ebae481c17f4383b0cd031d99da905b3bc665a5881c96acd80d6604ae1bba97` (host == device), manifest com.tencent.ig; new code present (classes4: WindowsSteamClient + "Non-Steam games", classes5: "Add Windows Steam client x64").
 - **Installed now:** ce29246d (feat/steam-x64-auto = main code), lastUpdateTime 2026-11-09 23:11:26. Rollback: `Bannerlator-steam-x64-auto-ce29246d-pubg.apk` / `Bannerlator-main-b121585e-pubg.apk`.
 - **Resume point:** ask install → after install: back up + switch "Steam x64.desktop" storeSource custom→windows_steam (keep owner u0_a193) → user tests.
 
-## 2026-11-10 — 🔧 feat/windows-steam-client a7febd02: app games listed in Windows Steam as non-Steam games (CI 42758239019 running)
-- **User (~00:05 EST):** "all games added as shortcuts in the app" (which games to list in Steam); update = automatic at each Steam start (my recommendation, not objected).
+## 2026-11-09 23:50 EST — 🔧 feat/windows-steam-client a7febd02: app games listed in Windows Steam as non-Steam games (CI 42758239019 running)
+- **User (23:45 EST):** "all games added as shortcuts in the app" (which games to list in Steam); update = automatic at each Steam start (my recommendation, not objected).
 - **Built:** `store/SteamShortcutsSync.kt`, called from `WindowsSteamClient.prepareLaunch` (launch worker thread) for every steam.exe session: for each `userdata/<digits>` account → `config/shortcuts.vdf` (binary VDF reader/writer: map/string/int32, other types kept raw). Lists every Wine shortcut of every container (reads the .desktop directly, no cover decoding) except windows_steam/android/gamescope/launchMode=Stream/steam.exe targets and missing files. Path: same container = as is; else the container's C:, an existing drive, or a new drive for the storage volume (WinePath.resolveWindowsPath); another container's C: = left out (counted in the log line). Entries tagged "Bannerlator"; user's entries kept; ours matched by appid (CRC-32(quoted exe + name) | 0x80000000) keep Steam's play time and switches. Cover → `config/grid/<appid>p.png`. Log line `Windows Steam: Non-Steam games: N listed[, M left out] for account …`.
 - **Earlier commits:** 3b4d58dc + 1b93606d (add entry, badge, pin, Shift+Tab, Classic pin); CI 42757422741 on 1b93606d: ludashi job green (compiles), rest running.
 - **Note:** a drive added for a game in another container's storage may only apply from the next start.

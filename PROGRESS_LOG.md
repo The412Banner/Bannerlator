@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 04:58 EST — ✅ 5bad2962 on the Pocket FIT: "Add Windows Steam client x64" now works (download, unpack, shortcut, client start)
+- **Checked read-only while the user tested** (peer root-8b holding the device): container 1 `drive_c/Program Files/Steam/steam.exe` 5,823,128 B, PE machine 0x8664; `drive_c/users/xuser/Desktop/Windows Steam Client x64.desktop` with storeSource=windows_steam, launchMode=Raw, Exec `C:\Program Files\Steam\steam.exe` (same escaping as the other shortcuts); cover `app_data/cover_arts/Windows Steam Client x64.png`.
+- **Client start:** bootstrap_log "Verification complete" 04:56:31 EST; Steam folder 1.1 GB / 79 entries by 04:57.
+- **Crash buffer:** one `F libc fdsan: attempted to close file descriptor 290 … owned by FILE*` line at 04:56:34 (pid 1524); same warn-only fdsan type as seen on the Elite 11-09.
+- **Proof level:** add flow device-proven on the FIT (files + client download). NOT confirmed yet: sign-in, badge + pinned first on screen, non-Steam games list in Steam, Menu press = Shift+Tab.
+- **User idea (open, awaits go):** choose Internal storage or SD card for the client (`<volume>/bannerlator/windows_steam`) instead of the container; drop the C: option.
+
 ## 2026-11-10 04:43 EST — 📲 INSTALLED feat/windows-steam-client 5bad2962 on the Pocket FIT (user: "yes install it"); user tests Add client next
 - **Before:** a7febd02 installed (04:20:17); only the app process was running (no game); peers root-66/root-12/root-8b told before and after.
 - **Installed 04:43:52 EST:** `pm install -r` Success; installed base.apk sha256 `b161d1c1…f9a8` == staged; crash buffer 0 lines.

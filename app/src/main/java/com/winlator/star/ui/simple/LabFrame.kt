@@ -61,6 +61,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -302,8 +303,36 @@ internal fun LabTopLine(portrait: Boolean, onMenu: () -> Unit, onBack: (() -> Un
             dev.tempC?.let { Text(L("%1\$s°C", it), color = SimpleMuted, fontSize = 13.sp) }
             Text(dev.time, color = SimpleInk, fontSize = 13.sp)
         }
+        // Portrait shows it in the drawer's header instead.
+        if (!portrait) LabAccountButton()
     }
     ShortcutActionDialogs(actions)
+}
+
+/**
+ * The user's picture: the Community configs account's when signed in, else the signed-in Steam account's (live from
+ * the friends connection, else the one saved with the account), else the sign-in figure. Opens My account, as
+ * Classic's drawer header and the Deck top bar do.
+ */
+@Composable
+internal fun LabAccountButton(onOpen: () -> Unit = {}) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { runCatching { com.winlator.star.ui.AccountUiBus.refresh(context) } }
+    val account = com.winlator.star.ui.AccountUiBus.account
+    val self by com.winlator.star.store.SteamFriendsStore.self.collectAsState()
+    val saved = remember(self) {
+        runCatching {
+            val id = com.winlator.star.store.SteamAccountStore.activeSteamId(context)
+            if (id == 0L) null else com.winlator.star.store.SteamAccountStore.list(context).firstOrNull { it.steamId64 == id }?.avatarUrl
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+    val url = account?.displayAvatarUrl?.takeIf { it.isNotBlank() } ?: self?.avatarUrl ?: saved
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(40.dp).clip(CircleShape).labTile(onClick = { onOpen(); com.winlator.star.ui.AccountUiBus.requestMyAccount() }),
+    ) {
+        com.winlator.star.ui.AccountAvatar(avatarUrl = url, size = 36.dp, fallbackTint = SimpleInk)
+    }
 }
 
 /**
@@ -356,11 +385,13 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
                         .padding(horizontal = 12.dp, vertical = 18.dp),
                 ) {
                     Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Bannerlator", color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                             Spacer(Modifier.width(8.dp))
                             // Classic's Steam connection status (only while signed in; tap when offline to retry).
                             com.winlator.star.store.SteamConnectionPill()
+                            Spacer(Modifier.weight(1f))
+                            LabAccountButton(onOpen = onClose)
                         }
                         Text(Build.MODEL ?: "", color = SimpleMuted, fontSize = 12.sp)
                         if (dev != null) {

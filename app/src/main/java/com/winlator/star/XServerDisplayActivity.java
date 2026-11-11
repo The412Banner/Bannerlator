@@ -1740,6 +1740,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private String yserverModeName = null;
     // The last Wine window yserver mode brought to the front (YSERVER-MAP).
     private volatile String yserverRaisedClass = null;
+    private volatile YServerComponent yserverComponent = null;
     private volatile long yserverRaisedHwnd = 0;
 
     /** The guest runs winewayland (Wayland mode without yserver). */
@@ -12295,6 +12296,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         }, 1000L);
                     });
             environment.addComponent(ysc);
+            yserverComponent = ysc;
             if (resolvedFpsLimiterEnabled() && resolvedFpsLimiterValue() > 0) {
                 ysc.setFrameCap(resolvedFpsLimiterValue());
                 Log.i("XServerDisplayActivity", "yserver: frame cap " + resolvedFpsLimiterValue() + " fps (FPS limiter at launch)");
@@ -17308,8 +17310,14 @@ return true;
             HostRenderer r = xServerView.getRenderer();
             if (r != null) r.setFpsLimit(fps);
         }
-        // Wayland: the compositor paces buffer returns instead of the Present extension.
-        if (waylandMode) com.winlator.star.wayland.WaylandCompositor.nativeSetFpsLimit(Math.round(paced));
+        // Wayland: the compositor paces buffer returns instead of the Present extension. yserver: its
+        // own Present clock paces the guest (live, through its fps file), not the compositor.
+        if (yserverHosted) {
+            YServerComponent ysc = yserverComponent;
+            if (ysc != null) ysc.setFrameCapLive(Math.round(paced));
+        } else if (waylandMode) {
+            com.winlator.star.wayland.WaylandCompositor.nativeSetFpsLimit(Math.round(paced));
+        }
         // VRR / refresh-rate matching: vote the panel cadence to match the displayed FPS.
         applyVrr(vrrCap);
     }

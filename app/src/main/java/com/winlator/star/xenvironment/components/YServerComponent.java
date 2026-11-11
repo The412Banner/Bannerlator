@@ -44,6 +44,24 @@ public class YServerComponent extends EnvironmentComponent {
         frameCapHz = Math.max(0, hz);
     }
 
+    /** A new FPS limit during the session (0 = none): yserver reads its fps file a few times a second. */
+    public void setFrameCapLive(int hz) {
+        frameCapHz = Math.max(0, hz);
+        writeFpsFile();
+    }
+
+    private File fpsFile() {
+        return new File(tmpRoot, ".yserver-fps");
+    }
+
+    private void writeFpsFile() {
+        try (java.io.FileWriter w = new java.io.FileWriter(fpsFile())) {
+            w.write(String.valueOf(frameCapHz));
+        } catch (IOException e) {
+            Log.w(TAG, "fps file: " + e.getMessage());
+        }
+    }
+
     /** A Wine application window was mapped (yserver's YSERVER-MAP line). */
     public interface WindowMapListener {
         void onWineWindowMapped(String className, long hwnd, int pid);
@@ -130,12 +148,12 @@ public class YServerComponent extends EnvironmentComponent {
         env.put("RUST_LOG", "info");
         // Blit copies (Adreno blob) and presents that run at once (as the Java X server does) unless the
         // game's env says otherwise below.
-        if (frameCapHz > 0) {
-            // FPS limiter on: synced presents on a Present clock at the cap, one MSC per present.
-            env.put("YSERVER_PRESENT_HZ", String.valueOf(frameCapHz));
-        } else {
-            env.put("YSERVER_PRESENT_ASYNC", "1");
-        }
+        // Presents run at once (as the Java X server's do) while no cap is set; with the FPS limiter
+        // on, yserver's Present clock runs at the cap and a window's presents take one tick each.
+        // The cap follows the in-game limiter live through the fps file.
+        env.put("YSERVER_PRESENT_ASYNC", "1");
+        writeFpsFile();
+        env.put("YSERVER_FPS_FILE", fpsFile().getPath());
         StringBuilder passed = new StringBuilder();
         if (gameEnv != null) {
             for (String name : gameEnv) {

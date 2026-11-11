@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 00:04 EST launch: GTA IV ys zero-copy layer (p4j), screenshot at 105 s
 - 00:00 EST launch: GTA IV ys with telemetry + present_pace + thread sample (p4i); GTA: ys 40.1 / wl 65.4 / x11 66.1
 - 23:53 EST launch: GTA IV benchmark ys / wl / x11 (p4h), ~3-4 min each, background; DiRT ys zero-copy 117.0 (p4g)
 - 23:51 EST launch: DiRT ys with BANNER_WAYLAND_ZERO_COPY=1 (p4g)

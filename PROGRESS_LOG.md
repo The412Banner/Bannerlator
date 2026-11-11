@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 08:5x EST — 🚀 launch checkpoint: X11 checks after the X server fixes (user: "restore the shortcut and do the steam and aio checks")
+- NFS HPR: shortcut restored from /sdcard/Download/bl-backup-20261111/NFS-HPR.desktop.before-fex-stability (md5 2ee1a0b7 == original). EA overlay-off line in the container-1 EA ini kept (fixed the first crash). Second crash (exe+0x1B121ADF at "Connecting to EA servers") NOT fixed: STABILITY, FEX_SMCCHECKS=full, FEX_HIDEHYPERVISORBIT=1 all failed; Box64 untested.
+- Now (installed 4e8c7e65 = main 02577e6a code): Windows Steam client on X11 via new harness /sdcard/Download/perf-harness/ys-steam2.sh (temp shortcut, BANNER_YSERVER stripped, until steamwebhelper + 90 s, max 600 s), then AIO Vulkan cube X11 (ys-aio.sh vk xsr x11 15). Check logcat for XClientRequestHandler / DesktopHelper lines, FATAL, crash buffer; results in perf-harness/results/xsr/.
+- Restart: rootsh "sh /sdcard/Download/perf-harness/ys-steam2.sh xsr x11"; rootsh "sh /sdcard/Download/perf-harness/ys-aio.sh vk xsr x11 15".
+
 ## 2026-11-11 07:4x EST — 🚀 launch checkpoint: NFS HPR + FEX_HIDEHYPERVISORBIT=1 (user: "yes add it and launch it")
 - 07:03 run (STABILITY + FEX_SMCCHECKS=full): NOT fixed (my 07:08 "fixed" was wrong: the game was still in the intro). Same crash 07:36:14 at NFS11Remastered.exe+0x1B121ADF, 1.4 s after the game's LSX GetAuthCode (ClientId ALASKA_NFS_HP_PC_CLIENT) was answered = online login step; r12=0xdeadbeef.
 - Now: envVars += FEX_HIDEHYPERVISORBIT=1 (keeps STABILITY + SMC full), launch; user presses through the menus. Next if it fails: Box64 for this game.

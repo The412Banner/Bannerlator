@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 23:05 EST launch: DiRT ys with WRAPPER_DISABLE_PRESENT_WAIT=1 (p3p); finding: DiRT x11 is bimodal 16 vs ~110 fps run to run (FIFO second swapchain), not yserver-specific
 - 23:03 EST launch: DiRT x11 + read game env (p3o)
 - 23:01 EST launch: DiRT x11 with MESA_VK_WSI_PRESENT_MODE=immediate (p3n)
 - 22:56 EST launch: DiRT x11 + wl with DXVK_LOG_LEVEL=info DXVK_LOG_PATH=D:\dxvklog-* (p3m)

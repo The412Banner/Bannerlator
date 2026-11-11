@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 21:10 EST — ✅ yserver test: MIO runs on yserver (Pocket FIT, 2bc36808, headless)
+- **User:** launched MIO (RealSteam) 21:07, exited 21:08; "black screen, game sound and controls sound only" (black = expected, headless).
+- **yserver log** `files/yserver/logs/yserver-20261110-210749.log`: started 21:07:49 EST (Adreno 750 blob Vulkan 1.3.128, 2968 fonts, screen 1280x800, rootless recording host), 23 X clients over the unix socket (fd passing on), window 0x200004 1280x800 mapped + first frame 21:07:51, **DRI3 AHB path used**: 6 × AHardwareBuffer 1280x800 format 5 → B8G8R8A8 pixmaps at 21:08:03; SIGTERM 21:08:37 on exit → clean "exiting". 0 WARN/ERROR lines.
+- **Frames:** 1989 window updates in 46 s (21:07:51–21:08:37, avg ~43/s; not an FPS benchmark, BL's FPS limiter is not in this path); 40 kept (every 30th). Frames 30→1200 show black → Focus logo → douze dixièmes logo → fmod/CNC/Île-de-France credits → MIO title → main menu (Continue / New game / Load game / Settings / Exit) = the game drew through yserver. Contact sheet: `/sdcard/Download/yserver-MIO-frames-20261110.png`.
+- **Android side:** crash buffer empty; logcat main buffer (starts 21:08:16, start lines rolled out) has no FATAL; `YServerComponent: yserver stopped` 21:08:37; game process exited with code 0; BH_REALSTEAM resumed the app session normally. Last tombstone 19:57 (before this install, unrelated).
+- **Seen:** game ran at 1280x800 (yserver's default screen), not the shortcut's 1920x1080 — BL passes no size to yserver yet. Gamepad sounds in the menu per the user → gamepad input seems to reach the game (gamepad goes through WinHandler, not X); not checked in logs.
+- **Proof level:** device-proven headless (Wine + Steam + MIO on yserver, DRI3 AHB frames correct, clean start/stop). NOT tested: on-screen display, touch/mouse/keyboard, screen size, FPS.
+- **State:** MIO shortcut still has `BANNER_YSERVER=1` (next MIO launch = black screen); backup `/sdcard/Download/bl-backup-20261110/MIO_ Memories in Orbit.desktop.before-yserver`.
+
 ## 2026-11-10 21:07 EST — 🧪 yserver test armed on MIO (Pocket FIT, 2bc36808 installed; launch next)
 - **User:** "you add it to MIO". MIO's shortcut (xuser-1 "DD P11-12.3 Arm", `displayBackend=x11`, `launchMode=RealSteam`) `envVars` = `BANNER_WAYLAND_ZERO_COPY=1 BANNER_YSERVER=1`. Written in place as root with `cat >` (owner u0_a193, label app_data_file:s0:c193,c256,c512,c768 kept; md5 a773296f). Backup (md5 56bb3629): `/sdcard/Download/bl-backup-20261110/MIO_ Memories in Orbit.desktop.before-yserver`.
 - **Note:** MIO starts through the Windows Steam client (RealSteam), so Steam's CEF windows also go to yserver. Headless: black screen, no input → a Steam prompt would stall the launch (frames would show it).

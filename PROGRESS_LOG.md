@@ -11,6 +11,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 04:32 EST 04:32 EST user launch: Windows Steam client with BANNER_YSERVER=1 (user added it); BL 931c441d + yserver 4e229a33 installed; RESUME: read files/yserver/logs newest + logcat YServerComponent/FATAL
 - 01:30 EST launch: regression check on final BL 931c441d: AIO vk wl + x11 + ys (p7a)
 - 01:29 EST launch: yserver click test via compositor test-input (p6e)
 - 01:28 EST launch: yserver tap test (p6d) on BL 931c441d (clipboard ext_data_control) + yserver 4e229a33; Steam client renders on yserver (p6c)

@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 21:15 EST — 📲 INSTALLED main 229ab05d (standard) on the Retroid Pocket Duo (user: "install the latest main branch build of bannerlator")
+- Main artifacts build CI 42940295678 (headSha 229ab05d, 4/4 green; later main commits are log-only), artifact Bannerlator-main-standard.
+- Staged `/sdcard/Download/Bannerlator-main-229ab05d-standard.apk`: com.winlator.banner 3.1.9-pre2 (106), cert a40da80a (same as the installed app), sha256 3d10fe07…0022, host == device.
+- Replaced 3.1.8 (104) base.apk be337c7a… (installed 11-02). Rollback copy `/sdcard/Download/Bannerlator-duo-before-main-be337c7a.apk` (hash == installed).
+- No other Claude session on the Duo, no game running, Termux in front. `pm install -r` Success 21:14:55 EST; installed base.apk == staged; no crash-buffer entries after the install (buffer not cleared; older entries = Magisk su notify helper + GMS, unrelated).
+- **Proof level:** installed; NOT launched, NOT device-tested on the Duo.
+- **Note:** the Duo jumps from the 3.1.8 Turnip GMEM test build straight to main → first run of the Lab UI, new file manager and Windows Steam client parts on the A722. Open Duo item from 11-01: System driver + Wayland = black.
+
 ## 2026-11-10 20:43 EST — 📲 INSTALLED f598c5df (= main 229ab05d code: Espectro + Epic fixes) on the Pocket FIT (user: "install it")
 - root-6a (Epic test, nothing running in BL) + root-54 said ok before; "done" sent after.
 - `pm install -r` Success 20:43:42 EST; installed base.apk sha256 5154bb41…94b5 == staged; 3.1.9-pre2 (106). Replaced a597055f (7f72f313).

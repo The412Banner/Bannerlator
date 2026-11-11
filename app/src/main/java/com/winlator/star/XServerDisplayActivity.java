@@ -18782,7 +18782,8 @@ return true;
 
     private void stopTmPolling() {
         tmPollHandler.removeCallbacks(tmPollRunnable);
-        if (winHandler != null) winHandler.setOnGetProcessInfoListener(null);
+        // Only the Task Manager's own listener goes: the owner slot belongs to the exit / installer watchers.
+        if (winHandler != null && tmProcessInfoListener != null) winHandler.removeProcessInfoListener(tmProcessInfoListener);
         XServerDialogState.INSTANCE.setTmProcesses(new ArrayList<>());
     }
 
@@ -18871,6 +18872,7 @@ return true;
         XServerDialogState ds = XServerDialogState.INSTANCE;
 
         ds.onTmRefresh = () -> {
+            registerTmProcessInfoListener();
             if (winHandler != null) winHandler.listProcesses();
             updateTmCpuMemory(ds);
         };
@@ -18948,7 +18950,7 @@ return true;
             return m != null ? m : -1;
         };
 
-        registerTmProcessInfoListener();
+        // The process-list listener is added when the Task Manager opens (startTmPolling / onTmRefresh).
 
         ds.setTmContainerInfo(buildTmContainerInfo());
         updateTmCpuMemory(ds);
@@ -19048,15 +19050,25 @@ return true;
         }
     }
 
+    /**
+     * The Task Manager's process-list listener. It is a side listener (WinHandler.addProcessInfoListener),
+     * not the single owner slot: the game-exit and installer watchers re-take that slot every 2 s, which
+     * left the Task Manager on its first list (memory never changed). Added while the Task Manager is
+     * open (startTmPolling / onTmRefresh), removed when it closes (stopTmPolling).
+     */
+    private OnGetProcessInfoListener tmProcessInfoListener;
+
     private void registerTmProcessInfoListener() {
         XServerDialogState ds = XServerDialogState.INSTANCE;
-        if (winHandler != null) {
-            winHandler.setOnGetProcessInfoListener(new OnGetProcessInfoListener() {
+        if (winHandler == null) return;
+        if (tmProcessInfoListener == null) {
+            tmProcessInfoListener = new OnGetProcessInfoListener() {
                 private final ArrayList<XServerDialogState.TmProcess> buffer = new ArrayList<>();
                 private final java.util.HashSet<Integer> livePids = new java.util.HashSet<>();
 
                 @Override
                 public void onGetProcessInfo(int index, int numProcesses, ProcessInfo info) {
+                    if (info == null) return;
                     android.graphics.Bitmap icon = null;
                     try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                         com.winlator.star.xserver.Window w = xServer.windowManager.findWindowWithProcessId(info.pid);
@@ -19093,8 +19105,9 @@ return true;
                         }
                     });
                 }
-            });
+            };
         }
+        winHandler.addProcessInfoListener(tmProcessInfoListener);
     }
 
     private void updateTmCpuMemory(XServerDialogState ds) {

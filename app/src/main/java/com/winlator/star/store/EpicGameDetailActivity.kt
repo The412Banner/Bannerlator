@@ -652,7 +652,7 @@ class EpicGameDetailActivity : ComponentActivity() {
                     return@launch
                 }
                 val installTags = EpicInstallTags.tagsForCurrentContainer(appCtx)
-                val result = EpicDownloadManager.verifyInstall(manifestJson, token, dir, installTags) { msg, _ ->
+                val result = EpicDownloadManager.verifyInstall(appCtx, manifestJson, token, dir, installTags) { msg, _ ->
                     if (!isDestroyed && !isFinishing) runOnUiThread { verifyStatusText = msg }
                 }
                 if (result == null) {

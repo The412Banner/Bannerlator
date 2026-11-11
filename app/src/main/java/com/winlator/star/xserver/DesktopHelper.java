@@ -1,11 +1,26 @@
 package com.winlator.star.xserver;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import androidx.collection.ArrayMap;
 
+import com.winlator.star.winhandler.WinHandler;
+
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class DesktopHelper {
+    private static final String CONSOLE_CLASS = "conhost.exe";
+    // The application window last brought to the front (mapped or tapped); a newer one cancels the
+    // pending re-raises below.
+    private static volatile String raisedClass = null;
+    private static volatile long raisedHandle = 0;
+    private static final AtomicInteger raiseSeq = new AtomicInteger();
+
     public static void attachTo(final XServer xServer) {
+        raisedClass = null;
+        raisedHandle = 0;
         setupXResources(xServer);
 
         xServer.pointer.addOnPointerMotionListener(new Pointer.OnPointerMotionListener() {
@@ -18,6 +33,7 @@ public abstract class DesktopHelper {
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onMapWindow(Window window) {
+                if (keepFrontOverConsole(xServer, window)) return;
                 setFocusedWindow(xServer, window);
             }
         });
@@ -41,7 +57,33 @@ public abstract class DesktopHelper {
             boolean parentIsRoot = window.getParent() == xServer.windowManager.rootWindow;
             xServer.windowManager.setFocus(window, parentIsRoot ? WindowManager.FocusRevertTo.POINTER_ROOT : WindowManager.FocusRevertTo.PARENT);
             xServer.getWinHandler().bringToFront(window.getClassName(), window.getHandle());
+            raisedClass = window.getClassName();
+            raisedHandle = window.getHandle();
+            raiseSeq.incrementAndGet();
         }
+    }
+
+    /**
+     * A console window (conhost.exe) mapped while another application window is in front, e.g. a console
+     * program a game or a helper starts: Wine activates it by itself, and a windowed game that loses
+     * activation may throttle and mute itself (DiRT Showdown: 16 fps, no sound). Keep the window that was
+     * in front: the console gets no focus here, and that window gets its activation back inside Wine
+     * after 0.3 s and 1.3 s, unless another window was raised meanwhile. A tap still focuses the console.
+     */
+    private static boolean keepFrontOverConsole(XServer xServer, Window window) {
+        final String cls = raisedClass;
+        final long handle = raisedHandle;
+        if (cls == null || cls.equalsIgnoreCase(CONSOLE_CLASS) || !window.isApplicationWindow()
+                || !window.getClassName().equalsIgnoreCase(CONSOLE_CLASS)) return false;
+        final int seq = raiseSeq.incrementAndGet();
+        Handler ui = new Handler(Looper.getMainLooper());
+        for (long delay : new long[]{300L, 1300L}) {
+            ui.postDelayed(() -> {
+                WinHandler winHandler = xServer.getWinHandler();
+                if (winHandler != null && seq == raiseSeq.get()) winHandler.bringToFront(cls, handle);
+            }, delay);
+        }
+        return true;
     }
 
     private static void setupXResources(XServer xServer) {

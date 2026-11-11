@@ -6,6 +6,7 @@ import com.winlator.star.xconnector.XInputStream;
 import com.winlator.star.xconnector.XOutputStream;
 import com.winlator.star.xconnector.XStreamLock;
 import com.winlator.star.xserver.XClient;
+import com.winlator.star.xserver.errors.BadName;
 import com.winlator.star.xserver.errors.XRequestError;
 
 import java.io.IOException;
@@ -16,7 +17,9 @@ public abstract class FontRequests {
         int length = inputStream.readShort();
         inputStream.skip(2);
         String name = inputStream.readString8(length);
-        if (!name.equals("cursor")) throw new UnsupportedOperationException("OpenFont supports only name: cursor.");
+        // Only the cursor font exists. Any other name gets BadName, as from a server without that font
+        // (Xlib's XLoadQueryFont returns NULL on it); it used to throw on the X thread and end the app.
+        if (!name.equals("cursor")) throw new BadName();
     }
 
     public static void listFonts(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {

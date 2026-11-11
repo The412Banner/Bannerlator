@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 06:5x EST — 🚀 launch checkpoint: NFS Hot Pursuit Remastered with the EA overlay off (user: "yes do it and launch it for me with root")
+- Finding: NFS HPR (Steam, EA chain) closes ~1 s after start: EA app overlay (IGO) injects into NFS11Remastered.exe ("Forcing the completion of the kernel32.dll loading") → injected thread faults at kernel32+0x3C3A8 → EA "Game session was too short" → EA quits (runs 06:24, 06:38 yserver, 06:40 Wayland; EA log igoEnabled[true]). Setting key user.igoEnabled (string in EADesktop.exe); an env var of that name does nothing.
+- Now: backup of the EA user ini → /sdcard/Download/bl-backup-20261111/, append `user.igoEnabled=false`, launch HPR via am start (container 1). Installed: 4e8c7e65 (= main 02577e6a code). Check after: EADesktopVerbose.log "Setting up IGO … igoEnabled[false]", no "Unhandled page fault", game window in the Wayland log.
+- Undo: copy the backup ini back.
+
 ## 2026-11-11 06:4x EST — 🔀 MERGED fix/xserver-console-log into main (user: "yes merge and install it when green")
 - Backup ref `refs/backup/20261111/main-before-xserver-console-log` = 29f406a2. `--no-ff` merge of 0dec8d39 (+ log 4e8c7e65); main had no new commits → merged code = CI-tested 4e8c7e65. CI 43011414145 4/4 green, skipped steps = same as 43004548075.
 - Adds DesktopHelper log lines (tag DesktopHelper) for the console-window rule. Proof level: CI-green; install on the Pocket FIT next.

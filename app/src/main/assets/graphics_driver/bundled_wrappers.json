@@ -2,7 +2,7 @@
   "_comment": "Version + catalog mapping for the BUNDLED wrapper slots (#132). listSlots() reads this (tiny, instant — no tar decompression) so bundled cards show a real version instead of 'Unknown'. catalogId + catalogVersion map a bundled slot to its canonical catalog entry so the manager can flag 'update available' when the catalog ships a newer version. Bump catalogVersion here whenever a bundled wrapper asset is swapped to a newer upstream build.",
   "wrapper.tzst": {
     "version": "Winlator base",
-    "notes": "Default Winlator wrapper (Bruno lineage).",
+    "notes": "Default Winlator wrapper (Pipetto-crypto build, 2026-03-02).",
     "catalogId": "bannerlator-wrapper",
     "catalogVersion": 1
   },

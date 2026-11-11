@@ -152,6 +152,10 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     }
 
+    /**
+     * The recipient is picked by ButtonRelease interest, not by the pointer-motion mask.
+     * Owner-events use normal delivery only for the grab client; otherwise use its grab window.
+     */
     @Override
     public void onPointerButtonRelease(Pointer.Button button) {
         if (xServer.isRelativeMouseMovement()) {
@@ -161,7 +165,10 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         else {
             Bitmask eventMask = createPointerEventMask();
             Window grabWindow = xServer.grabManager.getWindow();
-            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventMask(eventMask) : null;
+            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventId(Event.BUTTON_RELEASE) : null;
+            if (grabWindow != null && window != null && !xServer.grabManager.getClient().isInterestedIn(Event.BUTTON_RELEASE, window)) {
+                window = null;
+            }
 
             if (grabWindow != null || window != null) {
                 Window eventWindow = window != null ? window : grabWindow;
@@ -172,7 +179,7 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
 
                 Window child = eventWindow.isAncestorOf(pointWindow) ? pointWindow : null;
                 ButtonRelease buttonRelease = new ButtonRelease(button.code(), xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], eventMask);
-                sendEvent(window, eventMask, buttonRelease);
+                sendEvent(window, Event.BUTTON_RELEASE, buttonRelease);
             }
 
             if (xServer.pointer.getButtonMask().isEmpty() && xServer.grabManager.isReleaseWithButtons()) {

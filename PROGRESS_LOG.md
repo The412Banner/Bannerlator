@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 14:3x EST — 🔀 MERGED fix/upstream-small-fixes into main (user: "clicks and touch work fine, merge it")
+- Backup `refs/backup/20261111/main-before-upstream-small-fixes` = b14ebc61. `--no-ff` merge of f2dab266 (code = 03482bdf, CI 43083718708 4/4 green); main had not moved; MERGE_HEAD + code == 03482bdf checked before pushing.
+- Device (Pocket FIT, 03482bdf): X11 cube 2128 / 653, DiRT 115.4, 0 FATAL, 0 X server error lines; user: clicks and touch fine. NOT tested: mouse wheel/side buttons with a real mouse, an Epic/HTTPS launch (cert env).
+
+## 2026-11-11 15:xx EST — 🔧 fix/upstream-small-fixes 03482bdf: Tier-1 upstream fixes + credits (user: "start with the small fixes and credits branch", "no regressions"); INSTALLED on the Pocket FIT; launch checkpoint
+- Committed: 53a3059e GetPointerMapping identity map for 7 buttons (Pipetto-crypto/winlator 6c7fa4d7, Seldom, MIT); 0a6e73df button releases routed by ButtonRelease interest, narrowed (GameNative #2110 32ffa28e, tapionallanaire, GPL-3.0); a12e2f5b WINE_ADDITIONAL_CERTS_DIR → imagefs cert.pem (GameNative #2009 219cda9b, Cole McCarren; gethostname shim not ported); 0b969378 credits (README, THIRD-PARTY-LICENSES); 03482bdf default wrapper note "Pipetto-crypto build, 2026-03-02" (user yes).
+- Not committed (regression risk / no effect): lsfg-vk 1.0.5 (engine retired, LSFG Native untouched; leftovers assets/lsfg-vk + libVkLayer_LSFGVK ship unused); 32-bit CPU list (GN #2383 cannot match on BL's Proton: _NET_WM_PID = Linux pid; possible existing bug: X11 launch CPU list not applied on Proton — check Cpus_allowed_list on device); Present ConfigureNotify/cleanup (BrunoSX winlator-app 68e375cf; needs device A/B; local branch wip/upstream-small-fixes-full 593a79b5).
+- CI 43083718708 4/4 green; APK /sdcard/Download/Bannerlator-upstream-small-fixes-03482bdf-pubg.apk sha256 2885f43e… (host == device); installed, base.apk == staged. Restore: Bannerlator-yserver-bundle-d18f656c-pubg.apk.
+- Launch checkpoint: AIO Vulkan cube X11 (ys-aio.sh vk usf x11 15) + DiRT X11 benchmark (ys-game.sh dirt usf x11), fan max. Then user: wheel/side buttons, clicks/drags, touch, an HTTPS/Epic launch.
+- Next (user yes): newer wrapper (Pipetto wrapper-25 tree / GN 20261027) as an extra Wrapper Manager choice, A/B vs default before any default change.
+
 ## 2026-11-11 14:2x EST — 🔀 MERGED feat/yserver-bundle into main (user: "merge it")
 - Backup ref `refs/backup/20261111/main-before-yserver-bundle` = bd3bd1be. `--no-ff` merge of 3326476e (code = d18f656c + log commits); main had not moved. Checked before pushing: MERGE_HEAD present, merged code == d18f656c.
 - Every build now bundles yserver r1-pre1 (The412Banner/yserver-android-spike, public) as lib/arm64-v8a/libyserver.so, fetched by _build.yml from ci/yserver.json with a SHA-256 check; licence + credits in assets/yserver/LICENSE, NOTICE_YSERVER.txt, README credits. Still off unless a game sets BANNER_YSERVER=1. APK +4.98 MB (11.8 MB installed).

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:4x EST — 📦 espectro + Epic build f598c5df (= main 229ab05d code) staged on the Pocket FIT (CI 42939066673, not installed)
+- Staged `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk`: com.tencent.ig 3.1.9-pre2 (106), cert a40da80a, sha256 5154bb41…94b5, host == device. Older `…-d773bc08-pubg.apk` (no Epic fixes) left in Download, superseded.
+- FIT installed APK = 7f72f313 (epic-store-bugs a597055f, 20:02:11 EST) — root-6a's Epic test; root-6a told main moved.
+- **Proof level:** CI-green, merged, staged; NOT installed, NOT device-tested.
+- **Resume:** check with root-6a (Epic test done?) → ASK the user before `pm install -r` → installed hash == 5154bb41…, crash buffer → test list in the 19:35 entry.
+
 ## 2026-11-10 20:37 EST — 🔀 MERGED fix/espectro-minor-bugs → main 229ab05d (branch CI 42939066673)
 - **User:** "merge to main when done". Merged **before a device test** on the user's word.
 - Branch CI 42939066673 green 4/4 on f598c5df (8:27–8:35 PM EST); skipped steps same as the earlier branch run; libblsteam.so restored from main's c524ed38 build (cache key = Rust sources; Rust tree branch == main 994a5b1c), so the Epic manifest.rs fix is in.

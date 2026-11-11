@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 15:35 EST — ✅ Epic store bug fixes: first Epic game launch on the fixed code (main, device check)
+- **Device test (Pocket FIT, build 03482bdf = main code with the Epic fixes c524ed38):** the user launched Metalstorm (Epic, EOS) 14:59:22–15:03:00 EST on Wayland. Exit-reasons log: EXIT_SELF, exit code 0; crash buffer empty; DXVK/VKD3D logs written.
+- **Not verified:** the `-epiclocale` argument. The BH_EPIC_LAUNCH line is logcat-only and the buffer had rolled by the time it was read (it kept ~10 min). A 40-minute capture afterwards saw no Epic launch.
+- **Next:** start a logcat capture before the next Epic launch, then read `-epiclocale`. Still open from the Epic list: region codes, install-time language, cloud saves in Epic's format, auto sync, install space.
+- **Proof level:** launch + clean exit device-proven; launch language NOT verified.
+
 ## 2026-11-11 14:3x EST — 🔀 MERGED fix/upstream-small-fixes into main (user: "clicks and touch work fine, merge it")
 - Backup `refs/backup/20261111/main-before-upstream-small-fixes` = b14ebc61. `--no-ff` merge of f2dab266 (code = 03482bdf, CI 43083718708 4/4 green); main had not moved; MERGE_HEAD + code == 03482bdf checked before pushing.
 - Device (Pocket FIT, 03482bdf): X11 cube 2128 / 653, DiRT 115.4, 0 FATAL, 0 X server error lines; user: clicks and touch fine. NOT tested: mouse wheel/side buttons with a real mouse, an Epic/HTTPS launch (cert env).

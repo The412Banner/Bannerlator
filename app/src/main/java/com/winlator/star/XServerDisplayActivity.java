@@ -12256,8 +12256,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
         );
         // In wayland mode the embedded compositor is the display server, so don't run the X server.
         if (yserverModeName != null) {
+            // As DesktopHelper does on every X11 map (and the Wayland path on the compositor's request):
+            // bring a newly mapped Wine application window to the front inside Wine, and once more a
+            // second later unless a newer window asked meanwhile. Without it a windowed game stays
+            // inactive (some throttle and mute themselves, e.g. DiRT Showdown at 16 fps).
             environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
-                    new File(getFilesDir(), ".wayland-rt"), envVars));
+                    new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid) -> {
+                        final int seq = ++waylandBringToFrontSeq;
+                        WinHandler wh = winHandler;
+                        if (wh == null) return;
+                        wh.bringToFront(cls, hwnd);
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            WinHandler w = winHandler;
+                            if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(cls, hwnd);
+                        }, 1000L);
+                    }));
             yserverMode = true;
         } else if (!waylandMode) {
             environment.addComponent(

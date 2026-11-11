@@ -34,15 +34,24 @@ public class YServerComponent extends EnvironmentComponent {
     private final File tmpRoot;
     private final File waylandRuntimeDir;
     private final EnvVars gameEnv;
+    private final WindowMapListener mapListener;
     private Process process;
+    private Thread reader;
+
+    /** A Wine application window was mapped (yserver's YSERVER-MAP line). */
+    public interface WindowMapListener {
+        void onWineWindowMapped(String className, long hwnd, int pid);
+    }
 
     /** gameEnv: the session's env; its YSERVER_* and RUST_LOG entries reach yserver. */
-    public YServerComponent(Context context, String mode, File tmpRoot, File waylandRuntimeDir, EnvVars gameEnv) {
+    public YServerComponent(Context context, String mode, File tmpRoot, File waylandRuntimeDir, EnvVars gameEnv,
+                            WindowMapListener mapListener) {
         this.context = context.getApplicationContext();
         this.mode = mode;
         this.tmpRoot = tmpRoot;
         this.waylandRuntimeDir = waylandRuntimeDir;
         this.gameEnv = gameEnv;
+        this.mapListener = mapListener;
     }
 
     /** The mode BANNER_YSERVER asks for (the game's value wins), or null when off. */
@@ -113,6 +122,9 @@ public class YServerComponent extends EnvironmentComponent {
         env.put("YSERVER_TMPDIR", tmpRoot.getPath());
         env.put("XKB_CONFIG_ROOT", xkbRoot().getPath());
         env.put("RUST_LOG", "info");
+        // Blit copies (Adreno blob) and presents that run at once (as the Java X server does) unless the
+        // game's env says otherwise below.
+        env.put("YSERVER_PRESENT_ASYNC", "1");
         StringBuilder passed = new StringBuilder();
         if (gameEnv != null) {
             for (String name : gameEnv) {
@@ -123,6 +135,8 @@ public class YServerComponent extends EnvironmentComponent {
             }
         }
         if (passed.length() > 0) Log.i(TAG, "yserver env from the game:" + passed);
+        // The map notifications must reach us whatever RUST_LOG the game set.
+        env.put("RUST_LOG", env.get("RUST_LOG") + ",yserver::bannerlator=info");
         if (MODE_RECORD.equals(mode)) {
             env.put("YSERVER_RECORD_EVERY", "30");
             env.put("YSERVER_RECORD_MAX", "40");
@@ -131,7 +145,6 @@ public class YServerComponent extends EnvironmentComponent {
             env.put("WAYLAND_DISPLAY", "wayland-0");
         }
         pb.redirectErrorStream(true);
-        pb.redirectOutput(log);
 
         long t0 = SystemClock.uptimeMillis();
         if (!MODE_RECORD.equals(mode)) {
@@ -149,6 +162,7 @@ public class YServerComponent extends EnvironmentComponent {
             Log.e(TAG, "yserver did not start", e);
             return;
         }
+        startReader(process, log);
         long t1 = SystemClock.uptimeMillis();
         while (!socket.exists() && process.isAlive() && SystemClock.uptimeMillis() - t1 < 8000) {
             SystemClock.sleep(10);
@@ -169,6 +183,66 @@ public class YServerComponent extends EnvironmentComponent {
         }
         Log.i(TAG, "yserver stopped");
         process = null;
+    }
+
+    /** Copy yserver's output into the log file and act on its YSERVER-MAP lines. */
+    private void startReader(Process p, File log) {
+        // Keeps draining whatever happens to the file: an unread pipe would block yserver's logging.
+        reader = new Thread(() -> {
+            java.io.Writer out = null;
+            try {
+                out = new java.io.BufferedWriter(new java.io.FileWriter(log));
+            } catch (IOException e) {
+                Log.w(TAG, "yserver log file: " + e.getMessage());
+            }
+            try (java.io.BufferedReader in = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (out != null) {
+                        try {
+                            out.write(line);
+                            out.write('\n');
+                        } catch (IOException e) {
+                            out = null;
+                        }
+                    }
+                    int at = line.indexOf("YSERVER-MAP ");
+                    if (at >= 0) {
+                        try { if (out != null) out.flush(); } catch (IOException ignored) {}
+                        try {
+                            onMapLine(line.substring(at + 12));
+                        } catch (RuntimeException e) {
+                            Log.w(TAG, "YSERVER-MAP: " + e);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                Log.w(TAG, "yserver output: " + e.getMessage());
+            } finally {
+                if (out != null) try { out.close(); } catch (IOException ignored) {}
+            }
+        }, "yserver-log");
+        reader.setDaemon(true);
+        reader.start();
+    }
+
+    private void onMapLine(String fields) {
+        String cls = "";
+        long hwnd = 0;
+        int pid = 0;
+        for (String f : fields.trim().split(" ")) {
+            int eq = f.indexOf('=');
+            if (eq <= 0) continue;
+            String k = f.substring(0, eq), v = f.substring(eq + 1);
+            try {
+                if (k.equals("hwnd")) hwnd = Long.parseLong(v.startsWith("0x") ? v.substring(2) : v, 16);
+                else if (k.equals("pid")) pid = Integer.parseInt(v);
+                else if (k.equals("class")) cls = v;
+            } catch (NumberFormatException ignored) {}
+        }
+        Log.i(TAG, "Wine window mapped: " + cls + " hwnd 0x" + Long.toHexString(hwnd) + " pid " + pid);
+        if (mapListener != null && !cls.isEmpty()) mapListener.onWineWindowMapped(cls, hwnd, pid);
     }
 
     private static boolean socketAccepts(File path) {

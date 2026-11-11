@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 01:11 EST launch: Windows Steam client ys until steamwebhelper + 75 s, max 15 min (p6c)
 - 01:06 EST result: GTA IV ys 66.03 (= x11 66.1 / wl 65.4) with CPU mask fix (p6a). launch: Windows Steam client ys 240 s (p6b)
 - 01:03 EST launch: GTA IV ys with CPU mask fix (p6a) + affinity sample; BL 95325269 (4691e391) + yserver 4e229a33 (e5bbb132)
 - 00:46 EST launch: GTA IV ys + x11 CPU affinity sampling (p5f)

@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:03 EST launch: AIO vk ys (p2a) with yserver 47ef5361 (0009 AHB pool hand-off), BL c72254b5
 - 21:46 EST launch: AIO vk baselines x11 + wl + ys (p1b), installed c72254b5 + yserver 80215caa; p1a ys vk = 2506 frames/15 s (167 fps, CPU frames), 0 FATAL
 
 ## 2026-11-10 21:45 EST — 📲 c72254b5 installed on the Pocket FIT + yserver 80215caa staged; first hosted launch next

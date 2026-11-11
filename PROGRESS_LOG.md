@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 00:32 EST launch: GTA IV x11 with screenshot at 105 s (p5b) for GPU% comparison
 - 00:29 EST launch: GTA IV ys with 0017 (p5a); BL 04102206 (f667baed) + yserver 99be9391 (b6468306)
 - 00:13 EST launch: GTA IV ys + x11 thread samples at 100 s (p4m)
 - 00:07 EST launch: GTA IV ys WRAPPER_DISABLE_PRESENT_WAIT=1 (p4k) and ys YSERVER_PRESENT_ASYNC=0 (p4l)

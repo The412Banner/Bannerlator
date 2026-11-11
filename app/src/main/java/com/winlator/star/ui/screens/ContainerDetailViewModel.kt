@@ -1127,11 +1127,15 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onWineVersionChanged(version: String) {
         val wasArm64 = isArm64EC
+        val keptBox64 = selectedBox64Version
         selectedWineVersion = version
         coerceAudioDriverForWine()      // a switch to an unsupported layer drops a stale DirectAudio pick
         // Wayland is only offered on a layer that ships winewayland + its Wayland Turnip: snap back to X11.
         if (isWaylandStored && !isWineWaylandCapable(version)) displayBackend = Container.DISPLAY_BACKEND_X11
         refreshWineDependent(version)   // updates isArm64EC + swaps the box64/wowbox64 list
+        // Same architecture (arm64ec → arm64ec, x86_64 → x86_64): the list is the same, so the Box64 /
+        // WOWBox64 pick stays instead of falling back to the first built-in version.
+        if (wasArm64 == isArm64EC && keptBox64 in box64VersionEntries) selectedBox64Version = keptBox64
         refreshSyncCaps(version)        // re-grey the Sync pills; an unavailable pick falls back
 
         // CREATE mode only: a wine change can FLIP the architecture. applyArch() swapped the box64 list
@@ -1172,8 +1176,13 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshBox64Versions() {
+        val kept = selectedBox64Version
         contentsManager.syncContents()
-        refreshWineDependent(selectedWineVersion)
+        // Defaults mode edits one architecture's profile, picked by its selector, not by a layer.
+        if (defaultsMode) applyArch(defaultsArch == NewContainerDefaults.ARCH_ARM64EC)
+        else refreshWineDependent(selectedWineVersion)
+        // A download adds to the list: the current pick stays.
+        if (kept in box64VersionEntries) selectedBox64Version = kept
     }
 
     fun refreshFEXCoreVersions() {

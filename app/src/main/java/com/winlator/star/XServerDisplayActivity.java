@@ -12257,7 +12257,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // In wayland mode the embedded compositor is the display server, so don't run the X server.
         if (yserverModeName != null) {
             environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
-                    new File(getFilesDir(), ".wayland-rt")));
+                    new File(getFilesDir(), ".wayland-rt"), envVars));
             yserverMode = true;
         } else if (!waylandMode) {
             environment.addComponent(

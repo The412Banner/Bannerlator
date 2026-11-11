@@ -33,13 +33,16 @@ public class YServerComponent extends EnvironmentComponent {
     private final String mode;
     private final File tmpRoot;
     private final File waylandRuntimeDir;
+    private final EnvVars gameEnv;
     private Process process;
 
-    public YServerComponent(Context context, String mode, File tmpRoot, File waylandRuntimeDir) {
+    /** gameEnv: the session's env; its YSERVER_* and RUST_LOG entries reach yserver. */
+    public YServerComponent(Context context, String mode, File tmpRoot, File waylandRuntimeDir, EnvVars gameEnv) {
         this.context = context.getApplicationContext();
         this.mode = mode;
         this.tmpRoot = tmpRoot;
         this.waylandRuntimeDir = waylandRuntimeDir;
+        this.gameEnv = gameEnv;
     }
 
     /** The mode BANNER_YSERVER asks for (the game's value wins), or null when off. */
@@ -109,8 +112,17 @@ public class YServerComponent extends EnvironmentComponent {
         Map<String, String> env = pb.environment();
         env.put("YSERVER_TMPDIR", tmpRoot.getPath());
         env.put("XKB_CONFIG_ROOT", xkbRoot().getPath());
-        String rustLog = System.getProperty("banner.yserver.log");
-        env.put("RUST_LOG", rustLog != null ? rustLog : "info");
+        env.put("RUST_LOG", "info");
+        StringBuilder passed = new StringBuilder();
+        if (gameEnv != null) {
+            for (String name : gameEnv) {
+                if (name.startsWith("YSERVER_") || name.equals("RUST_LOG")) {
+                    env.put(name, gameEnv.get(name));
+                    passed.append(' ').append(name).append('=').append(gameEnv.get(name));
+                }
+            }
+        }
+        if (passed.length() > 0) Log.i(TAG, "yserver env from the game:" + passed);
         if (MODE_RECORD.equals(mode)) {
             env.put("YSERVER_RECORD_EVERY", "30");
             env.put("YSERVER_RECORD_MAX", "40");

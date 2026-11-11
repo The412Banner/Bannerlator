@@ -29,6 +29,7 @@ add_library(bannerwayland SHARED
         generated/pointer-constraints-unstable-v1-protocol.c
         generated/relative-pointer-unstable-v1-protocol.c
         generated/wlr-data-control-unstable-v1-protocol.c
+        generated/ext-data-control-v1-protocol.c
         generated/text-input-unstable-v3-protocol.c
         generated/xdg-toplevel-icon-v1-protocol.c
         generated/banner-ahb-v1-protocol.c

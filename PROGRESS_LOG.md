@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:39 EST launch: DiRT ys + thread sampling at 40 s (p3g)
 - 22:36 EST launch: DiRT ys with RUST_LOG=info,present_pace=debug (p3f)
 - 22:33 EST launch: DiRT ys with YSERVER_PRESENT_TRACE=1 RUST_LOG=info,yserver_core::core_loop::process_request::present_ext=debug,yserver::kms::render::backend::kms::present=debug (p3e)
 - 22:31 EST launch: DiRT ys sync (blit, no async) + YSERVER_LOOP_TELEMETRY (p3d); p3c: x11 114.3 / wl 113.1 / ys(async) 16.2 fps (GPU 10% = waiting)

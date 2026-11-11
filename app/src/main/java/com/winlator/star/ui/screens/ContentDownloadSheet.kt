@@ -71,7 +71,9 @@ import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InterruptedIOException
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Adrenotools-style download menu for the given content type(s).
@@ -134,6 +136,8 @@ fun ContentDownloadSheet(
     // the held catalog snapshot instead) — null when idle. Uses the SAME shared popup + the SAME
     // ContentDownloadState model as the catalog path, so both look identical.
     var installDialog by remember { mutableStateOf<ContentDownloadState?>(null) }
+    // Set by the install-from-file dialog's Cancel; the running install checks it.
+    var fileInstallCancel by remember { mutableStateOf<AtomicBoolean?>(null) }
     var showInfoProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var confirmRemoveProfile by remember { mutableStateOf<ContentProfile?>(null) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -204,9 +208,12 @@ fun ContentDownloadSheet(
                 verName = fname,
                 phase = ContentDownloadPhase.INSTALLING,
             )
+            val cancel = AtomicBoolean(false)
+            fileInstallCancel = cancel
             installContent(context, cm, uri, onProgress = { f, _ ->
                 installDialog = installDialog?.copy(fraction = f, phase = ContentDownloadPhase.INSTALLING)
-            }) { ok ->
+            }, cancelled = cancel) { ok ->
+                if (cancel.get()) return@installContent
                 if (ok) {
                     installDialog = installDialog?.copy(fraction = 1f, phase = ContentDownloadPhase.DONE)
                     loadProfiles(cm, effectiveTypes) { profiles = it }
@@ -293,9 +300,9 @@ fun ContentDownloadSheet(
         installDialog?.let { st ->
             InstallProgressDialog(
                 state = st,
-                // The local-file import runs on an Activity-bound executor (not the registry), so there's
-                // no job to cancel — dismiss is the best we can do here.
-                onCancel = { installDialog = null },
+                // The local-file import runs on an Activity-bound executor (not the registry): Cancel flags it,
+                // so it stops unpacking and never installs.
+                onCancel = { fileInstallCancel?.set(true); installDialog = null },
                 onDismiss = { installDialog = null },
             )
         }
@@ -719,13 +726,22 @@ private fun loadProfiles(
 }
 
 // internal (not private): the community-config inline installer reuses this same download path.
-internal fun downloadToCache(context: Context, profile: ContentProfile, onProgress: (Float) -> Unit): Uri? {
-    // Stable per-component temp name (NOT temp_<millis>, which orphans partials): a fixed name
-    // lets an interrupted download resume via HTTP Range on the next attempt instead of
-    // restarting from zero. Range-aware Downloader appends to this file when a partial exists.
+internal fun downloadToCache(
+    context: Context,
+    profile: ContentProfile,
+    isCancelled: () -> Boolean = { false },
+    onProgress: (Float) -> Unit,
+): Uri? {
+    val f = contentDownloadPartFile(context, profile)
+    return if (Downloader.downloadFile(profile.remoteUrl, f, /* resume = */ true, { frac -> onProgress(frac) }, { isCancelled() })) Uri.fromFile(f) else null
+}
+
+// Stable per-component temp name (NOT temp_<millis>, which orphans partials): a fixed name
+// lets an interrupted download resume via HTTP Range on the next attempt instead of
+// restarting from zero. Range-aware Downloader appends to this file when a partial exists.
+internal fun contentDownloadPartFile(context: Context, profile: ContentProfile): File {
     val safe = ContentsManager.getEntryName(profile).replace(Regex("[^A-Za-z0-9._-]"), "_")
-    val f = File(context.cacheDir, "content_dl_$safe.part")
-    return if (Downloader.downloadFile(profile.remoteUrl, f, /* resume = */ true) { frac -> onProgress(frac) }) Uri.fromFile(f) else null
+    return File(context.cacheDir, "content_dl_$safe.part")
 }
 
 // internal (not private): reused by the community-config inline installer (same install path).
@@ -734,6 +750,7 @@ internal fun installContent(
     cm: ContentsManager,
     uri: Uri,
     onProgress: (fraction: Float, etaText: String) -> Unit,
+    cancelled: AtomicBoolean? = null,
     onDone: (Boolean) -> Unit,
 ) {
     val activity = context.findActivity()
@@ -744,6 +761,8 @@ internal fun installContent(
     Executors.newSingleThreadExecutor().execute {
         try {
             val progress = TarCompressorUtils.OnReadProgressListener { read, tot ->
+                // A Cancel stops the unpack: the extractor reads this as a failed read and gives up.
+                if (cancelled?.get() == true) throw InterruptedIOException("Cancelled")
                 if (tot > 0) {
                     val p = etaTracker.update(read, tot)
                     activity.runOnUiThread { onProgress((read.toFloat() / tot).coerceIn(0f, 1f), formatEta(p.etaSeconds)) }
@@ -768,6 +787,8 @@ internal fun installContent(
                 override fun onSucceed(profile: ContentProfile) {
                     try {
                         if (phase == 0) {
+                            // Cancelled while unpacking: the unpacked files are never moved into place.
+                            if (cancelled?.get() == true) { activity.runOnUiThread { onDone(false) }; return }
                             phase = 1
                             cm.finishInstallContent(profile, this)
                         } else {

@@ -185,7 +185,9 @@ object MoveGameToContainer {
         onStage("Writing the game's entry…")
         val newFile = File(destDir, shortcut.file.name)
         // A "not Ubisoft" stamp is not carried over: the target works it out again (it may have been stamped on a partial folder).
-        if (!FileUtils.writeString(newFile, UbisoftSupport.dropStaleStamp(text))) {
+        // Into a container of the other architecture the game's translator choices are dropped too: it follows the target's.
+        val entryText = UbisoftSupport.dropStaleStamp(text).let { if (sameArch(context, source, target)) it else dropArchExtras(it) }
+        if (!FileUtils.writeString(newFile, entryText)) {
             undoFolder()
             return Result.Refused("Couldn't write to \"${target.name}\".")
         }
@@ -463,6 +465,25 @@ object MoveGameToContainer {
     }.getOrDefault(false)
 
     // ---- entry helpers -----------------------------------------------------------------------------
+
+    /**
+     * Per-game translator choices that only fit the architecture they were made on: a WOWBox64 version is
+     * not a Box64 version, FEXCore / Box64EC / SSBS exist only on arm64ec. The game editor writes them on
+     * every save, so a copy kept them and an x86_64 copy said FEXCore and asked for a WOWBox64 build.
+     */
+    private val ARCH_EXTRAS = setOf("emulator", "emulator64", "box64Version", "fexcoreVersion", "fexcorePreset", "box64ecVersion", "forceSsbs")
+
+    /** [desktopText] without the [ARCH_EXTRAS] lines of its [Extra Data] section. */
+    internal fun dropArchExtras(desktopText: String): String {
+        var inExtras = false
+        return desktopText.split('\n').filterNot { line ->
+            val t = line.trim()
+            if (t.startsWith("[")) {
+                inExtras = t == "[Extra Data]"
+                false
+            } else inExtras && t.substringBefore('=', "") in ARCH_EXTRAS
+        }.joinToString("\n")
+    }
 
     /** Points a pinned home-screen icon of [moved] (same id) at its new place. Nothing when it isn't pinned. */
     private fun updatePin(context: Context, moved: Shortcut) {

@@ -19,11 +19,13 @@ import com.winlator.star.util.ImportEtaTracker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.io.InterruptedIOException
 import kotlin.coroutines.resume
 
 /**
@@ -101,6 +103,8 @@ object ContentsInstaller {
                 }
 
                 // ── Install phase ─────────────────────────────────────────────
+                // A Cancel that came in as the download finished stops here, before anything is installed.
+                ensureActive()
                 ContentDownloadRegistry.update(key) {
                     it.copy(phase = ContentDownloadPhase.INSTALLING, fraction = 0f)
                 }
@@ -387,6 +391,8 @@ object ContentsInstaller {
         val etaTracker = ImportEtaTracker()
         try {
             val progress = TarCompressorUtils.OnReadProgressListener { read, tot ->
+                // A Cancel stops the unpack: the extractor reads this as a failed read and gives up.
+                if (!cont.isActive) throw InterruptedIOException("Cancelled")
                 if (tot > 0) {
                     etaTracker.update(read, tot)
                     onProgress((read.toFloat() / tot).coerceIn(0f, 1f))
@@ -406,6 +412,8 @@ object ContentsInstaller {
                 override fun onSucceed(profile: ContentProfile) {
                     try {
                         if (phase == 0) {
+                            // Cancelled while unpacking: the unpacked files are never moved into place.
+                            if (!cont.isActive) return
                             phase = 1
                             onProfile(profile)
                             cm.finishInstallContent(profile, this)

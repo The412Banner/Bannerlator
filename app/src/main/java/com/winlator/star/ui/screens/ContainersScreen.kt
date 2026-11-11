@@ -722,11 +722,7 @@ private fun ContainerItem(
     }
     val rendererLabel = rendererLabelOf(container.renderer, waylandContainer)
     val frameGenLabel = frameGenLabelOf(container.frameGenEngine)
-    val backendLabel = run {
-        val id = container.emulator
-        LocalContext.current.resources.getStringArray(R.array.emulator_entries)
-            .firstOrNull { StringUtils.parseIdentifier(it) == id } ?: ""
-    }
+    val backendLabel = com.winlator.star.ui.EmulatorLabels.chipLabel(container.emulator, container.wineVersion)
     val subtitle = listOf(container.wineVersion, container.screenSize)
         .filter { it.isNotEmpty() }.joinToString(" · ")
 

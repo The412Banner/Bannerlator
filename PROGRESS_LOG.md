@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 21:07 EST — 🧪 yserver test armed on MIO (Pocket FIT, 2bc36808 installed; launch next)
+- **User:** "you add it to MIO". MIO's shortcut (xuser-1 "DD P11-12.3 Arm", `displayBackend=x11`, `launchMode=RealSteam`) `envVars` = `BANNER_WAYLAND_ZERO_COPY=1 BANNER_YSERVER=1`. Written in place as root with `cat >` (owner u0_a193, label app_data_file:s0:c193,c256,c512,c768 kept; md5 a773296f). Backup (md5 56bb3629): `/sdcard/Download/bl-backup-20261110/MIO_ Memories in Orbit.desktop.before-yserver`.
+- **Note:** MIO starts through the Windows Steam client (RealSteam), so Steam's CEF windows also go to yserver. Headless: black screen, no input → a Steam prompt would stall the launch (frames would show it).
+- **Resume point:** installed 2bc36808 (base.apk 383aea46); nothing running; no background jobs. After the user's launch + exit: `rootsh 'ls -la /data/data/com.tencent.ig/files/yserver/logs/'`, read the newest `yserver-*.log` + `rec-*/`, `logcat -d -b crash`, logcat FATAL / YServerComponent lines. Undo: copy the backup over the shortcut with `cat >` (keeps owner/label), or remove ` BANNER_YSERVER=1` (setting it to 0 does NOT turn it off: `envVars.has()`).
+- **Proof level:** installed; NOT device-tested.
+
 ## 2026-11-10 21:04 EST — 📲 INSTALLED feat/yserver-spike 2bc36808 on the Pocket FIT (user: "install it when it's done")
 - Installed 21:04:19 EST after telling root-6a + root-15; BL was idle (no wine, no services, Termux on top). base.apk sha256 383aea46… == staged == CI artifact; versionName 3.1.9-pre2 (unchanged); crash buffer empty; `files/yserver/` (yserver bc0a13f0 + xkb + VERSION) kept.
 - Code = main f0e68086 + the test switch; without `BANNER_YSERVER` it behaves like main.

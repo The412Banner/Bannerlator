@@ -10233,7 +10233,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             @Override public void onGameProgram(int pid, String program) {
                 // X11 arms the launch-time CPU affinity from window events (onMapWindow / _NET_WM_PID);
                 // a Wayland session has none, so the game's first presented frame arms it instead.
-                runOnUiThread(() -> assignWaylandTaskAffinity(pid, program));
+                // yserver mode: the compositor's client is yserver, not the game (YSERVER-MAP applies it).
+                if (!yserverHosted) runOnUiThread(() -> assignWaylandTaskAffinity(pid, program));
             }
         });
         if (waylandHudThread == null) {
@@ -12265,7 +12266,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // second later unless a newer window asked meanwhile. Without it a windowed game stays
             // inactive (some throttle and mute themselves, e.g. DiRT Showdown at 16 fps).
             YServerComponent ysc = new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
-                    new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid) -> {
+                    new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid, wow64) -> {
                         WinHandler wh = winHandler;
                         if (wh == null) return;
                         android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -12288,6 +12289,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                         }
                         yserverRaisedClass = cls;
                         yserverRaisedHwnd = hwnd;
+                        // The launch CPU mask, as assignTaskAffinity does on every X11 map. It also undoes a
+                        // game's own pin of its main thread (GTA IV puts it on CPU 0: 40 instead of 66 fps).
+                        final String fcls = cls;
+                        final int fpid = pid;
+                        final boolean fwow64 = wow64;
+                        runOnUiThread(() -> assignYserverTaskAffinity(fcls, fpid, fwow64));
                         final int seq = ++waylandBringToFrontSeq;
                         wh.bringToFront(cls, hwnd);
                         ui.postDelayed(() -> {
@@ -18012,6 +18019,28 @@ return true;
                 int slash = Math.max(exe.lastIndexOf('/'), exe.lastIndexOf('\\'));
                 if (slash >= 0) exe = exe.substring(slash + 1);
                 if (!exe.equals(affinityTargetExe)) affinityLinuxPid = -1; // new target -> re-resolve
+                affinityTargetExe = exe;
+                affinityTargetMask = processAffinity & 0xff;
+                startAffinityReapply();
+            }
+        }
+    }
+
+    /** yserver counterpart of {@link #assignTaskAffinity(Window)}, from a YSERVER-MAP line. UI thread. */
+    private void assignYserverTaskAffinity(String className, int processId, boolean wow64) {
+        if (taskAffinityMask == 0 || taskAffinityMaskWoW64 == 0 || winHandler == null) return;
+        int processAffinity = wow64 ? taskAffinityMaskWoW64 : taskAffinityMask;
+        if (processId > 0) winHandler.setProcessAffinity(processId, processAffinity);
+        else if (!className.isEmpty()) winHandler.setProcessAffinity(className, processAffinity);
+        Log.i("XServerDisplayActivity", "yserver: CPU mask 0x" + Integer.toHexString(processAffinity & 0xffff)
+                + " for " + className + " (pid " + processId + (wow64 ? ", WoW64" : "") + ")");
+        if (!className.isEmpty()) {
+            boolean restrict = Integer.bitCount(processAffinity & 0xff) < Runtime.getRuntime().availableProcessors();
+            if (restrict) {
+                String exe = className.toLowerCase();
+                int slash = Math.max(exe.lastIndexOf('/'), exe.lastIndexOf('\\'));
+                if (slash >= 0) exe = exe.substring(slash + 1);
+                if (!exe.equals(affinityTargetExe)) affinityLinuxPid = -1;
                 affinityTargetExe = exe;
                 affinityTargetMask = processAffinity & 0xff;
                 startAffinityReapply();

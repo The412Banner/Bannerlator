@@ -64,7 +64,7 @@ public class YServerComponent extends EnvironmentComponent {
 
     /** A Wine application window was mapped (yserver's YSERVER-MAP line). */
     public interface WindowMapListener {
-        void onWineWindowMapped(String className, long hwnd, int pid);
+        void onWineWindowMapped(String className, long hwnd, int pid, boolean wow64);
     }
 
     /** gameEnv: the session's env; its YSERVER_* and RUST_LOG entries reach yserver. */
@@ -260,6 +260,7 @@ public class YServerComponent extends EnvironmentComponent {
         String cls = "";
         long hwnd = 0;
         int pid = 0;
+        boolean wow64 = false;
         for (String f : fields.trim().split(" ")) {
             int eq = f.indexOf('=');
             if (eq <= 0) continue;
@@ -267,11 +268,12 @@ public class YServerComponent extends EnvironmentComponent {
             try {
                 if (k.equals("hwnd")) hwnd = Long.parseLong(v.startsWith("0x") ? v.substring(2) : v, 16);
                 else if (k.equals("pid")) pid = Integer.parseInt(v);
+                else if (k.equals("wow64")) wow64 = v.equals("1");
                 else if (k.equals("class")) cls = v;
             } catch (NumberFormatException ignored) {}
         }
         Log.i(TAG, "Wine window mapped: " + cls + " hwnd 0x" + Long.toHexString(hwnd) + " pid " + pid);
-        if (mapListener != null && !cls.isEmpty()) mapListener.onWineWindowMapped(cls, hwnd, pid);
+        if (mapListener != null && !cls.isEmpty()) mapListener.onWineWindowMapped(cls, hwnd, pid, wow64);
     }
 
     private static boolean socketAccepts(File path) {

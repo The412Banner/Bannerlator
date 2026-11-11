@@ -32,6 +32,7 @@
 #include <errno.h>
 #include "banner_ext.h"
 #include "wlr-data-control-unstable-v1-server-protocol.h"
+#include "ext-data-control-v1-server-protocol.h"
 
 #define CLIP_MAX_BYTES (1024 * 1024)
 #define CLIP_READ_TIMEOUT_MS 3000
@@ -341,7 +342,10 @@ static void device_send_selection(struct device *d) {
     o->is_control = d->is_control;
     o->gen = g_gen;
     if (d->is_control) {
-        o->res = wl_resource_create(c, &zwlr_data_control_offer_v1_interface, 1, 0);
+        /* is_control 2 = ext_data_control_v1 (yserver's Wayland host): the same requests and events in
+         * the same order as zwlr_data_control v1, so the zwlr handlers and senders serve it too. */
+        o->res = wl_resource_create(c, d->is_control == 2 ? &ext_data_control_offer_v1_interface
+                                                          : &zwlr_data_control_offer_v1_interface, 1, 0);
         if (!o->res) { free(o); return; }
         wl_resource_set_implementation(o->res, &control_offer_impl, o, offer_res_destroy);
         zwlr_data_control_device_v1_send_data_offer(d->res, o->res);
@@ -423,8 +427,9 @@ static void create_source(struct wl_client *c, uint32_t id, int is_control, uint
     struct source *s = calloc(1, sizeof(*s));
     if (!s) { wl_client_post_no_memory(c); return; }
     s->is_control = is_control;
-    s->res = wl_resource_create(c, is_control ? &zwlr_data_control_source_v1_interface
-                                              : &wl_data_source_interface, ver, id);
+    s->res = wl_resource_create(c, is_control == 2 ? &ext_data_control_source_v1_interface
+                                   : is_control ? &zwlr_data_control_source_v1_interface
+                                                : &wl_data_source_interface, ver, id);
     if (!s->res) { free(s); wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(s->res, is_control ? (const void *)&control_source_impl
                                                       : (const void *)&data_source_impl,
@@ -499,8 +504,9 @@ static void create_device(struct wl_client *c, uint32_t id, int is_control, uint
     struct device *d = calloc(1, sizeof(*d));
     if (!d) { wl_client_post_no_memory(c); return; }
     d->is_control = is_control;
-    d->res = wl_resource_create(c, is_control ? &zwlr_data_control_device_v1_interface
-                                              : &wl_data_device_interface, ver, id);
+    d->res = wl_resource_create(c, is_control == 2 ? &ext_data_control_device_v1_interface
+                                   : is_control ? &zwlr_data_control_device_v1_interface
+                                                : &wl_data_device_interface, ver, id);
     if (!d->res) { free(d); wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(d->res, is_control ? (const void *)&control_device_impl
                                                       : (const void *)&data_device_impl,
@@ -542,6 +548,21 @@ static void bind_data_control_manager(struct wl_client *c, void *data, uint32_t 
     struct wl_resource *r = wl_resource_create(c, &zwlr_data_control_manager_v1_interface, ver, id);
     if (!r) { wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(r, &cm_impl, NULL, NULL);
+}
+
+static void ext_cm_create_source(struct wl_client *c, struct wl_resource *r, uint32_t id) {
+    create_source(c, id, 2, wl_resource_get_version(r));
+}
+static void ext_cm_get_device(struct wl_client *c, struct wl_resource *r, uint32_t id, struct wl_resource *seat) {
+    create_device(c, id, 2, wl_resource_get_version(r));
+}
+static const struct ext_data_control_manager_v1_interface ext_cm_impl = {
+    .create_data_source = ext_cm_create_source, .get_data_device = ext_cm_get_device, .destroy = cm_destroy,
+};
+static void bind_ext_data_control_manager(struct wl_client *c, void *data, uint32_t ver, uint32_t id) {
+    struct wl_resource *r = wl_resource_create(c, &ext_data_control_manager_v1_interface, ver, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &ext_cm_impl, NULL, NULL);
 }
 
 /* ------------------------------------------------------------------ host side */
@@ -600,4 +621,5 @@ void clipboard_init(struct wl_display *display) {
     wl_list_init(&g_devices);
     wl_global_create(display, &wl_data_device_manager_interface, 3, NULL, bind_data_device_manager);
     wl_global_create(display, &zwlr_data_control_manager_v1_interface, 1, NULL, bind_data_control_manager);
+    wl_global_create(display, &ext_data_control_manager_v1_interface, 1, NULL, bind_ext_data_control_manager);
 }

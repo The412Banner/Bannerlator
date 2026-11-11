@@ -1,5 +1,120 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 04:5x EST — 🔀 MERGED feat/yserver-spike into main (user: "merge it, then fix the xserver bugs and merge that after green")
+- Backup ref `refs/backup/20261111/main-before-yserver-spike` = cb421007. `--no-ff` merge; main's 5 new commits were docs/log only (mali-report + PROGRESS_LOG), so the merged code = the device-tested 931c441d (CI 42970888210, 4/4 green).
+- What it adds: opt-in only. `BANNER_YSERVER=1` (game or container env) AND an executable `files/yserver/yserver` → yserver hosted on the Wayland compositor; without both, every path is main's (guestWayland() == waylandMode). The yserver binary is NOT in the APK (Jos Dehaes + SetZero not asked yet). Compositor also offers ext_data_control_v1 (clipboard) in every Wayland session; layer proton_11.12.3-DroidDeck binds only zwlr, so no change there.
+- Last device result before merge: user's Windows Steam run on yserver 04:28:58–04:30:50 EST (signed in, Steam window + friends list, up to 59.8 fps at cap 60, exit code 0, no crash).
+- Next: fix/xserver-robustness (3 Java X server bugs + X11 console-window activation), merge after green per the user.
+
+## 2026-11-11 01:3x EST — ✅ yserver display job FINISHED (feat/yserver-spike 931c441d + yserver spike 4e229a33), device-proven on the Pocket FIT, NOT for merge yet
+- **What it is:** `BANNER_YSERVER=1` in a game's (or container's) env → Wine stays on winex11, yserver (Rust X server, upstream + SetZero's PR #349 Wayland host + our patches 0001–0019) is the X server, and Bannerlator's Wayland compositor shows its windows (display, touch/mouse/keyboard, HUD, zero-copy layer). `0`/`off` = off, `record` = old headless test.
+- **yserver patches (private repo The412Banner/yserver-android-spike, feat/android-build):** 0008 Android KMS platform + Wayland host (stub gbm/libinput/udev, own xshmfence), 0009/0009a AHardwareBuffer pool hand-off (dma-buf wl_buffer + banner_ahb_v1), 0010 immediate presents, 0011/0016/0017 frame cap (live via fps file), 0012 copy wait, 0013/0014 blit instead of vkCmdCopyImage (Adreno blob allocated per copy: 1.8 → 0.1 ms per Present), 0014/0015/0019 YSERVER-MAP (app windows, wow64), 0018 debug switch.
+- **BL side:** YServerComponent (pipe reader, env, fps file), guestWayland() split, bring-to-front on map (+re-raise after conhost/explorer), launch CPU mask on map (fixes GTA IV's CPU-0 pin), FPS limiter → yserver (launch + live), compositor ext_data_control_v1 (clipboard for yserver).
+- **Results (Pocket FIT, final builds, 0 FATAL everywhere):** AIO Vulkan cube 500x500: ys 2120 / X11 2181 / Wayland 2776 fps (1 % low ys 323 vs X11 847). DiRT Showdown benchmark: ys 116.8 (117.0 zero-copy) / X11 114.3 / Wayland 113–117. GTA IV benchmark: ys 66.03 / X11 66.1 / Wayland 65.4. Frame cap 60: 60.01 fps (±1.39 ms). Windows Steam client (multi-process CEF): store + friends render on yserver (black on Wayland). Mouse click through compositor → yserver → Wine (Start menu) works.
+- **Not tested / limits:** live FPS-limiter toggle in-game (launch value tested), clipboard end to end (protocol bound, no copy/paste tried), keyboard typing, controllers only via WinHandler (as before), HDR (X11 guest has none), frame generation on yserver, OpenGL games (GLX route refused; EGL route only), 32-bit-only edge cases. yserver binary is hand-staged in files/yserver (not bundled: publishing it needs Jos Dehaes' + SetZero's OK per the user's rule).
+- **Pre-existing X11 issue found (not touched):** DesktopHelper raises every mapped app window, so a console window flashing up ~9 s into DiRT steals the game's activation (game throttles to 16 fps, mutes) — tonight's slow X11 DiRT runs.
+- **Staged for the user:** /sdcard/Download/Bannerlator-yserver-FINAL-931c441d-pubg.apk (9c566326…, installed) + /sdcard/Download/yserver-android-FINAL-4e229a33 (e5bbb132…, staged in app data). Restore: /sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk.
+
+## yserver display job — launch checkpoints (feat/yserver-spike)
+### yserver launch checkpoints (newest first)
+- 04:34 EST 04:35 EST result (user run 04:28:58-04:30:50): Windows Steam client on yserver (shortcut envVars BANNER_YSERVER=1) — logged on 04:29:15, Desktop 'Steam' window 04:29:18 + friends list; Wine virtual desktop 1280x720 one Wayland surface, up to 59.8 fps (cap 60), copy path (zero-copy off); Steam CPU drawing (GPU drawing auto only X11+GL); exit EXIT_SELF code 0, crash buffer empty, yserver 92 clients, 2 WARN (Vulkan dma-buf at start); picture not seen by me (no screenshot) — asked user
+- 04:32 EST 04:32 EST user launch: Windows Steam client with BANNER_YSERVER=1 (user added it); BL 931c441d + yserver 4e229a33 installed; RESUME: read files/yserver/logs newest + logcat YServerComponent/FATAL
+- 01:30 EST launch: regression check on final BL 931c441d: AIO vk wl + x11 + ys (p7a)
+- 01:29 EST launch: yserver click test via compositor test-input (p6e)
+- 01:28 EST launch: yserver tap test (p6d) on BL 931c441d (clipboard ext_data_control) + yserver 4e229a33; Steam client renders on yserver (p6c)
+- 01:11 EST launch: Windows Steam client ys until steamwebhelper + 75 s, max 15 min (p6c)
+- 01:06 EST result: GTA IV ys 66.03 (= x11 66.1 / wl 65.4) with CPU mask fix (p6a). launch: Windows Steam client ys 240 s (p6b)
+- 01:03 EST launch: GTA IV ys with CPU mask fix (p6a) + affinity sample; BL 95325269 (4691e391) + yserver 4e229a33 (e5bbb132)
+- 00:46 EST launch: GTA IV ys + x11 CPU affinity sampling (p5f)
+- 00:43 EST launch: GTA IV ys YSERVER_DEBUG_SKIP_PRESENT_COPY=1 (p5e) — measures present copy cost; yserver a1705954 (30531d5b)
+- 00:39 EST launch: Windows Steam Client x64 on yserver, 90 s, screenshots (p5d)
+- 00:36 EST launch: GTA IV ys MESA_VK_WSI_PRESENT_MODE=immediate (p5c)
+- 00:32 EST launch: GTA IV x11 with screenshot at 105 s (p5b) for GPU% comparison
+- 00:29 EST launch: GTA IV ys with 0017 (p5a); BL 04102206 (f667baed) + yserver 99be9391 (b6468306)
+- 00:13 EST launch: GTA IV ys + x11 thread samples at 100 s (p4m)
+- 00:07 EST launch: GTA IV ys WRAPPER_DISABLE_PRESENT_WAIT=1 (p4k) and ys YSERVER_PRESENT_ASYNC=0 (p4l)
+- 00:04 EST launch: GTA IV ys zero-copy layer (p4j), screenshot at 105 s
+- 00:00 EST launch: GTA IV ys with telemetry + present_pace + thread sample (p4i); GTA: ys 40.1 / wl 65.4 / x11 66.1
+- 23:53 EST launch: GTA IV benchmark ys / wl / x11 (p4h), ~3-4 min each, background; DiRT ys zero-copy 117.0 (p4g)
+- 23:51 EST launch: DiRT ys with BANNER_WAYLAND_ZERO_COPY=1 (p4g)
+- 23:50 EST launch: AIO vk ys FPS limiter 60 rerun (p4f)
+- 23:49 EST launch: AIO vk ys 15 s with FPS limiter 60 (p4d frame cap) and without (p4e)
+- 23:47 EST result: DiRT ys 116.8 fps (p4c) with activation fix; next: install BL frame-cap build + yserver 0016, limiter + zero-copy layer tests
+- 23:46 EST launch: DiRT ys with re-raise after conhost (p4c); BL d948577f (593d129c) + yserver b507382a
+- 23:34 EST launch: DiRT ys with conhost/explorer filter (p4b); BL 5b675b89 (e8db1a5a) + yserver b507382a
+- 23:22 EST launch: DiRT ys with activation fix (p4a); BL 7938d479 (3d5a8011) + yserver b507382a (0001-0015, unstripped 43cec66c); user asked to keep hands off
+- 23:05 EST launch: DiRT ys with WRAPPER_DISABLE_PRESENT_WAIT=1 (p3p); finding: DiRT x11 is bimodal 16 vs ~110 fps run to run (FIFO second swapchain), not yserver-specific
+- 23:03 EST launch: DiRT x11 + read game env (p3o)
+- 23:01 EST launch: DiRT x11 with MESA_VK_WSI_PRESENT_MODE=immediate (p3n)
+- 22:56 EST launch: DiRT x11 + wl with DXVK_LOG_LEVEL=info DXVK_LOG_PATH=D:\dxvklog-* (p3m)
+- 22:53 EST launch: DiRT x11 right after fast wl (p3l) — tests whether ys runs leave a slow state
+- 22:51 EST launch: DiRT wl recheck (p3k)
+- 22:50 EST launch: AIO vk x11 recheck (p3j) — DiRT now 16 fps in x11 too (was 114); kgsl CP AHB bus errors during DiRT
+- 22:45 EST launch: DiRT x11 + thread sampling (p3i) for A/B
+- 22:41 EST launch: DiRT ys + thread sampling (p3h)
+- 22:39 EST launch: DiRT ys + thread sampling at 40 s (p3g)
+- 22:36 EST launch: DiRT ys with RUST_LOG=info,present_pace=debug (p3f)
+- 22:33 EST launch: DiRT ys with YSERVER_PRESENT_TRACE=1 RUST_LOG=info,yserver_core::core_loop::process_request::present_ext=debug,yserver::kms::render::backend::kms::present=debug (p3e)
+- 22:31 EST launch: DiRT ys sync (blit, no async) + YSERVER_LOOP_TELEMETRY (p3d); p3c: x11 114.3 / wl 113.1 / ys(async) 16.2 fps (GPU 10% = waiting)
+- 22:24 EST launch: AIO vk ys blit+async (p3b), then DiRT Showdown benchmark x11 / wl / ys(blit) (p3c) — each ~3 min; yserver be806b03 unstripped, BL 4e582b35
+- 22:23 EST launch: AIO vk ys 20 s YSERVER_COPY_BLIT=1 + telemetry + simpleperf (p3a), yserver be806b03 unstripped
+- 22:16 EST launch: AIO vk ys 20 s + simpleperf on yserver (p2d), unstripped yserver b1e83a57 staged (current binary backed up to /sdcard/Download/ys-stage/yserver-current.bak)
+- 22:12 EST launch: AIO vk ys 6 s with YSERVER_PRESENT_TRACE=1 YSERVER_LOOP_TELEMETRY=1 RUST_LOG=info (p2c)
+- 22:10 EST launch: AIO vk ys sync + ys async (p2b); BL 4e582b35 (54c4d800) + yserver e61d1a15 (0001-0012, f85ffcb1)
+- 22:03 EST launch: AIO vk ys (p2a) with yserver 47ef5361 (0009 AHB pool hand-off), BL c72254b5
+- 21:46 EST launch: AIO vk baselines x11 + wl + ys (p1b), installed c72254b5 + yserver 80215caa; p1a ys vk = 2506 frames/15 s (167 fps, CPU frames), 0 FATAL
+
+## 2026-11-10 21:45 EST — 📲 c72254b5 installed on the Pocket FIT + yserver 80215caa staged; first hosted launch next
+- yserver CI 42947265501 ✅ (80215caa: 031ec58d + PR349 6f3c46ff + patches 0001–0008, stubs + xshmfence; NEEDED libnativewindow/libdl/libz/libm/libc; 11.6 MB), `--version` = `features=[wayland]` as uid 10193 in untrusted_app c193. Staged files/yserver/yserver sha256 ca7e9368… (old bc0a13f0 binary backed up to /sdcard/Download/ys-stage/yserver-bc0a13f0.bak).
+- BL CI 42947017626 ✅ 4/4 (c72254b5); pubg APK 356cd7a5… host == device == installed 21:44:33 EST; crash buffer cleared before install.
+- **Resume point:** installed c72254b5 + staged yserver 80215caa; next = `rootsh 'sh /sdcard/Download/perf-harness/ys-aio.sh vk p1a ys 15'` (temp shortcut "ZZ YS AIO", removed after); results in /sdcard/Download/perf-harness/results/p1a/. No background jobs. Restore = /sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk (main code, no yserver).
+
+## 2026-11-10 21:4x EST — 🔧 yserver display job P1: hosted mode c72254b5 (CI 42947017626), yserver P0 build in CI
+- **User (21:2x):** "start step 1 and do all of them until finished ... best performance possible, stage an APK for me to test only when you finish ... use root to build and drive the device yourself, install and run. device is yours" → standing install/launch permission for THIS job only; peers root-6a + root-15 told (both acked, holding BL until "done").
+- **P0 (yserver-android-spike feat/android-build):** PR #349 (6f3c46ff) merged onto 031ec58d + patches 0001–0007 + **0008** (cfg kms/epoll/eventfd/wayland_host on android; drm/gbm/input + wayland deps for android; ioctl request types (bionic `int`); KMS DRI3 hooks → Android AHB import; `YSERVER_TMPDIR` in the KMS path). Stub libgbm/libinput/libudev (abort if called), real minimal libxshmfence. Local `cargo check --target aarch64-linux-android --features wayland` clean. CI 42946620134 failed (-lxshmfence) → 42947265501 running.
+- **P1 (this branch, c72254b5):** `BANNER_YSERVER=1` (game or container env; `0`/`off` = off; `record` = old headless) → `yserverHosted`: `waylandMode=true` (compositor = display, input, FPS limiter, FG) while the guest stays X11: new `guestWayland()` replaces waylandMode for setWineDisplayDriver (Graphics=x11, winex11.drv not hidden), guest launcher (DISPLAY=:0), adapter env, BANNER_WSI_AHB, HDR env, GPU spoof, GL safe mode, WaylandGameDriver, Fast OpenGL (GLX route refused under yserver: no server GLX on Android). Wayland layer gate skipped. `YServerComponent` hosted: waits until the compositor socket accepts (stale file safe), runs `yserver :0 -nolisten tcp --rootless` with WAYLAND_DISPLAY=wayland-0, XDG_RUNTIME_DIR=files/.wayland-rt, YSERVER_TMPDIR=imagefs/usr/tmp, XKB from imagefs; binary = files/yserver/yserver (staged) else APK libyserver.so (not bundled yet).
+- **Harness:** `/sdcard/Download/perf-harness/ys-aio.sh <api> <tag> <x11|wl|ys> [bench_s] [env]` (copy of the user's AIO.desktop, 1280x720, Banners-AIO r3; results/<tag>/).
+- **Next:** stage yserver 80215caa build into files/yserver, install c72254b5, first hosted AIO run (vk).
+
+## 2026-11-10 21:15 EST — 📝 yserver display plan (research only, nothing built; awaiting the user's go)
+- **User:** "restore MIO and plan the display part". MIO shortcut restored from the backup 21:12 EST (md5 56bb3629 == backup, owner u0_a193 + label kept, `envVars=BANNER_WAYLAND_ZERO_COPY=1`).
+- **Found (checked live):** upstream yserver PR **#349** (SetZero / ferrix-os, branch up/v2-pr4 @ 6f3c46ff, OPEN, +7216 lines, updated 2026-11-10 18:56 EST) "a rootless Wayland host on the rootless core": every X top-level → `xdg_toplevel`, override-redirect → `xdg_popup`, pure-Rust `wayland-client` (no C lib), host seat (no libinput), compositor keymap, pointer lock via `zwp_locked_pointer_v1` + `zwp_relative_pointer_v1`, clipboard over `ext_data_control_v1`, RandR = compositor size. **CPU frames only** (readback into `wl_shm`). Tested by the author with a Proton game under Hyprland. Builds on merged #346 (compositor host on the card-less KMS platform) + #345 (DRI3 without a KMS card). Our pinned yserver 031ec58d has the `DisplayHost` trait (`rootless/display.rs:77`) but no Wayland host.
+- **Blocker to solve first:** the host lives in the KMS platform, `cfg(kms)` = linux/freebsd/openbsd only (`crates/yserver/build.rs:19`); deps drm/gbm/input(libinput) linux-only, udev linux (`Cargo.toml:52-58`); 91 files use `drm::`, 25 libinput. Android needs either `kms` on with stub gbm/input/udev crates, or the host moved onto the surface platform we run today.
+- **BL compositor fit:** has wl_shm, xdg_wm_base v3 + xdg_popup, pointer constraints + relative pointer, linux-dmabuf v4, `banner_ahb_v1` v3 (AHB zero-copy + fence), wlr data-control (not ext → no clipboard at first), keymap from `$XDG_RUNTIME_DIR/keymap.xkb`; already shows a non-Wine client (gamescope).
+- **Plan:** P0 Android build of #349 (spike repo, decide stub-kms vs surface-platform); P1 BL `BANNER_YSERVER` = start the compositor + yserver `--rootless` as its Wayland client, Wine on winex11 → picture + touch/mouse/keyboard through the compositor (CPU frames); P2 zero-copy: forward a full-window DRI3 AHB pixmap as dma-buf `wl_buffer` + `banner_ahb_v1.attach` (fallback GPU copy into an AHB backing); P3 clipboard, screen size, cursor, polish. Test-only env switch, no UI text. Ask Jos Dehaes + SetZero before anything public or merged.
+- **Proof level:** research only.
+
+## 2026-11-10 21:10 EST — ✅ yserver test: MIO runs on yserver (Pocket FIT, 2bc36808, headless)
+- **User:** launched MIO (RealSteam) 21:07, exited 21:08; "black screen, game sound and controls sound only" (black = expected, headless).
+- **yserver log** `files/yserver/logs/yserver-20261110-210749.log`: started 21:07:49 EST (Adreno 750 blob Vulkan 1.3.128, 2968 fonts, screen 1280x800, rootless recording host), 23 X clients over the unix socket (fd passing on), window 0x200004 1280x800 mapped + first frame 21:07:51, **DRI3 AHB path used**: 6 × AHardwareBuffer 1280x800 format 5 → B8G8R8A8 pixmaps at 21:08:03; SIGTERM 21:08:37 on exit → clean "exiting". 0 WARN/ERROR lines.
+- **Frames:** 1989 window updates in 46 s (21:07:51–21:08:37, avg ~43/s; not an FPS benchmark, BL's FPS limiter is not in this path); 40 kept (every 30th). Frames 30→1200 show black → Focus logo → douze dixièmes logo → fmod/CNC/Île-de-France credits → MIO title → main menu (Continue / New game / Load game / Settings / Exit) = the game drew through yserver. Contact sheet: `/sdcard/Download/yserver-MIO-frames-20261110.png`.
+- **Android side:** crash buffer empty; logcat main buffer (starts 21:08:16, start lines rolled out) has no FATAL; `YServerComponent: yserver stopped` 21:08:37; game process exited with code 0; BH_REALSTEAM resumed the app session normally. Last tombstone 19:57 (before this install, unrelated).
+- **Seen:** game ran at 1280x800 (yserver's default screen), not the shortcut's 1920x1080 — BL passes no size to yserver yet. Gamepad sounds in the menu per the user → gamepad input seems to reach the game (gamepad goes through WinHandler, not X); not checked in logs.
+- **Proof level:** device-proven headless (Wine + Steam + MIO on yserver, DRI3 AHB frames correct, clean start/stop). NOT tested: on-screen display, touch/mouse/keyboard, screen size, FPS.
+- **State:** MIO shortcut still has `BANNER_YSERVER=1` (next MIO launch = black screen); backup `/sdcard/Download/bl-backup-20261110/MIO_ Memories in Orbit.desktop.before-yserver`.
+
+## 2026-11-10 21:07 EST — 🧪 yserver test armed on MIO (Pocket FIT, 2bc36808 installed; launch next)
+- **User:** "you add it to MIO". MIO's shortcut (xuser-1 "DD P11-12.3 Arm", `displayBackend=x11`, `launchMode=RealSteam`) `envVars` = `BANNER_WAYLAND_ZERO_COPY=1 BANNER_YSERVER=1`. Written in place as root with `cat >` (owner u0_a193, label app_data_file:s0:c193,c256,c512,c768 kept; md5 a773296f). Backup (md5 56bb3629): `/sdcard/Download/bl-backup-20261110/MIO_ Memories in Orbit.desktop.before-yserver`.
+- **Note:** MIO starts through the Windows Steam client (RealSteam), so Steam's CEF windows also go to yserver. Headless: black screen, no input → a Steam prompt would stall the launch (frames would show it).
+- **Resume point:** installed 2bc36808 (base.apk 383aea46); nothing running; no background jobs. After the user's launch + exit: `rootsh 'ls -la /data/data/com.tencent.ig/files/yserver/logs/'`, read the newest `yserver-*.log` + `rec-*/`, `logcat -d -b crash`, logcat FATAL / YServerComponent lines. Undo: copy the backup over the shortcut with `cat >` (keeps owner/label), or remove ` BANNER_YSERVER=1` (setting it to 0 does NOT turn it off: `envVars.has()`).
+- **Proof level:** installed; NOT device-tested.
+
+## 2026-11-10 21:04 EST — 📲 INSTALLED feat/yserver-spike 2bc36808 on the Pocket FIT (user: "install it when it's done")
+- Installed 21:04:19 EST after telling root-6a + root-15; BL was idle (no wine, no services, Termux on top). base.apk sha256 383aea46… == staged == CI artifact; versionName 3.1.9-pre2 (unchanged); crash buffer empty; `files/yserver/` (yserver bc0a13f0 + xkb + VERSION) kept.
+- Code = main f0e68086 + the test switch; without `BANNER_YSERVER` it behaves like main.
+- **Test plan:** `BANNER_YSERVER=1` on one game in X11 mode (not Wayland) → save memory → launch → expect black screen + no input (headless); read `files/yserver/logs/yserver-*.log`, `rec-*/` frames, crash buffer, logcat FATAL.
+- **Restore:** `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk` (5154bb41).
+- **Proof level:** installed; NOT device-tested (no launch yet).
+
+## 2026-11-10 20:52 EST — 🔀 main f0e68086 merged into feat/yserver-spike (2bc36808), rebuild (CI 42942017992, NOT for merge)
+- **User:** "yes do the merge and build it" — one test APK with the Epic + Espectro fixes and the yserver switch, so the Epic testing and the yserver test share one install.
+- **Merge:** backup `refs/backup/20261110/yserver-spike-before-main-merge` = 6ae64864 (pushed); `--no-ff` 2bc36808 (parents 6ae64864 + f0e68086). Only conflict PROGRESS_LOG.md (both sides added entries; kept both, spike entry in time order). Merged tree vs main = only `XServerDisplayActivity.java` (+12/−2) and `YServerComponent.java` (+86), checked with `git diff --cached --stat origin/main`.
+- **CI 42942017992** (headSha 2bc36808 == pushed): ✅ green 21:01 EST, 4/4 flavors; skipped steps identical to the f598c5df build 42939066673 (cache / main-only). pubg APK sha256 `383aea46762c2b84f4a5451c124fc97a25a2e57672694cb605cb2dc2f452ab16` (host == device), staged `/sdcard/Download/Bannerlator-yserver-spike-2bc36808-pubg.apk`; `YServerComponent` + `BANNER_YSERVER` present in classes4/5.dex.
+- **User:** "install it when it's done" (~20:55 EST).
+- **Device:** Pocket FIT runs f598c5df (main 229ab05d code, installed 20:43 by root-15, base.apk 5154bb41); `files/yserver/` (yserver bc0a13f0 + xkb) still in app data.
+- **Next:** tell root-6a/root-15, check BL is not running → install → `BANNER_YSERVER=1` on one game (X11 mode) → launch → read `files/yserver/logs/`.
+- **Restore:** `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk` (root-15, base.apk 5154bb41).
+- **Proof level:** CI-green, staged; NOT installed, NOT device-tested.
 ## 2026-11-10 21:15 EST — 📲 INSTALLED main 229ab05d (standard) on the Retroid Pocket Duo (user: "install the latest main branch build of bannerlator")
 - Main artifacts build CI 42940295678 (headSha 229ab05d, 4/4 green; later main commits are log-only), artifact Bannerlator-main-standard.
 - Staged `/sdcard/Download/Bannerlator-main-229ab05d-standard.apk`: com.winlator.banner 3.1.9-pre2 (106), cert a40da80a (same as the installed app), sha256 3d10fe07…0022, host == device.
@@ -59,6 +174,15 @@
 - **User check 20:19 EST (screenshot 201914):** Hogwarts Legacy detail page: Check for Updates → "Up to date ✓" (recorded epic_manifest_version 2153883 == latest from Epic; a missing record would now say "Installed version not recorded"); Verify / Repair running (252/526). Crash buffer empty since 20:02. User: "seems good". Launch not tested yet.
 - **Resume point:** if the session is cut, check `pm path com.tencent.ig` hash: 7f72f313 = installed, 3a3d4ddf = still the old build. Then the user tests: Epic library loads, a game's update check / Verify, a launch's BH_EPIC_LAUNCH -epiclocale, crash buffer.
 - **Proof level:** CI-green, installing; NOT device-tested.
+
+## 2026-11-10 19:4x EST — 🧪 feat/yserver-spike 0ca9b718: test switch for the yserver X server (step 3, NOT for merge)
+- **Why:** user "continue yserver" (yserver Android spike, private repo The412Banner/yserver-android-spike; steps 0-2 passed headless in Termux).
+- **Built:** `YServerComponent` + switch in `setupXEnvironment`: with `BANNER_YSERVER=1` in the game's env and an executable `files/yserver/yserver`, BL starts that binary (`:0 --headless --rootless --rootless-record`, `YSERVER_TMPDIR=imagefs/usr/tmp`, xkb from `files/yserver/xkb`, every 30th frame kept, max 40) instead of the Java X server; else unchanged. Overlay closes after 2 s like Wayland mode (no Java windows). No yserver code or binary in this repo; the binary is staged by hand.
+- **Expect:** black screen, no input (headless); proof = yserver log + recorded frames in `files/yserver/logs/`.
+- **CI 42931263093** (headSha 4903bdb7): ✅ green, 4 flavors (skipped steps = the usual cache/main-only ones). pubg APK sha256 `0b71a4f156ba171a66c1aff685fa3b85f3513f13480078aab1f60aaac9cd0943` (host == device), staged `/sdcard/Download/Bannerlator-yserver-spike-4903bdb7-pubg.apk`; new strings present in classes4/5.dex.
+- **yserver staged** into `files/yserver/` (yserver + xkb + VERSION from yserver-android-spike bc0a13f0; binary sha256 3d74e678…; owner u0_a193, label app_data_file:s0:c193,c256,c512,c768). Pre-test as uid 10193 in untrusted_app_27:c193: socket ~100 ms, clean exit, 0 warn/error lines; pre-test files removed.
+- **Restore point:** installed now = fix/epic-game-fixes 2b4e3aa5 (18:51, base.apk sha256 3a3d4ddf… == `/sdcard/Download/Bannerlator-epic-game-fixes-2b4e3aa5-pubg.apk`).
+- **Device test:** not installed yet — waiting for the user's yes.
 
 ## 2026-11-10 19:35 EST — 🔧 fix/espectro-minor-bugs 49d235eb: 7 fixes from El_Espectro's "Minor bugs in 3.1.9-pre2" thread (CI 42932580327)
 - **Why:** the user asked to read the Discord thread (BannerHub server, thread 1556629640133742652, El_Espectro, Dante, Ajay) and fix the reported bugs, "in lab ui also". Read with the bot's read-only helper; videos looked at frame by frame.

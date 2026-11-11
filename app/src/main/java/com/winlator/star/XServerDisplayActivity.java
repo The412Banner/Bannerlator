@@ -16206,6 +16206,11 @@ return true;
             String epicArgs = com.winlator.star.store.EpicLaunchArgs.buildArgString(this, shortcut);
             if (epicArgs != null && !epicArgs.isEmpty()) args += " " + epicArgs;
         }
+        // The launch command from the Epic game's manifest (e.g. -PCStore=EGS), for every Epic launch.
+        if (shortcut != null) {
+            String manifestCommand = com.winlator.star.store.EpicLaunchArgs.manifestLaunchCommand(this, shortcut, args);
+            if (!manifestCommand.isEmpty()) args += " " + manifestCommand;
+        }
         // Epic per-game launch arguments (EpicGameFixes) the command does not carry yet.
         if (shortcut != null) {
             String fixArgs = com.winlator.star.store.EpicGameFixes.launchArgs(shortcut, args);

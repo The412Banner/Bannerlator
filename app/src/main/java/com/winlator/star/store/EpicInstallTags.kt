@@ -157,25 +157,16 @@ object EpicInstallTags {
     }
 
     /**
-     * The 2-letter ISO-639 language code to hand Epic as {@code -epiclocale} for a launch, derived
-     * the same way as [tagsForCurrentContainer]:
-     *   1. First Wine container with a non-empty lc_all → its language part.
+     * The 2-letter ISO-639 language code to hand Epic as {@code -epiclocale} for a launch:
+     *   1. The game's own lc_all ({@code gameLcAll}: the shortcut's setting, else its container's).
      *   2. Android device default locale language.
      *   3. "en" (never empty).
      * Only recognized languages (see [keyForLangRegion]) are accepted; anything else falls through.
-     * Runs a light disk walk (ContainerManager) — call it off the main thread.
      */
-    fun localeCodeForCurrentContainer(context: Context): String {
-        try {
-            for (c in ContainerManager(context).containers) {
-                val code = localeCodeForLcAll(c.getLC_ALL())
-                if (code != null) {
-                    Log.i(TAG, "Epic launch locale from container ${c.id} -> $code")
-                    return code
-                }
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "Could not read container lc_all for locale: ${t.message}")
+    fun localeCodeForGame(gameLcAll: String?): String {
+        localeCodeForLcAll(gameLcAll)?.let {
+            Log.i(TAG, "Epic launch locale from the game's lc_all -> $it")
+            return it
         }
         localeCodeForLcAll(deviceLocaleTag())?.let {
             Log.i(TAG, "Epic launch locale from device locale -> $it")

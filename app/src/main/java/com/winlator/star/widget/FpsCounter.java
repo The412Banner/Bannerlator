@@ -99,6 +99,32 @@ public class FpsCounter {
         frameCount++;
     }
 
+    /**
+     * A frame rate measured elsewhere, about once a second (yserver counts the game's presents; the
+     * frames reaching the screen are capped at the display's refresh). It feeds the same reading,
+     * session statistics and staleness as {@link #tick()}; the frametime lows get one sample of the
+     * mean interval per report, so they follow per-second averages rather than single frames.
+     */
+    public synchronized void reportRate(float fps) {
+        if (!(fps > 0f)) return;
+        long now = SystemClock.elapsedRealtime();
+        if (sessionStartTime == 0) sessionStartTime = now;
+        float intervalMs = 1000f / fps;
+        if (intervalMs < FRAMETIME_MAX_SANE_MS) {
+            frametimeRing[frametimeHead] = intervalMs;
+            frametimeHead = (frametimeHead + 1) % FRAMETIME_RING_CAP;
+            if (frametimeSize < FRAMETIME_RING_CAP) frametimeSize++;
+        }
+        lastFPS = fps;
+        lastFrameTime = now;
+        int currentFPS = Math.round(fps);
+        readingCount++;
+        fpsSum += currentFPS;
+        if (currentFPS > maxFPS) maxFPS = currentFPS;
+        if (currentFPS > 1 && currentFPS < minFPS) minFPS = currentFPS;
+        lastReadingTime = now;
+    }
+
     /** Most recent measured FPS, or 0 when no frame has been presented within {@link #STALE_FPS_MS} —
      *  the bound window stopped rendering, so the last value is stale and must not sit frozen on the
      *  HUD (idle menu, paused game, or a present path not ticking this window). Lock-free. */

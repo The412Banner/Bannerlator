@@ -67,6 +67,24 @@ public class YServerComponent extends EnvironmentComponent {
         void onWineWindowMapped(String className, long hwnd, int pid, boolean wow64);
     }
 
+    /** The busiest window's presents per second (yserver's YSERVER-FPS line, once a second). */
+    public interface FpsListener {
+        void onGameFps(float fps);
+    }
+
+    private volatile FpsListener fpsListener;
+    private String hideClass;
+
+    public void setFpsListener(FpsListener listener) {
+        fpsListener = listener;
+    }
+
+    /** Windows of this WM_CLASS draw nothing and clear to black (YSERVER_HIDE_CLASS), unless the game's
+     *  env sets its own. Bannerlator's X11 renderer and compositor leave Wine's desktop out the same way. */
+    public void setHideClass(String wmClass) {
+        hideClass = wmClass;
+    }
+
     /** gameEnv: the session's env; its YSERVER_* and RUST_LOG entries reach yserver. */
     public YServerComponent(Context context, String mode, File tmpRoot, File waylandRuntimeDir, EnvVars gameEnv,
                             WindowMapListener mapListener) {
@@ -154,6 +172,7 @@ public class YServerComponent extends EnvironmentComponent {
         env.put("YSERVER_PRESENT_ASYNC", "1");
         writeFpsFile();
         env.put("YSERVER_FPS_FILE", fpsFile().getPath());
+        if (hideClass != null && !hideClass.isEmpty()) env.put("YSERVER_HIDE_CLASS", hideClass);
         StringBuilder passed = new StringBuilder();
         if (gameEnv != null) {
             for (String name : gameEnv) {
@@ -228,6 +247,12 @@ public class YServerComponent extends EnvironmentComponent {
                     new java.io.InputStreamReader(p.getInputStream()))) {
                 String line;
                 while ((line = in.readLine()) != null) {
+                    // Once a second: the HUD's frame rate, not kept in the log file.
+                    int fpsAt = line.indexOf("YSERVER-FPS ");
+                    if (fpsAt >= 0) {
+                        onFpsLine(line.substring(fpsAt + 12));
+                        continue;
+                    }
                     if (out != null) {
                         try {
                             out.write(line);
@@ -254,6 +279,17 @@ public class YServerComponent extends EnvironmentComponent {
         }, "yserver-log");
         reader.setDaemon(true);
         reader.start();
+    }
+
+    private void onFpsLine(String fields) {
+        FpsListener l = fpsListener;
+        if (l == null) return;
+        for (String f : fields.trim().split(" ")) {
+            if (!f.startsWith("fps=")) continue;
+            try {
+                l.onGameFps(Float.parseFloat(f.substring(4)));
+            } catch (NumberFormatException ignored) {}
+        }
     }
 
     private void onMapLine(String fields) {

@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 21:45 EST — 📲 c72254b5 installed on the Pocket FIT + yserver 80215caa staged; first hosted launch next
+- yserver CI 42947265501 ✅ (80215caa: 031ec58d + PR349 6f3c46ff + patches 0001–0008, stubs + xshmfence; NEEDED libnativewindow/libdl/libz/libm/libc; 11.6 MB), `--version` = `features=[wayland]` as uid 10193 in untrusted_app c193. Staged files/yserver/yserver sha256 ca7e9368… (old bc0a13f0 binary backed up to /sdcard/Download/ys-stage/yserver-bc0a13f0.bak).
+- BL CI 42947017626 ✅ 4/4 (c72254b5); pubg APK 356cd7a5… host == device == installed 21:44:33 EST; crash buffer cleared before install.
+- **Resume point:** installed c72254b5 + staged yserver 80215caa; next = `rootsh 'sh /sdcard/Download/perf-harness/ys-aio.sh vk p1a ys 15'` (temp shortcut "ZZ YS AIO", removed after); results in /sdcard/Download/perf-harness/results/p1a/. No background jobs. Restore = /sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk (main code, no yserver).
+
 ## 2026-11-10 21:4x EST — 🔧 yserver display job P1: hosted mode c72254b5 (CI 42947017626), yserver P0 build in CI
 - **User (21:2x):** "start step 1 and do all of them until finished ... best performance possible, stage an APK for me to test only when you finish ... use root to build and drive the device yourself, install and run. device is yours" → standing install/launch permission for THIS job only; peers root-6a + root-15 told (both acked, holding BL until "done").
 - **P0 (yserver-android-spike feat/android-build):** PR #349 (6f3c46ff) merged onto 031ec58d + patches 0001–0007 + **0008** (cfg kms/epoll/eventfd/wayland_host on android; drm/gbm/input + wayland deps for android; ioctl request types (bionic `int`); KMS DRI3 hooks → Android AHB import; `YSERVER_TMPDIR` in the KMS path). Stub libgbm/libinput/libudev (abort if called), real minimal libxshmfence. Local `cargo check --target aarch64-linux-android --features wayland` clean. CI 42946620134 failed (-lxshmfence) → 42947265501 running.

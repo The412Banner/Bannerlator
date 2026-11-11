@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:45 EST launch: DiRT x11 + thread sampling (p3i) for A/B
 - 22:41 EST launch: DiRT ys + thread sampling (p3h)
 - 22:39 EST launch: DiRT ys + thread sampling at 40 s (p3g)
 - 22:36 EST launch: DiRT ys with RUST_LOG=info,present_pace=debug (p3f)

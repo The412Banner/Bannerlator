@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:56 EST launch: DiRT x11 + wl with DXVK_LOG_LEVEL=info DXVK_LOG_PATH=D:\dxvklog-* (p3m)
 - 22:53 EST launch: DiRT x11 right after fast wl (p3l) — tests whether ys runs leave a slow state
 - 22:51 EST launch: DiRT wl recheck (p3k)
 - 22:50 EST launch: AIO vk x11 recheck (p3j) — DiRT now 16 fps in x11 too (was 114); kgsl CP AHB bus errors during DiRT

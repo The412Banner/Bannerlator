@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 07:4x EST — 🚀 launch checkpoint: NFS HPR + FEX_HIDEHYPERVISORBIT=1 (user: "yes add it and launch it")
+- 07:03 run (STABILITY + FEX_SMCCHECKS=full): NOT fixed (my 07:08 "fixed" was wrong: the game was still in the intro). Same crash 07:36:14 at NFS11Remastered.exe+0x1B121ADF, 1.4 s after the game's LSX GetAuthCode (ClientId ALASKA_NFS_HP_PC_CLIENT) was answered = online login step; r12=0xdeadbeef.
+- Now: envVars += FEX_HIDEHYPERVISORBIT=1 (keeps STABILITY + SMC full), launch; user presses through the menus. Next if it fails: Box64 for this game.
+- Undo: copy /sdcard/Download/bl-backup-20261111/NFS-HPR.desktop.before-fex-stability back.
+
 ## 2026-11-11 07:0x EST — 🚀 launch checkpoint: NFS HPR with STABILITY + FEX_SMCCHECKS=full (user: "keep stability, add the smc checks and launch it")
 - 06:56:20 STABILITY run (game env FEX_TSOENABLED=1, VECTORTSO=1, MULTIBLOCK=0, X87REDUCEDPRECISION=0): same crash at 06:59:02 (syscall fault → c0000005 at NFS11Remastered.exe+0x1B121ADF) → TSO/multiblock/x87 not the cause.
 - Now: shortcut envVars += FEX_SMCCHECKS=full (preset stays STABILITY), launch via am start. Next if it fails: BL preset DENUVO (SMCCHECKS=full + FEX_HIDEHYPERVISORBIT=1, FEXCorePresetManager ~170), then Box64.

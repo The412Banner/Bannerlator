@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:52 EST — 🔀 main f0e68086 merged into feat/yserver-spike (2bc36808), rebuild (CI 42942017992, NOT for merge)
+- **User:** "yes do the merge and build it" — one test APK with the Epic + Espectro fixes and the yserver switch, so the Epic testing and the yserver test share one install.
+- **Merge:** backup `refs/backup/20261110/yserver-spike-before-main-merge` = 6ae64864 (pushed); `--no-ff` 2bc36808 (parents 6ae64864 + f0e68086). Only conflict PROGRESS_LOG.md (both sides added entries; kept both, spike entry in time order). Merged tree vs main = only `XServerDisplayActivity.java` (+12/−2) and `YServerComponent.java` (+86), checked with `git diff --cached --stat origin/main`.
+- **CI 42942017992** dispatched (build-artifacts.yml, label yserver-spike-2bc36808), headSha 2bc36808 == pushed.
+- **Device:** Pocket FIT runs f598c5df (main 229ab05d code, installed 20:43 by root-15, base.apk 5154bb41); `files/yserver/` (yserver bc0a13f0 + xkb) still in app data.
+- **Next:** CI green → stage pubg APK hash-checked → ask the user + root-6a/root-15 before install → `BANNER_YSERVER=1` on one game (X11 mode) → launch → read `files/yserver/logs/`.
+- **Proof level:** pushed, building; NOT device-tested.
+
 ## 2026-11-10 20:43 EST — 📲 INSTALLED f598c5df (= main 229ab05d code: Espectro + Epic fixes) on the Pocket FIT (user: "install it")
 - root-6a (Epic test, nothing running in BL) + root-54 said ok before; "done" sent after.
 - `pm install -r` Success 20:43:42 EST; installed base.apk sha256 5154bb41…94b5 == staged; 3.1.9-pre2 (106). Replaced a597055f (7f72f313).

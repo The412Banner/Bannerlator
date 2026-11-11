@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 00:43 EST launch: GTA IV ys YSERVER_DEBUG_SKIP_PRESENT_COPY=1 (p5e) — measures present copy cost; yserver a1705954 (30531d5b)
 - 00:39 EST launch: Windows Steam Client x64 on yserver, 90 s, screenshots (p5d)
 - 00:36 EST launch: GTA IV ys MESA_VK_WSI_PRESENT_MODE=immediate (p5c)
 - 00:32 EST launch: GTA IV x11 with screenshot at 105 s (p5b) for GPU% comparison

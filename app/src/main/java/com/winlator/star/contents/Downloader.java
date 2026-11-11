@@ -17,6 +17,11 @@ public class Downloader {
         void onProgress(float fraction);
     }
 
+    /** Asked between chunks; true stops the download (the call then returns false). */
+    public interface CancelCheck {
+        boolean isCancelled();
+    }
+
     public static boolean downloadFile(String address, File file) {
         return downloadFile(address, file, null);
     }
@@ -33,6 +38,10 @@ public class Downloader {
      * scratch, and a server that answers 416 (range past EOF) is treated as "already complete".
      */
     public static boolean downloadFile(String address, File file, boolean resume, ProgressListener listener) {
+        return downloadFile(address, file, resume, listener, null);
+    }
+
+    public static boolean downloadFile(String address, File file, boolean resume, ProgressListener listener, CancelCheck cancel) {
         try {
             long existing = (resume && file.exists()) ? file.length() : 0;
 
@@ -74,6 +83,11 @@ public class Downloader {
             float lastReported = -2f;
             int count;
             while ((count = input.read(data)) != -1) {
+                if (cancel != null && cancel.isCancelled()) {
+                    output.close();
+                    input.close();
+                    return false;
+                }
                 output.write(data, 0, count);
                 readTotal += count;
                 if (listener != null) {

@@ -1,11 +1,26 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:3x EST — 🔀 main 04715c8b merged into fix/espectro-minor-bugs (98c0682c), rebuild
+- **User:** "yes merge main and rebuild" (main got fix/epic-store-bugs at 20:22 EST), so one build carries the Epic store fixes and the 7 Espectro fixes.
+- Backup `refs/backup/20261110/espectro-minor-bugs-before-main-merge` = b2e54731 (pushed). `--no-ff` merge 98c0682c (parents b2e54731 + 04715c8b), no AI trailer.
+- Only PROGRESS_LOG.md conflicted (both sides added top entries) → kept all, newest first (14,342 base + 22 + 32 = 14,396 lines). Checked: every main-only file == main, every espectro-only file == branch; XServerDisplayActivity.java = branch + main's 5-line Epic manifest-command hunk only.
+- Staged d773bc08 APK is now superseded (not installed). The FIT runs a597055f (= main code); root-6a asked to be told before anything is installed over it.
+- **Proof level:** merged, NOT compiled yet.
+- **Resume:** build-artifacts CI on the branch (assert headSha) → stage pubg `/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk` (sha256 host == device) → check with root-6a → ASK the user before install.
+
 ## 2026-11-10 20:22 EST — 🔀 MERGED fix/epic-store-bugs → main c524ed38 (CI 42938535257)
 - **User:** "merge to main". Merged after CI 42930770419 green and the user's first check on the Pocket FIT (Hogwarts Legacy update check + Verify, "seems good"); **an Epic game launch on this build was not tested before the merge**.
 - Backup `refs/backup/20261110/main-before-epic-store-bugs` = 2fb8169c; `--no-ff` c524ed38 (parents 2fb8169c + b936f975); code identical to the installed a597055f (only PROGRESS_LOG.md differs); no AI trailer. The push started CI Build (artifacts only) 42938535257 (headSha c524ed38) + GitHub Pages.
 - Pocket FIT runs a597055f = main code. Elite still 2e7456c4.
 - **Not done (Epic):** -epiclocale region codes, install-time language from the first container, cloud saves in Epic's format (item 8), auto cloud sync, install-space work.
 - **Next:** an Epic game launch on the FIT (check BH_EPIC_LAUNCH -epiclocale, crash buffer); main CI result.
+
+## 2026-11-10 20:03 EST — 📦 fix/espectro-minor-bugs d773bc08 staged on the Pocket FIT (CI 42932580327, not installed)
+- CI 42932580327 green 4/4 (standard, pubg, antutu, ludashi); headSha d773bc08 = pushed branch; skipped steps = main-only cache saves + cached native builds (libblsteam.so from cache).
+- Staged `/sdcard/Download/Bannerlator-espectro-minor-bugs-d773bc08-pubg.apk`: com.tencent.ig 3.1.9-pre2 (106), cert a40da80a, sha256 221843be…409b, host == device.
+- Installed on the FIT: still 3.1.9-pre2 from 18:51:11 EST (lastUpdateTime). root-6a is installing epic-store-bugs a597055f to the same package (20:0x EST, user said yes there); told it this session only stages.
+- **Proof level:** CI-green, staged; NOT installed, NOT device-tested.
+- **Resume:** wait for root-6a "done" → ASK the user before `pm install` (it replaces the epic-store-bugs build) → after install check hash + crash buffer → test list in the 19:35 entry.
 
 ## 2026-11-10 20:02 EST — 📲 INSTALLED fix/epic-store-bugs a597055f on the Pocket FIT (user yes)
 - **User:** "yes install it on the fit".
@@ -15,6 +30,21 @@
 - **User check 20:19 EST (screenshot 201914):** Hogwarts Legacy detail page: Check for Updates → "Up to date ✓" (recorded epic_manifest_version 2153883 == latest from Epic; a missing record would now say "Installed version not recorded"); Verify / Repair running (252/526). Crash buffer empty since 20:02. User: "seems good". Launch not tested yet.
 - **Resume point:** if the session is cut, check `pm path com.tencent.ig` hash: 7f72f313 = installed, 3a3d4ddf = still the old build. Then the user tests: Epic library loads, a game's update check / Verify, a launch's BH_EPIC_LAUNCH -epiclocale, crash buffer.
 - **Proof level:** CI-green, installing; NOT device-tested.
+
+## 2026-11-10 19:35 EST — 🔧 fix/espectro-minor-bugs 49d235eb: 7 fixes from El_Espectro's "Minor bugs in 3.1.9-pre2" thread (CI 42932580327)
+- **Why:** the user asked to read the Discord thread (BannerHub server, thread 1556629640133742652, El_Espectro, Dante, Ajay) and fix the reported bugs, "in lab ui also". Read with the bot's read-only helper; videos looked at frame by frame.
+- **Branch:** fix/espectro-minor-bugs off main 2fb8169c, worktree `/root/src/Bannerlator-wt/espectro-minor-bugs`.
+- **Fixes (each its own commit):**
+  1. 19987dc1 Cancel on a component download from the container / game / Lab editors (`startContentDownload`) now stops the download and the unpack and never installs; same guards in the Contents hub install step and the sheet's install from a file. Cause: cancel only cancelled the coroutine; `Downloader` and `extraContentFile` are blocking and the rename into place ran anyway.
+  2. 40c3d9ea arm64ec → arm64ec layer change in the container editor keeps the WOWBox64 version (`applyArch` reset it to 0.3.7; defaults only re-seeded on an arch flip). Shared view model → Classic, Lab, Deck.
+  3. 92250c38 Classic game dialog: a Box64/WOWBox64/FEXCore/Box64EC version downloaded there shows at once (lists were read once). Lab already refreshed via the container view model.
+  4. 5bda8c04 Translator chip: Box64 on x86_64 layers, FEXCore/WOWBox64 on arm64ec (`EmulatorLabels.chipLabel`; game cards, XMB, Big Picture, Lab Library, launch screen, container card). Copy/move of a game to a container of the other architecture drops its emulator/version/SSBS extras.
+  5. 5cc32e07 PiP: the guest keeps running in the PiP window (`pauseAllWineProcesses` was outside the PiP check); closing the PiP window freezes it in onStop.
+  6. 49ac03cf Task Manager: its process listener is a side listener while open (the game-exit / installer watchers re-took the single owner slot every 2 s → frozen list, memory never changed); null info ignored.
+  7. 49d235eb In-game Controls menu (Classic/Deck/Lab) refreshed after the #333 smart default loads the Virtual Gamepad, so it no longer says "-- Disabled --" over a shown pad; choosing Disabled opts out.
+- **Not done:** profile import mid-game / in PiP (reporter: feature request). Whether fresh installs should get the #333 Virtual Gamepad at all = user's call.
+- **Proof level:** committed + pushed; CI 42932580327 dispatched 19:35 EST (headSha d773bc08 = branch), green 19:44 EST; NOT device-tested.
+- **Resume:** dispatch `build-artifacts.yml` on the branch (assert headSha) → stage pubg APK `/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk` (sha256 host == device) → ASK before install.
 
 ## 2026-11-10 19:34 EST — 📦 fix/epic-store-bugs a597055f CI green, staged on the Pocket FIT (CI 42930770419)
 - CI 42930770419 green 4/4 (headSha a597055f); skipped steps are main-only saves and cache paths only; libblsteam.so rebuilt by cargo (Rust manifest change), Gradle build success.

@@ -1,13 +1,11 @@
 package com.winlator.star.ui.screens
 
 import android.content.Context
-import com.winlator.star.R
 import com.winlator.star.container.GameDetails
 import com.winlator.star.container.Shortcut
 import com.winlator.star.contentdialog.GraphicsDriverConfigDialog
 import com.winlator.star.core.PreloaderDetails
 import com.winlator.star.core.PreloaderSpec
-import com.winlator.star.core.StringUtils
 
 /**
  * Resolve a shortcut's component spec (renderer, DXVK/VKD3D versions, driver, frame-gen, x86 backend
@@ -20,7 +18,6 @@ import com.winlator.star.core.StringUtils
  * effectively runs on Wayland, which needs the container's layer probed.
  */
 fun buildLaunchSpec(shortcut: Shortcut, context: Context): PreloaderSpec {
-    val res = context.resources
     val container = shortcut.container
     val resolution = shortcut.getExtra("screenSize", container?.getScreenSize() ?: "")
     val driverCfg = shortcut.getExtra("graphicsDriverConfig", container?.getGraphicsDriverConfig() ?: "")
@@ -32,11 +29,9 @@ fun buildLaunchSpec(shortcut: Shortcut, context: Context): PreloaderSpec {
     val wayland = com.winlator.star.core.WineWaylandSupport.runsOnWayland(context, shortcut)
     val rendererLabel = rendererLabelOf(shortcut.getExtra("renderer", container?.renderer ?: ""), wayland)
     val frameGenLabel = frameGenLabelOf(shortcut.getExtra("frameGenEngine", container?.frameGenEngine ?: "off"))
-    val backendLabel = run {
-        val id = shortcut.getExtra("emulator", container?.emulator ?: "")
-        res.getStringArray(R.array.emulator_entries)
-            .firstOrNull { StringUtils.parseIdentifier(it) == id } ?: ""
-    }
+    // What runs the game's x86 code: Box64 on an x86_64 layer whatever is stored, FEXCore / WOWBox64 on arm64ec.
+    val backendLabel = com.winlator.star.ui.EmulatorLabels.chipLabel(
+        shortcut.getExtra("emulator", container?.emulator ?: ""), container?.wineVersion)
 
     // EOS badge: an Epic-store shortcut with EOS auth injection not disabled (mirrors the
     // storeSource/epicEos gate XServerDisplayActivity uses to inject the launch args).

@@ -48,4 +48,23 @@ object EmulatorLabels {
     @JvmStatic
     fun box64EntryOf(entries: List<String>): String =
         entries.firstOrNull { it.equals(BOX64, ignoreCase = true) } ?: BOX64
+
+    /**
+     * The translator chip on game and container cards: what the launcher runs for x86 code. An x86_64
+     * layer always runs Box64 (the stored [emulatorId] is the inert "fexcore" default there); an arm64ec
+     * layer runs FEXCore or WOWBox64. The layer's architecture comes from its name (installed layers are
+     * "<type>-<version>-<arch>-<code>"), so a card needs no layer lookup. "" when there is no layer.
+     */
+    @JvmStatic
+    fun chipLabel(emulatorId: String?, wineVersion: String?): String {
+        if (wineVersion.isNullOrEmpty()) return ""
+        if (!ARM64EC_LAYER.containsMatchIn(wineVersion)) return BOX64
+        return when (emulatorId?.lowercase()) {
+            "fexcore" -> FEXCORE
+            "box64" -> WOWBOX64
+            else -> ""
+        }
+    }
+
+    private val ARM64EC_LAYER = Regex("-arm64ec(-\\d+)?$", RegexOption.IGNORE_CASE)
 }

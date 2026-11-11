@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 07:0x EST — 🚀 launch checkpoint: NFS HPR with STABILITY + FEX_SMCCHECKS=full (user: "keep stability, add the smc checks and launch it")
+- 06:56:20 STABILITY run (game env FEX_TSOENABLED=1, VECTORTSO=1, MULTIBLOCK=0, X87REDUCEDPRECISION=0): same crash at 06:59:02 (syscall fault → c0000005 at NFS11Remastered.exe+0x1B121ADF) → TSO/multiblock/x87 not the cause.
+- Now: shortcut envVars += FEX_SMCCHECKS=full (preset stays STABILITY), launch via am start. Next if it fails: BL preset DENUVO (SMCCHECKS=full + FEX_HIDEHYPERVISORBIT=1, FEXCorePresetManager ~170), then Box64.
+- Undo: copy /sdcard/Download/bl-backup-20261111/NFS-HPR.desktop.before-fex-stability back (original, before both changes).
+
 ## 2026-11-11 06:5x EST — 🚀 launch checkpoint: NFS HPR with FEX preset STABILITY (user: "yes set stability and launch it for me")
 - 06:46:56 run with the EA overlay off: game ran 06:47:17–06:49:24 (licence granted, "Connecting to EA servers"), then main thread: syscall fault (bad pointer) → c0000005 at NFS11Remastered.exe+0x1B121ADF (protected section). Not overlay/licence/X server; exe uses ProtoSSL (no OpenSSL). Container 1 = FEX 2611+9 PERFORMANCE_TSO. Code note at XServerDisplayActivity ~12212: Extreme presets (SMC checks off) crash EA's Activation64 anti-tamper the same way → test a stricter preset.
 - Now: backup of the HPR shortcut → /sdcard/Download/bl-backup-20261111/, set `fexcorePreset=STABILITY` on that shortcut only, launch via am start (container 1). Installed 4e8c7e65 (= main 02577e6a code). Undo: copy the backup back.

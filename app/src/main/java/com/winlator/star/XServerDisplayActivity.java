@@ -148,6 +148,7 @@ import com.winlator.star.xenvironment.components.GuestProgramLauncherComponent;
 import com.winlator.star.xenvironment.components.PulseAudioComponent;
 import com.winlator.star.xenvironment.components.SysVSharedMemoryComponent;
 import com.winlator.star.xenvironment.components.XServerComponent;
+import com.winlator.star.xenvironment.components.YServerComponent;
 import com.winlator.star.xserver.Pointer;
 import com.winlator.star.xserver.Atom;
 import com.winlator.star.xserver.Property;
@@ -1731,6 +1732,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // our embedded compositor instead of the X11 server. All branches are guarded by this flag,
     // so the X11 path is unchanged when it's false. See WAYLAND_RUNTIME.md.
     private boolean waylandMode = false;
+    // Test-only (feat/yserver-spike): BANNER_YSERVER=1 runs the external yserver instead of the Java X server.
+    private boolean yserverMode = false;
     // The session runs gamescope in the Linux runtime instead of Wine; the compositor is its display.
     private boolean gamescopeMode = false;
     // Bumped per compositor bring-to-front request, so a delayed repeat never re-raises an older window.
@@ -12201,7 +12204,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 )
         );
         // In wayland mode the embedded compositor is the display server, so don't run the X server.
-        if (!waylandMode) {
+        File yserverHome = new File(getFilesDir(), "yserver");
+        if (!waylandMode && envVars.has("BANNER_YSERVER") && YServerComponent.available(yserverHome)) {
+            environment.addComponent(new YServerComponent(yserverHome, new File(rootPath, "usr/tmp")));
+            yserverMode = true;
+        } else if (!waylandMode) {
             environment.addComponent(
                     new XServerComponent(
                             xServer,
@@ -12393,7 +12400,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // Wayland: the launch overlay must ALWAYS clear so the guest is visible — the compositor
         // present path (first-frame hook) may not fire for a shm-only desktop, and the guest must
         // never be hidden behind a stuck spinner. Force-close it 2s after guest boot, unconditionally.
-        if (waylandMode) {
+        // yserver test mode: the Java X server sees no windows either, so the same rule applies.
+        if (waylandMode || yserverMode) {
             new android.os.Handler(getMainLooper()).postDelayed(() -> {
                 if (!winStarted) { winStarted = true; cancelLaunchTimers(); }
                 preloaderDialog.closeOnUiThread();

@@ -71,28 +71,43 @@ public class EpicCredentialStore {
         return token != null && !token.isEmpty();
     }
 
+    /** One refresh at a time: callers that wait reuse the token the first one stored. */
+    private static final Object REFRESH_LOCK = new Object();
+    private static final long REFRESH_MARGIN_MS = 5L * 60L * 1000L;
+
     /**
-     * Returns a valid access token (auto-refreshes if within 5 minutes of expiry).
-     * Returns null if not logged in or refresh fails.
+     * Returns a valid access token, refreshing it when it expires within 5 minutes. When the refresh
+     * fails, a token that has not expired yet is still returned; an expired one is not (null: the
+     * caller asks the user to sign in again). Null when not logged in.
      */
     public static String getValidAccessToken(Context ctx) {
         Credentials creds = load(ctx);
         if (creds == null || creds.accessToken == null) return null;
+        if (creds.expiresAt - System.currentTimeMillis() >= REFRESH_MARGIN_MS) return creds.accessToken;
 
-        long fiveMinutesMs = 5L * 60L * 1000L;
-        if ((creds.expiresAt - System.currentTimeMillis()) < fiveMinutesMs
-                && creds.refreshToken != null) {
-            Log.d(TAG, "Epic token near expiry, refreshing...");
-            EpicAuthClient.TokenResult result = EpicAuthClient.refreshToken(creds.refreshToken);
-            if (result != null) {
-                creds.accessToken  = result.accessToken;
-                creds.refreshToken = result.refreshToken != null ? result.refreshToken : creds.refreshToken;
-                creds.expiresAt    = result.expiresAt;
-                save(ctx, creds);
-                Log.d(TAG, "Epic token refreshed OK");
+        synchronized (REFRESH_LOCK) {
+            // Another caller may have refreshed while this one waited.
+            creds = load(ctx);
+            if (creds == null || creds.accessToken == null) return null;
+            long now = System.currentTimeMillis();
+            if (creds.expiresAt - now >= REFRESH_MARGIN_MS) return creds.accessToken;
+
+            if (creds.refreshToken != null && !creds.refreshToken.isEmpty()) {
+                Log.d(TAG, "Epic token near expiry, refreshing...");
+                EpicAuthClient.TokenResult result = EpicAuthClient.refreshToken(creds.refreshToken);
+                if (result != null && result.accessToken != null && !result.accessToken.isEmpty()) {
+                    creds.accessToken  = result.accessToken;
+                    creds.refreshToken = result.refreshToken != null ? result.refreshToken : creds.refreshToken;
+                    creds.expiresAt    = result.expiresAt;
+                    save(ctx, creds);
+                    Log.d(TAG, "Epic token refreshed OK");
+                    return creds.accessToken;
+                }
+                Log.w(TAG, "Epic token refresh failed");
             }
+            if (creds.expiresAt > now) return creds.accessToken;
+            Log.w(TAG, "Epic token expired and could not be refreshed: sign in again");
+            return null;
         }
-
-        return creds.accessToken;
     }
 }

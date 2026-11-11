@@ -430,6 +430,15 @@ public class EpicDownloadManager {
             // installTags == null → no filtering (legacy: every file). Degrades gracefully:
             // if the manifest carries no tags, resolveInstallFiles returns all files.
             List<FileInfo> selectedFiles = resolveInstallFiles(manifest, installTags);
+            for (FileInfo f : selectedFiles) {
+                if (!isSafeRelativePath(f.filename)) {
+                    dbg.append("ERROR: unsafe file path in manifest: ").append(f.filename).append("\n");
+                    writeDebug(ctx, dbg);
+                    Log.e(TAG, "Manifest file path leaves the install folder: " + f.filename);
+                    lastFailureReason = "this game's manifest has a file path outside its folder";
+                    return false;
+                }
+            }
             dbg.append("installTags=").append(installTags == null ? "(all)" : installTags.toString())
                .append(" selectedFiles=").append(selectedFiles.size())
                .append("/").append(manifest.files.size()).append("\n");
@@ -1095,6 +1104,20 @@ public class EpicDownloadManager {
     // ── JSON manifest (older games) ───────────────────────────────────────────
 
     /**
+     * Whether a manifest file name stays inside the install folder: not empty, not absolute (no leading
+     * slash or drive letter) and no ".." part.
+     */
+    static boolean isSafeRelativePath(String name) {
+        if (name == null || name.trim().isEmpty()) return false;
+        String p = name.replace('\\', '/');
+        if (p.startsWith("/") || (p.length() >= 2 && p.charAt(1) == ':')) return false;
+        for (String part : p.split("/")) {
+            if (part.equals("..")) return false;
+        }
+        return true;
+    }
+
+    /**
      * A number in the JSON manifests' "blob" form: each byte as three decimal digits, least significant
      * byte first (Legendary blob_to_num; "013000000000" = 13). Groups past eight bytes are ignored and a
      * group that is not a number counts as 0.
@@ -1734,6 +1757,7 @@ public class EpicDownloadManager {
                 i++;
                 progress(progressCallback, "Verifying (" + i + "/" + files.size() + ")",
                         (int) (i * 100L / Math.max(files.size(), 1)));
+                if (!isSafeRelativePath(f.filename)) { r.checked++; r.corrupt++; continue; }
                 File out = new File(installDir, f.filename.replace("\\", "/"));
                 r.checked++;
                 if (!out.exists()) { r.missing++; continue; }

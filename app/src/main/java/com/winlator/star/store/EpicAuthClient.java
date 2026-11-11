@@ -54,12 +54,21 @@ public class EpicAuthClient {
 
     /** Exchange authorization_code for access + refresh tokens. */
     public static TokenResult exchangeCode(String authCode) {
-        return postToken("grant_type=authorization_code&code=" + authCode + "&token_type=eg1");
+        return postToken("grant_type=authorization_code&code=" + formValue(authCode) + "&token_type=eg1");
     }
 
     /** Refresh using refresh_token. */
     public static TokenResult refreshToken(String refreshToken) {
-        return postToken("grant_type=refresh_token&refresh_token=" + refreshToken + "&token_type=eg1");
+        return postToken("grant_type=refresh_token&refresh_token=" + formValue(refreshToken) + "&token_type=eg1");
+    }
+
+    /** {@code value} encoded for an application/x-www-form-urlencoded body. */
+    static String formValue(String value) {
+        try {
+            return java.net.URLEncoder.encode(value == null ? "" : value, "UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+            return value == null ? "" : value;
+        }
     }
 
     private static TokenResult postToken(String formBody) {
@@ -142,6 +151,15 @@ public class EpicAuthClient {
 
     /** Authorized GET — returns response body string or null on failure. */
     public static String getRequest(String urlStr, String accessToken) {
+        return getRequest(urlStr, accessToken, null);
+    }
+
+    /**
+     * Authorized GET; {@code statusOut[0]} (when given) receives the HTTP status, or -1 when the request
+     * did not get one.
+     */
+    public static String getRequest(String urlStr, String accessToken, int[] statusOut) {
+        if (statusOut != null && statusOut.length > 0) statusOut[0] = -1;
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(urlStr).openConnection();
@@ -152,6 +170,7 @@ public class EpicAuthClient {
             conn.setRequestProperty("User-Agent", USER_AGENT);
 
             int code = conn.getResponseCode();
+            if (statusOut != null && statusOut.length > 0) statusOut[0] = code;
             InputStream is = (code < 400) ? conn.getInputStream() : conn.getErrorStream();
             String resp = readStream(is);
             conn.disconnect();

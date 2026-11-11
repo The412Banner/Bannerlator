@@ -33,26 +33,51 @@ public class EpicApiClient {
 
     // ── Library Sync ──────────────────────────────────────────────────────────
 
+    /** {@link #fetchLibrary} result: the whole owned-games list, or null games and whether Epic refused the sign-in. */
+    public static final class LibraryFetch {
+        public final List<EpicGame> games;
+        public final boolean authFailed;
+
+        LibraryFetch(List<EpicGame> games, boolean authFailed) {
+            this.games = games;
+            this.authFailed = authFailed;
+        }
+    }
+
+    /** The full owned-games list, or null when any page failed (see {@link #fetchLibrary}). */
+    public static List<EpicGame> getLibraryItems(String accessToken) {
+        return fetchLibrary(accessToken).games;
+    }
+
     /**
      * Fetches the full owned-games list (paginated).
      * Filters out UE assets, private sandboxes, and non-Windows games.
-     * Returns new EpicGame objects with appName, namespace, catalogItemId filled.
+     * Returns new EpicGame objects with appName, namespace, catalogItemId filled. When any page fails the
+     * games are null (a partial list would replace the cached library); {@code authFailed} is set when
+     * Epic answered 401/403.
      */
-    public static List<EpicGame> getLibraryItems(String accessToken) {
+    public static LibraryFetch fetchLibrary(String accessToken) {
         List<EpicGame> result = new ArrayList<>();
         String cursor = null;
 
         do {
             try {
                 String url = LIBRARY_URL;
-                if (cursor != null) url += "&cursor=" + cursor;
+                if (cursor != null) url += "&cursor=" + java.net.URLEncoder.encode(cursor, "UTF-8");
 
-                String resp = EpicAuthClient.getRequest(url, accessToken);
-                if (resp == null) break;
+                int[] status = new int[1];
+                String resp = EpicAuthClient.getRequest(url, accessToken, status);
+                if (resp == null) {
+                    Log.w(TAG, "getLibraryItems: page failed (HTTP " + status[0] + ")");
+                    return new LibraryFetch(null, status[0] == 401 || status[0] == 403);
+                }
 
                 JSONObject json = new JSONObject(resp);
                 JSONArray records = json.optJSONArray("records");
-                if (records == null) break;
+                if (records == null) {
+                    Log.w(TAG, "getLibraryItems: page without records");
+                    return new LibraryFetch(null, false);
+                }
 
                 for (int i = 0; i < records.length(); i++) {
                     JSONObject rec = records.getJSONObject(i);
@@ -99,11 +124,11 @@ public class EpicApiClient {
 
             } catch (Exception e) {
                 Log.e(TAG, "getLibraryItems page failed", e);
-                break;
+                return new LibraryFetch(null, false);
             }
         } while (cursor != null);
 
-        return result;
+        return new LibraryFetch(result, false);
     }
 
     /**

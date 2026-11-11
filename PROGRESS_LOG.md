@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:22 EST — 🔀 MERGED fix/epic-store-bugs → main c524ed38 (CI 42938535257)
+- **User:** "merge to main". Merged after CI 42930770419 green and the user's first check on the Pocket FIT (Hogwarts Legacy update check + Verify, "seems good"); **an Epic game launch on this build was not tested before the merge**.
+- Backup `refs/backup/20261110/main-before-epic-store-bugs` = 2fb8169c; `--no-ff` c524ed38 (parents 2fb8169c + b936f975); code identical to the installed a597055f (only PROGRESS_LOG.md differs); no AI trailer. The push started CI Build (artifacts only) 42938535257 (headSha c524ed38) + GitHub Pages.
+- Pocket FIT runs a597055f = main code. Elite still 2e7456c4.
+- **Not done (Epic):** -epiclocale region codes, install-time language from the first container, cloud saves in Epic's format (item 8), auto cloud sync, install-space work.
+- **Next:** an Epic game launch on the FIT (check BH_EPIC_LAUNCH -epiclocale, crash buffer); main CI result.
+
 ## 2026-11-10 20:02 EST — 📲 INSTALLED fix/epic-store-bugs a597055f on the Pocket FIT (user yes)
 - **User:** "yes install it on the fit".
 - Before install: installed pubg build = 2b4e3aa5 (base.apk 3a3d4ddf…2eea, 18:51:11 EST); undo APK = `/sdcard/Download/Bannerlator-epic-game-fixes-2b4e3aa5-pubg.apk` (3a3d4ddf, same file). No Wine/game running; Bannerlator idle in the background, Chrome in front. Peers root-15 + root-54 messaged before install (a yserver-spike 4903bdb7 APK for the same package is staged by another session).

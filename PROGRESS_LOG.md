@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 19:4x EST — 🧪 feat/yserver-spike 0ca9b718: test switch for the yserver X server (step 3, NOT for merge)
+- **Why:** user "continue yserver" (yserver Android spike, private repo The412Banner/yserver-android-spike; steps 0-2 passed headless in Termux).
+- **Built:** `YServerComponent` + switch in `setupXEnvironment`: with `BANNER_YSERVER=1` in the game's env and an executable `files/yserver/yserver`, BL starts that binary (`:0 --headless --rootless --rootless-record`, `YSERVER_TMPDIR=imagefs/usr/tmp`, xkb from `files/yserver/xkb`, every 30th frame kept, max 40) instead of the Java X server; else unchanged. Overlay closes after 2 s like Wayland mode (no Java windows). No yserver code or binary in this repo; the binary is staged by hand.
+- **Expect:** black screen, no input (headless); proof = yserver log + recorded frames in `files/yserver/logs/`.
+- **CI:** pending. **Device test:** none yet (install needs the user's yes).
+
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
 - **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).
 - Backup `refs/backup/20261110/main-before-epic-game-fixes` = 33526bd1; `--no-ff` e8cf80bb (parents 33526bd1 + 2b4e3aa5); code identical to 2b4e3aa5; no AI trailer. The push started only the artifacts build (42927706039) + GitHub Pages.

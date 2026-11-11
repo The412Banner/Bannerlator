@@ -416,12 +416,7 @@ class EpicGameDetailActivity : ComponentActivity() {
                 }
                 if (!ok) { onInstallError(EpicDownloadManager.withFailureReason("Download failed")); return@launch }
 
-                try {
-                    val vid = JSONObject(manifestJson).optString("versionId", "")
-                    if (vid.isNotEmpty()) {
-                        prefs!!.edit().putString("epic_manifest_version_$an", vid).apply()
-                    }
-                } catch (_: Exception) {}
+                EpicInstallState.rememberVersion(appCtx, an, manifestJson)
 
                 val exeFiles = mutableListOf<File>()
                 AmazonLaunchHelper.collectExe(installDir, exeFiles)
@@ -606,8 +601,9 @@ class EpicGameDetailActivity : ComponentActivity() {
                     }
                     val stored = prefs!!.getString("epic_manifest_version_$appName", null)
                     if (stored == null) {
-                        prefs!!.edit().putString("epic_manifest_version_$appName", latest).apply()
-                        updateStatusText = "Up to date \u2713"
+                        // Unknown is not "up to date": Verify / Repair checks the files against this
+                        // version and records it.
+                        updateStatusText = "Installed version not recorded\nLatest: ${latest.substring(0, minOf(12, latest.length))}\u2026"
                         updateBtnVisible = false
                     } else if (stored == latest) {
                         updateStatusText = "Up to date \u2713"
@@ -660,9 +656,13 @@ class EpicGameDetailActivity : ComponentActivity() {
                     return@launch
                 }
                 if (!result.needsRepair()) {
+                    // The files match this manifest, so this is the installed version.
+                    EpicInstallState.rememberVersion(appCtx, an, manifestJson)
                     runOnUiThread {
                         verifyEnabled = true
                         verifyStatusText = "All ${result.ok}/${result.checked} files verified ✓"
+                        updateStatusText = ""
+                        updateBtnVisible = false
                     }
                     return@launch
                 }
@@ -671,10 +671,15 @@ class EpicGameDetailActivity : ComponentActivity() {
                 val ok = EpicDownloadManager.install(appCtx, manifestJson, token, dir, installTags) { _, pct ->
                     if (!isDestroyed && !isFinishing) runOnUiThread { verifyStatusText = "Repairing… $pct%" }
                 }
+                if (ok) EpicInstallState.rememberVersion(appCtx, an, manifestJson)
                 runOnUiThread {
                     verifyEnabled = true
                     verifyStatusText = if (ok) "Repaired $damaged file(s) ✓"
                         else EpicDownloadManager.withFailureReason("Repair failed")
+                    if (ok) {
+                        updateStatusText = ""
+                        updateBtnVisible = false
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread { verifyEnabled = true; verifyStatusText = "Verify error: ${e.message}" }
@@ -1006,7 +1011,7 @@ private fun EpicGameDetailScreen(
                         else {
                             val storedVer = prefs.getString("epic_manifest_version_$appName", null)
                             if (storedVer != null) "Installed: ${storedVer.substring(0, minOf(14, storedVer.length))}…"
-                            else "Version not recorded — tap Check to verify"
+                            else "Version not recorded — Verify / Repair records it"
                         }
                         StoreStatusText(displayText)
                         Spacer(Modifier.height(8.dp))

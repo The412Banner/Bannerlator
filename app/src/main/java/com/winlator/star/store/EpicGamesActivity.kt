@@ -505,6 +505,8 @@ class EpicGamesActivity : ComponentActivity() {
                     }
                     return@launch
                 }
+                // Installed version, for the detail page's update check (as the detail page's install does).
+                EpicInstallState.rememberVersion(appCtx, game.appName, manifestJson)
 
                 val exeFiles = mutableListOf<File>()
                 AmazonLaunchHelper.collectExe(installDir, exeFiles)

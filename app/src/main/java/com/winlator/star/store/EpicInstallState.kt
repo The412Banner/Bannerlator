@@ -36,6 +36,26 @@ object EpicInstallState {
     }
 
     /**
+     * Record [manifestJson]'s versionId (the manifest API response) as [appName]'s installed version,
+     * after an install, an update or a verify that matched the files. Nothing is written when the
+     * response has no versionId.
+     */
+    fun rememberVersion(ctx: Context, appName: String, manifestJson: String?) {
+        if (manifestJson.isNullOrEmpty()) return
+        val vid = try {
+            org.json.JSONObject(manifestJson).optString("versionId", "")
+        } catch (_: Exception) {
+            ""
+        }
+        if (vid.isEmpty()) return
+        ctx.applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString("epic_manifest_version_$appName", vid)
+            .apply()
+    }
+
+    /**
      * Disk-truth "is this game installed?" — the SAME record the detail page reads
      * ([EpicGameDetailActivity.refreshActionState]: `epic_exe_ != null`). The in-memory
      * [EpicGame.isInstalled] is never re-derived from prefs on a COLD start (the install-complete

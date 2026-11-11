@@ -100,9 +100,12 @@ public final class EpicLaunchArgs {
                 EpicSidecar.refreshAsync(ctx, namespace, catalogId, appName);
             }
 
-            // Locale (Feature #11): derive the 2-letter code from the container/shortcut language
-            // (lc_all) → device locale → "en", instead of a hardcoded "en".
-            String locale = EpicInstallTags.INSTANCE.localeCodeForCurrentContainer(ctx);
+            // Locale (Feature #11): the 2-letter code from this game's language (shortcut lc_all, else
+            // its container's, as XServerDisplayActivity applies it) → device locale → "en".
+            String gameLcAll = shortcut.container != null
+                    ? shortcut.getExtra("lc_all", shortcut.container.getLC_ALL())
+                    : shortcut.getExtra("lc_all", "");
+            String locale = EpicInstallTags.INSTANCE.localeCodeForGame(gameLcAll);
             if (locale == null || locale.isEmpty()) locale = "en";
 
             StringBuilder sb = new StringBuilder();

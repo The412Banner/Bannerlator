@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 01:30 EST launch: regression check on final BL 931c441d: AIO vk wl + x11 + ys (p7a)
 - 01:29 EST launch: yserver click test via compositor test-input (p6e)
 - 01:28 EST launch: yserver tap test (p6d) on BL 931c441d (clipboard ext_data_control) + yserver 4e229a33; Steam client renders on yserver (p6c)
 - 01:11 EST launch: Windows Steam client ys until steamwebhelper + 75 s, max 15 min (p6c)

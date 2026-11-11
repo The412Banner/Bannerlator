@@ -4,7 +4,10 @@
 - **Why:** user "continue yserver" (yserver Android spike, private repo The412Banner/yserver-android-spike; steps 0-2 passed headless in Termux).
 - **Built:** `YServerComponent` + switch in `setupXEnvironment`: with `BANNER_YSERVER=1` in the game's env and an executable `files/yserver/yserver`, BL starts that binary (`:0 --headless --rootless --rootless-record`, `YSERVER_TMPDIR=imagefs/usr/tmp`, xkb from `files/yserver/xkb`, every 30th frame kept, max 40) instead of the Java X server; else unchanged. Overlay closes after 2 s like Wayland mode (no Java windows). No yserver code or binary in this repo; the binary is staged by hand.
 - **Expect:** black screen, no input (headless); proof = yserver log + recorded frames in `files/yserver/logs/`.
-- **CI:** pending. **Device test:** none yet (install needs the user's yes).
+- **CI 42931263093** (headSha 4903bdb7): ✅ green, 4 flavors (skipped steps = the usual cache/main-only ones). pubg APK sha256 `0b71a4f156ba171a66c1aff685fa3b85f3513f13480078aab1f60aaac9cd0943` (host == device), staged `/sdcard/Download/Bannerlator-yserver-spike-4903bdb7-pubg.apk`; new strings present in classes4/5.dex.
+- **yserver staged** into `files/yserver/` (yserver + xkb + VERSION from yserver-android-spike bc0a13f0; binary sha256 3d74e678…; owner u0_a193, label app_data_file:s0:c193,c256,c512,c768). Pre-test as uid 10193 in untrusted_app_27:c193: socket ~100 ms, clean exit, 0 warn/error lines; pre-test files removed.
+- **Restore point:** installed now = fix/epic-game-fixes 2b4e3aa5 (18:51, base.apk sha256 3a3d4ddf… == `/sdcard/Download/Bannerlator-epic-game-fixes-2b4e3aa5-pubg.apk`).
+- **Device test:** not installed yet — waiting for the user's yes.
 
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
 - **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).

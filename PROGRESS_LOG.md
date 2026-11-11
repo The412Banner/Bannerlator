@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 06:13 EST — 📲 INSTALLED 97b5b360 (= main cb3901cf code) on the Pocket FIT (user: "yes install it")
+- CI 43004548075 pubg artifact staged `/sdcard/Download/Bannerlator-xserver-robustness-97b5b360-pubg.apk` sha256 5f4d5cda… (host == device, keepFrontOverConsole in dex); `pm install -r` Success 06:13:48 EST; installed base.apk == staged; crash buffer empty; files/yserver/yserver kept. Replaces 931c441d (restore APK `/sdcard/Download/Bannerlator-yserver-FINAL-931c441d-pubg.apk`). Peers root-6a/root-15 told.
+- RESUME: user tests next — windowed X11 game with a console window (speed + sound stay), Windows Steam on X11, one AIO run. After: logcat `XClientRequestHandler` ("Unsupported opcode", "failed; skipped", "read N of M bytes"), crash buffer, FATAL, game wine_debug.log.
+- Proof level: installed; NOT device-tested yet.
+
 ## 2026-11-11 05:5x EST — 🔀 MERGED fix/xserver-robustness into main (user: "fix the xserver bugs and merge that after green")
 - Backup ref `refs/backup/20261111/main-before-xserver-robustness` = b95bde74. `--no-ff` merge of 97b5b360 (+ log 97ecdcb6); main had no new commits, so the merged code = the CI-tested 97b5b360.
 - CI 43004548075 (headSha 97b5b360) 4/4 green; skipped steps = same list as the last green build 42970888210.

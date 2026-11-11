@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 23:03 EST launch: DiRT x11 + read game env (p3o)
 - 23:01 EST launch: DiRT x11 with MESA_VK_WSI_PRESENT_MODE=immediate (p3n)
 - 22:56 EST launch: DiRT x11 + wl with DXVK_LOG_LEVEL=info DXVK_LOG_PATH=D:\dxvklog-* (p3m)
 - 22:53 EST launch: DiRT x11 right after fast wl (p3l) — tests whether ys runs leave a slow state

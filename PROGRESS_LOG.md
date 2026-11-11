@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 06:4x EST — 🔀 MERGED fix/xserver-console-log into main (user: "yes merge and install it when green")
+- Backup ref `refs/backup/20261111/main-before-xserver-console-log` = 29f406a2. `--no-ff` merge of 0dec8d39 (+ log 4e8c7e65); main had no new commits → merged code = CI-tested 4e8c7e65. CI 43011414145 4/4 green, skipped steps = same as 43004548075.
+- Adds DesktopHelper log lines (tag DesktopHelper) for the console-window rule. Proof level: CI-green; install on the Pocket FIT next.
+
+## 2026-11-11 06:3x EST — ✅ console-window rule DEVICE-PROVEN on X11 + 🔧 fix/xserver-console-log (log lines)
+- Device test (Pocket FIT, 97b5b360 = main cb3901cf code): DiRT Showdown windowed on X11, 06:17:51–06:18:26 EST. BL "Start with the game" trainer (F:\Trainers\Trainer.exe via blrun0.bat) opened a conhost.exe window at 06:18:02 while DiRT was in front. **User: "it kept speed and sound"** (before the fix: 16 fps, no sound). Exit 0, crash buffer empty, 0 XClientRequestHandler lines (no unsupported / failed / misread requests); XIO + "X connection broken" only at exit, as in pre-fix X11 sessions (Windows Steam 11-10). The 06:16 DiRT run was Wayland mode (displayBackend=wayland), not a test of the fix.
+- fix/xserver-console-log: DesktopHelper logs (tag DesktopHelper) when the rule fires ("console window mapped … while X was in front") and each re-raise or skipped re-raise (user: "add the log line"). Merge needs the user's go.
+
 ## 2026-11-11 06:13 EST — 📲 INSTALLED 97b5b360 (= main cb3901cf code) on the Pocket FIT (user: "yes install it")
 - CI 43004548075 pubg artifact staged `/sdcard/Download/Bannerlator-xserver-robustness-97b5b360-pubg.apk` sha256 5f4d5cda… (host == device, keepFrontOverConsole in dex); `pm install -r` Success 06:13:48 EST; installed base.apk == staged; crash buffer empty; files/yserver/yserver kept. Replaces 931c441d (restore APK `/sdcard/Download/Bannerlator-yserver-FINAL-931c441d-pubg.apk`). Peers root-6a/root-15 told.
 - RESUME: user tests next — windowed X11 game with a console window (speed + sound stay), Windows Steam on X11, one AIO run. After: logcat `XClientRequestHandler` ("Unsupported opcode", "failed; skipped", "read N of M bytes"), crash buffer, FATAL, game wine_debug.log.

@@ -5475,6 +5475,19 @@ private fun LinuxHelp(show: Boolean, textResId: Int, onOpen: (Int) -> Unit) {
     }
 }
 
+/** The game dialog's version lists: Box64 (WOWBox64 on arm64ec), FEXCore and Box64EC, built-in ones first. */
+private fun translatorVersionLists(context: Context, cm: ContentsManager, arm64ec: Boolean): Triple<List<String>, List<String>, List<String>> {
+    val res = context.resources
+    fun installed(type: ContentProfile.ContentType) = (cm.getProfiles(type) ?: emptyList()).map {
+        val n = ContentsManager.getEntryName(it)
+        n.substring(n.indexOf('-') + 1)
+    }
+    val b64 = res.getStringArray(if (arm64ec) R.array.wowbox64_version_entries else R.array.box64_version_entries).toList() +
+        installed(if (arm64ec) ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64 else ContentProfile.ContentType.CONTENT_TYPE_BOX64)
+    val fex = res.getStringArray(R.array.fexcore_version_entries).toList() + installed(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE)
+    return Triple(b64, fex, installed(ContentProfile.ContentType.CONTENT_TYPE_BOX64EC))
+}
+
 @Composable
 internal fun ShortcutSettingsDialogScreen(
     shortcut: Shortcut,
@@ -6239,6 +6252,20 @@ internal fun ShortcutSettingsDialogScreen(
     }
     var showIconPickMenu by remember { mutableStateOf(false) }
 
+    // A Box64 / WOWBox64 / FEXCore / Box64EC download from this dialog: re-read only those lists, so a new
+    // version can be picked at once and unsaved edits stay.
+    var translatorListsKey by remember { mutableIntStateOf(0) }
+    LaunchedEffect(translatorListsKey) {
+        if (translatorListsKey == 0 || !archLoaded) return@LaunchedEffect
+        val (b64Arr, fexList, ecList) = withContext(Dispatchers.IO) {
+            translatorVersionLists(context, ContentsManager(context).apply { syncContents() }, isArm64EC)
+        }
+        box64Versions = b64Arr
+        fexCoreVersions = fexList
+        box64ECVersions = ecList
+        box64ECInstalled = ecList.isNotEmpty()
+    }
+
     // Load async data
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -6247,28 +6274,9 @@ internal fun ShortcutSettingsDialogScreen(
             val wineInfo = WineInfo.fromIdentifier(context, cm, shortcut.container.wineVersion)
             val arm64ec = wineInfo.isArm64EC()
 
-            val b64Type = if (arm64ec) ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64
-                          else ContentProfile.ContentType.CONTENT_TYPE_BOX64
-            val b64Arr = if (arm64ec) res.getStringArray(R.array.wowbox64_version_entries).toMutableList()
-                         else res.getStringArray(R.array.box64_version_entries).toMutableList()
-            for (p in cm.getProfiles(b64Type)) {
-                val n = ContentsManager.getEntryName(p)
-                b64Arr.add(n.substring(n.indexOf('-') + 1))
-            }
-
-            val fexList = res.getStringArray(R.array.fexcore_version_entries).toMutableList()
-            for (p in cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE)) {
-                val n = ContentsManager.getEntryName(p)
-                fexList.add(n.substring(n.indexOf('-') + 1))
-            }
-
+            val (b64Arr, fexList, ecList) = translatorVersionLists(context, cm, arm64ec)
             val b64Presets = Box64PresetManager.getPresets("box64", context)
             val fexPresets = FEXCorePresetManager.getPresets(context)
-            val ecList = mutableListOf<String>()
-            for (p in cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64EC) ?: emptyList()) {
-                val n = ContentsManager.getEntryName(p)
-                ecList.add(n.substring(n.indexOf('-') + 1))
-            }
             val ecInstalled = ecList.isNotEmpty()
             val profiles = InputControlsManager(context).getProfiles(true)
 
@@ -8747,21 +8755,21 @@ internal fun ShortcutSettingsDialogScreen(
                 else
                     com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64,
                 onDismiss = { showBox64DownloadSheet = false },
-                onContentChanged = {}
+                onContentChanged = { translatorListsKey++ }
             )
         }
         if (showFexCoreDownloadSheet) {
             ContentDownloadSheet(
                 contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
                 onDismiss = { showFexCoreDownloadSheet = false },
-                onContentChanged = {}
+                onContentChanged = { translatorListsKey++ }
             )
         }
         if (showBox64ECDownloadSheet) {
             ContentDownloadSheet(
                 contentType = com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64EC,
                 onDismiss = { showBox64ECDownloadSheet = false },
-                onContentChanged = {}
+                onContentChanged = { translatorListsKey++ }
             )
         }
         if (showDxvkDownloadSheet) {

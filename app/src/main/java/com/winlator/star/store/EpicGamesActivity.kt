@@ -218,9 +218,24 @@ class EpicGamesActivity : ComponentActivity() {
             }
 
             if (showProgress) setSync("Fetching game list\u2026")
-            val rawGames = EpicApiClient.getLibraryItems(token)
+            val fetch = EpicApiClient.fetchLibrary(token)
+            if (fetch.authFailed) {
+                setSync("Not logged in")
+                withContext(Dispatchers.Main) {
+                    enableRefresh()
+                    resultBarMsg = "Please log in to Epic Games first"
+                    finish()
+                }
+                return
+            }
+            val rawGames = fetch.games
+            if (rawGames == null) {
+                setSync("Could not load the Epic library")
+                withContext(Dispatchers.Main) { enableRefresh() }
+                return
+            }
 
-            if (rawGames.isNullOrEmpty()) {
+            if (rawGames.isEmpty()) {
                 setSync("No games found in Epic library")
                 withContext(Dispatchers.Main) { enableRefresh() }
                 return
@@ -490,6 +505,8 @@ class EpicGamesActivity : ComponentActivity() {
                     }
                     return@launch
                 }
+                // Installed version, for the detail page's update check (as the detail page's install does).
+                EpicInstallState.rememberVersion(appCtx, game.appName, manifestJson)
 
                 val exeFiles = mutableListOf<File>()
                 AmazonLaunchHelper.collectExe(installDir, exeFiles)

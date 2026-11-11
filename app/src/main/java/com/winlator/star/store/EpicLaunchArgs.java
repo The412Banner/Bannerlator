@@ -100,9 +100,12 @@ public final class EpicLaunchArgs {
                 EpicSidecar.refreshAsync(ctx, namespace, catalogId, appName);
             }
 
-            // Locale (Feature #11): derive the 2-letter code from the container/shortcut language
-            // (lc_all) → device locale → "en", instead of a hardcoded "en".
-            String locale = EpicInstallTags.INSTANCE.localeCodeForCurrentContainer(ctx);
+            // Locale (Feature #11): the 2-letter code from this game's language (shortcut lc_all, else
+            // its container's, as XServerDisplayActivity applies it) → device locale → "en".
+            String gameLcAll = shortcut.container != null
+                    ? shortcut.getExtra("lc_all", shortcut.container.getLC_ALL())
+                    : shortcut.getExtra("lc_all", "");
+            String locale = EpicInstallTags.INSTANCE.localeCodeForGame(gameLcAll);
             if (locale == null || locale.isEmpty()) locale = "en";
 
             StringBuilder sb = new StringBuilder();
@@ -186,6 +189,50 @@ public final class EpicLaunchArgs {
             }
         } catch (Throwable t) {
             Log.w(TAG, "appendAdditionalCommandLine failed for " + appName, t);
+        }
+    }
+
+    private static final String PREFS = "bh_epic_prefs";
+    private static final String LAUNCH_COMMAND_PREFIX = "epic_launch_cmd_";
+
+    /**
+     * Keeps the launch command from {@code appName}'s manifest (what the Epic launcher passes to the game,
+     * e.g. "-PCStore=EGS"; Legendary: manifest meta launch_command). An empty command removes the entry.
+     * Called when a manifest is parsed for an install, update or verify.
+     */
+    public static void rememberManifestLaunchCommand(Context ctx, String appName, String launchCommand) {
+        if (ctx == null || appName == null || appName.trim().isEmpty()) return;
+        try {
+            String command = sanitizeCommandLine(launchCommand);
+            android.content.SharedPreferences.Editor e = ctx.getSharedPreferences(PREFS, 0).edit();
+            if (command.isEmpty()) e.remove(LAUNCH_COMMAND_PREFIX + appName.trim());
+            else e.putString(LAUNCH_COMMAND_PREFIX + appName.trim(), command);
+            e.apply();
+            if (!command.isEmpty()) Log.i(TAG, "manifest launch command for " + appName + ": " + command);
+        } catch (Throwable t) {
+            Log.w(TAG, "rememberManifestLaunchCommand failed for " + appName, t);
+        }
+    }
+
+    /**
+     * The kept manifest launch command of the Epic game {@code shortcut} starts, when {@code command} does
+     * not already end with it; "" otherwise (not an Epic shortcut, no command kept). Applies to every Epic
+     * launch, with or without EOS.
+     */
+    public static String manifestLaunchCommand(Context ctx, Shortcut shortcut, String command) {
+        if (ctx == null || shortcut == null || !"epic".equals(shortcut.getExtra("storeSource"))) return "";
+        try {
+            String appName = shortcut.getExtra("epicAppName", "").trim();
+            if (appName.isEmpty()) return "";
+            String kept = ctx.getSharedPreferences(PREFS, 0).getString(LAUNCH_COMMAND_PREFIX + appName, "");
+            String extra = sanitizeCommandLine(kept);
+            if (extra.isEmpty()) return "";
+            if (command != null && (" " + command + " ").contains(" " + extra + " ")) return "";
+            Log.i(TAG, "manifest launch command for " + appName + ": " + extra);
+            return extra;
+        } catch (Throwable t) {
+            Log.w(TAG, "manifestLaunchCommand failed", t);
+            return "";
         }
     }
 

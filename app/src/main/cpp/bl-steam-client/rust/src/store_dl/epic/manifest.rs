@@ -20,12 +20,12 @@ pub struct ChunkInfo {
     pub guid: [u32; 4],
     /// uint64 "hash" that forms the first half of the chunk file name.
     pub hash: u64,
-    /// SHA-1 of the DECOMPRESSED chunk; `None` for JSON manifests (Java: `sha1 == null`).
+    /// SHA-1 of the DECOMPRESSED chunk; `None` when the manifest has none (Java: `sha1 == null`).
     pub sha1: Option<[u8; 20]>,
     /// Subfolder number (DECIMAL `%02d`). `i32` so the JSON parser's `Integer.parseInt` range is
     /// representable exactly (binary manifests always yield 0..=255).
     pub group_num: i32,
-    /// Uncompressed size (0 for JSON manifests).
+    /// Uncompressed size (1 MiB for JSON manifests, as in Legendary).
     pub window_size: i32,
     /// Compressed (wire) size. Signed like the Java `long`; JSON manifests may yield anything.
     pub file_size: i64,
@@ -90,7 +90,7 @@ pub struct FileInfo {
     pub parts: Vec<ChunkPart>,
     /// Install-tag names; empty = required/base file.
     pub install_tags: Vec<String>,
-    /// Full-file SHA-1; `None` for JSON manifests.
+    /// Full-file SHA-1; `None` when the manifest has none.
     pub sha1: Option<[u8; 20]>,
 }
 
@@ -139,17 +139,57 @@ pub fn chunk_dir_for_binary_version(version: i32) -> &'static str {
     }
 }
 
-/// `chunkDir` from `ManifestFileVersion` (`parseJsonManifest`; note the different `< 3` default).
+/// `chunkDir` from the JSON `ManifestFileVersion` (`parseJsonManifest` → `chunkDirForVersion`).
 pub fn chunk_dir_for_json_version(version: i32) -> &'static str {
-    if version >= 15 {
-        "ChunksV4"
-    } else if version >= 6 {
-        "ChunksV3"
-    } else if version >= 3 {
-        "ChunksV2"
-    } else {
-        "ChunksV4"
+    chunk_dir_for_binary_version(version)
+}
+
+/// A number in the JSON manifests' "blob" form: each byte as three decimal digits, least
+/// significant byte first (Legendary `blob_to_num`; `"013000000000"` = 13). Groups past eight
+/// bytes are ignored and a group that is not a number counts as 0 (`EpicDownloadManager.blobToLong`).
+pub fn blob_to_u64(blob: &str) -> u64 {
+    let b = blob.as_bytes();
+    let mut num: u64 = 0;
+    let mut i = 0;
+    let mut shift = 0u32;
+    while i < b.len() && shift < 64 {
+        let end = (i + 3).min(b.len());
+        let v = std::str::from_utf8(&b[i..end]).ok().and_then(|t| t.parse::<i32>().ok()).unwrap_or(0);
+        num |= ((v & 0xFF) as u64) << shift;
+        i += 3;
+        shift += 8;
     }
+    num
+}
+
+/// The first 20 bytes of a "blob" string (three decimal digits each), or `None` when it is shorter
+/// or not numeric (`EpicDownloadManager.blobToBytes`).
+fn blob_to_sha1(blob: &str) -> Option<[u8; 20]> {
+    let b = blob.as_bytes();
+    if b.len() < 60 {
+        return None;
+    }
+    let mut out = [0u8; 20];
+    for (k, slot) in out.iter_mut().enumerate() {
+        let t = std::str::from_utf8(&b[k * 3..k * 3 + 3]).ok()?;
+        *slot = t.parse::<i32>().ok()? as u8;
+    }
+    Some(out)
+}
+
+/// A 40-digit hex SHA-1 as 20 bytes, or `None` (`EpicDownloadManager.sha1FromHex`).
+fn sha1_from_hex(hex: &str) -> Option<[u8; 20]> {
+    let b = hex.as_bytes();
+    if b.len() != 40 {
+        return None;
+    }
+    let mut out = [0u8; 20];
+    for (k, slot) in out.iter_mut().enumerate() {
+        let hi = (b[k * 2] as char).to_digit(16)?;
+        let lo = (b[k * 2 + 1] as char).to_digit(16)?;
+        *slot = ((hi << 4) | lo) as u8;
+    }
+    Some(out)
 }
 
 // ── little-endian cursor with ByteBuffer-like failure semantics ─────────────────────────────
@@ -483,9 +523,8 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         .as_object()
         .ok_or_else(|| "JSON manifest: root is not an object".to_string())?;
 
-    let manifest_version: i32 = opt_string(root, "ManifestFileVersion", "0")
-        .parse::<i32>()
-        .unwrap_or(0);
+    // Legendary's default when the field is missing: "013000000000" (version 13).
+    let manifest_version = blob_to_u64(&opt_string(root, "ManifestFileVersion", "013000000000")) as i32;
     let chunk_dir = chunk_dir_for_json_version(manifest_version);
 
     let chunk_hash_list = root
@@ -494,6 +533,7 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         .ok_or_else(|| "JSON manifest: no ChunkHashList".to_string())?;
     let data_group_list = root.get("DataGroupList").and_then(|v| v.as_object());
     let chunk_filesize_list = root.get("ChunkFilesizeList").and_then(|v| v.as_object());
+    let chunk_sha_list = root.get("ChunkShaList").and_then(|v| v.as_object());
 
     // `LinkedHashMap<String, ChunkInfo>` keyed by the RAW key string (not the normalized GUID).
     let mut chunk_order: Vec<ChunkInfo> = Vec::new();
@@ -504,25 +544,22 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         }
         let hash_hex = json_to_string(hash_value);
         let guid = parse_guid_from_hex(guid_hex)?;
-        let hash = if hash_hex.len() >= 16 && hash_hex.is_char_boundary(16) {
-            u64::from_str_radix(&hash_hex[0..16], 16).unwrap_or(0)
-        } else {
-            0
-        };
+        let hash = blob_to_u64(&hash_hex);
         let group_num = match data_group_list {
-            Some(dgl) => opt_string(dgl, guid_hex, "0").parse::<i32>().unwrap_or(0),
+            Some(dgl) => blob_to_u64(&opt_string(dgl, guid_hex, "0")) as i32,
             None => 0,
         };
         let file_size = match chunk_filesize_list {
-            Some(cfl) => i64::from_str_radix(&opt_string(cfl, guid_hex, "0"), 16).unwrap_or(0),
+            Some(cfl) => blob_to_u64(&opt_string(cfl, guid_hex, "0")) as i64,
             None => 0,
         };
+        let sha1 = chunk_sha_list.and_then(|l| sha1_from_hex(&opt_string(l, guid_hex, "")));
         let c = ChunkInfo {
             guid,
             hash,
-            sha1: None,
+            sha1,
             group_num,
-            window_size: 0,
+            window_size: 1_048_576,
             file_size,
         };
         match chunk_index.get(guid_hex).copied() {
@@ -546,6 +583,7 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
             .ok_or_else(|| "JSON manifest: FileManifestList entry is not an object".to_string())?;
         let mut fi = FileInfo {
             filename: opt_string(file_obj, "Filename", ""),
+            sha1: blob_to_sha1(&opt_string(file_obj, "FileHash", "")),
             ..FileInfo::default()
         };
         if let Some(tags) = file_obj.get("InstallTags").and_then(|v| v.as_array()) {
@@ -570,8 +608,8 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
                 if part_guid.len() >= 32 && part_guid.is_char_boundary(32) {
                     part.guid = parse_guid_from_hex(&part_guid)?;
                 }
-                part.offset = opt_string(part_obj, "Offset", "0").parse::<i32>().unwrap_or(0);
-                part.size = opt_string(part_obj, "Size", "0").parse::<i32>().unwrap_or(0);
+                part.offset = blob_to_u64(&opt_string(part_obj, "Offset", "0")) as i32;
+                part.size = blob_to_u64(&opt_string(part_obj, "Size", "0")) as i32;
                 fi.parts.push(part);
             }
         }
@@ -869,8 +907,9 @@ mod tests {
             let bytes = build_manifest(&sample_chunks(), &sample_files(), v, false);
             assert_eq!(parse_manifest(&bytes).unwrap().chunk_dir, dir, "version {v}");
         }
-        assert_eq!(chunk_dir_for_json_version(1), "ChunksV4");
+        assert_eq!(chunk_dir_for_json_version(1), "Chunks");
         assert_eq!(chunk_dir_for_json_version(4), "ChunksV2");
+        assert_eq!(chunk_dir_for_json_version(13), "ChunksV3");
     }
 
     #[test]
@@ -929,23 +968,39 @@ mod tests {
     }
 
     #[test]
+    fn blob_numbers_decode_little_endian() {
+        assert_eq!(blob_to_u64("013000000000"), 13);
+        assert_eq!(blob_to_u64("000001000000"), 256);
+        assert_eq!(blob_to_u64("239205222018120103069001"), 0x0145_6778_12DE_CDEF);
+        assert_eq!(blob_to_u64("255255255255255255255255"), u64::MAX);
+        assert_eq!(blob_to_u64(""), 0);
+        assert_eq!(blob_to_u64("0x5"), 0, "a non-numeric group counts as 0");
+    }
+
+    #[test]
     fn json_manifest_parses_like_java() {
-        let json = r#"{
-          "ManifestFileVersion": "013",
-          "ChunkHashList": {
-            "0000000100000002000000030000000ff": "0123456789ABCDEF00",
+        // Blob values as Epic writes them (Legendary json_manifest.py): hash 0x0123456789ABCDEF,
+        // group 7, compressed size 0x1234, part offset 300, part size 70000.
+        let file_hash: String = (1..=20).map(|b| format!("{b:03}")).collect();
+        let json = format!(
+            r#"{{
+          "ManifestFileVersion": "013000000000",
+          "ChunkHashList": {{
+            "0000000100000002000000030000000ff": "239205171137103069035001",
             "short": "00",
             "DEADBEEFFFFFFFFF0000000080000000": "zz"
-          },
-          "DataGroupList": { "0000000100000002000000030000000ff": "7", "DEADBEEFFFFFFFFF0000000080000000": "x" },
-          "ChunkFilesizeList": { "0000000100000002000000030000000ff": "FF" },
+          }},
+          "ChunkShaList": {{ "0000000100000002000000030000000ff": "00112233445566778899aabbccddeeff00112233" }},
+          "DataGroupList": {{ "0000000100000002000000030000000ff": "007", "DEADBEEFFFFFFFFF0000000080000000": "x" }},
+          "ChunkFilesizeList": {{ "0000000100000002000000030000000ff": "052018000000000000000000" }},
           "FileManifestList": [
-            { "Filename": "a.bin", "InstallTags": ["German", ""],
-              "FileChunkParts": [ { "Guid": "0000000100000002000000030000000ff", "Offset": "12", "Size": "34" },
-                                  { "Guid": "tooshort", "Offset": "x", "Size": "-5" } ] },
-            { "Filename": "b.bin" }
+            {{ "Filename": "a.bin", "FileHash": "{file_hash}", "InstallTags": ["German", ""],
+              "FileChunkParts": [ {{ "Guid": "0000000100000002000000030000000ff", "Offset": "044001000000", "Size": "112017001000" }},
+                                  {{ "Guid": "tooshort", "Offset": "x", "Size": "zz" }} ] }},
+            {{ "Filename": "b.bin" }}
           ]
-        }"#;
+        }}"#
+        );
         let m = parse_manifest(json.as_bytes()).expect("json parse");
         assert_eq!(m.chunk_dir, "ChunksV3");
         assert_eq!(m.unique_chunks.len(), 2, "keys shorter than 32 chars are skipped");
@@ -953,23 +1008,29 @@ mod tests {
         assert_eq!(c0.guid, [1, 2, 3, 0x0000_000F]);
         assert_eq!(c0.hash, 0x0123_4567_89AB_CDEF);
         assert_eq!(c0.group_num, 7);
-        assert_eq!(c0.file_size, 0xFF);
-        assert_eq!(c0.window_size, 0);
-        assert!(c0.sha1.is_none());
+        assert_eq!(c0.file_size, 0x1234);
+        assert_eq!(c0.window_size, 1_048_576);
+        assert_eq!(
+            c0.sha1,
+            Some([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33])
+        );
         let c1 = &m.unique_chunks[1];
         assert_eq!(c1.hash, 0, "unparseable hash → 0");
         assert_eq!(c1.group_num, 0, "unparseable group → 0");
         assert_eq!(c1.file_size, 0, "missing size → 0");
+        assert!(c1.sha1.is_none());
 
         assert_eq!(m.files.len(), 2);
         assert_eq!(m.files[0].install_tags, vec!["German".to_string()]);
         assert_eq!(m.files[0].parts.len(), 2);
-        assert_eq!(m.files[0].parts[0].offset, 12);
-        assert_eq!(m.files[0].parts[0].size, 34);
+        assert_eq!(m.files[0].parts[0].offset, 300);
+        assert_eq!(m.files[0].parts[0].size, 70_000);
         assert_eq!(m.files[0].parts[1].guid, [0; 4]);
         assert_eq!(m.files[0].parts[1].offset, 0);
-        assert_eq!(m.files[0].parts[1].size, -5);
-        assert!(m.files[0].sha1.is_none());
+        assert_eq!(m.files[0].parts[1].size, 0);
+        let want: Vec<u8> = (1..=20).collect();
+        assert_eq!(m.files[0].sha1.map(|h| h.to_vec()), Some(want));
+        assert!(m.files[1].sha1.is_none());
         assert!(m.files[1].parts.is_empty());
     }
 

@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:16 EST launch: AIO vk ys 20 s + simpleperf on yserver (p2d), unstripped yserver b1e83a57 staged (current binary backed up to /sdcard/Download/ys-stage/yserver-current.bak)
 - 22:12 EST launch: AIO vk ys 6 s with YSERVER_PRESENT_TRACE=1 YSERVER_LOOP_TELEMETRY=1 RUST_LOG=info (p2c)
 - 22:10 EST launch: AIO vk ys sync + ys async (p2b); BL 4e582b35 (54c4d800) + yserver e61d1a15 (0001-0012, f85ffcb1)
 - 22:03 EST launch: AIO vk ys (p2a) with yserver 47ef5361 (0009 AHB pool hand-off), BL c72254b5

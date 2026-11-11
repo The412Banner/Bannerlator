@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 19:22 EST — 🔧 fix/epic-store-bugs a597055f: Epic bug fixes 2–7 done, CI 42930770419 dispatched
+- **User:** "finish the epic fixes and build them". The session that started the branch (root-de) was lost at 19:09 when Android's low-memory killer closed Termux; its token and library fixes were still uncommitted in the worktree. Reviewed and committed them, then wrote items 6 and 7.
+- **Commits:** 747e5bba (items 2+3: JSON manifest blob numbers, manifest launch command; root-de) → 2b04f12c (items 4+5: token refresh one at a time, expired token → sign in again; library sync keeps the cache on a failed page, 401/403 → sign in; URL-encoded cursor/auth code/refresh token; manifest paths with ".." or absolute refused before download and counted as damaged in Verify) → a597055f (item 6: -epiclocale from the game's own lc_all = shortcut, else its container, then device locale, then en; item 7: library-screen installs record the installed version, an update check with no recorded version no longer saves the latest and says "Up to date", Verify / Repair records the version once the files match).
+- **Checked:** EpicCredentialStore + isSafeRelativePath compiled with plain-Java stand-ins: 20/20 (expired token → null, 8 parallel callers → 1 refresh, ".." / absolute / drive paths refused). Every getValidAccessToken caller already handles null. The Rust engine writes chunk files only (by GUID), so the Java path check covers both engines. Kotlin not compiled locally (no kotlinc) → CI.
+- **Not done:** Epic region codes for -epiclocale (pt-BR, zh-Hans…; would port GameNative EpicConstants), install-time language still from the first container (no container at download time).
+- **Hogwarts Legacy 19:09 EST:** not a crash: lmkd LOW_MEMORY kill at adj 0 (lmkd_cushion minfree mode counting GPU memory twice; same as WRC 11-08). Details in the memory notes.
+- **Next:** CI result → stage APK on the FIT with hashes → ask the user before installing.
+- **Proof level:** pushed, CI running; NOT device-tested.
+
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
 - **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).
 - Backup `refs/backup/20261110/main-before-epic-game-fixes` = 33526bd1; `--no-ff` e8cf80bb (parents 33526bd1 + 2b4e3aa5); code identical to 2b4e3aa5; no AI trailer. The push started only the artifacts build (42927706039) + GitHub Pages.

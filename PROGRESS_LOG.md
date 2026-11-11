@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-10 20:2x EST — 🔧 fix/espectro-minor-bugs 49d235eb: 7 fixes from El_Espectro's "Minor bugs in 3.1.9-pre2" thread (CI next)
+## 2026-11-10 19:35 EST — 🔧 fix/espectro-minor-bugs 49d235eb: 7 fixes from El_Espectro's "Minor bugs in 3.1.9-pre2" thread (CI 42932580327)
 - **Why:** the user asked to read the Discord thread (BannerHub server, thread 1556629640133742652, El_Espectro, Dante, Ajay) and fix the reported bugs, "in lab ui also". Read with the bot's read-only helper; videos looked at frame by frame.
 - **Branch:** fix/espectro-minor-bugs off main 2fb8169c, worktree `/root/src/Bannerlator-wt/espectro-minor-bugs`.
 - **Fixes (each its own commit):**
@@ -12,7 +12,7 @@
   6. 49ac03cf Task Manager: its process listener is a side listener while open (the game-exit / installer watchers re-took the single owner slot every 2 s → frozen list, memory never changed); null info ignored.
   7. 49d235eb In-game Controls menu (Classic/Deck/Lab) refreshed after the #333 smart default loads the Virtual Gamepad, so it no longer says "-- Disabled --" over a shown pad; choosing Disabled opts out.
 - **Not done:** profile import mid-game / in PiP (reporter: feature request). Whether fresh installs should get the #333 Virtual Gamepad at all = user's call.
-- **Proof level:** committed + pushed; NOT built yet; NOT device-tested.
+- **Proof level:** committed + pushed; CI 42932580327 dispatched 19:35 EST (headSha d773bc08 = branch); NOT device-tested.
 - **Resume:** dispatch `build-artifacts.yml` on the branch (assert headSha) → stage pubg APK `/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk` (sha256 host == device) → ASK before install.
 
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)

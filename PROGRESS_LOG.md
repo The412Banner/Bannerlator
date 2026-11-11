@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:3x EST — 🔀 main 04715c8b merged into fix/espectro-minor-bugs (98c0682c), rebuild
+- **User:** "yes merge main and rebuild" (main got fix/epic-store-bugs at 20:22 EST), so one build carries the Epic store fixes and the 7 Espectro fixes.
+- Backup `refs/backup/20261110/espectro-minor-bugs-before-main-merge` = b2e54731 (pushed). `--no-ff` merge 98c0682c (parents b2e54731 + 04715c8b), no AI trailer.
+- Only PROGRESS_LOG.md conflicted (both sides added top entries) → kept all, newest first (14,342 base + 22 + 32 = 14,396 lines). Checked: every main-only file == main, every espectro-only file == branch; XServerDisplayActivity.java = branch + main's 5-line Epic manifest-command hunk only.
+- Staged d773bc08 APK is now superseded (not installed). The FIT runs a597055f (= main code); root-6a asked to be told before anything is installed over it.
+- **Proof level:** merged, NOT compiled yet.
+- **Resume:** build-artifacts CI on the branch (assert headSha) → stage pubg `/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk` (sha256 host == device) → check with root-6a → ASK the user before install.
+
 ## 2026-11-10 20:22 EST — 🔀 MERGED fix/epic-store-bugs → main c524ed38 (CI 42938535257)
 - **User:** "merge to main". Merged after CI 42930770419 green and the user's first check on the Pocket FIT (Hogwarts Legacy update check + Verify, "seems good"); **an Epic game launch on this build was not tested before the merge**.
 - Backup `refs/backup/20261110/main-before-epic-store-bugs` = 2fb8169c; `--no-ff` c524ed38 (parents 2fb8169c + b936f975); code identical to the installed a597055f (only PROGRESS_LOG.md differs); no AI trailer. The push started CI Build (artifacts only) 42938535257 (headSha c524ed38) + GitHub Pages.

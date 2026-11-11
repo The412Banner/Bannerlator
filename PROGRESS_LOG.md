@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 23:50 EST launch: AIO vk ys FPS limiter 60 rerun (p4f)
 - 23:49 EST launch: AIO vk ys 15 s with FPS limiter 60 (p4d frame cap) and without (p4e)
 - 23:47 EST result: DiRT ys 116.8 fps (p4c) with activation fix; next: install BL frame-cap build + yserver 0016, limiter + zero-copy layer tests
 - 23:46 EST launch: DiRT ys with re-raise after conhost (p4c); BL d948577f (593d129c) + yserver b507382a

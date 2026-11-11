@@ -2,6 +2,7 @@ package com.winlator.star.xserver;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.collection.ArrayMap;
 
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class DesktopHelper {
+    private static final String TAG = "DesktopHelper";
     private static final String CONSOLE_CLASS = "conhost.exe";
     // The application window last brought to the front (mapped or tapped); a newer one cancels the
     // pending re-raises below.
@@ -76,11 +78,19 @@ public abstract class DesktopHelper {
         if (cls == null || cls.equalsIgnoreCase(CONSOLE_CLASS) || !window.isApplicationWindow()
                 || !window.getClassName().equalsIgnoreCase(CONSOLE_CLASS)) return false;
         final int seq = raiseSeq.incrementAndGet();
+        Log.i(TAG, "console window mapped (" + CONSOLE_CLASS + " hwnd 0x" + Long.toHexString(window.getHandle())
+                + ") while " + cls + " was in front: no focus for it, " + cls + " raised again in Wine");
         Handler ui = new Handler(Looper.getMainLooper());
         for (long delay : new long[]{300L, 1300L}) {
             ui.postDelayed(() -> {
                 WinHandler winHandler = xServer.getWinHandler();
-                if (winHandler != null && seq == raiseSeq.get()) winHandler.bringToFront(cls, handle);
+                if (winHandler == null) return;
+                if (seq != raiseSeq.get()) {
+                    Log.i(TAG, cls + " not raised again after " + delay + " ms: another window was raised meanwhile");
+                    return;
+                }
+                winHandler.bringToFront(cls, handle);
+                Log.i(TAG, cls + " hwnd 0x" + Long.toHexString(handle) + " raised again after " + delay + " ms");
             }, delay);
         }
         return true;

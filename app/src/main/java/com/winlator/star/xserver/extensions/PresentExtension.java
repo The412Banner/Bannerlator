@@ -13,8 +13,11 @@ import com.winlator.star.xserver.Bitmask;
 import com.winlator.star.xserver.Drawable;
 import com.winlator.star.xserver.Pixmap;
 import com.winlator.star.xserver.Window;
+import com.winlator.star.xserver.WindowManager;
 import com.winlator.star.xserver.XClient;
 import com.winlator.star.xserver.XLock;
+import com.winlator.star.xserver.XResource;
+import com.winlator.star.xserver.XResourceManager;
 import com.winlator.star.xserver.XServer;
 import com.winlator.star.xserver.errors.BadImplementation;
 import com.winlator.star.xserver.errors.BadMatch;
@@ -22,11 +25,12 @@ import com.winlator.star.xserver.errors.BadPixmap;
 import com.winlator.star.xserver.errors.BadWindow;
 import com.winlator.star.xserver.errors.XRequestError;
 import com.winlator.star.xserver.events.PresentCompleteNotify;
+import com.winlator.star.xserver.events.PresentConfigureNotify;
 import com.winlator.star.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
 
-public class PresentExtension implements Extension {
+public class PresentExtension implements Extension, XResourceManager.OnResourceLifecycleListener, WindowManager.OnWindowModificationListener {
     public static final byte MAJOR_OPCODE = -103;
     private static final int FAKE_INTERVAL = 1000000 / 60;
     public enum Kind {PIXMAP, MSC_NOTIFY}
@@ -55,6 +59,11 @@ public class PresentExtension implements Extension {
         private Bitmask mask;
     }
 
+    public PresentExtension(XServer xServer) {
+        xServer.windowManager.addOnResourceLifecycleListener(this);
+        xServer.windowManager.addOnWindowModificationListener(this);
+    }
+
     @Override
     public String getName() {
         return "Present";
@@ -73,6 +82,17 @@ public class PresentExtension implements Extension {
     @Override
     public byte getFirstEventId() {
         return 0;
+    }
+
+    private void sendConfigureNotify(Window window, int pixmapFlags) {
+        synchronized (events) {
+            for (int i = 0; i < events.size(); i++) {
+                Event event = events.valueAt(i);
+                if (event.window == window && event.mask.isSet(PresentConfigureNotify.getEventMask())) {
+                    event.client.sendEvent(new PresentConfigureNotify(event.id, window, pixmapFlags));
+                }
+            }
+        }
     }
 
     private void sendIdleNotify(Window window, Pixmap pixmap, int serial, int idleFence) {
@@ -379,6 +399,33 @@ public class PresentExtension implements Extension {
                 event.mask = mask;
                 events.put(eventId, event);
             }
+        }
+    }
+
+    @Override
+    public void onUpdateWindowGeometry(Window window, boolean resized) {
+        sendConfigureNotify(window, 0);
+    }
+
+    // A destroyed window gets a last ConfigureNotify with the window-destroyed flag, then its
+    // Present event selections and pacing state are dropped. Pending idles still fire so their
+    // idle fences are triggered.
+    @Override
+    public void onFreeResource(XResource resource) {
+        if (resource instanceof Window) {
+            Window window = (Window) resource;
+            synchronized (events) {
+                for (int i = events.size() - 1; i >= 0; i--) {
+                    Event event = events.valueAt(i);
+                    if (event.window == window) {
+                        if (event.mask.isSet(PresentConfigureNotify.getEventMask())) {
+                            event.client.sendEvent(new PresentConfigureNotify(event.id, window, PresentConfigureNotify.PIXMAP_FLAG_WINDOW_DESTROYED));
+                        }
+                        events.removeAt(i);
+                    }
+                }
+            }
+            windowTimings.remove(window.id);
         }
     }
 

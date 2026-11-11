@@ -1,15 +1,19 @@
 # Star-Compose — Progress Log
 
-## 2026-11-10 19:5x EST — 🔧 fix/espectro-minor-bugs: El_Espectro's "Minor bugs in 3.1.9-pre2" thread (in progress, not built)
+## 2026-11-10 20:2x EST — 🔧 fix/espectro-minor-bugs 49d235eb: 7 fixes from El_Espectro's "Minor bugs in 3.1.9-pre2" thread (CI next)
 - **Why:** the user asked to read the Discord thread (BannerHub server, thread 1556629640133742652, El_Espectro, Dante, Ajay) and fix the reported bugs, "in lab ui also". Read with the bot's read-only helper; videos looked at frame by frame.
 - **Branch:** fix/espectro-minor-bugs off main 2fb8169c, worktree `/root/src/Bannerlator-wt/espectro-minor-bugs`.
-- **Fixed so far (code only):**
+- **Fixes (each its own commit):**
   1. 19987dc1 Cancel on a component download from the container / game / Lab editors (`startContentDownload`) now stops the download and the unpack and never installs; same guards in the Contents hub install step and the sheet's install from a file. Cause: cancel only cancelled the coroutine; `Downloader` and `extraContentFile` are blocking and the rename into place ran anyway.
-  2. 40c3d9ea arm64ec → arm64ec layer change in the container editor keeps the WOWBox64 version (`applyArch` reset it to 0.3.7; defaults only re-seeded on an arch flip). Shared VM → Classic, Lab, Deck.
-  3. 92250c38 Classic game dialog: a Box64/WOWBox64/FEXCore/Box64EC version downloaded there shows at once (lists were read once). Lab already refreshed via the container VM.
-  4. 5bda8c04 translator chip: Box64 on x86_64 layers, FEXCore/WOWBox64 on arm64ec (`EmulatorLabels.chipLabel`; game cards, XMB, Big Picture, Lab Library, launch screen, container card). Copy/move of a game to a container of the other architecture drops its emulator/version/SSBS extras.
-- **Next:** on-screen controls shown on first launch while the menu says Disabled; PiP freezes the game (SIGSTOP outside the PiP check); Task Manager per-process RAM frozen (exit watcher takes the single process-info listener). Then CI, stage, ask before install.
-- **Proof level:** committed locally; NOT built; NOT device-tested.
+  2. 40c3d9ea arm64ec → arm64ec layer change in the container editor keeps the WOWBox64 version (`applyArch` reset it to 0.3.7; defaults only re-seeded on an arch flip). Shared view model → Classic, Lab, Deck.
+  3. 92250c38 Classic game dialog: a Box64/WOWBox64/FEXCore/Box64EC version downloaded there shows at once (lists were read once). Lab already refreshed via the container view model.
+  4. 5bda8c04 Translator chip: Box64 on x86_64 layers, FEXCore/WOWBox64 on arm64ec (`EmulatorLabels.chipLabel`; game cards, XMB, Big Picture, Lab Library, launch screen, container card). Copy/move of a game to a container of the other architecture drops its emulator/version/SSBS extras.
+  5. 5cc32e07 PiP: the guest keeps running in the PiP window (`pauseAllWineProcesses` was outside the PiP check); closing the PiP window freezes it in onStop.
+  6. 49ac03cf Task Manager: its process listener is a side listener while open (the game-exit / installer watchers re-took the single owner slot every 2 s → frozen list, memory never changed); null info ignored.
+  7. 49d235eb In-game Controls menu (Classic/Deck/Lab) refreshed after the #333 smart default loads the Virtual Gamepad, so it no longer says "-- Disabled --" over a shown pad; choosing Disabled opts out.
+- **Not done:** profile import mid-game / in PiP (reporter: feature request). Whether fresh installs should get the #333 Virtual Gamepad at all = user's call.
+- **Proof level:** committed + pushed; NOT built yet; NOT device-tested.
+- **Resume:** dispatch `build-artifacts.yml` on the branch (assert headSha) → stage pubg APK `/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk` (sha256 host == device) → ASK before install.
 
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
 - **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).

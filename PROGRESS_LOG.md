@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 06:5x EST — 🚀 launch checkpoint: NFS HPR with FEX preset STABILITY (user: "yes set stability and launch it for me")
+- 06:46:56 run with the EA overlay off: game ran 06:47:17–06:49:24 (licence granted, "Connecting to EA servers"), then main thread: syscall fault (bad pointer) → c0000005 at NFS11Remastered.exe+0x1B121ADF (protected section). Not overlay/licence/X server; exe uses ProtoSSL (no OpenSSL). Container 1 = FEX 2611+9 PERFORMANCE_TSO. Code note at XServerDisplayActivity ~12212: Extreme presets (SMC checks off) crash EA's Activation64 anti-tamper the same way → test a stricter preset.
+- Now: backup of the HPR shortcut → /sdcard/Download/bl-backup-20261111/, set `fexcorePreset=STABILITY` on that shortcut only, launch via am start (container 1). Installed 4e8c7e65 (= main 02577e6a code). Undo: copy the backup back.
+
 ## 2026-11-11 06:5x EST — 🚀 launch checkpoint: NFS Hot Pursuit Remastered with the EA overlay off (user: "yes do it and launch it for me with root")
 - Finding: NFS HPR (Steam, EA chain) closes ~1 s after start: EA app overlay (IGO) injects into NFS11Remastered.exe ("Forcing the completion of the kernel32.dll loading") → injected thread faults at kernel32+0x3C3A8 → EA "Game session was too short" → EA quits (runs 06:24, 06:38 yserver, 06:40 Wayland; EA log igoEnabled[true]). Setting key user.igoEnabled (string in EADesktop.exe); an env var of that name does nothing.
 - Now: backup of the EA user ini → /sdcard/Download/bl-backup-20261111/, append `user.igoEnabled=false`, launch HPR via am start (container 1). Installed: 4e8c7e65 (= main 02577e6a code). Check after: EADesktopVerbose.log "Setting up IGO … igoEnabled[false]", no "Unhandled page fault", game window in the Wayland log.

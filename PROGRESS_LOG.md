@@ -11,6 +11,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 04:34 EST 04:35 EST result (user run 04:28:58-04:30:50): Windows Steam client on yserver (shortcut envVars BANNER_YSERVER=1) — logged on 04:29:15, Desktop 'Steam' window 04:29:18 + friends list; Wine virtual desktop 1280x720 one Wayland surface, up to 59.8 fps (cap 60), copy path (zero-copy off); Steam CPU drawing (GPU drawing auto only X11+GL); exit EXIT_SELF code 0, crash buffer empty, yserver 92 clients, 2 WARN (Vulkan dma-buf at start); picture not seen by me (no screenshot) — asked user
 - 04:32 EST 04:32 EST user launch: Windows Steam client with BANNER_YSERVER=1 (user added it); BL 931c441d + yserver 4e229a33 installed; RESUME: read files/yserver/logs newest + logcat YServerComponent/FATAL
 - 01:30 EST launch: regression check on final BL 931c441d: AIO vk wl + x11 + ys (p7a)
 - 01:29 EST launch: yserver click test via compositor test-input (p6e)

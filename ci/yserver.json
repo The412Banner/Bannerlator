@@ -1,0 +1,6 @@
+{
+  "version": "r1-pre1",
+  "source": "https://github.com/The412Banner/yserver-android-spike/releases/download/r1-pre1/yserver",
+  "sha256": "cdb1aac0f1dd4b272c7e8386231c2037782ab659f70167388cf45d6d75b97872",
+  "asset": "libyserver.so"
+}

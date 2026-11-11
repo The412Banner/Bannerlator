@@ -51,3 +51,5 @@ art*/
 /app/src/main/assets/xbox/
 /app/src/main/jniLibs/arm64-v8a/libxodus_cli.so
 /app/src/main/jniLibs/arm64-v8a/libxodus_service.so
+# yserver: fetched by .github/workflows/_build.yml from ci/yserver.json (pinned release) - never commit it.
+/app/src/main/jniLibs/arm64-v8a/libyserver.so

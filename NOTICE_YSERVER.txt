@@ -1,0 +1,44 @@
+yserver (X11 server) bundled as libyserver.so
+=============================================
+
+Purpose
+-------
+The X server Bannerlator runs instead of its Java X server when a game sets BANNER_YSERVER=1: Wine's
+windows are shown through Bannerlator's Wayland compositor. Off unless that variable is set.
+
+File in this APK (app/src/main/jniLibs/arm64-v8a/, fetched by CI from ci/yserver.json)
+  libyserver.so   yserver for Android, release r1-pre1, aarch64 Android (bionic) executable.
+                  11,761,400 bytes, sha256 cdb1aac0f1dd4b272c7e8386231c2037782ab659f70167388cf45d6d75b97872
+  Built by https://github.com/The412Banner/yserver-android-spike (release r1-pre1, commit 77446386) from:
+    - yserver by Jos Dehaes, https://github.com/joske/yserver, commit 031ec58d (MIT)
+    - the rootless Wayland host by SetZero, https://github.com/joske/yserver/pull/349, commit 6f3c46ff
+    - Android patches 0001-0029 from yserver-android-spike (MIT, Copyright (c) 2026 The412Banner)
+
+Licences
+--------
+yserver:
+
+MIT License
+
+Copyright (c) 2026 Jos Dehaes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+yserver-android-spike patches: the same MIT terms, Copyright (c) 2026 The412Banner.
+Bannerlator is GPL-3.0; MIT code is compatible with it.

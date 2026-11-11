@@ -7,7 +7,7 @@
 - **User:** "install it when it's done" (~20:55 EST).
 - **Device:** Pocket FIT runs f598c5df (main 229ab05d code, installed 20:43 by root-15, base.apk 5154bb41); `files/yserver/` (yserver bc0a13f0 + xkb) still in app data.
 - **Next:** tell root-6a/root-15, check BL is not running → install → `BANNER_YSERVER=1` on one game (X11 mode) → launch → read `files/yserver/logs/`.
-- **Restore:** `/sdcard/Download/` f598c5df build (root-15, base.apk 5154bb41) or reinstall main.
+- **Restore:** `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk` (root-15, base.apk 5154bb41).
 - **Proof level:** CI-green, staged; NOT installed, NOT device-tested.
 
 ## 2026-11-10 20:43 EST — 📲 INSTALLED f598c5df (= main 229ab05d code: Espectro + Epic fixes) on the Pocket FIT (user: "install it")

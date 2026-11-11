@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-11T08-17-24-bab383",
+    "created": "2026-11-11T08:17:24.277Z",
+    "reporter": "Delta",
+    "device": "Xiaomi Mi 15T Pro",
+    "gpu": "Mali G925 MC12",
+    "game": "All games with hdr",
+    "symptom": "Black screen (no image)",
+    "logs": 1
+  },
+  {
     "id": "2026-11-09T02-04-57-9d1810",
     "created": "2026-11-09T02:04:57.572Z",
     "reporter": "Kuldeep",

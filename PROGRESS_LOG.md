@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:37 EST — 🔀 MERGED fix/espectro-minor-bugs → main 229ab05d (branch CI 42939066673)
+- **User:** "merge to main when done". Merged **before a device test** on the user's word.
+- Branch CI 42939066673 green 4/4 on f598c5df (8:27–8:35 PM EST); skipped steps same as the earlier branch run; libblsteam.so restored from main's c524ed38 build (cache key = Rust sources; Rust tree branch == main 994a5b1c), so the Epic manifest.rs fix is in.
+- Backup `refs/backup/20261110/main-before-espectro-minor-bugs` = 04715c8b (pushed). `--no-ff` merge 229ab05d (parents 04715c8b + f598c5df); merged tree == CI-built tree f598c5df; no AI trailer. Merge pushed alone so main's artifacts build runs on it.
+- Pocket FIT still runs a597055f (epic-store-bugs, root-6a's Epic test); nothing installed from this merge.
+- **Proof level:** CI-green (branch), merged; NOT device-tested.
+- **Next:** stage the pubg APK (`/sdcard/Download/Bannerlator-espectro-minor-bugs-<sha8>-pubg.apk`, sha256 host == device) → check with root-6a → ASK the user before install. Test list: 19:35 entry.
+
 ## 2026-11-10 20:3x EST — 🔀 main 04715c8b merged into fix/espectro-minor-bugs (98c0682c), rebuild
 - **User:** "yes merge main and rebuild" (main got fix/epic-store-bugs at 20:22 EST), so one build carries the Epic store fixes and the 7 Espectro fixes.
 - Backup `refs/backup/20261110/espectro-minor-bugs-before-main-merge` = b2e54731 (pushed). `--no-ff` merge 98c0682c (parents b2e54731 + 04715c8b), no AI trailer.

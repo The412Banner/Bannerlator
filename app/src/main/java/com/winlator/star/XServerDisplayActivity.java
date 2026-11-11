@@ -14248,6 +14248,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         Log.d("XServerDisplayActivity", "Input controls simulated confirmation executed.");
 
+        // The in-game Controls menu (Classic, Deck and Lab) was filled in setupUI, before the layout above
+        // was picked, so it said "-- Disabled --" over a shown Virtual Gamepad. Show what is really loaded;
+        // picking Disabled there then hides it and keeps it off (smart_default_touch_optout).
+        pushInputProfileNames();
+        XServerDialogState.INSTANCE.setShowTouchscreen(inputControlsView.isShowTouchscreenControls());
+        seedControlsColorState();
+
         // #333: apply auto-hide at launch — a pad connected before/at launch should already have the
         // overlay hidden, and the pad seated on the on-screen slot (YIELD pushed above).
         updateAutoHideForControllers();

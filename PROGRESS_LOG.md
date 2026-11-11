@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:24 EST launch: AIO vk ys blit+async (p3b), then DiRT Showdown benchmark x11 / wl / ys(blit) (p3c) — each ~3 min; yserver be806b03 unstripped, BL 4e582b35
 - 22:23 EST launch: AIO vk ys 20 s YSERVER_COPY_BLIT=1 + telemetry + simpleperf (p3a), yserver be806b03 unstripped
 - 22:16 EST launch: AIO vk ys 20 s + simpleperf on yserver (p2d), unstripped yserver b1e83a57 staged (current binary backed up to /sdcard/Download/ys-stage/yserver-current.bak)
 - 22:12 EST launch: AIO vk ys 6 s with YSERVER_PRESENT_TRACE=1 YSERVER_LOOP_TELEMETRY=1 RUST_LOG=info (p2c)

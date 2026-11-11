@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 05:3x EST — 🔧 fix/xserver-robustness 97b5b360: Java X server bugs (user: "fix the xserver bugs and merge that after green")
+- Why: 3 bugs from the 11-10 X server review + the X11 console-window activation bug found in the yserver job.
+- Built (97b5b360, XClientRequestHandler / FontRequests / DesktopHelper / errors BadName + BadRequest):
+  1. Handler exceptions (RuntimeException) caught per request: logged once per opcode, request skipped. Before: escaped the X epoll thread → app died (OpenFont ≠ "cursor", DrawRequests "GC Function other than COPY", PutImage leftPad, Drawable null data, …).
+  2. Every request continues at header position + its length (requestEnd), also after errors and short/long reads (logged once per opcode).
+  3. Unhandled requests: body skipped (was: read as the next request). Defined core request without reply → ignored (Wine's error_handler, winex11.drv/x11drv_main.c:300-325, calls Xlib's default handler = exit on unexpected errors); with reply → BadAlloc (libX11 xcb_io.c _XReply returns 0 without the handler for BadAlloc/BadAccess, checked in mirror/libX11 :773-795); undefined opcodes (0, 120-126) / unregistered extension → BadRequest.
+  4. OpenFont other than "cursor" → BadName (XLoadQueryFont absorbs it, libX11 Font.c:201).
+  5. Setup: wrong byte order / protocol ≠ 11 → Failed reply + client closed (was a crash); setup read only when name+data arrived; big-request length < 2 words → client closed.
+  6. GrabServer/UngrabServer: reply removed (X defines none; Wine calls XGrabServer in display.c:243, palette.c:541).
+  7. DesktopHelper: conhost.exe mapped while another app window was raised → no focus/raise for it, previous window re-raised in Wine at 0.3 s + 1.3 s (same rule as yserver mode, which took windowed DiRT from 16 fps/mute to 116.8). Tap still focuses the console.
+- CI: 43004548075 (headSha 97b5b360) running. Main b95bde74 (yserver merge) CI 43003061151 4/4 green.
+- Device test: NOT device-tested (user: merge after green). Risk: X11 sessions run the new request path for every request; normal requests behave as before (handled cases unchanged, position fix is a no-op when a handler reads exactly its length).
+- Next: CI green → backup ref → --no-ff merge to main → stage the main APK, offer install + a test (game with a console window, Windows Steam, an AIO run).
+
 ## 2026-11-11 04:5x EST — 🔀 MERGED feat/yserver-spike into main (user: "merge it, then fix the xserver bugs and merge that after green")
 - Backup ref `refs/backup/20261111/main-before-yserver-spike` = cb421007. `--no-ff` merge; main's 5 new commits were docs/log only (mali-report + PROGRESS_LOG), so the merged code = the device-tested 931c441d (CI 42970888210, 4/4 green).
 - What it adds: opt-in only. `BANNER_YSERVER=1` (game or container env) AND an executable `files/yserver/yserver` → yserver hosted on the Wayland compositor; without both, every path is main's (guestWayland() == waylandMode). The yserver binary is NOT in the APK (Jos Dehaes + SetZero not asked yet). Compositor also offers ext_data_control_v1 (clipboard) in every Wayland session; layer proton_11.12.3-DroidDeck binds only zwlr, so no change there.

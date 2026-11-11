@@ -1,0 +1,35 @@
+{
+  "id": "2026-11-11T08-17-24-bab383",
+  "created": "2026-11-11T08:17:24.277Z",
+  "ip_hash": "isQh42xsra",
+  "fields": {
+    "reporter_name": "Delta",
+    "device_model": "Xiaomi Mi 15T Pro",
+    "soc": "Dimensity 9400",
+    "gpu": "Mali G925 MC12",
+    "android": "Android 16 HyperOS 3",
+    "ram": "12",
+    "app_version": "3.1.9pre2 test build",
+    "install_source": "Sideload",
+    "game_name": "All games with hdr",
+    "steam_appid": "",
+    "store": "",
+    "exe": "",
+    "symptom": "Black screen (no image)",
+    "when": "Only in a specific area/scene",
+    "graphics_driver": "panvk mali",
+    "dx_wrapper": "DXVK",
+    "dxvk": "3.1.1",
+    "proton": "Proton cachyos",
+    "box64": "",
+    "resolution": "",
+    "framegen": "No",
+    "repro": "Window mode switching to fullscreen mode give black screen. Need aimapper5 for gralloc",
+    "tried": ""
+  },
+  "logs": [
+    {
+      "name": "wayland-2026-11-11_16-04-27.log"
+    }
+  ]
+}

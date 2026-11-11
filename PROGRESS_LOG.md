@@ -5,6 +5,7 @@
 - Before install: installed pubg build = 2b4e3aa5 (base.apk 3a3d4ddf…2eea, 18:51:11 EST); undo APK = `/sdcard/Download/Bannerlator-epic-game-fixes-2b4e3aa5-pubg.apk` (3a3d4ddf, same file). No Wine/game running; Bannerlator idle in the background, Chrome in front. Peers root-15 + root-54 messaged before install (a yserver-spike 4903bdb7 APK for the same package is staged by another session).
 - **Install:** `pm install -r` of `/sdcard/Download/Bannerlator-epic-store-bugs-a597055f-pubg.apk` (7f72f313…2cb1) via /data/local/tmp; then installed base.apk hash == staged, crash buffer.
 - **Result 20:02:11 EST:** `pm install -r` Success; installed base.apk sha256 7f72f313…2cb1 == staged; versionName 3.1.9-pre2 (vc106, unchanged); crash buffer empty since 20:00; bh_epic_prefs + epic_store_cache kept. Peers told "done".
+- **User check 20:19 EST (screenshot 201914):** Hogwarts Legacy detail page: Check for Updates → "Up to date ✓" (recorded epic_manifest_version 2153883 == latest from Epic; a missing record would now say "Installed version not recorded"); Verify / Repair running (252/526). Crash buffer empty since 20:02. User: "seems good". Launch not tested yet.
 - **Resume point:** if the session is cut, check `pm path com.tencent.ig` hash: 7f72f313 = installed, 3a3d4ddf = still the old build. Then the user tests: Epic library loads, a game's update check / Verify, a launch's BH_EPIC_LAUNCH -epiclocale, crash buffer.
 - **Proof level:** CI-green, installing; NOT device-tested.
 

@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:0x EST — 📲 installing fix/epic-store-bugs a597055f on the Pocket FIT (user yes)
+- **User:** "yes install it on the fit".
+- Before install: installed pubg build = 2b4e3aa5 (base.apk 3a3d4ddf…2eea, 18:51:11 EST); undo APK = `/sdcard/Download/Bannerlator-epic-game-fixes-2b4e3aa5-pubg.apk` (3a3d4ddf, same file). No Wine/game running; Bannerlator idle in the background, Chrome in front. Peers root-15 + root-54 messaged before install (a yserver-spike 4903bdb7 APK for the same package is staged by another session).
+- **Install:** `pm install -r` of `/sdcard/Download/Bannerlator-epic-store-bugs-a597055f-pubg.apk` (7f72f313…2cb1) via /data/local/tmp; then installed base.apk hash == staged, crash buffer.
+- **Resume point:** if the session is cut, check `pm path com.tencent.ig` hash: 7f72f313 = installed, 3a3d4ddf = still the old build. Then the user tests: Epic library loads, a game's update check / Verify, a launch's BH_EPIC_LAUNCH -epiclocale, crash buffer.
+- **Proof level:** CI-green, installing; NOT device-tested.
+
 ## 2026-11-10 19:34 EST — 📦 fix/epic-store-bugs a597055f CI green, staged on the Pocket FIT (CI 42930770419)
 - CI 42930770419 green 4/4 (headSha a597055f); skipped steps are main-only saves and cache paths only; libblsteam.so rebuilt by cargo (Rust manifest change), Gradle build success.
 - Staged `/sdcard/Download/Bannerlator-epic-store-bugs-a597055f-pubg.apk` (597,555,721 bytes), sha256 7f72f313…2cb1, host == device (root).

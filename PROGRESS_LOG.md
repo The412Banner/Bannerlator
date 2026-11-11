@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 00:36 EST launch: GTA IV ys MESA_VK_WSI_PRESENT_MODE=immediate (p5c)
 - 00:32 EST launch: GTA IV x11 with screenshot at 105 s (p5b) for GPU% comparison
 - 00:29 EST launch: GTA IV ys with 0017 (p5a); BL 04102206 (f667baed) + yserver 99be9391 (b6468306)
 - 00:13 EST launch: GTA IV ys + x11 thread samples at 100 s (p4m)

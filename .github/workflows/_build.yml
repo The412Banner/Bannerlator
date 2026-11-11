@@ -276,6 +276,22 @@ jobs:
           || echo "::warning::the dxvk-nvapi $VER LICENSE differs from the copy committed in $D"
         echo "dxvk-nvapi $VER bundled:"; ls -l "$D"
 
+    # yserver (opt-in X server, BANNER_YSERVER=1): the release named in ci/yserver.json, built by
+    # The412Banner/yserver-android-spike from joske/yserver (MIT, Jos Dehaes) + SetZero's #349 + our
+    # Android patches. Shipped as jniLibs/arm64-v8a/libyserver.so (extracted on install, then run by
+    # YServerComponent); a hash mismatch fails the build. Licence/credits: NOTICE_YSERVER.txt.
+    - name: Fetch yserver (pinned, sha256-checked) into jniLibs
+      run: |
+        set -euo pipefail
+        M=ci/yserver.json
+        URL=$(jq -r .source "$M"); SHA=$(jq -r .sha256 "$M"); VER=$(jq -r .version "$M"); ASSET=$(jq -r .asset "$M")
+        D=app/src/main/jniLibs/arm64-v8a
+        mkdir -p "$D"
+        curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o "$D/$ASSET" "$URL"
+        echo "$SHA  $D/$ASSET" | sha256sum -c -
+        chmod 755 "$D/$ASSET"
+        echo "yserver $VER bundled:"; ls -l "$D/$ASSET"
+
     # --- bannerin: the controller-input transport (Rust, app/src/main/cpp/bannerin) ----------------
     # Host tests (unit + multi-process scenarios) and the loom model check gate the build. Then the
     # guest-side static library for the bionic libfakeinput.so (linked by CMake in the Gradle build

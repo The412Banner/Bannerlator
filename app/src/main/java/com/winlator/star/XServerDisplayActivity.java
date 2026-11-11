@@ -3697,6 +3697,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // to a process that was never stopped, a GL thread told to resume when it never paused, a perf
         // profile re-applied), which is what keeps the two sides symmetric without a second flag.
         tvSuspendDeferred = false;
+        pipSuspendDeferred = false;
 
         if (environment != null) {
             xServerView.onResume();
@@ -3770,8 +3771,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // onStop, the callback that really does mean this session has left the screen. Nothing at all
         // happens here — not even releasing held inputs, because the pad is still playing the game over
         // on the TV. If a build genuinely stops us, everything below still runs, one callback later.
-        // PiP is untouched (it has always frozen the guest) and a session on its way out tears down
-        // here as before — there is no onStop worth waiting for.
+        // PiP keeps the game running in its window (suspendSessionForBackground leaves the guest alone and
+        // onStop freezes it if the window is closed), and a session on its way out tears down here as
+        // before — there is no onStop worth waiting for.
         if (!isInPictureInPictureMode() && onTvLaunchDisplay() && !isFinishing() && !isDestroyed()) {
             tvSuspendDeferred = true;
             Log.i("XServerDisplayActivity", "TV: paused but still on display " + sessionDisplayId
@@ -3789,6 +3791,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean tvSuspendDeferred = false;
 
     /**
+     * Set when the session went into Picture-in-Picture: the guest keeps running in the PiP window. Closing
+     * the window (onStop without a return to full screen) freezes it as any background does; expanding it
+     * back (onResume) clears this.
+     */
+    private boolean pipSuspendDeferred = false;
+
+    /**
      * Freeze the guest and drop everything that must not keep running while this session is off screen:
      * exactly what {@link #onPause} used to do inline, unchanged, so the two callers cannot drift.
      *
@@ -3798,6 +3807,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * re-applied — and PiP relies on it running after a pause this method never saw.
      */
     private void suspendSessionForBackground() {
+        suspendSessionForBackground(false);
+    }
+
+    /** [leftPip]: the PiP window was closed, so the session is off screen even though PiP may still be reported. */
+    private void suspendSessionForBackground(boolean leftPip) {
+        boolean inPip = !leftPip && isInPictureInPictureMode();
         // Nothing may stay held while the guest is frozen: a button still down when the game stops
         // answering comes back pressed. (Deliberately NOT done for a TV session that is only paused —
         // the game is still on screen and the controller is still playing it.)
@@ -3813,7 +3828,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         controllerTestActive = false;
 
         // Check if we are entering Picture-in-Picture mode
-        if (!isInPictureInPictureMode()) {
+        if (!inPip) {
             // Only pause environment and xServerView if not in PiP mode
             if (environment != null) {
                 environment.onPause();
@@ -3833,7 +3848,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);
-        ProcessHelper.pauseAllWineProcesses();
+        // In PiP the game is still on screen, in its small window: it keeps running (installs and
+        // downloads inside it go on). onStop freezes it if the window is closed.
+        if (inPip) pipSuspendDeferred = true;
+        else ProcessHelper.pauseAllWineProcesses();
         unregisterGyroSensor();
     }
 
@@ -7739,6 +7757,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.i("XServerDisplayActivity", "TV: stopped while on display " + sessionDisplayId
                     + " — freezing the game after all");
             suspendSessionForBackground();
+        }
+        // The PiP window was closed rather than expanded: the session has left the screen, freeze it now.
+        if (pipSuspendDeferred) {
+            pipSuspendDeferred = false;
+            Log.i("XServerDisplayActivity", "PiP: window closed — freezing the game");
+            suspendSessionForBackground(true);
         }
         // Belt-and-suspenders: also drop controller-test isolation on stop (see onPause).
         controllerTestActive = false;

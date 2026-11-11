@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 19:34 EST — 📦 fix/epic-store-bugs a597055f CI green, staged on the Pocket FIT (CI 42930770419)
+- CI 42930770419 green 4/4 (headSha a597055f); skipped steps are main-only saves and cache paths only; libblsteam.so rebuilt by cargo (Rust manifest change), Gradle build success.
+- Staged `/sdcard/Download/Bannerlator-epic-store-bugs-a597055f-pubg.apk` (597,555,721 bytes), sha256 7f72f313…2cb1, host == device (root).
+- **User 19:3x:** the lmkd/memory-killer fix waits ("we will visit the memory stuff later, focus on epic fixes and build").
+- **Next:** ask the user before installing; then check the Epic library loads, an Epic game's update check and Verify, a launch's BH_EPIC_LAUNCH -epiclocale, crash buffer.
+- **Proof level:** CI-green, staged; NOT installed, NOT device-tested.
+
 ## 2026-11-10 19:22 EST — 🔧 fix/epic-store-bugs a597055f: Epic bug fixes 2–7 done, CI 42930770419 dispatched
 - **User:** "finish the epic fixes and build them". The session that started the branch (root-de) was lost at 19:09 when Android's low-memory killer closed Termux; its token and library fixes were still uncommitted in the worktree. Reviewed and committed them, then wrote items 6 and 7.
 - **Commits:** 747e5bba (items 2+3: JSON manifest blob numbers, manifest launch command; root-de) → 2b04f12c (items 4+5: token refresh one at a time, expired token → sign in again; library sync keeps the cache on a failed page, 401/403 → sign in; URL-encoded cursor/auth code/refresh token; manifest paths with ".." or absolute refused before download and counted as damaged in Verify) → a597055f (item 6: -epiclocale from the game's own lc_all = shortcut, else its container, then device locale, then en; item 7: library-screen installs record the installed version, an update check with no recorded version no longer saves the latest and says "Up to date", Verify / Repair records the version once the files match).

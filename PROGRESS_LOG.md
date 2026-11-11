@@ -1,5 +1,16 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 19:5x EST — 🔧 fix/espectro-minor-bugs: El_Espectro's "Minor bugs in 3.1.9-pre2" thread (in progress, not built)
+- **Why:** the user asked to read the Discord thread (BannerHub server, thread 1556629640133742652, El_Espectro, Dante, Ajay) and fix the reported bugs, "in lab ui also". Read with the bot's read-only helper; videos looked at frame by frame.
+- **Branch:** fix/espectro-minor-bugs off main 2fb8169c, worktree `/root/src/Bannerlator-wt/espectro-minor-bugs`.
+- **Fixed so far (code only):**
+  1. 19987dc1 Cancel on a component download from the container / game / Lab editors (`startContentDownload`) now stops the download and the unpack and never installs; same guards in the Contents hub install step and the sheet's install from a file. Cause: cancel only cancelled the coroutine; `Downloader` and `extraContentFile` are blocking and the rename into place ran anyway.
+  2. 40c3d9ea arm64ec → arm64ec layer change in the container editor keeps the WOWBox64 version (`applyArch` reset it to 0.3.7; defaults only re-seeded on an arch flip). Shared VM → Classic, Lab, Deck.
+  3. 92250c38 Classic game dialog: a Box64/WOWBox64/FEXCore/Box64EC version downloaded there shows at once (lists were read once). Lab already refreshed via the container VM.
+  4. 5bda8c04 translator chip: Box64 on x86_64 layers, FEXCore/WOWBox64 on arm64ec (`EmulatorLabels.chipLabel`; game cards, XMB, Big Picture, Lab Library, launch screen, container card). Copy/move of a game to a container of the other architecture drops its emulator/version/SSBS extras.
+- **Next:** on-screen controls shown on first launch while the menu says Disabled; PiP freezes the game (SIGSTOP outside the PiP check); Task Manager per-process RAM frozen (exit watcher takes the single process-info listener). Then CI, stage, ask before install.
+- **Proof level:** committed locally; NOT built; NOT device-tested.
+
 ## 2026-11-10 19:0x EST — 🔀 MERGED fix/epic-game-fixes → main e8cf80bb (CI 42927706039)
 - **User:** "merge it and build the fixes you mentioned on a new branch after". Merged **before a device test** on the user's word (CI 42925330883 green, local JVM checks 27/27).
 - Backup `refs/backup/20261110/main-before-epic-game-fixes` = 33526bd1; `--no-ff` e8cf80bb (parents 33526bd1 + 2b4e3aa5); code identical to 2b4e3aa5; no AI trailer. The push started only the artifacts build (42927706039) + GitHub Pages.

@@ -1742,6 +1742,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private volatile String yserverRaisedClass = null;
     private volatile YServerComponent yserverComponent = null;
     private volatile long yserverRaisedHwnd = 0;
+    // yserver mode: when the game's own frame rate last came in (YSERVER-FPS). While it is fresh, the
+    // HUD shows it instead of counting the compositor's frames, which stop at the display's refresh.
+    private volatile long yserverFpsAtMs = 0;
+
+    private boolean yserverFpsLive() {
+        return yserverHosted && android.os.SystemClock.elapsedRealtime() - yserverFpsAtMs < 2500;
+    }
 
     /** The guest runs winewayland (Wayland mode without yserver). */
     private boolean guestWayland() {
@@ -10224,9 +10231,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // temperature/GPU-load reads and BatteryManager binder calls, every 500 ms) runs on the
                 // sampler thread; one job is queued at a time, so a fast game can't pile them up.
                 if (padFeedWaylandGame) com.winlator.star.inputcontrols.BannerinWriter.onGameFrame();
-                if (sessionFpsOn) sessionFps.tick();   // the saved session stats, HUD or not (only the game surface reports frames)
+                // yserver mode: the counters take yserver's rate of the game's presents instead.
+                boolean ysFps = yserverFpsLive();
+                if (sessionFpsOn && !ysFps) sessionFps.tick();   // the saved session stats, HUD or not (only the game surface reports frames)
                 if (frameRatingWindowId == -1 || !hudCounterEnabled) return;
-                fpsCounter.tick();
+                if (!ysFps) fpsCounter.tick();
                 android.os.Handler h = waylandHudSampler;
                 if (h != null && waylandHudSampleQueued.compareAndSet(false, true)) h.post(waylandHudSample);
             }
@@ -12302,6 +12311,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(cls, hwnd);
                         }, 1000L);
                     });
+            // Wine's desktop (explorer.exe) stays black for a game shortcut, as the X11 renderer
+            // (setUnviewableWMClasses) and the compositor (nativeSetHideShell) leave it out.
+            if (shortcut != null) ysc.setHideClass("explorer.exe");
+            // The HUD shows the game's own frame rate: the compositor's frames stop at the refresh.
+            ysc.setFpsListener(fps -> {
+                yserverFpsAtMs = android.os.SystemClock.elapsedRealtime();
+                if (sessionFpsOn) sessionFps.reportRate(fps);
+                if (frameRatingWindowId == -1 || !hudCounterEnabled) return;
+                fpsCounter.reportRate(fps);
+                android.os.Handler h = waylandHudSampler;
+                if (h != null && waylandHudSampleQueued.compareAndSet(false, true)) h.post(waylandHudSample);
+            });
             environment.addComponent(ysc);
             yserverComponent = ysc;
             if (resolvedFpsLimiterEnabled() && resolvedFpsLimiterValue() > 0) {

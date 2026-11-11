@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 11:0x EST — 🔀 MERGED feat/yserver-hud-desktop for real (correction of e0ba3ded)
+- **Mistake:** e0ba3ded ("Merge feat/yserver-hud-desktop …") is NOT a merge: in the /root/src/Bannerlator checkout `origin/feat/yserver-hud-desktop` was not fetched, `git merge` refused, the error was hidden by `| tail -1` under `set -e`, and the script committed + pushed only the PROGRESS_LOG entry below. main e0ba3ded had none of the branch's code.
+- Fix: backup `refs/backup/20261111/main-before-yserver-hud-desktop-fix` = e0ba3ded; this `--no-ff` merge of 89e78d6a. Code now equals the device-tested 89e78d6a (CI 43047598280).
+- **Lesson:** never pipe a merge/commit step into `tail`/`grep` in a script (set -e does not see the failure without `set -o pipefail`); fetch the branch ref explicitly and check `git merge` succeeded (MERGE_HEAD exists) before committing; verify the merged code equals the tested commit BEFORE pushing, not after.
+
 ## 2026-11-11 10:5x EST — 🔀 MERGED feat/yserver-hud-desktop into main (user: "merge it")
 - Backup ref `refs/backup/20261111/main-before-yserver-hud-desktop` = a1107b51. `--no-ff` merge of 89e78d6a; main had not moved → merged code = the device-tested build (CI 43047598280, 4/4 green).
 - What it does (yserver mode only, BANNER_YSERVER=1): Wine's desktop (explorer.exe) stays black for game shortcuts (YServerComponent.setHideClass → YSERVER_HIDE_CLASS, needs yserver patch 0022/0023); the HUD and session stats show the game's own frame rate from yserver's YSERVER-FPS line (FpsCounter.reportRate) instead of the compositor's frames capped at the display refresh. Nothing changes in X11 or Wayland mode.

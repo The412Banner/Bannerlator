@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 13:4x EST — 🔧 feat/yserver-bundle: yserver ships inside the APK (user: "make our repo public and have our ci pull from there, and make a release")
+- Rule change (user): bundling others' code needs no permission ask when the licence allows it (yserver MIT) — keep the notice and credit.
+- The412Banner/yserver-android-spike made PUBLIC (history scanned first: no secrets/tokens/IPs; author email = the one already on Bannerlator's public commits), LICENSE (MIT) + LICENSE-yserver + README credits (Jos Dehaes, SetZero #349).
+- Release r1-pre1 (prerelease, tag → 774463860e11234571c9eae6a5ed85876d3ae7ca = CI 43064600562): yserver (sha256 cdb1aac0…, 11,761,400 bytes), full package, SHA256SUMS, both licences. Public download hash checked.
+- This branch: ci/yserver.json pin + _build.yml fetch step → jniLibs/arm64-v8a/libyserver.so (compressed ~5 MB in the APK, 11.8 MB installed); NOTICE_YSERVER.txt; README credit; .gitignore. YServerComponent unchanged (staged files/yserver/yserver still wins; bundled otherwise).
+- Next: CI, then (user's yes) install + test with the staged binary and staged xkb moved aside (bundled binary + imagefs xkb).
+
 ## 2026-11-11 11:0x EST — 🔀 MERGED feat/yserver-hud-desktop for real (correction of e0ba3ded)
 - **Mistake:** e0ba3ded ("Merge feat/yserver-hud-desktop …") is NOT a merge: in the /root/src/Bannerlator checkout `origin/feat/yserver-hud-desktop` was not fetched, `git merge` refused, the error was hidden by `| tail -1` under `set -e`, and the script committed + pushed only the PROGRESS_LOG entry below. main e0ba3ded had none of the branch's code.
 - Fix: backup `refs/backup/20261111/main-before-yserver-hud-desktop-fix` = e0ba3ded; this `--no-ff` merge of 89e78d6a. Code now equals the device-tested 89e78d6a (CI 43047598280).

@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 10:5x EST — 🔀 MERGED feat/yserver-hud-desktop into main (user: "merge it")
+- Backup ref `refs/backup/20261111/main-before-yserver-hud-desktop` = a1107b51. `--no-ff` merge of 89e78d6a; main had not moved → merged code = the device-tested build (CI 43047598280, 4/4 green).
+- What it does (yserver mode only, BANNER_YSERVER=1): Wine's desktop (explorer.exe) stays black for game shortcuts (YServerComponent.setHideClass → YSERVER_HIDE_CLASS, needs yserver patch 0022/0023); the HUD and session stats show the game's own frame rate from yserver's YSERVER-FPS line (FpsCounter.reportRate) instead of the compositor's frames capped at the display refresh. Nothing changes in X11 or Wayland mode.
+- Device test (Pocket FIT, 10:50 EST, AIO Vulkan cube on yserver de999f09, no extra env): Fusion HUD 2218.8 fps / 0.5 ms (was 144.0 / 6.9 ms; AIO 2176), desktop black; 0 FATAL, crash 0.
+- yserver side (patches 0020-0023: no core stalls, hide class, fps line, black exposures) lives in The412Banner/yserver-android-spike; the binary is still hand-installed in files/yserver.
+
 ## 2026-11-11 09:1x EST — ✅ X11 checks after the X server fixes PASSED (Pocket FIT, 4e8c7e65 = main 02577e6a code)
 - Windows Steam client on X11 (ys-steam2.sh xsr x11, BANNER_YSERVER stripped): 08:57:00–09:07:27 EST. Steam first finished a client update left half-installed by an earlier session (bootstrap_log: "uninstalled manifest found … steam_client_publicbeta_win64 (1)", install step 08:59:18→09:06:14 on the SD card, "Could not remove backup file (5): crashhandler64.dll.old"); package folder clean afterwards. steamwebhelper at 570 s; final screenshot: store + dropdown menu + friends list drawn, HUD X11 D3D11·DXVK. 0 XClientRequestHandler lines, 0 FATAL, crash buffer empty (logcat 08:57:01–09:07:27, 56 onMapWindow).
 - AIO Vulkan cube X11 (ys-aio.sh vk xsr x11 15): avg 2164.97 fps, 1% low 827.94 (before the fixes 2181 / 847 → same within noise); picture correct (cube, X11); 0 XClientRequestHandler lines, 0 FATAL, crash 0.

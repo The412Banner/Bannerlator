@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 23:22 EST launch: DiRT ys with activation fix (p4a); BL 7938d479 (3d5a8011) + yserver b507382a (0001-0015, unstripped 43cec66c); user asked to keep hands off
 - 23:05 EST launch: DiRT ys with WRAPPER_DISABLE_PRESENT_WAIT=1 (p3p); finding: DiRT x11 is bimodal 16 vs ~110 fps run to run (FIFO second swapchain), not yserver-specific
 - 23:03 EST launch: DiRT x11 + read game env (p3o)
 - 23:01 EST launch: DiRT x11 with MESA_VK_WSI_PRESENT_MODE=immediate (p3n)

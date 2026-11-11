@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 12:45 EST — 📲 feat/yserver-bundle d18f656c INSTALLED on the Pocket FIT (user: "install it when it's done and test it"); launch checkpoint
+- CI 43069803925 4/4 green; APK 602,551,723 bytes (+4.98 MB), staged /sdcard/Download/Bannerlator-yserver-bundle-d18f656c-pubg.apk sha256 f9fe1fc4… (host == device); installed 12:44:55 EST, base.apk == staged; lib/arm64/libyserver.so unpacked, -rwxr-xr-x, sha256 cdb1aac0 (= release r1-pre1). Crash buffer empty.
+- Test: files/yserver/yserver → yserver.staged-0029 and files/yserver/xkb → xkb.staged (moved, not deleted) so the bundled binary + the Wine image's XKB data are used; AIO Vulkan cube on yserver (ys-aio.sh vk bundle1 ys 30), fan max. Undo: move both back.
+
 ## 2026-11-11 13:4x EST — 🔧 feat/yserver-bundle: yserver ships inside the APK (user: "make our repo public and have our ci pull from there, and make a release")
 - Rule change (user): bundling others' code needs no permission ask when the licence allows it (yserver MIT) — keep the notice and credit.
 - The412Banner/yserver-android-spike made PUBLIC (history scanned first: no secrets/tokens/IPs; author email = the one already on Bannerlator's public commits), LICENSE (MIT) + LICENSE-yserver + README credits (Jos Dehaes, SetZero #349).

@@ -1738,6 +1738,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean yserverMode = false;
     private boolean yserverHosted = false;
     private String yserverModeName = null;
+    // The last Wine window yserver mode brought to the front (YSERVER-MAP).
+    private volatile String yserverRaisedClass = null;
+    private volatile long yserverRaisedHwnd = 0;
 
     /** The guest runs winewayland (Wayland mode without yserver). */
     private boolean guestWayland() {
@@ -12262,14 +12265,31 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // inactive (some throttle and mute themselves, e.g. DiRT Showdown at 16 fps).
             environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
                     new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid) -> {
-                        // The virtual desktop itself, and a console window flashing up (a console
-                        // program started by the game or a helper), must not take the game's activation.
-                        if (cls.equalsIgnoreCase("explorer.exe") || cls.equalsIgnoreCase("conhost.exe")) return;
-                        final int seq = ++waylandBringToFrontSeq;
                         WinHandler wh = winHandler;
                         if (wh == null) return;
+                        android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+                        // The virtual desktop itself, or a console window flashing up (a console program
+                        // started by the game or a helper): Wine activates it by itself, so give the
+                        // last raised window its activation back instead.
+                        if (cls.equalsIgnoreCase("explorer.exe") || cls.equalsIgnoreCase("conhost.exe")) {
+                            final String lastCls = yserverRaisedClass;
+                            final long lastHwnd = yserverRaisedHwnd;
+                            if (lastCls == null) return;
+                            final int seq = ++waylandBringToFrontSeq;
+                            for (long delay : new long[]{300L, 1300L}) {
+                                ui.postDelayed(() -> {
+                                    WinHandler w = winHandler;
+                                    if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(lastCls, lastHwnd);
+                                }, delay);
+                            }
+                            Log.i("XServerDisplayActivity", "yserver: " + cls + " mapped; " + lastCls + " raised again");
+                            return;
+                        }
+                        yserverRaisedClass = cls;
+                        yserverRaisedHwnd = hwnd;
+                        final int seq = ++waylandBringToFrontSeq;
                         wh.bringToFront(cls, hwnd);
-                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        ui.postDelayed(() -> {
                             WinHandler w = winHandler;
                             if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(cls, hwnd);
                         }, 1000L);

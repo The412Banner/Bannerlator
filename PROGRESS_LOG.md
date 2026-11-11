@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 09:1x EST — ✅ X11 checks after the X server fixes PASSED (Pocket FIT, 4e8c7e65 = main 02577e6a code)
+- Windows Steam client on X11 (ys-steam2.sh xsr x11, BANNER_YSERVER stripped): 08:57:00–09:07:27 EST. Steam first finished a client update left half-installed by an earlier session (bootstrap_log: "uninstalled manifest found … steam_client_publicbeta_win64 (1)", install step 08:59:18→09:06:14 on the SD card, "Could not remove backup file (5): crashhandler64.dll.old"); package folder clean afterwards. steamwebhelper at 570 s; final screenshot: store + dropdown menu + friends list drawn, HUD X11 D3D11·DXVK. 0 XClientRequestHandler lines, 0 FATAL, crash buffer empty (logcat 08:57:01–09:07:27, 56 onMapWindow).
+- AIO Vulkan cube X11 (ys-aio.sh vk xsr x11 15): avg 2164.97 fps, 1% low 827.94 (before the fixes 2181 / 847 → same within noise); picture correct (cube, X11); 0 XClientRequestHandler lines, 0 FATAL, crash 0.
+- Proof level: request/robustness fixes now device-run on Steam (multi-process CEF) + AIO + DiRT with no regressions and no error paths hit; console rule device-proven (DiRT). DesktopHelper log line not yet seen firing (no console window in these runs).
+- Results: /sdcard/Download/perf-harness/results/xsr/. Peers told "done"; Termux in front.
+
 ## 2026-11-11 08:5x EST — 🚀 launch checkpoint: X11 checks after the X server fixes (user: "restore the shortcut and do the steam and aio checks")
 - NFS HPR: shortcut restored from /sdcard/Download/bl-backup-20261111/NFS-HPR.desktop.before-fex-stability (md5 2ee1a0b7 == original). EA overlay-off line in the container-1 EA ini kept (fixed the first crash). Second crash (exe+0x1B121ADF at "Connecting to EA servers") NOT fixed: STABILITY, FEX_SMCCHECKS=full, FEX_HIDEHYPERVISORBIT=1 all failed; Box64 untested.
 - Now (installed 4e8c7e65 = main 02577e6a code): Windows Steam client on X11 via new harness /sdcard/Download/perf-harness/ys-steam2.sh (temp shortcut, BANNER_YSERVER stripped, until steamwebhelper + 90 s, max 600 s), then AIO Vulkan cube X11 (ys-aio.sh vk xsr x11 15). Check logcat for XClientRequestHandler / DesktopHelper lines, FATAL, crash buffer; results in perf-harness/results/xsr/.

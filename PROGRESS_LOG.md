@@ -2,6 +2,7 @@
 
 ## yserver display job — launch checkpoints (feat/yserver-spike)
 ### yserver launch checkpoints (newest first)
+- 22:51 EST launch: DiRT wl recheck (p3k)
 - 22:50 EST launch: AIO vk x11 recheck (p3j) — DiRT now 16 fps in x11 too (was 114); kgsl CP AHB bus errors during DiRT
 - 22:45 EST launch: DiRT x11 + thread sampling (p3i) for A/B
 - 22:41 EST launch: DiRT ys + thread sampling (p3h)

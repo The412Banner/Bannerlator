@@ -1,5 +1,9 @@
 # Star-Compose — Progress Log
 
+## yserver display job — launch checkpoints (feat/yserver-spike)
+### yserver launch checkpoints (newest first)
+- 21:46 EST launch: AIO vk baselines x11 + wl + ys (p1b), installed c72254b5 + yserver 80215caa; p1a ys vk = 2506 frames/15 s (167 fps, CPU frames), 0 FATAL
+
 ## 2026-11-10 21:45 EST — 📲 c72254b5 installed on the Pocket FIT + yserver 80215caa staged; first hosted launch next
 - yserver CI 42947265501 ✅ (80215caa: 031ec58d + PR349 6f3c46ff + patches 0001–0008, stubs + xshmfence; NEEDED libnativewindow/libdl/libz/libm/libc; 11.6 MB), `--version` = `features=[wayland]` as uid 10193 in untrusted_app c193. Staged files/yserver/yserver sha256 ca7e9368… (old bc0a13f0 binary backed up to /sdcard/Download/ys-stage/yserver-bc0a13f0.bak).
 - BL CI 42947017626 ✅ 4/4 (c72254b5); pubg APK 356cd7a5… host == device == installed 21:44:33 EST; crash buffer cleared before install.

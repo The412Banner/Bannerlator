@@ -37,6 +37,12 @@ public class YServerComponent extends EnvironmentComponent {
     private final WindowMapListener mapListener;
     private Process process;
     private Thread reader;
+    private int frameCapHz = 0;
+
+    /** The session's FPS limit at launch (0 = none): yserver paces each window's presents to it. */
+    public void setFrameCap(int hz) {
+        frameCapHz = Math.max(0, hz);
+    }
 
     /** A Wine application window was mapped (yserver's YSERVER-MAP line). */
     public interface WindowMapListener {
@@ -124,7 +130,12 @@ public class YServerComponent extends EnvironmentComponent {
         env.put("RUST_LOG", "info");
         // Blit copies (Adreno blob) and presents that run at once (as the Java X server does) unless the
         // game's env says otherwise below.
-        env.put("YSERVER_PRESENT_ASYNC", "1");
+        if (frameCapHz > 0) {
+            // FPS limiter on: synced presents on a Present clock at the cap, one MSC per present.
+            env.put("YSERVER_PRESENT_HZ", String.valueOf(frameCapHz));
+        } else {
+            env.put("YSERVER_PRESENT_ASYNC", "1");
+        }
         StringBuilder passed = new StringBuilder();
         if (gameEnv != null) {
             for (String name : gameEnv) {

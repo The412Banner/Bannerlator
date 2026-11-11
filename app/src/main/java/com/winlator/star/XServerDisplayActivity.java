@@ -12263,7 +12263,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // bring a newly mapped Wine application window to the front inside Wine, and once more a
             // second later unless a newer window asked meanwhile. Without it a windowed game stays
             // inactive (some throttle and mute themselves, e.g. DiRT Showdown at 16 fps).
-            environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
+            YServerComponent ysc = new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
                     new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid) -> {
                         WinHandler wh = winHandler;
                         if (wh == null) return;
@@ -12293,7 +12293,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
                             WinHandler w = winHandler;
                             if (w != null && seq == waylandBringToFrontSeq) w.bringToFront(cls, hwnd);
                         }, 1000L);
-                    }));
+                    });
+            environment.addComponent(ysc);
+            if (resolvedFpsLimiterEnabled() && resolvedFpsLimiterValue() > 0) {
+                ysc.setFrameCap(resolvedFpsLimiterValue());
+                Log.i("XServerDisplayActivity", "yserver: frame cap " + resolvedFpsLimiterValue() + " fps (FPS limiter at launch)");
+            }
             yserverMode = true;
         } else if (!waylandMode) {
             environment.addComponent(

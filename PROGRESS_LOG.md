@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 20:43 EST — 📲 INSTALLED f598c5df (= main 229ab05d code: Espectro + Epic fixes) on the Pocket FIT (user: "install it")
+- root-6a (Epic test, nothing running in BL) + root-54 said ok before; "done" sent after.
+- `pm install -r` Success 20:43:42 EST; installed base.apk sha256 5154bb41…94b5 == staged; 3.1.9-pre2 (106). Replaced a597055f (7f72f313).
+- No FATAL / crash-buffer entries after the install. The crash buffer was cleared right before the install (`logcat -b crash -c`), so older entries are gone. The install closed BL's open Epic screens ("app died, no saved state", expected). BL not running after; Termux in front.
+- **Proof level:** installed; NOT device-tested.
+- **Next:** the user tests (19:35 entry list): editor layer download Cancel, arm64ec→arm64ec WOWBox64 kept, game dialog FEX download listed, x86_64 chip Box64, PiP keeps running, Task Manager memory, first-launch Controls menu. Save log + memory before every launch.
+
 ## 2026-11-10 20:4x EST — 📦 espectro + Epic build f598c5df (= main 229ab05d code) staged on the Pocket FIT (CI 42939066673, not installed)
 - Staged `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk`: com.tencent.ig 3.1.9-pre2 (106), cert a40da80a, sha256 5154bb41…94b5, host == device. Older `…-d773bc08-pubg.apk` (no Epic fixes) left in Download, superseded.
 - FIT installed APK = 7f72f313 (epic-store-bugs a597055f, 20:02:11 EST) — root-6a's Epic test; root-6a told main moved.

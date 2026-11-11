@@ -1732,8 +1732,17 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // our embedded compositor instead of the X11 server. All branches are guarded by this flag,
     // so the X11 path is unchanged when it's false. See WAYLAND_RUNTIME.md.
     private boolean waylandMode = false;
-    // Test-only (feat/yserver-spike): BANNER_YSERVER=1 runs the external yserver instead of the Java X server.
+    // Test (feat/yserver-spike): BANNER_YSERVER runs yserver instead of the Java X server. Hosted: the
+    // guest stays on winex11 and yserver shows its windows through the Wayland compositor, so the
+    // display side is Wayland mode (waylandMode true) while the guest side is X11 (guestWayland()).
     private boolean yserverMode = false;
+    private boolean yserverHosted = false;
+    private String yserverModeName = null;
+
+    /** The guest runs winewayland (Wayland mode without yserver). */
+    private boolean guestWayland() {
+        return waylandMode && !yserverHosted;
+    }
     // The session runs gamescope in the Linux runtime instead of Wine; the compositor is its display.
     private boolean gamescopeMode = false;
     // Bumped per compositor bring-to-front request, so a delayed repeat never re-raises an older window.
@@ -2951,6 +2960,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
             Log.i("XServerDisplayActivity", "Windows Steam: " + windowsSteamDisplayNote);
         }
 
+        // yserver (test): the game's or the container's BANNER_YSERVER.
+        if (!gamescopeMode) {
+            yserverModeName = YServerComponent.requestedMode(container.getEnvVars(),
+                    shortcut != null ? shortcut.getExtra("envVars") : null);
+            if (yserverModeName != null && YServerComponent.binary(this) == null) {
+                Log.w("XServerDisplayActivity", "yserver: BANNER_YSERVER set but no yserver binary; Java X server");
+                yserverModeName = null;
+            }
+            if (YServerComponent.MODE_HOSTED.equals(yserverModeName)) {
+                yserverHosted = true;
+                waylandMode = true;
+                Log.i("XServerDisplayActivity", "yserver: hosted - guest on X11 (winex11), windows shown by the Wayland compositor");
+            } else if (YServerComponent.MODE_RECORD.equals(yserverModeName)) {
+                waylandMode = false;
+                Log.i("XServerDisplayActivity", "yserver: record - headless, no picture");
+            }
+        }
+
         // In-game Friends tab (drawer): read the friends/chat opt-in once for this launch and start
         // watching for a live source. The RealSteam hint keeps the app-session source from flashing up
         // before maybeStageRealSteam() arms the plan (which confirms or withdraws it); disarmed in onDestroy.
@@ -3099,7 +3126,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // selected layer must ship winewayland.so AND its bundled Wayland Turnip, else the compositor
         // start, the registry driver write and the winex11.drv hide below would all run against a
         // layer that can't drive them. Fall back to X11 and say so.
-        if (waylandMode && !gamescopeMode
+        if (waylandMode && !gamescopeMode && !yserverHosted
                 && !com.winlator.star.core.WineWaylandSupport.isWaylandCapable(wineInfo)) {
             Log.w("XServerDisplayActivity", "wayland: layer " + wineVersion + " (" + wineInfo.path
                     + ") lacks winewayland.so and/or lib/libvulkan_freedreno_wayland.so; launching on X11");
@@ -11845,7 +11872,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             }
             guestProgramLauncherComponent.setContainer(this.container);
             guestProgramLauncherComponent.setWineInfo(this.wineInfo);
-            guestProgramLauncherComponent.setWaylandMode(waylandMode);
+            guestProgramLauncherComponent.setWaylandMode(guestWayland());
             guestProgramLauncherComponent.setSessionLog(this::logSessionLine);
 
             // Real-Steam (VAC) launch (feature M3) — STAGE + build the plan BEFORE getWineStartCommand()
@@ -11991,7 +12018,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // read — written AFTER both user env merges and skipping every var the user typed, so an
             // explicit env var always wins. MESA_VK_WSI_PRESENT_MODE from the stored X11 presentMode key
             // (extractGraphicsDriverFiles) is replaced only when a Wayland present mode was decided.
-            if (waylandMode) {
+            if (guestWayland()) {
                 com.winlator.star.core.WaylandAdapterSettings.Effective adapterCfg = waylandAdapterEffective();
                 if (adapterCfg != null) com.winlator.star.core.WaylandAdapterSettings.applyToGuestEnv(envVars, adapterCfg);
             }
@@ -12001,8 +12028,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // allocate the game's swapchain images as gralloc buffers and hand them to the compositor
             // (banner_ahb_v1), so the layer shows the game's own buffer without a copy.
             // The HDR opt-in (startWaylandCompositor, which runs first) can turn zero-copy on too.
-            if (waylandMode && (isWaylandZeroCopyRequested() || waylandHdrZeroCopyForced)) envVars.put("BANNER_WSI_AHB", "1");
-            if (waylandMode) applyWaylandHdrEnv(envVars);
+            if (guestWayland() && (isWaylandZeroCopyRequested() || waylandHdrZeroCopyForced)) envVars.put("BANNER_WSI_AHB", "1");
+            if (guestWayland()) applyWaylandHdrEnv(envVars);
             // Unreal Engine HDR (both backends) and, on Wayland, the GPU name spoof: after both user env
             // merges and the HDR env above, so a DXVK_ENABLE_NVAPI / WINEDLLOVERRIDES / DXVK_CONFIG entry
             // of the user's wins and the log line can say whether DXVK_HDR is on.
@@ -12010,7 +12037,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             applyBannerinXInputEnv(envVars);
             applyControllerLogEnv(envVars);
             applyGameModsEnv(envVars);
-            if (waylandMode) applyWaylandGpuSpoofEnv(envVars);
+            if (guestWayland()) applyWaylandGpuSpoofEnv(envVars);
 
             // OpenGL safe mode (Wayland only, default ON): GALLIUM_THREAD=0 removes Mesa's
             // u_threaded_context helper thread. That thread is a plain pthread with no Wine TEB, so a
@@ -12021,7 +12048,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // goes straight to Turnip's Vulkan driver and never loads one, so this is inert for it.
             // Both user env strings (container, then shortcut) are already merged above, so an
             // explicit GALLIUM_THREAD the user typed themselves still wins.
-            if (waylandMode) {
+            if (guestWayland()) {
                 if (!resolvedWaylandGlSafeMode()) {
                     Log.i("XServerDisplayActivity", "wayland: OpenGL safe mode is OFF for this launch"
                             + " - Mesa's threaded context stays on");
@@ -12042,7 +12069,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // before the X server's socket opens below (the GLX route turns server GLX on); never on
             // Wayland (winewayland always uses its own EGL) or in the Linux session. The same helper
             // writes "Show OpenGL FPS" / "OpenGL vsync off", which apply on both backends.
-            if (!gamescopeMode) applyFastOpenGLEnv(waylandMode);
+            if (!gamescopeMode) applyFastOpenGLEnv(guestWayland());
 
             // Full-colour game cursors on X11: register the cursor subset of RENDER so libXcursor
             // stops falling back to two-colour core cursors. Same placement rule as Fast OpenGL
@@ -12228,9 +12255,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 )
         );
         // In wayland mode the embedded compositor is the display server, so don't run the X server.
-        File yserverHome = new File(getFilesDir(), "yserver");
-        if (!waylandMode && envVars.has("BANNER_YSERVER") && YServerComponent.available(yserverHome)) {
-            environment.addComponent(new YServerComponent(yserverHome, new File(rootPath, "usr/tmp")));
+        if (yserverModeName != null) {
+            environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
+                    new File(getFilesDir(), ".wayland-rt")));
             yserverMode = true;
         } else if (!waylandMode) {
             environment.addComponent(
@@ -14621,7 +14648,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
     // adrenotools driver exported just above (so that one pick feeds compositor AND game; System / a
     // Qualcomm blob → Auto, logged), Auto maps the device GPU to a bundled variant, imported: hands over
     // an imported Linux ICD (missing import → Auto, logged). No-op on X11; waylandMode is final by here.
-    com.winlator.star.core.WaylandGameDriver.applyToLaunchEnv(this, envVars, container, shortcut, waylandMode,
+    com.winlator.star.core.WaylandGameDriver.applyToLaunchEnv(this, envVars, container, shortcut, guestWayland(),
             adrenoToolsDriverId);
     // The Task Manager's CONTAINER block was built before this ran (setupUI); now Auto's variant is known.
     if (waylandMode) XServerDialogState.INSTANCE.setTmContainerInfo(buildTmContainerInfo());
@@ -15813,6 +15840,11 @@ return true;
         }
         String detail = null;
         String glxLine = null;
+        if (yserverHosted && decision != null && decision.getOn()
+                && decision.route != com.winlator.star.core.FastOpenGL.Route.EGL) {
+            decision = new com.winlator.star.core.FastOpenGL.X11Decision(null,
+                    "unsupported: yserver has no server-side GLX on Android (EGL route only)");
+        }
         if (decision != null && decision.getOn()) {
             boolean egl = decision.route == com.winlator.star.core.FastOpenGL.Route.EGL;
             detail = com.winlator.star.core.X11Egl.apply(this, envVars, imageFs.getRootDir().getPath() + "/usr/lib", egl);
@@ -17796,7 +17828,7 @@ return true;
     private void setWineDisplayDriver() {
         File userRegFile = new File(imageFs.getRootDir(), ImageFs.WINEPREFIX + "/user.reg");
         try (WineRegistryEditor reg = new WineRegistryEditor(userRegFile)) {
-            if (waylandMode) {
+            if (guestWayland()) {
                 reg.setStringValue("Software\\Wine\\Drivers", "Graphics", "wayland");
                 // Every process of the session is born on the "shell" desktop - explorer's own threads
                 // included. Without this explorer starts on "Default" and SetThreadDesktop moves only
@@ -17840,7 +17872,7 @@ return true;
                 for (String arch : new String[]{"aarch64-windows", "i386-windows"}) {
                     File drv = new File(libDir, "wine/" + arch + "/winex11.drv");
                     File bak = new File(libDir, "wine/" + arch + "/winex11.drv.bak");
-                    if (waylandMode) {
+                    if (guestWayland()) {
                         if (drv.exists() && !bak.exists()) drv.renameTo(bak);
                     } else {
                         if (bak.exists() && !drv.exists()) bak.renameTo(drv);

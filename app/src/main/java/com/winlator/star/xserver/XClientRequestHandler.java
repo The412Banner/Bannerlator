@@ -7,6 +7,8 @@ import com.winlator.star.xconnector.RequestHandler;
 import com.winlator.star.xconnector.XInputStream;
 import com.winlator.star.xconnector.XOutputStream;
 import com.winlator.star.xconnector.XStreamLock;
+import com.winlator.star.xserver.errors.BadAlloc;
+import com.winlator.star.xserver.errors.BadRequest;
 import com.winlator.star.xserver.errors.XRequestError;
 import com.winlator.star.xserver.extensions.Extension;
 import com.winlator.star.xserver.requests.AtomRequests;
@@ -132,12 +134,19 @@ public class XClientRequestHandler implements RequestHandler {
         inputStream.skip(1);
 
         short majorVersion = inputStream.readShort();
-        if (majorVersion != 11) throw new UnsupportedOperationException("Unsupported major X protocol version "+majorVersion+".");
+        inputStream.skip(2);
+        int nameLength = inputStream.readUnsignedShort();
+        int dataLength = inputStream.readUnsignedShort();
+        inputStream.skip(2);
+        // The whole setup request must be here before it is read (the caller rewinds on false).
+        if (inputStream.available() < pad4(nameLength) + pad4(dataLength)) return false;
 
-        inputStream.skip(2);
-        int nameLength = inputStream.readShort();
-        int dataLength = inputStream.readShort();
-        inputStream.skip(2);
+        if ((byteOrder != 66 && byteOrder != 108) || majorVersion != 11) {
+            // Refuse the connection as X does (status Failed + reason); it used to throw on the X thread
+            // and end the app. The IOException makes the connector close this client.
+            refuseConnection(outputStream, "only X protocol version 11 is supported");
+            throw new IOException("X client refused: byte order " + byteOrder + ", protocol version " + majorVersion);
+        }
 
         if (nameLength > 0) inputStream.readString8(nameLength);
         if (dataLength > 0) inputStream.readString8(dataLength);
@@ -148,6 +157,56 @@ public class XClientRequestHandler implements RequestHandler {
 
         client.setAuthenticated(true);
         return true;
+    }
+
+    private static int pad4(int length) {
+        return (length + 3) & ~3;
+    }
+
+    private void refuseConnection(XOutputStream outputStream, String reason) throws IOException {
+        try (XStreamLock lock = outputStream.lock()) {
+            outputStream.writeByte(RESPONSE_CODE_ERROR);
+            outputStream.writeByte((byte)reason.length());
+            outputStream.writeShort(XServer.VERSION);
+            outputStream.writeShort((short)0);
+            outputStream.writeShort((short)(pad4(reason.length()) / 4));
+            outputStream.writeString8(reason);
+        }
+    }
+
+    /** Core requests (opcodes 1-119, 127) that have a reply. */
+    private static final boolean[] CORE_HAS_REPLY = new boolean[128];
+    static {
+        for (int op : new int[]{3, 14, 15, 16, 17, 20, 21, 23, 26, 31, 38, 39, 40, 43, 44, 47, 48, 49, 50, 52, 73,
+                83, 84, 85, 86, 87, 91, 92, 97, 98, 99, 101, 103, 106, 108, 110, 116, 117, 118, 119}) {
+            CORE_HAS_REPLY[op] = true;
+        }
+    }
+
+    /** One log line per opcode and kind of problem, not one per request. */
+    private static final boolean[] loggedUnsupported = new boolean[256];
+    private static final boolean[] loggedFailed = new boolean[256];
+    private static final boolean[] loggedLength = new boolean[256];
+
+    /**
+     * A request this server doesn't handle: its body is skipped either way. A core request without a
+     * reply is ignored (Wine's X error handler ends the program on an unexpected error, and real
+     * servers implement them all). A core request with a reply gets BadAlloc, which Xlib's _XReply
+     * turns into a failed call without calling the error handler (libX11 xcb_io.c), so the client
+     * doesn't wait for a reply that never comes. Opcodes X doesn't define, or of an extension this
+     * server doesn't have, get BadRequest.
+     */
+    private static void unsupportedRequest(XClient client, byte opcode) throws XRequestError {
+        int op = opcode & 0xff;
+        boolean defined = op >= 1 && (op <= 119 || op == 127);
+        if (!loggedUnsupported[op]) {
+            loggedUnsupported[op] = true;
+            Log.w("XClientRequestHandler", "Unsupported " + (opcode < 0 ? "extension " : "") + "opcode " + op
+                    + (defined ? (CORE_HAS_REPLY[op] ? " (has a reply: BadAlloc)" : " (ignored)") : " (BadRequest)"));
+        }
+        client.skipRequest();
+        if (!defined) throw new BadRequest();
+        if (CORE_HAS_REPLY[op]) throw new BadAlloc();
     }
 
     private boolean handleNormalRequest(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException {
@@ -162,12 +221,21 @@ public class XClientRequestHandler implements RequestHandler {
         else if (inputStream.available() < 4) {
             return false;
         }
-        else requestLength = inputStream.readInt() * 4 - 8;
+        else {
+            long words = Integer.toUnsignedLong(inputStream.readInt());
+            requestLength = words >= 2 && words <= Integer.MAX_VALUE / 4 ? (int)(words * 4 - 8) : -1;
+        }
+        // A length that can't be right (big-request length under 2 words): the stream can't be followed
+        // any further, so the connector closes this client.
+        if (requestLength < 0) throw new IOException("X client sent an invalid request length (opcode " + (opcode & 0xff) + ")");
         if (inputStream.available() < requestLength) return false;
 
         client.generateSequenceNumber();
         client.setRequestData(requestData);
         client.setRequestLength(requestLength);
+        // Where the next request starts. Every exit below continues from here, so a request this server
+        // reads too little or too much of can't shift the rest of the stream.
+        final int requestEnd = inputStream.getActivePosition() + requestLength;
 
         try {
             switch (opcode) {
@@ -431,11 +499,10 @@ public class XClientRequestHandler implements RequestHandler {
                 case ClientOpcodes.GET_POINTER_MAPPING:
                     CursorRequests.getPointerMaping(client, inputStream, outputStream);
                     break;
+                // GrabServer and UngrabServer have no reply in X (Xlib sends them without waiting).
                 case 36: // X_GrabServer
                     try (XLock lock = client.xServer.lockAll()) {
                         client.xServer.setGrabbed(true, client);
-                        outputStream.writeSuccessReply(client.getSequenceNumber(), 0);
-                        Log.d("XClientRequestHandler", "X_GrabServer request handled successfully:" + outputStream.buffer.position());
                     }
                     break;
 
@@ -444,24 +511,40 @@ public class XClientRequestHandler implements RequestHandler {
                         if (client.xServer.isGrabbedBy(client)) {
                             client.xServer.setGrabbed(false, null);
                         }
-                        outputStream.writeSuccessReply(client.getSequenceNumber(), 0);
-                        Log.d("XClientRequestHandler", "X_UngrabServer request handled successfully:" + outputStream.buffer.position());
                     }
                     break;
                 default:
-                    if (opcode < 0) {
-                        Extension extension = client.xServer.extensions.get(opcode);
-                        if (extension != null) extension.handleRequest(client, inputStream, outputStream);
-                    }
-                    else Log.d("XClientRequestHandler", "Unsupported opcode " + opcode);
+                    Extension extension = opcode < 0 ? client.xServer.extensions.get(opcode) : null;
+                    if (extension != null) extension.handleRequest(client, inputStream, outputStream);
+                    else unsupportedRequest(client, opcode);
                     break;
             }
         }
         catch (XRequestError e) {
-            client.skipRequest();
+            inputStream.setActivePosition(requestEnd);
             e.sendError(client, opcode);
         }
+        catch (RuntimeException e) {
+            // A request that broke its handler (bad values, a missing case): drop it and go on with the
+            // next one. It used to escape the X thread and end the app.
+            int op = opcode & 0xff;
+            if (!loggedFailed[op]) {
+                loggedFailed[op] = true;
+                Log.e("XClientRequestHandler", "Request with opcode " + op + " failed; skipped", e);
+            }
+            inputStream.setActivePosition(requestEnd);
+            if (op < 128 && CORE_HAS_REPLY[op]) new BadAlloc().sendError(client, opcode);
+        }
 
+        if (inputStream.getActivePosition() != requestEnd) {
+            int op = opcode & 0xff;
+            if (!loggedLength[op]) {
+                loggedLength[op] = true;
+                Log.w("XClientRequestHandler", "Request with opcode " + op + " read "
+                        + (inputStream.getActivePosition() - (requestEnd - requestLength)) + " of " + requestLength + " bytes");
+            }
+            inputStream.setActivePosition(requestEnd);
+        }
         return true;
     }
 }

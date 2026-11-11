@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-10 21:04 EST — 📲 INSTALLED feat/yserver-spike 2bc36808 on the Pocket FIT (user: "install it when it's done")
+- Installed 21:04:19 EST after telling root-6a + root-15; BL was idle (no wine, no services, Termux on top). base.apk sha256 383aea46… == staged == CI artifact; versionName 3.1.9-pre2 (unchanged); crash buffer empty; `files/yserver/` (yserver bc0a13f0 + xkb + VERSION) kept.
+- Code = main f0e68086 + the test switch; without `BANNER_YSERVER` it behaves like main.
+- **Test plan:** `BANNER_YSERVER=1` on one game in X11 mode (not Wayland) → save memory → launch → expect black screen + no input (headless); read `files/yserver/logs/yserver-*.log`, `rec-*/` frames, crash buffer, logcat FATAL.
+- **Restore:** `/sdcard/Download/Bannerlator-espectro-minor-bugs-f598c5df-pubg.apk` (5154bb41).
+- **Proof level:** installed; NOT device-tested (no launch yet).
+
 ## 2026-11-10 20:52 EST — 🔀 main f0e68086 merged into feat/yserver-spike (2bc36808), rebuild (CI 42942017992, NOT for merge)
 - **User:** "yes do the merge and build it" — one test APK with the Epic + Espectro fixes and the yserver switch, so the Epic testing and the yserver test share one install.
 - **Merge:** backup `refs/backup/20261110/yserver-spike-before-main-merge` = 6ae64864 (pushed); `--no-ff` 2bc36808 (parents 6ae64864 + f0e68086). Only conflict PROGRESS_LOG.md (both sides added entries; kept both, spike entry in time order). Merged tree vs main = only `XServerDisplayActivity.java` (+12/−2) and `YServerComponent.java` (+86), checked with `git diff --cached --stat origin/main`.

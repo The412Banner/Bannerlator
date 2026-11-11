@@ -12262,6 +12262,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             // inactive (some throttle and mute themselves, e.g. DiRT Showdown at 16 fps).
             environment.addComponent(new YServerComponent(this, yserverModeName, new File(rootPath, "usr/tmp"),
                     new File(getFilesDir(), ".wayland-rt"), envVars, (cls, hwnd, pid) -> {
+                        // The virtual desktop itself, and a console window flashing up (a console
+                        // program started by the game or a helper), must not take the game's activation.
+                        if (cls.equalsIgnoreCase("explorer.exe") || cls.equalsIgnoreCase("conhost.exe")) return;
                         final int seq = ++waylandBringToFrontSeq;
                         WinHandler wh = winHandler;
                         if (wh == null) return;

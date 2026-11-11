@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 12:5x EST — ✅ bundled yserver DEVICE-PROVEN (feat/yserver-bundle d18f656c on the Pocket FIT)
+- With files/yserver/yserver and files/yserver/xkb moved aside (now yserver.staged-0029 / xkb.staged): YServerComponent started /data/app/…/lib/arm64/libyserver.so, "ready after 103 ms"; yserver compiled the US keymap from the Wine image's XKB data (imagefs usr/share/X11/xkb); YSERVER-MAP for explorer.exe + the AIO window.
+- AIO Vulkan cube on yserver: 2037.17 avg / 483.45 1 % low (one run; other runs today 554-595); HUD 2046.8 fps (AIO 2062), desktop black; 2 WARN (the usual Vulkan dma-buf lines at start), 0 FATAL, crash 0. Fan restored, peers told.
+- The staged copies stay moved aside, so the bundled binary is what runs. Merge of feat/yserver-bundle: user's go.
+
 ## 2026-11-11 12:45 EST — 📲 feat/yserver-bundle d18f656c INSTALLED on the Pocket FIT (user: "install it when it's done and test it"); launch checkpoint
 - CI 43069803925 4/4 green; APK 602,551,723 bytes (+4.98 MB), staged /sdcard/Download/Bannerlator-yserver-bundle-d18f656c-pubg.apk sha256 f9fe1fc4… (host == device); installed 12:44:55 EST, base.apk == staged; lib/arm64/libyserver.so unpacked, -rwxr-xr-x, sha256 cdb1aac0 (= release r1-pre1). Crash buffer empty.
 - Test: files/yserver/yserver → yserver.staged-0029 and files/yserver/xkb → xkb.staged (moved, not deleted) so the bundled binary + the Wine image's XKB data are used; AIO Vulkan cube on yserver (ys-aio.sh vk bundle1 ys 30), fan max. Undo: move both back.

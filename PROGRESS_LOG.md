@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 17:17 EST — TEST build launcher fix + lab download installed for the user (fix/launcher-resume-with-lab-dl d8faad6c)
+
+- **Why (user):** "install for me to test" (launcher fix). Combined so the device keeps "+ Download from source" (feat branch not merged).
+- **Built:** d8faad6c = fix/launcher-resume 7ef76210 + merge of feat/lab-download-from-source 5e7233f4 (code diff vs feature = only MainActivity +18). Test only — merge the two real branches, not this one.
+- **CI:** run 43315666025 (headSha d8faad6c checked) — 4/4 green.
+- **Install:** `/sdcard/Download/Bannerlator-launcher-resume-lab-dl-d8faad6c.apk`, sha256 4b0674ef… host = device = installed base.apk; 17:17:33 EST. App NOT launched (user in Discord) → the user's icon start makes a proper task root.
+- **Device test:** user testing. NOT device-tested by me.
+- **Resume point:** waiting for the user's result; then ask merge of feat/lab-download-from-source and fix/launcher-resume (backup ref first); root-6a's 7b00c8df still not on the device.
+
 ## 2026-11-12 16:25 EST — App icon reopens Home instead of where the user was (fix/launcher-resume, CI running)
 
 - **Why (user):** "anytime I background the app and bring it back to the foreground it always opens up the homepage why doesn't it leave me where I was previously?"

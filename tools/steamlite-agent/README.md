@@ -16,3 +16,9 @@ Only steam.exe is ours; the Valve client files in the package are not GPL (VALVE
 Agent p7 (2026-10-05): `steam_input.h` — Steam Input activation for the launched app (WN_STEAM_INPUT=1 /
 WN_STEAM_INPUT_VDF), header-only, inert without the env; see docs/STEAMLITE_STEAM_INPUT.md. CI builds this
 tree with `.github/workflows/build-steamlite-agent.yml` (same build line).
+
+Agent p8 (2026-11-11, test only, not in a hosted package): Steam Client Service start waits. When the
+first `StartService` fails (1053: Valve's service hands over to its own updater and exits) or the service
+ends up stopped, the agent now waits up to 20 s (`WN_STEAM_SERVICE_WAIT_MS`, 0 = previous behaviour) for
+it to reach RUNNING, starting it again only if it stays stopped, before going on to `LaunchApp`. Without
+`Steam\bin\steamservice.exe` in the prefix (packages up to v8) the service code is skipped as before.

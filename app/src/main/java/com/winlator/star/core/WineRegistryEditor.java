@@ -149,6 +149,11 @@ public class WineRegistryEditor implements Closeable {
         setRawValue(key, name, value != null ? "\"" + escape(value) + "\"" : "\"\"");
     }
 
+    /** Writes a REG_EXPAND_SZ value ({@code str(2):"..."} in the hive file). */
+    public void setExpandStringValue(String key, String name, String value) {
+        setRawValue(key, name, "str(2):\"" + escape(value != null ? value : "") + "\"");
+    }
+
     public Integer getDwordValue(String key, String name) {
         return getDwordValue(key, name, null);
     }

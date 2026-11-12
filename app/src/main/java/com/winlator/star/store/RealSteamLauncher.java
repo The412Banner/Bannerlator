@@ -5,8 +5,14 @@ import android.util.Log;
 
 import com.winlator.star.container.Shortcut;
 import com.winlator.star.core.FileUtils;
+import com.winlator.star.core.WineRegistryEditor;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -50,6 +56,12 @@ public final class RealSteamLauncher {
     public static final String STEAM_EXE_NAME = "steam.exe";
     /** Name of the CommonFilesSteam sub-package inside the SteamLite install dir. */
     private static final String COMMON_FILES_SUBDIR = "CommonFilesSteam";
+    /** Package dir staged to {@code Steam\bin} — holds the Steam Client Service set in packages that ship it. */
+    private static final String SERVICE_BIN_SUBDIR = "bin";
+    private static final String SERVICE_EXE_NAME = "steamservice.exe";
+    private static final String SERVICE_KEY = "System\\ControlSet001\\Services\\Steam Client Service";
+    private static final String STEAM_KEY = "Software\\Wow6432Node\\Valve\\Steam";
+    private static final String STEAM_SERVICE_KEY = "Software\\Wow6432Node\\Valve\\SteamService";
 
     /**
      * The result of a successful {@link #prepare}: the env to merge into the launch environment and the
@@ -228,6 +240,10 @@ public final class RealSteamLauncher {
                 Log.w(TAG, "prepare: SteamLite staging failed - fallback");
                 return null;
             }
+            // Packages that ship the service set (bin\steamservice.exe): make sure Valve's service is
+            // registered in this prefix and paired with the SteamLite folder. Best-effort; older
+            // packages skip it.
+            registerSteamService(steamLiteInstallDir, driveC);
 
             // ── 3a-bis. Controller passthrough (per-game toggle; device-proven fix for classic
             //    DInput games — HL2 / CS:S — that read the pad directly and get nothing while the
@@ -412,32 +428,35 @@ public final class RealSteamLauncher {
     /**
      * Copy the SteamLite package into the prefix: the top-level files (our {@code steam.exe} agent + the
      * matched genuine Valve client DLLs) → {@code Program Files (x86)\Steam\}, and the
-     * {@code CommonFilesSteam\} sub-package → {@code Program Files (x86)\Common Files\Steam\}. Overwrites
-     * the client files (a re-stage picks up a catalog update) but does NOT wipe the Steam dir, so an
-     * existing {@code steamapps\} (our symlinks + ACF) and {@code config\} survive.
+     * {@code CommonFilesSteam\} sub-package → {@code Program Files (x86)\Common Files\Steam\}. Any other
+     * package dir (e.g. {@code bin}, {@code controller_base}) goes into the Steam dir under its own name.
+     * A file that already has the package's content is left alone (a changed one is replaced, so a
+     * re-stage still picks up a catalog update); the Steam dir is NOT wiped, so an existing
+     * {@code steamapps\} (our symlinks + ACF) and {@code config\} survive.
+     *
+     * <p>Not rewriting unchanged files matters for Valve's service: it compares its copies in
+     * {@code Steam\bin} and {@code Common Files\Steam} and updates itself when they differ, which makes
+     * the first service start of a launch fail. Both copies therefore also get the same file time.
      */
     private static boolean stageSteamLite(File steamLiteInstallDir, File steamDir, File commonFilesSteamDir) {
         if (!steamDir.exists() && !steamDir.mkdirs()) return false;
         if (!commonFilesSteamDir.exists() && !commonFilesSteamDir.mkdirs()) return false;
         File[] children = steamLiteInstallDir.listFiles();
         if (children == null) return false;
+        File serviceBinDir = new File(steamLiteInstallDir, SERVICE_BIN_SUBDIR);
         boolean ok = true;
         boolean sawAgent = false;
         for (File child : children) {
             String name = child.getName();
             if (child.isDirectory() && COMMON_FILES_SUBDIR.equals(name)) {
-                File[] cf = child.listFiles();
-                if (cf != null) {
-                    for (File f : cf) {
-                        if (!FileUtils.copy(f, new File(commonFilesSteamDir, f.getName()))) ok = false;
-                    }
-                }
+                // Same file time as the Steam\bin copy of the same file, when the package has one.
+                if (!stageDir(child, commonFilesSteamDir, serviceBinDir)) ok = false;
             } else if (child.isFile()) {
                 if (STEAM_EXE_NAME.equals(name)) sawAgent = true;
-                if (!FileUtils.copy(child, new File(steamDir, name))) ok = false;
+                if (!stageFile(child, steamDir, child.lastModified(), null)) ok = false;
             } else if (child.isDirectory()) {
                 // Any other bundled dir (e.g. config) copies straight into the Steam dir.
-                if (!FileUtils.copy(child, new File(steamDir, name))) ok = false;
+                if (!stageDir(child, new File(steamDir, name), null)) ok = false;
             }
         }
         if (!sawAgent && !new File(steamDir, STEAM_EXE_NAME).isFile()) {
@@ -445,6 +464,179 @@ public final class RealSteamLauncher {
             return false;
         }
         return ok;
+    }
+
+    /**
+     * Stage every entry of {@code srcDir} into {@code dstDir} (recursively). {@code timeRefDir}, when
+     * given, supplies the file time: a file of the same name there lends its time to the staged copy.
+     */
+    private static boolean stageDir(File srcDir, File dstDir, File timeRefDir) {
+        if (FileUtils.isSymlink(srcDir)) return true;
+        if (!dstDir.exists() && !dstDir.mkdirs()) return false;
+        File[] entries = srcDir.listFiles();
+        if (entries == null) return true;
+        String[] existing = dstDir.list();
+        boolean ok = true;
+        for (File f : entries) {
+            if (FileUtils.isSymlink(f)) continue;
+            if (f.isDirectory()) {
+                File refSub = timeRefDir != null ? new File(timeRefDir, f.getName()) : null;
+                if (!stageDir(f, new File(dstDir, f.getName()), refSub)) ok = false;
+            } else if (f.isFile()) {
+                File ref = timeRefDir != null ? new File(timeRefDir, f.getName()) : null;
+                long time = (ref != null && ref.isFile()) ? ref.lastModified() : f.lastModified();
+                if (!stageFile(f, dstDir, time, existing)) ok = false;
+            }
+        }
+        return ok;
+    }
+
+    /**
+     * Put {@code src} into {@code dstDir} under its own name, with file time {@code time}. A destination
+     * that already has the same content is not rewritten (only its time is aligned). {@code existing}
+     * (the destination dir listing, may be null) is used to refresh copies whose name differs only in
+     * case (Windows programs in the prefix create those, e.g. {@code SteamService.dll}) instead of
+     * adding a second file, so the prefix never holds two versions of one Windows file name.
+     */
+    private static boolean stageFile(File src, File dstDir, long time, String[] existing) {
+        String name = src.getName();
+        File exact = new File(dstDir, name);
+        boolean ok = true;
+        boolean stagedVariant = false;
+        if (existing != null) {
+            for (String other : existing) {
+                if (!other.equals(name) && other.equalsIgnoreCase(name)) {
+                    File variant = new File(dstDir, other);
+                    if (!variant.isFile()) continue;
+                    if (!stageOne(src, variant, time)) ok = false;
+                    stagedVariant = true;
+                }
+            }
+        }
+        if (!stagedVariant || exact.exists()) {
+            if (!stageOne(src, exact, time)) ok = false;
+        }
+        return ok;
+    }
+
+    private static boolean stageOne(File src, File dst, long time) {
+        if (dst.isFile() && dst.length() == src.length()) {
+            if (time > 0 && dst.lastModified() == time) return true;
+            if (sameContent(src, dst)) {
+                if (time > 0) dst.setLastModified(time);
+                return true;
+            }
+        }
+        if (!FileUtils.copy(src, dst)) return false;
+        if (time > 0) dst.setLastModified(time);
+        return true;
+    }
+
+    private static boolean sameContent(File a, File b) {
+        try (InputStream ia = new BufferedInputStream(new FileInputStream(a), 1 << 16);
+             InputStream ib = new BufferedInputStream(new FileInputStream(b), 1 << 16)) {
+            byte[] ba = new byte[1 << 16];
+            byte[] bb = new byte[1 << 16];
+            while (true) {
+                int na = readFully(ia, ba);
+                int nb = readFully(ib, bb);
+                if (na != nb) return false;
+                if (na <= 0) return true;
+                for (int i = 0; i < na; i++) if (ba[i] != bb[i]) return false;
+            }
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static int readFully(InputStream in, byte[] buf) throws java.io.IOException {
+        int total = 0;
+        while (total < buf.length) {
+            int n = in.read(buf, total, buf.length - total);
+            if (n < 0) break;
+            total += n;
+        }
+        return total;
+    }
+
+    /**
+     * For a SteamLite package that ships the Steam Client Service set ({@code bin\steamservice.exe} +
+     * {@code CommonFilesSteam\steamservice.exe}): register the service in the prefix when its key is
+     * missing (the values Valve's own {@code steamservice.exe /Install} writes) and point the Steam
+     * install path values the service reads at the SteamLite folder. An existing service key is never
+     * modified. No-op for packages without the service set. Best-effort: never blocks the launch.
+     */
+    private static void registerSteamService(File steamLiteInstallDir, File driveC) {
+        try {
+            if (!new File(steamLiteInstallDir, SERVICE_BIN_SUBDIR + "/" + SERVICE_EXE_NAME).isFile()
+                    || !new File(steamLiteInstallDir, COMMON_FILES_SUBDIR + "/" + SERVICE_EXE_NAME).isFile()) {
+                return;
+            }
+            File systemReg = new File(driveC.getParentFile(), "system.reg");
+            if (!systemReg.isFile()) return;
+
+            // The hive keeps whatever spelling a key was created with ("valve" / "Valve"); reuse it.
+            String[] keys = { SERVICE_KEY, STEAM_KEY, STEAM_SERVICE_KEY };
+            String[] found = findRegistryKeys(systemReg, keys);
+            boolean serviceMissing = found[0] == null;
+            String steamKey = found[1] != null ? found[1] : STEAM_KEY;
+            String steamServiceKey = found[2] != null ? found[2] : STEAM_SERVICE_KEY;
+
+            try (WineRegistryEditor reg = new WineRegistryEditor(systemReg)) {
+                reg.setCreateKeyIfNotExist(true);
+                if (serviceMissing) {
+                    reg.setStringValue(SERVICE_KEY, "Description",
+                            "Steam Client Service monitors and updates Steam content");
+                    reg.setStringValue(SERVICE_KEY, "DisplayName", "Steam Client Service");
+                    reg.setDwordValue(SERVICE_KEY, "ErrorControl", 1);
+                    reg.setExpandStringValue(SERVICE_KEY, "ImagePath",
+                            "\"C:\\Program Files (x86)\\Common Files\\Steam\\steamservice.exe\" /RunAsService");
+                    reg.setStringValue(SERVICE_KEY, "ObjectName", "LocalSystem");
+                    reg.setDwordValue(SERVICE_KEY, "PreshutdownTimeout", 0x2bf20);
+                    reg.setDwordValue(SERVICE_KEY, "Start", 3);
+                    reg.setDwordValue(SERVICE_KEY, "Type", 0x10);
+                    reg.setDwordValue(SERVICE_KEY, "WOW64", 1);
+                    Log.i(TAG, "registerSteamService: Steam Client Service registered");
+                }
+                if (!STEAM_DIR_WIN.equalsIgnoreCase(reg.getStringValue(steamKey, "InstallPath", ""))) {
+                    reg.setStringValue(steamKey, "InstallPath", STEAM_DIR_WIN);
+                    Log.i(TAG, "registerSteamService: InstallPath set");
+                }
+                if (!STEAM_DIR_WIN.equalsIgnoreCase(reg.getStringValue(steamServiceKey, "installpath_default", ""))) {
+                    reg.setStringValue(steamServiceKey, "installpath_default", STEAM_DIR_WIN);
+                    Log.i(TAG, "registerSteamService: installpath_default set");
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "registerSteamService: skipped", t);
+        }
+    }
+
+    /**
+     * Look up registry keys in a Wine hive file ignoring case; returns, per requested key, the spelling
+     * the hive uses or null when the key is absent.
+     */
+    private static String[] findRegistryKeys(File hive, String[] keys) {
+        String[] found = new String[keys.length];
+        String[] headers = new String[keys.length];
+        for (int i = 0; i < keys.length; i++) headers[i] = "[" + keys[i].replace("\\", "\\\\") + "]";
+        int missing = keys.length;
+        try (BufferedReader reader = new BufferedReader(new FileReader(hive), 1 << 16)) {
+            String line;
+            while (missing > 0 && (line = reader.readLine()) != null) {
+                if (line.isEmpty() || line.charAt(0) != '[') continue;
+                for (int i = 0; i < keys.length; i++) {
+                    String h = headers[i];
+                    if (found[i] == null && line.regionMatches(true, 0, h, 0, h.length())) {
+                        found[i] = line.substring(1, h.length() - 1).replace("\\\\", "\\");
+                        missing--;
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "findRegistryKeys: read failed", t);
+        }
+        return found;
     }
 
     // ── Controller passthrough (per-game toggle) ──────────────────────────────────────────────────

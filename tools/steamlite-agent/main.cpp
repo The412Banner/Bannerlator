@@ -856,6 +856,17 @@ static LONG WINAPI launcher_unhandled_filter(EXCEPTION_POINTERS* info) {
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+// How long to wait for the Steam Client Service to reach RUNNING after a failed or stopped first
+// start. WN_STEAM_SERVICE_WAIT_MS overrides it; 0 restores the earlier behaviour (no waiting).
+static DWORD svc_retry_budget_ms(void) {
+    const char* v = getenv("WN_STEAM_SERVICE_WAIT_MS");
+    if (!v || !*v) return 20000;
+    long ms = strtol(v, NULL, 10);
+    if (ms < 0) ms = 0;
+    if (ms > 120000) ms = 120000;
+    return (DWORD) ms;
+}
+
 static bool start_steam_client_service(void) {
     const char* kSvcName       = "Steam Client Service";
     const char* kSvcExe        = "C:\\Program Files (x86)\\Steam\\bin\\steamservice.exe";
@@ -911,26 +922,79 @@ static bool start_steam_client_service(void) {
     log_line("[wn-launcher] steamservice: pre-start state=%lu", status.dwCurrentState);
 
     if (status.dwCurrentState != SERVICE_RUNNING) {
+        const DWORD retryBudgetMs = svc_retry_budget_ms();
+        bool startAccepted = true;
         if (!StartServiceA(svc, 0, NULL)) {
             DWORD err = GetLastError();
             if (err != ERROR_SERVICE_ALREADY_RUNNING) {
                 log_line("[wn-launcher] steamservice: StartService failed GLE=%lu",
                          err);
-                CloseServiceHandle(svc);
-                CloseServiceHandle(scm);
-                return false;
+                if (retryBudgetMs == 0) {
+                    CloseServiceHandle(svc);
+                    CloseServiceHandle(scm);
+                    return false;
+                }
+                startAccepted = false;
             }
         }
-        int waited = 0;
-        while (waited < 30000) {
-            if (!QueryServiceStatus(svc, &status)) break;
-            if (status.dwCurrentState == SERVICE_RUNNING ||
-                status.dwCurrentState == SERVICE_STOPPED) break;
-            Sleep(200);
-            waited += 200;
+        if (startAccepted) {
+            int waited = 0;
+            while (waited < 30000) {
+                if (!QueryServiceStatus(svc, &status)) break;
+                if (status.dwCurrentState == SERVICE_RUNNING ||
+                    status.dwCurrentState == SERVICE_STOPPED) break;
+                Sleep(200);
+                waited += 200;
+            }
+            log_line("[wn-launcher] steamservice: post-start state=%lu after %dms",
+                     status.dwCurrentState, waited);
         }
-        log_line("[wn-launcher] steamservice: post-start state=%lu after %dms",
-                 status.dwCurrentState, waited);
+
+        // Valve's service can answer the first start by updating itself: the process hands over to
+        // "SteamServiceTmp.exe /Update" and exits, so the service manager reports 1053 / STOPPED, and
+        // the updater brings the service up a few seconds later. Wait for that instead of giving up;
+        // start it again ourselves only if it stays stopped.
+        if (status.dwCurrentState != SERVICE_RUNNING && retryBudgetMs > 0) {
+            log_line("[wn-launcher] steamservice: not running yet — waiting up to %lums",
+                     (unsigned long) retryBudgetMs);
+            const DWORD kFirstRestartMs = 8000;   // leave the updater alone this long
+            const DWORD kRestartEveryMs = 4000;
+            const DWORD t0 = GetTickCount();
+            DWORD nextRestartAt = kFirstRestartMs;
+            DWORD lastState = (DWORD) -1;
+            int restarts = 0;
+            for (;;) {
+                DWORD elapsed = GetTickCount() - t0;
+                if (!QueryServiceStatus(svc, &status)) {
+                    log_line("[wn-launcher] steamservice: QueryServiceStatus failed GLE=%lu",
+                             GetLastError());
+                    break;
+                }
+                if (status.dwCurrentState != lastState) {
+                    lastState = status.dwCurrentState;
+                    log_line("[wn-launcher] steamservice: wait state=%lu at %lums",
+                             status.dwCurrentState, (unsigned long) elapsed);
+                }
+                if (status.dwCurrentState == SERVICE_RUNNING) break;
+                if (elapsed >= retryBudgetMs) break;
+                if (status.dwCurrentState == SERVICE_STOPPED && elapsed >= nextRestartAt) {
+                    nextRestartAt = elapsed + kRestartEveryMs;
+                    ++restarts;
+                    if (StartServiceA(svc, 0, NULL)) {
+                        log_line("[wn-launcher] steamservice: restart %d accepted at %lums",
+                                 restarts, (unsigned long) elapsed);
+                    } else {
+                        DWORD err = GetLastError();
+                        log_line("[wn-launcher] steamservice: restart %d failed GLE=%lu at %lums",
+                                 restarts, err, (unsigned long) elapsed);
+                    }
+                    continue;
+                }
+                Sleep(250);
+            }
+            log_line("[wn-launcher] steamservice: wait done state=%lu after %lums (%d restarts)",
+                     status.dwCurrentState, (unsigned long) (GetTickCount() - t0), restarts);
+        }
     }
 
     bool running = (status.dwCurrentState == SERVICE_RUNNING);

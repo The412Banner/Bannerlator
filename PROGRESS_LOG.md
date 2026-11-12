@@ -10,10 +10,11 @@
   - Menus: in-game drawer (`FgMultiplierButtons`) and deck quick row offer Off/2×/3×/4× for Win-FG Native; fit advice may suggest a lower multiplier. The in-container win-fg layer (training capture only) stays Off/On — its prebuilt `libwin_fg.so` is unchanged and still has the bug.
   - Credit row in THIRD-PARTY-LICENSES.md (DroidDeck is GPL-3.0, same as this repo).
 - **Checked:** `clang++ -fsyntax-only` on framegen.cpp + winfg_engine.cpp clean. Both presenters already pass the multiplier and call `generateInto(g, count)` from g = 0 upward (X11 `recordFrameGenGeneration`, Wayland `fge_*`).
-- **CI:** run 43287809073 (headSha b79cc664d) — in progress.
+- **CI:** run 43287809073 (headSha b79cc664d) green 4/4. After the user's "rebuild with latest merged work to main first": merged main 8c199678a (last-played any-launch) → 3e21e6c79; run 43290808699 (headSha 3e21e6c79) green 4/4.
+- **Installed:** Pocket FIT, 14:43 EST (user: "install it on the fit when ci is green"): `/sdcard/Download/Bannerlator-winfg-multi-3e21e6c7-pubg.apk` sha256 b2965073…e334 == installed base.apk. Not launched.
 - **Device test:** none yet. To test: Win-FG Native 2×/3×/4× on Wayland and X11, check for flicker/black frames at 3×/4×, logcat FATAL check, recording frame count.
 - **Open / Next:** CI result → stage APK → ask the user before install. Xbox cloud player's Win-FG stays 2×.
-- **Resume point:** worktree `/root/src/Bannerlator-wt/winfg-multi`, branch `feat/winfg-multi`; nothing installed from it.
+- **Resume point:** worktree `/root/src/Bannerlator-wt/winfg-multi`, branch `feat/winfg-multi`; FIT has 3e21e6c79 installed; waiting for the user's Win-FG Native 3×/4× test (no background jobs).
 ## 2026-11-12 14:30 EST — 🔀 MERGED fix/last-played-any-launch (main a208c6717; user: "merge")
 
 - **Why:** user asked to check the Home "Continue" tile (it showed Brawlhalla after CS2 ran). Finding: `lastPlayed` (shortcut extra, read by the tile and the recent order) was stamped only by the in-app Play paths (`recordLastPlayed`, ShortcutsScreen.kt); launches that start XServerDisplayActivity directly — pinned home-screen icons (`MoveGameToContainer.pinIntent`) and my test harness — never counted. The tile logic itself (bcda2c55) was right.

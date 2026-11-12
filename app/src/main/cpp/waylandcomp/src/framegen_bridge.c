@@ -90,7 +90,8 @@ static int64_t now_ns(void) {
 /* ====================================================================== app controls */
 
 void vkp_framegen_set_engine(int kind) {
-    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG) kind = VKP_FG_ENGINE_LSFG;
+    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG && kind != VKP_FG_ENGINE_WFG)
+        kind = VKP_FG_ENGINE_LSFG;
     atomic_store(&g_kind, kind);
     atomic_store(&g_cfg_dirty, 1);
 }
@@ -185,9 +186,11 @@ void vkp_framegen_device_ready(VkDevice dev, VkQueue queue, uint32_t qfam, int f
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
     fge_device_ready(g_gipa, g_inst, g_pd, dev, queue, qfam, features_enabled);
     g_dev_ready = vk.CreateImage && vk.CreateImageView && vk.CmdPipelineBarrier;
-    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), Win-FG Native %s",
+    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), Win-FG Native %s, "
+          "WFG Native %s",
           fge_caps_ok(VKP_FG_ENGINE_LSFG) ? "available" : "unavailable", fge_caps_reason(),
-          fge_caps_ok(VKP_FG_ENGINE_WINFG) ? "available" : "unavailable");
+          fge_caps_ok(VKP_FG_ENGINE_WINFG) ? "available" : "unavailable",
+          fge_caps_ok(VKP_FG_ENGINE_WFG) ? "available" : "unavailable");
 }
 
 void vkp_framegen_device_lost(void) { g_dev_lost = 1; }

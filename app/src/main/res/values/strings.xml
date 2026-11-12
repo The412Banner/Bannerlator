@@ -1419,6 +1419,7 @@
     <string name="frame_generation_bionic">Win-FG Native (built in)</string>
     <string name="frame_generation_lsfg">lsfg-vk (Lossless Scaling)</string>
     <string name="frame_generation_lsfg_native">LSFG Native (Lossless Scaling)</string>
+    <string name="frame_generation_wfg">WFG (WinNative, built in)</string>
     <string name="frame_generation_multiplier">Multiplier</string>
     <string name="frame_generation_lsfg_needs_dll">lsfg-vk is unavailable — import a Lossless.dll at the bottom of Settings to enable it.</string>
     <string name="frame_generation_requires_vulkan">Frame generation requires the Vulkan renderer.</string>

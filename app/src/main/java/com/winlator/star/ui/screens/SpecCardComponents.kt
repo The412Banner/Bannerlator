@@ -73,6 +73,7 @@ internal fun frameGenLabelOf(engine: String): String = when (engine) {
     "bionic" -> "Win-FG Native"
     "lsfg" -> "LSFG-VK"
     "lsfg-native" -> "LSFG Native"
+    "wfg" -> "WFG"
     else -> ""
 }
 

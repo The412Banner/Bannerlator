@@ -56,7 +56,7 @@ set(BANNER_FRAMEGEN_LSFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/lsfg)
 set(BANNER_FRAMEGEN_WINFG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/winfg)
 if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
         AND EXISTS ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_engine.cpp)
-    message(STATUS "bannerwayland: frame-generation engines built in (LSFG Native, Win-FG Native)")
+    message(STATUS "bannerwayland: frame-generation engines built in (LSFG Native, Win-FG Native, WFG Native)")
     target_sources(bannerwayland PRIVATE
             src/framegen_engine.cpp
             ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_probe.cpp
@@ -78,6 +78,7 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/framegen.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_vkd.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_engine.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../winlator/wfg/wfg_engine.cpp
     )
     target_include_directories(bannerwayland PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/..            # <thirdparty/...> as the winlator target sees it
@@ -88,8 +89,9 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
     target_compile_definitions(bannerwayland PRIVATE
             WINFG_UPSTREAM="${WINFG_UPSTREAM}"
             WINFG_CHAIN_HASH="${WINFG_CHAIN_HASH}"
+            WFG_UPSTREAM="${WFG_UPSTREAM}"
     )
-    target_link_libraries(bannerwayland dxbc atomic)
+    target_link_libraries(bannerwayland dxbc wfg atomic)
 else()
     message(STATUS "bannerwayland: frame-generation engines NOT built in (standalone build): stub")
     target_sources(bannerwayland PRIVATE src/framegen_engine_stub.c)

@@ -136,6 +136,7 @@ struct VkTable {
 
 namespace lsfg { class Engine; }
 namespace winfg { class Engine; }
+namespace wfg { class Engine; }
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -601,10 +602,13 @@ private:
     bool        lsfgEngineTried_ = false;
     std::unique_ptr<winfg::Engine> winfgEngine_;
     bool        winfgEngineTried_ = false;
-    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg
+    std::unique_ptr<wfg::Engine> wfgEngine_;
+    bool        wfgEngineTried_ = false;
+    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg, 2 = wfg
     std::atomic<int> fgModel_{4};
     std::atomic<int> fgPerfPreset_{1};
     bool ensureWinFgEngine();
+    bool ensureWfgEngine();
     // Capability gate for the SELECTED engine. win-fg's shaders need only a
     // storage-capable swapchain format; the LSFG chain also needs the fp16 /
     // memory-model feature set, which some otherwise capable GPUs lack.

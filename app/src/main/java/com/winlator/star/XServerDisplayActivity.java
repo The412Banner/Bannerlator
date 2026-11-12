@@ -2480,6 +2480,16 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 reapplyFpsLimit();
                 return;
             }
+            if (wfgNativeSession()) {
+                // WFG: same shape as the other two native engines - a level change is a call.
+                Log.i("XServerDisplayActivity", "wfg native toggle: fgOn=" + fgOn + " mult=" + mult
+                    + " renderer=" + (vulkanRendererOrNull() != null ? "vulkan" : "NULL"));
+                applyWfgNative(mult, flow);
+                if (fgOn) container.setFrameGenMultiplier(mult);
+                container.saveData();
+                reapplyFpsLimit();
+                return;
+            }
             if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk: rewrite its conf.toml — the fork layer watches the file mtime and reloads
                 // live (swapchain recreate). Passthrough = multiplier 1 (layer treats <=1 as off).
@@ -3010,12 +3020,13 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // generator runs differs (in-container layer vs our own compositor).
         boolean lsfgOn = fgEngine.equals("lsfg") || fgEngine.equals("lsfg-native");
         boolean fpsLimOn = resolvedFpsLimiterEnabled();
-        boolean bionicFgActive = fgEnabled || lsfgOn;
+        boolean wfgOn = wfgNativeSession();
+        boolean bionicFgActive = fgEnabled || lsfgOn || wfgOn;
         XServerDrawerState.INSTANCE.setBionicFgActive(bionicFgActive);
         // Wayland: the compositor's frame-generation bridge (LSFG Native + Win-FG Native,
         // waylandcomp/src/framegen_bridge.c) is compiled in, so the drawer's FG rows are live there.
         XServerDrawerState.INSTANCE.setWaylandFrameGenAvailable(waylandMode);
-        XServerDrawerState.INSTANCE.setFrameGenEnabled(fgEnabled || lsfgOn);
+        XServerDrawerState.INSTANCE.setFrameGenEnabled(fgEnabled || lsfgOn || wfgOn);
         // Frame gen normally starts OFF in-game (multiplier 0) regardless of the container setting. The
         // layer is still loaded at launch (below), so the user can opt in per session from the FG drawer
         // (live hot-reload). EXCEPTION: an lsfg container that opted into auto-enable seeds its saved
@@ -4213,6 +4224,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
         refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
     }
 
+    /** WFG at launch: select the engine and arm it OFF, like the other native engines. */
+    private void prepareWfgNative() {
+        applyWfgNative(0, container.getFrameGenFlowScale());
+        refreshNativeFgAvailability(true, NATIVE_FG_CHECK_TRIES);
+    }
+
     // ── Native frame gen that cannot run: say so instead of failing silently ──
     // A community report (Adreno 710): LSFG Native did nothing because the Renderer
     // Driver was the stock "System" driver (Vulkan 1.1); it needs 1.3. The chain ran
@@ -4237,8 +4254,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         final String engine = resolvedFrameGenEngine();
         final boolean lsfg = "lsfg-native".equals(engine);
         final boolean winfg = "bionic".equals(engine) && winFgNativeSession;
-        if (!lsfg && !winfg) return "";
-        final String name = lsfg ? "LSFG Native" : "Win-FG Native";
+        final boolean wfg = "wfg".equals(engine);
+        if (!lsfg && !winfg && !wfg) return "";
+        final String name = lsfg ? "LSFG Native" : wfg ? "WFG" : "Win-FG Native";
         if (lsfg && lsfgNativeStatus > com.winlator.star.core.LsfgNative.STATUS_OK)
             return "LSFG Native can't start: "
                 + com.winlator.star.core.LsfgNative.explain(lsfgNativeStatus) + ".";
@@ -4341,7 +4359,37 @@ public class XServerDisplayActivity extends AppCompatActivity {
         s.setFrameGenMultiplier(0);
         float flow = s.getFrameGenFlowScale().getValue();
         if ("lsfg-native".equals(resolvedFrameGenEngine())) applyLsfgNative(0, flow);
+        else if ("wfg".equals(resolvedFrameGenEngine())) applyWfgNative(0, flow);
         else applyWinFgNative(0, flow, resolvedFrameGenModel(), resolvedFrameGenPerfPreset());
+    }
+
+    /** WFG flow resolution: 1 = Balance (252 px on the short side), 2 = Fast (180 px). */
+    private static final int WFG_PERF_PRESET = 1;
+
+    /**
+     * Select WFG (WinNative's frame generator) in the renderer and arm it at {@code multiplier}
+     * (0 = off). WFG paces itself up to the display rate; the multiplier caps how many frames it
+     * may add per game frame.
+     */
+    private void applyWfgNative(int multiplier, float flowScale) {
+        if (waylandMode) {
+            applyWaylandFrameGen(multiplier, flowScale, 0, WFG_PERF_PRESET);
+            return;
+        }
+        com.winlator.star.renderer.vulkan.VulkanRenderer vkr = vulkanRendererOrNull();
+        if (vkr == null) {
+            Log.w("XServerDisplayActivity", "applyWfgNative(" + multiplier + ") ignored - no Vulkan renderer");
+            return;
+        }
+        Log.i("XServerDisplayActivity", "applyWfgNative: multiplier=" + multiplier
+            + " preset=" + WFG_PERF_PRESET + " refresh=" + currentDisplayRefreshHz());
+        vkr.setFrameGenEngine(com.winlator.star.renderer.vulkan.VulkanRenderer.FG_ENGINE_WFG);
+        vkr.setWinFgTuning(4, WFG_PERF_PRESET);
+        vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz(), 0);
+        vkr.setFrameGenArmed(multiplier >= 2, multiplier);
+        applyEffectivePresentMode();
+        applyNativeFgLocks(multiplier >= 2);
+        if (multiplier >= 2) startLsfgStatsReadout(); else stopLsfgStatsReadout();
     }
 
     /** Win-FG Native is Performance-only; see applyWinFgNative. 2 = Performance. */
@@ -4394,16 +4442,21 @@ public class XServerDisplayActivity extends AppCompatActivity {
      */
     private void applyWaylandFrameGen(int multiplier, float flowScale, int model, int perfPreset) {
         final boolean lsfg = "lsfg-native".equals(resolvedFrameGenEngine());
-        Log.i("XServerDisplayActivity", "applyWaylandFrameGen: engine=" + (lsfg ? "lsfg-native" : "winfg-native")
+        final boolean wfg = "wfg".equals(resolvedFrameGenEngine());
+        Log.i("XServerDisplayActivity", "applyWaylandFrameGen: engine=" + (lsfg ? "lsfg-native" : wfg ? "wfg-native" : "winfg-native")
             + " multiplier=" + multiplier + " flow=" + flowScale
-            + (lsfg ? "" : " model=" + model + " preset=" + WINFG_PERF_PRESET + " (pinned; requested " + perfPreset + ")")
+            + (lsfg || wfg ? "" : " model=" + model + " preset=" + WINFG_PERF_PRESET + " (pinned; requested " + perfPreset + ")")
             + " refresh=" + currentDisplayRefreshHz());
         com.winlator.star.wayland.WaylandCompositor.nativeSetFrameGenEngine(lsfg
             ? com.winlator.star.wayland.WaylandCompositor.FG_ENGINE_LSFG
+            : wfg ? com.winlator.star.wayland.WaylandCompositor.FG_ENGINE_WFG
             : com.winlator.star.wayland.WaylandCompositor.FG_ENGINE_WINFG);
         if (lsfg) {
             com.winlator.star.wayland.WaylandCompositor.nativeSetLsfgCachePath(
                 com.winlator.star.core.LsfgNative.cacheFile(this).getAbsolutePath());
+        } else if (wfg) {
+            // The preset picks WFG's flow resolution (applyWfgNative).
+            com.winlator.star.wayland.WaylandCompositor.nativeSetWinFgTuning(4, WFG_PERF_PRESET);
         } else {
             // Performance preset pinned exactly as applyWinFgNative does (user decision, 2026-09-09).
             com.winlator.star.wayland.WaylandCompositor.nativeSetWinFgTuning(model, WINFG_PERF_PRESET);
@@ -11939,6 +11992,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 // Lossless.dll (slow on a first run: the DXBC chain is translated on device, which
                 // is why it is off the main thread) and arming the renderer.
                 prepareLsfgNative();
+            } else if (resolvedFrameGenEngine().equals("wfg")) {
+                // WFG runs inside our compositor like the other native engines; its shaders are
+                // in the APK and nothing goes into the container.
+                prepareWfgNative();
             } else if (resolvedFrameGenEngine().equals("lsfg")) {
                 // lsfg-vk engine (mutually exclusive with bionic-fg). Opt-in via ENABLE_LSFG so the
                 // staged layer stays inert elsewhere. Driven by conf.toml (NOT the LSFG_LEGACY env):
@@ -16494,7 +16551,15 @@ return true;
     // the engine name.
     private boolean nativeFrameGenEngine() {
         final String engine = resolvedFrameGenEngine();
-        return "lsfg-native".equals(engine) || ("bionic".equals(engine) && winFgNativeSession);
+        return "lsfg-native".equals(engine) || ("bionic".equals(engine) && winFgNativeSession)
+            || wfgNativeSession();
+    }
+
+    // WFG has no guest-side form: it generates only in our Vulkan compositor (X11 Vulkan
+    // renderer or Wayland). With another renderer the engine choice does nothing.
+    private boolean wfgNativeSession() {
+        return "wfg".equals(resolvedFrameGenEngine())
+            && (waylandMode || "vulkan".equalsIgnoreCase(resolvedRenderer()));
     }
 
     // Any frame-gen engine (lsfg-vk OR bionic-fg) actively multiplying (mult >= 2) inserts extra

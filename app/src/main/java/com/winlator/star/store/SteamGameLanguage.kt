@@ -8,8 +8,9 @@ import java.util.Locale
  * It decides which per-language depots are downloaded (library sync / install / update) and what the
  * Steam emulator and the appmanifest report to the game.
  *
- * Saved per app in steam_games.languages as "supported|packaged|selected": the languages Steam lists,
- * the ones with a depot of their own, and the language pack the last depot selection took.
+ * Saved per app in steam_games.languages as "supported|packaged|selected|packDepots": the languages Steam
+ * lists, the ones with a depot of their own, the language pack the last depot selection took, and the
+ * language-tagged depots that selection took (to check the install really got them).
  *
  * Safety rule (2026-11-12: a real Steam client deleted all of Brawlhalla when its appmanifest named a
  * language whose depots were not installed): what a real Steam client is told - appmanifest language and
@@ -58,9 +59,13 @@ object SteamGameLanguage {
     fun selectedPack(appId: Int): String =
         saved(appId).getOrNull(2)?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: ENGLISH
 
+    /** The language-tagged depots the last depot selection took for [appId]. */
+    private fun selectedPackDepots(appId: Int): Set<Int> =
+        saved(appId).getOrNull(3).orEmpty().split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
+
     @JvmStatic
-    fun encode(supported: List<String>, packaged: List<String>, selected: String): String =
-        supported.joinToString(",") + "|" + packaged.joinToString(",") + "|" + selected
+    fun encode(supported: List<String>, packaged: List<String>, selected: String, packDepots: List<Int>): String =
+        supported.joinToString(",") + "|" + packaged.joinToString(",") + "|" + selected + "|" + packDepots.joinToString(",")
 
     @JvmStatic
     fun parse(csv: String?): List<String> =
@@ -112,14 +117,37 @@ object SteamGameLanguage {
         runCatching { SteamPrefs.setLanguageSwitchPending(appId, true) }
     }
 
-    /** The run finished: the pack it downloaded (the saved selection it used) is now the one on disk. */
+    /**
+     * A run of [appId] into [installDir] finished: the pack its selection took is now on disk - unless Steam
+     * refused that pack's depots (no license for it; the downloader skips a denied depot): then the copy
+     * keeps the pack it had, that pack is remembered as refused, and the saved depot list is re-read.
+     * Installs without the downloader's on-disk record (JavaSteam engine) take the selection as is.
+     */
     @JvmStatic
-    fun recordInstalled(appId: Int) {
+    fun recordInstalled(appId: Int, installDir: java.io.File?) {
         runCatching {
-            SteamPrefs.setInstalledLanguage(appId, selectedPack(appId))
+            val selected = selectedPack(appId)
+            val journal = installDir?.let { BlDepotInstaller.journalInstalledManifests(it) }.orEmpty()
+            val got = journal.isEmpty() || selectedPackDepots(appId).all { it in journal }
+            if (got) {
+                SteamPrefs.setInstalledLanguage(appId, selected)
+            } else {
+                SteamPrefs.setInstalledLanguage(appId, installedPack(appId))
+                SteamPrefs.setDeniedLanguage(appId, selected)
+            }
             SteamPrefs.setLanguageSwitchPending(appId, false)
+            if (!got) {
+                Thread({
+                    runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) }
+                }, "steam-language-denied-$appId").start()
+            }
         }
     }
+
+    /** True when Steam refused [appId]'s [pack] files (see [recordInstalled]). */
+    @JvmStatic
+    fun isDenied(appId: Int, pack: String): Boolean =
+        runCatching { SteamPrefs.getDeniedLanguage(appId) }.getOrDefault("") == pack
 
     /** [appId] was uninstalled. */
     @JvmStatic
@@ -141,7 +169,7 @@ object SteamGameLanguage {
     fun missingPack(appId: Int, installed: Boolean): String? {
         if (!installed || !knowsPacks(appId)) return null
         val want = packOf(of(appId), packaged(appId))
-        return if (want == installedPack(appId)) null else want
+        return if (want == installedPack(appId) || isDenied(appId, want)) null else want
     }
 
     /** True while a language download of [appId] has started and not finished. */
@@ -166,18 +194,30 @@ object SteamGameLanguage {
     @JvmStatic
     fun depotsForLaunch(appId: Int, installDir: String?, savedCsv: String?): String {
         val saved = savedCsv.orEmpty()
-        if (SteamDepotDownloader.isDownloading(appId) || !abandonSwitch(appId)) return saved
-        val dir = installDir?.takeIf { it.isNotEmpty() } ?: return saved
-        val journal = runCatching { BlDepotInstaller.journalInstalledManifests(java.io.File(dir)) }.getOrDefault(emptyMap())
-        if (journal.isEmpty()) return saved
-        val sizes = HashMap<Int, Long>()
-        for (entry in saved.split(',')) {
-            val p = entry.split(':')
-            val depot = p.getOrNull(0)?.trim()?.toIntOrNull() ?: continue
-            sizes[depot] = p.getOrNull(2)?.trim()?.toLongOrNull() ?: 0L
+        val dir = installDir?.takeIf { it.isNotEmpty() }?.let { java.io.File(it) }
+        val journal = dir?.let { runCatching { BlDepotInstaller.journalInstalledManifests(it) }.getOrDefault(emptyMap()) }.orEmpty()
+        var list = saved
+        if (!SteamDepotDownloader.isDownloading(appId) && abandonSwitch(appId) && journal.isNotEmpty()) {
+            val sizes = HashMap<Int, Long>()
+            for (entry in saved.split(',')) {
+                val p = entry.split(':')
+                val depot = p.getOrNull(0)?.trim()?.toIntOrNull() ?: continue
+                sizes[depot] = p.getOrNull(2)?.trim()?.toLongOrNull() ?: 0L
+            }
+            list = journal.entries.sortedBy { it.key }.joinToString(",") { "${it.key}:${it.value}:${sizes[it.key] ?: 0L}" }
         }
-        return journal.entries.sortedBy { it.key }.joinToString(",") { "${it.key}:${it.value}:${sizes[it.key] ?: 0L}" }
+        // A depot Steam refused (no license) and that is not installed is never handed over as installed.
+        val refused = dir?.let { deniedDepots(it) }.orEmpty() - journal.keys
+        if (refused.isEmpty()) return list
+        return list.split(',').filter { e -> e.substringBefore(':').trim().toIntOrNull()?.let { it !in refused } ?: true }
+            .joinToString(",")
     }
+
+    /** Depots the downloader recorded as refused by Steam for the install in [dir]. */
+    private fun deniedDepots(dir: java.io.File): Set<Int> = runCatching {
+        java.io.File(dir, ".bl_depot/denied.depots").takeIf { it.isFile }?.readLines()
+            ?.mapNotNull { it.trim().toIntOrNull() }?.toSet() ?: emptySet()
+    }.getOrDefault(emptySet())
 
     // ── What the game is told ────────────────────────────────────────────────
 

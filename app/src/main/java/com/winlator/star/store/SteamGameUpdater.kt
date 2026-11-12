@@ -393,9 +393,16 @@ object SteamGameUpdater {
         }
         if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
 
+        val wantedPack = SteamGameLanguage.packOf(SteamGameLanguage.of(appId), SteamGameLanguage.packaged(appId))
         SteamGameLanguage.beginInstall(appId)
         // Not finished (failed / stopped / offline): the selection goes back to the installed pack.
-        val finish: (Result, String) -> Unit = { result, message ->
+        val finish: (Result, String) -> Unit = { done, doneMessage ->
+            // Finished, but Steam refused the pack's files (this account has no license for them).
+            val refused = done == Result.UPDATED && SteamGameLanguage.isDenied(appId, wantedPack)
+            val result = if (refused) Result.FAILED else done
+            val message = if (refused) {
+                "Steam didn't let this account download the ${SteamGameLanguage.label(wantedPack)} files."
+            } else doneMessage
             if (result != Result.UPDATED && SteamGameLanguage.abandonSwitch(appId)) {
                 Thread({
                     try { repo.refreshAppProductInfo(appId, PICS_REFRESH_MS) } catch (_: Throwable) {}
@@ -721,7 +728,7 @@ object SteamGameUpdater {
      */
     @JvmStatic
     fun recordInstalledBuild(context: Context, appId: Int, installDir: File, branch: String) {
-        SteamGameLanguage.recordInstalled(appId)
+        SteamGameLanguage.recordInstalled(appId, installDir)
         try {
             val build = liveBuildId(SteamRepository.getInstance(), appId, branch)
             if (build <= 0L) return

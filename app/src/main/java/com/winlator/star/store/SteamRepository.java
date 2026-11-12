@@ -2147,6 +2147,7 @@ public final class SteamRepository {
                         String depotLanguage = SteamGameLanguage.selection(appId, knownRow != null && knownRow.isInstalled,
                                 SteamGameLanguage.packOf(gameLanguage, packagedLanguages));
                         StringBuilder depotSb = new StringBuilder();
+                        java.util.List<Integer> packDepots = new java.util.ArrayList<>();  // language-tagged depots taken
                         java.util.List<Integer> includedDlcIds = new java.util.ArrayList<>();  // owned DLC bundled with the game
                         // The game's DLC appIds (extended/listofdlc). A depot whose id is in this set is
                         // a DLC depot (its depot id == the DLC appId) — see the depot loop for handling.
@@ -2225,6 +2226,7 @@ public final class SteamRepository {
                                 // Selected — count it.
                                 if (depotSb.length() > 0) depotSb.append(',');
                                 depotSb.append(depotId);
+                                if (!lang.isEmpty()) packDepots.add(depotId);
                                 selectedCount++;
 
                                 // Uncompressed size: modern PICS at manifests/public/size,
@@ -2306,7 +2308,7 @@ public final class SteamRepository {
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
                         db.setNameLocalized(appId, localizedNames(common));
-                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages, depotLanguage));
+                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages, depotLanguage, packDepots));
                         // Valve's own folder name under steamapps/common (PICS config/installdir) — what
                         // every Steam client and the appmanifest's "installdir" use. Recorded so a game
                         // installed into a steamapps library lands where other clients look for it.

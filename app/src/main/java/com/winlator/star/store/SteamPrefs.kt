@@ -168,7 +168,15 @@ object SteamPrefs {
     }
 
     fun clearInstalledLanguage(appId: Int) {
-        prefs.edit().remove("installed_language_$appId").remove("language_switch_$appId").commit()
+        prefs.edit().remove("installed_language_$appId").remove("language_switch_$appId")
+            .remove("denied_language_$appId").commit()
+    }
+
+    /** A language pack Steam refused to download for [appId] (no license); "" = none. */
+    fun getDeniedLanguage(appId: Int): String = prefs.getString("denied_language_$appId", "") ?: ""
+
+    fun setDeniedLanguage(appId: Int, language: String) {
+        prefs.edit().putString("denied_language_$appId", language).commit()
     }
 
     /** The Steam language the Library's language-files notice was dismissed for. */

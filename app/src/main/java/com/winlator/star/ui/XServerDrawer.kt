@@ -1912,6 +1912,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         "lsfg"        -> "lsfg-vk"
         "lsfg-native" -> "LSFG Native"
         "bionic"      -> if (winFgNative) "Win-FG Native" else "win-fg"
+        "wfg"         -> "WFG"
         else          -> "Off"
     }
     // Green dot = engine actually multiplying frames right now. Frame gen starts at multiplier 0
@@ -2047,8 +2048,9 @@ internal fun FrameGenSection(state: XServerDrawerState) {
         // shortcut carries from before can put it back.
 
         // Flow Scale only matters with frame gen actually on -> collapse it while Off.
+        // WFG has no flow scale (its flow resolution is a fixed pixel budget).
         AnimatedVisibility(
-            visible = fgMult > 0 && !waylandFgBlocked,
+            visible = fgMult > 0 && engine != "wfg" && !waylandFgBlocked,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
@@ -3586,7 +3588,7 @@ internal fun HudContent(state: XServerDrawerState, embedded: Boolean = false) {
         val fgMult by state.frameGenMultiplier.collectAsState()
         val displayTargetHz by state.displayTargetHz.collectAsState()
         // nativeFgLocks covers both compositor engines; name the one actually running.
-        val nativeFgName = if (fgEngine == "lsfg-native") "LSFG Native" else "Win-FG Native"
+        val nativeFgName = when (fgEngine) { "lsfg-native" -> "LSFG Native"; "wfg" -> "WFG"; else -> "Win-FG Native" }
         // Locked ON while native frame gen generates - see XServerDrawerState.nativeFgLocks.
         ToggleRow("Limit FPS", limiterOn, enabled = !nativeFgLocks) { limiterOn = it; applyLimiter() }
         if (nativeFgLocks) {

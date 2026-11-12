@@ -4,6 +4,7 @@
 #include "lsfg/lsfg_engine.h"
 #include "lsfg/lsfg_vkd.h"
 #include "winfg/winfg_engine.h"
+#include "wfg/wfg_engine.h"
 
 // Set by CMake from the copied win-fg chain (upstream tag + a hash over the
 // chain sources). Defaulted so this still compiles if it is ever built without
@@ -163,6 +164,7 @@ VulkanRendererContext::~VulkanRendererContext() {
         vk_.DestroyFence(device, inFlightFences[i], nullptr);
     lsfgEngine_.reset();
     winfgEngine_.reset();
+    wfgEngine_.reset();
     destroyFgQueryPool();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
     vk_.DestroyRenderPass(device, renderPass, nullptr);
@@ -1021,8 +1023,26 @@ bool VulkanRendererContext::ensureWinFgEngine() {
     return true;
 }
 
+bool VulkanRendererContext::ensureWfgEngine() {
+    if (wfgEngine_) return wfgEngine_->valid();
+    if (wfgEngineTried_) return false;       // failed once; don't retry every frame
+    wfgEngineTried_ = true;
+
+    auto engine = std::make_unique<wfg::Engine>();
+    if (!engine->init(vk_, physicalDevice, device)) {
+        RLOG_E("wfg-native: engine init failed");
+        return false;
+    }
+    wfgEngine_ = std::move(engine);
+    fgConfigDirty_.store(true, std::memory_order_relaxed);
+    RLOG("wfg-native: engine ready (%s)", WFG_UPSTREAM);
+    return true;
+}
+
 bool VulkanRendererContext::fgCapsOk() const {
-    if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
+    // win-fg and WFG both write the generated frame as a storage image and need nothing else
+    // from the device.
+    if (fgEngineKind_.load(std::memory_order_relaxed) != 0)
         return lsfgCaps_.storageOnSwapchainFormat;
     return lsfgCaps_.supported();
 }
@@ -1040,6 +1060,8 @@ int VulkanRendererContext::frameGenProblem() const {
     // creation and be rejected here. The engine object stays alive with
     // unavailable() set; report that as a start failure too, or the drawer
     // would show frame gen armed while nothing generates.
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2)
+        return ((wfgEngineTried_ && !wfgEngine_) || (wfgEngine_ && wfgEngine_->unavailable())) ? 2 : 0;
     if (fgEngineKind_.load(std::memory_order_relaxed) == 1)
         return ((winfgEngineTried_ && !winfgEngine_) || (winfgEngine_ && winfgEngine_->unavailable())) ? 2 : 0;
     return ((lsfgEngineTried_ && !lsfgEngine_) || (lsfgEngine_ && lsfgEngine_->unavailable())) ? 2 : 0;
@@ -1049,11 +1071,14 @@ void VulkanRendererContext::setFrameGenEngine(int kind) {
     std::lock_guard<std::mutex> lk(renderMutex);
     const int was = fgEngineKind_.exchange(kind, std::memory_order_relaxed);
     if (was == kind) return;
-    RLOG("native-fg: engine %s -> %s", was == 1 ? "win-fg" : "lsfg", kind == 1 ? "win-fg" : "lsfg");
+    static const char* const kNames[] = {"lsfg", "win-fg", "wfg"};
+    RLOG("native-fg: engine %s -> %s", kNames[was >= 0 && was <= 2 ? was : 0],
+         kNames[kind >= 0 && kind <= 2 ? kind : 0]);
     // Only one engine holds GPU resources at a time; the other is rebuilt on
     // demand if the user switches back.
     lsfgEngine_.reset();   lsfgEngineTried_ = false;
     winfgEngine_.reset();  winfgEngineTried_ = false;
+    wfgEngine_.reset();    wfgEngineTried_ = false;
     fgConfigDirty_.store(true, std::memory_order_relaxed);
 }
 
@@ -1067,9 +1092,10 @@ void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     // Which engine generates is a runtime choice: LSFG needs the user's
     // Lossless.dll, win-fg carries its own shaders. They are mutually
     // exclusive and only one holds GPU resources at a time.
-    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    const int kind = fgEngineKind_.load(std::memory_order_relaxed);
+    const bool useWinFg = kind == 1;
     if (!compositeActive() || compositeTargets.empty()) return;
-    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
+    if (kind == 2 ? !wfgEngine_ : useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     const CompositeTarget& src = compositeTargets[compositeIndex];
     ensureFgQueryPool();
     if (fgQueryPool_ != VK_NULL_HANDLE && fgPlan_.generations > 0) {
@@ -1078,14 +1104,16 @@ void VulkanRendererContext::recordFrameGenProcess(VkCommandBuffer cb) {
     }
     // Take frame N as the chain's newest input and run everything that is
     // shared across generations (mipmaps -> alpha -> beta -> gamma -> delta).
-    if (useWinFg) winfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    if (kind == 2) wfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
+    else if (useWinFg) winfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
     else          lsfgEngine_->process(cb, src.img, compositeW, compositeH, fgPlan_.generations);
 }
 
 void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_t g) {
-    const bool useWinFg = fgEngineKind_.load(std::memory_order_relaxed) == 1;
+    const int kind = fgEngineKind_.load(std::memory_order_relaxed);
+    const bool useWinFg = kind == 1;
     if (!compositeActive() || compositeTargets.empty()) return;
-    if (useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
+    if (kind == 2 ? !wfgEngine_ : useWinFg ? !winfgEngine_ : !lsfgEngine_) return;
     if (g >= fgPlan_.generations) return;
     const uint32_t w = compositeW, h = compositeH;
     {
@@ -1093,7 +1121,8 @@ void VulkanRendererContext::recordFrameGenGeneration(VkCommandBuffer cb, uint32_
         const CompositeTarget& dst = compositeTargets[slot];
         if (dst.img == VK_NULL_HANDLE || dst.storageView == VK_NULL_HANDLE) return;
 
-        if (useWinFg) winfgEngine_->generateInto(cb, g, fgPlan_.generations, dst.img, dst.storageView, w, h);
+        if (kind == 2) wfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
+        else if (useWinFg) winfgEngine_->generateInto(cb, g, fgPlan_.generations, dst.img, dst.storageView, w, h);
         else          lsfgEngine_->generateInto(cb, g, g, dst.img, dst.storageView, w, h);
 
         if (fgQueryPool_ != VK_NULL_HANDLE && g + 1 == fgPlan_.generations) {
@@ -1339,6 +1368,12 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     // from inside the guest. It is reported even with no LSFG engine present.
     out[3] = fgPresentedRate_;
     out[5] = fgChainMsPerGen_;
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2) {
+        if (!wfgEngine_) return;
+        out[0] = out[1] = (float)fgPlan_.generations;
+        out[2] = fgSourceRate_;
+        return;
+    }
     if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
         // win-fg has no governor: what is planned is what is generated.
         if (!winfgEngine_) return;
@@ -1351,6 +1386,47 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     out[1] = (float)fgPlan_.generations;
     out[2] = lsfgEngine_->sourceRate();
     out[4] = (float)lsfgEngine_->thermalStatus();
+}
+
+static uint64_t fgNowNs() {
+    return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+// Keep the present queue short while frame generation runs (see the members' comment).
+// Two rules, both only ever REMOVE generated frames from this draw's plan:
+//  - a draw without a new game frame generates nothing: there is no new motion to show;
+//  - while more than two images wait beyond the next refresh, one generated frame is left
+//    out, one at a time so the motion cadence stays even, until the queue drains.
+// fgRefreshHz_ is the panel's top rate, so on a panel running slower the model drains too
+// fast and trims less than it could - never more.
+void VulkanRendererContext::guardPresentQueue() {
+    const uint64_t serial = fgContentSerial_.load(std::memory_order_relaxed);
+    const bool newContent = serial != fgSeenContent_;
+    fgSeenContent_ = serial;
+    // The first rule needs proof that this session's game frames come through the content
+    // updates at all (a path that presents some other way must not lose its generation).
+    if (newContent) { fgContentIdle_ = 0; fgContentLive_ = true; }
+    else if (++fgContentIdle_ > 120) fgContentLive_ = false;
+    if (fgPlan_.generations == 0) return;
+    if (fgContentLive_ && !newContent) {
+        fgPlan_.generations = 0;
+        fgSameSource_++;
+        return;
+    }
+    const float hz = fgRefreshHz_.load(std::memory_order_relaxed);
+    if (hz <= 1.0f) return;
+    const uint64_t period = (uint64_t)(1.0e9f / hz);
+    const uint64_t now = fgNowNs();
+    const uint64_t ahead = fgQueueEndNs_ > now + period ? (fgQueueEndNs_ - now - period) / period : 0;
+    if (ahead > 2) {
+        fgPlan_.generations--;
+        fgTrimmed_++;
+    }
+    if ((fgGuardLog_++ % 600u) == 0u)
+        RLOG("native-fg: queue guard ahead=%llu trimmed=%llu same-source=%llu",
+             (unsigned long long)ahead, (unsigned long long)fgTrimmed_,
+             (unsigned long long)fgSameSource_);
 }
 
 void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
@@ -2530,7 +2606,25 @@ ok=true;}catch(...){}
     const uint32_t fgCapacity = (uint32_t)std::min<size_t>(
         kMaxPresentsPerFrame - 1,
         compositeTargets.empty() ? 0 : compositeTargets.size() - 1);
-    if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
+    if (fgEngineKind_.load(std::memory_order_relaxed) == 2) {
+        // WFG paces itself against the display rate; the 2x/3x/4x choice caps how many frames
+        // it may add per source frame, and the performance preset picks its flow resolution.
+        if (compositeActive() && ensureWfgEngine()) {
+            if (fgConfigDirty_.exchange(false, std::memory_order_relaxed)) {
+                const float hz = fgRefreshHz_.load(std::memory_order_relaxed);
+                wfgEngine_->configure(
+                    fgPerfPreset_.load(std::memory_order_relaxed) >= 2 ? wfg::kMinSideFast
+                                                                       : wfg::kMinSideBalance,
+                    0, hz > 1.0f ? hz : 60.0f);
+            }
+            if (wfgEngine_->prepare(compositeW, compositeH, swapchainFmt)) {
+                const uint32_t cap = std::min<uint32_t>(
+                    fgCapacity,
+                    (uint32_t)std::max(fgMultiplier_.load(std::memory_order_relaxed), 2) - 1u);
+                fgPlan_.generations = wfgEngine_->plan(cap, ++fgSourceFrames_);
+            }
+        }
+    } else if (fgEngineKind_.load(std::memory_order_relaxed) == 1) {
         // win-fg: no cache, no governor, no pacer. Configure AFTER ensure so a
         // freshly built engine is prepared at the right preset straight away
         // instead of at the default and then rebuilt one frame later.
@@ -2589,13 +2683,24 @@ ok=true;}catch(...){}
             }
         }
     }   // lsfg
+    guardPresentQueue();
     fgPlan_.presents = fgPlan_.generations + 1;
 
     // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
+    const float fgGuardHz = fgRefreshHz_.load(std::memory_order_relaxed);
+    const uint64_t fgPeriodNs = fgGuardHz > 1.0f ? (uint64_t)(1.0e9f / fgGuardHz) : 0;
     for (uint32_t k = 0; k < fgPlan_.presents; k++) {
         uint32_t idx = 0;
+        const uint64_t acquireBeginNs = k == 0 && fgPeriodNs ? fgNowNs() : 0;
         VkResult ar = vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,
                                               imgAvailSems[syncSlot(k)],VK_NULL_HANDLE,&idx);
+        if (acquireBeginNs) {
+            // A real acquire that blocked means the queue is at least that full, whatever
+            // the model says.
+            const uint64_t nowNs = fgNowNs();
+            if (nowNs - acquireBeginNs > fgPeriodNs / 2 && fgQueueEndNs_ < nowNs + 2 * fgPeriodNs)
+                fgQueueEndNs_ = nowNs + 2 * fgPeriodNs;
+        }
         if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){
             // Logged deliberately: when this fires every frame it IS the
             // swapchain-recreate loop, and it used to be invisible.
@@ -2803,6 +2908,14 @@ ok=true;}catch(...){}
         VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
         vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame]);
     }
+    // The queue model: each image presented leaves the queue one refresh after the one before.
+    if (fgPeriodNs) {
+        const uint64_t nowNs = fgNowNs();
+        for (uint32_t i = 0; i < presented; i++) {
+            const uint64_t next = fgQueueEndNs_ + fgPeriodNs;
+            fgQueueEndNs_ = next > nowNs + fgPeriodNs ? next : nowNs + fgPeriodNs;
+        }
+    }
     trackPresentedRate(presented);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
@@ -2895,6 +3008,7 @@ void VulkanRendererContext::updateCursorImage(void* px, short w, short h, short 
 }
 
 void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, short h, short stride, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!px||w<=0||h<=0) return;
 
     void* mapped=nullptr;
@@ -2925,6 +3039,7 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
 }
 
 void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short, short, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!ahb) return;
     std::lock_guard<std::mutex> lk(renderMutex);
 

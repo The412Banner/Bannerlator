@@ -90,7 +90,8 @@ static int64_t now_ns(void) {
 /* ====================================================================== app controls */
 
 void vkp_framegen_set_engine(int kind) {
-    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG) kind = VKP_FG_ENGINE_LSFG;
+    if (kind != VKP_FG_ENGINE_LSFG && kind != VKP_FG_ENGINE_WINFG && kind != VKP_FG_ENGINE_WFG)
+        kind = VKP_FG_ENGINE_LSFG;
     atomic_store(&g_kind, kind);
     atomic_store(&g_cfg_dirty, 1);
 }
@@ -130,6 +131,8 @@ void vkp_framegen_set_winfg_tuning(int model, int perf_preset) {
     atomic_store(&g_preset, perf_preset < 0 ? 0 : perf_preset > 2 ? 2 : perf_preset);
     atomic_store(&g_cfg_dirty, 1);
 }
+
+static uint32_t guard_trim(uint32_t n_gen);
 
 static int start_failed_for(int kind) {
     return atomic_load(&g_failed_kind) == kind && atomic_load(&g_failed_cache_gen) == atomic_load(&g_cache_gen);
@@ -185,9 +188,11 @@ void vkp_framegen_device_ready(VkDevice dev, VkQueue queue, uint32_t qfam, int f
     g_vk.GetPhysicalDeviceMemoryProperties(g_pd, &g_memprops);
     fge_device_ready(g_gipa, g_inst, g_pd, dev, queue, qfam, features_enabled);
     g_dev_ready = vk.CreateImage && vk.CreateImageView && vk.CmdPipelineBarrier;
-    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), Win-FG Native %s",
+    FGLOG("engines ready on the compositor's device: LSFG Native %s (%s), Win-FG Native %s, "
+          "WFG Native %s",
           fge_caps_ok(VKP_FG_ENGINE_LSFG) ? "available" : "unavailable", fge_caps_reason(),
-          fge_caps_ok(VKP_FG_ENGINE_WINFG) ? "available" : "unavailable");
+          fge_caps_ok(VKP_FG_ENGINE_WINFG) ? "available" : "unavailable",
+          fge_caps_ok(VKP_FG_ENGINE_WFG) ? "available" : "unavailable");
 }
 
 void vkp_framegen_device_lost(void) { g_dev_lost = 1; }
@@ -375,6 +380,7 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
 
     uint32_t n_gen = fge_plan(g_ring_n, ++g_source_frames, g_presented_rate);
     if (n_gen > g_ring_n) n_gen = g_ring_n;
+    n_gen = guard_trim(n_gen);
     g_planned = n_gen;
 
     /* The scene image was just written (blits, and whatever the effects chain did); make that
@@ -434,8 +440,55 @@ int vkp_framegen_run(VkCommandBuffer cmd, VkImage scene, VkImageView scene_view,
     return (int)n_gen;
 }
 
+/* ---- present-queue guard (compositor thread) -------------------------------------------
+ * FIFO shows one image per refresh and only the swapchain size bounds the queue, so output even
+ * slightly above the display rate fills it and every frame - the game's own included - reaches
+ * the panel several refreshes late. While more than two images wait beyond the next refresh, one
+ * generated frame is left out until the queue drains. Idea and model from qwertypower's WinNative
+ * PR #797. g_refresh_hz is the panel's top rate, so on a panel running slower the model drains
+ * too fast and trims less than it could - never more. */
+static int64_t  g_queue_end_ns;      /* when the last presented image would be shown */
+static uint64_t g_trimmed;
+static uint32_t g_guard_log;
+
+static int64_t guard_period_ns(void) {
+    float hz;
+    pthread_mutex_lock(&g_lock); hz = g_refresh_hz; pthread_mutex_unlock(&g_lock);
+    return hz > 1.0f ? (int64_t)(1.0e9f / hz) : 0;
+}
+
+void vkp_framegen_note_acquire(int64_t wait_ns) {
+    const int64_t period = guard_period_ns();
+    if (!period || wait_ns <= period / 2) return;
+    const int64_t now = now_ns();
+    if (g_queue_end_ns < now + 2 * period) g_queue_end_ns = now + 2 * period;
+}
+
+static uint32_t guard_trim(uint32_t n_gen) {
+    const int64_t period = guard_period_ns();
+    if (!period || !n_gen) return n_gen;
+    const int64_t now = now_ns();
+    const int64_t ahead = g_queue_end_ns > now + period ? (g_queue_end_ns - now - period) / period : 0;
+    if (ahead > 2) { n_gen--; g_trimmed++; }
+    if ((g_guard_log++ % 600u) == 0u)
+        FGLOG("queue guard: %lld image%s ahead, %llu generated frame%s left out so far",
+              (long long)ahead, ahead == 1 ? "" : "s", (unsigned long long)g_trimmed, g_trimmed == 1 ? "" : "s");
+    return n_gen;
+}
+
+static void guard_presented(uint32_t presents) {
+    const int64_t period = guard_period_ns();
+    if (!period) return;
+    const int64_t now = now_ns();
+    for (uint32_t i = 0; i < presents; i++) {
+        const int64_t next = g_queue_end_ns + period;
+        g_queue_end_ns = next > now + period ? next : now + period;
+    }
+}
+
 void vkp_framegen_presented(int generated) {
     if (generated < 0) generated = 0;
+    guard_presented((uint32_t)generated + 1u);
     int64_t now = now_ns();
     if (!g_window_start_ns) { g_window_start_ns = now; g_present_accum = 0; g_source_accum = 0; }
     g_present_accum += (uint32_t)generated + 1u;

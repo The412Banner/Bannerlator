@@ -643,8 +643,8 @@ private fun generalRows(xmb: XmbScope, p: XmbPrefs, host: XmbGameHost): List<Xmb
         rows += XmbRow.Choice("vkDriver", "Renderer driver", Icons.Filled.Memory, drivers, if (rd in drivers) rd else "system",
             subtitle = "The driver the compositor runs on") { v -> xmb.set(p, "rendererDriverId", v) }
     }
-    val fgEngines = listOf("off", "bionic", "lsfg-native")
-    val fgLabels = listOf(p.str(R.string.frame_generation_off), p.str(R.string.frame_generation_bionic), p.str(R.string.frame_generation_lsfg_native))
+    val fgEngines = listOf("off", "bionic", "lsfg-native", "wfg")
+    val fgLabels = listOf(p.str(R.string.frame_generation_off), p.str(R.string.frame_generation_bionic), p.str(R.string.frame_generation_lsfg_native), p.str(R.string.frame_generation_wfg))
     val fg = p.ex("frameGenEngine", c.frameGenEngine).let { if (it == "lsfg") "lsfg-native" else it }
     val lsfgDll = File(p.context.filesDir, "lsfg-vk/Lossless.dll").isFile
     // On Wayland the X11 renderer gate does not apply: FG runs inside the compositor (always Vulkan)

@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
     @Volatile
     private var contentReady = false
 
+    /** This instance was the app icon landing on a task that already runs: closed at once in onCreate. */
+    private var duplicateLaunch = false
+
     private val showAllFilesDialog = mutableStateOf(false)
     // Deck first-run due at this start (Deck style, never finished); cleared once the user finishes or skips it.
     private val deckOnboardingPending = mutableStateOf(false)
@@ -177,6 +180,16 @@ class MainActivity : AppCompatActivity() {
         // to our first Compose frame; hold it only until the UI is ready to draw (set just below).
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // The app icon on a task this app started another way (a game's home-screen icon, the installer's Open,
+        // adb) makes Android put another MainActivity on top of it, which opens on Home and keeps the old one
+        // underneath. Close that one: the task then shows as it was left.
+        if (savedInstanceState == null && !isTaskRoot &&
+            intent?.action == Intent.ACTION_MAIN && intent?.hasCategory(Intent.CATEGORY_LAUNCHER) == true
+        ) {
+            duplicateLaunch = true
+            finish()
+            return
+        }
         splashScreen.setKeepOnScreenCondition { !contentReady }
 
         PACKAGE_NAME = applicationContext.packageName
@@ -382,6 +395,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        // A closed duplicate set nothing up; the capture and the controller belong to the instance under it.
+        if (duplicateLaunch) {
+            super.onDestroy()
+            return
+        }
         // Kill any armed win-fg diagnostic-log capture (logcat subprocess) so it can't outlive the app.
         // The game (XServerDisplayActivity) shares this process, so a mid-play capture survives until here.
         WinFgDiag.stopDiagLog(this)

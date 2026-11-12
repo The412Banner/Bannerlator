@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -514,6 +515,15 @@ fun SteamLibraryTab(
     val foldedNames = remember(state.games) {
         state.games.associate { it.appId to foldForSearch(it.name + " " + it.englishName) }
     }
+    // Installed games whose language (the app's, or their own pick) asks for files they do not have.
+    val languageFilesCount by produceState(0, state.games) {
+        value = withContext(Dispatchers.IO) {
+            state.games.count { it.isInstalled && SteamGameLanguage.missingPack(it.appId, true) != null }
+        }
+    }
+    var languageNoticeHidden by remember {
+        mutableStateOf(runCatching { SteamPrefs.getLanguageNoticeDismissed() == StoreLang.steam() }.getOrDefault(false))
+    }
     val shown = remember(byType, foldedNames, query, sort) {
         filterLibraryByQuery(byType, foldedNames, query).sortedWith(sort.comparator())
     }
@@ -674,6 +684,25 @@ fun SteamLibraryTab(
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                         .focusGroup(),
                 ) { LibraryTypeChips(typeFilter, onTypeFilter) }
+            }
+
+            if (languageFilesCount > 0 && !languageNoticeHidden) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (languageFilesCount == 1) "1 installed game has language files to download. Open it to download them."
+                               else "$languageFilesCount installed games have language files to download. Open a game to download them.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = {
+                        languageNoticeHidden = true
+                        runCatching { SteamPrefs.setLanguageNoticeDismissed(StoreLang.steam()) }
+                    }) { Text("OK") }
+                }
             }
 
             // The rating sort is only as complete as the backfill: say so while it is still working,

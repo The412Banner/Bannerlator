@@ -210,6 +210,36 @@ object SteamGameUpdater {
     }
 
     /**
+     * Downloads the files of the game's wanted language ([SteamGameLanguage]) into its install: this run's
+     * depot selection may switch language pack ([SteamGameLanguage.beginInstall]), then the same in-place
+     * pass as [updateNow] fetches what is missing. A run that does not finish switches back.
+     */
+    fun downloadLanguage(
+        context: Context,
+        appId: Int,
+        progress: ProgressCallback,
+        done: DoneCallback,
+    ): UpdateHandle {
+        val appCtx = context.applicationContext
+        val main = Handler(Looper.getMainLooper())
+        val handle = UpdateHandle()
+        val postProgress: (Float, String) -> Unit = { f, l -> main.post { progress.onProgress(f, l) } }
+        val postDone: (Result, String) -> Unit = { r, m -> main.post { done.onDone(r, m) } }
+
+        Thread({
+            try {
+                runLanguage(appCtx, appId, handle, postProgress, postDone)
+            } catch (t: Throwable) {
+                Log.w(TAG, "downloadLanguage($appId) failed", t)
+                SteamGameLanguage.abandonSwitch(appId)
+                postDone(Result.FAILED, t.message ?: "Download failed")
+            }
+        }, "steam-language-$appId").start()
+
+        return handle
+    }
+
+    /**
      * Cheap, NON-downloading update probe for the launch popup's indicator. Resolves the same signals as
      * [runCheck] (selected branch → live build from the already-synced `steam_branches`; recorded install
      * build; files-on-disk) but never touches the network — it deliberately does NOT force a PICS refresh
@@ -330,6 +360,58 @@ object SteamGameUpdater {
 
         Log.i(TAG, "app $appId verify-integrity: full re-validate ($branch)")
         runPass(ctx, appId, row.name, branch, installDir, handle, verifyFirst = true, postProgress, postDone)
+    }
+
+    /** Worker of [downloadLanguage]: like [runVerify], but a delta pass whose selection takes the wanted pack. */
+    private fun runLanguage(
+        ctx: Context,
+        appId: Int,
+        handle: UpdateHandle,
+        postProgress: (Float, String) -> Unit,
+        postDone: (Result, String) -> Unit,
+    ) {
+        if (appId <= 0) { postDone(Result.FAILED, "Not a Steam game"); return }
+        postProgress(-1f, "Preparing…")
+
+        val repo = SteamRepository.getInstance()
+        val db = repo.database
+        val row = try { db.getGame(appId) } catch (_: Throwable) { null }
+        if (row == null || !row.isInstalled) { postDone(Result.FAILED, "This game isn't installed."); return }
+
+        val branch = try { SteamPrefs.getSelectedBranch(appId) } catch (_: Throwable) { "public" }
+        val installDir = installDirOf(ctx, row)
+        if (!(installDir.isDirectory && installDir.listFiles()?.isNotEmpty() == true)) {
+            postDone(Result.FAILED, "${row.name} isn't installed — there are no files.")
+            return
+        }
+
+        postProgress(-1f, "Connecting to Steam…")
+        val online = repo.isLoggedIn || repo.ensureLoggedIn(SESSION_WAIT_MS)
+        if (!online) {
+            postDone(Result.OFFLINE_UNKNOWN, "Steam is offline — can't download ${row.name}'s language files right now.")
+            return
+        }
+        if (handle.isCancelled) { postDone(Result.CANCELLED, "Cancelled"); return }
+
+        val wantedPack = SteamGameLanguage.packOf(SteamGameLanguage.of(appId), SteamGameLanguage.packaged(appId))
+        SteamGameLanguage.beginInstall(appId)
+        // Not finished (failed / stopped / offline): the selection goes back to the installed pack.
+        val finish: (Result, String) -> Unit = { done, doneMessage ->
+            // Finished, but Steam refused the pack's files (this account has no license for them).
+            val refused = done == Result.UPDATED && SteamGameLanguage.isDenied(appId, wantedPack)
+            val result = if (refused) Result.FAILED else done
+            val message = if (refused) {
+                "Steam didn't let this account download the ${SteamGameLanguage.label(wantedPack)} files."
+            } else doneMessage
+            if (result != Result.UPDATED && SteamGameLanguage.abandonSwitch(appId)) {
+                Thread({
+                    try { repo.refreshAppProductInfo(appId, PICS_REFRESH_MS) } catch (_: Throwable) {}
+                }, "steam-language-revert-$appId").start()
+            }
+            postDone(result, message)
+        }
+        Log.i(TAG, "app $appId language files: ${SteamGameLanguage.of(appId)} ($branch)")
+        runPass(ctx, appId, row.name, branch, installDir, handle, verifyFirst = false, postProgress, finish)
     }
 
     private fun runCheck(
@@ -646,6 +728,7 @@ object SteamGameUpdater {
      */
     @JvmStatic
     fun recordInstalledBuild(context: Context, appId: Int, installDir: File, branch: String) {
+        SteamGameLanguage.recordInstalled(appId, installDir)
         try {
             val build = liveBuildId(SteamRepository.getInstance(), appId, branch)
             if (build <= 0L) return

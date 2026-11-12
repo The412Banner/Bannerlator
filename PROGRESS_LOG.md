@@ -1,5 +1,23 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 13:58 EST — 🔀 MERGED feat/steam-game-language (main d1719eab5; user: "merge")
+
+- **Why:** Discord #winlator-general 11-12 (ziqing_0501): "even i change app language … the game still downloaded in english … my game language is depends by steam client". User: "do the steam download language first", "follow app", then "anytime language is changed … verification from the user" and "just do it correctly and thoroughly".
+- **Built (branch head 3e855d12, on top of main 38fa3ebc5):**
+  - `SteamGameLanguage`: a game's language = its per-game pick, else the app's language when the game lists it, else English. Saved per app in `steam_games.languages` = supported|packaged|selected|packDepots (column added on open, DB stays v11).
+  - Download selection (`processAppKv`): a language-tagged depot is taken only for the chosen pack; an installed game keeps its installed pack until the user downloads another one.
+  - Game page: "Language: …" + "Change language" (when Steam lists >1); for an installed game whose language needs other files: "<language> files not installed" + "Download language files", and picking such a language asks "Download language files?" (Download / Later). Download = `SteamGameUpdater.downloadLanguage` (in-place pass, own progress window, Stop only stops).
+  - Steam library: one notice when installed games have language files to download.
+  - What games are told: Goldberg gets `steam_settings/configs.user.ini language=…`; the real Steam client (SteamLite `WN_STEAM_LANGUAGE`, appmanifest) gets the wanted language only for games without language-tagged depots, else the installed pack's language.
+  - The installed pack is recorded from the downloader's journal (a pack Steam refuses — no license — is remembered and not offered again); refused depots are never handed to SteamLite as installed.
+  - Optional DLC depots (config `optionaldlc`, e.g. CS2 Workshop Tools 2.1 GB) are skipped.
+  - Game page safety for installed games: during an update/verify/language pass Cancel stops the download (no file wipe, no uninstall), a failed pass returns to the installed state.
+- **CI:** run 43279439573 on 3e855d12, 4/4 green. Backup `refs/backup/20261112/main-before-steam-game-language` = 38fa3ebc5. Merge `--no-ff`, no MERGE_HEAD, merged tree 971e9a41 == tested tree.
+- **Device test (Pocket FIT, app language 简体中文):** library sync (all 223 games got language data); NFS Heat "files not installed" → prompt → only the 174 KB Chinese pack downloaded; Brawlhalla reinstalled + SteamLite launch: told English, 0 deleted, game loads; MIO + Counter-Strike 2 told Chinese, 0 deleted — **CS2 menus in Chinese** (user screenshots 13:05); FlatOut German pack refused → recorded, no prompt; CS2 size −2.1 GB after the optional-DLC skip. No FATAL. Screens: `/sdcard/Download/BL-steam-game-language-test-20261112/`.
+- **Incident during development (fixed before merge):** build 367745c3 told the real Steam client "schinese" for Brawlhalla, whose only depot is tagged english → the client deleted all 7997 files (content_log). The same session made it remove CS2's optional Workshop Tools (908 files). Rule since: anything handed to a real Steam client must describe exactly what is on disk; destructive-capable changes are tested on a throwaway game first.
+- **Not done / known:** the page still names a refused language; games with a separate pack for another language (FlatOut) are told English through SteamLite (a more precise rule is possible, helps only games that read Steam's language); no opt-in for optional DLC (CoD Warzone content now skipped).
+- **Lessons:** three builds were lost to unchecked edits (dropped functions, duplicate local) → rewrite small files whole, grep every changed symbol, re-read the diff before pushing. My test drove the device while the user was on it → check the foreground app before every scripted step. Announce installs to peer sessions too.
+
 ## 2026-11-12 08:20 EST — 🔀 MERGED feat/wfg-engine (main d140ea009; user: "merge to main")
 
 - **What:** WFG (WinNative's frame generator by qwertypower, MIT) as a third native frame-gen engine on X11 Vulkan + Wayland, and the present-queue guard (idea from WinNative PR #797) for all three engines. Details in the entry below.

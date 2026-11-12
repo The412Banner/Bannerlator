@@ -1,5 +1,25 @@
 # Star-Compose — Progress Log
 
+## 2026-11-11 23:36 EST — 🔀 MERGED fix/lab-home-last-played (main bcda2c55f; user: "merge when green also"; NOT device-tested)
+
+- **Why:** user screenshot 23:21 EST: after exiting Counter-Strike 2 the Lab home big tile still showed "Windows Steam Client x64 / Continue". User: "the top tile (or same in landscape) should always show last played or exited game".
+- **Cause:** `LabHome.kt` took `recent.firstOrNull()`; `sortGames` pins the Windows Steam client first in every order (`DeckLibrarySort.kt`, `pinned`), so with it in the library the tile never moved. CS2's `lastPlayed` was the newer one (23:16:39 vs 19:12:37, read from the .desktop files).
+- **Built (8c84c6b34):** the tile takes the game with the newest `lastPlayed` (fallback: the row's first entry); a game played since the last look clears an earlier pick in the row; the row order is unchanged.
+- **CI:** run 43154623421, 4/4 green, headSha 8c84c6b34. Backup `refs/backup/20261111/main-before-lab-home-last-played` = cc2efba7. Merge `--no-ff`, tree == built commit.
+- **Device test:** none yet. Staged `/sdcard/Download/Bannerlator-lab-last-played-8c84c6b3-pubg.apk` (sha256 d25f9426…); install waits for the user's yes.
+- **Open / next:** install → exit a game → the tile shows it with "Continue"; pick another game in the row, play something, check the tile comes back.
+
+## 2026-11-11 22:52 EST — ✅ Counter-Strike 2 official matchmaking works: SteamLite v9 (package only, no app change; device-proven)
+
+- **Why:** CS2 showed "Some of your game files have been detected to have no signatures or invalid signatures" and would not join VAC-secured servers. User: no bypass; provide correct files.
+- **Dead end first:** Valve's Steam Client Service (branch `feat/steamlite-service` 513d45d8: agent start wait, service files staging, one-time registration). The service registers and starts but stops itself within moments under Wine; **not needed** — the game went online while it was still failing. Branch stays unmerged.
+- **Cause (file trace of cs2.exe start-up):** the game reads `game\bin\win64\csgo.signatures` (all files opened OK), then `C:\Program Files (x86)\Steam\steam.signatures` → not found (the SteamLite package never shipped Valve's catalog), then prints "Launch state does not match desired".
+- **Fix:** SteamLite **v9** = v8 + Valve's unmodified `steam.signatures` from the same client build (the bundled steamclient(64), tier0_s(64), vstdlib_s(64), Steam, Steam2 match its SHA-1 entries). `stageSteamLite` already copies every top-level package file into the Steam dir, so no app change.
+- **Device test (Pocket FIT, driven by root: `am start` + the compositor's `test-input` FIFO):** 22:52 EST on the test setup and 22:56 EST with v8 files + the catalog only: Play → Deathmatch → GO → live official match both times. Run on FEXCore 2611 + GameNative gn-6 (`-unix`).
+- **Published (user: "yes publish it as steamlite version 9"):** winlator-contents release `steamlite-v1` updated in place (asset 19,217,258 B, MD5 E165D618…, title/notes v9), `steamlite.json` version 9 (a84cfe1). FEX build published as `FEXCore-2611-gn-cs2` / `-unix` (Nightlies `FexCore` release + contents.json 6356494).
+- **Open / next:** the in-app update path v8 → v9 has not been run on a device; other VAC games with the new file present not re-run (passive file).
+- **Lesson:** trace what the game itself opens before chasing a service: `+file` on the game process showed the missing file in one run.
+
 ## 2026-11-11 15:35 EST — ✅ Epic store bug fixes: first Epic game launch on the fixed code (main, device check)
 - **Device test (Pocket FIT, build 03482bdf = main code with the Epic fixes c524ed38):** the user launched Metalstorm (Epic, EOS) 14:59:22–15:03:00 EST on Wayland. Exit-reasons log: EXIT_SELF, exit code 0; crash buffer empty; DXVK/VKD3D logs written.
 - **Not verified:** the `-epiclocale` argument. The BH_EPIC_LAUNCH line is logcat-only and the buffer had rolled by the time it was read (it kept ~10 min). A 40-minute capture afterwards saw no Epic launch.

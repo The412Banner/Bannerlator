@@ -10,8 +10,9 @@
   - Wired into `SimpleClassicEditor` (game/container/all-containers editors) and `LabGamePage` quick tiles. On close: list re-read, picker reopens; a download still running is re-read once it finishes.
   - Not included: X11 "Graphics driver" (lists Vulkan wrappers, not Turnip; its Turnip is "Driver version"); Box64EC (Contents has no Box64EC type).
   - Why an overlay, not a nav route: `GameSource` keeps unsaved edits in memory (`draft`), recreated on navigation → edits would be lost.
-- **CI:** run 43295220096 (headSha 5ba6ee62 checked) — running.
-- **Device test:** NOT device-tested.
+- **CI:** run 43295220096 (headSha 5ba6ee62 checked) — 4/4 green (no warnings in changed files; skipped steps = cache/main-only).
+- **Device test (Pocket FIT, user 15:3x: "device is free, install it and test"):** installing pubg APK 5ba6ee62 (replaces root-6a's feat/winfg-preset-test 7b00c8df; Win-FG 3x/4x not in this build). Test: Lab game → All settings → DXVK picker → "+ Download from source" → repo → small DXVK → back → listed; container editor Wine/Proton + Turnip pickers; logcat FATAL. NOT device-tested yet.
+- **Resume point:** if the session dies mid-test: check `dumpsys package com.tencent.ig | grep versionName` + base.apk sha256 vs the staged `/sdcard/Download/Bannerlator-lab-dl-source-5ba6ee62.apk`; to restore root-6a's build reinstall its staged 7b00c8df APK (ask user). No background jobs.
 - **Open/Next:** CI green → stage APK, announce install to peers, ask user / install, test a small download (e.g. a DXVK) from a game's All settings + container editor, check logcat FATAL, then ask about merge. New strings are English only.
 - **Resume point:** worktree /root/src/Bannerlator-wt/lab-dl-source, branch feat/lab-download-from-source = 5ba6ee62; device (FIT) has feat/winfg-multi 3e21e6c7 installed (root-6a, 14:43), user testing Win-FG.
 

@@ -158,13 +158,13 @@ internal object XboxCatalog {
         if (productId.matches(query.uppercase())) return products(listOf(query.uppercase()), access)
         if (query.length !in 2..100) return emptyList()
         val q = java.net.URLEncoder.encode(query, "UTF-8")
-        val body = get("https://apps.microsoft.com/api/products/search?query=$q&mediaType=games&age=all&price=all&category=all&subscription=all&gl=${Xodus.market()}&hl=${StoreLang.xbox()}")
+        val body = get("https://apps.microsoft.com/api/products/search?query=$q&mediaType=games&age=all&price=all&category=all&subscription=all&gl=${Xodus.market()}&hl=${StoreLang.xboxStore()}")
         val ids = objects(body.optJSONArray("productsList")).map { it.optString("productId") }.take(60)
         return products(ids, access)
     }
 
     fun featured(access: Map<String, String>): List<XboxGame> {
-        val body = get("https://apps.microsoft.com/api/Reco/GetComputedProductsList?listName=TopTrending&pgNo=1&noItems=12&filteredCategories=AllProducts&mediaType=Games&gl=${Xodus.market()}&hl=${StoreLang.xbox()}&exp=0")
+        val body = get("https://apps.microsoft.com/api/Reco/GetComputedProductsList?listName=TopTrending&pgNo=1&noItems=12&filteredCategories=AllProducts&mediaType=Games&gl=${Xodus.market()}&hl=${StoreLang.xboxStore()}&exp=0")
         return products(objects(body.optJSONArray("productsList")).map { it.optString("productId") }.take(24), access)
     }
 

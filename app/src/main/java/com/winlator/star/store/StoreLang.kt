@@ -72,6 +72,22 @@ object StoreLang {
         return (if (region.isNullOrEmpty()) c else "$c-$region").lowercase(Locale.ROOT)
     }
 
+    /**
+     * [xbox] with a region always ("ja-jp", "de-de"): the Microsoft Store's search and featured lists answer
+     * HTTP 403 to a bare language. A language without a usual region is asked in English.
+     */
+    fun xboxStore(l: Locale = locale()): String {
+        val tag = xbox(l)
+        if ('-' in tag) return if (tag == "es-419") "es-mx" else tag
+        val region = mapOf(
+            "ar" to "sa", "bg" to "bg", "cs" to "cz", "da" to "dk", "de" to "de", "el" to "gr", "en" to "us", "es" to "es",
+            "fi" to "fi", "fr" to "fr", "hi" to "in", "hu" to "hu", "id" to "id", "it" to "it", "ja" to "jp", "ko" to "kr",
+            "ms" to "my", "nb" to "no", "nl" to "nl", "pl" to "pl", "pt" to "br", "ro" to "ro", "ru" to "ru", "sv" to "se",
+            "th" to "th", "tr" to "tr", "uk" to "ua", "vi" to "vn", "zh" to "cn",
+        )[tag] ?: return "en-us"
+        return "$tag-$region"
+    }
+
     /** The name in Steam's `common/name_localized` (saved as a JSON object) for the app's language, else [name]. */
     @JvmStatic
     fun steamName(localized: String?, name: String?): String {

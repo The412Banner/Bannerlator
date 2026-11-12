@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 17:35 EST — 🔀 MERGED feat/lab-download-from-source + fix/launcher-resume (main a9a69a466; user: "it works, merge both to main")
+
+- **Merged:** backup `refs/backup/20261112/main-before-lab-download-launcher-resume` = 8c199678a. `--no-ff` d2336643c (feat/lab-download-from-source 5e7233f48) then a9a69a466 (fix/launcher-resume 7ef76210f); only PROGRESS_LOG.md conflicted (both entries kept). No MERGE_HEAD, authored The412Banner, no AI trailer. Pushed 8c199678a..a9a69a466 (fast-forward).
+- **Tree check:** `git diff d8faad6c a9a69a466` = empty → main is exactly the build the user tested (fix/launcher-resume-with-lab-dl d8faad6c, CI 43315666025, installed on the FIT 17:17 EST).
+- **Proof level:** "+ Download from source" popup + Cancel device-proven (FIT 15:51–15:56, fbb2ba73); launcher fix device-proven by the user on d8faad6c ("it works").
+- **Main CI:** run 43320242627 on a9a69a466 (started by the push).
+- **Open:** test branch fix/launcher-resume-with-lab-dl (d8faad6c + log) not needed any more — delete only on the user's word. root-6a's Win-FG preset build 7b00c8df still not on the FIT (user's call). Not tested: B during a running download; DXVK/VKD3D/D7VK/Box64/FEX pickers.
+
 ## 2026-11-12 16:25 EST — App icon reopens Home instead of where the user was (fix/launcher-resume, CI running)
 
 - **Why (user):** "anytime I background the app and bring it back to the foreground it always opens up the homepage why doesn't it leave me where I was previously?"

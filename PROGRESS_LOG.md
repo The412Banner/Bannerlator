@@ -10,8 +10,8 @@
   - Cancel fixes in the shared Contents installer: `RemoteSourceRepository.downloadToTemp` deletes the `.part` file on a cancel (failures still keep it for resume); `ContentsInstaller.install` checks for a cancel before the keep-raw save, so a cancelled download is not saved to My Files.
   - Contents status: same installer + same keep-raw setting; Contents computes Installed/Saved from disk on open, on resume and when a download finishes → popup installs show there (to verify on device).
   - Removed: full-page overlay, `SimpleComponentSourcePage(onlyTypes)`.
-- **CI:** run 43302424949 (headSha fbb2ba73 checked) — running.
-- **Device test:** NOT device-tested. Plan: popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
+- **CI:** run 43302424949 (headSha fbb2ba73 checked) — 4/4 green, no warnings in changed files.
+- **Device test (user: "install it when the build is green and test"):** installing pubg fbb2ba73 over 5ba6ee62 on the FIT; app launch only, no game. NOT device-tested yet. Plan: popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
 - **Open:** root-6a's feat/winfg-preset-test 7b00c8df (Win-FG presets) was replaced by my 5ba6ee62 at 15:33 — ask user about reinstalling it after this test (APK `/sdcard/Download/Bannerlator-winfg-preset-test-7b00c8df-pubg.apk`).
 - **Resume point:** branch feat/lab-download-from-source = fbb2ba73 (+ this log); FIT has 5ba6ee62 installed; no background jobs on the device.
 

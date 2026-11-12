@@ -367,6 +367,8 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         public final String  developer;
         public final int     metacriticScore; // 0 = not rated
         public final String  genres;          // comma-separated genre names
+        /** steam_games.name when {@link #name} is a translated one (StoreLang.steamName), else "". */
+        public String englishName = "";
 
         GameRow(int appId, String name, String installDir, String iconHash,
                 long sizeBytes, String depotIds, String type, boolean isInstalled,
@@ -789,9 +791,11 @@ public final class SteamDatabase extends SQLiteOpenHelper {
                      " ORDER BY name COLLATE NOCASE";
         try (Cursor c = getReadableDatabase().rawQuery(sql, args)) {
             while (c.moveToNext()) {
-                result.add(new GameRow(
+                String plain = c.getString(1);
+                String shown = StoreLang.steamName(c.getString(11), plain);
+                GameRow row = new GameRow(
                         c.getInt(0),
-                        StoreLang.steamName(c.getString(11), c.getString(1)),
+                        shown,
                         c.getString(2),
                         c.getString(3),
                         c.getLong(4),
@@ -800,7 +804,9 @@ public final class SteamDatabase extends SQLiteOpenHelper {
                         c.getInt(7) != 0,
                         c.getString(8),
                         c.getInt(9),
-                        c.getString(10)));
+                        c.getString(10));
+                if (plain != null && !plain.equals(shown)) row.englishName = plain;
+                result.add(row);
             }
         }
         return result;

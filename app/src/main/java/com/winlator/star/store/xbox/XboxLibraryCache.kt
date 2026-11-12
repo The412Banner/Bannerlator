@@ -17,10 +17,11 @@ internal object XboxLibraryCache {
 
     private fun prefs(app: Context) = app.getSharedPreferences("xbox", Context.MODE_PRIVATE)
 
-    /** Null also when the library was saved in another language: its titles are in that language. */
-    fun read(app: Context, account: String, market: String): Snapshot? =
-        if (prefs(app).getString("library_lang", "en-us") != StoreLang.xbox()) null
-        else decode(prefs(app).getString("library", null), account, market)
+    /** A library saved in another language is still shown, but as due for a refresh (its titles are in that language). */
+    fun read(app: Context, account: String, market: String): Snapshot? {
+        val saved = decode(prefs(app).getString("library", null), account, market) ?: return null
+        return if (prefs(app).getString("library_lang", "en-us") != StoreLang.xbox()) saved.copy(savedAt = 0L) else saved
+    }
 
     fun write(app: Context, account: String, market: String, games: List<XboxGame>) {
         check(prefs(app).edit().putString("library", encode(account, market, games))

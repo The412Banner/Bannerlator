@@ -109,4 +109,28 @@ object SteamGameLanguage {
     fun clearInstalled(appId: Int) {
         runCatching { SteamPrefs.clearInstalledLanguage(appId) }
     }
+
+    @JvmStatic
+    fun parse(csv: String?): List<String> =
+        csv.orEmpty().split(',').map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotEmpty() }.distinct()
+
+    /** The user's pick for [appId]; "" = follow the app's language. */
+    @JvmStatic
+    fun picked(appId: Int): String = runCatching { SteamPrefs.getGameLanguage(appId) }.getOrDefault("")
+
+    /** The language [appId] is wanted in (the pick, else the app's language when the game has it, else English). */
+    @JvmStatic
+    fun of(appId: Int): String = resolve(picked(appId), supported(appId))
+
+    /**
+     * [picked] when the game has it (or its languages are not known), else the app's language when the
+     * game has it, else English. Without a pick and without a language list it is English, as before.
+     */
+    @JvmStatic
+    fun resolve(picked: String, supported: List<String>): String {
+        val pick = picked.trim().lowercase(Locale.ROOT)
+        if (pick.isNotEmpty() && (supported.isEmpty() || pick in supported)) return pick
+        val app = runCatching { StoreLang.steam() }.getOrDefault(ENGLISH)
+        return if (app in supported) app else ENGLISH
+    }
 }

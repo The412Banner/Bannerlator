@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 08:20 EST — 🔀 MERGED feat/wfg-engine (main d140ea009; user: "merge to main")
+
+- **What:** WFG (WinNative's frame generator by qwertypower, MIT) as a third native frame-gen engine on X11 Vulkan + Wayland, and the present-queue guard (idea from WinNative PR #797) for all three engines. Details in the entry below.
+- **Merge:** `--no-ff` d140ea009 = parents a916a324c (main, unchanged since the branch point) + c64724106 (branch tip); tree == branch tip; app code == tested build 99736b38a (the commits after it touch only this log). Backup `refs/backup/20261112/main-before-wfg-engine` = a916a324c.
+- **Proof:** CI run 43215365747 on 99736b38a 4/4 green. Device-proven: WFG on Wayland at 2×/3×/4× (Pocket FIT, Insane 2). NOT device-tested: WFG on X11, the X11 "no new content → no generation" rule, LSFG Native and Win-FG Native with the guard, HDR.
+- **Open / next:** X11 test of WFG and of the other two engines with the guard; optional WFG controls (Target FPS, Fast/Balance, show-flow); the two shortcuts ContainerManager skips as unreadable (RESIDENT EVIL 2 DX12, NINJA GAIDEN Σ).
+
 ## 2026-11-12 07:02 EST — 🧪 WFG frame generator port (feat/wfg-engine 99736b38a; CI green; WFG device-proven on Wayland 2×/3×/4×, X11 not tested)
 
 - **Why:** user 11-12: "bannerlator frame gen options, can we also add wfg from winnative? recon and report" → after the recon: "go straight to the port".

@@ -646,6 +646,7 @@ object SteamGameUpdater {
      */
     @JvmStatic
     fun recordInstalledBuild(context: Context, appId: Int, installDir: File, branch: String) {
+        SteamGameLanguage.recordInstalled(appId)
         try {
             val build = liveBuildId(SteamRepository.getInstance(), appId, branch)
             if (build <= 0L) return

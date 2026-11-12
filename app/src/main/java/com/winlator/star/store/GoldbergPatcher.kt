@@ -1018,7 +1018,7 @@ object GoldbergPatcher {
         try {
             val f = File(settingsDir, "configs.user.ini")
             if (f.exists() && !f.readText().startsWith(LANGUAGE_MARK)) return
-            val language = SteamGameLanguage.of(appId)
+            val language = SteamGameLanguage.runtime(appId)
             if (language == SteamGameLanguage.ENGLISH) {
                 if (f.exists()) f.delete()
             } else {

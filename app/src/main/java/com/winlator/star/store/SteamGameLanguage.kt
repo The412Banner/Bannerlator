@@ -28,10 +28,44 @@ object SteamGameLanguage {
         return l.getDisplayName(l).replaceFirstChar { it.titlecase(l) }.ifBlank { code }
     }
 
+    private fun saved(appId: Int): List<String> =
+        runCatching { SteamDatabase.getInstance().getLanguages(appId) }.getOrDefault("").split('|')
+
     /** The languages Steam lists for [appId] (saved at the last library sync); empty when not known yet. */
     @JvmStatic
-    fun supported(appId: Int): List<String> =
-        runCatching { parse(SteamDatabase.getInstance().getLanguages(appId)) }.getOrDefault(emptyList())
+    fun supported(appId: Int): List<String> = parse(saved(appId).getOrNull(0))
+
+    /** The languages [appId] ships as a separate download (a depot tagged with the language). */
+    @JvmStatic
+    fun packaged(appId: Int): List<String> = parse(saved(appId).getOrNull(1))
+
+    /** What is saved for an app: its languages, then the separately packaged ones. */
+    @JvmStatic
+    fun encode(supported: List<String>, packaged: List<String>): String =
+        supported.joinToString(",") + "|" + packaged.joinToString(",")
+
+    /** The language pack a download in [language] takes: its own when the game packages one, else English. */
+    @JvmStatic
+    fun packOf(language: String, packaged: List<String>): String = if (language in packaged) language else ENGLISH
+
+    /**
+     * The language the game is told at launch (emulator, appmanifest, SteamLite agent). [of], except when
+     * that language is a separate download the installed game does not have yet (picked after the install):
+     * then the installed one, so the game and the Steam client never see a language whose files are missing.
+     */
+    @JvmStatic
+    fun runtime(appId: Int): String {
+        val want = of(appId)
+        if (want !in packaged(appId)) return want
+        val installed = runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("").ifEmpty { ENGLISH }
+        return if (installed == want) want else installed
+    }
+
+    /** Called when an install, update or verify of [appId] finished: remembers the language pack it took. */
+    @JvmStatic
+    fun recordInstalled(appId: Int) {
+        runCatching { SteamPrefs.setInstalledLanguage(appId, packOf(of(appId), packaged(appId))) }
+    }
 
     @JvmStatic
     fun parse(csv: String?): List<String> =

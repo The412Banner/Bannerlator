@@ -234,7 +234,7 @@ public final class AppSteamLauncher {
             env.put("BL_STEAM_MODE", LAUNCH_MODE);
             // The SteamLite-only switch must be ABSENT (unset = lsteamclient enabled in ntdll).
             String[] remove = {"PROTON_DISABLE_LSTEAMCLIENT", "WN_STEAM_TOKEN", "WN_STEAM_USERNAME", "WN_STEAM_STEAMID",
-                    "WN_STEAM_APPID", "WN_STEAM_GAMEEXE_FILE", "WN_STEAM_VAC", "WN_STEAM_CMLIST"};
+                    "WN_STEAM_APPID", "WN_STEAM_GAMEEXE_FILE", "WN_STEAM_VAC", "WN_STEAM_CMLIST", "WN_STEAM_LANGUAGE"};
 
             // ── 7. Start the host NOW (its logon overlaps the rest of the launch setup) ───────────
             if (!SteamHost.INSTANCE.start(ctx, hostCfg, token, username, steamId64)) {

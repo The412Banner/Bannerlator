@@ -244,7 +244,7 @@ object SteamAppManifest {
                 mergeDepots(app, installed, sizeOf)
                 for (section in listOf("UserConfig", "MountedConfig")) {
                     val cfg = app.block(section)
-                    cfg.setLeaf("language", SteamGameLanguage.of(appId))
+                    cfg.setLeaf("language", SteamGameLanguage.runtime(appId))
                     if (branch != "public") cfg.setLeaf("betakey", branch)
                 }
                 doc = Kv("")

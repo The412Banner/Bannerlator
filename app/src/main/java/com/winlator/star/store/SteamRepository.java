@@ -2014,19 +2014,20 @@ public final class SteamRepository {
         return list;
     }
 
-    /** True when a depot with a public manifest is tagged with [language]. */
-    static boolean hasDepotFor(KeyValue root, String language) {
+    /** The languages that have a depot of their own with a public manifest (lower case). */
+    static java.util.List<String> packagedLanguages(KeyValue root) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
         try {
             List<KeyValue> depots = root.get("depots").getChildren();
-            if (depots == null) return false;
-            for (KeyValue d : depots) {
-                if (!language.equalsIgnoreCase(kvStr(d.get("config").get("language")).trim())) continue;
+            if (depots != null) for (KeyValue d : depots) {
+                String lang = kvStr(d.get("config").get("language")).trim().toLowerCase();
+                if (lang.isEmpty()) continue;
                 String gid = kvStr(d.get("manifests").get("public").get("gid"));
                 if (gid.isEmpty()) gid = kvStr(d.get("manifest"));
-                if (!gid.isEmpty()) return true;
+                if (!gid.isEmpty()) out.add(lang);
             }
         } catch (Throwable ignored) {}
-        return false;
+        return new java.util.ArrayList<>(out);
     }
 
     /** PICS common/name_localized as a JSON object (Steam language -> name); "" when the app has none. */
@@ -2138,7 +2139,8 @@ public final class SteamRepository {
                         // English-tagged ones are taken, as before.
                         java.util.List<String> appLanguages = supportedLanguages(common, root);
                         String gameLanguage = SteamGameLanguage.resolve(SteamGameLanguage.picked(appId), appLanguages);
-                        String depotLanguage = hasDepotFor(root, gameLanguage) ? gameLanguage : "english";
+                        java.util.List<String> packagedLanguages = packagedLanguages(root);
+                        String depotLanguage = SteamGameLanguage.packOf(gameLanguage, packagedLanguages);
                         StringBuilder depotSb = new StringBuilder();
                         java.util.List<Integer> includedDlcIds = new java.util.ArrayList<>();  // owned DLC bundled with the game
                         // The game's DLC appIds (extended/listofdlc). A depot whose id is in this set is
@@ -2299,7 +2301,7 @@ public final class SteamRepository {
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
                         db.setNameLocalized(appId, localizedNames(common));
-                        db.setLanguages(appId, android.text.TextUtils.join(",", appLanguages));
+                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages));
                         // Valve's own folder name under steamapps/common (PICS config/installdir) — what
                         // every Steam client and the appmanifest's "installdir" use. Recorded so a game
                         // installed into a steamapps library lands where other clients look for it.

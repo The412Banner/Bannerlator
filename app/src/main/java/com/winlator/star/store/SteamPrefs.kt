@@ -160,6 +160,13 @@ object SteamPrefs {
         e.apply()
     }
 
+    /** The language pack the installed copy of [appId] has ("" = not recorded: English). */
+    fun getInstalledLanguage(appId: Int): String = prefs.getString("installed_language_$appId", "") ?: ""
+
+    fun setInstalledLanguage(appId: Int, language: String) {
+        prefs.edit().putString("installed_language_$appId", language).apply()
+    }
+
     // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────
     // When OFF (the default) the achievement pipeline is READ-ONLY: we fetch/cache/display the real
     // profile's achievements and record locally-earned unlocks to a pending queue, but NEVER write

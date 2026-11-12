@@ -2947,6 +2947,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 return;
             }
             shortcut = new Shortcut(container, new File(shortcutPath));
+            stampLastPlayed(shortcut);
         }
         // Fix the Goldberg cloud-sync decision now, for the whole session (see skipCloudForGoldberg()).
         skipCloudForGoldberg();
@@ -6661,6 +6662,23 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private com.winlator.star.store.SteamAgentChannel steamAgentChannel = null;
     private volatile boolean agentConnected = false;
     private volatile boolean agentLoginResolved = false;
+    /**
+     * "Last played" (the shortcut extra lastPlayed, read by the Home "Continue" tile and the recent order) for
+     * every way a game starts: the in-app Play buttons stamp it before launching (recordLastPlayed in
+     * ShortcutsScreen.kt), but a pinned home-screen icon or another app's intent comes straight here.
+     * Same stamp; the file's modified time is put back, since the "Recently added" order sorts on it.
+     */
+    private static void stampLastPlayed(Shortcut s) {
+        try {
+            long modified = s.file.lastModified();
+            s.putExtra("lastPlayed", String.valueOf(System.currentTimeMillis()));
+            s.saveData();
+            if (modified > 0L) s.file.setLastModified(modified);
+        } catch (Throwable t) {
+            Log.w("XServerDisplayActivity", "last played not saved: " + t.getMessage());
+        }
+    }
+
     /** WN_STEAM_VAC policy the agent echoed on insecure_fallback (absent/older agent = VAC). Picks the
      *  game_spawned wording: a non-VAC title's direct start is not an "insecure" outcome. */
     private volatile boolean agentFallbackVac = true;

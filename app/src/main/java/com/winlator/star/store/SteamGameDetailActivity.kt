@@ -210,6 +210,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var branches by mutableStateOf<List<BranchDisplay>>(emptyList())
     private var selectedBranch by mutableStateOf("public")
     private var showBranchSheet by mutableStateOf(false)
+    // Game language (SteamGameLanguage): the languages Steam lists, the pick ("" = follow the app), the one in use.
+    private var gameLanguages by mutableStateOf<List<String>>(emptyList())
+    private var pickedLanguage by mutableStateOf("")
+    private var showLanguageSheet by mutableStateOf(false)
     private var branchCheckBusy by mutableStateOf(false)
     private var branchCheckMessage by mutableStateOf<String?>(null)
     // One-shot guard so the manifest-true size resolve fires at most once per detail view.
@@ -352,6 +356,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     onSelectBranch = { selectBranch(it) },
                     onCheckBranchPassword = { submitBranchPassword(it) },
                     onDismissBranchSheet = { showBranchSheet = false; branchCheckMessage = null },
+                    gameLanguages = gameLanguages,
+                    pickedLanguage = pickedLanguage,
+                    showLanguageSheet = showLanguageSheet,
+                    onLanguageLineClick = { showLanguageSheet = true },
+                    onSelectLanguage = { selectLanguage(it) },
+                    onDismissLanguageSheet = { showLanguageSheet = false },
                     statusText = statusText,
                     gameStatus = gameStatus,
                     installBtnText = installBtnText,
@@ -845,11 +855,31 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             }
         } catch (_: Throwable) { emptyList() }
         selectedBranch = try { SteamPrefs.getSelectedBranch(g.appId) } catch (_: Throwable) { "public" }
+        loadLanguages()
         // If the stored branch is no longer selectable (lost unlock / removed branch), fall back to
         // public so we never try to install a branch the user can't currently access.
         if (selectedBranch != "public" && branches.none { it.name == selectedBranch && it.unlocked }) {
             selectedBranch = "public"
             try { SteamPrefs.setSelectedBranch(g.appId, "public") } catch (_: Throwable) {}
+        }
+    }
+
+    /** Reads the game's languages and the pick; off the main thread (database). */
+    private fun loadLanguages() {
+        lifecycleScope.launch {
+            val list = withContext(Dispatchers.IO) { SteamGameLanguage.supported(appId) }
+            gameLanguages = list
+            pickedLanguage = SteamGameLanguage.picked(appId).takeIf { it in list } ?: ""
+        }
+    }
+
+    /** Keeps the pick ("" = follow the app's language) and re-reads the game's depots for it. */
+    private fun selectLanguage(code: String) {
+        try { SteamPrefs.setGameLanguage(appId, code) } catch (_: Throwable) {}
+        pickedLanguage = code
+        showLanguageSheet = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) }
         }
     }
 
@@ -1689,6 +1719,12 @@ private fun SteamGameDetailScreen(
     onSelectBranch: (String) -> Unit,
     onCheckBranchPassword: (String) -> Unit,
     onDismissBranchSheet: () -> Unit,
+    gameLanguages: List<String>,
+    pickedLanguage: String,
+    showLanguageSheet: Boolean,
+    onLanguageLineClick: () -> Unit,
+    onSelectLanguage: (String) -> Unit,
+    onDismissLanguageSheet: () -> Unit,
     statusText: String,
     gameStatus: GameStatus,
     installBtnText: String,
@@ -2110,6 +2146,21 @@ private fun SteamGameDetailScreen(
                             Text("Change branch")
                         }
                     }
+                    // Game language — only when Steam lists more than one for this game.
+                    if (gameLanguages.size > 1) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Language: " + SteamGameLanguage.label(SteamGameLanguage.resolve(pickedLanguage, gameLanguages)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        OutlinedButton(
+                            onClick = onLanguageLineClick,
+                            modifier = Modifier.padding(top = 6.dp),
+                        ) {
+                            Text("Change language")
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = statusText,
@@ -2338,6 +2389,47 @@ private fun SteamGameDetailScreen(
     // Beta-branch picker sheet — pick which branch to download/install. Selectable branches (public +
     // any unlocked beta) get a radio; a locked beta needs a verified access code first.
     // Ported from GameNative (GPL-3.0): SteamAppScreen branch picker + password field.
+    if (showLanguageSheet) {
+        ModalBottomSheet(onDismissRequest = onDismissLanguageSheet, sheetState = rememberModalBottomSheetState()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            ) {
+                Text(
+                    text = "Game language",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Used the next time you install, update or verify this game.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
+                )
+                val auto = SteamGameLanguage.label(SteamGameLanguage.resolve("", gameLanguages))
+                (listOf("") + gameLanguages).forEach { code ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectLanguage(code) }
+                            .padding(vertical = 2.dp),
+                    ) {
+                        RadioButton(selected = pickedLanguage == code, onClick = { onSelectLanguage(code) })
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (code.isEmpty()) "App language ($auto)" else SteamGameLanguage.label(code),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        }
+    }
     if (showBranchSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(onDismissRequest = onDismissBranchSheet, sheetState = sheetState) {

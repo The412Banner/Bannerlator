@@ -148,6 +148,18 @@ object SteamPrefs {
         prefs.edit().putString(K_SELECTED_BRANCH_PREFIX + appId, value).apply()
     }
 
+    // ── Game language: per-game pick ("" = follow the app's language) — see SteamGameLanguage ──
+
+    private const val K_GAME_LANGUAGE_PREFIX = "game_language_"
+
+    fun getGameLanguage(appId: Int): String = prefs.getString(K_GAME_LANGUAGE_PREFIX + appId, "") ?: ""
+
+    fun setGameLanguage(appId: Int, language: String) {
+        val e = prefs.edit()
+        if (language.isBlank()) e.remove(K_GAME_LANGUAGE_PREFIX + appId) else e.putString(K_GAME_LANGUAGE_PREFIX + appId, language.trim())
+        e.apply()
+    }
+
     // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────
     // When OFF (the default) the achievement pipeline is READ-ONLY: we fetch/cache/display the real
     // profile's achievements and record locally-earned unlocks to a pending queue, but NEVER write

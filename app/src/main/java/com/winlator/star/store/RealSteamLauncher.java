@@ -777,6 +777,7 @@ public final class RealSteamLauncher {
         String nameEsc = vdfEscape(name);
         String installdirEsc = vdfEscape(canonicalName);
         String owner = steamId64 > 0 ? String.valueOf(steamId64) : "0";
+        String language = SteamGameLanguage.of(appId);
         String acfContent =
                 "\"AppState\"\n"
                         + "{\n"
@@ -788,8 +789,8 @@ public final class RealSteamLauncher {
                         + "\t\"installdir\"\t\t\"" + installdirEsc + "\"\n"
                         + "\t\"LastOwner\"\t\t\"" + owner + "\"\n"
                         + "\t\"InstalledDepots\"\n\t{\n\t}\n"
-                        + "\t\"UserConfig\"\n\t{\n\t\t\"language\"\t\t\"english\"\n\t}\n"
-                        + "\t\"MountedConfig\"\n\t{\n\t\t\"language\"\t\t\"english\"\n\t}\n"
+                        + "\t\"UserConfig\"\n\t{\n\t\t\"language\"\t\t\"" + language + "\"\n\t}\n"
+                        + "\t\"MountedConfig\"\n\t{\n\t\t\"language\"\t\t\"" + language + "\"\n\t}\n"
                         + "}\n";
         FileUtils.writeString(acf, acfContent);
     }

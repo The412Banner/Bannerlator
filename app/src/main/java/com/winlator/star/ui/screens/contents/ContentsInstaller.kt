@@ -97,6 +97,8 @@ object ContentsInstaller {
                 }
 
                 // ── Keep raw archive (before install consumes the file) ───────
+                // A Cancel that came in as the download finished keeps nothing, not even the file.
+                ensureActive()
                 if (keepRaw) {
                     runCatching { library.saveRaw(type, fileName, temp!!) }
                         .onFailure { Log.w(TAG, "keep-raw failed for $key", it) }

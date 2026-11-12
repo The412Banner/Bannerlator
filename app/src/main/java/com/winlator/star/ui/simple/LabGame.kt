@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,6 +76,7 @@ import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /** The game page's quick settings: the first of each group that applies to this game (X11 or Wayland driver ...). */
 private val QUICK = listOf(
@@ -190,6 +192,9 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     val details = remember(shortcut, resumeTick) { GameDetails.from(shortcut) }
 
     var pickerFor by remember { mutableStateOf<Pair<SettingDef, String>?>(null) }
+    // The setting whose "+ Download from source" pages are open, and its tile's label.
+    var downloadFor by remember { mutableStateOf<Pair<SettingDef, String>?>(null) }
+    val downloadScope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf<Pair<SettingDef, String>?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     val playFocus = remember { FocusRequester() }
@@ -357,7 +362,24 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
             onDismiss = { pickerFor = null },
             onPick = { v -> pickerFor = null; take(def, v) },
             onCustom = { pickerFor = null },
+            onDownload = LabDownloads.typesFor(def.id, env)?.let { { pickerFor = null; downloadFor = def to label } },
         )
+    }
+    downloadFor?.let { (def, label) ->
+        val types = LabDownloads.typesFor(def.id, env)
+        if (types == null) downloadFor = null
+        else LabDownloadPicker(types, onClose = {
+            downloadFor = null
+            downloadScope.launch {
+                // Back to the picker with the list read again; nothing is picked for the user.
+                runCatching { LabDownloads.refresh(def.id, env) }
+                pickerFor = def to label
+                if (LabDownloads.downloading()) {
+                    LabDownloads.awaitDownloads()
+                    runCatching { LabDownloads.refresh(def.id, env) }
+                }
+            }
+        })
     }
     confirm?.let { (def, v) ->
         val ask = def.confirm?.invoke(v)

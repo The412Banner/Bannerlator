@@ -246,7 +246,8 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
         return seen.toList()
     }
 
-    private fun canonicalType(key: String): String {
+    /** A type key as the hub names it ("fex" → "FEXCore", Turnip keywords → GPU drivers). */
+    internal fun canonicalType(key: String): String {
         if (ContentsTypes.isDriver(key) || RemoteSourceRepository.GPU_DRIVER_KEYWORDS.any { it.equals(key, true) }) {
             return ContentsTypes.GPU_DRIVERS
         }

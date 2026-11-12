@@ -1,5 +1,43 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 15:45 EST — Lab download from source: popup instead of page + Cancel (feat/lab-download-from-source, CI running)
+
+- **Why (user, after trying 5ba6ee62 on the FIT):** "the download from source button should not open a full page, it should just be the same menu as the turnip selection"; "make sure there is a cancel button and that the cancel button works properly also"; "anything downloaded here should also reflect as downloaded and or installed in the contents menus".
+- **Device check of 5ba6ee62 (15:34 EST):** installed hash d46c797c… = staged; Lab game page GPU driver tile picker showed "+ Download from source" as its last line (screenshot). User then opened it themselves (full page) and asked for the popup. No crash (crash buffer empty, process alive).
+- **Built (fbb2ba73):**
+  - `LabDownloadPicker` (LabDownloads.kt): same `SimplePicker` popup — repositories offering the type → that repository's versions (line shows % while downloading; installed = "Installed", not pickable; failed = "· Failed"). On DONE of the install started there → back to the setting's picker, list re-read. B: versions → repositories → close.
+  - "Cancel download" line on both lists while that download runs → `ContentDownloadRegistry.requestCancel` (as Contents' "Cancel the download"). One download at a time from the popup.
+  - Cancel fixes in the shared Contents installer: `RemoteSourceRepository.downloadToTemp` deletes the `.part` file on a cancel (failures still keep it for resume); `ContentsInstaller.install` checks for a cancel before the keep-raw save, so a cancelled download is not saved to My Files.
+  - Contents status: same installer + same keep-raw setting; Contents computes Installed/Saved from disk on open, on resume and when a download finishes → popup installs show there (to verify on device).
+  - Removed: full-page overlay, `SimpleComponentSourcePage(onlyTypes)`.
+- **CI:** run 43302424949 (headSha fbb2ba73 checked) — 4/4 green, no warnings in changed files.
+- **Device test (Pocket FIT, 15:51–15:56 EST) — DEVICE-PROVEN:** installed pubg fbb2ba73 (installed base.apk sha256 44aa2b20… = staged `/sdcard/Download/Bannerlator-lab-dl-source-fbb2ba73.apk`).
+  - Game page (Insane, Wayland container) GPU driver tile → list ends with "+ Download from source" → popup "Download from source": Kimchi, MTR/WinNative, Banners-Turnip, StevenMXZ, whitebelyash → Banners-Turnip → r4 versions in the same popup.
+  - Tapped Turnip-v27.0.0-20261112-r4-Banners-AIO: line "· 0%" at 0.8 s; at 2.3 s back in the "GPU driver" list with "Banners-AIO (all SoC) v27.0.0-20261112-r4" added, toast "Installed …", selection unchanged (r3 still ✓). logcat: AdrenotoolsManager "installed driver … r4".
+  - Contents: home "GPU drivers 10 installed" (was 9); Contents › Installed lists r4; My files 17 (new `GPU Drivers/Turnip-v27.0.0-20261112-r4-Banners-AIO.zip`, keep-raw on); Contents › Banners-Turnip row shows ✓ Saved Installed.
+  - Cancel: New container → Wine Version → "+ Download from source" → Official, Steven, Arihany (Nightlies left out: no Wine/Proton) → Official → wine-9.7-x86_64-ref: "Cancel download" line at the list end; `dl_249090597.part` 37.5 MB → after Cancel gone, none 3 s later; line back to plain name (no Failed); My Files unchanged; no Wine installed; no download notification. B → repositories → B → Wine Version list unchanged. Backed out, no container created (still 2).
+  - logcat since 15:51:12: crash buffer empty, no FATAL/ANR; app pid alive. Termux brought back 15:56.
+  - Not tested: B while a download still runs (list re-read after it ends); DXVK/VKD3D/D7VK/Box64/FEX pickers (same code path, other ids); controller-only navigation of the popup.
+- **Earlier plan was:** popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
+- **Open:** root-6a's feat/winfg-preset-test 7b00c8df (Win-FG presets) was replaced by my 5ba6ee62 at 15:33 — ask user about reinstalling it after this test (APK `/sdcard/Download/Bannerlator-winfg-preset-test-7b00c8df-pubg.apk`).
+- **Resume point:** branch feat/lab-download-from-source = fbb2ba73 (+ this log); FIT has 5ba6ee62 installed; no background jobs on the device.
+
+## 2026-11-12 14:56 EST — Lab "+ Download from source" in setting pickers (feat/lab-download-from-source, CI running)
+
+- **Why:** user: in Lab game settings / container editor, the Wine/Proton and component pickers (Turnip, DXVK, VKD3D, Box64, WOWBox64, FEXCore) should end with "+ Download from source" → repositories that offer that component (like Contents) → its versions → download → listed in the picker right away. "we have something similar in classic but it never made it into lab"; "it needs to be in a lab menu style though"; "do it". Decisions: Lab only; picker reopens with the new version listed, the user picks it (no auto-select).
+- **Built (5ba6ee62):**
+  - `SimplePicker` (SimpleSettingsEditor.kt): optional `onDownload` → last line "+ Download from source" (focus goes there when a list is empty).
+  - New `ui/simple/LabDownloads.kt`: setting id → Contents types (windows.wineVersion → Wine+Proton; graphics.dx.dxvkVersion / vkd3dVersion / d7vkVersion; performance.box64Version → Box64 or WOWBox64 by arm64ec; performance.fexVersion → FEXCore; graphics.gdc.version, graphics.compositorDriver, graphics.wl.gameDriver → GPU drivers). Refresh per id = the reloads Deck uses (vm.refreshWineVersions / refreshBox64Versions / refreshFEXCoreVersions, graphics.reloadContents, Turnip: onCompositorDriversChanged (not GAME scope) + loadAsync + reloadDrivers + reloadWaylandDrivers).
+  - `LabDownloadOverlay`: full-screen Dialog over the editor (Lab wallpaper, own DeckActions so the editor's L2/R2 + legend stay intact): repositories page (hub `canonicalType`, made internal, + Classic's rule: a repository naming no types is listed) → `SimpleComponentSourcePage(onlyTypes = …)`.
+  - Wired into `SimpleClassicEditor` (game/container/all-containers editors) and `LabGamePage` quick tiles. On close: list re-read, picker reopens; a download still running is re-read once it finishes.
+  - Not included: X11 "Graphics driver" (lists Vulkan wrappers, not Turnip; its Turnip is "Driver version"); Box64EC (Contents has no Box64EC type).
+  - Why an overlay, not a nav route: `GameSource` keeps unsaved edits in memory (`draft`), recreated on navigation → edits would be lost.
+- **CI:** run 43295220096 (headSha 5ba6ee62 checked) — 4/4 green (no warnings in changed files; skipped steps = cache/main-only).
+- **Device test (Pocket FIT, user 15:3x: "device is free, install it and test"):** installing pubg APK 5ba6ee62 (replaces root-6a's feat/winfg-preset-test 7b00c8df; Win-FG 3x/4x not in this build). Test: Lab game → All settings → DXVK picker → "+ Download from source" → repo → small DXVK → back → listed; container editor Wine/Proton + Turnip pickers; logcat FATAL. NOT device-tested yet.
+- **Resume point:** if the session dies mid-test: check `dumpsys package com.tencent.ig | grep versionName` + base.apk sha256 vs the staged `/sdcard/Download/Bannerlator-lab-dl-source-5ba6ee62.apk`; to restore root-6a's build reinstall its staged 7b00c8df APK (ask user). No background jobs.
+- **Open/Next:** CI green → stage APK, announce install to peers, ask user / install, test a small download (e.g. a DXVK) from a game's All settings + container editor, check logcat FATAL, then ask about merge. New strings are English only.
+- **Resume point:** worktree /root/src/Bannerlator-wt/lab-dl-source, branch feat/lab-download-from-source = 5ba6ee62; device (FIT) has feat/winfg-multi 3e21e6c7 installed (root-6a, 14:43), user testing Win-FG.
+
 ## 2026-11-12 14:30 EST — 🔀 MERGED fix/last-played-any-launch (main a208c6717; user: "merge")
 
 - **Why:** user asked to check the Home "Continue" tile (it showed Brawlhalla after CS2 ran). Finding: `lastPlayed` (shortcut extra, read by the tile and the recent order) was stamped only by the in-app Play paths (`recordLastPlayed`, ShortcutsScreen.kt); launches that start XServerDisplayActivity directly — pinned home-screen icons (`MoveGameToContainer.pinIntent`) and my test harness — never counted. The tile logic itself (bcda2c55) was right.

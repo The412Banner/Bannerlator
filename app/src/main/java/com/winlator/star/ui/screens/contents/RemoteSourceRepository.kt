@@ -1342,27 +1342,34 @@ class RemoteSourceRepository(private val context: Context) {
         }
         var downloaded = existingBytes
 
-        conn.inputStream.use { input ->
-            FileOutputStream(partFile, isResume).use { output ->
-                val buffer = ByteArray(16384)
-                var bytes: Int
-                while (input.read(buffer).also { bytes = it } != -1) {
-                    // A user Cancel (ContentDownloadRegistry.requestCancel) cancels the job; without this
-                    // check the blocking read loop would only notice at the end of the transfer.
-                    ensureActive()
-                    output.write(buffer, 0, bytes)
-                    downloaded += bytes
-                    val msg = if (total > 0) {
-                        val pct = (downloaded * 100 / total).toInt()
-                        val mb = downloaded / 1_048_576f
-                        "Downloading... $pct% (${String.format("%.1f", mb)} MB)"
-                    } else {
-                        val mb = downloaded / 1_048_576f
-                        "Downloading... ${String.format("%.1f", mb)} MB"
+        try {
+            conn.inputStream.use { input ->
+                FileOutputStream(partFile, isResume).use { output ->
+                    val buffer = ByteArray(16384)
+                    var bytes: Int
+                    while (input.read(buffer).also { bytes = it } != -1) {
+                        // A user Cancel (ContentDownloadRegistry.requestCancel) cancels the job; without this
+                        // check the blocking read loop would only notice at the end of the transfer.
+                        ensureActive()
+                        output.write(buffer, 0, bytes)
+                        downloaded += bytes
+                        val msg = if (total > 0) {
+                            val pct = (downloaded * 100 / total).toInt()
+                            val mb = downloaded / 1_048_576f
+                            "Downloading... $pct% (${String.format("%.1f", mb)} MB)"
+                        } else {
+                            val mb = downloaded / 1_048_576f
+                            "Downloading... ${String.format("%.1f", mb)} MB"
+                        }
+                        onProgress(msg)
                     }
-                    onProgress(msg)
                 }
             }
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            // A user Cancel keeps nothing of the download (a failed transfer keeps its part file to resume from).
+            runCatching { conn.disconnect() }
+            runCatching { partFile.delete() }
+            throw c
         }
         partFile
     }

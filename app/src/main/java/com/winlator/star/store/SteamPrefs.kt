@@ -148,6 +148,53 @@ object SteamPrefs {
         prefs.edit().putString(K_SELECTED_BRANCH_PREFIX + appId, value).apply()
     }
 
+    // ── Game language: per-game pick ("" = follow the app's language) — see SteamGameLanguage ──
+
+    private const val K_GAME_LANGUAGE_PREFIX = "game_language_"
+
+    fun getGameLanguage(appId: Int): String = prefs.getString(K_GAME_LANGUAGE_PREFIX + appId, "") ?: ""
+
+    fun setGameLanguage(appId: Int, language: String) {
+        val e = prefs.edit()
+        if (language.isBlank()) e.remove(K_GAME_LANGUAGE_PREFIX + appId) else e.putString(K_GAME_LANGUAGE_PREFIX + appId, language.trim())
+        e.apply()
+    }
+
+    /** The language pack the installed copy of [appId] has ("" = not recorded: English). */
+    fun getInstalledLanguage(appId: Int): String = prefs.getString("installed_language_$appId", "") ?: ""
+
+    fun setInstalledLanguage(appId: Int, language: String) {
+        prefs.edit().putString("installed_language_$appId", language).commit()
+    }
+
+    fun clearInstalledLanguage(appId: Int) {
+        prefs.edit().remove("installed_language_$appId").remove("language_switch_$appId")
+            .remove("denied_language_$appId").commit()
+    }
+
+    /** A language pack Steam refused to download for [appId] (no license); "" = none. */
+    fun getDeniedLanguage(appId: Int): String = prefs.getString("denied_language_$appId", "") ?: ""
+
+    fun setDeniedLanguage(appId: Int, language: String) {
+        prefs.edit().putString("denied_language_$appId", language).commit()
+    }
+
+    /** The Steam language the Library's language-files notice was dismissed for. */
+    fun getLanguageNoticeDismissed(): String = prefs.getString("language_notice_dismissed", "") ?: ""
+
+    fun setLanguageNoticeDismissed(language: String) {
+        prefs.edit().putString("language_notice_dismissed", language).apply()
+    }
+
+    /** A language download of [appId] started: its depot selection may change language pack. */
+    fun isLanguageSwitchPending(appId: Int): Boolean = prefs.getBoolean("language_switch_$appId", false)
+
+    fun setLanguageSwitchPending(appId: Int, pending: Boolean) {
+        val e = prefs.edit()
+        if (pending) e.putBoolean("language_switch_$appId", true) else e.remove("language_switch_$appId")
+        e.commit()
+    }
+
     // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────
     // When OFF (the default) the achievement pipeline is READ-ONLY: we fetch/cache/display the real
     // profile's achievements and record locally-earned unlocks to a pending queue, but NEVER write

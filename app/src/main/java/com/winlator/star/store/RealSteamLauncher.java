@@ -371,6 +371,10 @@ public final class RealSteamLauncher {
                 vacSource = "app-info";
             }
             env.put("WN_STEAM_VAC", vacSecure ? "1" : "0");
+            // The game's language for the real client (SteamGameLanguage.forSteamClient — never a language whose
+            // depots are not installed: the client would delete the game). The agent writes it into the
+            // appmanifest it stages.
+            env.put("WN_STEAM_LANGUAGE", SteamGameLanguage.forSteamClient(appId));
             // Steam Input (agent p7): configure the client's controller layer for this app before LaunchApp.
             if (steamInput) {
                 env.put("WN_STEAM_INPUT", "1");
@@ -391,7 +395,8 @@ public final class RealSteamLauncher {
             // Agent appmanifest contract: InstalledDepots (depot:manifest:size,…) so the genuine client
             // sees a complete install (the agent writes appmanifest_<id>.acf from these).
             try {
-                String depots = SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId);
+                String depots = SteamGameLanguage.depotsForLaunch(appId, hostInstallDir,
+                        SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId));
                 if (depots != null && !depots.isEmpty()) env.put("WN_STEAM_DEPOTS", depots);
             } catch (Throwable ignored) {}
 
@@ -777,6 +782,7 @@ public final class RealSteamLauncher {
         String nameEsc = vdfEscape(name);
         String installdirEsc = vdfEscape(canonicalName);
         String owner = steamId64 > 0 ? String.valueOf(steamId64) : "0";
+        String language = SteamGameLanguage.forSteamClient(appId);
         String acfContent =
                 "\"AppState\"\n"
                         + "{\n"
@@ -788,8 +794,8 @@ public final class RealSteamLauncher {
                         + "\t\"installdir\"\t\t\"" + installdirEsc + "\"\n"
                         + "\t\"LastOwner\"\t\t\"" + owner + "\"\n"
                         + "\t\"InstalledDepots\"\n\t{\n\t}\n"
-                        + "\t\"UserConfig\"\n\t{\n\t\t\"language\"\t\t\"english\"\n\t}\n"
-                        + "\t\"MountedConfig\"\n\t{\n\t\t\"language\"\t\t\"english\"\n\t}\n"
+                        + "\t\"UserConfig\"\n\t{\n\t\t\"language\"\t\t\"" + language + "\"\n\t}\n"
+                        + "\t\"MountedConfig\"\n\t{\n\t\t\"language\"\t\t\"" + language + "\"\n\t}\n"
                         + "}\n";
         FileUtils.writeString(acf, acfContent);
     }

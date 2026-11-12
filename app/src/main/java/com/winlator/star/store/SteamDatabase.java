@@ -88,7 +88,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             // Anti-Cheat enabled" or any extended/vac* key such as vacmodulefilename); 0 otherwise.
             // Drives the RealSteam launch's WN_STEAM_VAC policy (secure-launch wait window).
             "  vac_secure INTEGER NOT NULL DEFAULT 0," +
-            "  name_localized TEXT NOT NULL DEFAULT ''" +
+            "  name_localized TEXT NOT NULL DEFAULT ''," +
+            // The Steam languages the app lists (PICS common/supported_languages + per-language depots),
+            // comma-separated; '' until the next library sync. See SteamGameLanguage.
+            "  languages TEXT NOT NULL DEFAULT ''" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -330,16 +333,18 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    /** Adds steam_games.name_localized to a database made before it (see the DB_VERSION comment). */
+    /** Adds steam_games.name_localized and .languages to a database made before them (see the DB_VERSION comment). */
     @Override
     public void onOpen(SQLiteDatabase db) {
         super.onOpen(db);
         if (db.isReadOnly()) return;
-        boolean has = false;
+        java.util.Set<String> have = new java.util.HashSet<>();
         try (Cursor c = db.rawQuery("PRAGMA table_info(steam_games)", null)) {
-            while (c.moveToNext()) if ("name_localized".equals(c.getString(1))) { has = true; break; }
+            while (c.moveToNext()) have.add(c.getString(1));
         } catch (Exception ignored) { return; }
-        if (!has) addColumnIfMissing(db, "steam_games", "name_localized", "TEXT NOT NULL DEFAULT ''");
+        for (String column : new String[]{"name_localized", "languages"}) {
+            if (!have.contains(column)) addColumnIfMissing(db, "steam_games", column, "TEXT NOT NULL DEFAULT ''");
+        }
     }
 
     /** ALTER TABLE ... ADD COLUMN, ignoring the "duplicate column name" error so re-runs are safe. */
@@ -525,6 +530,22 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         ContentValues cv = new ContentValues();
         cv.put("name_localized", json != null ? json : "");
         getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** Saves the Steam languages the app lists (comma-separated). */
+    public void setLanguages(int appId, String csv) {
+        ContentValues cv = new ContentValues();
+        cv.put("languages", csv != null ? csv : "");
+        getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
+    /** The Steam languages saved for an app (comma-separated), "" when none or not in the library. */
+    public String getLanguages(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT languages FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) { String v = c.getString(0); return v != null ? v : ""; }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     /** True when the last library sync marked this app VAC-secured; false when not, or unknown. */
@@ -726,6 +747,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
 
     /** Clear install state without removing the game record. */
     public void markUninstalled(int appId) {
+        SteamGameLanguage.clearInstalled(appId);
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put("is_installed", 0);

@@ -716,6 +716,7 @@ object GoldbergPatcher {
             //    purely added — no backup, removed on restore.)
             File(settingsDir, "steam_appid.txt").writeText(appId.toString())
             File(t.dir, "steam_appid.txt").writeText(appId.toString())
+            writeLanguage(settingsDir, appId, rep)
         }
 
         // 4. Achievement DEFINITIONS (schema), once. Not for Off: those files are removed right after, so
@@ -1005,6 +1006,28 @@ object GoldbergPatcher {
             }
         }
         return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private const val LANGUAGE_MARK = "# Bannerlator: game language"
+
+    /**
+     * The game's language (SteamGameLanguage) for the emulator: steam_settings/configs.user.ini overrides the
+     * emulator's global "language=english". Only a file of ours is written or removed; English needs none.
+     */
+    private fun writeLanguage(settingsDir: File, appId: Int, rep: Report) {
+        try {
+            val f = File(settingsDir, "configs.user.ini")
+            if (f.exists() && !f.readText().startsWith(LANGUAGE_MARK)) return
+            val language = SteamGameLanguage.runtime(appId)
+            if (language == SteamGameLanguage.ENGLISH) {
+                if (f.exists()) f.delete()
+            } else {
+                f.writeText("$LANGUAGE_MARK\n[user::general]\nlanguage=$language\n")
+                rep.add("configs.user.ini: language=$language")
+            }
+        } catch (e: Exception) {
+            rep.warn("couldn't write the game language: $e")
+        }
     }
 
     /** Names of files Goldberg drops in that are safe to delete on restore. */

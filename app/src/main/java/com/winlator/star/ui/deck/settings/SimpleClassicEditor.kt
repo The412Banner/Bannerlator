@@ -54,6 +54,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,8 @@ import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.UnsavedChangesDialog
 import com.winlator.star.ui.simple.L
+import com.winlator.star.ui.simple.LabDownloadPicker
+import com.winlator.star.ui.simple.LabDownloads
 import com.winlator.star.ui.simple.SIn
 import com.winlator.star.ui.simple.SimpleCover
 import com.winlator.star.ui.simple.SimpleDim
@@ -102,6 +105,7 @@ import com.winlator.star.ui.simple.simpleInputOf
 import com.winlator.star.ui.simple.simpleTap
 import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.max
 
 // The Simple style's container, new-container, All-containers and game menus, laid out like the Classic editors:
@@ -529,6 +533,9 @@ internal fun SimpleClassicEditor(
 
     // Dialogs and pickers.
     var pickerFor by remember { mutableStateOf<SettingDef?>(null) }
+    // The setting whose "+ Download from source" pages are open.
+    var downloadFor by remember { mutableStateOf<SettingDef?>(null) }
+    val downloadScope = rememberCoroutineScope()
     var textFor by remember { mutableStateOf<SettingDef?>(null) }
     var coresFor by remember { mutableStateOf<SettingDef?>(null) }
     var checklistFor by remember { mutableStateOf<SettingDef?>(null) }
@@ -537,7 +544,7 @@ internal fun SimpleClassicEditor(
     var pendingConfirm by remember { mutableStateOf<Pair<SettingDef, String>?>(null) }
     var afterUnsaved by remember { mutableStateOf<(() -> Unit)?>(null) }
     var saving by remember { mutableStateOf(false) }
-    val dialogOpen = pickerFor != null || textFor != null || coresFor != null || checklistFor != null ||
+    val dialogOpen = pickerFor != null || downloadFor != null || textFor != null || coresFor != null || checklistFor != null ||
         customFor != null || helpFor != null || pendingConfirm != null || afterUnsaved != null
 
     val pick: (SettingDef, String) -> Unit = { def, v ->
@@ -807,7 +814,25 @@ internal fun SimpleClassicEditor(
             onDismiss = { pickerFor = null },
             onPick = { v -> pickerFor = null; pick(def, v) },
             onCustom = { pickerFor = null; customFor = def },
+            onDownload = LabDownloads.typesFor(def.id, env)?.let { { pickerFor = null; downloadFor = def } },
         )
+    }
+    downloadFor?.let { def ->
+        val types = LabDownloads.typesFor(def.id, env)
+        if (types == null) downloadFor = null
+        else LabDownloadPicker(types, onClose = {
+            downloadFor = null
+            downloadScope.launch {
+                // Back to the picker with the list read again; nothing is picked for the user.
+                runCatching { LabDownloads.refresh(def.id, env) }
+                pickerFor = def
+                // A download still running when the pages closed is listed once it has installed.
+                if (LabDownloads.downloading()) {
+                    LabDownloads.awaitDownloads()
+                    runCatching { LabDownloads.refresh(def.id, env) }
+                }
+            }
+        })
     }
     customFor?.let { def ->
         val control = def.control(env, values) as? Control.Select

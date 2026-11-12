@@ -845,13 +845,17 @@ internal fun SimplePicker(
     onDismiss: () -> Unit,
     onPick: (String) -> Unit,
     onCustom: () -> Unit,
+    /** Shown as the last line, "+ Download from source", when set. */
+    onDownload: (() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val start = options.indexOfFirst { it.value == current }.coerceAtLeast(0)
-    val requesters = remember(options.size) { List(options.size + 1) { FocusRequester() } }
+    val requesters = remember(options.size) { List(options.size + 2) { FocusRequester() } }
+    // No options: the line under them takes the focus.
+    val first = if (options.isNotEmpty()) start else if (customLabel != null) options.size else options.size + 1
     LaunchedEffect(Unit) {
         delay(60)
-        runCatching { requesters[start].requestFocus() }
+        runCatching { requesters[first].requestFocus() }
     }
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -900,6 +904,22 @@ internal fun SimplePicker(
                                 .clickable { onCustom() }
                                 .padding(horizontal = 14.dp, vertical = 6.dp),
                         ) { Text(customLabel, color = SimpleInk, fontSize = 15.sp) }
+                    }
+                }
+                if (onDownload != null) {
+                    item {
+                        var f by remember { mutableStateOf(false) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                                .focusRequester(requesters[options.size + 1])
+                                .onFocusChanged { f = it.isFocused }
+                                .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
+                                .clickable { onDownload() }
+                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                        ) { Text(L("+ Download from source"), color = accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
                     }
                 }
             }

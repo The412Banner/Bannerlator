@@ -2128,6 +2128,7 @@ public final class SteamRepository {
                         //   - oslist       : if present & non-blank, must contain "windows"
                         //   - language     : if present & non-blank, must equal "english"
                         //   - lowviolence  : if set (1/true), exclude
+                        //   - optionaldlc  : if set, exclude (opt-in content, see the loop)
                         //   - osarch       : SKIPPED — we pass downloadAllArchs=true (never filters)
                         // A depot with no config, or empty oslist/language, is shared/common content
                         // and is always included. A depot with no public manifest can't be
@@ -2205,6 +2206,16 @@ public final class SteamRepository {
                                 String lv = kvStr(config.get("lowviolence")).trim();
                                 if (lv.equals("1") || lv.equalsIgnoreCase("true")) {
                                     Log.d(TAG, "app " + appId + " skip depot " + depotId + " lowviolence");
+                                    skippedCount++; continue;
+                                }
+                                // Optional DLC content (config optionaldlc = its DLC appId, e.g. CS2's Workshop
+                                // Tools, depot 2347779, 2.1 GB): Steam installs it only when the player turns it on,
+                                // and a real Steam client removes it otherwise (2026-11-12: SteamLite deleted the 908
+                                // files of 2347779 we had downloaded). There is no opt-in here, so it is never taken.
+                                String optionalDlc = kvStr(config.get("optionaldlc")).trim();
+                                if (!optionalDlc.isEmpty()) {
+                                    Log.d(TAG, "app " + appId + " skip depot " + depotId
+                                            + " optionaldlc=" + optionalDlc + " (optional, not turned on)");
                                     skippedCount++; continue;
                                 }
                                 // DLC handling. Steam does NOT tag a depot's config with dlcappid here;

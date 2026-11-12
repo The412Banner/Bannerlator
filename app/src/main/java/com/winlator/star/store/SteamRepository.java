@@ -1982,6 +1982,23 @@ public final class SteamRepository {
      * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
      * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
      */
+    /** PICS common/name_localized as a JSON object (Steam language -> name); "" when the app has none. */
+    static String localizedNames(KeyValue common) {
+        try {
+            List<KeyValue> names = common.get("name_localized").getChildren();
+            if (names == null || names.isEmpty()) return "";
+            org.json.JSONObject out = new org.json.JSONObject();
+            for (KeyValue n : names) {
+                String lang = n.getName();
+                String value = kvStr(n);
+                if (lang != null && !lang.isEmpty() && !value.isEmpty()) out.put(lang.toLowerCase(), value);
+            }
+            return out.length() > 0 ? out.toString() : "";
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
     /**
      * VAC marker from an app's PICS app-info: {@code common/category/category_8} (store category 8,
      * "Valve Anti-Cheat enabled") or any {@code extended/vac*} key ({@code vacmodulefilename},
@@ -2226,6 +2243,7 @@ public final class SteamRepository {
                         // vacmacmodulecache); Brawlhalla (291550) has neither. There is no literal "vac"
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
+                        db.setNameLocalized(appId, localizedNames(common));
                         // Valve's own folder name under steamapps/common (PICS config/installdir) — what
                         // every Steam client and the appmanifest's "installdir" use. Recorded so a game
                         // installed into a steamapps library lands where other clients look for it.
@@ -2431,7 +2449,7 @@ public final class SteamRepository {
                         String name = "";
                         String kind = null;   // null → updateDlcResolved leaves the stored kind as-is
                         if (root != null) {
-                            name = kvStr(root.get("common").get("name"));
+                            name = StoreLang.steamName(localizedNames(root.get("common")), kvStr(root.get("common").get("name")));
                             // Only classify app vs entitlement when the kind isn't already final
                             // ('depot' is set from the base game's depots and must not be overwritten).
                             if (r.kind == null || r.kind.isEmpty()) {

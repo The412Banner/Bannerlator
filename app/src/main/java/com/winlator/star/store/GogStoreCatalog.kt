@@ -93,13 +93,14 @@ object GogStoreCatalog {
 
     private fun baseQuery(limit: Int, order: String, extra: String = ""): String =
         "$CATALOG?limit=$limit&order=$order&productType=in:game,pack&page=1" +
-            "&countryCode=${country()}&locale=en-US&currencyCode=${currency()}$extra"
+            "&countryCode=${country()}&locale=${StoreLang.gog()}&currencyCode=${currency()}$extra"
 
     /** GET the catalog; on a refusal of the locale currency, retry as US / USD. */
     private fun fetchProducts(url: String): List<CatalogItem> {
         var body = StoreNet.get(url)
         if (body == null && !url.contains("countryCode=US&locale=en-US&currencyCode=USD")) {
             val fallback = url
+                .replace(Regex("locale=[A-Za-z-]+"), "locale=en-US")
                 .replace(Regex("countryCode=[A-Z]{2}"), "countryCode=US")
                 .replace(Regex("currencyCode=[A-Z]{3}"), "currencyCode=USD")
             body = StoreNet.get(fallback)
@@ -158,7 +159,7 @@ object GogStoreCatalog {
     suspend fun product(id: String): ProductDetail? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         detailCache[id]?.let { if (now - it.at < DETAIL_TTL_MS) return@withContext it.value }
-        val body = StoreNet.get("https://api.gog.com/products/$id?expand=description,screenshots,videos")
+        val body = StoreNet.get("https://api.gog.com/products/$id?expand=description,screenshots,videos&locale=${StoreLang.gog()}")
         val detail = body?.let { runCatching { parseDetail(JSONObject(it)) }.getOrNull() }
         detailCache[id] = Cached(detail, now)
         detail

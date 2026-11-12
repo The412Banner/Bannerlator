@@ -169,6 +169,7 @@ internal fun LabHome(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val stats = remember(shortcuts, resumeTick) { readPlayStats(context, shortcuts) }
+    LaunchedEffect(shortcuts) { LabTitles.refresh(context, shortcuts) }
     val recent = remember(shortcuts, stats) { sortGames(shortcuts, LibrarySort.RECENT) { gameSortKeyOf(it, stats) } }
     val dev = rememberLabDevice()
     val downloads by ContentDownloadRegistry.states.collectAsState()

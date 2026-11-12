@@ -72,6 +72,10 @@ object LabLang {
     @Volatile private var locale: Locale = Locale.getDefault()
     private val ids = ConcurrentHashMap<String, Int>()
 
+    /** The language in use: the picked one, else the phone's. */
+    val current: Locale
+        get() = locale
+
     /** The picked language's tag; "" = the phone's. */
     fun tag(context: Context): String =
         PreferenceManager.getDefaultSharedPreferences(context).getString(PREF, "") ?: ""

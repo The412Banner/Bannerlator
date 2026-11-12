@@ -266,7 +266,7 @@ internal fun filterLibraryByQuery(
     val words = foldForSearch(query).trim().split(WHITESPACE_RUN).filter { it.isNotEmpty() }
     if (words.isEmpty()) return games
     return games.filter { g ->
-        val name = folded[g.appId] ?: foldForSearch(g.name)
+        val name = folded[g.appId] ?: foldForSearch(g.name + " " + g.englishName)
         words.all { name.contains(it) }
     }
 }
@@ -512,7 +512,7 @@ fun SteamLibraryTab(
     // are hoisted into the host (like [typeFilter]) so they survive a tab switch and rotation.
     val byType = remember(state.games, typeFilter) { typeFilter.filter(state.games) }
     val foldedNames = remember(state.games) {
-        state.games.associate { it.appId to foldForSearch(it.name) }
+        state.games.associate { it.appId to foldForSearch(it.name + " " + it.englishName) }
     }
     val shown = remember(byType, foldedNames, query, sort) {
         filterLibraryByQuery(byType, foldedNames, query).sortedWith(sort.comparator())

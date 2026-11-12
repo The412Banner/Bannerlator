@@ -502,7 +502,7 @@ internal fun LabGameDetailsPage(path: String, tab: Int, onNavigate: (String) -> 
     )
     SimpleMenuPage(
         overline = L("Game details"),
-        title = s.name,
+        title = LabTitles.of(s),
         sections = listOf(
             MenuSection("details", L("Details"), Icons.Filled.Info, detailsRows),
             MenuSection("artwork", L("Artwork"), Icons.Filled.Image, artRows),

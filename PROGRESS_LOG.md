@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 07:02 EST — 🧪 WFG frame generator port (feat/wfg-engine bb4090fee; compiled locally, CI running; NOT device-tested)
+
+- **Why:** user 11-12: "bannerlator frame gen options, can we also add wfg from winnative? recon and report" → after the recon: "go straight to the port".
+- **What WFG is:** WinNative's second frame generator by **qwertypower** (DEVAR Entertainment LLC), MIT (`winlator/wfg/LICENSE.wfg`). Dense Inverse Search + Farneback optical flow as Vulkan compute shaders, following OpenCV. Source: WinNative-Emu/WinNative main 72d145bc, `app/src/main/cpp/wfg`.
+- **Built (f28d73362 + bb4090fee):**
+  - `app/src/main/cpp/winlator/wfg/`: `vkr_dis.c`, `vkr_dis.h`, `shaders/*.comp` copied UNMODIFIED; ours: `vk_dispatch.h` (stand-in for WinNative's header, 32 entry points, table `wfg_vkd`), `wfg_engine.{h,cpp}` (`wfg::Engine`, same contract as the other engines), `gen_shaders.sh` + committed `gen/shaders/*.spv.h` (glslc `--target-env=vulkan1.1 -O`, shaderc 2026.1).
+  - CMake: static C library `wfg` (the renderer targets force `-std=c++17`), linked into `vulkan_renderer` and `bannerwayland`; `WFG_UPSTREAM` stamp in the engine-ready log line.
+  - X11 (`VulkanRendererContext`): engine kind 2 next to LSFG (0) and Win-FG (1). Wayland (`framegen_engine.cpp`, `framegen_bridge.{c,h}`): `VKP_FG_ENGINE_WFG = 2`.
+  - App: engine id `"wfg"` (container + per-game `frameGenEngine`); `applyWfgNative` / `prepareWfgNative` / `wfgNativeSession()` in `XServerDisplayActivity`; pickers in Container settings, per-game settings, XMB and the Lab/Deck registry; drawer badge "WFG", Flow Scale hidden for WFG; string `frame_generation_wfg`.
+  - Mapping of our controls: WFG paces itself up to the display rate; 2×/3×/4× caps how many frames it may add per game frame. Flow resolution pinned to Balance (252 px; preset 2 would be Fast 180 px). No Target FPS control and no Show-flow debug view yet.
+- **Checked:** host `clang -fsyntax-only` clean for `vkr_dis.c`, `wfg_engine.cpp`, `framegen_engine.cpp`, `framegen_bridge.c`, `VulkanRendererContext.cpp` (stubbed Android headers). Kotlin/Java not compiled locally.
+- **CI:** run 43214250368 on bb4090fee (dispatched 07:02 EST) — result not in yet.
+- **Not device-tested.** Unknown: picture quality and GPU cost against Win-FG Native; HDR (FP16) path; WFG below ~20 fps pauses itself by design.
+- **Resume:** worktree `/root/src/Bannerlator-wt/wfg`. When CI is green: stage `/sdcard/Download/Bannerlator-wfg-engine-<sha8>-pubg.apk`, ask before install; test = container Frame generation → WFG, in-game side menu → 2×, Wayland and X11 Vulkan, read logcat for `wfg-native` / `framegen:` lines and FATAL.
+
 ## 2026-11-12 05:55 EST — 🔀 MERGED feat/store-name-language (main 286bfbf36; user: "leave as is for now, merge to main")
 
 - **Why:** user 11-12: "we have app language selection, but what about game stores game name language selection?" Decision: follow the app language (Lab's pick, else the phone's), English fallback, no new setting; Steam, GOG, Xbox first. Then, with a Library screenshot: "what about game shortcuts and library tab?"

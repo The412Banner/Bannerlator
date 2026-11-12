@@ -183,6 +183,20 @@ internal fun LabHome(
     }
     var menuFor by remember { mutableStateOf<Shortcut?>(null) }
     var selPath by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    // The game launched last: the big tile's game until another is picked. The row's first entry is not it when the
+    // Windows Steam client is listed (it is pinned first in every order).
+    val lastGame = remember(recent, stats) {
+        recent.filter { (stats[it.file.path]?.lastPlayed ?: 0L) > 0L }.maxByOrNull { stats[it.file.path]?.lastPlayed ?: 0L } ?: recent.firstOrNull()
+    }
+    // A game played since the last look takes the tile back from an earlier pick.
+    val lastAt = lastGame?.let { stats[it.file.path]?.lastPlayed } ?: 0L
+    var seenLastAt by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0L) }
+    LaunchedEffect(lastAt) {
+        if (lastAt != seenLastAt) {
+            if (seenLastAt != 0L) selPath = null
+            seenLastAt = lastAt
+        }
+    }
     val playFocus = remember { FocusRequester() }
     val enterTick = deckActions.enterTick.intValue
     LaunchedEffect(resumeTick, enterTick, recent.isNotEmpty()) {
@@ -202,7 +216,7 @@ internal fun LabHome(
         val pad = if (portrait) 12.dp else 18.dp
         val rowH: Dp = if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)
         // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
-        val game = recent.firstOrNull { it.file.path == selPath } ?: recent.firstOrNull()
+        val game = recent.firstOrNull { it.file.path == selPath } ?: lastGame
         // Its art goes behind the page (Appearance › Game art background).
         LaunchedEffect(game?.file?.path) { LabArt.selected = game }
         // Games without a Steam link: find their art by name (once per game).
@@ -235,7 +249,7 @@ internal fun LabHome(
             if (LabArt.hasClips(LabArt.gameMode(game))) {
                 LabHeroTile(
                     game,
-                    label = if (game == recent.firstOrNull()) L("Continue") else L("Selected"),
+                    label = if (game == lastGame) L("Continue") else L("Selected"),
                     meta = meta,
                     chips = chips,
                     playFocus = playFocus,
@@ -248,7 +262,7 @@ internal fun LabHome(
             Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabTileLabel(if (game == recent.firstOrNull()) L("Continue") else L("Selected"))
+                    LabTileLabel(if (game == lastGame) L("Continue") else L("Selected"))
                     LabTitle(game, 56.dp, 22.sp)
                     Text(meta, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     LabRuntimeStatus(game, fontSize = 12.sp, color = SimpleMuted)

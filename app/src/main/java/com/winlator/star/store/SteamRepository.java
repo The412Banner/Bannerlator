@@ -2140,11 +2140,11 @@ public final class SteamRepository {
                         java.util.List<String> appLanguages = supportedLanguages(common, root);
                         String gameLanguage = SteamGameLanguage.resolve(SteamGameLanguage.picked(appId), appLanguages);
                         java.util.List<String> packagedLanguages = packagedLanguages(root);
-                        SteamDatabase.GameRow known = null;
-                        try { known = db.getGame(appId); } catch (Throwable ignored) {}
+                        SteamDatabase.GameRow knownRow = null;
+                        try { knownRow = db.getGame(appId); } catch (Throwable ignored) {}
                         // An installed game keeps the pack it has (SteamGameLanguage.selection): the list saved
                         // here is handed to the real Steam client as what is on disk.
-                        String depotLanguage = SteamGameLanguage.selection(appId, known != null && known.isInstalled,
+                        String depotLanguage = SteamGameLanguage.selection(appId, knownRow != null && knownRow.isInstalled,
                                 SteamGameLanguage.packOf(gameLanguage, packagedLanguages));
                         StringBuilder depotSb = new StringBuilder();
                         java.util.List<Integer> includedDlcIds = new java.util.ArrayList<>();  // owned DLC bundled with the game

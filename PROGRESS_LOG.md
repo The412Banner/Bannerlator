@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 14:25 EST — 🧪 Win-FG Native 3×/4× + DroidDeck's two Win-FG fixes (feat/winfg-multi b79cc664d; CI running; NOT device-tested)
+
+- **Why:** user 11-12: "port the droiddeck win-fg fixes and enable 3x/4x". DroidDeck's copy of win-fg (DD-FG) got two fixes Bannerlator's copy lacked; ours was only safe because the menu was Off/On (2×).
+- **Built (b79cc664d, off main ddeccbcda):**
+  - DroidDeck PR #1132 (Kurt Himebauch / xXJSONDeruloXx): `FrameGen::kSynthSlots = 3`; one synth UBO + descriptor set per generated frame (`record(..., synthSlot, reuseFlow)`), the flow between the two real frames is solved once (generation 0), later generations only re-run the synth pass. Before: all generations of a frame shared one UBO, so the last alpha won (flicker / black frames at 3×/4×). The rename to DD-FG in that PR was not taken.
+  - DroidDeck PR #1556 (Thomas Lee): flow images, flow UBOs and flow descriptor sets only for levels `flowFinest()..kLevels-1` (DroidDeck measured −38.7 MB at 1440p; not measured here).
+  - Ported by hand: our `record_impl.inc` differs from DroidDeck's (comments, C1/C2 notes); logic is the same.
+  - Menus: in-game drawer (`FgMultiplierButtons`) and deck quick row offer Off/2×/3×/4× for Win-FG Native; fit advice may suggest a lower multiplier. The in-container win-fg layer (training capture only) stays Off/On — its prebuilt `libwin_fg.so` is unchanged and still has the bug.
+  - Credit row in THIRD-PARTY-LICENSES.md (DroidDeck is GPL-3.0, same as this repo).
+- **Checked:** `clang++ -fsyntax-only` on framegen.cpp + winfg_engine.cpp clean. Both presenters already pass the multiplier and call `generateInto(g, count)` from g = 0 upward (X11 `recordFrameGenGeneration`, Wayland `fge_*`).
+- **CI:** run 43287809073 (headSha b79cc664d) — in progress.
+- **Device test:** none yet. To test: Win-FG Native 2×/3×/4× on Wayland and X11, check for flicker/black frames at 3×/4×, logcat FATAL check, recording frame count.
+- **Open / Next:** CI result → stage APK → ask the user before install. Xbox cloud player's Win-FG stays 2×.
+- **Resume point:** worktree `/root/src/Bannerlator-wt/winfg-multi`, branch `feat/winfg-multi`; nothing installed from it.
+
 ## 2026-11-12 13:58 EST — 🔀 MERGED feat/steam-game-language (main d1719eab5; user: "merge")
 
 - **Why:** Discord #winlator-general 11-12 (ziqing_0501): "even i change app language … the game still downloaded in english … my game language is depends by steam client". User: "do the steam download language first", "follow app", then "anytime language is changed … verification from the user" and "just do it correctly and thoroughly".

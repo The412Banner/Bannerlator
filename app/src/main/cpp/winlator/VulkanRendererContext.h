@@ -136,6 +136,7 @@ struct VkTable {
 
 namespace lsfg { class Engine; }
 namespace winfg { class Engine; }
+namespace wfg { class Engine; }
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -601,10 +602,13 @@ private:
     bool        lsfgEngineTried_ = false;
     std::unique_ptr<winfg::Engine> winfgEngine_;
     bool        winfgEngineTried_ = false;
-    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg
+    std::unique_ptr<wfg::Engine> wfgEngine_;
+    bool        wfgEngineTried_ = false;
+    std::atomic<int> fgEngineKind_{0};     // 0 = lsfg, 1 = win-fg, 2 = wfg
     std::atomic<int> fgModel_{4};
     std::atomic<int> fgPerfPreset_{1};
     bool ensureWinFgEngine();
+    bool ensureWfgEngine();
     // Capability gate for the SELECTED engine. win-fg's shaders need only a
     // storage-capable swapchain format; the LSFG chain also needs the fp16 /
     // memory-model feature set, which some otherwise capable GPUs lack.
@@ -627,6 +631,19 @@ private:
     // do not measure it themselves (win-fg).
     float    fgSourceRate_      = 0.0f;
     uint32_t fgSourceAccum_     = 0;
+    // Present-queue guard (renderFrame): FIFO shows one image per refresh, so output even
+    // slightly above the display rate fills the swapchain queue and every frame - the game's
+    // own included - reaches the panel several refreshes late. Idea and model from
+    // qwertypower's WinNative PR #797.
+    uint64_t fgQueueEndNs_      = 0;   // when the last presented image would be shown
+    uint64_t fgTrimmed_         = 0;   // generated frames left out to drain the queue
+    uint64_t fgSameSource_      = 0;   // draws without a new game frame (nothing generated)
+    uint64_t fgSeenContent_     = 0;
+    uint32_t fgContentIdle_     = 0;   // draws since the content serial last moved
+    bool     fgContentLive_     = false;
+    uint32_t fgGuardLog_        = 0;
+    std::atomic<uint64_t> fgContentSerial_{0};   // bumped by every window content update
+    void     guardPresentQueue();
     uint32_t fgPresentAccum_    = 0;
     std::chrono::steady_clock::time_point fgRateWindowStart_{};
     bool     fgRateWindowOpen_  = false;

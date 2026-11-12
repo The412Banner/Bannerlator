@@ -1663,11 +1663,12 @@ private fun TopLevelFields(
         // runs the same shaders from the same DLL inside our compositor and is the one that
         // measurably reaches the panel. Its code paths remain (parked on feat/lsfg-vk-plumbing);
         // a container still set to "lsfg" resolves to "lsfg-native" (Container.getFrameGenEngine).
-        val fgEngines = listOf("off", "bionic", "lsfg-native")
+        val fgEngines = listOf("off", "bionic", "lsfg-native", "wfg")
         val fgEngineLabels = listOf(
             stringResource(R.string.frame_generation_off),
             stringResource(R.string.frame_generation_bionic),
-            stringResource(R.string.frame_generation_lsfg_native)
+            stringResource(R.string.frame_generation_lsfg_native),
+            stringResource(R.string.frame_generation_wfg)
         )
         val lsfgDllAvailable = remember { java.io.File(context.filesDir, "lsfg-vk/Lossless.dll").isFile }
         val fgDisabledOpts = buildSet {

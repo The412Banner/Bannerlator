@@ -552,7 +552,7 @@ private fun FrameLimitRow(state: XServerDrawerState, compactHint: Boolean = fals
         state.setFpsLimit(value)
         state.onFpsLimitChange?.run()
     }
-    val nativeFgName = if (fgEngine == "lsfg-native") L("LSFG Native") else L("Win-FG Native")
+    val nativeFgName = when (fgEngine) { "lsfg-native" -> L("LSFG Native"); "wfg" -> "WFG"; else -> L("Win-FG Native") }
     val lsfgVkMultiplying = fgEngine == "lsfg" && fgEnabled && fgMult >= 2
     val hint = when {
         nativeFgLocks -> L("Caps the game's real frames. Locked on while %1\$s is generating; you'll see up to %2\$s × %3\$s = %4\$s.", nativeFgName, limit, fgMult, limit * fgMult)

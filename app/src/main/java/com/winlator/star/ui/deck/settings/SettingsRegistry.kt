@@ -817,6 +817,7 @@ internal object SettingsRegistry {
                     Opt("bionic", T("Built-in (Win-FG)")),
                     Opt("lsfg-native", T("Lossless Scaling"),
                         disabledReason = if (env.lsfgDllAvailable) null else T("Import Lossless.dll in Settings › Performance first.")),
+                    Opt("wfg", T("WFG")),
                 ))
             },
             vm = vmString({ if (it.frameGenEngine == "lsfg") "lsfg-native" else it.frameGenEngine }, { vm, v -> vm.frameGenEngine = v }),

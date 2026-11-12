@@ -2040,6 +2040,24 @@ internal fun FrameGenSection(state: XServerDrawerState) {
             }
         }
 
+        // TEST BUILD (test/winfg-preset): preset row back for Win-FG Native, to judge 3x/4x sharpness.
+        AnimatedVisibility(
+            visible = engine == "bionic" && winFgNative && fgMult > 0 && !waylandFgBlocked,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Quality (test)",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
+                FgPresetButtons(fgPreset) { newPreset -> fgPreset = newPreset; applyFg() }
+            }
+        }
+
         // The Quality / Balanced / Performance preset row used to live here.
         // Removed at the user's decision (2026-09-09): Win-FG Native runs on
         // Performance permanently. Each preset change rebuilt the whole flow
@@ -2273,6 +2291,44 @@ private fun FgModelButtons(selected: Int, onSelect: (Int) -> Unit) {
     // stored values 0-2 map to the standard flow (model 3), matching the layer's clamp.
     val options = listOf(3 to "Optical flow", 4 to "Bidirectional")
     val sel = if (selected < 3) 3 else selected
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { (model, label) ->
+            val isSel = sel == model
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSel) accent else Color.Black)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSel) accent else accentDim,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onSelect(model) }
+                    .padding(vertical = 9.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (isSel) Color.Black else accent,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+// TEST BUILD: Win-FG Native flow resolution preset (0 Quality 1/2 res, 1 Balanced 1/4, 2 Performance 1/8).
+@Composable
+private fun FgPresetButtons(selected: Int, onSelect: (Int) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val accentDim = LocalAccentDim.current
+    val options = listOf(0 to "Quality", 1 to "Balanced", 2 to "Performance")
+    val sel = selected.coerceIn(0, 2)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp)

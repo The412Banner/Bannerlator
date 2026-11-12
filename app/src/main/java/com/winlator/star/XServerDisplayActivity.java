@@ -4396,6 +4396,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
     /** Win-FG Native is Performance-only; see applyWinFgNative. 2 = Performance. */
     private static final int WINFG_PERF_PRESET = 2;
 
+    // TEST BUILD (test/winfg-preset): Win-FG Native follows the preset picked in the in-game
+    // menu (0 Quality, 1 Balanced, 2 Performance) instead of the pinned Performance.
+    private static int winFgPreset(int requested) {
+        return requested < 0 || requested > 2 ? WINFG_PERF_PRESET : requested;
+    }
+
     /** Select win-fg in the renderer, push its knobs, and arm it at `multiplier` (0 = off). */
     private void applyWinFgNative(int multiplier, float flowScale, int model, int perfPreset) {
         if (waylandMode) {
@@ -4410,7 +4416,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         }
         Log.i("XServerDisplayActivity", "applyWinFgNative: multiplier=" + multiplier
             + " flow=" + flowScale + " model=" + model
-            + " preset=" + WINFG_PERF_PRESET + " (pinned; requested " + perfPreset + ")"
+            + " preset=" + winFgPreset(perfPreset) + " (test build: not pinned)"
             + " refresh=" + currentDisplayRefreshHz());
         vkr.setFrameGenEngine(com.winlator.star.renderer.vulkan.VulkanRenderer.FG_ENGINE_WINFG);
         // Win-FG Native runs on the Performance preset permanently (user decision,
@@ -4419,7 +4425,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // visible in a device log as three rebuilds in twenty seconds while the
         // chips were being tried. Pinned here rather than only hiding the UI, so a
         // container or shortcut still carrying an older value cannot reinstate it.
-        vkr.setWinFgTuning(model, WINFG_PERF_PRESET);
+        vkr.setWinFgTuning(model, winFgPreset(perfPreset));
         // Capture height 0: Win-FG shares the composite ring with LSFG Native but has no
         // capture-resolution control, so it always runs at panel resolution.
         vkr.setFrameGenTuning(flowScale, currentDisplayRefreshHz(), 0);
@@ -4446,7 +4452,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         final boolean wfg = "wfg".equals(resolvedFrameGenEngine());
         Log.i("XServerDisplayActivity", "applyWaylandFrameGen: engine=" + (lsfg ? "lsfg-native" : wfg ? "wfg-native" : "winfg-native")
             + " multiplier=" + multiplier + " flow=" + flowScale
-            + (lsfg || wfg ? "" : " model=" + model + " preset=" + WINFG_PERF_PRESET + " (pinned; requested " + perfPreset + ")")
+            + (lsfg || wfg ? "" : " model=" + model + " preset=" + winFgPreset(perfPreset) + " (test build: not pinned)")
             + " refresh=" + currentDisplayRefreshHz());
         com.winlator.star.wayland.WaylandCompositor.nativeSetFrameGenEngine(lsfg
             ? com.winlator.star.wayland.WaylandCompositor.FG_ENGINE_LSFG
@@ -4460,7 +4466,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
             com.winlator.star.wayland.WaylandCompositor.nativeSetWinFgTuning(4, WFG_PERF_PRESET);
         } else {
             // Performance preset pinned exactly as applyWinFgNative does (user decision, 2026-09-09).
-            com.winlator.star.wayland.WaylandCompositor.nativeSetWinFgTuning(model, WINFG_PERF_PRESET);
+            com.winlator.star.wayland.WaylandCompositor.nativeSetWinFgTuning(model, winFgPreset(perfPreset));
         }
         com.winlator.star.wayland.WaylandCompositor.nativeSetFrameGenTuning(flowScale, currentDisplayRefreshHz());
         com.winlator.star.wayland.WaylandCompositor.nativeSetFrameGenArmed(multiplier >= 2, multiplier);

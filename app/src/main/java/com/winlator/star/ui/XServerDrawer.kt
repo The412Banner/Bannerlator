@@ -1993,7 +1993,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
                 )
             }
         }
-        FgMultiplierButtons(fgMult, engine, enabled = fgUnavailable.isEmpty() && !waylandFgBlocked) { newMult ->
+        FgMultiplierButtons(fgMult, engine, winFgNative, enabled = fgUnavailable.isEmpty() && !waylandFgBlocked) { newMult ->
             fgMult = newMult; applyFg()
             // Both engines now do the FULL surface-teardown reset with a Resume prompt, driven from
             // onBionicFgConfigChange in the activity (win-fg on an On/Off/multiplier/model/preset
@@ -2010,7 +2010,7 @@ internal fun FrameGenSection(state: XServerDrawerState) {
                 cap = fpsCap, mult = fgMult,
                 screen = rememberFgScreen(displayTargetHz, supportedRates, liveRate),
                 supported = supportedRates, autoOn = matchRefresh && vrrOk,
-                canChangeMult = engine == "lsfg-native"
+                canChangeMult = engine == "lsfg-native" || (engine == "bionic" && winFgNative)
             ) { fix ->
                 state.setFpsLimit(fix)
                 state.onFpsLimitChange?.run()
@@ -2219,8 +2219,8 @@ private fun FgFitAdvice(
 // Shown while LSFG Native or Win-FG Native is generating and the game's real frames (the FPS cap)
 // times the multiplier is more than the display can show. Both present one frame per refresh under
 // FIFO, so the surplus queues: the compositor falls behind the game and real frames arrive late or
-// get dropped - stutter and input lag, not extra smoothness. canChangeMult = false for Win-FG
-// Native, which is fixed at 2x.
+// get dropped - stutter and input lag, not extra smoothness. canChangeMult = true where the menu
+// offers 2x/3x/4x (LSFG Native, Win-FG Native).
 @Composable
 private fun FgOverLimitWarning(
     cap: Int, mult: Int, screen: FgScreen, canChangeMult: Boolean, onSetCap: (Int) -> Unit
@@ -2362,13 +2362,13 @@ private fun FgCaptureChips(selected: String, panelHeight: Int, onSelect: (String
 }
 
 @Composable
-private fun FgMultiplierButtons(selected: Int, engine: String, enabled: Boolean = true, onSelect: (Int) -> Unit) {
+private fun FgMultiplierButtons(selected: Int, engine: String, winFgNative: Boolean, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     val dimmed = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-    // win-fg is a simple Off / On toggle for now (On = 2×); selecting On reveals the
-    // model + flow-scale controls (gated on multiplier > 0). lsfg-vk keeps 2×/3×/4×.
-    val options = if (engine == "bionic")
+    // The in-container win-fg layer stays Off / On (On = 2×): its prebuilt library flickers at
+    // 3×/4×. Win-FG Native (our compositor) has that fixed and gets 2×/3×/4× like the others.
+    val options = if (engine == "bionic" && !winFgNative)
         listOf(0 to "Off", 2 to "On")
     else
         listOf(0 to "Off", 2 to "2×", 3 to "3×", 4 to "4×")
@@ -3638,7 +3638,7 @@ internal fun HudContent(state: XServerDrawerState, embedded: Boolean = false) {
                     cap = limitVal, mult = fgMult,
                     screen = rememberFgScreen(displayTargetHz, supportedRefreshRates, currentRefreshRate),
                     supported = supportedRefreshRates, autoOn = matchRefreshOn && vrrSupported,
-                    canChangeMult = fgEngine == "lsfg-native"
+                    canChangeMult = fgEngine == "lsfg-native" || fgEngine == "bionic"
                 ) { fix -> limitVal = fix; applyLimiter() }
             }
         }

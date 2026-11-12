@@ -201,8 +201,10 @@ bool FrameGen::onResize(VkExtent2D extent, VkFormat /*colorFormat*/, bool force)
         VkExtent2D e = levelExtent(extent, l);
         if (!makeImage(pyrA_[l], e, VK_FORMAT_R32_SFLOAT, lumaUsage)) return false;
         if (!makeImage(pyrB_[l], e, VK_FORMAT_R32_SFLOAT, lumaUsage)) return false;
-        if (!makeImage(flowLvl_[l], e, VK_FORMAT_R16G16B16A16_SFLOAT, flowUsage)) return false;
     }
+    // Flow scratch only for the levels the solve runs on (finest..coarsest).
+    for (int l = flowFinest_; l < kLevels; ++l)
+        if (!makeImage(flowLvl_[l], levelExtent(extent, l), VK_FORMAT_R16G16B16A16_SFLOAT, flowUsage)) return false;
     // C1: stabilized curr luma — only the levels the dense flow reads (finest..coarsest).
     pyrAs_.resize(kLevels);
     for (int l = flowFinest_; l < kLevels; ++l)

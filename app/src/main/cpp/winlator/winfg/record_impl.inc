@@ -25,7 +25,9 @@
 namespace {
 struct ScratchState {
     // host-visible UBO buffers
-    VkBuffer synthUbo = VK_NULL_HANDLE; VkDeviceMemory synthUboMem = VK_NULL_HANDLE; void* synthUboPtr = nullptr;
+    VkBuffer synthUbo[winfg::FrameGen::kSynthSlots]{};
+    VkDeviceMemory synthUboMem[winfg::FrameGen::kSynthSlots]{};
+    void* synthUboPtr[winfg::FrameGen::kSynthSlots]{};
     std::vector<VkBuffer> flowUbo; std::vector<VkDeviceMemory> flowUboMem; std::vector<void*> flowUboPtr;
     VkBuffer expandUbo = VK_NULL_HANDLE; VkDeviceMemory expandUboMem = VK_NULL_HANDLE; void* expandUboPtr = nullptr;
     // C2: flow-regularization UBO (shared by all iterations; refreshed per frame).
@@ -43,7 +45,8 @@ struct ScratchState {
     // ping-pong. sFlowReg0: in=flowLvl_[F] (=f0), out=A. sFlowRegAB: in=A, out=B.
     // sFlowRegBA: in=B, out=A. f0 (binding 33) = flowLvl_[F] in all three.
     VkDescriptorSet sFlowReg0 = VK_NULL_HANDLE, sFlowRegAB = VK_NULL_HANDLE, sFlowRegBA = VK_NULL_HANDLE;
-    VkDescriptorSet sSynth = VK_NULL_HANDLE;
+    VkDescriptorSet sSynth[winfg::FrameGen::kSynthSlots]{}; // per generated frame
+    bool flowReady = false;   // this size's flow field has been solved at least once
     // C1: per-slot reduce set + per-slot per-level prewarp sets
     VkDescriptorSet sGmReduce[winfg::FrameGen::kGmSlots]{};
     std::vector<VkDescriptorSet> sGmPrewarp[winfg::FrameGen::kGmSlots]; // sized kLevels; [flowFinest()..) used
@@ -185,7 +188,7 @@ static void destroyScratch(const DeviceDispatch* dd, VkDevice dev, VkDescriptorP
         b = VK_NULL_HANDLE; m = VK_NULL_HANDLE; p = nullptr;
     };
     auto& S = g_scratch;
-    freeUbo(S.synthUbo,   S.synthUboMem,   S.synthUboPtr);
+    for (int s = 0; s < FrameGen::kSynthSlots; ++s) freeUbo(S.synthUbo[s], S.synthUboMem[s], S.synthUboPtr[s]);
     freeUbo(S.expandUbo,  S.expandUboMem,  S.expandUboPtr);
     freeUbo(S.flowRegUbo, S.flowRegUboMem, S.flowRegUboPtr);
     for (size_t i = 0; i < S.flowUbo.size(); ++i) freeUbo(S.flowUbo[i], S.flowUboMem[i], S.flowUboPtr[i]);
@@ -322,9 +325,10 @@ bool FrameGen::updateGlobalMotion(uint32_t gmSlot, VkExtent2D fullExtent) {
 }
 
 void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView currView,
-                      VkImageView outView, float alpha, uint32_t gmSlot) {
+                      VkImageView outView, float alpha, uint32_t gmSlot, uint32_t synthSlot, bool reuseFlow) {
     if (!valid()) return;
     if (gmSlot >= (uint32_t)kGmSlots) gmSlot = 0;
+    if (synthSlot >= (uint32_t)kSynthSlots) synthSlot = 0;
     const bool m4 = (cfg_.model == 4);
     const Pipe& flowP   = m4 ? pFlowM4_   : pFlow_;
     const Pipe& expandP = m4 ? pExpandM4_ : pExpand_;
@@ -338,40 +342,49 @@ void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView cur
                       pFlowReg_, flowRegA_, flowRegB_, gmSsbo_, kLevels, cfg_);
     }
 
-    // ── C1: solve the global-motion affine (reads the SSBO the caller fence-waited) ──
-    bool gmEngaged = updateGlobalMotion(gmSlot, extent_);
-    // Build this slot's GMUBO from the running / applied affine.
-    if (g_scratch.gmUboPtr[gmSlot]) {
-        GMUBO g{};
-        g.lin[0]=(float)gmRun_[0]; g.lin[1]=(float)gmRun_[1]; g.lin[2]=(float)gmRun_[2]; g.lin[3]=(float)gmRun_[3];
-        g.linT[0]=(float)gmRun_[4]; g.linT[1]=(float)gmRun_[5]; g.linT[2]=gmEngaged?1.0f:0.0f; g.linT[3]=0.0f;
-        if (gmEngaged) {
-            g.app[0]=(float)gmRun_[0]; g.app[1]=(float)gmRun_[1]; g.app[2]=(float)gmRun_[2]; g.app[3]=(float)gmRun_[3];
-            g.appT[0]=(float)gmRun_[4]; g.appT[1]=(float)gmRun_[5];
-        } // else app/appT stay 0 -> identity -> prewarp/expand are pre-C1 no-ops
-        std::memcpy(g_scratch.gmUboPtr[gmSlot], &g, sizeof(g));
-    }
-    // Log engage state + estimated global translation periodically (tag win-fg).
-    {
-        static int lastEng = -1;
-        if (gmEngaged != (lastEng == 1) || (gmFrames_ % 300ull) == 0) {
-            WFG_LOGI("C1 global-motion: engaged=%d mode=%d stable=%d transPx=%.1f (model=%d)",
-                     gmEngaged ? 1 : 0, cfg_.gmMode, gmStableCount_, gmLastTransPx_, cfg_.model);
-            lastEng = gmEngaged ? 1 : 0;
+    // All generations of one real frame share its prev/curr pair, so the flow is solved
+    // once (generation 0) and later generations only re-run the synth pass with their
+    // own alpha, each through its own synth UBO + descriptor set.
+    if (reuseFlow && !g_scratch.flowReady) return;
+    if (!reuseFlow) {
+        // ── C1: solve the global-motion affine (reads the SSBO the caller fence-waited) ──
+        bool gmEngaged = updateGlobalMotion(gmSlot, extent_);
+        // Build this slot's GMUBO from the running / applied affine.
+        if (g_scratch.gmUboPtr[gmSlot]) {
+            GMUBO g{};
+            g.lin[0]=(float)gmRun_[0]; g.lin[1]=(float)gmRun_[1]; g.lin[2]=(float)gmRun_[2]; g.lin[3]=(float)gmRun_[3];
+            g.linT[0]=(float)gmRun_[4]; g.linT[1]=(float)gmRun_[5]; g.linT[2]=gmEngaged?1.0f:0.0f; g.linT[3]=0.0f;
+            if (gmEngaged) {
+                g.app[0]=(float)gmRun_[0]; g.app[1]=(float)gmRun_[1]; g.app[2]=(float)gmRun_[2]; g.app[3]=(float)gmRun_[3];
+                g.appT[0]=(float)gmRun_[4]; g.appT[1]=(float)gmRun_[5];
+            } // else app/appT stay 0 -> identity -> prewarp/expand are pre-C1 no-ops
+            std::memcpy(g_scratch.gmUboPtr[gmSlot], &g, sizeof(g));
         }
+        // Log engage state + estimated global translation periodically (tag win-fg).
+        {
+            static int lastEng = -1;
+            if (gmEngaged != (lastEng == 1) || (gmFrames_ % 300ull) == 0) {
+                WFG_LOGI("C1 global-motion: engaged=%d mode=%d stable=%d transPx=%.1f (model=%d)",
+                         gmEngaged ? 1 : 0, cfg_.gmMode, gmStableCount_, gmLastTransPx_, cfg_.model);
+                lastEng = gmEngaged ? 1 : 0;
+            }
+        }
+
+        // wire the luma inputs
+        wImg(dd_, device_, g_scratch.sLumaCurr, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        wImg(dd_, device_, g_scratch.sLumaPrev, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
     // update UBOs for this frame
     SynthUBO su{cfg_.flowScale, alpha, cfg_.beta, cfg_.lambda, cfg_.epsilon, cfg_.photoScale, 0, 0,
                 cfg_.hudX0, cfg_.hudY0, cfg_.hudX1, cfg_.hudY1};
-    if (g_scratch.synthUboPtr) std::memcpy(g_scratch.synthUboPtr, &su, sizeof(su));
+    if (g_scratch.synthUboPtr[synthSlot]) std::memcpy(g_scratch.synthUboPtr[synthSlot], &su, sizeof(su));
 
-    // wire per-frame external views
-    wImg(dd_, device_, g_scratch.sLumaCurr, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sLumaPrev, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    wImg(dd_, device_, g_scratch.sSynth, 48, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, outView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL);
+    // wire this generation's external views
+    const VkDescriptorSet synthSet = g_scratch.sSynth[synthSlot];
+    wImg(dd_, device_, synthSet, 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, prevView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    wImg(dd_, device_, synthSet, 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currView, linear_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    wImg(dd_, device_, synthSet, 48, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, outView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL);
 
     auto disp = [&](const Pipe& p, VkDescriptorSet set, VkExtent2D e) {
         dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, p.pipeline);
@@ -380,140 +393,143 @@ void FrameGen::record(VkCommandBuffer cmd, VkImageView prevView, VkImageView cur
     };
     auto bar = [&](FrameGen::Img& i){ barrier(cmd, i.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL); };
 
-    // Internal images are created UNDEFINED and fully recomputed every frame, so
-    // discard-transition them all to GENERAL up front (all descriptors use GENERAL
-    // for these). This also fixes the first-frame layout (storage writes require
-    // GENERAL, not UNDEFINED).
-    for (auto& i : pyrA_)    barrier(cmd, i.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    for (auto& i : pyrB_)    barrier(cmd, i.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    for (int l = flowFinest_; l < kLevels; ++l) barrier(cmd, pyrAs_[l].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    barrier(cmd, flowExpA_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    barrier(cmd, flowExpB_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    // C2: ping-pong scratch to GENERAL (storage writes require it; contents discarded).
-    barrier(cmd, flowRegA_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    barrier(cmd, flowRegB_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    // Reset the flow field to zero every frame. The coarsest level uses it as its
-    // search predictor; carrying it across frames lets a spurious vector feed
-    // forward until it diverges and melts the image (the bg/fg pause was resetting
-    // it — that's why artifacts vanished on resume). Fresh zero every frame =
-    // stable, standard pyramid flow, no feedback loop.
-    {
-        VkClearColorValue zero{};
-        VkImageSubresourceRange rng{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (!reuseFlow) {
+        // Internal images are created UNDEFINED and fully recomputed every frame, so
+        // discard-transition them all to GENERAL up front (all descriptors use GENERAL
+        // for these). This also fixes the first-frame layout (storage writes require
+        // GENERAL, not UNDEFINED).
+        for (auto& i : pyrA_)    barrier(cmd, i.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        for (auto& i : pyrB_)    barrier(cmd, i.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        for (int l = flowFinest_; l < kLevels; ++l) barrier(cmd, pyrAs_[l].image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        barrier(cmd, flowExpA_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        barrier(cmd, flowExpB_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        // C2: ping-pong scratch to GENERAL (storage writes require it; contents discarded).
+        barrier(cmd, flowRegA_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        barrier(cmd, flowRegB_.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        // Reset the flow field to zero every frame. The coarsest level uses it as its
+        // search predictor; carrying it across frames lets a spurious vector feed
+        // forward until it diverges and melts the image (the bg/fg pause was resetting
+        // it — that's why artifacts vanished on resume). Fresh zero every frame =
+        // stable, standard pyramid flow, no feedback loop.
+        {
+            VkClearColorValue zero{};
+            VkImageSubresourceRange rng{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            for (int l = flowFinest_; l < kLevels; ++l) {
+                VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+                b.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                b.srcAccessMask = 0; b.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                b.image = flowLvl_[l].image; b.subresourceRange = rng;
+                b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+                dd_->CmdClearColorImage(cmd, flowLvl_[l].image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &zero, 1, &rng);
+                b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+            }
+        }
+
+        // 1) luma of curr/prev at full res
+        disp(pLuma_, g_scratch.sLumaCurr, levelExtent(extent_, 0));
+        disp(pLuma_, g_scratch.sLumaPrev, levelExtent(extent_, 0));
+        bar(pyrA_[0]); bar(pyrB_[0]);
+        // 2) downsample pyramids
+        for (int l = 1; l < kLevels; ++l) {
+            disp(pDown_, g_scratch.sDownA[l - 1], levelExtent(extent_, l));
+            disp(pDown_, g_scratch.sDownB[l - 1], levelExtent(extent_, l));
+            bar(pyrA_[l]); bar(pyrB_[l]);
+        }
+        // 2b) C1: LK normal-equation reduce (fixed grid, 1/8-res) → this slot's SSBO.
+        //     Reads raw prev/curr luma at kGmLevel; writes per-thread partials. A
+        //     compute→host barrier makes the write visible to the CPU readback that
+        //     happens when this slot comes round again (~1-2 frames later).
+        if (gmBuffersReady_ && g_scratch.sGmReduce[gmSlot]) {
+            dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pGmReduce_.pipeline);
+            dd_->CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pGmReduce_.layout, 0, 1, &g_scratch.sGmReduce[gmSlot], 0, nullptr);
+            dd_->CmdDispatch(cmd, (uint32_t)(kGmThreads / 64), 1, 1);
+            VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+            mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+            dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
+                                    0, 1, &mb, 0, nullptr, 0, nullptr);
+        }
+        // 2c) C1: pre-warp curr luma pyramid by the applied affine → stabilized pyramid
+        //     (identity affine ⇒ exact copy, so the flow below is unchanged when
+        //     disengaged). The dense flow reads pyrAs from here on.
         for (int l = flowFinest_; l < kLevels; ++l) {
-            VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-            b.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            b.srcAccessMask = 0; b.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            b.image = flowLvl_[l].image; b.subresourceRange = rng;
-            b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
-            dd_->CmdClearColorImage(cmd, flowLvl_[l].image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &zero, 1, &rng);
-            b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-            b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-            dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
+            disp(pGmPrewarp_, g_scratch.sGmPrewarp[gmSlot][l], levelExtent(extent_, l));
+            bar(pyrAs_[l]);
         }
-    }
+        // 3) coarse->fine flow (only down to flowFinest_ — reduced res for perf; the
+        //    finest level is perf_preset-selectable). Curr input is now the STABILIZED
+        //    pyramid (pyrAs), wired in ensureScratch.
+        for (int l = kLevels - 1; l >= flowFinest_; --l) {
+            disp(flowP, g_scratch.sFlow[l], levelExtent(extent_, l));
+            bar(flowLvl_[l]);
+        }
 
-    // 1) luma of curr/prev at full res
-    disp(pLuma_, g_scratch.sLumaCurr, levelExtent(extent_, 0));
-    disp(pLuma_, g_scratch.sLumaPrev, levelExtent(extent_, 0));
-    bar(pyrA_[0]); bar(pyrB_[0]);
-    // 2) downsample pyramids
-    for (int l = 1; l < kLevels; ++l) {
-        disp(pDown_, g_scratch.sDownA[l - 1], levelExtent(extent_, l));
-        disp(pDown_, g_scratch.sDownB[l - 1], levelExtent(extent_, l));
-        bar(pyrA_[l]); bar(pyrB_[l]);
-    }
-    // 2b) C1: LK normal-equation reduce (fixed grid, 1/8-res) → this slot's SSBO.
-    //     Reads raw prev/curr luma at kGmLevel; writes per-thread partials. A
-    //     compute→host barrier makes the write visible to the CPU readback that
-    //     happens when this slot comes round again (~1-2 frames later).
-    if (gmBuffersReady_ && g_scratch.sGmReduce[gmSlot]) {
-        dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pGmReduce_.pipeline);
-        dd_->CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pGmReduce_.layout, 0, 1, &g_scratch.sGmReduce[gmSlot], 0, nullptr);
-        dd_->CmdDispatch(cmd, (uint32_t)(kGmThreads / 64), 1, 1);
-        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
-        dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
-                                0, 1, &mb, 0, nullptr, 0, nullptr);
-    }
-    // 2c) C1: pre-warp curr luma pyramid by the applied affine → stabilized pyramid
-    //     (identity affine ⇒ exact copy, so the flow below is unchanged when
-    //     disengaged). The dense flow reads pyrAs from here on.
-    for (int l = flowFinest_; l < kLevels; ++l) {
-        disp(pGmPrewarp_, g_scratch.sGmPrewarp[gmSlot][l], levelExtent(extent_, l));
-        bar(pyrAs_[l]);
-    }
-    // 3) coarse->fine flow (only down to flowFinest_ — reduced res for perf; the
-    //    finest level is perf_preset-selectable). Curr input is now the STABILIZED
-    //    pyramid (pyrAs), wired in ensureScratch.
-    for (int l = kLevels - 1; l >= flowFinest_; --l) {
-        disp(flowP, g_scratch.sFlow[l], levelExtent(extent_, l));
-        bar(flowLvl_[l]);
-    }
+        // 3b) ── C2: TV-L1 flow regularization on the finest residual field ──────────
+        // Run frIters semi-implicit TV-L1 denoising iterations on flowLvl_[flowFinest_]
+        // (the object-only residual left by C1). flowLvl_[F] is the fixed data term f0
+        // (read, never written here); u ping-pongs A<->B; the final iterate is copied
+        // back into flowLvl_[F] so of3_expand consumes the cleaned field unchanged.
+        // Disengaged (frMode==off or frIters==0) ⇒ flowLvl_[F] untouched ⇒ byte-identical
+        // to pre-C2. Identity/zero iterations is therefore never worse than "no reg".
+        const bool frEngaged = (cfg_.frMode != 2) && (cfg_.frIters > 0);
+        if (frEngaged) {
+            const int F = flowFinest_;
+            const VkExtent2D fe = levelExtent(extent_, F);
+            if (g_scratch.flowRegUboPtr) {
+                FlowRegUBO fu{cfg_.frDt, cfg_.frLambda, cfg_.frEdge, cfg_.frEps};
+                std::memcpy(g_scratch.flowRegUboPtr, &fu, sizeof(fu));
+            }
+            FrameGen::Img* last = nullptr;
+            for (int it = 0; it < cfg_.frIters; ++it) {
+                VkDescriptorSet set; FrameGen::Img* outImg;
+                if      (it == 0)      { set = g_scratch.sFlowReg0;  outImg = &flowRegA_; }
+                else if (it % 2 == 1)  { set = g_scratch.sFlowRegAB; outImg = &flowRegB_; }
+                else                   { set = g_scratch.sFlowRegBA; outImg = &flowRegA_; }
+                dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pFlowReg_.pipeline);
+                dd_->CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pFlowReg_.layout, 0, 1, &set, 0, nullptr);
+                dd_->CmdDispatch(cmd, (fe.width + 15) / 16, (fe.height + 15) / 16, 1);
+                bar(*outImg);
+                last = outImg;
+            }
+            // Copy the cleaned finest flow back into flowLvl_[F] (GENERAL->GENERAL).
+            // Barrier: C2's f0 reads (SHADER_READ of flowLvl_[F]) and the last iterate
+            // write must complete before the transfer overwrites/reads.
+            VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+            mb.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+            mb.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+            dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                    0, 1, &mb, 0, nullptr, 0, nullptr);
+            VkImageCopy region{};
+            region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            region.extent = {fe.width, fe.height, 1};
+            dd_->CmdCopyImage(cmd, last->image, VK_IMAGE_LAYOUT_GENERAL,
+                              flowLvl_[F].image, VK_IMAGE_LAYOUT_GENERAL, 1, &region);
+            VkMemoryBarrier mb2{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+            mb2.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            mb2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                    0, 1, &mb2, 0, nullptr, 0, nullptr);
+        }
+        {   // periodic C2 status (tag win-fg), mirrors the C1 log cadence
+            static int lastFr = -1;
+            int fe = frEngaged ? 1 : 0;
+            if (fe != lastFr || (gmFrames_ % 300ull) == 0) {
+                WFG_LOGI("C2 flow-reg: engaged=%d mode=%d iters=%d lambda=%.2f dt=%.2f edge=%.1f eps=%.3f (model=%d)",
+                         fe, cfg_.frMode, cfg_.frIters, cfg_.frLambda, cfg_.frDt, cfg_.frEdge, cfg_.frEps, cfg_.model);
+                lastFr = fe;
+            }
+        }
 
-    // 3b) ── C2: TV-L1 flow regularization on the finest residual field ──────────
-    // Run frIters semi-implicit TV-L1 denoising iterations on flowLvl_[flowFinest_]
-    // (the object-only residual left by C1). flowLvl_[F] is the fixed data term f0
-    // (read, never written here); u ping-pongs A<->B; the final iterate is copied
-    // back into flowLvl_[F] so of3_expand consumes the cleaned field unchanged.
-    // Disengaged (frMode==off or frIters==0) ⇒ flowLvl_[F] untouched ⇒ byte-identical
-    // to pre-C2. Identity/zero iterations is therefore never worse than "no reg".
-    const bool frEngaged = (cfg_.frMode != 2) && (cfg_.frIters > 0);
-    if (frEngaged) {
-        const int F = flowFinest_;
-        const VkExtent2D fe = levelExtent(extent_, F);
-        if (g_scratch.flowRegUboPtr) {
-            FlowRegUBO fu{cfg_.frDt, cfg_.frLambda, cfg_.frEdge, cfg_.frEps};
-            std::memcpy(g_scratch.flowRegUboPtr, &fu, sizeof(fu));
-        }
-        FrameGen::Img* last = nullptr;
-        for (int it = 0; it < cfg_.frIters; ++it) {
-            VkDescriptorSet set; FrameGen::Img* outImg;
-            if      (it == 0)      { set = g_scratch.sFlowReg0;  outImg = &flowRegA_; }
-            else if (it % 2 == 1)  { set = g_scratch.sFlowRegAB; outImg = &flowRegB_; }
-            else                   { set = g_scratch.sFlowRegBA; outImg = &flowRegA_; }
-            dd_->CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pFlowReg_.pipeline);
-            dd_->CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pFlowReg_.layout, 0, 1, &set, 0, nullptr);
-            dd_->CmdDispatch(cmd, (fe.width + 15) / 16, (fe.height + 15) / 16, 1);
-            bar(*outImg);
-            last = outImg;
-        }
-        // Copy the cleaned finest flow back into flowLvl_[F] (GENERAL->GENERAL).
-        // Barrier: C2's f0 reads (SHADER_READ of flowLvl_[F]) and the last iterate
-        // write must complete before the transfer overwrites/reads.
-        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        mb.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-        mb.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-        dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                0, 1, &mb, 0, nullptr, 0, nullptr);
-        VkImageCopy region{};
-        region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-        region.extent = {fe.width, fe.height, 1};
-        dd_->CmdCopyImage(cmd, last->image, VK_IMAGE_LAYOUT_GENERAL,
-                          flowLvl_[F].image, VK_IMAGE_LAYOUT_GENERAL, 1, &region);
-        VkMemoryBarrier mb2{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        mb2.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        mb2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dd_->CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                0, 1, &mb2, 0, nullptr, 0, nullptr);
+        // 4) expand finest solved flow -> fwd/bwd (+conf), + C1 global-motion add-back.
+        disp(expandP, g_scratch.sExpand[gmSlot], levelExtent(extent_, 0));
+        bar(flowExpA_); bar(flowExpB_);
+        g_scratch.flowReady = true;
     }
-    {   // periodic C2 status (tag win-fg), mirrors the C1 log cadence
-        static int lastFr = -1;
-        int fe = frEngaged ? 1 : 0;
-        if (fe != lastFr || (gmFrames_ % 300ull) == 0) {
-            WFG_LOGI("C2 flow-reg: engaged=%d mode=%d iters=%d lambda=%.2f dt=%.2f edge=%.1f eps=%.3f (model=%d)",
-                     fe, cfg_.frMode, cfg_.frIters, cfg_.frLambda, cfg_.frDt, cfg_.frEdge, cfg_.frEps, cfg_.model);
-            lastFr = fe;
-        }
-    }
-
-    // 4) expand finest solved flow -> fwd/bwd (+conf), + C1 global-motion add-back.
-    disp(expandP, g_scratch.sExpand[gmSlot], levelExtent(extent_, 0));
-    bar(flowExpA_); bar(flowExpB_);
     // 5) synthesise interpolated frame
-    disp(pSynth_, g_scratch.sSynth, levelExtent(extent_, 0));
+    disp(pSynth_, synthSet, levelExtent(extent_, 0));
 }
 
 // ---- lazy scratch builder ----
@@ -533,14 +549,15 @@ static bool ensureScratch(FrameGen* fg, const DeviceDispatch* dd, VkDevice dev,
     S = ScratchState{};
     const auto GEN = VK_IMAGE_LAYOUT_GENERAL;
 
-    makeUbo(dd, dev, mp, sizeof(SynthUBO), S.synthUbo, S.synthUboMem, S.synthUboPtr);
+    for (int s = 0; s < FrameGen::kSynthSlots; ++s)
+        makeUbo(dd, dev, mp, sizeof(SynthUBO), S.synthUbo[s], S.synthUboMem[s], S.synthUboPtr[s]);
     makeUbo(dd, dev, mp, sizeof(FlowUBO), S.expandUbo, S.expandUboMem, S.expandUboPtr);
     if (S.expandUboPtr) { FlowUBO u{cfg.flowScale, 0, 0.6f, 1.6f}; std::memcpy(S.expandUboPtr, &u, sizeof(u)); }
     // C2: flow-reg UBO (params refreshed each frame in record() for hot-reload).
     makeUbo(dd, dev, mp, sizeof(FlowRegUBO), S.flowRegUbo, S.flowRegUboMem, S.flowRegUboPtr);
     if (S.flowRegUboPtr) { FlowRegUBO fu{cfg.frDt, cfg.frLambda, cfg.frEdge, cfg.frEps}; std::memcpy(S.flowRegUboPtr, &fu, sizeof(fu)); }
     S.flowUbo.resize(kLevels); S.flowUboMem.resize(kLevels); S.flowUboPtr.resize(kLevels);
-    for (int l = 0; l < kLevels; ++l) {
+    for (int l = fg->flowFinest(); l < kLevels; ++l) {
         makeUbo(dd, dev, mp, sizeof(FlowUBO), S.flowUbo[l], S.flowUboMem[l], S.flowUboPtr[l]);
         if (S.flowUboPtr[l]) { FlowUBO u{cfg.flowScale, (uint32_t)l, 0.6f, 1.6f}; std::memcpy(S.flowUboPtr[l], &u, sizeof(u)); }
     }
@@ -572,13 +589,12 @@ static bool ensureScratch(FrameGen* fg, const DeviceDispatch* dd, VkDevice dev,
     // solved flow levels; prev stays raw. Below kFlowFinest the level is never
     // dispatched, so leaving those at raw curr is harmless.
     S.sFlow.resize(kLevels);
-    for (int l = 0; l < kLevels; ++l) {
+    for (int l = fg->flowFinest(); l < kLevels; ++l) {
         S.sFlow[l] = allocSet(dd, dev, pool, pFlow.setLayout);
         int pred = (l + 1 < kLevels) ? l + 1 : l;
-        VkImageView currLvl = (l >= fg->flowFinest()) ? pyrAs[l].view : pyrA[l].view;
         wUbo(dd, dev, S.sFlow[l], 0, S.flowUbo[l], sizeof(FlowUBO));
         wImg(dd, dev, S.sFlow[l], 32, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, pyrB[l].view, samp, GEN);
-        wImg(dd, dev, S.sFlow[l], 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, currLvl, samp, GEN);
+        wImg(dd, dev, S.sFlow[l], 33, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, pyrAs[l].view, samp, GEN);
         wImg(dd, dev, S.sFlow[l], 34, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, flowLvl[pred].view, samp, GEN);
         wImg(dd, dev, S.sFlow[l], 48, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, flowLvl[l].view, VK_NULL_HANDLE, GEN);
     }
@@ -642,13 +658,15 @@ static bool ensureScratch(FrameGen* fg, const DeviceDispatch* dd, VkDevice dev,
     }
 
     // synth set: external prev/curr/out wired per frame; flow inputs fixed
-    S.sSynth = allocSet(dd, dev, pool, pSynth.setLayout);
-    wUbo(dd, dev, S.sSynth, 0, S.synthUbo, sizeof(SynthUBO));
     // GENERAL (not SR): these internal flow images stay in GENERAL across the whole
     // record() (written as storage by expand, sampled here) — see the discard
     // transition at the top of record().
-    wImg(dd, dev, S.sSynth, 34, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expA.view, samp, GEN);
-    wImg(dd, dev, S.sSynth, 35, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expB.view, samp, GEN);
+    for (int s = 0; s < FrameGen::kSynthSlots; ++s) {
+        S.sSynth[s] = allocSet(dd, dev, pool, pSynth.setLayout);
+        wUbo(dd, dev, S.sSynth[s], 0, S.synthUbo[s], sizeof(SynthUBO));
+        wImg(dd, dev, S.sSynth[s], 34, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expA.view, samp, GEN);
+        wImg(dd, dev, S.sSynth[s], 35, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, expB.view, samp, GEN);
+    }
 
     S.builtFor = ext; S.built = true; S.pool = pool;
     return true;

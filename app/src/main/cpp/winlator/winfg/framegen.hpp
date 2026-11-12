@@ -31,8 +31,13 @@ public:
     // caller MUST pass the ring-slot index of the FrameCtx it just fence-waited
     // (that guarantees this slot's PREVIOUS reduce has completed and is safe to
     // read on the host — see the decoupled-LK note in record_impl.inc).
+    // synthSlot picks the synth UBO + descriptor set for this generated frame, so
+    // several generations of one real frame don't overwrite each other's alpha.
+    // reuseFlow=true skips the flow passes and reuses the field the previous
+    // record() of the same real frame computed (generations 1..n-1).
     void record(VkCommandBuffer cmd, VkImageView prevView, VkImageView currView,
-                VkImageView outView, float alpha, uint32_t gmSlot = 0);
+                VkImageView outView, float alpha, uint32_t gmSlot = 0,
+                uint32_t synthSlot = 0, bool reuseFlow = false);
     void destroy();
     bool valid() const { return device_ != VK_NULL_HANDLE && ready_; }
     const Config& config() const { return cfg_; }
@@ -46,6 +51,7 @@ public:
     // ── C1 GLOBAL-MOTION PRE-WARP constants (public so record_impl.inc's free
     // helpers can size/index the SSBO pool). See of3_gm_reduce/of3_gm_prewarp. ──
     static constexpr int kGmSlots   = 3;   // >= present ring size; one SSBO per in-flight ctx
+    static constexpr int kSynthSlots = 3;  // one synth UBO + set per generated frame (4x = 3)
     static constexpr int kGmLevel   = 3;   // 1/8-res luma pyramid level for the LK estimate
     static constexpr int kGmThreads = 512; // fixed reduce threads (8 groups * local_size_x 64)
     static constexpr int kGmStride  = 32;  // floats/thread: 21 H + 6 b + coverage + resid + pad

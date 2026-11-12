@@ -588,12 +588,13 @@ private fun FrameLimitRow(state: XServerDrawerState, compactHint: Boolean = fals
     }
 }
 
-/** Frame generation Off / 2× / 3× / 4× (win-fg: Off / On) through the same applyFg path the Classic section uses. */
+/** Frame generation Off / 2× / 3× / 4× (win-fg layer: Off / On) through the same applyFg path the Classic section uses. */
 @Composable
 private fun FrameGenQuickRow(state: XServerDrawerState) {
     val fgEnabled by state.frameGenEnabled.collectAsState()
     val mult by state.frameGenMultiplier.collectAsState()
     val engine by state.frameGenEngine.collectAsState()
+    val winFgNative by state.winFgNative.collectAsState()
     val unavailable by state.fgUnavailableReason.collectAsState()
     val wayland by state.isWaylandMode.collectAsState()
     val waylandFgOk by state.waylandFrameGenAvailable.collectAsState()
@@ -608,7 +609,7 @@ private fun FrameGenQuickRow(state: XServerDrawerState) {
         )
         return
     }
-    val options = if (engine == "bionic") listOf(0 to L("Off"), 2 to L("On")) else listOf(0 to L("Off"), 2 to "2×", 3 to "3×", 4 to "4×")
+    val options = if (engine == "bionic" && !winFgNative) listOf(0 to L("Off"), 2 to L("On")) else listOf(0 to L("Off"), 2 to "2×", 3 to "3×", 4 to "4×")
     IgRow(
         L("Frame generation"),
         hint = if (unavailable.isNotEmpty()) unavailable else L("Inserts extra frames for smoother motion. The game pauses for a moment while it restarts."),

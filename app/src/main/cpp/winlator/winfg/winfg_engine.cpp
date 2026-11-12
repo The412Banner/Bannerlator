@@ -82,6 +82,8 @@ bool Engine::prepare(uint32_t w, uint32_t h, VkFormat fmt) {
     return true;
 }
 
+static_assert(kMaxGenerations <= (uint32_t)FrameGen::kSynthSlots, "each generation needs its own synth slot");
+
 uint32_t Engine::plan(uint32_t capacity) const {
     if (!valid() || history_ < 2) return 0;           // need prev AND curr
     const uint32_t want = (uint32_t)std::max(cfg_.multiplier - 1, 0);
@@ -149,7 +151,9 @@ void Engine::generateInto(VkCommandBuffer cmd, uint32_t generation, uint32_t cou
     // gmSlot indexes the C1 global-motion SSBO read back on the CPU next
     // frame; kGmSlots (3) >= our frames in flight (2), so rotating per source
     // frame keeps a slot from being read while its reduce is still in flight.
-    fg_.record(cmd, prev.view, curr.view, targetView, alphaFor(generation, count), gmSlot_);
+    // Each generation gets its own synth slot; the flow is solved once (generation 0).
+    fg_.record(cmd, prev.view, curr.view, targetView, alphaFor(generation, count), gmSlot_,
+               generation, generation > 0);
     if (generation + 1 == count) gmSlot_ = (gmSlot_ + 1) % (uint32_t)FrameGen::kGmSlots;
 
     (void)w; (void)h;

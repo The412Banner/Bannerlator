@@ -164,7 +164,11 @@ object SteamPrefs {
     fun getInstalledLanguage(appId: Int): String = prefs.getString("installed_language_$appId", "") ?: ""
 
     fun setInstalledLanguage(appId: Int, language: String) {
-        prefs.edit().putString("installed_language_$appId", language).apply()
+        prefs.edit().putString("installed_language_$appId", language).commit()
+    }
+
+    fun clearInstalledLanguage(appId: Int) {
+        prefs.edit().remove("installed_language_$appId").commit()
     }
 
     // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────

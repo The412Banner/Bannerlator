@@ -747,6 +747,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
 
     /** Clear install state without removing the game record. */
     public void markUninstalled(int appId) {
+        SteamGameLanguage.clearInstalled(appId);
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put("is_installed", 0);

@@ -2402,7 +2402,7 @@ private fun SteamGameDetailScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Used the next time you install, update or verify this game.",
+                    text = "Used the next time you install or verify this game.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),

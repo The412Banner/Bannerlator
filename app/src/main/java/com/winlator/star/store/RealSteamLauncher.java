@@ -371,8 +371,10 @@ public final class RealSteamLauncher {
                 vacSource = "app-info";
             }
             env.put("WN_STEAM_VAC", vacSecure ? "1" : "0");
-            // The game's language (SteamGameLanguage): the agent writes it into the appmanifest it stages.
-            env.put("WN_STEAM_LANGUAGE", SteamGameLanguage.runtime(appId));
+            // The game's language for the real client (SteamGameLanguage.forSteamClient — never a language whose
+            // depots are not installed: the client would delete the game). The agent writes it into the
+            // appmanifest it stages.
+            env.put("WN_STEAM_LANGUAGE", SteamGameLanguage.forSteamClient(appId));
             // Steam Input (agent p7): configure the client's controller layer for this app before LaunchApp.
             if (steamInput) {
                 env.put("WN_STEAM_INPUT", "1");
@@ -779,7 +781,7 @@ public final class RealSteamLauncher {
         String nameEsc = vdfEscape(name);
         String installdirEsc = vdfEscape(canonicalName);
         String owner = steamId64 > 0 ? String.valueOf(steamId64) : "0";
-        String language = SteamGameLanguage.runtime(appId);
+        String language = SteamGameLanguage.forSteamClient(appId);
         String acfContent =
                 "\"AppState\"\n"
                         + "{\n"

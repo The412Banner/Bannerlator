@@ -34,6 +34,9 @@ enum { VKP_FG_ENGINE_LSFG = 0, VKP_FG_ENGINE_WINFG = 1, VKP_FG_ENGINE_WFG = 2 };
 
 /* ---- app controls (any thread) ------------------------------------------------------- */
 void vkp_framegen_set_engine(int kind);
+/* The frame's first (real) acquire took wait_ns: a blocked acquire is proof the present queue is
+ * full (the queue guard in framegen_bridge.c). Compositor thread. */
+void vkp_framegen_note_acquire(int64_t wait_ns);
 /* multiplier 2..4; armed = 0 stops generating (the ring and the engine stay for a re-arm). */
 void vkp_framegen_set_armed(int armed, int multiplier);
 /* LSFG Native: the SPIR-V cache built from the user's Lossless.dll (LsfgNative.ensureCache). */

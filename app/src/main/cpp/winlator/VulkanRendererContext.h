@@ -631,6 +631,19 @@ private:
     // do not measure it themselves (win-fg).
     float    fgSourceRate_      = 0.0f;
     uint32_t fgSourceAccum_     = 0;
+    // Present-queue guard (renderFrame): FIFO shows one image per refresh, so output even
+    // slightly above the display rate fills the swapchain queue and every frame - the game's
+    // own included - reaches the panel several refreshes late. Idea and model from
+    // qwertypower's WinNative PR #797.
+    uint64_t fgQueueEndNs_      = 0;   // when the last presented image would be shown
+    uint64_t fgTrimmed_         = 0;   // generated frames left out to drain the queue
+    uint64_t fgSameSource_      = 0;   // draws without a new game frame (nothing generated)
+    uint64_t fgSeenContent_     = 0;
+    uint32_t fgContentIdle_     = 0;   // draws since the content serial last moved
+    bool     fgContentLive_     = false;
+    uint32_t fgGuardLog_        = 0;
+    std::atomic<uint64_t> fgContentSerial_{0};   // bumped by every window content update
+    void     guardPresentQueue();
     uint32_t fgPresentAccum_    = 0;
     std::chrono::steady_clock::time_point fgRateWindowStart_{};
     bool     fgRateWindowOpen_  = false;

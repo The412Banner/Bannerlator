@@ -1388,6 +1388,47 @@ void VulkanRendererContext::frameGenStats(float out[6]) const {
     out[4] = (float)lsfgEngine_->thermalStatus();
 }
 
+static uint64_t fgNowNs() {
+    return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+// Keep the present queue short while frame generation runs (see the members' comment).
+// Two rules, both only ever REMOVE generated frames from this draw's plan:
+//  - a draw without a new game frame generates nothing: there is no new motion to show;
+//  - while more than two images wait beyond the next refresh, one generated frame is left
+//    out, one at a time so the motion cadence stays even, until the queue drains.
+// fgRefreshHz_ is the panel's top rate, so on a panel running slower the model drains too
+// fast and trims less than it could - never more.
+void VulkanRendererContext::guardPresentQueue() {
+    const uint64_t serial = fgContentSerial_.load(std::memory_order_relaxed);
+    const bool newContent = serial != fgSeenContent_;
+    fgSeenContent_ = serial;
+    // The first rule needs proof that this session's game frames come through the content
+    // updates at all (a path that presents some other way must not lose its generation).
+    if (newContent) { fgContentIdle_ = 0; fgContentLive_ = true; }
+    else if (++fgContentIdle_ > 120) fgContentLive_ = false;
+    if (fgPlan_.generations == 0) return;
+    if (fgContentLive_ && !newContent) {
+        fgPlan_.generations = 0;
+        fgSameSource_++;
+        return;
+    }
+    const float hz = fgRefreshHz_.load(std::memory_order_relaxed);
+    if (hz <= 1.0f) return;
+    const uint64_t period = (uint64_t)(1.0e9f / hz);
+    const uint64_t now = fgNowNs();
+    const uint64_t ahead = fgQueueEndNs_ > now + period ? (fgQueueEndNs_ - now - period) / period : 0;
+    if (ahead > 2) {
+        fgPlan_.generations--;
+        fgTrimmed_++;
+    }
+    if ((fgGuardLog_++ % 600u) == 0u)
+        RLOG("native-fg: queue guard ahead=%llu trimmed=%llu same-source=%llu",
+             (unsigned long long)ahead, (unsigned long long)fgTrimmed_,
+             (unsigned long long)fgSameSource_);
+}
+
 void VulkanRendererContext::trackPresentedRate(uint32_t presents) {
     const auto now = std::chrono::steady_clock::now();
     if (!fgRateWindowOpen_) {
@@ -2642,13 +2683,24 @@ ok=true;}catch(...){}
             }
         }
     }   // lsfg
+    guardPresentQueue();
     fgPlan_.presents = fgPlan_.generations + 1;
 
     // ERL bug report #9: real timeout so VK_TIMEOUT is reachable; existing non-success guard below returns on it.
+    const float fgGuardHz = fgRefreshHz_.load(std::memory_order_relaxed);
+    const uint64_t fgPeriodNs = fgGuardHz > 1.0f ? (uint64_t)(1.0e9f / fgGuardHz) : 0;
     for (uint32_t k = 0; k < fgPlan_.presents; k++) {
         uint32_t idx = 0;
+        const uint64_t acquireBeginNs = k == 0 && fgPeriodNs ? fgNowNs() : 0;
         VkResult ar = vk_.AcquireNextImageKHR(device,swapchain,2000000000ULL,
                                               imgAvailSems[syncSlot(k)],VK_NULL_HANDLE,&idx);
+        if (acquireBeginNs) {
+            // A real acquire that blocked means the queue is at least that full, whatever
+            // the model says.
+            const uint64_t nowNs = fgNowNs();
+            if (nowNs - acquireBeginNs > fgPeriodNs / 2 && fgQueueEndNs_ < nowNs + 2 * fgPeriodNs)
+                fgQueueEndNs_ = nowNs + 2 * fgPeriodNs;
+        }
         if (ar==VK_ERROR_OUT_OF_DATE_KHR||ar==VK_ERROR_SURFACE_LOST_KHR){
             // Logged deliberately: when this fires every frame it IS the
             // swapchain-recreate loop, and it used to be invisible.
@@ -2856,6 +2908,14 @@ ok=true;}catch(...){}
         VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
         vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame]);
     }
+    // The queue model: each image presented leaves the queue one refresh after the one before.
+    if (fgPeriodNs) {
+        const uint64_t nowNs = fgNowNs();
+        for (uint32_t i = 0; i < presented; i++) {
+            const uint64_t next = fgQueueEndNs_ + fgPeriodNs;
+            fgQueueEndNs_ = next > nowNs + fgPeriodNs ? next : nowNs + fgPeriodNs;
+        }
+    }
     trackPresentedRate(presented);
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
@@ -2948,6 +3008,7 @@ void VulkanRendererContext::updateCursorImage(void* px, short w, short h, short 
 }
 
 void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, short h, short stride, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!px||w<=0||h<=0) return;
 
     void* mapped=nullptr;
@@ -2978,6 +3039,7 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
 }
 
 void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short, short, int, int) {
+    fgContentSerial_.fetch_add(1, std::memory_order_relaxed);
     if (!ahb) return;
     std::lock_guard<std::mutex> lk(renderMutex);
 

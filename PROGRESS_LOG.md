@@ -14,6 +14,12 @@
 - **Device test:** none yet. To test: Win-FG Native 2×/3×/4× on Wayland and X11, check for flicker/black frames at 3×/4×, logcat FATAL check, recording frame count.
 - **Open / Next:** CI result → stage APK → ask the user before install. Xbox cloud player's Win-FG stays 2×.
 - **Resume point:** worktree `/root/src/Bannerlator-wt/winfg-multi`, branch `feat/winfg-multi`; nothing installed from it.
+## 2026-11-12 14:30 EST — 🔀 MERGED fix/last-played-any-launch (main a208c6717; user: "merge")
+
+- **Why:** user asked to check the Home "Continue" tile (it showed Brawlhalla after CS2 ran). Finding: `lastPlayed` (shortcut extra, read by the tile and the recent order) was stamped only by the in-app Play paths (`recordLastPlayed`, ShortcutsScreen.kt); launches that start XServerDisplayActivity directly — pinned home-screen icons (`MoveGameToContainer.pinIntent`) and my test harness — never counted. The tile logic itself (bcda2c55) was right.
+- **Built (88607f91, + main ddeccbcda merged in → 353b2a0d):** XServerDisplayActivity stamps `lastPlayed` right after loading the shortcut (`stampLastPlayed`), keeping the .desktop file's modified time ("Recently added" order). Other shortcut_path routes (installers, quick run) use temp .desktop files outside the library.
+- **CI:** run 43287103388, 4/4 green. Backup `refs/backup/20261112/main-before-last-played-any-launch` = ddeccbcda. Merge `--no-ff`, no MERGE_HEAD, merged tree 5671897b == tested tree.
+- **Device test (Pocket FIT, 14:24 EST):** FlatOut started via `am start -a VIEW … XServerDisplayActivity` (the home-screen icon route) → lastPlayed 13:17:59 → 14:24:35, file mtime unchanged → Home tile "CONTINUE" FlatOut, Windows Steam client still first in the row. No FATAL.
 
 ## 2026-11-12 13:58 EST — 🔀 MERGED feat/steam-game-language (main d1719eab5; user: "merge")
 

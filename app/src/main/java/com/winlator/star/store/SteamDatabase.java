@@ -744,6 +744,18 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         return queryGames("is_installed = 1", null);
     }
 
+    /** {name, name_localized} as saved (untranslated) for an app in the library, or null. */
+    public String[] namePair(int appId) {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT name,name_localized FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) {
+                String n = c.getString(0);
+                if (n != null && !n.isEmpty()) return new String[]{n, c.getString(1)};
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     /** Single game record, or null if not present. */
     public GameRow getGame(int appId) {
         List<GameRow> r = queryGames("app_id = ?", new String[]{String.valueOf(appId)});

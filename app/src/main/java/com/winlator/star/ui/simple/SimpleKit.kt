@@ -215,7 +215,7 @@ internal fun SimpleCover(
                     .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = 9.dp),
             ) {
                 Text(
-                    s.name,
+                    LabTitles.of(s),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,

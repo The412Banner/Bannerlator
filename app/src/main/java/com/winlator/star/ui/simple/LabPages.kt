@@ -96,6 +96,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
     val stores = remember(shortcuts) { LabLibrary.FILTERS.filter { f -> shortcuts.any(f.third) }.map { it.first } }
     val filter = LabLibrary.filter.takeIf { it in stores } ?: ""
     val stats = remember(shortcuts, resumeTick) { readPlayStats(context, shortcuts) }
+    LaunchedEffect(shortcuts) { LabTitles.refresh(context, shortcuts) }
     val games = remember(shortcuts, stats, sort, filter) {
         val shown = LabLibrary.filterOf(filter)?.let { f -> shortcuts.filter(f) } ?: shortcuts
         sortGames(shown, sort) { gameSortKeyOf(it, stats) }
@@ -242,7 +243,7 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
                 MenuAction(L("Cancel"), {}),
             ),
             onDismiss = { confirmRemove = false },
-            message = if (targets.size == 1) targets.first().name else L("Only the shortcuts go; the games' files stay."),
+            message = if (targets.size == 1) LabTitles.of(targets.first()) else L("Only the shortcuts go; the games' files stay."),
         ) { a -> confirmRemove = false; a.run() }
     }
     menuFor?.let { s ->

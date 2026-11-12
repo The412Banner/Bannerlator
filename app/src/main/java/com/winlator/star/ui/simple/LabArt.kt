@@ -398,7 +398,7 @@ private fun BoxScope.LabCaption(s: Shortcut, line: String?, nameLines: Int = 2) 
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f))))
             .padding(start = 10.dp, end = 10.dp, top = 22.dp, bottom = 9.dp),
     ) {
-        Text(s.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = nameLines, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
+        Text(LabTitles.of(s), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = nameLines, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
         if (line != null) Text(line, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         LabRuntimeStatus(s)
     }
@@ -497,7 +497,7 @@ internal fun LabIconCard(s: Shortcut, modifier: Modifier, iconModifier: Modifier
     Column(modifier.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (badges) LabBadged(s, iconModifier, picked) { LabIcon(s, it) } else LabIcon(s, iconModifier)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.name, color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
+            Text(LabTitles.of(s), color = SimpleInk, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 14.sp)
             if (line != null) Text(line, color = SimpleMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             LabRuntimeStatus(s, color = SimpleMuted)
         }
@@ -532,7 +532,7 @@ internal fun LabTitle(s: Shortcut, height: Dp, fontSize: TextUnit, modifier: Mod
     val tick = LabArt.tick
     val pics = remember(s.file.path, tick) { LabArt.models(s, "logo").map { LabArt.Pic(it) } }
     val name: @Composable () -> Unit = {
-        Text(s.name, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
+        Text(LabTitles.of(s), color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = modifier)
     }
     if (pics.isEmpty()) { name(); return }
     val centred = labLogoCentred(s)

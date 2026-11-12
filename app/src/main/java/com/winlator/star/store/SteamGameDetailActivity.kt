@@ -866,11 +866,11 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
 
     /** Reads the game's languages and the pick; off the main thread (database). */
     private fun loadLanguages() {
-        lifecycleScope.launch {
-            val list = withContext(Dispatchers.IO) { SteamGameLanguage.supported(appId) }
-            gameLanguages = list
-            pickedLanguage = SteamGameLanguage.picked(appId).takeIf { it in list } ?: ""
-        }
+        Thread {
+            val list = SteamGameLanguage.supported(appId)
+            val pick = SteamGameLanguage.picked(appId).takeIf { it in list } ?: ""
+            runOnUiThread { gameLanguages = list; pickedLanguage = pick }
+        }.start()
     }
 
     /** Keeps the pick ("" = follow the app's language) and re-reads the game's depots for it. */
@@ -878,9 +878,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         try { SteamPrefs.setGameLanguage(appId, code) } catch (_: Throwable) {}
         pickedLanguage = code
         showLanguageSheet = false
-        lifecycleScope.launch(Dispatchers.IO) {
-            runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) }
-        }
+        Thread { runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) } }.start()
     }
 
     /** Persist + reflect the chosen branch. */

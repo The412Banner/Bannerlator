@@ -187,7 +187,6 @@ internal object BlDepotInstaller {
         // Runs BEFORE the install dir is resolved: it also refreshes the app's PICS `installdir`, the
         // folder name a fresh install into a steamapps library is created under.
         if (attempt == 0) {
-            SteamGameLanguage.beginInstall(appId)   // this run takes the game's wanted language pack
             val refreshed = runBounded(PICS_REFRESH_MS) { repo.refreshAppProductInfo(appId, PICS_REFRESH_MS) }
             dlog("Single-app PICS refresh → ${refreshed ?: "timed out (using synced rows)"}")
         }

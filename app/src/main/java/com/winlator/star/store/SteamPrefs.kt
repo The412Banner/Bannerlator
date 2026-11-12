@@ -171,7 +171,14 @@ object SteamPrefs {
         prefs.edit().remove("installed_language_$appId").remove("language_switch_$appId").commit()
     }
 
-    /** An install/update/verify run of [appId] started: its depot selection may change language pack. */
+    /** The Steam language the Library's language-files notice was dismissed for. */
+    fun getLanguageNoticeDismissed(): String = prefs.getString("language_notice_dismissed", "") ?: ""
+
+    fun setLanguageNoticeDismissed(language: String) {
+        prefs.edit().putString("language_notice_dismissed", language).apply()
+    }
+
+    /** A language download of [appId] started: its depot selection may change language pack. */
     fun isLanguageSwitchPending(appId: Int): Boolean = prefs.getBoolean("language_switch_$appId", false)
 
     fun setLanguageSwitchPending(appId: Int, pending: Boolean) {

@@ -214,6 +214,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var gameLanguages by mutableStateOf<List<String>>(emptyList())
     private var pickedLanguage by mutableStateOf("")
     private var showLanguageSheet by mutableStateOf(false)
+    // An installed game whose language asks for files it does not have: that pack, the "download now?"
+    // prompt, and the running download (its own progress window; Stop keeps the installed files).
+    private var languageMissing by mutableStateOf<String?>(null)
+    private var showLanguageAsk by mutableStateOf(false)
+    private var languageRun by mutableStateOf<SteamGameUpdater.UpdateHandle?>(null)
+    private var languageProgress by mutableFloatStateOf(-1f)
+    private var languageProgressText by mutableStateOf("")
     private var branchCheckBusy by mutableStateOf(false)
     private var branchCheckMessage by mutableStateOf<String?>(null)
     // One-shot guard so the manifest-true size resolve fires at most once per detail view.
@@ -362,6 +369,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     onLanguageLineClick = { showLanguageSheet = true },
                     onSelectLanguage = { selectLanguage(it) },
                     onDismissLanguageSheet = { showLanguageSheet = false },
+                    languageMissing = languageMissing,
+                    onLanguageDownloadClick = { showLanguageAsk = true },
                     statusText = statusText,
                     gameStatus = gameStatus,
                     installBtnText = installBtnText,
@@ -500,10 +509,66 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                     )
                 }
 
+                // Language files of an installed game: ask first, then a progress window whose Stop only
+                // stops the download (the installed game and its files are kept).
+                val askPack = languageMissing
+                if (showLanguageAsk && askPack != null && languageRun == null) {
+                    val gName = game?.name?.takeIf { it.isNotBlank() } ?: "this game"
+                    OutlinedAlertDialog(
+                        onDismissRequest = { showLanguageAsk = false },
+                        title = { Text("Download language files?") },
+                        text = {
+                            Text(
+                                "Downloads the ${SteamGameLanguage.label(askPack)} files for \"$gName\". " +
+                                    "Until that finishes the game stays in its current language."
+                            )
+                        },
+                        confirmButton = { TextButton(onClick = { startLanguageDownload() }) { Text("Download") } },
+                        dismissButton = { TextButton(onClick = { showLanguageAsk = false }) { Text("Later") } },
+                    )
+                }
+                languageRun?.let { run ->
+                    OutlinedAlertDialog(
+                        onDismissRequest = { },
+                        title = { Text("Language files") },
+                        text = {
+                            Column {
+                                Text(languageProgressText)
+                                Spacer(Modifier.height(10.dp))
+                                if (languageProgress < 0f) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                } else {
+                                    LinearProgressIndicator(
+                                        progress = { languageProgress.coerceIn(0f, 1f) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { run.cancel() }) { Text("Stop") } },
+                    )
+                }
+
                 // Destructive confirm for the gear's "Cancel & delete download". Names the game and
                 // spells out that this stops the download, deletes every downloaded file and resets it
                 // for a fresh, full download. The wipe runs ONLY on confirm; dismiss keeps the partial.
-                if (showCancelDeleteConfirm) {
+                if (showCancelDeleteConfirm && game?.isInstalled == true) {
+                    // An update / verify / language download of the INSTALLED game: stopping it keeps the files.
+                    OutlinedAlertDialog(
+                        onDismissRequest = { showCancelDeleteConfirm = false },
+                        title = { Text("Stop the download?") },
+                        text = { Text("The installed game and its files are kept.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showCancelDeleteConfirm = false
+                                performCancelDeleteReset()
+                            }) { Text("Stop") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showCancelDeleteConfirm = false }) { Text("Keep downloading") }
+                        },
+                    )
+                } else if (showCancelDeleteConfirm) {
                     val gName = game?.name?.takeIf { it.isNotBlank() } ?: "this game"
                     OutlinedAlertDialog(
                         onDismissRequest = { showCancelDeleteConfirm = false },
@@ -617,6 +682,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     }
 
     override fun onEvent(event: String) {
+        // The language download window shows this game's run itself (and its Stop keeps the files).
+        if (languageRun != null && event.startsWith("Download") &&
+            event.split(":").getOrNull(1)?.toIntOrNull() == appId) return
         when {
             event.startsWith("SteamStatus:") -> {
                 val name = event.substringAfter("SteamStatus:")
@@ -700,6 +768,15 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             event.startsWith("DownloadCancelled:") -> {
                 val id = event.substringAfter("DownloadCancelled:").toIntOrNull() ?: return
                 if (id != appId) return
+                if (game?.isInstalled == true) {
+                    // An update / verify / language pass of the installed game stopped: it stays installed.
+                    downloadHandle = null
+                    progressVisible = false
+                    progressTextVisible = false
+                    resetPauseBtn()
+                    loadGame()
+                    return
+                }
                 // Cancel now means "delete + fresh restart" (performCancelDeleteReset). This async
                 // engine event lands AFTER that reset for the live-download case, so settle on the same
                 // pristine NOT_INSTALLED state rather than overriding it with a lingering "cancelled".
@@ -722,6 +799,19 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 val id = parts.getOrNull(1)?.toIntOrNull() ?: return
                 if (id != appId) return
                 val reason = parts.drop(2).joinToString(":")
+                if (game?.isInstalled == true) {
+                    // A failed update / verify / language pass leaves the installed game as it was; no "Retry"
+                    // here (on an installed game that button means uninstall).
+                    downloadHandle = null
+                    progressVisible = false
+                    progressTextVisible = false
+                    resetPauseBtn()
+                    loadGame()
+                    runOnUiThread {
+                        android.widget.Toast.makeText(this, "Download failed: $reason", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
                 val logPath = SteamDepotDownloader.debugLogPath
                 downloadHandle = null
                 progressVisible = false
@@ -869,16 +959,48 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         Thread {
             val list = SteamGameLanguage.supported(appId)
             val pick = SteamGameLanguage.picked(appId).takeIf { it in list } ?: ""
-            runOnUiThread { gameLanguages = list; pickedLanguage = pick }
+            val missing = SteamGameLanguage.missingPack(appId, isInstalledInDb())
+            runOnUiThread { gameLanguages = list; pickedLanguage = pick; languageMissing = missing }
         }.start()
     }
+
+    private fun isInstalledInDb(): Boolean =
+        runCatching { SteamRepository.getInstance().database.getGame(appId)?.isInstalled == true }.getOrDefault(false)
 
     /** Keeps the pick ("" = follow the app's language) and re-reads the game's depots for it. */
     private fun selectLanguage(code: String) {
         try { SteamPrefs.setGameLanguage(appId, code) } catch (_: Throwable) {}
         pickedLanguage = code
         showLanguageSheet = false
-        Thread { runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) } }.start()
+        Thread {
+            val installed = isInstalledInDb()
+            // Not installed: the install takes the language; re-read the depot list (and size) for it now.
+            if (!installed) runCatching { SteamRepository.getInstance().refreshAppProductInfo(appId, 15_000L) }
+            val missing = SteamGameLanguage.missingPack(appId, installed)
+            runOnUiThread {
+                languageMissing = missing
+                if (missing != null) showLanguageAsk = true
+            }
+        }.start()
+    }
+
+    /** Runs the language download of the installed game (the user said Download). */
+    private fun startLanguageDownload() {
+        showLanguageAsk = false
+        if (languageRun != null) return
+        languageProgress = -1f
+        languageProgressText = "Preparing…"
+        languageRun = SteamGameUpdater.downloadLanguage(
+            this, appId,
+            { fraction, label -> languageProgress = fraction; languageProgressText = label },
+            { result, message ->
+                languageRun = null
+                val text = if (result == SteamGameUpdater.Result.UPDATED) "Language files downloaded" else message
+                android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_LONG).show()
+                loadGame()
+                loadLanguages()
+            },
+        )
     }
 
     /** Persist + reflect the chosen branch. */
@@ -1215,6 +1337,12 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             DownloadQueue.cancel(appId); return
         }
 
+        // An update / verify / language download of the installed game is running (started elsewhere, or the
+        // page was reopened onto it): the button reads "Cancel" — stop the download, never uninstall.
+        if (g.isInstalled && (SteamDepotDownloader.isDownloading(appId) || DownloadQueue.isQueued(appId))) {
+            showCancelDeleteConfirm = true; return
+        }
+
         if (g.isInstalled) {
             uninstallingName = g.name
             val installDir = g.installDir
@@ -1322,6 +1450,13 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
      *      entry state, so the next tap routes to onInstallClicked's fresh installApp(isResume=false).
      */
     private fun performCancelDeleteReset() {
+        if (game?.isInstalled == true) {
+            // The installed game's update / verify / language pass: stop it, never delete the installed files.
+            downloadHandle?.let { try { it.cancel.run() } catch (_: Throwable) {} }
+            downloadHandle = null
+            try { DownloadQueue.cancel(appId) } catch (_: Throwable) {}
+            return
+        }
         val db = SteamRepository.getInstance().database
 
         // (2, read-first) Authoritative on-disk location for THIS download (internal or SD), captured
@@ -1723,6 +1858,8 @@ private fun SteamGameDetailScreen(
     onLanguageLineClick: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onDismissLanguageSheet: () -> Unit,
+    languageMissing: String?,
+    onLanguageDownloadClick: () -> Unit,
     statusText: String,
     gameStatus: GameStatus,
     installBtnText: String,
@@ -2158,6 +2295,20 @@ private fun SteamGameDetailScreen(
                         ) {
                             Text("Change language")
                         }
+                        if (languageMissing != null) {
+                            Text(
+                                text = SteamGameLanguage.label(languageMissing) + " files not installed",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            OutlinedButton(
+                                onClick = onLanguageDownloadClick,
+                                modifier = Modifier.padding(top = 6.dp),
+                            ) {
+                                Text("Download language files")
+                            }
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -2402,7 +2553,7 @@ private fun SteamGameDetailScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Used the next time you install or verify this game.",
+                    text = "Installed games ask before downloading new language files.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),

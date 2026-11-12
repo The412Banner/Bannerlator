@@ -395,7 +395,8 @@ public final class RealSteamLauncher {
             // Agent appmanifest contract: InstalledDepots (depot:manifest:size,…) so the genuine client
             // sees a complete install (the agent writes appmanifest_<id>.acf from these).
             try {
-                String depots = SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId);
+                String depots = SteamGameLanguage.depotsForLaunch(appId, hostInstallDir,
+                        SteamRepository.getInstance().getDatabase().getDepotManifestsCsv(appId));
                 if (depots != null && !depots.isEmpty()) env.put("WN_STEAM_DEPOTS", depots);
             } catch (Throwable ignored) {}
 

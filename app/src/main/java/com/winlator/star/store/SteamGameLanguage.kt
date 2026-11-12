@@ -131,6 +131,54 @@ object SteamGameLanguage {
     private fun installedPack(appId: Int): String =
         runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("").ifEmpty { ENGLISH }
 
+    // ── Language files of an installed game ──────────────────────────────────
+
+    /**
+     * The language pack an installed [appId] wants but does not have (its pick, or the app's language, asks
+     * for other files than the installed ones), or null. Known once a library sync saved the game's packs.
+     */
+    @JvmStatic
+    fun missingPack(appId: Int, installed: Boolean): String? {
+        if (!installed || !knowsPacks(appId)) return null
+        val want = packOf(of(appId), packaged(appId))
+        return if (want == installedPack(appId)) null else want
+    }
+
+    /** True while a language download of [appId] has started and not finished. */
+    @JvmStatic
+    fun isSwitchPending(appId: Int): Boolean =
+        runCatching { SteamPrefs.isLanguageSwitchPending(appId) }.getOrDefault(false)
+
+    /** Ends an unfinished language download: the selection goes back to the installed pack. True when one was pending. */
+    @JvmStatic
+    fun abandonSwitch(appId: Int): Boolean {
+        if (!isSwitchPending(appId)) return false
+        runCatching { SteamPrefs.setLanguageSwitchPending(appId, false) }
+        return true
+    }
+
+    /**
+     * WN_STEAM_DEPOTS for a real Steam launch: [savedCsv] (depot:manifest:size from the database), except after
+     * a language download that did not finish (app closed during it): the saved list then names a pack that
+     * may not be on disk, so the downloader's own record of the installed depots is used (sizes from
+     * [savedCsv] where known). Also ends that switch, so the next sync saves the installed pack again.
+     */
+    @JvmStatic
+    fun depotsForLaunch(appId: Int, installDir: String?, savedCsv: String?): String {
+        val saved = savedCsv.orEmpty()
+        if (SteamDepotDownloader.isDownloading(appId) || !abandonSwitch(appId)) return saved
+        val dir = installDir?.takeIf { it.isNotEmpty() } ?: return saved
+        val journal = runCatching { BlDepotInstaller.journalInstalledManifests(java.io.File(dir)) }.getOrDefault(emptyMap())
+        if (journal.isEmpty()) return saved
+        val sizes = HashMap<Int, Long>()
+        for (entry in saved.split(',')) {
+            val p = entry.split(':')
+            val depot = p.getOrNull(0)?.trim()?.toIntOrNull() ?: continue
+            sizes[depot] = p.getOrNull(2)?.trim()?.toLongOrNull() ?: 0L
+        }
+        return journal.entries.sortedBy { it.key }.joinToString(",") { "${it.key}:${it.value}:${sizes[it.key] ?: 0L}" }
+    }
+
     // ── What the game is told ────────────────────────────────────────────────
 
     /**

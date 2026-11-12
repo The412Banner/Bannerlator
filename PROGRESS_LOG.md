@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 05:55 EST — 🔀 MERGED feat/store-name-language (main 286bfbf36; user: "leave as is for now, merge to main")
+
+- **Why:** user 11-12: "we have app language selection, but what about game stores game name language selection?" Decision: follow the app language (Lab's pick, else the phone's), English fallback, no new setting; Steam, GOG, Xbox first. Then, with a Library screenshot: "what about game shortcuts and library tab?"
+- **Built (4 commits, head 8a1a055f6):**
+  - `c5356c32c` `StoreLang` (app locale → Steam language / GOG locale / Xbox tag). Steam store screens ask in that language; the Steam library saves PICS `common/name_localized` in a new `steam_games.name_localized` column (added in `onOpen`, **DB stays v11**: a version bump makes an older build rebuild the database on downgrade). GOG store asks with a locale (tested ones only: GOG's catalog returns an empty list for ko/pt/it); the GOG library makes a second small call for the translated title and keeps the English one (`gog_title_en_<id>`) for install folders. Xbox catalog/search/featured ask in the app language, then English.
+  - `05eaf7525` `LabTitles`: Lab Library/Home tiles, hero title, game menu and Game details show the store's translated name for a shortcut that still carries the store's English name. Show only: shortcut files and settings unchanged; user renames stay.
+  - `3b2c69b51` from the device test: Steam library search matches the English name too; an Xbox library saved in another language stays on show (marked due for refresh).
+  - `8a1a055f6` Microsoft Store search/featured need a full tag (`ja`, `de` answer HTTP 403): `StoreLang.xboxStore()`; 31 tags answer 200.
+- **CI:** run 43201430365 on 8a1a055f6, 4/4 green. Backup `refs/backup/20261112/main-before-store-name-language` = 2ed2ee4de. Merge `--no-ff`, no MERGE_HEAD, merged tree f3415246 == built commit's tree.
+- **Device test (Pocket FIT, app language 简体中文, builds 05eaf752 and 3b2c69b5, 05:01–05:33 EST):** Library tiles 霍格沃茨之遗 / 红怪 / UNCHARTED™: 盗贼传奇合辑; Steam featured asked with `l=schinese`, steam.db v11 with 44 of 223 names translated, search "war" finds 战争雷霆; GOG store 战锤幸存者 / 心灵杀手, 3 of 35 library titles translated; Xbox library (after the user signed in again) 126 of 451 titles translated. No FATAL/ANR. Language restored to English. Screenshots: `/sdcard/Download/BL-store-language-test-20261112/`.
+- **Not device-tested:** 8a1a055f6 itself (the full-tag fix; device has 3b2c69b5), a language without a region on the Xbox store, an installed GOG game's tile.
+- **Known limits (user: "leave as is for now"):** only names the store itself has are shown (most games have none); Steam China-only names (`sc_schinese`) are not used; Classic and Deck game lists and the in-game menu still show the shortcut name; sort still by the shortcut name; Epic and Amazon not started.
+- **Found, not from this work:** Xbox store search "forza" returns 0 results in English too (the list keeps only PC-installable or streamable games) — not investigated.
+- **Lesson:** my second test run drove the device while the user was using it (closed the app, typed into their terminal). Check the foreground app before every scripted step and stop when the user is on the device; a peer's "ack" does not cover the user.
+- **Open / next:** install the staged `/sdcard/Download/Bannerlator-store-name-language-8a1a055f-pubg.apk` (sha256 2e32a08f…e8d5, = main code) on the user's yes; Epic/Amazon names; Classic/Deck lists if wanted.
+
 ## 2026-11-11 23:36 EST — 🔀 MERGED fix/lab-home-last-played (main bcda2c55f; user: "merge when green also"; NOT device-tested)
 
 - **Why:** user screenshot 23:21 EST: after exiting Counter-Strike 2 the Lab home big tile still showed "Windows Steam Client x64 / Continue". User: "the top tile (or same in landscape) should always show last played or exited game".

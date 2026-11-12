@@ -113,7 +113,7 @@ public final class GogDownloadManager {
     public static Runnable verifyRepair(Context ctx, GogGame game, Callback cb) {
         try {
             SharedPreferences prefs = ctx.getSharedPreferences("bh_gog_prefs", 0);
-            String dirName = prefs.getString("gog_dir_" + game.gameId, game.title);
+            String dirName = prefs.getString("gog_dir_" + game.gameId, GogTitles.english(ctx, game));
             File installPath = GogInstallPath.getInstallDir(ctx, dirName);
             File marker = new File(installPath, "_gog_manifest.json");
             if (marker.exists()) marker.delete();
@@ -297,7 +297,7 @@ public final class GogDownloadManager {
             String buildId = gm.buildId;
             JSONObject manifest = gm.manifest;
             dbg.append("buildId=").append(buildId).append("\n");
-            String installDir = manifest.optString("installDirectory", game.title);
+            String installDir = manifest.optString("installDirectory", GogTitles.english(ctx, game));
             String manifestClientId     = manifest.optString("clientId", null);
             String manifestClientSecret = manifest.optString("clientSecret", null);
             JSONArray depots  = manifest.optJSONArray("depots");
@@ -923,7 +923,7 @@ public final class GogDownloadManager {
             if (manifestStr == null) return "manifest decompress failed";
 
             JSONObject manifest = new JSONObject(manifestStr);
-            String installDir  = manifest.optString("installDirectory", game.title);
+            String installDir  = manifest.optString("installDirectory", GogTitles.english(ctx, game));
             JSONArray depots   = manifest.optJSONArray("depot");
             if (depots == null) return "no depot array in manifest";
 
@@ -1112,10 +1112,10 @@ public final class GogDownloadManager {
                         JSONObject f = files.getJSONObject(0);
                         manualUrl = f.optString("downlink", null);
                         if (manualUrl == null) manualUrl = f.optString("manualUrl", null);
-                        fileName  = f.optString("filename", game.title + "_installer.exe");
+                        fileName  = f.optString("filename", GogTitles.english(ctx, game) + "_installer.exe");
                     }
                     if (manualUrl == null) manualUrl = inst.optString("manualUrl", null);
-                    if (fileName == null)  fileName  = game.title + "_installer.exe";
+                    if (fileName == null)  fileName  = GogTitles.english(ctx, game) + "_installer.exe";
                     break;
                 }
             }
@@ -1129,7 +1129,7 @@ public final class GogDownloadManager {
             if (downloadUrl == null) return "redirect resolve failed";
 
             // Download the installer .exe
-            File installDir = GogInstallPath.getInstallDir(ctx, game.title);
+            File installDir = GogInstallPath.getInstallDir(ctx, GogTitles.english(ctx, game));
             installDir.mkdirs();
             installDirRef.set(installDir);
             if (cancelled.get()) return "cancelled";
@@ -1140,7 +1140,7 @@ public final class GogDownloadManager {
 
             // Save prefs
             SharedPreferences.Editor ed = ctx.getSharedPreferences("bh_gog_prefs", 0).edit();
-            ed.putString("gog_dir_" + game.gameId, game.title);
+            ed.putString("gog_dir_" + game.gameId, GogTitles.english(ctx, game));
             ed.putString("gog_exe_" + game.gameId, outFile.getAbsolutePath());
             ed.apply();
 

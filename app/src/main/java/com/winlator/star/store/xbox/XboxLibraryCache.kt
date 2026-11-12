@@ -1,6 +1,7 @@
 package com.winlator.star.store.xbox
 
 import android.content.Context
+import com.winlator.star.store.StoreLang
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,11 +17,14 @@ internal object XboxLibraryCache {
 
     private fun prefs(app: Context) = app.getSharedPreferences("xbox", Context.MODE_PRIVATE)
 
+    /** Null also when the library was saved in another language: its titles are in that language. */
     fun read(app: Context, account: String, market: String): Snapshot? =
-        decode(prefs(app).getString("library", null), account, market)
+        if (prefs(app).getString("library_lang", "en-us") != StoreLang.xbox()) null
+        else decode(prefs(app).getString("library", null), account, market)
 
     fun write(app: Context, account: String, market: String, games: List<XboxGame>) {
-        check(prefs(app).edit().putString("library", encode(account, market, games)).commit())
+        check(prefs(app).edit().putString("library", encode(account, market, games))
+            .putString("library_lang", StoreLang.xbox()).commit())
     }
 
     fun clear(app: Context) { prefs(app).edit().remove("library").commit() }

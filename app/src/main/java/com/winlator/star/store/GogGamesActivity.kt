@@ -537,7 +537,7 @@ class GogGamesActivity : ComponentActivity() {
                 }
             }
 
-            return GogGame(id, titleStr, imageUrl, desc, developer, category, generation, verticalCover)
+            return GogGame(id, GogTitles.localized(prefs, id, titleStr, token), imageUrl, desc, developer, category, generation, verticalCover)
         } catch (e: Exception) {
             return null
         }

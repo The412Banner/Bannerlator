@@ -146,7 +146,7 @@ object SteamStoreCatalog {
             }
         }
         return withContext(Dispatchers.IO) {
-            val url = "https://store.steampowered.com/api/featuredcategories/?cc=$cc&l=english"
+            val url = "https://store.steampowered.com/api/featuredcategories/?cc=$cc&l=${StoreLang.steam()}"
             val t0 = System.currentTimeMillis()
             StorefrontLog.i(TAG, "featured($cc): GET $url force=$force")
             val json = SteamStoreSearch.httpGet(url)
@@ -234,7 +234,7 @@ object SteamStoreCatalog {
         }
         return withContext(Dispatchers.IO) {
             val encoded = URLEncoder.encode(term, "UTF-8")
-            val url = "https://store.steampowered.com/api/storesearch/?term=$encoded&l=english&cc=$cc"
+            val url = "https://store.steampowered.com/api/storesearch/?term=$encoded&l=${StoreLang.steam()}&cc=$cc"
             val t0 = System.currentTimeMillis()
             val json = SteamStoreSearch.httpGet(url)
             val ms = System.currentTimeMillis() - t0
@@ -272,7 +272,7 @@ object SteamStoreCatalog {
     private fun freeGames(cc: String): List<StoreItem> {
         freeCache[cc]?.let { if (System.currentTimeMillis() - it.at < FEATURED_TTL_MS) return it.value }
         val url = "https://store.steampowered.com/search/results/?query&start=0&count=30" +
-            "&maxprice=free&category1=998&supportedlang=english&cc=$cc&l=english&json=1"
+            "&maxprice=free&category1=998&supportedlang=english&cc=$cc&l=${StoreLang.steam()}&json=1"
         val t0 = System.currentTimeMillis()
         val json = SteamStoreSearch.httpGet(url)
         val ms = System.currentTimeMillis() - t0

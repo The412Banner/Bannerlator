@@ -52,6 +52,10 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     // v11: steam_games.vac_secure (ADDITIVE column) — VAC marker from PICS app-info, filled on the next
     //      library sync (processAppKv); 0 until then (= "no secure launch needed" → the RealSteam
     //      launch's short fallback window). Per-shortcut override lives in the shortcut extras.
+    // Still v11: steam_games.name_localized — PICS common/name_localized as a JSON object (Steam language
+    //      -> name), filled on the next library sync. Readers show the app language's name when it has one
+    //      (StoreLang.steamName), else name. Added in onOpen with NO version bump: a bump would make an
+    //      older build rebuild the whole database (onDowngrade) when the user goes back to it.
     private static final int    DB_VERSION = 11;
 
     // -------------------------------------------------------------------------
@@ -83,7 +87,8 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             // 1 when the app's PICS app-info marks it VAC-secured (common/category/category_8 "Valve
             // Anti-Cheat enabled" or any extended/vac* key such as vacmodulefilename); 0 otherwise.
             // Drives the RealSteam launch's WN_STEAM_VAC policy (secure-launch wait window).
-            "  vac_secure INTEGER NOT NULL DEFAULT 0" +
+            "  vac_secure INTEGER NOT NULL DEFAULT 0," +
+            "  name_localized TEXT NOT NULL DEFAULT ''" +
             ")";
 
     private static final String SQL_LICENSES =
@@ -299,6 +304,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         if (oldVersion < 11) {
             addColumnIfMissing(db, "steam_games", "vac_secure", "INTEGER NOT NULL DEFAULT 0");
         }
+
     }
 
     /**
@@ -322,6 +328,18 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS steam_achievements");
         db.execSQL("DROP TABLE IF EXISTS steam_dlc");
         onCreate(db);
+    }
+
+    /** Adds steam_games.name_localized to a database made before it (see the DB_VERSION comment). */
+    @Override
+    public void onOpen(SQLiteDatabase db) {
+        super.onOpen(db);
+        if (db.isReadOnly()) return;
+        boolean has = false;
+        try (Cursor c = db.rawQuery("PRAGMA table_info(steam_games)", null)) {
+            while (c.moveToNext()) if ("name_localized".equals(c.getString(1))) { has = true; break; }
+        } catch (Exception ignored) { return; }
+        if (!has) addColumnIfMissing(db, "steam_games", "name_localized", "TEXT NOT NULL DEFAULT ''");
     }
 
     /** ALTER TABLE ... ADD COLUMN, ignoring the "duplicate column name" error so re-runs are safe. */
@@ -500,6 +518,13 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
     }
 
+    /** Saves PICS common/name_localized (a JSON object, "" = none). Separate from upsertGame like vac_secure. */
+    public void setNameLocalized(int appId, String json) {
+        ContentValues cv = new ContentValues();
+        cv.put("name_localized", json != null ? json : "");
+        getWritableDatabase().update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
     /** True when the last library sync marked this app VAC-secured; false when not, or unknown. */
     public boolean isVacSecure(int appId) {
         try (Cursor c = getReadableDatabase().rawQuery(
@@ -539,8 +564,8 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             try { dlcAppId = Integer.parseInt(id); } catch (NumberFormatException e) { continue; }
             String nm = null;
             try (Cursor c = getReadableDatabase().rawQuery(
-                    "SELECT name FROM steam_games WHERE app_id = ?", new String[]{id})) {
-                if (c.moveToNext()) nm = c.getString(0);
+                    "SELECT name,name_localized FROM steam_games WHERE app_id = ?", new String[]{id})) {
+                if (c.moveToNext()) nm = StoreLang.steamName(c.getString(1), c.getString(0));
             } catch (Exception ignored) {}
             out.put(dlcAppId, nm != null && !nm.isEmpty() ? nm : "DLC " + id);
         }
@@ -559,8 +584,8 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     /** steam_games.name for an appId, or "" if the app isn't in the library. */
     private String lookupGameName(int appId) {
         try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT name FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
-            if (c.moveToNext()) { String n = c.getString(0); return n != null ? n : ""; }
+                "SELECT name,name_localized FROM steam_games WHERE app_id = ?", new String[]{String.valueOf(appId)})) {
+            if (c.moveToNext()) return StoreLang.steamName(c.getString(1), c.getString(0));
         } catch (Exception ignored) {}
         return "";
     }
@@ -746,7 +771,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
     private List<GameRow> queryGames(String where, String[] args) {
         List<GameRow> result = new ArrayList<>();
         String sql = "SELECT app_id,name,install_dir,icon_hash,size_bytes,depot_ids,type," +
-                     "is_installed,developer,metacritic_score,genres" +
+                     "is_installed,developer,metacritic_score,genres,name_localized" +
                      " FROM steam_games" +
                      (where != null ? " WHERE " + where : "") +
                      " ORDER BY name COLLATE NOCASE";
@@ -754,7 +779,7 @@ public final class SteamDatabase extends SQLiteOpenHelper {
             while (c.moveToNext()) {
                 result.add(new GameRow(
                         c.getInt(0),
-                        c.getString(1),
+                        StoreLang.steamName(c.getString(11), c.getString(1)),
                         c.getString(2),
                         c.getString(3),
                         c.getLong(4),

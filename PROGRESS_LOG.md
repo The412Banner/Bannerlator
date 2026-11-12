@@ -11,7 +11,14 @@
   - Contents status: same installer + same keep-raw setting; Contents computes Installed/Saved from disk on open, on resume and when a download finishes → popup installs show there (to verify on device).
   - Removed: full-page overlay, `SimpleComponentSourcePage(onlyTypes)`.
 - **CI:** run 43302424949 (headSha fbb2ba73 checked) — 4/4 green, no warnings in changed files.
-- **Device test (user: "install it when the build is green and test"):** installing pubg fbb2ba73 over 5ba6ee62 on the FIT; app launch only, no game. NOT device-tested yet. Plan: popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
+- **Device test (Pocket FIT, 15:51–15:56 EST) — DEVICE-PROVEN:** installed pubg fbb2ba73 (installed base.apk sha256 44aa2b20… = staged `/sdcard/Download/Bannerlator-lab-dl-source-fbb2ba73.apk`).
+  - Game page (Insane, Wayland container) GPU driver tile → list ends with "+ Download from source" → popup "Download from source": Kimchi, MTR/WinNative, Banners-Turnip, StevenMXZ, whitebelyash → Banners-Turnip → r4 versions in the same popup.
+  - Tapped Turnip-v27.0.0-20261112-r4-Banners-AIO: line "· 0%" at 0.8 s; at 2.3 s back in the "GPU driver" list with "Banners-AIO (all SoC) v27.0.0-20261112-r4" added, toast "Installed …", selection unchanged (r3 still ✓). logcat: AdrenotoolsManager "installed driver … r4".
+  - Contents: home "GPU drivers 10 installed" (was 9); Contents › Installed lists r4; My files 17 (new `GPU Drivers/Turnip-v27.0.0-20261112-r4-Banners-AIO.zip`, keep-raw on); Contents › Banners-Turnip row shows ✓ Saved Installed.
+  - Cancel: New container → Wine Version → "+ Download from source" → Official, Steven, Arihany (Nightlies left out: no Wine/Proton) → Official → wine-9.7-x86_64-ref: "Cancel download" line at the list end; `dl_249090597.part` 37.5 MB → after Cancel gone, none 3 s later; line back to plain name (no Failed); My Files unchanged; no Wine installed; no download notification. B → repositories → B → Wine Version list unchanged. Backed out, no container created (still 2).
+  - logcat since 15:51:12: crash buffer empty, no FATAL/ANR; app pid alive. Termux brought back 15:56.
+  - Not tested: B while a download still runs (list re-read after it ends); DXVK/VKD3D/D7VK/Box64/FEX pickers (same code path, other ids); controller-only navigation of the popup.
+- **Earlier plan was:** popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
 - **Open:** root-6a's feat/winfg-preset-test 7b00c8df (Win-FG presets) was replaced by my 5ba6ee62 at 15:33 — ask user about reinstalling it after this test (APK `/sdcard/Download/Bannerlator-winfg-preset-test-7b00c8df-pubg.apk`).
 - **Resume point:** branch feat/lab-download-from-source = fbb2ba73 (+ this log); FIT has 5ba6ee62 installed; no background jobs on the device.
 

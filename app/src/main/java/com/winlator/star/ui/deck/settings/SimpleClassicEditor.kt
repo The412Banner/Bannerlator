@@ -82,7 +82,7 @@ import com.winlator.star.ui.deck.SoraFamily
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.UnsavedChangesDialog
 import com.winlator.star.ui.simple.L
-import com.winlator.star.ui.simple.LabDownloadOverlay
+import com.winlator.star.ui.simple.LabDownloadPicker
 import com.winlator.star.ui.simple.LabDownloads
 import com.winlator.star.ui.simple.SIn
 import com.winlator.star.ui.simple.SimpleCover
@@ -820,7 +820,7 @@ internal fun SimpleClassicEditor(
     downloadFor?.let { def ->
         val types = LabDownloads.typesFor(def.id, env)
         if (types == null) downloadFor = null
-        else LabDownloadOverlay(types, onClose = {
+        else LabDownloadPicker(types, onClose = {
             downloadFor = null
             downloadScope.launch {
                 // Back to the picker with the list read again; nothing is picked for the user.

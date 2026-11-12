@@ -93,12 +93,9 @@ internal fun fileInstallMessage(type: String, name: String, ok: Boolean): String
     return if (why.isNullOrBlank()) L("Could not install %1\$s", name) else L("Could not install %1\$s: %2\$s", name, why)
 }
 
-/**
- * One repository's components: A downloads and installs, with progress on the line; Y reloads the list.
- * [onlyTypes] (ContentsTypes names) limits it to those types, for a setting's "+ Download from source".
- */
+/** One repository's components: A downloads and installs, with progress on the line; Y reloads the list. */
 @Composable
-internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: ContentsHubViewModel = viewModel(), onlyTypes: List<String>? = null) {
+internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: ContentsHubViewModel = viewModel()) {
     val context = LocalContext.current
     val sources by vm.sources.collectAsState()
     val items by vm.detailItems.collectAsState()
@@ -111,9 +108,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
     LaunchedEffect(source?.name) { if (source != null) vm.selectSource(source) }
     // As Classic's refresh: drops the cached lists and loads this one again.
     val refresh = MenuAction(L("Refresh"), { vm.refreshSelected() })
-    val wanted = onlyTypes?.map(ContentsTypes::normalize)?.toSet()
-    val shown = if (wanted == null) items else items.filter { ContentsTypes.normalize(it.type) in wanted }
-    val sections = shown.groupBy { it.type }.entries.map { (type, list) ->
+    val sections = items.groupBy { it.type }.entries.map { (type, list) ->
         MenuSection(
             key = "t$type", title = type, icon = if (type == ContentsTypes.GPU_DRIVERS) Icons.Filled.Memory else Icons.Filled.Extension,
             entries = list.map { item ->
@@ -130,7 +125,7 @@ internal fun SimpleComponentSourcePage(index: Int, onBack: () -> Unit, vm: Conte
         )
     }
     SimpleMenuPage(
-        overline = if (onlyTypes != null) L("Download from source") else L("Contents"),
+        overline = L("Contents"),
         title = source?.name ?: L("Source"),
         sections = sections.ifEmpty {
             listOf(MenuSection("none", L("Components"), Icons.Filled.Extension, emptyList(), empty = if (loading) L("Loading the list…") else L("Nothing to download here."), primary = refresh))

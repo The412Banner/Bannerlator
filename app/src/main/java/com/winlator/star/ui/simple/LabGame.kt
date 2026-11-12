@@ -368,7 +368,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     downloadFor?.let { (def, label) ->
         val types = LabDownloads.typesFor(def.id, env)
         if (types == null) downloadFor = null
-        else LabDownloadOverlay(types, onClose = {
+        else LabDownloadPicker(types, onClose = {
             downloadFor = null
             downloadScope.launch {
                 // Back to the picker with the list read again; nothing is picked for the user.

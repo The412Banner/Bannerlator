@@ -1,5 +1,15 @@
 [
   {
+    "id": "2026-11-12T23-44-14-89c161",
+    "created": "2026-11-12T23:44:14.275Z",
+    "reporter": "",
+    "device": "Oppo Reno 11f 5G",
+    "gpu": "ARM Mali-G68 MC4",
+    "game": "NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS",
+    "symptom": "Other",
+    "logs": 0
+  },
+  {
     "id": "2026-11-11T08-17-24-bab383",
     "created": "2026-11-11T08:17:24.277Z",
     "reporter": "Delta",

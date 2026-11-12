@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 16:25 EST — App icon reopens Home instead of where the user was (fix/launcher-resume, CI running)
+
+- **Why (user):** "anytime I background the app and bring it back to the foreground it always opens up the homepage why doesn't it leave me where I was previously?"
+- **Found (Pocket FIT, live):** events log 16:20:02 + 16:20:17 EST: app-icon taps (`START … cat=[LAUNCHER] flg=0x10200000 … with LAUNCH_MULTIPLE`) → `wm_create_activity` MainActivity in the running task 866, same process (no kill). Task base intent `flg=0x10000000 cmp=…MainActivity` (no MAIN/LAUNCHER — started by an `am start -n` after install) ≠ launcher intent → Android stacks a new MainActivity (starts on Home). `dumpsys activity` showed 3 MainActivity instances in t866. Same trigger in normal use: task started by a game's home-screen icon (XServerDisplayActivity VIEW), installer "Open", adb/Termux. No resume-to-home code in MainActivity or the Lab/Deck shell.
+- **Built (8f501bc1):** `MainActivity.onCreate`: fresh start (`savedInstanceState == null`) + MAIN/LAUNCHER intent + `!isTaskRoot` → `finish()` before any setup (task shows as left). `onDestroy` skips its cleanup for that instance (process-wide WinFgDiag log capture + Steam Controller backend belong to the instance below).
+- **Behaviour change:** icon tap while a game started from its home-screen icon is running now shows the game (before: a new Home on top of it).
+- **CI:** run 43310150631 (headSha 8f501bc1 checked) — 4/4 green; MainActivity warnings are the old ones (lines 596+), none on the new lines.
+- **Device test:** NOT device-tested. Plan: start app with `am start -n` (mismatched root), go to a page, Home, tap icon (or the same launcher intent) → same page, `dumpsys activity` 1 MainActivity, no FATAL; normal icon start still works.
+- **Note:** branch is off main 8c199678; it does not contain feat/lab-download-from-source (not merged).
 ## 2026-11-12 15:45 EST — Lab download from source: popup instead of page + Cancel (feat/lab-download-from-source, CI running)
 
 - **Why (user, after trying 5ba6ee62 on the FIT):** "the download from source button should not open a full page, it should just be the same menu as the turnip selection"; "make sure there is a cancel button and that the cancel button works properly also"; "anything downloaded here should also reflect as downloaded and or installed in the contents menus".

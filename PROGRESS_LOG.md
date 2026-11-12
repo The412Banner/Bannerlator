@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 15:45 EST — Lab download from source: popup instead of page + Cancel (feat/lab-download-from-source, CI running)
+
+- **Why (user, after trying 5ba6ee62 on the FIT):** "the download from source button should not open a full page, it should just be the same menu as the turnip selection"; "make sure there is a cancel button and that the cancel button works properly also"; "anything downloaded here should also reflect as downloaded and or installed in the contents menus".
+- **Device check of 5ba6ee62 (15:34 EST):** installed hash d46c797c… = staged; Lab game page GPU driver tile picker showed "+ Download from source" as its last line (screenshot). User then opened it themselves (full page) and asked for the popup. No crash (crash buffer empty, process alive).
+- **Built (fbb2ba73):**
+  - `LabDownloadPicker` (LabDownloads.kt): same `SimplePicker` popup — repositories offering the type → that repository's versions (line shows % while downloading; installed = "Installed", not pickable; failed = "· Failed"). On DONE of the install started there → back to the setting's picker, list re-read. B: versions → repositories → close.
+  - "Cancel download" line on both lists while that download runs → `ContentDownloadRegistry.requestCancel` (as Contents' "Cancel the download"). One download at a time from the popup.
+  - Cancel fixes in the shared Contents installer: `RemoteSourceRepository.downloadToTemp` deletes the `.part` file on a cancel (failures still keep it for resume); `ContentsInstaller.install` checks for a cancel before the keep-raw save, so a cancelled download is not saved to My Files.
+  - Contents status: same installer + same keep-raw setting; Contents computes Installed/Saved from disk on open, on resume and when a download finishes → popup installs show there (to verify on device).
+  - Removed: full-page overlay, `SimpleComponentSourcePage(onlyTypes)`.
+- **CI:** run 43302424949 (headSha fbb2ba73 checked) — running.
+- **Device test:** NOT device-tested. Plan: popup flow + download a small DXVK/Turnip, cancel mid-download (check no `dl_*.part` left in cache, nothing in My Files, line back to normal), then check Lab Contents shows the installed one.
+- **Open:** root-6a's feat/winfg-preset-test 7b00c8df (Win-FG presets) was replaced by my 5ba6ee62 at 15:33 — ask user about reinstalling it after this test (APK `/sdcard/Download/Bannerlator-winfg-preset-test-7b00c8df-pubg.apk`).
+- **Resume point:** branch feat/lab-download-from-source = fbb2ba73 (+ this log); FIT has 5ba6ee62 installed; no background jobs on the device.
+
 ## 2026-11-12 14:56 EST — Lab "+ Download from source" in setting pickers (feat/lab-download-from-source, CI running)
 
 - **Why:** user: in Lab game settings / container editor, the Wine/Proton and component pickers (Turnip, DXVK, VKD3D, Box64, WOWBox64, FEXCore) should end with "+ Download from source" → repositories that offer that component (like Contents) → its versions → download → listed in the picker right away. "we have something similar in classic but it never made it into lab"; "it needs to be in a lab menu style though"; "do it". Decisions: Lab only; picker reopens with the new version listed, the user picks it (no auto-select).

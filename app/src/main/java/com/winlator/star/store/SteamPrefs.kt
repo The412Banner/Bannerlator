@@ -168,7 +168,16 @@ object SteamPrefs {
     }
 
     fun clearInstalledLanguage(appId: Int) {
-        prefs.edit().remove("installed_language_$appId").commit()
+        prefs.edit().remove("installed_language_$appId").remove("language_switch_$appId").commit()
+    }
+
+    /** An install/update/verify run of [appId] started: its depot selection may change language pack. */
+    fun isLanguageSwitchPending(appId: Int): Boolean = prefs.getBoolean("language_switch_$appId", false)
+
+    fun setLanguageSwitchPending(appId: Int, pending: Boolean) {
+        val e = prefs.edit()
+        if (pending) e.putBoolean("language_switch_$appId", true) else e.remove("language_switch_$appId")
+        e.commit()
     }
 
     // ── Achievement sync-back (SAFETY GATE, default OFF) ─────────────────────

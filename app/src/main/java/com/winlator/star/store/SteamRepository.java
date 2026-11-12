@@ -1975,14 +1975,6 @@ public final class SteamRepository {
     }
 
     /**
-     * WORKER THREAD: parse + store ONE app's PICS product-info KeyValue tree (the per-app body of
-     * {@link #processAppsCore}, extracted verbatim). Engine-agnostic: the JavaSteam path hands it the
-     * {@code PICSProductInfo} KeyValues, the Rust engine path ({@link #rustSyncLibrary}) hands it the
-     * SAME tree rebuilt from the engine's JSON appinfo (see {@link #jsonToKeyValue}) — so both engines
-     * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
-     * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
-     */
-    /**
      * The Steam languages an app lists: PICS common/supported_languages (entries marked supported), else
      * common/languages, plus every language a downloadable depot is tagged with. Lower case, English first.
      */
@@ -2068,6 +2060,14 @@ public final class SteamRepository {
         return false;
     }
 
+    /**
+     * WORKER THREAD: parse + store ONE app's PICS product-info KeyValue tree (the per-app body of
+     * {@link #processAppsCore}, extracted verbatim). Engine-agnostic: the JavaSteam path hands it the
+     * {@code PICSProductInfo} KeyValues, the Rust engine path ({@link #rustSyncLibrary}) hands it the
+     * SAME tree rebuilt from the engine's JSON appinfo (see {@link #jsonToKeyValue}) — so both engines
+     * produce byte-identical {@code steam_games} / {@code depot_manifests} / {@code steam_branches} /
+     * {@code steam_dlc} rows. Returns true when the app was stored, false when it was filtered/skipped.
+     */
     boolean processAppKv(int appId, KeyValue root, SteamDatabase db, java.util.Set<Integer> licensedApps) {
                     try {
                         KeyValue common = root.get("common");
@@ -2306,7 +2306,7 @@ public final class SteamRepository {
                         // key. Rule: category_8 OR any extended/vac* key → secured.
                         db.setVacSecure(appId, detectVacSecure(common, root));
                         db.setNameLocalized(appId, localizedNames(common));
-                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages));
+                        db.setLanguages(appId, SteamGameLanguage.encode(appLanguages, packagedLanguages, depotLanguage));
                         // Valve's own folder name under steamapps/common (PICS config/installdir) — what
                         // every Steam client and the appmanifest's "installdir" use. Recorded so a game
                         // installed into a steamapps library lands where other clients look for it.

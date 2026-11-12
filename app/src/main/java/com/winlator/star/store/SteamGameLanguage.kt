@@ -7,6 +7,15 @@ import java.util.Locale
  * else English; the game's page can pick another one (kept per game in [SteamPrefs], like the branch).
  * It decides which per-language depots are downloaded (library sync / install / update) and what the
  * Steam emulator and the appmanifest report to the game.
+ *
+ * Saved per app in steam_games.languages as "supported|packaged|selected": the languages Steam lists,
+ * the ones with a depot of their own, and the language pack the last depot selection took.
+ *
+ * Safety rule (2026-11-12: a real Steam client deleted all of Brawlhalla when its appmanifest named a
+ * language whose depots were not installed): what a real Steam client is told - appmanifest language and
+ * installed depots - must describe exactly what is on disk. So an installed game keeps the pack it has
+ * until an install/update/verify run of our own downloader starts ([beginInstall]); the pack on disk is
+ * recorded only when such a run finished ([recordInstalled]).
  */
 object SteamGameLanguage {
     const val ENGLISH = "english"
@@ -28,97 +37,42 @@ object SteamGameLanguage {
         return l.getDisplayName(l).replaceFirstChar { it.titlecase(l) }.ifBlank { code }
     }
 
+    // ── What the last library sync saved ─────────────────────────────────────
+
     private fun saved(appId: Int): List<String> =
         runCatching { SteamDatabase.getInstance().getLanguages(appId) }.getOrDefault("").split('|')
 
-    /** The languages Steam lists for [appId] (saved at the last library sync); empty when not known yet. */
+    /** The languages Steam lists for [appId]; empty when not known yet. */
     @JvmStatic
     fun supported(appId: Int): List<String> = parse(saved(appId).getOrNull(0))
 
-    /** The languages [appId] ships as a separate download (a depot tagged with the language). */
+    /** The languages [appId] ships as a depot of their own. */
     @JvmStatic
     fun packaged(appId: Int): List<String> = parse(saved(appId).getOrNull(1))
 
-    /** What is saved for an app: its languages, then the separately packaged ones. */
-    @JvmStatic
-    fun encode(supported: List<String>, packaged: List<String>): String =
-        supported.joinToString(",") + "|" + packaged.joinToString(",")
+    /** True when the saved entry is from this format (it says which languages are packaged apart). */
+    private fun knowsPacks(appId: Int): Boolean = saved(appId).size >= 3
 
-    /** The language pack a download in [language] takes: its own when the game packages one, else English. */
+    /** The language pack the last depot selection took for [appId]. */
     @JvmStatic
-    fun packOf(language: String, packaged: List<String>): String = if (language in packaged) language else ENGLISH
+    fun selectedPack(appId: Int): String =
+        saved(appId).getOrNull(2)?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: ENGLISH
 
-    /**
-     * The language the game is told at launch (emulator, appmanifest, SteamLite agent). [of], except when
-     * that language is a separate download the installed game does not have yet (picked after the install):
-     * then the installed one, so the game and the Steam client never see a language whose files are missing.
-     */
     @JvmStatic
-    fun runtime(appId: Int): String {
-        val want = of(appId)
-        if (want !in packaged(appId)) return want
-        val installed = runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("").ifEmpty { ENGLISH }
-        return if (installed == want) want else installed
-    }
-
-    /**
-     * The language written where a real Steam client reads it (appmanifest, SteamLite agent). Stricter than
-     * [runtime]: the client keeps only the depots of that language and DELETES the rest of the install. Seen
-     * 2026-11-12: Brawlhalla's one Windows depot is tagged "english"; a manifest saying "schinese" made the
-     * client commit an update with "0 target" depots and delete all 7997 files. So a game with any
-     * language-tagged depot is given the language of the pack it has installed; only a game whose depots
-     * carry no language at all is given the wanted language.
-     */
-    @JvmStatic
-    fun forSteamClient(appId: Int): String {
-        if (packaged(appId).isEmpty() && supported(appId).isNotEmpty()) return of(appId)
-        return runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("").ifEmpty { ENGLISH }
-    }
-
-    /**
-     * The language pack the depot selection takes for [appId] (library sync, install, update, verify).
-     * An installed game keeps the pack it was installed with, so what the database lists is what is on
-     * disk - the real Steam client is told exactly that list and that language, and deletes or re-fetches
-     * anything that differs. A new pack is only selected by [beginInstall], i.e. when an install, update
-     * or verify run starts. [wantedPack] is the pack the game's language asks for.
-     */
-    @JvmStatic
-    fun selection(appId: Int, installed: Boolean, wantedPack: String): String {
-        val recorded = runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("")
-        return when {
-            recorded.isNotEmpty() -> recorded
-            installed -> ENGLISH
-            else -> wantedPack
-        }
-    }
-
-    /** An install, update or verify run of [appId] starts: from now on its language pack is the wanted one. */
-    @JvmStatic
-    fun beginInstall(appId: Int) {
-        runCatching { SteamPrefs.setInstalledLanguage(appId, packOf(of(appId), packaged(appId))) }
-    }
-
-    /** The run finished: an install made before language packs were recorded counts as English. */
-    @JvmStatic
-    fun recordInstalled(appId: Int) {
-        runCatching { if (SteamPrefs.getInstalledLanguage(appId).isEmpty()) SteamPrefs.setInstalledLanguage(appId, ENGLISH) }
-    }
-
-    /** [appId] was uninstalled: the next install takes the wanted pack again. */
-    @JvmStatic
-    fun clearInstalled(appId: Int) {
-        runCatching { SteamPrefs.clearInstalledLanguage(appId) }
-    }
+    fun encode(supported: List<String>, packaged: List<String>, selected: String): String =
+        supported.joinToString(",") + "|" + packaged.joinToString(",") + "|" + selected
 
     @JvmStatic
     fun parse(csv: String?): List<String> =
         csv.orEmpty().split(',').map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotEmpty() }.distinct()
 
+    // ── The wanted language ──────────────────────────────────────────────────
+
     /** The user's pick for [appId]; "" = follow the app's language. */
     @JvmStatic
     fun picked(appId: Int): String = runCatching { SteamPrefs.getGameLanguage(appId) }.getOrDefault("")
 
-    /** The language [appId] is wanted in (the pick, else the app's language when the game has it, else English). */
+    /** The language [appId] is wanted in. */
     @JvmStatic
     fun of(appId: Int): String = resolve(picked(appId), supported(appId))
 
@@ -132,5 +86,73 @@ object SteamGameLanguage {
         if (pick.isNotEmpty() && (supported.isEmpty() || pick in supported)) return pick
         val app = runCatching { StoreLang.steam() }.getOrDefault(ENGLISH)
         return if (app in supported) app else ENGLISH
+    }
+
+    /** The language pack a download in [language] takes: its own when the game packages one, else English. */
+    @JvmStatic
+    fun packOf(language: String, packaged: List<String>): String = if (language in packaged) language else ENGLISH
+
+    // ── The depot selection (library sync) ───────────────────────────────────
+
+    /**
+     * The language pack the depot selection takes for [appId]: [wantedPack] for a game that is not
+     * installed, or when an install/update/verify run of our downloader has started ([beginInstall]);
+     * otherwise the pack the installed copy has, so the saved depot list keeps describing the disk.
+     */
+    @JvmStatic
+    fun selection(appId: Int, installed: Boolean, wantedPack: String): String {
+        if (!installed) return wantedPack
+        if (runCatching { SteamPrefs.isLanguageSwitchPending(appId) }.getOrDefault(false)) return wantedPack
+        return installedPack(appId)
+    }
+
+    /** An install, update or verify run of [appId] starts: its depot selection may take the wanted pack. */
+    @JvmStatic
+    fun beginInstall(appId: Int) {
+        runCatching { SteamPrefs.setLanguageSwitchPending(appId, true) }
+    }
+
+    /** The run finished: the pack it downloaded (the saved selection it used) is now the one on disk. */
+    @JvmStatic
+    fun recordInstalled(appId: Int) {
+        runCatching {
+            SteamPrefs.setInstalledLanguage(appId, selectedPack(appId))
+            SteamPrefs.setLanguageSwitchPending(appId, false)
+        }
+    }
+
+    /** [appId] was uninstalled. */
+    @JvmStatic
+    fun clearInstalled(appId: Int) {
+        runCatching { SteamPrefs.clearInstalledLanguage(appId) }
+    }
+
+    /** The pack the installed copy has; English for an install made before packs were recorded. */
+    private fun installedPack(appId: Int): String =
+        runCatching { SteamPrefs.getInstalledLanguage(appId) }.getOrDefault("").ifEmpty { ENGLISH }
+
+    // ── What the game is told ────────────────────────────────────────────────
+
+    /**
+     * The language for the Steam emulator (Goldberg): the wanted one, except when it is a pack of its own
+     * that the installed copy does not have - then the installed pack's language.
+     */
+    @JvmStatic
+    fun runtime(appId: Int): String {
+        val want = of(appId)
+        if (want !in packaged(appId)) return want
+        val installed = installedPack(appId)
+        return if (installed == want) want else installed
+    }
+
+    /**
+     * The language for a real Steam client (appmanifest, SteamLite agent). The client keeps only the depots
+     * of that language and deletes the rest of the install, so the wanted language is given only to a game
+     * known to have no language-tagged depot at all; any other game gets the language of its installed pack.
+     */
+    @JvmStatic
+    fun forSteamClient(appId: Int): String {
+        if (knowsPacks(appId) && packaged(appId).isEmpty() && supported(appId).isNotEmpty()) return of(appId)
+        return installedPack(appId)
     }
 }

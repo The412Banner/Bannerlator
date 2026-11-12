@@ -1,5 +1,20 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 14:56 EST — Lab "+ Download from source" in setting pickers (feat/lab-download-from-source, CI running)
+
+- **Why:** user: in Lab game settings / container editor, the Wine/Proton and component pickers (Turnip, DXVK, VKD3D, Box64, WOWBox64, FEXCore) should end with "+ Download from source" → repositories that offer that component (like Contents) → its versions → download → listed in the picker right away. "we have something similar in classic but it never made it into lab"; "it needs to be in a lab menu style though"; "do it". Decisions: Lab only; picker reopens with the new version listed, the user picks it (no auto-select).
+- **Built (5ba6ee62):**
+  - `SimplePicker` (SimpleSettingsEditor.kt): optional `onDownload` → last line "+ Download from source" (focus goes there when a list is empty).
+  - New `ui/simple/LabDownloads.kt`: setting id → Contents types (windows.wineVersion → Wine+Proton; graphics.dx.dxvkVersion / vkd3dVersion / d7vkVersion; performance.box64Version → Box64 or WOWBox64 by arm64ec; performance.fexVersion → FEXCore; graphics.gdc.version, graphics.compositorDriver, graphics.wl.gameDriver → GPU drivers). Refresh per id = the reloads Deck uses (vm.refreshWineVersions / refreshBox64Versions / refreshFEXCoreVersions, graphics.reloadContents, Turnip: onCompositorDriversChanged (not GAME scope) + loadAsync + reloadDrivers + reloadWaylandDrivers).
+  - `LabDownloadOverlay`: full-screen Dialog over the editor (Lab wallpaper, own DeckActions so the editor's L2/R2 + legend stay intact): repositories page (hub `canonicalType`, made internal, + Classic's rule: a repository naming no types is listed) → `SimpleComponentSourcePage(onlyTypes = …)`.
+  - Wired into `SimpleClassicEditor` (game/container/all-containers editors) and `LabGamePage` quick tiles. On close: list re-read, picker reopens; a download still running is re-read once it finishes.
+  - Not included: X11 "Graphics driver" (lists Vulkan wrappers, not Turnip; its Turnip is "Driver version"); Box64EC (Contents has no Box64EC type).
+  - Why an overlay, not a nav route: `GameSource` keeps unsaved edits in memory (`draft`), recreated on navigation → edits would be lost.
+- **CI:** run 43295220096 (headSha 5ba6ee62 checked) — running.
+- **Device test:** NOT device-tested.
+- **Open/Next:** CI green → stage APK, announce install to peers, ask user / install, test a small download (e.g. a DXVK) from a game's All settings + container editor, check logcat FATAL, then ask about merge. New strings are English only.
+- **Resume point:** worktree /root/src/Bannerlator-wt/lab-dl-source, branch feat/lab-download-from-source = 5ba6ee62; device (FIT) has feat/winfg-multi 3e21e6c7 installed (root-6a, 14:43), user testing Win-FG.
+
 ## 2026-11-12 14:30 EST — 🔀 MERGED fix/last-played-any-launch (main a208c6717; user: "merge")
 
 - **Why:** user asked to check the Home "Continue" tile (it showed Brawlhalla after CS2 ran). Finding: `lastPlayed` (shortcut extra, read by the tile and the recent order) was stamped only by the in-app Play paths (`recordLastPlayed`, ShortcutsScreen.kt); launches that start XServerDisplayActivity directly — pinned home-screen icons (`MoveGameToContainer.pinIntent`) and my test harness — never counted. The tile logic itself (bcda2c55) was right.

@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 15:20 EST — 🧪 TEST BUILD: Win-FG Native quality preset selectable (feat/winfg-preset-test 7b00c8dfd; CI green; installed on the FIT; NOT for merge)
+
+- **Why:** device test 1 of the 3×/4× port: frame counts right, no flicker, but generated frames ~23 % softer than real ones → blurry sideways movement at a 30 fps base. User: "try a higher quality preset in a test build".
+- **Built (7b00c8dfd, on top of feat/winfg-multi 0b39489cf):** `winFgPreset(requested)` replaces the pinned Performance preset for Win-FG Native (X11 + Wayland); "Quality (test)" row (Quality / Balanced / Performance = flow at 1/2, 1/4, 1/8 res) in the in-game drawer. Starts on the container's saved preset (Balanced on the user's container).
+- **CI:** run 43296698908 (headSha 7b00c8dfd) green 4/4.
+- **Installed:** Pocket FIT 15:19 EST (user: "yes install it on the fit"); `/sdcard/Download/Bannerlator-winfg-preset-test-7b00c8df-pubg.apk` sha256 d5d682e1…b8a8 == installed base.apk. Not launched.
+- **To test:** 30 fps cap, Win-FG 3×/4×, switch Performance → Balanced → Quality while moving sideways; separately Flow Scale 1.00 (test 1 ran at 0.60; `config.hpp` calls flowScale "scales solved flow magnitude", default 1.0 — unverified lead, shader source not in the repo).
+- **Resume point:** worktree `/root/src/Bannerlator-wt/winfg-multi` is on `feat/winfg-preset-test`; mergeable work stays on `feat/winfg-multi` (0b39489cf). Device log capture: `/sdcard/Download/winfg-preset-test-logcat.txt` (60 min from 15:21 EST; restart: `rootsh 'timeout 3600 logcat -v time > /sdcard/Download/winfg-preset-test-logcat.txt'`).
+
 ## 2026-11-12 14:25 EST — 🧪 Win-FG Native 3×/4× + DroidDeck's two Win-FG fixes (feat/winfg-multi b79cc664d; CI running; NOT device-tested)
 
 - **Why:** user 11-12: "port the droiddeck win-fg fixes and enable 3x/4x". DroidDeck's copy of win-fg (DD-FG) got two fixes Bannerlator's copy lacked; ours was only safe because the menu was Off/On (2×).

@@ -1917,6 +1917,39 @@ private fun SteamGameDetailScreen(
     var gearMenuExpanded by remember { mutableStateOf(false) }
     // Goldberg (Steam emulator) popup — opened from the gear menu (installed games only).
     var goldbergDialogOpen by remember { mutableStateOf(false) }
+    // Gear → "Use a folder I already have": the game's files from a PC copy, another app or a backup
+    // (SteamFolderAdopt: installs into that folder, keeping what is already there).
+    var adoptFolder by remember { mutableStateOf<File?>(null) }
+    val adoptPick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { r ->
+        val path = if (r.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(r.data) else null
+        if (path != null) adoptFolder = File(path)
+    }
+    adoptFolder?.let { folder ->
+        var looksRight by remember(folder) { mutableStateOf<Boolean?>(null) }
+        LaunchedEffect(folder) { looksRight = withContext(Dispatchers.IO) { SteamFolderAdopt.looksLike(context, folder, appId) } }
+        val start = {
+            adoptFolder = null
+            Thread {
+                val err = SteamFolderAdopt.adopt(context, appId, folder)
+                (context as? android.app.Activity)?.runOnUiThread {
+                    android.widget.Toast.makeText(context, err ?: "Using ${folder.name} — checking its files, see Downloads.", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }.start()
+        }
+        when (looksRight) {
+            true -> LaunchedEffect(folder) { start() }
+            false -> OutlinedAlertDialog(
+                onDismissRequest = { adoptFolder = null },
+                confirmButton = { TextButton(onClick = { start() }) { Text("Use it") } },
+                dismissButton = { TextButton(onClick = { adoptFolder = null }) { Text("Cancel") } },
+                title = { Text(nameText) },
+                text = { Text("\"${folder.name}\" doesn't look like this game's folder. Use it anyway? The game's files will be added there.") },
+            )
+            null -> {}
+        }
+    }
 
     // Achievements are loaded ONCE at the screen level so the tab count badge (done/total) and the
     // Achievements tab body share a single source of truth. Same strategy as the old section: fetch
@@ -2210,6 +2243,14 @@ private fun SteamGameDetailScreen(
                     MenuItemDivider()
                     GearMenuItem("🧩", "Manage DLC", enabled = dlcEntries.isNotEmpty(),
                         onClick = { gearMenuExpanded = false; onDlcLineClick() })
+                    if (installAction == InstallAction.INSTALL && !downloading) {
+                        MenuItemDivider()
+                        GearMenuItem("📁", "Use a folder I already have",
+                            onClick = {
+                                gearMenuExpanded = false
+                                adoptPick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(context, nameText))
+                            })
+                    }
                     // Storage move — only for an installed game that has somewhere to go. Hidden
                     // (not greyed) otherwise, since "no SD card" isn't a state the user can act on.
                     if (moveStorageLabel != null) {

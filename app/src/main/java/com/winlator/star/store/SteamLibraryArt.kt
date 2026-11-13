@@ -83,6 +83,12 @@ object SteamLibraryArt {
     private val lock = Any()
     private val saveLock = Any()
 
+    /**
+     * Bumped whenever the art map is filled (the disk mirror loaded, a snapshot swapped in). [lookup] reads it first, so a
+     * composable that asked for art before the map was there is subscribed and composes again once it is.
+     */
+    private val revision = androidx.compose.runtime.mutableIntStateOf(0)
+
     /** Called (on the refreshing thread) after a snapshot replaced the art map, so a screen showing art from it can read it again. */
     @Volatile var onRefreshed: (() -> Unit)? = null
 
@@ -124,6 +130,8 @@ object SteamLibraryArt {
     private fun lookup(appId: Int): AppArt? {
         // Lock-free and never reads the disk: lookups are made while composing, on the main thread. Until the mirror
         // has been loaded (init / loadNow, off the main thread) there is nothing to answer with.
+        // Reading the revision subscribes a composition that calls this to later fills of the map (it is never negative).
+        if (revision.intValue < 0) return null
         if (appId <= 0 || !loadedFromDisk) return null
         return art[appId]
     }
@@ -151,7 +159,7 @@ object SteamLibraryArt {
             StorefrontLog.i(TAG, "PICS art: snapshot carried no artwork — keeping ${art.size} cached entry(s)")
             return
         }
-        synchronized(lock) { art = parsed }
+        synchronized(lock) { art = parsed; revision.intValue++ }
         val withHeader = parsed.values.count { it.header != null }
         StorefrontLog.i(
             TAG,
@@ -237,6 +245,7 @@ object SteamLibraryArt {
             // What a snapshot already put in wins over the older mirror.
             art = restored + art
             loadedFromDisk = true
+            revision.intValue++
         }
     }
 

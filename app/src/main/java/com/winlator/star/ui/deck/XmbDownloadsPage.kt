@@ -469,9 +469,13 @@ private fun XmbDlCard(
                 DownloadState.DOWNLOADING, DownloadState.PAUSED -> {
                     val p = xmbDlProgress(entry)
                     val paused = entry.state == DownloadState.PAUSED
+                    // A Resume refused before any transfer began leaves the reason on the paused row.
+                    val why = if (paused) entry.error?.takeIf { it.isNotBlank() } else null
                     Text(
-                        stringResource(if (paused) R.string.xmb_dl_status_paused else R.string.xmb_dl_status_downloading, p.percent),
-                        color = if (paused) XMB_DL_AMBER else XMB_DL_INK, fontSize = ss.sp(12f), maxLines = 1,
+                        if (why != null) stringResource(R.string.xmb_dl_status_paused_why, p.percent, why)
+                        else stringResource(if (paused) R.string.xmb_dl_status_paused else R.string.xmb_dl_status_downloading, p.percent),
+                        color = if (paused) XMB_DL_AMBER else XMB_DL_INK, fontSize = ss.sp(12f),
+                        maxLines = if (why != null) 2 else 1, overflow = TextOverflow.Ellipsis,
                     )
                     XmbDlBar(p.fraction, paused, ss)
                     val sizes = xmbDlSizeText(entry)

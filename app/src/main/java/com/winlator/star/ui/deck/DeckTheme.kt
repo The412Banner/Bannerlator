@@ -60,9 +60,13 @@ private fun TextStyle.body(weight: FontWeight) = copy(fontFamily = NunitoSansFam
 /**
  * Wraps the Deck shell. Keeps the ambient colour scheme and swaps only typography and shapes, so
  * the screens hosted inside (Containers, Settings, ...) pick up the Deck type without any colour change.
+ *
+ * [xmb]: the XMB interface is on. Only then is the layout left-to-right whatever the phone's language: the XMB rows place
+ * with Modifier.offset, which mirrors in a right-to-left layout and slid the Home row off-screen. Classic, Lab and the plain
+ * Deck keep the direction they are given.
  */
 @Composable
-internal fun DeckTheme(content: @Composable () -> Unit) {
+internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable () -> Unit) {
     val base = MaterialTheme.typography
     val typography = Typography(
         displayLarge   = base.displayLarge.heading(FontWeight.ExtraBold),
@@ -93,11 +97,10 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
     // DeckTheme in a dialog of a Deck screen takes the screen's density, not the dialog window's raw one.
     val outer = LocalDensity.current
     val density = LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
-    // Left-to-right always, whatever the phone's language (see AppLocale): the XMB rows place with Modifier.offset, which mirrors.
     CompositionLocalProvider(
         LocalDensity provides density,
         LocalDeckDensity provides density,
-        LocalLayoutDirection provides LayoutDirection.Ltr,
+        LocalLayoutDirection provides (if (xmb) LayoutDirection.Ltr else LocalLayoutDirection.current),
     ) {
         MaterialTheme(
             colorScheme = MaterialTheme.colorScheme,
@@ -106,6 +109,12 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
             content = content,
         )
     }
+}
+
+/** Runs [content] in a left-to-right layout direction (the XMB keyboard panel's own window); popups opened inside inherit it. */
+@Composable
+internal fun ForceLtr(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, content = content)
 }
 
 /** The Simple style's hard corner. */

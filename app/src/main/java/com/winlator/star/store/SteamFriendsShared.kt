@@ -45,16 +45,27 @@ internal fun steamOnlineFriendsCount(ctx: Context): Flow<Int> {
 }
 
 /**
- * Live "friends available" flag, re-evaluated on every repository session event so the connect/empty
- * state and the roster appear/disappear without a screen restart.
+ * Whether the repository event [ev] can change [SteamFriendsStore.isAvailable] (the session logging in or out, connecting or
+ * dropping, the status indicator, an account switch). The rest (library progress, depot keys, ...) fire all the time during a
+ * sync and cannot, so the flag is not re-read for them.
+ */
+internal fun steamEventAffectsFriendsAvailability(ev: String): Boolean =
+    ev.startsWith("SteamStatus:") || ev.startsWith("LoggedIn") || ev == "LoggedOut" || ev == "SessionExpired" ||
+        ev == "Connected" || ev == "Disconnected" || ev.startsWith("AccountSwitched:")
+
+/**
+ * Live "friends available" flag, re-evaluated on the repository session events that can change it (see
+ * [steamEventAffectsFriendsAvailability]) so the connect/empty state and the roster appear/disappear without a screen restart.
  */
 @Composable
 internal fun rememberFriendsAvailable(): Boolean {
     var available by remember { mutableStateOf(runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(false)) }
     DisposableEffect(Unit) {
         val repo = SteamRepository.getInstance()
-        val l = SteamRepository.SteamEventListener {
-            available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)
+        val l = SteamRepository.SteamEventListener { ev ->
+            if (steamEventAffectsFriendsAvailability(ev)) {
+                available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)
+            }
         }
         repo.addListener(l)
         available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)

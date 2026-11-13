@@ -116,6 +116,7 @@ internal object EpicDownloadControl {
      * Cancel of a PAUSED row, by the choice [EpicCancelPolicy] holds (the keep / delete dialog sets it first): delete the partial files
      * and the install record, or keep them for a later install to build on. Any other state is a running download, whose own cancel
      * handle (the run's flag) is invoked. The paused row's cancel handle is this, so a stale reference to it stays correct after a resume.
+     * A paused UPDATE of an installed game is never deleted: it goes back to installed whatever was chosen (see [settleCancelled]).
      */
     fun cancel(appName: String) {
         val ctx = DownloadRegistry.appContext() ?: return
@@ -127,15 +128,39 @@ internal object EpicDownloadControl {
         }
         val dir = decodeEpicPaused(pausedPrefs(ctx).getString(appName, null))?.installDir
             ?: epicPrefs(ctx).getString("epic_dir_$appName", null)
-        val delete = EpicCancelPolicy.consumeDeleteOnCancel(appName)
+        settleCancelled(ctx, appName, dir, EpicCancelPolicy.consumeDeleteOnCancel(appName))
+    }
+
+    /**
+     * Ends a cancelled download of [appName] whose files are in [dir], by [epicCancelOutcome]: an update of an installed game goes back
+     * to INSTALLED (its files are the game, never deleted, and the row loses its Pause / Resume / Cancel handles as a Steam one does);
+     * a fresh install deletes its partial files and install record when [deleteChosen], else keeps them for a later install.
+     */
+    private fun settleCancelled(ctx: Context, appName: String, dir: String?, deleteChosen: Boolean) {
+        val installed = EpicInstallState.isInstalled(ctx, appName)
         forgetPaused(ctx, appName)
         pausing.remove(appName)
-        StoreDownloadHooks.markCancelled(Store.EPIC, appName)
-        if (delete) {
-            DownloadScope.io.launch {
-                try { if (dir != null) EpicDownloadManager.deleteDir(File(dir)) } catch (_: Exception) {}
-                EpicInstallState.purge(ctx, appName)
+        val installPath = dir ?: epicPrefs(ctx).getString("epic_dir_$appName", null)
+        when (epicCancelOutcome(installed, deleteChosen)) {
+            EpicCancelOutcome.RESTORE_INSTALLED -> {
+                if (installPath == null) {
+                    StoreDownloadHooks.markCancelled(Store.EPIC, appName)
+                } else {
+                    StoreDownloadHooks.markInstalled(Store.EPIC, appName, installPath, epicPrefs(ctx).getLong("epic_size_$appName", 0L))
+                    DownloadRegistry.update(key(appName)) {
+                        it.copy(supportsPause = false, pause = null, cancel = null, speedBps = 0L, etaSeconds = -1L,
+                            queuePosition = 0, error = null)
+                    }
+                }
             }
+            EpicCancelOutcome.DELETE_PARTIAL -> {
+                StoreDownloadHooks.markCancelled(Store.EPIC, appName)
+                DownloadScope.io.launch {
+                    try { if (dir != null) EpicDownloadManager.deleteDir(File(dir)) } catch (_: Exception) {}
+                    EpicInstallState.purge(ctx, appName)
+                }
+            }
+            EpicCancelOutcome.KEEP_PARTIAL -> StoreDownloadHooks.markCancelled(Store.EPIC, appName)
         }
     }
 
@@ -162,6 +187,7 @@ internal object EpicDownloadControl {
         val dir = saved?.installDir
             ?: epicPrefs(ctx).getString("epic_dir_$appName", null)
             ?: File(File(ctx.filesDir, "imagefs/epic_games"), epicFolderName(title, appName)).absolutePath
+        val installDir = File(dir)
         val ns = detail?.namespace.orEmpty()
         val cat = detail?.catalogItemId.orEmpty()
 
@@ -184,20 +210,22 @@ internal object EpicDownloadControl {
         }
 
         DownloadScope.io.launch {
+            // Until the transfer starts, a failure only refuses this Resume: the download stays paused (with Resume) and says why.
+            var transferStarted = false
             try {
                 if (ns.isEmpty() || cat.isEmpty()) {
-                    fail(ctx, appName, "Open this game's page in the Epic store once, then resume")
+                    failParked(ctx, appName, installDir, title, cover, "Open this game's page in the Epic store once, then resume")
                     return@launch
                 }
                 val token = EpicCredentialStore.getValidAccessToken(ctx)
-                if (token == null) { fail(ctx, appName, "Login required"); return@launch }
+                if (token == null) { failParked(ctx, appName, installDir, title, cover, "Login required"); return@launch }
                 val manifestJson = EpicApiClient.getManifestApiJson(token, ns, cat, appName)
-                if (manifestJson == null) { fail(ctx, appName, "Failed to fetch manifest"); return@launch }
+                if (manifestJson == null) { failParked(ctx, appName, installDir, title, cover, "Failed to fetch manifest"); return@launch }
 
-                val installDir = File(dir)
                 epicPrefs(ctx).edit().putString("epic_dir_$appName", installDir.absolutePath).apply()
                 val installTags = EpicInstallTags.tagsForCurrentContainer(ctx)
                 val tracker = EpicProgressTracker(appName)
+                transferStarted = true
                 val ok = EpicDownloadManager.install(
                     ctx, manifestJson, token, installDir.absolutePath, installTags, cancelled,
                     object : EpicDownloadManager.ProgressCallback {
@@ -216,12 +244,7 @@ internal object EpicDownloadControl {
                         parkPaused(ctx, appName, installDir.absolutePath, title, cover)
                         return@launch
                     }
-                    forgetPaused(ctx, appName)
-                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
-                        try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}
-                        EpicInstallState.purge(ctx, appName)
-                    }
-                    StoreDownloadHooks.markCancelled(Store.EPIC, appName)
+                    settleCancelled(ctx, appName, installDir.absolutePath, EpicCancelPolicy.consumeDeleteOnCancel(appName))
                     return@launch
                 }
                 if (!ok) { fail(ctx, appName, EpicDownloadManager.withFailureReason("Download failed")); return@launch }
@@ -244,7 +267,9 @@ internal object EpicDownloadControl {
                 StoreDownloadHooks.markInstalled(Store.EPIC, appName, installDir.absolutePath, p.getLong("epic_size_$appName", 0L))
             } catch (e: Exception) {
                 Log.w(TAG, "resume($appName) failed: ${e.message}")
-                if (!cancelled.get()) fail(ctx, appName, e.message ?: "Unknown error")
+                val msg = e.message ?: "Unknown error"
+                if (!transferStarted) failParked(ctx, appName, installDir, title, cover, msg)
+                else if (!cancelled.get()) fail(ctx, appName, msg)
             } finally {
                 resuming.remove(appName)
             }
@@ -254,6 +279,12 @@ internal object EpicDownloadControl {
     private fun fail(ctx: Context, appName: String, msg: String) {
         forgetPaused(ctx, appName)
         StoreDownloadHooks.markFailed(Store.EPIC, appName, msg)
+    }
+
+    /** A Resume that could not start the transfer: the download goes back to PAUSED (still resumable) and the card shows [msg]. */
+    private fun failParked(ctx: Context, appName: String, installDir: File, title: String, cover: String?, msg: String) {
+        parkPaused(ctx, appName, installDir.absolutePath, title, cover)
+        DownloadRegistry.update(key(appName)) { it.copy(error = msg) }
     }
 
     /** The install folder name the Epic screens derive from a title. */

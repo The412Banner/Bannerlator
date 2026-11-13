@@ -52,11 +52,6 @@ import java.io.File
  * view (XboxRuntime) inside the Wine session.
  */
 class XboxGameDetailActivity : ComponentActivity() {
-    // Left-to-right layout whatever the phone's language (see AppLocale).
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
-    }
-
     private lateinit var game: XboxGame
     private var installed by mutableStateOf<XboxInstallState.Installed?>(null)
     private var downloading by mutableStateOf(false)

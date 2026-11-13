@@ -9,6 +9,7 @@
     <string name="xmb_dl_empty_body">Games you download from a store show up here.</string>
     <string name="xmb_dl_status_downloading">Downloading · %1$d%%</string>
     <string name="xmb_dl_status_paused">Paused · %1$d%%</string>
+    <string name="xmb_dl_status_paused_why">Paused · %1$d%% · %2$s</string>
     <string name="xmb_dl_status_queued">Waiting for its turn · #%1$d</string>
     <string name="xmb_dl_status_installed">Installed</string>
     <string name="xmb_dl_status_update">Installed · Update available</string>

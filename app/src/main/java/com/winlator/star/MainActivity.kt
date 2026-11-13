@@ -100,11 +100,6 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
-    // Left-to-right layout whatever the phone's language (see AppLocale).
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
-    }
-
 
     companion object {
         const val PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE: Byte = 1

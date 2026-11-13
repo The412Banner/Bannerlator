@@ -44,17 +44,19 @@ object AppOrientation {
     }
 
     /**
-     * The requestedOrientation for a mode. "landscape" follows the sensor between the two landscape rotations (90 and 270 degrees),
-     * so a phone turned the other way up stays upright instead of sticking on one side; it never goes portrait.
+     * The requestedOrientation for a mode. In the XMB home ([xmbHome]) "landscape" follows the sensor between the two landscape
+     * rotations (90 and 270 degrees), so a phone turned the other way up stays upright instead of sticking on one side; it never
+     * goes portrait. Everywhere else it stays the plain landscape lock it always was.
      */
-    internal fun requested(mode: String): Int = when (mode) {
+    internal fun requested(mode: String, xmbHome: Boolean = false): Int = when (mode) {
         PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        LANDSCAPE -> if (xmbHome) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         else -> ActivityInfo.SCREEN_ORIENTATION_SENSOR   // "auto" — matches the manifest default
     }
 
     /** Apply the stored preference (the XMB home's lock while that mode is on) to [activity]'s requestedOrientation (call on start + on change). */
     fun apply(activity: Activity) {
-        activity.requestedOrientation = requested(if (isXmbHome(activity)) deckMode(activity) else mode(activity))
+        val xmb = isXmbHome(activity)
+        activity.requestedOrientation = requested(if (xmb) deckMode(activity) else mode(activity), xmb)
     }
 }

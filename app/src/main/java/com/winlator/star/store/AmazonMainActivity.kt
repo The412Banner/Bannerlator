@@ -52,11 +52,6 @@ import com.winlator.star.store.download.DownloadsButton
  * [AmazonGameDetailActivity]; Prime Gaming claims go through [StoreWebActivity].
  */
 class AmazonMainActivity : ComponentActivity() {
-    // Left-to-right layout whatever the phone's language (see AppLocale).
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
-    }
-
 
     companion object {
         const val EXTRA_TAB = "amazon_tab"

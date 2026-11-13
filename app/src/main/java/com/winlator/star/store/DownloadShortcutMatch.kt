@@ -4,23 +4,24 @@ import com.winlator.star.store.download.Store
 
 /**
  * Which shortcuts belong to a game that is being uninstalled from the Download Manager: the ones the store tagged with the game's id
- * (Steam's `steamAppId`, Epic's `epicAppName`), and any whose exe lies inside the game's install folder (how the other stores' shortcuts,
- * and ones added by hand, are tied to it). Pure, so it can be tested.
+ * (Steam's `steamAppId`, Epic's `epicAppName`), and any whose exe, resolved to an Android path, lies inside the game's install folder
+ * (how the other stores' shortcuts, and ones added by hand, are tied to it). Only a real path prefix counts: another folder that
+ * merely shares the name (a backup copy, the same name on another volume, a longer sibling name) is not the game. Pure, so it can be
+ * tested.
  */
 internal object DownloadShortcutMatch {
-    /** A folder shorter than this (as a path key) is never used for matching: it could swallow unrelated games. */
+    /** A folder shorter than this (as a path) is never used for matching: it could swallow unrelated games. */
     private const val MIN_KEY_LENGTH = 8
 
     /**
-     * True when the shortcut whose exe is [shortcutPath] and whose extras [extra] reads (empty string when absent) belongs to the
-     * game [id] of [store], installed in [installPath] (inside the container drive at [imageFsRoot]).
+     * True when the shortcut whose extras [extra] reads (empty string when absent) and whose exe resolves to the Android path
+     * [exeAndroid] (null when it could not be resolved) belongs to the game [id] of [store], installed in [installPath].
      */
     fun belongs(
         store: Store,
         id: String,
         installPath: String?,
-        imageFsRoot: String,
-        shortcutPath: String?,
+        exeAndroid: String?,
         extra: (String) -> String,
     ): Boolean {
         if (id.isNotEmpty()) {
@@ -30,20 +31,16 @@ internal object DownloadShortcutMatch {
                 else -> Unit
             }
         }
-        return insideInstallFolder(installPath, imageFsRoot, shortcutPath)
+        return insideInstallFolder(installPath, exeAndroid)
     }
 
-    /** True when [shortcutPath] (a Windows or Android path) lies inside [installPath]. */
-    fun insideInstallFolder(installPath: String?, imageFsRoot: String, shortcutPath: String?): Boolean {
-        if (installPath.isNullOrBlank() || shortcutPath.isNullOrBlank()) return false
-        val root = flat(imageFsRoot)
-        val abs = flat(installPath)
-        val rel = if (root.isNotEmpty() && abs.startsWith(root)) abs.substring(root.length) else abs
-        val keys = listOf(rel, abs).map { "/" + it.trim('/') + "/" }.filter { it.length >= MIN_KEY_LENGTH }.distinct()
-        var exec = shortcutPath.replace('\\', '/').lowercase().trim().replaceFirst(Regex("^[a-z]:"), "")
-        if (!exec.startsWith("/")) exec = "/$exec"
-        return keys.any { exec.contains(it) }
+    /** True when the Android path [exeAndroid] lies inside [installPath] (the folder itself is not "inside"). */
+    fun insideInstallFolder(installPath: String?, exeAndroid: String?): Boolean {
+        if (installPath.isNullOrBlank() || exeAndroid.isNullOrBlank()) return false
+        val dir = flat(installPath)
+        if (dir.length < MIN_KEY_LENGTH) return false
+        return flat(exeAndroid).startsWith("$dir/")
     }
 
-    private fun flat(p: String): String = p.replace('\\', '/').lowercase().trimEnd('/')
+    private fun flat(p: String): String = p.trim().trim('"').replace('\\', '/').lowercase().trimEnd('/')
 }

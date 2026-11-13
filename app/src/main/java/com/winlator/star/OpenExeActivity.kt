@@ -83,11 +83,6 @@ import kotlin.coroutines.resume
  * Run once is the File Manager's own Run ([ExeQuickRun]); Add to library is the Games "+" importer.
  */
 class OpenExeActivity : ComponentActivity() {
-    // Left-to-right layout whatever the phone's language (see AppLocale).
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
-    }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

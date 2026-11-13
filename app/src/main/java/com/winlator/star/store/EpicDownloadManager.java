@@ -786,6 +786,14 @@ public class EpicDownloadManager {
             DownloadSpeedConfig cfg = StoreDownloadTier.config(ctx);
             final int rustWorkers = Math.max(1, Math.min(128, cfg.getMaxNetworkWindow()));
             final int rustProcess = Math.max(2, Math.max(1, Math.min(32, cfg.getMaxDecompress())));
+            // The engine credits the chunks already in the resume cache up front, in one burst (driver.rs: same rule, a cached
+            // chunk's size or 1). Those bytes were not fetched, so the speed meter must not see them: it gets the bytes past this.
+            final File rustChunkCache = new File(installDirPath, ".chunks");
+            long cachedBytes = 0;
+            for (ChunkInfo c : neededChunks) {
+                if (new File(rustChunkCache, c.guidStr()).exists()) cachedBytes += Math.max(c.fileSize, 1);
+            }
+            final long preBytes = cachedBytes;
             com.winlator.star.store.blsteam.BlEpicDownload.Result res =
                     com.winlator.star.store.blsteam.BlEpicDownload.run(
                             manifestBytes, installDirPath, prefixes, pendingIdx, totalChunks, totalBytes,
@@ -805,6 +813,8 @@ public class EpicDownloadManager {
                     completedBytes.set(bytesDone);
                     completedCount.set(chunksDone);
                     long done = bytesDone;
+                    // Bytes actually fetched: the cached chunks credited at the start are not (as netBytes in the Java pool).
+                    long net  = Math.max(0L, bytesDone - preBytes);
                     int  cnt  = chunksDone;
                     int  pct  = (int)(done * 80L / fTotalBytes);
 
@@ -812,14 +822,14 @@ public class EpicDownloadManager {
                     long prevMs    = lastSpeedMs.get();
                     long timeDelta = nowMs - prevMs;
                     if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
-                        long prevB  = lastSpeedBytes.getAndSet(done);
-                        long bDelta = done - prevB;
+                        long prevB  = lastSpeedBytes.getAndSet(net);
+                        long bDelta = net - prevB;
                         if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
                     }
 
                     String mb    = String.format("%.1f / %.1f MB", done / 1048576.0, fTotalBytes / 1048576.0);
                     String speed = formatSpeed(currentSpeedBps.get());
-                    downloadProgress(progressCallback, speedMeter, bytesDone, done, fTotalBytes,
+                    downloadProgress(progressCallback, speedMeter, net, done, fTotalBytes,
                             "Downloading chunks (" + cnt + "/" + totalChunks + ")  " + mb
                             + (speed.isEmpty() ? "" : "  " + speed), pct);
                 }

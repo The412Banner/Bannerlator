@@ -110,11 +110,6 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * Epic/GOG/Amazon land in a later phase.
  */
 class DownloadManagerActivity : ComponentActivity() {
-    // Left-to-right layout whatever the phone's language (see AppLocale).
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
-    }
-
 
     // The cards' actions and the dialogs they raise are shared with the XMB Home's Downloads page (DownloadActions.kt).
     private val actions by lazy { DownloadActions(this) }
@@ -659,7 +654,7 @@ private fun ActiveContent(
     }
     Text(
         text = when (entry.state) {
-            DownloadState.PAUSED -> "Paused — $pct%$sizePart"
+            DownloadState.PAUSED -> pausedStatusText(pct, sizePart, entry.error)
             DownloadState.QUEUED -> "Queued…"
             else -> "Downloading… $pct%$sizePart$speedEta"
         },

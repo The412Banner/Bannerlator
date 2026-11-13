@@ -78,4 +78,37 @@ class DownloadControlLogicTest {
         assertEquals(EpicPausedInfo("/p", 0, 0L, 0L), decodeEpicPaused("/p\nx\ny\nz"))
         assertEquals(EpicPausedInfo("/p", 100, 0L, 0L), decodeEpicPaused("/p\n250\n-4\n-9"))
     }
+
+    @Test fun pausedStatus_withoutAnError_isWhereItStopped() {
+        assertEquals("Paused — 42%", pausedStatusText(42, "", null))
+        assertEquals("Paused — 42%  (1 MB / 2 MB)", pausedStatusText(42, "  (1 MB / 2 MB)", null))
+    }
+
+    @Test fun pausedStatus_blankErrorIsIgnored() {
+        assertEquals("Paused — 7%", pausedStatusText(7, "", ""))
+        assertEquals("Paused — 7%", pausedStatusText(7, "", "   "))
+    }
+
+    @Test fun pausedStatus_aRefusedResumeSaysWhy() {
+        assertEquals("Paused — 42% — Login required", pausedStatusText(42, "", "Login required"))
+        assertEquals("Paused — 42%  (1 MB / 2 MB) — Login required", pausedStatusText(42, "  (1 MB / 2 MB)", "Login required"))
+    }
+
+    @Test fun shortcuts_goOnlyWhenTheFilesReallyWent() {
+        assertTrue(shouldRemoveShortcuts(ok = true, folderKept = false, imported = false))
+        assertFalse(shouldRemoveShortcuts(ok = false, folderKept = false, imported = false))
+        assertFalse(shouldRemoveShortcuts(ok = true, folderKept = true, imported = false))
+        assertFalse(shouldRemoveShortcuts(ok = true, folderKept = false, imported = true))
+        assertFalse(shouldRemoveShortcuts(ok = false, folderKept = true, imported = true))
+    }
+
+    @Test fun epicCancel_installedGameIsRestored_whateverWasChosen() {
+        assertEquals(EpicCancelOutcome.RESTORE_INSTALLED, epicCancelOutcome(installed = true, deleteChosen = true))
+        assertEquals(EpicCancelOutcome.RESTORE_INSTALLED, epicCancelOutcome(installed = true, deleteChosen = false))
+    }
+
+    @Test fun epicCancel_freshInstallFollowsTheChoice() {
+        assertEquals(EpicCancelOutcome.DELETE_PARTIAL, epicCancelOutcome(installed = false, deleteChosen = true))
+        assertEquals(EpicCancelOutcome.KEEP_PARTIAL, epicCancelOutcome(installed = false, deleteChosen = false))
+    }
 }

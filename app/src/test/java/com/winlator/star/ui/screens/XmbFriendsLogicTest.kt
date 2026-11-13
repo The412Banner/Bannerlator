@@ -3,6 +3,7 @@ package com.winlator.star.ui.screens
 import com.winlator.star.store.SteamFriendsStore
 import com.winlator.star.store.SteamFriendsStore.Presence
 import com.winlator.star.store.friendsOnlineCount
+import com.winlator.star.store.steamEventAffectsFriendsAvailability
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -279,5 +280,14 @@ class XmbFriendsLogicTest {
     @Test fun normalise_anIndexOffTheListChangesNothing() {
         val cursor = XmbFriendsCursor("f:2", 1, "f:2", false)
         assertEquals(cursor, xmbFriendsNormalise(emptyList(), cursor, 0))
+    }
+
+    @Test fun availabilityIsReReadOnlyForSessionEvents() {
+        for (ev in listOf("SteamStatus:ONLINE", "LoggedIn:76561198000000000", "LoggedIn", "LoggedOut", "SessionExpired", "Connected", "Disconnected", "AccountSwitched:76561198000000000")) {
+            assertTrue(ev, steamEventAffectsFriendsAvailability(ev))
+        }
+        for (ev in listOf("LibraryProgress:2:5:10", "LibrarySynced:12", "DepotKeyReady:1", "LoginFailed:Timeout", "NoInternet", "")) {
+            assertFalse(ev, steamEventAffectsFriendsAvailability(ev))
+        }
     }
 }

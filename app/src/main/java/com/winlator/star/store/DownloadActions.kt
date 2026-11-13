@@ -231,7 +231,7 @@ internal class DownloadActions(private val activity: Activity, private val inlin
         // A Steam game found in another Steam client's library: those files and that manifest are the client's.
         val imported = entry.store == Store.STEAM &&
             entry.id.toIntOrNull()?.let { SteamLibraryImport.isImported(activity, it) } == true
-        StoreUninstaller.run(
+        StoreUninstaller.runReporting(
             installDir = entry.installPath,
             mark = {
                 if (entry.store == Store.STEAM) {
@@ -249,14 +249,15 @@ internal class DownloadActions(private val activity: Activity, private val inlin
                 imported || steamId != null && !path.isNullOrEmpty() &&
                     SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), steamId)
             },
-        ) { ok ->
+        ) { ok, kept ->
             // Clear the durable-library row (also drops the live registry entry) AND the store's
             // OWN native install record — otherwise the originating store's list/detail keeps
             // reading "installed" from a record the Manager never touched (device-observed bug).
             DownloadRegistry.removeLibraryEntry(entry.key)
             purgeNativeInstall(entry)
-            // The game's shortcuts go with it (a game kept for another client's sake keeps them: it is still there).
-            if (!imported) removeShortcutsOf(entry)
+            // The game's shortcuts go with it, but only when its folder is really gone: a folder kept for another game or client
+            // (or a delete that failed) still holds exes those shortcuts run.
+            if (shouldRemoveShortcuts(ok, kept, imported)) removeShortcutsOf(entry)
             uninstallingName = null
             notice = when {
                 imported -> activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
@@ -272,13 +273,15 @@ internal class DownloadActions(private val activity: Activity, private val inlin
      */
     private fun removeShortcutsOf(entry: DownloadEntry) {
         val ctx = activity.applicationContext
-        val imageFsRoot = File(ctx.filesDir, "imagefs").absolutePath
         val installPath = entry.installPath
         Thread {
             val removed = runCatching {
                 var count = 0
                 for (s in com.winlator.star.container.ContainerManager(ctx).loadShortcuts()) {
-                    val mine = DownloadShortcutMatch.belongs(entry.store, entry.id, installPath, imageFsRoot, s.path) { s.getExtra(it) }
+                    // The exe as an Android path: a shortcut may hold a drive path (A:\..., Z:\...) that its container maps somewhere.
+                    val exeAndroid = if (s.path.startsWith("/")) s.path
+                    else runCatching { com.winlator.star.core.CopyGameToDriveC.parse(s).exeAndroid?.absolutePath }.getOrNull()
+                    val mine = DownloadShortcutMatch.belongs(entry.store, entry.id, installPath, exeAndroid) { s.getExtra(it) }
                     if (!mine) continue
                     val lnk = File(s.file.path.substringBeforeLast('.') + ".lnk")
                     if (s.file.delete()) {
@@ -316,7 +319,11 @@ internal class DownloadActions(private val activity: Activity, private val inlin
      * unchanged).
      */
     fun cancel(entry: DownloadEntry) {
-        if (entry.store == Store.EPIC) {
+        if (entry.store == Store.EPIC && EpicInstallState.isInstalled(activity, entry.id)) {
+            // An update of an installed game: the keep / delete choice is about partial files, and the installed game stays whatever
+            // is chosen, so there is nothing to ask (EpicDownloadControl settles it back to installed).
+            entry.cancel?.invoke()
+        } else if (entry.store == Store.EPIC) {
             AlertDialog.Builder(activity)
                 .setTitle("Cancel download?")
                 .setMessage("Keep the partial download so you can resume later, or delete all " +

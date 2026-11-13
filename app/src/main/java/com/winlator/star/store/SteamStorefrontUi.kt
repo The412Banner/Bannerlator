@@ -352,7 +352,10 @@ fun StoreCapsule(
     aspectRatio: Float? = 92f / 43f,
 ) {
     val ctx = LocalContext.current
-    val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
+    // The app's published capsule is read here too: it is null until the art map is loaded (a cold start), and keying on it
+    // rebuilds the candidates, with that capsule first, once it is.
+    val published = SteamLibraryArt.header(appId)
+    val candidates = remember(appId, apiUrl, published) { capsuleCandidates(appId, apiUrl) }
     // Phase 1 cursor. == candidates.size means every static candidate failed.
     var attempt by remember(candidates) { mutableStateOf(0) }
     // Phase 2 cursor: index into CAPSULE_RESOLVERS. == size means they all came up empty.

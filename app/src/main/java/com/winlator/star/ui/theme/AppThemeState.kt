@@ -104,7 +104,7 @@ object AppThemeState {
         }
 
     /** Dim accent paired with [colorScheme]. For real presets it's the preset's own
-     *  accentDim (so every preset keeps its own look, Charcoal the default one); for a custom accent
+     *  accentDim (AMOLED = exact #002277 so the default is unchanged); for a custom accent
      *  it's derived from the live accent so dim fills/borders follow the picker too. */
     val accentDim: kotlinx.coroutines.flow.Flow<Color> =
         combine(_presetIndex, _customAccent) { index, accent ->
@@ -131,8 +131,8 @@ object AppThemeState {
             themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
         }
 
-        // No saved style yet: a fresh install starts in Lab at 100 % sizes; an update keeps Classic and its sizes. Neither saves a
-        // theme: anyone who never picked a preset (a fresh install or an update) gets DEFAULT_PRESET_NAME, see below.
+        // No saved style yet: a fresh install starts in Lab with Carbon & Ember at 100 % sizes; an update keeps Classic, its theme
+        // (AMOLED when none was ever picked) and sizes.
         if (!themePrefs.contains("ui_style")) {
             val fresh = runCatching {
                 val pi = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -141,6 +141,8 @@ object AppThemeState {
             val edit = themePrefs.edit()
                 .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
                 .putBoolean("simple_home", fresh)
+            // A fresh install starts on Carbon & Ember (an update with no saved preset is on AMOLED, the default).
+            if (fresh && !themePrefs.contains("preset_index") && !themePrefs.contains("preset_name")) edit.putString("preset_name", NEW_INSTALL_PRESET_NAME)
             // Sizes: a fresh install starts at 100 %; an update keeps its own (90 % when never changed).
             if (fresh && !themePrefs.contains("ui_scale")) edit.putFloat("ui_scale", 1f)
             if (fresh && !themePrefs.contains("font_scale")) edit.putFloat("font_scale", 1f)
@@ -155,7 +157,7 @@ object AppThemeState {
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF0055FF).toArgb())
         _customAccent.value = Color(savedAccent)
         // The base of a Custom accent: its saved name, else its old position, else (Custom picked before a base was ever saved)
-        // AMOLED, as it always was; with no preset saved at all the default preset.
+        // AMOLED, as it always was; with no preset saved at all the default preset (also AMOLED).
         val oldBase = when {
             themePrefs.contains("custom_base_index") -> themePrefs.getInt("custom_base_index", 1)
             oldIndex != null || themePrefs.contains("preset_name") -> 1

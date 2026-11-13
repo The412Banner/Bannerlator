@@ -352,7 +352,9 @@ fun StoreCapsule(
     aspectRatio: Float? = 92f / 43f,
 ) {
     val ctx = LocalContext.current
-    val candidates = remember(appId, apiUrl) { capsuleCandidates(appId, apiUrl) }
+    // Keyed on the art version too: on a cold start the published header can arrive after this capsule first composed.
+    val artVersion = SteamLibraryArt.version.value
+    val candidates = remember(appId, apiUrl, artVersion) { capsuleCandidates(appId, apiUrl) }
     // Phase 1 cursor. == candidates.size means every static candidate failed.
     var attempt by remember(candidates) { mutableStateOf(0) }
     // Phase 2 cursor: index into CAPSULE_RESOLVERS. == size means they all came up empty.

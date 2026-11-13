@@ -86,6 +86,14 @@ object SteamLibraryArt {
     /** Called (on the refreshing thread) after a snapshot replaced the art map, so a screen showing art from it can read it again. */
     @Volatile var onRefreshed: (() -> Unit)? = null
 
+    private val _version = androidx.compose.runtime.mutableStateOf(0)
+
+    /**
+     * Goes up each time the art map changes (the disk mirror read, a snapshot swapped in). A composable that builds something from
+     * [header] / [libraryCapsule] keys its remember on it, so art that arrives after the screen opened is picked up.
+     */
+    val version: androidx.compose.runtime.State<Int> get() = _version
+
     /**
      * Call with any Context so the disk mirror can be found; safe to call repeatedly. On the main thread the mirror is read on a
      * background thread (lookups return null until it is there, then [onRefreshed] runs); on any other thread it is read right here.
@@ -151,7 +159,10 @@ object SteamLibraryArt {
             StorefrontLog.i(TAG, "PICS art: snapshot carried no artwork — keeping ${art.size} cached entry(s)")
             return
         }
-        synchronized(lock) { art = parsed }
+        synchronized(lock) {
+            art = parsed
+            _version.value = _version.value + 1
+        }
         val withHeader = parsed.values.count { it.header != null }
         StorefrontLog.i(
             TAG,
@@ -237,6 +248,7 @@ object SteamLibraryArt {
             // What a snapshot already put in wins over the older mirror.
             art = restored + art
             loadedFromDisk = true
+            _version.value = _version.value + 1
         }
     }
 

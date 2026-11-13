@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 20:09 EST — Epic hostname shim + Present cleanup (fix/epic-hostname-present 30529b7d, CI running)
+
+- **Why (user):** "add both on a new branch off main" — the two leftovers from the 11-10 GameNative/StevenMXZ/Pipetto recon (bannerlator-upstream-ideas).
+- **Branch:** fix/epic-hostname-present off main 2ca4c768c, worktree `/root/src/Bannerlator-wt/epic-hostname-present`.
+- **Built:**
+  - fd467d1ce = cherry-pick of wip/upstream-small-fixes-full 593a79b5 (applied clean): Present ConfigureNotify on window geometry change, last ConfigureNotify with window-destroyed flag + drop of the window's Present selections and FPS-limiter timing when a window is freed. From Ludashi 4.1 2d45b7b6 (MIT), origin brunodev85/winlator-app 68e375cf (LGPL-2.1). Checked on current main: listener interfaces have default methods, windowManager exists before setupExtensions().
+  - f578a9b9e: `libhostname_fix.so` (app/src/main/cpp/winlator/hostname_fix.c), preloaded for every game like liblocale_fix.so (GuestProgramLauncherComponent). gethostname(): "localhost"/empty → device IPv4 from a connected UDP socket (no packets). Not for wineboot (prctl name "wineboot*"): Wine's create_computer_name_keys builds the Windows computer name from gethostname at every start → with an address it would become "192". ws2_32 unix_gethostname calls libc gethostname directly, so games still get the address. `HOSTNAME_FIX_DISABLE=1` turns it off. Ported from GameNative #2009 (Cole McCarren, 219cda9b, GPL-3.0).
+  - 30529b7d8: README credits (Cole McCarren row extended, new StevenMXZ/brunodev85 row).
+- **Host check:** gcc -Wall -Wextra clean; LD_PRELOAD test in the container: real "localhost" → shim "192.168.1.208"; as "wineboot.exe" → "localhost"; HOSTNAME_FIX_DISABLE=1 → "localhost"; errno kept. Device: `uname -n` = localhost (FIT, rootsh).
+- **CI:** run 43342725648 (headSha 30529b7d checked), running.
+- **Not checked:** whether our Proton has GameNative/proton-wine #46 (crypt32 CertGetEnhancedKeyUsage, needed for EOS websockets). x86_64 Wine under box64 probably bypasses LD_PRELOAD interposers (box64 wraps libc) → the shim likely only acts on arm64ec Wine.
+- **Device test plan:** stage APK, ask, install. (1) shim alone: the APK's libhostname_fix.so with a bionic program on the FIT; (2) X11 game A/B for Present: cube + DiRT FPS before/after, resize/close a window, 0 FATAL; (3) Epic EOS P2P game online if one is available (needs an Epic game with peer-to-peer online play).
+- **Resume:** worktree above; CI watch: `gh run view 43342725648 -R The412Banner/Bannerlator --json conclusion,jobs`; artifact: scratchpad dl-artifact.sh 43342725648 <flavor> <dir>.
+
 ## 2026-11-12 17:35 EST — 🔀 MERGED feat/lab-download-from-source + fix/launcher-resume (main a9a69a466; user: "it works, merge both to main")
 
 - **Merged:** backup `refs/backup/20261112/main-before-lab-download-launcher-resume` = 8c199678a. `--no-ff` d2336643c (feat/lab-download-from-source 5e7233f48) then a9a69a466 (fix/launcher-resume 7ef76210f); only PROGRESS_LOG.md conflicted (both entries kept). No MERGE_HEAD, authored The412Banner, no AI trailer. Pushed 8c199678a..a9a69a466 (fast-forward).

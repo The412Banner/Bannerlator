@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-12 20:09 EST — Epic hostname shim + Present cleanup (fix/epic-hostname-present 30529b7d, CI running)
+## 2026-11-12 20:09 EST — Epic hostname shim + Present cleanup (fix/epic-hostname-present 30529b7d, CI green, staged)
 
 - **Why (user):** "add both on a new branch off main" — the two leftovers from the 11-10 GameNative/StevenMXZ/Pipetto recon (bannerlator-upstream-ideas).
 - **Branch:** fix/epic-hostname-present off main 2ca4c768c, worktree `/root/src/Bannerlator-wt/epic-hostname-present`.
@@ -9,7 +9,9 @@
   - f578a9b9e: `libhostname_fix.so` (app/src/main/cpp/winlator/hostname_fix.c), preloaded for every game like liblocale_fix.so (GuestProgramLauncherComponent). gethostname(): "localhost"/empty → device IPv4 from a connected UDP socket (no packets). Not for wineboot (prctl name "wineboot*"): Wine's create_computer_name_keys builds the Windows computer name from gethostname at every start → with an address it would become "192". ws2_32 unix_gethostname calls libc gethostname directly, so games still get the address. `HOSTNAME_FIX_DISABLE=1` turns it off. Ported from GameNative #2009 (Cole McCarren, 219cda9b, GPL-3.0).
   - 30529b7d8: README credits (Cole McCarren row extended, new StevenMXZ/brunodev85 row).
 - **Host check:** gcc -Wall -Wextra clean; LD_PRELOAD test in the container: real "localhost" → shim "192.168.1.208"; as "wineboot.exe" → "localhost"; HOSTNAME_FIX_DISABLE=1 → "localhost"; errno kept. Device: `uname -n` = localhost (FIT, rootsh).
-- **CI:** run 43342725648 (headSha 30529b7d checked), running.
+- **CI:** run 43342725648 (headSha 30529b7d checked) — 4/4 green (20:18 EST); no warnings on the changed files (full logs zip scanned). APK has lib/arm64-v8a/libhostname_fix.so (6608 B).
+- **Shim alone on the FIT (rootsh, CI-built lib 47d4670b…, /data/local/tmp, removed after):** /system/bin/hostname real "localhost" → with LD_PRELOAD "192.168.1.208" + one "[hostname_fix]" stderr line; HOSTNAME_FIX_DISABLE=1 → "localhost"; Termux hostname → "192.168.1.208"; same binary renamed wineboot.exe → "localhost".
+- **Staged:** /sdcard/Download/Bannerlator-epic-hostname-present-30529b7d.apk (pubg), sha256 03a58fe7… host = device. FIT still d8faad6c (installed 17:17). Waiting for the user's yes to install.
 - **Not checked:** whether our Proton has GameNative/proton-wine #46 (crypt32 CertGetEnhancedKeyUsage, needed for EOS websockets). x86_64 Wine under box64 probably bypasses LD_PRELOAD interposers (box64 wraps libc) → the shim likely only acts on arm64ec Wine.
 - **Device test plan:** stage APK, ask, install. (1) shim alone: the APK's libhostname_fix.so with a bionic program on the FIT; (2) X11 game A/B for Present: cube + DiRT FPS before/after, resize/close a window, 0 FATAL; (3) Epic EOS P2P game online if one is available (needs an Epic game with peer-to-peer online play).
 - **Resume:** worktree above; CI watch: `gh run view 43342725648 -R The412Banner/Bannerlator --json conclusion,jobs`; artifact: scratchpad dl-artifact.sh 43342725648 <flavor> <dir>.

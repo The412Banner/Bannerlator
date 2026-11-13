@@ -31,6 +31,9 @@ import com.winlator.star.ui.deck.xmbPanel
 // The confirm slot also runs DeckDialogBars (inside the dialog's own window), so landscape Deck
 // keeps Android's navigation bar hidden behind the popup, and every slot is drawn at the Deck size;
 // both are no-ops in Classic.
+/** True inside a screen that wears the Lab look in every interface (the store screens): its dialogs and menus follow. */
+internal val LocalLabLook = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 @Composable
 internal fun OutlinedAlertDialog(
     onDismissRequest: () -> Unit,
@@ -52,7 +55,7 @@ internal fun OutlinedAlertDialog(
     // for a colour of its own keeps it.
     val glass = xmbOnGlow() && containerColor == AlertDialogDefaults.containerColor
     // Lab: square Lab corners and line, Lab's title font, Lab's focus outline on the cards and buttons inside.
-    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook || LocalLabLook.current
     if (lab) {
         val accent = MaterialTheme.colorScheme.primary
         val labShape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)

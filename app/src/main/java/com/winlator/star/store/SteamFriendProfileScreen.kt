@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.background
@@ -239,7 +240,7 @@ private fun ProfileMoreButton(onViewOnSteam: () -> Unit, onRemove: () -> Unit, t
         IconButton(onClick = { expanded = true; confirmRemove = false }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = tint)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             DropdownMenuItem(
                 text = { Text("View full profile on Steam") },
                 onClick = { expanded = false; onViewOnSteam() },

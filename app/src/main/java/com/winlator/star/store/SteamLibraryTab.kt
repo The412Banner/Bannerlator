@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import android.app.Activity
 import android.content.Intent
 import androidx.annotation.StringRes
@@ -902,7 +903,7 @@ private fun LibrarySortButton(
                 else MaterialTheme.colorScheme.primary,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             LibrarySort.entries.forEach { option ->
                 DropdownMenuItem(
                     text = {

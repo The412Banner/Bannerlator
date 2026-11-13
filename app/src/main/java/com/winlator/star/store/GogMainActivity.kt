@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -280,7 +281,7 @@ fun StoreRailOverflow(
         IconButton(onClick = { expanded = true }, modifier = Modifier.steamFocusRing().xmbRailStop()) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More actions", tint = MaterialTheme.colorScheme.primary)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             items.forEach { (label, icon, action) ->
                 DropdownMenuItem(
                     text = { Text(label) },

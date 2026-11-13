@@ -123,7 +123,7 @@ internal fun StoreXmbScreen(content: @Composable () -> Unit) {
     val scheme = if (com.winlator.star.ui.theme.AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(base) else storeLabScheme(base)
     MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
         com.winlator.star.ui.deck.DeckTheme {
-            CompositionLocalProvider(LocalStoreXmb provides false) {
+            CompositionLocalProvider(LocalStoreXmb provides false, com.winlator.star.ui.screens.LocalLabLook provides true) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
                     XmbKeyboardHost(xmb, content)
                 }

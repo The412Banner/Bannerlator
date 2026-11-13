@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import com.winlator.star.ui.simple.labTile
 import android.Manifest
 import android.content.Intent
@@ -741,7 +742,7 @@ private fun RailOverflow(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             DropdownMenuItem(
                 text = { Text(if (viewMode == "grid") "Library list view" else "Library grid view") },
                 leadingIcon = {

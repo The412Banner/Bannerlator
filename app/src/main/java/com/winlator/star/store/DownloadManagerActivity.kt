@@ -36,7 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults

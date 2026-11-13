@@ -10,7 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -352,6 +352,7 @@ fun SteamSocialSettingsSheet(onDismiss: () -> Unit) {
                     onCheckedChange = { SteamFriendsStore.setSocialEnabled(ctx, it) },
                 )
                 Spacer(Modifier.height(4.dp))
+                com.winlator.star.ui.simple.SimpleRowDivider()
                 SocialSettingRow(
                     title = "Chat notifications",
                     subtitle = "Show a notification when a friend messages you.",
@@ -360,6 +361,7 @@ fun SteamSocialSettingsSheet(onDismiss: () -> Unit) {
                     onCheckedChange = { chatNotifs = it; SteamPrefs.setChatNotificationsEnabled(ctx, it) },
                 )
                 Spacer(Modifier.height(4.dp))
+                com.winlator.star.ui.simple.SimpleRowDivider()
                 SocialSettingRow(
                     title = "Notification sound",
                     subtitle = "Play a sound and pop a heads-up for new messages.",

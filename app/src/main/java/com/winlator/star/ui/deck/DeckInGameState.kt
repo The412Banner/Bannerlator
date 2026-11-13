@@ -94,7 +94,7 @@ object DeckInGameState {
     private val lab: Boolean get() = com.winlator.star.ui.theme.AppThemeState.simpleHome.value
 
     fun openQuick() {
-        if (lab) _labQuick.value = true
+        // Lab: the menu reopens on the page it was left on during this game session (Quick the first time).
         setPanel(Panel.QUICK)
     }
 
@@ -246,6 +246,7 @@ object DeckInGameState {
         controlFocused = false
         _menuTab.value = MenuTab.SCREEN
         _quickTab.value = QuickTab.QUICK
+        _labQuick.value = true
         _sessionKind.value = InGameSessionKind.WINE_X11
         _gameTitle.value = ""
         _gameShortcutPath.value = null

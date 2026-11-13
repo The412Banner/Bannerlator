@@ -1820,6 +1820,28 @@ private fun Modifier.dpadDropdown(onOpen: () -> Unit): Modifier {
     }
 }
 
+/**
+ * A drawer field's list of choices: as wide as the field, and when it opens the highlight moves into it, so the
+ * controller picks from the list (Up / Down, A; B closes it) instead of staying on the field behind it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun androidx.compose.material3.ExposedDropdownMenuBoxScope.DrawerDropdown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.exposedDropdownSize()) {
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(Unit) {
+            delay(80)
+            focusManager.moveFocus(FocusDirection.Next)
+        }
+        content()
+    }
+}
+
 /** Dim one-line explanation under a control (same style as the Controls tab's Wayland note). */
 @Composable
 private fun HelperText(text: String) {
@@ -4052,8 +4074,9 @@ internal fun ControlsContent(
                     modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { dropdownExpanded = true },
                     singleLine = true,
                 )
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
+                DrawerDropdown(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }, modifier = Modifier.outlinedMenuCard()) {
                     allItems.forEachIndexed { i, label ->
+                        if (i > 0) MenuItemDivider()
                         DropdownMenuItem(text = { Text(label) }, onClick = {
                             selectedIdx = i
                             dropdownExpanded = false
@@ -4482,7 +4505,7 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                 modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { expanded = true },
                 singleLine = true,
             )
-            ExposedDropdownMenu(
+            DrawerDropdown(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 // #333 polish: match the shared outlined-menu-card look (outline + thin divider between
@@ -4571,7 +4594,7 @@ private fun PadSection() {
             modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { if (!identityLocked) identityExpanded = true },
             singleLine = true,
         )
-        ExposedDropdownMenu(expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
+        DrawerDropdown(expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
             modifier = Modifier.outlinedMenuCard()) {
             choices.forEachIndexed { index, id ->
                 if (index > 0) MenuItemDivider()

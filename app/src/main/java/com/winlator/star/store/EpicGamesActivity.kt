@@ -507,6 +507,14 @@ class EpicGamesActivity : ComponentActivity() {
                         }
                         return@launch
                     }
+                    // An update or repair of an installed game: the game stays installed with its files.
+                    if (EpicDownloadControl.cancelKeepsInstalled(appCtx, appName)) {
+                        withContext(Dispatchers.Main) {
+                            cancelRunnables.remove(appName)
+                            downloadStates[appName] = GameDownloadState()
+                        }
+                        return@launch
+                    }
                     // Delete the partial if the user chose "Delete files" on any Cancel dialog.
                     if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
                         try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}

@@ -429,6 +429,8 @@ class EpicGameDetailActivity : ComponentActivity() {
                         EpicDownloadControl.parkPaused(appCtx, an, installDir.absolutePath, title ?: an, artCover)
                         return@launch
                     }
+                    // An update or repair of an installed game: the game stays installed with its files.
+                    if (EpicDownloadControl.cancelKeepsInstalled(appCtx, an)) { onInstallCancelled(markCancelled = false); return@launch }
                     // Delete the partial download if the user chose "Delete files" on any Cancel dialog.
                     if (EpicCancelPolicy.consumeDeleteOnCancel(an)) {
                         try { deleteDir(installDir) } catch (_: Exception) {}
@@ -502,9 +504,9 @@ class EpicGameDetailActivity : ComponentActivity() {
         }
     }
 
-    private fun onInstallCancelled() {
+    private fun onInstallCancelled(markCancelled: Boolean = true) {
         cancelDownload = null
-        appName?.let { StoreDownloadHooks.markCancelled(Store.EPIC, it) }
+        if (markCancelled) appName?.let { StoreDownloadHooks.markCancelled(Store.EPIC, it) }
         if (!isDestroyed && !isFinishing) runOnUiThread {
             if (isDestroyed || isFinishing) return@runOnUiThread
             progressVisible = false

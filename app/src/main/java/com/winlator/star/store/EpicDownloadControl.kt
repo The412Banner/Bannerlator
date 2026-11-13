@@ -91,6 +91,30 @@ internal object EpicDownloadControl {
         StoreDownloadHooks.markPaused(Store.EPIC, appName, pause = { resume(appName) }, cancel = { cancel(appName) })
     }
 
+    /**
+     * The install folder of [appName] when it is an installed game (its folder and recorded launch exe are on disk, the rule
+     * EpicLibrarySync uses), else null. A download of an installed game is an update or a repair.
+     */
+    fun installedDir(ctx: Context, appName: String): String? {
+        val p = epicPrefs(ctx.applicationContext)
+        val dir = p.getString("epic_dir_$appName", null) ?: return null
+        val exe = p.getString("epic_exe_$appName", null) ?: return null
+        return if (File(dir).isDirectory && File(exe).isFile) dir else null
+    }
+
+    /**
+     * Cancel of an update or repair of an installed game: the game stays installed with its files, as Steam's cancel does, and a
+     * "Delete files" choice is dropped (it would delete the installed game). True when [appName] was such a game and is handled.
+     */
+    fun cancelKeepsInstalled(ctx: Context, appName: String): Boolean {
+        val dir = installedDir(ctx, appName) ?: return false
+        EpicCancelPolicy.consumeDeleteOnCancel(appName)
+        forgetPaused(ctx, appName)
+        pausing.remove(appName)
+        StoreDownloadHooks.markInstalled(Store.EPIC, appName, dir, epicPrefs(ctx.applicationContext).getLong("epic_size_$appName", 0L))
+        return true
+    }
+
     /** True if [appName] was paused in an earlier run of the app (see [seedPaused]). */
     fun isPersistedPaused(ctx: Context, appName: String): Boolean = pausedPrefs(ctx).contains(appName)
 
@@ -125,6 +149,7 @@ internal object EpicDownloadControl {
             cur.cancel?.invoke()
             return
         }
+        if (cancelKeepsInstalled(ctx, appName)) return
         val dir = decodeEpicPaused(pausedPrefs(ctx).getString(appName, null))?.installDir
             ?: epicPrefs(ctx).getString("epic_dir_$appName", null)
         val delete = EpicCancelPolicy.consumeDeleteOnCancel(appName)
@@ -216,6 +241,7 @@ internal object EpicDownloadControl {
                         parkPaused(ctx, appName, installDir.absolutePath, title, cover)
                         return@launch
                     }
+                    if (cancelKeepsInstalled(ctx, appName)) return@launch
                     forgetPaused(ctx, appName)
                     if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
                         try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}

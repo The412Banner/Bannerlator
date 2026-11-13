@@ -5,7 +5,6 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -23,9 +22,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -79,10 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -91,12 +84,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.winlator.star.R
-import com.winlator.star.ui.LocalXmbHintInset
-import com.winlator.star.ui.deck.DeckFloatingHint
-import com.winlator.star.ui.deck.GlyphKind
-import com.winlator.star.ui.deck.HINT_BOTTOM_GAP
-import com.winlator.star.ui.deck.LocalXmbKeyboard
 import com.winlator.star.ui.deck.ScreenScale
 import com.winlator.star.ui.deck.XmbEditTapCatcher
 import com.winlator.star.ui.deck.XmbGlassBackdrop
@@ -114,7 +101,6 @@ import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.rememberXmbEdit
 import com.winlator.star.ui.deck.rememberXmbFocusGroup
 import com.winlator.star.ui.deck.rememberXmbHighlightItem
-import com.winlator.star.ui.deck.rememberXmbHintDensity
 import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
@@ -172,8 +158,7 @@ internal fun StoreXmbScreen(content: @Composable () -> Unit) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
                     // One gliding highlight for the screen, in every interface: the stores look the same in all of them.
                     XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
-                        // The Back hint of XMB home floats over the page, inside the keyboard host so it steps aside while the keyboard is up.
-                        XmbKeyboardHost(xmb) { XmbBackHintLayer(xmb, content = content) }
+                        XmbKeyboardHost(xmb) { content() }
                     }
                 }
             }
@@ -201,56 +186,6 @@ internal fun storeLabScheme(base: androidx.compose.material3.ColorScheme): andro
 )
 
 /**
- * XMB home: the content of a store screen with a muted "B Back" hint floating at the bottom right, the look of the shell's
- * Search hint. A tap runs the same back action as the B button (the activity's back dispatcher: a section's own back handler
- * first, then the screen closes). It steps aside while the XMB keyboard panel is up, and it provides [LocalXmbHintInset] so
- * anything floating at the bottom can lift clear of it. The hint is drawn at Home's size and place (the Deck density, 16 dp
- * from the camera cut-out's end edge). Not [enabled]: [content] unchanged.
- */
-@Composable
-internal fun XmbBackHintLayer(enabled: Boolean, content: @Composable () -> Unit) {
-    if (!enabled) {
-        content()
-        return
-    }
-    val ss = rememberScreenScale()
-    val keyboard = LocalXmbKeyboard.current
-    val dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    // The hint is drawn at the Deck style's density and at Home's place (the shell's hint row), so it looks the same on every
-    // page. The inset the page lifts its floating buttons by is in this screen's own dp: convert it.
-    val outer = LocalDensity.current
-    val hintDensity = rememberXmbHintDensity()
-    val k = hintDensity.density / outer.density
-    val cutoutBottom = WindowInsets.displayCutout.asPaddingValues().calculateBottomPadding()
-    CompositionLocalProvider(LocalXmbHintInset provides (ss.dp(HINT_BOTTOM_GAP) + XMB_BACK_HINT_HEIGHT) * k + cutoutBottom) {
-        Box(Modifier.fillMaxSize()) {
-            content()
-            if (keyboard?.panelOpen != true) {
-                CompositionLocalProvider(LocalDensity provides hintDensity) {
-                    val dir = LocalLayoutDirection.current
-                    val cutout = WindowInsets.displayCutout.asPaddingValues()
-                    DeckFloatingHint(
-                        glyph = "B",
-                        kind = GlyphKind.Y,
-                        label = stringResource(R.string.xmb_store_back),
-                        onClick = { dispatcher?.onBackPressed() },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(
-                                end = ss.dp(16f) + cutout.calculateEndPadding(dir),
-                                bottom = ss.dp(HINT_BOTTOM_GAP) + cutout.calculateBottomPadding(),
-                            ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** The room the Back hint takes above its bottom margin (its glyph row plus the padding round it). */
-private val XMB_BACK_HINT_HEIGHT = 34.dp
-
-/**
  * The app theme around a store screen that keeps its own layout in every interface (the full library lists, the Steam
  * sign-in): [WinlatorTheme] plus the XMB keyboard, which is only in effect in XMB-home mode.
  */
@@ -265,7 +200,7 @@ internal fun StoreKeyboardTheme(content: @Composable () -> Unit) {
                 // These screens paint no backdrop of their own, and their `background` fills are clear on the glass.
                 XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
                     XmbGlassBackdrop(Modifier.matchParentSize())
-                    XmbKeyboardHost { XmbBackHintLayer(true, content = content) }
+                    XmbKeyboardHost { content() }
                 }
             }
         }

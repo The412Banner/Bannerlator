@@ -2947,6 +2947,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 return;
             }
             shortcut = new Shortcut(container, new File(shortcutPath));
+            // The game was reinstalled or imported somewhere else: point the shortcut at its current folder.
+            shortcut = com.winlator.star.store.ShortcutPathRepair.repairIfMoved(this, container, shortcut);
             stampLastPlayed(shortcut);
         }
         // Fix the Goldberg cloud-sync decision now, for the whole session (see skipCloudForGoldberg()).

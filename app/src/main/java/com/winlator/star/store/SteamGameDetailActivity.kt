@@ -695,6 +695,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             event.startsWith("SteamStatus:") -> {
                 val name = event.substringAfter("SteamStatus:")
                 steamStatus = try { SteamRepository.SteamStatus.valueOf(name) } catch (e: Exception) { steamStatus }
+                // Steam came online after the page opened: show the Cloud saves manager now.
+                if (steamStatus == SteamRepository.SteamStatus.ONLINE && game?.isInstalled == true && !cloudVisible) {
+                    runOnUiThread { if (!isFinishing && !isDestroyed) refreshUI() }
+                }
             }
             event.startsWith("DownloadProgress:") -> {
                 // Format: DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal:etaSec:speedBps
@@ -1202,8 +1206,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
-            // Cloud saves need a live Steam session (the SteamCloud handle is only bound after login).
-            cloudVisible = SteamRepository.getInstance().steamCloud != null
+            // Cloud saves need a live Steam session. SteamCloudBackend covers both engines: the old
+            // JavaSteam handle (repo.steamCloud) is always null on the Rust engine (the default).
+            cloudVisible = SteamCloudBackend.current() != null
             // Resolve the game's launch container off the UI thread AFTER the game row is bound —
             // drives the Apply/Collect tier and the "set up first" gate.
             if (cloudVisible) resolveCloudContainer(g)
@@ -2547,8 +2552,11 @@ private fun SteamGameDetailScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = if (!signedIn) "Sign in to Steam to sync this game's cloud saves."
-                                   else "Install this game to sync its cloud saves with your Steam Cloud.",
+                            text = when {
+                                !signedIn -> "Sign in to Steam to sync this game's cloud saves."
+                                gameStatus == GameStatus.INSTALLED -> "Connecting to Steam…"
+                                else -> "Install this game to sync its cloud saves with your Steam Cloud."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

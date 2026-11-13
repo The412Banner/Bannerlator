@@ -1,7 +1,5 @@
 package com.winlator.star.store
 
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,13 +7,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -72,10 +75,14 @@ import coil.compose.AsyncImage
 import com.winlator.star.store.download.Store
 import com.winlator.star.ui.simple.SimpleShape
 import com.winlator.star.ui.simple.labTile
+import com.winlator.star.ui.deck.XmbEditTapCatcher
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbEdit
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
 import com.winlator.star.ui.deck.xmbChipOverArt
+import com.winlator.star.ui.deck.xmbEditField
+import com.winlator.star.ui.deck.xmbEditStop
 import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
@@ -582,7 +589,13 @@ fun CatalogResults(
     }
 }
 
-/** The storefront search field — identical to Steam's, with a per-store placeholder. */
+/**
+ * The storefront search field — identical to Steam's, with a per-store placeholder. For the controller the whole bar is ONE
+ * stop of the D-pad that takes the highlight, so the D-pad leaves it in every direction; A or a tap starts typing (the XMB
+ * keyboard in XMB home, else Android's), and B, the keyboard's Search or its close ends typing and leaves the bar highlighted
+ * (see [com.winlator.star.ui.deck.XmbEditState]).
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CatalogSearchField(
     query: String,
@@ -596,62 +609,49 @@ fun CatalogSearchField(
         .fillMaxWidth()
         .padding(horizontal = 14.dp, vertical = 6.dp),
 ) {
-    // A slim field: the Lab's hard corners, 34dp tall, the accent line when focused.
+    // A slim field: the Lab's hard corners, 34dp tall, the highlight's outline when focused.
     val cs = MaterialTheme.colorScheme
-    var focused by remember { mutableStateOf(false) }
-    // Controller: B closes the keyboard (a second B goes back as usual); Down / Up leave the field for what is
-    // below / above it, closing the keyboard on the way.
-    var keyboardUp by remember { mutableStateOf(false) }
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val focusMover = androidx.compose.ui.platform.LocalFocusManager.current
-    androidx.compose.foundation.text.BasicTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        singleLine = true,
-        textStyle = androidx.compose.ui.text.TextStyle(color = cs.onSurface, fontSize = 13.sp),
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(cs.primary),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+    val edit = rememberXmbEdit()
+    // Android's keyboard closed by its own back key sends no key to the bar: typing ends when it goes down after being up.
+    val imeUp = WindowInsets.isImeVisible
+    var imeSeen by remember { mutableStateOf(false) }
+    LaunchedEffect(imeUp, edit.editing) {
+        if (!edit.editing) imeSeen = false else if (imeUp) imeSeen = true else if (imeSeen) edit.stop()
+    }
+    Row(
         modifier = modifier
             .height(34.dp)
+            .steamFocusRing(SimpleShape)
+            .xmbEditStop(edit)
             .clip(SimpleShape)
             .background(cs.onBackground.copy(alpha = 0.05f))
-            .border(1.dp, if (focused) cs.primary else cs.outline.copy(alpha = 0.5f), SimpleShape)
-            .onFocusChanged { focused = it.isFocused; keyboardUp = it.isFocused }
-            .onPreviewKeyEvent { ev ->
-                val k = ev.nativeKeyEvent
-                val down = k.action == android.view.KeyEvent.ACTION_DOWN
-                when (k.keyCode) {
-                    android.view.KeyEvent.KEYCODE_BUTTON_B, android.view.KeyEvent.KEYCODE_BACK, android.view.KeyEvent.KEYCODE_ESCAPE ->
-                        if (keyboardUp) { if (!down) { keyboard?.hide(); keyboardUp = false }; true } else false
-                    android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        if (down) { keyboard?.hide(); keyboardUp = false; focusMover.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
-                        true
-                    }
-                    android.view.KeyEvent.KEYCODE_DPAD_UP -> {
-                        if (down) { keyboard?.hide(); keyboardUp = false; focusMover.moveFocus(androidx.compose.ui.focus.FocusDirection.Up) }
-                        true
-                    }
-                    android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER ->
-                        if (!keyboardUp) { if (!down) { keyboard?.show(); keyboardUp = true }; true } else false
-                    else -> false
-                }
-            },
-        decorationBox = { inner ->
-            Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(7.dp))
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) Text(placeholder, fontSize = 13.sp, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    inner()
-                }
-                if (query.isNotEmpty()) {
-                    Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp).labTile(onClick = onClear))
-                }
-            }
-        },
-    )
+            .border(1.dp, cs.outline.copy(alpha = 0.5f), SimpleShape)
+            .clickable { edit.start() }
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(7.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) Text(placeholder, fontSize = 13.sp, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = cs.onSurface, fontSize = 13.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(cs.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch(); edit.stop() }),
+                // The text field takes focus only while typing: that is what leaves the bar free for the D-pad.
+                modifier = Modifier.fillMaxWidth().xmbEditField(edit),
+            )
+            XmbEditTapCatcher(edit)
+        }
+        if (query.isNotEmpty()) {
+            Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant,
+                modifier = Modifier.size(18.dp).focusProperties { canFocus = false }.clickable(onClick = onClear))
+        }
+    }
 }
 
 /** The Store tab is one column in both orientations (featured game, then the rails), as in the Lab. */

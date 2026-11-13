@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -973,11 +974,19 @@ private fun EpicGameDetailScreen(
     val tabs = if (hasMedia) listOf("Details", "DLC", "Cloud saves", "Media") else listOf("Details", "DLC", "Cloud saves")
     if (tab >= tabs.size) tab = 0
 
+    // The cover above the name is Epic's landscape box art (`artSquare` in the library cache); [artCover] is the tall one.
+    val wideArt by produceState(emptyList<String>(), appName) {
+        value = withContext(Dispatchers.IO) {
+            listOfNotNull(EpicLibraryRepo.cached(context).firstOrNull { it.appName == appName }?.artSquare)
+        }
+    }
+
     StoreDetailScaffold(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.EPIC) },
         downloadKey = "${Store.EPIC}:$appName",
+        cover = wideArt,
         hero = {
             if (artCover.isNotEmpty()) {
                 AsyncImage(

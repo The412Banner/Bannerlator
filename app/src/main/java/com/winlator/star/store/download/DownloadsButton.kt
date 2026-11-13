@@ -24,11 +24,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  *
  * Self-contained (grabs its own [LocalContext] + launches the Activity) so a header just
  * drops `DownloadsButton()` into its Row — matching the other single-line IconButtons in
- * the Steam headers.
+ * the Steam headers. [glide]: on a game's page, where the button takes the XMB highlight like the rest of the page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DownloadsButton(modifier: Modifier = Modifier) {
+fun DownloadsButton(modifier: Modifier = Modifier, glide: Boolean = false) {
     val ctx = LocalContext.current
     val activeCount by DownloadRegistry.activeCount.collectAsStateWithLifecycle()
 
@@ -38,6 +38,7 @@ fun DownloadsButton(modifier: Modifier = Modifier) {
         },
         modifier = modifier,
         ink = false,
+        glide = glide,
     ) {
         BadgedBox(
             badge = {

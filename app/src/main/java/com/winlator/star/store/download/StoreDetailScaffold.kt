@@ -2,6 +2,7 @@ package com.winlator.star.store.download
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -49,6 +51,11 @@ import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.outlinedMenuCard
 import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.store.StoreEntry
+import com.winlator.star.store.rememberStoreEntryFocus
+import com.winlator.star.store.storeBackKey
+import com.winlator.star.store.storeEntryTarget
+import com.winlator.star.store.storeFocus
 import com.winlator.star.ui.simple.LabArt
 import com.winlator.star.ui.simple.LabPicture
 import com.winlator.star.ui.simple.SimpleShape
@@ -57,17 +64,17 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.winlator.star.ui.simple.labTile
 
 /**
  * The game details page every store shares: the game's art fills the screen behind the page, and the page sits on it.
  *
- * Portrait (touch): back row, the art, then the name, ONE primary button (or its progress fill while downloading) +
- * gear, the download line, the tab chips and the selected tab's body, all in one scroll.
- * Landscape (controller): the name and buttons in a left column, the tabs and body in a panel on the right.
+ * Portrait (touch): back row, the art, then the game's landscape cover and name, ONE primary button (or its progress fill
+ * while downloading) + gear, the download line, the tab chips and the selected tab's body, all in one scroll.
+ * Landscape (controller): the cover, name and buttons in a left column, the tabs and body in a panel on the right.
  *
- * Every button and tab is a Lab tile, so the D-pad moves between them and A presses them. Colours come from the app
- * theme (accent, background), so the page looks the same in every interface.
+ * Every button and tab is a stop of the D-pad that takes the XMB highlight; A presses it, B goes back, and the page scrolls
+ * to keep the focused one on screen (see [storeFocus]). Colours come from the app theme (accent, background), so the page
+ * looks the same in every interface.
  */
 
 /** One entry in the ⚙ gear dropdown. */
@@ -104,7 +111,9 @@ fun StoreDetailScaffold(
     onSelectTab: (Int) -> Unit,
     modifier: Modifier = Modifier,
     storeBadge: @Composable () -> Unit = {},
-    headerActions: @Composable RowScope.() -> Unit = { DownloadsButton() },
+    headerActions: @Composable RowScope.() -> Unit = { DownloadsButton(glide = true) },
+    /** The game's landscape art above its name, best first; the Steam art found by the game's name follows it. */
+    cover: List<String> = emptyList(),
     /** Small line(s) between the name and the button — install status, exe name. */
     subtitle: (@Composable ColumnScope.() -> Unit)? = null,
     /** Line under the primary button (download rate / ETA). */
@@ -122,16 +131,22 @@ fun StoreDetailScaffold(
     val cs = MaterialTheme.colorScheme
     val all by DownloadRegistry.entries.collectAsState()
     val download = if (downloadKey == null) null else all.firstOrNull { it.key == downloadKey && it.isActive }
+    // Art found by the game's name: it goes under the store's own art as the page's backdrop and follows the store's cover.
+    val fallbackArt = rememberFallbackArt(title)
+    val coverUrls = remember(cover, fallbackArt) { storeCoverUrls(cover + fallbackArt.asReversed()) }
+    val entryTarget = storeEntryTarget(primary is StorePrimaryAction.Button && primary.enabled, gear.isNotEmpty())
+    val entry = rememberStoreEntryFocus(entryTarget)
 
     val header: @Composable () -> Unit = {
         Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
                     .size(34.dp)
+                    .storeFocus(SimpleShape, onBack, entry = entry.takeIf { entryTarget == StoreEntry.BACK })
                     .clip(SimpleShape)
                     .background(bg.copy(alpha = 0.6f))
                     .border(1.dp, cs.outline.copy(alpha = 0.35f), SimpleShape)
-                    .labTile(onClick = onBack),
+                    .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onBackground, modifier = Modifier.size(18.dp))
@@ -142,6 +157,13 @@ fun StoreDetailScaffold(
         }
     }
     val head: @Composable ColumnScope.() -> Unit = {
+        StoreCoverRow(
+            urls = coverUrls,
+            shape = SimpleShape,
+            gap = 6.dp,
+            withSecondary = secondary != null,
+            gearWidth = if (gear.isNotEmpty()) 40.dp else null,
+        )
         Text(
             text = title,
             style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, shadow = Shadow(bg.copy(alpha = 0.7f), blurRadius = 12f)),
@@ -150,7 +172,13 @@ fun StoreDetailScaffold(
             overflow = TextOverflow.Ellipsis,
         )
         if (subtitle != null) subtitle()
-        StorePrimaryActionRow(primary = primary, gear = gear, secondary = secondary)
+        StorePrimaryActionRow(
+            primary = primary,
+            gear = gear,
+            secondary = secondary,
+            primaryEntry = entry.takeIf { entryTarget == StoreEntry.PRIMARY },
+            gearEntry = entry.takeIf { entryTarget == StoreEntry.GEAR },
+        )
         if (download != null) StoreDownloadBar(download)
         if (!infoLine.isNullOrBlank()) {
             Text(infoLine, fontSize = 11.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
@@ -169,12 +197,12 @@ fun StoreDetailScaffold(
         )
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg)) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg).storeBackKey(onBack)) {
         val pageW = maxWidth
         val pageH = maxHeight
         val wide = pageW > pageH
         // Under the store's own art: the Steam / SteamGridDB art the Lab finds by the game's name, for a store with none.
-        StoreFallbackArt(title, Modifier.fillMaxSize())
+        StoreFallbackArt(fallbackArt, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
         if (wide) {
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
@@ -220,24 +248,30 @@ fun StoreDetailScaffold(
     }
 }
 
-private val fallbackArt = java.util.concurrent.ConcurrentHashMap<String, List<LabArt.Pic>>()
+private val fallbackArtCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
 
-/** Full-screen art found by the game's name: Steam's library hero, SteamGridDB's hero, then Steam's header. */
+/** The art found by the game's name, empty until it is found (and when there is none): Steam's library hero, SteamGridDB's hero, then Steam's header. */
 @Composable
-private fun StoreFallbackArt(title: String, modifier: Modifier = Modifier) {
+private fun rememberFallbackArt(title: String): List<String> {
     val ctx = LocalContext.current.applicationContext
-    val pics by produceState(fallbackArt[title] ?: emptyList(), title) {
-        if (title.isBlank() || fallbackArt.containsKey(title)) return@produceState
+    val urls by produceState(fallbackArtCache[title] ?: emptyList(), title) {
+        if (title.isBlank() || fallbackArtCache.containsKey(title)) return@produceState
         value = withContext(Dispatchers.IO) {
             val steam = runCatching { SteamStoreSearch.findAppIdByName(ctx, title) }.getOrNull()
             buildList {
-                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/library_hero.jpg"))
-                runCatching { labSgdbHero(ctx, steam, title) }.getOrNull()?.let { add(LabArt.Pic(it)) }
-                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/header.jpg"))
+                if (steam != null) add("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/library_hero.jpg")
+                runCatching { labSgdbHero(ctx, steam, title) }.getOrNull()?.let { add(it) }
+                if (steam != null) add("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/header.jpg")
             }
-        }.also { fallbackArt[title] = it }
+        }.also { fallbackArtCache[title] = it }
     }
-    if (pics.isNotEmpty()) LabPicture(pics, modifier)
+    return urls
+}
+
+/** Full-screen art behind the page, from [urls] (see [rememberFallbackArt]). */
+@Composable
+private fun StoreFallbackArt(urls: List<String>, modifier: Modifier = Modifier) {
+    if (urls.isNotEmpty()) LabPicture(urls.map { LabArt.Pic(it) }, modifier)
 }
 
 /**
@@ -271,6 +305,7 @@ fun StoreDownloadBar(entry: DownloadEntry, modifier: Modifier = Modifier) {
 /**
  * The primary button + gear row. The button is a 40dp accent block (or the two-layer progress fill
  * while downloading); the gear is a 40dp outlined square opening the app's outlined dropdown card.
+ * [primaryEntry] / [gearEntry] mark the button the page focuses on open (see [rememberStoreEntryFocus]).
  */
 @Composable
 fun StorePrimaryActionRow(
@@ -278,6 +313,8 @@ fun StorePrimaryActionRow(
     gear: List<StoreGearItem>,
     modifier: Modifier = Modifier,
     secondary: StorePrimaryAction.Button? = null,
+    primaryEntry: FocusRequester? = null,
+    gearEntry: FocusRequester? = null,
 ) {
     var gearExpanded by remember { mutableStateOf(false) }
     val shape = SimpleShape
@@ -313,9 +350,11 @@ fun StorePrimaryActionRow(
                 modifier = Modifier
                     .weight(1f)
                     .height(40.dp)
+                    // Filled with the accent: the outline takes the ink on it.
+                    .then(if (primary.enabled) Modifier.storeFocus(shape, primary.onClick, tint = cs.onPrimary, entry = primaryEntry) else Modifier)
                     .clip(shape)
                     .background(if (primary.enabled) cs.primary else cs.primary.copy(alpha = 0.4f))
-                    .then(if (primary.enabled) Modifier.labTile(onClick = primary.onClick, onAccent = true) else Modifier),
+                    .then(if (primary.enabled) Modifier.clickable(onClick = primary.onClick) else Modifier),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(primary.label, color = cs.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
@@ -326,10 +365,11 @@ fun StorePrimaryActionRow(
             modifier = Modifier
                 .weight(1f)
                 .height(40.dp)
+                .then(if (secondary.enabled) Modifier.storeFocus(shape, secondary.onClick) else Modifier)
                 .clip(shape)
                 .background(bg.copy(alpha = 0.55f))
                 .border(1.dp, if (secondary.enabled) cs.primary else cs.outline, shape)
-                .then(if (secondary.enabled) Modifier.labTile(onClick = secondary.onClick) else Modifier),
+                .then(if (secondary.enabled) Modifier.clickable(onClick = secondary.onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
             Text(secondary.label, color = if (secondary.enabled) cs.primary else cs.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
@@ -340,10 +380,11 @@ fun StorePrimaryActionRow(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
+                        .storeFocus(shape, { gearExpanded = true }, entry = gearEntry)
                         .clip(shape)
                         .background(bg.copy(alpha = 0.55f))
                         .border(1.dp, cs.outline.copy(alpha = 0.5f), shape)
-                        .labTile(onClick = { gearExpanded = true }),
+                        .clickable { gearExpanded = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("⚙", fontSize = 16.sp, color = cs.primary)
@@ -351,12 +392,14 @@ fun StorePrimaryActionRow(
                 DropdownMenu(
                     expanded = gearExpanded,
                     onDismissRequest = { gearExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().storeBackKey { gearExpanded = false },
                 ) {
                     gear.forEachIndexed { i, item ->
                         if (i > 0) MenuItemDivider()
                         val base = if (item.danger) cs.error else cs.onSurface
+                        val pick = { gearExpanded = false; item.onClick() }
                         DropdownMenuItem(
+                            modifier = if (item.enabled) Modifier.storeFocus(shape, pick) else Modifier,
                             text = {
                                 Text(
                                     text = item.label,
@@ -367,7 +410,7 @@ fun StorePrimaryActionRow(
                             },
                             leadingIcon = { Text(item.emoji, fontSize = 14.sp) },
                             enabled = item.enabled,
-                            onClick = { gearExpanded = false; item.onClick() },
+                            onClick = pick,
                         )
                     }
                 }
@@ -403,10 +446,11 @@ fun StoreDetailTabs(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
+                    .storeFocus(SimpleShape, { onSelect(index) }, tint = if (isSel) cs.onPrimary else Color.Unspecified)
                     .clip(SimpleShape)
                     .background(if (isSel) cs.primary else bg.copy(alpha = 0.55f))
                     .border(1.dp, if (isSel) cs.primary else cs.outline.copy(alpha = 0.4f), SimpleShape)
-                    .labTile(onClick = { onSelect(index) }, onAccent = isSel)
+                    .clickable { onSelect(index) }
                     .padding(horizontal = 11.dp, vertical = 6.dp),
             ) {
                 Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isSel) cs.onPrimary else cs.onSurfaceVariant, maxLines = 1)

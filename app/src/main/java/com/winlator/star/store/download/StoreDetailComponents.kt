@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.winlator.star.store.storeFocus
 import com.winlator.star.ui.deck.xmbSolidBackground
 
 /**
@@ -238,6 +239,7 @@ fun StoreActionButton(
     enabled: Boolean = true,
     destructive: Boolean = false,
 ) {
+    val shape = RoundedCornerShape(10.dp)
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -249,8 +251,12 @@ fun StoreActionButton(
         } else {
             ButtonDefaults.buttonColors()
         },
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        // Filled: the outline takes the ink on the fill.
+        modifier = modifier.storeFocus(
+            shape, onClick,
+            tint = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+        ),
+        shape = shape,
     ) { Text(text, maxLines = 1) }
 }
 

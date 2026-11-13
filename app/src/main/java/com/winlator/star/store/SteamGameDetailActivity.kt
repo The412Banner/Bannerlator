@@ -101,6 +101,7 @@ import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.MediaTab
 import com.winlator.star.store.download.Store
+import com.winlator.star.store.download.StoreCoverRow
 import com.winlator.star.store.download.StoreMedia
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
@@ -2006,7 +2007,13 @@ private fun SteamGameDetailScreen(
     val pageBg = xmbSolidBackground()
     val conf = androidx.compose.ui.platform.LocalConfiguration.current
     val widePage = conf.screenWidthDp > conf.screenHeightDp
-    Box(modifier = Modifier.fillMaxSize().background(pageBg)) {
+    // The game's landscape cover above its name: the store capsule chain, the published one first once the art map has it.
+    val publishedHeader = SteamLibraryArt.header(appId)
+    val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
+    val downloading = progressVisible   // installAction == CANCEL (active or paused download)
+    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
+    val entry = rememberStoreEntryFocus(entryTarget)
+    Box(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
     // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
     // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
     StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
@@ -2036,7 +2043,7 @@ private fun SteamGameDetailScreen(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, modifier = Modifier.storeFocus(CircleShape, onBack)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
@@ -2044,12 +2051,26 @@ private fun SteamGameDetailScreen(
                 )
             }
             Spacer(Modifier.weight(1f))
-            SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
-            DownloadsButton()
+            SteamStatusPill(
+                status = steamStatus,
+                onReconnect = onReconnect,
+                modifier = Modifier.storeFocus(RoundedCornerShape(50), onReconnect),
+            )
+            DownloadsButton(glide = true)
         }
 
         // The art shows through here; the page starts under it.
         Spacer(Modifier.height((conf.screenHeightDp * if (widePage) 0.04f else 0.28f).dp))
+
+        // The cover is as wide as the primary button below: it lays out like that row (the gear's room at its end).
+        StoreCoverRow(
+            urls = coverUrls,
+            shape = RoundedCornerShape(10.dp),
+            gap = 8.dp,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            gearWidth = 46.dp,
+            bottomGap = 0.dp,
+        )
 
         // Game name — persistent header. Stays above the action row + tab strip (mirrors the
         // mockup's fixed game header, which doesn't change as the tab body below it swaps).
@@ -2071,7 +2092,6 @@ private fun SteamGameDetailScreen(
         // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
         // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
         // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
-        val downloading = progressVisible   // installAction == CANCEL (active or paused download)
         val primaryShape = RoundedCornerShape(10.dp)
         var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
         freeMessage?.let {
@@ -2158,6 +2178,14 @@ private fun SteamGameDetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(46.dp)
+                        // Filled with the accent: the outline takes the ink on it.
+                        .then(
+                            if (enabled) {
+                                Modifier.storeFocus(primaryShape, onPrimary, tint = MaterialTheme.colorScheme.onPrimary, entry = entry.takeIf { entryTarget == StoreEntry.PRIMARY })
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clip(primaryShape)
                         .background(if (enabled) AchvAccent else AchvAccent.copy(alpha = 0.4f))
                         .clickable(enabled = enabled) { onPrimary() },
@@ -2178,6 +2206,7 @@ private fun SteamGameDetailScreen(
                 Box(
                     modifier = Modifier
                         .size(46.dp)
+                        .storeFocus(primaryShape, { gearMenuExpanded = true }, entry = entry.takeIf { entryTarget == StoreEntry.GEAR })
                         .clip(primaryShape)
                         .background(AchvCard)
                         .border(1.dp, AchvLine, primaryShape)
@@ -2189,7 +2218,7 @@ private fun SteamGameDetailScreen(
                 DropdownMenu(
                     expanded = gearMenuExpanded,
                     onDismissRequest = { gearMenuExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().storeBackKey { gearMenuExpanded = false },
                 ) {
                     // Downloading → pause/resume + cancel lead, then the common items; a divider sits
                     // between every option (matching the app's other outlined menus).
@@ -2295,7 +2324,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onBranchLineClick,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onBranchLineClick),
                         ) {
                             Text("Change branch")
                         }
@@ -2310,7 +2339,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onLanguageLineClick,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageLineClick),
                         ) {
                             Text("Change language")
                         }
@@ -2323,7 +2352,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onLanguageDownloadClick,
-                                modifier = Modifier.padding(top = 6.dp),
+                                modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageDownloadClick),
                             ) {
                                 Text("Download language files")
                             }
@@ -2411,7 +2440,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onDlcLineClick,
-                                modifier = Modifier.padding(top = 8.dp),
+                                modifier = Modifier.padding(top = 8.dp).storeFocus(CircleShape, onDlcLineClick),
                             ) { Text("Choose DLC") }
                         }
                     }
@@ -2744,6 +2773,7 @@ private fun GearMenuItem(
 ) {
     val base = if (danger) MaterialTheme.colorScheme.error else AchvInk
     DropdownMenuItem(
+        modifier = if (enabled) Modifier.storeFocus(RoundedCornerShape(6.dp), onClick) else Modifier,
         text = {
             Text(
                 text = text,
@@ -2791,6 +2821,7 @@ private fun SteamDetailTabs(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier
+                    .storeFocus(shape, { onSelect(tab) })
                     .clip(shape)
                     .background(if (isSel) AchvTabActiveBg else AchvCard)
                     .border(1.dp, if (isSel) AchvTabActiveBorder else AchvLineSoft, shape)
@@ -2987,6 +3018,7 @@ private fun AchievementTile(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .storeFocus(shape, onClick)
             .clip(shape)
             .background(bg)
             .border(1.dp, borderColor, shape)
@@ -3543,7 +3575,7 @@ private fun CloudSavesSection(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onSetUp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSetUp, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("Set up in a container", maxLines = 1) }
             }
@@ -3566,7 +3598,7 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncFromCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncFromCloud, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
@@ -3580,7 +3612,7 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncToCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncToCloud, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
@@ -3596,6 +3628,7 @@ private fun CloudSavesSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .storeFocus(RoundedCornerShape(8.dp), { advancedExpanded = !advancedExpanded })
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { advancedExpanded = !advancedExpanded }
                         .padding(vertical = 6.dp),
@@ -3626,14 +3659,14 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onDownload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onDownload, tint = MaterialTheme.colorScheme.onPrimary),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onUpload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onUpload),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
@@ -3650,14 +3683,14 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onApply,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onApply, tint = MaterialTheme.colorScheme.onPrimary),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onCollect,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onCollect),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }

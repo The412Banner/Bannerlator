@@ -170,8 +170,11 @@ internal fun StoreXmbScreen(content: @Composable () -> Unit) {
                 LocalAccentDim provides ink.copy(alpha = 0.14f).compositeOver(lab.background),
             ) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
-                    // The Back hint of XMB home floats over the page, inside the keyboard host so it steps aside while the keyboard is up.
-                    XmbKeyboardHost(xmb) { XmbBackHintLayer(xmb, content = content) }
+                    // One gliding highlight for the screen, in every interface: the stores look the same in all of them.
+                    XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
+                        // The Back hint of XMB home floats over the page, inside the keyboard host so it steps aside while the keyboard is up.
+                        XmbKeyboardHost(xmb) { XmbBackHintLayer(xmb, content = content) }
+                    }
                 }
             }
         }

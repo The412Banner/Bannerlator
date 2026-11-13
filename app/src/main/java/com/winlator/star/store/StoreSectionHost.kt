@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -346,6 +347,8 @@ internal fun StoreGlassIconButton(
     enabled: Boolean = true,
     /** Draw whatever [content] paints in the ink colour (off for content with a badge of its own colour). */
     ink: Boolean = true,
+    /** Take the XMB highlight like the rest of a game's page ([storeFocus]) instead of the Lab tile's own outline. */
+    glide: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -356,10 +359,17 @@ internal fun StoreGlassIconButton(
         modifier = modifier
             .padding(3.dp)
             .then(if (inRail) Modifier.fillMaxWidth().height(34.dp) else Modifier.size(34.dp))
+            .then(if (enabled && glide) Modifier.storeFocus(SimpleShape, onClick) else Modifier)
             .clip(SimpleShape)
             .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(cs.onBackground.copy(alpha = 0.10f), cs.onBackground.copy(alpha = 0.04f))))
             .border(1.dp, cs.onBackground.copy(alpha = 0.16f), SimpleShape)
-            .then(if (enabled) Modifier.labTile(onClick = onClick) else Modifier),
+            .then(
+                when {
+                    !enabled -> Modifier
+                    glide -> Modifier.clickable(onClick = onClick)
+                    else -> Modifier.labTile(onClick = onClick)
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Box(

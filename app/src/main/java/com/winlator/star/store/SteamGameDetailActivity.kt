@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Help
 import com.winlator.star.R
 import com.winlator.star.core.CopyGameToDriveC
 import com.winlator.star.ui.deck.XmbKeyboardWindow
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
@@ -98,11 +99,14 @@ import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.store.download.DownloadRegistry
-import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.MediaTab
 import com.winlator.star.store.download.Store
-import com.winlator.star.store.download.StoreCoverRow
+import com.winlator.star.store.download.StoreActionTile
+import com.winlator.star.store.download.StoreDownloadsTile
 import com.winlator.star.store.download.StoreMedia
+import com.winlator.star.store.download.StorePage
+import com.winlator.star.store.download.StorePageLayout
+import com.winlator.star.store.download.rememberStorePageGeometry
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
@@ -2006,12 +2010,17 @@ private fun SteamGameDetailScreen(
 
     val pageBg = xmbSolidBackground()
     val conf = androidx.compose.ui.platform.LocalConfiguration.current
-    val widePage = conf.screenWidthDp > conf.screenHeightDp
-    // The game's landscape cover above its name: the store capsule chain, the published one first once the art map has it.
+    // The tab strip and the tab bodies pad themselves this much; the action row and the name line up with them.
+    val pageInset = 16.dp
+    val geometry = rememberStorePageGeometry(conf.screenWidthDp.dp, conf.screenHeightDp.dp, pageInset)
+    val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
+    // The Back hint of the XMB home is on screen: the page has no back button of its own there.
+    val xmb = rememberXmbHome()
+    // The game's landscape cover beside its name: the store capsule chain, the published one first once the art map has it.
     val publishedHeader = SteamLibraryArt.header(appId)
     val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
     val downloading = progressVisible   // installAction == CANCEL (active or paused download)
-    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
+    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true, hasBack = !xmb)
     val entry = rememberStoreEntryFocus(entryTarget)
     Box(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
     // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
@@ -2026,55 +2035,48 @@ private fun SteamGameDetailScreen(
     )
     Box(
         Modifier.fillMaxSize().background(
-            if (widePage) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
+            if (sideBySide) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
             else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
         ),
     )
-    Column(
-        modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(if (widePage) 0.6f else 1f)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        // Header bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.storeFocus(CircleShape, onBack)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
+    // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
+    // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
+    // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
+    // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
+    // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
+    val primaryShape = RoundedCornerShape(10.dp)
+    var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
+    StorePage(
+        geometry = geometry,
+        coverUrls = coverUrls,
+        coverShape = primaryShape,
+        edge = 0.dp,
+        inset = pageInset,
+        header = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!xmb) {
+                    IconButton(onClick = onBack, modifier = Modifier.storeFocus(CircleShape, onBack)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                SteamStatusPill(
+                    status = steamStatus,
+                    onReconnect = onReconnect,
+                    modifier = Modifier.storeFocus(RoundedCornerShape(50), onReconnect),
                 )
             }
-            Spacer(Modifier.weight(1f))
-            SteamStatusPill(
-                status = steamStatus,
-                onReconnect = onReconnect,
-                modifier = Modifier.storeFocus(RoundedCornerShape(50), onReconnect),
-            )
-            DownloadsButton(glide = true)
-        }
-
-        // The art shows through here; the page starts under it.
-        Spacer(Modifier.height((conf.screenHeightDp * if (widePage) 0.04f else 0.28f).dp))
-
-        // The cover is as wide as the primary button below: it lays out like that row (the gear's room at its end).
-        StoreCoverRow(
-            urls = coverUrls,
-            shape = RoundedCornerShape(10.dp),
-            gap = 8.dp,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
-            gearWidth = 46.dp,
-            bottomGap = 0.dp,
-        )
-
-        // Game name — persistent header. Stays above the action row + tab strip (mirrors the
-        // mockup's fixed game header, which doesn't change as the tab body below it swaps).
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
+        },
+        name = {
             Text(
                 text = nameText,
                 style = MaterialTheme.typography.headlineSmall,
@@ -2082,29 +2084,8 @@ private fun SteamGameDetailScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-
-        // (Download progress is shown ON the large primary button below — 2-layer fill + an info
-        // line beneath it — so there's a single progress indicator, not a separate under-title bar.)
-
-        // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
-        // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
-        // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
-        // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
-        // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
-        val primaryShape = RoundedCornerShape(10.dp)
-        var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
-        freeMessage?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // ── Primary button ──────────────────────────────────────────────────────────────────
+        },
+        primary = { m ->
             if (downloading) {
                 // Read-only download button: the SINGLE progress indicator. Same 2-layer fill the old
                 // under-title bar used — lighter back layer = bytes fetched (downloadProgressValue),
@@ -2115,9 +2096,7 @@ private fun SteamGameDetailScreen(
                 val label = if (pauseAction == PauseAction.RESUME) "Paused — $progressValue%"
                             else "Downloading… $progressValue%"
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
                         .clip(primaryShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .border(1.dp, AchvLine, primaryShape),
@@ -2175,9 +2154,7 @@ private fun SteamGameDetailScreen(
                     else -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
                 }
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
                         // Filled with the accent: the outline takes the ink on it.
                         .then(
                             if (enabled) {
@@ -2200,18 +2177,16 @@ private fun SteamGameDetailScreen(
                     )
                 }
             }
-
-            // ── Gear (⚙) dropdown ───────────────────────────────────────────────────────────────
+        },
+        settings = { m ->
             Box {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .storeFocus(primaryShape, { gearMenuExpanded = true }, entry = entry.takeIf { entryTarget == StoreEntry.GEAR })
-                        .clip(primaryShape)
-                        .background(AchvCard)
-                        .border(1.dp, AchvLine, primaryShape)
-                        .clickable { gearMenuExpanded = true },
-                    contentAlignment = Alignment.Center,
+                StoreActionTile(
+                    onClick = { gearMenuExpanded = true },
+                    shape = primaryShape,
+                    fill = AchvCard,
+                    line = AchvLine,
+                    modifier = m,
+                    entry = entry.takeIf { entryTarget == StoreEntry.GEAR },
                 ) {
                     Text("⚙", fontSize = 18.sp, color = AchvAccent)
                 }
@@ -2253,6 +2228,14 @@ private fun SteamGameDetailScreen(
                     }
                 }
             }
+        },
+        downloads = { m ->
+            StoreDownloadsTile(primaryShape, AchvCard, AchvLine, AchvAccent, m, entry.takeIf { entryTarget == StoreEntry.DOWNLOADS })
+        },
+    ) {
+        freeMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
         }
 
         // Download info line — moved out from under the (removed) small bar to directly under the
@@ -2526,7 +2509,9 @@ private fun SteamGameDetailScreen(
         AchievementCaptionBar(
             selected = selectedAch,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(if (sideBySide) Alignment.BottomStart else Alignment.BottomCenter)
+                // Side by side it sits under the scrolling column, clear of the cover.
+                .then(if (sideBySide) Modifier.width(geometry.leftWidth.dp + pageInset * 2) else Modifier)
                 .navigationBarsPadding()
                 .onSizeChanged { captionHeightPx = it.height },
         )

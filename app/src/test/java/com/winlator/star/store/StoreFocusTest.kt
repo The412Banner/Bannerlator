@@ -8,21 +8,16 @@ import org.junit.Test
 class StoreFocusTest {
 
     @Test fun entry_isThePrimaryButtonWhileItCanBePressed() {
-        assertEquals(StoreEntry.PRIMARY, storeEntryTarget(primaryActionable = true, hasGear = true, hasBack = true))
-        assertEquals(StoreEntry.PRIMARY, storeEntryTarget(primaryActionable = true, hasGear = false, hasBack = true))
+        assertEquals(StoreEntry.PRIMARY, storeEntryTarget(primaryActionable = true, hasGear = true))
+        assertEquals(StoreEntry.PRIMARY, storeEntryTarget(primaryActionable = true, hasGear = false))
     }
 
     @Test fun entry_movesToTheGearWhenTheButtonOnlyShowsProgress() {
-        assertEquals(StoreEntry.GEAR, storeEntryTarget(primaryActionable = false, hasGear = true, hasBack = true))
+        assertEquals(StoreEntry.GEAR, storeEntryTarget(primaryActionable = false, hasGear = true))
     }
 
     @Test fun entry_fallsBackToTheBackButton() {
-        assertEquals(StoreEntry.BACK, storeEntryTarget(primaryActionable = false, hasGear = false, hasBack = true))
-    }
-
-    @Test fun entry_fallsBackToTheDownloadsButtonWhenThePageHasNoBackButton() {
-        assertEquals(StoreEntry.DOWNLOADS, storeEntryTarget(primaryActionable = false, hasGear = false, hasBack = false))
-        assertEquals(StoreEntry.GEAR, storeEntryTarget(primaryActionable = false, hasGear = true, hasBack = false))
+        assertEquals(StoreEntry.BACK, storeEntryTarget(primaryActionable = false, hasGear = false))
     }
 
     @Test fun coverUrls_keepOrderAndDropBlanksAndRepeats() {

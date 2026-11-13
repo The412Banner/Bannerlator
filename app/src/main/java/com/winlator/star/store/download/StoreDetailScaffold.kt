@@ -3,28 +3,20 @@ package com.winlator.star.store.download
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.outlinedMenuCard
@@ -67,13 +58,14 @@ import kotlinx.coroutines.withContext
 /**
  * The game details page every store shares: the game's art fills the screen behind the page, and the page sits on it.
  *
- * The page is laid out by [StorePage]: landscape has the game's cover and name fixed on the right and a left column that
- * scrolls (back row, ONE primary button (or its progress fill while downloading) with the Settings and Downloads buttons, the
- * download line, the tab chips and the selected tab's body); portrait is that column alone, with the cover and name on top.
+ * The page is laid out by [StorePage]: a header band with the back button, then ONE primary button (or its progress fill while
+ * downloading) with the Settings and Downloads buttons; landscape has the game's cover and name fixed on the right and a left
+ * column under the buttons that scrolls (the download line, the tab chips and the selected tab's body); portrait is one column
+ * that scrolls, with the cover and name on top.
  *
  * Every button and tab is a stop of the D-pad that takes the XMB highlight; A presses it, B goes back, and the page scrolls
  * to keep the focused one on screen (see [storeFocus]). Colours come from the app theme (accent, background), so the page
- * looks the same in every interface. In the XMB home the page has no back button of its own: the screen's Back hint is there.
+ * looks the same in every interface.
  */
 
 /** One entry in the ⚙ gear dropdown. */
@@ -132,9 +124,7 @@ fun StoreDetailScaffold(
     // Art found by the game's name: it goes under the store's own art as the page's backdrop and follows the store's cover.
     val fallbackArt = rememberFallbackArt(title)
     val coverUrls = remember(cover, fallbackArt) { storeCoverUrls(cover + fallbackArt.asReversed()) }
-    // The Back hint of the XMB home is on screen: the page has no back button of its own there.
-    val xmb = rememberXmbHome()
-    val entryTarget = storeEntryTarget(primary is StorePrimaryAction.Button && primary.enabled, gear.isNotEmpty(), hasBack = !xmb)
+    val entryTarget = storeEntryTarget(primary is StorePrimaryAction.Button && primary.enabled, gear.isNotEmpty())
     val entry = rememberStoreEntryFocus(entryTarget)
     val tileFill = bg.copy(alpha = 0.55f)
     val tileLine = cs.outline.copy(alpha = 0.5f)
@@ -143,7 +133,7 @@ fun StoreDetailScaffold(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg).storeBackKey(onBack)) {
-        val geometry = rememberStorePageGeometry(maxWidth, maxHeight, STORE_PAGE_EDGE)
+        val geometry = rememberStorePageGeometry(maxWidth, maxHeight, hasSettings = gear.isNotEmpty())
         // Under the store's own art: the Steam / SteamGridDB art the Lab finds by the game's name, for a store with none.
         StoreFallbackArt(fallbackArt, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
@@ -159,26 +149,10 @@ fun StoreDetailScaffold(
             geometry = geometry,
             coverUrls = coverUrls,
             coverShape = SimpleShape,
-            header = {
-                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (!xmb) {
-                        Box(
-                            Modifier
-                                .size(34.dp)
-                                .storeFocus(SimpleShape, onBack, entry = entry.takeIf { entryTarget == StoreEntry.BACK })
-                                .clip(SimpleShape)
-                                .background(bg.copy(alpha = 0.6f))
-                                .border(1.dp, cs.outline.copy(alpha = 0.35f), SimpleShape)
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onBackground, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    storeBadge()
-                }
+            back = { m ->
+                StoreBackTile(onBack, SimpleShape, bg.copy(alpha = 0.6f), cs.outline.copy(alpha = 0.35f), cs.onBackground, m, entry.takeIf { entryTarget == StoreEntry.BACK })
             },
+            badge = storeBadge,
             name = {
                 Text(
                     text = title,
@@ -190,7 +164,7 @@ fun StoreDetailScaffold(
             },
             primary = { m -> StorePrimaryButton(primary, m, entry.takeIf { entryTarget == StoreEntry.PRIMARY }) },
             settings = gearButton.takeIf { gear.isNotEmpty() },
-            downloads = { m -> StoreDownloadsTile(SimpleShape, tileFill, tileLine, cs.primary, m, entry.takeIf { entryTarget == StoreEntry.DOWNLOADS }) },
+            downloads = { m -> StoreDownloadsTile(SimpleShape, tileFill, tileLine, cs.primary, m) },
         ) {
             if (subtitle != null) subtitle()
             if (secondary != null) {
@@ -371,8 +345,8 @@ private fun StoreGearButton(gear: List<StoreGearItem>, fill: Color, line: Color,
 }
 
 /**
- * The detail page's tab chips — horizontally scrollable; the selected one is filled with the accent. A tab may carry
- * a small count badge.
+ * The detail page's tab chips: small, an icon and a short label each, in one row (see [StoreTabChips]); the selected one is
+ * filled with the accent. A tab may carry a small count badge.
  */
 @Composable
 fun StoreDetailTabs(
@@ -383,32 +357,13 @@ fun StoreDetailTabs(
 ) {
     val cs = MaterialTheme.colorScheme
     val bg = xmbSolidBackground()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(top = 10.dp, bottom = 6.dp, start = 2.dp, end = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
-            val isSel = index == selected
-            val badge = badges[index]
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .storeFocus(SimpleShape, { onSelect(index) }, tint = if (isSel) cs.onPrimary else Color.Unspecified)
-                    .clip(SimpleShape)
-                    .background(if (isSel) cs.primary else bg.copy(alpha = 0.55f))
-                    .border(1.dp, if (isSel) cs.primary else cs.outline.copy(alpha = 0.4f), SimpleShape)
-                    .clickable { onSelect(index) }
-                    .padding(horizontal = 11.dp, vertical = 6.dp),
-            ) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isSel) cs.onPrimary else cs.onSurfaceVariant, maxLines = 1)
-                if (badge != null) {
-                    Text(badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isSel) cs.onPrimary.copy(alpha = 0.8f) else cs.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
-                }
-            }
-        }
-    }
+    StoreTabChips(
+        tabs = labels.mapIndexed { index, label -> StoreTab(storeTabIcon(label), label, badges[index]) },
+        selected = selected,
+        onSelect = onSelect,
+        shape = SimpleShape,
+        idle = StoreChipStyle(bg.copy(alpha = 0.55f), cs.outline.copy(alpha = 0.4f), cs.onSurfaceVariant),
+        active = StoreChipStyle(cs.primary, cs.primary, cs.onPrimary, focusTint = cs.onPrimary),
+        modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
+    )
 }

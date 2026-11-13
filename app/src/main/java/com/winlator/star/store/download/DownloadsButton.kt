@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
@@ -42,8 +41,7 @@ fun DownloadsButton(modifier: Modifier = Modifier) {
 
 /**
  * The Downloads button of a game's page, drawn as the page's Settings button is ([StoreActionTile]) with the same [shape], [fill]
- * and [line]; [tint] colours the icon. Opens the same Downloads page as [DownloadsButton]. [entry] marks the button the page
- * focuses on open.
+ * and [line]; [tint] colours the icon. Opens the same Downloads page as [DownloadsButton].
  */
 @Composable
 internal fun StoreDownloadsTile(
@@ -52,9 +50,8 @@ internal fun StoreDownloadsTile(
     line: Color,
     tint: Color,
     modifier: Modifier = Modifier,
-    entry: FocusRequester? = null,
 ) {
-    StoreActionTile(onClick = rememberOpenDownloads(), shape = shape, fill = fill, line = line, modifier = modifier, entry = entry) {
+    StoreActionTile(onClick = rememberOpenDownloads(), shape = shape, fill = fill, line = line, modifier = modifier) {
         DownloadsIcon(tint)
     }
 }

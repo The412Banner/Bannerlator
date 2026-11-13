@@ -27,17 +27,16 @@ import kotlinx.coroutines.launch
 // one gliding outline of the store screen's highlight host), A presses it, B goes back, and the page scrolls to keep it on screen.
 
 /** The control of a game's page that takes the controller's focus when the page opens. */
-internal enum class StoreEntry { PRIMARY, GEAR, BACK, DOWNLOADS }
+internal enum class StoreEntry { PRIMARY, GEAR, BACK }
 
 /**
  * The first stop of a game's page: its primary action while that can be pressed (not while it only shows a download's progress),
- * else the gear (Pause and Cancel live in its menu), else the back button when the page has one, else the Downloads button.
+ * else the gear (Pause and Cancel live in its menu), else the back button.
  */
-internal fun storeEntryTarget(primaryActionable: Boolean, hasGear: Boolean, hasBack: Boolean): StoreEntry = when {
+internal fun storeEntryTarget(primaryActionable: Boolean, hasGear: Boolean): StoreEntry = when {
     primaryActionable -> StoreEntry.PRIMARY
     hasGear -> StoreEntry.GEAR
-    hasBack -> StoreEntry.BACK
-    else -> StoreEntry.DOWNLOADS
+    else -> StoreEntry.BACK
 }
 
 /**

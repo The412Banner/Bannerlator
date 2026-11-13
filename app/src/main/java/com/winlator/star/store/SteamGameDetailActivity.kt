@@ -12,7 +12,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -33,12 +32,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Help
 import com.winlator.star.R
 import com.winlator.star.core.CopyGameToDriveC
 import com.winlator.star.ui.deck.XmbKeyboardWindow
-import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.HelpDialog
 import com.winlator.star.ui.screens.MenuItemDivider
@@ -102,11 +99,16 @@ import com.winlator.star.store.download.DownloadRegistry
 import com.winlator.star.store.download.MediaTab
 import com.winlator.star.store.download.Store
 import com.winlator.star.store.download.StoreActionTile
+import com.winlator.star.store.download.StoreBackTile
+import com.winlator.star.store.download.StoreChipStyle
 import com.winlator.star.store.download.StoreDownloadsTile
 import com.winlator.star.store.download.StoreMedia
 import com.winlator.star.store.download.StorePage
 import com.winlator.star.store.download.StorePageLayout
+import com.winlator.star.store.download.StoreTab
+import com.winlator.star.store.download.StoreTabChips
 import com.winlator.star.store.download.rememberStorePageGeometry
+import com.winlator.star.store.download.storeTabIcon
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
@@ -300,8 +302,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var goldbergCatalogVersion by mutableIntStateOf(0)
     private var goldbergOutdated by mutableStateOf(false)
 
-    private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
-
     // Steam Cloud saves — three-tier save library (Cloud ⇄ Library ⇄ Container). Only meaningful
     // once the game is installed AND a Steam session is live (SteamRepository.getSteamCloud() != null).
     private var cloudVisible by mutableStateOf(false)
@@ -337,9 +337,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         // the on-disk mirror — no snapshot read, no network — so it's safe on the main thread.
         SteamLibraryArt.init(this)
         // Lazy-connect: opening a detail page directly (e.g. drawer → Save Manager → tap a card) skips
-        // the store home that starts SteamForegroundService, so the CM connection would stay down and
-        // the status badge read offline. Ensure it here when signed in — idempotent (start/connect
-        // guard double-connect), and a no-op for users without a saved Steam account.
+        // the store home that starts SteamForegroundService, so the CM connection would stay down. Ensure
+        // it here when signed in — idempotent (start/connect guard double-connect), and a no-op for users
+        // without a saved Steam account.
         if (SteamPrefs.isLoggedIn) SteamForegroundService.start(this)
 
         setContent {
@@ -347,8 +347,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 SteamGameDetailScreen(
                     appId = appId,
                     signedIn = SteamPrefs.isLoggedIn,
-                    steamStatus = steamStatus,
-                    onReconnect = { SteamRepository.getInstance().reconnectNow() },
                     nameText = nameText,
                     typeText = typeText,
                     sizeText = sizeText,
@@ -692,10 +690,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (languageRun != null && event.startsWith("Download") &&
             event.split(":").getOrNull(1)?.toIntOrNull() == appId) return
         when {
-            event.startsWith("SteamStatus:") -> {
-                val name = event.substringAfter("SteamStatus:")
-                steamStatus = try { SteamRepository.SteamStatus.valueOf(name) } catch (e: Exception) { steamStatus }
-            }
             event.startsWith("DownloadProgress:") -> {
                 // Format: DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal:etaSec:speedBps
                 val parts = event.split(":")
@@ -1790,7 +1784,7 @@ private enum class DetailTab(val label: String) {
     DETAILS("Details"),
     ACHIEVEMENTS("Achievements"),
     DLC("DLC"),
-    CLOUD("Cloud saves"),
+    CLOUD("Cloud"),
     /** Store screenshots + trailers; only in the strip once the appdetails fetch found any. */
     MEDIA("Media"),
 }
@@ -1805,7 +1799,6 @@ private val AchvAccent: Color          @Composable get() = MaterialTheme.colorSc
 private val AchvTabActiveBg: Color     @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 private val AchvTabActiveText: Color   @Composable get() = MaterialTheme.colorScheme.primary
 private val AchvTabActiveBorder: Color @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-private val AchvTabActiveBadge: Color  @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
 private val AchvInk: Color             @Composable get() = MaterialTheme.colorScheme.onSurface
 private val AchvInk2: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val AchvInk3: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -1836,8 +1829,6 @@ private val AchvPillOnBorder    = Color(0x66E8B652) // rgba(232,182,82,.40)
 private fun SteamGameDetailScreen(
     appId: Int,
     signedIn: Boolean,
-    steamStatus: SteamRepository.SteamStatus,
-    onReconnect: () -> Unit,
     nameText: String,
     typeText: String,
     sizeText: String,
@@ -2010,17 +2001,16 @@ private fun SteamGameDetailScreen(
 
     val pageBg = xmbSolidBackground()
     val conf = androidx.compose.ui.platform.LocalConfiguration.current
-    // The tab strip and the tab bodies pad themselves this much; the action row and the name line up with them.
+    // The tab bodies pad themselves this much: the scrolling column is that much wider on each side, so their text lines up
+    // with the action row.
     val pageInset = 16.dp
-    val geometry = rememberStorePageGeometry(conf.screenWidthDp.dp, conf.screenHeightDp.dp, pageInset)
+    val geometry = rememberStorePageGeometry(conf.screenWidthDp.dp, conf.screenHeightDp.dp, hasSettings = true)
     val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
-    // The Back hint of the XMB home is on screen: the page has no back button of its own there.
-    val xmb = rememberXmbHome()
     // The game's landscape cover beside its name: the store capsule chain, the published one first once the art map has it.
     val publishedHeader = SteamLibraryArt.header(appId)
     val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
     val downloading = progressVisible   // installAction == CANCEL (active or paused download)
-    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true, hasBack = !xmb)
+    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
     val entry = rememberStoreEntryFocus(entryTarget)
     Box(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
     // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
@@ -2050,31 +2040,9 @@ private fun SteamGameDetailScreen(
         geometry = geometry,
         coverUrls = coverUrls,
         coverShape = primaryShape,
-        edge = 0.dp,
         inset = pageInset,
-        header = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!xmb) {
-                    IconButton(onClick = onBack, modifier = Modifier.storeFocus(CircleShape, onBack)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                SteamStatusPill(
-                    status = steamStatus,
-                    onReconnect = onReconnect,
-                    modifier = Modifier.storeFocus(RoundedCornerShape(50), onReconnect),
-                )
-            }
+        back = { m ->
+            StoreBackTile(onBack, primaryShape, AchvCard, AchvLine, MaterialTheme.colorScheme.onBackground, m)
         },
         name = {
             Text(
@@ -2230,7 +2198,7 @@ private fun SteamGameDetailScreen(
             }
         },
         downloads = { m ->
-            StoreDownloadsTile(primaryShape, AchvCard, AchvLine, AchvAccent, m, entry.takeIf { entryTarget == StoreEntry.DOWNLOADS })
+            StoreDownloadsTile(primaryShape, AchvCard, AchvLine, AchvAccent, m)
         },
     ) {
         freeMessage?.let {
@@ -2249,8 +2217,7 @@ private fun SteamGameDetailScreen(
             )
         }
 
-        // Tab strip — Details · Achievements (done/total) · DLC · Cloud saves. Styled like the
-        // action buttons and horizontally scrollable, per the mockup.
+        // Tab chips — Details · Achievements (done/total) · DLC · Cloud · Media, all in one row.
         SteamDetailTabs(
             tabs = detailTabs,
             selected = selectedTab,
@@ -2511,7 +2478,10 @@ private fun SteamGameDetailScreen(
             modifier = Modifier
                 .align(if (sideBySide) Alignment.BottomStart else Alignment.BottomCenter)
                 // Side by side it sits under the scrolling column, clear of the cover.
-                .then(if (sideBySide) Modifier.width(geometry.leftWidth.dp + pageInset * 2) else Modifier)
+                .then(
+                    if (sideBySide) Modifier.padding(start = geometry.edge.dp - pageInset).width(geometry.leftWidth.dp + pageInset * 2)
+                    else Modifier,
+                )
                 .navigationBarsPadding()
                 .onSizeChanged { captionHeightPx = it.height },
         )
@@ -2774,9 +2744,8 @@ private fun GearMenuItem(
 }
 
 /**
- * The detail page's tab strip — pill tabs styled like the action buttons (fixed mockup palette, not
- * MaterialTheme). Horizontally scrollable. The Achievements tab carries a `done/total` count badge
- * once its list has loaded (hidden while empty / not signed in).
+ * The detail page's tab chips (fixed mockup palette, not MaterialTheme), an icon and a short label each. The Achievements tab
+ * shows its `done/total` count beside the trophy once its list has loaded (hidden while empty / not signed in).
  */
 @Composable
 private fun SteamDetailTabs(
@@ -2787,58 +2756,22 @@ private fun SteamDetailTabs(
     mediaCount: Int,
     onSelect: (DetailTab) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        tabs.forEach { tab ->
-            val isSel = tab == selected
-            val badge = when {
-                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> "$achDone/$achTotal"
-                tab == DetailTab.MEDIA && mediaCount > 0 -> "$mediaCount"
-                else -> null
+    StoreTabChips(
+        tabs = tabs.map { tab ->
+            val icon = storeTabIcon(tab.label)
+            when {
+                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> StoreTab(icon, "$achDone/$achTotal")
+                tab == DetailTab.MEDIA && mediaCount > 0 -> StoreTab(icon, tab.label, "$mediaCount")
+                else -> StoreTab(icon, tab.label)
             }
-            val shape = RoundedCornerShape(9.dp)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier
-                    .storeFocus(shape, { onSelect(tab) })
-                    .clip(shape)
-                    .background(if (isSel) AchvTabActiveBg else AchvCard)
-                    .border(1.dp, if (isSel) AchvTabActiveBorder else AchvLineSoft, shape)
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 15.dp, vertical = 9.dp),
-            ) {
-                Text(
-                    text = tab.label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSel) AchvTabActiveText else AchvInk2,
-                    maxLines = 1,
-                )
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSel) AchvTabActiveBadge else AchvBadgeBg)
-                            .padding(horizontal = 7.dp, vertical = 1.dp),
-                    ) {
-                        Text(
-                            text = badge,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) AchvTabActiveText else AchvInk3,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
-        }
-    }
+        },
+        selected = tabs.indexOf(selected),
+        onSelect = { onSelect(tabs[it]) },
+        shape = RoundedCornerShape(8.dp),
+        idle = StoreChipStyle(AchvCard, AchvLineSoft, AchvInk2),
+        active = StoreChipStyle(AchvTabActiveBg, AchvTabActiveBorder, AchvTabActiveText),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+    )
 }
 
 /**

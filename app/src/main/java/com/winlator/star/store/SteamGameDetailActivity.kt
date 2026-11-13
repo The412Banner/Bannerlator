@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labTile
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -3856,14 +3858,16 @@ private fun DownloadSpeedPickerDialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
+            // Drawn at the Lab's size, as a Lab panel: hard corners, thin line, compact rows.
+            com.winlator.star.ui.DeckDialogScaled {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.96f)
-                    .widthIn(max = 720.dp)
+                    .fillMaxWidth(0.9f)
+                    .widthIn(max = 640.dp)
                     .heightIn(max = maxH),
-                shape = RoundedCornerShape(16.dp),
+                shape = SimpleShape,
                 color = cs.surface,
-                border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.22f)),
+                border = BorderStroke(1.dp, cs.outline),
             ) {
                 Column(Modifier.heightIn(max = maxH)) {
                     // Header — no download-size/on-disk values are in scope in this composable, so
@@ -3906,7 +3910,7 @@ private fun DownloadSpeedPickerDialog(
                                 .weight(1.15f)
                                 .fillMaxHeight()
                                 .verticalScroll(rememberScrollState())
-                                .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                         ) {
                             Text(
                                 text = "SPEED & RESOURCE USE",
@@ -3926,82 +3930,39 @@ private fun DownloadSpeedPickerDialog(
                                 }
                                 val hint = when (tier) {
                                     DownloadSpeedConfig.TIER_SLOW ->
-                                        "Lowest RAM / CPU — gentlest on the device"
+                                        "Gentlest on the device"
                                     DownloadSpeedConfig.TIER_MEDIUM ->
-                                        "Balanced throughput and resource use"
+                                        "Balanced"
                                     DownloadSpeedConfig.TIER_FAST ->
-                                        "Best speed for most devices"
-                                    else -> "Fastest — highest RAM / CPU on decompress"
+                                        "Best for most devices"
+                                    else -> "Fastest, heaviest on RAM / CPU"
                                 }
+                                // One slim line per speed, the Lab menu's way: the selected one carries the line on its
+                                // left and a faint fill; a fading line separates the rows.
+                                if (index > 0) com.winlator.star.ui.simple.SimpleRowDivider()
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            if (isSel) cs.primary.copy(alpha = 0.16f)
-                                            else Color.Transparent,
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (isSel) cs.primary.copy(alpha = 0.55f)
-                                            else cs.outline.copy(alpha = 0.25f),
-                                            shape = RoundedCornerShape(10.dp),
-                                        )
-                                        .clickable { selected = index }
-                                        .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+                                        .background(if (isSel) cs.primary.copy(alpha = 0.10f) else Color.Transparent)
+                                        .labTile(onClick = { selected = index })
+                                        .padding(end = 8.dp),
                                 ) {
-                                    RadioButton(
-                                        selected = isSel,
-                                        onClick = { selected = index },
+                                    Box(Modifier.width(2.dp).height(34.dp).background(if (isSel) cs.primary else Color.Transparent))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(name, fontSize = 13.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = cs.onSurface, maxLines = 1)
+                                    Spacer(Modifier.width(8.dp))
+                                    // Meter fills Slow=1 … Blazing=4.
+                                    SpeedLoadMeter(filled = index + 1)
+                                    Text(
+                                        text = if (tier == DownloadSpeedConfig.TIER_FAST) "Recommended · $hint" else hint,
+                                        fontSize = 11.sp,
+                                        color = cs.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 10.dp),
                                     )
-                                    Spacer(Modifier.width(6.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = cs.onSurface,
-                                            )
-                                            // Fast is the recommended default — flag it by tier
-                                            // value (not a hard index) so it tracks the list.
-                                            if (tier == DownloadSpeedConfig.TIER_FAST) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(5.dp))
-                                                        .background(cs.primary)
-                                                        .padding(horizontal = 6.dp, vertical = 1.dp),
-                                                ) {
-                                                    Text(
-                                                        text = "RECOMMENDED",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = cs.onPrimary,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
-                                            }
-                                            Spacer(Modifier.width(8.dp))
-                                            // Meter fills Slow=1 … Blazing=4.
-                                            SpeedLoadMeter(filled = index + 1)
-                                        }
-                                        Text(
-                                            text = hint,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = cs.onSurfaceVariant,
-                                        )
-                                    }
-                                    // Per-tier "?" — has its own onClick, so tapping it opens
-                                    // help without selecting the row.
-                                    IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
-                                        Icon(
-                                            Icons.Default.Help,
-                                            contentDescription = "What is this?",
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -4103,6 +4064,7 @@ private fun DownloadSpeedPickerDialog(
                         ) { Text("Download") }
                     }
                 }
+            }
             }
         }
         return

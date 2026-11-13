@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 15:04 EST — 🔀 MERGED feat/steam-add-game-folders (user: "merge it")
+
+- **Merged:** backup `refs/backup/20261113/main-before-steam-add-game-folders` = 707d950a (pushed). `--no-ff` merge → main **fb01e774**. Main had not moved.
+- **Tree check:** `git diff 8e425d3c fb01e774 -- . ':!PROGRESS_LOG.md'` = empty → main's code == CI-built 8e425d3c (CI 43495856444 green 4/4).
+- **Proof level:** CI green only, **NOT device-tested** (merged on the user's word before install; staged APK fd6985d1… never installed). Main push CI 43498099724.
+- **Next (user):** each store (Steam, Epic, GOG, Amazon) gets a download location picker — Internal (today), External (SD card / USB SSD when present), Custom (pick a folder in the in-app file manager), with "use as default" — new branch.
+
 ## 2026-11-13 14:49 EST — Steam: "+ Import game library" + "Use a folder I already have" (feat/steam-add-game-folders off main 707d950a, CI pending, NOT device-tested)
 
 - **Why:** user (WinNative recon follow-up, option C): game folders the user already has (PC copy without appmanifest, another app, a backup) should become installed Steam games without a full download; also a folder holding many game folders. Placement chosen by the user: a "+ Import game library" chip after All · Demos · Installed in the Steam Library tab.

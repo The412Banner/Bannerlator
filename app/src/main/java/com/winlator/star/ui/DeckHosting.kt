@@ -91,6 +91,7 @@ object DeckWindow {
  */
 @Composable
 fun DeckDialogBars() {
+    com.winlator.star.sound.DialogSound()
     // Only dialogs of the Deck shell's own activity: a store or game activity keeps its own bars.
     val view = LocalView.current
     val hidden = DeckWindow.hidesNavBarIn(view.context.findActivity())

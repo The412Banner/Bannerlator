@@ -155,7 +155,10 @@ internal fun OnResume(action: () -> Unit) {
     }
 }
 
-internal fun toast(ctx: android.content.Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
+internal fun toast(ctx: android.content.Context, text: String) {
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TOAST)
+    Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show()
+}
 
 /** A name to type (a new controls profile, a rename). */
 @Composable

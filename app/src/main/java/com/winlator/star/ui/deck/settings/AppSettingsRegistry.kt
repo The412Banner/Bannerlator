@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
@@ -31,6 +32,7 @@ import com.winlator.star.perf.PerfRevertRegistry
 import com.winlator.star.perf.PerfRootApplier
 import com.winlator.star.perf.PerformanceSettings
 import com.winlator.star.perf.RootManager
+import com.winlator.star.sound.UiSoundPacks
 import com.winlator.star.store.SteamFriendsStore
 import com.winlator.star.store.SteamPrefs
 import com.winlator.star.ui.components.GlobalControllerPrefs
@@ -53,6 +55,7 @@ internal object AppSettingsRegistry {
     val categories: List<SettingsCategory> = listOf(
         SettingsCategory("app.general", T("General"), T("Start-up screen and updates."), Icons.Filled.Tune),
         SettingsCategory("app.appearance", T("Appearance"), T("Theme, accent colour, size and orientation."), Icons.Filled.Palette),
+        SettingsCategory("app.sounds", T("Sounds"), T("Menu sounds and sound packs."), Icons.Filled.MusicNote),
         SettingsCategory("app.library", T("Games & library"), T("Cover art and the default MIDI sound bank."), Icons.AutoMirrored.Filled.LibraryBooks),
         SettingsCategory("app.performance", T("Performance"), T("Power defaults for every game and translator presets."), Icons.Filled.Speed),
         SettingsCategory("app.network", T("Downloads & network"), T("Store download engines, speed and Steam connection."), Icons.Filled.CloudDownload),
@@ -74,10 +77,14 @@ internal object AppSettingsRegistry {
     const val TARGET_INPUT_CONTROLS = "inputControls"
     const val TARGET_DEFAULTS = "containerDefaults"
     const val TARGET_CONTENTS = "contents"
+    const val TARGET_SOUNDS = "uiSounds"
+    /** The Sound pack row: Lab opens its own list for it (installed / available, apply / delete). */
+    const val SOUND_PACK_ID = "app.sounds.pack"
 
     val handoffs: Map<String, List<Handoff>> = mapOf(
         "app.general" to listOf(Handoff(T("Check for updates"), T("Version, release notes and Download & install (classic Settings)."), TARGET_CLASSIC)),
         "app.appearance" to listOf(Handoff(T("Theme and colours"), T("Theme presets, custom accent colour, side menu, orientation, interface and text size."), TARGET_APPEARANCE)),
+        "app.sounds" to listOf(Handoff(T("Manage sound packs"), T("Preview, remove, or install a pack zip."), TARGET_SOUNDS)),
         "app.library" to listOf(Handoff(T("Installed sound banks and export folder"), T("Add .sf2 files and choose where shortcuts are exported (classic Settings)."), TARGET_CLASSIC)),
         "app.performance" to listOf(
             Handoff(T("Root controls, heat safety and Lossless.dll"), T("CPU governor and frequency locks, free memory, the temperature watchdog (classic Settings › Performance), and importing Lossless.dll for frame generation."), TARGET_CLASSIC),
@@ -119,7 +126,27 @@ internal object AppSettingsRegistry {
     private fun toggle(id: String, category: String, group: String, label: String, level: SettingLevel, key: String, default: Boolean, hint: String? = null) =
         app(id, category, group, label, level, hint = hint, tech = key, control = { Control.Toggle }, binding = prefBool(key, default))
 
+    private fun soundPackOptions(): List<Opt> = UiSoundPacks.choices().map { (id, label) -> Opt(id, label) }
+
     private fun buildDefs(): List<SettingDef> = listOf(
+        app(
+            "app.sounds.on", "app.sounds", T("Menu sounds"), T("Menu sounds"), SIMPLE, tech = UiSoundPacks.PREF_ON,
+            control = { Control.Toggle },
+            binding = AppBinding({ _ -> onOff(UiSoundPacks.state.value.on) }, { c, v -> UiSoundPacks.setOn(c, v == "1") }),
+        ),
+        app(
+            "app.sounds.volume", "app.sounds", T("Menu sounds"), T("Volume"), SIMPLE, tech = UiSoundPacks.PREF_VOLUME,
+            control = { Control.Slider(0f, 100f, 5f, { "${it.toInt()}%" }, { it.toInt().toString() }) },
+            binding = AppBinding(
+                { _ -> UiSoundPacks.state.value.volume.toString() },
+                { c, v -> UiSoundPacks.setVolume(c, v.toFloatOrNull()?.toInt() ?: UiSoundPacks.state.value.volume) },
+            ),
+        ),
+        app(
+            "app.sounds.pack", "app.sounds", T("Menu sounds"), T("Sound pack"), SIMPLE, tech = UiSoundPacks.PREF_PACK,
+            control = { Control.Select(soundPackOptions()) },
+            binding = AppBinding({ _ -> UiSoundPacks.state.value.selected }, { c, v -> UiSoundPacks.select(c, v) }),
+        ),
         app(
             "app.general.landing", "app.general", T("Start-up"), T("Open the app on"), SIMPLE,
             hint = T("In the Deck interface, Games and Big Picture both open on Home."),

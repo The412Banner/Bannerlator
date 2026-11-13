@@ -227,7 +227,10 @@ internal fun Modifier.labTile(
     return this
         .then(if (requester != null) Modifier.focusRequester(requester) else Modifier)
         .onFocusChanged {
-            if (it.isFocused && !focused) onFocus?.invoke()
+            if (it.isFocused && !focused) {
+                onFocus?.invoke()
+                com.winlator.star.sound.UiSounds.focusGained()
+            }
             focused = it.isFocused
         }
         .graphicsLayer { val k = if (onAccent) 0.06f else 0.02f; scaleX = 1f + k * p; scaleY = 1f + k * p }

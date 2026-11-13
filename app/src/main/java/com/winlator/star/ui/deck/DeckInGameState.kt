@@ -111,6 +111,7 @@ object DeckInGameState {
 
     /** Lab: the Quick page. */
     fun selectLabQuick() {
+        if (!_labQuick.value) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _labQuick.value = true
         requestFocus()
     }
@@ -135,12 +136,14 @@ object DeckInGameState {
     }
 
     fun selectMenuTab(tab: MenuTab) {
+        if (_labQuick.value || _menuTab.value != tab) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _menuTab.value = tab
         _labQuick.value = false
         requestFocus()
     }
 
     fun selectQuickTab(tab: QuickTab) {
+        if (_quickTab.value != tab) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         _quickTab.value = tab
         requestFocus()
     }
@@ -235,6 +238,8 @@ object DeckInGameState {
     private fun setPanel(p: Panel) {
         val was = _panel.value
         if (was == p) return
+        // Quick ↔ full menu swap; opening and closing sound through onPanelOpenChanged (the activity).
+        if (was != Panel.NONE && p != Panel.NONE) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.MENU_OPEN)
         _panel.value = p
         if (p != Panel.NONE) requestFocus()
         if ((was == Panel.NONE) != (p == Panel.NONE)) onPanelOpenChanged?.accept(p != Panel.NONE)

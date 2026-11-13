@@ -112,6 +112,7 @@ internal fun DeckGamePage(
     onOpenContainer: (Int) -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
+    com.winlator.star.sound.PageSound()
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     val shortcuts by vm.shortcuts.collectAsState(initial = emptyList())

@@ -238,6 +238,8 @@ internal fun ShortcutsXmbView(
     var settleJob by remember { mutableStateOf<Job?>(null) }
     // Centred home: whether the focused game's options are showing. They belong to one game, so moving closes them.
     var optsOpen by remember { mutableStateOf(false) }
+    com.winlator.star.sound.MoveSound(act)
+    com.winlator.star.sound.SoundOnChange(optsOpen) { _, open -> if (open) com.winlator.star.sound.UiCue.OPTIONS else null }
     val centered = centeredHome && !optsOpen
 
     LaunchedEffect(shortcuts, hasAll) {
@@ -259,6 +261,11 @@ internal fun ShortcutsXmbView(
     // Moving to another game always lands back on Play, so A launches (like tapping a card).
     fun settleTo(i: Int) {
         val t = i.coerceIn(0, slots - 1)
+        when {
+            t != target && kotlin.math.abs(i - target) > 1 -> com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.SCROLL)
+            t != target -> com.winlator.star.sound.UiSounds.focusGained()
+            i != t -> com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE)
+        }
         if (t != target) { target = t; act = 0; optsOpen = false }
         settleJob?.cancel()
         settleJob = scope.launch {
@@ -294,7 +301,10 @@ internal fun ShortcutsXmbView(
             override fun pop() = nav.pop()
             override fun popToRoot() = nav.popTo(0)
             override fun refresh() = nav.bump()
-            override fun toast(message: String) { Toast.makeText(appCtx, message, Toast.LENGTH_SHORT).show() }
+            override fun toast(message: String) {
+                com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TOAST_SHORT)
+                Toast.makeText(appCtx, message, Toast.LENGTH_SHORT).show()
+            }
             override fun saved() { nav.savedAt = System.currentTimeMillis() }
             override fun confirm(confirm: XmbConfirm, onOk: () -> Unit) = nav.push(xmbConfirmMenu(nav, confirm, onOk))
             override fun reloadGames() = reload()

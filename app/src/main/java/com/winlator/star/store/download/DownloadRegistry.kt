@@ -115,8 +115,10 @@ object DownloadRegistry {
 
     /** Insert or replace an entry by its [DownloadEntry.key]. Persists if INSTALLED. */
     fun upsert(entry: DownloadEntry) {
+        val was = _entries.value[entry.key]?.state
         _entries.update { it + (entry.key to entry) }
         writeThrough(entry)
+        stateSound(was, entry.state)
     }
 
     /**
@@ -126,15 +128,32 @@ object DownloadRegistry {
      */
     fun update(key: String, transform: (DownloadEntry) -> DownloadEntry) {
         var updated: DownloadEntry? = null
+        var was: DownloadState? = null
         _entries.update { map ->
             val cur = map[key] ?: return@update map
             val next = transform(cur)
+            was = cur.state
             updated = next
             // key can legally change (shouldn't in practice); re-key defensively.
             if (next.key == key) map + (key to next)
             else map - key + (next.key to next)
         }
-        updated?.let { writeThrough(it) }
+        updated?.let { writeThrough(it); stateSound(was, it.state) }
+    }
+
+    /** UI sound for a download that starts, finishes or fails. */
+    private fun stateSound(was: DownloadState?, now: DownloadState) {
+        if (was == now) return
+        val cue = when (now) {
+            DownloadState.INSTALLED -> if (was != null) com.winlator.star.sound.UiCue.TASK_DONE else null
+            DownloadState.FAILED -> com.winlator.star.sound.UiCue.ERROR
+            DownloadState.QUEUED, DownloadState.DOWNLOADING ->
+                if (was == null || was == DownloadState.FAILED || was == DownloadState.CANCELLED || was == DownloadState.INSTALLED) {
+                    com.winlator.star.sound.UiCue.TASK_START
+                } else null
+            else -> null
+        } ?: return
+        com.winlator.star.sound.UiSounds.cue(cue)
     }
 
     /** Remove an entry (e.g. user dismissed a failed/cancelled row). Also drops it

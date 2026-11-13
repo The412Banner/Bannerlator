@@ -1915,7 +1915,10 @@ object SteamFriendsStore {
     private fun appendMessage(id: Long, msg: ChatMessage) {
         val list = histories.getOrPut(id) { mutableListOf() }
         synchronized(list) { list.add(msg) }
-        if (id == activeChatId) _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        if (id == activeChatId) {
+            if (!msg.fromSelf) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.CHAT_MESSAGE)
+            _chat.value = ChatSession(id, synchronized(list) { list.toList() })
+        }
         io.execute { persistHistories() }
     }
 
@@ -1939,6 +1942,7 @@ object SteamFriendsStore {
     }
 
     private fun bumpUnread(id: Long) {
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.FRIEND_MESSAGE)
         _unread.value = _unread.value.toMutableMap().apply { this[id] = (this[id] ?: 0) + 1 }
     }
 
@@ -2006,11 +2010,36 @@ object SteamFriendsStore {
         }
     }
 
+    /** When the friends list first filled; presence changes in the next while are the sign-in catching up, not news. */
+    @Volatile private var friendsFilledAt = 0L
+
+    /** A friend coming online or starting a game makes its sound (not the first fill, not unconfirmed relay rows). */
+    private fun presenceSounds(old: List<SteamFriend>, new: List<SteamFriend>) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (old.isEmpty() || friendsFilledAt == 0L) {
+            if (new.isNotEmpty() && friendsFilledAt == 0L) friendsFilledAt = now
+            return
+        }
+        if (now - friendsFilledAt < 15_000L) return
+        val before = old.associateBy { it.steamId }
+        var online = false
+        var inGame = false
+        for (f in new) {
+            val o = before[f.steamId] ?: continue
+            if (f.stale || o.stale) continue
+            if (o.presence == Presence.OFFLINE && f.presence != Presence.OFFLINE && f.presence != Presence.UNKNOWN) online = true
+            if (o.presence != Presence.IN_GAME && f.presence == Presence.IN_GAME && o.presence != Presence.OFFLINE) inGame = true
+        }
+        if (inGame) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.FRIEND_IN_GAME)
+        else if (online) com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.FRIEND_ONLINE)
+    }
+
     /** Rebuild + push the sorted, nickname-injected friends list. */
     private fun publish() {
         val list = friendIds.mapNotNull { id ->
             friendMap[id]?.copy(nickname = nicknames[id])
         }.sortedWith(compareBy({ it.presence.ordinal }, { it.displayName.lowercase() }))
+        presenceSounds(_friends.value, list)
         _friends.value = list
         _incomingRequests.value = incomingIds.mapNotNull { friendMap[it]?.copy(nickname = nicknames[it]) }
             .sortedBy { it.displayName.lowercase() }

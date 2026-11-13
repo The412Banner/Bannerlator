@@ -1,5 +1,6 @@
 package com.winlator.star.ui.simple
 
+import com.winlator.star.sound.popupKeySounds
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -360,7 +361,7 @@ internal fun LabDrawer(current: Int, onSection: (Int) -> Unit, onClose: () -> Un
         val first = remember { FocusRequester() }
         LaunchedEffect(Unit) { delay(120); runCatching { first.requestFocus() } }
         BackHandler { close() }
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().popupKeySounds()) {
             androidx.compose.animation.AnimatedVisibility(
                 visibleState = shown,
                 enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240)),

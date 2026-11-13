@@ -298,6 +298,10 @@ internal fun SimpleOneMenuSettings(
 
     // ── Dialogs (as in the other Simple editors) ──
     pickerFor?.let { def ->
+        if (def.id == AppSettingsRegistry.SOUND_PACK_ID) {
+            com.winlator.star.ui.simple.SoundPackPicker(onDismiss = { pickerFor = null })
+            return@let
+        }
         val c = def.control(env, values)
         SimplePicker(
             title = def.label,

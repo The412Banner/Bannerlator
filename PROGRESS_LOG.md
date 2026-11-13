@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 13:02 EST — 🔀 MERGED feat/ui-sounds (user: "it works, merge it")
+
+- **Merged:** backup `refs/backup/20261113/main-before-ui-sounds` = 10e3224e1 (pushed). `--no-ff` merge of feat/ui-sounds 25cd8dcf → main **ecc153e4**. Main had not moved since the branch point.
+- **Tree check:** `git diff 53b2d01c ecc153e4 -- . ':!PROGRESS_LOG.md'` = empty → main's code is exactly the build the user tested (CI 43471178895 green 4/4, installed on the Pocket FIT Elite 12:58 EST, base.apk sha256 3f18abbf…0c06).
+- **In it:** menu sounds with the Steam Big Picture sounds (user-hosted release winlator-contents `Steam-ui-sound`, size + sha256 checked) and every DeckThemes sound pack (Audio Loader `pack.json` format); our own sound player and rules; sounds across Lab, Deck, XMB, Classic and the in-game menus; Settings › Sounds (on/off, volume, Sound pack list with Installed / Available, Apply / Delete, Manage sound packs: preview / remove / install a pack zip). Credits: README + `NOTICE_AUDIOLOADER.txt`.
+- **Proof level:** CI green; the user tested 53b2d01c on the Elite and said "it works". Not reported back in detail: each individual sound, the in-game menu sounds, Steam friends / download / achievement sounds, Classic Settings, zip import. Main push CI 43478551861 started.
+- **Open:** Deck-style Settings still shows Sound pack as a plain drop-down (the Installed / Available list is Lab + Classic); 6 Steam files unused (no screenshot / recording / timer / group-chat features); branch feat/ui-sounds kept.
+
 ## 2026-11-13 12:16 EST — UI sounds: Sound pack list with Installed / Available sections (feat/ui-sounds 53b2d01c, CI 43471178895 running, NOT device-tested)
 
 - **User (screenshot 12:12 of the 484dba8f Lab picker):** a total at the top of the available list; installed packs first in an "Installed" section; picking an installed pack offers Apply or Delete, and a deleted pack goes back to the available list.

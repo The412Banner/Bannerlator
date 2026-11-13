@@ -127,6 +127,18 @@ target_link_libraries(locale_fix
         dl
 )
 
+# Hostname fix: Android's hostname is "localhost", so Epic Online Services found its own address as
+# 127.0.0.1 and online play had nothing to offer a peer. Loaded via LD_PRELOAD for every game (see hostname_fix.c).
+add_library(hostname_fix SHARED
+        winlator/hostname_fix.c
+)
+
+target_compile_options(hostname_fix PRIVATE -Wall -Wextra)
+
+target_link_libraries(hostname_fix
+        dl
+)
+
 add_library(vulkan_renderer SHARED
         winlator/vulkan_jni.cpp
         winlator/stream_jni.cpp

@@ -76,6 +76,7 @@ import com.winlator.star.reshade.ReshadeManager
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.deck.xmbDoneActions
 import com.winlator.star.ui.deck.deckFocusRing
 import com.winlator.star.ui.screens.OutlinedAlertDialog
@@ -476,10 +477,16 @@ private fun LoadoutCard(sec: DeckReshadeSection, names: List<String>) {
         )
     }
     if (sec.setHere()) {
+        // XMB, a game: the same wording as the rows the game sets itself (see SourceLine in DeckSettingsEditor.kt).
+        val shortcutPage = sec.env.scope == EditorScope.GAME && rememberXmbHome()
         DeckLine(
-            label = if (sec.env.scope == EditorScope.GAME) L("Set for this game") else L("Set for this container"),
+            label = when {
+                shortcutPage -> L("Different from the container")
+                sec.env.scope == EditorScope.GAME -> L("Set for this game")
+                else -> L("Set for this container")
+            },
             hint = if (sec.env.scope == EditorScope.GAME) L("Reset follows the container's effects again.") else L("Reset goes back to the All containers effects."),
-            trailing = { DeckSmallButton(L("Reset"), Icons.Filled.Restore) { sec.resetToInherited() } },
+            trailing = { DeckSmallButton(if (shortcutPage) PageWording.resetLabel(Inherit.CONTAINER) else L("Reset"), Icons.Filled.Restore) { sec.resetToInherited() } },
         )
     }
 }

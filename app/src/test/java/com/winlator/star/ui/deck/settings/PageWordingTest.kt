@@ -5,7 +5,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 /**
- * The kickers a game's settings page says differently from the container's (PageWording.kt), and that, in the XMB, the game page is
+ * The texts a game's settings page says differently from the container's (PageWording.kt), and that, in the XMB, the game page is
  * the container page: the same tabs in the same order with the same names, and the same rows with the same labels, hints, groups
  * and levels (ContainerLayout.forScope), under a game tab of its own.
  */
@@ -27,6 +27,21 @@ class PageWordingTest {
     fun theContainerKickerIsUnchanged() {
         assertEquals("Container settings", PageWording.containerKicker())
         assertNotEquals(PageWording.containerKicker(), PageWording.shortcutKicker(xmb = true, world = World.WINE))
+    }
+
+    @Test
+    fun aRowTheGameSetsItselfResetsToWhatItFollows() {
+        assertEquals("Reset to container", PageWording.resetLabel(Inherit.CONTAINER))
+        assertEquals("Reset to container", PageWording.resetLabel(null))
+        assertEquals("Reset to app setting", PageWording.resetLabel(Inherit.APP))
+        assertEquals("Reset to default", PageWording.resetLabel(Inherit.BUILT_IN))
+    }
+
+    @Test
+    fun theNoteBesideTheDotNamesTheValueTheGameFollows() {
+        assertEquals("Container: Off", PageWording.followsNote(Inherit.CONTAINER, "Off"))
+        assertEquals("App setting: On", PageWording.followsNote(Inherit.APP, "On"))
+        assertEquals("Default: 60", PageWording.followsNote(Inherit.BUILT_IN, "60"))
     }
 
     // ---- The game page is the container page ----

@@ -122,6 +122,7 @@
     <string name="lab_0e83b3b8">Device</string>
     <string name="lab_0ea47605">Position on screen</string>
     <string name="lab_0eada789">Which VEGAS config the game reads. A stock config stays untouched: the first edit makes your own copy.</string>
+    <string name="lab_0ec45e8b">Different from the container</string>
     <string name="lab_0eea5e34">Picked for you: the newest installed Turnip that can import the game\'s frames.</string>
     <string name="lab_0f06baec">For each Proton the Steam client runs games with. A swap applies the next time a game starts, and waits for a game running on that Proton to close. </string>
     <string name="lab_0f5c671d">Launch this game on the TV</string>
@@ -274,6 +275,7 @@
     <string name="lab_1ffa163f">Search all repositories</string>
     <string name="lab_2012067c">Bundled with the app</string>
     <string name="lab_20226dfe"> · not connected (saved pin)</string>
+    <string name="lab_20310cb4">Container: %1$s</string>
     <string name="lab_2062fe79">FPS Limiter</string>
     <string name="lab_20898aa4">Only if auto-detection fails ([KFAULT] in the log).</string>
     <string name="lab_208b07a1">Details, artwork, background ›</string>
@@ -504,6 +506,7 @@
     <string name="lab_3bd060de"> and the game renders on the bundled Wayland Turnip (the adapter needs a Turnip driver).</string>
     <string name="lab_3bf05e53">Shows over the art in Home\'s big tile when previews are on. On the game page the logo takes the name\'s place.</string>
     <string name="lab_3c0764a4">Show on-screen controls and the layout you pick</string>
+    <string name="lab_3c969b0c">Reset to container</string>
     <string name="lab_3ca0cc27">HDR: automatic. This screen accepts HDR10, so HDR output switches on for this game.</string>
     <string name="lab_3cc7318b">Cores</string>
     <string name="lab_3d081d32">The GOG, Epic, Amazon and Steam shortcuts (the side menu, the Stores tab).</string>
@@ -1183,6 +1186,7 @@
     <string name="lab_8ecc4179"> instead of Wine\'s. Needed by many wrappers and mod loaders. Graphics DLLs are never included: DXVK and VKD3D own those.</string>
     <string name="lab_8ece40f8">Banners-Turnip drivers only; stock Turnip ignores it.</string>
     <string name="lab_8ef37792">Bottom</string>
+    <string name="lab_8f234880">Default: %1$s</string>
     <string name="lab_8f4a852b">Device power</string>
     <string name="lab_8f4c06ce">Values are passed to the wrapper as they are; unknown ones are safe to leave blank.</string>
     <string name="lab_8f7a6c67">GPU red at</string>
@@ -1230,6 +1234,7 @@
     <string name="lab_94a268b7">Hide on-screen controls when a controller connects</string>
     <string name="lab_94aedecb">No concurrent binning (nocb)</string>
     <string name="lab_94c8a274">Grip</string>
+    <string name="lab_94f6acff">App setting: %1$s</string>
     <string name="lab_94fc0266">Shown in your library and on home-screen shortcuts. A new one is saved as soon as you pick it.</string>
     <string name="lab_950dac8b">Android\'s own picker, e.g. for Photos or cloud storage.</string>
     <string name="lab_952a7868">Same as the container\'s</string>
@@ -1671,6 +1676,7 @@
     <string name="lab_cc9e753f">Browse &amp; install components</string>
     <string name="lab_cc9f0c95">Show internal storage</string>
     <string name="lab_ccb4b062">The layer is downloaded first (%1$s).</string>
+    <string name="lab_ccbb20d4">Reset to app setting</string>
     <string name="lab_cce939fc">Fast OpenGL</string>
     <string name="lab_cd871c13">Report a Steam Deck (deck_emu)</string>
     <string name="lab_cdc70ec3">Video decoder</string>

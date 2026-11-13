@@ -106,20 +106,34 @@ private fun p2LoadAdv(xmb: XmbScope, c: Container, d: P2AdvData) {
 }
 
 internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
-    val ctx = xmb.context
-    val res = ctx.resources
-    val c = shortcut.container
-    val d = P2AdvData()
-    p2LoadAdv(xmb, c, d)
-    val reshade = P2Reshade(xmb, shortcut)
-    val startupEntries = res.getStringArray(R.array.startup_selection_entries).toList()
-    val sharpEntries = res.getStringArray(R.array.vkbasalt_sharpness_entries).toList()
+    val advanced = XmbAdvancedRows(xmb, shortcut)
+    return XmbMenu("Advanced", Icons.Filled.Tune) { advanced.rows() }
+}
 
-    return XmbMenu("Advanced", Icons.Filled.Tune) body@{
+/**
+ * The Advanced menu's rows (Box64 / FEXCore, controls profile, services, CPU cores, sharpness, ReShade) and the async facts they read.
+ * One instance per menu: it starts loading when it is made. The XMB Home's game settings build the same rows and file them under the
+ * editor's own sections (Performance, Controls, Graphics) instead of one Advanced menu.
+ */
+internal class XmbAdvancedRows(private val xmb: XmbScope, private val shortcut: Shortcut) {
+    private val ctx = xmb.context
+    private val res = ctx.resources
+    private val c = shortcut.container
+    private val d = P2AdvData()
+    private val reshade = P2Reshade(xmb, shortcut)
+    private val startupEntries = res.getStringArray(R.array.startup_selection_entries).toList()
+    private val sharpEntries = res.getStringArray(R.array.vkbasalt_sharpness_entries).toList()
+
+    init { p2LoadAdv(xmb, c, d) }
+
+    /** False until the version lists and presets are read; [rows] says so with one line meanwhile. */
+    val loaded: Boolean get() = d.loaded
+
+    fun rows(): List<XmbRow> {
         val rows = mutableListOf<XmbRow>()
         if (!d.loaded) {
             rows += XmbRow.Info("loading", "Loading versions and presets…", Icons.Filled.Info)
-            return@body rows
+            return rows
         }
         val arm = d.arm64ec
         val emu = if (arm) "WOWBox64" else "Box64"
@@ -128,7 +142,7 @@ internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         rows += XmbRow.Header("hBox64", emu)
         val b64Stored = shortcut.p2Ex("box64Version", c.getBox64Version())
         val b64 = b64Stored.ifEmpty { d.box64Versions.firstOrNull() ?: "" }
-        val b64Opts = if (b64.isNotEmpty() && b64 !in d.box64Versions) d.box64Versions + b64 else d.box64Versions
+        val b64Opts = p2WithCurrent(d.box64Versions, b64)
         if (b64Opts.isNotEmpty()) {
             rows += XmbRow.Choice("b64Version", "$emu version", Icons.Filled.Memory, b64Opts, b64) { v ->
                 p2Put(xmb, shortcut, "box64Version", v)
@@ -144,7 +158,7 @@ internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         if (arm) {
             rows += XmbRow.Header("hFex", "FEXCore")
             val fex = shortcut.p2Ex("fexcoreVersion", c.getFEXCoreVersion())
-            val fexOpts = if (fex.isNotEmpty() && fex !in d.fexVersions) d.fexVersions + fex else d.fexVersions
+            val fexOpts = p2WithCurrent(d.fexVersions, fex)
             if (fexOpts.isNotEmpty()) {
                 rows += XmbRow.Choice("fexVersion", ctx.getString(R.string.fexcore_version), Icons.Filled.Memory, fexOpts,
                     if (fex.isEmpty()) fexOpts.first() else fex) { v -> p2Put(xmb, shortcut, "fexcoreVersion", v) }
@@ -208,7 +222,7 @@ internal fun xmbAdvancedMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         rows += XmbRow.Link("reshade", "ReShade loadout", Icons.Filled.Layers,
             value = if (count == 0) "None" else "$count effect${if (count == 1) "" else "s"}",
             subtitle = if (reshade.supported()) "Effects, mode and parameters" else "Only applies to DXVK/VKD3D (Vulkan) games") { reshade.loadoutMenu() }
-        rows
+        return rows
     }
 }
 
@@ -319,7 +333,7 @@ private fun p2PresetValuesMenu(xmb: XmbScope, s: Shortcut, kind: PresetKind, pre
                     write(spec.name, nv)
                 }
                 else -> {
-                    val opts = p2Unique(if (v.isNotEmpty() && v !in spec.values) spec.values + v else spec.values)
+                    val opts = p2Unique(p2WithCurrent(spec.values, v))
                     if (opts.isEmpty()) {
                         rows += XmbRow.Text("v:${spec.name}", spec.name, Icons.Filled.Tune, v, subtitle = help(spec.name)) { nv -> write(spec.name, nv) }
                     } else {

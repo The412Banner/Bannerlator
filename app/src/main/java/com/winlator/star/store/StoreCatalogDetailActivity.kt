@@ -56,6 +56,11 @@ import org.json.JSONObject
  * store's own detail page, which carries install / DLC / cloud saves.
  */
 class StoreCatalogDetailActivity : ComponentActivity() {
+    // Left-to-right layout whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         private const val EXTRA_ITEM = "catalog_item_json"

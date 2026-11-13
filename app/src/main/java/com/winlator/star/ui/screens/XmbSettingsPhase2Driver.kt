@@ -22,6 +22,7 @@ import com.winlator.star.contents.WrapperSettingsDictionary
 import com.winlator.star.core.DefaultVersion
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GPUInformation
+import com.winlator.star.core.GpuSpoof
 import com.winlator.star.core.MaliPanvk
 import com.winlator.star.core.StringUtils
 import kotlinx.coroutines.Dispatchers
@@ -43,12 +44,19 @@ private val P2_GFX_CURATED = setOf(
     "bcnCompatSparse", "compatUseGamenative", "gpuName", "fdDevFeatures", "turnipGmem", "turnipTokens",
 )
 
+/** A graphicsDriverConfig string ("key=value;key=value") as a map. */
+private fun p2ParseCfg(raw: String): Map<String, String> = raw.split(";").associate { elem ->
+    val parts = elem.split("=")
+    parts[0] to if (parts.size > 1) parts[1] else ""
+}
+
+/** The device-memory entry whose number is [num], else the first entry, else [num] itself. */
+private fun p2MemLabel(entries: List<String>, num: String): String =
+    entries.firstOrNull { StringUtils.parseNumber(it) == num } ?: entries.firstOrNull() ?: num
+
 /** The dialog's state, seeded with its defaults from the stored string. */
 private class P2GfxCfg(raw: String) {
-    private val cfg: Map<String, String> = raw.split(";").associate { elem ->
-        val parts = elem.split("=")
-        parts[0] to if (parts.size > 1) parts[1] else ""
-    }
+    private val cfg: Map<String, String> = p2ParseCfg(raw)
     var version = cfg["version"] ?: ""
     var vulkanVersion = cfg["vulkanVersion"] ?: "1.4"
     var gpuName = cfg["gpuName"] ?: "Device"
@@ -137,7 +145,6 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
     val bcnTypes = res.getStringArray(R.array.bcn_emulation_type_entries).toList()
     val bcnCaches = res.getStringArray(R.array.bcn_emulation_cache_entries).toList()
     val memEntries = res.getStringArray(R.array.device_memory_entries).toList()
-    fun memLabel(num: String): String = memEntries.firstOrNull { StringUtils.parseNumber(it) == num } ?: memEntries.firstOrNull() ?: num
 
     // Async facts (the dialog's LaunchedEffects).
     var ready by mutableStateOf(false)
@@ -263,7 +270,7 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         val cfg = P2GfxCfg(rawCfg())
         val eff = effectiveVersion(cfg.version)
         if (eff != cfg.version) { cfg.version = eff; cfg.blacklisted = emptySet() }
-        cfg.maxDeviceMemory = StringUtils.parseNumber(memLabel(cfg.maxDeviceMemory))
+        cfg.maxDeviceMemory = StringUtils.parseNumber(p2MemLabel(memEntries, cfg.maxDeviceMemory))
         for (k in detectedKeys) {
             val def = WrapperSettingsDictionary.defFor(k)
             cfg.extras[k] = when (def.type) {
@@ -274,8 +281,6 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         change(cfg)
         p2Put(xmb, shortcut, "graphicsDriverConfig", cfg.serialize())
     }
-
-    fun uniq(opts: List<String>, cur: String): List<String> = if (cur.isNotEmpty() && cur !in opts) opts + cur else opts
 
     return XmbMenu(ctx.getString(R.string.graphics_driver_configuration), Icons.Filled.Tune, onClose = { jobs.cancel() }) body@{
         val rows = mutableListOf<XmbRow>()
@@ -291,10 +296,10 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
         val isCompatDriver = driver == "wrapper-compat-bcn"
 
         rows += XmbRow.Choice("vulkan", ctx.getString(R.string.graphics_driver_vulkan_version), Icons.Filled.Layers,
-            uniq(vulkanVersions, cfg.vulkanVersion), cfg.vulkanVersion) { v -> write { it.vulkanVersion = v } }
+            p2WithCurrent(vulkanVersions, cfg.vulkanVersion), cfg.vulkanVersion) { v -> write { it.vulkanVersion = v } }
         if (driverVersions.isNotEmpty()) {
             rows += XmbRow.Choice("version", ctx.getString(R.string.graphics_driver_version), Icons.Filled.Memory,
-                uniq(driverVersions, version), version,
+                p2WithCurrent(driverVersions, version), version,
                 subtitle = if (driverFellBack) "This driver couldn't load on this GPU — the system driver answered instead" else null) { v ->
                 write { if (v != it.version) { it.version = v; it.blacklisted = emptySet() } }
                 probe(v)
@@ -312,25 +317,25 @@ internal fun xmbDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
                 value = "$enabled/${allExtensions.size}", subtitle = "Hide extensions from games") { p2ExtensionsMenu(xmb, { allExtensions }, { rawCfg() }, { ch -> write(ch) }) }
         }
         rows += XmbRow.Choice("gpuName", ctx.getString(R.string.gpu_name), Icons.Filled.DeveloperBoard,
-            uniq(gpuNames, cfg.gpuName), cfg.gpuName) { v -> write { it.gpuName = v } }
+            p2WithCurrent(gpuNames, cfg.gpuName), cfg.gpuName) { v -> write { it.gpuName = v } }
         if (memEntries.isNotEmpty()) {
             rows += XmbRow.Choice("memory", ctx.getString(R.string.graphics_driver_max_device_memory), Icons.Filled.Memory,
-                memEntries, memLabel(cfg.maxDeviceMemory)) { v -> write { it.maxDeviceMemory = StringUtils.parseNumber(v) } }
+                memEntries, p2MemLabel(memEntries, cfg.maxDeviceMemory)) { v -> write { it.maxDeviceMemory = StringUtils.parseNumber(v) } }
         }
         rows += XmbRow.Choice("presentMode", ctx.getString(R.string.graphics_driver_present_modes), Icons.Filled.Speed,
-            uniq(presentModes, cfg.presentMode), cfg.presentMode) { v -> write { it.presentMode = v } }
+            p2WithCurrent(presentModes, cfg.presentMode), cfg.presentMode) { v -> write { it.presentMode = v } }
         rows += XmbRow.Choice("resourceType", ctx.getString(R.string.graphics_driver_resource_type), Icons.Filled.Memory,
-            uniq(resourceTypes, cfg.resourceType), cfg.resourceType) { v -> write { it.resourceType = v } }
+            p2WithCurrent(resourceTypes, cfg.resourceType), cfg.resourceType) { v -> write { it.resourceType = v } }
 
         rows += XmbRow.Header("hBcn", "BCn textures")
         rows += XmbRow.Info("gpuNote", (if (gpuModel.isNotEmpty()) "GPU: $gpuModel — " else "") +
             "BCn/compat layers apply to Mali and other non-Qualcomm GPUs", Icons.Filled.Info)
         rows += XmbRow.Choice("bcnEmulation", ctx.getString(R.string.graphics_driver_bcn_emulation), Icons.Filled.Layers,
-            uniq(bcnEmulations, cfg.bcnEmulation), cfg.bcnEmulation) { v -> write { it.bcnEmulation = v } }
+            p2WithCurrent(bcnEmulations, cfg.bcnEmulation), cfg.bcnEmulation) { v -> write { it.bcnEmulation = v } }
         rows += XmbRow.Choice("bcnType", ctx.getString(R.string.graphics_driver_bcn_emulation_type), Icons.Filled.Layers,
-            uniq(bcnTypes, cfg.bcnEmulationType), cfg.bcnEmulationType) { v -> write { it.bcnEmulationType = v } }
+            p2WithCurrent(bcnTypes, cfg.bcnEmulationType), cfg.bcnEmulationType) { v -> write { it.bcnEmulationType = v } }
         rows += XmbRow.Choice("bcnCache", ctx.getString(R.string.graphics_driver_bcn_emulation_cache), Icons.Filled.Layers,
-            uniq(bcnCaches, cfg.bcnEmulationCache), cfg.bcnEmulationCache) { v -> write { it.bcnEmulationCache = v } }
+            p2WithCurrent(bcnCaches, cfg.bcnEmulationCache), cfg.bcnEmulationCache) { v -> write { it.bcnEmulationCache = v } }
         val adrenoNote = if (isQualcomm) "No effect on Adreno (native BCn)" else null
         if (isIntegratedBcn) {
             rows += XmbRow.Toggle("bcnAstc", ctx.getString(R.string.graphics_driver_bcn_emulation_astc), Icons.Filled.Layers,
@@ -386,19 +391,15 @@ internal fun xmbWaylandDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbM
     val ctx = xmb.context
     val c = shortcut.container
     val memEntries = ctx.resources.getStringArray(R.array.device_memory_entries).toList()
-    fun memLabel(num: String): String = memEntries.firstOrNull { StringUtils.parseNumber(it) == num } ?: memEntries.firstOrNull() ?: num
     fun rawCfg(): String = shortcut.p2Ex("graphicsDriverConfig", c.getGraphicsDriverConfig())
     fun write(key: String, value: String) =
         p2Put(xmb, shortcut, "graphicsDriverConfig", withGraphicsDriverKeys(rawCfg(), mapOf(key to value)))
 
     return XmbMenu("Wayland driver settings", Icons.Filled.Tune) {
         val raw = rawCfg()
-        val cfg = raw.split(";").associate { elem ->
-            val parts = elem.split("=")
-            parts[0] to if (parts.size > 1) parts[1] else ""
-        }
-        val gpuName = com.winlator.star.core.GpuSpoof.gpuNameOf(raw)
-        val names = com.winlator.star.core.GpuSpoof.names(ctx).let { if (gpuName in it) it else it + gpuName }
+        val cfg = p2ParseCfg(raw)
+        val gpuName = GpuSpoof.gpuNameOf(raw)
+        val names = GpuSpoof.names(ctx).let { if (gpuName in it) it else it + gpuName }
         val storedPresent = cfg["presentMode"]?.ifEmpty { null } ?: "mailbox"
         val presentValues = WAYLAND_PRESENT_MODES + (if (storedPresent in WAYLAND_PRESENT_MODES) emptyList() else listOf(storedPresent))
         val presentLabels = presentValues.map { if (it in WAYLAND_PRESENT_MODES) it else "$it (X11 only, not used here)" }
@@ -406,11 +407,11 @@ internal fun xmbWaylandDriverConfigMenu(xmb: XmbScope, shortcut: Shortcut): XmbM
         rows += XmbRow.Info("help", "For games that refuse or misbehave on Adreno", Icons.Filled.Info,
             subtitle = "DirectX games (DXVK) see the GPU named here. Off by default (Device); same settings as X11's.")
         rows += XmbRow.Choice("gpuName", ctx.getString(R.string.gpu_name) + " (spoof)", Icons.Filled.DeveloperBoard, names, gpuName,
-            subtitle = com.winlator.star.core.GpuSpoof.vendorWarning(ctx, gpuName)
+            subtitle = GpuSpoof.vendorWarning(ctx, gpuName)
                 ?: "NVIDIA: games may try NVAPI, DLSS or Reflex. AMD: AMD AGS paths.") { v -> write("gpuName", v) }
         if (memEntries.isNotEmpty()) {
             rows += XmbRow.Choice("memory", ctx.getString(R.string.graphics_driver_max_device_memory), Icons.Filled.Memory,
-                memEntries, memLabel(cfg["maxDeviceMemory"] ?: "0"),
+                memEntries, p2MemLabel(memEntries, cfg["maxDeviceMemory"] ?: "0"),
                 subtitle = "What DirectX games are told the GPU's memory is") { v -> write("maxDeviceMemory", StringUtils.parseNumber(v)) }
         }
         rows += XmbRow.Choice("presentMode", ctx.getString(R.string.graphics_driver_present_modes), Icons.Filled.Speed,
@@ -458,10 +459,7 @@ private fun xmbMaliPanvkRows(
     }
     rows += XmbRow.Link("panvkAdvanced", ctx.getString(R.string.mali_panvk_advanced), Icons.Filled.Science) {
         XmbMenu(ctx.getString(R.string.mali_panvk_advanced), Icons.Filled.Science) {
-            val c = raw().split(";").associate { elem ->
-                val parts = elem.split("=")
-                parts[0] to if (parts.size > 1) parts[1] else ""
-            }
+            val c = p2ParseCfg(raw())
             val auto = ctx.getString(R.string.mali_panvk_default)
             val noWaits = MaliPanvk.subOn(c, MaliPanvk.KEY_NO_SUBMIT_WAITS)
             val subRows = if (!MaliPanvk.modeOn(ctx, c, c["version"])) emptyList() else listOf(
@@ -562,7 +560,7 @@ private fun p2BcnLayerMenu(
     }
 }
 
-/** #132 Layer 1: one control per env key scanned from an imported wrapper, stored under the raw key. */
+/** One control per env key scanned from an imported wrapper, stored under the raw key. */
 private fun p2DetectedMenu(
     xmb: XmbScope, keys: () -> List<String>, raw: () -> String, write: ((P2GfxCfg) -> Unit) -> Unit,
 ): XmbMenu = XmbMenu("Detected settings", Icons.Filled.Science) {
@@ -581,7 +579,7 @@ private fun p2DetectedMenu(
             }
             WrapperSettingsDictionary.Type.DROPDOWN -> {
                 val selected = current.ifEmpty { def.default }.ifEmpty { def.choices.firstOrNull() ?: "" }
-                val opts = p2Unique(if (selected.isNotEmpty() && selected !in def.choices) def.choices + selected else def.choices)
+                val opts = p2Unique(p2WithCurrent(def.choices, selected))
                 if (opts.isEmpty()) {
                     rows += XmbRow.Text("d:$key", def.label, Icons.Filled.Tune, current, subtitle = hint) { v -> write { it.extras[key] = v } }
                 } else {

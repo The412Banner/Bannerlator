@@ -76,6 +76,7 @@ import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
 import com.winlator.star.ui.deck.xmbChipOverArt
+import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen

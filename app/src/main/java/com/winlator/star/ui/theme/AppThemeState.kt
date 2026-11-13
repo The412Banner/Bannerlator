@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 object AppThemeState {
     private lateinit var themePrefs: SharedPreferences
 
-    private val _presetIndex = MutableStateFlow(1)
+    private val _presetIndex = MutableStateFlow(DEFAULT_PRESET_INDEX)
     val presetIndex: StateFlow<Int> = _presetIndex
 
     private val _customAccent = MutableStateFlow(Color(0xFF0055FF))
@@ -90,7 +90,7 @@ object AppThemeState {
     val simpleLayout: StateFlow<String> = _simpleLayout
 
     // The preset whose background/surface colors back the custom accent
-    private val _customBaseIndex = MutableStateFlow(0)
+    private val _customBaseIndex = MutableStateFlow(DEFAULT_PRESET_INDEX)
 
     val colorScheme: kotlinx.coroutines.flow.Flow<ColorScheme> =
         combine(_presetIndex, _customAccent, _isDarkMode) { index, accent, dark ->
@@ -104,7 +104,7 @@ object AppThemeState {
         }
 
     /** Dim accent paired with [colorScheme]. For real presets it's the preset's own
-     *  accentDim (AMOLED = exact #002277 so the default is unchanged); for a custom accent
+     *  accentDim (so every preset keeps its own look, Charcoal the default one); for a custom accent
      *  it's derived from the live accent so dim fills/borders follow the picker too. */
     val accentDim: kotlinx.coroutines.flow.Flow<Color> =
         combine(_presetIndex, _customAccent) { index, accent ->
@@ -118,9 +118,6 @@ object AppThemeState {
                else themePresets.getOrElse(index) { themePresets.first() }.accentDim
     }
 
-    /** The theme a fresh install starts with (updates keep theirs; AMOLED when none was ever picked). */
-    private const val NEW_INSTALL_PRESET = "Carbon & Ember"
-
     fun init(context: Context) {
         themePrefs = context.getSharedPreferences("winlator_theme", Context.MODE_PRIVATE)
 
@@ -128,13 +125,14 @@ object AppThemeState {
         // New named presets are inserted before Custom, pushing it to the new last index, so any
         // user previously on Custom (the only thing index 7 could mean back then) is remapped.
         if (!themePrefs.getBoolean("preset_schema_v2", false)) {
-            if (themePrefs.getInt("preset_index", 1) == 7 && CUSTOM_PRESET_INDEX != 7) {
-                themePrefs.edit().putInt("preset_index", CUSTOM_PRESET_INDEX).apply()
+            if (themePrefs.getInt("preset_index", 1) == 7 && LEGACY_CUSTOM_INDEX != 7) {
+                themePrefs.edit().putInt("preset_index", LEGACY_CUSTOM_INDEX).apply()
             }
             themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
         }
 
-        // No saved style yet: a fresh install starts in Lab with Carbon & Ember at 100 % sizes; an update keeps Classic, its theme and sizes.
+        // No saved style yet: a fresh install starts in Lab at 100 % sizes; an update keeps Classic and its sizes. Neither saves a
+        // theme: anyone who never picked a preset (a fresh install or an update) gets DEFAULT_PRESET_NAME, see below.
         if (!themePrefs.contains("ui_style")) {
             val fresh = runCatching {
                 val pi = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -143,17 +141,27 @@ object AppThemeState {
             val edit = themePrefs.edit()
                 .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
                 .putBoolean("simple_home", fresh)
-            val ember = themePresets.indexOfFirst { it.name == NEW_INSTALL_PRESET }
-            if (fresh && ember >= 0 && !themePrefs.contains("preset_index")) edit.putInt("preset_index", ember)
             // Sizes: a fresh install starts at 100 %; an update keeps its own (90 % when never changed).
             if (fresh && !themePrefs.contains("ui_scale")) edit.putFloat("ui_scale", 1f)
             if (fresh && !themePrefs.contains("font_scale")) edit.putFloat("font_scale", 1f)
             edit.apply()
         }
-        _presetIndex.value = themePrefs.getInt("preset_index", 1).coerceIn(0, themePresets.size - 1)
+        // Presets are saved by name now (see resolveSavedPresetIndex): a saved name wins, an old position is read through the
+        // frozen legacy order, and nothing saved at all starts on the default preset. Nothing saved is rewritten here, so an
+        // old choice (a plain preset, or Custom with its accent and base) keeps resolving to the same preset on every launch.
+        val oldIndex = if (themePrefs.contains("preset_index")) themePrefs.getInt("preset_index", 1) else null
+        val presetNames = themePresets.map { it.name }
+        _presetIndex.value = resolveSavedPresetIndex(presetNames, themePrefs.getString("preset_name", null), oldIndex)
         val savedAccent = themePrefs.getInt("custom_accent", Color(0xFF0055FF).toArgb())
         _customAccent.value = Color(savedAccent)
-        _customBaseIndex.value = themePrefs.getInt("custom_base_index", 1).coerceIn(0, CUSTOM_PRESET_INDEX)
+        // The base of a Custom accent: its saved name, else its old position, else (Custom picked before a base was ever saved)
+        // AMOLED, as it always was; with no preset saved at all the default preset.
+        val oldBase = when {
+            themePrefs.contains("custom_base_index") -> themePrefs.getInt("custom_base_index", 1)
+            oldIndex != null || themePrefs.contains("preset_name") -> 1
+            else -> null
+        }
+        _customBaseIndex.value = resolveSavedPresetIndex(presetNames, themePrefs.getString("custom_base_name", null), oldBase)
         _isDarkMode.value = true
         _showStores.value = themePrefs.getBoolean("show_stores", true)
         _showInternalStorage.value = themePrefs.getBoolean("show_internal_storage", true)
@@ -233,20 +241,20 @@ object AppThemeState {
 
     fun setPreset(index: Int) {
         _presetIndex.value = index.coerceIn(0, themePresets.size - 1)
-        themePrefs.edit().putInt("preset_index", _presetIndex.value).apply()
+        themePrefs.edit().putString("preset_name", themePresets[_presetIndex.value].name).apply()
     }
 
     fun setCustomAccent(color: Color) {
         // Snapshot the current base only when leaving a real preset for custom mode
         if (_presetIndex.value != CUSTOM_PRESET_INDEX) {
             _customBaseIndex.value = _presetIndex.value
-            themePrefs.edit().putInt("custom_base_index", _customBaseIndex.value).apply()
+            themePrefs.edit().putString("custom_base_name", themePresets[_customBaseIndex.value].name).apply()
         }
         _customAccent.value = color
         _presetIndex.value = CUSTOM_PRESET_INDEX
         themePrefs.edit()
             .putInt("custom_accent", color.toArgb())
-            .putInt("preset_index", CUSTOM_PRESET_INDEX)
+            .putString("preset_name", themePresets[CUSTOM_PRESET_INDEX].name)
             .apply()
     }
 

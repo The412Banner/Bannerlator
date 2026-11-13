@@ -98,7 +98,8 @@ internal fun xmbLogsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
 
     // Runs first (current, then archived launches), then the files inside the chosen run.
     val runs = LogInventory.runsIn(entry.dir)
-    val runLabels = xmbUniqueLabels(runs.map { if (it.current) "Current" else if (it.wayland) "Wayland" else runLabel(it.millis) })
+    // Choice options must be distinct; archived runs can share a label ("2 hr ago").
+    val runLabels = p2Unique(runs.map { if (it.current) "Current" else if (it.wayland) "Wayland" else runLabel(it.millis) })
     // The first run with files: a game played with Wine logging off may only have Wayland logs.
     var runIdx by mutableIntStateOf(runs.indexOfFirst { LogInventory.filesIn(it.dir).isNotEmpty() }.coerceAtLeast(0))
     var files by mutableStateOf<List<File>>(LogInventory.filesIn(runs.getOrNull(runIdx)?.dir ?: entry.dir))
@@ -133,16 +134,6 @@ internal fun xmbLogsMenu(xmb: XmbScope, shortcut: Shortcut): XmbMenu {
             val dir = runDir()
             add(XmbRow.Link(key = "report", label = "Report a problem", icon = Icons.Filled.BugReport) { xmbLogReportMenu(xmb, entry, dir) })
         }
-    }
-}
-
-// Choice options must be distinct; archived runs can share a label ("2 hr ago").
-private fun xmbUniqueLabels(labels: List<String>): List<String> {
-    val seen = HashMap<String, Int>()
-    return labels.map { l ->
-        val n = (seen[l] ?: 0) + 1
-        seen[l] = n
-        if (n == 1) l else "$l ($n)"
     }
 }
 
@@ -325,6 +316,7 @@ private class XmbLogPanel(private val v: XmbLogView, private val xmb: XmbScope) 
             XmbKey.Right -> if (!v.wrap) xmb.scope.launch { v.hScroll.scrollBy(hStepPx) }
             XmbKey.A -> v.following = !v.following
             XmbKey.B -> return false
+            XmbKey.X -> return false
         }
         return true
     }

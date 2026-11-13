@@ -2,17 +2,21 @@ package com.winlator.star.ui.screens
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.annotation.DrawableRes
 import android.content.res.Configuration
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.format.DateUtils
 import android.view.InputDevice
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,15 +26,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +45,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,20 +82,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,6 +100,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -106,9 +108,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -118,18 +123,23 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.LifecycleEventObserver
 import com.winlator.star.R
+import com.winlator.star.androidgames.AndroidGames
 import com.winlator.star.container.Shortcut
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.ui.LocalTopBarOverlayInset
+import com.winlator.star.ui.LocalXmbHintInset
+import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.XmbStoreMark
 import com.winlator.star.ui.deck.rememberScreenScale
-import com.winlator.star.ui.deck.rememberXmbLogo
 import com.winlator.star.ui.deck.storeMarkOf
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.theme.DangerRed
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -145,16 +155,8 @@ internal data class XmbAction(
     val danger: Boolean = false,
     /** Opens a nested XMB column (Settings, Game Details, tools…) instead of running [onClick]. */
     val menu: ((XmbScope) -> XmbMenu)? = null,
-    /** An upper-row card's picture (a store's logo on its colours); without one the card shows [icon]. */
-    val art: XmbCardArt? = null,
     val onClick: () -> Unit = {},
 )
-
-/**
- * An upper-row card's background, drawn edge to edge on the card and, faintly blurred, behind the home: a store's
- * [logo] on its brand colours, or with no logo the card's own icon in white on [colors]. [tintWhite] = draw the logo white.
- */
-internal data class XmbCardArt(@DrawableRes val logo: Int?, val colors: List<Color>, val tintWhite: Boolean = false)
 
 /**
  * Games-tab XMB layout (PS3 cross media bar). Games run along a horizontal bar and the focused
@@ -163,7 +165,7 @@ internal data class XmbCardArt(@DrawableRes val logo: Int?, val colors: List<Col
  * rotation only re-measures. Touch: swipe the bar (with fling), tap a cover to focus it, tap the
  * focused cover to launch, swipe or tap the column. Controller / D-pad: Left/Right games, Up/Down
  * options, A select, B back to Play, L1/R1 jump 5. Up on Play is left unhandled, so focus can
- * climb to the top bar. [centeredHome] turns it into the Deck's PS4-style home (see there).
+ * climb to the top bar. [centeredHome] with [steamHome] turns it into the Deck Home's Steam look (see there).
  */
 @Composable
 internal fun ShortcutsXmbView(
@@ -192,15 +194,25 @@ internal fun ShortcutsXmbView(
     /** The top-right "n / N" counter and clock. Off when the host draws its own floating status there. */
     showClock: Boolean = true,
     /**
-     * [centeredHome] only: cards for the row above the games. Up from the centred row opens it, the games slide
-     * down half off the screen, Left/Right pick a card, A runs it, Down or B go back. Empty = no row.
-     */
-    upperRow: List<XmbAction> = emptyList(),
-    /**
-     * PS4-style home: the games rest centred with no options and the [upperRow] cards peeking above them.
-     * A (or a tap on the focused cover) shows the options; B, Up on Play or moving to another game hides them again.
+     * The Deck Home: the games rest low with no options showing (see [steamHome] for the look). A (or a tap on the focused cover) shows
+     * the options; B, Up on Play or moving to another game hides them again.
      */
     centeredHome: Boolean = false,
+    /**
+     * [centeredHome] only: the Steam Deck library look (XmbSteamHome.kt). The focused game's
+     * own art fills the backdrop, one row of covers sits low with the first game as a wide card, and [homeTabs] are the plain text tabs
+     * under its title, the peek of the host's tabs page: Down from the covers runs the action of tab [homeTabSel] (the last one used, the
+     * first until there is one), and a tap on a tab runs its own, which open the page there. The row holds the
+     * whole [shortcuts] list (recent first) and has no All Games card, so it applies only while [allShortcuts] is null.
+     */
+    steamHome: Boolean = false,
+    homeTabs: List<XmbAction> = emptyList(),
+    /** The counts the peek shows after its tabs ([homeTabs] are the tabs of [XMB_PAGE_TABS], in its order; a missing or zero one shows nothing). */
+    homeBadges: Map<XmbSteamTab, Int> = emptyMap(),
+    /** The Downloads tab's progress ring on the peek (null: none). */
+    homeDownloadRing: XmbDownloadRing? = null,
+    /** The index in [homeTabs] of the tab the host's tabs page last showed (highlighted under the games), or -1 when it has not been used yet. */
+    homeTabSel: Int = -1,
     /** Asked before the view takes D-pad focus (entry, resume): false leaves focus where it is. */
     takeFocus: () -> Boolean = { true },
     /** Changes when the host wants the view to take focus again (the Deck shell, when a page should take its first focus). */
@@ -211,6 +223,11 @@ internal fun ShortcutsXmbView(
      * card is the whole row.
      */
     allShortcuts: List<Shortcut>? = null,
+    /**
+     * [steamHome] in the Deck shell only: what Start (and a tap on the shell's "Start Add Game" hint) runs while the covers hold the
+     * cursor. Null = Start is left alone and no hint shows (the host passes null while its tabs page is up, which has its own).
+     */
+    onAddGame: (() -> Unit)? = null,
 ) {
     if (shortcuts.isEmpty() && allShortcuts == null) return
     val context = LocalContext.current
@@ -226,6 +243,12 @@ internal fun ShortcutsXmbView(
     val allCount = remember(allTotal) { context.resources.getQuantityString(R.plurals.xmb_all_games_count, allTotal, allTotal) }
     val allLabel = stringResource(R.string.xmb_all_games_open)
     var allOpen by rememberSaveable { mutableStateOf(false) }
+    // What the All Games card shows of the library (the mosaic on the card, the collage behind it while it is hovered): the
+    // games the row shows come first (the most recent), then the rest, games with art ahead of those without. Built from the
+    // covers already decoded for the row, and kept until the game list changes.
+    val libraryOrder = remember(shortcuts, allShortcuts) { if (hasAll) xmbRecentOrder(shortcuts, allShortcuts.orEmpty()) { it.file.path } else emptyList() }
+    val mosaic = remember(libraryOrder) { xmbMosaicPick(libraryOrder) { it.icon != null } }
+    val collageArts = remember(libraryOrder) { xmbCollagePick(libraryOrder) { it.icon != null }.mapNotNull { it.icon } }
 
     // The focused game is remembered by path so it survives rotation, leaving the tab, and a
     // refresh or sort that reorders the list. The All Games card is remembered as XMB_ALL_PATH.
@@ -238,7 +261,11 @@ internal fun ShortcutsXmbView(
     var settleJob by remember { mutableStateOf<Job?>(null) }
     // Centred home: whether the focused game's options are showing. They belong to one game, so moving closes them.
     var optsOpen by remember { mutableStateOf(false) }
+    // Steam home: the card the options opened on. The row glides to its options layout around this card, and goes back from it even
+    // when the cursor has moved on meanwhile (which is what closes the options), so it only changes when they open.
+    var liftIdx by remember { mutableIntStateOf(target) }
     val centered = centeredHome && !optsOpen
+    val steam = steamHome && centeredHome && allShortcuts == null
 
     LaunchedEffect(shortcuts, hasAll) {
         val i = slotOfPath(focusedPath)
@@ -246,6 +273,9 @@ internal fun ShortcutsXmbView(
         settleJob?.cancel()
         target = idx
         pos.floatValue = idx.toFloat()
+        // The lifted card is the focused one while the options are open; the list changing order under them (a launch, a new game)
+        // moves it, and the lift is an index, so it follows or the options would hang on another game's card.
+        if (optsOpen) liftIdx = idx
     }
     // The game under the cursor, or null on the All Games card (the slot after the last game), which has no game behind it.
     val focused: Shortcut? = if (hasAll && target >= n) null else shortcuts[target.coerceIn(0, n - 1)]
@@ -289,7 +319,7 @@ internal fun ShortcutsXmbView(
     val xmbScope = remember(nav) {
         object : XmbScope {
             override val context: Context get() = appCtx
-            override val scope: kotlinx.coroutines.CoroutineScope get() = coScope
+            override val scope: CoroutineScope get() = coScope
             override fun push(menu: XmbMenu) = nav.push(menu)
             override fun pop() = nav.pop()
             override fun popToRoot() = nav.popTo(0)
@@ -306,56 +336,37 @@ internal fun ShortcutsXmbView(
     DisposableEffect(Unit) { onDispose { onNestedChange(false) } }
     BackHandler(enabled = nested) { nav.pop() }
 
-    // The row above the games, a second bar that runs like the games: the chosen card sits enlarged at the cross with
-    // the earlier ones to its left. Leaving it always lands back on Play; opening a nested menu closes it. Whether it's
-    // open and which card is chosen (by its label) are saved, so coming back from a card's own screen (a store,
-    // Downloads...) or a recreated activity finds the row as it was left.
-    var upOpen by rememberSaveable { mutableStateOf(false) }
-    var upLabel by rememberSaveable { mutableStateOf<String?>(null) }
-    var upSel by remember { mutableIntStateOf(upperRow.indexOfFirst { it.label == upLabel }.coerceAtLeast(0)) }
-    val upPos = remember { mutableFloatStateOf(upSel.toFloat()) } // the cards' visual position, fractional mid-swipe
-    var upJob by remember { mutableStateOf<Job?>(null) }
-    val upperOpen = upOpen && upperRow.isNotEmpty() && !nested
-    val upIdx = upSel.coerceIn(0, (upperRow.size - 1).coerceAtLeast(0))
-    // The card list changes while the screen is up (Friends appears or goes): keep the same card chosen, by its label; a card
-    // that is gone falls back to the first.
-    LaunchedEffect(upperRow) {
-        val i = upperRow.indexOfFirst { it.label == upLabel }
-        when {
-            i >= 0 && i != upSel -> { upJob?.cancel(); upSel = i; upPos.floatValue = i.toFloat() }
-            i < 0 && upLabel != null && upperRow.isNotEmpty() -> { upJob?.cancel(); upSel = 0; upPos.floatValue = 0f }
-        }
+    // Steam home: the text tabs under the title are the host's tabs page peeking. The one it last showed is highlighted (none until it
+    // has been used) and is the one Down opens it on; the page itself, and the keys while it is up, are the host's.
+    val tabIdx = homeTabSel.coerceIn(0, (homeTabs.size - 1).coerceAtLeast(0))
+    val tabsActive = steam && homeTabs.isNotEmpty() && homeTabSel >= 0 && !nested && !optsOpen
+    // When the options were last opened or closed (uptime ms): a tap right after is a double-tap bounce, not a new request.
+    var toggledAt by remember { mutableLongStateOf(0L) }
+    fun closeOpts() { optsOpen = false; act = 0; toggledAt = SystemClock.uptimeMillis() }
+    fun openOpts() { liftIdx = target; optsOpen = true; act = 0; toggledAt = SystemClock.uptimeMillis() }
+    fun tapOpts(open: Boolean) {
+        if (xmbTapGateOpen(toggledAt, SystemClock.uptimeMillis())) { if (open) openOpts() else closeOpts() }
     }
-    LaunchedEffect(upIdx, upperRow) { upLabel = upperRow.getOrNull(upIdx)?.label }
-    val upT by animateFloatAsState(if (upperOpen) 1f else 0f, tween(300), label = "xmbUpper")
-    fun upSettle(i: Int) {
-        val t = i.coerceIn(0, (upperRow.size - 1).coerceAtLeast(0))
-        upSel = t
-        upJob?.cancel()
-        upJob = scope.launch {
-            animate(upPos.floatValue, t.toFloat(), animationSpec = spring(dampingRatio = 0.9f, stiffness = 420f)) { v, _ ->
-                upPos.floatValue = v
-            }
-        }
+    BackHandler(enabled = centeredHome && optsOpen && !nested) { closeOpts() }
+    // The All Games page is open: Back closes it onto its card. Registered after the others, so it is asked first (the page's own
+    // BackHandler, which closes its sort menu before the page, is registered later still and takes the press before this one).
+    BackHandler(enabled = allOpen) { allOpen = false }
+    val deckActions = LocalDeckActions.current
+    // Steam home: Start adds a game and the shell shows its "Start Add Game" hint, while the covers (not the options, nor a nested menu)
+    // hold the cursor. The options' own column is the cursor's place then, and the hint would only be noise beside it.
+    val addNow by rememberUpdatedState(onAddGame)
+    val addHere = steam && inDeckShell && onAddGame != null && !optsOpen && !nested && !allOpen
+    DisposableEffect(addHere, deckActions) {
+        if (!addHere) return@DisposableEffect onDispose {}
+        val run: () -> Unit = { addNow?.invoke() }
+        deckActions.xmbAddGameHint.value = run
+        onDispose { if (deckActions.xmbAddGameHint.value === run) deckActions.xmbAddGameHint.value = null }
     }
-    // Up from the games lands on the card that was chosen when the row was left (the first one the first time), as the games
-    // row lands on its game.
-    fun openUpper() {
-        upJob?.cancel()
-        val i = upperRow.indexOfFirst { it.label == upLabel }.coerceAtLeast(0)
-        upSel = i
-        upPos.floatValue = i.toFloat()
-        upOpen = true
-    }
-    // The chosen card stays chosen (and the peeking row stays on it) for the next time the row opens.
-    fun closeUpper() { upOpen = false; act = 0 }
-    LaunchedEffect(nested) { if (nested) upOpen = false }
-    BackHandler(enabled = upperOpen) { closeUpper() }
-    fun closeOpts() { optsOpen = false; act = 0 }
-    BackHandler(enabled = centeredHome && optsOpen && !nested && !upperOpen) { closeOpts() }
-    // 1 = centred (no options), 0 = the options layout; the cards peek above the centred row.
+    // 1 = centred (no options), 0 = the options layout.
     val cT by animateFloatAsState(if (centered) 1f else 0f, tween(300), label = "xmbCentred")
-    val peekT by animateFloatAsState(if (centered && upperRow.isNotEmpty() && !upperOpen && !nested) 1f else 0f, tween(300), label = "xmbPeek")
+    // True once the options have glided in most of the way: until then their rows take no touches. Derived, so the glide does not
+    // recompose this view every frame.
+    val optsLive by remember { derivedStateOf { cT < 0.5f } }
 
     // Take D-pad focus on entry and again whenever the app comes back (e.g. after a game exits).
     val focusRequester = remember { FocusRequester() }
@@ -415,75 +426,89 @@ internal fun ShortcutsXmbView(
     }
     val hasPad = showHints && rememberGamepadConnected()
 
-    // Centred home: the edge the cards' peek is cut at, clear of the host's floating tab bar, scaled with the screen
+    // Steam home: the room the host's floating tab bar takes at the top, which the lifted card keeps clear of, scaled with the screen
     // as that bar is.
     val ss = rememberScreenScale()
     val clipTop = ss.dp(XMB_PEEK_CLIP).value
+    // Steam home: the room the shell's Back / Search hints take at the bottom, which the tabs sit above.
+    val hintInset = LocalXmbHintInset.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
         val m = remember(maxWidth, maxHeight, topInset) { XmbMetrics(maxWidth.value, maxHeight.value - topInset.value) }
-        // Centred home: the row is drawn larger while it's the only thing on screen (and under the open cards),
-        // as large as fits between the peeking cards and the bottom edge, at most XMB_HOME_MAX_GROW. The options shrink it back.
-        val homeK = if (!centeredHome) 1f
-            else min(XMB_HOME_MAX_GROW, (m.h / 2f - clipTop - m.sH / 2f - 10f) * 2f / m.fH.coerceAtLeast(1f)).coerceAtLeast(1f)
-        // Read where it's used (draw / drag), so the animation doesn't recompose the view.
-        val rowScale = { 1f + (homeK - 1f) * cT * (1f - upT) }
-        val pitchPx = with(density) { m.pitch.dp.toPx() }
-        val rowPx = with(density) { m.rowH.dp.toPx() }
-        val wPx = with(density) { maxWidth.toPx() }
-        val hPx = with(density) { maxHeight.toPx() }
+        // The Steam home's option rows are at least 48 dp tall, a touch target; the other looks keep their own row height.
+        val rowH = if (steam) m.rowH.coerceAtLeast(XMB_STEAM_MIN_ROW) else m.rowH
+        val sl = remember(m, clipTop, hintInset, ss, rowH) {
+            XmbSteamLayout(m.w, m.h, clipTop, max(hintInset.value, 16f * ss.factor), ss.factor, rowH, m.extra)
+        }
+        // Where the options column and the info pane beside it start: under the focused card of the Steam home, which has glided to the
+        // left margin by then (the column is left aligned with it), else at the usual place.
+        val colX = if (steam) sl.edge else m.colX
+        val colTop = if (steam) sl.colTop else m.colTop
+        val nVis = if (steam) sl.nVis else m.nVis
+        val labelW = if (steam && m.port) min(220f, m.w - colX - m.iconBox - 28f).coerceAtLeast(120f) else m.labelW
+        val infoX = if (!steam) m.infoX else if (m.port) 16f else colX + m.iconBox + 12f + labelW + 12f
+        val infoY = if (!steam) m.infoY else if (m.port) colTop + nVis * rowH + m.extra + 10f else colTop
+        val infoW = if (!steam) m.infoW else if (m.port) m.w - 32f else m.w - infoX - 80f
+        // The Steam home keeps its info pane above the bottom hints (B Back / Y Search at the bottom right): at least 64 dp clear there.
+        val infoH = if (!steam) m.infoH else if (m.port) m.h - infoY - 84f else m.h - infoY - max(64f, sl.bottomClear)
+        // The Classic XMB's description takes this many lines (the Steam home's panel fits its blocks to its room, see XmbSteamInfo).
+        val infoLines = if (m.port) 6 else 3
+        // The collage behind the hovered All Games card: a 5 x 3 grid of covers (repeated when the library is small), drawn once
+        // off the main thread.
+        val collageSpec = xmbCollageSpec(maxWidth.value / maxHeight.value.coerceAtLeast(1f), collageArts.size)
+        val collageState = remember(collageArts, collageSpec) { mutableStateOf<Bitmap?>(null) }
+        LaunchedEffect(collageState, onAll) {
+            if (onAll && collageSpec != null && collageState.value == null) {
+                collageState.value = withContext(Dispatchers.Default) { xmbCollageBitmap(collageArts, collageSpec) }
+            }
+        }
+        // One card's step on screen: the Steam home's covers are drawn at their own sizes.
+        val pitchPx = with(density) { (if (steam) sl.fW + sl.gap else m.pitch).dp.toPx() }
+        val rowPx = with(density) { rowH.dp.toPx() }
 
         var swipe by remember { mutableFloatStateOf(0f) }
         val swipeBackPx = with(density) { 60.dp.toPx() }
         val hDrag = rememberDraggableState { delta ->
             if (nav.depth > 0) { swipe += delta; return@rememberDraggableState }
-            // The open cards follow the finger like the games (at their larger size).
-            if (upperOpen) {
-                upJob?.cancel()
-                val p = (upPos.floatValue - delta / (pitchPx * homeK)).coerceIn(-0.45f, upperRow.size - 1 + 0.45f)
-                upPos.floatValue = p
-                upSel = p.roundToInt().coerceIn(0, upperRow.lastIndex)
-                return@rememberDraggableState
-            }
             settleJob?.cancel()
-            // One cover's step on screen, so the row follows the finger at the larger size too.
-            val p = (pos.floatValue - delta / (pitchPx * rowScale())).coerceIn(-0.45f, slots - 1 + 0.45f)
+            // One cover's step on screen, so the row follows the finger.
+            val p = (pos.floatValue - delta / pitchPx).coerceIn(-0.45f, slots - 1 + 0.45f)
             pos.floatValue = p
             val r = p.roundToInt().coerceIn(0, slots - 1)
             if (r != target) { target = r; act = 0; optsOpen = false }
         }
+        val swipePx = with(density) { XMB_SWIPE_DP.dp.toPx() }
         var vAcc by remember { mutableFloatStateOf(0f) }
+        // The options column only scrolls with its own vertical drag, whichever way it goes: a swipe that starts on it never closes them.
         val vDrag = rememberDraggableState { d ->
-            if (nav.depth > 0 || upperOpen || centered) return@rememberDraggableState
+            if (nav.depth > 0 || centered) return@rememberDraggableState
             vAcc += d
             val step = rowPx * 0.9f
             while (vAcc <= -step) { vAcc += step; act = (act + 1).coerceAtMost(actions.lastIndex) }
             while (vAcc >= step) { vAcc -= step; act = (act - 1).coerceAtLeast(0) }
         }
 
-        // Centred home, touch: a short swipe moves between the levels the D-pad moves between. Down from the games lifts the
-        // cards, down from the options goes back to the games, and up from the cards goes back to the games. The options'
-        // own column scrolls with its vertical drag (vDrag), which takes a swipe that starts on it first, so only a swipe
-        // away from them gets here.
+        // Centred home, touch: a short swipe UP from the games opens the tabs page (the page rises from the bottom as the finger goes
+        // up); a short swipe DOWN with the options open goes back to the games (the covers glide back). A downward swipe on the games
+        // does nothing. The options' own column scrolls with its vertical drag (vDrag), which takes a swipe that starts on it first, so
+        // only a swipe that starts anywhere else (the covers, the backdrop, the details panel) gets here.
         var swipeAcc by remember { mutableFloatStateOf(0f) }
         var swipeDone by remember { mutableStateOf(false) }
-        val swipePx = with(density) { XMB_SWIPE_DP.dp.toPx() }
         val swipeDrag = rememberDraggableState { d ->
             if (swipeDone || !centeredHome || nav.depth > 0) return@rememberDraggableState
             swipeAcc += d
-            when {
-                swipeAcc >= swipePx -> {
-                    swipeDone = true
-                    when {
-                        optsOpen -> closeOpts()
-                        !upperOpen && upperRow.isNotEmpty() && !selectionMode -> openUpper()
-                    }
-                }
-                swipeAcc <= -swipePx -> {
-                    swipeDone = true
-                    if (upperOpen) closeUpper()
-                }
+            when (xmbHomeSwipeAction(xmbVSwipe(swipeAcc, swipePx), optsOpen, steam && homeTabs.isNotEmpty() && !selectionMode)) {
+                XmbSwipeAction.CLOSE_OPTIONS -> { swipeDone = true; closeOpts() }
+                XmbSwipeAction.OPEN_TABS -> { swipeDone = true; runAction(homeTabs[tabIdx]) }
+                XmbSwipeAction.NONE -> {}
             }
         }
+        // What the root's tap detector reads fresh each tap (it is keyed on nothing, so it must not capture these by value): where the
+        // options column's top edge is on the screen (px; the column sits under the see-through top bar's inset) and whether the options
+        // are showing over the games.
+        val optsTopPx = with(density) { (topInset.value + colTop).dp.toPx() }
+        val optsTopNow by rememberUpdatedState(optsTopPx)
+        val optsOpenNow by rememberUpdatedState(steam && optsOpen && nav.depth == 0)
 
         Box(
             Modifier
@@ -508,33 +533,32 @@ internal fun ShortcutsXmbView(
                             Key.ButtonB, Key.Escape -> XmbKey.B
                             Key.ButtonL1 -> XmbKey.L1
                             Key.ButtonR1 -> XmbKey.R1
+                            Key.ButtonX -> XmbKey.X
                             else -> null
                         } ?: return@onPreviewKeyEvent false
                         return@onPreviewKeyEvent nav.onKey(k, xmbScope)
                     }
-                    // The row above the games: Left/Right pick a card, the games stay where they are.
-                    if (upperOpen) {
-                        return@onPreviewKeyEvent when (e.key) {
-                            Key.DirectionLeft -> { upSettle(upIdx - 1); true }
-                            Key.DirectionRight -> { upSettle(upIdx + 1); true }
-                            Key.DirectionUp -> true
-                            Key.DirectionDown, Key.ButtonB, Key.Escape -> { closeUpper(); true }
-                            // Running a card leaves the row open on it, so Back from that card's screen returns to the same card.
-                            Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { runAction(upperRow[upIdx]); true }
-                            else -> false
-                        }
+                    // Steam home, the covers holding the cursor: Start adds a game (the shell's hint says so).
+                    if (e.key == Key.ButtonStart && addHere) {
+                        if (e.nativeKeyEvent.repeatCount == 0) addNow?.invoke()
+                        return@onPreviewKeyEvent true
                     }
-                    // Centred home, no options showing: A shows them, Up lifts the cards, Down has nowhere to go.
+                    // Centred home, no options showing: A shows them, Up has nothing above the games (the Steam home swallows it), Down
+                    // opens the Steam home's tabs page on its last used tab (a held Down opens it once: the repeats are swallowed, or the
+                    // page would take them as its own).
                     if (centered) {
                         return@onPreviewKeyEvent when (e.key) {
                             Key.DirectionLeft -> { settleTo(target - 1); true }
                             Key.DirectionRight -> { settleTo(target + 1); true }
                             Key.ButtonL1 -> if (inDeckShell) false else { settleTo(target - 5); true }
                             Key.ButtonR1 -> if (inDeckShell) false else { settleTo(target + 5); true }
-                            Key.DirectionDown -> true
-                            Key.DirectionUp -> if (upperRow.isNotEmpty() && !selectionMode) { openUpper(); true } else false
+                            Key.DirectionDown -> {
+                                if (steam && homeTabs.isNotEmpty() && !selectionMode && e.nativeKeyEvent.repeatCount == 0) runAction(homeTabs[tabIdx])
+                                true
+                            }
+                            Key.DirectionUp -> steam
                             // The All Games card has no options to show: A opens its page.
-                            Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { if (onAll) allOpen = true else { optsOpen = true; act = 0 }; true }
+                            Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { if (onAll) allOpen = true else openOpts(); true }
                             Key.ButtonB -> if (selectionMode) { onExitSelection(); true } else false
                             else -> false
                         }
@@ -565,56 +589,39 @@ internal fun ShortcutsXmbView(
                     onDragStarted = { swipe = 0f },
                     onDragStopped = { velocity ->
                         if (nav.depth > 0) { if (swipe > swipeBackPx) nav.pop() }
-                        else if (upperOpen) upSettle((upPos.floatValue - velocity / (pitchPx * homeK) * 0.14f).roundToInt())
-                        else settleTo((pos.floatValue - velocity / (pitchPx * rowScale()) * 0.14f).roundToInt())
+                        else settleTo((pos.floatValue - velocity / pitchPx * 0.14f).roundToInt())
                     },
                 )
-                .draggable(swipeDrag, Orientation.Vertical, onDragStarted = { swipeAcc = 0f; swipeDone = false }),
-        ) {
-            // Background: accent glow → the focused cover (with the cards up, the chosen card's art), blurred → shade. The All
-            // Games card has no art, so on it only the glow and the shade show.
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.radialGradient(
-                        0f to accent.copy(alpha = 0.50f), 0.48f to accent.copy(alpha = 0.10f), 0.85f to Color.Black,
-                        center = Offset(wPx * 0.18f, 0f), radius = max(wPx, hPx) * 1.1f,
-                    )
-                )
-            )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val card = if (upperOpen) upperRow.getOrNull(upIdx) else null
-                // Keyed on the card's art and icon (not the card itself, whose lambdas change every recomposition).
-                val picture: Any? = card?.let { c -> c.art?.let { XmbBackdropArt(it, c.icon) } } ?: focused?.icon
-                Crossfade(targetState = picture, animationSpec = tween(600), label = "xmbBackdrop") { pic ->
-                    when (pic) {
-                        is Bitmap -> Image(
-                            bitmap = remember(pic) { pic.asImageBitmap() },
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().blur(14.dp).alpha(0.34f),
-                        )
-                        is XmbBackdropArt -> Box(
-                            Modifier.fillMaxSize().blur(14.dp).alpha(0.34f).background(Brush.linearGradient(pic.art.colors)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val logo = pic.art.logo
-                            if (logo != null) {
-                                rememberXmbLogo(logo)?.let { bmp ->
-                                    Image(
-                                        bmp, contentDescription = null, contentScale = ContentScale.Fit,
-                                        colorFilter = if (pic.art.tintWhite) ColorFilter.tint(Color.White) else null,
-                                        modifier = Modifier.fillMaxSize(0.6f),
-                                    )
-                                }
-                            } else {
-                                Icon(pic.icon, contentDescription = null, tint = Color.White, modifier = Modifier.fillMaxSize(0.4f))
-                            }
-                        }
+                .draggable(swipeDrag, Orientation.Vertical, onDragStarted = { swipeAcc = 0f; swipeDone = false })
+                // Options showing: a tap that nothing took (a control consumes its own) and that landed higher than the options column's top
+                // edge closes them; one at the column's height or lower (beside it, the details panel, the space under it) does nothing.
+                // Covers are controls, so a tap on one is handled by onCard (another cover focuses its game, the lifted card closes).
+                // Read, never consumed: a tap that closes the options goes on to the host like any other.
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        val up = waitForUpOrCancellation()
+                        if (up != null && optsOpenNow && xmbTapClosesOptions(down.position.y, optsTopNow)) tapOpts(false)
                     }
-                }
-            }
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.55f), 0.55f to Color.Black.copy(alpha = 0.1f), 1f to Color.Black.copy(alpha = 0.45f))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f))))
+                },
+        ) {
+            // Background: black, the focused cover blurred at full brightness, one flat veil for the text. Nothing else (no accent
+            // glow, no scrims, no preset colour), so the home looks the same under every preset. The All Games card has no art, so on
+            // it only the black shows.
+            // On the All Games card, the collage of the games inside it (a plain Bitmap, so it is blurred, dimmed and crossfaded
+            // exactly like a cover). It is built the first time the card is hovered, then kept until the games change.
+            val collage = collageState.value
+            val picture: Any? = focused?.icon ?: (if (onAll) collage?.let { XmbCollagePicture(it) } else null)
+            // The Steam home shows the focused game's own landscape art over that (the blurred cover stays under it until it loads).
+            // Its bottom gradient starts XMB_STEAM_FADE_LEAD above the text tabs' top edge (the tabs sit in the content box, below the
+            // top bar's inset), so it is already building behind the title; it is drawn under the content box, so the text and covers stay clear of it.
+            // [cT] (1 centred, 0 with the options open, glided over 300 ms) blurs and dims the art while the options are up.
+            if (steam) XmbSteamBackdrop(
+                focused, picture,
+                (topInset.value + sl.tabsTop - XMB_STEAM_FADE_LEAD * ss.factor) / screenHeight.value.coerceAtLeast(1f),
+                lift = { 1f - cT },
+            )
+            else XmbHomeBackdrop(picture)
             // Faint shade behind a see-through top bar so its title and buttons stay readable.
             if (topInset > 0.dp) {
                 Box(Modifier.fillMaxWidth().height(topInset + 24.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent))))
@@ -633,16 +640,17 @@ internal fun ShortcutsXmbView(
                 ) {
                     if (hasPad && nested) {
                         val hi = nav.hint(xmbScope)
-                        XmbHint("A", Color(0xFF3DDC84), hi.a, hs)
-                        XmbHint("B", Color(0xFFFF5252), "Back", hs)
+                        XmbButtonHint("A", Color(0xFF3DDC84), hi.a, hs)
+                        XmbButtonHint("B", Color(0xFFFF5252), "Back", hs)
                         if (!m.port && m.w >= 600f) {
                             XmbKeyHint("▲ ▼", "Move", hs)
                             if (hi.change) XmbKeyHint("◀ ▶", "Change", hs)
                         }
                         if (hi.sections) XmbKeyHint("L1 R1", "Section", hs)
+                        if (hi.reset) XmbButtonHint("X", Color(0xFF5B9DFF), "Reset", hs)
                     } else if (hasPad) {
-                        XmbHint("A", Color(0xFF3DDC84), if (upperOpen) upperRow[upIdx].label else if (onAll) allLabel else if (centered) "Options" else actions[actIdx].label, hs)
-                        XmbHint("B", Color(0xFFFF5252), "Back", hs)
+                        XmbButtonHint("A", Color(0xFF3DDC84), if (onAll) allLabel else if (centered) "Options" else actions[actIdx].label, hs)
+                        XmbButtonHint("B", Color(0xFFFF5252), "Back", hs)
                         if (!m.port && m.w >= 600f) {
                             XmbKeyHint("◀ ▶", "Games", hs); XmbKeyHint("▲ ▼", "Options", hs); XmbKeyHint("L1 R1", if (inDeckShell) "Tabs" else "Jump", hs)
                         }
@@ -657,38 +665,50 @@ internal fun ShortcutsXmbView(
                 }
 
                 val rootAlpha by animateFloatAsState(if (nested) 0f else 1f, tween(260), label = "xmbRootAlpha")
-                // With the upper row open the games shrink to the small, dimmed peek the cards have on the games row,
-                // and drop until only their top half shows at the bottom edge.
-                val lower = (m.h - m.sH * 0.5f - m.top).coerceAtLeast(0f)
-                // Centred home: the row rests in the middle of the screen until the options open under it.
-                val centreShift = (m.h - m.fH) / 2f - m.top
-                // Everything that belongs to the options layout fades out while centred or with the cards up. A lambda,
-                // read in the graphics layers, so the fade doesn't recompose this view every frame.
-                val optsA = { (1f - upT) * (1f - cT) }
+                // Everything that belongs to the options layout fades out while centred. A lambda, read in the graphics layers, so
+                // the fade doesn't recompose this view every frame.
+                val optsA = { 1f - cT }
                 Box(Modifier.fillMaxSize().graphicsLayer {
                     alpha = rootAlpha
-                    translationY = (1f - rootAlpha) * -12.dp.toPx() + (cT * centreShift * (1f - upT) + upT * lower).dp.toPx()
+                    translationY = (1f - rootAlpha) * -12.dp.toPx()
                 }) {
+                if (steam) {
+                    // The Steam look: one row of covers, the focused game's title and the text tabs (XmbSteamHome.kt). Its options are
+                    // the column below, which sits under the lifted focused card.
+                    XmbSteamHome(
+                        shortcuts = shortcuts, pos = pos, target = target, liftIdx = liftIdx, sl = sl, accent = accent, ss = ss,
+                        focused = focused, sdBadge = sdBadge,
+                        lift = { 1f - cT }, tabs = homeTabs, tabSel = tabIdx, tabsActive = tabsActive, tabsEnabled = centered, badges = homeBadges, downloadRing = homeDownloadRing,
+                        onCard = { i ->
+                            if (nav.depth == 0) {
+                                val s = shortcuts[i]
+                                // A tap on another card focuses it (and, with the options open, closes them: the cursor moved). A tap on the
+                                // focused one opens its options, or closes them when they are open (the lifted card); a bounce right after
+                                // the options opened or closed is dropped.
+                                when {
+                                    i != target -> settleTo(i)
+                                    selectionMode -> onToggleSelect(s)
+                                    optsOpen -> tapOpts(false)
+                                    else -> tapOpts(true)
+                                }
+                            }
+                        },
+                        // A tap opens the tabs page on that tab (its action sets the tab, so the peek highlights it).
+                        onTab = { i -> if (nav.depth == 0) runAction(homeTabs[i]) },
+                    )
+                }
+                if (!steam) {
                 // The bar. Only covers near the cross are composed; each one's placement is read from
                 // `pos` in its graphics layer, so a swipe re-draws without recomposing.
                 val baseIdx by remember { derivedStateOf { floor(pos.floatValue).toInt() } }
                 val ahead = ceil((m.w - m.cross) / m.pitch).toInt() + 1
-                // Centred home: the covers grow around the focused cover's left edge at the row's middle. A layer
-                // transform, so taps land on the covers as drawn.
-                Box(Modifier.fillMaxSize().graphicsLayer {
-                    val s = rowScale()
-                    scaleX = s
-                    scaleY = s
-                    transformOrigin = TransformOrigin(m.cross / m.w, (m.top + m.fH / 2f) / m.h)
-                    alpha = 1f - 0.5f * upT
-                }) {
+                Box(Modifier.fillMaxSize()) {
                 for (i in (baseIdx - 3).coerceAtLeast(0)..(baseIdx + ahead + 1).coerceAtMost(slots - 1)) {
                     if (i >= n) {
                         key(XMB_ALL_PATH) {
                             XmbAllGamesCover(
-                                index = i, pos = pos, m = m, accent = accent, count = allCount,
-                                focused = i == target && !upperOpen,
-                                grow = { 1f - upT },
+                                index = i, pos = pos, m = m, accent = accent, count = allCount, mosaic = mosaic,
+                                focused = i == target,
                                 // Like a game, a tap first brings it to the cross; on the focused one it opens the page.
                                 onClick = { if (nav.depth == 0) { if (i != target) settleTo(i) else allOpen = true } },
                             )
@@ -697,11 +717,9 @@ internal fun ShortcutsXmbView(
                     }
                     val s = shortcuts[i]
                     key(s.file.path) {
-                        // With the cards up no game is chosen: none is enlarged or ringed.
                         XmbCover(
                             shortcut = s, index = i, pos = pos, m = m, accent = accent,
-                            focused = i == target && !upperOpen, selectionMode = selectionMode, selected = s.file.path in selectedPaths,
-                            grow = { 1f - upT },
+                            focused = i == target, selectionMode = selectionMode, selected = s.file.path in selectedPaths,
                             onClick = {
                                 if (nav.depth == 0) when {
                                     i != target -> settleTo(i)
@@ -720,19 +738,9 @@ internal fun ShortcutsXmbView(
                 AnimatedContent(
                     targetState = focused,
                     contentKey = { it?.file?.path ?: XMB_ALL_PATH },
-                    transitionSpec = { (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 6 }) togetherWith fadeOut(tween(90)) },
+                    transitionSpec = { xmbTitleTransition() },
                     label = "xmbTitle",
-                    // On the centred home it follows the focused cover at its larger size (text kept at its own size),
-                    // narrowed by the cover's extra width so it still ends at the screen edge.
-                    modifier = Modifier
-                        .offset(m.titleX.dp, m.titleY.dp)
-                        .width((m.titleW - (homeK - 1f) * (m.fW + 16f)).coerceAtLeast(80f).dp)
-                        .graphicsLayer {
-                            alpha = 1f - upT
-                            val e = rowScale() - 1f
-                            translationX = (e * (m.titleX - m.cross)).dp.toPx()
-                            translationY = (e * (m.titleY - m.top - m.fH / 2f)).dp.toPx()
-                        },
+                    modifier = Modifier.offset(m.titleX.dp, m.titleY.dp).width(m.titleW.coerceAtLeast(80f).dp),
                 ) { s ->
                     if (s == null) {
                         Column {
@@ -745,7 +753,7 @@ internal fun ShortcutsXmbView(
                     } else {
                         // An Android game has no container/resolution line; its package name stands in.
                         val meta = remember(s) {
-                            com.winlator.star.androidgames.AndroidGames.packageOf(s) ?: buildLaunchSpec(s, context).meta
+                            AndroidGames.packageOf(s) ?: buildLaunchSpec(s, context).meta
                         }
                         Column {
                             Text(
@@ -764,92 +772,55 @@ internal fun ShortcutsXmbView(
                         }
                     }
                 }
+                }
 
                 // The cross: the chosen option always sits in the first slot under the bar. Options
                 // you pass slide up behind it and fade; the next few stay visible below.
                 Box(
                     Modifier
-                        .offset(m.colX.dp, m.colTop.dp)
-                        .width((m.iconBox + 12f + m.labelW).dp)
-                        .height((m.nVis * m.rowH + m.extra).dp)
+                        .offset(colX.dp, colTop.dp)
+                        .width((m.iconBox + 12f + labelW).dp)
+                        .height((nVis * rowH + m.extra).dp)
                         .graphicsLayer { alpha = optsA() }
-                        // Only while the options show: otherwise this (invisible) column would swallow a swipe down that starts on it.
-                        .draggable(vDrag, Orientation.Vertical, enabled = !centered && !upperOpen && !nested, onDragStarted = { vAcc = 0f }),
+                        // Only while the options show, and only then at all: a pointer modifier that is merely disabled still takes part in
+                        // hit testing, so this (invisible) column, which sits over the lower part of the first card while the games rest,
+                        // would swallow every tap that lands on it (the wide first card then opened its options from only part of its face).
+                        .then(
+                            if (!centered && !nested) Modifier.draggable(vDrag, Orientation.Vertical, onDragStarted = { vAcc = 0f })
+                            else Modifier
+                        ),
                 ) {
                     actions.forEachIndexed { i, a ->
                         key(a.label) {
                             val d = i - actIdx
-                            val vis = d in 0 until m.nVis
-                            val y by animateFloatAsState(d * m.rowH + if (d > 0) m.extra else 0f, spring(dampingRatio = 0.9f, stiffness = 500f), label = "xmbRowY")
-                            val a2 by animateFloatAsState(if (!vis) 0f else if (d == 0) 1f else max(0.35f, 1f - d * 0.13f), tween(220), label = "xmbRowA")
+                            val vis = d in 0 until nVis
+                            val y by animateFloatAsState(d * rowH + if (d > 0) m.extra else 0f, spring(dampingRatio = 0.9f, stiffness = 500f), label = "xmbRowY")
+                            // The Steam home shows every row that fits at full strength (the unselected ones are dimmer by their text colour); the rest fade with distance.
+                            val a2 by animateFloatAsState(if (!vis) 0f else if (d == 0 || steam) 1f else max(0.35f, 1f - d * 0.13f), tween(220), label = "xmbRowA")
                             val src = remember { MutableInteractionSource() }
                             XmbActionRow(
                                 action = a, selected = d == 0, accent = accent, iconBox = m.iconBox,
+                                // The Steam home's rows are touch targets the height of their step, over the column's whole width.
+                                hitH = if (steam) rowH else 0f,
                                 modifier = Modifier
                                     .graphicsLayer { translationY = y.dp.toPx(); alpha = a2 }
-                                    .then(if (vis && !nested && !upperOpen && !centered) Modifier.xmbClick(src) { act = i; runAction(a) } else Modifier),
+                                    // Not while the options are still gliding in (a quick second tap on the card must not land on an invisible row).
+                                    .then(if (vis && !nested && !centered && optsLive) Modifier.xmbClick(src) { act = i; runAction(a) } else Modifier),
                             )
                         }
                     }
                 }
 
                 // Nothing about a game to show on the All Games card.
-                if (m.infoW >= 120f && m.infoH >= 40f && focused != null) {
+                if (infoW >= 120f && infoH >= (if (steam) 24f else 40f) && focused != null) {
                     Column(
-                        Modifier.offset(m.infoX.dp, m.infoY.dp).width(m.infoW.dp).height(m.infoH.dp).graphicsLayer { alpha = optsA() }.clipToBounds(),
+                        Modifier.offset(infoX.dp, infoY.dp).width(infoW.dp).height(infoH.dp).graphicsLayer { alpha = optsA() }.clipToBounds(),
                     ) {
-                        XmbInfo(focused, playtime, if (m.port) 6 else 3, storeBadges)
+                        // The Steam home's panel is compact and fits what it shows into infoH (nothing is ever cut mid-row).
+                        if (steam) XmbSteamInfo(focused, playtime, infoW, infoH, if (m.port) 5 else 3, storeBadges)
+                        else XmbInfo(focused, playtime, infoLines, storeBadges)
                     }
                 }
-                }
-                // Composed while the cards show or animate; derived, so the animation doesn't recompose this view per frame.
-                val upperShown by remember(upperOpen) { derivedStateOf { upperOpen || upT > 0.01f || peekT > 0.01f } }
-                if (centeredHome && upperRow.isNotEmpty() && upperShown) {
-                    // A tap anywhere off the cards (the lowered games included) goes back to them.
-                    if (upperOpen) {
-                        val back = remember { MutableInteractionSource() }
-                        Box(Modifier.fillMaxSize().xmbClick(back) { closeUpper() })
-                    }
-                    // Open: a tap on another card brings it to the cross, on the chosen one runs it. Peeking: any card opens the row.
-                    val onCard: (Int) -> Unit = { i ->
-                        when {
-                            !upperOpen -> openUpper()
-                            i != upIdx -> upSettle(i)
-                            else -> runAction(upperRow[i])
-                        }
-                    }
-                    // The cards peek above the centred row and run up under the host's floating tab bar, fading out toward
-                    // the top edge (an offscreen layer masked by a gradient) instead of stopping at a hard line. Fully open
-                    // they sit well below that edge, so the mask (and its full-screen offscreen layer) is dropped.
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { compositingStrategy = if (upT < 1f) CompositingStrategy.Offscreen else CompositingStrategy.Auto }
-                            .drawWithContent {
-                                drawContent()
-                                if (upT < 1f) {
-                                    val edge = clipTop.dp.toPx()
-                                    drawRect(
-                                        Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = edge * 0.15f, endY = edge * 1.25f),
-                                        blendMode = BlendMode.DstIn,
-                                    )
-                                }
-                            },
-                    ) {
-                        Box(Modifier.fillMaxSize().padding(top = clipTop.dp)) {
-                            XmbUpperBar(
-                                upperRow, upIdx, upPos, { upT }, { peekT }, m, homeK, clipTop, accent,
-                                enabled = upperOpen || centered, metaSize = ss.sp(12f), onTap = onCard,
-                            )
-                        }
-                    }
-                    // A faint shade behind the tab bar so its tabs and clock stay readable over the fading cards.
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height((clipTop * 1.3f).dp)
-                            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent))),
-                    )
                 }
                 if (nested) {
                     XmbNestedLayer(nav, xmbScope, m.w, m.h, m.port, accent, focused?.name.orEmpty(), focused?.icon, actions.map { it.icon }, actIdx)
@@ -858,7 +829,7 @@ internal fun ShortcutsXmbView(
         }
         // The All Games page covers the row; closing it lands back here with the All Games card still under the cursor.
         if (allOpen && allShortcuts != null) {
-            XmbAllGamesPage(allShortcuts, inDeckShell, onPlay = onPlay, onClose = { allOpen = false })
+            XmbAllGamesPage(allShortcuts, onPlay = onPlay, onClose = { allOpen = false })
         }
     }
 }
@@ -908,8 +879,6 @@ private fun XmbCover(
     focused: Boolean,
     selectionMode: Boolean,
     selected: Boolean,
-    // 1 = the focused cover grows to full size (the usual row), 0 = every cover small (the home's lowered peek).
-    grow: () -> Float = { 1f },
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
@@ -917,7 +886,7 @@ private fun XmbCover(
     val mark = remember(shortcut) { storeMarkOf(shortcut) }
     Box(
         Modifier
-            .xmbCoverSlot(index, pos, m, focused, grow)
+            .xmbCoverSlot(index, pos, m, focused)
             .then(if (focused && !selected) Modifier.shadow(14.dp, shape, ambientColor = accent, spotColor = accent) else Modifier)
             .clip(shape)
             .background(Color(0xFF111111))
@@ -942,7 +911,7 @@ private fun XmbCover(
             XmbMonogram(shortcut.name, accent)
         }
         // Bottom-end, so it clears the selection mark at the top-end; it scales with the cover.
-        XmbStoreMark(mark, Modifier.align(Alignment.BottomEnd).padding(5.dp), (m.fW * 0.2f).coerceIn(18f, 26f).dp)
+        XmbStoreMark(mark, Modifier.align(Alignment.BottomEnd).padding(5.dp), (m.fW * 0.25f).coerceIn(22.5f, 32.5f).dp)
         if (selectionMode) {
             Box(
                 Modifier
@@ -960,19 +929,20 @@ private fun XmbCover(
     }
 }
 
-// A cover's place in the row (a game's or the All Games card's): its size, position and fade from its distance to the cross,
-// read in the graphics layer so a swipe re-draws without recomposing.
-private fun Modifier.xmbCoverSlot(index: Int, pos: MutableFloatState, m: XmbMetrics, focused: Boolean, grow: () -> Float): Modifier = this
+// A card's place in a row (a game's or the All Games card's): its size, position and fade from its distance to the cross, read in
+// the graphics layer so a swipe re-draws without recomposing.
+private fun Modifier.xmbCoverSlot(
+    index: Int, pos: MutableFloatState, m: XmbMetrics, focused: Boolean,
+): Modifier = this
     .zIndex(if (focused) 1f else 0f)
     .size(m.fW.dp, m.fH.dp)
     .graphicsLayer {
-        // u = distance from the cross in covers; the focused one grows to full size and the
+        // u = distance from the chosen card in covers (the cross); the focused one grows to full size and the
         // ones after it are pushed right by the extra width, so spacing stays even mid-swipe.
-        val g = grow()
         val u = index - pos.floatValue
-        val t = (1f - abs(u)).coerceAtLeast(0f) * g
+        val t = (1f - abs(u)).coerceAtLeast(0f)
         val sc = (m.sH + (m.fH - m.sH) * t) / m.fH
-        val x = m.cross + u * m.pitch + m.grow * g * u.coerceIn(0f, 1f)
+        val x = m.cross + u * m.pitch + m.grow * u.coerceIn(0f, 1f)
         translationX = x.dp.toPx()
         translationY = m.top.dp.toPx()
         scaleX = sc
@@ -981,10 +951,11 @@ private fun Modifier.xmbCoverSlot(index: Int, pos: MutableFloatState, m: XmbMetr
         alpha = ((if (u >= 0f) 0.82f else 0.82f + u * 0.32f) + 0.18f * t).coerceIn(0f, 1f)
     }
 
-// The last card of the row: the grid glyph, "All Games" and the game count on the same plain surface as the upper row's Add game
-// card, 2:3 like a cover and ringed like the focused one. It opens the All Games page and has no game behind it, so there is no
-// store mark and no selection mark. One flat opaque fill and nothing nested: a see-through fill would let the focus shadow show
-// through as a dark inner box.
+// The last card of the row: a folder-like 3 x 2 preview of the library (the grid glyph when there are no games) on a plain
+// surface, 2:3 like a cover and ringed like the focused one. Its name and game count are the
+// title beside the card (like every card's), so only the semantics carry them here. It opens the All Games page and has no game
+// behind it, so there is no store mark and no selection mark. One flat opaque fill and nothing nested: a see-through fill would
+// let the focus shadow show through as a dark inner box.
 @Composable
 private fun XmbAllGamesCover(
     index: Int,
@@ -992,26 +963,79 @@ private fun XmbAllGamesCover(
     m: XmbMetrics,
     accent: Color,
     count: String,
+    mosaic: XmbMosaic<Shortcut>,
     focused: Boolean,
-    grow: () -> Float,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
     val src = remember { MutableInteractionSource() }
+    val description = stringResource(R.string.xmb_all_games) + ", " + count
     Box(
         Modifier
-            .xmbCoverSlot(index, pos, m, focused, grow)
+            .xmbCoverSlot(index, pos, m, focused)
             .then(if (focused) Modifier.shadow(14.dp, shape, ambientColor = accent, spotColor = accent) else Modifier)
             .clip(shape)
             .background(Brush.linearGradient(XMB_PLAIN_CARD))
             .border(if (focused) 2.dp else 1.dp, if (focused) accent else Color.White.copy(alpha = 0.14f), shape)
+            .semantics(mergeDescendants = true) { contentDescription = description }
             .xmbClick(src, onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.GridView, contentDescription = null, tint = Color.White, modifier = Modifier.size((m.fW * 0.44f).dp))
-        Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-            Text(stringResource(R.string.xmb_all_games), color = Color.White.copy(alpha = 0.92f), fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2, lineHeight = 15.sp)
-            Text(count, color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1)
+        if (mosaic.covers.isEmpty()) {
+            // No games yet: the grid glyph.
+            Icon(Icons.Filled.GridView, contentDescription = null, tint = Color.White, modifier = Modifier.size((m.fW * 0.44f).dp))
+        } else {
+            // Like a folder: a 3 x 2 preview of the games filling the card. Everything is sized in dp inside the card, so it
+            // scales with the card (the card itself is scaled by its graphics layer).
+            XmbAllGamesMosaic(mosaic, accent, Modifier.fillMaxSize().padding(6.dp))
+        }
+    }
+}
+
+// The All Games card's folder-like preview: up to five covers and a "+N more" tile, in a grid of XMB_MOSAIC_ROWS rows x
+// XMB_MOSAIC_COLS columns that fills the space it is given (the cells share it equally and crop the covers to fit, about square on
+// the 2:3 card). Cells with no game stay faintly empty.
+@Composable
+private fun XmbAllGamesMosaic(mosaic: XmbMosaic<Shortcut>, accent: Color, modifier: Modifier) {
+    val gap = 3.dp
+    val tileShape = RoundedCornerShape(3.dp)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(gap)) {
+        for (row in 0 until XMB_MOSAIC_ROWS) {
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                for (col in 0 until XMB_MOSAIC_COLS) {
+                    val i = row * XMB_MOSAIC_COLS + col
+                    val tile = Modifier.weight(1f).fillMaxHeight().clip(tileShape)
+                    when {
+                        i < mosaic.covers.size -> XmbMosaicCover(mosaic.covers[i], accent, tile)
+                        i == mosaic.covers.size && mosaic.more > 0 -> Box(tile.background(Color(0xFF2E3138)), contentAlignment = Alignment.Center) {
+                            // In a small cell "+N more" wraps at the space: "+N" over "more".
+                            Text(
+                                stringResource(R.string.xmb_all_games_more, mosaic.more), color = Color.White.copy(alpha = 0.92f),
+                                fontSize = 10.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2,
+                            )
+                        }
+                        else -> Box(tile.background(Color.White.copy(alpha = 0.06f)))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// One game's tile in the mosaic: its cover (the bitmap the row's cover shows), or its initials on the monogram's gradient.
+@Composable
+private fun XmbMosaicCover(s: Shortcut, accent: Color, modifier: Modifier) {
+    val bmp = s.icon
+    if (bmp != null) {
+        Image(
+            bitmap = remember(bmp) { bmp.asImageBitmap() },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+        )
+    } else {
+        Box(modifier.background(Brush.linearGradient(listOf(accent.copy(alpha = 0.55f), Color(0xFF0A0A0A)))), contentAlignment = Alignment.Center) {
+            Text(xmbInitials(s.name), color = Color.White.copy(alpha = 0.92f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }
@@ -1031,8 +1055,21 @@ internal fun XmbMonogram(name: String, accent: Color) {
     }
 }
 
+/**
+ * One row of the options column. With a [hitH] above zero the row is a box that tall and as wide as its column (the touch target; the
+ * icon and the text stay at its top, where they sit without it) and [modifier] goes on that box.
+ */
 @Composable
-private fun XmbActionRow(action: XmbAction, selected: Boolean, accent: Color, iconBox: Float, modifier: Modifier) {
+private fun XmbActionRow(action: XmbAction, selected: Boolean, accent: Color, iconBox: Float, modifier: Modifier, hitH: Float = 0f) {
+    if (hitH > 0f) {
+        Box(modifier.fillMaxWidth().height(hitH.dp)) { XmbActionRowContent(action, selected, accent, iconBox, Modifier) }
+    } else {
+        XmbActionRowContent(action, selected, accent, iconBox, modifier)
+    }
+}
+
+@Composable
+private fun XmbActionRowContent(action: XmbAction, selected: Boolean, accent: Color, iconBox: Float, modifier: Modifier) {
     val ring = if (action.danger) DangerRed else accent
     val boxShape = RoundedCornerShape(10.dp)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -1070,159 +1107,113 @@ private fun XmbActionRow(action: XmbAction, selected: Boolean, accent: Color, ic
     }
 }
 
-/** Centred home: the peeking cards' middle sits this far (dp, on a 412 dp phone) from the top, just below the host's floating tab bar; above it they fade out. */
+/** Steam home: the room (dp, on a 412 dp phone) the host's floating tab bar takes at the top; the lifted card keeps clear of it. */
 internal const val XMB_PEEK_CLIP = 50f
 
-/** The surface of the upper row's plain cards (Add game) and of the All Games card, so they always match. */
+/** The surface of the All Games card. */
 internal val XMB_PLAIN_CARD = listOf(Color(0xFF2A2D33), Color(0xFF16181C))
 
-/** Centred home: the most the cover row is drawn larger than its normal size. */
-private const val XMB_HOME_MAX_GROW = 1.3f
-
-/** Centred home: how far (dp) a vertical swipe has to travel to lift the cards or go back to the games. Short, so a flick is enough. */
+/** Centred home: how far (dp) a vertical swipe has to travel to open the tabs page (up) or go back from the options (down). Short, so a flick is enough. */
 private const val XMB_SWIPE_DP = 28f
 
-/** How long (ms) a chosen card waits before its cut-off text starts scrolling. */
-private const val XMB_MARQUEE_DELAY = 700
+/** How a focused card's title swaps for the next one (the Classic row's and the Steam home's): the new one slides up in a fade, the old fades out quickly. */
+internal fun xmbTitleTransition(): ContentTransform =
+    (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 6 }) togetherWith fadeOut(tween(90))
 
-// The row above the games, drawn and moved like the game row: portrait cards (a store's logo on its colours, or an
-// icon), the chosen one enlarged at the cross with the earlier ones to its left, and its name and details beside it.
-// [open] is the open animation, 0..1; [peek] the resting state, where the cards sit small and dimmed with only their
-// lower half below [clipTop] (the caller fades out what's above it). Open, the bar takes the game row's larger size ([scale]).
-// Both are read where they're drawn, so the animation doesn't recompose the bar.
-@OptIn(ExperimentalFoundationApi::class)
+/** The home backdrop's blur: a medium one, so the art stays recognisable. */
+private val XMB_BACKDROP_BLUR = 16.dp
+
+/** The one flat black veil over the home backdrop's art, just enough for the text on top to stay readable. */
+private const val XMB_BACKDROP_VEIL = 0.30f
+
+/** Below API 31 the backdrop art is shrunk to 1/this of its size and scaled back up, which looks blurred. */
+internal const val XMB_BACKDROP_SOFT_DIV = 16
+
+/** The collage behind the hovered All Games card is blurred only very slightly (a tenth of [XMB_BACKDROP_BLUR]). */
+private val XMB_COLLAGE_BLUR = 1.6.dp
+
+/** Below API 31 the collage is not shrunk at all (it is already a small bitmap, scaled up with filtering), so it stays only slightly soft. */
+internal const val XMB_COLLAGE_SOFT_DIV = 1
+
+/** The size [xmbBackdropSoftBitmap] shrinks a [w] x [h] picture to (by [div]); never below 1 px. */
+internal fun xmbBackdropSoftSize(w: Int, h: Int, div: Int = XMB_BACKDROP_SOFT_DIV): Pair<Int, Int> =
+    max(1, w / div.coerceAtLeast(1)) to max(1, h / div.coerceAtLeast(1))
+
+/** What the backdrop shows on the All Games card: the [bitmap] collage of its games (it gets its own, lighter blur). */
+private data class XmbCollagePicture(val bitmap: Bitmap)
+
+/**
+ * The home backdrop, one implementation for the games row and the All Games page: black, then [picture] blurred at full
+ * brightness and crossfaded when it changes, then one flat veil for the text. [picture] is a game's cover (a [Bitmap]),
+ * the All Games collage, or null for the black base alone. Fills its parent.
+ */
 @Composable
-private fun XmbUpperBar(
-    cards: List<XmbAction>,
-    sel: Int,
-    pos: MutableFloatState,
-    open: () -> Float,
-    peek: () -> Float,
-    m: XmbMetrics,
-    scale: Float,
-    clipTop: Float,
-    accent: Color,
-    enabled: Boolean,
-    metaSize: TextUnit,
-    onTap: (Int) -> Unit,
-) {
-    // In the caller's box (its top at clipTop): peeking, the small cards' middle sits on that edge; open,
-    // the bar is centred on the screen as the game row is when it's the one in use (the games peek below it then).
-    val yPeek = -m.sH / 2f
-    val yOpen = (m.h - m.fH) / 2f - clipTop
-    val boxH = (m.h - clipTop).coerceAtLeast(1f)
-    // The chosen card is ringed once the bar is more than half open; derived, so only that crossing recomposes.
-    val halfOpen by remember { derivedStateOf { open() > 0.5f } }
-    Box(
-        Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val o = open()
-                val s = 1f + (scale - 1f) * o
-                alpha = max(o, 0.5f * peek())
-                translationY = (yPeek + (yOpen - yPeek) * o).dp.toPx()
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin(m.cross / m.w, (m.fH / 2f) / boxH)
-            },
-    ) {
-        cards.forEachIndexed { i, c ->
-            key(c.label) {
-                XmbUpperCard(c, i, pos, m, accent, grow = open, focused = i == sel && halfOpen, enabled = enabled) { onTap(i) }
+internal fun XmbHomeBackdrop(picture: Any?) {
+    // Modifier.blur does nothing below API 31, where the art is drawn pre-shrunk and scaled up instead.
+    val nativeBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(Color.Black))
+        Crossfade(targetState = picture, animationSpec = tween(600), label = "xmbBackdrop") { pic ->
+            when (pic) {
+                is Bitmap -> XmbBackdropBitmap(pic, nativeBlur, XMB_BACKDROP_BLUR, XMB_BACKDROP_SOFT_DIV)
+                // The collage is only slightly blurred (each crossfade layer has its own blur).
+                is XmbCollagePicture -> XmbBackdropBitmap(pic.bitmap, nativeBlur, XMB_COLLAGE_BLUR, XMB_COLLAGE_SOFT_DIV)
             }
         }
-    }
-    // The chosen card's name and details, right of it under the rest of the bar, as a game's are.
-    val chosen = cards.getOrNull(sel) ?: return
-    AnimatedContent(
-        targetState = chosen,
-        contentKey = { it.label },
-        transitionSpec = { (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 6 }) togetherWith fadeOut(tween(90)) },
-        label = "xmbCardTitle",
-        modifier = Modifier
-            .offset(m.titleX.dp, (yOpen + m.sH + 8f).dp)
-            .width((m.titleW - (scale - 1f) * (m.fW + 16f)).coerceAtLeast(80f).dp)
-            .graphicsLayer {
-                alpha = open()
-                val e = scale - 1f
-                translationX = (e * (m.titleX - m.cross)).dp.toPx()
-                translationY = (e * (m.sH + 8f - m.fH / 2f)).dp.toPx()
-            },
-    ) { c ->
-        Column {
-            Text(
-                c.label, color = Color.White, fontSize = m.titleSize.sp, lineHeight = (m.titleSize * 1.15f).sp,
-                maxLines = m.titleLines, overflow = TextOverflow.Ellipsis,
-            )
-            // Details that don't fit scroll right to left after a short pause.
-            c.subtitle?.let {
-                Text(
-                    it, color = Color(0xFFC4C4C4), fontSize = metaSize, maxLines = 1,
-                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = XMB_MARQUEE_DELAY),
-                )
-            }
-        }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = XMB_BACKDROP_VEIL)))
     }
 }
 
-// One upper-row card, placed like a game cover: once the bar is open ([grow], 0..1) the chosen card grows to full size at
-// the cross and the later ones make room for it.
+/**
+ * A backdrop picture: [bmp] filling the screen, blurred by [radius] (Modifier.blur, API 31+) or, below that, shrunk by [softDiv]
+ * and scaled back up (see [xmbBackdropSoftBitmap]).
+ */
 @Composable
-private fun XmbUpperCard(
-    card: XmbAction,
-    index: Int,
-    pos: MutableFloatState,
-    m: XmbMetrics,
-    accent: Color,
-    grow: () -> Float,
-    focused: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(8.dp)
-    val src = remember { MutableInteractionSource() }
-    val art = card.art
-    Box(
-        Modifier
-            .zIndex(if (focused) 1f else 0f)
-            .size(m.fW.dp, m.fH.dp)
-            .graphicsLayer {
-                val g = grow()
-                val u = index - pos.floatValue
-                val t = (1f - abs(u)).coerceAtLeast(0f) * g
-                val sc = (m.sH + (m.fH - m.sH) * t) / m.fH
-                translationX = (m.cross + u * m.pitch + m.grow * g * u.coerceIn(0f, 1f)).dp.toPx()
-                scaleX = sc
-                scaleY = sc
-                transformOrigin = TransformOrigin(0f, 0f)
-                alpha = ((if (u >= 0f) 0.82f else 0.82f + u * 0.32f) + 0.18f * t).coerceIn(0f, 1f)
-            }
-            .then(if (focused) Modifier.shadow(14.dp, shape, ambientColor = accent, spotColor = accent) else Modifier)
-            .clip(shape)
-            // Opaque, edge to edge: a see-through fill would let the focus shadow show through as a dark inner box.
-            .background(Brush.linearGradient(art?.colors ?: XMB_PLAIN_CARD))
-            .border(if (focused) 2.dp else 1.dp, if (focused) accent else Color.White.copy(alpha = 0.14f), shape)
-            .then(if (enabled) Modifier.xmbClick(src, onClick) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        val logo = art?.logo
-        if (logo != null) {
-            rememberXmbLogo(logo)?.let { bmp ->
-                Image(
-                    bmp, contentDescription = card.label, contentScale = ContentScale.Fit,
-                    colorFilter = if (art?.tintWhite == true) ColorFilter.tint(Color.White) else null,
-                    modifier = Modifier.fillMaxSize(0.62f),
-                )
-            }
-        } else {
-            // Sized from the card, so the chosen (enlarged) card shows the same icon, just bigger.
-            Icon(card.icon, contentDescription = card.label, tint = Color.White, modifier = Modifier.size((m.fW * 0.44f).dp))
-        }
-    }
+private fun XmbBackdropBitmap(bmp: Bitmap, nativeBlur: Boolean, radius: Dp, softDiv: Int) {
+    val art = remember(bmp, nativeBlur, softDiv) { if (nativeBlur) bmp else xmbBackdropSoftBitmap(bmp, softDiv) }
+    if (art != null) Image(
+        bitmap = remember(art) { art.asImageBitmap() },
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        filterQuality = if (nativeBlur) FilterQuality.Low else FilterQuality.Medium,
+        modifier = Modifier.fillMaxSize().blur(radius),
+    )
 }
 
-/** What the backdrop shows for a chosen upper-row card: its [art], with [icon] standing in for a missing logo. */
-private data class XmbBackdropArt(val art: XmbCardArt, val icon: ImageVector)
+/**
+ * A tiny copy of [src] for the backdrop below API 31, where Modifier.blur does nothing: drawn scaled up with filtering it
+ * looks blurred. Halved step by step, as one big filtered jump skips pixels and aliases. Null if the bitmap can't be scaled
+ * (the backdrop then shows only its black base). With a [div] of 1 the picture is used as it is.
+ */
+private fun xmbBackdropSoftBitmap(src: Bitmap, div: Int = XMB_BACKDROP_SOFT_DIV): Bitmap? = runCatching {
+    if (div <= 1) return@runCatching src
+    val (w, h) = xmbBackdropSoftSize(src.width, src.height, div)
+    var cur = src
+    while (cur.width / 2 > w && cur.height / 2 > h) cur = Bitmap.createScaledBitmap(cur, cur.width / 2, cur.height / 2, true)
+    Bitmap.createScaledBitmap(cur, w, h, true)
+}.getOrNull()
+
+/**
+ * The backdrop behind the hovered All Games card: [arts] (decoded covers, most recent first) tiled row by row into the grid of
+ * [spec], each centre-cropped to its cell, as one small bitmap. The backdrop then treats it as any other picture (the same veil
+ * and crossfade, but a much lighter blur: XMB_COLLAGE_BLUR, XMB_COLLAGE_SOFT_DIV), so it costs one draw like a cover. Cells with no cover stay black; a
+ * cover that can't be drawn is skipped. Null if the bitmap can't be made.
+ */
+private fun xmbCollageBitmap(arts: List<Bitmap>, spec: XmbCollageSpec): Bitmap? = runCatching {
+    val out = Bitmap.createBitmap(spec.width, spec.height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    canvas.drawColor(android.graphics.Color.BLACK)
+    val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    for (i in 0 until min(spec.cols * spec.rows, arts.size)) {
+        val art = arts[i]
+        val cell = xmbCellRect(i, spec.cols, spec.rows, spec.width, spec.height)
+        val crop = xmbCenterCrop(art.width, art.height, cell.width, cell.height)
+        runCatching {
+            canvas.drawBitmap(art, Rect(crop.left, crop.top, crop.right, crop.bottom), Rect(cell.left, cell.top, cell.right, cell.bottom), paint)
+        }
+    }
+    out
+}.getOrNull()
 
 // Right / lower pane: store badges, the same spec chips as the list card, playtime and Game Details.
 @OptIn(ExperimentalLayoutApi::class)
@@ -1232,7 +1223,7 @@ private fun XmbInfo(s: Shortcut, playtime: String?, descLines: Int, storeBadges:
     val spec = remember(s) { buildLaunchSpec(s, context) }
     val details = remember(s) { buildLaunchDetails(s) }
     storeBadges(s)
-    if (!remember(s) { com.winlator.star.androidgames.AndroidGames.isAndroidEntry(s) }) SpecChipRows(
+    if (!remember(s) { AndroidGames.isAndroidEntry(s) }) SpecChipRows(
         rendererLabel = spec.rendererLabel,
         dxvkVersion = spec.dxvkVersion,
         frameGenLabel = spec.frameGenLabel,
@@ -1270,7 +1261,7 @@ private fun XmbInfo(s: Shortcut, playtime: String?, descLines: Int, storeBadges:
 }
 
 @Composable
-private fun XmbHint(glyph: String, color: Color, label: String, s: Float = 1f) {
+private fun XmbButtonHint(glyph: String, color: Color, label: String, s: Float) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(17.dp * s).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
             Text(glyph, color = Color.Black, fontSize = 10.sp * s, fontWeight = FontWeight.Bold)
@@ -1281,7 +1272,7 @@ private fun XmbHint(glyph: String, color: Color, label: String, s: Float = 1f) {
 }
 
 @Composable
-private fun XmbKeyHint(keys: String, label: String, s: Float = 1f) {
+private fun XmbKeyHint(keys: String, label: String, s: Float) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             keys, color = Color(0xFFDDDDDD), fontSize = 10.sp * s,
@@ -1331,7 +1322,7 @@ internal fun xmbInitials(name: String): String {
         .ifEmpty { first.take(1).uppercase() }
 }
 
-private fun metacriticColor(score: Int): Color = when {
+internal fun metacriticColor(score: Int): Color = when {
     score >= 75 -> Color(0xFF66CC33)
     score >= 50 -> Color(0xFFFFCC33)
     else -> Color(0xFFFF4444)

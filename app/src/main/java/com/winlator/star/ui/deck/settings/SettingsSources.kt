@@ -85,6 +85,9 @@ internal class ContainerFormSource(
             onDone(false)
             return
         }
+        // A new container (CONTAINER scope with no container yet): confirm() calls back whether or not the creation worked (no Wine
+        // version installed, or the creation failed), so success is a container existing afterwards, not the callback itself.
+        val creating = env.scope == EditorScope.CONTAINER && vm.container == null
         vm.confirm(
             resolvedGraphicsDriverConfig = vm.graphicsDriverConfig,
             resolvedDXWrapperConfig = vm.dxWrapperConfig,
@@ -94,8 +97,14 @@ internal class ContainerFormSource(
             resolvedCPUListWoW64 = vm.cpuListWoW64,
             resolvedColorAsString = desktopColor(vm),
         ) {
-            reload()
-            onDone(true)
+            val ok = !creating || vm.container != null
+            // A refusal for a missing Wine version has been toasted by confirm() itself; a creation that failed has not.
+            if (!ok && vm.selectedWineVersion.isNotBlank()) {
+                Toast.makeText(env.context, "Could not create the container.", Toast.LENGTH_LONG).show()
+            }
+            // A failed creation keeps the form as it is, so the user can try again.
+            if (ok) reload()
+            onDone(ok)
         }
     }
 

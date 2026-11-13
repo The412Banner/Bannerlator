@@ -2932,8 +2932,7 @@ private fun SmartDriverInstallRow(
     }
 }
 
-private enum class CatalogStoreFilter { ALL, STEAM, TITLE }
-private enum class CatalogSort { CONFIGS, NAME, DEVICES }
+// The filter/sort enums and the list rules of the browser are in CommunityBrowserLogic.kt.
 
 // Full-catalog browser (Part A) — a catalog-first entry from the header. Lists every game in the
 // community index with search / device + store filters / sort; a tapped game opens its per-device
@@ -3000,26 +2999,15 @@ internal fun CommunityCatalogBrowser(
     val games = catalog?.games ?: emptyList()
     val selectedGame = selectedIdentity?.let { id -> games.firstOrNull { it.identity == id } }
 
+    // Search relevance is preserved while a query is active; otherwise the chosen sort applies (communityVisibleGames).
     val visible: List<CanonicalGame> = remember(games, query, matchesMyDevice, storeFilter, sort, userSoc, userGpu) {
-        val base = if (query.trim().length >= 2) GameMatcher.search(query, games, limit = 200) else games
-        val filtered = base.asSequence()
-            .filter { g ->
-                when (storeFilter) {
-                    CatalogStoreFilter.ALL -> true
-                    CatalogStoreFilter.STEAM -> g.isSteam
-                    CatalogStoreFilter.TITLE -> !g.isSteam
-                }
+        communityVisibleGames(games, query, sort) { g ->
+            val storeOk = when (storeFilter) {
+                CatalogStoreFilter.ALL -> true
+                CatalogStoreFilter.STEAM -> g.isSteam
+                CatalogStoreFilter.TITLE -> !g.isSteam
             }
-            .filter { g ->
-                !matchesMyDevice || g.devices.any { GameMatcher.deviceMatchesUser(it, userSoc, userGpu) }
-            }
-            .toList()
-        // Preserve search relevance while a query is active; otherwise honour the chosen sort.
-        if (query.trim().length >= 2) filtered
-        else when (sort) {
-            CatalogSort.CONFIGS -> filtered.sortedByDescending { it.configCount }
-            CatalogSort.NAME -> filtered.sortedBy { it.name.lowercase() }
-            CatalogSort.DEVICES -> filtered.sortedByDescending { it.devices.size }
+            storeOk && (!matchesMyDevice || g.devices.any { GameMatcher.deviceMatchesUser(it, userSoc, userGpu) })
         }
     }
 
@@ -3400,7 +3388,7 @@ internal sealed class CommunityPick {
 // Async state of the per-game worker fetch. [entries] is the merged, deduped, votes-desc list across
 // ALL the game's folders; each entry is paired with the folder (`/list` key) it came from so its
 // per-entry [CommunityConfigRef.workerGame] is correct. [loading] gates the spinner.
-private data class GameConfigsState(
+internal data class GameConfigsState(
     val loading: Boolean,
     val entries: List<Pair<String, WorkerConfigEntry>>,
 )
@@ -3410,7 +3398,7 @@ private data class GameConfigsState(
 // (the per-shortcut sheet passes the shortcut's own sanitized folder name) is queried in the bannerlator
 // namespace ONLY, so a user's own upload is surfaced even before it lands in the canonical index.
 @Composable
-private fun rememberGameConfigs(
+internal fun rememberGameConfigs(
     vm: ShortcutsViewModel,
     game: CanonicalGame,
     extraBannerlatorFolders: List<String> = emptyList(),
@@ -3530,13 +3518,8 @@ private fun CommunityDevicePanel(
     // The flat, in-render-order list of picks the config list currently shows: worker entries when we have
     // them, else the device fallback. Published to the browser so its D-pad handler can apply picks[index].
     val orderedPicks = remember(shownEntries, shownDevs, cfg.entries, game) {
-        if (cfg.entries.isNotEmpty()) shownEntries.map { (folder, e) ->
-            CommunityPick.File(
-                game,
-                CommunityConfigRef(game, folder, e.filename, e.sha.ifBlank { null }, ns = if (e.appSource == "bannerlator") "bannerlator" else ""),
-                e,
-            )
-        } else shownDevs.map { CommunityPick.Device(game, it) }
+        if (cfg.entries.isNotEmpty()) shownEntries.map { (folder, e) -> communityFilePick(game, folder, e) }
+        else shownDevs.map { CommunityPick.Device(game, it) }
     }
     LaunchedEffect(orderedPicks) { onPicks(orderedPicks) }
 
@@ -3586,13 +3569,7 @@ private fun CommunityDevicePanel(
                                 GameMatcher.hardwareMatchesUser(userSoc, userGpu, listOf(e.device, e.soc))
                             DpadHighlight(focused = idx == focusedIndex) {
                                 CommunityConfigEntryCard(entry = e, isMatch = isMatch) {
-                                    onPick(
-                                        CommunityPick.File(
-                                            game,
-                                            CommunityConfigRef(game, folder, e.filename, e.sha.ifBlank { null }, ns = if (e.appSource == "bannerlator") "bannerlator" else ""),
-                                            e,
-                                        )
-                                    )
+                                    onPick(communityFilePick(game, folder, e))
                                 }
                             }
                         }

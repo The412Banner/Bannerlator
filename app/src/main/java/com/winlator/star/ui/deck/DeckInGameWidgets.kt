@@ -163,9 +163,9 @@ internal fun IgCard(modifier: Modifier = Modifier, content: @Composable ColumnSc
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(deckCardFill())
-            .border(1.dp, deckLine().copy(alpha = 0.5f), shape),
+            // The XMB in-game drawer: a glass card (shadow, sheen, edge light). Anywhere else exactly clip + background.
+            .xmbGlassCard(shape)
+            .border(1.dp, deckLineAt(0.5f), shape),
         content = content,
     )
 }
@@ -216,7 +216,7 @@ internal fun Modifier.igFocusOutline(): Modifier {
 }
 
 @Composable
-internal fun IgDivider() = HorizontalDivider(color = deckLine().copy(alpha = 0.35f))
+internal fun IgDivider() = HorizontalDivider(color = deckLineAt(0.35f))
 
 /**
  * One setting: title, a plain-language hint, where it saves, and its control. Wide windows put the control on the
@@ -312,7 +312,7 @@ internal fun <T> IgChips(
                     .deckFocusRing(shape)
                     .clip(shape)
                     .background(if (sel) cs.primary.copy(alpha = 0.16f) else cs.surfaceContainerHigh.copy(alpha = igRaised(1f)))
-                    .border(if (sel) 2.dp else 1.dp, if (sel) cs.primary else deckLine().copy(alpha = 0.4f), shape)
+                    .border(if (sel) 2.dp else 1.dp, if (sel) cs.primary else deckLineAt(0.4f), shape)
                     .clickable(enabled = on, role = Role.RadioButton) { onSelect(v) }
                     .heightIn(min = if (lab) 34.dp else 40.dp)
                     .widthIn(min = if (lab) 44.dp else 52.dp)
@@ -343,7 +343,7 @@ internal fun <T> IgSegmented(
         modifier = Modifier
             .clip(track)
             .background(cs.surfaceContainerHigh.copy(alpha = igRaised(0.7f)))
-            .border(1.dp, deckLine().copy(alpha = 0.35f), track)
+            .border(1.dp, deckLineAt(0.35f), track)
             .padding(5.dp),
     ) {
         options.forEach { (v, label) ->
@@ -379,7 +379,7 @@ internal fun IgSwitch(checked: Boolean, enabled: Boolean = true, onChange: (Bool
             .deckFocusRing(shape)
             .clip(shape)
             .background(if (checked) cs.primary else cs.surfaceContainerHighest)
-            .border(1.dp, if (checked) cs.primary else deckLine().copy(alpha = 0.5f), shape)
+            .border(1.dp, if (checked) cs.primary else deckLineAt(0.5f), shape)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
             .size(width = 52.dp, height = 30.dp)
             .alpha(if (enabled) 1f else 0.45f),
@@ -420,7 +420,7 @@ internal fun IgButton(
             .deckFocusRing(shape, scaleTo = 1.04f, onAccent = primary)
             .clip(shape)
             .background(if (primary) cs.primary else cs.surfaceContainerHigh.copy(alpha = igRaised(0.85f)))
-            .then(if (primary) Modifier else Modifier.border(1.dp, if (danger) cs.error.copy(alpha = 0.7f) else deckLine().copy(alpha = 0.5f), shape))
+            .then(if (primary) Modifier else Modifier.border(1.dp, if (danger) cs.error.copy(alpha = 0.7f) else deckLineAt(0.5f), shape))
             .clickable(enabled = enabled, onClick = onClick)
             .heightIn(min = if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 40.dp else 46.dp)
             .padding(horizontal = if (label == null) 13.dp else if (com.winlator.star.ui.theme.AppThemeState.simpleLook) 14.dp else 18.dp)

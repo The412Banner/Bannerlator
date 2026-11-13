@@ -4,7 +4,6 @@ import android.content.Context
 import com.winlator.star.store.blsteam.BlSteamEngine
 import org.json.JSONObject
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Steam's OWN published artwork for owned apps, read from the engine's library snapshot.
@@ -70,13 +69,44 @@ object SteamLibraryArt {
         val pinnedPosition: String?,
     )
 
-    private val art = ConcurrentHashMap<Int, AppArt>()
+    /**
+     * The art by app id. Never mutated: a refresh builds a new map and swaps this reference, so a reader on any thread (composition
+     * included) sees the whole old map or the whole new one, never a half-filled one, and never takes a lock.
+     */
+    @Volatile private var art: Map<Int, AppArt> = emptyMap()
 
     @Volatile private var loadedFromDisk = false
+    @Volatile private var loadStarted = false
     @Volatile private var appContext: Context? = null
 
-    /** Call once with any Context so the disk mirror can be found; safe to call repeatedly. */
+    /** Held while the disk mirror is read and while the art map is swapped in; [saveLock] while the mirror is written. */
+    private val lock = Any()
+    private val saveLock = Any()
+
+    /** Called (on the refreshing thread) after a snapshot replaced the art map, so a screen showing art from it can read it again. */
+    @Volatile var onRefreshed: (() -> Unit)? = null
+
+    /**
+     * Call with any Context so the disk mirror can be found; safe to call repeatedly. On the main thread the mirror is read on a
+     * background thread (lookups return null until it is there, then [onRefreshed] runs); on any other thread it is read right here.
+     */
     fun init(ctx: Context) {
+        if (appContext == null) appContext = ctx.applicationContext
+        if (loadedFromDisk) return
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            if (loadStarted) return
+            loadStarted = true
+            Thread({
+                loadFromDiskOnce()
+                if (loadedFromDisk) runCatching { onRefreshed?.invoke() }
+            }, "SteamArtLoad").apply { isDaemon = true }.start()
+        } else {
+            loadFromDiskOnce()
+        }
+    }
+
+    /** [init] that always has read the mirror when it returns. BLOCKING (file read and JSON parse): never on the main thread. */
+    fun loadNow(ctx: Context) {
         if (appContext == null) appContext = ctx.applicationContext
         loadFromDiskOnce()
     }
@@ -92,8 +122,9 @@ object SteamLibraryArt {
     fun of(appId: Int): AppArt? = lookup(appId)
 
     private fun lookup(appId: Int): AppArt? {
-        if (appId <= 0) return null
-        loadFromDiskOnce()
+        // Lock-free and never reads the disk: lookups are made while composing, on the main thread. Until the mirror
+        // has been loaded (init / loadNow, off the main thread) there is nothing to answer with.
+        if (appId <= 0 || !loadedFromDisk) return null
         return art[appId]
     }
 
@@ -105,7 +136,7 @@ object SteamLibraryArt {
      * mirrored to disk stays in place rather than being cleared.
      */
     fun refreshFromSnapshot(ctx: Context) {
-        init(ctx)
+        loadNow(ctx)
         val json = try {
             BlSteamEngine.session()?.getLibrarySnapshotJson()
         } catch (t: Throwable) {
@@ -120,8 +151,7 @@ object SteamLibraryArt {
             StorefrontLog.i(TAG, "PICS art: snapshot carried no artwork — keeping ${art.size} cached entry(s)")
             return
         }
-        art.clear()
-        art.putAll(parsed)
+        synchronized(lock) { art = parsed }
         val withHeader = parsed.values.count { it.header != null }
         StorefrontLog.i(
             TAG,
@@ -129,6 +159,7 @@ object SteamLibraryArt {
                 "(no network, no rate limit)",
         )
         saveToDisk()
+        runCatching { onRefreshed?.invoke() }
     }
 
     /** `{"owned_apps":[{"id":…,"art":{…}}]}` -> appId -> [AppArt]. Entries with no art are skipped. */
@@ -181,29 +212,43 @@ object SteamLibraryArt {
 
     private fun cacheFile(): File? = appContext?.let { File(it.filesDir, CACHE_FILE) }
 
-    @Synchronized
     private fun loadFromDiskOnce() {
         if (loadedFromDisk) return
-        loadedFromDisk = true
-        val f = cacheFile() ?: return
-        if (!f.exists()) return
-        try {
-            val root = JSONObject(f.readText())
-            for (key in root.keys()) {
-                val id = key.toIntOrNull() ?: continue
-                val a = parseArt(root.optJSONObject(key)) ?: continue
-                if (!a.isEmpty) art.putIfAbsent(id, a)
+        synchronized(lock) {
+            if (loadedFromDisk) return
+            // No context yet (a lookup before init): stay unloaded, so the mirror is read once one is known.
+            val f = cacheFile() ?: return
+            val restored = HashMap<Int, AppArt>()
+            if (f.exists()) {
+                try {
+                    val root = JSONObject(f.readText())
+                    for (key in root.keys()) {
+                        val id = key.toIntOrNull() ?: continue
+                        val a = parseArt(root.optJSONObject(key)) ?: continue
+                        if (!a.isEmpty) restored[id] = a
+                    }
+                    StorefrontLog.i(TAG, "PICS art: ${restored.size} entry(s) restored from the on-disk mirror")
+                } catch (e: Exception) {
+                    StorefrontLog.w(TAG, "PICS art: on-disk mirror unreadable — ${e.javaClass.simpleName}")
+                    restored.clear()
+                    runCatching { f.delete() }
+                }
             }
-            StorefrontLog.i(TAG, "PICS art: ${art.size} entry(s) restored from the on-disk mirror")
-        } catch (e: Exception) {
-            StorefrontLog.w(TAG, "PICS art: on-disk mirror unreadable — ${e.javaClass.simpleName}")
-            runCatching { f.delete() }
+            // What a snapshot already put in wins over the older mirror.
+            art = restored + art
+            loadedFromDisk = true
         }
     }
 
     /** Mirror the map so the Library still shows art when the engine isn't logged on. */
     private fun saveToDisk() {
+        synchronized(saveLock) { writeMirror() }
+    }
+
+    /** Written to a temporary file and renamed over the mirror, so a reader never sees half of it. Call with [saveLock] held. */
+    private fun writeMirror() {
         val f = cacheFile() ?: return
+        val tmp = File(f.parentFile, "$CACHE_FILE.tmp")
         try {
             val root = JSONObject()
             for ((id, a) in art) {
@@ -233,8 +278,13 @@ object SteamLibraryArt {
                     },
                 )
             }
-            f.writeText(root.toString())
+            tmp.writeText(root.toString())
+            if (!tmp.renameTo(f)) {
+                tmp.delete()
+                StorefrontLog.w(TAG, "PICS art: could not replace the on-disk mirror")
+            }
         } catch (e: Exception) {
+            runCatching { tmp.delete() }
             StorefrontLog.w(TAG, "PICS art: could not write the on-disk mirror — ${e.javaClass.simpleName}")
         }
     }

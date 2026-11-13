@@ -1027,6 +1027,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         containerIndex: Int,
         candidates: List<GameFolderScanner.Candidate>,
         context: Context,
+        // Called (on the calling thread) after each game with how many are done and how many there are: the XMB review's bar.
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
     ): BulkImportSummary {
         val containers = liveContainers()
         if (containerIndex < 0 || containerIndex >= containers.size) {
@@ -1046,6 +1048,7 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
                 Log.e(TAG, "Bulk import failed for ${c.name}", e)
                 failures += "${c.name}: ${e.message ?: e.javaClass.simpleName}"
             }
+            onProgress(added + failures.size, candidates.size)
         }
         refresh()
         return BulkImportSummary(added, failures.size, failures)

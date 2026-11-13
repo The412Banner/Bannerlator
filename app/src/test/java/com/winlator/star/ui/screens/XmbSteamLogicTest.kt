@@ -255,6 +255,18 @@ class XmbSteamLogicTest {
         assertEquals(true, xmbWideCoverShows(allFailed = false, resolved = true, latched = true))
     }
 
+    @Test fun artLoaded_staysWhileTheLoadedPictureIsInTheList_evenWhenMoreSourcesJoin() {
+        assertEquals(false, xmbArtLoaded(null, listOf("header", "hero")))
+        assertEquals(true, xmbArtLoaded("header", listOf("header", "hero")))
+        // A SteamGridDB hero found after the header loaded: the header is still what shows.
+        assertEquals(true, xmbArtLoaded("header", listOf("header", "hero", "sgdb")))
+    }
+
+    @Test fun artLoaded_endsWhenThePictureLeavesTheList() {
+        assertEquals(false, xmbArtLoaded("header", listOf("pics-header", "hero")))
+        assertEquals(false, xmbArtLoaded("header", emptyList<String>()))
+    }
+
     @Test fun backdropBlur_followsTheOptionsGlideAndIsClamped() {
         assertEquals(0f, xmbSteamBackdropBlur(0f, 24f), delta)
         assertEquals(12f, xmbSteamBackdropBlur(0.5f, 24f), delta)

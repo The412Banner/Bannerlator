@@ -354,9 +354,9 @@ internal object LabArt {
     }
 }
 
-/** A picture from [pics], the next one when one does not load; nothing when none does. [onLoaded] runs when one has loaded. */
+/** A picture from [pics], the next one when one does not load; nothing when none does. [onLoaded] runs with the model of the one that has loaded. */
 @Composable
-internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null, onLoaded: (() -> Unit)? = null) {
+internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null, onLoaded: ((Any) -> Unit)? = null) {
     var i by remember(pics.map { it.model }) { mutableIntStateOf(0) }
     val p = pics.getOrNull(i)
     if (p == null) {
@@ -369,7 +369,7 @@ internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, c
         contentScale = contentScale,
         alignment = alignment,
         modifier = modifier.then(if (p.blur) Modifier.blur(22.dp) else Modifier),
-        onState = { if (it is AsyncImagePainter.State.Error) i++ else if (it is AsyncImagePainter.State.Success) onLoaded?.invoke() },
+        onState = { if (it is AsyncImagePainter.State.Error) i++ else if (it is AsyncImagePainter.State.Success) onLoaded?.invoke(p.model) },
     )
 }
 

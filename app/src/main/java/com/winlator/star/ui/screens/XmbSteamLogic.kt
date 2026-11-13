@@ -74,6 +74,12 @@ internal fun <T> xmbSteamWideOrder(wide: List<T>, background: List<T>): List<T> 
  */
 internal fun xmbWideCoverShows(allFailed: Boolean, resolved: Boolean, latched: Boolean): Boolean = latched || (allFailed && resolved)
 
+/**
+ * Whether the wide card's landscape art is showing: the picture that reported loading ([loadedPic]) is still among its [sources]. The
+ * card's image reports a load only when the picture it shows changes, so this holds across a list that grows behind the picture on screen.
+ */
+internal fun xmbArtLoaded(loadedPic: Any?, sources: List<Any>): Boolean = loadedPic != null && loadedPic in sources
+
 /** How many dp the Home backdrop is blurred with [lift] (0 at rest, 1 with a game's options open) of the way to [max]. */
 internal fun xmbSteamBackdropBlur(lift: Float, max: Float): Float = max * lift.coerceIn(0f, 1f)
 

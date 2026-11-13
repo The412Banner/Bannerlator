@@ -349,7 +349,10 @@ private fun XmbSteamWideArt(s: Shortcut, accent: Color) {
     val tick = LabArt.tick
     val models = remember(path, tick) { xmbSteamWideOrder(LabArt.models(s, "wide"), LabArt.models(s, "bg")) }
     val pics = remember(models) { models.map { LabArt.Pic(it) } }
-    var loaded by remember(path, models) { mutableStateOf(false) }
+    // The picture that has loaded, not a flag for the whole list: the image only reports when what it shows changes, so when sources
+    // join the list behind the one already showing (a Steam app found, a SteamGridDB hero), that one must still count as loaded.
+    var loadedPic by remember(path) { mutableStateOf<Any?>(null) }
+    val loaded = xmbArtLoaded(loadedPic, models)
     var failed by remember(path, models) { mutableStateOf(false) }
     var coverDecided by remember(path) { mutableStateOf(false) }
     val cover = xmbWideCoverShows(failed, resolved, coverDecided)
@@ -384,7 +387,7 @@ private fun XmbSteamWideArt(s: Shortcut, accent: Color) {
             pics,
             Modifier.fillMaxSize().graphicsLayer { alpha = artA },
             onNone = { SideEffect { failed = true } },
-            onLoaded = { loaded = true },
+            onLoaded = { loadedPic = it },
         )
     }
 }

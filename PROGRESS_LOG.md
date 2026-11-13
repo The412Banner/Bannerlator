@@ -5,7 +5,8 @@
 - **User (screenshot 12:12 of the 484dba8f Lab picker):** a total at the top of the available list; installed packs first in an "Installed" section; picking an installed pack offers Apply or Delete, and a deleted pack goes back to the available list.
 - **Changed (53b2d01c):** new `ui/simple/LabSoundPackPicker.kt` `SoundPackPicker` (Lab look, same as SimplePicker): "Installed · N" then "Available · M" headings; installed → `SimpleActionSheet` Apply / Delete; available (↓) → download + use, the list stays open and the row shows "Downloading NN %". Lab `SimpleOneMenu` opens it for `AppSettingsRegistry.SOUND_PACK_ID`; Classic's pack button opens it too (old Classic dialog removed). `UiSoundPacks.delete` of the pack in use → Steam Big Picture again. Lab's generic `SimplePicker` + `SimpleActionSheet` rows now play the move sound, and `SimplePicker` plays dialog sounds (it had none).
 - **Device check of 484dba8f (12:13 EST):** sounds switched on 12:09; Steam pack downloaded (42 files in `files/ui_sounds/steam-big-picture`); DeckThemes list cached (`.store.json` 203 KB); `dumpsys audio`: SoundPool player piid 599 created 12:09:11 by the app (USAGE_GAME / SONIFICATION). App log lines missing because the Elite's main log buffer is 256 KiB and the xsu bridge floods it (not a sound fault).
-- **Resume point:** CI 43471178895 → stage APK → the user's earlier "install when green" covered 484dba8f only → ASK before installing this one.
+- **CI 43471178895:** GREEN 4/4 (headSha 53b2d01c), 12:24 EST. **Staged** `/sdcard/Download/Bannerlator-ui-sounds-53b2d01c-pubg.apk` sha256 3f18abbf…0c06 (artifact == host == device), AOSP testkey, `LabSoundPackPickerKt` in classes5.dex.
+- **Resume point:** installed on the Elite = 484dba8f; 53b2d01c staged, NOT installed — ASK the user before installing.
 
 ## 2026-11-13 12:05 EST — UI sounds: INSTALLED on the Pocket FIT Elite (feat/ui-sounds 484dba8f, user: "install when green"), NOT device-tested yet
 

@@ -529,7 +529,7 @@ private fun SaveManagerScreenBody(
                     .weight(1f)
                     .padding(start = if (onBack != null) 4.dp else 12.dp),
             )
-            // Live Steam connection badge (signed-in only) — same pill the store/detail screens show;
+            // Live Steam connection badge (signed-in only) — same pill the store screens show;
             // tap to reconnect when offline. Custom-only users never see a Steam badge.
             if (signedIn) {
                 SteamStatusPill(

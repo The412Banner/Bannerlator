@@ -11,11 +11,6 @@ class XmbRevealTest {
     // ---- The room ----
 
     @Test
-    fun room_isAQuarterMoreThanTheDownloadsPageKeptUnderItsCards() {
-        assertEquals(47f * 1.25f, XMB_REVEAL_ROOM_DP, 1f)
-    }
-
-    @Test
     fun room_inATallAreaIsTheWholeRoom() {
         assertEquals(150f, xmbRevealRoomIn(150f, 1000f), 0f)
     }

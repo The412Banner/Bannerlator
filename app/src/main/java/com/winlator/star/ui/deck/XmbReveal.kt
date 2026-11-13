@@ -28,7 +28,7 @@ import kotlin.math.roundToInt
 
 /**
  * The room, in dp on the 412 dp phone scale ([ScreenScale.dp]), kept clear of the highlighted item at the top and at the bottom of
- * its scroll area: a quarter more than the 47 dp the Downloads page keeps under its cards (the Back / Search hints and a gap).
+ * its scroll area.
  */
 internal const val XMB_REVEAL_ROOM_DP = 58f
 

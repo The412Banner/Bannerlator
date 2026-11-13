@@ -40,7 +40,6 @@ fun SteamStatusPill(
     onReconnect: () -> Unit,
     // A one-word label in smaller type, for narrow places such as the Deck side rail.
     compact: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     val (dot, label, tappable) = when (status) {
         SteamRepository.SteamStatus.ONLINE ->
@@ -59,7 +58,7 @@ fun SteamStatusPill(
             Triple(Color(0xFF5B8DEF), "Paused — game session active", false)
     }
 
-    val base = modifier
+    val base = Modifier
         .clip(RoundedCornerShape(50))
         .background(Color(0x22FFFFFF))
         .border(1.dp, dot.copy(alpha = 0.5f), RoundedCornerShape(50))

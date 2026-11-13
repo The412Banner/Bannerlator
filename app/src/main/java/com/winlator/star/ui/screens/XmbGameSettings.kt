@@ -210,13 +210,10 @@ internal fun xmbCloneMenu(xmb: XmbScope, s: Shortcut, host: XmbGameHost): XmbMen
 
 private const val NO_OTHER_CONTAINER_XMB = "There's no other container. Create one in the Containers screen first."
 
-private fun xmbMoveGame(
-    xmb: XmbScope, s: Shortcut, c: Container, keepCopy: Boolean,
-    options: MoveGameToContainer.Options = MoveGameToContainer.Options(), plan: MoveGameToContainer.Plan? = null,
-) {
+private fun xmbMoveGame(xmb: XmbScope, s: Shortcut, c: Container, keepCopy: Boolean) {
     xmb.toast(if (keepCopy) "Copying \"${s.name}\"…" else "Moving \"${s.name}\"…")
     xmb.scope.launch {
-        val r = withContext(Dispatchers.IO) { MoveGameToContainer.run(xmb.context, s, c, keepCopy, options, plan) }
+        val r = withContext(Dispatchers.IO) { MoveGameToContainer.run(xmb.context, s, c, keepCopy) }
         xmb.toast(MoveGameToContainer.message(r, s.name, c.name, keepCopy))
         if (r is MoveGameToContainer.Result.Done) {
             xmb.popToRoot()

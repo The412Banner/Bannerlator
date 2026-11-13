@@ -48,7 +48,7 @@ internal class XmbMenu(
     initialKey: String? = null,
     /** Custom panel instead of rows. */
     val panel: XmbPanel? = null,
-    /** Called once when this menu is closed (back, popToRoot, or replaced by a sibling). */
+    /** Called once when this menu is closed (back or popToRoot). */
     val onClose: (() -> Unit)? = null,
     val rows: XmbScope.() -> List<XmbRow> = { emptyList() },
 ) {

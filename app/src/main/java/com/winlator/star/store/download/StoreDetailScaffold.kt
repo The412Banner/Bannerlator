@@ -345,8 +345,8 @@ private fun StoreGearButton(gear: List<StoreGearItem>, fill: Color, line: Color,
 }
 
 /**
- * The detail page's tab chips: small, an icon and a short label each, in one row (see [StoreTabChips]); the selected one is
- * filled with the accent. A tab may carry a small count badge.
+ * The detail page's tab chips: small, an icon and a short label each (see [StoreTabChips]); the selected one is filled with the
+ * accent. A tab may carry a small count badge.
  */
 @Composable
 fun StoreDetailTabs(

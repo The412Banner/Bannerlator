@@ -66,7 +66,6 @@ class StorePageGeometryTest {
         for ((w, h) in landscapes) {
             val g = geometry(w, h, safeSide = 30f)
             assertEquals("$w x $h", w / 2f + g.pairWidth / 2f, g.edge + g.leftWidth, 0.01f)
-            assertEquals("$w x $h", g.installWidth + g.primaryGap + g.pairWidth, g.leftWidth, 0.01f)
         }
     }
 

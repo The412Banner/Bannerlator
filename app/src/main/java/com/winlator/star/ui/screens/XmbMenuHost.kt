@@ -83,7 +83,7 @@ import kotlin.math.min
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Rendering + input for the nested XMB menus (model in XmbModel.kt). The Games-tab XMB owns one
 // [XmbNavState]; when it has menus, the games bar fades out and [XmbNestedLayer] draws:
-//   breadcrumb (game › Settings › General) · an icon strip per level behind you · the active column,
+//   breadcrumb (game › Game Details › Search Steam) · an icon strip per level behind you · the active column,
 //   whose highlighted row stays at a fixed height while the list runs past it · a choices column for
 //   Choice rows · an inline keyboard field for Text rows · or a custom XmbPanel.
 // Keys come from the XMB's single focus root via [XmbNavState.onKey].

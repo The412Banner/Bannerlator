@@ -153,7 +153,7 @@ internal data class XmbAction(
     val icon: ImageVector,
     val subtitle: String? = null,
     val danger: Boolean = false,
-    /** Opens a nested XMB column (Settings, Game Details, tools…) instead of running [onClick]. */
+    /** Opens a nested XMB column (Game Details, tools…) instead of running [onClick]. */
     val menu: ((XmbScope) -> XmbMenu)? = null,
     val onClick: () -> Unit = {},
 )
@@ -312,7 +312,7 @@ internal fun ShortcutsXmbView(
     }
     val actIdx = act.coerceIn(0, actions.lastIndex)
 
-    // Nested XMB menus (Settings, Game Details, tools…): model in XmbModel.kt, drawing in XmbMenuHost.kt.
+    // Nested XMB menus (Game Details, tools…): model in XmbModel.kt, drawing in XmbMenuHost.kt.
     val nav = remember { XmbNavState() }
     val nested = nav.depth > 0
     val reload by rememberUpdatedState(onReloadGames)

@@ -2029,11 +2029,8 @@ private fun SteamGameDetailScreen(
             else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
         ),
     )
-    // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
-    // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
-    // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
-    // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
-    // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
+    // Primary action + gear menu: a single state-driven button drives install / retry / add-to-shortcuts (and shows
+    // download progress read-only), while the gear dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg.
     val primaryShape = RoundedCornerShape(10.dp)
     var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
     StorePage(
@@ -2217,7 +2214,7 @@ private fun SteamGameDetailScreen(
             )
         }
 
-        // Tab chips — Details · Achievements (done/total) · DLC · Cloud · Media, all in one row.
+        // Tab chips — Details · Achievements (done/total) · DLC · Cloud · Media; they wrap onto another row when they do not fit.
         SteamDetailTabs(
             tabs = detailTabs,
             selected = selectedTab,

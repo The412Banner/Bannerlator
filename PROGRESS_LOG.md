@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 11:28 EST — UI sounds: Steam Big Picture pack + DeckThemes / Audio Loader packs (feat/ui-sounds, IN PROGRESS, not built)
+
+- **Why:** user: menus make no sound when moving around (verified: main 10e3224e has no UI sound code, no audio files; all 291 branches + open PRs checked). User wants Steam Big Picture sounds, "make use of them all", own code (not a GameNative port), and Audio Loader packs (DeckThemes/SDH-AudioLoader, MIT © 2022 EMERALD0874) with our hosted Steam pack as one option.
+- **Steam pack:** user's release winlator-contents `Steam-ui-sound` → `Steam-BigPicture-sounds.zip` 4,715,638 B, sha256 07455cb3…e164 (= the 42 files of the Windows Steam client's `steamui/sounds` on the Elite SD). Valve's files; the user chose to host them (takedown risk told).
+- **Code so far (new package `sound/`):** `UiCue` (every Steam sound mapped to a cue; rank = one input → one sound), `UiSounds` (cue rules: soft select/back wait 70 ms, strong cues win, move sound only after a direction press, edge sound for unused direction presses, per-cue repeat gap), `UiSoundBank` (SoundPool on one thread, media volume), `UiSoundPack` (pack.json reader in the Audio Loader format: ignore / mappings / music; safe unzip with caps), `UiSoundPacks` (install Steam pack with size + sha256 check, DeckThemes store packs, zip import, choice + volume prefs `ui_sounds`, `ui_sounds_pack`, `ui_sounds_volume`; missing sounds fall back to the Steam pack), `DeckThemesStore` (public api.deckthemes.com list/search, `filters=AUDIO.Audio` = 240 sound packs), `UiSoundHooks` (Compose hooks). `BannerlatorApp` calls `UiSoundPacks.init`.
+- **Next:** hook the cues into the shared UI pieces (focus rings, dialogs, toggles, tabs, menus, game page, launch, keyboard), the Activity key hook, the Sounds settings page; push; CI; stage APK; ask before install.
+- **Resume point:** worktree `/root/src/Bannerlator-wt/ui-sounds` (branch feat/ui-sounds off main 10e3224e); nothing pushed yet; nothing installed; no background jobs.
+
 ## 2026-11-13 00:02 EST — 🔀 MERGED fix/download-speed-dialog (user: "merge to main")
 
 - **Merged:** backup `refs/backup/20261113/main-before-download-speed-dialog` = 22ffc13cf. `--no-ff` merge of fix/download-speed-dialog 54e821226.

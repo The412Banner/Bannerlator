@@ -820,6 +820,7 @@ private fun AmazonGameDetailScreen(
         onBack = onBack,
         title = titleText ?: "",
         storeBadge = { StoreBadge(Store.AMAZON) },
+        downloadKey = productId?.let { "${Store.AMAZON}:$it" },
         hero = {
             if (heroCandidates.isNotEmpty()) {
                 CatalogArt(

@@ -253,6 +253,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         setContent {
             StoreXmbTheme {
                 GogGameDetailScreen(
+                    downloadKey = "${Store.GOG}:$gameId",
                     headerBitmap = headerBitmap,
                     title = title,
                     generation = generation,
@@ -898,6 +899,7 @@ private data class DlcRowUi(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GogGameDetailScreen(
+    downloadKey: String?,
     headerBitmap: Bitmap?,
     title: String,
     generation: Int,
@@ -986,6 +988,7 @@ private fun GogGameDetailScreen(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.GOG) },
+        downloadKey = downloadKey,
         hero = {
             if (headerBitmap != null) {
                 Image(

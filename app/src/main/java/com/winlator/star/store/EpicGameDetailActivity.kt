@@ -948,6 +948,7 @@ private fun EpicGameDetailScreen(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.EPIC) },
+        downloadKey = "${Store.EPIC}:$appName",
         hero = {
             if (artCover.isNotEmpty()) {
                 AsyncImage(

@@ -157,6 +157,7 @@ class XboxGameDetailActivity : ComponentActivity() {
                     onBack = { finish() },
                     title = game.title,
                     storeBadge = { StoreBadge(Store.XBOX) },
+                    downloadKey = "${Store.XBOX}:${game.id}",
                     hero = {
                         val art = listOfNotNull(game.heroUrl, game.posterUrl)
                         if (art.isNotEmpty()) CatalogArt(candidates = art, title = game.title, modifier = Modifier.fillMaxSize(), aspectRatio = null)

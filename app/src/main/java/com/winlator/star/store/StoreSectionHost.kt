@@ -264,7 +264,7 @@ private fun SectionRail(
         Spacer(Modifier.height(8.dp))
         HorizontalDivider(modifier = Modifier.width(RAIL_WIDTH - 24.dp), thickness = 1.dp, color = cs.outline.copy(alpha = 0.4f))
         Spacer(Modifier.height(4.dp))
-        actions()
+        CompositionLocalProvider(LocalStoreRail provides true) { actions() }
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -330,6 +330,9 @@ internal fun StoreLegend(modifier: Modifier = Modifier) {
     }
 }
 
+/** True inside a store's landscape rail: its icon buttons stretch to the rail's width. */
+internal val LocalStoreRail = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /**
  * A store screen's icon button: a small glass tile with the thin Lab outline and the icon in ink, the same in the top
  * row and in the rail. Takes the place of the stock round icon button, so it is called the same way.
@@ -345,10 +348,12 @@ internal fun StoreGlassIconButton(
 ) {
     val cs = MaterialTheme.colorScheme
     val inkColor = if (enabled) cs.onBackground else cs.onBackground.copy(alpha = 0.4f)
+    // In the landscape rail a button spans the rail, centred; elsewhere it is a square tile.
+    val inRail = LocalStoreRail.current
     Box(
         modifier = modifier
             .padding(3.dp)
-            .size(34.dp)
+            .then(if (inRail) Modifier.fillMaxWidth().height(34.dp) else Modifier.size(34.dp))
             .clip(SimpleShape)
             .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(cs.onBackground.copy(alpha = 0.10f), cs.onBackground.copy(alpha = 0.04f))))
             .border(1.dp, cs.onBackground.copy(alpha = 0.16f), SimpleShape)

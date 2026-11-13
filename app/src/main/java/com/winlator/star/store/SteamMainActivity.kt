@@ -620,6 +620,7 @@ private fun StorefrontRail(
         HorizontalDivider(modifier = Modifier.width(RAIL_WIDTH - 24.dp), thickness = 1.dp, color = cs.outline.copy(alpha = 0.4f))
         Spacer(Modifier.height(4.dp))
 
+        CompositionLocalProvider(LocalStoreRail provides true) {
         // The two actions worth a permanent slot; everything else is one tap deeper in the
         // overflow, which is what buys back the vertical space on a 390dp-tall screen.
         IconButton(onClick = library.refresh, modifier = Modifier.steamFocusRing().xmbRailStop()) {
@@ -636,6 +637,7 @@ private fun StorefrontRail(
             onSignOut = onSignOut,
             onChangeAccount = onChangeAccount,
         )
+        }
         Spacer(Modifier.height(8.dp))
     }
 }

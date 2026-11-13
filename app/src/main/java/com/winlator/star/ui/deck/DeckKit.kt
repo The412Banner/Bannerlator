@@ -456,7 +456,10 @@ internal fun DeckRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                if (it.isFocused && !focused) com.winlator.star.sound.UiSounds.focusGained()
+                focused = it.isFocused
+            }
             .then(if (focused) Modifier.background(cs.primary.copy(alpha = 0.12f)) else Modifier)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .heightIn(min = 64.dp)

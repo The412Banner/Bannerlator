@@ -235,6 +235,8 @@ class MainActivity : AppCompatActivity() {
 
         // First-run/install decision is made; let the OS splash hand off to the Compose UI.
         contentReady = true
+        // The start-up sound, once per app start (not on rotation or coming back to the screen).
+        if (savedInstanceState == null) com.winlator.star.sound.UiSounds.startup()
 
         // Settings-side Controller Test: the Input Controls screen's test dialog arms/disarms the input
         // fork through this bus (so this Activity consumes gamepad events instead of navigating the UI),
@@ -549,10 +551,12 @@ class MainActivity : AppCompatActivity() {
             controllerTestFeedKeyEvent(event)
             return true
         }
-        if (super.dispatchKeyEvent(event)) return true
         // Deck shell controller shortcuts (L1/R1 tabs, B back, X/Start options, Y search) get only keys the view tree left unhandled.
         // The handler is null unless the Deck shell is on screen.
-        return com.winlator.star.ui.deck.DeckInput.handler?.invoke(event) ?: false
+        val handled = super.dispatchKeyEvent(event) ||
+            (com.winlator.star.ui.deck.DeckInput.handler?.invoke(event) ?: false)
+        com.winlator.star.sound.UiSounds.key(event, handled)
+        return handled
     }
 
     private fun isControllerTestMotionEvent(event: android.view.MotionEvent): Boolean {
@@ -735,6 +739,7 @@ private fun ClassicAppShell(
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    com.winlator.star.sound.MenuSound(drawerState.targetValue == DrawerValue.Open)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val topBarActionsState = remember { topBarActionsState() }

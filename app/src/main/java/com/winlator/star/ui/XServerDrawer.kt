@@ -811,6 +811,8 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, onCheckedChange: (Boolean) -> Unit) {
+    val userChange = onCheckedChange
+    val onCheckedChange: (Boolean) -> Unit = { v -> com.winlator.star.sound.toggleSound(v); userChange(v) }
     val accent = MaterialTheme.colorScheme.primary
     val accentDim = LocalAccentDim.current
     Row(
@@ -855,6 +857,8 @@ private fun LabeledSlider(
     enabled: Boolean = true,
     format: (Float) -> String = { "%.0f".format(it) }
 ) {
+    val userChange = onValueChange
+    val onValueChange: (Float) -> Unit = { v -> if (v != value) com.winlator.star.sound.sliderSound(v > value); userChange(v) }
     val accent = MaterialTheme.colorScheme.primary
     Column(modifier = Modifier.padding(vertical = 4.dp).then(if (enabled) Modifier else Modifier.alpha(0.4f))) {
         Row(

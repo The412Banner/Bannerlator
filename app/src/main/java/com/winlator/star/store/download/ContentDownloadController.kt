@@ -99,11 +99,30 @@ object ContentDownloadRegistry {
 
     fun get(key: String): ContentDownloadState? = _states.value[key]
 
-    fun put(state: ContentDownloadState) = _states.update { it + (state.key to state) }
+    fun put(state: ContentDownloadState) {
+        val was = _states.value[state.key]
+        _states.update { it + (state.key to state) }
+        phaseSound(was, state)
+    }
 
     /** Atomically mutate an existing entry (no-op if absent). */
-    fun update(key: String, transform: (ContentDownloadState) -> ContentDownloadState) =
+    fun update(key: String, transform: (ContentDownloadState) -> ContentDownloadState) {
+        val was = _states.value[key]
         _states.update { m -> m[key]?.let { m + (key to transform(it)) } ?: m }
+        _states.value[key]?.let { phaseSound(was, it) }
+    }
+
+    /** UI sound when a component download starts, finishes or fails (a cancel is not a failure). */
+    private fun phaseSound(was: ContentDownloadState?, now: ContentDownloadState) {
+        if (was?.phase == now.phase) return
+        val cue = when {
+            now.phase == ContentDownloadPhase.DONE -> com.winlator.star.sound.UiCue.TASK_DONE
+            now.phase == ContentDownloadPhase.ERROR -> if (now.cancelled) null else com.winlator.star.sound.UiCue.ERROR
+            was == null || was.terminal -> com.winlator.star.sound.UiCue.TASK_START
+            else -> null
+        } ?: return
+        com.winlator.star.sound.UiSounds.cue(cue)
+    }
 
     fun remove(key: String) = _states.update { it - key }
 

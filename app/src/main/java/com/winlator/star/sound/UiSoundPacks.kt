@@ -162,7 +162,8 @@ object UiSoundPacks {
             try {
                 tmp.delete()
                 work.deleteRecursively()
-                val (id, source, storeId) = fetch(tmp) { f -> _state.update { it.copy(progress = f.coerceIn(0f, 1f)) } }
+                val progress = Downloader.ProgressListener { f -> _state.update { it.copy(progress = f.coerceIn(0f, 1f)) } }
+                val (id, source, storeId) = fetch(tmp, progress)
                 val packRoot = UiSoundPack.unpack(tmp, work)
                 val pack = UiSoundPack.read(packRoot, id, STEAM_NAME) ?: throw IOException("no sound pack in the zip")
                 if (pack.music) throw IOException("this is a music pack, not a sound pack")

@@ -7975,6 +7975,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * closing re-captures it for Relative Mouse, ensurePointerCapture checking the rest.
      */
     private void onInGameMenuOpenChanged(boolean open) {
+        if (inGameMenuOpen != open) com.winlator.star.sound.UiSounds.INSTANCE.cue(
+                open ? com.winlator.star.sound.UiCue.MENU_OPEN : com.winlator.star.sound.UiCue.MENU_CLOSE);
         inGameMenuOpen = open;
         // Also hides the on-handheld "playing on external display" badge while the menu is open.
         XServerDialogState.INSTANCE.setMenuOpen(open);
@@ -8618,7 +8620,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         KeyEvent routed = kc == event.getKeyCode() ? event : new KeyEvent(event.getDownTime(), event.getEventTime(),
                 event.getAction(), kc, event.getRepeatCount(), event.getMetaState(), event.getDeviceId(),
                 event.getScanCode(), event.getFlags(), event.getSource());
-        super.dispatchKeyEvent(routed);
+        boolean used = super.dispatchKeyEvent(routed);
+        com.winlator.star.sound.UiSounds.INSTANCE.key(routed, used);
     }
 
 

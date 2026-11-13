@@ -275,6 +275,7 @@ private fun DeckShellContent(
     // the theme's accent; the drawer is its portrait menu.
     val cs = if (simpleHome && AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(baseCs) else baseCs
     var labDrawer by remember { mutableStateOf(false) }
+    com.winlator.star.sound.MenuSound(labDrawer)
     val sideLists = remember { DeckSideLists() }
     val topBarActionsState = remember { topBarActionsState() }
     val topBarTransparentState = remember { mutableStateOf(false) }
@@ -454,7 +455,11 @@ private fun DeckShellContent(
     // Lab: a section (rail, drawer, L1/R1) opens over Home, so B from any section comes back to Home.
     val labGo: (Int) -> Unit = { i ->
         val all = com.winlator.star.ui.simple.LAB_SECTIONS
-        val sec = all[(i % all.size + all.size) % all.size]
+        val idx = (i % all.size + all.size) % all.size
+        val sec = all[idx]
+        if (com.winlator.star.ui.simple.labSectionOf(nav.currentRoute()) != idx) {
+            com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
+        }
         labDrawer = false
         nav.home()
         if (sec.route != DeckRoutes.HOME) nav.open(sec.route)
@@ -476,8 +481,8 @@ private fun DeckShellContent(
                 // Simple: L1/R1 on a page go back to the Simple home's previous / next section; L2/R2 only move a page's own tabs.
                 KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_LEFT_BRACKET -> { if (first) { if (simpleHomeNow) simpleStep(-1) else switchMenu(-1) }; true }
                 KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_RIGHT_BRACKET -> { if (first) { if (simpleHomeNow) simpleStep(1) else switchMenu(1) }; true }
-                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.invoke(-1) ?: run { if (!simpleHomeNow) switchMenu(-1) }; true }
-                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.invoke(1) ?: run { if (!simpleHomeNow) switchMenu(1) }; true }
+                KeyEvent.KEYCODE_BUTTON_L2 -> { if (first) deckActions.subTab.value?.let { com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB); it(-1) } ?: run { if (!simpleHomeNow) switchMenu(-1) }; true }
+                KeyEvent.KEYCODE_BUTTON_R2 -> { if (first) deckActions.subTab.value?.let { com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB); it(1) } ?: run { if (!simpleHomeNow) switchMenu(1) }; true }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (ev.action == KeyEvent.ACTION_DOWN) {
                         if (ev.repeatCount == 0) bDown = nav.currentRoute() != DeckRoutes.HOME
@@ -928,6 +933,7 @@ private class DeckNav(private val navController: NavHostController) {
             if (route != t.root) navController.popBackStack(t.root, inclusive = false)
             return
         }
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TAB)
         navController.navigate(t.root) {
             popUpTo(DeckRoutes.HOME) { saveState = true }
             launchSingleTop = true

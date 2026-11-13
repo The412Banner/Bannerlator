@@ -1950,13 +1950,17 @@ internal fun launchShortcut(activity: Activity, shortcut: Shortcut, preflightDon
     // Android games (Games tab → Add Android game) start the app itself, never a session.
     if (com.winlator.star.androidgames.AndroidGames.isAndroidEntry(shortcut)) {
         val r = com.winlator.star.androidgames.AndroidGames.launch(activity, shortcut)
-        if (r == com.winlator.star.androidgames.AndroidGames.LaunchResult.STARTED) recordLastPlayed(shortcut)
+        if (r == com.winlator.star.androidgames.AndroidGames.LaunchResult.STARTED) {
+            recordLastPlayed(shortcut)
+            com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.LAUNCH)
+        }
         com.winlator.star.androidgames.AndroidGames.failureMessage(shortcut, r)?.let {
             android.widget.Toast.makeText(activity, it, android.widget.Toast.LENGTH_SHORT).show()
         }
         return
     }
     recordLastPlayed(shortcut)
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.LAUNCH)
     if (!XrActivity.isEnabled(activity)) {
         val intent = Intent(activity, XServerDisplayActivity::class.java).apply {
             putExtra("container_id", shortcut.container.id)

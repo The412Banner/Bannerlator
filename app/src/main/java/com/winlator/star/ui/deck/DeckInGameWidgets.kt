@@ -380,7 +380,7 @@ internal fun IgSwitch(checked: Boolean, enabled: Boolean = true, onChange: (Bool
             .clip(shape)
             .background(if (checked) cs.primary else cs.surfaceContainerHighest)
             .border(1.dp, if (checked) cs.primary else deckLine().copy(alpha = 0.5f), shape)
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = { v -> com.winlator.star.sound.toggleSound(v); onChange(v) })
             .size(width = 52.dp, height = 30.dp)
             .alpha(if (enabled) 1f else 0.45f),
     ) {
@@ -452,7 +452,7 @@ internal fun IgSlider(
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.widthIn(min = 200.dp)) {
         Slider(
             value = value,
-            onValueChange = onChange,
+            onValueChange = { v -> if (v != value) com.winlator.star.sound.sliderSound(v > value); onChange(v) },
             onValueChangeFinished = onFinished,
             valueRange = range,
             enabled = enabled,
@@ -512,6 +512,7 @@ internal fun IgConfirmDialog(
     val cs = MaterialTheme.colorScheme
     val cancelFocus = remember { FocusRequester() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        com.winlator.star.sound.DialogSound()
         DeckTheme {
             val shape = deckShape(24.dp)
             Column(

@@ -65,6 +65,10 @@ object UiSounds {
             } else if (old == null || old.key != key) {
                 bank = UiSoundBank.open(key, newFiles)
                 old?.close()
+                if (SystemClock.uptimeMillis() < startupUntil) {
+                    startupUntil = 0L
+                    cue(UiCue.STARTUP)
+                }
             }
             if (previewBank != null && previewBank?.key != key) closePreview.run()
         }
@@ -113,10 +117,24 @@ object UiSounds {
         }
     }
 
+    @Volatile private var startupDone = false
+
+    /** The start-up sound, at most once per process; it waits for the pack to load. */
+    fun startup() {
+        if (startupDone) return
+        startupDone = true
+        main.post {
+            // The pack may still be loading in the background: play it when the bank opens.
+            if (bank != null) cue(UiCue.STARTUP) else startupUntil = SystemClock.uptimeMillis() + 5_000L
+        }
+    }
+    private var startupUntil = 0L
+
     /** A focus highlight was gained; plays the move sound only when a direction press caused it. */
     fun focusGained() {
         if (bank == null) return
-        if (SystemClock.uptimeMillis() - lastDirectionAt <= MOVE_LINK_MS) cue(UiCue.NAVIGATE)
+        // Compose moves focus inside the key dispatch, before key() has noted the press: check once it has.
+        main.post { if (SystemClock.uptimeMillis() - lastDirectionAt <= MOVE_LINK_MS) cue(UiCue.NAVIGATE) }
     }
 
     /**
@@ -127,13 +145,17 @@ object UiSounds {
         if (bank == null) return
         val code = event.keyCode
         if (event.action == KeyEvent.ACTION_DOWN) {
+            if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                cue(UiCue.VOLUME)
+                return
+            }
             if (isDirection(code)) {
                 lastDirectionAt = SystemClock.uptimeMillis()
                 if (!consumed) cue(UiCue.NAVIGATE_EDGE)
             }
             return
         }
-        if (event.action != KeyEvent.ACTION_UP || event.isCanceled) return
+        if (event.action != KeyEvent.ACTION_UP || event.isCanceled || !consumed) return
         when (code) {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_NUMPAD_ENTER -> cue(UiCue.SELECT)

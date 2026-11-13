@@ -101,6 +101,7 @@ private class NavTile(val label: String, val value: String, val lines: Int, val 
 @Composable
 internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () -> Unit, vm: ShortcutsViewModel = viewModel()) {
     val context = LocalContext.current
+    com.winlator.star.sound.PageSound()
     // The game on show. Its .desktop path follows a rename made on another page (Game details, All settings); [exe] is
     // its program, kept to find it again under the new name.
     var current by rememberSaveable(path) { mutableStateOf(path) }

@@ -491,6 +491,7 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
     val env = remember { SettingsEnv(context, EditorScope.APP, null, null) }
     val source = remember { AppSource(env) }
     var showLogs by remember { mutableStateOf(false) }
+    var showSounds by remember { mutableStateOf(false) }
     DeckSettingsEditor(
         header = EditorHeader(
             overline = "Bannerlator",
@@ -509,6 +510,7 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
                     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.APPEARANCE else Screen.Appearance.route,
                 )
                 AppSettingsRegistry.TARGET_LOGS -> showLogs = true
+                AppSettingsRegistry.TARGET_SOUNDS -> showSounds = true
                 AppSettingsRegistry.TARGET_ABOUT -> onAbout()
                 AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(
                     if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.CONTROLS else Screen.InputControls.route,
@@ -526,6 +528,14 @@ private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Uni
             DeckDialogBars()
             DeckDialogScaled {
                 LogManagerScreen(onClose = { showLogs = false })
+            }
+        }
+    }
+    if (showSounds) {
+        Dialog(onDismissRequest = { showSounds = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            DeckDialogBars()
+            DeckDialogScaled {
+                com.winlator.star.ui.screens.UiSoundsScreen(onClose = { showSounds = false })
             }
         }
     }

@@ -966,7 +966,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 }
                 Button(onClick = { showUiSounds = true }) { Text("Manage sound packs") }
             }
-            if (showPackPicker) SoundPackPickerDialog(onDismiss = { showPackPicker = false })
+            if (showPackPicker) com.winlator.star.ui.simple.SoundPackPicker(onDismiss = { showPackPicker = false })
             if (showUiSounds) {
                 androidx.compose.ui.window.Dialog(
                     onDismissRequest = { showUiSounds = false },

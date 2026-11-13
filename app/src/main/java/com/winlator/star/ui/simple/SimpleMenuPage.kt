@@ -648,7 +648,7 @@ internal fun SimpleActionSheet(title: String, actions: List<MenuAction>, onDismi
                         .fillMaxWidth()
                         .heightIn(min = 46.dp)
                         .focusRequester(requesters[i])
-                        .onFocusChanged { f = it.isFocused }
+                        .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                         .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
                         .clickable { onRun(a) }
                         .padding(horizontal = 14.dp, vertical = 6.dp),

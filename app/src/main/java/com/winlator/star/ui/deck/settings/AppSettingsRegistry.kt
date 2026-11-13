@@ -78,6 +78,8 @@ internal object AppSettingsRegistry {
     const val TARGET_DEFAULTS = "containerDefaults"
     const val TARGET_CONTENTS = "contents"
     const val TARGET_SOUNDS = "uiSounds"
+    /** The Sound pack row: Lab opens its own list for it (installed / available, apply / delete). */
+    const val SOUND_PACK_ID = "app.sounds.pack"
 
     val handoffs: Map<String, List<Handoff>> = mapOf(
         "app.general" to listOf(Handoff(T("Check for updates"), T("Version, release notes and Download & install (classic Settings)."), TARGET_CLASSIC)),

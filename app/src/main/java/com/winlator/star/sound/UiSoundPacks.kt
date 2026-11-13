@@ -196,7 +196,12 @@ object UiSoundPacks {
         }
     }
 
+    /** Removes pack [id]; when it was the one in use, Steam Big Picture is used again. */
     fun delete(ctx: Context, id: String) {
+        if (_state.value.selected == id && id != STEAM_ID) {
+            prefs(ctx).edit().putString(PREF_PACK, STEAM_ID).apply()
+            _state.update { it.copy(selected = STEAM_ID) }
+        }
         scope.launch {
             File(root(ctx), id).deleteRecursively()
             _state.update { s -> s.copy(packs = scan(ctx)) }

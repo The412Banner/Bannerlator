@@ -1,5 +1,6 @@
 package com.winlator.star.store.download
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -288,8 +289,10 @@ fun StoreSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
+            // See-through like the page: a faint fill and a thin line, not a solid block over the art.
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
             .padding(16.dp),
     ) {
         Text(

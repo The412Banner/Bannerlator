@@ -2043,7 +2043,8 @@ private fun SteamGameDetailScreen(
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
-            Spacer(Modifier.weight(1f))
+            // Landscape: the status and Downloads sit beside Back at the far left; portrait keeps them on the right.
+            if (!widePage) Spacer(Modifier.weight(1f))
             SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
             DownloadsButton()
         }

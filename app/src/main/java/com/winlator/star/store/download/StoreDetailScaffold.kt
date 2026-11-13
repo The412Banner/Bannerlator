@@ -123,98 +123,50 @@ fun StoreDetailScaffold(
     val all by DownloadRegistry.entries.collectAsState()
     val download = if (downloadKey == null) null else all.firstOrNull { it.key == downloadKey && it.isActive }
 
-    val header: @Composable () -> Unit = {
-        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(34.dp)
-                    .clip(SimpleShape)
-                    .background(bg.copy(alpha = 0.6f))
-                    .border(1.dp, cs.outline.copy(alpha = 0.35f), SimpleShape)
-                    .labTile(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onBackground, modifier = Modifier.size(18.dp))
-            }
-            Spacer(Modifier.weight(1f))
-            storeBadge()
-            headerActions()
-        }
-    }
-    val head: @Composable ColumnScope.() -> Unit = {
-        Text(
-            text = title,
-            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, shadow = Shadow(bg.copy(alpha = 0.7f), blurRadius = 12f)),
-            color = cs.onBackground,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (subtitle != null) subtitle()
-        StorePrimaryActionRow(primary = primary, gear = gear, secondary = secondary)
-        if (download != null) StoreDownloadBar(download)
-        if (!infoLine.isNullOrBlank()) {
-            Text(infoLine, fontSize = 11.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-        }
-    }
-    val panel: @Composable ColumnScope.() -> Unit = {
-        if (tabs.size > 1) StoreDetailTabs(labels = tabs, selected = selectedTab, badges = tabBadges, onSelect = onSelectTab)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(SimpleShape)
-                .background(bg.copy(alpha = 0.86f))
-                .border(1.dp, cs.outline.copy(alpha = 0.25f), SimpleShape)
-                .padding(vertical = 6.dp),
-            content = body,
-        )
-    }
-
+    // The same page as Steam's: one column over the art (the left 60 % of the screen in landscape), no boxes.
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg)) {
-        val pageW = maxWidth
         val pageH = maxHeight
-        val wide = pageW > pageH
+        val wide = maxWidth > maxHeight
         // Under the store's own art: the Steam / SteamGridDB art the Lab finds by the game's name, for a store with none.
         StoreFallbackArt(title, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
-        if (wide) {
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
-                0f to bg.copy(alpha = 0.94f), 0.42f to bg.copy(alpha = 0.72f), 0.75f to bg.copy(alpha = 0.25f), 1f to bg.copy(alpha = 0.45f))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to bg.copy(alpha = 0.8f))))
-            Row(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
-                Column(
-                    Modifier
-                        .width((pageW * 0.36f).coerceAtLeast(220.dp))
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    header()
-                    Spacer(Modifier.height(pageH * 0.04f))
-                    head()
-                }
-                Spacer(Modifier.width(16.dp))
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(top = 38.dp)
-                        .verticalScroll(rememberScrollState()),
-                    content = panel,
-                )
-            }
-        } else {
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                0f to bg.copy(alpha = 0.25f), 0.30f to bg.copy(alpha = 0.35f), 0.62f to bg.copy(alpha = 0.93f), 0.84f to bg)))
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 14.dp),
+        Box(
+            Modifier.fillMaxSize().background(
+                if (wide) Brush.horizontalGradient(0f to bg.copy(alpha = 0.95f), 0.5f to bg.copy(alpha = 0.82f), 0.8f to bg.copy(alpha = 0.3f), 1f to bg.copy(alpha = 0.45f))
+                else Brush.verticalGradient(0f to bg.copy(alpha = 0.25f), 0.30f to bg.copy(alpha = 0.35f), 0.55f to bg.copy(alpha = 0.93f), 0.75f to bg),
+            ),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(if (wide) 0.6f else 1f)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                header()
-                Spacer(Modifier.height(pageH * 0.34f))
-                head()
-                panel()
+                Box(Modifier.size(48.dp).labTile(onClick = onBack), contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onBackground)
+                }
+                // Landscape: the badge and Downloads sit beside Back at the far left; portrait keeps them on the right.
+                if (!wide) Spacer(Modifier.weight(1f))
+                storeBadge()
+                headerActions()
             }
+            Spacer(Modifier.height(pageH * if (wide) 0.04f else 0.28f))
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
+                Text(text = title, style = MaterialTheme.typography.headlineSmall, color = cs.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (subtitle != null) subtitle()
+            }
+            StorePrimaryActionRow(primary = primary, gear = gear, secondary = secondary)
+            if (download != null) StoreDownloadBar(download, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+            if (!infoLine.isNullOrBlank()) {
+                Text(infoLine, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+            }
+            if (tabs.size > 1) StoreDetailTabs(labels = tabs, selected = selectedTab, badges = tabBadges, onSelect = onSelectTab)
+            body()
         }
         overlay()
     }
@@ -280,12 +232,12 @@ fun StorePrimaryActionRow(
     secondary: StorePrimaryAction.Button? = null,
 ) {
     var gearExpanded by remember { mutableStateOf(false) }
-    val shape = SimpleShape
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
     val cs = MaterialTheme.colorScheme
     val bg = xmbSolidBackground()
     Row(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when (primary) {
             is StorePrimaryAction.Progress -> {
@@ -294,7 +246,7 @@ fun StorePrimaryActionRow(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp)
+                        .height(46.dp)
                         .clip(shape)
                         .background(bg.copy(alpha = 0.6f))
                         .border(1.dp, cs.outline.copy(alpha = 0.5f), shape),
@@ -312,20 +264,20 @@ fun StorePrimaryActionRow(
             is StorePrimaryAction.Button -> Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(46.dp)
                     .clip(shape)
                     .background(if (primary.enabled) cs.primary else cs.primary.copy(alpha = 0.4f))
                     .then(if (primary.enabled) Modifier.labTile(onClick = primary.onClick, onAccent = true) else Modifier),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(primary.label, color = cs.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(primary.label, color = cs.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
 
         if (secondary != null) Box(
             modifier = Modifier
                 .weight(1f)
-                .height(40.dp)
+                .height(46.dp)
                 .clip(shape)
                 .background(bg.copy(alpha = 0.55f))
                 .border(1.dp, if (secondary.enabled) cs.primary else cs.outline, shape)
@@ -339,14 +291,14 @@ fun StorePrimaryActionRow(
             Box {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(46.dp)
                         .clip(shape)
                         .background(bg.copy(alpha = 0.55f))
                         .border(1.dp, cs.outline.copy(alpha = 0.5f), shape)
                         .labTile(onClick = { gearExpanded = true }),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⚙", fontSize = 16.sp, color = cs.primary)
+                    Text("⚙", fontSize = 18.sp, color = cs.primary)
                 }
                 DropdownMenu(
                     expanded = gearExpanded,
@@ -388,30 +340,30 @@ fun StoreDetailTabs(
     badges: Map<Int, String> = emptyMap(),
 ) {
     val cs = MaterialTheme.colorScheme
-    val bg = xmbSolidBackground()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(top = 10.dp, bottom = 6.dp, start = 2.dp, end = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         labels.forEachIndexed { index, label ->
             val isSel = index == selected
             val badge = badges[index]
+            val shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier
-                    .clip(SimpleShape)
-                    .background(if (isSel) cs.primary else bg.copy(alpha = 0.55f))
-                    .border(1.dp, if (isSel) cs.primary else cs.outline.copy(alpha = 0.4f), SimpleShape)
-                    .labTile(onClick = { onSelect(index) }, onAccent = isSel)
-                    .padding(horizontal = 11.dp, vertical = 6.dp),
+                    .clip(shape)
+                    .background(if (isSel) cs.primary.copy(alpha = 0.14f) else cs.surface)
+                    .border(1.dp, if (isSel) cs.primary.copy(alpha = 0.45f) else cs.outline.copy(alpha = 0.5f), shape)
+                    .labTile(onClick = { onSelect(index) })
+                    .padding(horizontal = 15.dp, vertical = 9.dp),
             ) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isSel) cs.onPrimary else cs.onSurfaceVariant, maxLines = 1)
+                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSel) cs.primary else cs.onSurfaceVariant, maxLines = 1)
                 if (badge != null) {
-                    Text(badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isSel) cs.onPrimary.copy(alpha = 0.8f) else cs.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
+                    Text(badge, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSel) cs.primary else cs.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
                 }
             }
         }

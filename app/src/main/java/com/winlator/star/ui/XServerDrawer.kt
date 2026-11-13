@@ -1,5 +1,7 @@
 package com.winlator.star.ui
 
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRequester
 import com.winlator.star.linux.LinuxComponents
 import com.winlator.star.linux.LinuxTuning
 import androidx.compose.animation.AnimatedVisibility
@@ -1818,6 +1820,51 @@ private fun Modifier.dpadDropdown(onOpen: () -> Unit): Modifier {
         }
         true
     }
+}
+
+/**
+ * A drawer field's list of choices: as wide as the field, and when it opens the highlight moves into it, so the
+ * controller picks from the list (Up / Down, A; B closes it) instead of staying on the field behind it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun androidx.compose.material3.ExposedDropdownMenuBoxScope.DrawerDropdown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The field the list hangs from: it gives up the highlight while the list is open and takes it back after. */
+    anchorFocus: androidx.compose.ui.focus.FocusRequester? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val fieldFocus = LocalFocusManager.current
+    var wasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            wasOpen = true
+            fieldFocus.clearFocus()
+        } else if (wasOpen) {
+            wasOpen = false
+            runCatching { anchorFocus?.requestFocus() }
+        }
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.exposedDropdownSize()) {
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(Unit) {
+            delay(80)
+            focusManager.moveFocus(FocusDirection.Next)
+        }
+        content()
+    }
+}
+
+/** A list entry's highlight: the accent tint and outline while the controller is on it. */
+@Composable
+private fun Modifier.drawerItemFocus(): Modifier {
+    var focused by remember { mutableStateOf(false) }
+    val accent = MaterialTheme.colorScheme.primary
+    return this
+        .onFocusChanged { focused = it.hasFocus }
+        .then(if (focused) Modifier.background(accent.copy(alpha = 0.22f)).border(2.dp, accent) else Modifier)
 }
 
 /** Dim one-line explanation under a control (same style as the Controls tab's Wayland note). */
@@ -4043,18 +4090,20 @@ internal fun ControlsContent(
             Text("Input Controls", color = accent, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
 
+            val anchorFocus0 = remember { androidx.compose.ui.focus.FocusRequester() }
             ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
                 OutlinedTextField(
                     value = allItems.getOrElse(selectedIdx) { "-- Disabled --" },
                     onValueChange = {}, readOnly = true,
                     label = { Text("Profile", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { dropdownExpanded = true },
+                    modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus0).dpadDropdown { dropdownExpanded = true },
                     singleLine = true,
                 )
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
+                DrawerDropdown(anchorFocus = anchorFocus0, expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }, modifier = Modifier.outlinedMenuCard()) {
                     allItems.forEachIndexed { i, label ->
-                        DropdownMenuItem(text = { Text(label) }, onClick = {
+                        if (i > 0) MenuItemDivider()
+                        DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(label) }, onClick = {
                             selectedIdx = i
                             dropdownExpanded = false
                             XServerDialogState.onInputControlsConfirm?.invoke(selectedIdx, showTouchscreen, timeoutEnabled, hapticsEnabled)
@@ -4473,16 +4522,17 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
+        val anchorFocus1 = remember { androidx.compose.ui.focus.FocusRequester() }
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
                 value = selectedLabel,
                 onValueChange = {}, readOnly = true,
                 label = { Text("Slot", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { expanded = true },
+                modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus1).dpadDropdown { expanded = true },
                 singleLine = true,
             )
-            ExposedDropdownMenu(
+            DrawerDropdown(anchorFocus = anchorFocus1, 
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 // #333 polish: match the shared outlined-menu-card look (outline + thin divider between
@@ -4492,7 +4542,7 @@ private fun PlayerSlotRowItem(row: XServerDialogState.PlayerSlotRow) {
                 options.forEachIndexed { index, option ->
                     if (index > 0) MenuItemDivider()
                     val (label, value) = option
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                    DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(label) }, onClick = {
                         expanded = false
                         if (value != row.override) {
                             XServerDialogState.onPlayerSlotChanged?.invoke(row.descriptor, value)
@@ -4562,20 +4612,21 @@ private fun PadSection() {
     PadRowHeader("Controller type", identityApply, R.string.help_controller_identity)
     var identityExpanded by remember { mutableStateOf(false) }
     val identityLocked = pad.identityLockedReason != null
+    val anchorFocus2 = remember { androidx.compose.ui.focus.FocusRequester() }
     ExposedDropdownMenuBox(expanded = identityExpanded && !identityLocked,
         onExpandedChange = { if (!identityLocked) identityExpanded = it }) {
         OutlinedTextField(
             value = ControllerIdentity.label(pad.identity),
             onValueChange = {}, readOnly = true, enabled = !identityLocked,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = identityExpanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor().dpadDropdown { if (!identityLocked) identityExpanded = true },
+            modifier = Modifier.fillMaxWidth().menuAnchor().focusRequester(anchorFocus2).dpadDropdown { if (!identityLocked) identityExpanded = true },
             singleLine = true,
         )
-        ExposedDropdownMenu(expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
+        DrawerDropdown(anchorFocus = anchorFocus2, expanded = identityExpanded && !identityLocked, onDismissRequest = { identityExpanded = false },
             modifier = Modifier.outlinedMenuCard()) {
             choices.forEachIndexed { index, id ->
                 if (index > 0) MenuItemDivider()
-                DropdownMenuItem(text = { Text(id.label) }, onClick = {
+                DropdownMenuItem(modifier = Modifier.drawerItemFocus(), text = { Text(id.label) }, onClick = {
                     identityExpanded = false
                     if (id.value != pad.identity) XServerDialogState.onPadIdentity?.invoke(id.value)
                 })

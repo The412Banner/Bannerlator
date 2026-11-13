@@ -12,7 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Nested XMB menus (Games tab, XMB view). A game's options open as further XMB columns instead of
-// pop-up dialogs: Settings → section → setting → choices. This file is the MODEL only; rendering and
+// pop-up dialogs: Game Details → field → value. This file is the MODEL only; rendering and
 // input live in XmbMenuHost.kt.
 //
 // Contract for menu builders:
@@ -27,19 +27,9 @@ import kotlinx.coroutines.CoroutineScope
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard). X resets the highlighted row to the
- * container's value, on a row that carries an [XmbOverride].
+ * Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard).
  */
-internal enum class XmbKey { Up, Down, Left, Right, A, B, L1, R1, X }
-
-/** L1/R1 cycling between sibling menus at the same depth (e.g. the Settings sections). */
-internal class XmbSiblings(
-    val index: Int,
-    val count: Int,
-    val make: (Int) -> XmbMenu,
-    /** Key of the row in the PARENT menu that opens sibling n (so the parent's highlight follows). */
-    val parentKey: (Int) -> String,
-)
+internal enum class XmbKey { Up, Down, Left, Right, A, B, L1, R1 }
 
 /** What a confirm step says. Shown as its own XMB column that opens on Cancel. */
 internal data class XmbConfirm(val title: String, val message: String, val okLabel: String, val danger: Boolean = false)
@@ -63,30 +53,13 @@ internal class XmbMenu(
     val rows: XmbScope.() -> List<XmbRow> = { emptyList() },
 ) {
     var selKey by mutableStateOf(initialKey)
-    var siblings: XmbSiblings? = null
 }
-
-/**
- * A row that is changed for this game only (XMB Home game settings): the row shows one small accent dot, and [reset] puts the
- * container's value back (X on a controller, the small "Reset" beside the highlighted row on touch).
- */
-internal class XmbOverride(val reset: () -> Unit)
 
 /** Every row type. [subtitle] shows under the label on the highlighted row; [disabledReason] non-null
  *  greys the row out and is shown instead of the subtitle. */
 internal sealed class XmbRow {
     abstract val key: String
     abstract val label: String
-
-    /** Non-null while this row holds a value of this game's own instead of the container's. Set by the builder that owns the row; null on every other menu. */
-    var overridden: XmbOverride? = null
-
-    /**
-     * XMB Home game settings: the container editor's own label for this row, shown in place of [label], and its hint, shown when the row
-     * has no subtitle of its own. Null on every other menu, and on a row that is not one editor row.
-     */
-    var editorLabel: String? = null
-    var editorHint: String? = null
 
     class Header(override val key: String, override val label: String) : XmbRow()
 
@@ -101,10 +74,6 @@ internal sealed class XmbRow {
         override val key: String, override val label: String, val icon: ImageVector,
         val options: List<String>, val selected: String,
         val subtitle: String? = null, val disabledReason: String? = null,
-        /** Options shown but not pickable (e.g. DirectAudio on an unsupported layer). */
-        val disabledOptions: Set<String> = emptySet(),
-        /** Non-null → ask first (e.g. "SurfaceFlinger renderer — experimental"). */
-        val confirm: ((String) -> XmbConfirm?)? = null,
         val onSelect: (String) -> Unit,
     ) : XmbRow()
 
@@ -114,14 +83,6 @@ internal sealed class XmbRow {
         val value: String, val subtitle: String? = null, val disabledReason: String? = null,
         val placeholder: String = "", val numeric: Boolean = false,
         val onCommit: (String) -> Unit,
-    ) : XmbRow()
-
-    class Slider(
-        override val key: String, override val label: String, val icon: ImageVector,
-        val value: Float, val min: Float, val max: Float, val step: Float,
-        val format: (Float) -> String = { "%.1f".format(it) },
-        val subtitle: String? = null, val disabledReason: String? = null,
-        val onChange: (Float) -> Unit,
     ) : XmbRow()
 
     /** Opens a deeper column ("›"). [value] is an optional summary shown on the right. */

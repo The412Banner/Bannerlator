@@ -361,9 +361,8 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     var propertiesShortcut by actions::propertiesShortcut
     var logsShortcut by actions::logsShortcut
     var showCommunityBrowser by actions::showCommunityBrowser
-    // XMB view: a nested menu is open (hides the + button) / its "Manage wrappers" row asked for the dialog.
+    // XMB view: a nested menu is open (hides the + button).
     var xmbNested by remember { mutableStateOf(false) }
-    var showWrapperManagerXmb by remember { mutableStateOf(false) }
     // The launch flow (EA checks, launch-method sheet, SteamLite pre-flight, Goldberg, component downloads, Steam update/verify) lives in ShortcutLauncher.
     // The Deck home shares it verbatim.
     val launcher = rememberShortcutLauncher()
@@ -490,12 +489,11 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     }
 
     // XMB options column = a card's ⋮ menu, reordered for a D-pad (common first, Remove last). Items with
-    // a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbSettingsPhase2*.kt / XmbGameTools*.kt)
-    // instead of pop-ups; the three that hand off to Android or a full screen keep their handlers.
+    // a `menu` open as nested XMB columns (XmbGameSettings.kt / XmbGameTools*.kt); Settings opens the Shortcut Settings page
+    // (or the classic dialog outside the Deck shell) and the three that hand off to Android or a full screen keep their handlers.
     val xmbHost = XmbGameHost(
         remove = { vm.remove(it, context) },
         containers = { vm.containers() },
-        openWrapperManager = { showWrapperManagerXmb = true },
     )
     val xmbActionsFor: (Shortcut) -> List<XmbAction> = { shortcut ->
         xmbGameActions(context, shortcut, xmbHost, openSettings = { settingsShortcut = it })
@@ -689,8 +687,6 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
             },
         )
     }
-
-    if (showWrapperManagerXmb) WrapperManagerDialog(onDismiss = { showWrapperManagerXmb = false })
 
     // Per-game ⋮ menu dialogs (shared with the Deck game page).
     ShortcutActionDialogs(actions)

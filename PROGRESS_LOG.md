@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 12:16 EST — UI sounds: Sound pack list with Installed / Available sections (feat/ui-sounds 53b2d01c, CI 43471178895 running, NOT device-tested)
+
+- **User (screenshot 12:12 of the 484dba8f Lab picker):** a total at the top of the available list; installed packs first in an "Installed" section; picking an installed pack offers Apply or Delete, and a deleted pack goes back to the available list.
+- **Changed (53b2d01c):** new `ui/simple/LabSoundPackPicker.kt` `SoundPackPicker` (Lab look, same as SimplePicker): "Installed · N" then "Available · M" headings; installed → `SimpleActionSheet` Apply / Delete; available (↓) → download + use, the list stays open and the row shows "Downloading NN %". Lab `SimpleOneMenu` opens it for `AppSettingsRegistry.SOUND_PACK_ID`; Classic's pack button opens it too (old Classic dialog removed). `UiSoundPacks.delete` of the pack in use → Steam Big Picture again. Lab's generic `SimplePicker` + `SimpleActionSheet` rows now play the move sound, and `SimplePicker` plays dialog sounds (it had none).
+- **Device check of 484dba8f (12:13 EST):** sounds switched on 12:09; Steam pack downloaded (42 files in `files/ui_sounds/steam-big-picture`); DeckThemes list cached (`.store.json` 203 KB); `dumpsys audio`: SoundPool player piid 599 created 12:09:11 by the app (USAGE_GAME / SONIFICATION). App log lines missing because the Elite's main log buffer is 256 KiB and the xsu bridge floods it (not a sound fault).
+- **Resume point:** CI 43471178895 → stage APK → the user's earlier "install when green" covered 484dba8f only → ASK before installing this one.
+
 ## 2026-11-13 12:05 EST — UI sounds: INSTALLED on the Pocket FIT Elite (feat/ui-sounds 484dba8f, user: "install when green"), NOT device-tested yet
 
 - **CI 43466939624:** GREEN 4/4, headSha 484dba8f; pubg job log BUILD SUCCESSFUL in 5m 16s, no Kotlin errors; skipped steps = the usual branch ones (main-only saves, cached JavaSteam / LSFG / libblsteam / Xbox backend). First run 43465502724 (4d098ccc) also green 4/4.

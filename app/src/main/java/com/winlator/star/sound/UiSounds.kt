@@ -70,7 +70,6 @@ object UiSounds {
                     cue(UiCue.STARTUP)
                 }
             }
-            if (previewBank != null && previewBank?.key != key) closePreview.run()
         }
     }
 
@@ -78,15 +77,20 @@ object UiSounds {
         volume = v.coerceIn(0f, 1f)
     }
 
-    /** Plays [cue] straight away, even while sounds are off (settings preview). */
-    fun preview(cue: UiCue) {
+    /**
+     * Plays [cues] one after another from [previewFiles] (a pack that need not be in use), even while sounds are
+     * off; the pack stays loaded for a short while so a second preview starts at once.
+     */
+    fun preview(key: String, previewFiles: Map<String, List<java.io.File>>, cues: List<UiCue>) {
         main.post {
-            val b = bank ?: previewBank ?: files.takeIf { it.isNotEmpty() }?.let { UiSoundBank.open(filesKey, it) }?.also { previewBank = it }
-            b?.play(cue, volume)
-            if (b === previewBank) {
-                main.removeCallbacks(closePreview)
-                main.postDelayed(closePreview, PREVIEW_KEEP_MS)
+            if (previewBank?.key != key) {
+                previewBank?.close()
+                previewBank = previewFiles.takeIf { it.isNotEmpty() }?.let { UiSoundBank.open(key, it) }
             }
+            val b = previewBank ?: return@post
+            cues.forEachIndexed { i, c -> main.postDelayed({ if (previewBank === b) b.play(c, volume) }, 150L + i * 300L) }
+            main.removeCallbacks(closePreview)
+            main.postDelayed(closePreview, PREVIEW_KEEP_MS)
         }
     }
 

@@ -951,7 +951,6 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         FieldSetLabel("Sound")
         FieldSet {
             val uiSounds by com.winlator.star.sound.UiSoundPacks.state.collectAsState()
-            var showUiSounds by remember { mutableStateOf(false) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Menu sounds", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 androidx.compose.material3.Switch(
@@ -960,22 +959,10 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                 )
             }
             var showPackPicker by remember { mutableStateOf(false) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { showPackPicker = true }) {
-                    Text(com.winlator.star.sound.UiSoundPacks.choices().firstOrNull { it.first == uiSounds.selected }?.second ?: "Sound pack")
-                }
-                Button(onClick = { showUiSounds = true }) { Text("Manage sound packs") }
+            Button(onClick = { showPackPicker = true }) {
+                Text(com.winlator.star.sound.UiSoundPacks.choices().firstOrNull { it.first == uiSounds.selected }?.second ?: "Sound pack")
             }
             if (showPackPicker) com.winlator.star.ui.simple.SoundPackPicker(onDismiss = { showPackPicker = false })
-            if (showUiSounds) {
-                androidx.compose.ui.window.Dialog(
-                    onDismissRequest = { showUiSounds = false },
-                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-                ) {
-                    com.winlator.star.ui.DeckDialogBars()
-                    UiSoundsScreen(onClose = { showUiSounds = false })
-                }
-            }
             Spacer(Modifier.height(12.dp))
             Text("MIDI Sound Font", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Text(

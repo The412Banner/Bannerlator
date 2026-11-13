@@ -77,14 +77,12 @@ internal object AppSettingsRegistry {
     const val TARGET_INPUT_CONTROLS = "inputControls"
     const val TARGET_DEFAULTS = "containerDefaults"
     const val TARGET_CONTENTS = "contents"
-    const val TARGET_SOUNDS = "uiSounds"
-    /** The Sound pack row: Lab opens its own list for it (installed / available, apply / delete). */
+    /** The Sound pack row: Lab, Deck and Classic open its own list (installed / available, preview / apply / delete, a pack zip). */
     const val SOUND_PACK_ID = "app.sounds.pack"
 
     val handoffs: Map<String, List<Handoff>> = mapOf(
         "app.general" to listOf(Handoff(T("Check for updates"), T("Version, release notes and Download & install (classic Settings)."), TARGET_CLASSIC)),
         "app.appearance" to listOf(Handoff(T("Theme and colours"), T("Theme presets, custom accent colour, side menu, orientation, interface and text size."), TARGET_APPEARANCE)),
-        "app.sounds" to listOf(Handoff(T("Manage sound packs"), T("Preview, remove, or install a pack zip."), TARGET_SOUNDS)),
         "app.library" to listOf(Handoff(T("Installed sound banks and export folder"), T("Add .sf2 files and choose where shortcuts are exported (classic Settings)."), TARGET_CLASSIC)),
         "app.performance" to listOf(
             Handoff(T("Root controls, heat safety and Lossless.dll"), T("CPU governor and frequency locks, free memory, the temperature watchdog (classic Settings › Performance), and importing Lossless.dll for frame generation."), TARGET_CLASSIC),

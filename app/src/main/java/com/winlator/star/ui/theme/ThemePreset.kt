@@ -268,8 +268,11 @@ val themePresets: List<ThemePreset> = listOf(
 // are inserted *before* it.
 val CUSTOM_PRESET_INDEX = themePresets.size - 1
 
-/** The preset a fresh install, and anyone who never picked one, starts on. */
-const val DEFAULT_PRESET_NAME = "Charcoal"
+/** The preset anyone who never picked one is on (AMOLED, as before names were saved). A fresh install saves [NEW_INSTALL_PRESET]. */
+const val DEFAULT_PRESET_NAME = "AMOLED"
+
+/** The preset a fresh install starts on, saved at its first start (an update keeps its own, or [DEFAULT_PRESET_NAME]). */
+const val NEW_INSTALL_PRESET = "Carbon & Ember"
 
 /** Where [DEFAULT_PRESET_NAME] sits in [themePresets]. */
 val DEFAULT_PRESET_INDEX = themePresets.indexOfFirst { it.name == DEFAULT_PRESET_NAME }.coerceAtLeast(0)

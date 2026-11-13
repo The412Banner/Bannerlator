@@ -6,8 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Presets are saved by name, with the old positions kept readable. These pin down that Charcoal is the default for anyone who
- * never picked one, and that every choice saved before Charcoal existed (a plain preset, and Custom with its base) still
+ * Presets are saved by name, with the old positions kept readable. These pin down that AMOLED stays the default for anyone who
+ * never picked one (a fresh install saves Carbon & Ember), and that every choice saved before Charcoal existed (a plain preset, and Custom with its base) still
  * resolves to the same preset.
  */
 class ThemePresetTest {
@@ -23,10 +23,11 @@ class ThemePresetTest {
     private val names = themePresets.map { it.name }
 
     @Test
-    fun charcoalExistsAndIsTheDefault() {
+    fun charcoalExists_andTheDefaultsAreUnchanged() {
         val charcoal = themePresets.first { it.name == "Charcoal" }
-        assertEquals("Charcoal", DEFAULT_PRESET_NAME)
-        assertEquals(charcoal, themePresets[DEFAULT_PRESET_INDEX])
+        assertEquals("AMOLED", DEFAULT_PRESET_NAME)
+        assertEquals("AMOLED", themePresets[DEFAULT_PRESET_INDEX].name)
+        assertTrue(names.contains(NEW_INSTALL_PRESET))
         // Neutral grays: no colour in the background or the surfaces.
         for (c in listOf(charcoal.background, charcoal.surface, charcoal.surfaceVariant)) {
             assertEquals(c.red, c.green, 0f)
@@ -35,9 +36,9 @@ class ThemePresetTest {
     }
 
     @Test
-    fun nothingSavedStartsOnCharcoal() {
+    fun nothingSavedStartsOnAmoled() {
         assertEquals(DEFAULT_PRESET_INDEX, resolveSavedPresetIndex(names, null, null))
-        assertEquals("Charcoal", themePresets[resolveSavedPresetIndex(names, null, null)].name)
+        assertEquals("AMOLED", themePresets[resolveSavedPresetIndex(names, null, null)].name)
     }
 
     @Test
@@ -72,11 +73,11 @@ class ThemePresetTest {
     }
 
     @Test
-    fun unknownChoicesFallBackToCharcoalInsteadOfAnotherPreset() {
+    fun unknownChoicesFallBackToTheDefaultInsteadOfAnotherPreset() {
         assertEquals(DEFAULT_PRESET_INDEX, resolveSavedPresetIndex(names, "No Such Preset", null))
         assertEquals(DEFAULT_PRESET_INDEX, resolveSavedPresetIndex(names, null, 99))
         assertEquals(DEFAULT_PRESET_INDEX, resolveSavedPresetIndex(names, null, -1))
-        // A list without Charcoal at all falls back to its first entry.
+        // A list without the default at all falls back to its first entry.
         assertEquals(0, resolveSavedPresetIndex(listOf("A", "B"), null, null))
     }
 

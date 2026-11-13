@@ -4,10 +4,15 @@ import android.content.pm.ActivityInfo
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** What each App-orientation mode asks Android for: landscape follows both landscape rotations, nothing else changes. */
+/** What each orientation mode asks Android for: the App-orientation modes as before, the XMB home's landscape on both sides. */
 class AppOrientationTest {
-    @Test fun landscapeFollowsBothLandscapeRotations() {
-        assertEquals(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, AppOrientation.requested(AppOrientation.LANDSCAPE))
+    @Test fun appLandscapeStaysFixedLandscape() {
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, AppOrientation.requested(AppOrientation.LANDSCAPE))
+    }
+
+    @Test fun xmbLandscapeFollowsBothLandscapeRotations() {
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, AppOrientation.requestedXmb(AppOrientation.LANDSCAPE))
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, AppOrientation.requestedXmb(AppOrientation.PORTRAIT))
     }
 
     @Test fun portraitStaysPortrait() {

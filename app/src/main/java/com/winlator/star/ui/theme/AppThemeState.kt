@@ -131,8 +131,8 @@ object AppThemeState {
             themePrefs.edit().putBoolean("preset_schema_v2", true).apply()
         }
 
-        // No saved style yet: a fresh install starts in Lab at 100 % sizes; an update keeps Classic and its sizes. Neither saves a
-        // theme: anyone who never picked a preset (a fresh install or an update) gets DEFAULT_PRESET_NAME, see below.
+        // No saved style yet: a fresh install starts in Lab with NEW_INSTALL_PRESET at 100 % sizes; an update keeps Classic, its
+        // theme (DEFAULT_PRESET_NAME when it never picked one) and its sizes.
         if (!themePrefs.contains("ui_style")) {
             val fresh = runCatching {
                 val pi = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -141,6 +141,9 @@ object AppThemeState {
             val edit = themePrefs.edit()
                 .putString("ui_style", if (fresh) UI_STYLE_DECK else UI_STYLE_CLASSIC)
                 .putBoolean("simple_home", fresh)
+            if (fresh && !themePrefs.contains("preset_index") && !themePrefs.contains("preset_name")) {
+                edit.putString("preset_name", NEW_INSTALL_PRESET)
+            }
             // Sizes: a fresh install starts at 100 %; an update keeps its own (90 % when never changed).
             if (fresh && !themePrefs.contains("ui_scale")) edit.putFloat("ui_scale", 1f)
             if (fresh && !themePrefs.contains("font_scale")) edit.putFloat("font_scale", 1f)

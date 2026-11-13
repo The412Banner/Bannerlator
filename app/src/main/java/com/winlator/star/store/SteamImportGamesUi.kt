@@ -92,6 +92,7 @@ private fun ImportList(dir: File, r: SteamFolderAdopt.Result, onClose: () -> Uni
     val ticked = remember { mutableStateMapOf<String, Boolean>().apply { r.found.forEach { f -> if (f.game != null) put(f.folder.path, true) } } }
     var choosingFor by remember { mutableStateOf<File?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var useAsDefault by remember { mutableStateOf(false) }
     val matched = r.found.filter { it.game != null }
     val unmatched = r.found.filter { it.game == null }
     val toAdd = r.found.filter { ticked[it.folder.path] == true && chosen[it.folder.path] != null }
@@ -107,6 +108,16 @@ private fun ImportList(dir: File, r: SteamFolderAdopt.Result, onClose: () -> Uni
                     Thread {
                         val errors = jobs.mapNotNull { (folder, game) ->
                             SteamFolderAdopt.adopt(ctx, game.appId, folder)?.let { "${game.name}: $it" }
+                        }.toMutableList()
+                        // New Steam downloads go to this folder too (a regular Steam library: <folder>/steamapps/common).
+                        if (useAsDefault) {
+                            val id = when (val res = SteamLibraryLocations.add(ctx, dir.absolutePath)) {
+                                is SteamLibraryLocations.AddResult.Added -> res.library.id
+                                is SteamLibraryLocations.AddResult.Rejected ->
+                                    SteamLibraryLocations.libraries(ctx).firstOrNull { it.path.trimEnd('/') == dir.absolutePath.trimEnd('/') }?.id
+                                        ?: run { errors += res.reason; null }
+                            }
+                            id?.let { SteamLibraryLocations.setDefault(ctx, it) }
                         }
                         val ok = jobs.size - errors.size
                         (ctx as? Activity)?.runOnUiThread {
@@ -133,6 +144,15 @@ private fun ImportList(dir: File, r: SteamFolderAdopt.Result, onClose: () -> Uni
                     if (unmatched.isNotEmpty()) item { Heading("Not matched · ${unmatched.size}") }
                     items(unmatched, key = { "u" + it.folder.path }) { f ->
                         FolderRow(f.folder, chosen[f.folder.path], ticked[f.folder.path] == true, { ticked[f.folder.path] = it }) { choosingFor = f.folder }
+                    }
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { useAsDefault = !useAsDefault }.padding(top = 8.dp),
+                        ) {
+                            Checkbox(checked = useAsDefault, onCheckedChange = { useAsDefault = it })
+                            Text("Use this folder for new Steam downloads", fontSize = 14.sp)
+                        }
                     }
                 }
             }

@@ -478,6 +478,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         installBytes = installSizeBytes,
                         onManageLocations = { showLibraryManager = true },
                         onDismiss = { showSpeedPicker = false },
+                        onLocationsChanged = { reloadInstallLocations() },
                         onDownload = { tier, debugLog, installRoot ->
                             showSpeedPicker = false
                             lastSpeedTier = tier
@@ -3845,6 +3846,8 @@ private fun DownloadSpeedPickerDialog(
     onManageLocations: () -> Unit,
     onDismiss: () -> Unit,
     onDownload: (speedTier: Int, debugLog: Boolean, installRoot: String?) -> Unit,
+    /** A location was added from this dialog (custom folder, another drive): reload the list. */
+    onLocationsChanged: () -> Unit = {},
 ) {
     // Tiers mirror GameNative: cores × ratio scales download + decompress concurrency.
     // Higher tiers download faster but use more RAM/CPU during decompression.
@@ -3861,7 +3864,10 @@ private fun DownloadSpeedPickerDialog(
     // time. The chooser is only shown when there is more than the internal default (an SD card is
     // detected or library folders were added); with just the internal location nothing changes.
     var selectedLocationId by remember { mutableStateOf(defaultLocationId) }
-    val showLocations = locations.size > 1
+    var makeDefault by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    // Always shown: "+ Custom folder…" and other drives must be reachable even with internal storage only.
+    val showLocations = locations.isNotEmpty()
     // A removed library leaves a dangling id; fall back to the first entry (the internal default).
     val chosenLocation = locations.firstOrNull { it.id == selectedLocationId } ?: locations.firstOrNull()
     // An unreachable library or one without room for the game can't be downloaded to. Internal is
@@ -4077,6 +4083,14 @@ private fun DownloadSpeedPickerDialog(
                                     onManage = onManageLocations,
                                     warning = { DownloadDialogWarning(text = it) },
                                 )
+                                LocationExtras(
+                                    locations = locations,
+                                    chosenId = chosenLocation?.id,
+                                    defaultId = defaultLocationId,
+                                    makeDefault = makeDefault,
+                                    onMakeDefault = { makeDefault = it },
+                                    onAdded = { id -> selectedLocationId = id; onLocationsChanged() },
+                                )
                             }
                         }
                     }
@@ -4099,6 +4113,7 @@ private fun DownloadSpeedPickerDialog(
                         Spacer(Modifier.width(4.dp))
                         Button(
                             onClick = {
+                                if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
                                 onDownload(options[selected].second, debugLog, chosenInstallRoot)
                             },
                             enabled = canDownload,
@@ -4225,7 +4240,10 @@ private fun DownloadSpeedPickerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onDownload(options[selected].second, debugLog, chosenInstallRoot) },
+                onClick = {
+                    if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
+                    onDownload(options[selected].second, debugLog, chosenInstallRoot)
+                },
                 enabled = canDownload,
             ) {
                 Text("Download")
@@ -4309,4 +4327,67 @@ private fun ExePickerDialogGame(
         },
         confirmButton = {},
     )
+}
+
+/**
+ * Under the "Install to" list: "+ Custom folder…" (any folder, made a regular Steam library), one "+ <drive>" per
+ * SD card / USB drive that has no location yet (a `Steam` folder on it becomes a library), and "Use as default".
+ */
+@Composable
+private fun LocationExtras(
+    locations: List<SteamLibraryLocations.Location>,
+    chosenId: String?,
+    defaultId: String,
+    makeDefault: Boolean,
+    onMakeDefault: (Boolean) -> Unit,
+    onAdded: (String) -> Unit,
+) {
+    val ctx = LocalContext.current
+    fun addPath(path: String) {
+        when (val r = SteamLibraryLocations.add(ctx, path)) {
+            is SteamLibraryLocations.AddResult.Added -> onAdded(r.library.id)
+            is SteamLibraryLocations.AddResult.Rejected -> android.widget.Toast.makeText(ctx, r.reason, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { res ->
+        val path = if (res.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(res.data) else null
+        if (path != null) addPath(path)
+    }
+    // Drives with no location yet (the first SD card already has its own entry).
+    var drives by remember { mutableStateOf<List<com.winlator.star.core.StorageRoot>>(emptyList()) }
+    LaunchedEffect(locations) {
+        drives = withContext(Dispatchers.IO) {
+            val roots = try { com.winlator.star.core.StorageRoots.list(ctx) } catch (_: Throwable) { emptyList() }
+            roots.filter { r ->
+                if (!r.removable) return@filter false
+                val vol = com.winlator.star.core.WinePath.storageVolumeRootOf(r.dir.absolutePath) ?: return@filter false
+                vol == r.dir.absolutePath && locations.none { l -> l.kind != SteamLibraryLocations.Kind.INTERNAL && l.rootPath.startsWith(vol) }
+            }
+        }
+    }
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { pick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(ctx, "Choose a download folder")) }) {
+                Text("+ Custom folder…")
+            }
+            for (d in drives) {
+                TextButton(onClick = {
+                    val steam = java.io.File(d.dir, "Steam")
+                    steam.mkdirs()
+                    addPath(steam.absolutePath)
+                }) { Text("+ ${d.label.ifBlank { d.dir.name }}") }
+            }
+        }
+        if (chosenId != null && chosenId != defaultId) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onMakeDefault(!makeDefault) },
+            ) {
+                androidx.compose.material3.Checkbox(checked = makeDefault, onCheckedChange = onMakeDefault)
+                Text("Use as default")
+            }
+        }
+    }
 }

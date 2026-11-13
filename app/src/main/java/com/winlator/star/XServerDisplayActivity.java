@@ -12194,6 +12194,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
             //    before the guest process starts.
             // Both no-op for non-Epic shortcuts and Epic games without a registered fix.
             if (shortcut != null) {
+                // Fixes for specific games from any store, by exe name (Batman: Arkham City: full x87 precision).
+                com.winlator.star.core.GameLaunchFixes.applyEnv(shortcut, envVars);
                 com.winlator.star.store.EpicGameFixes.applyEnv(this, shortcut, envVars);
                 com.winlator.star.store.EpicGameFixes.applyPreLaunch(this, shortcut);
                 // Epic game that needs Ubisoft Connect: its overlay hooks dxgi.dll, so turn it off (a stamp read

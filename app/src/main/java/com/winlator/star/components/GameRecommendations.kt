@@ -56,6 +56,8 @@ object GameRecommendations {
         val app = context?.applicationContext
         val files = fileEvidence(exeFile, gameDir)
         val out = ArrayList<Recommendation>()
+        // 0. Games known to need a component that nothing below finds.
+        knownGame(exeFile)?.let { out += it }
         // 1. The source's list.
         out += StoreRedists.detect(app, gameDir ?: files.root, exeFile)
         files.steamAppId(app)?.let { id -> out += SteamRedists.detect(app, files.steamDir ?: files.root, id) }
@@ -78,6 +80,15 @@ object GameRecommendations {
             .map { (_, all) -> all.minByOrNull { rank(it.kind) }!! }
             .sortedWith(compareBy<Recommendation>({ group(it).ordinal }, { rank(it.kind) }, { DependencyDetector.orderOf(it.componentName) }))
     }.getOrDefault(emptyList())
+
+    /**
+     * Batman: Arkham Knight uses NVIDIA PhysX (umu-protonfixes installs it for Steam app 208650): recommend it
+     * whatever the store or the game's files say.
+     */
+    private fun knownGame(exeFile: File?): Recommendation? =
+        if (exeFile?.name.equals("BatmanAK.exe", ignoreCase = true))
+            Recommendation("physx", DependencyDetector.labelOf("physx"), "Batman: Arkham Knight uses NVIDIA PhysX", Kind.STORE)
+        else null
 
     /** Evidence strength, strongest first. A loose DLL (Optional) outranks an unconfirmed installer. */
     private fun rank(kind: Kind): Int = when (kind) {

@@ -64,8 +64,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.winlator.star.store.download.Store
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labTile
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
@@ -351,54 +354,18 @@ fun CatalogRailCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // XMB home: a portrait cover; its page carries the action.
-    if (LocalStoreXmb.current) {
-        XmbStoreCover(
-            art = item.tallArt(), title = item.title, onClick = onOpen,
-            modifier = modifier.width(rememberScreenScale().xmbCoverWidth()),
-            focusDetail = item.xmbRating(),
-            footer = { CatalogPriceRow(item) },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(10.dp)
+    // One card in every interface: the art, the name, the price. A tap opens the game's page, which carries the action.
     Column(
         modifier = modifier
-            .width(StoreCardWidth)
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen),
+            .width(138.dp)
+            .clip(SimpleShape)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+            .labTile(onClick = onOpen),
     ) {
-        CatalogArt(
-            candidates = item.wideArt(),
-            title = item.title,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            CatalogPriceRow(item)
-            CatalogActionButton(
-                action = action,
-                storeLabel = storeLabel,
-                onClick = onAction,
-                modifier = Modifier.fillMaxWidth(),
-                compact = true,
-            )
-        }
+        CatalogArt(candidates = item.wideArt(), title = item.title, modifier = Modifier.fillMaxWidth())
+        Text(item.title, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 4.dp))
+        CatalogPriceRow(item, modifier = Modifier.padding(start = 5.dp, end = 5.dp, bottom = 4.dp))
     }
 }
 
@@ -412,64 +379,24 @@ fun CatalogResultRow(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // XMB home: a small portrait cover beside the name and price.
-    if (LocalStoreXmb.current) {
-        XmbFeatureCard(
-            art = item.tallArt(), title = item.title, eyebrow = item.tags, onClick = onOpen,
-            modifier = modifier, compact = true,
-            footer = { CatalogPriceRow(item) },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(10.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen)
-            .padding(9.dp),
+            .clip(SimpleShape)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+            .labTile(onClick = onOpen)
+            .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        CatalogArt(
-            candidates = item.wideArt(),
-            title = item.title,
-            modifier = Modifier.width(104.dp),
-            shape = RoundedCornerShape(6.dp),
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        CatalogArt(candidates = item.wideArt(), title = item.title, modifier = Modifier.width(72.dp), shape = SimpleShape)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (item.tags.isNotBlank()) {
-                Text(
-                    text = item.tags,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(item.tags, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            CatalogPriceRow(item)
         }
-        CatalogActionButton(
-            action = action,
-            storeLabel = storeLabel,
-            onClick = onAction,
-            modifier = Modifier.width(118.dp),
-            compact = true,
-        )
+        CatalogPriceRow(item)
     }
 }
 
@@ -484,65 +411,22 @@ fun CatalogHeroCard(
     modifier: Modifier = Modifier,
     eyebrow: String = "FEATURED & RECOMMENDED",
 ) {
-    // XMB home: the portrait cover beside the name and price.
-    if (LocalStoreXmb.current) {
-        XmbFeatureCard(
-            art = item.tallArt(), title = item.title, eyebrow = eyebrow, onClick = onOpen, modifier = modifier,
-            footer = {
-                CatalogPriceRow(item)
-                item.xmbRating()?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            },
-        )
-        return
-    }
-    val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .steamFocusRing(shape)
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .clickable(onClick = onOpen),
+            .clip(SimpleShape)
+            .labTile(onClick = onOpen),
     ) {
-        CatalogArt(
-            candidates = item.wideArt(),
-            title = item.title,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        CatalogArt(candidates = item.wideArt(), title = item.title, modifier = Modifier.fillMaxWidth(), aspectRatio = 16f / 7f)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
-                    ),
-                )
-                .padding(horizontal = 13.dp, vertical = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))))
+                .padding(start = 10.dp, end = 10.dp, top = 18.dp, bottom = 8.dp),
         ) {
-            Text(
-                text = eyebrow,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                CatalogPriceRow(item, modifier = Modifier.weight(1f, fill = false))
-                CatalogActionButton(action = action, storeLabel = storeLabel, onClick = onAction, compact = true)
-            }
+            Text(item.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            CatalogPriceRow(item)
         }
     }
 }

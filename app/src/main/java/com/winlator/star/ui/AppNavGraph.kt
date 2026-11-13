@@ -40,8 +40,8 @@ fun AppNavGraph(
     // Extra destinations registered by the Deck shell (its home and hub pages).
     // The classic shell passes nothing, so its graph is exactly the routes below.
     extraRoutes: (NavGraphBuilder.() -> Unit)? = null,
-    // The Deck shell's own editor route for the Containers list's Edit / New Container Defaults (null = the classic form).
-    // The classic shell passes nothing.
+    // The Deck shell's own editor route for the Containers list's Edit / Defaults for new containers / New container
+    // (null = the classic form). The classic shell passes nothing.
     containerEditorRoute: ((Int) -> String?)? = null,
     // The XMB home switches pages with no transition: the default cross-fade (700 ms) keeps the old page on screen
     // while the new one fades in. Everyone else keeps that default.
@@ -61,11 +61,10 @@ fun AppNavGraph(
         composable(Screen.Containers.route) {
             ContainersScreen(
                 onNavigateToDetail = { containerId ->
-                    val route = if (containerId != null) {
-                        containerEditorRoute?.invoke(containerId) ?: "container_detail?id=$containerId"
-                    } else {
-                        "container_detail?id=-1"
-                    }
+                    // null = New container (the id the classic form uses for it). The Deck shell opens its editor in
+                    // create mode (the Containers + button); the Classic shell has no editor route, so it keeps the classic form.
+                    val id = containerId ?: -1
+                    val route = containerEditorRoute?.invoke(id) ?: "container_detail?id=$id"
                     navController.navigate(route)
                 },
             )

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck
 
+import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -41,6 +42,8 @@ internal object DeckRoutes {
 internal class DeckActions {
     val options: MutableState<(() -> Unit)?> = mutableStateOf(null)
     val optionsLabel: MutableState<String> = mutableStateOf("Options")
+    /** XMB: true while a page asks for the floating "X Options" hint beside Back / Search (only Tools > Files does; X itself works on every page that sets [options]). */
+    val xmbOptionsHint: MutableState<Boolean> = mutableStateOf(false)
     val search: MutableState<(() -> Unit)?> = mutableStateOf(null)
     val subTab: MutableState<((Int) -> Unit)?> = mutableStateOf(null)
     val subTabLabel: MutableState<String> = mutableStateOf("Tab")
@@ -56,6 +59,17 @@ internal class DeckActions {
     val pageTabs: MutableState<DeckPageTabs?> = mutableStateOf(null)
     /** True while Home shows the full-screen XMB: the shell drops its rails, bars and legend (the XMB has its own). */
     val fullscreen: MutableState<Boolean> = mutableStateOf(false)
+    /**
+     * XMB home: set while the tabs page shows its Stores tab to what the Start button (and a tap on the hint) runs: the shell then draws a
+     * "Start Add Game" hint first among the floating Back / Search hints. The page sets it and clears only its own value.
+     */
+    val xmbAddGameHint: MutableState<(() -> Unit)?> = mutableStateOf(null)
+    /**
+     * XMB: uptime (ms) until which [DeckEntryFocus] leaves focus alone. A page rail that has just switched the page by D-pad
+     * keeps the focus on its own tab, so the page it opened must not pull it into the content.
+     */
+    @Volatile
+    var entryHoldUntil: Long = 0L
     /** Simple style: a page's own button hints for the Simple frame's legend (null = the frame's usual hints). */
     val ownLegend: MutableState<List<Pair<String, String>>?> = mutableStateOf(null)
     /** Simple style: the game whose art fills the screen behind the current page (a game's settings), or null for the collage. */
@@ -88,7 +102,7 @@ internal fun DeckEntryFocus(vararg keys: Any?, focus: () -> Unit) {
     val currentFocus by rememberUpdatedState(focus)
     LaunchedEffect(tick, *keys) {
         withFrameNanos { }
-        if (!actions.navHold.value) runCatching { currentFocus() }
+        if (!actions.navHold.value && SystemClock.uptimeMillis() >= actions.entryHoldUntil) runCatching { currentFocus() }
     }
 }
 

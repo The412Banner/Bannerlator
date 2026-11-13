@@ -61,6 +61,11 @@ import coil.compose.AsyncImage
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbHighlight
+import com.winlator.star.ui.deck.xmbHighlightHostOrNull
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
@@ -134,9 +139,13 @@ fun rememberStorefrontLayout(): SteamStorefrontLayout {
  * `.clickable {}` in the chain so the ring wraps the whole target; on a Material `Card(onClick=)`
  * or `Button` just pass it in the `modifier` — the internal clickable is a descendant and
  * `hasFocus` picks it up.
+ *
+ * In the XMB interface, under a highlight host, the 2dp border is not drawn: the element registers as a stop of the one
+ * gliding outline instead (see XmbHighlight.kt). Without a host, and everywhere outside XMB, it is the ring above.
  */
 @Composable
 fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier {
+    if (xmbHighlightHostOrNull() != null) return this.xmbHighlight(shape, wholeSubtree = true)
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
     return this
@@ -173,18 +182,17 @@ fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = 
  *
  * Selected = filled accent with on-accent ink; unselected = raised container with an outline. Both
  * states carry [steamFocusRing], so a D-pad user can see where they are.
+ *
+ * [modifier] goes first: a chip that is an inner button of a two-level card passes `Modifier.xmbInner(group, first = true)`
+ * (XmbFocusGroup.kt), so its focus properties apply to the chip's own focus target.
  */
 @Composable
-fun StoreFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+fun StoreFilterChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        color = if (selected) MaterialTheme.colorScheme.onPrimary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .steamFocusRing(shape)
+    val hl = rememberXmbHighlightItem()
+    Box(
+        modifier = modifier
+            .xmbRing(shape, hl)
             .clip(shape)
             .background(
                 if (selected) MaterialTheme.colorScheme.primary
@@ -197,7 +205,18 @@ fun StoreFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 5.dp),
-    )
+    ) {
+        // XMB: an unselected chip's muted label turns accent while it holds the highlight (the colour is read inside XmbInk).
+        XmbInk(hl) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** Centered empty/error block with an optional retry — the storefront's graceful-degrade surface. */

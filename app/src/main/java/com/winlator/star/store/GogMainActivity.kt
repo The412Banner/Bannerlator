@@ -57,6 +57,11 @@ import com.winlator.star.store.download.DownloadsButton
  * titles open [StoreCatalogDetailActivity], and claims go through [StoreWebActivity].
  */
 class GogMainActivity : ComponentActivity() {
+    // Left-to-right layout whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         const val EXTRA_TAB = "gog_tab"

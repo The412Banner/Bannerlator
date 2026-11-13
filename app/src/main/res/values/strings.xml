@@ -2772,7 +2772,18 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     <string name="steam_lib_sd_warning">⚠️ The SD card is slower than internal storage. Some games stall on intro movies or asset loads from the card — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
     <string name="steam_lib_slow_warning">⚠️ Shared storage and SD cards are slower than internal storage. Some games stall on intro movies or asset loads from there — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
     <string name="xmb_all_games">All Games</string>
+    <string name="xmb_tab_stores">Stores</string>
+    <string name="xmb_tab_downloads">Downloads</string>
+    <string name="xmb_tab_friends">Friends</string>
+    <string name="xmb_store_no_games">no games yet</string>
+    <plurals name="xmb_store_games">
+        <item quantity="one">%d game</item>
+        <item quantity="other">%d games</item>
+    </plurals>
+    <string name="xmb_hint_add_game">Add Game</string>
+    <string name="xmb_store_card_signed_out">Sign in</string>
     <string name="xmb_all_games_open">Open</string>
+    <string name="xmb_all_games_more">+%1$d more</string>
     <plurals name="xmb_all_games_count">
         <item quantity="one">%d game</item>
         <item quantity="other">%d games</item>
@@ -2829,4 +2840,7 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     <string name="xmb_kb_down">Down</string>
     <string name="ig_keyboard_hint_xmb">The on-screen keyboard, typing into the game. On a controller, Select + X opens and closes it.</string>
     <string name="ig_keyboard_hint_android">The Android keyboard, typing into the game.</string>
+    <string name="xmb_store_back">Back</string>
+    <string name="xmb_store_details">Details</string>
+    <string name="xmb_shell_exit_prompt">Press B again to exit</string>
 </resources>

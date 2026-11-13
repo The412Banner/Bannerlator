@@ -27,6 +27,7 @@ import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.VegasKeyCatalog
 import com.winlator.star.contentdialog.VegasKeyKnowledge
 import com.winlator.star.contentdialog.VegasTierPresets
+import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
 import com.winlator.star.core.KeyValueSet
@@ -71,12 +72,12 @@ private fun p2WineD3DMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
     var gpuNames by mutableStateOf<List<String>>(emptyList())
     xmb.scope.launch {
         gpuNames = withContext(Dispatchers.IO) {
-            runCatching { com.winlator.star.contentdialog.WineD3DConfigDialog.loadGpuNames(ctx).toList() }.getOrDefault(emptyList())
+            runCatching { WineD3DConfigDialog.loadGpuNames(ctx).toList() }.getOrDefault(emptyList())
         }
     }
     fun raw(): String = s.p2Ex("dxwrapperConfig", c.getDXWrapperConfig())
     fun sel(): P2D3dSel {
-        val cfg = com.winlator.star.contentdialog.WineD3DConfigDialog.parseConfig(raw())
+        val cfg = WineD3DConfigDialog.parseConfig(raw())
         return P2D3dSel(
             csmt = if (cfg.get("csmt") == "3") "Enabled" else "Disabled",
             gpuName = cfg.get("gpuName") ?: "",
@@ -88,7 +89,7 @@ private fun p2WineD3DMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
         )
     }
     fun write(n: P2D3dSel) {
-        val cfg = com.winlator.star.contentdialog.WineD3DConfigDialog.parseConfig(raw())
+        val cfg = WineD3DConfigDialog.parseConfig(raw())
         cfg.put("csmt", if (n.csmt == "Enabled") "3" else "0")
         cfg.put("strict_shader_math", if (n.ssm == "Enabled") "1" else "0")
         cfg.put("OffscreenRenderingMode", n.orm)
@@ -98,13 +99,12 @@ private fun p2WineD3DMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
         cfg.put("renderer", n.renderer)
         p2Put(xmb, s, "dxwrapperConfig", cfg.toString())
     }
-    fun withCur(opts: List<String>, cur: String) = if (cur.isNotEmpty() && cur !in opts) opts + cur else opts
 
     return XmbMenu("WineD3D ${ctx.getString(R.string.configuration)}", Icons.Filled.Tune) {
         val cur = sel()
         val rows = mutableListOf<XmbRow>()
         rows += XmbRow.Choice("csmt", "CSMT", Icons.Filled.Speed, onOff, cur.csmt) { v -> write(sel().copy(csmt = v)) }
-        val names = withCur(gpuNames, cur.gpuName)
+        val names = p2WithCurrent(gpuNames, cur.gpuName)
         if (names.isNotEmpty()) {
             rows += XmbRow.Choice("gpuName", ctx.getString(R.string.gpu_name), Icons.Filled.DeveloperBoard, p2Unique(names), cur.gpuName) { v ->
                 write(sel().copy(gpuName = v))
@@ -118,8 +118,8 @@ private fun p2WineD3DMenu(xmb: XmbScope, s: Shortcut): XmbMenu {
                 videoMemEntries, cur.videoMem) { v -> write(sel().copy(videoMem = v)) }
         }
         rows += XmbRow.Choice("ssm", "Strict Shader Math", Icons.Filled.Tune, onOff, cur.ssm) { v -> write(sel().copy(ssm = v)) }
-        rows += XmbRow.Choice("orm", "Offscreen Rendering Mode", Icons.Filled.Image, withCur(ormOptions, cur.orm), cur.orm) { v -> write(sel().copy(orm = v)) }
-        rows += XmbRow.Choice("renderer", "Renderer", Icons.Filled.Layers, withCur(rendOptions, cur.renderer), cur.renderer) { v -> write(sel().copy(renderer = v)) }
+        rows += XmbRow.Choice("orm", "Offscreen Rendering Mode", Icons.Filled.Image, p2WithCurrent(ormOptions, cur.orm), cur.orm) { v -> write(sel().copy(orm = v)) }
+        rows += XmbRow.Choice("renderer", "Renderer", Icons.Filled.Layers, p2WithCurrent(rendOptions, cur.renderer), cur.renderer) { v -> write(sel().copy(renderer = v)) }
         rows
     }
 }
@@ -144,7 +144,7 @@ private fun p2DxvkMenu(xmb: XmbScope, s: Shortcut, isVegas: Boolean): XmbMenu {
     val framerates = res.getStringArray(R.array.dxvk_framerate_entries).toList()
     val ddraEntries = res.getStringArray(R.array.ddrawrapper_entries).toList()
     val levels = DXVKConfigDialog.VKD3D_FEATURE_LEVEL.toList()
-    // Mali "Wrapper + compat + bcn" relaxes the DXVK 2.x-with-VKD3D filter (#137), as in the editor.
+    // Mali "Wrapper + compat + bcn" relaxes the DXVK 2.x-with-VKD3D filter, as in the editor.
     val relaxDxvkFilter = s.p2Ex("graphicsDriver", c.graphicsDriver) == "wrapper-compat-bcn"
 
     var loaded by mutableStateOf(false)
@@ -255,10 +255,10 @@ private fun p2DxvkMenu(xmb: XmbScope, s: Shortcut, isVegas: Boolean): XmbMenu {
         }
         val cur = sel()
         val filtered = if (cur.vkd3d != "None" && !relaxDxvkFilter) {
-            // VKD3D-Proton needs DXVK 2.x's DXGI (#113): 1.x is hidden while VKD3D is on.
+            // VKD3D-Proton needs DXVK 2.x's DXGI: 1.x is hidden while VKD3D is on.
             allDxvk.filter { v -> val major = DXVKConfigDialog.tryGetMajor(v); major == null || major >= 2 }
         } else allDxvk
-        val dxvkOpts = if (cur.dxvk.isNotEmpty() && cur.dxvk !in filtered) filtered + cur.dxvk else filtered
+        val dxvkOpts = p2WithCurrent(filtered, cur.dxvk)
         val dxvkDisabled = if (cur.dxvk.isNotEmpty() && cur.dxvk !in filtered) setOf(cur.dxvk) else emptySet()
         val type = DXVKConfigDialog.getDXVKType(cur.dxvk)
 
@@ -441,7 +441,7 @@ private class P2Vegas(
         return v.isNotEmpty() && v.all { it == "0" || it == "1" }
     }
 
-    /** §6a.6: a key from the other VEGAS line's schema can never apply to this stock build. */
+    /** A key from the other VEGAS line's schema can never apply to this stock build. */
     private fun blocked(key: String): Boolean {
         val tag = stockOf(pointer())?.tag ?: return false
         val cat = catalog ?: return false
@@ -501,7 +501,7 @@ private class P2Vegas(
         val live = liveFile()
         val cfgRows = if (live != null && !missing) currentRows() else emptyList()
 
-        // Performance tier (FAQ #11) → vegas.forceTier in the live file.
+        // Performance tier → vegas.forceTier in the live file.
         rows += XmbRow.Header("hTier", "Performance tier")
         val applied = cfgRows.firstOrNull { it.key == "vegas.forceTier" }?.value?.toIntOrNull()
         val autoLabel = "Auto" + (detectedTier?.let { " · T$it" } ?: "")

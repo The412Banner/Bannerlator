@@ -21,6 +21,10 @@ import com.winlator.star.store.SteamRepository
  * strictly additive.
  */
 class BannerlatorApp : Application() {
+    // Left-to-right layout whatever the phone's language (see AppLocale). Runs before anything else in the process.
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(AppLocale.wrap(base))
+    }
 
     override fun onCreate() {
         super.onCreate()

@@ -22,6 +22,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.material3.ColorScheme
+import androidx.compose.ui.geometry.Size
+import kotlin.math.max
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -80,6 +93,135 @@ internal fun deckCompact(): Boolean = isDeckCompact(LocalConfiguration.current)
 internal fun deckRails(): Boolean {
     val cfg = LocalConfiguration.current
     return cfg.orientation == Configuration.ORIENTATION_LANDSCAPE && !isDeckCompact(cfg)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// XMB interface helpers: the gliding highlight's ink, two-level rows and the glass slices of a grouped card. Each one is the
+// plain old thing outside the XMB interface, so Classic and the plain Deck compose exactly as before.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A focusable element whose text and icons turn accent-coloured while the gliding outline is on it (XMB). [content] gets the
+ * element's highlight [item] (hand it to [deckFocusRingInk]) and the colour scheme AS INKED: read colours from that `cs`, not
+ * from one taken outside, or the ink never reaches them. Outside XMB it is just [content].
+ */
+@Composable
+internal fun DeckInk(content: @Composable (item: XmbHighlightItem, cs: ColorScheme) -> Unit) {
+    val item = rememberXmbHighlightItem()
+    XmbInk(item) { content(item, MaterialTheme.colorScheme) }
+}
+
+/**
+ * [deckFocusRing] for an element wrapped in [DeckInk]: under a highlight host it registers [item] as the stop (so the element's
+ * text turns accent); without one it is the ordinary ring, as before.
+ */
+@Composable
+internal fun Modifier.deckFocusRingInk(
+    shape: Shape,
+    item: XmbHighlightItem,
+    scaleTo: Float = 1.05f,
+    onFocused: (() -> Unit)? = null,
+): Modifier =
+    if (xmbHighlightHostOrNull() != null) this.xmbHighlight(shape, item, onFocused = onFocused)
+    else this.deckFocusRing(shape, scaleTo, onFocused)
+
+/**
+ * The element is not a D-pad stop of its own inside an XMB item (the item is the stop); taps still work. Put it before the
+ * element's clickable. Elsewhere the modifier unchanged.
+ */
+@Composable
+internal fun Modifier.xmbSkipFocus(): Modifier =
+    if (LocalXmbGroup.current != null) this.focusProperties { canFocus = false } else this
+
+/**
+ * Which of a row of choices (pills, chips) takes the focus when A enters the row: the selected one if it can take focus, else
+ * the first that can. -1 when none can. [selected] and [focusable] are per choice, same length.
+ */
+internal fun xmbLandingIndex(selected: List<Boolean>, focusable: List<Boolean>): Int {
+    for (i in selected.indices) if (selected[i] && focusable.getOrElse(i) { false }) return i
+    for (i in focusable.indices) if (focusable[i]) return i
+    return -1
+}
+
+/** A slider's value one key press to the left (-1) or right (+1): [step] further, kept to [min]..[max]. */
+internal fun xmbSliderNudge(value: Float, direction: Int, step: Float, min: Float, max: Float): Float =
+    (value + direction * step).coerceIn(min, max)
+
+/** How far past a slice the shadow layers are stretched where the neighbouring slice carries them on (the clip cuts them off). */
+internal const val XMB_SLICE_OVERSHOOT_DP = 64f
+
+/**
+ * The bounds of one shadow layer of a slice in a w x h box, as left, top, right, bottom: [spread] bigger than the slice at the
+ * sides, and at the top / bottom only when this slice is the [first] / [last] of its card (else stretched by [overshoot] so
+ * the rounded corners of the layer fall outside the clip and the sides run on into the neighbour). [dy] drops the shadow.
+ */
+internal fun xmbSliceLayerBounds(w: Float, h: Float, spread: Float, dy: Float, first: Boolean, last: Boolean, overshoot: Float): FloatArray =
+    floatArrayOf(
+        -spread,
+        if (first) dy - spread else -overshoot,
+        w + spread,
+        if (last) h + spread + dy else h + overshoot,
+    )
+
+/** The part of the surroundings the slice's shadow may paint: the sides always, the top and bottom only at the card's ends. */
+internal fun xmbSliceClip(w: Float, h: Float, first: Boolean, last: Boolean, reach: Float): FloatArray =
+    floatArrayOf(-reach, if (first) -reach else 0f, w + reach, if (last) h + reach else h)
+
+/** The card shadow of one slice (put it BEFORE the clip), continuous with its neighbours'. The card's corner radius is 18 dp. */
+private fun xmbSliceShadow(shape: Shape, first: Boolean, last: Boolean): Modifier = Modifier.drawWithCache {
+    val cutOut = shapePath(shape)
+    val corner = 18.dp.toPx()
+    val overshoot = XMB_SLICE_OVERSHOOT_DP.dp.toPx()
+    val reach = XMB_SLICE_OVERSHOOT_DP.dp.toPx()
+    onDrawBehind {
+        val c = xmbSliceClip(size.width, size.height, first, last, reach)
+        clipPath(cutOut, ClipOp.Difference) {
+            clipRect(c[0], c[1], c[2], c[3]) {
+                for (layer in XMB_SHADOW_LAYERS) {
+                    val spread = layer.spreadDp.dp.toPx()
+                    val b = xmbSliceLayerBounds(size.width, size.height, spread, layer.dyDp.dp.toPx(), first, last, overshoot)
+                    drawRoundRect(
+                        color = Color.Black.copy(alpha = layer.alpha),
+                        topLeft = Offset(b[0], b[1]),
+                        size = Size(b[2] - b[0], b[3] - b[1]),
+                        cornerRadius = CornerRadius(corner + spread),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The edge light of a card's first slice: a 1 dp line along its edge, brightest at the top, gone by the slice's bottom. */
+private fun xmbSliceHairline(shape: Shape): Modifier = Modifier.drawWithCache {
+    val edge = shapePath(shape)
+    val brush = Brush.verticalGradient(
+        listOf(Color.White.copy(alpha = XMB_HAIRLINE_TOP_ALPHA), Color.White.copy(alpha = 0f)),
+        startY = 0f,
+        endY = max(1f, size.height),
+    )
+    // Stroked 2 dp on the edge; the clip keeps the inner 1 dp.
+    val stroke = Stroke(width = 2.dp.toPx())
+    onDrawBehind { drawPath(edge, brush, style = stroke) }
+}
+
+/**
+ * One slice of a card made of stacked rows (the settings pages' group cards: each row is its own lazy item). Pops like
+ * [xmbGlassCard] on the glass pages: a shadow round the whole card (every slice paints its own part and they join up), the sheen
+ * and an edge light on the [first] slice. Off the glass pages it is `clip + background`,
+ * as the slices were.
+ */
+@Composable
+internal fun Modifier.xmbGlassSlice(shape: Shape, first: Boolean, last: Boolean, fill: Color = deckCardFill()): Modifier {
+    if (xmbPageFrost() == null) return this.clip(shape).background(fill)
+    val shadow = remember(shape, first, last) { xmbSliceShadow(shape, first, last) }
+    val hairline = remember(shape) { xmbSliceHairline(shape) }
+    return this
+        .then(shadow)
+        .clip(shape)
+        .background(fill)
+        .then(if (first) Modifier.xmbSheen() else Modifier)
+        .then(if (first) hairline else Modifier)
 }
 
 /**
@@ -192,7 +334,6 @@ internal fun DeckTabStrip(
     modifier: Modifier = Modifier,
     compactRail: Boolean = false,
 ) {
-    val cs = MaterialTheme.colorScheme
     val deckActions = LocalDeckActions.current
     val currentSelected by rememberUpdatedState(selected)
     val currentOnSelect by rememberUpdatedState(onSelect)
@@ -220,12 +361,14 @@ internal fun DeckTabStrip(
         }
         return
     }
+    // XMB mode: no L2 / R2 glyphs either side (the triggers still switch the tabs).
+    val bumperGlyphs = !deckCompact() && !rememberXmbHome()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        if (!deckCompact()) {
+        if (bumperGlyphs) {
             DeckGlyph("L2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { currentOnSelect((selected - 1 + count) % count) })
         }
         Row(
@@ -234,8 +377,7 @@ internal fun DeckTabStrip(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .onFocusChanged { deckActions.stripFocused.value = it.hasFocus }
-                .clip(deckShape(18.dp))
-                .background(deckCardFill())
+                .xmbGlassCard(RoundedCornerShape(18.dp))
                 .border(1.dp, deckLine(), deckShape(18.dp))
                 .horizontalScroll(rememberScrollState())
                 .padding(6.dp),
@@ -243,47 +385,49 @@ internal fun DeckTabStrip(
             tabs.forEachIndexed { i, t ->
                 val sel = i == selected
                 val shape = deckShape(12.dp)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .deckFocusRing(shape, scaleTo = 1f)
-                        .clip(shape)
-                        .background(if (sel) cs.primary else Color.Transparent)
-                        .clickable { if (!sel) onSelect(i) }
-                        .heightIn(min = 40.dp)
-                        .padding(horizontal = 14.dp),
-                ) {
-                    if (t.icon != null) {
-                        Icon(t.icon, contentDescription = null, tint = if (sel) cs.onPrimary else cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                    }
-                    Text(
-                        text = t.label,
-                        color = if (sel) cs.onPrimary else cs.onSurfaceVariant,
-                        fontFamily = SoraFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.5.sp,
-                        maxLines = 1,
-                    )
-                    if (t.badge != null && t.badge > 0) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .background(if (sel) cs.onPrimary else cs.primary, CircleShape),
-                        ) {
-                            Text(
-                                "${t.badge}",
-                                color = if (sel) cs.primary else cs.onPrimary,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 11.sp,
-                            )
+                DeckInk { item, cs ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .deckFocusRingInk(shape, item, scaleTo = 1f)
+                            .clip(shape)
+                            .background(if (sel) cs.primary else Color.Transparent)
+                            .clickable { if (!sel) onSelect(i) }
+                            .heightIn(min = 40.dp)
+                            .padding(horizontal = 14.dp),
+                    ) {
+                        if (t.icon != null) {
+                            Icon(t.icon, contentDescription = null, tint = if (sel) cs.onPrimary else cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        }
+                        Text(
+                            text = t.label,
+                            color = if (sel) cs.onPrimary else cs.onSurfaceVariant,
+                            fontFamily = SoraFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp,
+                            maxLines = 1,
+                        )
+                        if (t.badge != null && t.badge > 0) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .background(if (sel) cs.onPrimary else cs.primary, CircleShape),
+                            ) {
+                                Text(
+                                    "${t.badge}",
+                                    color = if (sel) cs.primary else cs.onPrimary,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.sp,
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-        if (!deckCompact()) {
+        if (bumperGlyphs) {
             DeckGlyph("R2", GlyphKind.BUMPER, Modifier.clip(deckShape(9.dp)).clickable { currentOnSelect((selected + 1) % count) })
         }
     }
@@ -374,42 +518,43 @@ internal fun DeckChoiceChip(
     trailing: String? = null,
     onClick: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val shape = deckShape(14.dp)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-            .deckFocusRing(shape, scaleTo = 1.03f)
-            .clip(shape)
-            .background(if (selected) cs.primary.copy(alpha = 0.18f) else deckCardFill())
-            .border(if (selected) 2.dp else 1.dp, if (selected) cs.primary else deckLine(), shape)
-            .clickable(onClick = onClick)
-            .heightIn(min = 42.dp)
-            .padding(horizontal = 14.dp),
-    ) {
-        if (dot != null) Box(Modifier.size(10.dp).background(dot, CircleShape))
-        if (icon != null) Icon(icon, contentDescription = null, tint = if (selected) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
-        Text(
-            text = label,
-            color = if (selected) cs.onSurface else cs.onSurfaceVariant,
-            fontFamily = SoraFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.5.sp,
-            maxLines = 1,
-        )
-        if (trailing != null) {
+    DeckInk { item, cs ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier
+                .deckFocusRingInk(shape, item, scaleTo = 1.03f)
+                .clip(shape)
+                .background(if (selected) cs.primary.copy(alpha = 0.18f) else deckCardFill())
+                .border(if (selected) 2.dp else 1.dp, if (selected) cs.primary else deckLine(), shape)
+                .clickable(onClick = onClick)
+                .heightIn(min = 42.dp)
+                .padding(horizontal = 14.dp),
+        ) {
+            if (dot != null) Box(Modifier.size(10.dp).background(dot, CircleShape))
+            if (icon != null) Icon(icon, contentDescription = null, tint = if (selected) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
             Text(
-                text = trailing.uppercase(),
-                color = cs.onSurfaceVariant,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 10.5.sp,
-                letterSpacing = 1.sp,
-                modifier = Modifier
-                    .clip(deckShape(8.dp))
-                    .background(cs.surfaceVariant)
-                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                text = label,
+                color = if (selected) cs.onSurface else cs.onSurfaceVariant,
+                fontFamily = SoraFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.5.sp,
+                maxLines = 1,
             )
+            if (trailing != null) {
+                Text(
+                    text = trailing.uppercase(),
+                    color = cs.onSurfaceVariant,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 10.5.sp,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier
+                        .clip(deckShape(8.dp))
+                        .background(cs.surfaceVariant)
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                )
+            }
         }
     }
 }
@@ -423,8 +568,7 @@ internal fun DeckCard(modifier: Modifier = Modifier, content: @Composable Column
             .fillMaxWidth()
             // Simple style: lifted off the wallpaper with a soft shadow.
             .then(if (com.winlator.star.ui.theme.AppThemeState.simpleLook) Modifier.shadow(10.dp, shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black) else Modifier)
-            .clip(shape)
-            .background(deckCardFill())
+            .xmbGlassCard(shape)
             .border(1.dp, deckLine(), shape),
         content = content,
     )
@@ -433,7 +577,7 @@ internal fun DeckCard(modifier: Modifier = Modifier, content: @Composable Column
 /** Hairline between rows of a [DeckCard]. */
 @Composable
 internal fun DeckRowDivider() {
-    HorizontalDivider(color = deckLine().copy(alpha = 0.5f), thickness = 1.dp)
+    HorizontalDivider(color = deckLineAt(0.5f), thickness = 1.dp)
 }
 
 /**
@@ -450,17 +594,69 @@ internal fun DeckRow(
     trailing: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    if (rememberXmbHome()) {
+        // XMB: the gliding outline marks the focused row (a faint fill and accent text, no flood fill). The row is inset a
+        // little so the outline sits inside the rounded corners of its card.
+        val shape = deckShape(12.dp)
+        val inset = modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp)
+        when {
+            // A clickable row is one stop; a button in its trailing slot (the same action) is tap-only.
+            onClick != null -> DeckInk { item, cs ->
+                DeckRowBody(
+                    cs, title, subtitle, icon, danger, focused = false, horizontal = 14.dp, trailing = trailing,
+                    trailingModifier = Modifier.focusProperties { canFocus = false },
+                    modifier = inset.deckFocusRingInk(shape, item, scaleTo = 1f).clip(shape).clickable(onClick = onClick),
+                )
+            }
+            // A row with buttons is one stop too; A enters it and the buttons take the focus.
+            trailing != null -> XmbGroupItem(rememberXmbFocusGroup(), shape, inset) {
+                DeckRowBody(
+                    MaterialTheme.colorScheme, title, subtitle, icon, danger, focused = false, horizontal = 14.dp, trailing = trailing,
+                    // Everything in the trailing slot is an inner button: reached after A, which lands on the first of them.
+                    trailingModifier = Modifier.xmbInner(first = true),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            else -> DeckRowBody(
+                MaterialTheme.colorScheme, title, subtitle, icon, danger, focused = false, horizontal = 20.dp, trailing = null,
+                trailingModifier = Modifier, modifier = modifier.fillMaxWidth(), chevron = false,
+            )
+        }
+        return
+    }
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    DeckRowBody(
+        cs, title, subtitle, icon, danger, focused, horizontal = 20.dp, trailing = trailing, trailingModifier = Modifier,
         modifier = modifier
             .fillMaxWidth()
             .onFocusChanged { focused = it.isFocused }
             .then(if (focused) Modifier.background(cs.primary.copy(alpha = 0.12f)) else Modifier)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        chevron = onClick != null,
+    )
+}
+
+/** The content of a [DeckRow]; [modifier] carries whatever makes the row focusable, this adds the size and padding. */
+@Composable
+private fun DeckRowBody(
+    cs: ColorScheme,
+    title: String,
+    subtitle: String?,
+    icon: ImageVector?,
+    danger: Boolean,
+    focused: Boolean,
+    horizontal: Dp,
+    trailing: (@Composable RowScope.() -> Unit)?,
+    trailingModifier: Modifier,
+    modifier: Modifier,
+    chevron: Boolean = true,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
             .heightIn(min = 64.dp)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = horizontal, vertical = 14.dp),
     ) {
         if (icon != null) {
             Box(
@@ -488,8 +684,8 @@ internal fun DeckRow(
         }
         if (trailing != null) {
             Spacer(Modifier.width(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
-        } else if (onClick != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = trailingModifier, content = trailing)
+        } else if (chevron) {
             Spacer(Modifier.width(12.dp))
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant)
         }
@@ -504,8 +700,7 @@ internal fun DeckStat(value: String, label: String, modifier: Modifier = Modifie
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
-            .clip(shape)
-            .background(deckCardFill())
+            .xmbGlassCard(shape)
             .border(1.dp, deckLine(), shape)
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
@@ -540,8 +735,7 @@ internal fun DeckStatStrip(stats: List<Pair<String, String>>, modifier: Modifier
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .clip(shape)
-            .background(deckCardFill())
+            .xmbGlassCard(shape)
             .border(1.dp, deckLine(), shape),
     ) {
         stats.forEachIndexed { i, (value, label) ->
@@ -569,7 +763,7 @@ internal fun DeckPill(text: String, modifier: Modifier = Modifier) {
         maxLines = 1,
         modifier = modifier
             .clip(deckShape(14.dp))
-            .background(cs.surfaceVariant.copy(alpha = 0.8f))
+            .background(deckInset(0.8f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }

@@ -13,9 +13,6 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.platform.LocalDensity
-import com.winlator.star.ui.LocalDeckDensity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,13 +25,18 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.R
+import com.winlator.star.ui.LocalDeckDensity
 
 // Deck look: Sora for headings and Nunito Sans for body text, both under the SIL Open Font License 1.1.
 // The TTFs are static instances from Google Fonts; the attribution is in THIRD-PARTY-LICENSES.md.
@@ -91,7 +93,12 @@ internal fun DeckTheme(content: @Composable () -> Unit) {
     // DeckTheme in a dialog of a Deck screen takes the screen's density, not the dialog window's raw one.
     val outer = LocalDensity.current
     val density = LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
-    CompositionLocalProvider(LocalDensity provides density, LocalDeckDensity provides density) {
+    // Left-to-right always, whatever the phone's language (see AppLocale): the XMB rows place with Modifier.offset, which mirrors.
+    CompositionLocalProvider(
+        LocalDensity provides density,
+        LocalDeckDensity provides density,
+        LocalLayoutDirection provides LayoutDirection.Ltr,
+    ) {
         MaterialTheme(
             colorScheme = MaterialTheme.colorScheme,
             typography = typography,
@@ -114,8 +121,20 @@ internal fun deckShape(radius: androidx.compose.ui.unit.Dp): androidx.compose.fo
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
 
-// On an XMB glow page (see XmbBackdrop.kt) the three below turn to frosted glass: a thin light fill and hairline over the
-// glow, and a veil of the glow's base for the bars. Everywhere else, including Home and the dialogs, they are as they were.
+/**
+ * The density the Deck style draws at: the Deck screen's own when there is one, else the current density at [DECK_UI_SCALE].
+ * The XMB "B Back" / "Y Search" hints are drawn at this density on every page, so a store or download screen (which runs at
+ * the app's own, larger density) shows them at the size and place Home does.
+ */
+@Composable
+internal fun rememberXmbHintDensity(): Density {
+    val outer = LocalDensity.current
+    return LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
+}
+
+// On an XMB glass page (see XmbBackdrop.kt) the three below turn to frosted glass: a slightly lighter translucent fill and a thin
+// light border over the charcoal base, and a veil of the base for the bars. A card also gets the sheen at its top (xmbSheen,
+// right after its background). Everywhere else, including Home and the dialogs, they are as they were.
 
 /** Translucent bar fill (top strip, legend, bottom bar): the theme background at 72%. */
 @Composable
@@ -130,11 +149,48 @@ internal fun deckCardFill(): Color = LocalDeckCardFill.current ?: xmbPageFrost()
 
 /** Hairline around cards and bars. */
 @Composable
-internal fun deckLine(): Color = xmbPageFrost()?.line ?: MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
+internal fun deckLine(): Color = xmbPageFrost()?.line ?: MaterialTheme.colorScheme.outline.copy(alpha = DECK_LINE_BASE_ALPHA)
+
+// On the XMB glass `surfaceVariant` is translucent white (alpha 0.12) and `deckLine()` is white at 13%. `copy(alpha)` REPLACES the
+// alpha, so the settings controls (segmented tracks, selects, chips, fields) written as `surfaceVariant.copy(alpha = 0.55f)` or
+// `deckLine().copy(alpha = 0.5f)` would turn into washed light-grey tracks with a bright white border there. The helpers below keep
+// the intent (an inset fill, a soft line) on the glass and are exactly those expressions everywhere else.
+
+/** The alpha [deckLine] has outside the glass; [deckSoftLine] scales a softer line from it. */
+internal const val DECK_LINE_BASE_ALPHA = 0.8f
+
+/** How dark the inset controls are on the XMB glass: black over the card, so a track reads as a groove and its labels gain contrast. */
+internal const val XMB_INSET_BLACK_ALPHA = 0.26f
+
+/**
+ * The fill of an inset control (a track, a select, a chip, a small button) from the scheme's [variant] surface. On an opaque scheme
+ * that is [variant] at [alpha], as it always was. On the XMB glass the scheme's variant is translucent frost (alpha below 1), and
+ * laying it at [alpha] would paint it as near-white; there the control is a darker translucent black over the card instead.
+ */
+internal fun deckInsetFill(variant: Color, alpha: Float): Color =
+    if (variant.alpha < 1f) Color.Black.copy(alpha = XMB_INSET_BLACK_ALPHA) else variant.copy(alpha = alpha)
+
+@Composable
+internal fun deckInset(alpha: Float = 0.55f): Color = deckInsetFill(MaterialTheme.colorScheme.surfaceVariant, alpha)
+
+/** A softer [line] (a glass line, whose alpha is already low): its own alpha scaled by [alpha] relative to [DECK_LINE_BASE_ALPHA]. */
+internal fun deckSoftLine(line: Color, alpha: Float): Color =
+    line.copy(alpha = line.alpha * (alpha / DECK_LINE_BASE_ALPHA).coerceIn(0f, 1f))
+
+/** [deckLine] at [alpha]: `deckLine().copy(alpha = alpha)` outside the glass, a proportionally softer glass line on it. */
+@Composable
+internal fun deckLineAt(alpha: Float): Color {
+    val frost = xmbPageFrost() ?: return deckLine().copy(alpha = alpha)
+    return deckSoftLine(frost.line, alpha)
+}
 
 /**
  * The Deck focus treatment: the focused element scales up and gets an accent outline with a soft
  * accent glow. Put it BEFORE the clickable/focusable modifier so it can observe that node's focus.
+ *
+ * In the XMB interface, under a highlight host (XmbHighlight.kt: the shell and every [DeckDialogScaled] window have one), this
+ * does none of that: [scaleTo], the shadow and the border are dropped and the element just registers as a stop of the one
+ * gliding outline. Without a host, and everywhere outside XMB, it is exactly the ring described above.
  */
 @Composable
 internal fun Modifier.deckFocusRing(
@@ -144,6 +200,7 @@ internal fun Modifier.deckFocusRing(
     /** On an accent-filled control: Lab draws a contrasting ring (an accent one would not show). */
     onAccent: Boolean = false,
 ): Modifier {
+    if (xmbHighlightHostOrNull() != null) return this.xmbHighlight(shape, onFocused = onFocused)
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused) scaleTo else 1f, label = "deckFocusScale")
     val accent = MaterialTheme.colorScheme.primary
@@ -194,8 +251,7 @@ internal fun DeckGlyph(text: String, kind: GlyphKind, modifier: Modifier = Modif
             .defaultMinSize(minWidth = if (kind == GlyphKind.BUMPER) 30.dp else 22.dp, minHeight = 22.dp)
             .background(fill, shape)
             .then(
-                if (round && kind != GlyphKind.A && kind != GlyphKind.B) Modifier.border(1.5.dp, cs.onSurfaceVariant.copy(alpha = 0.6f), shape)
-                else if (!round) Modifier.border(1.5.dp, cs.onSurfaceVariant.copy(alpha = 0.6f), shape)
+                if (kind != GlyphKind.A && kind != GlyphKind.B) Modifier.border(1.5.dp, cs.onSurfaceVariant.copy(alpha = 0.6f), shape)
                 else Modifier
             )
             .padding(horizontal = 5.dp),

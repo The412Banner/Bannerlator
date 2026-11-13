@@ -115,6 +115,18 @@ internal object LabArt {
         grid = p.getBoolean("grid", false)
         cards = p.getString("cards", COVERS)?.takeIf { v -> CARDS.any { it.first == v } } ?: COVERS
         cardSize = p.getString("card_size", "m")?.takeIf { v -> SIZES.any { it.first == v } } ?: "m"
+        // Steam's published art (PICS) comes first for linked games: load its on-device mirror off the main thread, and read the
+        // art again once it is there and whenever the engine refreshes it.
+        val app = context.applicationContext
+        com.winlator.star.store.SteamLibraryArt.onRefreshed = { artReady() }
+        io.launch {
+            runCatching { com.winlator.star.store.SteamLibraryArt.loadNow(app) }
+            artReady()
+        }
+    }
+
+    private fun artReady() {
+        io.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { changed() } }
     }
 
     fun chooseMode(v: String) { mode = v; prefs?.edit()?.putString("mode", v)?.apply() }
@@ -177,63 +189,88 @@ internal object LabArt {
     /** The game's Steam app: its link (Game details), else one found by its name for art and previews only. */
     fun appId(s: Shortcut): Int? = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 } ?: foundIds[s.name]
 
-    /** Steam apps found by name for games without a link (never written to the game); found SteamGridDB heroes. */
+    /** Steam apps found by name for games without a link (never written to the game); found SteamGridDB heroes, by [labHeroKey]. */
     private val foundIds = androidx.compose.runtime.mutableStateMapOf<String, Int>()
     private val foundHeroes = androidx.compose.runtime.mutableStateMapOf<String, String>()
     private val tried = HashSet<String>()
+    private val jobs = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
     /** Games whose SteamGridDB lookup got no answer (no network, a server error), and when: looked up again a minute later. */
     private val failed = HashMap<String, Long>()
-    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private val io = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob() +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, t -> if (com.winlator.star.BuildConfig.DEBUG) android.util.Log.w("LabArt", "art lookup failed", t) })
 
     /**
      * The art found for a game automatically: its Steam app by name when it has no link (the store's strict title
      * match, remembered by SteamStoreSearch) and SteamGridDB's sharpest background (3840x1240 first, not the blurred
-     * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found; a miss is
-     * retried after a week), so SteamGridDB is asked once per game. A lookup that got no answer is not remembered and
-     * runs again on a later call, a minute on at the soonest. A game with its own background only gets its Steam app looked up.
+     * style) by its Steam app or a game of the same title. Remembered on the device (prefs lab_art_found, under the name
+     * and the Steam app the hero was found for; a miss is retried after a week), so SteamGridDB is asked once per game.
+     * A lookup that got no answer is not remembered and runs again on a later call, a minute on at the soonest.
+     * A game with its own background only gets its Steam app looked up.
      */
-    fun resolve(context: Context, s: Shortcut) {
+    fun resolve(context: Context, s: Shortcut) { start(context, s) }
+
+    /** [resolve], returning once this game's lookup (this call's, or one already running) is finished: its art is found or there is none. */
+    suspend fun resolveAndWait(context: Context, s: Shortcut) {
+        val key = start(context, s) ?: return
+        // A slow server must not keep the caller waiting: after RESOLVE_WAIT_MS this returns as "nothing found so far". Only the
+        // wait times out; the lookup goes on in the background and its art arrives later through [tick].
+        kotlinx.coroutines.withTimeoutOrNull(RESOLVE_WAIT_MS) { jobs[key]?.join() }
+    }
+
+    private const val RESOLVE_WAIT_MS = 4_000L
+
+    /** Starts the lookup for [s] unless one ran or is running (per name and linked app); returns what it is tracked under, null when none is needed. */
+    private fun start(context: Context, s: Shortcut): String? {
         val name = s.name
         val linked = s.getExtra("steamAppId", "").toIntOrNull()?.takeIf { it > 0 }
+        val app = context.applicationContext
         // A game with its own background still needs its Steam app (logo, wide cover, preview clip, Steam picks);
         // only the background search is skipped. Its own key, so clearing the background later searches one.
         if (pick(s, "bg") != null) {
-            if (linked != null) return
-            synchronized(tried) { if (!tried.add("$name|app")) return }
-            val app = context.applicationContext
-            io.launch {
-                val id = runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull() ?: return@launch
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { foundIds[name] = id; changed() }
+            if (linked != null) return null
+            val appKey = "$name|app"
+            synchronized(tried) {
+                if (!tried.add(appKey)) return appKey
+                val job = io.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                    val id = runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull() ?: return@launch
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { foundIds[name] = id; changed() }
+                }
+                jobs[appKey] = job
+                job.start()
             }
-            return
+            return appKey
         }
-        synchronized(tried) {
-            failed[name]?.let { at -> if (System.currentTimeMillis() - at > 60_000) { failed.remove(name); tried.remove(name) } }
-            if (!tried.add(name)) return
-        }
-        val app = context.applicationContext
+        val identity = labHeroKey(name, linked)
         val prefs = app.getSharedPreferences("lab_art_found", Context.MODE_PRIVATE)
-        prefs.getString("hero:$name", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[name] = it }
-        io.launch {
-            val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
-            val cached = prefs.getString("hero:$name", null)
-            val now = System.currentTimeMillis()
-            val hero = when {
-                cached != null && cached.startsWith("http") -> cached
-                cached != null && now - (cached.removePrefix("none:").toLongOrNull() ?: 0L) < 7L * 24 * 3600 * 1000 -> null
-                else -> {
-                    val r = runCatching { labSgdbHero(app, id, name) }
-                    if (r.isSuccess) prefs.edit().putString("hero:$name", r.getOrNull() ?: "none:$now").apply()
-                    else synchronized(tried) { failed[name] = System.currentTimeMillis() }
-                    r.getOrNull()
+        synchronized(tried) {
+            failed[identity]?.let { at -> if (System.currentTimeMillis() - at > 60_000) { failed.remove(identity); tried.remove(identity) } }
+            if (!tried.add(identity)) return identity
+            if (linked != null) prefs.getString("hero:$identity", null)?.takeIf { it.startsWith("http") }?.let { foundHeroes[identity] = it }
+            val job = io.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                val id = linked ?: runCatching { com.winlator.star.store.SteamStoreSearch.findAppIdByName(app, name) }.getOrNull()
+                val heroKey = labHeroKey(name, id)
+                val cached = prefs.getString("hero:$heroKey", null)
+                val now = System.currentTimeMillis()
+                val hero = when {
+                    cached != null && cached.startsWith("http") -> cached
+                    cached != null && now - (cached.removePrefix("none:").toLongOrNull() ?: 0L) < 7L * 24 * 3600 * 1000 -> null
+                    else -> {
+                        val r = runCatching { labSgdbHero(app, id, name) }
+                        if (r.isSuccess) prefs.edit().putString("hero:$heroKey", r.getOrNull() ?: "none:$now").apply()
+                        else synchronized(tried) { failed[identity] = System.currentTimeMillis() }
+                        r.getOrNull()
+                    }
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (linked == null && id != null) foundIds[name] = id
+                    if (hero != null) foundHeroes[heroKey] = hero
+                    if ((linked == null && id != null) || hero != null) changed()
                 }
             }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                if (linked == null && id != null) foundIds[name] = id
-                if (hero != null) foundHeroes[name] = hero
-                if ((linked == null && id != null) || hero != null) changed()
-            }
+            jobs[identity] = job
+            job.start()
         }
+        return identity
     }
 
     private const val STEAM = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
@@ -256,16 +293,22 @@ internal object LabArt {
     /** The game's own pick for [slot]: a URL or file path, "none", or null (automatic). */
     fun pick(s: Shortcut, slot: String): String? = s.getExtra(slotKey(slot), "").takeIf { it.isNotBlank() }
 
-    /** What [slot] shows, in the order to try: the game's pick, then Steam's. Empty for "none" or nothing known. */
+    /** Steam's own published URLs for [appId] (PICS appinfo, kept on the device), or null when the app is not in the snapshot. */
+    private fun steamPics(appId: Int): LabSteamPics? = com.winlator.star.store.SteamLibraryArt.of(appId)?.let {
+        LabSteamPics(hero = it.libraryHero, header = it.header, libraryHeader = it.libraryHeader, capsule = it.libraryCapsule ?: it.libraryCapsule2x)
+    }
+
+    /**
+     * What [slot] shows, in the order to try: the game's pick, then for a game linked to Steam what Steam publishes for the app
+     * (PICS: its hashed asset paths, as the Steam client shows), then the constructed CDN URLs, then SteamGridDB's background
+     * (3840x1240 when it has one). Empty for "none" or nothing known.
+     */
     fun models(s: Shortcut, slot: String): List<Any> {
         val p = pick(s, slot)
         if (p == "none") return emptyList()
         val id = appId(s)
-        if (slot == "bg") {
-            // Sharpest first: Steam's double size, SteamGridDB's (3840x1240 when it has one), Steam's 1920x620.
-            return listOfNotNull(p?.let(::model), id?.let { "$STEAM$it/library_hero_2x.jpg" }, foundHeroes[s.name], id?.let { "$STEAM$it/library_hero.jpg" })
-        }
-        return listOfNotNull(p?.let(::model)) + (if (id != null) steamUrls(id, slot) else emptyList())
+        val sgdb = if (slot == "bg") foundHeroes[labHeroKey(s.name, id)] else null
+        return (listOfNotNull(p?.let(::model)) + labSteamSources(id, slot, id?.let(::steamPics), sgdb)).distinct()
     }
 
     /** The cover the app already shows (Simple cover's bitmap), as a picture model. */
@@ -307,13 +350,13 @@ internal object LabArt {
             else -> models(s, "bg").map { Pic(it) } + listOfNotNull(cover)
         }
         if (pics.isEmpty()) return null
-        return Look(s.file.path + "|" + pic + "|" + pick(s, "bg") + "|" + pick(s, "wide"), pics, gamePanels(s), gameGrid(s), has3d(m), m)
+        return Look(s.file.path + "|" + pic + "|" + pick(s, "bg") + "|" + pick(s, "wide") + "|" + labPicsKey(pics.map { it.model }), pics, gamePanels(s), gameGrid(s), has3d(m), m)
     }
 }
 
-/** A picture from [pics], the next one when one does not load; nothing when none does. */
+/** A picture from [pics], the next one when one does not load; nothing when none does. [onLoaded] runs when one has loaded. */
 @Composable
-internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null) {
+internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, alignment: Alignment = Alignment.Center, onNone: (@Composable () -> Unit)? = null, onLoaded: (() -> Unit)? = null) {
     var i by remember(pics.map { it.model }) { mutableIntStateOf(0) }
     val p = pics.getOrNull(i)
     if (p == null) {
@@ -326,7 +369,7 @@ internal fun LabPicture(pics: List<LabArt.Pic>, modifier: Modifier = Modifier, c
         contentScale = contentScale,
         alignment = alignment,
         modifier = modifier.then(if (p.blur) Modifier.blur(22.dp) else Modifier),
-        onState = { if (it is AsyncImagePainter.State.Error) i++ },
+        onState = { if (it is AsyncImagePainter.State.Error) i++ else if (it is AsyncImagePainter.State.Success) onLoaded?.invoke() },
     )
 }
 

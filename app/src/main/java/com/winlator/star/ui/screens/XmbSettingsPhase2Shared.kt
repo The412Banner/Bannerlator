@@ -25,9 +25,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// Phase 2 of the nested XMB — shared helpers for the remaining game-settings sections (Win Components,
+// Shared helpers for the game-settings sections built on top of XmbGameSettings.kt (Win Components,
 // Env Vars, Advanced) and the sub-editors (driver / DX wrapper config, Performance, Player slots).
-// Same rules as Phase 1: read with the pop-up editor's fallbacks, write with its save() encoding.
+// Same rules as the General section: read with the pop-up editor's fallbacks, write with its save() encoding.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** The shortcut's extra, else [def] (the container value); never null (Java getters may return null). */
@@ -58,6 +58,10 @@ internal fun p2Unique(labels: List<String>): List<String> {
         if (n == 1) l else "$l ($n)"
     }
 }
+
+/** [options] plus the stored value [cur] when it isn't one of them, so a saved value outside the list still shows as selected. */
+internal fun p2WithCurrent(options: List<String>, cur: String): List<String> =
+    if (cur.isNotEmpty() && cur !in options) options + cur else options
 
 /** Coroutines tied to one open menu: pollers/probes started by a builder, cancelled in onClose. */
 internal class P2Jobs(xmb: XmbScope) {

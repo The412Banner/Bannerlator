@@ -18,11 +18,15 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,11 +35,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.store.SaveManagerScreen
 import com.winlator.star.ui.LocalTopBarActions
+import com.winlator.star.ui.Screen
+import com.winlator.star.ui.screens.AdrenoToolsScreen
 import com.winlator.star.ui.screens.FileManagerScreen
 import com.winlator.star.ui.screens.InputControlsScreen
 import com.winlator.star.ui.screens.LogManagerScreen
+import com.winlator.star.ui.screens.WrapperManagerScreen
 import com.winlator.star.ui.screens.contents.ContentsHubScreen
 import com.winlator.star.ui.screens.contents.ContentsHubViewModel
+import com.winlator.star.ui.theme.AppThemeState
 
 /*
  * The Components, Controls and Tools tabs. Each is a Deck header and tab strip around the classic
@@ -43,39 +51,85 @@ import com.winlator.star.ui.screens.contents.ContentsHubViewModel
  */
 
 /**
+ * A sub-tab of the Components page that another route asked for: the search (and the classic
+ * Wrappers / Adrenotools routes) land on Components, and the page picks the tab up once.
+ */
+internal object DeckComponentsTabs {
+    const val WRAPPERS = 4
+    const val ADRENOTOOLS = 5
+
+    /** The Components tab index waiting to be shown, or null. The page clears it once it has switched. */
+    var requested by mutableStateOf<Int?>(null)
+
+    /**
+     * The Components tab a classic [route] stands for, or null when the route is not one of them. XMB only: the plain Deck has
+     * no such tabs (Wrappers and Adrenotools are tiles on Tools > More there, as upstream), so it gets null for every route.
+     */
+    fun tabFor(route: String): Int? {
+        if (!AppThemeState.deckXmbHome.value) return null
+        return when (route) {
+            Screen.Wrappers.route -> WRAPPERS
+            Screen.AdrenoTools.route -> ADRENOTOOLS
+            else -> null
+        }
+    }
+}
+
+/**
  * Components: Deck header, then Browse / Installed / Saved archives / Linux runtime on the Deck tab
- * strip (L2/R2). Each tab is the Contents hub's own tab content, hosted without its rail or TabRow,
- * so installs, the install-progress popup and the source manager are unchanged.
+ * strip (L2/R2). Each is the Contents hub's own tab content, hosted without its rail or TabRow, so
+ * installs, the install-progress popup and the source manager are unchanged. XMB only: Wrappers and
+ * Adrenotools follow as two more tabs that host the wrapper manager and the GPU driver manager screens
+ * (the plain Deck reaches them from Tools > More, as it always has).
  */
 @Composable
 internal fun DeckComponentsPage() {
+    val xmb = rememberXmbHome()
     val vm: ContentsHubViewModel = viewModel()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf(
-        DeckTabItem("Browse", Icons.Filled.Download),
-        DeckTabItem("Installed", Icons.Filled.CheckCircle),
-        DeckTabItem("Saved archives", Icons.Filled.Folder),
-        DeckTabItem("Linux runtime", Icons.Filled.DeveloperBoard),
-    )
+    val wanted = DeckComponentsTabs.requested
+    LaunchedEffect(wanted) {
+        if (wanted != null) {
+            if (xmb) tab = wanted
+            DeckComponentsTabs.requested = null
+        }
+    }
+    val tabs = buildList {
+        add(DeckTabItem("Browse", Icons.Filled.Download))
+        add(DeckTabItem("Installed", Icons.Filled.CheckCircle))
+        add(DeckTabItem("Saved archives", Icons.Filled.Folder))
+        add(DeckTabItem("Linux runtime", Icons.Filled.DeveloperBoard))
+        if (xmb) {
+            add(DeckTabItem("Wrappers", Icons.Filled.Layers))
+            add(DeckTabItem("Adrenotools", Icons.Filled.Memory))
+        }
+    }
     DeckHostedPage(
         icon = Icons.Filled.Extension,
         title = "Components",
-        description = "Wine and Proton builds, graphics translation layers, drivers and x86 translators. Install once, use in any container.",
+        description = if (xmb) "Wine and Proton builds, graphics translation layers, wrappers, drivers and x86 translators. Install once, use in any container."
+        else "Wine and Proton builds, graphics translation layers, drivers and x86 translators. Install once, use in any container.",
         tabs = tabs,
         selected = tab,
         onSelect = { tab = it },
         tabLabel = "View",
     ) {
-        ContentsHubScreen(vm = vm, hostTab = tab)
+        when {
+            xmb && tab == DeckComponentsTabs.WRAPPERS -> WrapperManagerScreen()
+            xmb && tab == DeckComponentsTabs.ADRENOTOOLS -> AdrenoToolsScreen()
+            else -> ContentsHubScreen(vm = vm, hostTab = tab)
+        }
     }
 }
 
+// Controls: the XMB page is DeckControlsPage in DeckControlsPage.kt (its own tab strip and layout, no header).
+
 /**
- * Controls: Deck header over the classic Input Controls screen (profiles, on-screen layout editor,
- * controller bindings and the controller test), hosted as it is.
+ * Controls in the plain Deck (not the XMB interface): Deck header over the classic Input Controls screen (profiles, on-screen layout
+ * editor, controller bindings and the controller test), hosted as it is. DeckControlsPage hands over to this outside the XMB.
  */
 @Composable
-internal fun DeckControlsPage() {
+internal fun DeckControlsPageHosted() {
     DeckHostedPage(
         icon = Icons.Filled.SportsEsports,
         title = "Controls",
@@ -89,24 +143,45 @@ internal fun DeckControlsPage() {
     }
 }
 
+/** A Tools tab another page asked for (the search's "Logs" entry); the page picks it up once. */
+internal object DeckToolsTabs {
+    const val LOGS = 2
+
+    /** The Tools tab index waiting to be shown, or null. The page clears it once it has switched. */
+    var requested by mutableStateOf<Int?>(null)
+}
+
 /**
- * Tools: Files / Saves / Logs / More. Files, Saves and Logs are the File Manager, Save Manager and Log
- * Manager screens hosted in place; More holds the drawer's leftovers and "Run setup again". Unpacking
- * an archive starts from a file's menu in the File Manager, since it needs a picked archive.
+ * Tools: Files / Saves / Logs (plus More in the plain Deck). Files, Saves and Logs are the File Manager, Save Manager and Log
+ * Manager screens hosted in place. In the XMB interface they have no page header of their own (just the Files / Saves / Logs
+ * rail or strip), there is no More tab (Wrappers / Adrenotools are Components tabs, the rest lives in Settings), Files uses its
+ * slim one-row toolbar, and Logs carries every recording option (a collapsible "Recording options" section) with nothing about
+ * them in Settings. The plain Deck keeps the header, the full toolbar, the whole Logs screen and More, which holds the drawer's
+ * leftovers and "Run setup again" ([DeckMoreTools]); its three callbacks are the shell's. Unpacking an archive starts from a
+ * file's menu in the File Manager, since it needs a picked archive.
  */
 @Composable
 internal fun DeckToolsPage(
-    onNavigate: (String) -> Unit,
-    onMyAccount: () -> Unit,
-    onAbout: () -> Unit,
+    onNavigate: (String) -> Unit = {},
+    onMyAccount: () -> Unit = {},
+    onAbout: () -> Unit = {},
 ) {
+    val xmb = rememberXmbHome()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf(
-        DeckTabItem("Files", Icons.Filled.FolderOpen),
-        DeckTabItem("Saves", Icons.Filled.Save),
-        DeckTabItem("Logs", Icons.Filled.Description),
-        DeckTabItem("More", Icons.Filled.GridView),
-    )
+    val wanted = DeckToolsTabs.requested
+    LaunchedEffect(wanted) {
+        if (wanted != null) {
+            tab = wanted
+            DeckToolsTabs.requested = null
+        }
+    }
+    val tabs = buildList {
+        add(DeckTabItem("Files", Icons.Filled.FolderOpen))
+        add(DeckTabItem("Saves", Icons.Filled.Save))
+        add(DeckTabItem("Logs", Icons.Filled.Description))
+        // Plain Deck only: the drawer's leftovers.
+        if (!xmb) add(DeckTabItem("More", Icons.Filled.GridView))
+    }
     DeckHostedPage(
         icon = Icons.Filled.Build,
         title = "Tools",
@@ -117,11 +192,15 @@ internal fun DeckToolsPage(
         tabLabel = "Tool",
         // Files and Saves bring their own side list, so the page tabs stay an icon rail on every Tools tab.
         compactTabs = true,
+        // XMB only: no "Tools" title row (nor its info button), the tabs and the screen under them are all there is. The plain
+        // Deck keeps its header.
+        showHeader = !xmb,
     ) {
         when (tab) {
-            0 -> FileManagerScreen()
+            0 -> FileManagerScreen(compactToolbar = xmb)
             1 -> SaveManagerScreen()
-            2 -> LogManagerScreen(onClose = { tab = 0 })
+            // XMB: every recording option lives here (collapsible), in two-column tiles. Plain Deck: the whole screen as it always was.
+            2 -> LogManagerScreen(onClose = { tab = 0 }, inDeckTools = xmb)
             else -> DeckMoreTools(onNavigate = onNavigate, onMyAccount = onMyAccount, onAbout = onAbout)
         }
     }
@@ -143,10 +222,11 @@ private fun DeckHostedPage(
     onSelect: (Int) -> Unit,
     tabLabel: String,
     compactTabs: Boolean = false,
+    showHeader: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     if (deckRails()) {
-        DeckPageTitle(title, description)
+        if (showHeader) DeckPageTitle(title, description)
         if (tabs != null) DeckTabStrip(tabs = tabs, selected = selected, onSelect = onSelect, label = tabLabel, compactRail = compactTabs)
         Box(modifier = Modifier.fillMaxSize()) { content() }
         return
@@ -156,13 +236,16 @@ private fun DeckHostedPage(
     val topActions = LocalTopBarActions.current.value
     Column(modifier = Modifier.fillMaxSize()) {
         val headerModifier = Modifier.padding(start = gutter, end = gutter, top = 16.dp)
-        if (tabs == null) {
+        if (!showHeader) {
+            // No header: the tab strip below is the top of the page.
+            Spacer(Modifier.height(10.dp))
+        } else if (tabs == null) {
             DeckPageHeader(icon, title, if (compact) null else description, headerModifier) { topActions(this) }
         } else {
             DeckPageHeader(icon, title, if (compact) null else description, headerModifier)
         }
         if (tabs != null) {
-            Spacer(Modifier.height(14.dp))
+            if (showHeader) Spacer(Modifier.height(14.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = gutter),

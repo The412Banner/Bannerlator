@@ -85,6 +85,9 @@ internal object DownloadQueue {
     /** FIFO of waiting requests, keyed by appId (insertion order == queue order). */
     private val pending = LinkedHashMap<Int, Pending>()
 
+    /** The speed tier each appId's last request used, so a resume from the Download Manager keeps it. */
+    private val lastTiers = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+
     // -------------------------------------------------------------------------
     // Public entry — called by SteamDepotDownloader.buildControl for BOTH engines
     // -------------------------------------------------------------------------
@@ -96,6 +99,7 @@ internal object DownloadQueue {
      */
     fun enqueue(request: Request): SteamDepotDownloader.DownloadControl {
         val appId = request.appId
+        lastTiers[appId] = request.speedTier
         val facade = facadeFor(appId)   // stateless; built before the lock so it's always assigned
         var toStart: Pending? = null
         synchronized(lock) {
@@ -242,6 +246,19 @@ internal object DownloadQueue {
      * a detail page reopened onto a queued row). No-op if [appId] is neither active nor queued.
      */
     fun cancel(appId: Int) = requestCancel(appId)
+
+    /**
+     * Pause [appId] wherever it is: the live download stops (keeping its files), a waiting one is held out of line as a plain
+     * PAUSED download. No-op if it is neither active nor queued. The counterpart of [cancel] for callers with no facade, so a UI that
+     * outlived the download's own screen can still drive it (see [SteamDownloadControl]).
+     */
+    fun pause(appId: Int) = requestPause(appId)
+
+    /** True if [appId] is the active download or waits in the queue, i.e. this process still owns a run of it. */
+    fun isActiveOrQueued(appId: Int): Boolean = synchronized(lock) { appId == activeAppId || pending.containsKey(appId) }
+
+    /** The speed tier [appId] last started with, or [fallback] when this process never started it. */
+    fun speedTierOf(appId: Int, fallback: Int): Int = lastTiers[appId] ?: fallback
 
     /** True if [appId] is waiting in the queue (NOT the active download). */
     fun isQueued(appId: Int): Boolean = synchronized(lock) { pending.containsKey(appId) }

@@ -21,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.LocalXmbHintInset
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -78,7 +79,7 @@ internal fun UninstallResultBar(message: String, onTimeout: () -> Unit) {
         onTimeout()
     }
     Box(
-        modifier = Modifier.fillMaxSize().padding(bottom = 80.dp),
+        modifier = Modifier.fillMaxSize().padding(bottom = maxOf(80.dp, LocalXmbHintInset.current + 16.dp)),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(

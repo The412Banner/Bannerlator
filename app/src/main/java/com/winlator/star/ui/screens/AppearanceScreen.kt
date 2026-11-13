@@ -59,8 +59,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import kotlin.math.roundToInt
 import com.winlator.star.ui.components.ColorPicker
-import com.winlator.star.ui.deck.xmbGlowDraw
-import com.winlator.star.ui.deck.xmbGlowFor
+import com.winlator.star.ui.deck.xmbGlassDraw
+import com.winlator.star.ui.deck.xmbGlassFor
+import com.winlator.star.ui.deck.xmbSheenDraw
 import com.winlator.star.ui.theme.AppThemeState
 import com.winlator.star.ui.theme.CUSTOM_PRESET_INDEX
 import com.winlator.star.ui.theme.Divider
@@ -144,7 +145,8 @@ fun AppearanceScreen() {
         SectionLabel("Theme Presets")
         if (xmbHome) {
             Text(
-                text = "XMB washes the theme color softly and evenly behind every screen; the swatches show that look.",
+                text = "XMB sits on dark frosted glass, tinted to the theme's color family; the accent color marks focus and " +
+                    "selection. The swatches show that look.",
                 color = OnSurfaceVariant,
                 fontSize = 12.sp,
             )
@@ -161,7 +163,7 @@ fun AppearanceScreen() {
                         isSelected = isSelected,
                         isCustomSlot = index == CUSTOM_PRESET_INDEX,
                         customAccent = customAccent,
-                        xmbWash = xmbHome,
+                        xmbGlass = xmbHome,
                         onClick = { AppThemeState.setPreset(index) },
                         modifier = Modifier.weight(1f)
                     )
@@ -386,17 +388,17 @@ private fun PresetSwatch(
     isSelected: Boolean,
     isCustomSlot: Boolean,
     customAccent: Color,
-    xmbWash: Boolean,
+    xmbGlass: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val accent = if (isCustomSlot) customAccent else preset.primary
-    // XMB: the swatch shows the glow the app would paint with this preset (the same maths and drawing as the real backdrop),
-    // not the preset's flat background colour, and its mock-up bars are glass over it.
-    val glow = remember(preset, accent, xmbWash) {
-        if (xmbWash) xmbGlowFor(preset.background, accent, preset.onBackground, preset.onSurface, preset.onSurfaceVariant) else null
+    // XMB: the swatch shows the glass the app would paint with this preset (the same maths and drawing as the real backdrop):
+    // the base with its sweep, and a mini panel with its border and sheen, the accent dot and two lines on it.
+    val glass = remember(preset, xmbGlass) {
+        if (xmbGlass) xmbGlassFor(preset.background, preset.surface, preset.onBackground, preset.onSurfaceVariant) else null
     }
-    val glass = glow?.let { it.frost.tint.copy(alpha = 0.22f) }
+    val sheen = remember(glass) { glass?.let { xmbSheenDraw(it.frost.sheen) } }
     Column(
         modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -406,7 +408,7 @@ private fun PresetSwatch(
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .then(if (glow != null) xmbGlowDraw(glow) else Modifier.background(preset.background))
+                .then(if (glass != null) xmbGlassDraw(glass) else Modifier.background(preset.background))
                 .border(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) MaterialTheme.colorScheme.primary else Divider,
@@ -415,14 +417,35 @@ private fun PresetSwatch(
             contentAlignment = Alignment.Center
         ) {
             // Mini UI mockup inside the swatch
-            Column(
-                modifier = Modifier.fillMaxSize().padding(6.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surface))
-                Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(accent))
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surfaceVariant))
-                Box(Modifier.width(20.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(glass ?: preset.surfaceVariant))
+            if (glass != null && sheen != null) {
+                val panelShape = RoundedCornerShape(7.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(7.dp)
+                        .clip(panelShape)
+                        .background(glass.panel)
+                        .then(sheen)
+                        .border(1.dp, glass.frost.line, panelShape)
+                        .padding(5.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box(Modifier.size(8.dp).background(accent, CircleShape))
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Box(Modifier.width(22.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.30f)))
+                        Box(Modifier.width(14.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.18f)))
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(2.dp)).background(preset.surface))
+                    Box(Modifier.width(28.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(accent))
+                    Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(preset.surfaceVariant))
+                    Box(Modifier.width(20.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(preset.surfaceVariant))
+                }
             }
             if (isSelected) {
                 Box(

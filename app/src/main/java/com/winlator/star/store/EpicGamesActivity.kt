@@ -414,6 +414,7 @@ class EpicGamesActivity : ComponentActivity() {
         // CANCEL: install() polls this flag across manifest/verify/chunk/assemble, so cancel stops
         // the download promptly. Keep/delete of the partial is decided via EpicCancelPolicy below.
         EpicCancelPolicy.clear(appName)   // fresh download → keep-on-cancel until a dialog says otherwise
+        EpicDownloadControl.onFreshStart(applicationContext, appName)   // supersedes any earlier pause of this game
         val cancelled = AtomicBoolean(false)
         cancelRunnables[appName] = Runnable { cancelled.set(true) }
 
@@ -423,8 +424,9 @@ class EpicGamesActivity : ComponentActivity() {
             id = appName,
             name = game.title,
             cover = game.artCover.ifEmpty { game.artSquare },
-            supportsPause = false,
+            supportsPause = true,
             installTotal = prefs!!.getLong("epic_size_$appName", 0L),
+            pause = { EpicDownloadControl.pause(appName) },
             cancel = { cancelled.set(true) },
         )
 
@@ -466,6 +468,8 @@ class EpicGamesActivity : ComponentActivity() {
                 // Feature #2 — download required(base) + the container language's files only.
                 val installTags = EpicInstallTags.tagsForCurrentContainer(appCtx)
 
+                // Carries the manager's byte counter + speed into every registry tick and the status line.
+                val tracker = EpicProgressTracker(appName)
                 val ok = EpicDownloadManager.install(
                     appCtx,
                     manifestJson,
@@ -473,15 +477,36 @@ class EpicGamesActivity : ComponentActivity() {
                     installDir.absolutePath,
                     installTags,
                     cancelled,
-                ) { msg, pct ->
-                    if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, appName, pct, installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
-                        downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = msg)
-                            ?: GameDownloadState(isActive = true, progress = pct, status = msg, showProgress = true)
-                    }
-                }
+                    object : EpicDownloadManager.ProgressCallback {
+                        override fun onBytes(bytesDone: Long, bytesTotal: Long, speedBps: Long, etaSeconds: Long) {
+                            tracker.onBytes(bytesDone, bytesTotal, speedBps, etaSeconds)
+                        }
+
+                        override fun onProgress(message: String?, pct: Int) {
+                            if (!cancelled.get()) {
+                                val p = tracker.tick(pct)
+                                // "45%  ·  1.2 GB / 4.5 GB  ·  12 MB/s" once bytes flow; the manager's own
+                                // message for the phases without a byte count (manifest, verifying, complete).
+                                val status = if (tracker.total > 0L && tracker.done > 0L) tracker.label(p, includeEta = false)
+                                    else message.orEmpty()
+                                downloadStates[appName] = downloadStates[appName]?.copy(progress = p, status = status)
+                                    ?: GameDownloadState(isActive = true, progress = p, status = status, showProgress = true)
+                            }
+                        }
+                    },
+                )
 
                 if (cancelled.get()) {
+                    // A pause (Download Manager) stops the transfer the same way: keep everything and park the row as PAUSED.
+                    if (EpicDownloadControl.consumePause(appName)) {
+                        EpicDownloadControl.parkPaused(appCtx, appName, installDir.absolutePath, game.title,
+                            game.artCover.ifEmpty { game.artSquare })
+                        withContext(Dispatchers.Main) {
+                            cancelRunnables.remove(appName)
+                            downloadStates[appName] = GameDownloadState()
+                        }
+                        return@launch
+                    }
                     // Delete the partial if the user chose "Delete files" on any Cancel dialog.
                     if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
                         try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}

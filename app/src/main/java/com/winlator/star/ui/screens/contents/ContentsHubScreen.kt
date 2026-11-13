@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -117,7 +119,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winlator.star.R
+import com.winlator.star.ui.deck.XmbInk
 import com.winlator.star.ui.deck.XmbTapToEdit
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.ui.deck.xmbDoneActions
 import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.contents.AdrenotoolsManager
@@ -129,6 +134,9 @@ import com.winlator.star.store.download.ContentDownloadPhase
 import com.winlator.star.store.download.ContentDownloadRegistry
 import com.winlator.star.store.download.ContentDownloadState
 import com.winlator.star.store.download.InstallProgressDialog
+import com.winlator.star.ui.screens.XmbGroupColumn
+import com.winlator.star.ui.screens.XmbGroupRow
+import com.winlator.star.ui.screens.XmbPanelColumn
 import com.winlator.star.ui.screens.adrenodownload.DriverFeed
 import com.winlator.star.ui.screens.adrenodownload.DriverSourceStore
 import com.winlator.star.ui.screens.MenuItemDivider
@@ -136,6 +144,10 @@ import com.winlator.star.ui.screens.OfficialSourceColor
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.SourceTagBadge
 import com.winlator.star.ui.screens.outlinedMenuCard
+import com.winlator.star.ui.screens.xmbBtn
+import com.winlator.star.ui.screens.xmbListPadding
+import com.winlator.star.ui.screens.xmbMenuBack
+import com.winlator.star.ui.screens.xmbStop
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -371,12 +383,12 @@ private fun SourceListPane(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("Select Online Repository", style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface, modifier = Modifier.weight(1f))
-            IconButton(onClick = { vm.reloadSources(); vm.refreshSelected() }) {
+            IconButton(onClick = { vm.reloadSources(); vm.refreshSelected() }, modifier = Modifier.xmbBtn(CircleShape)) {
                 Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary)
             }
-            IconButton(onClick = onImport) { Icon(Icons.Filled.FileDownload, "Import list", tint = cs.primary) }
-            IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings", tint = cs.primary) }
-            IconButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add repository", tint = cs.primary) }
+            IconButton(onClick = onImport, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.FileDownload, "Import list", tint = cs.primary) }
+            IconButton(onClick = onSettings, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.Settings, "Settings", tint = cs.primary) }
+            IconButton(onClick = onAdd, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.Add, "Add repository", tint = cs.primary) }
         }
     }
 
@@ -390,7 +402,7 @@ private fun SourceListPane(
         if (xmbHome) {
             // XMB home: the search field and the header are the list's first items, so they scroll away with the
             // repositories and come back when you scroll up.
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = xmbListPadding()) {
                 item(key = "search") {
                     Spacer(Modifier.height(12.dp))
                     searchField()
@@ -439,7 +451,7 @@ private fun SourceListPane(
         if (query.isBlank() || !showInlineResults) {
             listHeader()
             Spacer(Modifier.height(6.dp))
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = xmbListPadding()) {
                 itemsIndexed(sources, key = { i, s -> "$i-${s.name}-${s.driverOnly}" }) { _, source ->
                     RepoCard(source, isSelected = selected == source,
                         onClick = { vm.selectSource(source) }, onMenu = { onMenu(source) })
@@ -473,7 +485,7 @@ private fun SearchResultsPane(vm: ContentsHubViewModel, modifier: Modifier = Mod
                     Text("No components match “$query”.", color = cs.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = xmbListPadding()) {
                     itemsIndexed(searchResults, key = { i, it -> "$i-${it.sourceName}-${it.type}-${it.downloadUrl}" }) { _, item ->
                         ComponentRow(vm, item, showSource = true)
                         Spacer(Modifier.height(10.dp))
@@ -493,7 +505,29 @@ private fun RepoCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val driverOnly = source.driverOnly
-    val pills = source.typePills
+    if (rememberXmbHome()) {
+        // XMB interface: the card is one D-pad stop (selected: a faint accent fill and edge); A enters it, the first stop
+        // inside is the card's own action (open the repository), then the options button.
+        val group = rememberXmbFocusGroup()
+        XmbGroupColumn(group, RoundedCornerShape(16.dp), Modifier, PaddingValues(16.dp), accent = isSelected) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).xmbBtn(RoundedCornerShape(12.dp), first = true).clickable(onClick = onClick),
+                ) {
+                    Icon(if (driverOnly) Icons.Filled.ViewInAr else Icons.Filled.Folder, null,
+                        tint = cs.primary, modifier = Modifier.size(26.dp))
+                    Spacer(Modifier.width(14.dp))
+                    RepoCardInfo(source, Modifier.weight(1f))
+                }
+                IconButton(onClick = onMenu, modifier = Modifier.xmbBtn(CircleShape)) {
+                    Icon(Icons.Filled.MoreVert, "Options", tint = cs.onSurfaceVariant)
+                }
+                Icon(Icons.Filled.ChevronRight, null, tint = cs.onSurfaceVariant)
+            }
+        }
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -506,31 +540,39 @@ private fun RepoCard(
         Icon(if (driverOnly) Icons.Filled.ViewInAr else Icons.Filled.Folder, null,
             tint = cs.primary, modifier = Modifier.size(26.dp))
         Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            // Name takes the slack and ellipsises; the Official tag is fixed-width so it never wraps
-            // the row, narrow or wide.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(source.name, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f, fill = false))
-                if (source.isOfficial) {
-                    Spacer(Modifier.width(8.dp))
-                    SourceTagBadge("Official", OfficialSourceColor)
-                }
-            }
-            Text(source.displayFormat, style = MaterialTheme.typography.bodySmall,
-                color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (pills.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    pills.take(4).forEach { TypePill(it) }
-                    if (pills.size > 4) TypePill("+${pills.size - 4}")
-                }
-            }
-        }
+        RepoCardInfo(source, Modifier.weight(1f))
         IconButton(onClick = onMenu) { Icon(Icons.Filled.MoreVert, "Options", tint = cs.onSurfaceVariant) }
         Icon(Icons.Filled.ChevronRight, null, tint = cs.onSurfaceVariant)
+    }
+}
+
+/** The name, format and type pills of a [RepoCard] (the same column in both looks). */
+@Composable
+private fun RepoCardInfo(source: HubSource, modifier: Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val pills = source.typePills
+    Column(modifier = modifier) {
+        // Name takes the slack and ellipsises; the Official tag is fixed-width so it never wraps
+        // the row, narrow or wide.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(source.name, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f, fill = false))
+            if (source.isOfficial) {
+                Spacer(Modifier.width(8.dp))
+                SourceTagBadge("Official", OfficialSourceColor)
+            }
+        }
+        Text(source.displayFormat, style = MaterialTheme.typography.bodySmall,
+            color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (pills.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                pills.take(4).forEach { TypePill(it) }
+                if (pills.size > 4) TypePill("+${pills.size - 4}")
+            }
+        }
     }
 }
 
@@ -578,7 +620,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             if (showBack) {
-                IconButton(onClick = { vm.selectSource(null) }) { Icon(Icons.Filled.ArrowBack, "Back", tint = cs.onSurface) }
+                IconButton(onClick = { vm.selectSource(null) }, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.ArrowBack, "Back", tint = cs.onSurface) }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -593,7 +635,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
                 Text("${src.displayFormat} · ${items.size} ${if (src.driverOnly) "drivers" else "components"}",
                     style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
-            IconButton(onClick = { vm.refreshSelected() }) { Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary) }
+            IconButton(onClick = { vm.refreshSelected() }, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.Refresh, "Refresh", tint = cs.primary) }
         }
 
         // Keep-raw is controlled once from Contents settings (single source of truth); no per-repo bar.
@@ -613,7 +655,7 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
             }
             else -> {
                 val shown = if (filter == "All") items else items.filter { it.type == filter }
-                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = xmbListPadding()) {
                     itemsIndexed(shown, key = { i, it -> "$i-${it.type}-${it.downloadUrl}" }) { _, item ->
                         ComponentRow(vm, item, showSource = false)
                         Spacer(Modifier.height(10.dp))
@@ -627,17 +669,21 @@ private fun RepoDetail(vm: ContentsHubViewModel, showBack: Boolean) {
 @Composable
 private fun FilterPill(label: String, active: Boolean, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    Text(
-        text = label,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (active) Color.Black else cs.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
-            .border(1.dp, if (active) cs.primary else cs.outline, RoundedCornerShape(20.dp))
-            .background(if (active) cs.primary else Color.Transparent, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 8.dp),
-    )
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (active) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .xmbStop(RoundedCornerShape(20.dp), stop)
+                .border(1.dp, if (active) cs.primary else cs.outline, RoundedCornerShape(20.dp))
+                .background(if (active) cs.primary else Color.Transparent, RoundedCornerShape(20.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 15.dp, vertical = 8.dp),
+        )
+    }
 }
 
 // ── Component / driver row ─────────────────────────────────────────────────────
@@ -658,10 +704,15 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
     val state: ContentDownloadState? = registry[ContentsInstaller.keyFor(item.type, item.sourceName, item.versionName)]
     val busy = state != null && !state.terminal
 
-    Column(modifier = Modifier.fillMaxWidth()
-        .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-        .background(cs.surface, RoundedCornerShape(14.dp))
-        .padding(14.dp)) {
+    // XMB interface: the card is one D-pad stop; A enters it and reaches Download / Save below.
+    val group = rememberXmbFocusGroup()
+    XmbGroupColumn(group, RoundedCornerShape(14.dp),
+        classicModifier = Modifier.fillMaxWidth()
+            .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+            .background(cs.surface, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        contentPadding = PaddingValues(14.dp)) {
+        val cs = MaterialTheme.colorScheme
         Row(verticalAlignment = Alignment.Top) {
             Box(modifier = Modifier.size(38.dp)
                 .background(if (item.isDriver) cs.primary.copy(alpha = 0.14f) else cs.onSurface.copy(alpha = 0.05f),
@@ -731,7 +782,7 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
                     container = InstalledGreen.copy(alpha = 0.16f), content = InstalledGreen, modifier = Modifier.weight(1f)) {}
             } else {
                 PrimaryButton(if (busy) "Working…" else if (replace) "Replace" else "Download & Install", Icons.Filled.Download,
-                    enabled = !busy, container = cs.primary, content = Color.Black, modifier = Modifier.weight(1f)) {
+                    enabled = !busy, container = cs.primary, content = Color.Black, modifier = Modifier.weight(1f), first = true) {
                     ContentsInstaller.install(
                         context.applicationContext, item.type, item.sourceName, item.versionName,
                         item.downloadUrl, vm.keepRaw.value, replace = replace,
@@ -749,6 +800,7 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
                     } else vm.saveArchive(item)
                 },
                 onLongClick = { vm.saveArchive(item, force = true) },
+                first = installed,
             )
         }
     }
@@ -756,13 +808,16 @@ private fun ComponentRow(vm: ContentsHubViewModel, item: ContentsHubViewModel.Ca
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SaveArchiveAction(saved: Boolean, enabled: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun SaveArchiveAction(
+    saved: Boolean, enabled: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, first: Boolean = false,
+) {
     val cs = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxHeight()
             .width(46.dp)
+            .xmbBtn(RoundedCornerShape(11.dp), first)
             .border(1.dp, if (saved) SavedBlue.copy(alpha = 0.5f) else cs.outline, RoundedCornerShape(11.dp))
             .background(if (saved) SavedBlue.copy(alpha = 0.10f) else cs.onSurface.copy(alpha = 0.04f), RoundedCornerShape(11.dp))
             .then(if (enabled) Modifier.combinedClickable(
@@ -799,12 +854,13 @@ private fun StatusBadge(text: String, bg: Color, fg: Color, icon: ImageVector) {
 @Composable
 private fun PrimaryButton(
     text: String, icon: ImageVector, enabled: Boolean, container: Color, content: Color,
-    modifier: Modifier = Modifier, onClick: () -> Unit,
+    modifier: Modifier = Modifier, first: Boolean = false, onClick: () -> Unit,
 ) {
     // Respect the caller's container alpha (faint tints must stay translucent); dim the whole
     // component when disabled rather than forcing the fill opaque.
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
         modifier = modifier
+            .xmbBtn(RoundedCornerShape(11.dp), first, tint = if (container == MaterialTheme.colorScheme.primary) Color.White else Color.Unspecified)
             .background(container, RoundedCornerShape(11.dp))
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else 0.5f)
@@ -857,7 +913,7 @@ private fun MyFilesTab(vm: ContentsHubViewModel) {
                     color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = xmbListPadding()) {
                 itemsIndexed(folders.keys.toList(), key = { i, t -> "$i-$t" }) { _, type ->
                     FolderCard(vm, type, folders[type].orEmpty(),
                         open = type in expanded.value,
@@ -878,27 +934,37 @@ private fun FolderCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
-    Column(modifier = Modifier.fillMaxWidth()
-        .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-        .background(cs.surface, RoundedCornerShape(14.dp))) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(15.dp)) {
-            Icon(if (ContentsTypes.isDriver(type)) Icons.Filled.ViewInAr else Icons.Filled.Folder, null,
-                tint = cs.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(13.dp))
-            Text(type, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
-                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("${files.size}", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
-                modifier = Modifier.background(cs.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 9.dp, vertical = 2.dp))
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Filled.ExpandMore, null, tint = cs.onSurfaceVariant)
+    // XMB interface: a glass panel; its header is one stop (A opens / closes it), each file below is a two-level stop
+    // (A enters it, then Install / Share / Delete). Elsewhere the Column it was.
+    XmbPanelColumn(RoundedCornerShape(14.dp),
+        classicModifier = Modifier.fillMaxWidth()
+            .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+            .background(cs.surface, RoundedCornerShape(14.dp))) {
+        val cs = MaterialTheme.colorScheme
+        val head = rememberXmbHighlightItem()
+        XmbInk(head) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(14.dp), head).clickable(onClick = onToggle).padding(15.dp)) {
+                Icon(if (ContentsTypes.isDriver(type)) Icons.Filled.ViewInAr else Icons.Filled.Folder, null,
+                    tint = cs.primary, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(13.dp))
+                Text(type, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("${files.size}", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
+                    modifier = Modifier.background(cs.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 9.dp, vertical = 2.dp))
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Filled.ExpandMore, null, tint = cs.onSurfaceVariant)
+            }
         }
         if (open) {
             Divider(color = cs.outline)
             files.forEach { f ->
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                val group = rememberXmbFocusGroup()
+                XmbGroupRow(group, RoundedCornerShape(10.dp),
+                    classicModifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp), card = false,
+                    verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (f.name.endsWith(".zip", true)) Icons.Filled.FolderZip else Icons.Filled.Inventory2,
                         null, tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(12.dp))
@@ -919,9 +985,9 @@ private fun FolderCard(
                         ContentsInstaller.installFromFile(context.applicationContext, f.type, f.name, f.uri) { ok ->
                             if (ok) vm.markInstalledFromSaved(f) else vm.refreshStatus()
                         }
-                    }) { Icon(Icons.Filled.InstallDesktop, "Install", tint = cs.primary) }
-                    IconButton(onClick = { shareArchive(context, f) }) { Icon(Icons.Filled.Share, "Share", tint = cs.onSurfaceVariant) }
-                    IconButton(onClick = { vm.deleteSaved(f) }) { Icon(Icons.Filled.DeleteOutline, "Delete", tint = cs.onSurfaceVariant) }
+                    }, modifier = Modifier.xmbBtn(CircleShape, first = true)) { Icon(Icons.Filled.InstallDesktop, "Install", tint = cs.primary) }
+                    IconButton(onClick = { shareArchive(context, f) }, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.Share, "Share", tint = cs.onSurfaceVariant) }
+                    IconButton(onClick = { vm.deleteSaved(f) }, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Filled.DeleteOutline, "Delete", tint = cs.onSurfaceVariant) }
                 }
             }
         }
@@ -1253,11 +1319,16 @@ private fun InstalledRow(
     defaultArchs: List<String> = emptyList(), onSetDefault: (() -> Unit)? = null, onRemove: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    Row(verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    // XMB interface: the row is a glass card and one D-pad stop; A enters it (the ⋮ menu, then the trash).
+    val group = rememberXmbFocusGroup()
+    XmbGroupRow(group, RoundedCornerShape(14.dp),
+        classicModifier = Modifier.fillMaxWidth()
             .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
             .background(cs.surface, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp)) {
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp), card = true,
+        verticalAlignment = Alignment.CenterVertically) {
+        val cs = MaterialTheme.colorScheme
         Box(modifier = Modifier.size(38.dp)
             .background(if (driver) cs.primary.copy(alpha = 0.14f) else cs.onSurface.copy(alpha = 0.05f), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center) {
@@ -1271,8 +1342,11 @@ private fun InstalledRow(
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             DefaultBadges(defaultArchs)
         }
-        onSetDefault?.let { SetDefaultMenuButton(it) }
-        IconButton(onClick = onRemove) { Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant) }
+        // The trash is the first stop when there is no menu before it.
+        onSetDefault?.let { SetDefaultMenuButton(it, first = true) }
+        IconButton(onClick = onRemove, modifier = Modifier.xmbBtn(CircleShape, first = onSetDefault == null)) {
+            Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant)
+        }
     }
 }
 
@@ -1284,34 +1358,46 @@ private fun InstalledComponentFolder(
     onRemove: (ContentProfile) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxWidth()
-        .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
-        .background(cs.surface, RoundedCornerShape(14.dp))) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(15.dp)) {
-            Icon(typeIcon(type), null, tint = cs.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(13.dp))
-            Text(type, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
-                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("${profiles.size}", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
-                modifier = Modifier.background(cs.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 9.dp, vertical = 2.dp))
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Filled.ExpandMore, null, tint = cs.onSurfaceVariant)
+    // XMB interface: same as FolderCard (a glass panel, the header a stop, each profile a two-level stop).
+    XmbPanelColumn(RoundedCornerShape(14.dp),
+        classicModifier = Modifier.fillMaxWidth()
+            .border(1.dp, cs.outline, RoundedCornerShape(14.dp))
+            .background(cs.surface, RoundedCornerShape(14.dp))) {
+        val cs = MaterialTheme.colorScheme
+        val head = rememberXmbHighlightItem()
+        XmbInk(head) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(14.dp), head).clickable(onClick = onToggle).padding(15.dp)) {
+                Icon(typeIcon(type), null, tint = cs.primary, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(13.dp))
+                Text(type, style = MaterialTheme.typography.titleSmall, color = cs.onSurface,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("${profiles.size}", style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
+                    modifier = Modifier.background(cs.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 9.dp, vertical = 2.dp))
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Filled.ExpandMore, null, tint = cs.onSurfaceVariant)
+            }
         }
         if (open) {
             Divider(color = cs.outline)
             profiles.forEach { p ->
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                val group = rememberXmbFocusGroup()
+                val setDefault = onSetDefault(p)
+                XmbGroupRow(group, RoundedCornerShape(10.dp),
+                    classicModifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp), card = false,
+                    verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(p.verName, style = MaterialTheme.typography.bodySmall, color = cs.onSurface,
                             maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                         Text("Code ${p.verCode}", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
                         DefaultBadges(defaultArchs(p))
                     }
-                    onSetDefault(p)?.let { SetDefaultMenuButton(it) }
-                    IconButton(onClick = { onRemove(p) }) { Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant) }
+                    setDefault?.let { SetDefaultMenuButton(it, first = true) }
+                    IconButton(onClick = { onRemove(p) }, modifier = Modifier.xmbBtn(CircleShape, first = setDefault == null)) {
+                        Icon(Icons.Filled.DeleteOutline, "Remove", tint = cs.onSurfaceVariant)
+                    }
                 }
             }
         }
@@ -1328,12 +1414,16 @@ private fun DefaultBadges(archs: List<String>) {
 
 /** The ⋮ beside an installed item's trash: holds "Set as default…". */
 @Composable
-private fun SetDefaultMenuButton(onSetDefault: () -> Unit) {
+private fun SetDefaultMenuButton(onSetDefault: () -> Unit, first: Boolean = false) {
     val cs = MaterialTheme.colorScheme
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, "More options", tint = cs.onSurfaceVariant) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.outlinedMenuCard()) {
+        IconButton(onClick = { open = true }, modifier = Modifier.xmbBtn(CircleShape, first)) {
+            Icon(Icons.Filled.MoreVert, "More options", tint = cs.onSurfaceVariant)
+        }
+        // The menu is a window of its own: the controller's B closes it (nothing outside the XMB interface).
+        DropdownMenu(expanded = open, onDismissRequest = { open = false },
+            modifier = Modifier.outlinedMenuCard().xmbMenuBack { open = false }) {
             DropdownMenuItem(
                 text = { Text("Set as default\u2026", color = DefaultGold, fontWeight = FontWeight.Bold) },
                 leadingIcon = { Icon(Icons.Filled.Star, null, tint = DefaultGold) },
@@ -1384,7 +1474,7 @@ internal fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 // GPU-driver sources persist through the shared adrenotools store (also visible in
                 // the AdrenoTools screen); component sources use the Contents source store.
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(10.dp), wholeSubtree = true)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("GPU driver source", style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                         Text("Shared with the AdrenoTools screen", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
@@ -1396,9 +1486,9 @@ internal fun AddRepoDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Text("Source format", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
                     Box {
-                        TextButton(onClick = { formatMenu = true }) { Text(format.name.replace('_', ' '), color = cs.primary) }
+                        TextButton(onClick = { formatMenu = true }, modifier = Modifier.xmbBtn(CircleShape)) { Text(format.name.replace('_', ' '), color = cs.primary) }
                         androidx.compose.material3.DropdownMenu(expanded = formatMenu, onDismissRequest = { formatMenu = false },
-                            modifier = Modifier.outlinedMenuCard()) {
+                            modifier = Modifier.outlinedMenuCard().xmbMenuBack { formatMenu = false }) {
                             RemoteSourceRepository.SourceFormat.values().forEach { fmt ->
                                 androidx.compose.material3.DropdownMenuItem(text = { Text(fmt.name.replace('_', ' ')) },
                                     onClick = { format = fmt; formatMenu = false })
@@ -1467,11 +1557,14 @@ private fun RepoMenuDialog(
 
 @Composable
 private fun MenuRow(icon: ImageVector, label: String, tint: Color = MaterialTheme.colorScheme.onSurfaceVariant, onClick: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp)) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(14.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = if (tint == MaterialTheme.colorScheme.error) tint else MaterialTheme.colorScheme.onSurface)
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(10.dp), stop).clickable(onClick = onClick).padding(vertical = 12.dp)) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(14.dp))
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = if (tint == MaterialTheme.colorScheme.error) tint else MaterialTheme.colorScheme.onSurface)
+        }
     }
 }
 
@@ -1531,7 +1624,7 @@ private fun SettingsDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit, onLo
         text = {
             // Scrolls so the taller body still fits a landscape phone (dialog height is capped there).
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(10.dp), wholeSubtree = true).padding(vertical = 6.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Keep raw archive by default", style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                         Text("Save every install's download to My Files", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
@@ -1547,7 +1640,7 @@ private fun SettingsDialog(vm: ContentsHubViewModel, onDismiss: () -> Unit, onLo
                     style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
                     modifier = Modifier.padding(start = 36.dp, top = 2.dp))
                 MenuItemDivider()
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(10.dp), wholeSubtree = true).padding(vertical = 6.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Show Official catalog in repositories", style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                         Text("Off hides it here; container and shortcut sheets keep it", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)

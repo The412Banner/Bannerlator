@@ -357,6 +357,7 @@ private fun XboxLibraryTab(state: XboxLibraryState, wide: Boolean, onOpen: (Xbox
                 StoreFilterChip("Game Pass", filter == 2) { filter = 2 }
                 StoreFilterChip("Owned", filter == 3) { filter = 3 }
                 StoreFilterChip("Cloud", filter == 4) { filter = 4 }
+                com.winlator.star.store.StoreViewButton()
                 Spacer(Modifier.weight(1f))
                 Text(state.statusText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }

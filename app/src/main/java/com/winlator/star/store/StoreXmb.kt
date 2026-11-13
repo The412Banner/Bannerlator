@@ -368,8 +368,10 @@ internal fun ScreenScale.xmbCoverWidth(): Dp = w(0.12f, min = 96.dp, max = 170.d
 
 /** The catalog stores' library grid column: the XMB cover in XMB home, else their own 132 / 118 dp. */
 @Composable
-internal fun storeGridCell(wide: Boolean): Dp =
-    if (LocalStoreXmb.current) rememberScreenScale().xmbCoverWidth() else if (wide) 132.dp else 118.dp
+internal fun storeGridCell(wide: Boolean): Dp {
+    StoreViewMode.load(androidx.compose.ui.platform.LocalContext.current)
+    return StoreViewMode.cell(wide)
+}
 
 /** Steam's 600x900 library cover: the published one when the snapshot has it, else the CDN path. */
 internal fun steamTallArt(appId: Int): String =

@@ -649,15 +649,7 @@ class GogGamesActivity : ComponentActivity() {
     // ── Game click handlers ──────────────────────────────────────────────────
 
     private fun onGameClick(game: GogGame) {
-        if (viewMode == "list") {
-            if (expandedGameId == game.gameId) {
-                openDetailScreen(game)
-            } else {
-                expandedGameId = game.gameId
-            }
-        } else {
-            expandedGameId = if (expandedGameId == game.gameId) null else game.gameId
-        }
+        openDetailScreen(game)
     }
 
     private fun onInstallClick(game: GogGame) {

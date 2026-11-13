@@ -33,16 +33,26 @@ internal object DownloadShortcutMatch {
         return insideInstallFolder(installPath, imageFsRoot, shortcutPath)
     }
 
-    /** True when [shortcutPath] (a Windows or Android path) lies inside [installPath]. */
+    /**
+     * True when [shortcutPath] lies inside [installPath]. [shortcutPath] is an Android path (callers resolve a Windows path through the
+     * shortcut's container drives first) or a Windows path on Z:, the imagefs root at [imageFsRoot]; any other drive letter is not
+     * known here and never matches. The match is anchored: the exe must sit under the folder itself, not under a folder that merely
+     * contains its name (a backup copy, the same folder name on another drive).
+     */
     fun insideInstallFolder(installPath: String?, imageFsRoot: String, shortcutPath: String?): Boolean {
         if (installPath.isNullOrBlank() || shortcutPath.isNullOrBlank()) return false
         val root = flat(imageFsRoot)
-        val abs = flat(installPath)
-        val rel = if (root.isNotEmpty() && abs.startsWith(root)) abs.substring(root.length) else abs
-        val keys = listOf(rel, abs).map { "/" + it.trim('/') + "/" }.filter { it.length >= MIN_KEY_LENGTH }.distinct()
-        var exec = shortcutPath.replace('\\', '/').lowercase().trim().replaceFirst(Regex("^[a-z]:"), "")
-        if (!exec.startsWith("/")) exec = "/$exec"
-        return keys.any { exec.contains(it) }
+        val folder = flat(installPath)
+        // Too short (or the imagefs root itself): it could swallow unrelated games.
+        val rel = if (root.isNotEmpty() && folder.startsWith(root)) folder.substring(root.length) else folder
+        if (("/" + rel.trim('/') + "/").length < MIN_KEY_LENGTH) return false
+        var exec = shortcutPath.replace('\\', '/').lowercase().trim()
+        val drive = Regex("^([a-z]):").find(exec)
+        if (drive != null) {
+            if (drive.groupValues[1] != "z" || root.isEmpty()) return false
+            exec = root + "/" + exec.substring(2).trimStart('/')
+        }
+        return exec.startsWith("$folder/")
     }
 
     private fun flat(p: String): String = p.replace('\\', '/').lowercase().trimEnd('/')

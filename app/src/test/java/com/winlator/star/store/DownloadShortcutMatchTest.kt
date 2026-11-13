@@ -26,14 +26,29 @@ class DownloadShortcutMatchTest {
 
     @Test fun exeInsideTheInstallFolder_belongs_whateverTheStore() {
         val install = "$root/steam_games/Half-Life 2"
-        assertTrue(DownloadShortcutMatch.belongs(Store.GOG, "1", install, root, "A:\\steam_games\\Half-Life 2\\bin\\hl2.exe", none))
+        assertTrue(DownloadShortcutMatch.belongs(Store.GOG, "1", install, root, "Z:\\steam_games\\Half-Life 2\\bin\\hl2.exe", none))
         assertTrue(DownloadShortcutMatch.belongs(Store.AMAZON, "x", install, root, "$install/hl2.exe", none))
     }
 
     @Test fun exeOutsideTheInstallFolder_doesNotBelong() {
         val install = "$root/steam_games/Half-Life 2"
-        assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "A:\\steam_games\\Half-Life 2 Episode One\\ep1.exe"))
+        assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "Z:\\steam_games\\Half-Life 2 Episode One\\ep1.exe"))
         assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "C:\\Program Files\\Other\\game.exe"))
+    }
+
+    @Test fun onlyAnExeUnderTheFolderItself_belongs() {
+        val install = "$root/steam_games/Half-Life 2"
+        // A backup copy whose path merely contains the folder.
+        assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "Z:\\backup\\steam_games\\Half-Life 2\\hl2.exe"))
+        assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "/sdcard/backup/steam_games/Half-Life 2/hl2.exe"))
+        // The same folder name on a drive that is not the imagefs (callers pass resolved Android paths for mapped drives).
+        assertFalse(DownloadShortcutMatch.insideInstallFolder(install, root, "D:\\steam_games\\Half-Life 2\\hl2.exe"))
+        // Resolved Android path under the folder.
+        assertTrue(DownloadShortcutMatch.insideInstallFolder(install, root, "$install/bin/hl2.exe"))
+    }
+
+    @Test fun theImagefsRootIsTooBroad() {
+        assertFalse(DownloadShortcutMatch.insideInstallFolder(root, root, "Z:\\steam_games\\G\\g.exe"))
     }
 
     @Test fun missingOrShortFolder_neverMatches() {

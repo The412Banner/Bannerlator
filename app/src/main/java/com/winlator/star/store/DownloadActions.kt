@@ -231,7 +231,7 @@ internal class DownloadActions(private val activity: Activity, private val inlin
         // A Steam game found in another Steam client's library: those files and that manifest are the client's.
         val imported = entry.store == Store.STEAM &&
             entry.id.toIntOrNull()?.let { SteamLibraryImport.isImported(activity, it) } == true
-        StoreUninstaller.run(
+        StoreUninstaller.runForOutcome(
             installDir = entry.installPath,
             mark = {
                 if (entry.store == Store.STEAM) {
@@ -249,14 +249,16 @@ internal class DownloadActions(private val activity: Activity, private val inlin
                 imported || steamId != null && !path.isNullOrEmpty() &&
                     SteamInstallPaths.folderSharedWithOtherGame(activity, File(path), steamId)
             },
-        ) { ok ->
+        ) { outcome ->
+            val ok = outcome.ok
             // Clear the durable-library row (also drops the live registry entry) AND the store's
             // OWN native install record — otherwise the originating store's list/detail keeps
             // reading "installed" from a record the Manager never touched (device-observed bug).
             DownloadRegistry.removeLibraryEntry(entry.key)
             purgeNativeInstall(entry)
-            // The game's shortcuts go with it (a game kept for another client's sake keeps them: it is still there).
-            if (!imported) removeShortcutsOf(entry)
+            // The game's shortcuts go with it, only once its folder is really gone: a kept folder (another client's library, a demo or
+            // server sharing it, a library folder) still holds games whose shortcuts point into it, and a failed delete left files there.
+            if (ok && !outcome.kept) removeShortcutsOf(entry)
             uninstallingName = null
             notice = when {
                 imported -> activity.getString(R.string.steam_lib_uninstall_kept, entry.name)
@@ -278,7 +280,11 @@ internal class DownloadActions(private val activity: Activity, private val inlin
             val removed = runCatching {
                 var count = 0
                 for (s in com.winlator.star.container.ContainerManager(ctx).loadShortcuts()) {
-                    val mine = DownloadShortcutMatch.belongs(entry.store, entry.id, installPath, imageFsRoot, s.path) { s.getExtra(it) }
+                    // The exe as an Android path, through the shortcut's own container drives (null: an unmapped drive).
+                    val exe = runCatching { com.winlator.star.core.WinePath.resolveAndroidPath(s.container, s.path ?: "") }.getOrNull()
+                    val mine = DownloadShortcutMatch.belongs(entry.store, entry.id, installPath, imageFsRoot, exe?.absolutePath ?: s.path) {
+                        s.getExtra(it)
+                    }
                     if (!mine) continue
                     val lnk = File(s.file.path.substringBeforeLast('.') + ".lnk")
                     if (s.file.delete()) {

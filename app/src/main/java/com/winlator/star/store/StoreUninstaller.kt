@@ -44,7 +44,14 @@ object StoreUninstaller {
      * @param keepFolder asked on the worker thread; `true` = another game uses this folder, so it is NOT
      *   deleted (the result still counts as success: this game's own record and manifest are gone).
      */
-    fun run(installDir: String?, mark: () -> Unit, keepFolder: (() -> Boolean)? = null, onResult: (Boolean) -> Unit) {
+    fun run(installDir: String?, mark: () -> Unit, keepFolder: (() -> Boolean)? = null, onResult: (Boolean) -> Unit) =
+        runForOutcome(installDir, mark, keepFolder) { onResult(it.ok) }
+
+    /** What an uninstall did: [ok] as [run] reports it; [kept] = the folder was left in place (a library folder, or one another game uses). */
+    data class Outcome(val ok: Boolean, val kept: Boolean)
+
+    /** [run], reporting whether the folder was kept as well, so a caller does not remove what still belongs to another game. */
+    fun runForOutcome(installDir: String?, mark: () -> Unit, keepFolder: (() -> Boolean)? = null, onResult: (Outcome) -> Unit) {
         Thread {
             mark()
             val dir = installDir?.takeIf { it.isNotEmpty() }?.let { File(it) }
@@ -60,7 +67,7 @@ object StoreUninstaller {
             } else {
                 true
             }
-            Handler(Looper.getMainLooper()).post { onResult(ok) }
+            Handler(Looper.getMainLooper()).post { onResult(Outcome(ok, keep)) }
         }.start()
     }
 }

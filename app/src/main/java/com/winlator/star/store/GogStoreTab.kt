@@ -152,7 +152,7 @@ fun GogStoreTab(
 
                 else -> {
                     val data = featured!!
-                    if (wide) GogStoreLandscape(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
+                    if (STORE_SPLIT && wide) GogStoreLandscape(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
                     else GogStorePortrait(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
                 }
             }

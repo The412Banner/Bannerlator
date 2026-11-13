@@ -155,7 +155,7 @@ fun EpicStoreTab(
 
                 else -> {
                     val data = featured!!
-                    if (wide) EpicStoreLandscape(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
+                    if (STORE_SPLIT && wide) EpicStoreLandscape(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
                     else EpicStorePortrait(data, ::actionFor, ::open, ::act, Modifier.weight(1f))
                 }
             }

@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import androidx.compose.ui.graphics.compositeOver
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -115,29 +116,57 @@ internal val LocalStoreXmb = staticCompositionLocalOf { false }
 @Composable
 internal fun StoreXmbScreen(content: @Composable () -> Unit) {
     val xmb = rememberXmbHome()
-    XmbScreenWindow(xmb)
-    // XMB home: the XMB keyboard replaces Android's for every text field on the screen.
-    val hosted: @Composable () -> Unit = { XmbKeyboardHost(xmb, content) }
-    // XMB home: the screen sits on the theme-colour glow and the theme's own background is clear, so the glow shows through every
-    // rail, tab row and page inside it, and their cards are glass over it.
-    XmbWashTheme(xmb) {
-        CompositionLocalProvider(LocalStoreXmb provides xmb) {
-            if (!xmb) {
-                hosted()
-            } else {
-                Box(Modifier.fillMaxSize()) {
-                    XmbGlowBackdrop(Modifier.matchParentSize())
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .windowInsetsPadding(WindowInsets.ime)
-                            .padding(horizontal = xmbFrame()),
-                    ) { hosted() }
+    // Every store screen is full screen in every interface: no status bar, no navigation bar.
+    XmbScreenWindow(true)
+    // One look everywhere: the Lab's colours (dark or light, as the Lab is set) with the theme's accent, the Lab's type
+    // and its smaller scale. XMB home keeps only its keyboard.
+    val base = MaterialTheme.colorScheme
+    val light = com.winlator.star.ui.theme.AppThemeState.labLight
+    val lab = if (light) com.winlator.star.ui.simple.labLightScheme(base) else storeLabScheme(base)
+    // No accent colour in the stores: what the theme paints in its accent is drawn in the ink colour instead
+    // (selected chips and tabs, the main button, progress, focus). Green for "installed" and prices stays.
+    val ink = if (light) Color(0xFF111722) else Color(0xFFEEF1F6)
+    val onInk = if (light) Color(0xFFF8FAFC) else Color(0xFF0B0D12)
+    val scheme = lab.copy(
+        primary = ink, onPrimary = onInk,
+        secondary = ink, onSecondary = onInk,
+        tertiary = ink, onTertiary = onInk,
+        primaryContainer = ink.copy(alpha = 0.16f).compositeOver(lab.background), onPrimaryContainer = ink,
+        secondaryContainer = ink.copy(alpha = 0.12f).compositeOver(lab.background), onSecondaryContainer = ink,
+    )
+    MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+        com.winlator.star.ui.deck.DeckTheme {
+            CompositionLocalProvider(
+                LocalStoreXmb provides false,
+                com.winlator.star.ui.screens.LocalLabLook provides true,
+                LocalAccentDim provides ink.copy(alpha = 0.14f).compositeOver(lab.background),
+            ) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
+                    XmbKeyboardHost(xmb, content)
                 }
             }
         }
     }
 }
+
+/** The Lab's dark look as a colour scheme: its panel and ink colours, the theme's accent untouched. */
+internal fun storeLabScheme(base: androidx.compose.material3.ColorScheme): androidx.compose.material3.ColorScheme = base.copy(
+    background = Color(0xFF0B0D12),
+    onBackground = Color(0xFFEEF1F6),
+    surface = Color(0xFF12151C),
+    onSurface = Color(0xFFEEF1F6),
+    surfaceVariant = Color(0xFF1A1E28),
+    onSurfaceVariant = Color(0xFFA9B2C1),
+    surfaceContainerLowest = Color(0xFF0B0D12),
+    surfaceContainerLow = Color(0xFF0E1016),
+    surfaceContainer = Color(0xFF12151C),
+    surfaceContainerHigh = Color(0xFF171A23),
+    surfaceContainerHighest = Color(0xFF1C2130),
+    outline = Color(0x33FFFFFF),
+    outlineVariant = Color(0x1AFFFFFF),
+    // No accent tint on raised surfaces: menus and dialogs stay the Lab's dark panel.
+    surfaceTint = Color.Transparent,
+)
 
 /**
  * The app theme around a store screen that keeps its own layout in every interface (the full library lists, the Steam
@@ -368,8 +397,10 @@ internal fun ScreenScale.xmbCoverWidth(): Dp = w(0.12f, min = 96.dp, max = 170.d
 
 /** The catalog stores' library grid column: the XMB cover in XMB home, else their own 132 / 118 dp. */
 @Composable
-internal fun storeGridCell(wide: Boolean): Dp =
-    if (LocalStoreXmb.current) rememberScreenScale().xmbCoverWidth() else if (wide) 132.dp else 118.dp
+internal fun storeGridCell(wide: Boolean): Dp {
+    StoreViewMode.load(androidx.compose.ui.platform.LocalContext.current)
+    return StoreViewMode.cell(wide)
+}
 
 /** Steam's 600x900 library cover: the published one when the snapshot has it, else the CDN path. */
 internal fun steamTallArt(appId: Int): String =

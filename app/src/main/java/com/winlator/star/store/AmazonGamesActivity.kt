@@ -36,7 +36,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -351,11 +351,7 @@ class AmazonGamesActivity : ComponentActivity() {
     // ── Card actions ──────────────────────────────────────────────────────
 
     private fun onCardClick(game: AmazonGame) {
-        if (expandedProductId == game.productId) {
-            openDetailScreen(game)
-        } else {
-            expandedProductId = game.productId
-        }
+        openDetailScreen(game)
     }
 
     private fun onInstallOrLaunch(game: AmazonGame) {
@@ -1223,7 +1219,7 @@ private fun GameGridTile(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             .combinedClickable(
-                onClick = onToggleExpansion,
+                onClick = onLongPress,
                 onLongClick = onLongPress,
             ),
     ) {

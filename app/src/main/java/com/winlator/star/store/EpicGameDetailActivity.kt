@@ -394,7 +394,7 @@ class EpicGameDetailActivity : ComponentActivity() {
                     // Freeze the card/label the moment the user hits Cancel; install() also polls
                     // `cancelled` internally and returns false promptly.
                     if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, an, pct)
+                        StoreDownloadHooks.tick(Store.EPIC, an, pct, installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
                         if (!isDestroyed && !isFinishing) runOnUiThread {
                             if (isDestroyed || isFinishing) return@runOnUiThread
                             progressValue = pct
@@ -948,6 +948,7 @@ private fun EpicGameDetailScreen(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.EPIC) },
+        downloadKey = "${Store.EPIC}:$appName",
         hero = {
             if (artCover.isNotEmpty()) {
                 AsyncImage(
@@ -956,8 +957,6 @@ private fun EpicGameDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
             StoreBadgeOverlay(
                 showEpic = true,

@@ -475,7 +475,7 @@ class EpicGamesActivity : ComponentActivity() {
                     cancelled,
                 ) { msg, pct ->
                     if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, appName, pct)
+                        StoreDownloadHooks.tick(Store.EPIC, appName, pct, installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
                         downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = msg)
                             ?: GameDownloadState(isActive = true, progress = pct, status = msg, showProgress = true)
                     }
@@ -915,10 +915,7 @@ private fun GameListCard(
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
-                modifier = Modifier.clickable {
-                    if (expanded) onClick()
-                    else expanded = true
-                },
+                modifier = Modifier.clickable { onClick() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -1058,9 +1055,7 @@ private fun GameGridTile(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-            .clickable {
-                showAction = if (showAction) false else true
-            },
+            .clickable { onClick() },
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Box(

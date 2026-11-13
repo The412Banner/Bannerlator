@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.screens.outlinedMenuCard
 import android.app.Activity
 import android.content.Intent
 import androidx.annotation.StringRes
@@ -664,6 +665,7 @@ fun SteamLibraryTab(
                     LibraryTypeChips(typeFilter, onTypeFilter)
                     searchField(Modifier.weight(1f))
                     LibrarySortButton(sort, onSort)
+                    StoreViewButton()
                 }
             } else {
                 Row(
@@ -676,6 +678,7 @@ fun SteamLibraryTab(
                 ) {
                     searchField(Modifier.weight(1f))
                     LibrarySortButton(sort, onSort)
+                    StoreViewButton()
                 }
                 // The chips are one short line, so they keep the same single row as before.
                 Row(
@@ -764,51 +767,29 @@ fun SteamLibraryTab(
                     modifier = Modifier.align(Alignment.Center),
                 )
 
-                viewMode == "list" -> LazyColumn(
-                    state = header.trackedListState(),
-                    modifier = Modifier.fillMaxSize().focusGroup(),
-                    contentPadding = PaddingValues(vertical = 4.dp),
-                ) {
-                    val row: @Composable (SteamGame) -> Unit = { game ->
-                        LibraryDetailRow(
-                            game = game,
-                            onClick = { onOpenApp(game.appId) },
-                            onLaunch = { launchInstalled(game) },
-                            onUninstall = { uninstall(game) },
-                        )
-                    }
-                    if (sections == null) {
-                        items(shown, key = { it.appId }) { game -> row(game) }
-                    } else {
-                        sections.forEach { section ->
-                            item(key = "section_${section.level}", contentType = "section") {
-                                LibrarySectionHeader(section, Modifier.padding(horizontal = 16.dp))
-                            }
-                            items(section.games, key = { it.appId }) { game -> row(game) }
-                        }
-                    }
-                }
-
                 else -> LazyVerticalGrid(
                     state = header.trackedGridState(),
                     // Adaptive rather than a fixed count: 2 columns on a portrait phone, 4-6 across a
                     // handheld in landscape, from one declaration.
                     // XMB home: portrait covers, a bit smaller, with room for the focused one's pop.
-                    columns = GridCells.Adaptive(
-                        minSize = if (xmb) rememberScreenScale().xmbCoverWidth() else if (wide) 190.dp else 165.dp,
-                    ),
+                    columns = GridCells.Adaptive(minSize = storeGridCell(wide)),
                     modifier = Modifier.fillMaxSize().focusGroup(),
-                    contentPadding = PaddingValues(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(if (xmb) 12.dp else 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (xmb) 14.dp else 11.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    // The same card as every other store: a tap opens the game's page.
                     val card: @Composable (SteamGame) -> Unit = { game ->
-                        LibraryCapsuleCard(
-                            game = game,
+                        StoreLibraryCard(
+                            item = CatalogItem(
+                                store = com.winlator.star.store.download.Store.STEAM,
+                                id = game.appId.toString(),
+                                title = game.name,
+                                imageUrl = "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${game.appId}/header.jpg",
+                                tallImageUrl = steamTallArt(game.appId),
+                            ),
+                            installed = game.isInstalled,
                             onOpen = { onOpenApp(game.appId) },
-                            onAction = {
-                                if (game.isInstalled) launchInstalled(game) else onOpenApp(game.appId)
-                            },
                         )
                     }
                     if (sections == null) {
@@ -887,11 +868,13 @@ private fun LibraryTypeChips(
     typeFilter: LibraryTypeFilter,
     onTypeFilter: (LibraryTypeFilter) -> Unit,
 ) {
+    androidx.compose.runtime.LaunchedEffect(typeFilter) { if (typeFilter == LibraryTypeFilter.GAMES) onTypeFilter(LibraryTypeFilter.ALL) }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        LibraryTypeFilter.entries.forEach { f ->
+        // All, Demos, Installed: the Games chip is gone (a saved Games choice shows as All).
+        listOf(LibraryTypeFilter.ALL, LibraryTypeFilter.DEMOS, LibraryTypeFilter.INSTALLED).forEach { f ->
             StoreFilterChip(
                 label = f.label,
-                selected = typeFilter == f,
+                selected = typeFilter == f || (f == LibraryTypeFilter.ALL && typeFilter == LibraryTypeFilter.GAMES),
                 onClick = { onTypeFilter(f) },
             )
         }
@@ -922,7 +905,7 @@ private fun LibrarySortButton(
                 else MaterialTheme.colorScheme.primary,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             LibrarySort.entries.forEach { option ->
                 DropdownMenuItem(
                     text = {

@@ -1,5 +1,17 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 — Store revamp: one look for every store, like the HTML preview (feat/store-revamp, CI building, NOT device-tested)
+**Why:** user: all stores get the same cards / views / details pages; a tap opens details (no tap-to-reveal buttons); details use the full game art in portrait and landscape; each store's own art first, Steam / SteamGridDB as fallback; every download bar shows progress, speed and time left; smaller and tighter; keep Store / Library / Profile tabs (Steam + Friends), Library chips All / Installed (+ Steam Demos, Xbox Game Pass / Owned / Cloud); same look in Classic, Lab and XMB; "just like the html preview" (/sdcard/Download/Bannerlator-store-revamp-preview.html).
+**Built (off main 2ca4c768c):**
+- c0994e4dc + 167a68d5d — `StoreDetailScaffold` rewritten inside (same API + `downloadKey`): art full-screen, portrait one scroll, landscape left column + right panel, Lab tiles for focus, `StoreDownloadBar`; `StoreDownloadHooks.tick` measures speed / ETA when a downloader reports none.
+- ecc84b952 — `StoreLibraryCard` + `StoreViewMode` (Posters / Wide / List, prefs `store_ui`), `StoreViewButton`; `CatalogLibraryTile` delegates to it; old *GamesActivity taps open details; "Full library" footers removed.
+- 073bd6941 — `StoreSectionHost`: bottom tabs in portrait, 124dp text rail in landscape; Steam library grid on the shared card.
+- 9c6a05cee — Steam details: full-screen art behind its own layout.
+- ca0f9627f — Store-tab cards (Catalog* and Steam Store*) on the shared card, no buttons (Steam keeps "Add to Library" on free unowned games).
+- 708796b31 — Steam host: same bottom tabs + text rail. b1e16ec51 — Epic reports bytes (speed). 026e2c283 — fallback art by name in the scaffold.
+**CI:** 43339819479 (c0994e4dc) FAILED: maxWidth/maxHeight used in nested scopes → fixed. 43340570744 (167a68d5d) green 4/4. 43341290263 (9c6a05cee) green 4/4. 43342682297 (026e2c283) running.
+**CI:** 43342682297 (026e2c283) green 4/4. **Installed** on the Pocket FIT 2026-11-12 20:25 EST (base.apk sha256 3ec3b9b1…0522 == staged /sdcard/Download/Bannerlator-store-revamp-026e2c28-pubg.apk), replacing d8faad6c. **Device test:** none yet — the user is testing. Resume: no background jobs; after the test read `logcat -b crash` and the exit reasons.
+**Open / Next:** old full-library screens still reachable from the overflow menu; Steam details keeps its own layout; no button-hint bar; PR #660 (XMB update) touches the same store files → conflicts for whichever merges second. Resume: check run 43342682297, stage the pubg APK, ask before install.
 ## 2026-11-12 20:58 EST — 🔀 MERGED fix/epic-hostname-present (main dc9a4a4de; user: "merge to main")
 
 - **Merged:** backup `refs/backup/20261112/main-before-epic-hostname-present` = 2ca4c768c (pushed). `--no-ff` dc9a4a4de (branch 0ee733686), no conflicts, authored The412Banner, no AI trailer. Pushed 2ca4c768c..dc9a4a4de.

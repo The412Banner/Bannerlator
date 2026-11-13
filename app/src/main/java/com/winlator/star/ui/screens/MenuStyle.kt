@@ -1,5 +1,6 @@
 package com.winlator.star.ui.screens
 
+import com.winlator.star.ui.simple.labPanel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ColumnScope
@@ -25,6 +26,8 @@ import androidx.compose.ui.unit.dp
 // the popup reads as an outlined card. Keep all three menu call-sites on this so they stay identical.
 @Composable
 internal fun Modifier.outlinedMenuCard(): Modifier {
+    // The Lab look: a Lab panel (its dark fill, thin line and hard corners).
+    if (LocalLabLook.current) return this.labPanel()
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(10.dp)
     return this
@@ -36,6 +39,8 @@ internal fun Modifier.outlinedMenuCard(): Modifier {
 // The thin low-alpha separator that sits between items inside an outlined menu card.
 @Composable
 internal fun MenuItemDivider() {
+    // The Lab look: the row line that fades out at both ends.
+    if (LocalLabLook.current) { com.winlator.star.ui.simple.SimpleRowDivider(); return }
     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
 }
 

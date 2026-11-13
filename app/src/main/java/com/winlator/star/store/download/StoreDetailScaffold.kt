@@ -2,29 +2,34 @@ package com.winlator.star.store.download
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,28 +37,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.outlinedMenuCard
+import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.ui.simple.LabArt
+import com.winlator.star.ui.simple.LabPicture
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labSgdbHero
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.winlator.star.ui.simple.labTile
 
 /**
- * The Steam game-detail LAYOUT, lifted out of `SteamGameDetailActivity` as a reusable scaffold so
- * the GOG and Epic detail pages (and the store-only catalog page) read exactly like it:
+ * The game details page every store shares: the game's art fills the screen behind the page, and the page sits on it.
  *
- *   header (back · store badge · actions)
- *   hero band with the fade into the page background
- *   game name
- *   ONE primary action button (accent, or a read-only progress fill while downloading) + ⚙ gear
- *   optional info line under the button ("…% · speed · ETA")
- *   pill tab strip (Details · DLC · Cloud saves …)
- *   the selected tab's body
+ * Portrait (touch): back row, the art, then the name, ONE primary button (or its progress fill while downloading) +
+ * gear, the download line, the tab chips and the selected tab's body, all in one scroll.
+ * Landscape (controller): the name and buttons in a left column, the tabs and body in a panel on the right.
  *
- * Steam itself is deliberately NOT routed through this file (no Steam regression risk); this is a
- * faithful re-cut of its composition over theme tokens. The tab strip and gear follow the approved
- * mockup 1:1 — same 9dp pills, same 46dp button height, same outlined menu card.
+ * Every button and tab is a Lab tile, so the D-pad moves between them and A presses them. Colours come from the app
+ * theme (accent, background), so the page looks the same in every interface.
  */
 
 /** One entry in the ⚙ gear dropdown. */
@@ -100,58 +114,163 @@ fun StoreDetailScaffold(
     overlay: @Composable BoxScope.() -> Unit = {},
     /** A second, outlined button beside the primary one (Xbox: Stream next to Install). */
     secondary: StorePrimaryAction.Button? = null,
+    /** This game's key in [DownloadRegistry] ("EPIC:<id>"): while it downloads, the page shows its speed and time left. */
+    downloadKey: String? = null,
     body: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val bg = xmbSolidBackground()
+    val cs = MaterialTheme.colorScheme
+    val all by DownloadRegistry.entries.collectAsState()
+    val download = if (downloadKey == null) null else all.firstOrNull { it.key == downloadKey && it.isActive }
+
+    val header: @Composable () -> Unit = {
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(SimpleShape)
+                    .background(bg.copy(alpha = 0.6f))
+                    .border(1.dp, cs.outline.copy(alpha = 0.35f), SimpleShape)
+                    .labTile(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = cs.onBackground, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            storeBadge()
+            headerActions()
+        }
+    }
+    val head: @Composable ColumnScope.() -> Unit = {
+        Text(
+            text = title,
+            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, shadow = Shadow(bg.copy(alpha = 0.7f), blurRadius = 12f)),
+            color = cs.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle != null) subtitle()
+        StorePrimaryActionRow(primary = primary, gear = gear, secondary = secondary)
+        if (download != null) StoreDownloadBar(download)
+        if (!infoLine.isNullOrBlank()) {
+            Text(infoLine, fontSize = 11.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+    val panel: @Composable ColumnScope.() -> Unit = {
+        if (tabs.size > 1) StoreDetailTabs(labels = tabs, selected = selectedTab, badges = tabBadges, onSelect = onSelectTab)
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            StoreDetailHeader(onBack = onBack, storeBadge = storeBadge, actions = headerActions)
+            Modifier
+                .fillMaxWidth()
+                .clip(SimpleShape)
+                .background(bg.copy(alpha = 0.86f))
+                .border(1.dp, cs.outline.copy(alpha = 0.25f), SimpleShape)
+                .padding(vertical = 6.dp),
+            content = body,
+        )
+    }
 
-            StoreHero(imageContent = hero)
-
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+    BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg)) {
+        val pageW = maxWidth
+        val pageH = maxHeight
+        val wide = pageW > pageH
+        // Under the store's own art: the Steam / SteamGridDB art the Lab finds by the game's name, for a store with none.
+        StoreFallbackArt(title, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
+        if (wide) {
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
+                0f to bg.copy(alpha = 0.94f), 0.42f to bg.copy(alpha = 0.72f), 0.75f to bg.copy(alpha = 0.25f), 1f to bg.copy(alpha = 0.45f))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to bg.copy(alpha = 0.8f))))
+            Row(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
+                Column(
+                    Modifier
+                        .width((pageW * 0.36f).coerceAtLeast(220.dp))
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    header()
+                    Spacer(Modifier.height(pageH * 0.04f))
+                    head()
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(top = 38.dp)
+                        .verticalScroll(rememberScrollState()),
+                    content = panel,
                 )
-                if (subtitle != null) subtitle()
             }
-
-            StorePrimaryActionRow(primary = primary, gear = gear, secondary = secondary)
-
-            if (!infoLine.isNullOrBlank()) {
-                Text(
-                    text = infoLine,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                )
+        } else {
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+                0f to bg.copy(alpha = 0.25f), 0.30f to bg.copy(alpha = 0.35f), 0.62f to bg.copy(alpha = 0.93f), 0.84f to bg)))
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 14.dp),
+            ) {
+                header()
+                Spacer(Modifier.height(pageH * 0.34f))
+                head()
+                panel()
             }
-
-            if (tabs.size > 1) {
-                StoreDetailTabs(
-                    labels = tabs,
-                    selected = selectedTab,
-                    badges = tabBadges,
-                    onSelect = onSelectTab,
-                )
-            }
-
-            body()
         }
         overlay()
     }
 }
 
+private val fallbackArt = java.util.concurrent.ConcurrentHashMap<String, List<LabArt.Pic>>()
+
+/** Full-screen art found by the game's name: Steam's library hero, SteamGridDB's hero, then Steam's header. */
+@Composable
+private fun StoreFallbackArt(title: String, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current.applicationContext
+    val pics by produceState(fallbackArt[title] ?: emptyList(), title) {
+        if (title.isBlank() || fallbackArt.containsKey(title)) return@produceState
+        value = withContext(Dispatchers.IO) {
+            val steam = runCatching { SteamStoreSearch.findAppIdByName(ctx, title) }.getOrNull()
+            buildList {
+                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/library_hero.jpg"))
+                runCatching { labSgdbHero(ctx, steam, title) }.getOrNull()?.let { add(LabArt.Pic(it)) }
+                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/header.jpg"))
+            }
+        }.also { fallbackArt[title] = it }
+    }
+    if (pics.isNotEmpty()) LabPicture(pics, modifier)
+}
+
 /**
- * The primary button + gear row. The button is a 46dp accent block (or the two-layer progress fill
- * while downloading); the gear is a 46dp outlined square opening the app's outlined dropdown card.
+ * A download as every store shows it: a thin bar, then "37% · 24.6 MB/s · ~12 min left" with the bytes done on the right.
+ * The parts the downloader has not reported are left out.
+ */
+@Composable
+fun StoreDownloadBar(entry: DownloadEntry, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val done = if (entry.installTotal > 0L) entry.installDone else entry.downloadDone
+    val total = if (entry.installTotal > 0L) entry.installTotal else entry.downloadTotal
+    val frac = (if (total > 0L) done.toFloat() / total else entry.pct / 100f).coerceIn(0f, 1f)
+    val status = when (entry.state) {
+        DownloadState.QUEUED -> "Queued"
+        DownloadState.PAUSED -> "Paused · ${entry.pct}%"
+        else -> listOf("${entry.pct}%", formatDownloadSpeed(entry.speedBps), formatEta(entry.etaSeconds)).filter { it.isNotEmpty() }.joinToString(" · ")
+    }
+    Column(modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Box(Modifier.fillMaxWidth().height(4.dp).clip(SimpleShape).background(cs.onBackground.copy(alpha = 0.14f))) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(cs.primary))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Text(status, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = cs.onBackground, maxLines = 1, modifier = Modifier.weight(1f))
+            if (total > 0L) {
+                Text("${formatDownloadSize(done)} / ${formatDownloadSize(total)}", fontSize = 11.sp, color = cs.onSurfaceVariant, maxLines = 1)
+            }
+        }
+    }
+}
+
+/**
+ * The primary button + gear row. The button is a 40dp accent block (or the two-layer progress fill
+ * while downloading); the gear is a 40dp outlined square opening the app's outlined dropdown card.
  */
 @Composable
 fun StorePrimaryActionRow(
@@ -161,13 +280,12 @@ fun StorePrimaryActionRow(
     secondary: StorePrimaryAction.Button? = null,
 ) {
     var gearExpanded by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = SimpleShape
     val cs = MaterialTheme.colorScheme
+    val bg = xmbSolidBackground()
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when (primary) {
             is StorePrimaryAction.Progress -> {
@@ -176,87 +294,59 @@ fun StorePrimaryActionRow(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .height(40.dp)
                         .clip(shape)
-                        .background(cs.surfaceContainerHigh)
-                        .border(1.dp, cs.outline, shape),
+                        .background(bg.copy(alpha = 0.6f))
+                        .border(1.dp, cs.outline.copy(alpha = 0.5f), shape),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (back > front) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .fillMaxHeight()
-                                .fillMaxWidth(back)
-                                .background(cs.primary.copy(alpha = 0.4f)),
-                        )
+                        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(back).background(cs.primary.copy(alpha = 0.14f)))
                     }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .fillMaxHeight()
-                            .fillMaxWidth(front)
-                            .background(cs.primary),
-                    )
-                    Text(
-                        text = primary.label,
-                        color = cs.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
+                    Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(front).background(cs.primary.copy(alpha = 0.32f)))
+                    Text(primary.label, color = cs.onBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 8.dp))
                 }
             }
 
             is StorePrimaryAction.Button -> Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(46.dp)
+                    .height(40.dp)
                     .clip(shape)
                     .background(if (primary.enabled) cs.primary else cs.primary.copy(alpha = 0.4f))
-                    .clickable(enabled = primary.enabled) { primary.onClick() },
+                    .then(if (primary.enabled) Modifier.labTile(onClick = primary.onClick, onAccent = true) else Modifier),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = primary.label,
-                    color = cs.onPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
+                Text(primary.label, color = cs.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
 
         if (secondary != null) Box(
             modifier = Modifier
                 .weight(1f)
-                .height(46.dp)
+                .height(40.dp)
                 .clip(shape)
+                .background(bg.copy(alpha = 0.55f))
                 .border(1.dp, if (secondary.enabled) cs.primary else cs.outline, shape)
-                .clickable(enabled = secondary.enabled) { secondary.onClick() },
+                .then(if (secondary.enabled) Modifier.labTile(onClick = secondary.onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = secondary.label,
-                color = if (secondary.enabled) cs.primary else cs.onSurfaceVariant,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
+            Text(secondary.label, color = if (secondary.enabled) cs.primary else cs.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
 
         if (gear.isNotEmpty()) {
             Box {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(shape)
-                        .background(cs.surface)
-                        .border(1.dp, cs.outline, shape)
-                        .clickable { gearExpanded = true },
+                        .background(bg.copy(alpha = 0.55f))
+                        .border(1.dp, cs.outline.copy(alpha = 0.5f), shape)
+                        .labTile(onClick = { gearExpanded = true }),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⚙", fontSize = 18.sp, color = cs.primary)
+                    Text("⚙", fontSize = 16.sp, color = cs.primary)
                 }
                 DropdownMenu(
                     expanded = gearExpanded,
@@ -287,8 +377,8 @@ fun StorePrimaryActionRow(
 }
 
 /**
- * The detail page's pill tab strip — horizontally scrollable, styled like the action buttons. A
- * tab may carry a small count badge (Steam uses it for "done/total" achievements).
+ * The detail page's tab chips — horizontally scrollable; the selected one is filled with the accent. A tab may carry
+ * a small count badge.
  */
 @Composable
 fun StoreDetailTabs(
@@ -298,49 +388,30 @@ fun StoreDetailTabs(
     badges: Map<Int, String> = emptyMap(),
 ) {
     val cs = MaterialTheme.colorScheme
+    val bg = xmbSolidBackground()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(top = 10.dp, bottom = 6.dp, start = 2.dp, end = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         labels.forEachIndexed { index, label ->
             val isSel = index == selected
             val badge = badges[index]
-            val shape = RoundedCornerShape(9.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
-                    .clip(shape)
-                    .background(if (isSel) cs.primary.copy(alpha = 0.14f) else cs.surface)
-                    .border(1.dp, if (isSel) cs.primary.copy(alpha = 0.45f) else cs.outline.copy(alpha = 0.5f), shape)
-                    .clickable { onSelect(index) }
-                    .padding(horizontal = 15.dp, vertical = 9.dp),
+                    .clip(SimpleShape)
+                    .background(if (isSel) cs.primary else bg.copy(alpha = 0.55f))
+                    .border(1.dp, if (isSel) cs.primary else cs.outline.copy(alpha = 0.4f), SimpleShape)
+                    .labTile(onClick = { onSelect(index) }, onAccent = isSel)
+                    .padding(horizontal = 11.dp, vertical = 6.dp),
             ) {
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSel) cs.primary else cs.onSurfaceVariant,
-                    maxLines = 1,
-                )
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isSel) cs.onPrimary else cs.onSurfaceVariant, maxLines = 1)
                 if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSel) cs.primary.copy(alpha = 0.18f) else cs.surfaceContainerLowest)
-                            .padding(horizontal = 7.dp, vertical = 1.dp),
-                    ) {
-                        Text(
-                            text = badge,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) cs.primary else cs.onSurfaceVariant.copy(alpha = 0.7f),
-                            maxLines = 1,
-                        )
-                    }
+                    Text(badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isSel) cs.onPrimary.copy(alpha = 0.8f) else cs.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1)
                 }
             }
         }

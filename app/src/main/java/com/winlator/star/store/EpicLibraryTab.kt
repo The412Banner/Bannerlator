@@ -162,6 +162,7 @@ fun EpicLibraryTab(
             ) {
                 StoreFilterChip("All", !installedOnly) { installedOnly = false }
                 StoreFilterChip("Installed", installedOnly) { installedOnly = true }
+                StoreViewButton()
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = state.statusText,
@@ -195,8 +196,8 @@ fun EpicLibraryTab(
                 columns = GridCells.Adaptive(storeGridCell(wide)),
                 modifier = Modifier.fillMaxSize().focusGroup(),
                 contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(shown, key = { it.appName }) { g ->
                     val eos = remember(g.appName) { runCatching { EpicEosDetector.isEosCached(ctx, g.appName) }.getOrDefault(false) }
@@ -206,16 +207,6 @@ fun EpicLibraryTab(
                         onOpen = { onOpen(g) },
                         badgeText = if (eos) "EOS" else null,
                     )
-                }
-                item(key = "full_library_footer", span = { GridItemSpan(maxLineSpan) }) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                        StoreNotice(
-                            title = "Full library",
-                            body = "Need the list view or in-list installs? Open the full library screen.",
-                            actionLabel = "Open full library",
-                            onAction = onOpenFullLibrary,
-                        )
-                    }
                 }
             }
         }

@@ -106,6 +106,7 @@ import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
@@ -2002,10 +2003,30 @@ private fun SteamGameDetailScreen(
     val showPinnedCaption =
         selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val pageBg = xmbSolidBackground()
+    val conf = androidx.compose.ui.platform.LocalConfiguration.current
+    val widePage = conf.screenWidthDp > conf.screenHeightDp
+    Box(modifier = Modifier.fillMaxSize().background(pageBg)) {
+    // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
+    // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
+    StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
+    com.winlator.star.ui.simple.LabPicture(
+        pics = listOf(
+            com.winlator.star.ui.simple.LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$appId/library_hero.jpg"),
+            com.winlator.star.ui.simple.LabArt.Pic("https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/library_hero.jpg"),
+        ),
+        modifier = Modifier.fillMaxSize(),
+    )
+    Box(
+        Modifier.fillMaxSize().background(
+            if (widePage) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
+            else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
+        ),
+    )
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxHeight()
+            .fillMaxWidth(if (widePage) 0.6f else 1f)
             .verticalScroll(rememberScrollState()),
     ) {
         // Header bar
@@ -2027,36 +2048,8 @@ private fun SteamGameDetailScreen(
             DownloadsButton()
         }
 
-        // Hero image with a subtle gradient into the background at the bottom
-        Box(
-            modifier = Modifier.fillMaxWidth().height(180.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // The SAME resolve chain the storefront cards use: PICS published art -> constructed
-            // CDN hosts -> appdetails -> SteamGridDB -> themed placeholder.
-            //
-            // Previously this page built ONE constructed URL of its own, so a game that showed art
-            // in the Library showed nothing here — and when that URL 404'd the `else` branch left a
-            // spinner running forever, which is the one failure mode the chain must never produce.
-            // aspectRatio = null because this hero is a fixed-height band, not a 92:43 card.
-            StoreCapsule(
-                appId = appId,
-                title = nameText,
-                modifier = Modifier.fillMaxSize(),
-                aspectRatio = null,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, xmbSolidBackground()),
-                        ),
-                    ),
-            )
-        }
+        // The art shows through here; the page starts under it.
+        Spacer(Modifier.height((conf.screenHeightDp * if (widePage) 0.04f else 0.28f).dp))
 
         // Game name — persistent header. Stays above the action row + tab strip (mirrors the
         // mockup's fixed game header, which doesn't change as the tab body below it swaps).
@@ -2080,6 +2073,11 @@ private fun SteamGameDetailScreen(
         // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
         val downloading = progressVisible   // installAction == CANCEL (active or paused download)
         val primaryShape = RoundedCornerShape(10.dp)
+        var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
+        freeMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2131,9 +2129,30 @@ private fun SteamGameDetailScreen(
                 }
             } else {
                 // Accent action button: Add to shortcuts (installed) / Retry / Install.
-                val (label, enabled, onPrimary) = when (installAction) {
-                    InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
-                    else                    -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
+                // A free game opened from the Store that the account does not own yet: the button adds it to the
+                // library first; once granted it becomes the normal Install button.
+                val freeScope = androidx.compose.runtime.rememberCoroutineScope()
+                var freeOwned by remember(appId) { mutableStateOf(true) }
+                var freeBusy by remember(appId) { mutableStateOf(false) }
+                LaunchedEffect(appId) {
+                    if (appId in SteamFreeOffers.ids) freeOwned = withContext(Dispatchers.IO) {
+                        runCatching { SteamRepository.getInstance().getCachedGameRows().any { it.appId == appId } }.getOrDefault(true)
+                    }
+                }
+                val addFree: () -> Unit = {
+                    freeBusy = true
+                    freeScope.launch {
+                        when (val r = SteamFreeLicense.request(appId)) {
+                            is SteamFreeLicense.Result.Failed -> freeMessage = r.message
+                            else -> { freeOwned = true; SteamFreeOffers.ids.remove(appId); freeMessage = "Added to your library" }
+                        }
+                        freeBusy = false
+                    }
+                }
+                val (label, enabled, onPrimary) = when {
+                    installAction == InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
+                    !freeOwned -> Triple(if (freeBusy) "Adding…" else "Add to Library", !freeBusy, addFree)
+                    else -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
                 }
                 Box(
                     modifier = Modifier

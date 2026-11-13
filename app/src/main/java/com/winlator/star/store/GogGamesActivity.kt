@@ -33,7 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -649,15 +649,7 @@ class GogGamesActivity : ComponentActivity() {
     // ── Game click handlers ──────────────────────────────────────────────────
 
     private fun onGameClick(game: GogGame) {
-        if (viewMode == "list") {
-            if (expandedGameId == game.gameId) {
-                openDetailScreen(game)
-            } else {
-                expandedGameId = game.gameId
-            }
-        } else {
-            expandedGameId = if (expandedGameId == game.gameId) null else game.gameId
-        }
+        openDetailScreen(game)
     }
 
     private fun onInstallClick(game: GogGame) {

@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.store.compose.AddResultDialog
 import com.winlator.star.store.compose.AddShortcutResult
 import com.winlator.star.store.compose.AddToShortcutsRequest
@@ -253,6 +253,7 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         setContent {
             StoreXmbTheme {
                 GogGameDetailScreen(
+                    downloadKey = "${Store.GOG}:$gameId",
                     headerBitmap = headerBitmap,
                     title = title,
                     generation = generation,
@@ -898,6 +899,7 @@ private data class DlcRowUi(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GogGameDetailScreen(
+    downloadKey: String?,
     headerBitmap: Bitmap?,
     title: String,
     generation: Int,
@@ -986,6 +988,7 @@ private fun GogGameDetailScreen(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.GOG) },
+        downloadKey = downloadKey,
         hero = {
             if (headerBitmap != null) {
                 Image(
@@ -994,8 +997,6 @@ private fun GogGameDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
         },
         subtitle = if (exeNameVisible) {

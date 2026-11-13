@@ -32,11 +32,12 @@ fun DownloadsButton(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     val activeCount by DownloadRegistry.activeCount.collectAsStateWithLifecycle()
 
-    IconButton(
+    com.winlator.star.store.StoreGlassIconButton(
         onClick = {
             ctx.startActivity(Intent(ctx, DownloadManagerActivity::class.java))
         },
         modifier = modifier,
+        ink = false,
     ) {
         BadgedBox(
             badge = {
@@ -48,7 +49,7 @@ fun DownloadsButton(modifier: Modifier = Modifier) {
             Icon(
                 imageVector = Icons.Filled.Download,
                 contentDescription = "Downloads & Library",
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onBackground,
             )
         }
     }

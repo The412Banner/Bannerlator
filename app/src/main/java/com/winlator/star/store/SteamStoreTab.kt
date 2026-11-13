@@ -215,7 +215,7 @@ fun SteamStoreTab(
 
                 else -> {
                     val data = featured!!
-                    if (wide) {
+                    if (STORE_SPLIT && wide) {
                         StoreLandscape(data, ::actionFor, onOpenApp, ::onAction, Modifier.weight(1f))
                     } else {
                         StorePortrait(data, ::actionFor, onOpenApp, ::onAction, Modifier.weight(1f))
@@ -373,58 +373,8 @@ private fun StoreSearchField(
     onClear: () -> Unit,
     onSearch: () -> Unit,
 ) {
-    if (LocalStoreXmb.current) {
-        XmbSearchField(
-            query, "Search the Steam catalog…", onQueryChange, onClear, onSearch,
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-        )
-        return
-    }
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        singleLine = true,
-        placeholder = {
-            Text(
-                "Search the Steam catalog…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        leadingIcon = {
-            Icon(
-                Icons.Filled.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = onClear, modifier = Modifier.steamFocusRing(RoundedCornerShape(20.dp))) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = "Clear search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-        shape = RoundedCornerShape(9.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-    )
+    // The same slim field as every other store.
+    CatalogSearchField(query = query, placeholder = "Search the Steam catalog…", onQueryChange = onQueryChange, onClear = onClear, onSearch = onSearch)
 }
 
 /**

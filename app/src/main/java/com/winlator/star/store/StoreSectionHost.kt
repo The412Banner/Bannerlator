@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.winlator.star.ui.simple.labTile
 import com.winlator.star.ui.deck.rememberScreenScale
 import com.winlator.star.ui.theme.LocalAccentDim
 
@@ -105,6 +107,7 @@ fun StoreSectionHost(
             Row(modifier = Modifier.fillMaxSize()) {
                 CompositionLocalProvider(LocalXmbRailStops provides if (xmb) railStops else null) {
                     SectionRail(
+                        storeName = storeName,
                         tabs = tabs,
                         selected = selected,
                         counts = counts,
@@ -127,15 +130,15 @@ fun StoreSectionHost(
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = storeName,
-                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = 6.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                     statusSlot()
@@ -144,7 +147,6 @@ fun StoreSectionHost(
                         actions()
                     }
                 }
-                SectionTabRow(tabs = tabs, selected = selected, counts = counts, onSelect = onSelect)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -152,6 +154,7 @@ fun StoreSectionHost(
                         .focusRequester(contentFocus)
                         .focusGroup(),
                 ) { content(false, Modifier.fillMaxSize()) }
+                SectionTabRow(tabs = tabs, selected = selected, counts = counts, onSelect = onSelect)
             }
         }
 
@@ -159,9 +162,10 @@ fun StoreSectionHost(
     }
 }
 
-/** Fixed rail width — wide enough for "Library (12)" at labelSmall. */
-private val RAIL_WIDTH = 96.dp
+/** Fixed rail width — the store name and the tab names as text rows. */
+private val RAIL_WIDTH = 124.dp
 
+/** Portrait: the tabs along the bottom edge, under the thumb. The selected one carries the accent line. */
 @Composable
 private fun SectionTabRow(
     tabs: List<StoreSectionTab>,
@@ -169,39 +173,36 @@ private fun SectionTabRow(
     counts: Map<String, Int>,
     onSelect: (Int) -> Unit,
 ) {
-    TabRow(
-        selectedTabIndex = selected.coerceIn(0, (tabs.size - 1).coerceAtLeast(0)),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.primary,
-    ) {
-        tabs.forEachIndexed { index, t ->
-            Tab(
-                selected = selected == index,
-                onClick = { onSelect(index) },
-                modifier = Modifier.steamFocusRing(RoundedCornerShape(0.dp)),
-                selectedContentColor = MaterialTheme.colorScheme.primary,
-                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(t.label, fontWeight = FontWeight.Bold, maxLines = 1)
-                        counts[t.key]?.takeIf { it > 0 }?.let {
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "($it)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                },
-            )
+    val cs = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
+        Row(Modifier.fillMaxWidth()) {
+            tabs.forEachIndexed { index, t ->
+                val on = selected == index
+                val n = counts[t.key]?.takeIf { it > 0 }
+                Column(
+                    modifier = Modifier.weight(1f).labTile(onClick = { onSelect(index) }),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
+                    Text(
+                        text = if (n != null) "${t.label} $n" else t.label,
+                        fontSize = 12.sp,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                        color = if (on) cs.onBackground else cs.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+                    )
+                }
+            }
         }
     }
 }
 
+/** Landscape: the store name, then the tabs as rows; the selected one has the accent line on its left. */
 @Composable
 private fun SectionRail(
+    storeName: String,
     tabs: List<StoreSectionTab>,
     selected: Int,
     counts: Map<String, Int>,
@@ -210,62 +211,50 @@ private fun SectionRail(
     statusSlot: @Composable ColumnScope.() -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
-    // XMB home: a slim rail, just wide enough for an icon over a short label.
-    val xmb = LocalStoreXmb.current
-    val railWidth = if (xmb) rememberScreenScale().xmbRailWidth() else RAIL_WIDTH
+    val cs = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             // EXACT width. Do not replace with widthIn/wrapContentWidth.
-            .width(railWidth)
+            .width(RAIL_WIDTH)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.background)
+            .background(cs.onBackground.copy(alpha = 0.04f))
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .focusProperties { right = contentFocus },
+            .focusProperties { right = contentFocus }
+            .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(if (xmb) 2.dp else 6.dp))
-        if (xmb) XmbRailBumpers()
+        Spacer(Modifier.height(8.dp))
+        Text(storeName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(start = 6.dp))
         statusSlot()
-        Spacer(Modifier.height(if (xmb) 4.dp else 8.dp))
+        Spacer(Modifier.height(6.dp))
 
         tabs.forEachIndexed { index, t ->
+            val on = selected == index
             val n = counts[t.key]?.takeIf { it > 0 }
-            if (xmb) {
-                XmbRailItem(t.label, t.icon, selected = selected == index, count = n, onClick = { onSelect(index) })
-                return@forEachIndexed
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (on) cs.onBackground.copy(alpha = 0.06f) else androidx.compose.ui.graphics.Color.Transparent)
+                    .labTile(onClick = { onSelect(index) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.width(2.dp).height(30.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
+                Text(
+                    text = if (n != null) "${t.label} $n" else t.label,
+                    fontSize = 13.sp,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                    color = if (on) cs.onBackground else cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
             }
-            NavigationRailItem(
-                selected = selected == index,
-                onClick = { onSelect(index) },
-                icon = { Icon(t.icon, contentDescription = t.label) },
-                label = {
-                    Text(
-                        text = if (n != null) "${t.label} ($n)" else t.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = if (selected == index) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-                alwaysShowLabel = true,
-                modifier = Modifier.steamFocusRing(),
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = LocalAccentDim.current,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            )
         }
 
         Spacer(Modifier.height(8.dp))
-        HorizontalDivider(
-            modifier = Modifier.width(if (xmb) railWidth - 16.dp else RAIL_WIDTH - 24.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline,
-        )
+        HorizontalDivider(modifier = Modifier.width(RAIL_WIDTH - 24.dp), thickness = 1.dp, color = cs.outline.copy(alpha = 0.4f))
         Spacer(Modifier.height(4.dp))
         actions()
         Spacer(Modifier.height(8.dp))

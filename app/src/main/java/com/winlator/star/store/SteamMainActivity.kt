@@ -407,7 +407,7 @@ fun SteamStorefrontHost(
                         onSelect = { tab = it },
                         library = library,
                         viewMode = libraryViewMode,
-                        onToggleView = { libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
+                        onToggleView = { StoreViewMode.next(ctx); libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
                         onSignOut = { showSignOut = true },
                         onChangeAccount = { showAccounts = true },
                         contentFocus = contentFocus,
@@ -429,7 +429,7 @@ fun SteamStorefrontHost(
                 StorefrontTopBar(
                     library = library,
                     viewMode = libraryViewMode,
-                    onToggleView = { libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
+                    onToggleView = { StoreViewMode.next(ctx); libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
                     onSignOut = { showSignOut = true },
                 )
                 StorefrontTabRow(tab = tab, tabs = railTabs, counts = counts, onSelect = { tab = it })

@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -597,6 +598,11 @@ fun CatalogSearchField(
     // A slim field: the Lab's hard corners, 34dp tall, the accent line when focused.
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
+    // Controller: B closes the keyboard (a second B goes back as usual); Down / Up leave the field for what is
+    // below / above it, closing the keyboard on the way.
+    var keyboardUp by remember { mutableStateOf(false) }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusMover = androidx.compose.ui.platform.LocalFocusManager.current
     androidx.compose.foundation.text.BasicTextField(
         value = query,
         onValueChange = onQueryChange,
@@ -610,7 +616,26 @@ fun CatalogSearchField(
             .clip(SimpleShape)
             .background(cs.onBackground.copy(alpha = 0.05f))
             .border(1.dp, if (focused) cs.primary else cs.outline.copy(alpha = 0.5f), SimpleShape)
-            .onFocusChanged { focused = it.isFocused },
+            .onFocusChanged { focused = it.isFocused; keyboardUp = it.isFocused }
+            .onPreviewKeyEvent { ev ->
+                val k = ev.nativeKeyEvent
+                val down = k.action == android.view.KeyEvent.ACTION_DOWN
+                when (k.keyCode) {
+                    android.view.KeyEvent.KEYCODE_BUTTON_B, android.view.KeyEvent.KEYCODE_BACK, android.view.KeyEvent.KEYCODE_ESCAPE ->
+                        if (keyboardUp) { if (!down) { keyboard?.hide(); keyboardUp = false }; true } else false
+                    android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        if (down) { keyboard?.hide(); keyboardUp = false; focusMover.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                        true
+                    }
+                    android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                        if (down) { keyboard?.hide(); keyboardUp = false; focusMover.moveFocus(androidx.compose.ui.focus.FocusDirection.Up) }
+                        true
+                    }
+                    android.view.KeyEvent.KEYCODE_BUTTON_A, android.view.KeyEvent.KEYCODE_DPAD_CENTER ->
+                        if (!keyboardUp) { if (!down) { keyboard?.show(); keyboardUp = true }; true } else false
+                    else -> false
+                }
+            },
         decorationBox = { inner ->
             Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))

@@ -133,6 +133,8 @@ object EpicLibrarySync {
                 val exe = prefs.getString("epic_exe_$appName", null)
                 val installed = installDir.exists() && exe != null && File(exe).exists()
 
+                // A game on an SD card / USB drive that is not plugged in is not gone: keep its record.
+                if (!installed && StoreInstallLocations.onMissingVolume(dirPath)) continue
                 if (!installed) {
                     // Self-heal: purge the stale native record + drop any durable-library row.
                     EpicInstallState.purge(ctx, appName)

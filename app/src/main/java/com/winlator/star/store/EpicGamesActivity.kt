@@ -460,7 +460,15 @@ class EpicGamesActivity : ComponentActivity() {
 
                 var sanitized = game.title.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
                 if (sanitized.isEmpty()) sanitized = "epic_${game.appName.hashCode()}"
-                val installDir = File(File(filesDir, "imagefs/epic_games"), sanitized)
+                // This list installs to the user's default Epic location (internal unless one was set).
+                val recordedDir = prefs!!.getString("epic_dir_${game.appName}", null)?.takeIf { it.isNotBlank() && File(it).exists() }
+                val wasInstalledHere = prefs!!.contains("epic_manifest_version_${game.appName}") ||
+                    !prefs!!.getString("epic_exe_${game.appName}", null).isNullOrBlank()
+                val installDir = recordedDir?.let { File(it) } ?: run {
+                    val locs = StoreInstallLocations.locations(appCtx, StoreInstallLocations.Store.EPIC)
+                    val def = StoreInstallLocations.defaultId(appCtx, StoreInstallLocations.Store.EPIC, locs)
+                    File(locs.firstOrNull { it.id == def }?.base ?: File(filesDir, "imagefs/epic_games"), sanitized)
+                }
                 prefs!!.edit().putString("epic_dir_${game.appName}", installDir.absolutePath).apply()
 
                 // Feature #2 — download required(base) + the container language's files only.
@@ -483,8 +491,8 @@ class EpicGamesActivity : ComponentActivity() {
 
                 if (cancelled.get()) {
                     // Delete the partial if the user chose "Delete files" on any Cancel dialog.
-                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName)) {
-                        try { EpicDownloadManager.deleteDir(installDir) } catch (_: Exception) {}
+                    if (EpicCancelPolicy.consumeDeleteOnCancel(appName) && !wasInstalledHere) {
+                        try { StoreInstallLocations.safeDelete(appCtx, StoreInstallLocations.Store.EPIC, installDir) } catch (_: Exception) {}
                         // Clear the install record so the list/detail recompute to "not installed".
                         EpicInstallState.purge(applicationContext, appName)
                     }

@@ -78,6 +78,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -2162,6 +2164,30 @@ private fun SteamGameDetailScreen(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
+                    // The fill is the ink colour in the stores, so over the solid fill the label is redrawn in
+                    // onPrimary, clipped to the filled part.
+                    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current ==
+                        androidx.compose.ui.unit.LayoutDirection.Rtl
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .drawWithContent {
+                                val w = size.width * installFrac
+                                clipRect(
+                                    left = if (rtl) size.width - w else 0f,
+                                    right = if (rtl) size.width else w,
+                                ) { this@drawWithContent.drawContent() }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                    }
                 }
             } else {
                 // Accent action button: Add to shortcuts (installed) / Retry / Install.

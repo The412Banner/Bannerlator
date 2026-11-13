@@ -162,7 +162,9 @@ fun StoreDetailScaffold(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(bg)) {
-        val wide = maxWidth > maxHeight
+        val pageW = maxWidth
+        val pageH = maxHeight
+        val wide = pageW > pageH
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
         if (wide) {
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
@@ -171,12 +173,12 @@ fun StoreDetailScaffold(
             Row(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
                 Column(
                     Modifier
-                        .width((maxWidth * 0.36f).coerceAtLeast(220.dp))
+                        .width((pageW * 0.36f).coerceAtLeast(220.dp))
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState()),
                 ) {
                     header()
-                    Spacer(Modifier.height(maxHeight * 0.04f))
+                    Spacer(Modifier.height(pageH * 0.04f))
                     head()
                 }
                 Spacer(Modifier.width(16.dp))
@@ -199,7 +201,7 @@ fun StoreDetailScaffold(
                     .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 14.dp),
             ) {
                 header()
-                Spacer(Modifier.height(maxHeight * 0.34f))
+                Spacer(Modifier.height(pageH * 0.34f))
                 head()
                 panel()
             }

@@ -234,7 +234,7 @@ private fun SectionRail(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp))
-        StoreSwitcher(storeName, Modifier.fillMaxWidth())
+        StoreSwitcher(storeName)
         statusSlot()
         Spacer(Modifier.height(6.dp))
 

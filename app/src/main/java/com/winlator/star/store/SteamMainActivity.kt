@@ -585,11 +585,10 @@ private fun StorefrontRail(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth().padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            StoreSwitcher("Steam")
-            Spacer(Modifier.width(2.dp))
-            RailStatusDot(status = library.steamStatus, onReconnect = library.reconnect)
-        }
+        // The store name, then the same status pill as portrait under it, both centred in the rail.
+        StoreSwitcher("Steam")
+        Spacer(Modifier.height(4.dp))
+        SteamStatusPill(status = library.steamStatus, onReconnect = library.reconnect)
         Spacer(Modifier.height(6.dp))
 
         // The same text rail as every other store: the selected tab has the accent line on its left.

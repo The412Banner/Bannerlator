@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 00:02 EST — 🔀 MERGED fix/download-speed-dialog (user: "merge to main")
+
+- **Merged:** backup `refs/backup/20261113/main-before-download-speed-dialog` = 22ffc13cf. `--no-ff` merge of fix/download-speed-dialog 54e821226.
+- **Tree check:** `git diff 54e821226 <merge>` = empty → main's code is exactly the build the user tested (CI 43368009188 green 4/4, installed on the Pocket FIT 2026-11-12 23:58 EST, base.apk sha256 322d9b97…28e2).
+- **In it:** Steam's "Download speed" dialog in landscape is drawn at the Lab's size as a Lab panel (hard corners, thin line, max 640 dp): one slim line per speed with the load meter and a short hint, the selected one marked by the line on its left, fading lines between; the per-row help buttons are gone (the header's stays). Portrait dialog unchanged.
+- **Proof level:** CI green; the user had the build on the Pocket FIT and said "merge to main". No screenshot of the new dialog reached me; no logcat pass by me.
+
 ## 2026-11-12 23:45 EST — 🔀 MERGED fix/store-details-layout (includes fix/ingame-drawer-focus; user: "merge to main")
 
 - **Merged:** backup `refs/backup/20261112/main-before-store-details-layout` = d64f48fa9. `--no-ff` merge of fix/store-details-layout 8143f11b4 (stacked on fix/ingame-drawer-focus 67471d9b3).

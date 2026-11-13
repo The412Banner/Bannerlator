@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 16:05 EST — Steam game page: download bar text readable again (fix/steam-download-bar-text off main e143a8a6, CI pending, NOT device-tested)
+
+- **Why:** user screenshot 15:44 EST (Elite, FlatOut at 71 %): the text inside the download bar can no longer be read as the bar fills.
+- **Cause:** c474d356 (11-12, stores: no accent colour, ink instead) made  = ink (#EEF1F6 dark / #111722 light). The Steam detail page's read-only download button fills in primary and draws its label in onSurface = the same ink → invisible in both modes. Other store bars put text below the bar or use onPrimary, so only this one was hit.
+- **Fix:** fc1fd795: label drawn twice — onSurface over the empty part, onPrimary clipped to the solid fill ( + , RTL-aware). One file, SteamGameDetailActivity.kt.
+- **Proof level:** compiled = pending CI. NOT device-tested.
+- **Next:** CI green → stage pubg APK in /sdcard/Download → ask the user before install → download a game and check the label at low/mid/high %.
+
 ## 2026-11-13 15:04 EST — 🔀 MERGED feat/steam-add-game-folders (user: "merge it")
 
 - **Merged:** backup `refs/backup/20261113/main-before-steam-add-game-folders` = 707d950a (pushed). `--no-ff` merge → main **fb01e774**. Main had not moved.

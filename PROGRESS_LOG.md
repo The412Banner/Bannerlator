@@ -1,14 +1,16 @@
 # Star-Compose — Progress Log
 
-## 2026-11-13 12:20 EST — UI sounds: INSTALLING on the Pocket FIT Elite (feat/ui-sounds 484dba8f, user: "install when green")
+## 2026-11-13 12:05 EST — UI sounds: INSTALLED on the Pocket FIT Elite (feat/ui-sounds 484dba8f, user: "install when green"), NOT device-tested yet
 
 - **CI 43466939624:** GREEN 4/4, headSha 484dba8f; pubg job log BUILD SUCCESSFUL in 5m 16s, no Kotlin errors; skipped steps = the usual branch ones (main-only saves, cached JavaSteam / LSFG / libblsteam / Xbox backend). First run 43465502724 (4d098ccc) also green 4/4.
 - **Staged:** `/sdcard/Download/Bannerlator-ui-sounds-484dba8f-pubg.apk` sha256 2cab6f2b…451b (artifact == host == device); com.tencent.ig in the manifest; signed with the AOSP testkey (A4:0D:A8:0A…); sound classes in classes4/5.dex.
 - **Undo:** `/sdcard/Download/Bannerlator-before-ui-sounds-2223eeb2.apk` = the installed 3.1.9-pre2 (vc 106, the user's reinstall 11:00 EST), sha256 2223eeb2…a5be (copy == installed base.apk).
 - **Before install:** no game session, no service, only MainActivity paused; no peer Claude session (ListAgents).
+- **Installed 12:05:12 EST:** `pm install -r` Success; installed base.apk sha256 2cab6f2b…451b == staged; vc 106 / 3.1.9-pre2 (dev build keeps the release numbers); crash buffer empty; app data intact (xuser, xuser-1); `files/ui_sounds` not created yet (sounds are off until switched on).
+- **Correction:** my earlier entries said 12:05 and 12:20 EST from guesses; real times from `date` / CI createdAt: pop-up change + CI 11:51 EST, install 12:05 EST.
 - **Test plan after install:** Settings › Sounds › Menu sounds on → Steam pack downloads (sha checked) → moving / A / B / dialogs / toggles / tabs make sounds; Sound pack pop-up lists Steam + DeckThemes (↓); pick one → downloads + plays; logcat tag UiSounds; logcat -b crash.
 
-## 2026-11-13 12:05 EST — UI sounds: packs picked from one list (feat/ui-sounds 484dba8f, CI 43466939624 running, NOT device-tested)
+## 2026-11-13 11:51 EST — UI sounds: packs picked from one list (feat/ui-sounds 484dba8f, CI 43466939624 running, NOT device-tested)
 
 - **User:** "can you list all the packs into a simple pop-up menu for users to select just like they do with components" (no separate page to browse).
 - **Changed (484dba8f):** Settings › Sounds › **Sound pack** (Lab picker pop-up / Deck select / XMB choice) lists Steam Big Picture first, installed packs, then every DeckThemes sound pack not downloaded yet, marked ↓ (one request, `perPage=500` → all 240, cached in `files/ui_sounds/.store.json`, refreshed once a day while sounds are on). Picking a ↓ pack downloads it in the background (toast "Downloading …", then "Sound pack ready: …") and uses it. The page is now **Manage sound packs**: preview / remove / install a pack zip. Classic Settings › Sound: switch + pack pop-up button + Manage button.

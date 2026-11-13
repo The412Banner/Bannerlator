@@ -80,7 +80,6 @@ import com.winlator.star.store.download.formatDownloadSize
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import com.winlator.star.core.AppOrientation
-import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.deck.LocalXmbGroup
 import com.winlator.star.ui.deck.ScreenScale
 import com.winlator.star.ui.deck.XmbHighlightHost
@@ -268,53 +267,50 @@ private fun DownloadManagerScreen(
         val look = remember(scale) { xmbLook(scale) }
         val frame = xmbFrame()
         val density = LocalDensity.current
-        // The highlight host and the Back hint sit outside the density change below: the hint scales its own text, and the
-        // gliding outline is drawn over the whole page (dialogs bring their own host).
+        // The highlight host sits outside the density change below: the gliding outline is drawn over the whole page (dialogs bring
+        // their own host).
         XmbHighlightHost(enabled = true, modifier = Modifier.fillMaxSize()) {
-            XmbBackHintLayer(true) {
-                CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * scale.factor)) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .xmbGlassBackground()
-                            .padding(start = frame, end = frame, top = scale.dp(6f)),
-                    ) {
-                        XmbDownloadsBar(onBack, onClear, look)
-                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            if (entries.isEmpty()) {
-                                Text(
-                                    text = "No downloads or installed games yet.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                                )
-                            } else {
-                                val sections = DmSections(entries)
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(if (scale.widthDp > scale.heightDp) 2 else 1),
-                                    modifier = Modifier.fillMaxSize(),
-                                    // The last card scrolls clear of the floating Back hint.
-                                    contentPadding = PaddingValues(bottom = look.cardPadV * 2 + LocalXmbHintInset.current),
-                                ) {
-                                    if (sections.downloading.isNotEmpty()) {
-                                        item(key = "hdr_downloading", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Downloading", look) }
-                                        items(sections.downloading, key = { it.key }) { entry ->
-                                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
-                                        }
+            CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * scale.factor)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .xmbGlassBackground()
+                        .padding(start = frame, end = frame, top = scale.dp(6f)),
+                ) {
+                    XmbDownloadsBar(onBack, onClear, look)
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        if (entries.isEmpty()) {
+                            Text(
+                                text = "No downloads or installed games yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                            )
+                        } else {
+                            val sections = DmSections(entries)
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(if (scale.widthDp > scale.heightDp) 2 else 1),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = look.cardPadV * 2),
+                            ) {
+                                if (sections.downloading.isNotEmpty()) {
+                                    item(key = "hdr_downloading", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Downloading", look) }
+                                    items(sections.downloading, key = { it.key }) { entry ->
+                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
                                     }
-                                    if (sections.queued.isNotEmpty()) {
-                                        item(key = "hdr_queued", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Queued", look) }
-                                        itemsIndexed(sections.queued, key = { _, e -> e.key }) { idx, entry ->
-                                            QueuedCard(entry, idx + 1, idx > 0, onEntryClick, onCancel, onMoveUp, onMoveToTop, look)
-                                        }
+                                }
+                                if (sections.queued.isNotEmpty()) {
+                                    item(key = "hdr_queued", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Queued", look) }
+                                    itemsIndexed(sections.queued, key = { _, e -> e.key }) { idx, entry ->
+                                        QueuedCard(entry, idx + 1, idx > 0, onEntryClick, onCancel, onMoveUp, onMoveToTop, look)
                                     }
-                                    if (sections.rest.isNotEmpty()) {
-                                        if (sections.hasHeaders) {
-                                            item(key = "hdr_library", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Library", look) }
-                                        }
-                                        items(sections.rest, key = { it.key }) { entry ->
-                                            DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
-                                        }
+                                }
+                                if (sections.rest.isNotEmpty()) {
+                                    if (sections.hasHeaders) {
+                                        item(key = "hdr_library", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Library", look) }
+                                    }
+                                    items(sections.rest, key = { it.key }) { entry ->
+                                        DownloadCard(entry, onEntryClick, onLaunch, onUninstall, onCancel, onPauseResume, onDismiss, look)
                                     }
                                 }
                             }

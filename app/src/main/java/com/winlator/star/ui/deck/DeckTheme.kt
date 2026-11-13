@@ -130,17 +130,6 @@ internal fun deckShape(radius: androidx.compose.ui.unit.Dp): androidx.compose.fo
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
 
-/**
- * The density the Deck style draws at: the Deck screen's own when there is one, else the current density at [DECK_UI_SCALE].
- * The XMB "B Back" / "Y Search" hints are drawn at this density on every page, so a store or download screen (which runs at
- * the app's own, larger density) shows them at the size and place Home does.
- */
-@Composable
-internal fun rememberXmbHintDensity(): Density {
-    val outer = LocalDensity.current
-    return LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
-}
-
 // On an XMB glass page (see XmbBackdrop.kt) the three below turn to frosted glass: a slightly lighter translucent fill and a thin
 // light border over the charcoal base, and a veil of the base for the bars. A card also gets the sheen at its top (xmbSheen,
 // right after its background). Everywhere else, including Home and the dialogs, they are as they were.

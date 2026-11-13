@@ -475,7 +475,7 @@ class EpicGamesActivity : ComponentActivity() {
                     cancelled,
                 ) { msg, pct ->
                     if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, appName, pct)
+                        StoreDownloadHooks.tick(Store.EPIC, appName, pct, installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
                         downloadStates[appName] = downloadStates[appName]?.copy(progress = pct, status = msg)
                             ?: GameDownloadState(isActive = true, progress = pct, status = msg, showProgress = true)
                     }

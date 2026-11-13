@@ -77,6 +77,9 @@ public class EpicDownloadManager {
 
     // ── Public interface ──────────────────────────────────────────────────────
 
+    /** Bytes fetched and bytes to fetch of the install in progress, for the download bar's speed and time left. */
+    public static volatile long progressDone, progressTotal;
+
     public interface ProgressCallback {
         void onProgress(String message, int pct);
     }
@@ -493,6 +496,7 @@ public class EpicDownloadManager {
             long totalBytes = 0;
             for (ChunkInfo chunk : neededChunks) totalBytes += Math.max(chunk.fileSize, 1);
             final long fTotalBytes = totalBytes;
+            progressDone = 0; progressTotal = totalBytes;
             final int totalChunks  = neededChunks.size();
             final AtomicLong completedBytes    = new AtomicLong(0);
             final AtomicInteger completedCount = new AtomicInteger(0);
@@ -579,6 +583,7 @@ public class EpicDownloadManager {
                             }
                         }
                         long done = completedBytes.addAndGet(Math.max(fc.fileSize, 1));
+                        progressDone = done; progressTotal = fTotalBytes;
                         int  cnt  = completedCount.incrementAndGet();
                         int  pct  = (int)(done * 80L / fTotalBytes);
 
@@ -781,6 +786,7 @@ public class EpicDownloadManager {
                     // Mirrors the pool task above: same counters, same pct, same 500 ms speed sample,
                     // same message.
                     completedBytes.set(bytesDone);
+                    progressDone = bytesDone; progressTotal = bytesTotal;
                     completedCount.set(chunksDone);
                     long done = bytesDone;
                     int  cnt  = chunksDone;

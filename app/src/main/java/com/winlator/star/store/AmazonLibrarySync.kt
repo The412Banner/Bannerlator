@@ -210,6 +210,8 @@ object AmazonLibrarySync {
                 val installed = AmazonDownloadManager.isInstalled(installDir) ||
                     (exe != null && File(exe).exists())
 
+                // A game on an SD card / USB drive that is not plugged in is not gone: keep its record.
+                if (!installed && StoreInstallLocations.onMissingVolume(dir)) continue
                 if (!installed) {
                     // Self-heal: the files are gone (uninstalled elsewhere, or a failed/partial
                     // install left orphan prefs). Purge the stale native record and drop any

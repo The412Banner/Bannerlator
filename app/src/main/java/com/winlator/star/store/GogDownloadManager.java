@@ -93,13 +93,18 @@ public final class GogDownloadManager {
     public static Runnable startDownload(Context ctx, GogGame game, Callback cb) {
         AtomicBoolean cancelled = new AtomicBoolean(false);
         AtomicReference<File> installDirRef = new AtomicReference<>(null);
+        // Installed before this run (an update, a verify/repair): a cancel stops it and keeps the game.
+        final boolean wasInstalled = ctx.getSharedPreferences("bh_gog_prefs", 0).contains("gog_dir_" + game.gameId);
         Thread t = new Thread(() -> doDownload(ctx, game, cb, cancelled, installDirRef),
                 "gog-dl-" + game.gameId);
         t.start();
         return () -> {
             cancelled.set(true);
             File dir = installDirRef.get();
-            if (dir != null) deleteDir(dir);
+            // Only a new download's folder, and only inside a GOG download location.
+            if (dir != null && !wasInstalled) {
+                StoreInstallLocations.INSTANCE.safeDelete(ctx, StoreInstallLocations.Store.GOG, dir);
+            }
             cb.onCancelled();
         };
     }
@@ -411,7 +416,8 @@ public final class GogDownloadManager {
                 return "cdnBase null; secure_link_response=" + (secureLinkJson == null ? "NULL"
                         : secureLinkJson.substring(0, Math.min(200, secureLinkJson.length())));
 
-            // Install dir
+            // Install dir (a picked download location applies to a fresh download)
+            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
@@ -949,6 +955,7 @@ public final class GogDownloadManager {
             if (files.isEmpty()) return "no files in manifest";
             dbg.append("gen1 files=").append(files.size()).append("\n");
 
+            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
@@ -1129,6 +1136,7 @@ public final class GogDownloadManager {
             if (downloadUrl == null) return "redirect resolve failed";
 
             // Download the installer .exe
+            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), GogTitles.english(ctx, game));
             File installDir = GogInstallPath.getInstallDir(ctx, GogTitles.english(ctx, game));
             installDir.mkdirs();
             installDirRef.set(installDir);

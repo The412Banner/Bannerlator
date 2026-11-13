@@ -153,6 +153,13 @@ object GogCloudSavePaths {
 
         for (sc in shortcuts) {
             val raw = sc.path ?: continue
+            // A game on an SD card / USB drive / user folder runs from a drive letter: map the exec back to its
+            // Android path first (as SteamCloudSavePaths does); Z:\ imagefs games fall through to the string match.
+            val android = runCatching { com.winlator.star.core.WinePath.resolveAndroidPath(sc.container, raw) }.getOrNull()
+            if (android != null) {
+                val ap = android.absolutePath.replace('\\', '/').trimEnd('/')
+                if (ap.equals(instAbs, ignoreCase = true) || ap.startsWith("$instAbs/", ignoreCase = true)) return sc.container
+            }
             var exec = raw.replace('\\', '/').lowercase().trim()
             exec = exec.replaceFirst(Regex("^[a-z]:"), "")
             if (!exec.startsWith("/")) exec = "/$exec"

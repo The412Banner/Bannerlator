@@ -105,6 +105,8 @@ class AmazonGameDetailActivity : ComponentActivity() {
     private var launchBtnEnabled by mutableStateOf(false)
     private var installBtnVisible by mutableStateOf(true)
     private var installBtnText by mutableStateOf("Install")
+    /** First install: "Download to" (StoreInstallLocations) before the download starts. */
+    private var locationPickerOpen by mutableStateOf(false)
     private var installBtnColor by mutableIntStateOf(0xFFFF9900.toInt())
     private var installBtnEnabled by mutableStateOf(true)
     private var setExeBtnVisible by mutableStateOf(false)
@@ -195,6 +197,12 @@ class AmazonGameDetailActivity : ComponentActivity() {
                     onDlcInstall = { eid, pid, dlcTitle -> startDlcInstall(eid, pid, dlcTitle) },
                 )
                 resultBarMsg?.let { UninstallResultBar(it) { resultBarMsg = null } }
+                if (locationPickerOpen) {
+                    StoreInstallLocationDialog(StoreInstallLocations.Store.AMAZON, onDismiss = { locationPickerOpen = false }) { loc ->
+                        locationPickerOpen = false
+                        startInstall(loc)
+                    }
+                }
                 }
             }
         }
@@ -279,7 +287,14 @@ class AmazonGameDetailActivity : ComponentActivity() {
             cancelDownload = null
             return
         }
+        // A folder already on record (an update, a partial download) is reused; otherwise the user picks where.
+        val recorded = prefs!!.getString("amazon_dir_$pid", null)?.takeIf { it.isNotBlank() }
+        if (recorded != null && File(recorded).exists()) startInstall(null) else locationPickerOpen = true
+    }
 
+    /** Install / update. A game with a folder on record keeps it; [location] places a fresh install. */
+    private fun startInstall(location: StoreInstallLocations.Location?) {
+        val pid = productId ?: return
         installBtnText = "Cancel"
         installBtnColor = 0xFFCC3333.toInt()
         progressVisible = true
@@ -313,7 +328,11 @@ class AmazonGameDetailActivity : ComponentActivity() {
 
             var sanitized = (titleText ?: "").replace("[^a-zA-Z0-9 \\-_]".toRegex(), "").trim()
             if (sanitized.isEmpty()) sanitized = "game_${productId.hashCode()}"
-            val installDir = File(File(filesDir, "Amazon"), sanitized)
+            // An update reuses the game's folder (a list-installed game lives in imagefs/Amazon, a detail-installed
+            // one in the older files/Amazon: both stay where they are); a fresh install goes to the picked place.
+            val recorded = prefs!!.getString("amazon_dir_$pid", null)?.takeIf { it.isNotBlank() && File(it).exists() }
+            val installDir = recorded?.let { File(it) }
+                ?: File(location?.base ?: StoreInstallLocations.Store.AMAZON.internalBase(appCtx), sanitized)
             prefs!!.edit().putString(
                 "amazon_dir_$productId",
                 installDir.absolutePath,
@@ -473,7 +492,7 @@ class AmazonGameDetailActivity : ComponentActivity() {
     private fun onUninstallClicked() {
         val dir = prefs!!.getString("amazon_dir_$productId", null) ?: return
         lifecycleScope.launch(Dispatchers.IO) {
-            deleteDir(File(dir))
+            StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(dir))
             // Purge the FULL native install record (exe/dir/manifest-version/size) via the one
             // canonical helper so the store list, detail page and DL manager all agree — not
             // just exe+dir, which left stale manifest/size keys behind.

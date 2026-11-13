@@ -437,7 +437,13 @@ class AmazonGamesActivity : ComponentActivity() {
 
             var sanitized = game.title.replace("[^a-zA-Z0-9 \\-_]".toRegex(), "").trim()
             if (sanitized.isEmpty()) sanitized = "game_${game.productId.hashCode()}"
-            val installDir = File(File(filesDir, "imagefs/Amazon"), sanitized)
+            // An update reuses the game's folder; a fresh install from this list goes to the default Amazon location.
+            val installDir = prefs!!.getString("amazon_dir_${game.productId}", null)?.takeIf { it.isNotBlank() && File(it).exists() }
+                ?.let { File(it) } ?: run {
+                val locs = StoreInstallLocations.locations(applicationContext, StoreInstallLocations.Store.AMAZON)
+                val def = StoreInstallLocations.defaultId(applicationContext, StoreInstallLocations.Store.AMAZON, locs)
+                File(locs.firstOrNull { it.id == def }?.base ?: File(filesDir, "imagefs/Amazon"), sanitized)
+            }
 
             prefs!!.edit().putString(
                 "amazon_dir_${game.productId}",
@@ -560,7 +566,7 @@ class AmazonGamesActivity : ComponentActivity() {
         val installedDir = prefs!!.getString("amazon_dir_${game.productId}", null)
         if (installedDir == null) return
         lifecycleScope.launch(Dispatchers.IO) {
-            deleteDir(File(installedDir))
+            StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.AMAZON, File(installedDir))
             // Purge the FULL native install record via the canonical helper, and clear the DL
             // manager's registry/library row — so uninstalling from the list keeps the detail
             // page and the cross-store Download Manager in sync (previously it left the DL card

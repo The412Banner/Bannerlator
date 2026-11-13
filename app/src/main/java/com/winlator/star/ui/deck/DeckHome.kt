@@ -128,7 +128,6 @@ import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.ShortcutsXmbView
 import com.winlator.star.ui.screens.xmbRowOf
-import com.winlator.star.ui.screens.WrapperManagerDialog
 import com.winlator.star.ui.screens.XmbAction
 import com.winlator.star.ui.screens.XmbGameHost
 import com.winlator.star.ui.screens.XmbSdBadge
@@ -372,20 +371,14 @@ internal fun DeckHome(
         FilteredEmpty(onClear = { filter = LibraryFilter(sort = filter.sort) }, onAddGame = onAddGame)
     }
 
-    // XMB mode: the Games screen's options column, with a game's settings as nested XMB columns like the Classic XMB.
-    var showWrapperManager by remember { mutableStateOf(false) }
+    // XMB mode: the Games screen's options column. A game's Settings opens the Shortcut Settings page (the Deck's editor);
+    // its other items open as nested XMB columns. The XMB Home lists Community configs third.
     val xmbHost = XmbGameHost(
         remove = { vm.remove(it, context) },
         containers = { vm.containers() },
-        openWrapperManager = { showWrapperManager = true },
     )
     val xmbActionsFor: (Shortcut) -> List<XmbAction> = { s ->
-        // The full-screen XMB keeps a game's settings inside it, as nested columns like the Classic XMB; only the
-        // Steam (Linux) entry, whose settings aren't XMB rows, opens the Deck editor. The XMB Home lists Community configs third.
-        xmbGameActions(
-            context, s, xmbHost, openSettings = { actions.perform(GameMenuAction.SETTINGS, it) }, settingsAsColumns = true,
-            communityThird = xmbHome, editorSections = xmbHome,
-        )
+        xmbGameActions(context, s, xmbHost, openSettings = { actions.perform(GameMenuAction.SETTINGS, it) }, communityThird = xmbHome)
     }
     // XMB home: the plain text tabs under the focused game's title are the peek of the tabs page (XmbTabsPage.kt): Down from the covers, or a
     // tap on a tab, pushes Home up and brings the page up on the last used tab (or the tapped one). Stores, Downloads and Friends are its
@@ -597,7 +590,6 @@ internal fun DeckHome(
             }
         }
     }
-    if (showWrapperManager) WrapperManagerDialog(onDismiss = { showWrapperManager = false })
 
     if (filterOpen) {
         LibraryFilterDialog(

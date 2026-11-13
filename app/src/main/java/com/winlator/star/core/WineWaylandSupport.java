@@ -89,7 +89,7 @@ public final class WineWaylandSupport {
     /**
      * Does this SHORTCUT effectively run on Wayland? Its own "displayBackend" override decides, else
      * the container's choice, gated by the same layer capability — mirrors the shortcut editor's
-     * {@code effectiveWaylandShortcut} and XmbGameSettings' {@code waylandGame}.
+     * {@code effectiveWaylandShortcut} and the Deck editor's {@code waylandGame} (GraphicsSettings).
      */
     public static boolean runsOnWayland(Context context, Shortcut shortcut) {
         if (shortcut == null) return false;

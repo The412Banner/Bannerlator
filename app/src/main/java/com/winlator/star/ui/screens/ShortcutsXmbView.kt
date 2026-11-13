@@ -257,10 +257,12 @@ internal fun ShortcutsXmbView(
     // Opens on the first game (slot 0) unless the cursor was somewhere else.
     var target by remember { mutableIntStateOf(slotOfPath(focusedPath).takeIf { it >= 0 } ?: 0) }
     val pos = remember { mutableFloatStateOf(target.toFloat()) } // visual position, fractional mid-swipe
-    var act by remember { mutableIntStateOf(0) }
+    // The highlighted option and whether the options show are saved with the focused game: coming back from the game's Settings page
+    // (a screen of its own in the Deck shell) lands on the same option.
+    var act by rememberSaveable { mutableIntStateOf(0) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     // Centred home: whether the focused game's options are showing. They belong to one game, so moving closes them.
-    var optsOpen by remember { mutableStateOf(false) }
+    var optsOpen by rememberSaveable { mutableStateOf(false) }
     // Steam home: the card the options opened on. The row glides to its options layout around this card, and goes back from it even
     // when the cursor has moved on meanwhile (which is what closes the options), so it only changes when they open.
     var liftIdx by remember { mutableIntStateOf(target) }
@@ -533,7 +535,6 @@ internal fun ShortcutsXmbView(
                             Key.ButtonB, Key.Escape -> XmbKey.B
                             Key.ButtonL1 -> XmbKey.L1
                             Key.ButtonR1 -> XmbKey.R1
-                            Key.ButtonX -> XmbKey.X
                             else -> null
                         } ?: return@onPreviewKeyEvent false
                         return@onPreviewKeyEvent nav.onKey(k, xmbScope)
@@ -646,8 +647,6 @@ internal fun ShortcutsXmbView(
                             XmbKeyHint("▲ ▼", "Move", hs)
                             if (hi.change) XmbKeyHint("◀ ▶", "Change", hs)
                         }
-                        if (hi.sections) XmbKeyHint("L1 R1", "Section", hs)
-                        if (hi.reset) XmbButtonHint("X", Color(0xFF5B9DFF), "Reset", hs)
                     } else if (hasPad) {
                         XmbButtonHint("A", Color(0xFF3DDC84), if (onAll) allLabel else if (centered) "Options" else actions[actIdx].label, hs)
                         XmbButtonHint("B", Color(0xFFFF5252), "Back", hs)

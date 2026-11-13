@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 22:40 EST — 🔀 MERGED feat/store-revamp (user: "merge to main")
+
+- **Merged:** backup `refs/backup/20261112/main-before-store-revamp` = dd5f4ccc2. `--no-ff` merge of feat/store-revamp 3b122690d.
+- **Tree check:** `git diff 3b122690d <merge> -- . ':!PROGRESS_LOG.md'` = empty → main's code is exactly the build the user tested (CI 43357890841, installed on the Pocket FIT 22:33 EST, base.apk sha256 3d9df239…cfb3).
+- **Proof level:** CI green 4/4 on 3b122690d. Device: the user tested the builds 026e2c28 → 71d2fb0c → 77e544ff → 77f51624 → 3b122690 on the Pocket FIT and steered each fix from screenshots (Lab look, full screen, one-column Store tab, store menu, dialogs, glass icon buttons, no accent, rail, search field keys), then said "merge to main". No logcat pass by me; downloads (speed / time left), Epic / Amazon / Xbox pages, Classic and XMB interfaces were not reported on.
+- **What it is:** every store (Steam, GOG, Epic, Amazon, Xbox) wears the Lab look in every interface: full screen, Lab colours without the accent, bottom tabs in portrait and a text rail in landscape, the store name switches stores, the Lab Library's cards (Covers / Wide / Icons, one setting shared with the Library), a tap opens the game's page, full-art details pages for portrait and landscape with Steam / SteamGridDB fallback art, one download line with speed and time left, Lab panels for menus and dialogs, glass icon buttons. Steam: chips All / Demos / Installed, Add to Library on the game's page.
+- **Open:** old full-library screens, login pages, Downloads and the standalone Friends screen keep the app theme; Steam's details page keeps its own layout; L2/R2 tab cycling in XMB is off in the stores; PR #660 (XMB update) touches the same store files and will need conflict fixes.
+
 ## 2026-11-12 — Store revamp: one look for every store, like the HTML preview (feat/store-revamp, CI building, NOT device-tested)
 **Why:** user: all stores get the same cards / views / details pages; a tap opens details (no tap-to-reveal buttons); details use the full game art in portrait and landscape; each store's own art first, Steam / SteamGridDB as fallback; every download bar shows progress, speed and time left; smaller and tighter; keep Store / Library / Profile tabs (Steam + Friends), Library chips All / Installed (+ Steam Demos, Xbox Game Pass / Owned / Cloud); same look in Classic, Lab and XMB; "just like the html preview" (/sdcard/Download/Bannerlator-store-revamp-preview.html).
 **Built (off main 2ca4c768c):**

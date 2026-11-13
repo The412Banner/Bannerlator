@@ -2,7 +2,6 @@ package com.winlator.star.store
 
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -17,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +52,11 @@ import com.winlator.star.ui.theme.WinlatorTheme
  * through [SteamFriendsStore], which rides the live [SteamRepository] CM session.
  */
 class SteamFriendsActivity : ComponentActivity() {
+    // Left-to-right layout whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         /** Intent extra (SteamID64 Long): open straight into this friend's chat. 0 / absent = list. */
@@ -177,13 +180,7 @@ fun SteamFriendsRoot(
             // Invite is a no-op stub for now (game/lobby invites aren't wired to the CM yet).
             onInvite = { Toast.makeText(ctx, "Game invites are coming soon", Toast.LENGTH_SHORT).show() },
             onRemove = { SteamFriendsStore.removeFriend(pf.steamId); profileFriend = null },
-            onViewOnSteam = {
-                runCatching {
-                    ctx.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/${pf.steamId}")),
-                    )
-                }
-            },
+            onViewOnSteam = { openSteamProfileInBrowser(ctx, pf.steamId) },
         )
         return
     }
@@ -227,25 +224,6 @@ fun SteamFriendsRoot(
 }
 
 /**
- * Live "friends available" flag, re-evaluated on every repository session event so the connect/empty
- * state and the roster appear/disappear without a screen restart.
- */
-@Composable
-private fun rememberFriendsAvailable(): Boolean {
-    var available by remember { mutableStateOf(runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(false)) }
-    DisposableEffect(Unit) {
-        val repo = SteamRepository.getInstance()
-        val l = SteamRepository.SteamEventListener {
-            available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)
-        }
-        repo.addListener(l)
-        available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)
-        onDispose { repo.removeListener(l) }
-    }
-    return available
-}
-
-/**
  * Login-gated entry-point icon for the Steam friends screen. Shown ONLY when the user has a Steam
  * session ([SteamPrefs.isLoggedIn]) — the same gate the connection pill uses — and re-evaluates on
  * the repository's event bus so it appears/disappears without an app restart. Dropped into three
@@ -254,20 +232,7 @@ private fun rememberFriendsAvailable(): Boolean {
 @Composable
 fun SteamFriendsAction(tint: Color = Color.White) {
     val ctx = LocalContext.current
-    var loggedIn by remember { mutableStateOf(runCatching { SteamPrefs.isLoggedIn }.getOrDefault(false)) }
-    DisposableEffect(Unit) {
-        val repo = SteamRepository.getInstance()
-        val l = SteamRepository.SteamEventListener { ev ->
-            if (ev.startsWith("SteamStatus:") || ev.startsWith("LoggedIn") ||
-                ev == "LoggedOut" || ev == "SessionExpired"
-            ) {
-                loggedIn = runCatching { SteamPrefs.isLoggedIn }.getOrDefault(loggedIn)
-            }
-        }
-        repo.addListener(l)
-        loggedIn = runCatching { SteamPrefs.isLoggedIn }.getOrDefault(loggedIn)
-        onDispose { repo.removeListener(l) }
-    }
+    val loggedIn = rememberSteamLoggedIn()
     if (!loggedIn) return
     val unread by SteamFriendsStore.unread.collectAsState()
     val incoming by SteamFriendsStore.incomingRequests.collectAsState()

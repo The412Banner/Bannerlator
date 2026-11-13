@@ -72,6 +72,11 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 class AmazonGameDetailActivity : ComponentActivity() {
+    // Left-to-right layout whatever the phone's language (see AppLocale).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.winlator.star.AppLocale.wrap(newBase))
+    }
+
 
     companion object {
         const val RESULT_REFRESH = 100

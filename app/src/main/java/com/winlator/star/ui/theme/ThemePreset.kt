@@ -108,6 +108,21 @@ data class ThemePreset(
 }
 
 val themePresets: List<ThemePreset> = listOf(
+    // Neutral near-black grays with a soft blue accent: the default preset, and the look the XMB glass is modelled on (its
+    // surfaces carry no colour, so the glass derived from them is plain charcoal). The XMB panels' fills are fairly light
+    // (alpha 0.085 / 0.12, see XmbBackdrop's FROST_*_ALPHA), so onSurfaceVariant is lifted a little by the XMB contrast helper
+    // (XmbGlass.secondaryText) to stay readable on the lightest glass.
+    ThemePreset(
+        name          = "Charcoal",
+        background    = Color(0xFF151515),
+        surface       = Color(0xFF1F1F1F),
+        surfaceVariant= Color(0xFF2A2A2A),
+        primary       = Color(0xFF8AB4FF),
+        onSurface     = Color(0xFFE8E8E8),
+        onSurfaceVariant = Color(0xFFC0C0C0),
+        onPrimary     = Color(0xFF06142E),
+        divider       = Color(0xFF2E2E2E),
+    ),
     ThemePreset(
         name          = "Classic Dark",
         background    = Color(0xFF1A1A1A),
@@ -166,7 +181,7 @@ val themePresets: List<ThemePreset> = listOf(
         surfaceVariant= Color(0xFF252630),
         primary       = Color(0xFF64748B),
     ),
-    // ── Extended preset selection (added 2026-06-30; all opt-in, AMOLED stays the default) ──
+    // ── Extended preset selection (added 2026-06-30; all opt-in) ──
     // Each carries only its core shades; the elevation ramp (surfaceContainer family) and
     // accentDim derive automatically. onPrimary is forced dark on light/bright accents
     // (phosphor green, gold, frost cyan, near-white mono) so on-accent text/icons stay legible.
@@ -250,5 +265,35 @@ val themePresets: List<ThemePreset> = listOf(
 )
 
 // "Custom" is always the last entry, so its index tracks the list size. New named presets
-// are inserted *before* it, so existing saved indices 0..6 keep pointing at the same preset.
+// are inserted *before* it.
 val CUSTOM_PRESET_INDEX = themePresets.size - 1
+
+/** The preset a fresh install, and anyone who never picked one, starts on. */
+const val DEFAULT_PRESET_NAME = "Charcoal"
+
+/** Where [DEFAULT_PRESET_NAME] sits in [themePresets]. */
+val DEFAULT_PRESET_INDEX = themePresets.indexOfFirst { it.name == DEFAULT_PRESET_NAME }.coerceAtLeast(0)
+
+// A preset is saved by NAME (`preset_name`), not by its position in the list above, so adding or reordering presets can never
+// make a saved choice point at another one. Before names were saved, `preset_index` held the position, in this order (Custom
+// last); that order is frozen here only to read those old values back.
+internal val LEGACY_PRESET_NAMES: List<String> = listOf(
+    "Classic Dark", "AMOLED", "Ocean", "Forest", "Sunset", "Rose", "Steel",
+    "Midnight Cobalt", "Phosphor", "Carbon & Ember", "Amethyst", "Crimson", "Synthwave", "Royal Gold", "Frost", "Monochrome",
+    "Custom",
+)
+
+/** The position `preset_index` gave Custom before names were saved. */
+internal val LEGACY_CUSTOM_INDEX = LEGACY_PRESET_NAMES.size - 1
+
+/**
+ * Which entry of [names] a saved choice means. A saved [savedName] wins; else an old `preset_index` ([legacyIndex]) is read
+ * through [LEGACY_PRESET_NAMES]; a name that no longer exists, an index out of range and nothing saved at all give
+ * [DEFAULT_PRESET_NAME] (or the first entry if even that is missing).
+ */
+internal fun resolveSavedPresetIndex(names: List<String>, savedName: String?, legacyIndex: Int?): Int {
+    val name = savedName ?: legacyIndex?.let { LEGACY_PRESET_NAMES.getOrNull(it) }
+    val found = if (name == null) -1 else names.indexOf(name)
+    if (found >= 0) return found
+    return names.indexOf(DEFAULT_PRESET_NAME).coerceAtLeast(0)
+}

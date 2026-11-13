@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,13 +23,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.winlator.star.ui.deck.DeckInk
+import com.winlator.star.ui.deck.XmbGroupItem
 import com.winlator.star.ui.deck.deckFocusRing
-import com.winlator.star.ui.deck.deckLine
+import com.winlator.star.ui.deck.deckFocusRingInk
+import com.winlator.star.ui.deck.deckInset
+import com.winlator.star.ui.deck.deckLineAt
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHome
+import com.winlator.star.ui.deck.xmbInner
 
 // What the Deck settings pages share besides their rows: a section (a list, a picker, an order, an
 // action) that a host screen adds to a category page, the action lines those sections show, and the
@@ -97,28 +107,46 @@ internal fun actionItems(prefix: String, label: String?, actions: List<DeckActio
 
 @Composable
 internal fun DeckActionRow(action: DeckAction) {
-    val cs = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
-            .clickable(enabled = action.enabled, onClick = action.onClick)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-    ) {
-        Icon(action.icon, contentDescription = null, tint = if (action.enabled) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(action.label, color = if (action.enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(action.hint, color = cs.onSurfaceVariant, fontSize = 13.5.sp, modifier = Modifier.padding(top = 2.dp))
+    DeckInk { item, cs ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbRowInset()
+                .deckFocusRingInk(RoundedCornerShape(12.dp), item, scaleTo = 1f)
+                .clickable(enabled = action.enabled, onClick = action.onClick)
+                .padding(horizontal = xmbRowPad(18.dp), vertical = 14.dp),
+        ) {
+            Icon(action.icon, contentDescription = null, tint = if (action.enabled) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(action.label, color = if (action.enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(action.hint, color = cs.onSurfaceVariant, fontSize = 13.5.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
         }
-        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
     }
 }
 
 /**
+ * In the XMB interface a row of a group card is inset a little, so the gliding outline sits inside the card's rounded corners and
+ * clear of the hairlines between rows; elsewhere nothing changes. Pair it with [xmbRowPad] on the row's own padding.
+ */
+@Composable
+internal fun Modifier.xmbRowInset(): Modifier = if (rememberXmbHome()) this.padding(horizontal = 6.dp, vertical = 3.dp) else this
+
+/** [base] less the 6 dp [xmbRowInset] takes in the XMB interface, so the text stays where it was. */
+@Composable
+internal fun xmbRowPad(base: Dp): Dp = if (rememberXmbHome()) base - 6.dp else base
+
+/**
  * A line of a section's card: a title and hint on the left, [trailing] on the right. With [onClick]
  * the whole line is the focus target and A runs it; otherwise the trailing controls take the focus.
+ *
+ * XMB interface: the line is always ONE stop of the D-pad. With [onClick] it is a plain stop (the trailing content is display
+ * only there, taps still work); with [activate] A runs that (a switch in [trailing] that A flips) and the trailing content is
+ * display only too; with neither, A enters the line and the buttons in [trailing] take the focus (B comes back). Outside XMB
+ * [activate] is not used and nothing changes.
  */
 @Composable
 internal fun DeckLine(
@@ -128,18 +156,56 @@ internal fun DeckLine(
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     error: Boolean = false,
+    activate: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val cs = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+    if (rememberXmbHome()) {
+        val shape = deckShape(12.dp)
+        val inset = Modifier.fillMaxWidth().xmbRowInset()
+        when {
+            onClick != null -> DeckInk { item, cs ->
+                DeckLineBody(
+                    cs, label, hint, icon, enabled, error, trailing, Modifier.focusProperties { canFocus = false },
+                    inset.deckFocusRingInk(shape, item, scaleTo = 1f).clip(shape).clickable(enabled = enabled, onClick = onClick),
+                )
+            }
+            activate != null -> XmbGroupItem(rememberXmbFocusGroup(), shape, inset, onActivate = { if (enabled) activate() }) {
+                DeckLineBody(MaterialTheme.colorScheme, label, hint, icon, enabled, error, trailing, Modifier.focusProperties { canFocus = false }, Modifier.fillMaxWidth())
+            }
+            trailing != null -> XmbGroupItem(rememberXmbFocusGroup(), shape, inset) {
+                DeckLineBody(MaterialTheme.colorScheme, label, hint, icon, enabled, error, trailing, Modifier.xmbInner(first = true), Modifier.fillMaxWidth())
+            }
+            else -> DeckLineBody(MaterialTheme.colorScheme, label, hint, icon, enabled, error, null, Modifier, inset)
+        }
+        return
+    }
+    DeckLineBody(
+        MaterialTheme.colorScheme, label, hint, icon, enabled, error, trailing, Modifier,
+        Modifier
             .fillMaxWidth()
             .then(
                 if (onClick != null) Modifier.deckFocusRing(deckShape(12.dp), scaleTo = 1f).clickable(enabled = enabled, onClick = onClick)
                 else Modifier
-            )
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            ),
+    )
+}
+
+/** The content of a [DeckLine]; [modifier] carries whatever makes it focusable, [trailingModifier] the trailing row's. */
+@Composable
+private fun DeckLineBody(
+    cs: ColorScheme,
+    label: String,
+    hint: String?,
+    icon: ImageVector?,
+    enabled: Boolean,
+    error: Boolean,
+    trailing: (@Composable () -> Unit)?,
+    trailingModifier: Modifier,
+    modifier: Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(horizontal = xmbRowPad(18.dp), vertical = 12.dp),
     ) {
         icon?.let {
             Icon(it, contentDescription = null, tint = if (enabled) cs.primary else cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
@@ -162,32 +228,34 @@ internal fun DeckLine(
         }
         trailing?.let {
             Spacer(Modifier.width(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { it() }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = trailingModifier) { it() }
         }
     }
 }
 
-/** A small outlined button for a section line (Remove, Move up, Browse…). */
+/** A small outlined button for a section line (Remove, Move up, Browse…). Inside an XMB line it is one of its inner buttons. */
 @Composable
 internal fun DeckSmallButton(label: String, icon: ImageVector? = null, enabled: Boolean = true, onClick: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
     val shape = deckShape(12.dp)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .deckFocusRing(shape, scaleTo = 1f)
-            .clip(shape)
-            .background(cs.surfaceVariant.copy(alpha = 0.45f))
-            .border(1.dp, deckLine().copy(alpha = 0.7f), shape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    ) {
-        icon?.let {
-            Icon(it, contentDescription = if (label.isEmpty()) null else label, tint = if (enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
-            if (label.isNotEmpty()) Spacer(Modifier.width(6.dp))
-        }
-        if (label.isNotEmpty()) {
-            Text(label, color = if (enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+    DeckInk { item, cs ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .deckFocusRingInk(shape, item, scaleTo = 1f)
+                .xmbInner()
+                .clip(shape)
+                .background(deckInset(0.45f))
+                .border(1.dp, deckLineAt(0.7f), shape)
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            icon?.let {
+                Icon(it, contentDescription = if (label.isEmpty()) null else label, tint = if (enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                if (label.isNotEmpty()) Spacer(Modifier.width(6.dp))
+            }
+            if (label.isNotEmpty()) {
+                Text(label, color = if (enabled) cs.onSurface else cs.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+            }
         }
     }
 }

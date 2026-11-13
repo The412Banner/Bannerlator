@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,13 +27,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,14 +46,13 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.core.NewContainerDefaults
 import com.winlator.star.core.WinePath
 import com.winlator.star.linux.LinuxSettings
-import com.winlator.star.ui.DeckDialogBars
-import com.winlator.star.ui.DeckDialogScaled
-import com.winlator.star.ui.Screen
+import com.winlator.star.ui.deck.isDeckCompact
+import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.screens.ContainerDetailViewModel
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.GamesScreenRequests
-import com.winlator.star.ui.screens.LogManagerScreen
 import com.winlator.star.ui.screens.ShortcutSettingsDialogScreen
+import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
@@ -69,7 +66,7 @@ internal object DeckSettingsRoutes {
 
     fun game(path: String) = "deck_settings_game?path=" + Uri.encode(path)
     fun container(id: Int) = "deck_settings_container/$id"
-    /** The Simple style's New container: the container editor on a new form ([container] of this id). */
+    /** New container: the container editor on a new form ([container] of this id, in create mode; the XMB interface and Lab). */
     const val NEW_CONTAINER_ID = -1
 
     /** Every editor route. They draw their own header, so the shell hides its page bar for them. */
@@ -78,10 +75,15 @@ internal object DeckSettingsRoutes {
     /** The container and All-containers editors sit under the Containers tab. */
     fun isContainerEditor(route: String?) = route == DEFAULTS || route?.startsWith("deck_settings_container") == true
 
-    /** Where the Deck shell sends the Containers list's Edit and New Container Defaults. Create stays on the classic form. */
+    /**
+     * Where the Deck shell sends the Containers list's Edit, Defaults for new containers and New container. New container is the
+     * editor in create mode in the XMB interface only: the plain Deck (and the Classic shell, which passes no editor route at
+     * all) keep the classic create form.
+     */
     fun containerEditorFor(id: Int): String? = when {
         id > 0 -> container(id)
         id == ContainerDetailViewModel.EDIT_DEFAULTS_ID -> DEFAULTS
+        id == NEW_CONTAINER_ID && AppThemeState.deckXmbHome.value -> container(NEW_CONTAINER_ID)
         else -> null
     }
 }
@@ -106,7 +108,7 @@ internal fun BindDeckSettingsBus(navController: NavHostController) {
     }
 }
 
-internal fun NavGraphBuilder.deckSettingsRoutes(navController: NavHostController, onAbout: () -> Unit) {
+internal fun NavGraphBuilder.deckSettingsRoutes(navController: NavHostController, onAbout: () -> Unit, onMyAccount: (() -> Unit)? = null) {
     composable(
         route = DeckSettingsRoutes.GAME,
         arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" }),
@@ -123,7 +125,7 @@ internal fun NavGraphBuilder.deckSettingsRoutes(navController: NavHostController
         DeckContainerSettings(ContainerDetailViewModel.EDIT_DEFAULTS_ID, navController)
     }
     composable(DeckSettingsRoutes.APP) {
-        DeckAppSettings(navController, onAbout)
+        DeckAppSettings(navController, onAbout, onMyAccount)
     }
 }
 
@@ -208,8 +210,14 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
     // The Graphics page's downloads and tools: a Wine game only, like the components page.
     val graphics = remember(source) { if (env.world != World.WINE) null else DeckGraphicsState(env, source, coroutines) }
     // The pages' lists, pickers and actions (each section says where it applies).
-    val sections = remember(source) { deckSections(env, source, coroutines) }
+    // XMB only: the Win components tab, the tab layout and the "Get more" buttons. The plain Deck and Lab keep the registry's own
+    // categories, the components on the Windows components page and the download actions in the lists.
+    val xmb = rememberXmbHome()
+    val sections = remember(source, xmb) { deckSections(env, source, coroutines, xmb) }
     val extras = remember(components, graphics, sections) { categoryExtras(components, graphics, sections) }
+    // The XMB tabs: Game first, then the container pages' (Linux runtime too for the Linux Steam client entry).
+    val layout = remember(env.world, xmb) { if (xmb) ContainerLayout.forScope(EditorScope.GAME, env.world) else null }
+    if (xmb) BindGetMore(env, graphics, sections)
     LaunchedEffect(components) { components?.load() }
     OnReturn {
         // A picker a section opened hands its result to this form, so it is not reloaded under it.
@@ -232,7 +240,7 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
     // Only a Wine game follows a Wine container: the Linux Steam client entry and Android games are
     // never linked to the container editor.
     val chain = if (env.world != World.WINE) emptyList() else listOf(
-        ChainLink(L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
+        ChainLink(if (xmb) L("New-container defaults") else L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
         ChainLink(containerName, Icons.Filled.Inventory2) { navController.navigate(DeckSettingsRoutes.container(containerId)) },
         ChainLink(L("This game"), Icons.Filled.SportsEsports, null),
     )
@@ -281,6 +289,7 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
         },
         onChainLink = { link -> link.onClick?.invoke() },
         extras = extras,
+        layout = layout,
     )
     components?.let { DeckComponentsDialogs(it) }
     graphics?.let { DeckGraphicsDialogs(it) }
@@ -321,7 +330,7 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
 private fun DeckContainerSettings(id: Int, navController: NavHostController) {
     val context = LocalContext.current
     val defaultsMode = id == ContainerDetailViewModel.EDIT_DEFAULTS_ID
-    // A new container (the Simple style's New container): the same form the classic create screen fills, saved by its confirm().
+    // A new container (the XMB interface's and Lab's New container): the same form the classic create screen fills, saved by its confirm().
     val createMode = id == DeckSettingsRoutes.NEW_CONTAINER_ID
     var generation by remember { mutableIntStateOf(0) }
     // All containers keeps a profile per architecture; the one being edited survives a save or discard.
@@ -353,7 +362,12 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         if (!defaultsMode && c != null && LinuxSettings.isLinuxContainer(c)) null else DeckGraphicsState(env, source, coroutines)
     }
     // The pages' lists, pickers and actions (each section says where it applies).
-    val sections = remember(source) { deckSections(env, source, coroutines) }
+    // XMB only: the Win components tab, the tab layout and the "Get more" buttons (see DeckGameSettings).
+    val xmb = rememberXmbHome()
+    val sections = remember(source, xmb) { deckSections(env, source, coroutines, xmb) }
+    // The XMB tabs: the same ones for New container, Defaults for new containers and Edit container.
+    val layout = remember(scope, xmb) { if (xmb) ContainerLayout.forScope(scope) else null }
+    if (xmb) BindGetMore(env, graphics, sections)
     OnReturn {
         // A picker a section opened (a drive's folder, a wallpaper) hands its result to this form, so it is not reloaded under it.
         val keep = sections.any { it.keepsForm }
@@ -384,8 +398,8 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         EditorHeader(overline = L("New container"), title = L("New Container"), icon = Icons.Filled.Inventory2)
     } else if (defaultsMode) {
         EditorHeader(
-            overline = L("Defaults for every container"),
-            title = L("All containers"),
+            overline = if (xmb) L("Container defaults") else L("Defaults for every container"),
+            title = if (xmb) L("Defaults for new containers") else L("All containers"),
             icon = Icons.Filled.Layers,
             subtitle = L("New containers start from these values. Existing containers keep their own."),
         )
@@ -395,7 +409,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
             title = vm.container?.name ?: vm.containerName,
             icon = Icons.Filled.Inventory2,
             chain = listOf(
-                ChainLink(L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
+                ChainLink(if (xmb) L("New-container defaults") else L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
                 ChainLink(L("This container"), Icons.Filled.Inventory2, null),
             ),
             meta = listOf(vm.selectedWineVersion, if (vm.isArm64EC) "arm64ec" else "x86_64").filter { it.isNotEmpty() }.joinToString(" · "),
@@ -434,6 +448,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
             }
         }),
         extras = extras,
+        layout = layout,
     )
     components?.let { DeckComponentsDialogs(it) }
     graphics?.let { DeckGraphicsDialogs(it) }
@@ -441,10 +456,31 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
 }
 
 /**
+ * Connects the rows' "Get more" button (SettingDef.getMore) to this page's download sheets: the Graphics page's, the
+ * Wine version's and the translators'. Set on [env] before the editor draws; it always reaches the current [graphics]
+ * and [sections], which the page rebuilds when its form reloads.
+ */
+@Composable
+private fun BindGetMore(env: SettingsEnv, graphics: DeckGraphicsState?, sections: List<DeckSection>) {
+    val latestGraphics by rememberUpdatedState(graphics)
+    val latestSections by rememberUpdatedState(sections)
+    val open: (String) -> Unit = remember(env) {
+        { kind: String -> openGetMore(kind, latestGraphics, latestSections); Unit }
+    }
+    env.getMoreOpen = open
+}
+
+/** Opens the download sheet of [kind] on the first part of the page that has it; false when none does. */
+private fun openGetMore(kind: String, graphics: DeckGraphicsState?, sections: List<DeckSection>): Boolean =
+    graphics?.openGetMore(kind) == true ||
+        sections.filterIsInstance<DeckWindowsSection>().any { it.openGetMore(kind) } ||
+        sections.filterIsInstance<DeckTranslatorDownloads>().any { it.openGetMore(kind) }
+
+/**
  * Every section of the game, container and All-containers editors. Each one returns no page items
  * where it doesn't apply (scope, world), so one list serves all three.
  */
-private fun deckSections(env: SettingsEnv, source: SettingsSource, scope: CoroutineScope): List<DeckSection> = listOf(
+private fun deckSections(env: SettingsEnv, source: SettingsSource, scope: CoroutineScope, xmb: Boolean): List<DeckSection> = listOf(
     DeckIconSection(env, source, scope),
     DeckWrapperDetectedSection(env, source, scope),
     DeckPerformanceSection(env, source, scope),
@@ -453,7 +489,7 @@ private fun deckSections(env: SettingsEnv, source: SettingsSource, scope: Corout
     DeckAudioSection(env, source, scope),
     DeckInputSection(env, source, scope),
     DeckOverlaySection(env, source, scope),
-    DeckWindowsSection(env, source, scope),
+    DeckWindowsSection(env, source, scope, xmb),
     DeckLinuxSection(env, source, scope),
     DeckEnvVarsSection(env, source, scope),
 )
@@ -473,60 +509,16 @@ private fun categoryExtras(components: DeckComponentsState?, graphics: DeckGraph
 
 @Composable
 private fun ArchSwitch(arch: String, onArch: (String) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(L("Container type"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    // XMB two-pane layout: the slim header (see SlimHeader in DeckSettingsEditor.kt), so this is the compact form too.
+    val slim = rememberXmbHome() && !isDeckCompact(LocalConfiguration.current)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (slim) 8.dp else 12.dp)) {
+        // XMB two-pane: the switch sits in the tab's title line, between its hint and the Simple / Advanced switch; no room for a label.
+        if (!slim) Text(L("Container type"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         DeckSegmented(
             options = listOf(Opt(NewContainerDefaults.ARCH_ARM64EC, "ARM64EC"), Opt(NewContainerDefaults.ARCH_X86_64, "x86-64")),
             value = arch,
             onPick = onArch,
+            slim = slim,
         )
-    }
-}
-
-// ── App settings ────────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun DeckAppSettings(navController: NavHostController, onAbout: () -> Unit) {
-    val context = LocalContext.current
-    val env = remember { SettingsEnv(context, EditorScope.APP, null, null) }
-    val source = remember { AppSource(env) }
-    var showLogs by remember { mutableStateOf(false) }
-    DeckSettingsEditor(
-        header = EditorHeader(
-            overline = "Bannerlator",
-            title = L("Settings"),
-            icon = Icons.Filled.Settings,
-            subtitle = L("Every app setting applies straight away."),
-        ),
-        source = source,
-        categories = AppSettingsRegistry.categories,
-        defs = AppSettingsRegistry.defs,
-        handoffs = AppSettingsRegistry.handoffs,
-        onExit = null,
-        onHandoff = { h ->
-            when (h.target) {
-                AppSettingsRegistry.TARGET_APPEARANCE -> navController.navigate(
-                    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.APPEARANCE else Screen.Appearance.route,
-                )
-                AppSettingsRegistry.TARGET_LOGS -> showLogs = true
-                AppSettingsRegistry.TARGET_ABOUT -> onAbout()
-                AppSettingsRegistry.TARGET_INPUT_CONTROLS -> navController.navigate(
-                    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.CONTROLS else Screen.InputControls.route,
-                )
-                AppSettingsRegistry.TARGET_CONTENTS -> navController.navigate(
-                    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) com.winlator.star.ui.simple.SimpleRoutes.DRIVERS else Screen.Contents.route,
-                )
-                AppSettingsRegistry.TARGET_DEFAULTS -> navController.navigate(DeckSettingsRoutes.DEFAULTS)
-                else -> navController.navigate(Screen.Settings.route)
-            }
-        },
-    )
-    if (showLogs) {
-        Dialog(onDismissRequest = { showLogs = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            DeckDialogBars()
-            DeckDialogScaled {
-                LogManagerScreen(onClose = { showLogs = false })
-            }
-        }
     }
 }

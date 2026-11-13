@@ -91,7 +91,12 @@ object DeckInGameState {
     // Lab: one in-game menu whose first page is Quick (the quick menu's controls), then the full menu's pages.
     private val _labQuick = MutableStateFlow(true)
     val labQuick: StateFlow<Boolean> = _labQuick
-    private val lab: Boolean get() = com.winlator.star.ui.theme.AppThemeState.simpleHome.value
+    // The XMB mode's drawer is Lab's menu in XMB dress (XmbInGameMenu), so it runs the same state machine. The two styles
+    // never run together (AppThemeState keeps simpleHome and deckXmbHome apart).
+    private val lab: Boolean get() = com.winlator.star.ui.theme.AppThemeState.simpleHome.value || xmbDrawer
+
+    /** XMB mode: the in-game menu is the one glass drawer on the left (XmbInGameMenu) instead of the Deck's quick menu + game menu. */
+    val xmbDrawer: Boolean get() = com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value
 
     fun openQuick() {
         if (lab) _labQuick.value = true

@@ -48,6 +48,8 @@ object StoreDownloadHooks {
                 append(formatDownloadSize(e.installDone)).append(" / ")
                 append(formatDownloadSize(e.installTotal)).append(')')
             }
+            // Epic's downloader now feeds a smoothed speed; the other stores' shade lines stay as they were.
+            if (e.store == Store.EPIC && e.speedBps > 0L) append("  ·  ").append(formatDownloadSpeed(e.speedBps))
         }
         DownloadForegroundService.setProgress(k, line)
     }
@@ -106,6 +108,8 @@ object StoreDownloadHooks {
         speedBps: Long = 0L,
         etaSeconds: Long = -1L,
     ) {
+        // A paused row is never revived by a late tick of the run that was stopped; a resume registers the download afresh.
+        if (DownloadRegistry.get(key(store, id))?.state == DownloadState.PAUSED) return
         // A downloader that reports no rate still gets one, measured from the bytes between ticks.
         var bps = speedBps
         var eta = etaSeconds
@@ -155,6 +159,28 @@ object StoreDownloadHooks {
             )
         }
         pushNotification(store, id)
+    }
+
+    /**
+     * The user paused a download whose transfer has stopped (files and progress kept): the row stays, as PAUSED, with its bytes and
+     * percent as they were, no speed / ETA. [pause] / [cancel] are the handles of a paused row (Resume / Cancel). Drops the shade line
+     * (a paused download needs no foreground service). Only for stores that support pause.
+     */
+    fun markPaused(store: Store, id: String, pause: (() -> Unit)?, cancel: (() -> Unit)?) {
+        val k = key(store, id)
+        rates.remove(k)
+        DownloadRegistry.update(k) {
+            it.copy(
+                state = DownloadState.PAUSED,
+                speedBps = 0L,
+                etaSeconds = -1L,
+                queuePosition = 0,
+                supportsPause = true,
+                pause = pause,
+                cancel = cancel,
+            )
+        }
+        DownloadForegroundService.finish(k)
     }
 
     /**

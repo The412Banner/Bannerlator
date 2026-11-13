@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.winlator.star.ui.theme.DangerRed
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -146,7 +146,7 @@ private fun XmbRow.disabled(): String? = when (this) {
     is XmbRow.Action -> disabledReason
     is XmbRow.Header, is XmbRow.Info, is XmbRow.External -> null
 }
-private fun XmbRow.sub(): String? = disabled() ?: when (this) {
+private fun XmbRow.sub(): String? = disabled() ?: (when (this) {
     is XmbRow.Toggle -> subtitle
     is XmbRow.Choice -> subtitle
     is XmbRow.Text -> subtitle
@@ -156,7 +156,7 @@ private fun XmbRow.sub(): String? = disabled() ?: when (this) {
     is XmbRow.Info -> subtitle
     is XmbRow.External -> subtitle
     is XmbRow.Header -> null
-}
+} ?: editorHint)
 private fun XmbRow.iconOrNull(): ImageVector? = when (this) {
     is XmbRow.Toggle -> icon
     is XmbRow.Choice -> icon
@@ -196,8 +196,9 @@ private fun XmbNavState.commitChoice(row: XmbRow.Choice, value: String, xmb: Xmb
     if (value in row.disabledOptions) { xmb.toast("Not available here"); return }
     picker = null
     if (value == row.selected) return
+    val commit = { row.onSelect(value); bump() }
     val c = row.confirm?.invoke(value)
-    if (c != null) xmb.confirm(c) { row.onSelect(value); bump() } else { row.onSelect(value); bump() }
+    if (c != null) xmb.confirm(c, commit) else commit()
 }
 
 private fun XmbNavState.adjust(row: XmbRow, d: Int, xmb: XmbScope) {
@@ -250,7 +251,7 @@ private fun XmbNavState.switchSibling(d: Int) {
     val s = m.siblings ?: return
     val n = ((s.index + d) % s.count + s.count) % s.count
     val next = s.make(n)
-    next.siblings = s.let { XmbSiblings(n, it.count, it.make, it.parentKey) }
+    next.siblings = XmbSiblings(n, s.count, s.make, s.parentKey)
     m.onClose?.invoke()
     picker = null; editingKey = null
     stack[stack.lastIndex] = next
@@ -260,6 +261,8 @@ private fun XmbNavState.switchSibling(d: Int) {
 /** One key press while menus are open. Always consumes (the XMB owns the keys while nested). */
 internal fun XmbNavState.onKey(k: XmbKey, xmb: XmbScope): Boolean {
     val m = top ?: return false
+    // X only means "reset this row" on a plain row list: while typing, choosing or in a panel it stays unhandled, as before.
+    if (k == XmbKey.X && (editingKey != null || picker != null || m.panel != null)) return false
     if (editingKey != null) {
         when (k) { XmbKey.A -> commitEdit(xmb); XmbKey.B -> pop(); else -> {} }
         return true
@@ -286,12 +289,14 @@ internal fun XmbNavState.onKey(k: XmbKey, xmb: XmbScope): Boolean {
         XmbKey.B -> pop()
         XmbKey.L1 -> switchSibling(-1)
         XmbKey.R1 -> switchSibling(1)
+        // Only a row changed for this game has something to reset; on any other X goes on to whoever wanted it.
+        XmbKey.X -> { val ov = row?.overridden ?: return false; ov.reset() }
     }
     return true
 }
 
 /** What the A hint should say, and whether ◀▶ / L1 R1 apply right now. */
-internal data class XmbHint(val a: String, val change: Boolean, val sections: Boolean)
+internal data class XmbHint(val a: String, val change: Boolean, val sections: Boolean, val reset: Boolean = false)
 internal fun XmbNavState.hint(xmb: XmbScope): XmbHint {
     val m = top ?: return XmbHint("Select", false, false)
     if (editingKey != null) return XmbHint("Done", false, false)
@@ -306,7 +311,7 @@ internal fun XmbNavState.hint(xmb: XmbScope): XmbHint {
         is XmbRow.External -> "Open ↗"
         else -> "Select"
     }
-    return XmbHint(a, row != null && row.adjustable(), m.siblings != null)
+    return XmbHint(a, row != null && row.adjustable(), m.siblings != null, reset = row?.overridden != null)
 }
 
 // ── rendering ──
@@ -362,7 +367,7 @@ internal fun XmbNestedLayer(
             val flash = nav.savedAt
             var showSaved by remember { mutableStateOf(false) }
             LaunchedEffect(flash) {
-                if (flash > 0L && System.currentTimeMillis() - flash < 1500L) { showSaved = true; kotlinx.coroutines.delay(1200); showSaved = false }
+                if (flash > 0L && System.currentTimeMillis() - flash < 1500L) { showSaved = true; delay(1200); showSaved = false }
             }
             val sa by animateFloatAsState(if (showSaved) 1f else 0f, tween(250), label = "xmbSaved")
             Text("✓ Saved", color = Color(0xFF3DDC84), fontSize = 11.sp, modifier = Modifier.graphicsLayer { alpha = sa })
@@ -521,18 +526,32 @@ private fun XmbRowView(
             }
         }
         Column(Modifier.weight(1f)) {
-            Text(
-                row.label,
-                color = when { danger && !selected -> Color(0xFFE8A197); selected -> Color.White; else -> Color.White.copy(alpha = 0.64f) },
-                fontSize = if (selected) 15.sp else 13.5.sp,
-                fontWeight = if (selected) FontWeight.Normal else FontWeight.Light,
-                maxLines = if (row is XmbRow.Info && row.value.isEmpty()) 2 else 1, overflow = TextOverflow.Ellipsis,
-                lineHeight = 17.sp,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    row.editorLabel ?: row.label,
+                    color = when { danger && !selected -> Color(0xFFE8A197); selected -> Color.White; else -> Color.White.copy(alpha = 0.64f) },
+                    fontSize = if (selected) 15.sp else 13.5.sp,
+                    fontWeight = if (selected) FontWeight.Normal else FontWeight.Light,
+                    maxLines = if (row is XmbRow.Info && row.value.isEmpty()) 2 else 1, overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                // Changed for this game only (the container's value is not in use): one small dot in the accent, nothing else.
+                if (row.overridden != null) Box(Modifier.size(5.dp).clip(CircleShape).background(accent))
+            }
             val sub = row.sub()
             if (selected && sub != null) {
                 Text(sub, color = Color.White.copy(alpha = 0.62f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        // The touch way to put the container's value back (a controller presses X): only on the highlighted row that is changed.
+        val ov = row.overridden
+        if (selected && ov != null && !editing) {
+            val resetSrc = remember { MutableInteractionSource() }
+            val chip = RoundedCornerShape(6.dp)
+            Text("Reset", color = Color.White.copy(alpha = 0.7f), fontSize = 10.5.sp, maxLines = 1,
+                modifier = Modifier.clip(chip).border(1.dp, Color.White.copy(alpha = 0.22f), chip)
+                    .xmbClick(resetSrc) { ov.reset() }.padding(horizontal = 7.dp, vertical = 2.dp))
         }
         if (editing && row is XmbRow.Text) {
             XmbEditField(row, nav, xmb, accent)
@@ -615,7 +634,7 @@ private fun XmbPickerPanel(
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
             .border(1.dp, Color.White.copy(alpha = 0.1f), shape),
     ) {
-        Text(p.row.label.uppercase(), color = Color(0xFF999999), fontSize = 10.5.sp, letterSpacing = 1.sp,
+        Text((p.row.editorLabel ?: p.row.label).uppercase(), color = Color(0xFF999999), fontSize = 10.5.sp, letterSpacing = 1.sp,
             modifier = Modifier.padding(start = 12.dp, top = 8.dp))
         p.row.options.forEachIndexed { j, opt ->
             val y = centerY - top - 18f + (j - p.sel) * 36f

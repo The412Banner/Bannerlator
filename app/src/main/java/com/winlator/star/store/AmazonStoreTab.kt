@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,13 +27,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winlator.star.ui.deck.XmbGroupItem
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
+import com.winlator.star.ui.deck.xmbGlassCard
+import com.winlator.star.ui.deck.xmbInner
 
 /**
  * The Amazon **Store** tab.
@@ -184,47 +186,49 @@ private fun EmptyLibraryNotice(state: AmazonLibraryState) {
 @Composable
 private fun PrimeGamingCard(onOpenWeb: (url: String, title: String) -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-            .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
-            .padding(16.dp),
-    ) {
-        Text(
-            text = "PRIME GAMING",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Free games every month",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "Amazon has no browsable catalog for third-party apps. Claim titles on Prime Gaming " +
-                "in the in-app browser — they land in your library here after a sync.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { onOpenWeb("https://gaming.amazon.com/home", "Prime Gaming") },
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)),
-            ) { Text("Claim free games", maxLines = 1) }
-            OutlinedButton(
-                onClick = { onOpenWeb("https://gaming.amazon.com/home?filter=games", "Amazon Games") },
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)),
-            ) { Text("Browse", maxLines = 1) }
+    // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
+    val group = rememberXmbFocusGroup()
+    XmbGroupItem(group, shape, modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), shape)
+                .padding(16.dp),
+        ) {
+            Text(
+                text = "PRIME GAMING",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Free games every month",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Amazon has no browsable catalog for third-party apps. Claim titles on Prime Gaming " +
+                    "in the in-app browser — they land in your library here after a sync.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onOpenWeb("https://gaming.amazon.com/home", "Prime Gaming") },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)).xmbInner(group, first = true),
+                ) { Text("Claim free games", maxLines = 1) }
+                OutlinedButton(
+                    onClick = { onOpenWeb("https://gaming.amazon.com/home?filter=games", "Amazon Games") },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)).xmbInner(group),
+                ) { Text("Browse", maxLines = 1) }
+            }
         }
-        Box(Modifier.height(0.dp))
     }
 }

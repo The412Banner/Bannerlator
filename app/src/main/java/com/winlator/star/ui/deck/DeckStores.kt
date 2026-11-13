@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SportsEsports
@@ -163,13 +162,12 @@ private fun playtimeText(context: Context, s: Shortcut): String {
  * Stores tab: a switcher for the four storefronts (with their sign-in state) and, per store, the
  * Library / Store / Friends / Profile / Downloads strip. Library is native: the store's installed
  * games from the same list Home uses, each opening its Deck game page. Store, Friends, Profile and
- * Downloads explain what is there and open the store's own screen on that tab. Honours Appearance →
- * "Show game stores".
+ * Downloads explain what is there and open the store's own screen on that tab. Honours Settings >
+ * Appearance > "Show game stores".
  */
 @Composable
 internal fun DeckStoresPage(
     onLaunchStore: (Screen) -> Unit,
-    onOpenAppearance: () -> Unit,
     onOpenGame: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -215,10 +213,7 @@ internal fun DeckStoresPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = gutter, vertical = 16.dp),
         ) {
-            DeckPageHeader(Icons.Filled.Storefront, "Stores", "Game stores are hidden. Turn on \"Show game stores\" in Appearance to list them here.")
-            DeckCard {
-                DeckRow(title = "Appearance", subtitle = "Show or hide the game stores", icon = Icons.Filled.Palette, onClick = onOpenAppearance)
-            }
+            DeckPageHeader(Icons.Filled.Storefront, "Stores", "Game stores are hidden. Turn on \"Show game stores\" in Settings > Appearance to list them here.")
         }
         return
     }
@@ -296,7 +291,6 @@ internal fun DeckStoresPage(
             onDismiss = { optionsOpen = false },
             onOpenTab = { t -> optionsOpen = false; context.startActivity(storeIntent(context, store, t)) },
             onSignIn = { optionsOpen = false; onLaunchStore(store.screen) },
-            onAppearance = { optionsOpen = false; onOpenAppearance() },
         )
     }
 }
@@ -460,7 +454,7 @@ private fun StoreHandOff(
     }
 }
 
-/** X on the Stores tab: jump into any of the store's screens, sign in, or hide the stores. */
+/** X on the Stores tab: jump into any of the store's screens, or sign in. */
 @Composable
 private fun StoreOptionsDialog(
     store: DeckStore,
@@ -468,7 +462,6 @@ private fun StoreOptionsDialog(
     onDismiss: () -> Unit,
     onOpenTab: (StoreTab) -> Unit,
     onSignIn: () -> Unit,
-    onAppearance: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Dialog(onDismissRequest = onDismiss) {
@@ -497,7 +490,6 @@ private fun StoreOptionsDialog(
                         DeckRow(title = "Open ${t.label}", icon = t.icon, onClick = { onOpenTab(t) })
                     }
                     DeckRow(title = "Open full library", icon = Icons.Filled.VideoLibrary, onClick = { onOpenTab(StoreTab.LIBRARY) })
-                    DeckRow(title = "Hide game stores", subtitle = "Appearance → Show game stores", icon = Icons.Filled.Palette, onClick = onAppearance)
                 }
             }
         }

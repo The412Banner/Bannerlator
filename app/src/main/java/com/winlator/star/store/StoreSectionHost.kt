@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.ui.simple.labTile
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbRailState
+import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.theme.LocalAccentDim
 
 /**

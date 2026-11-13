@@ -11,10 +11,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import com.winlator.star.R
 
 private val DefaultColorScheme = darkColorScheme(
@@ -73,6 +75,8 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalAccentDim provides accentDim,
         LocalDensity provides scaledDensity,
+        // Always left-to-right, whatever the phone's language (see AppLocale).
+        LocalLayoutDirection provides LayoutDirection.Ltr,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

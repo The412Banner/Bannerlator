@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.ImeOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import com.winlator.star.core.GuestKeyTyper
 import com.winlator.star.core.GuestTyper
 import com.winlator.star.inputcontrols.ExternalController
 import com.winlator.star.ui.theme.WinlatorTheme
@@ -111,15 +112,13 @@ internal class GuestKeySession(private val typer: GuestTyper) : XmbKeyboardInput
 
     override fun performAction() = pressKey(GuestTyper.Key.ENTER)
 
-    override fun paste(text: String) = commit(text.replace("\r\n", "\n").replace('\r', '\n'))
+    override fun paste(text: String) = commit(GuestKeyTyper.normalizeNewlines(text))
 
     override fun pressKey(key: GuestTyper.Key) {
+        typer.press(key)
         if (key == GuestTyper.Key.ENTER) {
-            typer.press(key)
             echo.insert("\n")
             publish()
-        } else {
-            typer.press(key)
         }
     }
 }
@@ -151,8 +150,7 @@ class XmbGuestKeyboardHost(
     private var view: ComposeView? = null
     private var typer: GuestTyper? = null
 
-    internal var session by mutableStateOf<GuestKeySession?>(null)
-        private set
+    private var session by mutableStateOf<GuestKeySession?>(null)
 
     /** The panel is up. */
     fun isOpen(): Boolean = policy.visible

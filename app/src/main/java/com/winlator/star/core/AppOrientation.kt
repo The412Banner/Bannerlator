@@ -43,9 +43,13 @@ object AppOrientation {
         apply(activity)
     }
 
-    private fun requested(mode: String): Int = when (mode) {
+    /**
+     * The requestedOrientation for a mode. "landscape" follows the sensor between the two landscape rotations (90 and 270 degrees),
+     * so a phone turned the other way up stays upright instead of sticking on one side; it never goes portrait.
+     */
+    internal fun requested(mode: String): Int = when (mode) {
         PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         else -> ActivityInfo.SCREEN_ORIENTATION_SENSOR   // "auto" — matches the manifest default
     }
 

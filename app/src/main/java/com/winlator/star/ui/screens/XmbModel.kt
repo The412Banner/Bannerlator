@@ -26,8 +26,11 @@ import kotlinx.coroutines.CoroutineScope
 //  • Anything blocking (disk, network) goes through xmb.scope + Dispatchers.IO; update state, not UI.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard). */
-internal enum class XmbKey { Up, Down, Left, Right, A, B, L1, R1 }
+/**
+ * Keys a custom [XmbPanel] can receive (the host maps D-pad, controller buttons and keyboard). X resets the highlighted row to the
+ * container's value, on a row that carries an [XmbOverride].
+ */
+internal enum class XmbKey { Up, Down, Left, Right, A, B, L1, R1, X }
 
 /** L1/R1 cycling between sibling menus at the same depth (e.g. the Settings sections). */
 internal class XmbSiblings(
@@ -63,11 +66,27 @@ internal class XmbMenu(
     var siblings: XmbSiblings? = null
 }
 
+/**
+ * A row that is changed for this game only (XMB Home game settings): the row shows one small accent dot, and [reset] puts the
+ * container's value back (X on a controller, the small "Reset" beside the highlighted row on touch).
+ */
+internal class XmbOverride(val reset: () -> Unit)
+
 /** Every row type. [subtitle] shows under the label on the highlighted row; [disabledReason] non-null
  *  greys the row out and is shown instead of the subtitle. */
 internal sealed class XmbRow {
     abstract val key: String
     abstract val label: String
+
+    /** Non-null while this row holds a value of this game's own instead of the container's. Set by the builder that owns the row; null on every other menu. */
+    var overridden: XmbOverride? = null
+
+    /**
+     * XMB Home game settings: the container editor's own label for this row, shown in place of [label], and its hint, shown when the row
+     * has no subtitle of its own. Null on every other menu, and on a row that is not one editor row.
+     */
+    var editorLabel: String? = null
+    var editorHint: String? = null
 
     class Header(override val key: String, override val label: String) : XmbRow()
 

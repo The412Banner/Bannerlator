@@ -1,10 +1,13 @@
 package com.winlator.star.ui.deck
 
+import android.view.Gravity
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import com.winlator.star.ForceLtr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -52,6 +55,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -107,13 +111,12 @@ import kotlinx.coroutines.launch
 //   D-pad moves over the keys, A types the focused key, B closes
 //   In a game the activity also opens and closes the panel with Select + X (GuestKeyboardCombo), before any of these
 //
-// The panel always sits on the bottom edge and is PANEL_HEIGHT of the screen tall, with the same margin on both sides,
+// The panel always sits on the bottom edge and is PANEL_HEIGHT_SHARE of the screen tall, with the same margin on both sides,
 // whatever page or field it opened from: its window covers the whole screen and the panel is placed in it by share.
 // The buttons are read from the dialog's own key events (a separate window, so DeckInput never sees them). L2 and R2
 // also arrive as analog axes on pads that report only that; those come through the window's motion dispatch (pressed
 // past 0.6, released below 0.3, the same hysteresis as DeckInput.onMotion).
 
-private const val PANEL_HEIGHT = XmbKeyboardGeometry.PANEL_HEIGHT_SHARE
 private const val PANEL_SIDE_MARGIN = 0.055f
 private const val PREVIEW_SHARE = 0.14f
 private const val PREVIEW_BEFORE = 40
@@ -124,8 +127,8 @@ private const val REPEAT_DELAY_MS = 380L
 private const val REPEAT_EVERY_MS = 55L
 private const val KEYS_PER_ROW = 15f
 
-// Square keys on a thin-line grid: no corner radius anywhere, 1 dp lines between the keys (and around the grid), and the
-// space the old rounded keys spent on a 5 dp gap each now goes to the keys. The panel padding is slim for the same reason.
+// Square keys on a thin-line grid: no corner radius anywhere and 1 dp lines between the keys (and around the grid), so
+// the keys get the room; the panel padding is slim for the same reason.
 private const val PANEL_PAD_DP = 5f
 private const val FOCUS_RING_DP = 2.5f
 
@@ -137,7 +140,7 @@ internal object XmbKeyboardGeometry {
     /** The share of the screen's height the panel takes, in its own window and in the game alike. */
     const val PANEL_HEIGHT_SHARE = 0.5f
 
-    /** Labels are sized from the key plus this much: the old unit was the key with a 5 dp gap inside it, so the text keeps its share of the larger key. */
+    /** Labels are this much larger than the key's smaller side, which keeps text and icons in proportion to the key. */
     private const val LABEL_GROWTH = 1.15f
 
     /** A label may use this many key widths of room (a character key holds one glyph, so the height normally decides). */
@@ -242,8 +245,9 @@ private class KeyContext(
     val unit: Dp,
 )
 
-private fun capText(cap: Cap, state: KeyboardState): String =
-    if (cap.letter) (if (state.upper) cap.shifted else cap.base) else (if (state.shift) cap.shifted else cap.base)
+/** What the key types: letters follow [upper] (Shift and Caps), every other key follows [shift]. */
+private fun capText(cap: Cap, shift: Boolean, upper: Boolean): String =
+    if (cap.letter) (if (upper) cap.shifted else cap.base) else (if (shift) cap.shifted else cap.base)
 
 /**
  * Where the analog triggers of a pad are read for a panel whose host does not get them as keys: the host calls [onMotion]
@@ -285,7 +289,7 @@ internal fun XmbKeyboardPanel(
             if (w == null || original == null) return@DisposableEffect onDispose {}
             WindowCompat.setDecorFitsSystemWindows(w, false)
             w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            w.setGravity(android.view.Gravity.BOTTOM)
+            w.setGravity(Gravity.BOTTOM)
             w.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
             w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
@@ -298,7 +302,8 @@ internal fun XmbKeyboardPanel(
             w.callback = wrapper
             onDispose { w.callback = original }
         }
-        XmbKeyboardPanelBody(session, onClose, onSystemKeyboard, triggers, inOwnWindow = true)
+        // Its own window: left-to-right there too, whatever the phone's language (see AppLocale).
+        ForceLtr { XmbKeyboardPanelBody(session, onClose, onSystemKeyboard, triggers, inOwnWindow = true) }
     }
 }
 
@@ -334,7 +339,7 @@ internal fun XmbKeyboardPanelBody(
     val perform: (Role, Cap?) -> Unit = { role, cap ->
         when (role) {
             Role.CHAR -> if (cap != null) {
-                session.commit(capText(cap, state))
+                session.commit(capText(cap, state.shift, state.upper))
                 state.shiftOnce = false
             }
             Role.SPACE -> {
@@ -388,7 +393,7 @@ internal fun XmbKeyboardPanelBody(
 
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
-        androidx.compose.runtime.withFrameNanos { }
+        withFrameNanos { }
         runCatching { firstFocus.requestFocus() }
     }
 
@@ -419,7 +424,7 @@ internal fun XmbKeyboardPanelBody(
                 else QWERTY_ROWS
             }
             val panelWidth = maxWidth * (1f - 2f * PANEL_SIDE_MARGIN)
-            val panelHeight = if (inOwnWindow) maxHeight * PANEL_HEIGHT else maxHeight
+            val panelHeight = if (inOwnWindow) maxHeight * XmbKeyboardGeometry.PANEL_HEIGHT_SHARE else maxHeight
             val pad = scale.dp(PANEL_PAD_DP)
             // The dividing lines are a whole number of pixels wide (at least one), so every one of them is equally crisp.
             val line = with(density) { max(1, 1.dp.roundToPx()).toDp() }
@@ -486,7 +491,7 @@ internal fun XmbKeyboardPanelBody(
 /** Tracks the analog triggers: L2 held is Shift, R2 pressed is the field's action. */
 private fun handleTriggers(ev: MotionEvent, state: KeyboardState, onAction: () -> Unit) {
     if (ev.action != MotionEvent.ACTION_MOVE) return
-    if ((ev.source and android.view.InputDevice.SOURCE_JOYSTICK) != android.view.InputDevice.SOURCE_JOYSTICK) return
+    if ((ev.source and InputDevice.SOURCE_JOYSTICK) != InputDevice.SOURCE_JOYSTICK) return
     val left = max(ev.getAxisValue(MotionEvent.AXIS_LTRIGGER), ev.getAxisValue(MotionEvent.AXIS_BRAKE))
     val right = max(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER), ev.getAxisValue(MotionEvent.AXIS_GAS))
     state.shiftAxis = if (state.shiftAxis) left > TRIGGER_UP else left > TRIGGER_DOWN
@@ -689,7 +694,7 @@ private fun KeyLabel(cap: Cap, context: KeyContext, ink: Color) {
 @Composable
 private fun CharLabel(cap: Cap, context: KeyContext, ink: Color) {
     val unit = context.unit
-    val main = if (cap.letter) (if (context.upper) cap.shifted else cap.base) else (if (context.shift) cap.shifted else cap.base)
+    val main = capText(cap, context.shift, context.upper)
     val hint = if (cap.letter || cap.shifted == cap.base) null else (if (context.shift) cap.base else cap.shifted)
     Box(Modifier.fillMaxSize()) {
         if (hint != null) {

@@ -20,14 +20,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.ViewDay
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,12 +55,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -64,7 +73,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -86,7 +94,6 @@ import com.winlator.star.ui.deck.LibrarySort
 import com.winlator.star.ui.deck.PlayStats
 import com.winlator.star.ui.deck.XmbStoreMark
 import com.winlator.star.ui.deck.gameSortKeyOf
-import com.winlator.star.ui.deck.isDeckCompact
 import com.winlator.star.ui.deck.lastPlayedLabel
 import com.winlator.star.ui.deck.playtimeLabel
 import com.winlator.star.ui.deck.readPlayStats
@@ -95,8 +102,6 @@ import com.winlator.star.ui.deck.sortGames
 import com.winlator.star.ui.deck.storeLabelOf
 import com.winlator.star.ui.deck.storeMarkOf
 import com.winlator.star.ui.deck.warmStoreMarks
-import com.winlator.star.ui.deck.xmbFrame
-import com.winlator.star.ui.deck.xmbWashBackground
 
 /** [shortcuts] newest first, for a host whose list is in some other order (the row takes the first [XMB_ROW_LIMIT]). */
 internal fun xmbRecentFirst(context: Context, shortcuts: List<Shortcut>): List<Shortcut> {
@@ -134,18 +139,17 @@ private val PAGE_TEXT = Color(0xFFEDEDED)
 private val PAGE_MUTED = Color(0xFFB4B4B4)
 
 /**
- * Every game, on one full-screen page in the XMB's look (the backdrop wash, white type, the accent ring). It opens from the
+ * Every game, on one full-screen page in the XMB's look (Home's backdrop of the highlighted game, white type, the accent ring). It opens from the
  * All Games card at the end of the games row and closes with Back / B onto the same card. The cursor is one index into the
  * sorted list, moved by the D-pad and by taps; the page owns the keys while it is up. Three views ([AllView]) and the sorts in
  * [ALL_SORTS] are kept between visits. A game runs through [onPlay], the same launch the games row uses.
  *
- * [inDeckShell]: the Deck shell floats its tab bar over the top and its Search over the bottom-right corner, so the page
- * keeps clear of them.
+ * The page has its own header under the see-through top bar: a back arrow, the title and count, and the View / Sort hints. The
+ * covers scroll under it and fade into it.
  */
 @Composable
 internal fun XmbAllGamesPage(
     games: List<Shortcut>,
-    inDeckShell: Boolean,
     onPlay: (Shortcut) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -185,15 +189,13 @@ internal fun XmbAllGamesPage(
     }
     val hasPad = rememberGamepadConnected()
 
-    val cfg = LocalConfiguration.current
     val topInset = LocalTopBarOverlayInset.current
-    val floating = inDeckShell && !isDeckCompact(cfg)
-    val frame = if (inDeckShell) xmbFrame() else 0.dp
-    val padH = ss.dp(16f) + frame
+    val padH = ss.dp(16f)
     val gap = ss.dp(12f)
-    // Clear of the shell's floating tab bar (see XMB_PEEK_CLIP) or of the see-through top bar of the classic Games screen.
-    val topPad = (if (floating) ss.dp(XMB_PEEK_CLIP * 1.3f) else topInset) + 8.dp
-    val bottomPad = if (floating) ss.dp(56f) else 16.dp
+    // The header sits under the see-through top bar. The covers scroll under it (the grid starts at the page's top) and fade out
+    // into its band.
+    val header = remember(topInset, ss.factor) { xmbAllHeader(topInset.value, ss.factor) }
+    val bottomPad = 16.dp
 
     val gridState = rememberLazyGridState()
     val moveSel: (Int) -> Unit = { i -> sorted.getOrNull(i)?.let { selPath = it.file.path } }
@@ -211,18 +213,17 @@ internal fun XmbAllGamesPage(
         // The header's hints carry their names only where there is room for them.
         val wide = maxWidth >= 600.dp
 
-        val marginPx = with(density) { (bottomPad - 8.dp).coerceAtLeast(0.dp).toPx() }
+        val bottomMarginPx = with(density) { (bottomPad - 8.dp).coerceAtLeast(0.dp).toPx() }
+        val topMarginPx = with(density) { header.band.dp.toPx() }
         LaunchedEffect(sel, view, sorted) {
-            // The new columns are laid out a frame after this runs.
+            // The new columns are laid out a frame after this runs. The grid's first item is the header spacer, so a game is at i + 1.
             withFrameNanos { }
-            gridState.reveal(sel, marginPx)
+            if (sorted.isNotEmpty()) gridState.reveal(sel + 1, topMarginPx, bottomMarginPx)
         }
 
         Box(
             Modifier
                 .fillMaxSize()
-                // The XMB wash as one opaque fill: the page covers the row, so a see-through wash would show it.
-                .xmbWashBackground()
                 .focusRequester(focusRequester)
                 .focusable()
                 .onPreviewKeyEvent { e ->
@@ -242,9 +243,8 @@ internal fun XmbAllGamesPage(
                         Key.DirectionRight -> { moveSel(xmbGridMove(sel, XmbMove.RIGHT, cols, sorted.size, page)); true }
                         Key.DirectionUp -> { moveSel(xmbGridMove(sel, XmbMove.UP, cols, sorted.size, page)); true }
                         Key.DirectionDown -> { moveSel(xmbGridMove(sel, XmbMove.DOWN, cols, sorted.size, page)); true }
-                        // In the Deck shell L1/R1 move its tabs, as on every page.
-                        Key.ButtonL1 -> if (inDeckShell) false else { moveSel(xmbGridMove(sel, XmbMove.PAGE_UP, cols, sorted.size, page)); true }
-                        Key.ButtonR1 -> if (inDeckShell) false else { moveSel(xmbGridMove(sel, XmbMove.PAGE_DOWN, cols, sorted.size, page)); true }
+                        Key.ButtonL1 -> { moveSel(xmbGridMove(sel, XmbMove.PAGE_UP, cols, sorted.size, page)); true }
+                        Key.ButtonR1 -> { moveSel(xmbGridMove(sel, XmbMove.PAGE_DOWN, cols, sorted.size, page)); true }
                         Key.ButtonA, Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> { sorted.getOrNull(sel)?.let(onPlay); true }
                         Key.ButtonX -> { setView(view.next()); true }
                         Key.ButtonY -> { openMenu(); true }
@@ -255,59 +255,92 @@ internal fun XmbAllGamesPage(
                 // Nothing under the page may react to a touch that lands on it.
                 .pointerInput(Unit) { detectTapGestures { } },
         ) {
-            Column(Modifier.fillMaxSize()) {
-                // One slim row: the title and count on the left, then Back / View / Sort as the shell's floating hints (a
-                // button badge only with a pad attached, the icon always, the current view / sort name where there is room).
-                // The hints pad themselves by 8 dp, so the row starts that much earlier to line up with the grid.
-                val hintTap = Modifier.heightIn(min = 40.dp).widthIn(min = 40.dp)
-                Row(
-                    Modifier.fillMaxWidth().padding(start = (padH - ss.dp(8f)).coerceAtLeast(0.dp), end = (padH - ss.dp(8f)).coerceAtLeast(0.dp), top = topPad, bottom = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val back = stringResource(R.string.xmb_all_back)
-                    DeckFloatingHint(
-                        "B".takeIf { hasPad }, GlyphKind.B, back.takeIf { wide }, { onClose() }, hintTap,
-                        icon = Icons.AutoMirrored.Filled.ArrowBack, description = back,
-                    )
-                    Row(Modifier.weight(1f).padding(start = ss.dp(6f)), verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            stringResource(R.string.xmb_all_games), color = Color.White, fontSize = ss.sp(16f),
-                            fontWeight = FontWeight.Light, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-                        )
-                        Text(
-                            context.resources.getQuantityString(R.plurals.xmb_all_games_count, sorted.size, sorted.size),
-                            color = PAGE_MUTED, fontSize = ss.sp(11f), maxLines = 1, modifier = Modifier.padding(start = ss.dp(8f), bottom = 1.dp),
-                        )
-                    }
-                    DeckFloatingHint(
-                        "X".takeIf { hasPad }, GlyphKind.X, stringResource(view.label).takeIf { wide }, { setView(view.next()) }, hintTap,
-                        icon = view.icon, description = stringResource(R.string.xmb_all_view) + ": " + stringResource(view.label),
-                    )
-                    DeckFloatingHint(
-                        "Y".takeIf { hasPad }, GlyphKind.Y, stringResource(sort.labelRes()).takeIf { wide }, { openMenu() }, hintTap,
-                        icon = Icons.Filled.SwapVert, description = stringResource(R.string.xmb_all_sort) + ": " + stringResource(sort.labelRes()),
-                    )
-                }
+            // The home backdrop (black, the highlighted game's art blurred and dimmed, crossfading as the cursor moves), the same
+            // composable the games row uses. Nothing is picked when the list is empty.
+            XmbHomeBackdrop(sorted.getOrNull(sel)?.icon)
 
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(cols),
-                    contentPadding = PaddingValues(start = padH, end = padH, top = 4.dp, bottom = bottomPad),
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                    verticalArrangement = Arrangement.spacedBy(gap),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(sorted.size, key = { sorted[it].file.path }) { i ->
-                        val s = sorted[i]
-                        val pick = { selPath = s.file.path; onPlay(s) }
-                        val st = stats[s.file.path]
-                        when (view) {
-                            AllView.GRID -> CoverCell(s, i == sel, accent, markSize = ss.dp(20f), big = false, stat = null, onClick = pick)
-                            AllView.BIG -> CoverCell(s, i == sel, accent, markSize = ss.dp(28f), big = true, stat = st, onClick = pick)
-                            AllView.LIST -> ListRow(s, i == sel, accent, st, markSize = ss.dp(18f), onClick = pick)
-                        }
+            // The covers start at the page's top and scroll under the header: the first item is a spacer as tall as the header's
+            // band, so the first row rests below it, and what scrolls up into the band fades out (an offscreen layer masked by a
+            // gradient, as the cards peeking above the games row fade under the tab bar).
+            val fadeStartPx = with(density) { header.fadeStart.dp.toPx() }
+            val fadeEndPx = with(density) { header.band.dp.toPx() }
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Fixed(cols),
+                contentPadding = PaddingValues(start = padH, end = padH, top = 0.dp, bottom = bottomPad),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = fadeStartPx, endY = fadeEndPx),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+            ) {
+                // The row gap follows the spacer too, so it is the band less that gap.
+                item(key = "xmb-all-header", span = { GridItemSpan(maxLineSpan) }) {
+                    Spacer(Modifier.fillMaxWidth().height((header.band.dp - gap).coerceAtLeast(0.dp)))
+                }
+                items(sorted.size, key = { sorted[it].file.path }) { i ->
+                    val s = sorted[i]
+                    val pick = { selPath = s.file.path; onPlay(s) }
+                    val st = stats[s.file.path]
+                    when (view) {
+                        AllView.GRID -> CoverCell(s, i == sel, accent, markSize = ss.dp(25f), big = false, stat = null, onClick = pick)
+                        AllView.BIG -> CoverCell(s, i == sel, accent, markSize = ss.dp(35f), big = true, stat = st, onClick = pick)
+                        AllView.LIST -> ListRow(s, i == sel, accent, st, markSize = ss.dp(22.5f), onClick = pick)
                     }
                 }
+            }
+
+            // The header, drawn over the grid under the top bar: the back arrow and the title and count on the
+            // left, then View / Sort as the shell's floating hints (a button badge only with a pad attached, the icon always, the
+            // current view / sort name where there is room). The hints pad themselves by 8 dp, so the row starts that much earlier
+            // to line up with the grid. The empty tap handler keeps a tap on its blank part from reaching a faded cover under it.
+            val hintTap = Modifier.heightIn(min = 40.dp).widthIn(min = 40.dp)
+            val backSrc = remember { MutableInteractionSource() }
+            Row(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .padding(start = (padH - 12.dp).coerceAtLeast(0.dp), end = (padH - ss.dp(8f)).coerceAtLeast(0.dp), top = header.top.dp)
+                    .height(header.height.dp)
+                    .pointerInput(Unit) { detectTapGestures { } },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Not a D-pad stop (B closes the page, as this does); a 48 dp round tap area around the 24 dp arrow, whose glyph lines
+                // up with the grid's left edge.
+                Box(
+                    Modifier.size(48.dp).clip(CircleShape).xmbClick(backSrc) { onClose() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.xmb_all_back),
+                        tint = Color(0xFFDDDDDD), modifier = Modifier.size(24.dp),
+                    )
+                }
+                Row(Modifier.weight(1f).padding(start = ss.dp(4f)), verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        stringResource(R.string.xmb_all_games), color = Color.White, fontSize = ss.sp(16f),
+                        fontWeight = FontWeight.Light, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Text(
+                        context.resources.getQuantityString(R.plurals.xmb_all_games_count, sorted.size, sorted.size),
+                        color = PAGE_MUTED, fontSize = ss.sp(11f), maxLines = 1, modifier = Modifier.padding(start = ss.dp(8f), bottom = 1.dp),
+                    )
+                }
+                DeckFloatingHint(
+                    "X".takeIf { hasPad }, GlyphKind.X, stringResource(view.label).takeIf { wide }, { setView(view.next()) }, hintTap,
+                    icon = view.icon, description = stringResource(R.string.xmb_all_view) + ": " + stringResource(view.label),
+                )
+                DeckFloatingHint(
+                    "Y".takeIf { hasPad }, GlyphKind.Y, stringResource(sort.labelRes()).takeIf { wide }, { openMenu() }, hintTap,
+                    icon = Icons.Filled.SwapVert, description = stringResource(R.string.xmb_all_sort) + ": " + stringResource(sort.labelRes()),
+                )
             }
 
             if (menuOpen) {
@@ -318,7 +351,7 @@ internal fun XmbAllGamesPage(
                 Column(
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = topPad + 40.dp, end = padH)
+                        .padding(top = (header.top + header.height).dp, end = padH)
                         .widthIn(min = 200.dp)
                         .clip(shape)
                         .background(Color(0xEE16171B))
@@ -349,19 +382,19 @@ internal fun XmbAllGamesPage(
     }
 }
 
-// Scrolls just far enough to bring cell [index] fully into view, leaving [bottomMarginPx] clear under it (the shell's floating
-// Search sits there); a cell that isn't composed at all is jumped to.
-private suspend fun LazyGridState.reveal(index: Int, bottomMarginPx: Float) {
-    val info = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
-    if (info == null) { scrollToItem(index); return }
-    val cellTop = info.offset.y.toFloat()
-    val cellBottom = cellTop + info.size.height
-    val bottom = layoutInfo.viewportSize.height - bottomMarginPx
-    val d = when {
-        cellTop < 0f -> cellTop
-        cellBottom > bottom -> cellBottom - bottom
-        else -> 0f
+// Scrolls just far enough to bring item [index] fully into view, leaving [topMarginPx] clear above it (the header band the covers
+// scroll under) and [bottomMarginPx] under it (the page's bottom padding); an item that isn't composed at all is
+// jumped to first, which puts it at the very top, and then moved down clear of the header. The grid has no top content padding, so
+// the item offsets are measured from the grid's top edge.
+private suspend fun LazyGridState.reveal(index: Int, topMarginPx: Float, bottomMarginPx: Float) {
+    val seen = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+    val info = if (seen != null) seen else {
+        scrollToItem(index)
+        withFrameNanos { }
+        layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     }
+    val cellTop = info.offset.y.toFloat()
+    val d = xmbRevealDelta(cellTop, cellTop + info.size.height, layoutInfo.viewportSize.height.toFloat(), topMarginPx, bottomMarginPx)
     if (d != 0f) animateScrollBy(d)
 }
 

@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -417,7 +419,7 @@ fun CatalogHeroCard(
             .clip(SimpleShape)
             .labTile(onClick = onOpen),
     ) {
-        CatalogArt(candidates = item.wideArt(), title = item.title, modifier = Modifier.fillMaxWidth(), aspectRatio = 16f / 7f)
+        CatalogArt(candidates = item.wideArt(), title = item.title, modifier = Modifier.fillMaxWidth().height(storeHeroHeight()), aspectRatio = null)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -590,53 +592,48 @@ fun CatalogSearchField(
     // own so the field can sit beside the sort button.
     modifier: Modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 14.dp, vertical = 10.dp),
+        .padding(horizontal = 14.dp, vertical = 6.dp),
 ) {
-    if (LocalStoreXmb.current) {
-        XmbSearchField(query, placeholder, onQueryChange, onClear, onSearch, modifier)
-        return
-    }
-    OutlinedTextField(
+    // A slim field: the Lab's hard corners, 34dp tall, the accent line when focused.
+    val cs = MaterialTheme.colorScheme
+    var focused by remember { mutableStateOf(false) }
+    androidx.compose.foundation.text.BasicTextField(
         value = query,
         onValueChange = onQueryChange,
         singleLine = true,
-        placeholder = {
-            Text(
-                placeholder,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        leadingIcon = {
-            Icon(
-                Icons.Filled.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = onClear, modifier = Modifier.steamFocusRing(RoundedCornerShape(20.dp))) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = "Clear search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        textStyle = androidx.compose.ui.text.TextStyle(color = cs.onSurface, fontSize = 13.sp),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(cs.primary),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        modifier = modifier
+            .height(34.dp)
+            .clip(SimpleShape)
+            .background(cs.onBackground.copy(alpha = 0.05f))
+            .border(1.dp, if (focused) cs.primary else cs.outline.copy(alpha = 0.5f), SimpleShape)
+            .onFocusChanged { focused = it.isFocused },
+        decorationBox = { inner ->
+            Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(7.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text(placeholder, fontSize = 13.sp, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    inner()
+                }
+                if (query.isNotEmpty()) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear search", tint = cs.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp).labTile(onClick = onClear))
                 }
             }
         },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-        shape = RoundedCornerShape(9.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        modifier = modifier,
     )
+}
+
+/** The Store tab is one column in both orientations (featured game, then the rails), as in the Lab. */
+internal const val STORE_SPLIT = false
+
+/** The featured card's height: 16:7 of the screen width, but never more than a third of the screen's height. */
+@Composable
+internal fun storeHeroHeight(): Dp {
+    val c = androidx.compose.ui.platform.LocalConfiguration.current
+    return minOf(c.screenWidthDp * 7f / 16f, c.screenHeightDp * 0.34f).dp
 }

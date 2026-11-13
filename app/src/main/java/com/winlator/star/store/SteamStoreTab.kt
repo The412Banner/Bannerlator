@@ -215,7 +215,7 @@ fun SteamStoreTab(
 
                 else -> {
                     val data = featured!!
-                    if (wide) {
+                    if (STORE_SPLIT && wide) {
                         StoreLandscape(data, ::actionFor, onOpenApp, ::onAction, Modifier.weight(1f))
                     } else {
                         StorePortrait(data, ::actionFor, onOpenApp, ::onAction, Modifier.weight(1f))

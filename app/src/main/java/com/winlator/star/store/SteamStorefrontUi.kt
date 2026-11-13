@@ -153,27 +153,15 @@ fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier 
 /** A rail/section header: bold title on the left, muted sub-label pushed to the right. */
 @Composable
 fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.weight(1f))
-        if (!sub.isNullOrBlank()) {
-            Text(
-                text = sub,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    Text(
+        text = title.uppercase(),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.6.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        modifier = modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 6.dp),
+    )
 }
 
 /**
@@ -713,7 +701,7 @@ fun StoreHeroCard(
             .clip(SimpleShape)
             .labTile(onClick = onOpen),
     ) {
-        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth(), aspectRatio = 16f / 7f, apiUrl = item.artUrl)
+        StoreCapsule(appId = item.appId, title = item.name, modifier = Modifier.fillMaxWidth().height(storeHeroHeight()), aspectRatio = null, apiUrl = item.artUrl)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)

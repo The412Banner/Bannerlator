@@ -232,7 +232,7 @@ fun GamesWallScreen(navController: NavController) {
 
     // Landscape-lock for the duration of this screen; restore the user's App-orientation pref on exit.
     DisposableEffect(Unit) {
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         onDispose { AppOrientation.apply(activity) }
     }
 

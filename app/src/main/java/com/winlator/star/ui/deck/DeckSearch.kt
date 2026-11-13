@@ -79,7 +79,7 @@ import com.winlator.star.ui.deck.settings.DeckSettingsRoutes
 import com.winlator.star.ui.screens.ShortcutsViewModel
 
 /** A place the search can jump to: a Deck route, a store, or the About dialog. */
-private data class SearchDestination(
+internal data class SearchDestination(
     val title: String,
     val path: String,
     val icon: ImageVector,
@@ -115,7 +115,8 @@ private val DESTINATIONS = listOf(
 
 /**
  * The Deck's search overlay (Y, or the magnifier in the top bar). Matches games by title and the
- * app's screens and tools by name and keywords; picking a game opens its game page.
+ * app's screens and tools by name and keywords; picking a game opens its game page. The XMB has its
+ * own popup, laid out for the controller and the landscape screen (XmbSearch.kt).
  */
 @Composable
 internal fun DeckSearchOverlay(
@@ -126,9 +127,20 @@ internal fun DeckSearchOverlay(
     onAbout: () -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
-    // XMB mode: the panel is frosted glass with its own opaque colour, so its text is the one the glass was tuned for, also over Home.
-    XmbPanelTheme { DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm) }
+    if (rememberXmbHome()) XmbSearchPopup(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm)
+    else DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm)
 }
+
+/** The games the search lists for [q] (trimmed, lower case): the ones to continue with while it is empty, else the matches, titles that start with it first. */
+internal fun searchGames(q: String, shortcuts: List<Shortcut>, stats: Map<String, PlayStats>): List<Shortcut> =
+    if (q.isEmpty()) continuePlayingOrder(shortcuts, stats).take(6)
+    else shortcuts.filter { it.name.lowercase().contains(q) || storeLabelOf(it).lowercase().contains(q) }
+        .sortedWith(compareBy<Shortcut> { !it.name.lowercase().startsWith(q) }.thenBy { it.name.lowercase() })
+
+/** The screens and tools the search lists for [q] (trimmed, lower case): those whose title or keywords hold every word of it. */
+internal fun searchPlaces(q: String): List<SearchDestination> =
+    if (q.isEmpty()) emptyList()
+    else DESTINATIONS.filter { d -> q.split(' ').filter { it.isNotBlank() }.all { w -> d.title.lowercase().contains(w) || d.keywords.contains(w) } }
 
 @Composable
 private fun DeckSearchPanel(
@@ -145,15 +157,8 @@ private fun DeckSearchPanel(
     var query by rememberSaveable { mutableStateOf("") }
     val q = query.trim().lowercase()
     val stats = remember(shortcuts) { readPlayStats(context, shortcuts) }
-    val games = remember(q, shortcuts) {
-        if (q.isEmpty()) continuePlayingOrder(shortcuts, stats).take(6)
-        else shortcuts.filter { it.name.lowercase().contains(q) || storeLabelOf(it).lowercase().contains(q) }
-            .sortedWith(compareBy<Shortcut> { !it.name.lowercase().startsWith(q) }.thenBy { it.name.lowercase() })
-    }
-    val places = remember(q) {
-        if (q.isEmpty()) emptyList()
-        else DESTINATIONS.filter { d -> q.split(' ').filter { it.isNotBlank() }.all { w -> d.title.lowercase().contains(w) || d.keywords.contains(w) } }
-    }
+    val games = remember(q, shortcuts) { searchGames(q, shortcuts, stats) }
+    val places = remember(q) { searchPlaces(q) }
     val fieldRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -258,7 +263,7 @@ private fun DeckSearchPanel(
     }
 }
 
-private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
+internal fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
     when {
         d.about -> onAbout()
         d.store != null -> onLaunchStore(d.store)
@@ -273,20 +278,6 @@ private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit,
 @Composable
 private fun SearchResultRow(title: String, subtitle: String, icon: ImageVector, cover: Shortcut?, onClick: () -> Unit) {
     val shape = deckShape(14.dp)
-    if (rememberXmbHome()) {
-        // XMB: the gliding outline marks the focused result (a faint fill, no flood) and its title turns accent through the ink.
-        DeckInk { item, ink ->
-            SearchResultBody(
-                ink, title, subtitle, icon, cover, focused = false,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .deckFocusRingInk(shape, item, scaleTo = 1f)
-                    .clip(shape)
-                    .clickable(onClick = onClick),
-            )
-        }
-        return
-    }
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
     SearchResultBody(

@@ -8,7 +8,6 @@ import org.junit.Test
 class AppOrientationTest {
     @Test fun landscapeIsThePlainLockOutsideTheXmbHome() {
         assertEquals(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, AppOrientation.requested(AppOrientation.LANDSCAPE))
-        assertEquals(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, AppOrientation.requested(AppOrientation.LANDSCAPE, xmbHome = false))
     }
 
     @Test fun landscapeFollowsBothLandscapeRotationsInTheXmbHome() {

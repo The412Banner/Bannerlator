@@ -29,7 +29,7 @@ internal fun downloadPercent(done: Long, total: Long): Int =
 internal fun pausedStatusText(pct: Int, sizePart: String, error: String?): String =
     "Paused — $pct%$sizePart" + (error?.takeIf { it.isNotBlank() }?.let { " — $it" } ?: "")
 
-/** Which shortcuts of an uninstalled game go with it. */
+/** Which shortcuts of an uninstalled game go with it: those tied to its id or its install folder, those tied to its id only, or none. */
 internal enum class ShortcutRemoval { ALL, BY_ID_ONLY, NONE }
 
 /**

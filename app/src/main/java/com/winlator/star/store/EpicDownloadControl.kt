@@ -140,13 +140,12 @@ internal object EpicDownloadControl {
         val installed = EpicInstallState.isInstalled(ctx, appName)
         forgetPaused(ctx, appName)
         pausing.remove(appName)
-        val installPath = dir ?: epicPrefs(ctx).getString("epic_dir_$appName", null)
         when (epicCancelOutcome(installed, deleteChosen)) {
             EpicCancelOutcome.RESTORE_INSTALLED -> {
-                if (installPath == null) {
+                if (dir == null) {
                     StoreDownloadHooks.markCancelled(Store.EPIC, appName)
                 } else {
-                    StoreDownloadHooks.markInstalled(Store.EPIC, appName, installPath, epicPrefs(ctx).getLong("epic_size_$appName", 0L))
+                    StoreDownloadHooks.markInstalled(Store.EPIC, appName, dir, epicPrefs(ctx).getLong("epic_size_$appName", 0L))
                     DownloadRegistry.update(key(appName)) {
                         it.copy(supportsPause = false, pause = null, cancel = null, speedBps = 0L, etaSeconds = -1L,
                             queuePosition = 0, error = null)

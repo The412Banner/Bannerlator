@@ -2,14 +2,13 @@ package com.winlator.star.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Presets are saved by name, with the old positions kept readable. These pin down that AMOLED is the default for anyone who
- * never picked one (Charcoal is only an extra, selectable preset, and Carbon & Ember is what a fresh install starts on), and that
- * every choice saved before Charcoal existed (a plain preset, and Custom with its base) still resolves to the same preset.
+ * never picked one, and that every choice saved before Charcoal existed (a plain preset, and Custom with its base) still resolves
+ * to the same preset.
  */
 class ThemePresetTest {
 
@@ -24,11 +23,8 @@ class ThemePresetTest {
     private val names = themePresets.map { it.name }
 
     @Test
-    fun charcoalIsSelectableButNotTheDefault() {
+    fun charcoalIsASelectableNeutralPreset() {
         val charcoal = themePresets.first { it.name == "Charcoal" }
-        assertEquals("AMOLED", DEFAULT_PRESET_NAME)
-        assertEquals("AMOLED", themePresets[DEFAULT_PRESET_INDEX].name)
-        assertNotEquals(charcoal, themePresets[DEFAULT_PRESET_INDEX])
         // A saved "Charcoal" resolves to it.
         assertEquals(charcoal, themePresets[resolveSavedPresetIndex(names, "Charcoal", null)])
         // Neutral grays: no colour in the background or the surfaces.
@@ -40,15 +36,15 @@ class ThemePresetTest {
 
     @Test
     fun nothingSavedStartsOnAmoled() {
+        assertEquals("AMOLED", DEFAULT_PRESET_NAME)
+        assertEquals("AMOLED", themePresets[DEFAULT_PRESET_INDEX].name)
         assertEquals(DEFAULT_PRESET_INDEX, resolveSavedPresetIndex(names, null, null))
-        assertEquals("AMOLED", themePresets[resolveSavedPresetIndex(names, null, null)].name)
     }
 
     @Test
     fun theNewInstallPresetExists() {
         assertEquals("Carbon & Ember", NEW_INSTALL_PRESET_NAME)
         assertTrue(names.contains(NEW_INSTALL_PRESET_NAME))
-        assertNotEquals(DEFAULT_PRESET_NAME, NEW_INSTALL_PRESET_NAME)
     }
 
     @Test
@@ -93,7 +89,7 @@ class ThemePresetTest {
 
     @Test
     fun existingPresetsKeepTheirColours() {
-        // The default look of the pre-Charcoal presets is untouched: spot-check the ones with exact legacy values.
+        // Spot-check the presets that predate Charcoal.
         val amoled = themePresets.first { it.name == "AMOLED" }
         assertEquals(Color(0xFF000000), amoled.background)
         assertEquals(Color(0xFF0055FF), amoled.primary)

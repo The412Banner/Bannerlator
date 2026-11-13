@@ -108,7 +108,7 @@ data class ThemePreset(
 }
 
 val themePresets: List<ThemePreset> = listOf(
-    // Neutral near-black grays with a soft blue accent: an extra preset, and the look the XMB glass is modelled on (its
+    // Neutral near-black grays with a soft blue accent: the look the XMB glass is modelled on (its
     // surfaces carry no colour, so the glass derived from them is plain charcoal). The XMB panels' fills are fairly light
     // (alpha 0.085 / 0.12, see XmbBackdrop's FROST_*_ALPHA), so onSurfaceVariant is lifted a little by the XMB contrast helper
     // (XmbGlass.secondaryText) to stay readable on the lightest glass.
@@ -181,7 +181,7 @@ val themePresets: List<ThemePreset> = listOf(
         surfaceVariant= Color(0xFF252630),
         primary       = Color(0xFF64748B),
     ),
-    // ── Extended preset selection (added 2026-06-30; all opt-in, AMOLED stays the default) ──
+    // ── Extended preset selection (added 2026-06-30; all opt-in) ──
     // Each carries only its core shades; the elevation ramp (surfaceContainer family) and
     // accentDim derive automatically. onPrimary is forced dark on light/bright accents
     // (phosphor green, gold, frost cyan, near-white mono) so on-accent text/icons stay legible.

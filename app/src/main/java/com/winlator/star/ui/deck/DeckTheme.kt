@@ -61,9 +61,9 @@ private fun TextStyle.body(weight: FontWeight) = copy(fontFamily = NunitoSansFam
  * Wraps the Deck shell. Keeps the ambient colour scheme and swaps only typography and shapes, so
  * the screens hosted inside (Containers, Settings, ...) pick up the Deck type without any colour change.
  *
- * [xmb]: the XMB interface is on. Only then is the layout left-to-right whatever the phone's language: the XMB rows place
- * with Modifier.offset, which mirrors in a right-to-left layout and slid the Home row off-screen. Classic, Lab and the plain
- * Deck keep the direction they are given.
+ * [xmb]: the XMB interface is on. Only then is the layout forced left-to-right, whatever the phone's language: the XMB rows place
+ * with Modifier.offset, which mirrors in a right-to-left layout and pushes the Home row off-screen. Everything else keeps the
+ * direction it is given.
  */
 @Composable
 internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable () -> Unit) {
@@ -111,7 +111,7 @@ internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable ()
     }
 }
 
-/** Runs [content] in a left-to-right layout direction (the XMB keyboard panel's own window); popups opened inside inherit it. */
+/** Runs [content] in a left-to-right layout direction; used for the XMB keyboard panel, whose window does not inherit [DeckTheme]'s. */
 @Composable
 internal fun ForceLtr(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, content = content)

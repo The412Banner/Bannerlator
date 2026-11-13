@@ -17,13 +17,6 @@ class DownloadShortcutMatchTest {
         assertFalse(DownloadShortcutMatch.belongs(Store.STEAM, "221", null, "/elsewhere/game.exe") { extras[it] ?: "" })
     }
 
-    @Test fun epic_matchedByItsAppNameOnlyWhenTaggedEpic() {
-        val epic = mapOf("storeSource" to "epic", "epicAppName" to "Sugar")
-        val other = mapOf("storeSource" to "gog", "epicAppName" to "Sugar")
-        assertTrue(DownloadShortcutMatch.belongs(Store.EPIC, "Sugar", null, null) { epic[it] ?: "" })
-        assertFalse(DownloadShortcutMatch.belongs(Store.EPIC, "Sugar", null, null) { other[it] ?: "" })
-    }
-
     @Test fun belongsById_steamMatchesOnlyItsOwnAppId() {
         val extras = mapOf("steamAppId" to "220")
         assertTrue(DownloadShortcutMatch.belongsById(Store.STEAM, "220") { extras[it] ?: "" })

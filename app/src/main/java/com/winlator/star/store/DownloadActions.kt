@@ -271,7 +271,7 @@ internal class DownloadActions(private val activity: Activity, private val inlin
     /**
      * Deletes the shortcuts of an uninstalled game (see [DownloadShortcutMatch] for which ones belong to it), off the UI thread, the
      * same way the game's own Remove does (the .desktop file, its .lnk, the launcher pin), then lets every game list reload.
-     * [mode] BY_ID_ONLY matches by the game's store id alone (its folder is shared), ALL also by the install folder.
+     * [mode] [ShortcutRemoval.BY_ID_ONLY] matches by the game's store id alone (its folder is shared), ALL also by the install folder.
      */
     private fun removeShortcutsOf(entry: DownloadEntry, mode: ShortcutRemoval) {
         val ctx = activity.applicationContext

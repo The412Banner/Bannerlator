@@ -130,7 +130,7 @@ object SteamLibraryArt {
     private fun lookup(appId: Int): AppArt? {
         // Lock-free and never reads the disk: lookups are made while composing, on the main thread. Until the mirror
         // has been loaded (init / loadNow, off the main thread) there is nothing to answer with.
-        // Reading the revision subscribes a composition that calls this to later fills of the map (it is never negative).
+        // Reading the revision subscribes a calling composition to later fills of the map (the test itself only uses the value).
         if (revision.intValue < 0) return null
         if (appId <= 0 || !loadedFromDisk) return null
         return art[appId]

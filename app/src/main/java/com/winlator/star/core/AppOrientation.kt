@@ -45,8 +45,7 @@ object AppOrientation {
 
     /**
      * The requestedOrientation for a mode. In the XMB home ([xmbHome]) "landscape" follows the sensor between the two landscape
-     * rotations (90 and 270 degrees), so a phone turned the other way up stays upright instead of sticking on one side; it never
-     * goes portrait. Everywhere else it stays the plain landscape lock it always was.
+     * rotations (90 and 270 degrees), so a phone turned the other way up stays upright; everywhere else it is the plain landscape lock.
      */
     internal fun requested(mode: String, xmbHome: Boolean = false): Int = when (mode) {
         PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT

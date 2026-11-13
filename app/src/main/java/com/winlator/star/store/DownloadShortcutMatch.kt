@@ -11,7 +11,7 @@ import com.winlator.star.store.download.Store
  */
 internal object DownloadShortcutMatch {
     /** A folder shorter than this (as a path) is never used for matching: it could swallow unrelated games. */
-    private const val MIN_KEY_LENGTH = 8
+    private const val MIN_FOLDER_LENGTH = 8
 
     /**
      * True when the shortcut whose extras [extra] reads (empty string when absent) and whose exe resolves to the Android path
@@ -42,7 +42,7 @@ internal object DownloadShortcutMatch {
     fun insideInstallFolder(installPath: String?, exeAndroid: String?): Boolean {
         if (installPath.isNullOrBlank() || exeAndroid.isNullOrBlank()) return false
         val dir = flat(installPath)
-        if (dir.length < MIN_KEY_LENGTH) return false
+        if (dir.length < MIN_FOLDER_LENGTH) return false
         return flat(exeAndroid).startsWith("$dir/")
     }
 

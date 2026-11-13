@@ -301,7 +301,7 @@ internal fun XmbKeyboardPanel(
             w.callback = wrapper
             onDispose { w.callback = original }
         }
-        // Its own window, and only the XMB has it: left-to-right there too, like the rest of the XMB (see DeckTheme).
+        // Its own window, so it takes no layout direction from DeckTheme: left-to-right here too, like the rest of the XMB.
         ForceLtr { XmbKeyboardPanelBody(session, onClose, onSystemKeyboard, triggers, inOwnWindow = true) }
     }
 }

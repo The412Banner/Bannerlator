@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 — MERGED feat/store-download-location → main aeb4c456 (fast-forward); next: fix/store-shortcut-cloud-rows
+
+- **18:53 EST, user: "go"** (after my recommendation: merge now, then fix shortcut / Cloud saves wording / old Downloads rows on a new branch; keep test folders until that re-test).
+- **Merge:** main e143a8a6 → **aeb4c456** (fast-forward, main had not moved). Backup `refs/backup/20261113/main-before-store-download-location` = e143a8a6. `git diff 9956bb24 aeb4c456` = PROGRESS_LOG.md only → main code == tested build 9956bb24 (installed on the Elite 18:34 EST, re-tested PASS 18:48 EST). 19 commits, all authored by The412Banner, no AI trailers. Contains root-17's download-bar text fix (cherry-picked). Branch feat/store-download-location kept (delete only on the user's word).
+- **Next (branch fix/store-shortcut-cloud-rows off aeb4c456):** (1) home shortcut whose game moved (reinstall/import elsewhere) → launch repairs the exe path from the store's record; (2) Steam Cloud saves tab wording when the game is installed but the cloud handle isn't bound; (3) Downloads & Library drops rows of games that are no longer installed. Skipped by recommendation: library count refresh, Amazon uninstall confirm.
+- **Resume point:** test folders on SD kept (cc-import-test/Defcon, cc-import-epic/Hue, cc-import-amazon/Havendock, cc-import-gog/Gunslugs, cc-import-gog2/Stargunner) + shortcuts DEFCON/Hue/Havendock → used for the shortcut-fix re-test, then delete on user OK.
+
 ## 2026-11-13 16:15 EST — Device tests of 1ecce243 starting (Elite)
 
 - **User:** "run your tests, provide screenshots and build me a simple to the point preview of tests in an html preview saved to downloads folder when done".

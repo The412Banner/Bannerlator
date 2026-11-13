@@ -10,7 +10,7 @@
 - ca0f9627f — Store-tab cards (Catalog* and Steam Store*) on the shared card, no buttons (Steam keeps "Add to Library" on free unowned games).
 - 708796b31 — Steam host: same bottom tabs + text rail. b1e16ec51 — Epic reports bytes (speed). 026e2c283 — fallback art by name in the scaffold.
 **CI:** 43339819479 (c0994e4dc) FAILED: maxWidth/maxHeight used in nested scopes → fixed. 43340570744 (167a68d5d) green 4/4. 43341290263 (9c6a05cee) green 4/4. 43342682297 (026e2c283) running.
-**Device test:** none yet.
+**CI:** 43342682297 (026e2c283) green 4/4. **Installed** on the Pocket FIT 2026-11-12 20:25 EST (base.apk sha256 3ec3b9b1…0522 == staged /sdcard/Download/Bannerlator-store-revamp-026e2c28-pubg.apk), replacing d8faad6c. **Device test:** none yet — the user is testing. Resume: no background jobs; after the test read `logcat -b crash` and the exit reasons.
 **Open / Next:** old full-library screens still reachable from the overflow menu; Steam details keeps its own layout; no button-hint bar; PR #660 (XMB update) touches the same store files → conflicts for whichever merges second. Resume: check run 43342682297, stage the pubg APK, ask before install.
 
 ## 2026-11-12 17:35 EST — 🔀 MERGED feat/lab-download-from-source + fix/launcher-resume (main a9a69a466; user: "it works, merge both to main")

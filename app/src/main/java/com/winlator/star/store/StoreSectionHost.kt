@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.SimpleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -282,8 +284,14 @@ internal fun StoreSwitcher(storeName: String, modifier: Modifier = Modifier) {
             Text(storeName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(" ▾", fontSize = 11.sp, color = cs.onSurfaceVariant)
         }
-        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            stores.forEach { (label, cls) ->
+        androidx.compose.material3.DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            // The store's own dark panel with the thin outline, and a line between the stores.
+            modifier = Modifier.clip(SimpleShape).background(cs.background).border(1.dp, cs.outline, SimpleShape),
+        ) {
+            stores.forEachIndexed { i, (label, cls) ->
+                if (i > 0) HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.5f))
                 val here = (ctx as? android.app.Activity)?.javaClass == cls
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text(label, fontSize = 14.sp, fontWeight = if (here) FontWeight.Bold else FontWeight.Normal, color = if (here) cs.primary else cs.onSurface) },

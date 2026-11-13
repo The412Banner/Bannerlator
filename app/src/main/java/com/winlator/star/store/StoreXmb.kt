@@ -147,6 +147,8 @@ internal fun storeLabScheme(base: androidx.compose.material3.ColorScheme): andro
     surfaceContainerHighest = Color(0xFF1C2130),
     outline = Color(0x33FFFFFF),
     outlineVariant = Color(0x1AFFFFFF),
+    // No accent tint on raised surfaces: menus and dialogs stay the Lab's dark panel.
+    surfaceTint = Color.Transparent,
 )
 
 /**

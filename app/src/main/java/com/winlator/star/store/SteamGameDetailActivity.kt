@@ -106,6 +106,7 @@ import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
@@ -2072,6 +2073,11 @@ private fun SteamGameDetailScreen(
         // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
         val downloading = progressVisible   // installAction == CANCEL (active or paused download)
         val primaryShape = RoundedCornerShape(10.dp)
+        var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
+        freeMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2123,9 +2129,30 @@ private fun SteamGameDetailScreen(
                 }
             } else {
                 // Accent action button: Add to shortcuts (installed) / Retry / Install.
-                val (label, enabled, onPrimary) = when (installAction) {
-                    InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
-                    else                    -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
+                // A free game opened from the Store that the account does not own yet: the button adds it to the
+                // library first; once granted it becomes the normal Install button.
+                val freeScope = androidx.compose.runtime.rememberCoroutineScope()
+                var freeOwned by remember(appId) { mutableStateOf(true) }
+                var freeBusy by remember(appId) { mutableStateOf(false) }
+                LaunchedEffect(appId) {
+                    if (appId in SteamFreeOffers.ids) freeOwned = withContext(Dispatchers.IO) {
+                        runCatching { SteamRepository.getInstance().getCachedGameRows().any { it.appId == appId } }.getOrDefault(true)
+                    }
+                }
+                val addFree: () -> Unit = {
+                    freeBusy = true
+                    freeScope.launch {
+                        when (val r = SteamFreeLicense.request(appId)) {
+                            is SteamFreeLicense.Result.Failed -> freeMessage = r.message
+                            else -> { freeOwned = true; SteamFreeOffers.ids.remove(appId); freeMessage = "Added to your library" }
+                        }
+                        freeBusy = false
+                    }
+                }
+                val (label, enabled, onPrimary) = when {
+                    installAction == InstallAction.UNINSTALL -> Triple("Add to shortcuts", launchBtnEnabled, onLaunchClick)
+                    !freeOwned -> Triple(if (freeBusy) "Adding…" else "Add to Library", !freeBusy, addFree)
+                    else -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
                 }
                 Box(
                     modifier = Modifier

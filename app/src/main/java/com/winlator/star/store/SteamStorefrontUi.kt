@@ -627,6 +627,7 @@ fun StoreRailCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
     // The same card as every other store: the art, the name, the price. A tap opens the game's page.
     Column(
         modifier = modifier
@@ -639,10 +640,6 @@ fun StoreRailCard(
         Text(item.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 4.dp))
         StorePriceRow(item, modifier = Modifier.padding(start = 5.dp, end = 5.dp, bottom = 4.dp))
-        // A free game you don't own yet: adding it is the one thing the card itself offers.
-        if (action == StoreAction.AddToLibrary || action == StoreAction.Working) {
-            StoreActionButton(action = action, onClick = onAction, compact = true, modifier = Modifier.padding(start = 5.dp, end = 5.dp, bottom = 4.dp))
-        }
     }
 }
 
@@ -658,6 +655,7 @@ fun StoreResultRow(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -676,9 +674,6 @@ fun StoreResultRow(
             }
         }
         StorePriceRow(item)
-        if (action == StoreAction.AddToLibrary || action == StoreAction.Working) {
-            StoreActionButton(action = action, onClick = onAction, compact = true)
-        }
     }
 }
 
@@ -695,6 +690,7 @@ fun StoreHeroCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (action == StoreAction.AddToLibrary) SteamFreeOffers.ids.add(item.appId)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -710,12 +706,7 @@ fun StoreHeroCard(
                 .padding(start = 10.dp, end = 10.dp, top = 18.dp, bottom = 8.dp),
         ) {
             Text(item.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StorePriceRow(item)
-                if (action == StoreAction.AddToLibrary || action == StoreAction.Working) {
-                    StoreActionButton(action = action, onClick = onAction, compact = true)
-                }
-            }
+            StorePriceRow(item)
         }
     }
 }
@@ -729,3 +720,11 @@ fun StoreHeroCard(
  */
 @Composable
 fun StoreMessageBar(message: String, onTimeout: () -> Unit) = UninstallResultBar(message, onTimeout)
+
+/**
+ * Free games the Store tab showed that the account does not own yet. A card no longer carries "Add to Library"; the
+ * game's page reads this to offer it as its main button.
+ */
+internal object SteamFreeOffers {
+    val ids: MutableSet<Int> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+}

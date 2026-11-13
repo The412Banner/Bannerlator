@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 23:45 EST — 🔀 MERGED fix/store-details-layout (includes fix/ingame-drawer-focus; user: "merge to main")
+
+- **Merged:** backup `refs/backup/20261112/main-before-store-details-layout` = d64f48fa9. `--no-ff` merge of fix/store-details-layout 8143f11b4 (stacked on fix/ingame-drawer-focus 67471d9b3).
+- **Tree check:** `git diff 8143f11b4 <merge>` = empty → main's code is exactly the build the user tested (CI 43365649007 green 4/4, installed on the Pocket FIT 23:38 EST, base.apk sha256 a49299a8…4431).
+- **In it:** in-game menu (Lab) reopens on the page it was left on during a game session; a field's list (Profile, player pad, controller type) takes the highlight when it opens, the highlight follows its entries and the field behind gives it up; the Profile list has the outline and dividers. Stores: GOG / Epic / Amazon / Xbox details pages use Steam's layout (one column over the art, rounded main button and gear, pill tabs, no panel), status / badge and Downloads beside Back in landscape, see-through section boxes, portrait tabs across the top.
+- **Proof level:** CI green; the user tested builds a2796275 → 67471d9b → 4f7a998b → 8143f11b on the Pocket FIT and said "merge to main". Not confirmed back to me: the menu reopening on the last page, Epic / Amazon / Xbox details pages, touch behaviour of the lists. No logcat pass by me.
+
 ## 2026-11-12 22:40 EST — 🔀 MERGED feat/store-revamp (user: "merge to main")
 
 - **Merged:** backup `refs/backup/20261112/main-before-store-revamp` = dd5f4ccc2. `--no-ff` merge of feat/store-revamp 3b122690d.

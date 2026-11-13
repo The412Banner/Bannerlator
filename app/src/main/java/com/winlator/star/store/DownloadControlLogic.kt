@@ -29,12 +29,19 @@ internal fun downloadPercent(done: Long, total: Long): Int =
 internal fun pausedStatusText(pct: Int, sizePart: String, error: String?): String =
     "Paused — $pct%$sizePart" + (error?.takeIf { it.isNotBlank() }?.let { " — $it" } ?: "")
 
+/** Which shortcuts of an uninstalled game go with it. */
+internal enum class ShortcutRemoval { ALL, BY_ID_ONLY, NONE }
+
 /**
- * True when the shortcuts of an uninstalled game should go with it: the files were really removed ([ok], not [folderKept] for another
- * game or client, not [imported] from another Steam client). A folder that still stands still holds the exes other shortcuts run.
+ * Which shortcuts of an uninstalled game go with it. Nothing when the delete failed (not [ok]) or the game was [imported] from another
+ * Steam client. When the folder was kept for another game ([folderKept]) it still holds the exes that game's shortcuts run, so only the
+ * shortcuts tagged with this game's own store id go; otherwise also the ones whose exe lies in the removed install folder.
  */
-internal fun shouldRemoveShortcuts(ok: Boolean, folderKept: Boolean, imported: Boolean): Boolean =
-    ok && !folderKept && !imported
+internal fun shortcutRemovalFor(ok: Boolean, folderKept: Boolean, imported: Boolean): ShortcutRemoval = when {
+    !ok || imported -> ShortcutRemoval.NONE
+    folderKept -> ShortcutRemoval.BY_ID_ONLY
+    else -> ShortcutRemoval.ALL
+}
 
 /** What cancelling a paused Epic download leaves behind. */
 internal enum class EpicCancelOutcome { RESTORE_INSTALLED, DELETE_PARTIAL, KEEP_PARTIAL }

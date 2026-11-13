@@ -24,6 +24,34 @@ class DownloadShortcutMatchTest {
         assertFalse(DownloadShortcutMatch.belongs(Store.EPIC, "Sugar", null, null) { other[it] ?: "" })
     }
 
+    @Test fun belongsById_steamMatchesOnlyItsOwnAppId() {
+        val extras = mapOf("steamAppId" to "220")
+        assertTrue(DownloadShortcutMatch.belongsById(Store.STEAM, "220") { extras[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.STEAM, "221") { extras[it] ?: "" })
+    }
+
+    @Test fun belongsById_epicNeedsStoreSourceEpicAndItsAppName() {
+        val epic = mapOf("storeSource" to "epic", "epicAppName" to "Sugar")
+        val otherSource = mapOf("storeSource" to "gog", "epicAppName" to "Sugar")
+        val otherName = mapOf("storeSource" to "epic", "epicAppName" to "Salt")
+        assertTrue(DownloadShortcutMatch.belongsById(Store.EPIC, "Sugar") { epic[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.EPIC, "Sugar") { otherSource[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.EPIC, "Sugar") { otherName[it] ?: "" })
+    }
+
+    @Test fun belongsById_storesWithoutAnIdTagNeverMatch() {
+        val everything = mapOf("steamAppId" to "1", "storeSource" to "epic", "epicAppName" to "1")
+        assertFalse(DownloadShortcutMatch.belongsById(Store.GOG, "1") { everything[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.AMAZON, "1") { everything[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.XBOX, "1") { everything[it] ?: "" })
+    }
+
+    @Test fun belongsById_emptyIdMatchesNothing() {
+        val extras = mapOf("steamAppId" to "", "storeSource" to "epic", "epicAppName" to "")
+        assertFalse(DownloadShortcutMatch.belongsById(Store.STEAM, "") { extras[it] ?: "" })
+        assertFalse(DownloadShortcutMatch.belongsById(Store.EPIC, "") { extras[it] ?: "" })
+    }
+
     @Test fun exeInsideTheInstallFolder_belongs_whateverTheStore() {
         val install = "$root/steam_games/Half-Life 2"
         assertTrue(DownloadShortcutMatch.belongs(Store.GOG, "1", install, "$install/bin/hl2.exe", none))

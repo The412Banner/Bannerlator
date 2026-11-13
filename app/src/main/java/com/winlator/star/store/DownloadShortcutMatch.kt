@@ -23,15 +23,19 @@ internal object DownloadShortcutMatch {
         installPath: String?,
         exeAndroid: String?,
         extra: (String) -> String,
-    ): Boolean {
-        if (id.isNotEmpty()) {
-            when (store) {
-                Store.STEAM -> if (extra("steamAppId") == id) return true
-                Store.EPIC -> if (extra("storeSource") == "epic" && extra("epicAppName") == id) return true
-                else -> Unit
-            }
+    ): Boolean = belongsById(store, id, extra) || insideInstallFolder(installPath, exeAndroid)
+
+    /**
+     * True when the shortcut whose extras [extra] reads is tagged with the game [id] of [store]: Steam's `steamAppId`, Epic's
+     * `epicAppName` (only with `storeSource` epic). The other stores tag nothing, and an empty [id] matches nothing.
+     */
+    fun belongsById(store: Store, id: String, extra: (String) -> String): Boolean {
+        if (id.isEmpty()) return false
+        return when (store) {
+            Store.STEAM -> extra("steamAppId") == id
+            Store.EPIC -> extra("storeSource") == "epic" && extra("epicAppName") == id
+            else -> false
         }
-        return insideInstallFolder(installPath, exeAndroid)
     }
 
     /** True when the Android path [exeAndroid] lies inside [installPath] (the folder itself is not "inside"). */

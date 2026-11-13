@@ -94,12 +94,19 @@ class DownloadControlLogicTest {
         assertEquals("Paused — 42%  (1 MB / 2 MB) — Login required", pausedStatusText(42, "  (1 MB / 2 MB)", "Login required"))
     }
 
-    @Test fun shortcuts_goOnlyWhenTheFilesReallyWent() {
-        assertTrue(shouldRemoveShortcuts(ok = true, folderKept = false, imported = false))
-        assertFalse(shouldRemoveShortcuts(ok = false, folderKept = false, imported = false))
-        assertFalse(shouldRemoveShortcuts(ok = true, folderKept = true, imported = false))
-        assertFalse(shouldRemoveShortcuts(ok = true, folderKept = false, imported = true))
-        assertFalse(shouldRemoveShortcuts(ok = false, folderKept = true, imported = true))
+    @Test fun shortcuts_allGoWhenTheFolderWentToo() {
+        assertEquals(ShortcutRemoval.ALL, shortcutRemovalFor(ok = true, folderKept = false, imported = false))
+    }
+
+    @Test fun shortcuts_onlyTheOwnIdGoWhenTheFolderIsKept() {
+        assertEquals(ShortcutRemoval.BY_ID_ONLY, shortcutRemovalFor(ok = true, folderKept = true, imported = false))
+    }
+
+    @Test fun shortcuts_noneGoWhenTheDeleteFailedOrTheGameIsImported() {
+        assertEquals(ShortcutRemoval.NONE, shortcutRemovalFor(ok = false, folderKept = false, imported = false))
+        assertEquals(ShortcutRemoval.NONE, shortcutRemovalFor(ok = false, folderKept = true, imported = false))
+        assertEquals(ShortcutRemoval.NONE, shortcutRemovalFor(ok = true, folderKept = false, imported = true))
+        assertEquals(ShortcutRemoval.NONE, shortcutRemovalFor(ok = true, folderKept = true, imported = true))
     }
 
     @Test fun epicCancel_installedGameIsRestored_whateverWasChosen() {

@@ -186,13 +186,13 @@ internal object EpicDownloadControl {
         DownloadScope.io.launch {
             try {
                 if (ns.isEmpty() || cat.isEmpty()) {
-                    fail(ctx, appName, "Open this game's page in the Epic store once, then resume")
+                    failBeforeStart(ctx, appName, dir, title, cover, "Open this game's page in the Epic store once, then resume")
                     return@launch
                 }
                 val token = EpicCredentialStore.getValidAccessToken(ctx)
-                if (token == null) { fail(ctx, appName, "Login required"); return@launch }
+                if (token == null) { failBeforeStart(ctx, appName, dir, title, cover, "Login required"); return@launch }
                 val manifestJson = EpicApiClient.getManifestApiJson(token, ns, cat, appName)
-                if (manifestJson == null) { fail(ctx, appName, "Failed to fetch manifest"); return@launch }
+                if (manifestJson == null) { failBeforeStart(ctx, appName, dir, title, cover, "Failed to fetch manifest"); return@launch }
 
                 val installDir = File(dir)
                 epicPrefs(ctx).edit().putString("epic_dir_$appName", installDir.absolutePath).apply()
@@ -248,6 +248,18 @@ internal object EpicDownloadControl {
             } finally {
                 resuming.remove(appName)
             }
+        }
+    }
+
+    /**
+     * A resume that could not start (no catalog ids yet, no Epic login, no manifest): nothing was fetched or changed, so the download
+     * stays paused with its files and remembered state, and Resume works once the cause is fixed. The reason is shown as a toast.
+     */
+    private fun failBeforeStart(ctx: Context, appName: String, dir: String, title: String, cover: String?, msg: String) {
+        parkPaused(ctx, appName, dir, title, cover)
+        val app = ctx.applicationContext
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { android.widget.Toast.makeText(app, "$title: $msg", android.widget.Toast.LENGTH_LONG).show() }
         }
     }
 

@@ -162,6 +162,10 @@ fun EpicLibraryTab(
             ) {
                 StoreFilterChip("All", !installedOnly) { installedOnly = false }
                 StoreFilterChip("Installed", installedOnly) { installedOnly = true }
+                // Game folders the user already has → installed in place, only missing files download.
+                var importing by remember { mutableStateOf(false) }
+                StoreFilterChip("+ Import game library", false) { importing = true }
+                if (importing) StoreImportGamesFlow(StoreInstallLocations.Store.EPIC) { importing = false }
                 StoreViewButton()
                 Spacer(Modifier.weight(1f))
                 Text(

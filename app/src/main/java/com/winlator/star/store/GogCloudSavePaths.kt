@@ -88,7 +88,19 @@ object GogCloudSavePaths {
         val norm = execPath.replace('\\', '/').lowercase()
         val marker = "gog_games/"
         val idx = norm.indexOf(marker)
-        if (idx < 0) return null
+        if (idx < 0) {
+            // An imported GOG folder lives outside a gog_games folder: match its folder name among the games
+            // whose recorded place (GogInstallPath gog_root_dir_) is such a folder.
+            val p = prefs(ctx)
+            for ((key, value) in p.all) {
+                if (!key.startsWith("gog_dir_")) continue
+                val name = (value as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: continue
+                val root = p.getString("gog_root_dir_$name", null) ?: continue
+                if (root.lowercase().contains("gog_games")) continue
+                if (norm.contains("/" + name.lowercase() + "/")) return key.substring("gog_dir_".length)
+            }
+            return null
+        }
         val after = norm.substring(idx + marker.length)
         val slash = after.indexOf('/')
         val dir = (if (slash >= 0) after.substring(0, slash) else after).trim()

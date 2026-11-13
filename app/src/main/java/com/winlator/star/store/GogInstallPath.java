@@ -43,6 +43,18 @@ public final class GogInstallPath {
         return new File(baseFor(ctx, dirName), dirName);
     }
 
+    /** Folders the user brought ("+ Import game library"), by game id: the download must land in exactly that folder. */
+    private static final Map<String, File> PENDING_ADOPT = new ConcurrentHashMap<>();
+
+    /** Install game {@code gameId} into the existing {@code folder} (an import): GOG's folder name must be its name. */
+    public static void setPendingAdopt(String gameId, File folder) {
+        if (gameId != null && folder != null) PENDING_ADOPT.put(gameId, folder);
+    }
+
+    public static boolean isPendingAdopt(String gameId) {
+        return gameId != null && PENDING_ADOPT.containsKey(gameId);
+    }
+
     /** Remembers the place the user picked for game {@code gameId}'s next fresh download. */
     public static void setPendingBase(String gameId, File base) {
         if (gameId != null && base != null) PENDING.put(gameId, base);
@@ -53,12 +65,23 @@ public final class GogInstallPath {
      * place records that place for {@code dirName}. A game whose folder already exists (installed, partial) or that
      * already has a place keeps it.
      */
-    public static void claimPendingBase(Context ctx, String gameId, String dirName) {
+    public static String claimPendingBase(Context ctx, String gameId, String dirName) {
+        File adopt = gameId == null ? null : PENDING_ADOPT.remove(gameId);
+        if (adopt != null) {
+            // An import: GOG puts the game in <base>/<its own folder name>, so that has to be the user's folder.
+            if (dirName == null || !dirName.equals(adopt.getName())) {
+                return "Rename the folder \"" + adopt.getName() + "\" to \"" + dirName + "\" (GOG's name for this game), then import again.";
+            }
+            File parent = adopt.getParentFile();
+            if (parent != null) prefs(ctx).edit().putString(ROOT_PREFIX + dirName, parent.getAbsolutePath()).apply();
+            return null;
+        }
         File base = gameId == null ? null : PENDING.remove(gameId);
-        if (base == null || dirName == null || dirName.isEmpty()) return;
-        if (prefs(ctx).contains(ROOT_PREFIX + dirName)) return;
-        if (new File(internalBase(ctx), dirName).exists()) return;
+        if (base == null || dirName == null || dirName.isEmpty()) return null;
+        if (prefs(ctx).contains(ROOT_PREFIX + dirName)) return null;
+        if (new File(internalBase(ctx), dirName).exists()) return null;
         prefs(ctx).edit().putString(ROOT_PREFIX + dirName, base.getAbsolutePath()).apply();
+        return null;
     }
 
     /** Forgets where {@code dirName} was installed (after an uninstall), so the next install asks again. */

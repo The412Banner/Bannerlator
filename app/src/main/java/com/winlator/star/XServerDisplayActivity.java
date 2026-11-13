@@ -6117,7 +6117,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean isGogShortcut() {
         if (shortcut == null) return false;
         String p = shortcut.path;
-        return p != null && p.toLowerCase().contains("gog_games");
+        if (p == null) return false;
+        // An imported GOG folder sits outside gog_games; GogCloudSavePaths knows those by their recorded place.
+        return p.toLowerCase().contains("gog_games")
+                || com.winlator.star.store.GogCloudSavePaths.INSTANCE.gameIdForExecPath(this, p) != null;
     }
 
     /**

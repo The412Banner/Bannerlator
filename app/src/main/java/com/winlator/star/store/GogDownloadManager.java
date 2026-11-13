@@ -417,7 +417,8 @@ public final class GogDownloadManager {
                         : secureLinkJson.substring(0, Math.min(200, secureLinkJson.length())));
 
             // Install dir (a picked download location applies to a fresh download)
-            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            String adoptErr = GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            if (adoptErr != null) return adoptErr;
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
@@ -955,7 +956,8 @@ public final class GogDownloadManager {
             if (files.isEmpty()) return "no files in manifest";
             dbg.append("gen1 files=").append(files.size()).append("\n");
 
-            GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            String adoptErr = GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), installDir);
+            if (adoptErr != null) return adoptErr;
             File installPath = GogInstallPath.getInstallDir(ctx, installDir);
             installPath.mkdirs();
             installDirRef.set(installPath);
@@ -1136,6 +1138,11 @@ public final class GogDownloadManager {
             if (downloadUrl == null) return "redirect resolve failed";
 
             // Download the installer .exe
+            // An import can't reuse an installer-only game (only its setup .exe is downloaded).
+            if (GogInstallPath.isPendingAdopt(String.valueOf(game.gameId))) {
+                GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), null);
+                return "This GOG game only has an installer, so its folder can't be imported. Install it normally.";
+            }
             GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), GogTitles.english(ctx, game));
             File installDir = GogInstallPath.getInstallDir(ctx, GogTitles.english(ctx, game));
             installDir.mkdirs();

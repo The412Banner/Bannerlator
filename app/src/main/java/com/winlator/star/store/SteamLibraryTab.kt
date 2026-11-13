@@ -774,8 +774,8 @@ fun SteamLibraryTab(
                     columns = GridCells.Adaptive(minSize = storeGridCell(wide)),
                     modifier = Modifier.fillMaxSize().focusGroup(),
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     // The same card as every other store: a tap opens the game's page.
                     val card: @Composable (SteamGame) -> Unit = { game ->

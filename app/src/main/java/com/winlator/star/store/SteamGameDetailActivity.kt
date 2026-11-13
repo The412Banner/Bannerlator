@@ -2002,10 +2002,30 @@ private fun SteamGameDetailScreen(
     val showPinnedCaption =
         selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val pageBg = xmbSolidBackground()
+    val conf = androidx.compose.ui.platform.LocalConfiguration.current
+    val widePage = conf.screenWidthDp > conf.screenHeightDp
+    Box(modifier = Modifier.fillMaxSize().background(pageBg)) {
+    // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
+    // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
+    StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
+    com.winlator.star.ui.simple.LabPicture(
+        pics = listOf(
+            com.winlator.star.ui.simple.LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$appId/library_hero.jpg"),
+            com.winlator.star.ui.simple.LabArt.Pic("https://cdn.cloudflare.steamstatic.com/steam/apps/$appId/library_hero.jpg"),
+        ),
+        modifier = Modifier.fillMaxSize(),
+    )
+    Box(
+        Modifier.fillMaxSize().background(
+            if (widePage) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
+            else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
+        ),
+    )
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxHeight()
+            .fillMaxWidth(if (widePage) 0.6f else 1f)
             .verticalScroll(rememberScrollState()),
     ) {
         // Header bar
@@ -2027,36 +2047,8 @@ private fun SteamGameDetailScreen(
             DownloadsButton()
         }
 
-        // Hero image with a subtle gradient into the background at the bottom
-        Box(
-            modifier = Modifier.fillMaxWidth().height(180.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // The SAME resolve chain the storefront cards use: PICS published art -> constructed
-            // CDN hosts -> appdetails -> SteamGridDB -> themed placeholder.
-            //
-            // Previously this page built ONE constructed URL of its own, so a game that showed art
-            // in the Library showed nothing here — and when that URL 404'd the `else` branch left a
-            // spinner running forever, which is the one failure mode the chain must never produce.
-            // aspectRatio = null because this hero is a fixed-height band, not a 92:43 card.
-            StoreCapsule(
-                appId = appId,
-                title = nameText,
-                modifier = Modifier.fillMaxSize(),
-                aspectRatio = null,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, xmbSolidBackground()),
-                        ),
-                    ),
-            )
-        }
+        // The art shows through here; the page starts under it.
+        Spacer(Modifier.height((conf.screenHeightDp * if (widePage) 0.04f else 0.28f).dp))
 
         // Game name — persistent header. Stays above the action row + tab strip (mirrors the
         // mockup's fixed game header, which doesn't change as the tab body below it swaps).

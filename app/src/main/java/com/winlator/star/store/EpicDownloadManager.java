@@ -762,6 +762,15 @@ public class EpicDownloadManager {
             AtomicLong currentSpeedBps,
             EpicSpeedMeter speedMeter) {
         RustPoolResult r = new RustPoolResult();
+        // Bytes of the chunks already in the resume cache: the native pool credits them first (its cached-skip pass), but they are
+        // not fetched, so speed and time left must not count them (the Java pool feeds netBytes for the same reason). Same rule
+        // and unit as the native side: a cache file that exists, max(fileSize, 1).
+        long cachedCredit = 0L;
+        File chunkCache = new File(installDirPath, ".chunks");
+        for (ChunkInfo c : neededChunks) {
+            if (new File(chunkCache, c.guidStr()).exists()) cachedCredit += Math.max(c.fileSize, 1);
+        }
+        final long fCachedCredit = cachedCredit;
         try {
             // pendingFiles are FileInfo objects out of manifest.files (identity, no equals()).
             java.util.IdentityHashMap<FileInfo, Integer> index = new java.util.IdentityHashMap<>();
@@ -807,19 +816,21 @@ public class EpicDownloadManager {
                     long done = bytesDone;
                     int  cnt  = chunksDone;
                     int  pct  = (int)(done * 80L / fTotalBytes);
+                    // Fetched bytes only (the speed basis), without the cached chunks credited at the start.
+                    long net  = Math.max(0L, bytesDone - fCachedCredit);
 
                     long nowMs     = System.currentTimeMillis();
                     long prevMs    = lastSpeedMs.get();
                     long timeDelta = nowMs - prevMs;
                     if (timeDelta >= 500 && lastSpeedMs.compareAndSet(prevMs, nowMs)) {
-                        long prevB  = lastSpeedBytes.getAndSet(done);
-                        long bDelta = done - prevB;
+                        long prevB  = lastSpeedBytes.getAndSet(net);
+                        long bDelta = net - prevB;
                         if (timeDelta > 0) currentSpeedBps.set(bDelta * 1000L / timeDelta);
                     }
 
                     String mb    = String.format("%.1f / %.1f MB", done / 1048576.0, fTotalBytes / 1048576.0);
                     String speed = formatSpeed(currentSpeedBps.get());
-                    downloadProgress(progressCallback, speedMeter, bytesDone, done, fTotalBytes,
+                    downloadProgress(progressCallback, speedMeter, net, done, fTotalBytes,
                             "Downloading chunks (" + cnt + "/" + totalChunks + ")  " + mb
                             + (speed.isEmpty() ? "" : "  " + speed), pct);
                 }

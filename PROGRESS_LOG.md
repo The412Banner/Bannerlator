@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 13:05 EST — UI sounds: one Sound pack list, Manage page removed (fix/ui-sounds-one-list 4b5baf44 off main dc4ea23e, CI 43479184538 running, NOT device-tested)
+
+- **User (screenshots 13:01):** "why do we have manage sound packs if we can download and manage them via sound pack menu?" → "do it and merge when green".
+- **Changed (4b5baf44):** installed pack → **Preview** (plays move, move, select, switch-on from that pack, missing sounds from Steam; the menu stays open) / **Apply** / **Delete**; last line of the list **+ Install a pack zip**. `UiSoundsScreen.kt` (Manage sound packs) deleted, its handoff + dialog removed from app settings and Classic. Deck-style settings: the Sound pack select box opens the same list (`ControlView` / `SelectBox` take an optional `picker`, set for `AppSettingsRegistry.SOUND_PACK_ID`) instead of the plain drop-down.
+- **Plan:** CI green → backup ref → `--no-ff` merge to main (user pre-approved "merge when green") → main CI. Proof level at merge: CI green only, NOT device-tested.
+
 ## 2026-11-13 13:02 EST — 🔀 MERGED feat/ui-sounds (user: "it works, merge it")
 
 - **Merged:** backup `refs/backup/20261113/main-before-ui-sounds` = 10e3224e1 (pushed). `--no-ff` merge of feat/ui-sounds 25cd8dcf → main **ecc153e4**. Main had not moved since the branch point.

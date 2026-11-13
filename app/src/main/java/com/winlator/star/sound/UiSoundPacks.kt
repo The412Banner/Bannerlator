@@ -209,8 +209,15 @@ object UiSoundPacks {
         }
     }
 
-    /** Plays [cue] from the current choice even while sounds are off (settings preview). */
-    fun preview(cue: UiCue) = UiSounds.preview(cue)
+    /** Plays a few sounds of pack [id] as it would sound in use (missing ones from the Steam pack), without using it. */
+    fun preview(ctx: Context, id: String) {
+        scope.launch {
+            val r = root(ctx)
+            val base = if (_state.value.steamInstalled) UiSoundPack.read(File(r, STEAM_ID), STEAM_ID, STEAM_NAME) else null
+            val pack = if (id == STEAM_ID) null else UiSoundPack.read(File(r, id), id, id)
+            UiSounds.preview("preview-$id", UiSoundBank.resolve(pack, base), listOf(UiCue.NAVIGATE, UiCue.NAVIGATE, UiCue.SELECT, UiCue.TOGGLE_ON))
+        }
+    }
 
     private fun install(
         ctx: Context,

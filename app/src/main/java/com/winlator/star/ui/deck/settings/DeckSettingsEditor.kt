@@ -949,19 +949,21 @@ private fun SettingRow(
     val baseline = source.baseline(def)?.let { labelFor(control, it) }
     // Toggles always sit on the right; wide rows put every compact control there too.
     val inline = control is Control.Toggle || (wide && control !is Control.Cores)
+    val picker: (@Composable (() -> Unit) -> Unit)? =
+        if (def.id == AppSettingsRegistry.SOUND_PACK_ID) { dismiss -> com.winlator.star.ui.simple.SoundPackPicker(onDismiss = dismiss) } else null
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
         if (inline) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RowInfo(def, level, origin, baseline, env.scope, onHelp, onReset, Modifier.weight(1f).padding(end = 16.dp))
                 Box(modifier = Modifier.widthIn(max = if (control is Control.Toggle) 90.dp else controlMax)) {
-                    ControlView(control, value, enabled, alignEnd = true, onPick = onPick, onCustom = onCustom)
+                    ControlView(control, value, enabled, alignEnd = true, onPick = onPick, onCustom = onCustom, picker = picker)
                 }
             }
         } else {
             RowInfo(def, level, origin, baseline, env.scope, onHelp, onReset, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            ControlView(control, value, enabled, alignEnd = false, onPick = onPick, onCustom = onCustom)
+            ControlView(control, value, enabled, alignEnd = false, onPick = onPick, onCustom = onCustom, picker = picker)
         }
         // Why a choice or the whole control is greyed out, and anything worth saying about the value.
         val reasons = buildList {
@@ -1104,7 +1106,11 @@ internal fun labelFor(control: Control, v: String): String = when (control) {
 // ── Controls ────────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ControlView(control: Control, value: String, enabled: Boolean, alignEnd: Boolean, onPick: (String) -> Unit, onCustom: () -> Unit) {
+private fun ControlView(
+    control: Control, value: String, enabled: Boolean, alignEnd: Boolean, onPick: (String) -> Unit, onCustom: () -> Unit,
+    /** A list of its own instead of the drop-down (the Sound pack list). */
+    picker: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
+) {
     when (control) {
         Control.Toggle -> Switch(
             checked = value == "1",
@@ -1114,7 +1120,7 @@ private fun ControlView(control: Control, value: String, enabled: Boolean, align
         )
         is Control.Segmented -> SegmentedPills(control.options, value, enabled, alignEnd, onPick)
         is Control.Chips -> ChipPills(control.options, value, enabled, alignEnd, onPick)
-        is Control.Select -> SelectBox(control, value, enabled, onPick, onCustom)
+        is Control.Select -> SelectBox(control, value, enabled, onPick, onCustom, picker)
         is Control.Slider -> SliderControl(control, value, enabled, onPick)
         is Control.TextField -> TextControl(control, value, enabled, onPick)
         Control.Cores -> CoresControl(value, enabled, onPick)
@@ -1200,7 +1206,10 @@ private fun Pill(label: String, selected: Boolean, enabled: Boolean, onClick: ()
 }
 
 @Composable
-private fun SelectBox(control: Control.Select, value: String, enabled: Boolean, onPick: (String) -> Unit, onCustom: () -> Unit) {
+private fun SelectBox(
+    control: Control.Select, value: String, enabled: Boolean, onPick: (String) -> Unit, onCustom: () -> Unit,
+    picker: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
+) {
     val cs = MaterialTheme.colorScheme
     val shape = deckShape(14.dp)
     var open by remember { mutableStateOf(false) }
@@ -1229,7 +1238,9 @@ private fun SelectBox(control: Control.Select, value: String, enabled: Boolean, 
             Spacer(Modifier.width(10.dp))
             Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 420.dp)) {
+        if (picker != null) {
+            if (open) picker { open = false }
+        } else DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 420.dp)) {
             control.options.forEach { o ->
                 DropdownMenuItem(
                     text = { Text(o.label) },

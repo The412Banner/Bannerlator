@@ -1,5 +1,7 @@
 package com.winlator.star.ui.simple
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,9 +47,9 @@ import kotlinx.coroutines.delay
 private class AvailablePack(val id: String, val name: String, val author: String)
 
 /**
- * The Sound pack list: installed packs first (A on one: Apply or Delete; a deleted pack goes back to the
+ * The Sound pack list: installed packs first (A on one: Preview, Apply or Delete; a deleted pack goes back to the
  * available list), then every pack that can be downloaded (A downloads it and uses it; the list stays open and
- * shows the download on its row). Each heading shows how many packs it holds.
+ * shows the download on its row), then "+ Install a pack zip". Each heading shows how many packs it holds.
  */
 @Composable
 internal fun SoundPackPicker(onDismiss: () -> Unit) {
@@ -61,6 +63,9 @@ internal fun SoundPackPicker(onDismiss: () -> Unit) {
         state.store.filter { it.id !in fromStore }.forEach { add(AvailablePack("store-" + it.id, it.name, it.author)) }
     }
     var actionsFor by remember { mutableStateOf<UiSoundPacks.Installed?>(null) }
+    val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) UiSoundPacks.importZip(context, uri)
+    }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         delay(60)
@@ -104,6 +109,30 @@ internal fun SoundPackPicker(onDismiss: () -> Unit) {
                         modifier = if (isFirst) Modifier.focusRequester(first) else Modifier,
                     ) { UiSoundPacks.select(context, a.id) }
                 }
+                item {
+                    var f by remember { mutableStateOf(false) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 46.dp)
+                            .onFocusChanged {
+                                if (it.isFocused && !f) UiSounds.focusGained()
+                                f = it.isFocused
+                            }
+                            .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
+                            .clickable(enabled = state.busy == null) {
+                                zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                            }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        val zipBusy = state.busy?.startsWith("zip-") == true
+                        Text(
+                            if (zipBusy) L("Installing the pack zip…") else L("+ Install a pack zip"),
+                            color = accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
@@ -114,15 +143,18 @@ internal fun SoundPackPicker(onDismiss: () -> Unit) {
     }
 
     actionsFor?.let { p ->
+        val preview = remember(p.id) { MenuAction(L("Preview"), { UiSoundPacks.preview(context, p.id) }) }
         SimpleActionSheet(
             title = p.name,
             actions = listOf(
+                preview,
                 MenuAction(L("Apply"), { UiSoundPacks.select(context, p.id) }),
                 MenuAction(L("Delete"), { UiSoundPacks.delete(context, p.id) }, danger = true),
             ),
             onDismiss = { actionsFor = null },
         ) { a ->
-            actionsFor = null
+            // Preview keeps the menu open, so Apply is one press away after listening.
+            if (a !== preview) actionsFor = null
             a.run()
         }
     }

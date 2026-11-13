@@ -82,7 +82,7 @@ internal object AppSettingsRegistry {
     val handoffs: Map<String, List<Handoff>> = mapOf(
         "app.general" to listOf(Handoff(T("Check for updates"), T("Version, release notes and Download & install (classic Settings)."), TARGET_CLASSIC)),
         "app.appearance" to listOf(Handoff(T("Theme and colours"), T("Theme presets, custom accent colour, side menu, orientation, interface and text size."), TARGET_APPEARANCE)),
-        "app.sounds" to listOf(Handoff(T("Sound packs"), T("DeckThemes packs, a pack zip, removing packs."), TARGET_SOUNDS)),
+        "app.sounds" to listOf(Handoff(T("Manage sound packs"), T("Preview, remove, or install a pack zip."), TARGET_SOUNDS)),
         "app.library" to listOf(Handoff(T("Installed sound banks and export folder"), T("Add .sf2 files and choose where shortcuts are exported (classic Settings)."), TARGET_CLASSIC)),
         "app.performance" to listOf(
             Handoff(T("Root controls, heat safety and Lossless.dll"), T("CPU governor and frequency locks, free memory, the temperature watchdog (classic Settings › Performance), and importing Lossless.dll for frame generation."), TARGET_CLASSIC),
@@ -124,9 +124,7 @@ internal object AppSettingsRegistry {
     private fun toggle(id: String, category: String, group: String, label: String, level: SettingLevel, key: String, default: Boolean, hint: String? = null) =
         app(id, category, group, label, level, hint = hint, tech = key, control = { Control.Toggle }, binding = prefBool(key, default))
 
-    private fun soundPackOptions(): List<Opt> =
-        listOf(Opt(UiSoundPacks.STEAM_ID, T("Steam Big Picture"))) +
-            UiSoundPacks.state.value.packs.filter { it.id != UiSoundPacks.STEAM_ID }.map { Opt(it.id, it.name) }
+    private fun soundPackOptions(): List<Opt> = UiSoundPacks.choices().map { (id, label) -> Opt(id, label) }
 
     private fun buildDefs(): List<SettingDef> = listOf(
         app(

@@ -12,95 +12,51 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.winlator.star.sound.DeckThemesStore
 import com.winlator.star.sound.UiCue
 import com.winlator.star.sound.UiSoundPacks
 import com.winlator.star.ui.deck.deckFocusRing
 import com.winlator.star.ui.deck.deckShape
 import com.winlator.star.ui.simple.L
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
- * Sound packs: the installed ones (pick, preview, remove), the DeckThemes store (search, install) and
- * installing an Audio Loader pack zip from storage.
+ * Installed sound packs (pick, preview, remove) and installing an Audio Loader pack zip from storage.
+ * DeckThemes packs are picked and downloaded from the Sound pack setting's list.
  */
 @Composable
 fun UiSoundsScreen(onClose: () -> Unit) {
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     val state by UiSoundPacks.state.collectAsState()
-    val scope = rememberCoroutineScope()
-
-    var query by remember { mutableStateOf("") }
-    var order by remember { mutableStateOf(DeckThemesStore.ORDERS.first()) }
-    val results = remember { mutableStateListOf<DeckThemesStore.Item>() }
-    var total by remember { mutableIntStateOf(0) }
-    var page by remember { mutableIntStateOf(1) }
-    var loading by remember { mutableStateOf(false) }
-    var storeError by remember { mutableStateOf<String?>(null) }
-    var searchTick by remember { mutableIntStateOf(0) }
-
-    fun load(next: Int) {
-        if (loading) return
-        loading = true
-        storeError = null
-        scope.launch {
-            val r = withContext(Dispatchers.IO) { runCatching { DeckThemesStore.search(query, order, next) } }
-            r.onSuccess { p ->
-                if (next == 1) results.clear()
-                results.addAll(p.items)
-                total = p.total
-                page = next
-            }.onFailure { storeError = it.message ?: it.javaClass.simpleName }
-            loading = false
-        }
-    }
-    LaunchedEffect(searchTick, order) { load(1) }
 
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) UiSoundPacks.importZip(context, uri)
@@ -113,7 +69,7 @@ fun UiSoundsScreen(onClose: () -> Unit) {
         ) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(L("Sound packs"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = cs.onBackground, modifier = Modifier.weight(1f))
+                    Text(L("Manage sound packs"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = cs.onBackground, modifier = Modifier.weight(1f))
                     IconButton(onClick = onClose, modifier = Modifier.deckFocusRing(deckShape(20.dp))) {
                         Icon(Icons.Filled.Close, contentDescription = L("Close"))
                     }
@@ -158,58 +114,6 @@ fun UiSoundsScreen(onClose: () -> Unit) {
                 ) { Text(L("Install a pack zip")) }
             }
 
-            item { SectionTitle("DeckThemes") }
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        placeholder = { Text(L("Search")) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { searchTick++ }),
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { searchTick++ }, modifier = Modifier.deckFocusRing(deckShape(20.dp))) {
-                        Icon(Icons.Filled.Search, contentDescription = L("Search"))
-                    }
-                }
-            }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                    DeckThemesStore.ORDERS.forEach { o ->
-                        val on = o == order
-                        Text(
-                            o,
-                            fontSize = 12.sp,
-                            color = if (on) cs.onPrimary else cs.onSurface,
-                            modifier = Modifier
-                                .deckFocusRing(deckShape(14.dp))
-                                .clip(deckShape(14.dp))
-                                .background(if (on) cs.primary else cs.surfaceVariant)
-                                .clickable { if (!on) order = o }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                        )
-                    }
-                }
-            }
-            storeError?.let { e -> item { Text(e, color = cs.error, fontSize = 13.sp) } }
-            items(results, key = { "store-" + it.id }) { item ->
-                val installed = state.packs.any { it.storeId == item.id }
-                StoreRow(item, installed, busy = state.busy == "store-" + item.id) {
-                    if (installed) UiSoundPacks.select(context, "store-" + item.id)
-                    else if (state.busy == null) UiSoundPacks.installStore(context, item)
-                }
-            }
-            if (results.size < total) {
-                item {
-                    OutlinedButton(
-                        onClick = { load(page + 1) },
-                        enabled = !loading,
-                        modifier = Modifier.padding(vertical = 6.dp).deckFocusRing(deckShape(20.dp)),
-                    ) { Text(L("More")) }
-                }
-            }
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
@@ -278,40 +182,41 @@ private fun PackRow(
     }
 }
 
+/** The Sound pack list as a pop-up (Classic Settings): picking a pack not downloaded yet (↓) downloads it. */
 @Composable
-private fun StoreRow(item: DeckThemesStore.Item, installed: Boolean, busy: Boolean, onClick: () -> Unit) {
+fun SoundPackPickerDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .deckFocusRing(deckShape(12.dp), scaleTo = 1.01f)
-            .clip(deckShape(12.dp))
-            .background(cs.surface)
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-    ) {
-        AsyncImage(
-            model = item.imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(width = 96.dp, height = 54.dp).clip(deckShape(8.dp)).background(cs.surfaceVariant),
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(item.name, color = cs.onSurface, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                listOf(item.author, "${item.downloads} ↓", "★ ${item.stars}").filter { it.isNotBlank() }.joinToString(" · "),
-                color = cs.onSurfaceVariant,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        when {
-            busy -> Text("…", color = cs.primary)
-            installed -> Icon(Icons.Filled.Check, contentDescription = L("Installed"), tint = cs.primary)
-            else -> Icon(Icons.Filled.Download, contentDescription = L("Install"), tint = cs.onSurfaceVariant)
+    val state by UiSoundPacks.state.collectAsState()
+    val choices = UiSoundPacks.choices()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        com.winlator.star.ui.DeckDialogBars()
+        Surface(shape = deckShape(16.dp), color = cs.surface, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(vertical = 12.dp)) {
+                Text(L("Sound pack"), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = cs.onSurface, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 460.dp)) {
+                    items(choices, key = { it.first }) { (id, label) ->
+                        val on = id == state.selected
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .deckFocusRing(deckShape(8.dp), scaleTo = 1.0f)
+                                .clickable {
+                                    UiSoundPacks.select(context, id)
+                                    onDismiss()
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        ) {
+                            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                if (on) Icon(Icons.Filled.Check, contentDescription = null, tint = cs.primary)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, color = cs.onSurface, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
         }
     }
 }

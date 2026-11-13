@@ -54,6 +54,8 @@ object UiSoundPacks {
         val busy: String? = null,
         val progress: Float = 0f,
         val error: String? = null,
+        /** The DeckThemes sound packs (cached list, most downloaded first). */
+        val store: List<DeckThemesStore.Item> = emptyList(),
     ) {
         val steamInstalled: Boolean get() = packs.any { it.id == STEAM_ID }
     }
@@ -64,6 +66,39 @@ object UiSoundPacks {
     @Volatile private var appContext: Context? = null
 
     private fun root(ctx: Context) = File(ctx.filesDir, "ui_sounds")
+    private fun storeCache(ctx: Context) = File(root(ctx), ".store.json")
+    private const val STORE_MAX_AGE_MS = 24L * 60 * 60 * 1000
+    @Volatile private var storeRefreshing = false
+
+    /** Reloads the DeckThemes pack list when the cached one is older than a day (or [force]). */
+    fun refreshStore(ctx: Context, force: Boolean = false) {
+        val cache = storeCache(ctx)
+        if (storeRefreshing) return
+        if (!force && cache.isFile && System.currentTimeMillis() - cache.lastModified() < STORE_MAX_AGE_MS) return
+        storeRefreshing = true
+        scope.launch {
+            try {
+                val json = DeckThemesStore.allJson()
+                val page = DeckThemesStore.parse(json)
+                root(ctx).mkdirs()
+                cache.writeText(json)
+                _state.update { it.copy(store = page.items) }
+            } catch (e: Exception) {
+                Log.w(TAG, "DeckThemes list refresh failed", e)
+            } finally {
+                storeRefreshing = false
+            }
+        }
+    }
+
+    private fun loadStoreCache(ctx: Context): List<DeckThemesStore.Item> =
+        runCatching { DeckThemesStore.parse(storeCache(ctx).readText()).items }.getOrDefault(emptyList())
+
+    private fun toast(ctx: Context, text: String) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(ctx.applicationContext, text, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
 
     /** Reads the saved choice and loads it. Call once from Application.onCreate. */
     fun init(context: Context) {
@@ -77,9 +112,11 @@ object UiSoundPacks {
                     volume = p.getInt(PREF_VOLUME, DEFAULT_VOLUME).coerceIn(0, 100),
                     selected = p.getString(PREF_PACK, STEAM_ID) ?: STEAM_ID,
                     packs = scan(ctx),
+                    store = loadStoreCache(ctx),
                 )
             }
             apply()
+            if (_state.value.on) refreshStore(ctx)
             if (_state.value.on && !_state.value.steamInstalled && _state.value.selected == STEAM_ID) installSteam(ctx)
         }
     }
@@ -91,6 +128,7 @@ object UiSoundPacks {
             apply()
             if (on && !_state.value.steamInstalled && _state.value.selected == STEAM_ID) installSteam(ctx)
         }
+        if (on) refreshStore(ctx)
     }
 
     fun setVolume(ctx: Context, volume: Int) {
@@ -100,7 +138,29 @@ object UiSoundPacks {
         UiSounds.setVolume(v / 100f)
     }
 
+    /** The pack list, as (id, label): Steam first, then installed packs, then every DeckThemes pack not downloaded yet (↓). */
+    fun choices(): List<Pair<String, String>> {
+        val s = _state.value
+        val installed = s.packs.filter { it.id != STEAM_ID }
+        val fromStore = installed.mapNotNull { it.storeId }.toSet()
+        return listOf(STEAM_ID to (STEAM_NAME + if (s.steamInstalled) "" else " ↓")) +
+            installed.map { it.id to it.name } +
+            s.store.filter { it.id !in fromStore }.map { ("store-" + it.id) to (it.name + " ↓") }
+    }
+
+    /** Uses pack [id]; a DeckThemes pack that is not downloaded yet is downloaded first and used once it is in. */
     fun select(ctx: Context, id: String) {
+        val s = _state.value
+        if (id != STEAM_ID && s.packs.none { it.id == id }) {
+            val item = s.store.firstOrNull { "store-" + it.id == id } ?: return
+            if (s.busy != null) {
+                toast(ctx, com.winlator.star.ui.simple.L("Another sound pack is downloading"))
+                return
+            }
+            toast(ctx, com.winlator.star.ui.simple.L("Downloading %1\$s", item.name))
+            installStore(ctx, item)
+            return
+        }
         prefs(ctx).edit().putString(PREF_PACK, id).apply()
         _state.update { it.copy(selected = id, error = null) }
         scope.launch {
@@ -177,9 +237,11 @@ object UiSoundPacks {
                 if (select) prefs(ctx).edit().putString(PREF_PACK, id).apply()
                 _state.update { s -> s.copy(packs = scan(ctx), selected = if (select) id else s.selected) }
                 Log.i(TAG, "installed sound pack $id (${pack.name})")
+                if (source != Source.STEAM) toast(ctx, com.winlator.star.ui.simple.L("Sound pack ready: %1\$s", pack.name))
             } catch (e: Exception) {
                 Log.w(TAG, "sound pack install failed ($busyId)", e)
                 _state.update { it.copy(error = e.message ?: e.javaClass.simpleName) }
+                toast(ctx, com.winlator.star.ui.simple.L("Sound pack download failed: %1\$s", e.message ?: e.javaClass.simpleName))
             } finally {
                 tmp.delete()
                 work.deleteRecursively()

@@ -959,7 +959,14 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
                     onCheckedChange = { com.winlator.star.sound.UiSoundPacks.setOn(context, it) },
                 )
             }
-            Button(onClick = { showUiSounds = true }) { Text("Sound packs") }
+            var showPackPicker by remember { mutableStateOf(false) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { showPackPicker = true }) {
+                    Text(com.winlator.star.sound.UiSoundPacks.choices().firstOrNull { it.first == uiSounds.selected }?.second ?: "Sound pack")
+                }
+                Button(onClick = { showUiSounds = true }) { Text("Manage sound packs") }
+            }
+            if (showPackPicker) SoundPackPickerDialog(onDismiss = { showPackPicker = false })
             if (showUiSounds) {
                 androidx.compose.ui.window.Dialog(
                     onDismissRequest = { showUiSounds = false },

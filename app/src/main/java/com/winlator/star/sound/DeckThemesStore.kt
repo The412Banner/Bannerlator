@@ -34,14 +34,24 @@ object DeckThemesStore {
     class Page(val total: Int, val items: List<Item>)
 
     /** One page of sound packs (music packs are left out). */
-    fun search(query: String, order: String, page: Int, perPage: Int = 30): Page {
+    fun search(query: String, order: String, page: Int, perPage: Int = 30): Page = parse(searchJson(query, order, page, perPage))
+
+    /** Every sound pack in one answer (the store has a few hundred), most downloaded first, as raw JSON for caching. */
+    fun allJson(): String = searchJson("", ORDERS.first(), 1, 500)
+
+    private fun searchJson(query: String, order: String, page: Int, perPage: Int): String {
         val q = buildString {
             append("$API/themes?filters=").append(enc("AUDIO.Audio"))
             append("&order=").append(enc(order))
             append("&page=").append(page).append("&perPage=").append(perPage)
             if (query.isNotBlank()) append("&search=").append(enc(query.trim()))
         }
-        val root = JSONObject(get(q))
+        return get(q)
+    }
+
+    /** Reads a store answer ([search] / [allJson]). */
+    fun parse(json: String): Page {
+        val root = JSONObject(json)
         val arr = root.optJSONArray("items")
         val items = ArrayList<Item>()
         if (arr != null) for (i in 0 until arr.length()) {

@@ -1702,6 +1702,7 @@
     <string name="lab_cf9192cb">%1$s installed</string>
     <string name="lab_d02befc2">Video memory</string>
     <string name="lab_d03dc667">Steam Deck mode (-steamdeck)</string>
+    <string name="lab_d0473b58">Shortcut settings</string>
     <string name="lab_d049a8c0">Launch with</string>
     <string name="lab_d06090cf">Pick via system…</string>
     <string name="lab_d063c529">Called WOWBox64 on ARM64EC containers, where it runs 32-bit code when chosen above.</string>

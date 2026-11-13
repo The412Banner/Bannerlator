@@ -95,6 +95,8 @@ internal object SettingsRegistry {
     const val TARGET_DRIVE_C = "drive_c"
     /** Move a game to another container (or copy it there), over the current Deck page. */
     const val TARGET_MOVE_CONTAINER = "move_container"
+    /** The Edit container page of the game's container (the XMB game page's link to it). */
+    const val TARGET_CONTAINER = "container"
     /** Information only, nothing to open. */
     const val TARGET_NONE = "none"
     /** Another category of this editor (see [categoryTarget]). */
@@ -108,9 +110,10 @@ internal object SettingsRegistry {
     /**
      * Rows that open another screen (or say where something lives) for what is not edited here. Each
      * names its worlds. None opens the classic editor any more ([TARGET_CLASSIC] stays handled by the
-     * screens for a hand-off that may need it again).
+     * screens for a hand-off that may need it again). [xmb]: a game's page also links to its container's Edit page (the chain of
+     * links over the other interfaces' header does not exist there).
      */
-    fun handoffs(scope: EditorScope, env: SettingsEnv): Map<String, List<Handoff>> {
+    fun handoffs(scope: EditorScope, env: SettingsEnv, xmb: Boolean = false): Map<String, List<Handoff>> {
         val game = scope == EditorScope.GAME
         val m = linkedMapOf<String, List<Handoff>>()
         if (game) {
@@ -121,6 +124,8 @@ internal object SettingsRegistry {
                 Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY),
                 Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY),
                 Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY),
+            ) + listOfNotNull(
+                if (xmb) Handoff(T("Container settings"), "Open the settings of \"$containerName\", the container this game runs in.", TARGET_CONTAINER, WINE_ONLY) else null,
             )
             m["launch"] = listOf(Handoff(T("Offline Steam mode, file checks and updates"), T("Goldberg mode, Verify files and Check for updates live in the launch menu. Turn off \"Skip the launch menu\" to see it on the next start."), TARGET_NONE))
         }

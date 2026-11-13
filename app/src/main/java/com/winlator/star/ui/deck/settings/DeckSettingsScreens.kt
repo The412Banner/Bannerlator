@@ -238,19 +238,15 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
     val shortcut = shortcutState.value
     val containerName = containerVm.container?.name ?: shortcut.container.name
     // Only a Wine game follows a Wine container: the Linux Steam client entry and Android games are
-    // never linked to the container editor.
-    val chain = if (env.world != World.WINE) emptyList() else listOf(
-        ChainLink(if (xmb) L("New-container defaults") else L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
+    // never linked to the container editor. The XMB has no chain: its Game tab links to the container instead.
+    val chain = if (xmb || env.world != World.WINE) emptyList() else listOf(
+        ChainLink(L("All containers"), Icons.Filled.Layers) { navController.navigate(DeckSettingsRoutes.DEFAULTS) },
         ChainLink(containerName, Icons.Filled.Inventory2) { navController.navigate(DeckSettingsRoutes.container(containerId)) },
         ChainLink(L("This game"), Icons.Filled.SportsEsports, null),
     )
     DeckSettingsEditor(
         header = EditorHeader(
-            overline = when (env.world) {
-                World.LINUX -> L("Linux Steam client")
-                World.ANDROID -> L("Android game")
-                World.WINE -> L("Game settings")
-            },
+            overline = PageWording.shortcutKicker(xmb, env.world),
             title = shortcut.name,
             icon = Icons.Filled.SportsEsports,
             chain = chain,
@@ -258,10 +254,12 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
         source = source,
         categories = SettingsRegistry.categories,
         defs = SettingsRegistry.defs,
-        handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env),
+        handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env, xmb),
         onExit = { navController.popBackStack() },
         onHandoff = { h ->
             when (h.target) {
+                // The container's Edit page opens over this one, which stays under it (Back returns here).
+                SettingsRegistry.TARGET_CONTAINER -> navController.navigate(DeckSettingsRoutes.container(containerId))
                 // The classic game editor is never opened for an Android game (it has none).
                 SettingsRegistry.TARGET_CLASSIC -> { if (env.world != World.ANDROID) showClassic = true }
                 SettingsRegistry.TARGET_DETAILS -> {
@@ -405,7 +403,7 @@ private fun DeckContainerSettings(id: Int, navController: NavHostController) {
         )
     } else {
         EditorHeader(
-            overline = L("Container settings"),
+            overline = PageWording.containerKicker(),
             title = vm.container?.name ?: vm.containerName,
             icon = Icons.Filled.Inventory2,
             chain = listOf(

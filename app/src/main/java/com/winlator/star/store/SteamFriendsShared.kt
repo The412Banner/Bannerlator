@@ -53,7 +53,9 @@ internal fun rememberFriendsAvailable(): Boolean {
     var available by remember { mutableStateOf(runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(false)) }
     DisposableEffect(Unit) {
         val repo = SteamRepository.getInstance()
-        val l = SteamRepository.SteamEventListener {
+        val l = SteamRepository.SteamEventListener { ev ->
+            // Download progress fires many times a second while a game downloads and never changes whether friends are available.
+            if (ev.startsWith("DownloadProgress")) return@SteamEventListener
             available = runCatching { SteamFriendsStore.isAvailable() }.getOrDefault(available)
         }
         repo.addListener(l)

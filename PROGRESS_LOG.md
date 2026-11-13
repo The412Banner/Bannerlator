@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 13:26 EST — main 208754bb installed on the Pocket FIT Elite (user: "install it")
+
+- **Main CI 43480858386** (208754bb, the ui-sounds-one-list merge): GREEN 4/4.
+- **Staged:** `/sdcard/Download/Bannerlator-main-208754bb-pubg.apk` sha256 a1f7a0fc…7d66 (artifact == host == device); AOSP testkey; `LabSoundPackPickerKt` present, `UiSoundsScreenKt` gone.
+- **Installed 13:26:01 EST:** Bannerlator was idle (MainActivity only, no service, no game process); `pm install -r` Success; installed base.apk == staged; crash buffer empty; kept: `ui_sounds/steam-big-picture`, `ui_sounds/store-e530e13b…` (the user's PS2 System Sounds), xuser, xuser-1.
+- **Proof level:** installed, NOT device-tested yet: Preview, "+ Install a pack zip", Deck-style list.
+
 ## 2026-11-13 13:15 EST — 🔀 MERGED fix/ui-sounds-one-list (user: "do it and merge when green")
 
 - **Merged:** backup `refs/backup/20261113/main-before-ui-sounds-one-list` = dc4ea23e (pushed). `--no-ff` merge of fix/ui-sounds-one-list → main **208754bb**. Main had not moved since the branch point.

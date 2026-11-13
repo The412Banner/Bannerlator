@@ -301,9 +301,9 @@ fun StorePrimaryActionRow(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (back > front) {
-                        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(back).background(cs.primary.copy(alpha = 0.3f)))
+                        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(back).background(cs.primary.copy(alpha = 0.14f)))
                     }
-                    Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(front).background(cs.primary.copy(alpha = 0.75f)))
+                    Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(front).background(cs.primary.copy(alpha = 0.32f)))
                     Text(primary.label, color = cs.onBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 8.dp))
                 }

@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import androidx.compose.ui.graphics.compositeOver
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -120,10 +121,26 @@ internal fun StoreXmbScreen(content: @Composable () -> Unit) {
     // One look everywhere: the Lab's colours (dark or light, as the Lab is set) with the theme's accent, the Lab's type
     // and its smaller scale. XMB home keeps only its keyboard.
     val base = MaterialTheme.colorScheme
-    val scheme = if (com.winlator.star.ui.theme.AppThemeState.labLight) com.winlator.star.ui.simple.labLightScheme(base) else storeLabScheme(base)
+    val light = com.winlator.star.ui.theme.AppThemeState.labLight
+    val lab = if (light) com.winlator.star.ui.simple.labLightScheme(base) else storeLabScheme(base)
+    // No accent colour in the stores: what the theme paints in its accent is drawn in the ink colour instead
+    // (selected chips and tabs, the main button, progress, focus). Green for "installed" and prices stays.
+    val ink = if (light) Color(0xFF111722) else Color(0xFFEEF1F6)
+    val onInk = if (light) Color(0xFFF8FAFC) else Color(0xFF0B0D12)
+    val scheme = lab.copy(
+        primary = ink, onPrimary = onInk,
+        secondary = ink, onSecondary = onInk,
+        tertiary = ink, onTertiary = onInk,
+        primaryContainer = ink.copy(alpha = 0.16f).compositeOver(lab.background), onPrimaryContainer = ink,
+        secondaryContainer = ink.copy(alpha = 0.12f).compositeOver(lab.background), onSecondaryContainer = ink,
+    )
     MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
         com.winlator.star.ui.deck.DeckTheme {
-            CompositionLocalProvider(LocalStoreXmb provides false, com.winlator.star.ui.screens.LocalLabLook provides true) {
+            CompositionLocalProvider(
+                LocalStoreXmb provides false,
+                com.winlator.star.ui.screens.LocalLabLook provides true,
+                LocalAccentDim provides ink.copy(alpha = 0.14f).compositeOver(lab.background),
+            ) {
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.ime)) {
                     XmbKeyboardHost(xmb, content)
                 }

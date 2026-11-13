@@ -744,17 +744,6 @@ private fun RailOverflow(
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.outlinedMenuCard()) {
             DropdownMenuItem(
-                text = { Text(if (viewMode == "grid") "Library list view" else "Library grid view") },
-                leadingIcon = {
-                    Icon(
-                        if (viewMode == "grid") Icons.Filled.ViewList else Icons.Filled.GridView,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                onClick = { expanded = false; onToggleView() },
-            )
-            DropdownMenuItem(
                 text = { Text(stringResource(R.string.steam_lib_title)) },
                 leadingIcon = {
                     Icon(Icons.Filled.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -849,13 +838,6 @@ private fun StorefrontActions(
     val accent = MaterialTheme.colorScheme.primary
 
     val items: @Composable () -> Unit = {
-        IconButton(onClick = onToggleView, modifier = Modifier.steamFocusRing()) {
-            Icon(
-                imageVector = if (viewMode == "grid") Icons.Filled.ViewList else Icons.Filled.GridView,
-                contentDescription = if (viewMode == "grid") "Library list view" else "Library grid view",
-                tint = accent,
-            )
-        }
         IconButton(onClick = library.refresh, modifier = Modifier.steamFocusRing()) {
             Icon(Icons.Filled.Refresh, contentDescription = "Refresh library", tint = accent)
         }

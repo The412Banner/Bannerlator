@@ -868,11 +868,13 @@ private fun LibraryTypeChips(
     typeFilter: LibraryTypeFilter,
     onTypeFilter: (LibraryTypeFilter) -> Unit,
 ) {
+    androidx.compose.runtime.LaunchedEffect(typeFilter) { if (typeFilter == LibraryTypeFilter.GAMES) onTypeFilter(LibraryTypeFilter.ALL) }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        LibraryTypeFilter.entries.forEach { f ->
+        // All, Demos, Installed: the Games chip is gone (a saved Games choice shows as All).
+        listOf(LibraryTypeFilter.ALL, LibraryTypeFilter.DEMOS, LibraryTypeFilter.INSTALLED).forEach { f ->
             StoreFilterChip(
                 label = f.label,
-                selected = typeFilter == f,
+                selected = typeFilter == f || (f == LibraryTypeFilter.ALL && typeFilter == LibraryTypeFilter.GAMES),
                 onClick = { onTypeFilter(f) },
             )
         }

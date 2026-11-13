@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 16:15 EST — Device tests of 1ecce243 starting (Elite)
+
+- **User:** "run your tests, provide screenshots and build me a simple to the point preview of tests in an html preview saved to downloads folder when done".
+- **Plan:** DEFCON (app 1520, 136 MB) imported from an empty test folder `/storage/6136-3230/cc-import-test/Defcon` → download fills it → installed / adopted marker / imported flag → SteamLite + Goldberg launches (logs for SteamLite, Goldberg, Steam Cloud, achievement watcher) → uninstall keeps the folder → "Download to" pickers. FlatOut is not touched (an uninstall of a BL-downloaded library game deletes its folder — my earlier note to the user saying otherwise was wrong).
+- **Resume point:** artefacts in `/sdcard/Download/cc-tests/`; bring Termux back after every step.
+
 ## 2026-11-13 16:00 EST — FINISHED test APK staged (feat/store-download-location 1ecce243, CI 43505097506 green 4/4, NOT installed / NOT device-tested)
 
 - **Added since the store pickers (b4b4ee3c):** 2aa8e017 Steam install dialog follows a default changed while it is open (user video 15:25: Make default left Internal ticked); 49ff77c5 slow-storage warning shorter and says Copy game to Drive C runs a copy (Espectro, Discord; CopyGameToDriveC copies then asks Delete / Keep original, ShortcutsScreen :10849-10855); 4bb539fd "+ Import game library" for Epic / GOG / Amazon (`store/StoreFolderImport.kt`, `store/StoreImportGamesUi.kt`, chips in the three Library tabs; Epic keeps size+SHA-1 matches, GOG size+MD5 and needs GOG's folder name — the engine stops with a rename message otherwise, installer-only GOG games refused, GOG cloud upload knows imported folders; Amazon fills missing files by size only); 1ecce243 Steam download bar label readable over the fill (cherry-pick of root-17's fc1fd795: fill and text were both the ink colour since c474d356).

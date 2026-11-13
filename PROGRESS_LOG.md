@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 13:15 EST — 🔀 MERGED fix/ui-sounds-one-list (user: "do it and merge when green")
+
+- **Merged:** backup `refs/backup/20261113/main-before-ui-sounds-one-list` = dc4ea23e (pushed). `--no-ff` merge of fix/ui-sounds-one-list → main **208754bb**. Main had not moved since the branch point.
+- **Tree check:** `git diff 4b5baf44 208754bb -- . ':!PROGRESS_LOG.md'` = empty → main's code is exactly the CI-built 4b5baf44 (CI 43479184538 green 4/4, pubg BUILD SUCCESSFUL in 6m 44s).
+- **In it:** one Sound pack list everywhere (Lab, Deck, Classic): installed → Preview / Apply / Delete, "+ Install a pack zip" at the end; Manage sound packs page removed.
+- **Proof level:** CI green; merged on the user's pre-approval WITHOUT a device test. The Elite still runs 53b2d01c (has the Manage page). Not tested: Preview, zip line, Deck-style list. Previous main CI 43478551861 (ecc153e4) green 4/4.
+
 ## 2026-11-13 13:05 EST — UI sounds: one Sound pack list, Manage page removed (fix/ui-sounds-one-list 4b5baf44 off main dc4ea23e, CI 43479184538 running, NOT device-tested)
 
 - **User (screenshots 13:01):** "why do we have manage sound packs if we can download and manage them via sound pack menu?" → "do it and merge when green".

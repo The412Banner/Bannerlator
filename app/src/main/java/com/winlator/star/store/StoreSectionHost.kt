@@ -1,5 +1,8 @@
 package com.winlator.star.store
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import com.winlator.star.ui.simple.SimpleRowDivider
 import com.winlator.star.ui.simple.labPanel
 import com.winlator.star.ui.simple.SimpleShape
@@ -324,5 +327,46 @@ internal fun StoreLegend(modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(start = 14.dp).border(1.dp, cs.onSurfaceVariant, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 6.dp))
             Text(v, fontSize = 11.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 5.dp))
         }
+    }
+}
+
+/**
+ * A store screen's icon button: a small glass tile with the thin Lab outline and the icon in ink, the same in the top
+ * row and in the rail. Takes the place of the stock round icon button, so it is called the same way.
+ */
+@Composable
+internal fun StoreGlassIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** Draw whatever [content] paints in the ink colour (off for content with a badge of its own colour). */
+    ink: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val inkColor = if (enabled) cs.onBackground else cs.onBackground.copy(alpha = 0.4f)
+    Box(
+        modifier = modifier
+            .padding(3.dp)
+            .size(34.dp)
+            .clip(SimpleShape)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(cs.onBackground.copy(alpha = 0.10f), cs.onBackground.copy(alpha = 0.04f))))
+            .border(1.dp, cs.onBackground.copy(alpha = 0.16f), SimpleShape)
+            .then(if (enabled) Modifier.labTile(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(18.dp)
+                .then(
+                    if (!ink) Modifier else Modifier
+                        .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(inkColor, blendMode = androidx.compose.ui.graphics.BlendMode.SrcIn)
+                        },
+                ),
+            contentAlignment = Alignment.Center,
+        ) { content() }
     }
 }

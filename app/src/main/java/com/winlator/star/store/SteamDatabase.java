@@ -745,6 +745,17 @@ public final class SteamDatabase extends SQLiteOpenHelper {
         db.update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
     }
 
+    /**
+     * Points a game that is not installed yet at [installDir] for its next download (a folder the user already
+     * has, see SteamFolderAdopt); is_installed is left as it is — the download sets it when it finishes.
+     */
+    public void setInstallDir(int appId, String installDir) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("install_dir", installDir != null ? installDir : "");
+        db.update("steam_games", cv, "app_id = ?", new String[]{String.valueOf(appId)});
+    }
+
     /** Clear install state without removing the game record. */
     public void markUninstalled(int appId) {
         SteamGameLanguage.clearInstalled(appId);

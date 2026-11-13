@@ -516,7 +516,11 @@ class EpicGameDetailActivity : ComponentActivity() {
     private fun confirmUninstall() {
         AlertDialog.Builder(this)
             .setTitle("Uninstall $title?")
-            .setMessage("This will delete all installed game files.")
+            .setMessage(
+                if (prefs!!.getString("epic_dir_$appName", null)?.let { File(it, SteamInstallPaths.ADOPTED_MARKER).exists() } == true)
+                    "Your imported folder and its files stay."
+                else "This will delete all installed game files."
+            )
             .setPositiveButton("Uninstall") { _, _ ->
                 val an = appName ?: return@setPositiveButton
                 val dir = prefs!!.getString("epic_dir_$an", null) ?: return@setPositiveButton

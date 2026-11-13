@@ -605,7 +605,12 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         val dlgTitle = title
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Uninstall $dlgTitle?")
-            .setMessage("This will delete all installed game files.")
+            .setMessage(
+                if (prefs.getString("gog_dir_$gameId", null)
+                        ?.let { File(GogInstallPath.getInstallDir(this, it), SteamInstallPaths.ADOPTED_MARKER).exists() } == true)
+                    "Your imported folder and its files stay."
+                else "This will delete all installed game files."
+            )
             .setPositiveButton("Uninstall") { _, _ -> doUninstall() }
             .setNegativeButton("Cancel", null)
             .show()

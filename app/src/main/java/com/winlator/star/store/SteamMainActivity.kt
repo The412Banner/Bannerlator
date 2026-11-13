@@ -400,7 +400,8 @@ fun SteamStorefrontHost(
             .then(if (LocalStoreXmb.current) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
     ) {
         if (layout.wide) {
-            Row(modifier = Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 CompositionLocalProvider(LocalXmbRailStops provides if (xmb) railStops else null) {
                     StorefrontRail(
                         tab = tab,
@@ -425,6 +426,8 @@ fun SteamStorefrontHost(
                         .focusRequester(contentFocus)
                         .focusGroup(),
                 ) { content(Modifier.fillMaxSize()) }
+            }
+            StoreLegend()
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -582,8 +585,8 @@ private fun StorefrontRail(
     ) {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Steam", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1)
-            Spacer(Modifier.width(6.dp))
+            StoreSwitcher("Steam")
+            Spacer(Modifier.width(2.dp))
             RailStatusDot(status = library.steamStatus, onReconnect = library.reconnect)
         }
         Spacer(Modifier.height(6.dp))
@@ -813,16 +816,10 @@ private fun StorefrontTopBar(
     onSignOut: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "Steam",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(start = 8.dp),
-        )
+        StoreSwitcher("Steam")
         Spacer(Modifier.weight(1f))
         SteamStatusPill(status = library.steamStatus, onReconnect = library.reconnect)
         StorefrontActions(

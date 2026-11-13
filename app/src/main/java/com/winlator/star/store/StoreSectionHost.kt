@@ -1,5 +1,10 @@
 package com.winlator.star.store
 
+import androidx.compose.foundation.border
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -104,7 +109,8 @@ fun StoreSectionHost(
             .then(if (xmb) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
     ) {
         if (layout.wide) {
-            Row(modifier = Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 CompositionLocalProvider(LocalXmbRailStops provides if (xmb) railStops else null) {
                     SectionRail(
                         storeName = storeName,
@@ -127,19 +133,15 @@ fun StoreSectionHost(
                         .focusGroup(),
                 ) { content(true, Modifier.fillMaxSize()) }
             }
+            StoreLegend()
+            }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = storeName,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+                    StoreSwitcher(storeName)
                     Spacer(Modifier.width(8.dp))
                     statusSlot()
                     Spacer(Modifier.weight(1f))
@@ -225,8 +227,7 @@ private fun SectionRail(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp))
-        Text(storeName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(start = 6.dp))
+        StoreSwitcher(storeName, Modifier.fillMaxWidth())
         statusSlot()
         Spacer(Modifier.height(6.dp))
 
@@ -258,5 +259,60 @@ private fun SectionRail(
         Spacer(Modifier.height(4.dp))
         actions()
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/**
+ * The store's name, which opens the list of stores: picking one opens that store in place of this one.
+ */
+@Composable
+internal fun StoreSwitcher(storeName: String, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val cs = MaterialTheme.colorScheme
+    var open by remember { mutableStateOf(false) }
+    val stores = listOf(
+        "Steam" to SteamMainActivity::class.java,
+        "GOG" to GogMainActivity::class.java,
+        "Epic Games" to EpicMainActivity::class.java,
+        "Amazon Games" to AmazonMainActivity::class.java,
+        "Xbox" to com.winlator.star.store.xbox.XboxMainActivity::class.java,
+    )
+    Box(modifier) {
+        Row(Modifier.labTile(onClick = { open = true }).padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(storeName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(" ▾", fontSize = 11.sp, color = cs.onSurfaceVariant)
+        }
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            stores.forEach { (label, cls) ->
+                val here = (ctx as? android.app.Activity)?.javaClass == cls
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(label, fontSize = 14.sp, fontWeight = if (here) FontWeight.Bold else FontWeight.Normal, color = if (here) cs.primary else cs.onSurface) },
+                    onClick = {
+                        open = false
+                        if (!here) {
+                            runCatching { ctx.startActivity(android.content.Intent(ctx, cls)) }
+                            (ctx as? android.app.Activity)?.finish()
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Landscape: what the controller's buttons do here, along the bottom edge. */
+@Composable
+internal fun StoreLegend(modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier.fillMaxWidth().background(cs.onBackground.copy(alpha = 0.04f)).padding(horizontal = 12.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        listOf("A" to "Open", "B" to "Back").forEach { (k, v) ->
+            Text(k, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = cs.onBackground,
+                modifier = Modifier.padding(start = 14.dp).border(1.dp, cs.onSurfaceVariant, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 6.dp))
+            Text(v, fontSize = 11.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(start = 5.dp))
+        }
     }
 }

@@ -2769,8 +2769,8 @@ trying for speed, <b>notemplates</b> if you get driver crashes.
     <string name="steam_lib_install_location">INSTALL LOCATION</string>
     <string name="steam_lib_install_size">This game needs about %1$s on disk.</string>
     <string name="steam_lib_no_room">⛔ Not enough free space here: this game needs about %1$s and only %2$s is free. Pick another location.</string>
-    <string name="steam_lib_sd_warning">⚠️ The SD card is slower than internal storage. Some games stall on intro movies or asset loads from the card — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
-    <string name="steam_lib_slow_warning">⚠️ Shared storage and SD cards are slower than internal storage. Some games stall on intro movies or asset loads from there — if that happens, open the shortcut and use \"Copy game to Drive C\" to move it onto fast internal storage.</string>
+    <string name="steam_lib_sd_warning">⚠️ SD cards are slower than internal storage. If a game stalls, use Copy game to Drive C in its shortcut to run a copy from internal storage.</string>
+    <string name="steam_lib_slow_warning">⚠️ SD cards and shared folders are slower than internal storage. If a game stalls, use Copy game to Drive C in its shortcut to run a copy from internal storage.</string>
     <string name="xmb_all_games">All Games</string>
     <string name="xmb_all_games_open">Open</string>
     <plurals name="xmb_all_games_count">

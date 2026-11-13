@@ -1,5 +1,18 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 — Store revamp: one look for every store, like the HTML preview (feat/store-revamp, CI building, NOT device-tested)
+**Why:** user: all stores get the same cards / views / details pages; a tap opens details (no tap-to-reveal buttons); details use the full game art in portrait and landscape; each store's own art first, Steam / SteamGridDB as fallback; every download bar shows progress, speed and time left; smaller and tighter; keep Store / Library / Profile tabs (Steam + Friends), Library chips All / Installed (+ Steam Demos, Xbox Game Pass / Owned / Cloud); same look in Classic, Lab and XMB; "just like the html preview" (/sdcard/Download/Bannerlator-store-revamp-preview.html).
+**Built (off main 2ca4c768c):**
+- c0994e4dc + 167a68d5d — `StoreDetailScaffold` rewritten inside (same API + `downloadKey`): art full-screen, portrait one scroll, landscape left column + right panel, Lab tiles for focus, `StoreDownloadBar`; `StoreDownloadHooks.tick` measures speed / ETA when a downloader reports none.
+- ecc84b952 — `StoreLibraryCard` + `StoreViewMode` (Posters / Wide / List, prefs `store_ui`), `StoreViewButton`; `CatalogLibraryTile` delegates to it; old *GamesActivity taps open details; "Full library" footers removed.
+- 073bd6941 — `StoreSectionHost`: bottom tabs in portrait, 124dp text rail in landscape; Steam library grid on the shared card.
+- 9c6a05cee — Steam details: full-screen art behind its own layout.
+- ca0f9627f — Store-tab cards (Catalog* and Steam Store*) on the shared card, no buttons (Steam keeps "Add to Library" on free unowned games).
+- 708796b31 — Steam host: same bottom tabs + text rail. b1e16ec51 — Epic reports bytes (speed). 026e2c283 — fallback art by name in the scaffold.
+**CI:** 43339819479 (c0994e4dc) FAILED: maxWidth/maxHeight used in nested scopes → fixed. 43340570744 (167a68d5d) green 4/4. 43341290263 (9c6a05cee) green 4/4. 43342682297 (026e2c283) running.
+**Device test:** none yet.
+**Open / Next:** old full-library screens still reachable from the overflow menu; Steam details keeps its own layout; no button-hint bar; PR #660 (XMB update) touches the same store files → conflicts for whichever merges second. Resume: check run 43342682297, stage the pubg APK, ask before install.
+
 ## 2026-11-12 17:35 EST — 🔀 MERGED feat/lab-download-from-source + fix/launcher-resume (main a9a69a466; user: "it works, merge both to main")
 
 - **Merged:** backup `refs/backup/20261112/main-before-lab-download-launcher-resume` = 8c199678a. `--no-ff` d2336643c (feat/lab-download-from-source 5e7233f48) then a9a69a466 (fix/launcher-resume 7ef76210f); only PROGRESS_LOG.md conflicted (both entries kept). No MERGE_HEAD, authored The412Banner, no AI trailer. Pushed 8c199678a..a9a69a466 (fast-forward).

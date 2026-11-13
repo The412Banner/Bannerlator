@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 16:00 EST — FINISHED test APK staged (feat/store-download-location 1ecce243, CI 43505097506 green 4/4, NOT installed / NOT device-tested)
+
+- **Added since the store pickers (b4b4ee3c):** 2aa8e017 Steam install dialog follows a default changed while it is open (user video 15:25: Make default left Internal ticked); 49ff77c5 slow-storage warning shorter and says Copy game to Drive C runs a copy (Espectro, Discord; CopyGameToDriveC copies then asks Delete / Keep original, ShortcutsScreen :10849-10855); 4bb539fd "+ Import game library" for Epic / GOG / Amazon (`store/StoreFolderImport.kt`, `store/StoreImportGamesUi.kt`, chips in the three Library tabs; Epic keeps size+SHA-1 matches, GOG size+MD5 and needs GOG's folder name — the engine stops with a rename message otherwise, installer-only GOG games refused, GOG cloud upload knows imported folders; Amazon fills missing files by size only); 1ecce243 Steam download bar label readable over the fill (cherry-pick of root-17's fc1fd795: fill and text were both the ink colour since c474d356).
+- **CI:** 43500965037 (b4b4ee3c) green, 43504256153 (4bb539fd) green, 43505097506 (1ecce243) green 4/4, pubg BUILD SUCCESSFUL in 6m 33s, 0 Kotlin errors.
+- **Staged:** `/sdcard/Download/Bannerlator-download-location-1ecce243-pubg.apk` sha256 ed8e7f23…0dea (artifact == host == device), AOSP testkey; classes contain StoreInstallLocations, StoreFolderImport, StoreImportGamesUiKt, SteamFolderAdopt, LabSoundPackPicker.
+- **Elite installed now:** add-game-folders build fd6985d1 (user, 15:00). Asked the user before installing this one.
+- **Device checks planned (user asked):** imported FlatOut (Download/Steam-latest/steamapps/common/FlatOut, app 6220) → SteamLite launch, Goldberg launch, Steam Cloud preflight, achievement watcher start (logs); one Epic/GOG/Amazon import if the user has a folder.
+
 ## 2026-11-13 15:22 EST — Download location picker for every store (feat/store-download-location off main e143a8a6, CI pending, NOT device-tested)
 
 - **User:** each store gives a download location picker: Internal (as now), External (SD card / USB SSD when found), Custom (a folder picked in the in-app file manager), with "use as default"; importing a Steam game library can also make that folder the default; "build all of it and hand me one finished APK"; achievement pop-ups, Steam Cloud sync for imported games, SteamLite and Goldberg must keep working.

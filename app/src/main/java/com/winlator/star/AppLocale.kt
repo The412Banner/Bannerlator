@@ -9,15 +9,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import java.util.Locale
 
 /**
- * The XMB and Deck layouts are always left-to-right, whatever the phone's language: their row positions use
- * Modifier.offset (which mirrors in a right-to-left layout), so on an Arabic or Hebrew phone the Home row
- * slid off-screen. Only the layout direction is forced. The language is the phone's own and untouched: the
- * process default locale and the resources' locale stay what the system set, so the Lab language, the store
- * languages and the Steam game language behave as before.
+ * The XMB style is always left-to-right, whatever the phone's language: its row positions use Modifier.offset (which mirrors in a
+ * right-to-left layout), so on an Arabic or Hebrew phone the Home row slid off-screen. Only the layout direction is forced, and only
+ * while the XMB style is on: Classic, Lab and the plain Deck keep mirroring as before. The language is the phone's own and untouched.
  *
- * Layers: `android:supportsRtl="false"` in the manifest (classic Views), [wrap] in the Application and in the
- * activities that host XMB/Deck screens (the Configuration Compose reads), and [ForceLtr] at the Compose theme
- * roots (so nothing mirrors even if a Configuration slips through).
+ * Layers, each checking the XMB style: [wrap] in the Application and in the activities that host XMB screens (the Configuration
+ * classic Views and Compose read), WinlatorTheme's layout direction, and [ForceLtr] in DeckDialogScaled and XMB-only windows.
  */
 object AppLocale {
     /**
@@ -35,6 +32,8 @@ object AppLocale {
     @JvmStatic
     fun wrap(base: Context): Context {
         return try {
+            // Only the XMB style (read from the theme prefs: the Application and a store screen start before AppThemeState).
+            if (!com.winlator.star.ui.deck.isXmbHome(base)) return base
             val config = Configuration()
             config.fontScale = 0f
             config.setLayoutDirection(Locale.US)

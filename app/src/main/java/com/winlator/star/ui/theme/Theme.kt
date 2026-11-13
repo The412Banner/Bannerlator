@@ -8,8 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.Font
@@ -72,11 +74,16 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
     // perf HUD aren't Compose, so they stay fixed on their own.
     val base = LocalDensity.current
     val scaledDensity = Density(base.density * uiScale, base.fontScale * fontScale)
+    // Read from the theme prefs (a store screen can be the first one in its process); the two flows re-read it when the style changes.
+    val uiStyle by AppThemeState.uiStyle.collectAsState()
+    val deckXmb by AppThemeState.deckXmbHome.collectAsState()
+    val context = LocalContext.current
+    val xmbLtr = remember(context, uiStyle, deckXmb) { com.winlator.star.ui.deck.isXmbHome(context) }
     CompositionLocalProvider(
         LocalAccentDim provides accentDim,
         LocalDensity provides scaledDensity,
-        // Always left-to-right, whatever the phone's language (see AppLocale).
-        LocalLayoutDirection provides LayoutDirection.Ltr,
+        // XMB style only: left-to-right whatever the phone's language (see AppLocale). Classic, Lab and the plain Deck mirror as before.
+        LocalLayoutDirection provides if (xmbLtr) LayoutDirection.Ltr else LocalLayoutDirection.current,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

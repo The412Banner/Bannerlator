@@ -138,12 +138,14 @@ val LocalDeckDensity = staticCompositionLocalOf<Density?> { null }
 @Composable
 fun DeckDialogScaled(host: Boolean = true, content: @Composable () -> Unit) {
     val deck = LocalDeckDensity.current
-    val xmbHost = host && rememberXmbHome()
+    val xmb = rememberXmbHome()
+    val xmbHost = host && xmb
     XmbKeyboardWindow {
         // Inside the density, so the outline's 2 dp is drawn at the Deck scale like everything else in the window.
         val body: @Composable () -> Unit = {
-            // A dialog is its own window: left-to-right there too, whatever the phone's language (see AppLocale).
-            ForceLtr { if (xmbHost) XmbHighlightHost(enabled = true) { content() } else content() }
+            val inner: @Composable () -> Unit = { if (xmbHost) XmbHighlightHost(enabled = true) { content() } else content() }
+            // XMB style: a dialog is its own window, left-to-right there too, whatever the phone's language (see AppLocale).
+            if (xmb) ForceLtr(inner) else inner()
         }
         if (deck == null) body() else CompositionLocalProvider(LocalDensity provides deck, content = body)
     }

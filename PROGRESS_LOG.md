@@ -5,6 +5,7 @@
 - **User:** "run your tests, provide screenshots and build me a simple to the point preview of tests in an html preview saved to downloads folder when done".
 - **Plan:** DEFCON (app 1520, 136 MB) imported from an empty test folder `/storage/6136-3230/cc-import-test/Defcon` → download fills it → installed / adopted marker / imported flag → SteamLite + Goldberg launches (logs for SteamLite, Goldberg, Steam Cloud, achievement watcher) → uninstall keeps the folder → "Download to" pickers. FlatOut is not touched (an uninstall of a BL-downloaded library game deletes its folder — my earlier note to the user saying otherwise was wrong).
 - **Resume point:** artefacts in `/sdcard/Download/cc-tests/`; bring Termux back after every step.
+- **16:22 EST:** import PASS (DEFCON installed into the test folder, imported flag, marker, build stamp); shortcut added; Cloud saves panel hidden for DEFCON and for a normally installed game alike (Steam cloud handle not bound this session — not import-related). Next: launches.
 
 ## 2026-11-13 16:00 EST — FINISHED test APK staged (feat/store-download-location 1ecce243, CI 43505097506 green 4/4, NOT installed / NOT device-tested)
 

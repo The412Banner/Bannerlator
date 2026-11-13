@@ -46,6 +46,7 @@ import com.winlator.star.container.Shortcut
 import com.winlator.star.core.NewContainerDefaults
 import com.winlator.star.core.WinePath
 import com.winlator.star.linux.LinuxSettings
+import com.winlator.star.ui.deck.XmbPageArtTheme
 import com.winlator.star.ui.deck.isDeckCompact
 import com.winlator.star.ui.deck.rememberXmbHome
 import com.winlator.star.ui.screens.ContainerDetailViewModel
@@ -244,51 +245,54 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
         ChainLink(containerName, Icons.Filled.Inventory2) { navController.navigate(DeckSettingsRoutes.container(containerId)) },
         ChainLink(L("This game"), Icons.Filled.SportsEsports, null),
     )
-    DeckSettingsEditor(
-        header = EditorHeader(
-            overline = PageWording.shortcutKicker(xmb, env.world),
-            title = shortcut.name,
-            icon = Icons.Filled.SportsEsports,
-            chain = chain,
-        ),
-        source = source,
-        categories = SettingsRegistry.categories,
-        defs = SettingsRegistry.defs,
-        handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env, xmb),
-        onExit = { navController.popBackStack() },
-        onHandoff = { h ->
-            when (h.target) {
-                // The container's Edit page opens over this one, which stays under it (Back returns here).
-                SettingsRegistry.TARGET_CONTAINER -> navController.navigate(DeckSettingsRoutes.container(containerId))
-                // The classic game editor is never opened for an Android game (it has none).
-                SettingsRegistry.TARGET_CLASSIC -> { if (env.world != World.ANDROID) showClassic = true }
-                SettingsRegistry.TARGET_DETAILS -> {
-                    // Game details can rename the game's files, so this page (holding the old path) closes
-                    // and the sheet opens over the page under it (the shell's DeckGameActionsHost).
-                    navController.popBackStack()
-                    GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.GAME_DETAILS, shortcut.file.path)
+    // XMB: a game's page sits on the game's art (see DeckSettingsEditor), so its secondary text is lifted for that lighter ground.
+    XmbPageArtTheme(enabled = xmb) {
+        DeckSettingsEditor(
+            header = EditorHeader(
+                overline = PageWording.shortcutKicker(xmb, env.world),
+                title = shortcut.name,
+                icon = Icons.Filled.SportsEsports,
+                chain = chain,
+            ),
+            source = source,
+            categories = SettingsRegistry.categories,
+            defs = SettingsRegistry.defs,
+            handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env, xmb),
+            onExit = { navController.popBackStack() },
+            onHandoff = { h ->
+                when (h.target) {
+                    // The container's Edit page opens over this one, which stays under it (Back returns here).
+                    SettingsRegistry.TARGET_CONTAINER -> navController.navigate(DeckSettingsRoutes.container(containerId))
+                    // The classic game editor is never opened for an Android game (it has none).
+                    SettingsRegistry.TARGET_CLASSIC -> { if (env.world != World.ANDROID) showClassic = true }
+                    SettingsRegistry.TARGET_DETAILS -> {
+                        // Game details can rename the game's files, so this page (holding the old path) closes
+                        // and the sheet opens over the page under it (the shell's DeckGameActionsHost).
+                        navController.popBackStack()
+                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.GAME_DETAILS, shortcut.file.path)
+                    }
+                    // Same for a new .exe or a copy to drive C: both repoint the entry this page holds.
+                    SettingsRegistry.TARGET_CHANGE_EXE -> {
+                        navController.popBackStack()
+                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.CHANGE_EXE, shortcut.file.path)
+                    }
+                    SettingsRegistry.TARGET_DRIVE_C -> {
+                        navController.popBackStack()
+                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.COPY_TO_DRIVE_C, shortcut.file.path)
+                    }
+                    // A move takes the entry out of this container, so this page closes the same way.
+                    SettingsRegistry.TARGET_MOVE_CONTAINER -> {
+                        navController.popBackStack()
+                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.MOVE_TO_CONTAINER, shortcut.file.path)
+                    }
+                    else -> {}
                 }
-                // Same for a new .exe or a copy to drive C: both repoint the entry this page holds.
-                SettingsRegistry.TARGET_CHANGE_EXE -> {
-                    navController.popBackStack()
-                    GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.CHANGE_EXE, shortcut.file.path)
-                }
-                SettingsRegistry.TARGET_DRIVE_C -> {
-                    navController.popBackStack()
-                    GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.COPY_TO_DRIVE_C, shortcut.file.path)
-                }
-                // A move takes the entry out of this container, so this page closes the same way.
-                SettingsRegistry.TARGET_MOVE_CONTAINER -> {
-                    navController.popBackStack()
-                    GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.MOVE_TO_CONTAINER, shortcut.file.path)
-                }
-                else -> {}
-            }
-        },
-        onChainLink = { link -> link.onClick?.invoke() },
-        extras = extras,
-        layout = layout,
-    )
+            },
+            onChainLink = { link -> link.onClick?.invoke() },
+            extras = extras,
+            layout = layout,
+        )
+    }
     components?.let { DeckComponentsDialogs(it) }
     graphics?.let { DeckGraphicsDialogs(it) }
     sections.forEach { it.Dialogs() }

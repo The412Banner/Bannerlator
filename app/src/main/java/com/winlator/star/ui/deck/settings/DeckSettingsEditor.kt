@@ -356,6 +356,12 @@ internal fun DeckSettingsEditor(
 
     // Controller: X / Start saves while there is something to save (a new container always has: Create), Y searches, L1 / R1 step through categories.
     val deckActions = LocalDeckActions.current
+    // XMB: a game's settings sit on the game's own art, which the shell draws blurred on the glass behind the panels.
+    DisposableEffect(deckActions, xmbHome, env.shortcut) {
+        val art = env.shortcut?.takeIf { xmbHome && env.scope == EditorScope.GAME }
+        deckActions.pageArt.value = art
+        onDispose { if (deckActions.pageArt.value === art) deckActions.pageArt.value = null }
+    }
     val dirty = source.dirty
     val showBar = dirty || createMode
     // XMB two-pane: Create / Save + Discard are small buttons floating at the page's bottom right, not a full-width bar.

@@ -126,6 +126,7 @@ import com.winlator.star.ui.screens.ContainerDetailViewModel
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.DeckGameActionsHost
 import com.winlator.star.ui.screens.GamesScreenRequests
+import com.winlator.star.ui.screens.XmbGamePageArt
 import com.winlator.star.core.AppOrientation
 import com.winlator.star.ui.findActivity
 import com.winlator.star.ui.simple.labEdgeSwipe
@@ -617,6 +618,8 @@ private fun DeckShellContent(
             ) {
                 // XMB mode, every page but Home (which paints its own over the black): the glass, behind the page and the bars.
                 if (xmbHome && currentRoute != DeckRoutes.HOME) XmbGlassBackdrop(Modifier.matchParentSize())
+                // XMB mode: a game's settings page (it sets pageArt) shows the game's blurred art on that glass, behind the panels.
+                if (xmbHome && currentRoute != DeckRoutes.HOME) deckActions.pageArt.value?.let { XmbGamePageArt(it, Modifier.matchParentSize()) }
                 // Simple style, every page but Home (which draws its own wallpaper): the drifting cover collage.
                 val simplePages = simpleHome && currentRoute != DeckRoutes.HOME
                 // Lab: its graph-paper wallpaper behind every page, Home included, edge to edge.

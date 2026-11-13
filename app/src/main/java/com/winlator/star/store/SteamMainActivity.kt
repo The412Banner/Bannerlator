@@ -1,5 +1,6 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.labTile
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -78,6 +79,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.winlator.star.R
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.ui.deck.rememberScreenScale
@@ -432,7 +434,6 @@ fun SteamStorefrontHost(
                     onToggleView = { StoreViewMode.next(ctx); libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
                     onSignOut = { showSignOut = true },
                 )
-                StorefrontTabRow(tab = tab, tabs = railTabs, counts = counts, onSelect = { tab = it })
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -440,6 +441,7 @@ fun SteamStorefrontHost(
                         .focusRequester(contentFocus)
                         .focusGroup(),
                 ) { content(Modifier.fillMaxSize()) }
+                StorefrontTabRow(tab = tab, tabs = railTabs, counts = counts, onSelect = { tab = it })
             }
         }
 
@@ -503,34 +505,29 @@ private fun StorefrontTabRow(
     counts: Map<SteamTab, Int>,
     onSelect: (SteamTab) -> Unit,
 ) {
-    TabRow(
-        selectedTabIndex = tabs.indexOf(tab).coerceAtLeast(0),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.primary,
-    ) {
-        tabs.forEach { t ->
-            Tab(
-                selected = tab == t,
-                onClick = { onSelect(t) },
-                // Rectangular ring: a tab fills its slot, so a rounded ring would float oddly.
-                modifier = Modifier.steamFocusRing(RoundedCornerShape(0.dp)),
-                selectedContentColor = MaterialTheme.colorScheme.primary,
-                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(t.label, fontWeight = FontWeight.Bold, maxLines = 1)
-                        counts[t]?.takeIf { it > 0 }?.let {
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "($it)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                },
-            )
+    // Portrait: the tabs along the bottom edge, as in every other store.
+    val cs = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
+        Row(Modifier.fillMaxWidth()) {
+            tabs.forEach { t ->
+                val on = tab == t
+                val n = counts[t]?.takeIf { it > 0 }
+                Column(
+                    modifier = Modifier.weight(1f).labTile(onClick = { onSelect(t) }),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
+                    Text(
+                        text = if (n != null) "${t.label} $n" else t.label,
+                        fontSize = 12.sp,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                        color = if (on) cs.onBackground else cs.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -570,67 +567,53 @@ private fun StorefrontRail(
     onChangeAccount: () -> Unit,
     contentFocus: FocusRequester,
 ) {
-    // XMB home: a slim rail, just wide enough for an icon over a short label.
-    val xmb = LocalStoreXmb.current
-    val railWidth = if (xmb) rememberScreenScale().xmbRailWidth() else RAIL_WIDTH
+    val cs = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             // EXACT width — see the note above. Do not replace with widthIn/wrapContentWidth.
-            .width(railWidth)
+            .width(RAIL_WIDTH)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.background)
+            .background(cs.onBackground.copy(alpha = 0.04f))
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .focusProperties { right = contentFocus },
+            .focusProperties { right = contentFocus }
+            .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(if (xmb) 2.dp else 6.dp))
-        if (xmb) XmbRailBumpers()
-        // A compact status dot, not the full SteamStatusPill: the pill's label ("Signed in
-        // elsewhere") would wrap to three lines inside a 96dp rail. The pill still carries the
-        // wording in portrait's top bar; here the dot keeps the colour and the reconnect tap.
-        RailStatusDot(status = library.steamStatus, onReconnect = library.reconnect)
-        Spacer(Modifier.height(if (xmb) 4.dp else 8.dp))
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Steam", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = cs.onBackground, maxLines = 1)
+            Spacer(Modifier.width(6.dp))
+            RailStatusDot(status = library.steamStatus, onReconnect = library.reconnect)
+        }
+        Spacer(Modifier.height(6.dp))
 
+        // The same text rail as every other store: the selected tab has the accent line on its left.
         tabs.forEach { t ->
+            val on = tab == t
             val n = counts[t]?.takeIf { it > 0 }
-            if (xmb) {
-                XmbRailItem(t.label, t.icon, selected = tab == t, count = n, onClick = { onSelect(t) })
-                return@forEach
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (on) cs.onBackground.copy(alpha = 0.06f) else androidx.compose.ui.graphics.Color.Transparent)
+                    .labTile(onClick = { onSelect(t) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.width(2.dp).height(30.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
+                Text(
+                    text = if (n != null) "${t.label} $n" else t.label,
+                    fontSize = 13.sp,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                    color = if (on) cs.onBackground else cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
             }
-            NavigationRailItem(
-                selected = tab == t,
-                onClick = { onSelect(t) },
-                icon = { Icon(t.icon, contentDescription = t.label) },
-                label = {
-                    Text(
-                        text = if (n != null) "${t.label} ($n)" else t.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = if (tab == t) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-                alwaysShowLabel = true,
-                modifier = Modifier.steamFocusRing(),
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = LocalAccentDim.current,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            )
         }
 
         Spacer(Modifier.height(8.dp))
-        HorizontalDivider(
-            // Explicit width rather than the fillMaxWidth() default. Belt-and-braces: the Column's
-            // exact width already contains it, but this is the modifier that caused the bug.
-            modifier = Modifier.width(if (xmb) railWidth - 16.dp else RAIL_WIDTH - 24.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline,
-        )
+        HorizontalDivider(modifier = Modifier.width(RAIL_WIDTH - 24.dp), thickness = 1.dp, color = cs.outline.copy(alpha = 0.4f))
         Spacer(Modifier.height(4.dp))
 
         // The two actions worth a permanent slot; everything else is one tap deeper in the
@@ -655,7 +638,7 @@ private fun StorefrontRail(
 
 /** Fixed rail width. Wide enough for "Library (12)" at labelSmall, narrow enough to leave the
  *  content pane the rest of a 821dp landscape screen. */
-private val RAIL_WIDTH = 96.dp
+private val RAIL_WIDTH = 124.dp
 
 /**
  * Connection state for the rail: a colour dot over a SHORT word.

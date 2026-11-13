@@ -175,7 +175,8 @@ private const val XMB_DRAWER_GLASS_ALPHA = 0.95f
 internal fun XmbInGameMenu(modifier: Modifier, widthDp: Float, onExit: () -> Unit) {
     XmbGlassTheme(enabled = true) {
         XmbHighlightHost(enabled = true, modifier = modifier) {
-            XmbInGameMenuBody(widthDp, onExit)
+            // The drawer's page scroll asks for the room itself (the hosted Classic controls are no stops of the highlight).
+            CompositionLocalProvider(LocalXmbRevealByContainer provides true) { XmbInGameMenuBody(widthDp, onExit) }
         }
     }
 }
@@ -338,6 +339,7 @@ private fun BoxScope.XmbInGameMenuBody(widthDp: Float, onExit: () -> Unit) {
                             .fillMaxWidth()
                             .xmbEdgeFade(m.fadeDp, { topFade.value }, { bottomFade.value })
                             .igPageScroll(scroll)
+                            .xmbRevealRoom()
                             .padding(horizontal = m.padDp.dp, vertical = m.fadeDp.dp),
                     ) {
                         // Inside the scroll container, so the request lands on the page's first control, not the scroll group.

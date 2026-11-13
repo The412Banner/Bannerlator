@@ -98,10 +98,13 @@ import com.winlator.star.ui.deck.lastPlayedLabel
 import com.winlator.star.ui.deck.playtimeLabel
 import com.winlator.star.ui.deck.readPlayStats
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbRevealRoomPx
 import com.winlator.star.ui.deck.sortGames
 import com.winlator.star.ui.deck.storeLabelOf
 import com.winlator.star.ui.deck.storeMarkOf
 import com.winlator.star.ui.deck.warmStoreMarks
+import com.winlator.star.ui.deck.xmbRevealRoomIn
+import com.winlator.star.ui.deck.xmbRevealStep
 
 /** [shortcuts] newest first, for a host whose list is in some other order (the row takes the first [XMB_ROW_LIMIT]). */
 internal fun xmbRecentFirst(context: Context, shortcuts: List<Shortcut>): List<Shortcut> {
@@ -213,12 +216,12 @@ internal fun XmbAllGamesPage(
         // The header's hints carry their names only where there is room for them.
         val wide = maxWidth >= 600.dp
 
-        val bottomMarginPx = with(density) { (bottomPad - 8.dp).coerceAtLeast(0.dp).toPx() }
-        val topMarginPx = with(density) { header.band.dp.toPx() }
+        val bandPx = with(density) { header.band.dp.toPx() }
+        val roomPx = rememberXmbRevealRoomPx()
         LaunchedEffect(sel, view, sorted) {
             // The new columns are laid out a frame after this runs. The grid's first item is the header spacer, so a game is at i + 1.
             withFrameNanos { }
-            if (sorted.isNotEmpty()) gridState.reveal(sel + 1, topMarginPx, bottomMarginPx)
+            if (sorted.isNotEmpty()) gridState.reveal(sel + 1, bandPx, roomPx)
         }
 
         Box(
@@ -382,11 +385,11 @@ internal fun XmbAllGamesPage(
     }
 }
 
-// Scrolls just far enough to bring item [index] fully into view, leaving [topMarginPx] clear above it (the header band the covers
-// scroll under) and [bottomMarginPx] under it (the page's bottom padding); an item that isn't composed at all is
-// jumped to first, which puts it at the very top, and then moved down clear of the header. The grid has no top content padding, so
-// the item offsets are measured from the grid's top edge.
-private suspend fun LazyGridState.reveal(index: Int, topMarginPx: Float, bottomMarginPx: Float) {
+// Scrolls just far enough to bring item [index] fully into view, leaving the header band ([bandPx], which the covers scroll under) and
+// [roomPx] (see xmbReveal) clear above it and [roomPx] under it; an item that isn't composed at all is jumped to first, which puts it
+// at the very top, and then moved down clear of the header. The grid has no top content padding, so the item offsets are measured
+// from the grid's top edge. At the start or the end of the grid the scroll stops there.
+private suspend fun LazyGridState.reveal(index: Int, bandPx: Float, roomPx: Float) {
     val seen = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     val info = if (seen != null) seen else {
         scrollToItem(index)
@@ -394,7 +397,9 @@ private suspend fun LazyGridState.reveal(index: Int, topMarginPx: Float, bottomM
         layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
     }
     val cellTop = info.offset.y.toFloat()
-    val d = xmbRevealDelta(cellTop, cellTop + info.size.height, layoutInfo.viewportSize.height.toFloat(), topMarginPx, bottomMarginPx)
+    val height = layoutInfo.viewportSize.height.toFloat()
+    val room = xmbRevealRoomIn(roomPx, height - bandPx)
+    val d = xmbRevealStep(xmbRevealDelta(cellTop, cellTop + info.size.height, height, bandPx + room, room), canScrollBackward, canScrollForward)
     if (d != 0f) animateScrollBy(d)
 }
 

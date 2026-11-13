@@ -2,7 +2,6 @@ package com.winlator.star.ui.deck
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -43,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -210,7 +207,6 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
     }
 
     val ss = rememberScreenScale()
-    val density = LocalDensity.current
     val dir = LocalLayoutDirection.current
     val pad = focus.contentPadding
     val listState = rememberLazyListState()
@@ -291,11 +287,10 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
 
         // The card under the cursor scrolls into view, with its section's heading when it is on the section's first line.
         val slot = xmbDlSlot(groups, cursor, columns)
-        val topPx = with(density) { ss.dp(6f).roundToPx() }
-        val bottomPx = with(density) { (pad.calculateBottomPadding() + ss.dp(8f)).roundToPx() }
+        val roomPx = rememberXmbRevealRoomPx()
         LaunchedEffect(slot?.item, slot?.first, focus.contentFocused) {
             val s = slot
-            if (focus.contentFocused && s != null) listState.xmbDlReveal(if (s.first) s.header else s.item, s.item, topPx, bottomPx)
+            if (focus.contentFocused && s != null) listState.xmbReveal(if (s.first) s.header else s.item, s.item, roomPx)
         }
 
         if (cards.isEmpty()) {
@@ -357,23 +352,6 @@ internal fun XmbDownloadsPage(focus: XmbTabsPageFocus) {
         // The flows of launching, uninstalling and the Epic cancel raise their dialogs and the result bar here.
         if (actions != null) actions.Dialogs()
     }
-}
-
-/**
- * Scrolls the list so the items [from]..[to] (a card, and its section's heading when it is the first) are in view with [topPx] / [bottomPx]
- * to spare: the least it takes when they are on screen already, else it takes [from] to the top.
- */
-private suspend fun LazyListState.xmbDlReveal(from: Int, to: Int, topPx: Int, bottomPx: Int) {
-    val shown = layoutInfo.visibleItemsInfo
-    val a = shown.firstOrNull { it.index == from }
-    val b = shown.firstOrNull { it.index == to }
-    if (a == null || b == null) {
-        animateScrollToItem(from, -topPx)
-        return
-    }
-    val under = topPx - a.offset
-    val over = b.offset + b.size - (layoutInfo.viewportEndOffset - bottomPx)
-    if (under > 0) animateScrollBy(-under.toFloat()) else if (over > 0) animateScrollBy(over.toFloat())
 }
 
 private fun XmbDlSection.labelRes(): Int = when (this) {

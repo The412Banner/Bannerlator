@@ -664,7 +664,11 @@ internal fun Modifier.xmbHighlight(
             host.release(item)
         }
     }
+    // The page follows the highlight with room beyond it (see [xmbRevealRoom]): asked for by the item that holds the outline, not by an
+    // outer item that only keeps the dim one, and not where the scroll area asks for it on its content.
+    val byContainer = LocalXmbRevealByContainer.current
     return this
+        .xmbRevealRoom { !byContainer && item.role == XmbHighlightItem.ROLE_HOT }
         .onFocusChanged { st ->
             val now = if (wholeSubtree) st.hasFocus else st.isFocused
             if (now != item.focused) {

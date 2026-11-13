@@ -66,6 +66,7 @@ import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.deck.xmbHighlight
 import com.winlator.star.ui.deck.xmbHighlightHostOrNull
+import com.winlator.star.ui.deck.xmbRevealRoom
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
@@ -149,6 +150,7 @@ fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier 
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
     return this
+        .xmbRevealRoom()
         .onFocusChanged { focused = it.isFocused || it.hasFocus }
         .border(
             width = if (focused) 2.dp else 0.dp,

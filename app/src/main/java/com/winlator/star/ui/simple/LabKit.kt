@@ -44,6 +44,8 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.dp
 import com.winlator.star.ui.deck.DeckRoutes
 import com.winlator.star.ui.deck.settings.DeckSettingsRoutes
+import com.winlator.star.ui.deck.xmbHighlightHostOrNull
+import com.winlator.star.ui.deck.xmbRevealRoom
 import com.winlator.star.ui.theme.AppThemeState
 import kotlin.math.abs
 
@@ -224,7 +226,10 @@ internal fun Modifier.labTile(
         androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "labTileFocus",
     )
+    // Under a highlight host (the XMB interface, the store screens) the page follows the focus with room beyond the tile.
+    val hosted = xmbHighlightHostOrNull() != null
     return this
+        .then(if (hosted) Modifier.xmbRevealRoom() else Modifier)
         .then(if (requester != null) Modifier.focusRequester(requester) else Modifier)
         .onFocusChanged {
             if (it.isFocused && !focused) onFocus?.invoke()

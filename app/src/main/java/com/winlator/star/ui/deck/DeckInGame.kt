@@ -427,7 +427,7 @@ private fun DeckQuickMenu(modifier: Modifier, onExit: () -> Unit) {
         } else {
             // Each page starts at its top rather than at the previous page's scroll offset.
             val scroll = key(shown) { rememberScrollState() }
-            Column(bodyMod.verticalScroll(scroll).padding(bottom = 12.dp)) {
+            Column(bodyMod.verticalScroll(scroll).xmbRevealRoom().padding(bottom = 12.dp)) {
                 // Inside the scroll container, so the request lands on the page's first control, not the scroll group.
                 Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) {
                     when (shown) {
@@ -1002,7 +1002,7 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             } else {
                 // Each page starts at its top rather than at the previous page's scroll offset.
                 val scroll = key(shown) { rememberScrollState() }
-                Column(pageMod.igPageScroll(scroll).padding(horizontal = if (compact) 16.dp else 24.dp, vertical = 18.dp)) {
+                Column(pageMod.igPageScroll(scroll).xmbRevealRoom().padding(horizontal = if (compact) 16.dp else 24.dp, vertical = 18.dp)) {
                     header()
                     // Inside the scroll container, so the request lands on the page's first control, not the scroll group.
                     Column(Modifier.fillMaxWidth().focusRequester(pageFocus)) {
@@ -1065,6 +1065,7 @@ private fun DeckInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                     .fillMaxHeight()
                     .background(cs.surface.copy(alpha = 0.55f))
                     .verticalScroll(rememberScrollState())
+                    .xmbRevealRoom()
                     .padding(horizontal = 10.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {

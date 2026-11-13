@@ -4,7 +4,6 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -354,6 +352,7 @@ private fun XmbFriendsRoster(focus: XmbTabsPageFocus) {
     }
 
     val pad = focus.contentPadding
+    val roomPx = rememberXmbRevealRoomPx()
     // The width the page is left decides the columns (the keys need them, so they are registered inside).
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val avail = minOf(maxWidth - pad.calculateStartPadding(dir) - pad.calculateEndPadding(dir), XMB_TWO_COL_MAX_WIDTH_DP.dp)
@@ -417,7 +416,11 @@ private fun XmbFriendsRoster(focus: XmbTabsPageFocus) {
         // The line under the cursor is kept in view: on a move, when its buttons open (the card grows) and when the cursor comes into the list.
         val selLine = xmbTwoColLineOf(lines, selIdx)
         LaunchedEffect(selLine, openKey, focus.contentFocused) {
-            if (focus.contentFocused && selLine >= 0) listState.bringRowIntoView(selLine)
+            if (focus.contentFocused && selLine >= 0) {
+                // After the layout that follows the change (an opened row is taller).
+                withFrameNanos { }
+                listState.xmbReveal(selLine, selLine, roomPx)
+            }
         }
 
         val selectedKey = if (focus.contentFocused) selRow.key else null
@@ -554,30 +557,6 @@ private fun sectionLabel(presence: SteamFriendsStore.Presence): Int = when (pres
     SteamFriendsStore.Presence.AWAY -> R.string.xmb_fr_section_away
     SteamFriendsStore.Presence.OFFLINE -> R.string.xmb_fr_section_offline
     SteamFriendsStore.Presence.UNKNOWN -> R.string.xmb_fr_section_unknown
-}
-
-/** Scrolls the list the least that brings item [index] (a line of the roster) fully into the area the page's padding leaves free (a row taller than it: to its top). */
-private suspend fun LazyListState.bringRowIntoView(index: Int) {
-    // After the layout that follows the change (an opened row is taller).
-    withFrameNanos { }
-    var tries = 0
-    while (tries++ < 3) {
-        val info = layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == index }
-        if (item == null) {
-            animateScrollToItem(index)
-            continue
-        }
-        val top = info.viewportStartOffset + info.beforeContentPadding
-        val bottom = info.viewportEndOffset - info.afterContentPadding
-        val delta = when {
-            item.size >= bottom - top || item.offset < top -> item.offset - top
-            item.offset + item.size > bottom -> item.offset + item.size - bottom
-            else -> 0
-        }
-        if (delta != 0) animateScrollBy(delta.toFloat())
-        return
-    }
 }
 
 private fun Modifier.xmbFriendsRow(): Modifier = this.widthIn(max = XMB_FR_MAX_WIDTH).fillMaxWidth()

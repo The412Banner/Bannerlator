@@ -829,8 +829,6 @@ private fun AmazonGameDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     aspectRatio = null,
                 )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
         },
         subtitle = if (exeNameVisible) {

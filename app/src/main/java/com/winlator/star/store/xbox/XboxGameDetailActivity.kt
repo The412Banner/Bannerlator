@@ -161,7 +161,6 @@ class XboxGameDetailActivity : ComponentActivity() {
                     hero = {
                         val art = listOfNotNull(game.heroUrl, game.posterUrl)
                         if (art.isNotEmpty()) CatalogArt(candidates = art, title = game.title, modifier = Modifier.fillMaxSize(), aspectRatio = null)
-                        else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
                     },
                     subtitle = {
                         Spacer(Modifier.height(4.dp))

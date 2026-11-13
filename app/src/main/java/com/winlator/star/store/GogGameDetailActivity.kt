@@ -997,8 +997,6 @@ private fun GogGameDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
             }
         },
         subtitle = if (exeNameVisible) {

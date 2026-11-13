@@ -48,7 +48,15 @@ import androidx.compose.ui.unit.sp
 import com.winlator.star.ui.deck.xmbSolidBackground
 import com.winlator.star.ui.screens.MenuItemDivider
 import com.winlator.star.ui.screens.outlinedMenuCard
+import com.winlator.star.store.SteamStoreSearch
+import com.winlator.star.ui.simple.LabArt
+import com.winlator.star.ui.simple.LabPicture
 import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labSgdbHero
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.winlator.star.ui.simple.labTile
 
 /**
@@ -165,6 +173,8 @@ fun StoreDetailScaffold(
         val pageW = maxWidth
         val pageH = maxHeight
         val wide = pageW > pageH
+        // Under the store's own art: the Steam / SteamGridDB art the Lab finds by the game's name, for a store with none.
+        StoreFallbackArt(title, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = hero)
         if (wide) {
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
@@ -208,6 +218,26 @@ fun StoreDetailScaffold(
         }
         overlay()
     }
+}
+
+private val fallbackArt = java.util.concurrent.ConcurrentHashMap<String, List<LabArt.Pic>>()
+
+/** Full-screen art found by the game's name: Steam's library hero, SteamGridDB's hero, then Steam's header. */
+@Composable
+private fun StoreFallbackArt(title: String, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current.applicationContext
+    val pics by produceState(fallbackArt[title] ?: emptyList(), title) {
+        if (title.isBlank() || fallbackArt.containsKey(title)) return@produceState
+        value = withContext(Dispatchers.IO) {
+            val steam = runCatching { SteamStoreSearch.findAppIdByName(ctx, title) }.getOrNull()
+            buildList {
+                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/library_hero.jpg"))
+                runCatching { labSgdbHero(ctx, steam, title) }.getOrNull()?.let { add(LabArt.Pic(it)) }
+                if (steam != null) add(LabArt.Pic("https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/$steam/header.jpg"))
+            }
+        }.also { fallbackArt[title] = it }
+    }
+    if (pics.isNotEmpty()) LabPicture(pics, modifier)
 }
 
 /**

@@ -3863,7 +3863,8 @@ private fun DownloadSpeedPickerDialog(
     // Install location — the user's default (the internal one unless they set another), asked every
     // time. The chooser is only shown when there is more than the internal default (an SD card is
     // detected or library folders were added); with just the internal location nothing changes.
-    var selectedLocationId by remember { mutableStateOf(defaultLocationId) }
+    // Follows a default changed while the dialog is open (Manage locations → Make default, "Use as default").
+    var selectedLocationId by remember(defaultLocationId) { mutableStateOf(defaultLocationId) }
     var makeDefault by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Always shown: "+ Custom folder…" and other drives must be reachable even with internal storage only.

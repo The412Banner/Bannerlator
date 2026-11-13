@@ -202,6 +202,13 @@ public final class GogDownloadManager {
             if (buildsJson != null) {
                 String err = runGen2(ctx, game, token, buildsJson, cb, dbg, cancelled, installDirRef);
                 if (err == null) { writeDebug(ctx, dbg); return; }
+                if (err.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                    // An import that can't go on (folder name, installer-only game): never fall back to another
+                    // download type, which would install somewhere else.
+                    writeDebug(ctx, dbg);
+                    cb.onError(err.substring(GogInstallPath.ADOPT_ERROR.length()));
+                    return;
+                }
                 if (err.startsWith("DISK_GUARD:")) {
                     // Hard stop — user already notified via cb.onError; do NOT fall through
                     // to Gen1 (same install would need the same missing space).
@@ -227,6 +234,11 @@ public final class GogDownloadManager {
                 cb.onError("No builds available for this game"); return;
             }
             String err1 = runGen1(ctx, game, token, builds1Json, cb, dbg, cancelled, installDirRef);
+            if (err1 != null && err1.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                writeDebug(ctx, dbg);
+                cb.onError(err1.substring(GogInstallPath.ADOPT_ERROR.length()));
+                return;
+            }
             if (err1 != null) {
                 dbg.append("gen1_failed=").append(err1).append("\n");
 
@@ -235,6 +247,11 @@ public final class GogDownloadManager {
                     cb.onProgress("No Galaxy builds — trying installer download…", 12);
                     String installerErr = runInstaller(ctx, game, token, cb, dbg, cancelled, installDirRef);
                     if (installerErr == null) { writeDebug(ctx, dbg); return; }
+                    if (installerErr.startsWith(GogInstallPath.ADOPT_ERROR)) {
+                        writeDebug(ctx, dbg);
+                        cb.onError(installerErr.substring(GogInstallPath.ADOPT_ERROR.length()));
+                        return;
+                    }
                     dbg.append("installer_failed=").append(installerErr).append("\n");
                     writeDebug(ctx, dbg);
                     cb.onError("No downloadable builds for this game");
@@ -1141,7 +1158,7 @@ public final class GogDownloadManager {
             // An import can't reuse an installer-only game (only its setup .exe is downloaded).
             if (GogInstallPath.isPendingAdopt(String.valueOf(game.gameId))) {
                 GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), null);
-                return "This GOG game only has an installer, so its folder can't be imported. Install it normally.";
+                return GogInstallPath.ADOPT_ERROR + "This GOG game only has an installer, so its folder can't be imported. Install it normally.";
             }
             GogInstallPath.claimPendingBase(ctx, String.valueOf(game.gameId), GogTitles.english(ctx, game));
             File installDir = GogInstallPath.getInstallDir(ctx, GogTitles.english(ctx, game));

@@ -1366,6 +1366,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         if (imported) SteamLibraryImport.releaseImported(this, appId)
                         else SteamAppManifest.removeFor(installDir, appId)
                         SteamRepository.getInstance().database.markUninstalled(appId)
+                        // The Downloads & Library list too, or it keeps showing the game as installed.
+                        com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(Store.STEAM, appId.toString())
                     },
                     // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
                     keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },

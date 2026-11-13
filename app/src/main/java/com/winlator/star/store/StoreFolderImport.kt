@@ -205,8 +205,12 @@ object StoreFolderImport {
             override fun onComplete(exePath: String) {
                 val exe = p.getString("gog_exe_${game.id}", null)
                 val dir = p.getString("gog_dir_${game.id}", null)
-                if (exe != null && dir != null) {
-                    StoreDownloadHooks.markInstalled(Store.GOG, game.id, GogInstallPath.getInstallDir(app, dir).absolutePath, p.getLong("gog_size_${game.id}", 0L))
+                val installed = dir?.let { GogInstallPath.getInstallDir(app, it).absolutePath }
+                if (exe != null && installed != null && installed.trimEnd('/') != folder.absolutePath.trimEnd('/')) {
+                    // Never report an import as done when the game went anywhere but the user's folder.
+                    StoreDownloadHooks.markFailed(Store.GOG, game.id, "Installed to $installed instead of the chosen folder")
+                } else if (exe != null && installed != null) {
+                    StoreDownloadHooks.markInstalled(Store.GOG, game.id, installed, p.getLong("gog_size_${game.id}", 0L))
                 } else {
                     StoreDownloadHooks.markFailed(Store.GOG, game.id, "No executable found")
                 }
@@ -225,5 +229,6 @@ object StoreFolderImport {
             kotlinx.coroutines.delay(500)
         }
         done.await()
+        GogInstallPath.endAdopt(game.id)
     }
 }

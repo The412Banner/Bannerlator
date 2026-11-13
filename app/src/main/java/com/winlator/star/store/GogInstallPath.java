@@ -45,14 +45,28 @@ public final class GogInstallPath {
 
     /** Folders the user brought ("+ Import game library"), by game id: the download must land in exactly that folder. */
     private static final Map<String, File> PENDING_ADOPT = new ConcurrentHashMap<>();
+    /** Games being imported, for the whole download (gen2, gen1, installer fallback): cleared by {@link #endAdopt}. */
+    private static final java.util.Set<String> ADOPT_ACTIVE = ConcurrentHashMap.newKeySet();
+    /** Prefix of an import error: the downloader stops on it instead of trying another download type. */
+    public static final String ADOPT_ERROR = "ADOPT:";
 
     /** Install game {@code gameId} into the existing {@code folder} (an import): GOG's folder name must be its name. */
     public static void setPendingAdopt(String gameId, File folder) {
-        if (gameId != null && folder != null) PENDING_ADOPT.put(gameId, folder);
+        if (gameId != null && folder != null) {
+            PENDING_ADOPT.put(gameId, folder);
+            ADOPT_ACTIVE.add(gameId);
+        }
+    }
+
+    /** The import of {@code gameId} is over (finished, failed or cancelled). */
+    public static void endAdopt(String gameId) {
+        if (gameId == null) return;
+        PENDING_ADOPT.remove(gameId);
+        ADOPT_ACTIVE.remove(gameId);
     }
 
     public static boolean isPendingAdopt(String gameId) {
-        return gameId != null && PENDING_ADOPT.containsKey(gameId);
+        return gameId != null && ADOPT_ACTIVE.contains(gameId);
     }
 
     /** Remembers the place the user picked for game {@code gameId}'s next fresh download. */
@@ -70,7 +84,7 @@ public final class GogInstallPath {
         if (adopt != null) {
             // An import: GOG puts the game in <base>/<its own folder name>, so that has to be the user's folder.
             if (dirName == null || !dirName.equals(adopt.getName())) {
-                return "Rename the folder \"" + adopt.getName() + "\" to \"" + dirName + "\" (GOG's name for this game), then import again.";
+                return ADOPT_ERROR + "Rename the folder \"" + adopt.getName() + "\" to \"" + dirName + "\" (GOG's name for this game), then import again.";
             }
             File parent = adopt.getParentFile();
             if (parent != null) prefs(ctx).edit().putString(ROOT_PREFIX + dirName, parent.getAbsolutePath()).apply();

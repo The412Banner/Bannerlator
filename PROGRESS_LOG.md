@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 06:3x EST — PR #660 (XMB update) fixed on our side (fix/xmb-pr660, in progress)
+
+- **Why (user):** "is it stuff we can fix? build this pr on a side branch then fix it there?" after the review of MGamer404's PR #660 (comment issuecomment-6849246651, edited in place 06:11 EST).
+- **Branch:** fix/xmb-pr660 = main 10e3224e1 + `--no-ff` merge of PR head 73531162 (b5dd03e04, no conflicts). Worktree `/root/src/Bannerlator-wt/xmb-pr660`. (Old review worktree pr660-merge left in place, clean; branch review/pr660-on-main kept.)
+- **Done:** 3bd4d4912 uninstall keeps other games' shortcuts (StoreUninstaller.runForOutcome kept flag; anchored match via WinePath.resolveAndroidPath; tests updated, logic checked with a Python port); db725be0a Epic resume that cannot start stays paused (+ toast); a4cf4084a Epic cancel of an installed game's update keeps it INSTALLED (paused cancel, resumed run, both Epic screens — the screens' delete-on-cancel during an update predates the PR).
+- **Next:** RTL inside XMB only; default theme (AMOLED / Carbon & Ember for fresh installs) + landscape only for XMB; art refresh; Rust speed net bytes; Friends listener filter. Then CI, stage, ask install, device test. Unit tests are not run by CI and can't run here (no Gradle).
+- **Note for the user:** tell Abu we are fixing these, or he duplicates the work.
+
 ## 2026-11-13 00:02 EST — 🔀 MERGED fix/download-speed-dialog (user: "merge to main")
 
 - **Merged:** backup `refs/backup/20261113/main-before-download-speed-dialog` = 22ffc13cf. `--no-ff` merge of fix/download-speed-dialog 54e821226.

@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-12 20:58 EST — 🔀 MERGED fix/epic-hostname-present (main dc9a4a4de; user: "merge to main")
+
+- **Merged:** backup `refs/backup/20261112/main-before-epic-hostname-present` = 2ca4c768c (pushed). `--no-ff` dc9a4a4de (branch 0ee733686), no conflicts, authored The412Banner, no AI trailer. Pushed 2ca4c768c..dc9a4a4de.
+- **Tree check:** `git diff 30529b7d dc9a4a4de -- . ':!PROGRESS_LOG.md'` = empty → main code is exactly the build installed and tested on the FIT (20:43 EST).
+- **Proof level:** hostname shim device-proven (Metalstorm: address reported, Windows computer name kept LOCALHOST); Present cleanup device-tested on X11 (cube/DiRT no regression, 2 swapchain rebuilds per DiRT run as before, 0 FATAL). Not tested: an online Epic P2P match; Present on games that resize their window mid-game.
+- **Main CI:** run 43348212201 (CI Build artifacts only, push) on dc9a4a4de.
+- **Open:** branch fix/epic-hostname-present + wip/upstream-small-fixes-full kept (delete only on the user's word). Our Proton vs GameNative/proton-wine #46 (EOS websockets) not checked. FIT = 30529b7d (= main code); root-6a's store-revamp build is off the FIT until the user says.
+
 ## 2026-11-12 20:09 EST — Epic hostname shim + Present cleanup (fix/epic-hostname-present 30529b7d, device-tested, awaiting merge go)
 
 - **Why (user):** "add both on a new branch off main" — the two leftovers from the 11-10 GameNative/StevenMXZ/Pipetto recon (bannerlator-upstream-ideas).

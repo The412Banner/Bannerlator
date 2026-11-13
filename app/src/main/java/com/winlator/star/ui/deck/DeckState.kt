@@ -72,7 +72,10 @@ internal class DeckActions {
     var entryHoldUntil: Long = 0L
     /** Simple style: a page's own button hints for the Simple frame's legend (null = the frame's usual hints). */
     val ownLegend: MutableState<List<Pair<String, String>>?> = mutableStateOf(null)
-    /** Simple style: the game whose art fills the screen behind the current page (a game's settings), or null for the collage. */
+    /**
+     * The game whose art fills the screen behind the current page (a game's settings), or null for the plain page. The XMB shell draws
+     * it blurred on the glass, behind the panels (XmbGamePageArt).
+     */
     val pageArt: MutableState<com.winlator.star.container.Shortcut?> = mutableStateOf(null)
 }
 

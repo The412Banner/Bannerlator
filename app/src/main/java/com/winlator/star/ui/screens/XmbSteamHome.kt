@@ -70,6 +70,8 @@ import com.winlator.star.ui.deck.XMB_FOCUS_OUTLINE
 import com.winlator.star.ui.deck.XmbTabPill
 import com.winlator.star.ui.deck.xmbBadgeEndRoom
 import com.winlator.star.ui.deck.XmbStoreMark
+import com.winlator.star.ui.deck.rememberXmbGlass
+import com.winlator.star.ui.deck.rememberXmbPageArtLook
 import com.winlator.star.ui.deck.storeMarkOf
 import com.winlator.star.ui.deck.xmbInkColor
 import com.winlator.star.ui.simple.LabArt
@@ -156,23 +158,10 @@ private fun XmbSteamPicture(
 @Composable
 internal fun XmbSteamBackdrop(game: Shortcut?, picture: Any?, fadeFrom: Float, lift: () -> Float = { 0f }) {
     val from = fadeFrom.coerceIn(0.25f, 0.97f)
-    val context = LocalContext.current
-    val path = game?.file?.path
-    LaunchedEffect(path) { if (game != null) withContext(Dispatchers.IO) { LabArt.resolve(context, game) } }
-    val tick = LabArt.tick
-    val hero = remember(path, tick) { game?.let { g -> XmbSteamHero(g.file.path, LabArt.models(g, "bg")) } }
-    val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val hero = rememberXmbSteamHero(game)
     Box(Modifier.fillMaxSize()) {
         // The art layers (the blurred cover and the hero) blur and dim as the options open; the gradient above them stays sharp.
-        XmbSteamBlurred(lift, blurs) {
-            XmbHomeBackdrop(picture)
-            Crossfade(targetState = hero, animationSpec = tween(600), label = "xmbSteamHero") { h ->
-                if (h != null) {
-                    XmbSteamPicture(h.pics, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
-                }
-            }
-        }
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = xmbSteamBackdropDim(lift(), blurs) }.background(Color.Black))
+        XmbSteamArt(hero, picture, lift)
         Box(
             Modifier.fillMaxSize().background(
                 // Top: a dark scrim for the shell's header. Bottom: from [from] (clear) to the bottom edge, the navy's
@@ -191,6 +180,55 @@ internal fun XmbSteamBackdrop(game: Shortcut?, picture: Any?, fadeFrom: Float, l
                 ),
             ),
         )
+    }
+}
+
+/** [game]'s landscape art to try, found (off the main thread) the first time and made again when LabArt finds more; null without a game. */
+@Composable
+private fun rememberXmbSteamHero(game: Shortcut?): XmbSteamHero? {
+    val context = LocalContext.current
+    val path = game?.file?.path
+    LaunchedEffect(path) { if (game != null) withContext(Dispatchers.IO) { LabArt.resolve(context, game) } }
+    val tick = LabArt.tick
+    return remember(path, tick) { game?.let { g -> XmbSteamHero(g.file.path, LabArt.models(g, "bg")) } }
+}
+
+/**
+ * The art layers of the Home backdrop: the blurred cover [picture] with the [hero] crossfading over it, blurred and dimmed as [lift]
+ * (0..1) goes to 1 (see [XmbSteamBackdrop]). Fills its parent.
+ */
+@Composable
+private fun XmbSteamArt(hero: XmbSteamHero?, picture: Any?, lift: () -> Float) {
+    val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(Modifier.fillMaxSize()) {
+        XmbSteamBlurred(lift, blurs) {
+            XmbHomeBackdrop(picture)
+            Crossfade(targetState = hero, animationSpec = tween(600), label = "xmbSteamHero") { h ->
+                if (h != null) {
+                    XmbSteamPicture(h.pics, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = xmbSteamBackdropDim(lift(), blurs) }.background(Color.Black))
+    }
+}
+
+/**
+ * The art behind a game's settings page: what the Home backdrop shows with the options open (the cover, [XmbSteamArt]'s hero over it,
+ * blurred by [XMB_STEAM_BACKDROP_BLUR] dp and dimmed), under a veil of the glass (see [xmbPageArtLookFor]) so the see-through panels
+ * on top are tinted by it and their text stays readable. Nothing when the game has neither a cover nor landscape art (the glass
+ * page shows as it is). Fills its parent.
+ */
+@Composable
+internal fun XmbGamePageArt(game: Shortcut, modifier: Modifier = Modifier) {
+    val hero = rememberXmbSteamHero(game)
+    val picture: Any? = game.icon
+    if (picture == null && hero?.models.isNullOrEmpty()) return
+    val glass = rememberXmbGlass()
+    val look = rememberXmbPageArtLook()
+    Box(modifier) {
+        XmbSteamArt(hero, picture, lift = { 1f })
+        Box(Modifier.fillMaxSize().background(glass.base.copy(alpha = look.veil)))
     }
 }
 

@@ -356,6 +356,12 @@ internal fun DeckSettingsEditor(
 
     // Controller: X / Start saves while there is something to save (a new container always has: Create), Y searches, L1 / R1 step through categories.
     val deckActions = LocalDeckActions.current
+    // XMB: a game's settings sit on the game's own art, which the shell draws blurred on the glass behind the panels.
+    DisposableEffect(deckActions, xmbHome, env.shortcut) {
+        val art = env.shortcut?.takeIf { xmbHome && env.scope == EditorScope.GAME }
+        deckActions.pageArt.value = art
+        onDispose { if (deckActions.pageArt.value === art) deckActions.pageArt.value = null }
+    }
     val dirty = source.dirty
     val showBar = dirty || createMode
     // XMB two-pane: Create / Save + Discard are small buttons floating at the page's bottom right, not a full-width bar.
@@ -1502,7 +1508,7 @@ private fun RowInfo(
             )
         }
         // The requester lands Right-from-the-row on the "?" when there is one, else on Get more, else on Reset (never two: one request, one target).
-        SourceLine(origin, baselineLabel, scope, onReset, if (def.help == null && onGetMore == null) utility else null)
+        SourceLine(origin, baselineLabel, scope, def.game?.inherit, onReset, if (def.help == null && onGetMore == null) utility else null)
     }
 }
 
@@ -1531,8 +1537,10 @@ private fun GetMoreButton(onClick: () -> Unit, utility: FocusRequester?) {
 }
 
 @Composable
-private fun SourceLine(origin: Origin, baselineLabel: String?, scope: EditorScope, onReset: () -> Unit, utility: FocusRequester?) {
+private fun SourceLine(origin: Origin, baselineLabel: String?, scope: EditorScope, inherit: Inherit?, onReset: () -> Unit, utility: FocusRequester?) {
     val cs = MaterialTheme.colorScheme
+    // XMB, a game: the container page's rows, with an accent dot and a Reset to what it follows on the rows the game sets itself.
+    val shortcutPage = scope == EditorScope.GAME && rememberXmbHome()
     when (origin) {
         Origin.NONE -> Unit
         Origin.DEFAULT -> SourcePill("Default")
@@ -1543,19 +1551,15 @@ private fun SourceLine(origin: Origin, baselineLabel: String?, scope: EditorScop
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(cs.primary))
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = buildString {
-                        append(if (scope == EditorScope.GAME) "Set for this game" else "Set for this container")
-                        if (baselineLabel != null) append(" · Default: ").append(baselineLabel)
-                    },
-                    color = cs.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                )
+                val note = if (shortcutPage) baselineLabel?.let { PageWording.followsNote(inherit, it) } else buildString {
+                    append(if (scope == EditorScope.GAME) "Set for this game" else "Set for this container")
+                    if (baselineLabel != null) append(" · Default: ").append(baselineLabel)
+                }
+                if (note != null) Text(text = note, color = cs.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             val shape = deckShape(12.dp)
             Text(
-                text = "Reset",
+                text = if (shortcutPage) PageWording.resetLabel(inherit) else "Reset",
                 color = cs.primary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,

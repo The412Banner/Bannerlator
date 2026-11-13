@@ -286,6 +286,38 @@ class XmbBackdropTest {
         assertTrue("worst $worst", worst >= XMB_GLASS_MIN_CONTRAST)
     }
 
+    // ---- A page on a game's art (the game's settings) ----
+
+    @Test
+    fun aPageOnTheArtKeepsEveryPresetsTextReadableOverTheLightestArt() {
+        for (p in themePresets) {
+            val glass = glassOf(p)
+            val look = xmbPageArtLookFor(glass, p.onSurface, p.onBackground)
+            assertTrue("${p.name}: veil ${look.veil}", look.veil in XMB_PAGE_ART_VEIL..1f)
+            for (ground in xmbPageArtGrounds(glass, look.veil)) {
+                for ((name, text) in listOf("onSurface" to p.onSurface, "onBackground" to p.onBackground, "secondary" to look.secondaryText)) {
+                    val ratio = contrastOn(text, ground)
+                    assertTrue("${p.name}: $name $ratio on $ground", ratio >= XMB_GLASS_MIN_CONTRAST)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theDefaultPresetShowsTheArtAtTheLeastVeil() {
+        val p = themePresets.first { it.name == "Charcoal" }
+        val look = xmbPageArtLookFor(glassOf(p), p.onSurface, p.onBackground)
+        assertEquals(XMB_PAGE_ART_VEIL, look.veil, 1e-6f)
+    }
+
+    @Test
+    fun theVeilThickensToThePlainBaseWhenTheMainTextCannotKeepUpOnTheArt() {
+        val glass = glassOf(themePresets.first { it.name == "Charcoal" })
+        // A mid-grey main text is under the minimum even on the plain base, so the veil goes all the way.
+        val look = xmbPageArtLookFor(glass, Color(0xFF8A8A8A), Color.White)
+        assertEquals(1f, look.veil, 1e-6f)
+    }
+
     @Test
     fun barsOnlyVeilThePageAndTheBordersAreLight() {
         for (p in themePresets) {

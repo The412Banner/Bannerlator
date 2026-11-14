@@ -28,7 +28,7 @@ class AppSettingsLayoutTest {
 
     @Test
     fun appearanceHoldsTheNewAppearanceRows() {
-        for (id in listOf("app.appearance.style", "app.appearance.labLook", "app.appearance.orientation", "app.appearance.uiScale", "app.appearance.fontScale", "app.appearance.showStores", "app.appearance.showInternal", "app.appearance.showSd")) {
+        for (id in listOf("app.appearance.style", "app.appearance.labLook", "app.appearance.orientation", "app.appearance.uiScale", "app.appearance.fontScale", "app.appearance.xmbUiScale", "app.appearance.xmbFontScale", "app.appearance.showStores", "app.appearance.showInternal", "app.appearance.showSd")) {
             assertEquals(id, EditorTabs.APP_APPEARANCE, tab(id))
         }
     }

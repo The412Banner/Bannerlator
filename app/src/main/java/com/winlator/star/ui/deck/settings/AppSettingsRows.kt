@@ -93,13 +93,17 @@ internal object AppSettingsRows {
         }
     }
 
-    private fun scale(id: String, label: String, hint: String, get: () -> Float, set: (Float) -> Unit) = row(
+    private fun scale(
+        id: String, label: String, hint: String, get: () -> Float, set: (Float) -> Unit,
+        visible: (SettingsEnv, (String) -> String) -> Boolean = { _, _ -> true },
+    ) = row(
         id, CAT_APPEARANCE, T("Size and orientation"), label, ADVANCED, hint = hint,
         control = { Control.Slider(0.5f, 1.5f, 0.05f, { "${(it * 100).roundToInt()}%" }, { String.format(Locale.ENGLISH, "%.2f", it) }) },
         binding = AppBinding(
             get = { _ -> String.format(Locale.ENGLISH, "%.2f", get()) },
             set = { _, v -> v.toFloatOrNull()?.let { set(it) } },
         ),
+        visible = visible,
     )
 
     fun defs(): List<SettingDef> = listOf(
@@ -147,10 +151,19 @@ internal object AppSettingsRows {
             // The XMB home keeps its own lock (landscape, or portrait from the rotate button in its bars).
             visible = { _, values -> values(ID_STYLE) != STYLE_XMB },
         ),
+        // The XMB is drawn on a fixed scale of its own (XmbScale.kt) with its own saved sliders; the other styles keep the shared pair.
         scale("app.appearance.uiScale", T("Interface scale"), T("Scales the app's own screens: games keep their own size."),
-            { AppThemeState.uiScale.value }, { AppThemeState.setUiScale(it) }),
+            { AppThemeState.uiScale.value }, { AppThemeState.setUiScale(it) },
+            visible = { _, values -> values(ID_STYLE) != STYLE_XMB }),
         scale("app.appearance.fontScale", T("Font size"), T("Scales the app's own text."),
-            { AppThemeState.fontScale.value }, { AppThemeState.setFontScale(it) }),
+            { AppThemeState.fontScale.value }, { AppThemeState.setFontScale(it) },
+            visible = { _, values -> values(ID_STYLE) != STYLE_XMB }),
+        scale("app.appearance.xmbUiScale", T("Interface scale"), T("Scales the app's own screens: games keep their own size. 100% is the same share of the screen on every device."),
+            { AppThemeState.xmbUiScale.value }, { AppThemeState.setXmbUiScale(it) },
+            visible = { _, values -> values(ID_STYLE) == STYLE_XMB }),
+        scale("app.appearance.xmbFontScale", T("Font size"), T("Scales the app's own text. The phone's own font size does not apply here."),
+            { AppThemeState.xmbFontScale.value }, { AppThemeState.setXmbFontScale(it) },
+            visible = { _, values -> values(ID_STYLE) == STYLE_XMB }),
         row(
             "app.appearance.showStores", CAT_APPEARANCE, T("Side menu and Stores"), T("Show game stores"), ADVANCED,
             hint = T("The GOG, Epic, Amazon and Steam shortcuts (the side menu, the Stores tab)."),

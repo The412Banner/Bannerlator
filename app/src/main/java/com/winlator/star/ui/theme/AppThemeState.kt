@@ -42,6 +42,14 @@ object AppThemeState {
     private val _fontScale = MutableStateFlow(0.9f)
     val fontScale: StateFlow<Float> = _fontScale
 
+    /** The XMB style's own Interface scale and Font size (it is drawn on a fixed scale: XmbScale.kt), saved apart from the two
+     *  above, which the other styles keep. 1.0 = the XMB's 100 %; clamped 0.5..1.5 by the setters. */
+    private val _xmbUiScale = MutableStateFlow(1f)
+    val xmbUiScale: StateFlow<Float> = _xmbUiScale
+
+    private val _xmbFontScale = MutableStateFlow(1f)
+    val xmbFontScale: StateFlow<Float> = _xmbFontScale
+
     /** App shell style: [UI_STYLE_CLASSIC] (drawer + top bar, the default) or [UI_STYLE_DECK]
      *  (console-style tab shell). Read by MainActivity's AppShell and applied live. */
     const val UI_STYLE_CLASSIC = "classic"
@@ -171,6 +179,8 @@ object AppThemeState {
         _showSdStorage.value = themePrefs.getBoolean("show_sd_storage", true)
         _uiScale.value = themePrefs.getFloat("ui_scale", 0.9f).coerceIn(0.5f, 1.5f)
         _fontScale.value = themePrefs.getFloat("font_scale", 0.9f).coerceIn(0.5f, 1.5f)
+        _xmbUiScale.value = themePrefs.getFloat("xmb_ui_scale", 1f).coerceIn(0.5f, 1.5f)
+        _xmbFontScale.value = themePrefs.getFloat("xmb_font_scale", 1f).coerceIn(0.5f, 1.5f)
         _uiStyle.value = if (themePrefs.getString("ui_style", UI_STYLE_CLASSIC) == UI_STYLE_DECK) UI_STYLE_DECK
                          else UI_STYLE_CLASSIC
         _deckXmbHome.value = _uiStyle.value == UI_STYLE_DECK && themePrefs.getBoolean("deck_xmb_home", false)
@@ -240,6 +250,19 @@ object AppThemeState {
         val clamped = scale.coerceIn(0.5f, 1.5f)
         _fontScale.value = clamped
         themePrefs.edit().putFloat("font_scale", clamped).apply()
+    }
+
+    /** The XMB's own Interface scale; applied live in WinlatorTheme while the XMB is on. */
+    fun setXmbUiScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 1.5f)
+        _xmbUiScale.value = clamped
+        themePrefs.edit().putFloat("xmb_ui_scale", clamped).apply()
+    }
+
+    fun setXmbFontScale(scale: Float) {
+        val clamped = scale.coerceIn(0.5f, 1.5f)
+        _xmbFontScale.value = clamped
+        themePrefs.edit().putFloat("xmb_font_scale", clamped).apply()
     }
 
     fun setPreset(index: Int) {

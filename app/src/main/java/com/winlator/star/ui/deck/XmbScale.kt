@@ -25,11 +25,22 @@ import kotlin.math.roundToInt
 /** The screen's short side, in dp, at 100 % Interface scale. */
 internal const val XMB_REFERENCE_SHORT_SIDE_DP = 393f
 
-/** Pixels per dp of the XMB at 100 % Interface scale: the display's short side ([shortSidePx]) is always [XMB_REFERENCE_SHORT_SIDE_DP]. */
+// The look the XMB was tuned at: 110 % Interface scale and 105 % Font size on the reference above. That is the XMB's 100 %, so its own
+// sliders start at 100 % and these two carry the rest.
+internal const val XMB_BASE_UI_BOOST = 1.10f
+internal const val XMB_BASE_FONT_BOOST = 1.05f
+
+/**
+ * Pixels per dp of the reference scale: the display's short side ([shortSidePx]) is always [XMB_REFERENCE_SHORT_SIDE_DP]. The window's
+ * dp ([xmbConfiguration]) are in these, so the sizes laid out from them (ScreenScale) hold their share of the screen.
+ */
 internal fun xmbBaseDensity(shortSidePx: Int): Float = shortSidePx / XMB_REFERENCE_SHORT_SIDE_DP
 
-/** The XMB's density at the app's Interface scale [uiScale] (a share of 100 %); the Deck style then draws [DECK_UI_SCALE] of it. */
-internal fun xmbAppDensity(shortSidePx: Int, uiScale: Float): Float = xmbBaseDensity(shortSidePx) * uiScale
+/** The XMB's density at its own Interface scale [uiScale] (a share of 100 %); the Deck style then draws [DECK_UI_SCALE] of it. */
+internal fun xmbAppDensity(shortSidePx: Int, uiScale: Float): Float = xmbBaseDensity(shortSidePx) * XMB_BASE_UI_BOOST * uiScale
+
+/** The XMB's text scale at its own Font size [fontScale] (a share of 100 %); the phone's Font size plays no part. */
+internal fun xmbFontScale(fontScale: Float): Float = XMB_BASE_FONT_BOOST * fontScale
 
 /** [systemDp], a size the phone reports in dp at [systemDensity], as dp at [baseDensity]. */
 internal fun xmbDp(systemDp: Int, systemDensity: Float, baseDensity: Float): Int = (systemDp * systemDensity / baseDensity).roundToInt()
@@ -51,7 +62,7 @@ internal fun xmbShortSidePx(context: Context): Int {
 }
 
 /**
- * [system] with its sizes in dp of the XMB ([xmbBaseDensity] of [shortSidePx]) instead of the phone's, and the app's own Font size
+ * [system] with its sizes in dp of the XMB ([xmbBaseDensity] of [shortSidePx]) instead of the phone's, and the XMB's text scale
  * [fontScale] instead of the phone's. Everything that lays out by the window's dp (the compact layouts, the shares of the screen)
  * then reads the same window whatever the Display size.
  */
@@ -70,11 +81,11 @@ internal fun xmbConfiguration(system: Configuration, shortSidePx: Int, fontScale
 /** The phone's configuration for [context] as the XMB sees it ([xmbConfiguration]) while the XMB is on, as it is otherwise. */
 internal fun xmbConfiguration(context: Context): Configuration {
     val system = context.resources.configuration
-    return if (isXmbHome(context)) xmbConfiguration(system, xmbShortSidePx(context), AppThemeState.fontScale.value) else system
+    return if (isXmbHome(context)) xmbConfiguration(system, xmbShortSidePx(context), xmbFontScale(AppThemeState.xmbFontScale.value)) else system
 }
 
 /**
- * What the XMB is drawn at: [density] is the app's own (the Interface scale and Font size on the fixed scale, before the Deck
+ * What the XMB is drawn at: [density] is the app's own (its Interface scale and Font size on the fixed scale, before the Deck
  * style's [DECK_UI_SCALE]) and [configuration] the window in dp of that scale.
  */
 @Immutable
@@ -97,7 +108,7 @@ internal fun rememberXmbStyle(): Boolean {
     return remember(context, live) { isXmbHome(context) }
 }
 
-/** The XMB's [XmbScale] for the app's [uiScale] and [fontScale], or null while the XMB is off. */
+/** The XMB's [XmbScale] for its own Interface scale [uiScale] and Font size [fontScale] (AppThemeState.xmbUiScale / xmbFontScale), or null while it is off. */
 @Composable
 internal fun rememberXmbScale(uiScale: Float, fontScale: Float): XmbScale? {
     val xmb = rememberXmbStyle()
@@ -106,6 +117,7 @@ internal fun rememberXmbScale(uiScale: Float, fontScale: Float): XmbScale? {
     return remember(xmb, context, system, uiScale, fontScale) {
         if (!xmb) return@remember null
         val shortSidePx = xmbShortSidePx(context)
-        XmbScale(Density(xmbAppDensity(shortSidePx, uiScale), fontScale), xmbConfiguration(system, shortSidePx, fontScale))
+        val text = xmbFontScale(fontScale)
+        XmbScale(Density(xmbAppDensity(shortSidePx, uiScale), text), xmbConfiguration(system, shortSidePx, text))
     }
 }

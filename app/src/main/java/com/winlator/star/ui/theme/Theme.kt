@@ -71,10 +71,12 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
     // Fold the user's interface-scale prefs into the ambient density so every WinlatorTheme
     // surface — including the in-game drawer/dialogs — scales together. The native OSC and
     // perf HUD aren't Compose, so they stay fixed on their own.
-    // The XMB style does not start from the phone's Display size and Font size: its own fixed scale
-    // (XmbScale.kt) replaces them, in the density and in the configuration's dp.
+    // The XMB style does not start from the phone's Display size and Font size: its own fixed scale and its own saved sliders
+    // (XmbScale.kt) replace them, in the density and in the configuration's dp.
     val base = LocalDensity.current
-    val xmb = rememberXmbScale(uiScale, fontScale)
+    val xmbUiScale by AppThemeState.xmbUiScale.collectAsState()
+    val xmbFontScale by AppThemeState.xmbFontScale.collectAsState()
+    val xmb = rememberXmbScale(xmbUiScale, xmbFontScale)
     val scaledDensity = xmb?.density ?: Density(base.density * uiScale, base.fontScale * fontScale)
     val configuration = xmb?.configuration ?: LocalConfiguration.current
     CompositionLocalProvider(

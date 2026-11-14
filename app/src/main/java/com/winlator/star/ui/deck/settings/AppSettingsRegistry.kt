@@ -103,6 +103,56 @@ internal object AppSettingsRegistry {
         "app.advanced" to listOf(Handoff(T("Frame-gen training capture"), T("Contributing captures and the win-fg diagnostic log (classic Settings)."), TARGET_CLASSIC)),
     )
 
+    /** Lab's hand-off targets: "lab:<route>" opens that Lab page, "url:<address>" a web page (DeckAppSettings). */
+    const val TARGET_LAB = "lab:"
+    const val TARGET_URL = "url:"
+
+    /**
+     * Lab's hand-offs: [handoffs] with every classic-Settings one (TARGET_CLASSIC) replaced by a Lab page of its own
+     * (ui/simple/LabSettingsPages.kt, LabPerformancePages.kt), so Lab never opens the classic Settings screen. The ones that
+     * already open a Lab page (appearance, logs, controls, contents, defaults, About) stay as they are. The download engines
+     * and the Steam region are rows of [labDefs] instead.
+     */
+    val labHandoffs: Map<String, List<Handoff>> by lazy {
+        fun lab(label: String, hint: String, route: String) = Handoff(label, hint, TARGET_LAB + route)
+        val r = com.winlator.star.ui.simple.LabSettingsRoutes
+        mapOf(
+            "app.general" to listOf(lab(T("Updates"), T("Installed and latest version, what's new, Download & install, Check for updates."), r.UPDATES)),
+            "app.appearance" to handoffs.getValue("app.appearance"),
+            "app.library" to listOf(
+                lab(T("Steam library locations"), T("Games folders on shared storage or an SD card."), r.STEAM_LIBRARIES),
+                lab(T("MIDI sound banks"), T("Add or remove .sf2 sound banks."), r.SOUND_BANKS),
+                Handoff(T("Get a SteamGridDB API key"), T("Opens steamgriddb.com."), TARGET_URL + "https://www.steamgriddb.com/profile/preferences/api"),
+            ),
+            "app.performance" to listOf(
+                lab(T("Root controls and heat safety"), T("CPU governor and frequency locks, free memory and the temperature watchdog."), r.PERFORMANCE),
+                lab(T("Lossless.dll for frame generation"), T("Detect, import or remove the DLL LSFG Native needs."), r.LOSSLESS),
+                lab(T("Translator presets"), T("New, edit, duplicate, remove, export or import Box64 and FEX presets."), r.PRESETS),
+            ) + handoffs.getValue("app.performance").filter { it.target == TARGET_DEFAULTS },
+            "app.network" to listOf(lab(T("Steam connection tests"), T("Test regions and the network; pick a datacenter by its ping."), r.STEAM_CONNECTION)),
+            "app.storage" to listOf(lab(T("Storage and folders"), T("Space used, the app data and shortcut export folders, and the base system (ImageFS)."), r.STORAGE)),
+            "app.logs" to handoffs.getValue("app.logs"),
+            "app.backup" to listOf(lab(T("Back up or restore all app data"), T("Containers, settings and prefix in one file."), r.BACKUP)),
+            "app.controllers" to handoffs.getValue("app.controllers"),
+            "app.contents" to handoffs.getValue("app.contents"),
+            "app.about" to handoffs.getValue("app.about"),
+            "app.advanced" to listOf(lab(T("Frame-gen training capture"), T("Contributing captures and the win-fg diagnostic log."), r.FG_CAPTURE)),
+        )
+    }
+
+    /**
+     * Lab's rows: [legacyDefs], File Provider with Classic's "?" text as its hint, and in Downloads & network the Steam
+     * connection region and the download engine rows (the XMB's AppSettingsRows, which Classic has in its Log Manager).
+     */
+    val labDefs: List<SettingDef> by lazy {
+        legacyDefs.map { d ->
+            if (d.id == "app.advanced.fileProvider") d.copyWith(hint = T("Lets Android's file manager open the app's data. Takes effect after the app restarts."))
+            else d
+        } + AppSettingsRows.defs()
+            .filter { it.category == AppSettingsRows.CAT_STEAM || it.category == AppSettingsRows.CAT_DOWNLOADS }
+            .map { it.copyWith(category = "app.network") }
+    }
+
     /** The rows of the categories above: what the plain Deck, Lab and Classic list, exactly as before. */
     val legacyDefs: List<SettingDef> by lazy { buildDefs() }
 

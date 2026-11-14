@@ -83,13 +83,23 @@ internal class UiSoundBank private constructor(val key: String, private val pool
         /** Steam sound names any cue can play. */
         val STEAM_NAMES: Set<String> = UiCue.entries.flatMap { it.files.asList() }.toSet()
 
+        /** Sounds a chosen pack only plays when it has them itself: the start-up sound is the pack's own or none. */
+        private val OWN_ONLY: Set<String> = UiCue.STARTUP.files.toSet()
+
         /**
          * Files per Steam sound: [pack]'s own when it has them, else [base]'s (the Steam pack), as on a
-         * Steam Deck where sounds a pack does not replace keep Steam's sound.
+         * Steam Deck where sounds a pack does not replace keep Steam's sound. The start-up sound is never
+         * filled in from the Steam pack ([OWN_ONLY]); [pack] null (the Steam pack chosen) plays all of [base].
          */
         fun resolve(pack: UiSoundPack?, base: UiSoundPack?): Map<String, List<File>> =
-            STEAM_NAMES.associateWith { n -> pack?.filesFor(n).orEmpty().ifEmpty { base?.filesFor(n).orEmpty() } }
-                .filterValues { it.isNotEmpty() }
+            STEAM_NAMES.associateWith { n ->
+                val own = pack?.filesFor(n).orEmpty()
+                when {
+                    own.isNotEmpty() -> own
+                    pack != null && n in OWN_ONLY -> emptyList()
+                    else -> base?.filesFor(n).orEmpty()
+                }
+            }.filterValues { it.isNotEmpty() }
 
         /** Opens a bank for [files] and starts loading them in the background; null when SoundPool is unavailable. */
         fun open(key: String, files: Map<String, List<File>>): UiSoundBank? {

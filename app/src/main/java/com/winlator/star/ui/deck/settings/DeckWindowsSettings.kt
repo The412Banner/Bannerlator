@@ -72,7 +72,8 @@ import java.util.Locale
 // (ContainerDetailViewModel): the form is the draft, so Save writes drives, theme and colour through
 // the same applyFormTo the classic ✓ does. Two things happen on the press, as in the classic editor:
 // a picked wallpaper image is written to its file at once (Save then stamps its time into the theme),
-// and Reset forgets the defaults profile.
+// and Reset forgets the defaults profile. The Win components tab's page (the DLL and codec rows with a search bar and
+// "Show more") is WinComponentsPage.kt; this section only hosts it, so every editor that draws the sections has it.
 
 internal object WindowsRows {
 
@@ -99,6 +100,7 @@ internal object WindowsRows {
             visible = { env, _ -> env.scope == EditorScope.CONTAINER },
             // As the classic editor: the layer is chosen when the container is created, and its prefix is built for it.
             disabled = { env, _ -> if (env.vm?.wineVersionEnabled == false) L("Fixed once the container exists: its Windows prefix was built for this layer.") else null },
+            getMore = "wine",
         ),
         SettingDef(
             id = ID_BG, category = "windows", group = L("Windows desktop"), level = SettingLevel.ADVANCED,
@@ -153,6 +155,8 @@ internal class DeckWindowsSection(
     val env: SettingsEnv,
     val source: SettingsSource,
     private val scope: CoroutineScope,
+    /** True in the XMB interface: the Win components tab's page. False (plain Deck): no such page, the components stay on Windows. */
+    private val xmb: Boolean,
 ) : DeckSection {
     private val vm: ContainerDetailViewModel? = env.vm?.takeIf { env.scope == EditorScope.CONTAINER || env.scope == EditorScope.DEFAULTS }
     private val container get() = env.scope == EditorScope.CONTAINER
@@ -176,14 +180,34 @@ internal class DeckWindowsSection(
 
     fun startPicker() { awaiting = true }
 
+    /**
+     * A row's "Get more" (SettingDef.getMore, wired by the host through SettingsEnv.getMoreOpen): "wine" opens the
+     * Wine / Proton download sheet. False for any other kind, or when this section has no container form.
+     */
+    fun openGetMore(kind: String): Boolean {
+        if (kind != "wine" || vm == null) return false
+        wineSheet = true
+        return true
+    }
+
+    /**
+     * The Win components tab's page (search, first five, Show more): its own source "wincomp", for a container, All
+     * containers and a Wine game alike (a game has no container form here, so it comes before the early return).
+     */
+    private val winComponents = WinComponentsSection(env, source)
+
     override fun extras(): Map<String, CategoryExtra> {
-        if (vm == null || env.world != World.WINE) return emptyMap()
-        return mapOf("windows" to CategoryExtra(bottom = ::bottomItems))
+        // XMB only. Lab lists the component rows itself (SimpleClassicEditor) and the plain Deck keeps them on Windows: no page.
+        val components = if (xmb) winComponents.extras() else emptyMap<String, CategoryExtra>()
+        if (vm == null || env.world != World.WINE) return components
+        return components + mapOf("windows" to CategoryExtra(bottom = ::bottomItems))
     }
 
     private fun bottomItems(): List<PageExtra> = buildList {
         val vm = vm ?: return@buildList
-        if (container) {
+        // The XMB editor reaches this sheet from "Get more" on the Wine / Proton version row ([openGetMore]); the plain Deck and
+        // the Lab style have no such link, so they keep their own download action.
+        if (container && !xmb) {
             addAll(actionItems("windows-wine", null, listOf(
                 DeckAction("wine", Icons.Filled.CloudDownload, L("Download Wine and Proton versions"),
                     L("Layers from the catalog, or install one from a file. New containers can use them.")) { wineSheet = true },
@@ -258,6 +282,8 @@ internal class DeckWindowsSection(
 
     @Composable
     override fun Dialogs() {
+        // The Win components popup and row help: also for a game, which has no container form below.
+        if (xmb) winComponents.Dialogs()
         val vm = vm ?: return
         val context = LocalContext.current
         // The pickers are registered here, which is always composed, so a result is never lost to a scrolled-away row.

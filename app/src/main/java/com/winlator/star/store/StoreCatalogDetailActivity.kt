@@ -156,6 +156,7 @@ private fun CatalogDetailScreen(
         onBack = onBack,
         title = item.title,
         storeBadge = { StoreBadge(item.store) },
+        cover = listOfNotNull(data?.hero, item.imageUrl),
         hero = {
             CatalogArt(
                 candidates = listOfNotNull(data?.hero) + item.wideArt(),

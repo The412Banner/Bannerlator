@@ -96,6 +96,8 @@ internal object SettingsRegistry {
     const val TARGET_DRIVE_C = "drive_c"
     /** Move a game to another container (or copy it there), over the current Deck page. */
     const val TARGET_MOVE_CONTAINER = "move_container"
+    /** The Edit container page of the game's container (the XMB game page's link to it). */
+    const val TARGET_CONTAINER = "container"
     /** Information only, nothing to open. */
     const val TARGET_NONE = "none"
     /** Another category of this editor (see [categoryTarget]). */
@@ -109,9 +111,10 @@ internal object SettingsRegistry {
     /**
      * Rows that open another screen (or say where something lives) for what is not edited here. Each
      * names its worlds. None opens the classic editor any more ([TARGET_CLASSIC] stays handled by the
-     * screens for a hand-off that may need it again).
+     * screens for a hand-off that may need it again). [xmb]: a game's page also links to its container's Edit page (the chain of
+     * links over the other interfaces' header does not exist there).
      */
-    fun handoffs(scope: EditorScope, env: SettingsEnv): Map<String, List<Handoff>> {
+    fun handoffs(scope: EditorScope, env: SettingsEnv, xmb: Boolean = false): Map<String, List<Handoff>> {
         val game = scope == EditorScope.GAME
         val m = linkedMapOf<String, List<Handoff>>()
         if (game) {
@@ -122,6 +125,8 @@ internal object SettingsRegistry {
                 Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY),
                 Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY),
                 Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY),
+            ) + listOfNotNull(
+                if (xmb) Handoff(T("Container settings"), "Open the settings of \"$containerName\", the container this game runs in.", TARGET_CONTAINER, WINE_ONLY) else null,
             )
             m["launch"] = listOf(Handoff(T("Offline Steam mode, file checks and updates"), T("Goldberg mode, Verify files and Check for updates live in the launch menu. Turn off \"Skip the launch menu\" to see it on the next start."), TARGET_NONE))
         }
@@ -266,7 +271,9 @@ internal object SettingsRegistry {
             compositorDriverMaliSystem(version, loaded) -> MALI_SYSTEM_DRIVER_NOTE
             compositorDriverUnusable(version, loaded, true) ->
                 if (env.isLinuxEntry) T("This driver cannot show the session. \"System\" or a driver that is no longer installed leaves the compositor on the system Vulkan, which shows a black screen.")
-                else T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Download one below (Download a Turnip driver).")
+                // The XMB editor has a "Get more" link on this row; the plain Deck, Lab and Classic still list the download below.
+                else if (!com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value) T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Download one below (Download a Turnip driver).")
+                else T("Wayland needs a Turnip driver here. \"System\" or a missing driver cannot import the game's frames and shows a black screen. Use Get more to download one.")
             vm != null && vm.compositorDriverAutoPicked == version ->
                 if (vm.compositorDriverPickedFromDefaults) T("Picked for you: the driver in your New Container Defaults.")
                 else T("Picked for you: the newest installed Turnip that can import the game's frames.")
@@ -744,6 +751,7 @@ internal object SettingsRegistry {
             vm = VmBinding(get = { _, vm -> idOf(vm.selectedGraphicsDriver) }, set = { _, vm, v -> vm.selectedGraphicsDriver = displayFor(v, vm.graphicsDriverEntries) }),
             game = key("graphicsDriver"),
             visible = { env, values -> x11(env, values) },
+            getMore = "wrappers",
         ),
         SettingDef(
             id = ID_DRIVER_VERSION, category = "graphics", group = T("GPU driver"), level = SIMPLE,
@@ -754,6 +762,7 @@ internal object SettingsRegistry {
             game = compositorGame,
             visible = { env, values -> !env.isLinuxEntry && env.wayland(values) },
             note = { env, values -> compositorNote(env, values(ID_DRIVER_VERSION)) },
+            getMore = "turnip",
         ),
         // The Wayland driver gear: the Wayland game driver and the Mali (PanVK) switches.
         *GraphicsRows.waylandDefs().toTypedArray(),
@@ -997,6 +1006,7 @@ internal object SettingsRegistry {
             vm = vmString({ it.selectedFEXCoreVersion }, { vm, v -> vm.selectedFEXCoreVersion = v }),
             game = key("fexcoreVersion"),
             visible = { env, _ -> env.arm64ec },
+            getMore = "fex",
         ),
         // The Linux runtime brings its own FEX, but hands this preset to the games the Steam client launches.
         SettingDef(
@@ -1022,6 +1032,7 @@ internal object SettingsRegistry {
             control = { env, _ -> Control.Select((env.vm?.box64VersionEntries ?: emptyList()).map { Opt(it, it) }) },
             vm = vmString({ it.selectedBox64Version }, { vm, v -> vm.selectedBox64Version = v }),
             game = key("box64Version"),
+            getMore = "box64",
         ),
         SettingDef(
             id = "performance.box64Preset", category = "performance", group = T("Box64 / WOWBox64"), level = ADVANCED,
@@ -1037,7 +1048,12 @@ internal object SettingsRegistry {
             vm = vmString({ it.selectedBox64ECVersion }, { vm, v -> vm.selectedBox64ECVersion = v }),
             game = key("box64ecVersion"),
             visible = { env, _ -> env.arm64ec },
-            disabled = { env, _ -> if (env.box64ECInstalled) null else T("No Box64EC installed. Download one below (Translator downloads).") },
+            disabled = { env, _ ->
+                if (env.box64ECInstalled) null
+                else if (!com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value) T("No Box64EC installed. Download one below (Translator downloads).")
+                else T("No Box64EC installed. Use Get more to download one.")
+            },
+            getMore = "box64ec",
         ),
         SettingDef(
             id = "performance.startupServices", category = "performance", group = T("Windows background services"), level = ADVANCED,

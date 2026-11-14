@@ -98,7 +98,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.winlator.star.ui.components.EmuAccountConflictDialog
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
 import com.winlator.star.ui.screens.OutlinedAlertDialog
+import com.winlator.star.ui.screens.XmbGroupRow
+import com.winlator.star.ui.screens.xmbBtn
+import com.winlator.star.ui.screens.xmbMainAction
+import com.winlator.star.ui.screens.xmbStop
 import com.winlator.star.ui.theme.WinlatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -187,8 +192,8 @@ private fun Modifier.saveClick(onClick: () -> Unit): Modifier =
 
 /** A row's text action (Back up, Restore). */
 @Composable
-private fun SaveTextAction(label: String, onClick: () -> Unit) {
-    if (!LocalLabSaves.current) { TextButton(onClick = onClick) { Text(label) }; return }
+private fun SaveTextAction(label: String, onClick: () -> Unit, first: Boolean = false) {
+    if (!LocalLabSaves.current) { TextButton(onClick = onClick, modifier = Modifier.xmbBtn(CircleShape, first = first)) { Text(label) }; return }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -204,7 +209,7 @@ private fun SaveTextAction(label: String, onClick: () -> Unit) {
 private fun SaveIconAction(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     val tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
     if (!LocalLabSaves.current) {
-        IconButton(onClick = onClick, enabled = enabled) { Icon(imageVector = icon, contentDescription = description, tint = tint) }
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.xmbBtn(CircleShape)) { Icon(imageVector = icon, contentDescription = description, tint = tint) }
         return
     }
     Box(
@@ -524,7 +529,7 @@ private fun SaveManagerScreenBody(
                     .weight(1f)
                     .padding(start = if (onBack != null) 4.dp else 12.dp),
             )
-            // Live Steam connection badge (signed-in only) — same pill the store/detail screens show;
+            // Live Steam connection badge (signed-in only) — same pill the store screens show;
             // tap to reconnect when offline. Custom-only users never see a Steam badge.
             if (signedIn) {
                 SteamStatusPill(
@@ -1040,7 +1045,8 @@ private fun SettingsToggleRow(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         // Lab: the whole row is one stop that flips the switch, with Lab's outline when the controller is on it.
-        modifier = Modifier.fillMaxWidth().then(if (lab) Modifier.labTile(onClick = { onCheckedChange(!checked) }).padding(horizontal = 10.dp, vertical = 8.dp) else Modifier),
+        // XMB interface: the row is the stop (the switch inside takes the focus, A flips it).
+        modifier = Modifier.fillMaxWidth().then(if (lab) Modifier.labTile(onClick = { onCheckedChange(!checked) }).padding(horizontal = 10.dp, vertical = 8.dp) else Modifier.xmbStop(RoundedCornerShape(10.dp), wholeSubtree = true)),
     ) {
         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
             Text(
@@ -1189,6 +1195,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { backupFor = null; runBackup(s, GameSaveBackup.BackupLayout.WINLATOR) }
                             .padding(vertical = 8.dp),
                     ) {
@@ -1198,6 +1205,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { backupFor = null; runBackup(s, GameSaveBackup.BackupLayout.GAMEHUB) }
                             .padding(vertical = 8.dp),
                     ) {
@@ -1240,7 +1248,8 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { restoreChooser = null; restoreFor = s }
+                                .xmbStop(RoundedCornerShape(8.dp))
+                            .clickable { restoreChooser = null; restoreFor = s }
                                 .padding(vertical = 8.dp),
                         ) {
                             Text("Restore latest backup", color = MaterialTheme.colorScheme.primary)
@@ -1250,6 +1259,7 @@ private fun CustomSaveTab(modifier: Modifier = Modifier, columns: Int = 1, onMes
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable {
                                 restoreChooser = null
                                 fileRestoreFor = s
@@ -1295,13 +1305,20 @@ private fun CustomSaveRow(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+    val group = rememberXmbFocusGroup()
+    XmbGroupRow(
+        group = group,
+        shape = RoundedCornerShape(12.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .saveCard()
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        card = true,
+        verticalAlignment = Alignment.CenterVertically,
+        margin = 16.dp,
+        vGap = 6.dp,
     ) {
         // Thumbnail = the shortcut's own art (cover → icon); custom games have no Steam appId cover.
         val bmp = status.shortcut.coverArt ?: status.shortcut.icon
@@ -1364,7 +1381,7 @@ private fun CustomSaveRow(
             )
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                SaveTextAction(T("Back up"), onBackup)
+                SaveTextAction(T("Back up"), onBackup, first = true)
                 // Restore is always available: latest vault snapshot if present, else browse for a
                 // GameHub/Bannerlator save file (the chooser decides).
                 SaveTextAction(T("Restore"), onRestore)
@@ -1479,9 +1496,12 @@ private fun EpicSaveRow(
 ) {
     val setUp = status.containerLabel != null
     val actionsEnabled = !busy && setUp && status.cloudSaveEnabled
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+    // XMB interface: the row is a glass card and one D-pad stop; A enters it (open the store page first, then the two sync buttons).
+    val group = rememberXmbFocusGroup()
+    XmbGroupRow(
+        group = group,
+        shape = RoundedCornerShape(12.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .saveCard()
@@ -1489,65 +1509,75 @@ private fun EpicSaveRow(
             // click handlers so they stay independently tappable (not swallowed by the card click).
             .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        card = true,
+        verticalAlignment = Alignment.CenterVertically,
+        margin = 16.dp,
+        vGap = 6.dp,
     ) {
-        // Real cover from the Epic library cache (artCover → artSquare); the neutral game-asset icon
-        // stays behind it as the placeholder/fallback so a missing or failed cover still renders.
-        Box(
-            modifier = Modifier
-                .size(width = 44.dp, height = 60.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.weight(1f).xmbMainAction(RoundedCornerShape(8.dp), onOpen),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Filled.VideogameAsset,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-            if (!status.coverUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = status.coverUrl,
+            // Real cover from the Epic library cache (artCover → artSquare); the neutral game-asset icon
+            // stays behind it as the placeholder/fallback so a missing or failed cover still renders.
+            Box(
+                modifier = Modifier
+                    .size(width = 44.dp, height = 60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VideogameAsset,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+                if (!status.coverUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = status.coverUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = status.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = status.containerLabel?.let { "Container: $it" } ?: "Not set up in a container",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val statusLine = when {
+                    !setUp -> "Add this game to a container first to sync."
+                    status.cloudSaveEnabled && status.lastSyncMillis > 0L -> "Synced ${relTime(status.lastSyncMillis)}"
+                    status.cloudSaveEnabled -> "Cloud saves ready — not synced yet"
+                    // Metadata fetched, but Epic ships no CloudSaveFolder for this title → genuinely unsupported.
+                    status.metadataChecked -> "No cloud-save support for this title"
+                    else -> "Open the Epic store to load this game's cloud-save info."
+                }
+                Text(
+                    text = statusLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (actionsEnabled && status.lastSyncMillis == 0L) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = status.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = status.containerLabel?.let { "Container: $it" } ?: "Not set up in a container",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val statusLine = when {
-                !setUp -> "Add this game to a container first to sync."
-                status.cloudSaveEnabled && status.lastSyncMillis > 0L -> "Synced ${relTime(status.lastSyncMillis)}"
-                status.cloudSaveEnabled -> "Cloud saves ready — not synced yet"
-                // Metadata fetched, but Epic ships no CloudSaveFolder for this title → genuinely unsupported.
-                status.metadataChecked -> "No cloud-save support for this title"
-                else -> "Open the Epic store to load this game's cloud-save info."
-            }
-            Text(
-                text = statusLine,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (actionsEnabled && status.lastSyncMillis == 0L) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
 
         val noCloudSupport = !status.cloudSaveEnabled && status.metadataChecked
@@ -1756,9 +1786,12 @@ private fun GogSaveRow(
     val hasManualFolder = status.saveDir != null
     // Up/Down light up when EITHER a manual folder is set OR the game can auto-resolve.
     val actionsEnabled = !busy && (hasManualFolder || status.autoResolvable)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+    // XMB interface: the row is a glass card and one D-pad stop; A enters it (open the store page first, then the two sync buttons).
+    val group = rememberXmbFocusGroup()
+    XmbGroupRow(
+        group = group,
+        shape = RoundedCornerShape(12.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .saveCard()
@@ -1766,74 +1799,84 @@ private fun GogSaveRow(
             // click handlers so they stay independently tappable (not swallowed by the card click).
             .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        card = true,
+        verticalAlignment = Alignment.CenterVertically,
+        margin = 16.dp,
+        vGap = 6.dp,
     ) {
-        // Real cover from the GOG library cache; the neutral game-asset icon stays behind it as the
-        // placeholder/fallback so a missing or failed cover still renders (same idiom as the Epic tab).
-        Box(
-            modifier = Modifier
-                .size(width = 44.dp, height = 60.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.weight(1f).xmbMainAction(RoundedCornerShape(8.dp), onOpen),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Filled.VideogameAsset,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-            if (!status.coverUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = status.coverUrl,
+            // Real cover from the GOG library cache; the neutral game-asset icon stays behind it as the
+            // placeholder/fallback so a missing or failed cover still renders (same idiom as the Epic tab).
+            Box(
+                modifier = Modifier
+                    .size(width = 44.dp, height = 60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VideogameAsset,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+                if (!status.coverUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = status.coverUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = status.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Line 2: the folder source. Manual pick → "Folder: …"; else auto → "Auto: …/tail" once
+                // resolved (falls back to the container label while the async resolve is in flight).
+                val folderLine = when {
+                    hasManualFolder -> "Folder: ${status.saveDir!!.substringAfterLast('/')}"
+                    autoTail != null -> "Auto: …/$autoTail"
+                    status.autoResolvable -> status.containerLabel?.let { "Container: $it" } ?: "Auto-resolve on sync"
+                    status.containerLabel != null -> "Container: ${status.containerLabel}"
+                    else -> "No save folder set"
+                }
+                Text(
+                    text = folderLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Line 3: sync state / actionable hint.
+                val canSync = hasManualFolder || status.autoResolvable
+                val statusLine = when {
+                    hasManualFolder -> "Manual sync — GOG Cloud"
+                    status.autoResolvable -> "Auto save-folder — GOG Cloud"
+                    status.containerLabel == null -> "Add this game to a container first to sync."
+                    else -> "No cloud-save location — set a folder on its GOG detail page."
+                }
+                Text(
+                    text = statusLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (canSync) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.primary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = status.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // Line 2: the folder source. Manual pick → "Folder: …"; else auto → "Auto: …/tail" once
-            // resolved (falls back to the container label while the async resolve is in flight).
-            val folderLine = when {
-                hasManualFolder -> "Folder: ${status.saveDir!!.substringAfterLast('/')}"
-                autoTail != null -> "Auto: …/$autoTail"
-                status.autoResolvable -> status.containerLabel?.let { "Container: $it" } ?: "Auto-resolve on sync"
-                status.containerLabel != null -> "Container: ${status.containerLabel}"
-                else -> "No save folder set"
-            }
-            Text(
-                text = folderLine,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // Line 3: sync state / actionable hint.
-            val canSync = hasManualFolder || status.autoResolvable
-            val statusLine = when {
-                hasManualFolder -> "Manual sync — GOG Cloud"
-                status.autoResolvable -> "Auto save-folder — GOG Cloud"
-                status.containerLabel == null -> "Add this game to a container first to sync."
-                else -> "No cloud-save location — set a folder on its GOG detail page."
-            }
-            Text(
-                text = statusLine,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (canSync) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.primary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
 
         if (busy) {
@@ -1871,90 +1914,104 @@ private fun SaveStatusRow(
     // Sync-from-Cloud is pointless with nothing in the cloud (e.g. a Not-backed-up game) — gate it so
     // the meaningful action (Sync to Cloud = back it up) stands out.
     val syncFromEnabled = actionsEnabled && status.cloudFileCount > 0
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+    // XMB interface: the row is a glass card and one D-pad stop; A enters it (open the game first, then the two sync buttons).
+    val group = rememberXmbFocusGroup()
+    XmbGroupRow(
+        group = group,
+        shape = RoundedCornerShape(12.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .saveCard(highlighted)
             .saveClick(onOpen)
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        card = true,
+        verticalAlignment = Alignment.CenterVertically,
+        margin = 16.dp,
+        vGap = 6.dp,
+        accent = highlighted,
     ) {
         val (pillColor, pillLabel) = pillFor(status.state)
 
-        // Real Steam poster (library_600x900 → header.jpg), cached per appId; shows its own
-        // spinner while loading and "×" if the art is missing.
-        GameCoverArt(
-            appId = status.appId,
-            modifier = Modifier
-                .size(width = 44.dp, height = 60.dp)
-                .clip(RoundedCornerShape(8.dp)),
-        )
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = status.gameName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        Row(
+            modifier = Modifier.weight(1f).xmbMainAction(RoundedCornerShape(8.dp), onOpen),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Real Steam poster (library_600x900 → header.jpg), cached per appId; shows its own
+            // spinner while loading and "×" if the art is missing.
+            GameCoverArt(
+                appId = status.appId,
+                modifier = Modifier
+                    .size(width = 44.dp, height = 60.dp)
+                    .clip(RoundedCornerShape(8.dp)),
             )
-            Text(
-                text = status.containerLabel?.let { "Container: $it" } ?: "Not set up in a container",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // While a move runs (or just finished) the progress line takes the open space where the
-            // last-synced line normally sits; a small spinner shows only while it's still running.
-            if (progress != null) {
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (busy) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 2.dp,
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = status.gameName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = status.containerLabel?.let { "Container: $it" } ?: "Not set up in a container",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // While a move runs (or just finished) the progress line takes the open space where the
+                // last-synced line normally sits; a small spinner shows only while it's still running.
+                if (progress != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (busy) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = progress.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (progress.isError) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.primary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.width(6.dp))
                     }
+                } else if (notSetUp) {
+                    // Can't sync without a container — tell the user how to enable it (tap-through opens
+                    // the detail page where they can set it up).
                     Text(
-                        text = progress.message,
+                        text = "Add this game to a container first to sync.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (progress.isError) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                } else {
+                    val times = syncedTimesLine(status)
+                    if (times.isNotEmpty()) {
+                        Text(
+                            text = times,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-            } else if (notSetUp) {
-                // Can't sync without a container — tell the user how to enable it (tap-through opens
-                // the detail page where they can set it up).
-                Text(
-                    text = "Add this game to a container first to sync.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                val times = syncedTimesLine(status)
-                if (times.isNotEmpty()) {
-                    Text(
-                        text = times,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                // Status pill.
+                Spacer(Modifier.height(6.dp))
+                StatusPill(color = pillColor, label = pillLabel)
             }
-            // Status pill.
-            Spacer(Modifier.height(6.dp))
-            StatusPill(color = pillColor, label = pillLabel)
         }
 
         // Per-row quick actions: the two end-to-end combos — Sync from Cloud (⬇) / Sync to Cloud (⬆).

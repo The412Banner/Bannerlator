@@ -14,10 +14,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,7 +36,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Help
 import com.winlator.star.R
 import com.winlator.star.core.CopyGameToDriveC
@@ -102,10 +102,19 @@ import com.winlator.star.store.compose.AddToShortcutsRequest
 import com.winlator.star.store.compose.ContainerPickerDialog
 import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.store.download.DownloadRegistry
-import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.store.download.MediaTab
 import com.winlator.star.store.download.Store
+import com.winlator.star.store.download.StoreActionTile
+import com.winlator.star.store.download.StoreBackTile
+import com.winlator.star.store.download.StoreChipStyle
+import com.winlator.star.store.download.StoreDownloadsTile
 import com.winlator.star.store.download.StoreMedia
+import com.winlator.star.store.download.StorePage
+import com.winlator.star.store.download.StorePageLayout
+import com.winlator.star.store.download.StoreTab
+import com.winlator.star.store.download.StoreTabChips
+import com.winlator.star.store.download.rememberStorePageGeometry
+import com.winlator.star.store.download.storeTabIcon
 import com.winlator.star.store.download.formatDownloadSpeed
 import com.winlator.star.store.download.formatEta
 import coil.compose.AsyncImage
@@ -299,8 +308,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
     private var goldbergCatalogVersion by mutableIntStateOf(0)
     private var goldbergOutdated by mutableStateOf(false)
 
-    private var steamStatus by mutableStateOf(SteamRepository.getInstance().status)
-
     // Steam Cloud saves — three-tier save library (Cloud ⇄ Library ⇄ Container). Only meaningful
     // once the game is installed AND a Steam session is live (SteamRepository.getSteamCloud() != null).
     private var cloudVisible by mutableStateOf(false)
@@ -336,9 +343,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         // the on-disk mirror — no snapshot read, no network — so it's safe on the main thread.
         SteamLibraryArt.init(this)
         // Lazy-connect: opening a detail page directly (e.g. drawer → Save Manager → tap a card) skips
-        // the store home that starts SteamForegroundService, so the CM connection would stay down and
-        // the status badge read offline. Ensure it here when signed in — idempotent (start/connect
-        // guard double-connect), and a no-op for users without a saved Steam account.
+        // the store home that starts SteamForegroundService, so the CM connection would stay down. Ensure
+        // it here when signed in — idempotent (start/connect guard double-connect), and a no-op for users
+        // without a saved Steam account.
         if (SteamPrefs.isLoggedIn) SteamForegroundService.start(this)
 
         setContent {
@@ -346,8 +353,6 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                 SteamGameDetailScreen(
                     appId = appId,
                     signedIn = SteamPrefs.isLoggedIn,
-                    steamStatus = steamStatus,
-                    onReconnect = { SteamRepository.getInstance().reconnectNow() },
                     nameText = nameText,
                     typeText = typeText,
                     sizeText = sizeText,
@@ -692,13 +697,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (languageRun != null && event.startsWith("Download") &&
             event.split(":").getOrNull(1)?.toIntOrNull() == appId) return
         when {
-            event.startsWith("SteamStatus:") -> {
-                val name = event.substringAfter("SteamStatus:")
-                steamStatus = try { SteamRepository.SteamStatus.valueOf(name) } catch (e: Exception) { steamStatus }
-                // Steam came online after the page opened: show the Cloud saves manager now.
-                if (steamStatus == SteamRepository.SteamStatus.ONLINE && game?.isInstalled == true && !cloudVisible) {
-                    runOnUiThread { if (!isFinishing && !isDestroyed) refreshUI() }
-                }
+            // Steam came online after the page opened: show the Cloud saves manager now.
+            event == "SteamStatus:${SteamRepository.SteamStatus.ONLINE.name}" && game?.isInstalled == true && !cloudVisible -> {
+                runOnUiThread { if (!isFinishing && !isDestroyed) refreshUI() }
             }
             event.startsWith("DownloadProgress:") -> {
                 // Format: DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal:etaSec:speedBps
@@ -1797,7 +1798,7 @@ private enum class DetailTab(val label: String) {
     DETAILS("Details"),
     ACHIEVEMENTS("Achievements"),
     DLC("DLC"),
-    CLOUD("Cloud saves"),
+    CLOUD("Cloud"),
     /** Store screenshots + trailers; only in the strip once the appdetails fetch found any. */
     MEDIA("Media"),
 }
@@ -1812,7 +1813,6 @@ private val AchvAccent: Color          @Composable get() = MaterialTheme.colorSc
 private val AchvTabActiveBg: Color     @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
 private val AchvTabActiveText: Color   @Composable get() = MaterialTheme.colorScheme.primary
 private val AchvTabActiveBorder: Color @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-private val AchvTabActiveBadge: Color  @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
 private val AchvInk: Color             @Composable get() = MaterialTheme.colorScheme.onSurface
 private val AchvInk2: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 private val AchvInk3: Color            @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -1843,8 +1843,6 @@ private val AchvPillOnBorder    = Color(0x66E8B652) // rgba(232,182,82,.40)
 private fun SteamGameDetailScreen(
     appId: Int,
     signedIn: Boolean,
-    steamStatus: SteamRepository.SteamStatus,
-    onReconnect: () -> Unit,
     nameText: String,
     typeText: String,
     sizeText: String,
@@ -2049,9 +2047,18 @@ private fun SteamGameDetailScreen(
         selectedTab == DetailTab.ACHIEVEMENTS && signedIn && !achLoading && achievements.isNotEmpty()
 
     val pageBg = xmbSolidBackground()
-    val conf = androidx.compose.ui.platform.LocalConfiguration.current
-    val widePage = conf.screenWidthDp > conf.screenHeightDp
-    Box(modifier = Modifier.fillMaxSize().background(pageBg)) {
+    // The tab bodies pad themselves this much: the scrolling column is that much wider on each side, so their text lines up
+    // with the action row.
+    val pageInset = 16.dp
+    // The game's landscape cover beside its name: the store capsule chain, the published one first once the art map has it.
+    val publishedHeader = SteamLibraryArt.header(appId)
+    val coverUrls = remember(appId, publishedHeader) { capsuleCandidates(appId) }
+    val downloading = progressVisible   // installAction == CANCEL (active or paused download)
+    val entryTarget = storeEntryTarget(primaryActionable = !downloading, hasGear = true)
+    val entry = rememberStoreEntryFocus(entryTarget)
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(pageBg).storeBackKey(onBack)) {
+    val geometry = rememberStorePageGeometry(maxWidth, maxHeight, hasSettings = true)
+    val sideBySide = geometry.layout == StorePageLayout.SIDE_BY_SIDE
     // The game's art fills the screen behind the page, like every other store's page: the wide library hero, and
     // under it the capsule chain (PICS art -> CDN hosts -> appdetails -> SteamGridDB) for games without one.
     StoreCapsule(appId = appId, title = nameText, modifier = Modifier.fillMaxSize(), aspectRatio = null)
@@ -2064,42 +2071,23 @@ private fun SteamGameDetailScreen(
     )
     Box(
         Modifier.fillMaxSize().background(
-            if (widePage) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
+            if (sideBySide) Brush.horizontalGradient(0f to pageBg.copy(alpha = 0.95f), 0.5f to pageBg.copy(alpha = 0.82f), 0.8f to pageBg.copy(alpha = 0.3f), 1f to pageBg.copy(alpha = 0.45f))
             else Brush.verticalGradient(0f to pageBg.copy(alpha = 0.25f), 0.30f to pageBg.copy(alpha = 0.35f), 0.55f to pageBg.copy(alpha = 0.93f), 0.75f to pageBg),
         ),
     )
-    Column(
-        modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(if (widePage) 0.6f else 1f)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        // Header bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            // Landscape: the status and Downloads sit beside Back at the far left; portrait keeps them on the right.
-            if (!widePage) Spacer(Modifier.weight(1f))
-            SteamStatusPill(status = steamStatus, onReconnect = onReconnect)
-            DownloadsButton()
-        }
-
-        // The art shows through here; the page starts under it.
-        Spacer(Modifier.height((conf.screenHeightDp * if (widePage) 0.04f else 0.28f).dp))
-
-        // Game name — persistent header. Stays above the action row + tab strip (mirrors the
-        // mockup's fixed game header, which doesn't change as the tab body below it swaps).
-        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
+    // Primary action + gear menu: a single state-driven button drives install / retry / add-to-shortcuts (and shows
+    // download progress read-only), while the gear dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg.
+    val primaryShape = RoundedCornerShape(10.dp)
+    var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
+    StorePage(
+        geometry = geometry,
+        coverUrls = coverUrls,
+        coverShape = primaryShape,
+        inset = pageInset,
+        back = { m ->
+            StoreBackTile(onBack, primaryShape, AchvCard, AchvLine, MaterialTheme.colorScheme.onBackground, m)
+        },
+        name = {
             Text(
                 text = nameText,
                 style = MaterialTheme.typography.headlineSmall,
@@ -2107,30 +2095,8 @@ private fun SteamGameDetailScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-
-        // (Download progress is shown ON the large primary button below — 2-layer fill + an info
-        // line beneath it — so there's a single progress indicator, not a separate under-title bar.)
-
-        // Primary action + gear menu — a single state-driven button (per the mockup) replacing the
-        // old Install/Pause/Launch trio. EVERY former action stays reachable: the button drives
-        // install / retry / add-to-shortcuts (and shows download progress read-only), while the gear
-        // dropdown carries pause/resume, cancel, uninstall, branch, DLC and Goldberg. The underlying
-        // handlers (onInstallClick/onPauseResumeClick/onLaunchClick) are UNCHANGED — only the trigger.
-        val downloading = progressVisible   // installAction == CANCEL (active or paused download)
-        val primaryShape = RoundedCornerShape(10.dp)
-        var freeMessage by remember(appId) { mutableStateOf<String?>(null) }
-        freeMessage?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // ── Primary button ──────────────────────────────────────────────────────────────────
+        },
+        primary = { m ->
             if (downloading) {
                 // Read-only download button: the SINGLE progress indicator. Same 2-layer fill the old
                 // under-title bar used — lighter back layer = bytes fetched (downloadProgressValue),
@@ -2141,9 +2107,7 @@ private fun SteamGameDetailScreen(
                 val label = if (pauseAction == PauseAction.RESUME) "Paused — $progressValue%"
                             else "Downloading… $progressValue%"
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
                         .clip(primaryShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .border(1.dp, AchvLine, primaryShape),
@@ -2225,9 +2189,15 @@ private fun SteamGameDetailScreen(
                     else -> Triple(installBtnText, installBtnEnabled, onInstallClick) // INSTALL / RETRY / transient
                 }
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
+                    modifier = m
+                        // Filled with the accent: the outline takes the ink on it.
+                        .then(
+                            if (enabled) {
+                                Modifier.storeFocus(primaryShape, onPrimary, tint = MaterialTheme.colorScheme.onPrimary, entry = entry.takeIf { entryTarget == StoreEntry.PRIMARY })
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clip(primaryShape)
                         .background(if (enabled) AchvAccent else AchvAccent.copy(alpha = 0.4f))
                         .clickable(enabled = enabled) { onPrimary() },
@@ -2242,24 +2212,23 @@ private fun SteamGameDetailScreen(
                     )
                 }
             }
-
-            // ── Gear (⚙) dropdown ───────────────────────────────────────────────────────────────
+        },
+        settings = { m ->
             Box {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(primaryShape)
-                        .background(AchvCard)
-                        .border(1.dp, AchvLine, primaryShape)
-                        .clickable { gearMenuExpanded = true },
-                    contentAlignment = Alignment.Center,
+                StoreActionTile(
+                    onClick = { gearMenuExpanded = true },
+                    shape = primaryShape,
+                    fill = AchvCard,
+                    line = AchvLine,
+                    modifier = m,
+                    entry = entry.takeIf { entryTarget == StoreEntry.GEAR },
                 ) {
                     Text("⚙", fontSize = 18.sp, color = AchvAccent)
                 }
                 DropdownMenu(
                     expanded = gearMenuExpanded,
                     onDismissRequest = { gearMenuExpanded = false },
-                    modifier = Modifier.outlinedMenuCard(),
+                    modifier = Modifier.outlinedMenuCard().storeBackKey { gearMenuExpanded = false },
                 ) {
                     // Downloading → pause/resume + cancel lead, then the common items; a divider sits
                     // between every option (matching the app's other outlined menus).
@@ -2302,6 +2271,14 @@ private fun SteamGameDetailScreen(
                     }
                 }
             }
+        },
+        downloads = { m ->
+            StoreDownloadsTile(primaryShape, AchvCard, AchvLine, AchvAccent, m)
+        },
+    ) {
+        freeMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
         }
 
         // Download info line — moved out from under the (removed) small bar to directly under the
@@ -2315,8 +2292,7 @@ private fun SteamGameDetailScreen(
             )
         }
 
-        // Tab strip — Details · Achievements (done/total) · DLC · Cloud saves. Styled like the
-        // action buttons and horizontally scrollable, per the mockup.
+        // Tab chips — Details · Achievements (done/total) · DLC · Cloud · Media; they wrap onto another row when they do not fit.
         SteamDetailTabs(
             tabs = detailTabs,
             selected = selectedTab,
@@ -2373,7 +2349,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onBranchLineClick,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onBranchLineClick),
                         ) {
                             Text("Change branch")
                         }
@@ -2388,7 +2364,7 @@ private fun SteamGameDetailScreen(
                         )
                         OutlinedButton(
                             onClick = onLanguageLineClick,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageLineClick),
                         ) {
                             Text("Change language")
                         }
@@ -2401,7 +2377,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onLanguageDownloadClick,
-                                modifier = Modifier.padding(top = 6.dp),
+                                modifier = Modifier.padding(top = 6.dp).storeFocus(CircleShape, onLanguageDownloadClick),
                             ) {
                                 Text("Download language files")
                             }
@@ -2489,7 +2465,7 @@ private fun SteamGameDetailScreen(
                             )
                             OutlinedButton(
                                 onClick = onDlcLineClick,
-                                modifier = Modifier.padding(top = 8.dp),
+                                modifier = Modifier.padding(top = 8.dp).storeFocus(CircleShape, onDlcLineClick),
                             ) { Text("Choose DLC") }
                         }
                     }
@@ -2578,7 +2554,12 @@ private fun SteamGameDetailScreen(
         AchievementCaptionBar(
             selected = selectedAch,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(if (sideBySide) Alignment.BottomStart else Alignment.BottomCenter)
+                // Side by side it sits under the scrolling column, clear of the cover.
+                .then(
+                    if (sideBySide) Modifier.offset(x = geometry.edge.dp - pageInset).width(geometry.leftWidth.dp + pageInset * 2)
+                    else Modifier,
+                )
                 .navigationBarsPadding()
                 .onSizeChanged { captionHeightPx = it.height },
         )
@@ -2825,6 +2806,7 @@ private fun GearMenuItem(
 ) {
     val base = if (danger) MaterialTheme.colorScheme.error else AchvInk
     DropdownMenuItem(
+        modifier = if (enabled) Modifier.storeFocus(RoundedCornerShape(6.dp), onClick) else Modifier,
         text = {
             Text(
                 text = text,
@@ -2840,9 +2822,8 @@ private fun GearMenuItem(
 }
 
 /**
- * The detail page's tab strip — pill tabs styled like the action buttons (fixed mockup palette, not
- * MaterialTheme). Horizontally scrollable. The Achievements tab carries a `done/total` count badge
- * once its list has loaded (hidden while empty / not signed in).
+ * The detail page's tab chips (fixed mockup palette, not MaterialTheme), an icon and a short label each. The Achievements tab
+ * shows its `done/total` count beside the trophy once its list has loaded (hidden while empty / not signed in).
  */
 @Composable
 private fun SteamDetailTabs(
@@ -2853,57 +2834,22 @@ private fun SteamDetailTabs(
     mediaCount: Int,
     onSelect: (DetailTab) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        tabs.forEach { tab ->
-            val isSel = tab == selected
-            val badge = when {
-                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> "$achDone/$achTotal"
-                tab == DetailTab.MEDIA && mediaCount > 0 -> "$mediaCount"
-                else -> null
+    StoreTabChips(
+        tabs = tabs.map { tab ->
+            val icon = storeTabIcon(tab.label)
+            when {
+                tab == DetailTab.ACHIEVEMENTS && achTotal > 0 -> StoreTab(icon, "$achDone/$achTotal")
+                tab == DetailTab.MEDIA && mediaCount > 0 -> StoreTab(icon, tab.label, "$mediaCount")
+                else -> StoreTab(icon, tab.label)
             }
-            val shape = RoundedCornerShape(9.dp)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier
-                    .clip(shape)
-                    .background(if (isSel) AchvTabActiveBg else AchvCard)
-                    .border(1.dp, if (isSel) AchvTabActiveBorder else AchvLineSoft, shape)
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 15.dp, vertical = 9.dp),
-            ) {
-                Text(
-                    text = tab.label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSel) AchvTabActiveText else AchvInk2,
-                    maxLines = 1,
-                )
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSel) AchvTabActiveBadge else AchvBadgeBg)
-                            .padding(horizontal = 7.dp, vertical = 1.dp),
-                    ) {
-                        Text(
-                            text = badge,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) AchvTabActiveText else AchvInk3,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
-        }
-    }
+        },
+        selected = tabs.indexOf(selected),
+        onSelect = { onSelect(tabs[it]) },
+        shape = RoundedCornerShape(8.dp),
+        idle = StoreChipStyle(AchvCard, AchvLineSoft, AchvInk2),
+        active = StoreChipStyle(AchvTabActiveBg, AchvTabActiveBorder, AchvTabActiveText),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+    )
 }
 
 /**
@@ -3068,6 +3014,7 @@ private fun AchievementTile(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .storeFocus(shape, onClick)
             .clip(shape)
             .background(bg)
             .border(1.dp, borderColor, shape)
@@ -3624,7 +3571,7 @@ private fun CloudSavesSection(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onSetUp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSetUp, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("Set up in a container", maxLines = 1) }
             }
@@ -3647,7 +3594,7 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncFromCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncFromCloud, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("⬇ Sync from Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
@@ -3661,7 +3608,7 @@ private fun CloudSavesSection(
                 Button(
                     onClick = onSyncToCloud,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().storeFocus(RoundedCornerShape(10.dp), onSyncToCloud, tint = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp),
                 ) { Text("⬆ Sync to Cloud", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 Spacer(Modifier.height(2.dp))
@@ -3677,6 +3624,7 @@ private fun CloudSavesSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .storeFocus(RoundedCornerShape(8.dp), { advancedExpanded = !advancedExpanded })
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { advancedExpanded = !advancedExpanded }
                         .padding(vertical = 6.dp),
@@ -3707,14 +3655,14 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onDownload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onDownload, tint = MaterialTheme.colorScheme.onPrimary),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("⬇ Download", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onUpload,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onUpload),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("⬆ Upload", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
@@ -3731,14 +3679,14 @@ private fun CloudSavesSection(
                         Button(
                             onClick = onApply,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onApply, tint = MaterialTheme.colorScheme.onPrimary),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("→ Apply", maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
                         OutlinedButton(
                             onClick = onCollect,
                             enabled = !busy,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).storeFocus(RoundedCornerShape(10.dp), onCollect),
                             shape = RoundedCornerShape(10.dp),
                         ) { Text("← Collect", maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }

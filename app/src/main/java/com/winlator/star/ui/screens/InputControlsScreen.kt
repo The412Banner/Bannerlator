@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -96,14 +98,48 @@ import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
 import com.winlator.star.ui.components.PlayerSlotsEditor
 import com.winlator.star.ui.controllertest.SettingsControllerTestDialog
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.util.InAppFilePicker
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
+/**
+ * What the Deck / XMB Controls page (ui/deck/DeckControlsPage.kt) draws from [InputControlsScreen]: its profile and controller
+ * state, and the actions behind its buttons. The dialogs (name prompts, confirmations, import / download, controller test)
+ * stay this screen's own, so every action runs the same code the Classic screen runs.
+ */
+class InputControlsDeckState(
+    val profiles: List<ControlsProfile>,
+    val current: ControlsProfile?,
+    val controllers: List<ExternalController>,
+    /** The Default / Any Controller template of [current], or null while it has no entry. */
+    val defaultTemplate: ExternalController?,
+    val hasLayout: Boolean,
+    val binds: Int,
+    val layoutRev: Int,
+    val select: (ControlsProfile?) -> Unit,
+    val newProfile: () -> Unit,
+    val rename: (ControlsProfile) -> Unit,
+    val duplicate: (ControlsProfile) -> Unit,
+    val delete: (ControlsProfile) -> Unit,
+    val importProfile: () -> Unit,
+    /** The second argument asks for the legacy .icp instead of .icpx. */
+    val export: (ControlsProfile, Boolean) -> Unit,
+    val editLayout: (ControlsProfile) -> Unit,
+    /** Opens the bindings editor of the controller with this id (the Default template's id for the template). */
+    val openBindings: (String) -> Unit,
+    val testAndBind: () -> Unit,
+    /** Copies the bindings of the controller with the given id onto the first argument. */
+    val copyBindings: (ExternalController, String) -> Unit,
+    val removeController: (ExternalController) -> Unit,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InputControlsScreen() {
+fun InputControlsScreen(deckHost: (@Composable (InputControlsDeckState) -> Unit)? = null) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val activity = context as? MainActivity
@@ -395,20 +431,30 @@ fun InputControlsScreen() {
                     // worst in landscape where there's even less vertical room.
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         items.forEachIndexed { i, item ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth().clickable {
+                            // XMB interface: the row is one stop (A enters it: tick, then View example); a tap still ticks it.
+                            val itemGroup = rememberXmbFocusGroup()
+                            XmbGroupRow(
+                                group = itemGroup,
+                                shape = RoundedCornerShape(8.dp),
+                                classicModifier = Modifier.fillMaxWidth().clickable {
                                     selectedItems = if (i in selectedItems) selectedItems - i
                                     else selectedItems + i
-                                }.padding(vertical = 2.dp)
+                                }.padding(vertical = 2.dp),
+                                contentPadding = PaddingValues(vertical = 2.dp),
+                                card = false,
+                                verticalAlignment = Alignment.CenterVertically,
+                                rowModifier = Modifier.xmbNoFocus().clickable {
+                                    selectedItems = if (i in selectedItems) selectedItems - i
+                                    else selectedItems + i
+                                },
                             ) {
                                 androidx.compose.material3.Checkbox(checked = i in selectedItems, onCheckedChange = {
                                     selectedItems = if (it) selectedItems + i else selectedItems - i
-                                })
+                                }, modifier = Modifier.xmbBtn(CircleShape, first = true))
                                 Spacer(Modifier.width(8.dp))
                                 Text(item, fontSize = 14.sp, modifier = Modifier.weight(1f))
                                 // View example: fetch the .icp and draw its on-screen layout (no import).
-                                IconButton(onClick = { previewItem = item }, modifier = Modifier.size(36.dp)) {
+                                IconButton(onClick = { previewItem = item }, modifier = Modifier.size(36.dp).xmbBtn(CircleShape)) {
                                     Icon(Icons.Default.Visibility, contentDescription = "View example",
                                         tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                 }
@@ -545,6 +591,92 @@ fun InputControlsScreen() {
         )
     }
 
+    // The Deck / XMB Controls page lays the same state and actions out itself (DeckControlsPage.kt); Classic passes no
+    // [deckHost] and takes the tabbed layout below, unchanged.
+    if (deckHost != null) {
+        val selectProfile: (ControlsProfile?) -> Unit = { p ->
+            val pos = if (p == null) 0 else profiles.indexOf(p) + 1
+            selectedProfileIdx = pos
+            loadProfile(pos)
+        }
+        deckHost(
+            InputControlsDeckState(
+                profiles = profiles,
+                current = currentProfile,
+                controllers = controllers,
+                defaultTemplate = currentProfile?.getController(ControlsProfile.DEFAULT_CONTROLLER_ID),
+                hasLayout = profileHasLayout,
+                binds = profileBinds,
+                layoutRev = layoutRev,
+                select = selectProfile,
+                newProfile = { promptCreateName = true },
+                rename = { p ->
+                    selectProfile(p)
+                    promptRenameOldName = p.getName()
+                },
+                duplicate = { p ->
+                    pendingConfirmation = R.string.do_you_want_to_duplicate_this_profile to {
+                        currentProfile = manager.duplicateProfile(p)
+                        refreshProfiles()
+                        refreshControllers()
+                    }
+                },
+                delete = { p ->
+                    pendingConfirmation = R.string.do_you_want_to_remove_this_profile to {
+                        manager.removeProfile(p)
+                        if (currentProfile === p) currentProfile = null
+                        refreshProfiles()
+                        refreshControllers()
+                    }
+                },
+                importProfile = { showImportChooser = true },
+                export = { p, legacy ->
+                    val exported = if (legacy) manager.exportLegacyProfile(p) else manager.exportProfile(p)
+                    if (exported != null) AppUtils.showToast(context,
+                        "${context.getString(R.string.profile_exported_to)} ${exported.path}")
+                },
+                editLayout = { p ->
+                    val intent = Intent(context, ControlsEditorActivity::class.java)
+                    intent.putExtra("profile_id", p.id)
+                    context.startActivity(intent)
+                    (context as? Activity)?.overridePendingTransition(
+                        com.winlator.star.R.anim.slide_in_up,
+                        com.winlator.star.R.anim.slide_out_down
+                    )
+                },
+                openBindings = { controllerId ->
+                    val profile = currentProfile
+                    if (profile != null) {
+                        val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
+                        intent.putExtra("profile_id", profile.id)
+                        intent.putExtra("controller_id", controllerId)
+                        context.startActivity(intent)
+                        (context as? Activity)?.overridePendingTransition(
+                            com.winlator.star.R.anim.slide_in_up, com.winlator.star.R.anim.slide_out_down
+                        )
+                    } else AppUtils.showToast(context, R.string.no_profile_selected)
+                },
+                testAndBind = { showControllerTest = true },
+                copyBindings = { target, sourceId ->
+                    currentProfile?.loadControllers()
+                    val src = currentProfile?.getController(sourceId)
+                    if (src != null && src.getControllerBindingCount() > 0) {
+                        val tgt = currentProfile?.addController(target.getId())
+                        if (tgt != null) { tgt.copyBindingsFrom(src); currentProfile?.save(); refreshControllers() }
+                    }
+                },
+                removeController = { c ->
+                    pendingConfirmation = R.string.do_you_want_to_remove_this_controller to {
+                        currentProfile?.removeController(c)
+                        currentProfile?.save()
+                        refreshControllers()
+                    }
+                },
+            )
+        )
+        return
+    }
+
     // ── Tabbed layout ───────────────────────────────────────────────
     // Profile bar + tab row stay pinned at the top; only the selected tab's content scrolls.
     Column(
@@ -557,14 +689,22 @@ fun InputControlsScreen() {
             profiles[selectedProfileIdx - 1].getName() else "-- Select Profile --"
         val hasProfile = currentProfile != null
         Box {
-            Row(
-                modifier = Modifier
+            // XMB interface: the bar is a glass card and one D-pad stop; A enters it (the picker, then the actions menu). A tap
+            // on it still opens the picker. Elsewhere it is the Row it was.
+            val profileBarGroup = rememberXmbFocusGroup()
+            XmbGroupRow(
+                group = profileBarGroup,
+                shape = RoundedCornerShape(14.dp),
+                classicModifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(14.dp))
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                     .clickable { showProfileDropdown = true }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                card = true,
                 verticalAlignment = Alignment.CenterVertically,
+                rowModifier = Modifier.xmbNoFocus().clickable { showProfileDropdown = true },
             ) {
                 // Accent avatar with the selected profile's initial.
                 Box(
@@ -601,10 +741,10 @@ fun InputControlsScreen() {
                         }
                     }
                 }
-                IconButton(onClick = { showProfileDropdown = true }) {
+                IconButton(onClick = { showProfileDropdown = true }, modifier = Modifier.xmbBtn(CircleShape, first = true)) {
                     Icon(Icons.Default.ArrowDropDown, "Select profile", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = { showOverflow = true }) {
+                IconButton(onClick = { showOverflow = true }, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(Icons.Default.MoreVert, "Profile actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -613,7 +753,7 @@ fun InputControlsScreen() {
             DropdownMenu(
                 expanded = showProfileDropdown,
                 onDismissRequest = { showProfileDropdown = false },
-                modifier = Modifier.outlinedMenuCard(),
+                modifier = Modifier.outlinedMenuCard().xmbMenuBack { showProfileDropdown = false },
             ) {
                 DropdownMenuItem(text = { Text("-- Select Profile --") }, onClick = {
                     selectedProfileIdx = 0; loadProfile(0); showProfileDropdown = false
@@ -630,7 +770,7 @@ fun InputControlsScreen() {
             DropdownMenu(
                 expanded = showOverflow,
                 onDismissRequest = { showOverflow = false },
-                modifier = Modifier.outlinedMenuCard(),
+                modifier = Modifier.outlinedMenuCard().xmbMenuBack { showOverflow = false },
             ) {
                 DropdownMenuItem(
                     text = { Text("New profile") },
@@ -768,7 +908,7 @@ fun InputControlsScreen() {
                             onClick = openLayoutEditor,
                             // intentional: success green signals the primary "go/edit" action; kept off-theme by design
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().xmbBtn(CircleShape, tint = Color.White)
                         ) { Text("Edit Layout", color = Color.White) } // intentional: white kept for contrast on the green fill
 
                         // Live read-only preview — only when the selected profile actually has an overlay.
@@ -789,6 +929,7 @@ fun InputControlsScreen() {
                         // verified checklist + native rumble Identify). No profile needed — it just reads the pad.
                         Box(
                             modifier = Modifier.fillMaxWidth()
+                                .xmbStop(RoundedCornerShape(12.dp), tint = Color.White)
                                 .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
                                 .clickable { showControllerTest = true }
                                 .padding(14.dp)
@@ -808,8 +949,11 @@ fun InputControlsScreen() {
 
                         // #333: the Default / Any Controller binding template — newly connected controllers inherit
                         // these mappings automatically, so a fresh controller is never blank. Always shown.
+                        val defaultCtrlStop = rememberXmbHighlightItem()
+                        XmbInk(defaultCtrlStop) {
                         Box(
                             modifier = Modifier.fillMaxWidth()
+                                .xmbStop(RoundedCornerShape(8.dp), defaultCtrlStop)
                                 .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
                                 .clickable {
                                     if (currentProfile != null) {
@@ -831,6 +975,7 @@ fun InputControlsScreen() {
                                     Text("New controllers inherit these bindings", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 }
                             }
+                        }
                         }
 
                         if (controllers.isEmpty()) {
@@ -857,21 +1002,36 @@ fun InputControlsScreen() {
                                 }
                                 val padHasVibrator = padDevice?.vibrator?.hasVibrator() == true
 
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp)).clickable {
-                                        if (currentProfile != null) {
-                                            val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
-                                            intent.putExtra("profile_id", currentProfile!!.id)
-                                            intent.putExtra("controller_id", controller.getId())
-                                            context.startActivity(intent)
-                                            (context as? Activity)?.overridePendingTransition(
-                                                com.winlator.star.R.anim.slide_in_up,
-                                                com.winlator.star.R.anim.slide_out_down
-                                            )
-                                        } else AppUtils.showToast(context, R.string.no_profile_selected)
-                                    }.padding(12.dp)
+                                // XMB interface: the pad's row is a glass card and one D-pad stop; A enters it (open the bindings first,
+                                // then rumble / copy / remove). Elsewhere it is the clickable Box it was.
+                                val openBindings: () -> Unit = {
+                                    if (currentProfile != null) {
+                                        val intent = Intent(context, ExternalControllerBindingsActivity::class.java)
+                                        intent.putExtra("profile_id", currentProfile!!.id)
+                                        intent.putExtra("controller_id", controller.getId())
+                                        context.startActivity(intent)
+                                        (context as? Activity)?.overridePendingTransition(
+                                            com.winlator.star.R.anim.slide_in_up,
+                                            com.winlator.star.R.anim.slide_out_down
+                                        )
+                                    } else AppUtils.showToast(context, R.string.no_profile_selected)
+                                }
+                                val controllerGroup = rememberXmbFocusGroup()
+                                XmbGroupRow(
+                                    group = controllerGroup,
+                                    shape = RoundedCornerShape(8.dp),
+                                    classicModifier = Modifier.fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
+                                        .clickable(onClick = openBindings)
+                                        .padding(12.dp),
+                                    contentPadding = PaddingValues(12.dp),
+                                    card = true,
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        modifier = Modifier.weight(1f).xmbMainAction(RoundedCornerShape(8.dp), openBindings),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         Icon(Icons.Default.Gamepad, null, tint = tintColor, modifier = Modifier.size(32.dp))
                                         Spacer(Modifier.width(12.dp))
                                         Column(Modifier.weight(1f)) {
@@ -880,59 +1040,59 @@ fun InputControlsScreen() {
                                                 if (padBattery >= 0) "$bindingsCount Bindings · 🔋 $padBattery%" else "$bindingsCount Bindings",
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                         }
-                                        // Extras — test rumble: pulse this pad's own vibrator (no game running at rest).
-                                        if (padHasVibrator && padDevice != null) {
-                                            IconButton(onClick = { pulsePad(padDevice) }) {
-                                                Icon(Icons.Default.Vibration, "Test rumble", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
+                                    }
+                                    // Extras — test rumble: pulse this pad's own vibrator (no game running at rest).
+                                    if (padHasVibrator && padDevice != null) {
+                                        IconButton(onClick = { pulsePad(padDevice) }, modifier = Modifier.xmbBtn(CircleShape)) {
+                                            Icon(Icons.Default.Vibration, "Test rumble", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        // #333: copy bindings from the Default template or another controller onto this one.
-                                        Box {
-                                            IconButton(onClick = { copyMenuForId = controller.getId() }) {
-                                                Icon(Icons.Default.ContentCopy, "Copy bindings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                            DropdownMenu(
-                                                expanded = copyMenuForId == controller.getId(),
-                                                onDismissRequest = { copyMenuForId = null },
-                                                // #333 polish: match the shared outlined-menu-card look.
-                                                modifier = Modifier.outlinedMenuCard()
-                                            ) {
-                                                DropdownMenuItem(text = { Text("From Default / Any Controller") }, onClick = {
-                                                    // #333: reload from disk first (the editor saves to a separate profile
-                                                    // instance), and never apply an EMPTY source — that would wipe the
-                                                    // target's bindings.
+                                    }
+                                    // #333: copy bindings from the Default template or another controller onto this one.
+                                    Box {
+                                        IconButton(onClick = { copyMenuForId = controller.getId() }, modifier = Modifier.xmbBtn(CircleShape)) {
+                                            Icon(Icons.Default.ContentCopy, "Copy bindings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        DropdownMenu(
+                                            expanded = copyMenuForId == controller.getId(),
+                                            onDismissRequest = { copyMenuForId = null },
+                                            // #333 polish: match the shared outlined-menu-card look.
+                                            modifier = Modifier.outlinedMenuCard().xmbMenuBack { copyMenuForId = null }
+                                        ) {
+                                            DropdownMenuItem(text = { Text("From Default / Any Controller") }, onClick = {
+                                                // #333: reload from disk first (the editor saves to a separate profile
+                                                // instance), and never apply an EMPTY source — that would wipe the
+                                                // target's bindings.
+                                                currentProfile?.loadControllers()
+                                                val src = currentProfile?.getController(com.winlator.star.inputcontrols.ControlsProfile.DEFAULT_CONTROLLER_ID)
+                                                if (src != null && src.getControllerBindingCount() > 0) {
+                                                    val tgt = currentProfile?.addController(controller.getId())
+                                                    if (tgt != null) { tgt.copyBindingsFrom(src); currentProfile?.save(); refreshControllers() }
+                                                }
+                                                copyMenuForId = null
+                                            })
+                                            for (other in controllers) {
+                                                if (other.getId() == controller.getId() || other.getControllerBindingCount() == 0) continue
+                                                MenuItemDivider()
+                                                DropdownMenuItem(text = { Text("From ${other.getName()}") }, onClick = {
                                                     currentProfile?.loadControllers()
-                                                    val src = currentProfile?.getController(com.winlator.star.inputcontrols.ControlsProfile.DEFAULT_CONTROLLER_ID)
+                                                    val src = currentProfile?.getController(other.getId())
                                                     if (src != null && src.getControllerBindingCount() > 0) {
                                                         val tgt = currentProfile?.addController(controller.getId())
                                                         if (tgt != null) { tgt.copyBindingsFrom(src); currentProfile?.save(); refreshControllers() }
                                                     }
                                                     copyMenuForId = null
                                                 })
-                                                for (other in controllers) {
-                                                    if (other.getId() == controller.getId() || other.getControllerBindingCount() == 0) continue
-                                                    MenuItemDivider()
-                                                    DropdownMenuItem(text = { Text("From ${other.getName()}") }, onClick = {
-                                                        currentProfile?.loadControllers()
-                                                        val src = currentProfile?.getController(other.getId())
-                                                        if (src != null && src.getControllerBindingCount() > 0) {
-                                                            val tgt = currentProfile?.addController(controller.getId())
-                                                            if (tgt != null) { tgt.copyBindingsFrom(src); currentProfile?.save(); refreshControllers() }
-                                                        }
-                                                        copyMenuForId = null
-                                                    })
-                                                }
                                             }
                                         }
-                                        if (bindingsCount > 0) {
-                                            IconButton(onClick = {
-                                                pendingConfirmation = R.string.do_you_want_to_remove_this_controller to {
-                                                    currentProfile?.removeController(controller)
-                                                    currentProfile?.save()
-                                                    refreshControllers()
-                                                }
-                                            }) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                        }
+                                    }
+                                    if (bindingsCount > 0) {
+                                        IconButton(onClick = {
+                                            pendingConfirmation = R.string.do_you_want_to_remove_this_controller to {
+                                                currentProfile?.removeController(controller)
+                                                currentProfile?.save()
+                                                refreshControllers()
+                                            }
+                                        }, modifier = Modifier.xmbBtn(CircleShape)) { Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                                     }
                                 }
                             }
@@ -971,7 +1131,7 @@ fun InputControlsScreen() {
  * (see `InputControlsView.onDraw` / `ControlElement.draw`), so no XServer is needed at rest.
  */
 @Composable
-private fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor: () -> Unit) {
+internal fun OnScreenLayoutPreview(profileId: Int, refreshKey: Int, onOpenEditor: () -> Unit) {
     val context = LocalContext.current
     // Fresh throwaway instance; re-read when the profile changes OR we return from the editor (refreshKey).
     val previewProfile = remember(profileId, refreshKey) {
@@ -1043,19 +1203,23 @@ private fun ImportSourceRow(
     subtitle: String,
     onClick: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 12.dp),
-    ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(14.dp))
-        Column {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(10.dp), stop)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 6.dp, vertical = 12.dp),
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
         }
     }
 }
@@ -1079,7 +1243,7 @@ private fun ProfileBadge(text: String, fg: Color, bg: Color) {
 /** At-rest test rumble for a connected pad: pulse its OWN vibrator directly (no WinHandler / running
  *  game here), mirroring MainActivity.settingsControllerIdentify — VibratorManager (independent motors,
  *  API 31+) or the single vibrator otherwise. */
-private fun pulsePad(device: android.view.InputDevice) {
+internal fun pulsePad(device: android.view.InputDevice) {
     try {
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             val vm = device.vibratorManager
@@ -1119,6 +1283,7 @@ private fun InputControlsTabs(selected: Int, onSelect: (Int) -> Unit) {
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .xmbBtn(RoundedCornerShape(9.dp), tint = if (on) Color.White else Color.Unspecified)
                     .clip(RoundedCornerShape(9.dp))
                     .background(if (on) cs.primary else Color.Transparent)
                     .clickable { onSelect(i) }
@@ -1217,7 +1382,7 @@ internal fun GyroscopeSection() {
                 },
                 enabled = activeRun == null,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).xmbBtn(CircleShape)
             ) { Text("Calibrate", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
             Button(
                 onClick = {
@@ -1227,7 +1392,7 @@ internal fun GyroscopeSection() {
                 },
                 enabled = calibrated && activeRun == null,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).xmbBtn(CircleShape)
             ) { Text("Reset", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
     }
@@ -1332,7 +1497,7 @@ internal fun SteamControllerSection() {
                     color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp
                 )
                 if (Build.VERSION.SDK_INT >= 31) {
-                    TextButton(onClick = { requestBluetooth() }) { Text("Allow Bluetooth") }
+                    TextButton(onClick = { requestBluetooth() }, modifier = Modifier.xmbBtn(CircleShape)) { Text("Allow Bluetooth") }
                 }
             }
         }
@@ -1340,13 +1505,13 @@ internal fun SteamControllerSection() {
 }
 
 // SteamControllerBackend's extra-button order.
-private val STEAM_PADDLE_NAMES = listOf(
+internal val STEAM_PADDLE_NAMES = listOf(
     "L4 (upper left)", "L5 (lower left)", "R4 (upper right)", "R5 (lower right)",
     "… button (between the trackpads)",
 )
 
 /** Targets a back button can take: nothing, a gamepad button, a mouse click, or any keyboard key. */
-private fun steamPaddleOptions(): List<Pair<String, Binding>> {
+internal fun steamPaddleOptions(): List<Pair<String, Binding>> {
     val out = ArrayList<Pair<String, Binding>>()
     out += "Nothing" to Binding.NONE
     out += listOf(
@@ -1396,7 +1561,7 @@ internal fun GlobalPlayerSlotsSection() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("Player Slots", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        IconButton(onClick = { helpRes = R.string.help_player_slots }) {
+        IconButton(onClick = { helpRes = R.string.help_player_slots }, modifier = Modifier.xmbBtn(CircleShape)) {
             Icon(Icons.Default.Help, contentDescription = "What is this?",
                 tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
         }
@@ -1462,7 +1627,7 @@ internal fun MenuButtonSection() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("Menu button", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        IconButton(onClick = { helpRes = R.string.help_menu_button }) {
+        IconButton(onClick = { helpRes = R.string.help_menu_button }, modifier = Modifier.xmbBtn(CircleShape)) {
             Icon(Icons.Default.Help, contentDescription = "What is this?",
                 tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
         }
@@ -1480,13 +1645,13 @@ internal fun MenuButtonSection() {
             Button(
                 onClick = { capturing = true },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).xmbBtn(CircleShape)
             ) { Text("Set button", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
             Button(
                 onClick = { prefs.setMenuButtonKeyCode(context, 0); refresh() },
                 enabled = keyCode != 0,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).xmbBtn(CircleShape)
             ) { Text("None", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp) }
         }
     }
@@ -1505,7 +1670,7 @@ internal fun MenuButtonSection() {
 /** "Press a button" prompt. The window is not focusable, so key presses reach MainActivity, which
  *  hands the next one to [onResult] (-1 = cancelled). */
 @Composable
-private fun MenuButtonCaptureDialog(onResult: (Int) -> Unit) {
+internal fun MenuButtonCaptureDialog(onResult: (Int) -> Unit) {
     DisposableEffect(Unit) {
         com.winlator.star.ui.components.MenuButtonCaptureBus.listener = { onResult(it) }
         onDispose { com.winlator.star.ui.components.MenuButtonCaptureBus.listener = null }
@@ -1541,11 +1706,13 @@ private fun MenuButtonCaptureDialog(onResult: (Int) -> Unit) {
 
 @Composable
 private fun FieldSet(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
+    XmbPanelColumn(
+        shape = RoundedCornerShape(12.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(8.dp))
-            .padding(12.dp)
+            .padding(12.dp),
+        contentPadding = PaddingValues(12.dp),
     ) {
         content()
     }

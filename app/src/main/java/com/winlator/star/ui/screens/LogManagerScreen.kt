@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -59,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,6 +69,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.preference.PreferenceManager
 import com.winlator.star.core.FileUtils
+import com.winlator.star.ui.deck.XmbInk
+import com.winlator.star.ui.deck.rememberXmbFocusGroup
+import com.winlator.star.ui.deck.rememberXmbHighlightItem
 import com.winlator.star.util.InAppFilePicker
 import com.winlator.star.core.ExitReasonReporter
 import com.winlator.star.core.LogInventory
@@ -86,10 +92,18 @@ import java.io.File
  * Mirrors the Performance screen deliberately — same card layout, same always-live "?" help button
  * on every toggle. Here the help copy leads with the PERFORMANCE COST, because two of these
  * genuinely slow games down and users need to know that before leaving one on.
+ *
+ * [showOptions] false hides everything that is a setting (where logs go, the what-to-record switches and engines, how many
+ * runs to keep) and leaves the viewer only. Classic and Lab keep the default (true) and show the whole screen.
+ *
+ * [inDeckTools] is the Deck shell's Tools > Logs tab: all the recording options live here and nowhere in Settings, folded
+ * into a collapsible "Recording options" section at the top (collapsed until opened, and remembered) so the per-game list
+ * gets the room, the games sit two to a row as fixed-size tiles, and the store download-engine switches and speed tier are
+ * left out (they are in Settings > Storage & data). Everything else about the screen is unchanged; default false.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun LogManagerScreen(onClose: () -> Unit) {
+fun LogManagerScreen(onClose: () -> Unit, showOptions: Boolean = true, inDeckTools: Boolean = false) {
     val context = LocalContext.current
     val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -188,6 +202,9 @@ fun LogManagerScreen(onClose: () -> Unit) {
 
     fun putBool(key: String, v: Boolean) = prefs.edit().putBoolean(key, v).apply()
     var storeDlTier by remember { mutableStateOf(com.winlator.star.store.StoreDownloadTier.get(context)) }
+    // Deck Tools > Logs: the options fold away; the choice is remembered (the tab is rebuilt every time you come back to it).
+    var optionsOpen by remember { mutableStateOf(prefs.getBoolean("deck_logs_options_open", false)) }
+    val optionsVisible = !inDeckTools || optionsOpen
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -198,21 +215,29 @@ fun LogManagerScreen(onClose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             // The Deck shell's landscape frame shows the title, and its tabs replace Close.
-            if (!com.winlator.star.ui.LocalHostedInDeck.current) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            if (!com.winlator.star.ui.LocalHostedInDeck.current && !inDeckTools) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Log Manager",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onClose) {
+                IconButton(onClick = onClose, modifier = Modifier.xmbBtn(CircleShape)) {
                     Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
 
+            if (inDeckTools && showOptions) {
+                Spacer(Modifier.height(4.dp))
+                OptionsHeader(open = optionsOpen) {
+                    optionsOpen = !optionsOpen
+                    prefs.edit().putBoolean("deck_logs_options_open", optionsOpen).apply()
+                }
+            }
+
             // ── Where logs go ────────────────────────────────────────────
-            SectionLabel("Where logs go")
-            LogCard {
+            if (showOptions && optionsVisible) SectionLabel("Where logs go")
+            if (showOptions && optionsVisible) LogCard {
                 PickRow(
                     label = when (locationMode) {
                         LogLocation.MODE_DOWNLOAD -> "Download"
@@ -230,7 +255,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     DropdownMenu(
                         expanded = showLocationMenu,
                         onDismissRequest = { showLocationMenu = false },
-                        modifier = Modifier.outlinedMenuCard(),
+                        modifier = Modifier.outlinedMenuCard().xmbMenuBack { showLocationMenu = false },
                     ) {
                         MenuRow("Download", Icons.Default.Download) {
                             saveMode(LogLocation.MODE_DOWNLOAD); showLocationMenu = false
@@ -254,8 +279,9 @@ fun LogManagerScreen(onClose: () -> Unit) {
             }
 
             // ── What to record ───────────────────────────────────────────
-            SectionLabel("What to record")
-            LogCard {
+            if (optionsVisible) SectionLabel(if (showOptions) "What to record" else "Diagnostics")
+            if (optionsVisible) LogCard {
+              if (showOptions) {
                 LogToggle("Wine debug", wineDebug,
                     hint = "Slows games down — for diagnosing a problem",
                     onInfo = { info = "Wine debug" to LogCopy.WINE }) {
@@ -328,6 +354,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     onInfo = { info = "Exit reasons" to LogCopy.EXIT_REASONS }) {
                     exitAutosave = it; putBool(ExitReasonReporter.PREF_AUTOSAVE, it)
                 }
+                // The Deck's Tools > Logs leaves the download-engine switches and the speed tier out: they live in Settings > Storage & data.
+                if (!inDeckTools) {
                 // Developer switch for the native Rust Steam engine (docs/STEAM_RUST_ENGINE_PLAN.md).
                 // Read once per process by SteamRepository.initialize(), so it takes effect on the
                 // next app start. OFF = JavaSteam as today; ON = the full Steam stack (auth, session,
@@ -373,6 +401,8 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     storeDlTier = com.winlator.star.store.StoreDownloadTier.next(storeDlTier)
                     com.winlator.star.store.StoreDownloadTier.set(context, storeDlTier)
                 }
+                }
+              }
 
                 // Outlined rather than a filled button: the design keeps solid accent for switches
                 // only, and this is an occasional action, not the point of the screen.
@@ -419,7 +449,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
             // ── Housekeeping ─────────────────────────────────────────────
             SectionLabel("Housekeeping")
             LogCard {
-                Box {
+                if (showOptions && optionsVisible) Box {
                     PickRow(
                         label = "Keep last",
                         sub = if (keepLast == 0) "No history — each run replaces the last"
@@ -431,7 +461,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     DropdownMenu(
                         expanded = showKeepMenu,
                         onDismissRequest = { showKeepMenu = false },
-                        modifier = Modifier.outlinedMenuCard(),
+                        modifier = Modifier.outlinedMenuCard().xmbMenuBack { showKeepMenu = false },
                     ) {
                         listOf(0, 1, 3, 5, 10, 20, 50).forEachIndexed { i, n ->
                             if (i > 0) MenuItemDivider()
@@ -458,10 +488,12 @@ fun LogManagerScreen(onClose: () -> Unit) {
                     }
                     Text("Browse", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                         modifier = Modifier
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { browseDir = LogLocation.resolveLogDir(context) }
                             .padding(horizontal = 8.dp, vertical = 6.dp))
                     Text("Clear all", color = DangerRed, fontSize = 12.sp,
                         modifier = Modifier
+                            .xmbStop(RoundedCornerShape(8.dp))
                             .clickable { if (entries.isNotEmpty()) confirmClearAll = true }
                             .padding(horizontal = 6.dp, vertical = 6.dp)
                             .alpha(if (entries.isEmpty()) 0.4f else 1f))
@@ -473,6 +505,24 @@ fun LogManagerScreen(onClose: () -> Unit) {
             if (entries.isEmpty()) {
                 LogCard {
                     Text("No logs yet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            } else if (inDeckTools) {
+                // Two equal tiles per row; a long game name is cut to one line, so it never makes its tile bigger.
+                entries.chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        pair.forEach { e ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                GameLogCard(
+                                    entry = e,
+                                    onView = { viewing = e },
+                                    onShare = { shareLogGroup(context, e) },
+                                    onDelete = { confirmDelete = e },
+                                    tile = true,
+                                )
+                            }
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             } else {
                 entries.forEach { e ->
@@ -490,6 +540,7 @@ fun LogManagerScreen(onClose: () -> Unit) {
                 "Explain the log types",
                 color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                 modifier = Modifier
+                    .xmbStop(RoundedCornerShape(8.dp))
                     .clickable { showExplainAll = true }
                     .padding(vertical = 6.dp, horizontal = 4.dp)
             )
@@ -670,13 +721,16 @@ private fun SectionLabel(text: String) {
 /** Untitled card — the heading lives above it now. */
 @Composable
 private fun LogCard(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
+    // XMB glass: a glass panel that pops; elsewhere the Column it was.
+    XmbPanelColumn(
+        shape = RoundedCornerShape(10.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(10.dp))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) { content() }
 }
 
@@ -689,20 +743,24 @@ private fun PickRow(
     onInfo: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp))
-            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2)
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(8.dp), stop, wholeSubtree = true)
+                .clickable { onClick() }
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp))
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2)
+            }
+            if (onInfo != null) InfoDot(onInfo)
+            Text(action, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
         }
-        if (onInfo != null) InfoDot(onInfo)
-        Text(action, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
     }
 }
 
@@ -769,7 +827,7 @@ private fun WineChannelGroup(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
+            modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(8.dp)).clickable { expanded = !expanded }
         ) {
             Text(
                 "Channels",
@@ -827,7 +885,8 @@ private fun WineChannelGroup(
                 FilterChip(
                     selected = isOn,
                     onClick = { onChange(if (isOn) selected - ch else selected + ch) },
-                    label = { Text(ch, fontSize = 11.sp) }
+                    label = { Text(ch, fontSize = 11.sp) },
+                    modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp))
                 )
             }
             // Last chip in the flow, so it reads as "…and the rest are through here" rather than
@@ -836,6 +895,7 @@ private fun WineChannelGroup(
             if (all.isNotEmpty()) {
                 AssistChip(
                     onClick = { browseAll = true },
+                    modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                     label = { Text("Browse all ${all.size}…", fontSize = 11.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.ListAlt, null, modifier = Modifier.size(14.dp))
@@ -852,6 +912,7 @@ private fun WineChannelGroup(
             "Reset to defaults",
             color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
             modifier = Modifier
+                .xmbStop(RoundedCornerShape(8.dp))
                 .clickable {
                     onChange(com.winlator.star.SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS
                         .split(",").filter { it.isNotBlank() })
@@ -960,6 +1021,7 @@ private fun AllChannelsDialog(
                         FilterChip(
                             selected = showHelp,
                             onClick = { showHelp = !showHelp },
+                            modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                             label = { Text("What's this?", fontSize = 11.sp) },
                             leadingIcon = {
                                 Icon(Icons.Outlined.HelpOutline, null, modifier = Modifier.size(14.dp))
@@ -969,9 +1031,10 @@ private fun AllChannelsDialog(
                         FilterChip(
                             selected = selectedOnly,
                             onClick = { selectedOnly = !selectedOnly },
+                            modifier = Modifier.xmbBtn(RoundedCornerShape(8.dp)),
                             label = { Text("On only", fontSize = 11.sp) },
                         )
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = onDismiss, modifier = Modifier.xmbBtn(CircleShape)) {
                             Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
@@ -1014,10 +1077,13 @@ private fun AllChannelsDialog(
                                 }
                                 items(names, key = { "ch-$it" }) { ch ->
                                     val isOn = ch in selected
+                                    val rowStop = rememberXmbHighlightItem()
+                                    XmbInk(rowStop) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .xmbStop(RoundedCornerShape(8.dp), rowStop)
                                             .clickable {
                                                 onChange(if (isOn) selected - ch else selected + ch)
                                             }
@@ -1028,6 +1094,7 @@ private fun AllChannelsDialog(
                                             onCheckedChange = {
                                                 onChange(if (isOn) selected - ch else selected + ch)
                                             },
+                                            modifier = Modifier.xmbNoFocus(),
                                         )
                                         Column(modifier = Modifier.weight(1f).padding(start = 2.dp)) {
                                             Text(
@@ -1045,6 +1112,7 @@ private fun AllChannelsDialog(
                                                 )
                                             }
                                         }
+                                    }
                                     }
                                 }
                             }
@@ -1067,15 +1135,23 @@ private fun GameLogCard(
     onView: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
+    tile: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
+    // XMB interface: the card is a glass panel and one D-pad stop; A enters it (the name expands the file list, then
+    // View / Share / Delete). Elsewhere it is the Column it was.
+    val group = rememberXmbFocusGroup()
+    XmbGroupColumn(
+        group = group,
+        shape = RoundedCornerShape(10.dp),
+        classicModifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(10.dp))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
-            .padding(10.dp)
+            .padding(10.dp),
+        contentPadding = PaddingValues(10.dp),
+        vGap = 6.dp,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(
@@ -1095,26 +1171,39 @@ private fun GameLogCard(
                     null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp)
                 )
             }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
+            Spacer(Modifier.width(if (tile) 8.dp else 10.dp))
+            Column(modifier = Modifier.weight(1f).xmbClickOrBtn(RoundedCornerShape(8.dp), first = true) { expanded = !expanded }) {
+                // A tile is a fixed size: the name is one line however long it is, the details always two.
                 Text(if (entry.isAppBucket) "App & crash logs" else entry.name,
-                    color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
+                    maxLines = if (tile) 1 else Int.MAX_VALUE,
+                    overflow = if (tile) androidx.compose.ui.text.style.TextOverflow.Ellipsis else androidx.compose.ui.text.style.TextOverflow.Clip)
                 Text(
                     buildString {
                         append("${entry.fileCount} file${if (entry.fileCount == 1) "" else "s"}")
                         append(" · ").append(LogInventory.humanBytes(entry.totalBytes))
-                        if (entry.archivedRuns > 0) append(" · ${entry.archivedRuns} kept")
-                        append(" · ").append(relativeTime(entry.lastModified))
+                        append(if (tile) "\n" else " · ")
+                        if (entry.archivedRuns > 0) append("${entry.archivedRuns} kept · ")
+                        append(relativeTime(entry.lastModified))
                     },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                    maxLines = if (tile) 2 else Int.MAX_VALUE,
+                    overflow = if (tile) androidx.compose.ui.text.style.TextOverflow.Ellipsis else androidx.compose.ui.text.style.TextOverflow.Clip
                 )
             }
         }
         if (expanded) {
             Spacer(Modifier.height(6.dp))
-            LogInventory.filesIn(entry.dir).forEach { f ->
+            val files = LogInventory.filesIn(entry.dir)
+            (if (tile) files.take(8) else files).forEach { f ->
                 Text("• ${f.name}  (${LogInventory.humanBytes(f.length())})",
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                    maxLines = if (tile) 1 else Int.MAX_VALUE,
+                    overflow = if (tile) androidx.compose.ui.text.style.TextOverflow.Ellipsis else androidx.compose.ui.text.style.TextOverflow.Clip,
+                    modifier = Modifier.padding(start = 6.dp, top = 2.dp))
+            }
+            if (tile && files.size > 8) {
+                Text("+ ${files.size - 8} more", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                     modifier = Modifier.padding(start = 6.dp, top = 2.dp))
             }
         }
@@ -1127,12 +1216,12 @@ private fun GameLogCard(
                 .background(MaterialTheme.colorScheme.outline)
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (tile) 4.dp else 6.dp),
             modifier = Modifier.fillMaxWidth().padding(top = 9.dp)
         ) {
-            CardAction("View", modifier = Modifier.weight(1f), primary = true, onClick = onView)
-            CardAction("Share", modifier = Modifier.weight(1f), onClick = onShare)
-            CardAction("Delete", modifier = Modifier.weight(1f), danger = true, onClick = onDelete)
+            CardAction("View", modifier = Modifier.weight(1f), primary = true, small = tile, onClick = onView)
+            CardAction("Share", modifier = Modifier.weight(1f), small = tile, onClick = onShare)
+            CardAction("Delete", modifier = Modifier.weight(1f), danger = true, small = tile, onClick = onDelete)
         }
     }
 }
@@ -1144,6 +1233,7 @@ private fun CardAction(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     danger: Boolean = false,
+    small: Boolean = false,
     onClick: () -> Unit,
 ) {
     val fg = when {
@@ -1153,6 +1243,7 @@ private fun CardAction(
     }
     Box(
         modifier = modifier
+            .xmbBtn(RoundedCornerShape(7.dp), tint = if (primary) MaterialTheme.colorScheme.primary else Color.Unspecified)
             .clickable { onClick() }
             .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(7.dp))
             .border(
@@ -1163,7 +1254,40 @@ private fun CardAction(
             .padding(vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = fg, fontSize = 12.sp)
+        Text(label, color = fg, fontSize = if (small) 11.sp else 12.sp, maxLines = if (small) 1 else Int.MAX_VALUE)
+    }
+}
+
+/**
+ * The Deck's "Recording options" header: one row that folds the whole recording-options block (where logs go, what to
+ * record, Wine debug channels, how many runs to keep) away so the per-game tiles get the room.
+ */
+@Composable
+private fun OptionsHeader(open: Boolean, onToggle: () -> Unit) {
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbStop(RoundedCornerShape(8.dp), stop, wholeSubtree = true)
+                .clickable { onToggle() }
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp))
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Recording options", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(
+                    "What to record, Wine debug channels, log folder, runs to keep",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2
+                )
+            }
+            Icon(
+                if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                if (open) "Collapse recording options" else "Expand recording options",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -1191,30 +1315,34 @@ private fun LogToggle(
     onInfo: (() -> Unit)? = null,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .then(if (enabled) Modifier.clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
+    // XMB interface: the switch is the row's one stop (its label tap stays for touch); the "?" is its own stop.
+    val stop = rememberXmbHighlightItem()
+    XmbInk(stop) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().xmbStop(RoundedCornerShape(8.dp), stop, wholeSubtree = true).padding(vertical = 2.dp)
         ) {
-            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            if (hint != null) {
-                Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(if (enabled) Modifier.xmbNoFocus().clickable { onCheckedChange(!checked) } else Modifier.alpha(0.4f))
+            ) {
+                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                if (hint != null) {
+                    Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
             }
+            if (onInfo != null) InfoDot(onInfo)
+            Spacer(Modifier.width(4.dp))
+            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
         }
-        if (onInfo != null) InfoDot(onInfo)
-        Spacer(Modifier.width(4.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 
 /** Always-live "?" — a locked or off toggle must still be explainable. */
 @Composable
 private fun InfoDot(onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(28.dp)) {
+    IconButton(onClick = onClick, modifier = Modifier.size(28.dp).xmbBtn(CircleShape)) {
         Icon(Icons.Outlined.HelpOutline, "What's this?",
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
     }
@@ -1224,7 +1352,7 @@ private fun InfoDot(onClick: () -> Unit) {
  * Help copy. Every entry leads with the performance cost, because that is the thing a user needs to
  * decide with — two of these are genuinely expensive to leave on.
  */
-private object LogCopy {
+internal object LogCopy {
     const val PER_GAME =
         "No performance cost.\n\n" +
         "Gives each game its own folder inside your log location, named after the game, so one " +

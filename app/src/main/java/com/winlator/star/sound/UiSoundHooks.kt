@@ -109,6 +109,9 @@ fun toggleSound(on: Boolean) = UiSounds.cue(if (on) UiCue.TOGGLE_ON else UiCue.T
 /** Slider sound for a value change; [up] = the value rose. */
 fun sliderSound(up: Boolean) = UiSounds.cue(if (up) UiCue.SLIDER_UP else UiCue.SLIDER_DOWN)
 
+/** Edge sound for a cursor that took a direction key but has nowhere to go (a key the UI consumed, so [UiSounds.key] cannot tell). */
+fun edgeSound() = UiSounds.cue(UiCue.NAVIGATE_EDGE)
+
 /**
  * For the content of a focusable Popup (its own window, no Window object to watch): notes the keys pressed in it so
  * focus moves there make the move sound, A the select sound and B the back sound.

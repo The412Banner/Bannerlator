@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 — MERGED fix/store-shortcut-cloud-rows → main bad851ab (--no-ff)
+
+- **19:23 EST, user: "merge to main".** main had moved 6b38d097 → 378d12d5 (2 PROGRESS_LOG-only commits by another session: main 6b38d097 on the Pocket FIT), so `--no-ff` merge **bad851ab** (parents 378d12d5 + 02cd4058; PROGRESS_LOG auto-merged, both entries kept). Backup `refs/backup/20261113/main-before-store-shortcut-cloud-rows` = 378d12d5. `git diff 8af32940 bad851ab -- . ':!PROGRESS_LOG.md'` empty → main code == device-tested 8af32940 (Elite, 19:10 EST). Main CI 43533810275 (push) started. Branches feat/store-download-location + fix/store-shortcut-cloud-rows kept (delete only on the user's word).
+- **Contents:** ShortcutPathRepair (launch fixes a moved game's shortcut), Steam Cloud saves tab gate via SteamCloudBackend (works on the default Rust engine) + recheck on ONLINE + "Connecting to Steam…", StoreLibraryReconcile (Downloads & Library drops rows of games no longer installed).
+- **Open (not fixed, user skipped):** library count refresh after import, Amazon uninstall has no confirm.
+
 ## 2026-11-13 19:08 EST — INSTALLED main 6b38d097 pubg on the Pocket FIT (main, installed, NOT device-tested)
 
 - **Why:** user: "build me main branch APK" then "install it".

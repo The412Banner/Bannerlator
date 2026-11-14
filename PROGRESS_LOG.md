@@ -1,6 +1,6 @@
 # Star-Compose — Progress Log
 
-## 2026-11-13 21:30 EST — Installing main 175aadd2 pubg on the Pocket FIT (main, installing)
+## 2026-11-13 21:30 EST — Installing main 175aadd2 pubg on the Pocket FIT (main, INSTALLED + quick check; Lab rail bug found)
 
 - **User:** "install it" (main build with the Xbox Nexus update + Lab auto-fit).
 - **Build:** main CI 43544349042 (push, headSha 175aadd2) GREEN 4/4 (finished 21:15:56 EST). Artifact Bannerlator-main-pubg (id 14093317655, expires 11-20 ~21:12 EST).
@@ -8,6 +8,9 @@
 - **Before:** FIT base.apk fee7abd9… (fix/lab-auto-fit 084fb2fe, 21:03:08 EST); BL process in background, no game/wine running, Discord in front. Undo = /sdcard/Download/Bannerlator-lab-auto-fit-084fb2fe.apk (hash = installed fee7abd9).
 - **Plan after install:** installed hash == staged, crash buffer; quick check: Xbox store library sync (xbox_diag.txt) + Lab Home/rail at density 345 portrait + landscape. No Xbox game launch (user's Xbox cloud saves are ON). Termux back after.
 - **INSTALLED 21:24:39 EST:** pm install -r Success; installed base.apk sha256 3e3e9ef2…cb7e == staged; crash buffer 0. Density 345, auto-rotate on. Next: open BL (Lab) for the quick check; xbox_diag.txt = /sdcard/Download/Bannerlator/xbox_diag.txt.
+- **Quick check 21:25–21:28 EST (FIT, density 345, font scale 0.85):** Xbox store library sync PASS (xbox_diag 21:26: `backend library exited 0`, entitlements 845, gamepass 717, supported 459; cloud-token exited 0; cloud session ok; no error lines), Library tab shows 459. Lab portrait Home + drawer at 345: everything visible. Lab landscape Home + Stores at 345: dashboard fine. Crash buffer 0. No game launched. Restored: `wm user-rotation free; wm fixed-to-user-rotation default`, accelerometer_rotation 1, user_rotation 0, density 345; Termux in front. Screenshots /sdcard/Download/cc-tests/main-175aadd2/.
+- **BUG FOUND (not caused by the merge; my auto-fit test missed it):** the landscape Lab rail has **9** entries (LAB_SECTIONS in LabKit.kt:67-77, Settings last, since a0eadb7f1 11-07), not 8. LabRail (LabFrame.kt:171) is a fixed Column with no scroll. Measured at 345: item pitch 108 px = 62.6 dp, rail content ≈ 587 dp vs ≈ 577 dp space under the top line → the Settings label is clipped; at 374 and at 540 (lab-fit-374.png, lab-fit2-540-land.png) Settings is not on screen at all. LAB_FIT_SHORT_SIDE_DP = 576 (DeckTheme.kt:129) was sized for 8 entries; 9 need a short side of about 640 dp. Settings is still reachable from the portrait drawer. Fix options for the user: (a) raise the fit threshold to ~640 dp (landscape draws ~10 % smaller at 374), (b) tighter rail items + scroll fallback (no size change), (c) both.
+- **Lesson:** count the real list in code (LAB_SECTIONS) before calling a layout "all entries visible"; I compared against the 374 screenshot, which was already missing the last entry.
 - **Resume point:** if the session dies, compare installed base.apk sha256 to 3e3e9ef2…, `logcat -b crash -d`; restore `wm user-rotation free; wm fixed-to-user-rotation default` if a landscape check was in progress; density stays 345.
 
 ## 2026-11-13 21:10 EST — Pocket FIT reboot (main, resume point)

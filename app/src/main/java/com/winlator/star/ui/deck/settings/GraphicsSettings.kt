@@ -1393,6 +1393,11 @@ private fun ActionRow(action: DeckGraphicsState.Action) {
 /** The download sheets, the wrapper manager and the VEGAS config editor the page's actions open. */
 @Composable
 internal fun DeckGraphicsDialogs(state: DeckGraphicsState) {
+    // Lab draws its own pickers, wrapper manager and VEGAS config editor on the same state.
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        com.winlator.star.ui.simple.LabGraphicsDialogs(state)
+        return
+    }
     val env = state.env
     val source = state.source
     state.sheet?.let { type ->

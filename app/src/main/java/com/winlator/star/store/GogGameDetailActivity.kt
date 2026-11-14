@@ -34,7 +34,7 @@ import com.winlator.star.store.compose.openShortcutsScreen
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -80,6 +80,7 @@ import java.io.File
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
+import com.winlator.star.ui.deck.deckShape
 
 class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
 
@@ -1197,7 +1198,7 @@ private fun GogDlcContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surface, deckShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -88,6 +88,7 @@ import com.winlator.star.ui.deck.rememberXmbRailState
 import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.theme.LocalAccentDim
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The Steam section's host — flipped from library-first to **store-first**.
@@ -674,7 +675,7 @@ private fun RailStatusDot(status: SteamRepository.SteamStatus, onReconnect: () -
             RailStatus(MaterialTheme.colorScheme.onSurfaceVariant, "Signed out", "Steam: signed out", false)
     }
 
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     val base = Modifier
         .steamFocusRing(shape)
         .clip(shape)

@@ -192,6 +192,14 @@ object AppThemeState {
         syncSimpleLook()
     }
 
+    /**
+     * [init] unless it already ran in this process. WinlatorTheme calls it, so an activity Android brings back on its own after
+     * the process was gone (a store page, the controller bindings) still reads the saved style, theme and Lab look.
+     */
+    fun ensureInit(context: Context) {
+        if (!::themePrefs.isInitialized) init(context)
+    }
+
     /** Turn the Simple home (Deck style with the Simple launcher as Home) on or off. Takes effect immediately. */
     fun setSimpleHome(on: Boolean) {
         _simpleHome.value = on

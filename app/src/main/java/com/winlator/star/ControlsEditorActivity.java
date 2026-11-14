@@ -84,7 +84,7 @@ public class ControlsEditorActivity extends AppCompatActivity {
 
         ComposeView composeToolbar = findViewById(R.id.ComposeToolbar);
         if (composeToolbar != null) {
-            composeToolbar.setContent(new Function2<Composer, Integer, Unit>() {
+            com.winlator.star.ui.theme.LabMaterialKt.setLabContent(composeToolbar, new Function2<Composer, Integer, Unit>() {
                 @Override
                 public Unit invoke(Composer composer, Integer changed) {
                     ControlsEditorToolbarKt.ControlsEditorToolbar(
@@ -320,7 +320,7 @@ public class ControlsEditorActivity extends AppCompatActivity {
         final String dialogMode = activeDialogMode;
         final float backgroundOpacity = inputControlsView != null ? inputControlsView.getBackgroundOpacity() : 0f;
 
-        dialogComposeView.setContent(new Function2<Composer, Integer, Unit>() {
+        com.winlator.star.ui.theme.LabMaterialKt.setLabContent(dialogComposeView, new Function2<Composer, Integer, Unit>() {
             @Override
             public Unit invoke(Composer composer, Integer changed) {
                 ControlsEditorDialogsKt.ControlsEditorDialogHost(
@@ -494,7 +494,7 @@ public class ControlsEditorActivity extends AppCompatActivity {
     private void bindSidebarSettings(final ControlElement element) {
         if (sidebarComposeView == null) return;
         final int reloadKey = sidebarSettingsReloadKey;
-        sidebarComposeView.setContent(new Function2<Composer, Integer, Unit>() {
+        com.winlator.star.ui.theme.LabMaterialKt.setLabContent(sidebarComposeView, new Function2<Composer, Integer, Unit>() {
             @Override
             public Unit invoke(Composer composer, Integer changed) {
                 ControlsEditorSettingsPaneKt.ControlsEditorSettingsPane(

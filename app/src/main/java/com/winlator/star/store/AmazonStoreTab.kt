@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -37,6 +37,7 @@ import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
 import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.deck.xmbInner
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The Amazon **Store** tab.
@@ -185,7 +186,7 @@ private fun EmptyLibraryNotice(state: AmazonLibraryState) {
 /** The Prime Gaming landing card: what it is, and the two web actions that actually claim games. */
 @Composable
 private fun PrimeGamingCard(onOpenWeb: (url: String, title: String) -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
     val group = rememberXmbFocusGroup()
     XmbGroupItem(group, shape, modifier.fillMaxWidth()) {
@@ -220,13 +221,13 @@ private fun PrimeGamingCard(onOpenWeb: (url: String, title: String) -> Unit, mod
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { onOpenWeb("https://gaming.amazon.com/home", "Prime Gaming") },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)).xmbInner(group, first = true),
+                    shape = deckShape(8.dp),
+                    modifier = Modifier.weight(1f).steamFocusRing(deckShape(8.dp)).xmbInner(group, first = true),
                 ) { Text("Claim free games", maxLines = 1) }
                 OutlinedButton(
                     onClick = { onOpenWeb("https://gaming.amazon.com/home?filter=games", "Amazon Games") },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).steamFocusRing(RoundedCornerShape(8.dp)).xmbInner(group),
+                    shape = deckShape(8.dp),
+                    modifier = Modifier.weight(1f).steamFocusRing(deckShape(8.dp)).xmbInner(group),
                 ) { Text("Browse", maxLines = 1) }
             }
         }

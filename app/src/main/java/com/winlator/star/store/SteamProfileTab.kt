@@ -84,6 +84,7 @@ import com.winlator.star.ui.theme.LocalAccentDim
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The **Profile** tab — the signed-in user's own Steam profile, the one surface the app never had.
@@ -322,7 +323,7 @@ private fun ProfileTabLandscape(c: ProfileTabContent) {
 private fun IdentityCard(c: ProfileTabContent) {
     val ctx = LocalContext.current
     val accent = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(12.dp)
+    val shape = deckShape(12.dp)
     var editing by remember { mutableStateOf(false) }
     // XMB: the whole card is one stop of the D-pad; A enters its buttons (Edit, the SteamID, Change account), B comes back.
     val group = rememberXmbFocusGroup()
@@ -380,14 +381,14 @@ private fun IdentityCard(c: ProfileTabContent) {
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(62.dp)
-                                .clip(RoundedCornerShape(9.dp))
+                                .clip(deckShape(9.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
 
                         else -> Box(
                             modifier = Modifier
                                 .size(62.dp)
-                                .clip(RoundedCornerShape(9.dp))
+                                .clip(deckShape(9.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                         )
                     }
@@ -464,7 +465,7 @@ private fun IdentityCard(c: ProfileTabContent) {
 /** The identity card's "Change account" entry — a full-width 48dp target that opens the account chooser. */
 @Composable
 private fun ChangeAccountButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         modifier = Modifier
             .padding(start = 13.dp, end = 13.dp, bottom = 12.dp)
@@ -507,7 +508,7 @@ private fun PersonaNameField(
     var text by remember { mutableStateOf(initial) }
     val requester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { requester.requestFocus() } }
-    val shape = RoundedCornerShape(6.dp)
+    val shape = deckShape(6.dp)
     BasicTextField(
         value = text,
         onValueChange = { if (it.length <= 32) text = it },
@@ -562,7 +563,7 @@ private fun LevelChip(level: Int) {
 /** Small outlined text button (the prototype's `.mini`) — used for Edit. */
 @Composable
 private fun MiniButton(label: String, first: Boolean = false, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(5.dp)
+    val shape = deckShape(5.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
@@ -581,7 +582,7 @@ private fun MiniButton(label: String, first: Boolean = false, onClick: () -> Uni
 /** The tappable, copyable SteamID64 row. */
 @Composable
 private fun SteamIdRow(steamId: Long, onCopy: () -> Unit) {
-    val shape = RoundedCornerShape(5.dp)
+    val shape = deckShape(5.dp)
     Row(
         modifier = Modifier
             .steamFocusRing(shape)
@@ -640,7 +641,7 @@ private fun StatusChips(c: ProfileTabContent) {
 
 @Composable
 private fun StatusChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     Text(
         text = label,
         style = MaterialTheme.typography.labelMedium,
@@ -743,7 +744,7 @@ private fun StatTile(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(9.dp)
+    val shape = deckShape(9.dp)
     val hl = rememberXmbHighlightItem()
     Column(
         modifier = modifier
@@ -861,7 +862,7 @@ private fun BadgeTile(
     var attempt by remember(candidates) { mutableStateOf(0) }
     if (candidates.isEmpty() || attempt >= candidates.size) return
 
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Column(
         modifier = Modifier
             .width(84.dp)
@@ -955,7 +956,7 @@ private fun RecentlyPlayedList(c: ProfileTabContent, fillsPane: Boolean = false)
 
 @Composable
 private fun RecentRow(game: SteamFriendsStore.RecentGame, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     val hl = rememberXmbHighlightItem()
     Row(
         modifier = Modifier
@@ -972,7 +973,7 @@ private fun RecentRow(game: SteamFriendsStore.RecentGame, onClick: () -> Unit) {
             appId = game.appId,
             title = game.name,
             modifier = Modifier.width(88.dp),
-            shape = RoundedCornerShape(5.dp),
+            shape = deckShape(5.dp),
         )
         XmbInk(hl) {
             Text(

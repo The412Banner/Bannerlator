@@ -40,6 +40,7 @@ import com.winlator.star.ui.deck.xmbGlassCard
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.ui.deck.xmbOnGlass
 import coil.compose.AsyncImage
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The GOG **Profile** tab, fed by one [GogUserData] fetch. GOG friends are a Galaxy-only roster with
@@ -80,7 +81,7 @@ fun StoreAvatar(candidates: List<String>, name: String, size: androidx.compose.u
 
 @Composable
 private fun FriendRow(f: GogUserData.Friend, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Row(
         modifier = modifier
             .steamFocusRing(shape)
@@ -128,12 +129,12 @@ fun GogProfileTab(
     val identity: @Composable () -> Unit = {
         // XMB: the whole card is one stop of the D-pad; A enters its two buttons, B comes back to the card.
         val group = rememberXmbFocusGroup()
-        XmbGroupItem(group, RoundedCornerShape(12.dp), Modifier.fillMaxWidth()) {
+        XmbGroupItem(group, deckShape(12.dp), Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .xmbGlassCard(RoundedCornerShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
-                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
+                    .xmbGlassCard(deckShape(12.dp), xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))
+                    .border(1.dp, xmbCardLine(MaterialTheme.colorScheme.outline), deckShape(12.dp))
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -233,7 +234,7 @@ fun GogProfileTab(
 /** A stat tile: big number over a muted label. Shared by the GOG, Epic and Amazon profile tabs. */
 @Composable
 fun StatTile(label: String, value: Int, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = deckShape(10.dp)
     Column(
         modifier = modifier
             .xmbGlassCard(shape, xmbCardFill(MaterialTheme.colorScheme.surfaceContainer))

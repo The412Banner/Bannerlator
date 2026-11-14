@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.winlator.star.ui.deck.deckShape
 
 class AmazonGameDetailActivity : ComponentActivity() {
 
@@ -997,7 +998,7 @@ private fun AmazonDlcContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(deckShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(10.dp),
         ) {

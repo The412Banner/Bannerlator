@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.Icon
 import com.winlator.star.store.StoreGlassIconButton as IconButton
 import androidx.compose.material3.MaterialTheme
@@ -85,6 +85,7 @@ import com.winlator.star.store.xmbRailStop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * The Xbox / PC Game Pass section: the same Store / Library / Profile shell as GOG, Epic and Amazon
@@ -484,7 +485,7 @@ private fun XboxProfileTab(account: String, state: XboxLibraryState, modifier: M
             Text("Resolution, region, bitrate, picture effects, stats and sound for streamed games.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
-            androidx.compose.material3.OutlinedButton(onClick = { ctx.startActivity(android.content.Intent(ctx, XboxCloudSettingsActivity::class.java)) },
+            com.winlator.star.ui.theme.LabOutlinedButton(onClick = { ctx.startActivity(android.content.Intent(ctx, XboxCloudSettingsActivity::class.java)) },
                 modifier = Modifier.steamFocusRing()) { Text("Cloud gaming settings") }
         }
         StoreSection(title = "About") {
@@ -515,8 +516,8 @@ private fun XboxLoginScreen(backendReady: Boolean, message: String?, onLoginClic
                 color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             message?.let { Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center) }
             Spacer(Modifier.height(24.dp))
-            Button(onClick = onLoginClick, enabled = backendReady, shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.height(48.dp).steamFocusRing(RoundedCornerShape(8.dp))) { Text("Sign in with Microsoft") }
+            Button(onClick = onLoginClick, enabled = backendReady, shape = deckShape(8.dp),
+                modifier = Modifier.height(48.dp).steamFocusRing(deckShape(8.dp))) { Text("Sign in with Microsoft") }
             if (!backendReady) {
                 Spacer(Modifier.height(8.dp))
                 Text("The Xbox backend is missing from this build.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

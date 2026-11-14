@@ -109,7 +109,7 @@ internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), fit: Boolean = false, c
         LocalLayoutDirection provides (if (xmb) LayoutDirection.Ltr else LocalLayoutDirection.current),
     ) {
         MaterialTheme(
-            colorScheme = MaterialTheme.colorScheme,
+            colorScheme = com.winlator.star.ui.theme.themeColorsFor(MaterialTheme.colorScheme),
             typography = typography,
             shapes = shapes,
             content = content,

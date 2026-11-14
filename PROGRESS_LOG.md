@@ -1,11 +1,12 @@
 # Star-Compose — Progress Log
 
-## 2026-11-13 19:10 EST — Installing main 6b38d097 pubg on the Pocket FIT (main, install in progress)
+## 2026-11-13 19:08 EST — INSTALLED main 6b38d097 pubg on the Pocket FIT (main, installed, NOT device-tested)
 
 - **Why:** user: "build me main branch APK" then "install it".
 - **Build:** no new dispatch — used main CI 43530432107 (headSha 6b38d097 = main HEAD, code = aeb4c456), all 4 jobs green; skipped steps identical to the previous main build 43498099724 (cache hits). Artifact Bannerlator-main-6b38d097-pubg.
 - **Staged:** /sdcard/Download/Bannerlator-main-6b38d097-pubg.apk sha256 0f979eca…b9d1 (host == device), com.tencent.ig vc106 3.1.9-pre2, cert a40da80a.
 - **Before:** FIT base.apk 322d9b97 (lastUpdate 11-12 23:58:57 = fix/download-speed-dialog 54e82122); undo APK /sdcard/Download/Bannerlator-download-speed-dialog-54e82122-pubg.apk (hash re-checked = installed). Termux in front, app process alive, no Wine processes. Peers root-6a/-85/-54/-15 told.
+- **Installed 19:08:27 EST:** `pm install -r` Success; installed base.apk sha256 0f979eca…b9d1 == staged; vc106 3.1.9-pre2; crash buffer empty, no FATAL; Termux in front. (Entry title said 19:10 at first; real install time 19:08:27.)
 - **Resume point:** if cut, compare installed base.apk sha256 to 0f979eca…; `logcat -b crash -d`; undo = install the 54e82122 APK. Not device-tested.
 
 ## 2026-11-13 — MERGED feat/store-download-location → main aeb4c456 (fast-forward); next: fix/store-shortcut-cloud-rows

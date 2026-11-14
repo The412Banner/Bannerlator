@@ -147,7 +147,7 @@ internal fun LabActionDialog(
 
 /** A line of text in a Lab dialog: muted by default, red for an error, small for a note. */
 @Composable
-internal fun LabDialogText(text: String, muted: Boolean = true, error: Boolean = false, small: Boolean = false) {
+internal fun LabActionText(text: String, muted: Boolean = true, error: Boolean = false, small: Boolean = false) {
     Text(
         text,
         color = when {
@@ -188,7 +188,7 @@ internal fun LabDialogButton(
  * reached but does nothing.
  */
 @Composable
-internal fun LabDialogRow(
+internal fun LabActionRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
@@ -267,7 +267,7 @@ internal fun LabProgressLine(text: String, fraction: Float? = null, trailing: St
 
 /** Lab's one-line text field: the Lab card with an accent outline while it has focus, and ✕ to clear it. */
 @Composable
-internal fun LabTextField(
+internal fun LabActionField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -330,9 +330,9 @@ internal fun LabContainerPickerDialog(
         onDismiss = onDismiss,
         buttons = { LabDialogButton(L("Cancel"), requester = if (containers.isEmpty()) first else null, onClick = onDismiss) },
     ) {
-        if (containers.isEmpty()) LabDialogText(emptyText)
+        if (containers.isEmpty()) LabActionText(emptyText)
         containers.forEachIndexed { i, c ->
-            LabDialogRow(
+            LabActionRow(
                 title = c.name?.takeIf { it.isNotEmpty() } ?: L("Container %1\$s", c.id),
                 subtitle = listOf(c.wineVersion.orEmpty(), c.screenSize.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { null },
                 icon = Icons.Filled.Folder,
@@ -342,7 +342,7 @@ internal fun LabContainerPickerDialog(
         }
         if (systemPickerChecked != null && containers.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            LabDialogRow(L("Use the system file picker"), switch = systemPickerChecked, onClick = { onSystemPickerChange(!systemPickerChecked) })
+            LabActionRow(L("Use the system file picker"), switch = systemPickerChecked, onClick = { onSystemPickerChange(!systemPickerChecked) })
         }
     }
 }
@@ -449,12 +449,12 @@ internal fun LabShortcutActionDialogs(actions: ShortcutActions, runBackup: (Shor
             onDismiss = close,
             buttons = { LabDialogButton(L("Cancel"), onClick = close) },
         ) {
-            LabDialogRow(
+            LabActionRow(
                 stringResource(R.string.save_backup_format_winlator),
                 subtitle = stringResource(R.string.save_backup_format_winlator_sub),
                 requester = first,
             ) { close(); runBackup(s, GameSaveBackup.BackupLayout.WINLATOR) }
-            LabDialogRow(
+            LabActionRow(
                 stringResource(R.string.save_backup_format_gamehub),
                 subtitle = stringResource(R.string.save_backup_format_gamehub_sub),
             ) { close(); runBackup(s, GameSaveBackup.BackupLayout.GAMEHUB) }
@@ -526,7 +526,7 @@ private fun LabEmuAccountConflictDialog(conflicts: List<GameSaveBackup.EmuIdConf
     }
     val first = rememberLabFirstFocus(index)
     @Composable
-    fun account(labelRes: Int, id: String, folder: String?) = LabDialogText(
+    fun account(labelRes: Int, id: String, folder: String?) = LabActionText(
         if (folder != null) stringResource(R.string.emu_id_conflict_account_with_folder, stringResource(labelRes), id, folder)
         else stringResource(R.string.emu_id_conflict_account, stringResource(labelRes), id),
         muted = false,
@@ -545,12 +545,12 @@ private fun LabEmuAccountConflictDialog(conflicts: List<GameSaveBackup.EmuIdConf
             }
         },
     ) {
-        LabDialogText(stringResource(R.string.emu_id_conflict_body))
+        LabActionText(stringResource(R.string.emu_id_conflict_body))
         Spacer(Modifier.height(6.dp))
         account(R.string.emu_id_conflict_from_backup, conflict.backupId, conflict.backupSaveFolder)
         account(R.string.emu_id_conflict_in_container, conflict.currentId, conflict.currentSaveFolder)
         Spacer(Modifier.height(6.dp))
-        LabDialogText(stringResource(R.string.emu_id_conflict_warning), small = true)
+        LabActionText(stringResource(R.string.emu_id_conflict_warning), small = true)
     }
 }
 
@@ -648,9 +648,9 @@ private fun LabCopyToDriveC(target: Shortcut?, onFinished: () -> Unit) {
                     LabDialogButton(L("Copy"), primary = true, enabled = validationError == null && sourceSize != null, requester = first) { confirmAndCopy() }
                 },
             ) {
-                LabDialogText(L("Copies the game onto this container's C: drive (native app storage) and points the shortcut there. Fixes games that stall streaming from shared storage."), small = true)
+                LabActionText(L("Copies the game onto this container's C: drive (native app storage) and points the shortcut there. Fixes games that stall streaming from shared storage."), small = true)
                 LabDialogGroup(L("Folder to copy"))
-                LabDialogRow(
+                LabActionRow(
                     sourceRoot.absolutePath,
                     subtitle = when {
                         validationError != null -> L("Size —")
@@ -666,8 +666,8 @@ private fun LabCopyToDriveC(target: Shortcut?, onFinished: () -> Unit) {
                         InAppFilePicker.buildDirIntent(context, "Select the game's folder", initialDir = sourceRoot.absolutePath, driveCPath = driveC?.absolutePath)
                     )
                 }
-                LabDialogText(L("Pick the folder that holds everything the game needs, not just the .exe."), small = true)
-                validationError?.let { LabDialogText(it, error = true, small = true) }
+                LabActionText(L("Pick the folder that holds everything the game needs, not just the .exe."), small = true)
+                validationError?.let { LabActionText(it, error = true, small = true) }
             }
         }
         LabCopyPhase.OVERWRITE -> SimpleActionSheet(
@@ -863,43 +863,43 @@ private fun LabMoveToContainer(
         },
     ) {
         if (others.isEmpty()) {
-            LabDialogText(L(NO_OTHER_CONTAINER))
+            LabActionText(L(NO_OTHER_CONTAINER))
             return@LabActionDialog
         }
         LabDialogGroup(L("Move to"))
         others.forEachIndexed { i, c ->
-            LabDialogRow(c.name, subtitle = c.wineVersion, selected = chosen?.id == c.id, enabled = !busy, requester = if (i == 0) first else null) { chosen = c }
+            LabActionRow(c.name, subtitle = c.wineVersion, selected = chosen?.id == c.id, enabled = !busy, requester = if (i == 0) first else null) { chosen = c }
         }
-        LabDialogRow(L("Keep a copy in \"%1\$s\"", from), switch = keepCopy, enabled = !busy) { keepCopy = !keepCopy }
+        LabActionRow(L("Keep a copy in \"%1\$s\"", from), switch = keepCopy, enabled = !busy) { keepCopy = !keepCopy }
         val p = plan
         if (chosen != null) {
             LabDialogGroup(L("Bring along"))
             if (p == null) {
                 LabProgressLine(L("Checking what this game uses…"))
             } else {
-                LabDialogRow(
+                LabActionRow(
                     L("Saves"), subtitle = p.saves?.label ?: L("No save folders found for this game"),
                     switch = bringSaves && p.saves != null, enabled = p.saves != null && !busy,
                 ) { bringSaves = !bringSaves }
                 p.gameFolder?.let { gf ->
                     val size = android.text.format.Formatter.formatShortFileSize(context, gf.sizeBytes)
-                    LabDialogRow(
+                    LabActionRow(
                         L("Game files (C:\\%1\$s)", gf.relPath.replace('/', '\\')),
                         subtitle = gf.problem ?: if (keepCopy) L("%1\$s, copied", size) else L("%1\$s, moved (no copying)", size),
                         switch = bringFolder && gf.problem == null, enabled = gf.problem == null && !busy,
                     ) { bringFolder = !bringFolder }
                 }
-                if (p.extras.isEmpty()) LabDialogText(L("Extras: nothing this game needs is missing in \"%1\$s\".", chosen?.name.orEmpty()), small = true)
+                if (p.extras.isEmpty()) LabActionText(L("Extras: nothing this game needs is missing in \"%1\$s\".", chosen?.name.orEmpty()), small = true)
                 p.extras.forEach { e ->
-                    LabDialogRow(
+                    LabActionRow(
                         e.label, subtitle = e.note, switch = e.name in bringExtras,
                         enabled = e.source != MoveGameToContainer.ExtraSource.UNAVAILABLE && !busy,
                     ) { bringExtras = if (e.name in bringExtras) bringExtras - e.name else bringExtras + e.name }
                 }
             }
         }
-        LabDialogText(L("The game's settings, icon and cover art always come along."), small = true)
-        problem?.let { LabDialogText(it, error = true, small = true) }
+        LabActionText(L("The game's settings, icon and cover art always come along."), small = true)
+        problem?.let { LabActionText(it, error = true, small = true) }
         stage?.let { LabProgressLine(it) }
     }
 }

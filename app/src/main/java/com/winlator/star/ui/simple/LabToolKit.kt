@@ -78,7 +78,7 @@ internal fun LabDialog(title: String, onDismiss: () -> Unit, wide: Boolean = fal
 
 /** A row of a Lab dialog: a label (and a second line), a check mark when [selected], a switch when [toggle] is set. */
 @Composable
-internal fun LabDialogRow(
+internal fun LabToolRow(
     label: String,
     sub: String? = null,
     selected: Boolean = false,
@@ -115,7 +115,7 @@ internal fun LabDialogRow(
 
 /** A small heading inside a Lab dialog. */
 @Composable
-internal fun LabDialogHeading(text: String) {
+internal fun LabToolHeading(text: String) {
     Text(text.uppercase(), color = SimpleDim, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.3.sp, modifier = Modifier.padding(start = 6.dp, top = 6.dp))
 }
 

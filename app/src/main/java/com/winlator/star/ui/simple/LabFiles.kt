@@ -663,7 +663,7 @@ private fun LabFileManagerBody(
                 onChange = { p.query = it },
                 onDismiss = { searchFor = null },
                 extra = {
-                    if (p.currentDir != null) LabDialogRow(L("Search in subfolders too"), onClick = { searchFor = null; if (p.query.isNotBlank()) p.searchSubfolders() })
+                    if (p.currentDir != null) LabToolRow(L("Search in subfolders too"), onClick = { searchFor = null; if (p.query.isNotBlank()) p.searchSubfolders() })
                 },
             ) { v -> searchFor = null; p.query = v }
         }
@@ -1189,14 +1189,14 @@ private fun LabSortDialog(sort: FmSort, onDismiss: () -> Unit, onApply: (FmSort)
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
     LabDialog(L("Sort"), onDismiss) {
-        LabDialogHeading(L("Folders"))
+        LabToolHeading(L("Folders"))
         listOf(FmSortKey.NAME, FmSortKey.DATE).forEachIndexed { i, k ->
-            LabDialogRow(L(k.label()), selected = s.folders == k, requester = if (i == 0) first else null) { s = s.copy(folders = k) }
+            LabToolRow(L(k.label()), selected = s.folders == k, requester = if (i == 0) first else null) { s = s.copy(folders = k) }
         }
-        LabDialogRow(L("Reverse"), toggle = s.foldersDesc) { s = s.copy(foldersDesc = !s.foldersDesc) }
-        LabDialogHeading(L("Files"))
-        FmSortKey.entries.forEach { k -> LabDialogRow(L(k.label()), selected = s.files == k) { s = s.copy(files = k) } }
-        LabDialogRow(L("Reverse"), toggle = s.filesDesc) { s = s.copy(filesDesc = !s.filesDesc) }
+        LabToolRow(L("Reverse"), toggle = s.foldersDesc) { s = s.copy(foldersDesc = !s.foldersDesc) }
+        LabToolHeading(L("Files"))
+        FmSortKey.entries.forEach { k -> LabToolRow(L(k.label()), selected = s.files == k) { s = s.copy(files = k) } }
+        LabToolRow(L("Reverse"), toggle = s.filesDesc) { s = s.copy(filesDesc = !s.filesDesc) }
         LabDialogButtons {
             LabButton(L("Cancel"), onClick = onDismiss)
             LabButton(L("Apply"), primary = true) { onApply(s) }
@@ -1216,9 +1216,9 @@ private fun LabCompressDialog(defaultName: String, onDismiss: () -> Unit, onConf
         valid = { it.isNotBlank() && !it.contains('/') },
         onDismiss = onDismiss,
         extra = {
-            LabDialogHeading(L("Format"))
+            LabToolHeading(L("Format"))
             PackFormat.entries.filter { it != PackFormat.TAR_ZST }.forEach { f ->
-                LabDialogRow(f.label, selected = format == f) { format = f }
+                LabToolRow(f.label, selected = format == f) { format = f }
             }
         },
     ) { name -> onConfirm(name, format) }
@@ -1231,10 +1231,10 @@ private fun LabConflictDialog(name: String, isDir: Boolean, batch: Boolean, onAn
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(80); runCatching { first.requestFocus() } }
     LabDialog(L("\"%1\$s\" already exists", name), onDismiss = { onAnswer(null, false) }) {
-        LabDialogRow(if (isDir) L("Merge") else L("Overwrite"), requester = first) { onAnswer(if (isDir) ConflictChoice.MERGE else ConflictChoice.OVERWRITE, all) }
-        LabDialogRow(L("Keep both")) { onAnswer(ConflictChoice.KEEP_BOTH, all) }
-        LabDialogRow(L("Skip")) { onAnswer(ConflictChoice.SKIP, all) }
-        if (batch) LabDialogRow(L("Apply to all"), toggle = all) { all = !all }
+        LabToolRow(if (isDir) L("Merge") else L("Overwrite"), requester = first) { onAnswer(if (isDir) ConflictChoice.MERGE else ConflictChoice.OVERWRITE, all) }
+        LabToolRow(L("Keep both")) { onAnswer(ConflictChoice.KEEP_BOTH, all) }
+        LabToolRow(L("Skip")) { onAnswer(ConflictChoice.SKIP, all) }
+        if (batch) LabToolRow(L("Apply to all"), toggle = all) { all = !all }
         LabDialogButtons { LabButton(L("Cancel")) { onAnswer(null, false) } }
     }
 }
@@ -1274,7 +1274,7 @@ private fun LabDiskProperties(file: File, containers: List<Container>, imagefsDi
         Spacer(Modifier.height(2.dp))
         SimpleRowDivider()
         val st = attrs
-        LabDialogRow(L("Read-only"), toggle = st?.readOnly == true, enabled = st != null && !busy) {
+        LabToolRow(L("Read-only"), toggle = st?.readOnly == true, enabled = st != null && !busy) {
             val want = !(st?.readOnly ?: false)
             busy = true
             scope.launch {
@@ -1283,7 +1283,7 @@ private fun LabDiskProperties(file: File, containers: List<Container>, imagefsDi
                 if (ok) { attrs = attrs?.copy(readOnly = want); onChanged() } else toast(context, L("Couldn't change Read-only"))
             }
         }
-        LabDialogRow(L("Hidden"), toggle = st?.hidden == true, enabled = st != null && st.hiddenSupported && !busy) {
+        LabToolRow(L("Hidden"), toggle = st?.hidden == true, enabled = st != null && st.hiddenSupported && !busy) {
             val want = !(st?.hidden ?: false)
             busy = true
             scope.launch {

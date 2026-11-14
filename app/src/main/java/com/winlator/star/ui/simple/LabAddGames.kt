@@ -65,10 +65,10 @@ internal fun LabImportMethodDialog(onDismiss: () -> Unit, onExe: () -> Unit, onF
         onDismiss = onDismiss,
         buttons = { LabDialogButton(L("Cancel"), onClick = onDismiss) },
     ) {
-        LabDialogRow(L("Add game EXE"), subtitle = L("Pick one game's .exe file"), icon = Icons.Filled.InsertDriveFile, requester = first, onClick = onExe)
-        LabDialogRow(L("Add games folder"), subtitle = L("Pick the folder holding all your games — each one is scanned for its .exe"), icon = Icons.Filled.Folder, onClick = onFolder)
-        LabDialogRow(L("Add Android game"), subtitle = L("Pick games installed on this phone — they open as normal Android apps"), icon = Icons.Filled.Android, onClick = onAndroid)
-        LabDialogRow(L("Add Windows Steam client x64"), subtitle = L("Valve's 64-bit Steam for Windows, downloaded from Steam"), icon = Icons.Filled.DesktopWindows, onClick = onWindowsSteam)
+        LabActionRow(L("Add game EXE"), subtitle = L("Pick one game's .exe file"), icon = Icons.Filled.InsertDriveFile, requester = first, onClick = onExe)
+        LabActionRow(L("Add games folder"), subtitle = L("Pick the folder holding all your games — each one is scanned for its .exe"), icon = Icons.Filled.Folder, onClick = onFolder)
+        LabActionRow(L("Add Android game"), subtitle = L("Pick games installed on this phone — they open as normal Android apps"), icon = Icons.Filled.Android, onClick = onAndroid)
+        LabActionRow(L("Add Windows Steam client x64"), subtitle = L("Valve's 64-bit Steam for Windows, downloaded from Steam"), icon = Icons.Filled.DesktopWindows, onClick = onWindowsSteam)
     }
 }
 
@@ -178,7 +178,7 @@ internal fun LabFolderReviewDialog(
                     val flagged = c.uncertain && !c.alreadyAdded
                     Column(Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            LabDialogRow(
+                            LabActionRow(
                                 c.name,
                                 modifier = Modifier.weight(1f),
                                 subtitle = c.folder.name,
@@ -208,7 +208,7 @@ internal fun LabFolderReviewDialog(
 @Composable
 internal fun LabScanComponents(count: Int, open: Boolean, onToggle: () -> Unit, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(start = 48.dp)) {
-        LabDialogRow((if (open) "▾ " else "▸ ") + L("Components (%1\$s)", count), onClick = onToggle)
+        LabActionRow((if (open) "▾ " else "▸ ") + L("Components (%1\$s)", count), onClick = onToggle)
         if (open) Box(Modifier.padding(start = 8.dp, end = 4.dp, bottom = 8.dp)) { content() }
     }
 }
@@ -239,7 +239,7 @@ internal fun LabExePickerDialog(
             items(options, key = { it.absolutePath }) { exe ->
                 val current = exe.absolutePath == target.exe.absolutePath
                 val rel = exe.absolutePath.removePrefix(target.folder.absolutePath).removePrefix("/")
-                LabDialogRow(
+                LabActionRow(
                     exe.name,
                     subtitle = if (rel.contains('/')) rel.substringBeforeLast('/') else L("(folder root)"),
                     selected = current,
@@ -280,14 +280,14 @@ internal fun LabConfirmGameDialog(
         },
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabTextField(name, onNameChange, placeholder = L("Game name"), modifier = Modifier.weight(1f), onClear = onNameClear)
+            LabActionField(name, onNameChange, placeholder = L("Game name"), modifier = Modifier.weight(1f), onClear = onNameClear)
             LabDialogButton(if (searching) L("Searching…") else L("Search Steam"), enabled = !searching && name.isNotBlank(), icon = Icons.Filled.Search, onClick = onSearch)
         }
         if (results.isNotEmpty()) {
-            LabDialogText(L("Tap a result to set the name + cover art:"), small = true)
+            LabActionText(L("Tap a result to set the name + cover art:"), small = true)
             results.sortedByDescending { it.appId == linkedAppId }.forEach { hit ->
                 val linked = hit.appId == linkedAppId
-                LabDialogRow(
+                LabActionRow(
                     hit.name,
                     subtitle = L("App ID: %1\$s", hit.appId),
                     note = if (linked) L("✓ Linked") else null,
@@ -299,7 +299,7 @@ internal fun LabConfirmGameDialog(
         } else if (searching) {
             LabProgressLine(L("Searching Steam…"))
         } else {
-            LabDialogText(L("Not the right game? Edit the name and tap Search Steam to pick the correct one."), small = true)
+            LabActionText(L("Not the right game? Edit the name and tap Search Steam to pick the correct one."), small = true)
         }
         components()
     }
@@ -340,7 +340,7 @@ internal fun LabWindowsSteamDialog(
             LabProgressLine(L("Checking the storage…"))
         } else {
             places.forEachIndexed { i, place ->
-                LabDialogRow(
+                LabActionRow(
                     L(place.label),
                     subtitle = when {
                         place.hasClient -> L("Steam is already here")
@@ -373,10 +373,10 @@ internal fun LabSteamUninstallDialog(plan: WindowsSteamClient.UninstallPlan?, ru
         if (running || plan == null) {
             LabProgressLine(if (running) L("Uninstalling Steam…") else L("Checking Steam's folder…"))
         } else {
-            LabDialogText(L("Deletes Steam from %1\$s (%2\$s).", plan.where, SteamSdInstall.fmtBytes(plan.bytes)), muted = false)
-            if (plan.games > 0) LabDialogText(labCount(plan.games, "Includes 1 game installed in Steam's folder.", "Includes %1\$s games installed in Steam's folder."))
-            if (plan.keptGames > 0) LabDialogText(labCount(plan.keptGames, "Keeps 1 game from Bannerlator's Steam store.", "Keeps %1\$s games from Bannerlator's Steam store."))
-            if (plan.keptLibraries > 0) LabDialogText(labCount(plan.keptLibraries, "1 library folder with games is kept.", "%1\$s library folders with games are kept."))
+            LabActionText(L("Deletes Steam from %1\$s (%2\$s).", plan.where, SteamSdInstall.fmtBytes(plan.bytes)), muted = false)
+            if (plan.games > 0) LabActionText(labCount(plan.games, "Includes 1 game installed in Steam's folder.", "Includes %1\$s games installed in Steam's folder."))
+            if (plan.keptGames > 0) LabActionText(labCount(plan.keptGames, "Keeps 1 game from Bannerlator's Steam store.", "Keeps %1\$s games from Bannerlator's Steam store."))
+            if (plan.keptLibraries > 0) LabActionText(labCount(plan.keptLibraries, "1 library folder with games is kept.", "%1\$s library folders with games are kept."))
         }
     }
 }
@@ -457,7 +457,7 @@ internal fun LabAndroidGamePickerDialog(
         },
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabTextField(query, onQueryChange, placeholder = L("Search installed apps"), modifier = Modifier.weight(1f), onClear = { onQueryChange("") })
+            LabActionField(query, onQueryChange, placeholder = L("Search installed apps"), modifier = Modifier.weight(1f), onClear = { onQueryChange("") })
             LabChoiceChip(L("Games"), selected = gamesOnly, enabled = !adding) { onGamesOnlyChange(true) }
             LabChoiceChip(L("All apps"), selected = !gamesOnly, enabled = !adding) { onGamesOnlyChange(false) }
         }
@@ -465,11 +465,11 @@ internal fun LabAndroidGamePickerDialog(
             loading -> LabProgressLine(L("Reading installed apps…"))
             adding -> LabProgressLine(L("Adding %1\$s…", labCount(chosenCount, "1 game", "%1\$s games")), detail = L("Writing the shortcuts"))
             else -> {
-                if (shown.isEmpty() && gamesOnly && query.isBlank()) LabDialogText(L("Some games don't tell Android they are games — try All apps."), small = true)
+                if (shown.isEmpty() && gamesOnly && query.isBlank()) LabActionText(L("Some games don't tell Android they are games — try All apps."), small = true)
                 LazyColumn(modifier = Modifier.weight(1f, fill = false).heightIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(shown, key = { it.packageName }) { app ->
                         val added = app.packageName in alreadyAdded
-                        LabDialogRow(
+                        LabActionRow(
                             app.label,
                             subtitle = if (added) L("Already added") else app.packageName,
                             box = added || app.packageName in selected,

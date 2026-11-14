@@ -141,10 +141,10 @@ private fun LabNewSaveDialog(vm: SavesViewModel, onDismiss: () -> Unit, onConfir
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(80); runCatching { field.requestFocus() } }
     LabDialog(L("New save"), onDismiss) {
-        LabDialogHeading(L("Save title"))
+        LabToolHeading(L("Save title"))
         LabField(title, { title = it }, requester = field)
-        LabDialogRow(L("Container"), sub = selectedContainer?.getName() ?: L("No containers")) { if (containers.isNotEmpty()) pickContainer = true }
-        LabDialogRow(L("Select save path"), sub = selectedPath.ifEmpty { L("Not chosen yet") }) {
+        LabToolRow(L("Container"), sub = selectedContainer?.getName() ?: L("No containers")) { if (containers.isNotEmpty()) pickContainer = true }
+        LabToolRow(L("Select save path"), sub = selectedPath.ifEmpty { L("Not chosen yet") }) {
             val c = selectedContainer
             if (c != null) {
                 val driveC = File(c.getRootDir(), ".wine/drive_c/").absolutePath

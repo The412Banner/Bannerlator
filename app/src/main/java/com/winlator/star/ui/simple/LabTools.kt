@@ -315,13 +315,13 @@ private fun LabLogReportDialog(entry: LogInventory.Entry, runDir: File, onDismis
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(80); runCatching { field.requestFocus() } }
     LabDialog(L("Report a problem"), onDismiss = { if (!busy) onDismiss() }, wide = true) {
-        LabDialogHeading(L("What went wrong?"))
+        LabToolHeading(L("What went wrong?"))
         LabField(title, { title = it }, requester = field)
-        LabDialogHeading(L("Any detail that helps (optional)"))
+        LabToolHeading(L("Any detail that helps (optional)"))
         LabField(description, { description = it }, singleLine = false)
-        LabDialogHeading(L("Will be attached"))
+        LabToolHeading(L("Will be attached"))
         willAttach.forEach { Text("• $it", color = SimpleInk, fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp)) }
-        LabDialogRow(L("Also app logcat and crash reports"), toggle = includeApp) { includeApp = !includeApp }
+        LabToolRow(L("Also app logcat and crash reports"), toggle = includeApp) { includeApp = !includeApp }
         Text(
             L("Saved as a zip in Downloads. E-mail addresses, auth tokens and your Steam account name are stripped; file paths are kept so they stay useful for debugging, so glance over them if a folder name identifies you. GitHub can't receive a file from a link, so attach the zip with 📎 once the form opens."),
             color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp),

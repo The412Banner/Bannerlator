@@ -445,6 +445,19 @@ class RemoteSourceRepository(private val context: Context) {
         prefs.edit().remove("removed_defaults").remove("source_order").remove(KEY_SHOW_OFFICIAL).apply()
     }
 
+    /** The built-in sources hidden with Hide (or the Official one switched off), in their usual order. */
+    fun hiddenDefaultSources(): List<RemoteSource> {
+        val removed = getRemovedDefaultSources()
+        val showOfficial = showOfficial()
+        return defaultSources.filter { it.name in removed || (it.isOfficial && !showOfficial) }
+    }
+
+    /** Lists one hidden built-in source again; the others stay hidden. */
+    fun restoreDefaultSource(source: RemoteSource) {
+        saveRemovedDefaultSources(getRemovedDefaultSources().filter { it != source.name })
+        if (source.isOfficial) setShowOfficial(true)
+    }
+
     fun exportRepoListJson(): String {
         val obj = JSONObject()
         obj.put("version", 1)

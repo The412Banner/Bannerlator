@@ -431,6 +431,25 @@ class ContentsHubViewModel(app: Application) : AndroidViewModel(app) {
         reloadSources()
     }
 
+    /** The built-in repositories that are hidden (components and GPU-driver sources), so one can be listed again. */
+    fun hiddenSources(): List<HubSource> {
+        val disabled = DriverSourceStore(appCtx).disabledBuiltIns()
+        return repo.hiddenDefaultSources().map { HubSource.Component(it) } +
+            DriverSources.builtIns().filter { it.name in disabled }.map { HubSource.Driver(it) }
+    }
+
+    /** Lists one hidden built-in repository again (a GPU-driver source is switched back on). */
+    fun showSource(source: HubSource) {
+        when (source) {
+            is HubSource.Component -> {
+                repo.restoreDefaultSource(source.source)
+                _showOfficial.value = repo.showOfficial()
+            }
+            is HubSource.Driver -> DriverSourceStore(appCtx).setBuiltInEnabled(source.source.name, true)
+        }
+        reloadSources()
+    }
+
     fun exportRepoListJson(): String = repo.exportRepoListJson()
 
     fun importRepoListJson(json: String, merge: Boolean): Boolean = runCatching {

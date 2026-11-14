@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 23:15 EST — MERGED feat/lab-yserver-controller-tab → main 042ae311 (--no-ff), device-tested on the Pocket FIT (settings)
+
+- **User:** "merge" (after the settings test report; launch test on yserver offered, not chosen).
+- **Merge:** main 5c3d84f2 → **042ae311** --no-ff of feat/lab-yserver-controller-tab fff4371c (local == remote); backup `refs/backup/20261113/main-before-lab-yserver-controller-tab` = 5c3d84f2. `git diff 2270be35 042ae311 -- ':!PROGRESS_LOG.md'` empty → main code == tested build. 6 commits, all The412Banner, no AI trailers. Direct push bypassed the 3 required checks (branch CI 43551707762 green).
+- **Contents:** Display server switch (X server / yserver, BANNER_YSERVER) at the top of Advanced in the Lab container + game editors; container Controller tab; game Controls Profile → Controller tab.
+- **Not tested:** a launch on yserver started from the switch; Deck look; All containers profile. FIT runs 2270be35 (= main code).
+- **Mistake (no harm):** first merge attempt used `$M:refs/...` in zsh → `:r` modifier mangled the refspec, the backup push failed and the chain stopped before the merge; nothing pushed. Lesson: write `${M}:refs/...` in zsh.
+
 ## 2026-11-13 22:40 EST — feat/lab-yserver-controller-tab: Display server switch + container Controller tab (branch, CI pending)
 
 - **Why:** user 22:0x EST: "add a toggle in container settings advanced tab to toggle between x and yserver? also move controller settings to a controller tab like classic has?" + "same with game shortcut settings?" → plan given → "merge and build on separate branch".

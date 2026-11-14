@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 01:30 EST — fix/sound-startup-own-pack: start-up sound only from the chosen pack (branch, CI pending)
+
+- **Why:** user (Pocket FIT, pack "Switch" by EMERALD0874): "I have a different sound pack set so why do I still hear steam big picture when starting the app?" Switch has no steam_os_startup.wav; UiSoundBank.resolve fills every missing sound from the Steam Big Picture pack. Options given A (start-up only from the pack) / B (missing sounds: fill or silent) / C (start-up switch); user: "option a".
+- **Built (off main 81012101):** UiSoundBank.resolve: OWN_ONLY = UiCue.STARTUP.files; a chosen pack without it plays no start-up sound; other missing sounds still from the Steam pack; Steam pack chosen (pack null) unchanged. UiSoundPacks doc note.
+- **Side facts:** the FIT runs the official 3.2.0 (base.apk c87050aa == release pubg sha256), installed by the user through the in-app small update at 01:02:51 EST. The "no update pill" was the 6 h update-check cooldown (UpdateManager CHECK_COOLDOWN_MS); idea open: Lab Downloads tile shows the app update + shorter cooldown.
+- **Next:** CI → stage → ASK before install → user listens: Switch pack, restart the app → no start-up sound; Steam pack → start-up sound.
+
 ## 2026-11-14 01:10 EST — 3.2.0 page: not-tried lines removed from the topics (main, release page edited in place)
 
 - **User:** "can you remove all the not tried on a device lines in each topic" → "just edit manually on the release description".

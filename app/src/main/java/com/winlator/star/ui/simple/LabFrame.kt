@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -178,11 +179,13 @@ internal fun LabBar(fraction: Float, modifier: Modifier = Modifier) {
 @Composable
 internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
+    // Wider with bigger text (Android's font size times the app's Font size), so the labels keep fitting.
+    val textGrow = LocalDensity.current.fontScale.coerceAtLeast(1f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
-            .width(80.dp)
+            .width(80.dp * textGrow)
             .fillMaxHeight()
             .background(SimplePanelBrush, RectangleShape)
             .drawBehind { drawRect(SimpleLineDraw, topLeft = androidx.compose.ui.geometry.Offset(size.width - 1f, 0f), size = Size(1f, size.height)) }
@@ -198,7 +201,7 @@ internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier 
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier
-                    .width(66.dp)
+                    .width(66.dp * textGrow)
                     .bringIntoViewRequester(reveal)
                     .then(if (on) Modifier.background(accent.copy(alpha = 0.16f), SimpleShape) else Modifier)
                     .labTile(onClick = { onSection(i) })

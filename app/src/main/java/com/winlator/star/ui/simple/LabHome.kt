@@ -218,7 +218,7 @@ internal fun LabHome(
         val pad = if (portrait) 12.dp else 18.dp
         // Bigger text (Android's font size times the app's Font size) makes the tiles taller; the page scrolls when they no longer fit.
         val textGrow = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val rowH: Dp = if (portrait) 140.dp * textGrow else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp * textGrow, 200.dp * textGrow)
+        val rowH: Dp = (if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)) * textGrow
         // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
         val game = recent.firstOrNull { it.file.path == selPath } ?: lastGame
         // Its art goes behind the page (Appearance › Game art background).
@@ -389,8 +389,8 @@ internal fun LabHome(
                     LabTileLabel(L("Last session"))
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${fps.lastAvg.roundToInt()}", color = SimpleStrong, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp, fontFamily = FontFamily.Monospace)
-                        Text(L("fps avg"), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                        if (fps.lastLow > 0) Text(L("· 1%% low %1\$s", fps.lastLow), color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                        Text(L("fps avg"), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(bottom = 4.dp))
+                        if (fps.lastLow > 0) Text(L("· 1%% low %1\$s", fps.lastLow), color = SimpleMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 4.dp))
                     }
                     LabSparkline(fps.history, Modifier.fillMaxWidth().weight(1f))
                 }
@@ -410,7 +410,7 @@ internal fun LabHome(
                 if (dev != null) {
                     @Composable fun line(k: String, f: Float, v: String) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(k, color = SimpleMuted, fontSize = 12.sp, modifier = Modifier.width(54.dp))
+                            Text(k, color = SimpleMuted, fontSize = 12.sp, maxLines = 1, modifier = Modifier.width(54.dp * textGrow))
                             LabBar(f, Modifier.weight(1f))
                             Text(v, color = SimpleInk, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                         }

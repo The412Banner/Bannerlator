@@ -63,7 +63,7 @@ internal fun LabImportMethodDialog(onDismiss: () -> Unit, onExe: () -> Unit, onF
     LabActionDialog(
         title = L("Add games"),
         onDismiss = onDismiss,
-        buttons = { LabDialogButton(L("Cancel"), onClick = onDismiss) },
+        buttons = { LabActionButton(L("Cancel"), onClick = onDismiss) },
     ) {
         LabActionRow(L("Add game EXE"), subtitle = L("Pick one game's .exe file"), icon = Icons.Filled.InsertDriveFile, requester = first, onClick = onExe)
         LabActionRow(L("Add games folder"), subtitle = L("Pick the folder holding all your games — each one is scanned for its .exe"), icon = Icons.Filled.Folder, onClick = onFolder)
@@ -101,7 +101,7 @@ internal fun LabScanProgressDialog(root: String, onCancel: () -> Unit) {
     LabActionDialog(
         title = L("Scanning for games"),
         onDismiss = onCancel,
-        buttons = { LabDialogButton(L("Cancel"), requester = first, onClick = onCancel) },
+        buttons = { LabActionButton(L("Cancel"), requester = first, onClick = onCancel) },
     ) {
         LabProgressLine(L("Looking for each game's .exe"), detail = root)
     }
@@ -153,8 +153,8 @@ internal fun LabFolderReviewDialog(
         wide = true,
         scroll = false,
         buttons = {
-            LabDialogButton(L("Cancel"), enabled = !importing, onClick = onCancel)
-            LabDialogButton(
+            LabActionButton(L("Cancel"), enabled = !importing, onClick = onCancel)
+            LabActionButton(
                 if (importing) L("Adding…") else L("Add %1\$s", selected.size),
                 primary = true,
                 enabled = selected.isNotEmpty() && !importing,
@@ -194,7 +194,7 @@ internal fun LabFolderReviewDialog(
                                 leading = { LabScanCover(c.coverUrl, c.name) },
                             ) { onToggle(c) }
                             // Every row, flagged or not: a confident pick can still be the wrong one.
-                            if (!c.alreadyAdded) LabDialogButton(L("Change")) { onChangeExe(c) }
+                            if (!c.alreadyAdded) LabActionButton(L("Change")) { onChangeExe(c) }
                         }
                         componentsFor(c)
                     }
@@ -230,9 +230,9 @@ internal fun LabExePickerDialog(
         wide = true,
         scroll = false,
         buttons = {
-            LabDialogButton(L("Cancel"), onClick = onDismiss)
+            LabActionButton(L("Cancel"), onClick = onDismiss)
             // The real exe can be missing from the list if it was filtered as an installer / helper or sits deeper than the scan goes.
-            LabDialogButton(L("Browse…"), icon = Icons.Filled.Folder, onClick = onBrowse)
+            LabActionButton(L("Browse…"), icon = Icons.Filled.Folder, onClick = onBrowse)
         },
     ) {
         LazyColumn(modifier = Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -275,13 +275,13 @@ internal fun LabConfirmGameDialog(
         onDismiss = onDismiss,
         wide = true,
         buttons = {
-            LabDialogButton(L("Skip"), onClick = onSkip)
-            LabDialogButton(L("Save"), primary = true, requester = save, onClick = onSave)
+            LabActionButton(L("Skip"), onClick = onSkip)
+            LabActionButton(L("Save"), primary = true, requester = save, onClick = onSave)
         },
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LabActionField(name, onNameChange, placeholder = L("Game name"), modifier = Modifier.weight(1f), onClear = onNameClear)
-            LabDialogButton(if (searching) L("Searching…") else L("Search Steam"), enabled = !searching && name.isNotBlank(), icon = Icons.Filled.Search, onClick = onSearch)
+            LabActionButton(if (searching) L("Searching…") else L("Search Steam"), enabled = !searching && name.isNotBlank(), icon = Icons.Filled.Search, onClick = onSearch)
         }
         if (results.isNotEmpty()) {
             LabActionText(L("Tap a result to set the name + cover art:"), small = true)
@@ -324,8 +324,8 @@ internal fun LabWindowsSteamDialog(
     val running = progress != null
     val first = rememberLabFirstFocus(places.size)
     val buttons: @Composable RowScope.() -> Unit = {
-        LabDialogButton(L("Cancel"), onClick = onCancel)
-        LabDialogButton(confirmText, primary = true, enabled = confirmEnabled, onClick = onConfirm)
+        LabActionButton(L("Cancel"), onClick = onCancel)
+        LabActionButton(confirmText, primary = true, enabled = confirmEnabled, onClick = onConfirm)
     }
     LabActionDialog(
         title = title,
@@ -361,8 +361,8 @@ internal fun LabWindowsSteamDialog(
 internal fun LabSteamUninstallDialog(plan: WindowsSteamClient.UninstallPlan?, running: Boolean, onUninstall: (WindowsSteamClient.UninstallPlan) -> Unit, onKeep: () -> Unit) {
     val keep = rememberLabFirstFocus(plan != null)
     val buttons: @Composable RowScope.() -> Unit = {
-        LabDialogButton(L("Uninstall"), danger = true, enabled = plan != null) { plan?.let(onUninstall) }
-        LabDialogButton(L("Keep Steam"), primary = true, requester = keep, onClick = onKeep)
+        LabActionButton(L("Uninstall"), danger = true, enabled = plan != null) { plan?.let(onUninstall) }
+        LabActionButton(L("Keep Steam"), primary = true, requester = keep, onClick = onKeep)
     }
     LabActionDialog(
         title = L("Also uninstall Steam?"),
@@ -443,8 +443,8 @@ internal fun LabAndroidGamePickerDialog(
         wide = true,
         scroll = false,
         buttons = {
-            LabDialogButton(L("Cancel"), enabled = !adding, onClick = onDismiss)
-            LabDialogButton(
+            LabActionButton(L("Cancel"), enabled = !adding, onClick = onDismiss)
+            LabActionButton(
                 when {
                     adding -> L("Adding…")
                     chosenCount == 0 -> L("Add")

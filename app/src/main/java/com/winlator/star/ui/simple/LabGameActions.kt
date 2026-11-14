@@ -168,7 +168,7 @@ internal fun LabDialogGroup(text: String) {
 
 /** A LabButton that can be greyed out: then it stays reachable but does nothing. */
 @Composable
-internal fun LabDialogButton(
+internal fun LabActionButton(
     label: String,
     enabled: Boolean = true,
     primary: Boolean = false,
@@ -328,7 +328,7 @@ internal fun LabContainerPickerDialog(
         title = title,
         subtitle = subtitle,
         onDismiss = onDismiss,
-        buttons = { LabDialogButton(L("Cancel"), requester = if (containers.isEmpty()) first else null, onClick = onDismiss) },
+        buttons = { LabActionButton(L("Cancel"), requester = if (containers.isEmpty()) first else null, onClick = onDismiss) },
     ) {
         if (containers.isEmpty()) LabActionText(emptyText)
         containers.forEachIndexed { i, c ->
@@ -447,7 +447,7 @@ internal fun LabShortcutActionDialogs(actions: ShortcutActions, runBackup: (Shor
             title = stringResource(R.string.save_backup_format_title),
             subtitle = stringResource(R.string.save_backup_format_prompt),
             onDismiss = close,
-            buttons = { LabDialogButton(L("Cancel"), onClick = close) },
+            buttons = { LabActionButton(L("Cancel"), onClick = close) },
         ) {
             LabActionRow(
                 stringResource(R.string.save_backup_format_winlator),
@@ -484,11 +484,11 @@ private fun LabPropertiesDialog(s: Shortcut, onDismiss: () -> Unit) {
         subtitle = s.name,
         onDismiss = onDismiss,
         buttons = {
-            LabDialogButton(L("Reset Properties"), danger = true) {
+            LabActionButton(L("Reset Properties"), danger = true) {
                 prefs.edit().remove(playtimeKey).remove(playCountKey).apply()
                 tick++
             }
-            LabDialogButton(L("Close"), primary = true, requester = close, onClick = onDismiss)
+            LabActionButton(L("Close"), primary = true, requester = close, onClick = onDismiss)
         },
     ) {
         LabValueLine(L("Number of times played"), playCount.toString())
@@ -535,8 +535,8 @@ private fun LabEmuAccountConflictDialog(conflicts: List<GameSaveBackup.EmuIdConf
         title = stringResource(R.string.emu_id_conflict_title, conflict.label),
         onDismiss = keep,
         buttons = {
-            LabDialogButton(stringResource(R.string.emu_id_conflict_keep), requester = first, onClick = keep)
-            LabDialogButton(stringResource(R.string.emu_id_conflict_apply), primary = true) {
+            LabActionButton(stringResource(R.string.emu_id_conflict_keep), requester = first, onClick = keep)
+            LabActionButton(stringResource(R.string.emu_id_conflict_apply), primary = true) {
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) { GameSaveBackup.applyEmuIdentity(conflict) }
                     if (ok) applied += 1 else kept += 1
@@ -644,8 +644,8 @@ private fun LabCopyToDriveC(target: Shortcut?, onFinished: () -> Unit) {
                 title = L("Copy \"%1\$s\" to Drive C", target.name),
                 onDismiss = onFinished,
                 buttons = {
-                    LabDialogButton(L("Cancel"), onClick = onFinished)
-                    LabDialogButton(L("Copy"), primary = true, enabled = validationError == null && sourceSize != null, requester = first) { confirmAndCopy() }
+                    LabActionButton(L("Cancel"), onClick = onFinished)
+                    LabActionButton(L("Copy"), primary = true, enabled = validationError == null && sourceSize != null, requester = first) { confirmAndCopy() }
                 },
             ) {
                 LabActionText(L("Copies the game onto this container's C: drive (native app storage) and points the shortcut there. Fixes games that stall streaming from shared storage."), small = true)
@@ -691,7 +691,7 @@ private fun LabCopyToDriveC(target: Shortcut?, onFinished: () -> Unit) {
                 title = L("Copying to Drive C…"),
                 onDismiss = {},
                 dismissible = false,
-                buttons = { LabDialogButton(L("Cancel"), requester = first) { cancelFlag.set(true) } },
+                buttons = { LabActionButton(L("Cancel"), requester = first) { cancelFlag.set(true) } },
             ) {
                 LabProgressLine(
                     text = if (total > 0L) "${fmt(done)} / ${fmt(total)}" else L("Copying…"),
@@ -856,9 +856,9 @@ private fun LabMoveToContainer(
         onDismiss = onFinished,
         dismissible = !busy,
         buttons = {
-            LabDialogButton(L("Cancel"), enabled = !busy, requester = if (others.isEmpty()) first else null, onClick = onFinished)
+            LabActionButton(L("Cancel"), enabled = !busy, requester = if (others.isEmpty()) first else null, onClick = onFinished)
             if (chosen != null) {
-                LabDialogButton(if (keepCopy) L("Copy") else L("Move"), primary = true, enabled = !busy && !checking && plan != null && problem == null) { go() }
+                LabActionButton(if (keepCopy) L("Copy") else L("Move"), primary = true, enabled = !busy && !checking && plan != null && problem == null) { go() }
             }
         },
     ) {

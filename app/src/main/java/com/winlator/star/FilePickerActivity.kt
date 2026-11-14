@@ -44,6 +44,8 @@ class FilePickerActivity : ComponentActivity() {
 
         // WinlatorTheme reads AppThemeState; init it in case MainActivity hasn't run yet.
         AppThemeState.init(this)
+        // The app's Orientation setting, as on the main screen and the store pages.
+        com.winlator.star.core.AppOrientation.apply(this)
 
         val extensions = intent.getStringArrayExtra(EXTRA_EXTENSIONS)?.toList() ?: emptyList()
         val initialDir = intent.getStringExtra(EXTRA_INITIAL_DIRECTORY)?.let { File(it) }

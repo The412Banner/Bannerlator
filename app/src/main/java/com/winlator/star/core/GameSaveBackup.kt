@@ -492,6 +492,8 @@ object GameSaveBackup {
         name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim().ifEmpty { "backup" }
 
     private fun queryDisplayName(context: Context, uri: Uri): String? {
+        // The in-app picker hands back a file:// path, which the content resolver has no name for.
+        if (uri.scheme == "file") return uri.lastPathSegment
         return try {
             context.contentResolver
                 .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)

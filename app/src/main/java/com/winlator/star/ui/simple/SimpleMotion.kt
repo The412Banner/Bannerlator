@@ -77,8 +77,9 @@ internal fun Modifier.simpleRowFocus(focused: Boolean, active: Boolean): Modifie
     val quiet = if (light) androidx.compose.ui.graphics.Color(0xFF111722) else androidx.compose.ui.graphics.Color.White
     val top = if (active) accent.copy(alpha = 0.33f * p) else quiet.copy(alpha = 0.12f * p)
     val bottom = if (active) accent.copy(alpha = 0.16f * p) else quiet.copy(alpha = 0.08f * p)
+    // No lift in the light look: the shadow shows through the see-through tint there as a second, offset box.
     return this
-        .shadow((9f * p).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
+        .shadow(if (light) 0.dp else (9f * p).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
         .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(top, bottom)), SimpleShape)
         .drawBehind { if (active) drawRect(accent.copy(alpha = p), size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
 }
@@ -92,8 +93,9 @@ internal fun Modifier.tabFill(on: Boolean, accent: androidx.compose.ui.graphics.
         label = "tabFill",
     )
     if (t < 0.01f) return this.border(1.dp, androidx.compose.ui.graphics.Color.Transparent, SimpleShape)
+    val light = com.winlator.star.ui.theme.AppThemeState.labLight
     return this
-        .shadow((9f * t).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
+        .shadow(if (light) 0.dp else (9f * t).dp, SimpleShape, clip = false, ambientColor = androidx.compose.ui.graphics.Color.Black, spotColor = androidx.compose.ui.graphics.Color.Black)
         .background(accent.copy(alpha = 0.24f * t), SimpleShape)
         .border(1.dp, accent.copy(alpha = t), SimpleShape)
 }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
@@ -22,6 +23,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.winlator.star.ui.deck.LocalXmbScale
 import com.winlator.star.ui.deck.XmbHighlightHost
 import com.winlator.star.ui.deck.XmbKeyboardWindow
 import com.winlator.star.ui.deck.rememberXmbHome
@@ -137,14 +139,20 @@ val LocalDeckDensity = staticCompositionLocalOf<Density?> { null }
  */
 @Composable
 fun DeckDialogScaled(host: Boolean = true, content: @Composable () -> Unit) {
-    val deck = LocalDeckDensity.current
+    val xmb = LocalXmbScale.current
+    // Without a Deck density (a screen that is not in the Deck style) the XMB window still takes the XMB's own scale, and its dp.
+    val density = LocalDeckDensity.current ?: xmb?.density
     val xmbHost = host && rememberXmbHome()
     XmbKeyboardWindow {
         // Inside the density, so the outline's 2 dp is drawn at the Deck scale like everything else in the window.
         val body: @Composable () -> Unit = {
             if (xmbHost) XmbHighlightHost(enabled = true) { content() } else content()
         }
-        if (deck == null) body() else CompositionLocalProvider(LocalDensity provides deck, content = body)
+        CompositionLocalProvider(
+            LocalDensity provides (density ?: LocalDensity.current),
+            LocalConfiguration provides (xmb?.configuration ?: LocalConfiguration.current),
+            content = body,
+        )
     }
 }
 

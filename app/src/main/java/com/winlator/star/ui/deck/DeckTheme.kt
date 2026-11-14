@@ -93,10 +93,8 @@ internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable ()
         extraLarge = deckShape(24.dp),
     )
     // The Deck style is drawn DECK_UI_SCALE smaller than the rest of the app (on top of the interface-size setting),
-    // so a phone or handheld at its stock display size has room for the console layout. Once only: a dialog's
-    // DeckTheme in a dialog of a Deck screen takes the screen's density, not the dialog window's raw one.
-    val outer = LocalDensity.current
-    val density = LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
+    // so a phone or handheld at its stock display size has room for the console layout.
+    val density = deckDensity()
     CompositionLocalProvider(
         LocalDensity provides density,
         LocalDeckDensity provides density,
@@ -109,6 +107,17 @@ internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable ()
             content = content,
         )
     }
+}
+
+/**
+ * The Deck style's density: [DECK_UI_SCALE] of the app's own, applied once. A dialog's DeckTheme in a dialog of a Deck screen takes the
+ * screen's density, not the dialog window's raw one; with none to take, the app's own is the XMB's ([LocalXmbScale], which a window
+ * keeps) or the ambient one.
+ */
+@Composable
+internal fun deckDensity(): Density {
+    val outer = LocalXmbScale.current?.density ?: LocalDensity.current
+    return LocalDeckDensity.current ?: Density(outer.density * DECK_UI_SCALE, outer.fontScale)
 }
 
 /** Runs [content] in a left-to-right layout direction; used for the XMB keyboard panel, whose window does not inherit [DeckTheme]'s. */

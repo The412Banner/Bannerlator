@@ -10,12 +10,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.winlator.star.R
+import com.winlator.star.ui.deck.LocalXmbScale
+import com.winlator.star.ui.deck.rememberXmbScale
 
 private val DefaultColorScheme = darkColorScheme(
     primary          = Primary,
@@ -68,11 +71,17 @@ fun WinlatorTheme(content: @Composable () -> Unit) {
     // Fold the user's interface-scale prefs into the ambient density so every WinlatorTheme
     // surface — including the in-game drawer/dialogs — scales together. The native OSC and
     // perf HUD aren't Compose, so they stay fixed on their own.
+    // The XMB style does not start from the phone's Display size and Font size: its own fixed scale
+    // (XmbScale.kt) replaces them, in the density and in the configuration's dp.
     val base = LocalDensity.current
-    val scaledDensity = Density(base.density * uiScale, base.fontScale * fontScale)
+    val xmb = rememberXmbScale(uiScale, fontScale)
+    val scaledDensity = xmb?.density ?: Density(base.density * uiScale, base.fontScale * fontScale)
+    val configuration = xmb?.configuration ?: LocalConfiguration.current
     CompositionLocalProvider(
         LocalAccentDim provides accentDim,
         LocalDensity provides scaledDensity,
+        LocalConfiguration provides configuration,
+        LocalXmbScale provides xmb,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

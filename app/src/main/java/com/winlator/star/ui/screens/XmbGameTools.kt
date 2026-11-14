@@ -53,6 +53,7 @@ import com.winlator.star.core.ImageUtils
 import com.winlator.star.core.GameSaveBackup
 import com.winlator.star.core.StorageRoots
 import com.winlator.star.store.StarLaunchBridge
+import com.winlator.star.ui.deck.xmbConfiguration
 import com.winlator.star.ui.findActivity
 import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
@@ -96,7 +97,7 @@ internal object XmbTools {
      * width for a column two levels deep (label = column minus icon box, gaps and padding).
      */
     fun lineChars(context: Context): Int {
-        val cfg = context.resources.configuration
+        val cfg = xmbConfiguration(context)
         val w = cfg.screenWidthDp.toFloat()
         val port = cfg.screenHeightDp > cfg.screenWidthDp * 1.05f
         val x0 = 16f + 2 * 46f + 8f

@@ -34,7 +34,8 @@ object AppThemeState {
     val showSdStorage: StateFlow<Boolean> = _showSdStorage
 
     /** Global interface scale (Compose density multiplier) and font scale, applied in
-     *  WinlatorTheme. 1.0 = unchanged; clamped 0.5..1.5 by the setters. */
+     *  WinlatorTheme. 1.0 = unchanged (in the XMB style: the fixed scale of XmbScale.kt, whatever the phone's own
+     *  Display size and Font size); clamped 0.5..1.5 by the setters. */
     private val _uiScale = MutableStateFlow(0.9f)
     val uiScale: StateFlow<Float> = _uiScale
 

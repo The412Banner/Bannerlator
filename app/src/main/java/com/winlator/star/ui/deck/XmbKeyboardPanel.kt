@@ -84,7 +84,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -329,8 +328,7 @@ internal fun XmbKeyboardPanelBody(
     val newlineAction = !singleLine && (imeAction == ImeAction.Default || imeAction == ImeAction.None)
 
     // Drawn at the Deck style's size on every page, so the panel looks the same wherever it opens from.
-    val host = LocalDensity.current
-    val density = LocalDeckDensity.current ?: Density(host.density * DECK_UI_SCALE, host.fontScale)
+    val density = deckDensity()
 
     val currentClose by rememberUpdatedState(onClose)
     val currentSystem by rememberUpdatedState(onSystemKeyboard)

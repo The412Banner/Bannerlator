@@ -9,7 +9,7 @@ index 1cd44e8..41feaff 100644
      std::env::var("XDG_RUNTIME_DIR").expect("Runtime dir not set")
  }
 diff --git a/crates/xodus/src/hardware.rs b/crates/xodus/src/hardware.rs
-index 228f7ec..b9cf58e 100644
+index 5fc6f68..ab26421 100644
 --- a/crates/xodus/src/hardware.rs
 +++ b/crates/xodus/src/hardware.rs
 @@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
@@ -48,7 +48,7 @@ index 228f7ec..b9cf58e 100644
      let length = smbios[1];
  
 diff --git a/crates/xodus/src/tokens/backend/keychain.rs b/crates/xodus/src/tokens/backend/keychain.rs
-index 1903638..bd187b4 100644
+index e6717e1..590aa05 100644
 --- a/crates/xodus/src/tokens/backend/keychain.rs
 +++ b/crates/xodus/src/tokens/backend/keychain.rs
 @@ -1,6 +1,9 @@

@@ -1,40 +1,18 @@
+diff --git a/crates/xodus-cli/src/commands.rs b/crates/xodus-cli/src/commands.rs
+index 4f1b211..088a6d0 100644
 --- a/crates/xodus-cli/src/commands.rs
 +++ b/crates/xodus-cli/src/commands.rs
-@@ -6,6 +6,7 @@
- pub mod login;
+@@ -7,6 +7,7 @@ pub mod login;
  pub mod logout;
+ pub mod offline_pc;
  pub mod profile;
 +pub mod cloud_token;
  pub mod social;
  pub mod game_activity;
  pub mod achievements;
---- a/crates/xodus-cli/src/main.rs
-+++ b/crates/xodus-cli/src/main.rs
-@@ -70,6 +70,8 @@
-         #[arg(long, default_value_t = false)]
-         json: bool,
-     },
-+    #[command(about = "Get an Xbox Cloud Gaming streaming token for the stored account")]
-+    CloudToken,
-     #[command(about = "Read Xbox gamertag and gamerpic for the stored account")]
-     Profile {
-         #[arg(long, default_value_t = false)]
-@@ -251,6 +253,7 @@
-         args.command,
-         SubCommand::Account { .. }
-             | SubCommand::Profile { .. }
-+            | SubCommand::CloudToken
-             | SubCommand::Social { .. }
-             | SubCommand::GameActivity { .. }
-             | SubCommand::Achievements { .. }
-@@ -317,6 +320,7 @@
-             }
-         },
-         SubCommand::Profile { json } => commands::profile::run(&tokens, json).await,
-+        SubCommand::CloudToken => commands::cloud_token::run(&tokens).await,
-         SubCommand::Social { .. } => commands::social::run(&tokens).await,
-         SubCommand::GameActivity { title_id, json } => commands::game_activity::run(&tokens, title_id, json).await,
-         SubCommand::Achievements { title_id, json } => commands::achievements::run(&tokens, title_id, json).await,
+diff --git a/crates/xodus-cli/src/commands/cloud_token.rs b/crates/xodus-cli/src/commands/cloud_token.rs
+new file mode 100644
+index 0000000..ba9c7a5
 --- /dev/null
 +++ b/crates/xodus-cli/src/commands/cloud_token.rs
 @@ -0,0 +1,237 @@
@@ -275,3 +253,32 @@
 +    }
 +
 +}
+diff --git a/crates/xodus-cli/src/main.rs b/crates/xodus-cli/src/main.rs
+index 290d586..b2a3383 100644
+--- a/crates/xodus-cli/src/main.rs
++++ b/crates/xodus-cli/src/main.rs
+@@ -86,6 +86,8 @@ enum SubCommand {
+         #[arg(long, default_value_t = false)]
+         json: bool,
+     },
++    #[command(about = "Get an Xbox Cloud Gaming streaming token for the stored account")]
++    CloudToken,
+     #[command(about = "Read Xbox gamertag and gamerpic for the stored account")]
+     Profile {
+         #[arg(long, default_value_t = false)]
+@@ -304,6 +306,7 @@ async fn main() -> ExitCode {
+         SubCommand::Account { .. }
+             | SubCommand::SavedAccounts { .. }
+             | SubCommand::Profile { .. }
++            | SubCommand::CloudToken
+             | SubCommand::Social { .. }
+             | SubCommand::NativeSocial { .. }
+             | SubCommand::GameActivity { .. }
+@@ -381,6 +384,7 @@ async fn main() -> ExitCode {
+         },
+         SubCommand::Profile { json, license } => commands::profile::run(&tokens, json, license).await,
+         SubCommand::NativeSocial { action } => commands::native_social::run(&tokens,action).await,
++        SubCommand::CloudToken => commands::cloud_token::run(&tokens).await,
+         SubCommand::Social { .. } => commands::social::run(&tokens).await,
+         SubCommand::GameActivity { title_id, json } => commands::game_activity::run(&tokens, title_id, json).await,
+         SubCommand::Achievements { title_id, json } => commands::achievements::run(&tokens, title_id, json).await,

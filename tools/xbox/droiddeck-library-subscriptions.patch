@@ -1,9 +1,11 @@
+diff --git a/crates/xodus-cli/src/commands/library.rs b/crates/xodus-cli/src/commands/library.rs
+index 0c88129..36191bf 100644
 --- a/crates/xodus-cli/src/commands/library.rs
 +++ b/crates/xodus-cli/src/commands/library.rs
-@@ -96,6 +96,48 @@
+@@ -99,6 +99,48 @@ fn diagnostic(stage: &'static str, status: u16, count: usize) {
      eprintln!("NEXUS_LIBRARY_DIAGNOSTIC_V1 {stage} {status} {count}");
  }
-
+ 
 +const SUBSCRIPTION_PLANS: &[&str] = &[
 +    "CFQ7TTC0KGQ8", "CFQ7TTC0KHS0", "CFQ7TTC0P85B",
 +    "CFQ7TTC0K5DJ", "CFQ7TTC0K6L8", "CFQ7TTC10QFD",
@@ -49,15 +51,13 @@
  async fn query(tokens: &TokenManager, market: &str) -> Result<Value, &'static str> {
      if market.len() != 2 || !market.bytes().all(|b| b.is_ascii_uppercase()) {
          return Err("market");
-@@ -155,6 +197,7 @@
+@@ -158,12 +200,13 @@ async fn query(tokens: &TokenManager, market: &str) -> Result<Value, &'static st
          let page: Value = serde_json::from_slice(&bytes).map_err(|_| "entitlements-json")?;
          all.add(&page)?;
          if continuation.is_none() {
 +            let subscriptions = subscriptions(&client, &ticket, market).await?;
-             if tokens.get_user().map_err(|_| "account-check")?.username != account {
-                 return Err("account-changed");
-             }
-@@ -162,7 +205,7 @@
+             tokens.validate_user_token_snapshot(&snapshot).map_err(|_|"account-changed")?;
+             all.finish();
              for (reason, count) in &all.reasons { diagnostic(reason, 0, *count); }
              diagnostic(if all.skipped > 0 { "partial" } else { "complete" }, 0, all.skipped);
              return Ok(json!({"schema":1,"account":account,"market":market,
@@ -66,7 +66,7 @@
                  "entitlements":all.entries.into_values().collect::<Vec<_>>()}));
          }
      }
-@@ -200,6 +243,26 @@
+@@ -201,6 +244,26 @@ pub async fn run(tokens: &TokenManager, json_output: bool, market: String) -> Ex
  #[cfg(test)]
  mod tests {
      use super::*;

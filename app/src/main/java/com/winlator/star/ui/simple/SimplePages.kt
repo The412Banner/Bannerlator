@@ -192,7 +192,7 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
                     MenuEntry("files", L("File manager"), L("Internal storage, SD card and every container's drives"), icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
                     MenuEntry("saves", L("Save Manager"), L("Back up, restore and sync game saves"), icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
                     MenuEntry("logs", L("Game logs"), L("What each game printed while it ran"), icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
-                    MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(Screen.Wrappers.route) }),
+                    MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(LabParityRoutes.WRAPPERS) }),
                     MenuEntry("drivers", L("GPU drivers"), L("Turnip and Qualcomm drivers"), icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.contents("installed")) }),
                 ),
             ),
@@ -251,6 +251,7 @@ internal fun NavGraphBuilder.simpleRoutes(
     }
     composable(SimpleRoutes.CONTROLS) { SimpleControlsPage(onBack = back) }
     composable(SimpleRoutes.APPEARANCE) { SimpleAppearancePage(onBack = back) }
+    labParityRoutes(open, back)
 }
 
 // ───────────────────────────── Appearance ─────────────────────────────

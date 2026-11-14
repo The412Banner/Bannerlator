@@ -858,6 +858,7 @@ internal fun SimplePicker(
         runCatching { requesters[first].requestFocus() }
     }
     Dialog(onDismissRequest = onDismiss) {
+        com.winlator.star.sound.DialogSound()
         Column(
             modifier = Modifier
                 .widthIn(min = 320.dp, max = 560.dp)
@@ -878,7 +879,7 @@ internal fun SimplePicker(
                             .fillMaxWidth()
                             .heightIn(min = 46.dp)
                             .focusRequester(requesters[i])
-                            .onFocusChanged { f = it.isFocused }
+                            .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                             .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
                             .clickable(enabled = enabled) { onPick(o.value) }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -899,7 +900,7 @@ internal fun SimplePicker(
                                 .fillMaxWidth()
                                 .heightIn(min = 46.dp)
                                 .focusRequester(requesters[options.size])
-                                .onFocusChanged { f = it.isFocused }
+                                .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                                 .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape) else Modifier)
                                 .clickable { onCustom() }
                                 .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -915,7 +916,7 @@ internal fun SimplePicker(
                                 .fillMaxWidth()
                                 .heightIn(min = 46.dp)
                                 .focusRequester(requesters[options.size + 1])
-                                .onFocusChanged { f = it.isFocused }
+                                .onFocusChanged { if (it.isFocused && !f) com.winlator.star.sound.UiSounds.focusGained(); f = it.isFocused }
                                 .then(if (f) Modifier.background(accent.copy(alpha = 0.3f), SimpleShape).drawBehind { drawRect(accent, size = Size(3.dp.toPx(), size.height)) } else Modifier)
                                 .clickable { onDownload() }
                                 .padding(horizontal = 14.dp, vertical = 6.dp),

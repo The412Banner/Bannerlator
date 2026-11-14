@@ -2,7 +2,7 @@ package com.winlator.star.ui.deck.settings
 
 import com.winlator.star.ui.simple.T
 
-// The XMB Settings tab: six real tabs (EditorTabs.APP_*) over the registry's rows. XMB ONLY: the plain Deck and Lab show the
+// The XMB Settings tab: seven real tabs (EditorTabs.APP_*) over the registry's rows. XMB ONLY: the plain Deck and Lab show the
 // registry's own categories, and the Classic shell reads them too. The legacy rows keep their categories
 // ("app.general", "app.saves"...); this layout files them, and the XMB-only rows of
 // AppSettingsRows, into the tabs by id. Every legacy hand-off is dropped (each is a real row or action here, or removed), and
@@ -10,6 +10,7 @@ import com.winlator.star.ui.simple.T
 //
 //   app.t.general      General           landing, updateNotify, updatePrerelease + (extras) Updates block, About / Help / Account / Run setup again
 //   app.t.appearance   Appearance        style, labLook, orientation, uiScale, fontScale, showStores / Internal / Sd + (extras) theme preset line + popup (first), accent colour picker
+//   app.t.sounds       Sounds            sounds.* (Menu sounds, Volume, Sound pack: its row opens the Sound pack list)
 //   app.t.library      Games & library   steamGridKey, steam.* (4), contents.* (2), steam.region + (extras) Steam library locations (first), region / network tests
 //   app.t.performance  Performance       sustained, threadBoost, bigCores, gpuClockLock, saveSessionFps + (extras) Root controls dialog, Lossless.dll
 //   app.t.storage      Storage & data    downloads.* (5), saves.* (8) + (extras) space used, folders, sound banks, backup / restore
@@ -37,6 +38,7 @@ internal object AppSettingsLayout {
         id.startsWith("app.controllers.") -> null
         id.startsWith("app.general.") -> EditorTabs.APP_GENERAL
         id.startsWith("app.appearance.") -> EditorTabs.APP_APPEARANCE
+        id.startsWith("app.sounds.") -> EditorTabs.APP_SOUNDS
         id.startsWith("app.library.") -> EditorTabs.APP_LIBRARY
         id.startsWith("app.steam.") -> EditorTabs.APP_LIBRARY
         id.startsWith("app.contents.") -> EditorTabs.APP_LIBRARY

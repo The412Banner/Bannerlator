@@ -1,5 +1,7 @@
 package com.winlator.star.store
 
+import com.winlator.star.ui.simple.SimpleShape
+import com.winlator.star.ui.simple.labTile
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -76,6 +78,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -481,6 +485,7 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         installBytes = installSizeBytes,
                         onManageLocations = { showLibraryManager = true },
                         onDismiss = { showSpeedPicker = false },
+                        onLocationsChanged = { reloadInstallLocations() },
                         onDownload = { tier, debugLog, installRoot ->
                             showSpeedPicker = false
                             lastSpeedTier = tier
@@ -692,6 +697,10 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
         if (languageRun != null && event.startsWith("Download") &&
             event.split(":").getOrNull(1)?.toIntOrNull() == appId) return
         when {
+            // Steam came online after the page opened: show the Cloud saves manager now.
+            event == "SteamStatus:${SteamRepository.SteamStatus.ONLINE.name}" && game?.isInstalled == true && !cloudVisible -> {
+                runOnUiThread { if (!isFinishing && !isDestroyed) refreshUI() }
+            }
             event.startsWith("DownloadProgress:") -> {
                 // Format: DownloadProgress:appId:installDone:installTotal:downloadDone:downloadTotal:etaSec:speedBps
                 val parts = event.split(":")
@@ -1198,8 +1207,9 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
             installAction = InstallAction.UNINSTALL
             installBtnEnabled = true
             launchBtnEnabled = true
-            // Cloud saves need a live Steam session (the SteamCloud handle is only bound after login).
-            cloudVisible = SteamRepository.getInstance().steamCloud != null
+            // Cloud saves need a live Steam session. SteamCloudBackend covers both engines: the old
+            // JavaSteam handle (repo.steamCloud) is always null on the Rust engine (the default).
+            cloudVisible = SteamCloudBackend.current() != null
             // Resolve the game's launch container off the UI thread AFTER the game row is bound —
             // drives the Apply/Collect tier and the "set up first" gate.
             if (cloudVisible) resolveCloudContainer(g)
@@ -1362,6 +1372,8 @@ class SteamGameDetailActivity : ComponentActivity(), SteamRepository.SteamEventL
                         if (imported) SteamLibraryImport.releaseImported(this, appId)
                         else SteamAppManifest.removeFor(installDir, appId)
                         SteamRepository.getInstance().database.markUninstalled(appId)
+                        // The Downloads & Library list too, or it keeps showing the game as installed.
+                        com.winlator.star.store.download.StoreDownloadHooks.markUninstalled(Store.STEAM, appId.toString())
                     },
                     // Another game (a demo / server sharing this installdir) still uses the folder: keep it.
                     keepFolder = { imported || SteamInstallPaths.folderSharedWithOtherGame(this, File(installDir), appId) },
@@ -1913,6 +1925,39 @@ private fun SteamGameDetailScreen(
     var gearMenuExpanded by remember { mutableStateOf(false) }
     // Goldberg (Steam emulator) popup — opened from the gear menu (installed games only).
     var goldbergDialogOpen by remember { mutableStateOf(false) }
+    // Gear → "Use a folder I already have": the game's files from a PC copy, another app or a backup
+    // (SteamFolderAdopt: installs into that folder, keeping what is already there).
+    var adoptFolder by remember { mutableStateOf<File?>(null) }
+    val adoptPick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { r ->
+        val path = if (r.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(r.data) else null
+        if (path != null) adoptFolder = File(path)
+    }
+    adoptFolder?.let { folder ->
+        var looksRight by remember(folder) { mutableStateOf<Boolean?>(null) }
+        LaunchedEffect(folder) { looksRight = withContext(Dispatchers.IO) { SteamFolderAdopt.looksLike(context, folder, appId) } }
+        val start = {
+            adoptFolder = null
+            Thread {
+                val err = SteamFolderAdopt.adopt(context, appId, folder)
+                (context as? android.app.Activity)?.runOnUiThread {
+                    android.widget.Toast.makeText(context, err ?: "Using ${folder.name} — checking its files, see Downloads.", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }.start()
+        }
+        when (looksRight) {
+            true -> LaunchedEffect(folder) { start() }
+            false -> OutlinedAlertDialog(
+                onDismissRequest = { adoptFolder = null },
+                confirmButton = { TextButton(onClick = { start() }) { Text("Use it") } },
+                dismissButton = { TextButton(onClick = { adoptFolder = null }) { Text("Cancel") } },
+                title = { Text(nameText) },
+                text = { Text("\"${folder.name}\" doesn't look like this game's folder. Use it anyway? The game's files will be added there.") },
+            )
+            null -> {}
+        }
+    }
 
     // Achievements are loaded ONCE at the screen level so the tab count badge (done/total) and the
     // Achievements tab body share a single source of truth. Same strategy as the old section: fetch
@@ -2091,6 +2136,30 @@ private fun SteamGameDetailScreen(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
+                    // The fill is the ink colour in the stores, so over the solid fill the label is redrawn in
+                    // onPrimary, clipped to the filled part.
+                    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current ==
+                        androidx.compose.ui.unit.LayoutDirection.Rtl
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .drawWithContent {
+                                val w = size.width * installFrac
+                                clipRect(
+                                    left = if (rtl) size.width - w else 0f,
+                                    right = if (rtl) size.width else w,
+                                ) { this@drawWithContent.drawContent() }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                    }
                 }
             } else {
                 // Accent action button: Add to shortcuts (installed) / Retry / Install.
@@ -2177,6 +2246,14 @@ private fun SteamGameDetailScreen(
                     MenuItemDivider()
                     GearMenuItem("🧩", "Manage DLC", enabled = dlcEntries.isNotEmpty(),
                         onClick = { gearMenuExpanded = false; onDlcLineClick() })
+                    if (installAction == InstallAction.INSTALL && !downloading) {
+                        MenuItemDivider()
+                        GearMenuItem("📁", "Use a folder I already have",
+                            onClick = {
+                                gearMenuExpanded = false
+                                adoptPick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(context, nameText))
+                            })
+                    }
                     // Storage move — only for an installed game that has somewhere to go. Hidden
                     // (not greyed) otherwise, since "no SD card" isn't a state the user can act on.
                     if (moveStorageLabel != null) {
@@ -2451,8 +2528,11 @@ private fun SteamGameDetailScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = if (!signedIn) "Sign in to Steam to sync this game's cloud saves."
-                                   else "Install this game to sync its cloud saves with your Steam Cloud.",
+                            text = when {
+                                !signedIn -> "Sign in to Steam to sync this game's cloud saves."
+                                gameStatus == GameStatus.INSTALLED -> "Connecting to Steam…"
+                                else -> "Install this game to sync its cloud saves with your Steam Cloud."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -3750,6 +3830,8 @@ private fun DownloadSpeedPickerDialog(
     onManageLocations: () -> Unit,
     onDismiss: () -> Unit,
     onDownload: (speedTier: Int, debugLog: Boolean, installRoot: String?) -> Unit,
+    /** A location was added from this dialog (custom folder, another drive): reload the list. */
+    onLocationsChanged: () -> Unit = {},
 ) {
     // Tiers mirror GameNative: cores × ratio scales download + decompress concurrency.
     // Higher tiers download faster but use more RAM/CPU during decompression.
@@ -3765,8 +3847,12 @@ private fun DownloadSpeedPickerDialog(
     // Install location — the user's default (the internal one unless they set another), asked every
     // time. The chooser is only shown when there is more than the internal default (an SD card is
     // detected or library folders were added); with just the internal location nothing changes.
-    var selectedLocationId by remember { mutableStateOf(defaultLocationId) }
-    val showLocations = locations.size > 1
+    // Follows a default changed while the dialog is open (Manage locations → Make default, "Use as default").
+    var selectedLocationId by remember(defaultLocationId) { mutableStateOf(defaultLocationId) }
+    var makeDefault by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    // Always shown: "+ Custom folder…" and other drives must be reachable even with internal storage only.
+    val showLocations = locations.isNotEmpty()
     // A removed library leaves a dangling id; fall back to the first entry (the internal default).
     val chosenLocation = locations.firstOrNull { it.id == selectedLocationId } ?: locations.firstOrNull()
     // An unreachable library or one without room for the game can't be downloaded to. Internal is
@@ -3804,14 +3890,16 @@ private fun DownloadSpeedPickerDialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
+            // Drawn at the Lab's size, as a Lab panel: hard corners, thin line, compact rows.
+            com.winlator.star.ui.DeckDialogScaled {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.96f)
-                    .widthIn(max = 720.dp)
+                    .fillMaxWidth(0.9f)
+                    .widthIn(max = 640.dp)
                     .heightIn(max = maxH),
-                shape = RoundedCornerShape(16.dp),
+                shape = SimpleShape,
                 color = cs.surface,
-                border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.22f)),
+                border = BorderStroke(1.dp, cs.outline),
             ) {
                 Column(Modifier.heightIn(max = maxH)) {
                     // Header — no download-size/on-disk values are in scope in this composable, so
@@ -3854,7 +3942,7 @@ private fun DownloadSpeedPickerDialog(
                                 .weight(1.15f)
                                 .fillMaxHeight()
                                 .verticalScroll(rememberScrollState())
-                                .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                         ) {
                             Text(
                                 text = "SPEED & RESOURCE USE",
@@ -3874,82 +3962,39 @@ private fun DownloadSpeedPickerDialog(
                                 }
                                 val hint = when (tier) {
                                     DownloadSpeedConfig.TIER_SLOW ->
-                                        "Lowest RAM / CPU — gentlest on the device"
+                                        "Gentlest on the device"
                                     DownloadSpeedConfig.TIER_MEDIUM ->
-                                        "Balanced throughput and resource use"
+                                        "Balanced"
                                     DownloadSpeedConfig.TIER_FAST ->
-                                        "Best speed for most devices"
-                                    else -> "Fastest — highest RAM / CPU on decompress"
+                                        "Best for most devices"
+                                    else -> "Fastest, heaviest on RAM / CPU"
                                 }
+                                // One slim line per speed, the Lab menu's way: the selected one carries the line on its
+                                // left and a faint fill; a fading line separates the rows.
+                                if (index > 0) com.winlator.star.ui.simple.SimpleRowDivider()
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            if (isSel) cs.primary.copy(alpha = 0.16f)
-                                            else Color.Transparent,
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (isSel) cs.primary.copy(alpha = 0.55f)
-                                            else cs.outline.copy(alpha = 0.25f),
-                                            shape = RoundedCornerShape(10.dp),
-                                        )
-                                        .clickable { selected = index }
-                                        .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+                                        .background(if (isSel) cs.primary.copy(alpha = 0.10f) else Color.Transparent)
+                                        .labTile(onClick = { selected = index })
+                                        .padding(end = 8.dp),
                                 ) {
-                                    RadioButton(
-                                        selected = isSel,
-                                        onClick = { selected = index },
+                                    Box(Modifier.width(2.dp).height(34.dp).background(if (isSel) cs.primary else Color.Transparent))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(name, fontSize = 13.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = cs.onSurface, maxLines = 1)
+                                    Spacer(Modifier.width(8.dp))
+                                    // Meter fills Slow=1 … Blazing=4.
+                                    SpeedLoadMeter(filled = index + 1)
+                                    Text(
+                                        text = if (tier == DownloadSpeedConfig.TIER_FAST) "Recommended · $hint" else hint,
+                                        fontSize = 11.sp,
+                                        color = cs.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 10.dp),
                                     )
-                                    Spacer(Modifier.width(6.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = cs.onSurface,
-                                            )
-                                            // Fast is the recommended default — flag it by tier
-                                            // value (not a hard index) so it tracks the list.
-                                            if (tier == DownloadSpeedConfig.TIER_FAST) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(5.dp))
-                                                        .background(cs.primary)
-                                                        .padding(horizontal = 6.dp, vertical = 1.dp),
-                                                ) {
-                                                    Text(
-                                                        text = "RECOMMENDED",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = cs.onPrimary,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
-                                            }
-                                            Spacer(Modifier.width(8.dp))
-                                            // Meter fills Slow=1 … Blazing=4.
-                                            SpeedLoadMeter(filled = index + 1)
-                                        }
-                                        Text(
-                                            text = hint,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = cs.onSurfaceVariant,
-                                        )
-                                    }
-                                    // Per-tier "?" — has its own onClick, so tapping it opens
-                                    // help without selecting the row.
-                                    IconButton(onClick = { helpRes = tierHelpRes(tier) }) {
-                                        Icon(
-                                            Icons.Default.Help,
-                                            contentDescription = "What is this?",
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -4023,6 +4068,14 @@ private fun DownloadSpeedPickerDialog(
                                     onManage = onManageLocations,
                                     warning = { DownloadDialogWarning(text = it) },
                                 )
+                                LocationExtras(
+                                    locations = locations,
+                                    chosenId = chosenLocation?.id,
+                                    defaultId = defaultLocationId,
+                                    makeDefault = makeDefault,
+                                    onMakeDefault = { makeDefault = it },
+                                    onAdded = { id -> selectedLocationId = id; onLocationsChanged() },
+                                )
                             }
                         }
                     }
@@ -4045,12 +4098,14 @@ private fun DownloadSpeedPickerDialog(
                         Spacer(Modifier.width(4.dp))
                         Button(
                             onClick = {
+                                if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
                                 onDownload(options[selected].second, debugLog, chosenInstallRoot)
                             },
                             enabled = canDownload,
                         ) { Text("Download") }
                     }
                 }
+            }
             }
         }
         return
@@ -4170,7 +4225,10 @@ private fun DownloadSpeedPickerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onDownload(options[selected].second, debugLog, chosenInstallRoot) },
+                onClick = {
+                    if (makeDefault) chosenLocation?.let { SteamLibraryLocations.setDefault(ctx, it.id) }
+                    onDownload(options[selected].second, debugLog, chosenInstallRoot)
+                },
                 enabled = canDownload,
             ) {
                 Text("Download")
@@ -4254,4 +4312,67 @@ private fun ExePickerDialogGame(
         },
         confirmButton = {},
     )
+}
+
+/**
+ * Under the "Install to" list: "+ Custom folder…" (any folder, made a regular Steam library), one "+ <drive>" per
+ * SD card / USB drive that has no location yet (a `Steam` folder on it becomes a library), and "Use as default".
+ */
+@Composable
+private fun LocationExtras(
+    locations: List<SteamLibraryLocations.Location>,
+    chosenId: String?,
+    defaultId: String,
+    makeDefault: Boolean,
+    onMakeDefault: (Boolean) -> Unit,
+    onAdded: (String) -> Unit,
+) {
+    val ctx = LocalContext.current
+    fun addPath(path: String) {
+        when (val r = SteamLibraryLocations.add(ctx, path)) {
+            is SteamLibraryLocations.AddResult.Added -> onAdded(r.library.id)
+            is SteamLibraryLocations.AddResult.Rejected -> android.widget.Toast.makeText(ctx, r.reason, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { res ->
+        val path = if (res.resultCode == android.app.Activity.RESULT_OK) com.winlator.star.util.InAppFilePicker.pickedPath(res.data) else null
+        if (path != null) addPath(path)
+    }
+    // Drives with no location yet (the first SD card already has its own entry).
+    var drives by remember { mutableStateOf<List<com.winlator.star.core.StorageRoot>>(emptyList()) }
+    LaunchedEffect(locations) {
+        drives = withContext(Dispatchers.IO) {
+            val roots = try { com.winlator.star.core.StorageRoots.list(ctx) } catch (_: Throwable) { emptyList() }
+            roots.filter { r ->
+                if (!r.removable) return@filter false
+                val vol = com.winlator.star.core.WinePath.storageVolumeRootOf(r.dir.absolutePath) ?: return@filter false
+                vol == r.dir.absolutePath && locations.none { l -> l.kind != SteamLibraryLocations.Kind.INTERNAL && l.rootPath.startsWith(vol) }
+            }
+        }
+    }
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { pick.launch(com.winlator.star.util.InAppFilePicker.buildDirIntent(ctx, "Choose a download folder")) }) {
+                Text("+ Custom folder…")
+            }
+            for (d in drives) {
+                TextButton(onClick = {
+                    val steam = java.io.File(d.dir, "Steam")
+                    steam.mkdirs()
+                    addPath(steam.absolutePath)
+                }) { Text("+ ${d.label.ifBlank { d.dir.name }}") }
+            }
+        }
+        if (chosenId != null && chosenId != defaultId) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onMakeDefault(!makeDefault) },
+            ) {
+                androidx.compose.material3.Checkbox(checked = makeDefault, onCheckedChange = onMakeDefault)
+                Text("Use as default")
+            }
+        }
+    }
 }

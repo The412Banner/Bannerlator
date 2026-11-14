@@ -205,7 +205,10 @@ internal fun Modifier.deckFocusRing(
     return this
         .onFocusChanged {
             val now = it.isFocused
-            if (now && !focused) onFocused?.invoke()
+            if (now && !focused) {
+                onFocused?.invoke()
+                com.winlator.star.sound.UiSounds.focusGained()
+            }
             focused = now
         }
         .graphicsLayer { scaleX = scale; scaleY = scale }

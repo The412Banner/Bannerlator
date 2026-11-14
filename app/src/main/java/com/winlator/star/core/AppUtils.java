@@ -147,6 +147,7 @@ public abstract class AppUtils {
             if (toast != null) toast.cancel();
             globalToastReference = null;
         }
+        com.winlator.star.sound.UiSounds.INSTANCE.cue(com.winlator.star.sound.UiCue.TOAST_DESKTOP);
 
         View view = LayoutInflater.from(context).inflate(R.layout.custom_toast, null);
         ((TextView)view.findViewById(R.id.TextView)).setText(text);

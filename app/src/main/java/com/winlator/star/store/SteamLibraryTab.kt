@@ -570,6 +570,7 @@ fun SteamLibraryTab(
     }
 
     var showExePicker by remember { mutableStateOf<SteamExePickerData?>(null) }
+    var importing by remember { mutableStateOf(false) }
     var addToShortcuts by remember { mutableStateOf<AddToShortcutsRequest?>(null) }
     var addResult by remember { mutableStateOf<AddShortcutResult?>(null) }
     var uninstallingName by remember { mutableStateOf<String?>(null) }
@@ -667,7 +668,7 @@ fun SteamLibraryTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    LibraryTypeChips(typeFilter, onTypeFilter)
+                    LibraryTypeChips(typeFilter, onTypeFilter) { importing = true }
                     searchField(Modifier.weight(1f))
                     LibrarySortButton(sort, onSort)
                     StoreViewButton()
@@ -691,7 +692,7 @@ fun SteamLibraryTab(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                         .focusGroup(),
-                ) { LibraryTypeChips(typeFilter, onTypeFilter) }
+                ) { LibraryTypeChips(typeFilter, onTypeFilter) { importing = true } }
             }
 
             if (languageFilesCount > 0 && !languageNoticeHidden) {
@@ -820,6 +821,8 @@ fun SteamLibraryTab(
                 )
             }
 
+            if (importing) SteamImportGamesFlow(onClose = { importing = false })
+
             showExePicker?.let { data ->
                 ExePickerDialog(
                     title = "Select executable for \"${data.gameName}\"",
@@ -872,6 +875,7 @@ fun SteamLibraryTab(
 private fun LibraryTypeChips(
     typeFilter: LibraryTypeFilter,
     onTypeFilter: (LibraryTypeFilter) -> Unit,
+    onImport: () -> Unit,
 ) {
     androidx.compose.runtime.LaunchedEffect(typeFilter) { if (typeFilter == LibraryTypeFilter.GAMES) onTypeFilter(LibraryTypeFilter.ALL) }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -883,6 +887,8 @@ private fun LibraryTypeChips(
                 onClick = { onTypeFilter(f) },
             )
         }
+        // Game folders the user already has (a PC copy, another app, a backup) → installed without a full download.
+        StoreFilterChip(label = "+ Import game library", selected = false, onClick = onImport)
     }
 }
 

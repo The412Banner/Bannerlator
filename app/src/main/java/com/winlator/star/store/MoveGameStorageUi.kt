@@ -103,13 +103,11 @@ internal fun MoveStorageDialog(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = if (toSd) {
-                            "⚠️ The SD card is slower than internal storage. Some games stall while " +
-                                "loading from a card — if that happens, move it back, or use Copy game to " +
-                                "Drive C from the shortcut editor."
+                            "⚠️ SD cards are slower than internal storage. If a game stalls, move it back, " +
+                                "or use Copy game to Drive C in its shortcut to run a copy from internal storage."
                         } else {
-                            "⚠️ Shared storage and SD cards are slower than internal storage. Some games " +
-                                "stall while loading from there — if that happens, move it back, or use " +
-                                "Copy game to Drive C from the shortcut editor."
+                            "⚠️ SD cards and shared folders are slower than internal storage. If a game stalls, move it " +
+                                "back, or use Copy game to Drive C in its shortcut to run a copy from internal storage."
                         },
                         style = MaterialTheme.typography.bodySmall,
                     )

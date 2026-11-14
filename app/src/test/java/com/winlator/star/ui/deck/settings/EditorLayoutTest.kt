@@ -342,9 +342,11 @@ class EditorLayoutTest {
     }
 
     @Test
-    fun appSettingsHaveSixTabsOfTheirOwn() {
+    fun appSettingsHaveSevenTabsOfTheirOwn() {
         val ids = EditorTabs.idsFor(EditorScope.APP)
-        assertEquals(6, ids.size)
+        assertEquals(7, ids.size)
+        // Sounds sits right after Appearance.
+        assertEquals(ids.indexOf(EditorTabs.APP_APPEARANCE) + 1, ids.indexOf(EditorTabs.APP_SOUNDS))
         assertTrue(ids.all { it.startsWith("app.t.") })
         assertEquals(ids.size, ids.toSet().size)
     }

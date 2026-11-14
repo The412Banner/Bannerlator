@@ -336,6 +336,7 @@ internal fun XmbKeyboardPanelBody(
     val currentSystem by rememberUpdatedState(onSystemKeyboard)
 
     val perform: (Role, Cap?) -> Unit = { role, cap ->
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.TYPE)
         when (role) {
             Role.CHAR -> if (cap != null) {
                 session.commit(capText(cap, state.shift, state.upper))

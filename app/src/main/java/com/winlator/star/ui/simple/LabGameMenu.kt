@@ -1,5 +1,6 @@
 package com.winlator.star.ui.simple
 
+import com.winlator.star.sound.popupKeySounds
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -95,7 +96,8 @@ internal fun LabGameMenu(
         properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = false),
     ) {
         BackHandler { close {} }
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        com.winlator.star.sound.ShownSound(com.winlator.star.sound.UiCue.OPTIONS, com.winlator.star.sound.UiCue.DIALOG_CLOSE)
+        BoxWithConstraints(Modifier.fillMaxSize().popupKeySounds()) {
             val portrait = maxHeight > maxWidth
             AnimatedVisibility(visibleState = shown, enter = fadeIn(tween(220)), exit = fadeOut(tween(200))) {
                 Box(Modifier.fillMaxSize().background(Color(0x73000000)).simpleTap { close {} })

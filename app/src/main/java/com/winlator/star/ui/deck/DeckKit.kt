@@ -630,7 +630,10 @@ internal fun DeckRow(
         cs, title, subtitle, icon, danger, focused, horizontal = 20.dp, trailing = trailing, trailingModifier = Modifier,
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                if (it.isFocused && !focused) com.winlator.star.sound.UiSounds.focusGained()
+                focused = it.isFocused
+            }
             .then(if (focused) Modifier.background(cs.primary.copy(alpha = 0.12f)) else Modifier)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         chevron = onClick != null,

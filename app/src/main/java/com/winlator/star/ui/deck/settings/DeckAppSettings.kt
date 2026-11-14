@@ -24,7 +24,7 @@ import com.winlator.star.ui.theme.AppThemeState
 // ── App settings ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * The Settings tab. XMB only: the six-tab editor of [AppSettingsLayout] (theme popup, Steam library locations first, no logs): the
+ * The Settings tab. XMB only: the seven-tab editor of [AppSettingsLayout] (theme popup, Steam library locations first, no logs): the
  * registry's rows plus the XMB-only rows (AppSettingsRows), the page items of [AppSettingsExtras] (updates, folders, backup, sound
  * banks, Lossless.dll, frame-gen capture...) and no hand-off row at all. The plain Deck and Lab get the registry's categories and rows
  * exactly as they always did ([layout] null, no extras, hand-off rows that open the classic screens), so Lab's own Settings menu keeps

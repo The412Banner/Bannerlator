@@ -2947,6 +2947,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
                 return;
             }
             shortcut = new Shortcut(container, new File(shortcutPath));
+            // The game was reinstalled or imported somewhere else: point the shortcut at its current folder.
+            shortcut = com.winlator.star.store.ShortcutPathRepair.repairIfMoved(this, container, shortcut);
             stampLastPlayed(shortcut);
         }
         // Fix the Goldberg cloud-sync decision now, for the whole session (see skipCloudForGoldberg()).
@@ -6117,7 +6119,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     private boolean isGogShortcut() {
         if (shortcut == null) return false;
         String p = shortcut.path;
-        return p != null && p.toLowerCase().contains("gog_games");
+        if (p == null) return false;
+        // An imported GOG folder sits outside gog_games; GogCloudSavePaths knows those by their recorded place.
+        return p.toLowerCase().contains("gog_games")
+                || com.winlator.star.store.GogCloudSavePaths.INSTANCE.gameIdForExecPath(this, p) != null;
     }
 
     /**
@@ -7975,6 +7980,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
      * closing re-captures it for Relative Mouse, ensurePointerCapture checking the rest.
      */
     private void onInGameMenuOpenChanged(boolean open) {
+        if (inGameMenuOpen != open) com.winlator.star.sound.UiSounds.INSTANCE.cue(
+                open ? com.winlator.star.sound.UiCue.MENU_OPEN : com.winlator.star.sound.UiCue.MENU_CLOSE);
         inGameMenuOpen = open;
         // Also hides the on-handheld "playing on external display" badge while the menu is open.
         XServerDialogState.INSTANCE.setMenuOpen(open);
@@ -8618,7 +8625,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         KeyEvent routed = kc == event.getKeyCode() ? event : new KeyEvent(event.getDownTime(), event.getEventTime(),
                 event.getAction(), kc, event.getRepeatCount(), event.getMetaState(), event.getDeviceId(),
                 event.getScanCode(), event.getFlags(), event.getSource());
-        super.dispatchKeyEvent(routed);
+        boolean used = super.dispatchKeyEvent(routed);
+        com.winlator.star.sound.UiSounds.INSTANCE.key(routed, used);
     }
 
 

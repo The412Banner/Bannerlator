@@ -55,7 +55,10 @@ internal class ContainerFormSource(
     override fun shows(def: SettingDef) = def.vm != null && (env.scope != EditorScope.DEFAULTS || def.onDefaults)
     override fun editable(def: SettingDef) = true
     override fun value(def: SettingDef) = def.vm?.get?.invoke(env, vm) ?: ""
-    override fun set(def: SettingDef, value: String) { def.vm?.set?.invoke(env, vm, value) }
+    override fun set(def: SettingDef, value: String) {
+        com.winlator.star.sound.settingSound(this.value(def), value)
+        def.vm?.set?.invoke(env, vm, value)
+    }
 
     override fun baseline(def: SettingDef): String? {
         if (env.scope != EditorScope.CONTAINER || !def.onDefaults) return null
@@ -162,6 +165,7 @@ internal class GameSource(
 
     override fun set(def: SettingDef, value: String) {
         val g = def.game ?: return
+        com.winlator.star.sound.settingSound(this.value(def), value)
         // Picking the value the game already follows is not a change: it keeps following the container.
         if (g.inherit != Inherit.NONE && g.read(extras) == null && value == inherited(def)) return
         g.write(extras, value)
@@ -238,6 +242,7 @@ internal class AppSource(env: SettingsEnv) : SettingsSource(env) {
         return def.app?.get?.invoke(env.context) ?: ""
     }
     override fun set(def: SettingDef, value: String) {
+        com.winlator.star.sound.settingSound(this.value(def), value)
         def.app?.set?.invoke(env.context, value)
         version++
     }

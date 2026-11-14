@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * The id -> tab rules of the XMB / Deck Settings tab (AppSettingsLayout.kt): the legacy registry rows and the XMB-only rows
- * (AppSettingsRows) land on the six app tabs, and the rows replaced elsewhere are hidden. Pure strings: no Compose, no icons.
+ * (AppSettingsRows) land on the seven app tabs, and the rows replaced elsewhere are hidden. Pure strings: no Compose, no icons.
  */
 class AppSettingsLayoutTest {
 
@@ -30,6 +30,13 @@ class AppSettingsLayoutTest {
     fun appearanceHoldsTheNewAppearanceRows() {
         for (id in listOf("app.appearance.style", "app.appearance.labLook", "app.appearance.orientation", "app.appearance.uiScale", "app.appearance.fontScale", "app.appearance.showStores", "app.appearance.showInternal", "app.appearance.showSd")) {
             assertEquals(id, EditorTabs.APP_APPEARANCE, tab(id))
+        }
+    }
+
+    @Test
+    fun soundsHoldsTheMenuSoundsVolumeAndSoundPackRows() {
+        for (id in listOf("app.sounds.on", "app.sounds.volume", "app.sounds.pack")) {
+            assertEquals(id, EditorTabs.APP_SOUNDS, tab(id))
         }
     }
 
@@ -104,13 +111,13 @@ class AppSettingsLayoutTest {
     }
 
     @Test
-    fun everyTabARowCanLandOnIsOneOfTheSixAppTabs() {
+    fun everyTabARowCanLandOnIsOneOfTheSevenAppTabs() {
         val ids = listOf(
             "app.general.landing", "app.appearance.style", "app.library.steamGridKey", "app.steam.region", "app.performance.sustained",
-            "app.downloads.speedTier", "app.saves.steamCollect", "app.advanced.xr", "app.controllers.trueMouse", "app.contents.keepRaw",
+            "app.downloads.speedTier", "app.saves.steamCollect", "app.advanced.xr", "app.controllers.trueMouse", "app.contents.keepRaw", "app.sounds.on",
         )
         for (id in ids) assertTrue(id, tab(id) in EditorTabs.APP_IDS)
-        assertEquals(6, EditorTabs.APP_IDS.size)
+        assertEquals(7, EditorTabs.APP_IDS.size)
     }
 
     @Test

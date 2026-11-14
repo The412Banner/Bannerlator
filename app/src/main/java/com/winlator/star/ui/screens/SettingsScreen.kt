@@ -60,6 +60,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -249,6 +250,7 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
     }
 
     fun saveSettings() {
+        com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.SAVED)
         val editor = prefs.edit()
         editor.putString("box64_preset", selectedBox64Preset)
         editor.putString("fexcore_preset", selectedFEXCorePreset)
@@ -949,6 +951,20 @@ fun SettingsScreen(onSaved: () -> Unit = {}) {
         // ── Sound ─────────────────────────────────────────────────────
         FieldSetLabel("Sound")
         FieldSet {
+            val uiSounds by com.winlator.star.sound.UiSoundPacks.state.collectAsState()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Menu sounds", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(
+                    checked = uiSounds.on,
+                    onCheckedChange = { com.winlator.star.sound.UiSoundPacks.setOn(context, it) },
+                )
+            }
+            var showPackPicker by remember { mutableStateOf(false) }
+            Button(onClick = { showPackPicker = true }) {
+                Text(com.winlator.star.sound.UiSoundPacks.choices().firstOrNull { it.first == uiSounds.selected }?.second ?: "Sound pack")
+            }
+            if (showPackPicker) com.winlator.star.ui.simple.SoundPackPicker(onDismiss = { showPackPicker = false })
+            Spacer(Modifier.height(12.dp))
             Text("MIDI Sound Font", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Text(
                 "New containers start with this SoundFont. Existing containers keep their own MIDI choice.",

@@ -440,6 +440,7 @@ fun SteamStorefrontHost(
                     onToggleView = { StoreViewMode.next(ctx); libraryViewMode = if (libraryViewMode == "grid") "list" else "grid" },
                     onSignOut = { showSignOut = true },
                 )
+                StorefrontTabRow(tab = tab, tabs = railTabs, counts = counts, onSelect = { tab = it })
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -447,7 +448,6 @@ fun SteamStorefrontHost(
                         .focusRequester(contentFocus)
                         .focusGroup(),
                 ) { content(Modifier.fillMaxSize()) }
-                StorefrontTabRow(tab = tab, tabs = railTabs, counts = counts, onSelect = { tab = it })
             }
         }
 
@@ -511,10 +511,9 @@ private fun StorefrontTabRow(
     counts: Map<SteamTab, Int>,
     onSelect: (SteamTab) -> Unit,
 ) {
-    // Portrait: the tabs along the bottom edge, as in every other store.
+    // Portrait: the tabs across the top, under the title row, as in every other store.
     val cs = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
-        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
         Row(Modifier.fillMaxWidth()) {
             tabs.forEach { t ->
                 val on = tab == t
@@ -523,18 +522,19 @@ private fun StorefrontTabRow(
                     modifier = Modifier.weight(1f).labTile(onClick = { onSelect(t) }),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
                     Text(
                         text = if (n != null) "${t.label} $n" else t.label,
                         fontSize = 12.sp,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
                         color = if (on) cs.onBackground else cs.onSurfaceVariant,
                         maxLines = 1,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                     )
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
                 }
             }
         }
+        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
     }
 }
 

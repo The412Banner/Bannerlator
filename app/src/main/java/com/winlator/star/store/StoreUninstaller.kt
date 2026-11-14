@@ -65,7 +65,8 @@ object StoreUninstaller {
             val dir = installDir?.takeIf { it.isNotEmpty() }?.let { File(it) }
             // Never delete a folder that holds games (steamapps, steamapps/common, steam_games), only a game's own.
             val keep = try {
-                dir != null && (SteamInstallPaths.isLibraryContainer(dir) || keepFolder?.invoke() == true)
+                dir != null && (SteamInstallPaths.isLibraryContainer(dir) ||
+                    File(dir, SteamInstallPaths.ADOPTED_MARKER).exists() || keepFolder?.invoke() == true)
             } catch (_: Throwable) { false }
             val ok = if (keep) {
                 true

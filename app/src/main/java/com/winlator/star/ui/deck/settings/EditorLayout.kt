@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Speed
@@ -34,14 +35,14 @@ import com.winlator.star.ui.simple.T
  *    The shared ids and their label / hint / icon live in [EditorTabs]:
  *      EditorTabs.GENERAL, GRAPHICS, PERFORMANCE, CONTROLS, WINDOWS, WINCOMP, ADVANCED   container pages ("tab.general"...)
  *      EditorTabs.GAME ("tab.game"), EditorTabs.LINUX ("tab.linux")             game pages only
- *      EditorTabs.APP_GENERAL, APP_APPEARANCE, APP_LIBRARY, APP_PERFORMANCE, APP_STORAGE, APP_ADVANCED   ("app.t.*")
+ *      EditorTabs.APP_GENERAL, APP_APPEARANCE, APP_SOUNDS, APP_LIBRARY, APP_PERFORMANCE, APP_STORAGE, APP_ADVANCED   ("app.t.*")
  *      EditorTabs.tab(id: String): SettingsCategory                              one declared tab (error on an unknown id)
  *    A new tab only needs a new `when` branch in [EditorTabs.tab] and an id in the list [EditorTabs.idsFor] returns.
  *
  * 2. Scope-specific tab lists (ordered, what [EditorLayout.tabs] should be):
  *      EditorTabs.idsFor(scope: EditorScope, world: World = World.WINE): List<String>
  *      EditorTabs.tabsFor(scope: EditorScope, world: World = World.WINE): List<SettingsCategory>
- *    APP: the six app tabs. DEFAULTS and CONTAINER: the same seven container tabs, in this order: General,
+ *    APP: the seven app tabs. DEFAULTS and CONTAINER: the same seven container tabs, in this order: General,
  *    Graphics, Performance, Controls, Windows, Win components, Advanced.
  *    That is also the list for a NEW container
  *    (CONTAINER with `createMode = true`): create mode never changes the tabs. GAME: Game first, then the same ones;
@@ -254,6 +255,7 @@ internal object EditorTabs {
     // App settings.
     const val APP_GENERAL = "app.t.general"
     const val APP_APPEARANCE = "app.t.appearance"
+    const val APP_SOUNDS = "app.t.sounds"
     const val APP_LIBRARY = "app.t.library"
     const val APP_PERFORMANCE = "app.t.performance"
     const val APP_STORAGE = "app.t.storage"
@@ -261,7 +263,7 @@ internal object EditorTabs {
 
     /** The container tabs. */
     val CONTAINER_IDS: List<String> = listOf(GENERAL, GRAPHICS, PERFORMANCE, CONTROLS, WINDOWS, WINCOMP, ADVANCED)
-    val APP_IDS: List<String> = listOf(APP_GENERAL, APP_APPEARANCE, APP_LIBRARY, APP_PERFORMANCE, APP_STORAGE, APP_ADVANCED)
+    val APP_IDS: List<String> = listOf(APP_GENERAL, APP_APPEARANCE, APP_SOUNDS, APP_LIBRARY, APP_PERFORMANCE, APP_STORAGE, APP_ADVANCED)
 
     /** The ordered tab ids an editor of [scope] lists. A new container is CONTAINER: create mode adds nothing. */
     fun idsFor(scope: EditorScope, world: World = World.WINE): List<String> = when (scope) {
@@ -290,6 +292,7 @@ internal object EditorTabs {
         LINUX -> SettingsCategory(id, T("Linux runtime"), T("Only for the Linux Steam client entry: its drivers, Steam client options and speed tweaks."), Icons.Filled.Terminal)
         APP_GENERAL -> SettingsCategory(id, T("General"), T("Start-up screen, updates, about and help."), Icons.Filled.Tune)
         APP_APPEARANCE -> SettingsCategory(id, T("Appearance"), T("Interface style, theme, accent colour, size and orientation."), Icons.Filled.Palette)
+        APP_SOUNDS -> SettingsCategory(id, T("Sounds"), T("Menu sounds and sound packs."), Icons.Filled.MusicNote)
         APP_LIBRARY -> SettingsCategory(id, T("Games & library"), T("Cover art, Steam friends and chat, the Steam connection and component downloads."), Icons.AutoMirrored.Filled.LibraryBooks)
         APP_PERFORMANCE -> SettingsCategory(id, T("Performance"), T("Power defaults for every game, root controls and Lossless.dll."), Icons.Filled.Speed)
         APP_STORAGE -> SettingsCategory(id, T("Storage & data"), T("Folders, sound banks, backups, download engines and cloud saves."), Icons.Filled.Storage)

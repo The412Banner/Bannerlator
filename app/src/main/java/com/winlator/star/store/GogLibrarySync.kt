@@ -140,6 +140,8 @@ object GogLibrarySync {
                 val exe = prefs.getString("gog_exe_$gameId", null)
                 val installed = installPath.exists() && exe != null && File(exe).exists()
 
+                // A game on an SD card / USB drive that is not plugged in is not gone: keep its record.
+                if (!installed && StoreInstallLocations.onMissingVolume(installPath.absolutePath)) continue
                 if (!installed) {
                     // Self-heal: purge the stale native record + drop any durable-library row.
                     GogInstallState.purge(ctx, gameId)

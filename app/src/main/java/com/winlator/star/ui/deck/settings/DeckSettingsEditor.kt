@@ -1331,6 +1331,8 @@ internal fun SettingRow(
     val baseline = source.baseline(def)?.let { labelFor(control, it) }
     // Toggles always sit on the right; wide rows put every compact control there too.
     val inline = control is Control.Toggle || (wide && control !is Control.Cores)
+    val picker: (@Composable (() -> Unit) -> Unit)? =
+        if (def.id == AppSettingsRegistry.SOUND_PACK_ID) { dismiss -> com.winlator.star.ui.simple.SoundPackPicker(onDismiss = dismiss) } else null
 
     // XMB interface: the whole row is ONE stop of the D-pad and the controls inside it are reached through it (see
     // XmbFocusGroup.kt). A on the row: flips a toggle, opens a select's menu or a checklist's dialog, starts typing in a text
@@ -1383,13 +1385,13 @@ internal fun SettingRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RowInfo(def, level, origin, baseline, env.scope, onHelp, onGetMore, resetNow, utility, Modifier.weight(1f).padding(end = 16.dp))
                     Box(modifier = Modifier.widthIn(max = if (control is Control.Toggle) 90.dp else controlMax)) {
-                        ControlView(control, value, enabled, alignEnd = true, onPick = onPick, onCustom = onCustom, selectOpen = selectOpen, checklistOpen = checklistOpen, edit = edit, menuScheme = plainScheme)
+                        ControlView(control, value, enabled, alignEnd = true, onPick = onPick, onCustom = onCustom, selectOpen = selectOpen, checklistOpen = checklistOpen, edit = edit, menuScheme = plainScheme, picker = picker)
                     }
                 }
             } else {
                 RowInfo(def, level, origin, baseline, env.scope, onHelp, onGetMore, resetNow, utility, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-                ControlView(control, value, enabled, alignEnd = false, onPick = onPick, onCustom = onCustom, selectOpen = selectOpen, checklistOpen = checklistOpen, edit = edit, menuScheme = plainScheme)
+                ControlView(control, value, enabled, alignEnd = false, onPick = onPick, onCustom = onCustom, selectOpen = selectOpen, checklistOpen = checklistOpen, edit = edit, menuScheme = plainScheme, picker = picker)
             }
             // Why a choice or the whole control is greyed out, and anything worth saying about the value.
             val reasons = buildList {
@@ -1661,6 +1663,8 @@ private fun ControlView(
     checklistOpen: MutableState<Boolean>,
     edit: XmbEditState?,
     menuScheme: ColorScheme,
+    /** A list of its own instead of the drop-down (the Sound pack list). */
+    picker: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     when (control) {
         Control.Toggle -> Switch(
@@ -1672,7 +1676,7 @@ private fun ControlView(
         )
         is Control.Segmented -> SegmentedPills(control.options, value, enabled, alignEnd, onPick)
         is Control.Chips -> ChipPills(control.options, value, enabled, alignEnd, onPick)
-        is Control.Select -> SelectBox(control, value, enabled, selectOpen, onPick, onCustom, menuScheme)
+        is Control.Select -> SelectBox(control, value, enabled, selectOpen, onPick, onCustom, menuScheme, picker)
         is Control.Slider -> SliderControl(control, value, enabled, onPick)
         is Control.TextField -> TextControl(control, value, enabled, edit, onPick)
         Control.Cores -> CoresControl(value, enabled, onPick)
@@ -1791,6 +1795,8 @@ private fun SelectBox(
     onPick: (String) -> Unit,
     onCustom: () -> Unit,
     menuScheme: ColorScheme,
+    /** A list of its own instead of the drop-down (the Sound pack list). */
+    picker: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val shape = deckShape(14.dp)
@@ -1849,7 +1855,9 @@ private fun SelectBox(
                 )
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 420.dp)) {
+        if (picker != null) {
+            if (open) picker { open = false }
+        } else DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 420.dp)) {
             if (inRow) {
                 MaterialTheme(colorScheme = menuScheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) { items() }
             } else {

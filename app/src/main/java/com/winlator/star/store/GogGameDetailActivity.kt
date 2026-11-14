@@ -142,6 +142,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
     private var launchVisible by mutableStateOf(false)
     private var installVisible by mutableStateOf(true)
     private var installBtnText by mutableStateOf("Install")
+    /** First install: "Download to" (StoreInstallLocations) before the download starts. */
+    private var locationPickerOpen by mutableStateOf(false)
     private var installBtnColor by mutableIntStateOf(0xFF5533CC.toInt())
     private var setExeVisible by mutableStateOf(false)
     private var uninstallVisible by mutableStateOf(false)
@@ -395,6 +397,13 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
                 }
                 GogPrereqDialogs(prereqUi)
                 resultBarMsg?.let { UninstallResultBar(it) { resultBarMsg = null } }
+                if (locationPickerOpen) {
+                    StoreInstallLocationDialog(StoreInstallLocations.Store.GOG, onDismiss = { locationPickerOpen = false }) { loc ->
+                        locationPickerOpen = false
+                        GogInstallPath.setPendingBase(gameId, loc.base)
+                        startInstall()
+                    }
+                }
             }
         }
 
@@ -470,7 +479,8 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
             cancelDownload = null
             return
         }
-        startInstall()
+        // An installed game (an update) stays where it is; a new download asks where to go.
+        if (prefs.contains("gog_dir_$gameId")) startInstall() else locationPickerOpen = true
     }
 
     private fun startInstall(verify: Boolean = false) {
@@ -595,7 +605,12 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         val dlgTitle = title
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Uninstall $dlgTitle?")
-            .setMessage("This will delete all installed game files.")
+            .setMessage(
+                if (prefs.getString("gog_dir_$gameId", null)
+                        ?.let { File(GogInstallPath.getInstallDir(this, it), SteamInstallPaths.ADOPTED_MARKER).exists() } == true)
+                    "Your imported folder and its files stay."
+                else "This will delete all installed game files."
+            )
             .setPositiveButton("Uninstall") { _, _ -> doUninstall() }
             .setNegativeButton("Cancel", null)
             .show()
@@ -605,7 +620,9 @@ class GogGameDetailActivity : ComponentActivity(), GogRedistInstaller.Host {
         val dirName = prefs.getString("gog_dir_$gameId", null) ?: return
         lifecycleScope.launch(Dispatchers.IO) {
             val installPath = GogInstallPath.getInstallDir(this@GogGameDetailActivity, dirName)
-            deleteDir(installPath)
+            // Only a game folder inside a GOG download location (an empty name would point at the whole library).
+            StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.GOG, installPath)
+            GogInstallPath.forgetBase(applicationContext, dirName)
             // Purge the FULL native install record via the one canonical helper, and clear the DL
             // manager's registry/library row — so the store list, this page, and the cross-store
             // Download Manager all agree the game is gone. Mirrors AmazonGameDetailActivity.

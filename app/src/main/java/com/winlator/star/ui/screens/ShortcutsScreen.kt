@@ -9928,11 +9928,15 @@ internal fun launchShortcutNow(activity: Activity, shortcut: Shortcut, preflight
     // never opens a session.
     if (AndroidGames.isAndroidEntry(shortcut)) {
         val r = AndroidGames.launch(activity, shortcut)
-        if (r == AndroidGames.LaunchResult.STARTED) recordLastPlayed(shortcut)
+        if (r == AndroidGames.LaunchResult.STARTED) {
+            recordLastPlayed(shortcut)
+            com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.LAUNCH)
+        }
         AndroidGames.failureMessage(shortcut, r)?.let { Toast.makeText(activity, it, Toast.LENGTH_SHORT).show() }
         return
     }
     recordLastPlayed(shortcut)
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.LAUNCH)
     if (!XrActivity.isEnabled(activity)) {
         // Effective display backend: per-game override, else the container default. Wayland reuses
         // XServerDisplayActivity's launch machinery via a guarded wayland_mode flag.

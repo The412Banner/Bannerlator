@@ -93,6 +93,8 @@ class EpicGameDetailActivity : ComponentActivity() {
 
     private var exeNameText by mutableStateOf("")
     private var installBtnText by mutableStateOf("Install")
+    /** First install: "Download to" (StoreInstallLocations) before the download starts. */
+    private var locationPickerOpen by mutableStateOf(false)
     private var installBtnColor by mutableIntStateOf(0xFF1A73E8.toInt())
     private var launchBtnVisible by mutableStateOf(false)
     private var installBtnVisible by mutableStateOf(true)
@@ -215,6 +217,12 @@ class EpicGameDetailActivity : ComponentActivity() {
                     onCloudDownload = { cloudDownload() },
                 )
                 resultBarMsg?.let { UninstallResultBar(it) { resultBarMsg = null } }
+                if (locationPickerOpen) {
+                    StoreInstallLocationDialog(StoreInstallLocations.Store.EPIC, onDismiss = { locationPickerOpen = false }) { loc ->
+                        locationPickerOpen = false
+                        startInstallInternal(loc)
+                    }
+                }
             }
         }
 
@@ -333,10 +341,17 @@ class EpicGameDetailActivity : ComponentActivity() {
                 .show()
             return
         }
-        startInstallInternal()
+        // A folder already on record (a partial download, an installed game) is resumed in place;
+        // otherwise the user chooses where the game goes.
+        val recorded = appName?.let { prefs!!.getString("epic_dir_$it", null) }?.takeIf { it.isNotBlank() }
+        if (recorded != null && File(recorded).exists()) startInstallInternal() else locationPickerOpen = true
     }
 
-    private fun startInstallInternal() {
+    /**
+     * Fresh install, resume, update or repair. A game with a folder on record keeps it (an update never moves a
+     * game); [location] picks the folder of a fresh install, else internal storage.
+     */
+    private fun startInstallInternal(location: StoreInstallLocations.Location? = null) {
         val an = appName ?: return
         EpicCancelPolicy.clear(an)   // fresh download → default to keep-on-cancel until the dialog says otherwise
         EpicDownloadControl.onFreshStart(applicationContext, an)   // supersedes any earlier pause of this game
@@ -382,7 +397,12 @@ class EpicGameDetailActivity : ComponentActivity() {
 
                 var sanitized = (title ?: "").replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
                 if (sanitized.isEmpty()) sanitized = "epic_${an.hashCode()}"
-                val installDir = File(File(filesDir, "imagefs/epic_games"), sanitized)
+                val recorded = prefs!!.getString("epic_dir_$an", null)?.takeIf { it.isNotBlank() }
+                // Installed before this run (an update / repair): its files must survive a cancel.
+                val wasInstalled = prefs!!.contains("epic_manifest_version_$an") ||
+                    !prefs!!.getString("epic_exe_$an", null).isNullOrBlank()
+                val installDir = if (recorded != null && (location == null || wasInstalled || File(recorded).exists())) File(recorded)
+                    else File(location?.base ?: File(filesDir, "imagefs/epic_games"), sanitized)
                 prefs!!.edit().putString("epic_dir_$an", installDir.absolutePath).apply()
 
                 // Feature #2 — download required(base) + the container language's files only.
@@ -426,8 +446,9 @@ class EpicGameDetailActivity : ComponentActivity() {
                         return@launch
                     }
                     // Delete the partial download if the user chose "Delete files" on any Cancel dialog.
-                    if (EpicCancelPolicy.consumeDeleteOnCancel(an)) {
-                        try { deleteDir(installDir) } catch (_: Exception) {}
+                    // Never for an update or repair of an installed game: "Delete files" only drops a new download.
+                    if (EpicCancelPolicy.consumeDeleteOnCancel(an) && !wasInstalled) {
+                        try { StoreInstallLocations.safeDelete(appCtx, StoreInstallLocations.Store.EPIC, installDir) } catch (_: Exception) {}
                         // Also clear the install record (exe/dir/version/size prefs) so the action row
                         // recomputes to "not installed" — otherwise a stale exe pref keeps Launch/Set
                         // .exe/Uninstall showing after the files are gone.
@@ -516,12 +537,17 @@ class EpicGameDetailActivity : ComponentActivity() {
     private fun confirmUninstall() {
         AlertDialog.Builder(this)
             .setTitle("Uninstall $title?")
-            .setMessage("This will delete all installed game files.")
+            .setMessage(
+                if (prefs!!.getString("epic_dir_$appName", null)?.let { File(it, SteamInstallPaths.ADOPTED_MARKER).exists() } == true)
+                    "Your imported folder and its files stay."
+                else "This will delete all installed game files."
+            )
             .setPositiveButton("Uninstall") { _, _ ->
                 val an = appName ?: return@setPositiveButton
                 val dir = prefs!!.getString("epic_dir_$an", null) ?: return@setPositiveButton
                 lifecycleScope.launch(Dispatchers.IO) {
-                    deleteDir(File(dir))
+                    // Only a game folder inside an Epic download location; a library root or a user's folder stays.
+                    StoreInstallLocations.safeDelete(applicationContext, StoreInstallLocations.Store.EPIC, File(dir))
                     // Purge the FULL native install record via the canonical helper + clear the DL
                     // manager's registry/library row, so the store list and Download Manager stay in
                     // sync. Mirrors Amazon/GOG.
@@ -734,7 +760,10 @@ class EpicGameDetailActivity : ComponentActivity() {
 
                 var sanitized = dlcTitle.replace(Regex("[^a-zA-Z0-9 \\-_]"), "").trim()
                 if (sanitized.isEmpty()) sanitized = "dlc_${dlcApp.hashCode()}"
-                val installDir = File(File(filesDir, "imagefs/epic_games"), sanitized)
+                // Beside the base game, wherever it was installed.
+                val dlcBase = appName?.let { prefs!!.getString("epic_dir_$it", null) }?.takeIf { it.isNotBlank() }
+                    ?.let { File(it).parentFile } ?: File(filesDir, "imagefs/epic_games")
+                val installDir = File(dlcBase, sanitized)
                 prefs!!.edit().putString("epic_dir_$dlcApp", installDir.absolutePath).apply()
 
                 val ok = EpicDownloadManager.install(

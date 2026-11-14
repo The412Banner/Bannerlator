@@ -158,6 +158,7 @@ fun StoreSectionHost(
                         actions()
                     }
                 }
+                SectionTabRow(tabs = tabs, selected = selected, counts = counts, onSelect = onSelect)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -165,7 +166,6 @@ fun StoreSectionHost(
                         .focusRequester(contentFocus)
                         .focusGroup(),
                 ) { content(false, Modifier.fillMaxSize()) }
-                SectionTabRow(tabs = tabs, selected = selected, counts = counts, onSelect = onSelect)
             }
         }
 
@@ -176,7 +176,7 @@ fun StoreSectionHost(
 /** Fixed rail width — the store name and the tab names as text rows. */
 private val RAIL_WIDTH = 124.dp
 
-/** Portrait: the tabs along the bottom edge, under the thumb. The selected one carries the accent line. */
+/** Portrait: the tabs across the top, under the title row. The selected one carries the line under it. */
 @Composable
 private fun SectionTabRow(
     tabs: List<StoreSectionTab>,
@@ -186,7 +186,6 @@ private fun SectionTabRow(
 ) {
     val cs = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
-        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
         Row(Modifier.fillMaxWidth()) {
             tabs.forEachIndexed { index, t ->
                 val on = selected == index
@@ -195,18 +194,19 @@ private fun SectionTabRow(
                     modifier = Modifier.weight(1f).labTile(onClick = { onSelect(index) }),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
                     Text(
                         text = if (n != null) "${t.label} $n" else t.label,
                         fontSize = 12.sp,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
                         color = if (on) cs.onBackground else cs.onSurfaceVariant,
                         maxLines = 1,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                     )
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (on) cs.primary else androidx.compose.ui.graphics.Color.Transparent))
                 }
             }
         }
+        HorizontalDivider(thickness = 1.dp, color = cs.outline.copy(alpha = 0.3f))
     }
 }
 

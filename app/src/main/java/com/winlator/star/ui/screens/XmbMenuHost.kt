@@ -184,21 +184,23 @@ private fun effectiveSel(m: XmbMenu, rows: List<XmbRow>): Int {
 private fun XmbNavState.step(m: XmbMenu, rows: List<XmbRow>, d: Int) {
     var j = effectiveSel(m, rows) + d
     while (j in rows.indices) {
-        if (rows[j] !is XmbRow.Header) { m.selKey = rows[j].key; return }
+        if (rows[j] !is XmbRow.Header) { m.selKey = rows[j].key; com.winlator.star.sound.UiSounds.focusGained(); return }
         j += d
     }
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.NAVIGATE_EDGE)
 }
 
 private fun XmbNavState.commitChoice(row: XmbRow.Choice, value: String) {
     picker = null
     if (value == row.selected) return
+    com.winlator.star.sound.UiSounds.cue(com.winlator.star.sound.UiCue.CONFIRM)
     row.onSelect(value)
     bump()
 }
 
 private fun XmbNavState.adjust(row: XmbRow, d: Int) {
     when (row) {
-        is XmbRow.Toggle -> row.onChange(!row.value)
+        is XmbRow.Toggle -> { com.winlator.star.sound.toggleSound(!row.value); row.onChange(!row.value) }
         is XmbRow.Choice -> {
             val i = row.options.indexOf(row.selected)
             val n = (if (i < 0) 0 else i) + d

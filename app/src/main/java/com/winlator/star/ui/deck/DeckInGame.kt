@@ -505,7 +505,8 @@ internal fun DeviceStatus() {
 
 /**
  * The quick menu's main page: the live controls people change most mid-game, each wired to the Classic drawer's code.
- * The Linux Steam client keeps its own touch choice (its Steam page), so the mouse and on-screen control rows stay out.
+ * The Linux Steam client keeps its own touch choice (its Steam page), so the mouse and on-screen control rows stay out,
+ * except in Lab, which shows them in every session as the Classic drawer does.
  */
 @Composable
 internal fun QuickControls(kind: InGameSessionKind) {
@@ -525,7 +526,7 @@ internal fun QuickControls(kind: InGameSessionKind) {
             hint = L("Fixes crackle or silence without restarting the game."),
             scopes = listOf(SaveScope.SESSION),
         ) { IgButton(L("Restart"), Icons.Outlined.VolumeUp, { state.onResetAudio?.run() }) }
-        if (kind != InGameSessionKind.LINUX_STEAM) {
+        if (kind != InGameSessionKind.LINUX_STEAM || com.winlator.star.ui.theme.AppThemeState.simpleLook) {
             IgDivider()
             MouseQuickRows(state)
             IgDivider()
@@ -891,7 +892,7 @@ internal fun menuTabDesc(t: MenuTab, kind: InGameSessionKind) = when (t) {
     MenuTab.PERFORMANCE -> L("Frame limit, frame generation and device power.")
     MenuTab.EFFECTS -> if (kind.isWine) L("Upscaling, sharpening, colour and ReShade.") else L("Upscaling, sharpening and colour.")
     MenuTab.OVERLAY -> L("The FPS/temperature overlay drawn over the game.")
-    MenuTab.CONTROLS -> when (kind) {
+    MenuTab.CONTROLS -> if (com.winlator.star.ui.theme.AppThemeState.simpleLook) L("On-screen controls, mouse, rumble, motion aim, players.") else when (kind) {
         InGameSessionKind.LINUX_STEAM -> L("Rumble and motion aim.")
         InGameSessionKind.LINUX_RUNTIME -> L("On-screen controls, mouse, rumble, motion aim.")
         else -> L("On-screen controls, mouse, rumble, motion aim, players.")
@@ -901,7 +902,9 @@ internal fun menuTabDesc(t: MenuTab, kind: InGameSessionKind) = when (t) {
     MenuTab.TV -> L("Play on a TV or cast to one.")
     MenuTab.FRIENDS -> L("Steam friends and chat.")
     MenuTab.MODS -> L("This game's mods and their menus.")
-    MenuTab.TOOLS -> if (kind.isWine) L("Magnifier, windows, logs and running programs.") else L("Magnifier, picture-in-picture, keyboard and performance.")
+    MenuTab.TOOLS -> if (kind.isWine) L("Magnifier, windows, logs and running programs.")
+        else if (com.winlator.star.ui.theme.AppThemeState.simpleLook) L("Magnifier, picture-in-picture, keyboard, logs and performance.")
+        else L("Magnifier, picture-in-picture, keyboard and performance.")
 }
 
 internal fun menuTabIcon(t: MenuTab): ImageVector = when (t) {
@@ -1100,6 +1103,8 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     val castSupported by state.castSupported.collectAsState()
     val friendsSource by InGameFriendsSource.state.collectAsState()
     val mods by state.mods.collectAsState()
+    // A message that landed while its thread wasn't open: a dot on the Friends page, as on the Classic rail.
+    val friendsUnread by com.winlator.star.store.SteamFriendsStore.unread.collectAsState()
     val tabs = DeckInGameState.availableMenuTabs(kind, FeatureFlags.TV_OUTPUT_ENABLED && (tvConnected || castSupported), friendsSource.tabVisible, mods.isNotEmpty())
     val shown = if (tab in tabs) tab else tabs.first()
     val accent = MaterialTheme.colorScheme.primary
@@ -1109,7 +1114,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
     LaunchedEffect(Unit) { InGameFriendsSource.poke() }
 
     @Composable
-    fun TabChip(icon: ImageVector, label: String, sel: Boolean, onPick: () -> Unit) {
+    fun TabChip(icon: ImageVector, label: String, sel: Boolean, dot: Boolean = false, onPick: () -> Unit) {
         val shape = deckShape(4.dp)
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1124,7 +1129,10 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
                 .padding(horizontal = 10.dp),
         ) {
             // Icon only: the open page's name is the page title just below.
-            Icon(icon, contentDescription = label, tint = if (sel) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(20.dp))
+            Box {
+                Icon(icon, contentDescription = label, tint = if (sel) accent else com.winlator.star.ui.simple.SimpleMuted, modifier = Modifier.size(20.dp))
+                if (dot) Box(Modifier.align(Alignment.TopEnd).size(7.dp).clip(CircleShape).background(Color(0xFFE53935)))
+            }
         }
     }
 
@@ -1214,7 +1222,9 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
         ) {
             DeckGlyph("L1", GlyphKind.BUMPER)
             TabChip(Icons.Outlined.Bolt, L("Quick"), quick) { DeckInGameState.selectLabQuick() }
-            tabs.forEach { t -> TabChip(menuTabIcon(t), menuTabTitle(t), !quick && t == shown) { DeckInGameState.selectMenuTab(t) } }
+            tabs.forEach { t ->
+                TabChip(menuTabIcon(t), menuTabTitle(t), !quick && t == shown, dot = t == MenuTab.FRIENDS && friendsUnread.values.any { it > 0 }) { DeckInGameState.selectMenuTab(t) }
+            }
             DeckGlyph("R1", GlyphKind.BUMPER)
         }
         Spacer(Modifier.height(6.dp))
@@ -1230,7 +1240,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
             Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp).focusRequester(pageFocus)) {
                 pageHeader()
                 Spacer(Modifier.height(8.dp))
-                IgHostedCard { FriendsContent(state) }
+                Box(Modifier.weight(1f).fillMaxWidth()) { LabFriendsPanel(state) }
             }
         } else {
             val scroll = key(quick, shown) { rememberScrollState() }
@@ -1280,7 +1290,7 @@ private fun LabInGameMenu(modifier: Modifier, onExit: () -> Unit) {
 
 /** A short "what → where it saves" list under a group whose controls come from the Classic drawer unchanged. */
 @Composable
-private fun SaveNotes(vararg lines: Pair<String, List<SaveScope>>) {
+internal fun SaveNotes(vararg lines: Pair<String, List<SaveScope>>) {
     val cs = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         lines.forEach { (what, scopes) ->
@@ -1306,14 +1316,16 @@ private fun SaveNotes(vararg lines: Pair<String, List<SaveScope>>) {
 internal fun ScreenPage(state: XServerDrawerState) {
     val backend by state.runtimeBackend.collectAsState()
     val kind by DeckInGameState.sessionKind.collectAsState()
-    // The Wine architecture and x86 translator mean nothing to a Linux runtime session.
-    if (backend.isValid && kind.isWine) {
+    // The Wine architecture and x86 translator mean nothing to a Linux runtime session; Lab shows the line whenever it is
+    // filled, as the Classic Graphics tab's chip does.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    if (backend.isValid && (kind.isWine || lab)) {
         IgSectionLabel(L("Running on"))
         IgCard {
             val fex = if (backend.showsFexMode) when (backend.fexMode) {
                 FexMode.UNIXLIB -> L(" · unixlib")
                 FexMode.DLL -> L(" · DLL")
-                FexMode.NA -> ""
+                FexMode.NA -> if (lab) L(" · N/A") else ""
             } else ""
             IgRow("${backend.arch} · ${backend.translator}$fex", hint = L("Architecture, translator and how FEX is loaded."))
         }
@@ -1416,7 +1428,9 @@ internal fun PerformancePage(state: XServerDrawerState) {
     IgCard { FrameLimitRow(state) }
 
     IgSectionLabel(L("Frame generation"))
-    IgHostedCard {
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        LabFrameGenPanel(state)
+    } else IgHostedCard {
         FrameGenSection(state)
         SaveNotes(
             L("On / off and multiplier (starts off each launch)") to listOf(SaveScope.SESSION),
@@ -1435,7 +1449,14 @@ internal fun PerformancePage(state: XServerDrawerState) {
             scopes = if (fromShortcut) listOf(SaveScope.GAME, SaveScope.ALL) else listOf(SaveScope.ALL),
         ) { IgButton(L("Open"), Icons.Outlined.Speed, { perfDialog = true }) }
     }
-    if (perfDialog) PerformanceDashboardDialog(state) { perfDialog = false }
+    if (perfDialog) PerfDashboard(state) { perfDialog = false }
+}
+
+/** The performance dashboard: Lab's own in Lab, the Classic dialog in the other looks. */
+@Composable
+private fun PerfDashboard(state: XServerDrawerState, onDismiss: () -> Unit) {
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) LabPerformanceDashboardDialog(state, onDismiss)
+    else PerformanceDashboardDialog(state, onDismiss)
 }
 
 // ── Visual effects ──
@@ -1444,8 +1465,9 @@ internal fun EffectsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     val gl by XServerDialogState.effectsSupported.collectAsState()
     val wayland by state.isWaylandMode.collectAsState()
     val game = igGameScope()
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
     IgSectionLabel(L("Upscaling, sharpening & colour"))
-    IgHostedCard {
+    if (lab) LabEffectsPanel(state) else IgHostedCard {
         GraphicsEffectsSection(state)
         SaveNotes(
             L("Upscaling filter, sharpening and debanding") to listOf(game),
@@ -1463,7 +1485,7 @@ internal fun EffectsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     // ReShade is a Wine-side layer, as on the Classic rail.
     if (kind.isWine) {
         IgSectionLabel(L("ReShade"))
-        IgHostedCard {
+        if (lab) LabReshadePanel() else IgHostedCard {
             ReshadeSection()
             SaveNotes(
                 L("ReShade on / off, Solo / Stack, effects and their settings") to listOf(game),
@@ -1477,7 +1499,7 @@ internal fun EffectsPage(state: XServerDrawerState, kind: InGameSessionKind) {
 @Composable
 internal fun OverlayPage(state: XServerDrawerState) {
     IgSectionLabel(L("Overlay"))
-    IgHostedCard {
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) LabHudPanel(state) else IgHostedCard {
         HudContent(state, embedded = true)
         SaveNotes(
             L("Everything on this page") to listOf(hudScope()),
@@ -1498,6 +1520,11 @@ internal fun ControlsPage(state: XServerDrawerState, kind: InGameSessionKind) {
     // Pad and the rumble rows follow the drawer's "Save for" footer (ControllerSaveTarget).
     val saveScope by XServerDialogState.controllerSaveScope.collectAsState()
     val padScope = if (saveScope.gameName != null && saveScope.toGame) SaveScope.GAME else SaveScope.CONTAINER
+    // Lab: its own Controls with every sub-tab the Classic drawer has, in every session.
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        LabControlsPanel(state, kind)
+        return
+    }
     IgHostedCard {
         // Player slots are Wine's XInput slots; the Linux Steam client keeps its own touch choice (its Steam page).
         ControlsContent(state, playerSlots = kind.isWine, pointerAndTouch = kind != InGameSessionKind.LINUX_STEAM)
@@ -1560,19 +1587,31 @@ internal fun AudioPage(state: XServerDrawerState) {
         ) { IgButton(L("Restart audio"), null, { state.onResetAudio?.run() }) }
     }
     if (show) {
-        com.winlator.star.ui.components.AudioSettingsDialog(
+        val scopeLabel = if (fromShortcut) L("applies now · saved for this game and as this engine's default") else L("applies now · saved as this engine's default")
+        val onSave: (com.winlator.star.ui.components.AudioConfig) -> Unit = { newCfg ->
+            com.winlator.star.ui.components.saveAudioConfig(ctx, driverId, newCfg)
+            cfg = newCfg
+            state.onReapplyAudio?.run()
+            show = false
+        }
+        if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+            LabAudioSettingsDialog(
+                initial = cfg,
+                scopeLabel = scopeLabel,
+                latencyLive = false,
+                driverLabel = engine,
+                driverId = driverId,
+                onDismiss = { show = false },
+                onSave = onSave,
+            )
+        } else com.winlator.star.ui.components.AudioSettingsDialog(
             initial = cfg,
-            scopeLabel = if (fromShortcut) L("applies now · saved for this game and as this engine's default") else L("applies now · saved as this engine's default"),
+            scopeLabel = scopeLabel,
             latencyLive = false,
             driverLabel = engine,
             driverId = driverId,
             onDismiss = { show = false },
-            onSave = { newCfg ->
-                com.winlator.star.ui.components.saveAudioConfig(ctx, driverId, newCfg)
-                cfg = newCfg
-                state.onReapplyAudio?.run()
-                show = false
-            }
+            onSave = onSave,
         )
     }
 }
@@ -1581,6 +1620,12 @@ internal fun AudioPage(state: XServerDrawerState) {
 @Composable
 internal fun SteamPage(state: XServerDrawerState) {
     IgSectionLabel(L("Steam client"))
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        LabSteamClientPanel(state)
+        IgSectionLabel(L("Components"))
+        LabLinuxComponentsPanel(state)
+        return
+    }
     IgHostedCard {
         LinuxSteamSection(state)
         SaveNotes(L("Touch mode and every switch here") to listOf(SaveScope.GAME))
@@ -1595,6 +1640,10 @@ internal fun SteamPage(state: XServerDrawerState) {
 // ── TV ──
 @Composable
 internal fun TvPage(state: XServerDrawerState) {
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        LabTvPanel(state)
+        return
+    }
     IgHostedCard {
         TvContent(state)
         SaveNotes(
@@ -1621,13 +1670,19 @@ internal fun ToolsPage(state: XServerDrawerState, kind: InGameSessionKind) {
         IgRow(L("Show keyboard"), hint = stringResource(if (xmbKeyboard) R.string.ig_keyboard_hint_xmb else R.string.ig_keyboard_hint_android)) { IgButton(L("Show keyboard"), Icons.Outlined.Keyboard, { closeThen(state.onKeyboard) }) }
     }
 
-    IgSectionLabel(if (kind.isWine) L("Windows & logs") else L("Performance"))
+    // Lab: the log and the controller test in every session, as the Classic drawer's Advanced tab and Players sub-tab offer them.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    IgSectionLabel(if (kind.isWine) L("Windows & logs") else if (lab) L("Logs & performance") else L("Performance"))
     IgCard {
-        // Wine's windows, its log and its XInput slots: Wine sessions only.
+        // Wine's windows, its log and its XInput slots: Wine sessions only (Lab: windows only).
         if (kind.isWine) {
             IgRow(L("Switch window"), hint = L("Bring another of the game's windows to the front.")) { IgButton(L("Switch window…"), Icons.Outlined.ViewCarousel, { closeThen(state.onActiveWindows) }) }
             IgDivider()
-            IgRow(L("Live log"), hint = L("Wine and Box64 / FEX output while logging is on.")) { IgButton(L("Live log"), Icons.Outlined.Description, { closeThen(state.onLogs) }) }
+        }
+        if (kind.isWine || lab) {
+            IgRow(L("Live log"), hint = if (kind.isWine) L("Wine and Box64 / FEX output while logging is on.") else L("The session's output while logging is on.")) {
+                IgButton(L("Live log"), Icons.Outlined.Description, { closeThen(state.onLogs) })
+            }
             IgDivider()
             IgRow(L("Controller test & remap"), hint = L("Check buttons and sticks, bind a physical profile, set player slots.")) {
                 IgButton(L("Controller test"), Icons.Outlined.SportsEsports, { XServerDialogState.show(XServerDialogState.ActiveDialog.CONTROLLER_TEST) })
@@ -1636,7 +1691,7 @@ internal fun ToolsPage(state: XServerDrawerState, kind: InGameSessionKind) {
         }
         IgRow(L("Performance dashboard"), hint = L("Clocks, thermals, memory and power profile.")) { IgButton(L("Open"), Icons.Outlined.Speed, { perfDialog = true }) }
     }
-    if (perfDialog) PerformanceDashboardDialog(state) { perfDialog = false }
+    if (perfDialog) PerfDashboard(state) { perfDialog = false }
 
     IgSectionLabel(L("Opening this menu"))
     val corner by DeckInGameState.cornerButton.collectAsState()
@@ -1672,25 +1727,57 @@ private fun RunningPrograms(state: XServerDrawerState) {
 
     var affinityFor by remember { mutableStateOf<XServerDialogState.TmProcess?>(null) }
     var endFor by remember { mutableStateOf<XServerDialogState.TmProcess?>(null) }
+    // Lab: the Classic Task Manager's whole header (stats, per-core clocks, the container), its process count, Clear and
+    // the programs' icons, and New Task (a typed command) beside Run (the picker).
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    val count by XServerDialogState.tmCount.collectAsState()
+    val containerInfo by XServerDialogState.tmContainerInfo.collectAsState()
 
-    IgHostedCard { TmStatGrid(header) }
+    if (lab) {
+        LabTmStatGrid(header)
+        Spacer(Modifier.height(10.dp))
+        LabTmCoreStrip(header)
+        Spacer(Modifier.height(10.dp))
+        LabTmContainerPanel(containerInfo)
+    } else IgHostedCard { TmStatGrid(header) }
     Spacer(Modifier.height(10.dp))
     IgCard {
+        if (lab) {
+            IgRow(L("Processes: %1\$s", count)) { IgButton(L("Clear"), null, { XServerDialogState.onTmDismissed?.run() }) }
+            IgDivider()
+        }
         if (processes.isEmpty()) {
             IgInfo(L("No programs reported yet."))
         } else {
             processes.forEachIndexed { i, p ->
                 if (i > 0) IgDivider()
-                IgRow(p.name + if (p.wow64) L(" (32-bit)") else "", hint = L("PID %1\$s · %2\$s", p.pid, p.formattedMemory), wideControl = true) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IgButton(L("Cores"), Icons.Outlined.Memory, { affinityFor = p })
-                        IgButton(L("Front"), Icons.Outlined.FlipToFront, { XServerDialogState.onTmBringToFront?.invoke(p.name, p.pid) })
-                        IgButton(L("End"), Icons.Outlined.Close, { endFor = p }, danger = true)
+                val row: @Composable () -> Unit = {
+                    IgRow(p.name + if (p.wow64) L(" (32-bit)") else "", hint = L("PID %1\$s · %2\$s", p.pid, p.formattedMemory), wideControl = true) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IgButton(L("Cores"), Icons.Outlined.Memory, { affinityFor = p })
+                            IgButton(L("Front"), Icons.Outlined.FlipToFront, { XServerDialogState.onTmBringToFront?.invoke(p.name, p.pid) })
+                            IgButton(L("End"), Icons.Outlined.Close, { endFor = p }, danger = true)
+                        }
                     }
                 }
+                if (lab) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Box(Modifier.padding(start = 14.dp)) { LabTmProcessIcon(p) }
+                        Box(Modifier.weight(1f)) { row() }
+                    }
+                } else row()
             }
         }
         IgDivider()
+        if (lab) {
+            IgRow(L("New task"), hint = L("Type a command to run, or browse for a program.")) {
+                IgButton(L("New task…"), Icons.Outlined.Keyboard, {
+                    XServerDialogState.onTmDismissed?.run()
+                    XServerDialogState.onTmNewTask?.run()
+                })
+            }
+            IgDivider()
+        }
         IgRow(L("Run a program"), hint = L("Start another program in this session.")) {
             IgButton(L("Run…"), Icons.Outlined.Terminal, {
                 XServerDialogState.onTmDismissed?.run()
@@ -1706,7 +1793,10 @@ private fun RunningPrograms(state: XServerDrawerState) {
         modifier = Modifier.padding(start = 6.dp, top = 8.dp),
     )
 
-    affinityFor?.let { p -> ProcessorAffinityDialog(proc = p, onDismiss = { affinityFor = null }) }
+    affinityFor?.let { p ->
+        if (lab) LabProcessorAffinityDialog(proc = p, onDismiss = { affinityFor = null })
+        else ProcessorAffinityDialog(proc = p, onDismiss = { affinityFor = null })
+    }
     endFor?.let { p ->
         IgConfirmDialog(
             title = L("End %1\$s?", p.name),

@@ -84,7 +84,7 @@ import kotlinx.coroutines.delay
 
 private val UnreadDot = Color(0xFFE53935)
 
-private const val HELP_TEXT =
+internal const val FRIENDS_HELP_TEXT =
     "Chat with Steam friends while you play. Shown when friends/chat is enabled; during SteamLite " +
         "games it works through the in-game Steam client."
 
@@ -191,7 +191,7 @@ internal fun FriendsContent(state: XServerDrawerState) {
             AlertDialog(
                 onDismissRequest = { showHelp = false },
                 title = { Text("Friends") },
-                text = { Text(HELP_TEXT) },
+                text = { Text(FRIENDS_HELP_TEXT) },
                 confirmButton = { TextButton(onClick = { showHelp = false }) { Text("OK") } },
             )
         }

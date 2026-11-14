@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 01:56 EST — fix/sound-startup-own-pack MERGED (main 1ad771c0)
+
+- **User:** "sounds right, [no] more start up sound. merge it" — listened on the Pocket FIT with the Switch pack after restarting the app (installed build cd44d9c2, base.apk cbb41ae5; app started 01:35:45 EST, after the 01:32:38 install). Device-proven by the user.
+- **Merge:** --no-ff of fix/sound-startup-own-pack 29055c27 into main 81012101 → **1ad771c0**. Backup `refs/backup/20261114/main-before-sound-startup-own-pack` = 81012101 (pushed). Merged tree == branch tip; code == tested build cd44d9c2 (only PROGRESS_LOG differs).
+- **CI:** branch build 43566013164 green 4/4; main push build 43568633845 (headSha 1ad771c0) started.
+- **Left:** branch fix/sound-startup-own-pack and worktree kept until the user says to delete them. Goes out with the next release (no release without the user's word).
+
 ## 2026-11-14 01:30 EST — fix/sound-startup-own-pack: start-up sound only from the chosen pack (branch, CI pending)
 
 - **Why:** user (Pocket FIT, pack "Switch" by EMERALD0874): "I have a different sound pack set so why do I still hear steam big picture when starting the app?" Switch has no steam_os_startup.wav; UiSoundBank.resolve fills every missing sound from the Steam Big Picture pack. Options given A (start-up only from the pack) / B (missing sounds: fill or silent) / C (start-up switch); user: "option a".

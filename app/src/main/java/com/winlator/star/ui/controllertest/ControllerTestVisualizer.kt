@@ -204,14 +204,14 @@ private fun isPsFamily(art: PadArt) =
     art == PadArt.DUALSENSE || art == PadArt.DUALSHOCK4 || art == PadArt.DUALSHOCK3
 
 // ── Element bookkeeping (unchanged: bit ids → verified tally) ─────────────────────────────────────
-private val ALL_ELEMENTS = listOf(
+internal val ALL_ELEMENTS = listOf(
     "a", "b", "x", "y", "lb", "rb", "lt", "rt",
     "back", "start", "l3", "r3", "dup", "ddown", "dleft", "dright", "guide"
 )
 // A Steam Controller also has the "…" (Quick Access) button between the trackpads.
-private val STEAM_ELEMENTS = ALL_ELEMENTS + "qam"
+internal val STEAM_ELEMENTS = ALL_ELEMENTS + "qam"
 
-private fun friendlyName(id: String): String = when (id) {
+internal fun friendlyName(id: String): String = when (id) {
     "a" -> "A / ✕"; "b" -> "B / ○"; "x" -> "X / □"; "y" -> "Y / △"
     "lb" -> "LB / L1"; "rb" -> "RB / R1"; "lt" -> "LT / L2"; "rt" -> "RT / R2"
     "back" -> "View / Share"; "start" -> "Menu / Options"

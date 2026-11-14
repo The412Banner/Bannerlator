@@ -94,6 +94,8 @@ internal fun LabInGameDialog(
     scroll: Boolean = true,
     actions: (@Composable RowScope.() -> Unit)? = null,
     footer: (@Composable RowScope.() -> Unit)? = null,
+    /** The close button when it should do more than B (a folder browser: B goes up a level, the close button closes). */
+    onClose: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -124,7 +126,7 @@ internal fun LabInGameDialog(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
                     }
                     Spacer(Modifier.width(8.dp))
-                    IgButton(null, Icons.Outlined.Close, onDismiss, modifier = Modifier.focusRequester(closeFocus))
+                    IgButton(null, Icons.Outlined.Close, onClose ?: onDismiss, modifier = Modifier.focusRequester(closeFocus))
                 }
                 Spacer(Modifier.height(8.dp))
                 Box(Modifier.width(30.dp).height(3.dp).background(accent))

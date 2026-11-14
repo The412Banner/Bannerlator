@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 03:05 EST — feat/lab-parity-2: Lab as a 1:1 equal of Classic (branch, in progress)
+
+- **Why:** user (after Lab Settings › Check for updates opened the Classic Settings page): "lab is supposed to be a 1:1 equal to classic to offer all classic has but all in lab ui style/theme". Audit of main 1a8728a2 (5 areas, code reading, top claims spot-checked): ~15 options missing from Lab, ~45 places where Lab opens a Classic page or pop-up, ~20 partial. User: "do it all on one new branch off main, then install and test to verify"; also remove AGENTS.md.
+- **Built so far:** beb3b1c5 removes AGENTS.md (upstream agent persona incl. an auto `git add/commit/push` rule under another author). d40d4bd1 route groundwork: `ui/simple/LabParity.kt` + one route file per area; Lab redirects the Classic wrapper route and Deck's Stores page to Lab routes; Tools › Wrappers uses the Lab route; side-rail highlight on the wrapper page. CI 43571860249.
+- **Plan:** one helper per area on sub-branches `feat/lab-parity-2-<area>` (settings, game actions, game extras, containers/downloads/wrappers, contents/controls, files/logs/saves/search, in-game menu, Lab theme + store pages), each CI-built, merged here, then one APK, install on the Pocket FIT, drive every area, logcat check. Merge to main only on the user's go.
+- **Resume:** `git ls-remote origin 'refs/heads/feat/lab-parity-2*'`, CI per sub-branch.
+
 ## 2026-11-14 01:56 EST — fix/sound-startup-own-pack MERGED (main 1ad771c0)
 
 - **User:** "sounds right, [no] more start up sound. merge it" — listened on the Pocket FIT with the Switch pack after restarting the app (installed build cd44d9c2, base.apk cbb41ae5; app started 01:35:45 EST, after the 01:32:38 install). Device-proven by the user.

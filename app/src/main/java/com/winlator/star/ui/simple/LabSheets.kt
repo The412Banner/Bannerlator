@@ -59,6 +59,7 @@ internal fun LabOverlay(onDismiss: () -> Unit, content: @Composable () -> Unit) 
     // and bottom where the page underneath (its top line and button hints) shows through.
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         com.winlator.star.ui.DeckDialogBars()
+        LabFullScreenDialogWindow()
         SimpleFlat {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 LabWallpaper()
@@ -158,5 +159,36 @@ internal fun LabSheetDialog(title: String, onDismiss: () -> Unit, doneLabel: Str
                 LabButton(doneLabel, primary = true, onClick = onDismiss)
             }
         }
+    }
+}
+
+/**
+ * Makes the dialog window this is called in cover the whole screen, under the status bar, navigation bar and camera hole,
+ * and hides the bars the activity behind it hides: otherwise Android keeps the dialog clear of those areas and the page
+ * underneath shows there (its top line at the top, its last row and button hints at the bottom).
+ */
+@Composable
+internal fun LabFullScreenDialogWindow() {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window ?: return
+    androidx.compose.runtime.DisposableEffect(window) {
+        window.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.also {
+                it.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        // The bars the activity behind keeps hidden stay hidden here too (a swipe in from the edge shows them for a moment).
+        val behind = (view.context as? android.app.Activity) ?: generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
+            .filterIsInstance<android.app.Activity>().firstOrNull()
+        val insets = behind?.window?.decorView?.let { androidx.core.view.ViewCompat.getRootWindowInsets(it) }
+        val statusHidden = insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) == false
+        val navHidden = insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.navigationBars()) == false
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (statusHidden) controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        if (navHidden) controller.hide(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
+        onDispose {}
     }
 }

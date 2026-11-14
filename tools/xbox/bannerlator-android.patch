@@ -48,7 +48,7 @@ index 5fc6f68..ab26421 100644
      let length = smbios[1];
  
 diff --git a/crates/xodus/src/tokens/backend/keychain.rs b/crates/xodus/src/tokens/backend/keychain.rs
-index e6717e1..590aa05 100644
+index e6717e1..06ecf39 100644
 --- a/crates/xodus/src/tokens/backend/keychain.rs
 +++ b/crates/xodus/src/tokens/backend/keychain.rs
 @@ -1,6 +1,9 @@
@@ -61,3 +61,16 @@ index e6717e1..590aa05 100644
  use std::os::linux::net::SocketAddrExt;
  use std::os::unix::net::{SocketAddr, UnixStream};
  use std::time::Duration;
+@@ -31,7 +34,12 @@ impl TokenBackend for KeychainBackend {
+     fn mutation_lock(&self) -> Result<Box<dyn crate::tokens::store::TokenMutationGuard + '_>, TokenStoreError> {
+         let uid = unsafe { libc::geteuid() };
+         // Stable across CLI/service environments; do not key this on TMPDIR.
++        #[cfg(not(target_os = "android"))]
+         let root = std::path::PathBuf::from(format!("/tmp/xodus-nexus-credentials-{uid}"));
++        // Android has no /tmp; the app starts every backend process with the same private HOME.
++        #[cfg(target_os = "android")]
++        let root = std::path::PathBuf::from(std::env::var_os("HOME").ok_or_else(|| std::io::Error::other("HOME is not set"))?)
++            .join(format!(".xodus-credentials-{uid}"));
+         Ok(Box::new(crate::tokens::transaction::lock_at(&root, std::time::Duration::from_secs(15))?))
+     }
+     fn get(&self, key: &str) -> Result<Option<Vec<u8>>, TokenStoreError> {

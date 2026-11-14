@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -215,7 +216,9 @@ internal fun LabHome(
         val portrait = maxHeight > maxWidth
         val gap = 12.dp
         val pad = if (portrait) 12.dp else 18.dp
-        val rowH: Dp = if (portrait) 140.dp else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp, 200.dp)
+        // Bigger text (Android's font size times the app's Font size) makes the tiles taller; the page scrolls when they no longer fit.
+        val textGrow = LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val rowH: Dp = if (portrait) 140.dp * textGrow else ((maxHeight - pad * 2 - gap * 2 - 30.dp) / 3).coerceIn(118.dp * textGrow, 200.dp * textGrow)
         // The game in the big tile: the one picked in the library row (a tap, or the controller resting on it), else the last played.
         val game = recent.firstOrNull { it.file.path == selPath } ?: lastGame
         // Its art goes behind the page (Appearance › Game art background).
@@ -443,7 +446,8 @@ internal fun LabHome(
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) { cell(1f) { SystemTile(it) }; cell(1f) { ContainersTile(it) } }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.fillMaxSize().padding(start = pad, end = pad, top = 4.dp, bottom = pad)) {
+            // Scrolls like portrait when the tiles do not fit (large text or interface size).
+            Column(verticalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = pad, end = pad, top = 4.dp, bottom = pad)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                     ContinueTile(Modifier.weight(2f).height(rowH * 2 + gap))
                     Column(Modifier.weight(2f), verticalArrangement = Arrangement.spacedBy(gap)) {

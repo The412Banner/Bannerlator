@@ -33,6 +33,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -166,7 +170,11 @@ internal fun LabBar(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Landscape: the section rail down the left, icons with short labels. */
+/**
+ * Landscape: the section rail down the left, icons with short labels. It scrolls when the entries do not fit (large
+ * text or interface size) and keeps the current section in view.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
@@ -178,21 +186,27 @@ internal fun LabRail(current: Int, onSection: (Int) -> Unit, modifier: Modifier 
             .fillMaxHeight()
             .background(SimplePanelBrush, RectangleShape)
             .drawBehind { drawRect(SimpleLineDraw, topLeft = androidx.compose.ui.geometry.Offset(size.width - 1f, 0f), size = Size(1f, size.height)) }
-            .padding(vertical = 14.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 10.dp),
     ) {
         LAB_SECTIONS.forEachIndexed { i, s ->
             val on = i == current
+            val reveal = remember { BringIntoViewRequester() }
+            // After a frame, so the rail has been laid out.
+            LaunchedEffect(on) { if (on) { withFrameNanos { }; runCatching { reveal.bringIntoView() } } }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier
                     .width(66.dp)
+                    .bringIntoViewRequester(reveal)
                     .then(if (on) Modifier.background(accent.copy(alpha = 0.16f), SimpleShape) else Modifier)
                     .labTile(onClick = { onSection(i) })
                     .padding(vertical = 7.dp),
             ) {
                 Icon(s.icon, contentDescription = L(s.label), tint = if (on) accent else SimpleMuted, modifier = Modifier.size(21.dp))
-                Text(L(s.short), color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, maxLines = 1)
+                // Its own line height: the theme's body style would give the 10 sp label a 24 sp line.
+                Text(L(s.short), color = if (on) SimpleStrong else SimpleMuted, fontSize = 10.sp, lineHeight = 13.sp, maxLines = 1)
             }
         }
     }

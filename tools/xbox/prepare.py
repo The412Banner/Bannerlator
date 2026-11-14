@@ -11,7 +11,7 @@ cache = Path(sys.argv[1]).resolve()
 lock = json.loads((recipe / 'backend.lock.json').read_text())
 local_patches = ['droiddeck-credentials.patch', 'droiddeck-launch-view.patch', 'droiddeck-library-subscriptions.patch',
                  'bannerlator-android.patch', 'bannerlator-diagnostics.patch',
-                 'bannerlator-parallel-download.patch', 'bannerlator-cloud-token.patch']
+                 'bannerlator-parallel-download.patch', 'bannerlator-cloud-token.patch', 'bannerlator-dlc-mount.patch']
 identity = hashlib.sha256((recipe / 'backend.lock.json').read_bytes() + b''.join((recipe / name).read_bytes() for name in local_patches)).hexdigest()
 source = cache / ('source-' + identity[:16])
 if not (source / '.prepared').is_file():

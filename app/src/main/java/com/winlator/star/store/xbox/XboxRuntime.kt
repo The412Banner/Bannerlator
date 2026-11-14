@@ -136,6 +136,11 @@ object XboxRuntime {
             // its uploads can overwrite a real account's cloud copies.
             env["XODUS_SAVE_SYNC"] = if (cloudSaves) "auto" else "off"
             view.optString("playfab").takeIf { it.isNotBlank() && it != "null" }?.let { env["XODUS_XSTS_PLAYFAB"] = it }
+            // DLC mounting: the backend's workspace for this session, inside the imagefs (drive Z:).
+            view.optString("mountRoot").takeIf { it.isNotBlank() && it != "null" }?.let { root ->
+                val relative = runCatching { imagefsRoot.canonicalFile.toPath().relativize(File(root).canonicalFile.toPath()) }.getOrNull()
+                if (relative != null && !relative.startsWith("..")) env["XODUS_MOUNT_ROOT"] = "Z:\\" + relative.toString().replace('/', '\\')
+            }
             // The Wine env is logged at launch (ProcessHelper); keep the bridge key and the Xbox token out of it.
             com.winlator.star.store.SteamLogRedactor.registerSecret(bridge.key)
             env["XODUS_XSTS_PLAYFAB"]?.let { header ->

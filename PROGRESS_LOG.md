@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 21:10 EST — Pocket FIT reboot (main, resume point)
+
+- **User:** "save to memory I got to reboot device".
+- **State before reboot:** FIT has fix/lab-auto-fit 084fb2fe pubg (base.apk fee7abd9…, installed 21:03:08 EST; does not have the Xbox Nexus update). No game running; display density 345, auto-rotate on. main = 175aadd2 (+ logs); main CI 43544349042: pubg/standard/antutu green, ludashi still running.
+- **Next (user decides):** stage the main 175aadd2 pubg APK from CI 43544349042, ask, then install on the FIT.
+
 ## 2026-11-13 21:05 EST — MERGED fix/lab-auto-fit → main 175aadd2 (--no-ff), device-tested on the Pocket FIT
 
 - **User: "yes merge both".** Lab branch merged after its portrait build (084fb2fe, CI 43543142097 green) passed on the FIT.

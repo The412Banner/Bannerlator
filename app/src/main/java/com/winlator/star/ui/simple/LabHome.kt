@@ -227,6 +227,10 @@ internal fun LabHome(
         deckActions.ownLegend.value = legend
         onDispose { if (deckActions.ownLegend.value === legend) deckActions.ownLegend.value = null }
     }
+    // Touch: the "X Game menu" hint with no tile focused opens the menu of the game on the big tile.
+    LabHintFallback(android.view.KeyEvent.KEYCODE_BUTTON_X) {
+        (recent.firstOrNull { it.file.path == selPath } ?: lastGame)?.let { menuFor = it }
+    }
     val addGame = { GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.ADD_GAME) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {

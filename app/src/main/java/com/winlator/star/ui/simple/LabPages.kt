@@ -118,6 +118,10 @@ internal fun LabLibraryPage(onNavigate: (String) -> Unit, vm: ShortcutsViewModel
         // Games that left the library (removed elsewhere) drop out of the pick.
         if (picked.isNotEmpty()) picked = picked.filter { p -> shortcuts.any { it.file.path == p } }.toSet()
     }
+    // Touch: the "X Game menu" hint with no card focused opens the menu of the game the art shows.
+    LabHintFallback(android.view.KeyEvent.KEYCODE_BUTTON_X) {
+        (games.firstOrNull { it.file.path == LabArt.selected?.file?.path } ?: games.firstOrNull())?.let { menuFor = it }
+    }
     val deckActions = LocalDeckActions.current
     DisposableEffect(deckActions, picking) {
         val legend = if (picking) listOf("B" to L("Done"), "A" to L("Pick"), "X" to L("Game menu"))

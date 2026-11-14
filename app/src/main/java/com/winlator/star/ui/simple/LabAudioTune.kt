@@ -109,6 +109,11 @@ internal fun LabAudioTune(
         delay(120)
         runCatching { first.requestFocus() }
     }
+    // Touch: the "X Save" and "Start ?" hints work with no row focused (Start explains the chosen preset).
+    LabHintFallback(KeyEvent.KEYCODE_BUTTON_X) { onSave(cfg) }
+    LabHintFallback(KeyEvent.KEYCODE_BUTTON_START) {
+        AUDIO_PRESETS.firstOrNull { it.id == cfg.preset }?.let { p -> help = L(p.name) to p.helpRes }
+    }
 
     LabOverlay(onDismiss) {
         Column(

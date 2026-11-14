@@ -50,6 +50,26 @@ internal fun labGlyphKey(glyph: String): Int? = when (glyph.trim().uppercase()) 
  * goes: the page's own key handling first, then the app's shortcuts. A B that nothing handles is sent as Back, the way
  * Android turns an unhandled game-pad B into Back.
  */
+/**
+ * What a page does with a button when no row or tile has the controller's focus (after touch nothing has it), for the
+ * hints whose button acts on the focused item: Home's X opens the menu of the game on the big tile. Set with
+ * [LabHintFallback] while the page shows.
+ */
+internal object LabHintFallbacks {
+    val actions = androidx.compose.runtime.snapshots.SnapshotStateMap<Int, () -> Unit>()
+}
+
+/** While on screen: a tap on [keyCode]'s hint runs [action] when the press itself reached nothing. */
+@Composable
+internal fun LabHintFallback(keyCode: Int, action: () -> Unit) {
+    val latest = androidx.compose.runtime.rememberUpdatedState(action)
+    androidx.compose.runtime.DisposableEffect(keyCode) {
+        val run: () -> Unit = { latest.value() }
+        LabHintFallbacks.actions[keyCode] = run
+        onDispose { if (LabHintFallbacks.actions[keyCode] === run) LabHintFallbacks.actions.remove(keyCode) }
+    }
+}
+
 internal fun labPressButton(view: View, keyCode: Int) {
     val root = view.rootView ?: return
     fun press(code: Int): Boolean {
@@ -59,7 +79,11 @@ internal fun labPressButton(view: View, keyCode: Int) {
         val handledUp = root.dispatchKeyEvent(KeyEvent.changeAction(down, KeyEvent.ACTION_UP))
         return handledDown || handledUp
     }
-    if (!press(keyCode) && keyCode == KeyEvent.KEYCODE_BUTTON_B) press(KeyEvent.KEYCODE_BACK)
+    if (press(keyCode)) return
+    // Nothing had the focus the button acts on: the page's own default for it, else B as Back.
+    val fallback = LabHintFallbacks.actions[keyCode]
+    if (fallback != null) fallback()
+    else if (keyCode == KeyEvent.KEYCODE_BUTTON_B) press(KeyEvent.KEYCODE_BACK)
 }
 
 /** A button hint ("B Back"): a tap presses that button. Hints for directions or button pairs are labels only. */

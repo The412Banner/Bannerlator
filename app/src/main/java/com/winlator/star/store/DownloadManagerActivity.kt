@@ -140,6 +140,8 @@ class DownloadManagerActivity : ComponentActivity() {
         GogLibrarySync.seed(this)
         EpicLibrarySync.seed(this)
         com.winlator.star.store.xbox.XboxDownloads.seed(this)
+        // Rows of games uninstalled without clearing this list (older builds) say "Installed": drop them.
+        Thread({ try { StoreLibraryReconcile.dropStale(this) } catch (t: Throwable) { android.util.Log.w("DownloadManager", "library reconcile failed", t) } }, "library-reconcile").start()
         // Deck XMB home: this screen follows the Deck's orientation lock like the store screens do.
         val xmbHome = isXmbHome(this)
         if (xmbHome) AppOrientation.apply(this)

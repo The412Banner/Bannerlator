@@ -175,6 +175,9 @@ object DownloadRegistry {
 
     fun get(key: String): DownloadEntry? = _entries.value[key]
 
+    /** The INSTALLED rows right now (not via the derived [entries] flow, which updates a moment later). */
+    fun installedNow(): List<DownloadEntry> = _entries.value.values.filter { it.state == DownloadState.INSTALLED }
+
     /** True if an active (QUEUED/DOWNLOADING/PAUSED) entry exists for [key]. */
     fun isActive(key: String): Boolean = _entries.value[key]?.isActive == true
 

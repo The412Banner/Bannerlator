@@ -214,7 +214,16 @@ internal object ExeShortcutImporter {
         val desktopDir = container.getDesktopDir()
         if (!desktopDir.exists()) desktopDir.mkdirs()
 
-        val safeName = displayName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim().ifEmpty { "game" }
+        val baseSafe = displayName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim().ifEmpty { "game" }
+        // Never write over a game that is already there (it would lose its settings): the next free "Name (2)", "Name (3)"…
+        var safeName = baseSafe
+        var shownName = displayName
+        var n = 2
+        while (File(desktopDir, "$safeName.desktop").exists()) {
+            safeName = "$baseSafe ($n)"
+            shownName = "$displayName ($n)"
+            n++
+        }
         val shortcutFile = File(desktopDir, "$safeName.desktop")
 
         // Resolve to a Wine drive letter against the container's mount map. Z: would
@@ -227,7 +236,7 @@ internal object ExeShortcutImporter {
         val escaped = WinePath.escapeForExec(winPath)
         val content = buildString {
             append("[Desktop Entry]\n")
-            append("Name=").append(displayName).append("\n")
+            append("Name=").append(shownName).append("\n")
             append("Exec=wine ").append(escaped).append("\n")
             append("Icon=").append(safeName).append("\n")
             append("Type=Application\n")

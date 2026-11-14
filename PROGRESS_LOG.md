@@ -1,5 +1,10 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 03:55 EST — feat/lab-parity-2: device pass 1 (8fc677b5), in-game menu launch next (branch)
+
+- **Seen working on the Pocket FIT (8fc677b5, no crash):** Lab Settings › Updates page (the original Classic-jump bug), Storage and folders, Root controls and heat safety, new Settings rows (download engines, Steam connection tests, Steam library locations, MIDI banks); Appearance › Show game stores off/on (Stores leaves the side menu; restored on); Tools › Lab file manager + folder listing, Lab Log Manager + Lab log viewer; Save Manager › Settings in landscape scrolls to the last switch (Shuvam's bug); Contents › Linux runtime + Installed (Install GPU driver warning + Browse/Pick via system, Wayland/Linux zip rows), Lab file picker; Controls › Assign + Device; game menu › Community configs page, Properties pop-up; game settings info lines (exe, SD card, container) + Direct XInput row. Wrappers still Classic in this build (containers merge not in it).
+- **Next:** AIO launch (container 1, shortcut execArgs temporarily `--cube vk`, backup /sdcard/Download/lp2-test/AIO.desktop.bak) to check the Lab in-game menu; then full build 05036caa (CI 43577134770).
+
 ## 2026-11-14 05:25 EST — feat/lab-parity-2: all 8 areas merged, first device test (branch)
 
 - **Merged** (backup `refs/backup/20261114/lab-parity-2-before-merges` = f6f2e98c): settings, gameactions, gameextras, contents, tools, ingame, theme, containers (each CI-green on its sub-branch). Merge fixes: duplicate `val lab` in ShortcutActionDialogs (game extras' one → `labPages`), SimpleOneMenu Logs tab conflict (kept the settings side: the tab is gone, Lab Settings links to the Lab Log Manager), duplicate internal Lab dialog helpers renamed per area (`LabAction*`, `LabTool*`, `LabSheetDialog`), SimpleClassicEditor link/tool lines combined. Plus root-27's Save Manager scroll fix (bcbb0940 → f6f2e98c).

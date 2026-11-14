@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 14:15 EST — fix/lab-test-fixes MERGED into main (d33d619e)
+
+- **User:** "merge it".
+- **Merge:** backup `refs/backup/20261114/main-before-lab-test-fixes` = f59ed643; `--no-ff` merge commit d33d619e (parents f59ed643 + d2e208d3). Code vs the tested build d2e208d3: only PROGRESS_LOG.md differs → main code = the build device-tested on the Pocket FIT (CI 43629051037 green ×4). Main push CI: 43630414466.
+- **In main now:** Lab pop-up buttons back (LabActionButton), light-look focus without the offset box, Add game EXE never overwrites a same-name game, restore confirm names the game, file picker follows Orientation.
+- **Open:** Steam pre-flight / EA setup, Ubisoft pop-up, Linux sessions, community upload still not device-tested (reasons in the 14:06 entry); pre-existing: two-tap Lab rows, Remove leaves cover/icon files. Branch fix/lab-test-fixes kept.
+
 ## 2026-11-14 14:06 EST — Lab untried-areas device test DONE + fix/lab-test-fixes (branch, awaiting the user)
 
 - **User:** "test the untried areas first, device is yours and finish it". Tested on the Pocket FIT on main code (d03ed0da), then on the fix builds.

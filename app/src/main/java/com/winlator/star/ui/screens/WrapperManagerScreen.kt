@@ -152,12 +152,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
 
     // Resolve the real GPU once (native probe): vendor 0x5143 = Qualcomm/Adreno, plus a friendly model
     // name for the applicability lines. Wrapped defensively so a probe hiccup never crashes the screen.
-    val gpu = remember {
-        val vendor = runCatching { GPUInformation.getVendorID(null, null) }.getOrDefault(0)
-        val model = runCatching { GPUInformation.extractModelName(GPUInformation.getRenderer(null, null)) }
-            .getOrNull()?.takeIf { it.isNotBlank() } ?: "this GPU"
-        GpuInfo(isQualcomm = vendor == 0x5143, model = model)
-    }
+    val gpu = remember { probeWrapperGpu() }
 
     var slots by remember { mutableStateOf(manager.listSlots().toList()) }
     var imported by remember { mutableStateOf(manager.enumerateImported().toList()) }
@@ -265,12 +260,7 @@ fun WrapperManagerBody(modifier: Modifier = Modifier) {
                     if (!inspection.valid) {
                         Toast.makeText(context, R.string.wrapper_invalid_toast, Toast.LENGTH_LONG).show()
                     } else {
-                        // Default the display name to the file's base name.
-                        val base = (path?.substringAfterLast('/') ?: uri.lastPathSegment?.substringAfterLast('/'))
-                            ?.substringBeforeLast('.')
-                            ?.takeIf { it.isNotBlank() }
-                            ?: "Imported wrapper"
-                        importNameDraft = base
+                        importNameDraft = wrapperImportBaseName(path, uri)
                         pendingInspection = inspection
                         pendingImportUri = uri
                     }
@@ -789,10 +779,32 @@ private fun WrapperCardBody(
 }
 
 /** GPU probe result used by the applicability lines. */
-private data class GpuInfo(val isQualcomm: Boolean, val model: String)
+internal data class GpuInfo(val isQualcomm: Boolean, val model: String)
+
+/** The real GPU (native probe): vendor 0x5143 = Qualcomm/Adreno, plus a friendly model name. Never throws. */
+internal fun probeWrapperGpu(): GpuInfo {
+    val vendor = runCatching { GPUInformation.getVendorID(null, null) }.getOrDefault(0)
+    val model = runCatching { GPUInformation.extractModelName(GPUInformation.getRenderer(null, null)) }
+        .getOrNull()?.takeIf { it.isNotBlank() } ?: "this GPU"
+    return GpuInfo(isQualcomm = vendor == 0x5143, model = model)
+}
+
+/** The default display name of a picked import: the file's base name. */
+internal fun wrapperImportBaseName(path: String?, uri: Uri): String =
+    (path?.substringAfterLast('/') ?: uri.lastPathSegment?.substringAfterLast('/'))
+        ?.substringBeforeLast('.')
+        ?.takeIf { it.isNotBlank() }
+        ?: "Imported wrapper"
+
+/** The detected env keys of an imported wrapper that "Edit settings" can hide (not handled, debug or driver-internal). */
+internal fun editableWrapperKeys(manager: WrapperManager, identifier: String): List<String> =
+    manager.detectedEnvKeys(identifier).filter {
+        it !in WrapperManager.HANDLED_ENV_KEYS && !WrapperManager.isDebugEnvKey(it) &&
+            !WrapperManager.isDriverInternalEnvKey(it)
+    }
 
 /** Chip labels for the true capabilities of a wrapper (in a stable order). */
-private fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
+internal fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
     val out = ArrayList<String>()
     if (caps.hasIcd) out.add("Vulkan ICD")
     if (caps.hasBcnLayer) out.add("BCn layer")
@@ -801,7 +813,7 @@ private fun capLabels(caps: WrapperManager.WrapperCaps): List<String> {
 }
 
 /** One-line "what is this" summary for the inspection page (a valid import always carries an ICD). */
-private fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
+internal fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
     caps.hasIcd && (caps.hasBcnLayer || caps.hasCompatLayer) -> "Vulkan ICD wrapper with extra layers"
     caps.hasIcd -> "Vulkan ICD wrapper"
     caps.hasBcnLayer -> "BCn layer"
@@ -810,7 +822,7 @@ private fun importDescription(caps: WrapperManager.WrapperCaps): String = when {
 }
 
 /** GPU-applicability one-liner for the detail view; null when there are no GPU-gated layers. */
-private fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): String? {
+internal fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): String? {
     val layerish = caps.hasBcnLayer || caps.hasCompatLayer
     return when {
         layerish && gpu.isQualcomm ->
@@ -821,7 +833,7 @@ private fun gpuApplicability(caps: WrapperManager.WrapperCaps, gpu: GpuInfo): St
 }
 
 /** Plain "what will be added / needs to work" lines for the inspection page. */
-private fun importNeeds(caps: WrapperManager.WrapperCaps, gpu: GpuInfo, version: String): List<String> {
+internal fun importNeeds(caps: WrapperManager.WrapperCaps, gpu: GpuInfo, version: String): List<String> {
     val out = ArrayList<String>()
     if (caps.hasBcnLayer) {
         out.add(
@@ -1342,12 +1354,7 @@ private fun EditWrapperSettingsDialog(
 
     LaunchedEffect(imported.identifier) {
         val eligible = withContext(Dispatchers.IO) {
-            runCatching {
-                manager.detectedEnvKeys(imported.identifier).filter {
-                    it !in WrapperManager.HANDLED_ENV_KEYS && !WrapperManager.isDebugEnvKey(it) &&
-                        !WrapperManager.isDriverInternalEnvKey(it)
-                }
-            }.getOrDefault(emptyList())
+            runCatching { editableWrapperKeys(manager, imported.identifier) }.getOrDefault(emptyList())
         }
         val stored = withContext(Dispatchers.IO) {
             runCatching { manager.hiddenKeys(imported.identifier) }.getOrDefault(emptySet())

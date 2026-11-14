@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -91,7 +93,7 @@ internal fun LabTileLabel(text: String) {
     Text(text.uppercase(), color = SimpleDim, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
 }
 
-/** One dashboard tile: a panel, focusable when it does something. */
+/** One dashboard tile: a panel, focusable when it does something. What does not fit (large text) scrolls inside it. */
 @Composable
 private fun LabDashTile(
     modifier: Modifier,
@@ -100,12 +102,25 @@ private fun LabDashTile(
     requester: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier
+    BoxWithConstraints(
+        modifier
             .labPanel()
             .then(if (onClick != null) Modifier.labTile(onClick = onClick, onMenu = onMenu, requester = requester) else Modifier)
             .padding(14.dp),
+    ) {
+        LabScrollColumn(if (constraints.hasBoundedHeight) maxHeight else 0.dp, Arrangement.spacedBy(6.dp), content)
+    }
+}
+
+/**
+ * A column that scrolls only when its content is taller than [fill]: at least [fill] high, so content that pushes to the
+ * bottom (a weight) still does when it fits.
+ */
+@Composable
+private fun LabScrollColumn(fill: Dp, arrangement: Arrangement.Vertical, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        verticalArrangement = arrangement,
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = fill),
         content = content,
     )
 }
@@ -140,7 +155,7 @@ internal fun LabButton(
 /** A value chip: what a game runs with, at a glance. */
 @Composable
 internal fun LabChip(text: String) {
-    Text(text, color = SimpleInk, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+    Text(text, color = SimpleInk, fontSize = 12.sp, maxLines = 1, softWrap = false,
         modifier = Modifier.background(SimpleCard, SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))
 }
 
@@ -265,12 +280,14 @@ internal fun LabHome(
             }
             Row(Modifier.fillMaxSize().labPanel().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SimpleCover(game, Modifier.width(if (portrait) 150.dp else 170.dp).fillMaxHeight(), title = false)
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                LabScrollColumn(if (constraints.hasBoundedHeight) maxHeight else 0.dp, Arrangement.spacedBy(8.dp)) {
                     LabTileLabel(if (game == lastGame) L("Continue") else L("Selected"))
                     LabTitle(game, 56.dp, 22.sp)
                     Text(meta, color = SimpleMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     LabRuntimeStatus(game, fontSize = 12.sp, color = SimpleMuted)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Full names; the row scrolls sideways when they do not fit.
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         chips.take(4).forEach { LabChip(it) }
                     }
                     Spacer(Modifier.weight(1f))
@@ -279,6 +296,7 @@ internal fun LabHome(
                         LabButton(L("Game page")) { onNavigate(LabRoutes.game(game.file.path)) }
                         LabButton("", icon = Icons.Filled.MoreHoriz) { menuFor = game }
                     }
+                }
                 }
             }
             }
@@ -515,13 +533,15 @@ internal fun LabHeroTile(
                 translationY = p.second * 6.dp.toPx()
             },
         ) { LabHeroLogo(game) }
-        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Scrolls when taller than the tile (large text), starting at the bottom so the buttons stay in view.
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().verticalScroll(rememberScrollState(), reverseScrolling = true).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, maxLines = 1)
             Text(meta, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             LabRuntimeStatus(game, fontSize = 12.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Full names; the row scrolls sideways when they do not fit.
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 chips.take(4).forEach {
-                    Text(it, color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.background(Color.Black.copy(alpha = 0.38f), SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))
+                    Text(it, color = Color.White, fontSize = 12.sp, maxLines = 1, softWrap = false, modifier = Modifier.background(Color.Black.copy(alpha = 0.38f), SimpleShape).padding(horizontal = 9.dp, vertical = 5.dp))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

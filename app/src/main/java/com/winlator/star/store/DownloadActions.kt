@@ -39,8 +39,13 @@ import java.io.File
  *
  * [inlineAddResult]: a shortcut written without trouble is reported in the themed bar ([notice]) rather than in the "Added to
  * Shortcuts" dialog with its jump to the Shortcuts screen (the XMB Home shows the new game in its own row).
+ * [onShortcutAdded] runs once a shortcut has been written, so a screen that stays open under this page can reload its games.
  */
-internal class DownloadActions(private val activity: Activity, private val inlineAddResult: Boolean = false) {
+internal class DownloadActions(
+    private val activity: Activity,
+    private val inlineAddResult: Boolean = false,
+    private val onShortcutAdded: () -> Unit = {},
+) {
     // Add-to-shortcuts flow state (mirrors SteamGamesActivity / SteamGameDetailActivity).
     private var showExePicker by mutableStateOf<ExePickerDataDm?>(null)
     private var addToShortcuts by mutableStateOf<AddToShortcutsRequest?>(null)
@@ -80,6 +85,7 @@ internal class DownloadActions(private val activity: Activity, private val inlin
                         activity, container,
                         req.gameName, req.exePath, req.coverUrl, req.appId,
                     ) { success, message ->
+                        if (success) onShortcutAdded()
                         if (success && inlineAddResult) {
                             notice = activity.getString(R.string.xmb_dl_added_to_games, req.gameName)
                         } else {

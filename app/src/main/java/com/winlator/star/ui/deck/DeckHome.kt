@@ -161,6 +161,11 @@ private const val PREF_SORT = "deck_library_sort"
 private var lastSignedIn: Map<DeckStore, Boolean>? = null
 private var lastHomeVm: java.lang.ref.WeakReference<ShortcutsViewModel>? = null
 
+/** Reloads Home's games now: a page opened over Home (the Downloads tab) adds a shortcut without Home ever resuming. */
+internal fun refreshHomeShortcuts() {
+    lastHomeVm?.get()?.refresh()
+}
+
 /** Filter & sort state. Mode and sort persist; the filters last for the session. */
 private data class LibraryFilter(
     val stores: Set<String> = emptySet(),

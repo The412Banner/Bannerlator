@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,6 +52,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import androidx.lifecycle.lifecycleScope
 import java.net.URL
+import com.winlator.star.ui.deck.deckShape
 
 private data class FreeGameEntry(
     val title: String,
@@ -300,7 +301,7 @@ private fun EpicFreeGamesScreen(
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(4.dp),
+                shape = deckShape(4.dp),
                 modifier = Modifier.height(40.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp) }
             Text(
@@ -316,7 +317,7 @@ private fun EpicFreeGamesScreen(
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier
-                    .background(StoreStyle.accent(Store.EPIC), RoundedCornerShape(4.dp)) // Epic brand badge
+                    .background(StoreStyle.accent(Store.EPIC), deckShape(4.dp)) // Epic brand badge
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             )
             // ⬇ cross-store Download Manager (global active-count badge).
@@ -386,7 +387,7 @@ private fun FreeGameCard(
             .padding(bottom = 8.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(8.dp),
+        shape = deckShape(8.dp),
         border = BorderStroke(
             1.dp,
             // semantic free/soon accent border (not app-theme chrome)
@@ -405,7 +406,7 @@ private fun FreeGameCard(
                 modifier = Modifier
                     .background(
                         if (isFree) Color(0xFF00330F) else Color(0xFF2B1A00),
-                        RoundedCornerShape(3.dp),
+                        deckShape(3.dp),
                     )
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             )

@@ -22,13 +22,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.winlator.star.R
 import com.winlator.star.ui.deck.XmbKeyboardWindow
+import com.winlator.star.ui.deck.deckShape
 
 class SteamLoginActivity : ComponentActivity(), SteamAuthManager.AuthListener {
 
@@ -307,7 +308,7 @@ private fun SteamGuardDialog(
     // The dialog is a window of its own, so it takes the XMB keyboard hook itself.
     Dialog(onDismissRequest = onDismiss) { XmbKeyboardWindow {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = deckShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -422,7 +423,7 @@ private fun SteamLoginScreen(
             onClick = onLoginClick,
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(8.dp),
+            shape = deckShape(8.dp),
         ) { Text("Sign In") }
         Spacer(Modifier.height(12.dp))
 

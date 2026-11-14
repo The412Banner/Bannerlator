@@ -35,7 +35,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import com.winlator.star.ui.screens.OutlinedAlertDialog as AlertDialog
 import com.winlator.star.ui.screens.OutlinedAlertDialog
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -43,7 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -81,6 +81,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.Executors
 import java.util.function.Consumer
+import com.winlator.star.ui.deck.deckShape
 
 class GogGamesActivity : ComponentActivity() {
 
@@ -951,7 +952,7 @@ private fun GogGamesScreen(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("\u2190", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             Spacer(Modifier.width(8.dp))
@@ -966,7 +967,7 @@ private fun GogGamesScreen(
                 onClick = onViewToggle,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) {
                 Text(
@@ -984,7 +985,7 @@ private fun GogGamesScreen(
                 enabled = !isSyncing,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(40.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) { Text("\u21ba", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp) }
             // \u2b07 cross-store Download Manager (global active-count badge).
@@ -1125,7 +1126,7 @@ private fun GameListCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(if (isExpanded) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(10.dp),
@@ -1134,7 +1135,7 @@ private fun GameListCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Cover
             Box(
-                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surface),
+                modifier = Modifier.size(60.dp).clip(deckShape(8.dp)).background(MaterialTheme.colorScheme.surface),
             ) {
                 // gap #8: prefer the real GOG 2:3 vertical cover when we have one; otherwise fall
                 // back to the existing SGDB/icon cover (imageUrl). `//host` → `https://host`.
@@ -1277,7 +1278,7 @@ private fun ExpandedSection(
                 else MaterialTheme.colorScheme.primary,
             ),
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            shape = RoundedCornerShape(8.dp),
+            shape = deckShape(8.dp),
         ) {
             Text(
                 btnText,
@@ -1303,9 +1304,9 @@ private fun GameGridTile(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, deckShape(12.dp))
             .clickable(onClick = onClick),
     ) {
         // Art area
@@ -1339,7 +1340,7 @@ private fun GameGridTile(
                             // Gen badge = informational (not brand); themed accent, translucent over art.
                             // gen1/gen2 no longer differ by hue — the "Gen N" label carries the distinction.
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                            RoundedCornerShape(3.dp),
+                            deckShape(3.dp),
                         )
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 ) {
@@ -1410,7 +1411,7 @@ private fun GameGridTile(
                         else MaterialTheme.colorScheme.primary,
                     ),
                     modifier = Modifier.fillMaxWidth().height(32.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     Text(
@@ -1435,7 +1436,7 @@ private fun GenBadge(generation: Int) {
             .background(
                 // informational gen badge (not brand); gen1/gen2 distinction carried by the label
                 MaterialTheme.colorScheme.primary,
-                RoundedCornerShape(3.dp),
+                deckShape(3.dp),
             )
             .padding(horizontal = 5.dp, vertical = 2.dp),
     )

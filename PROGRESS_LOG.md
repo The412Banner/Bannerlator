@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 05:25 EST — feat/lab-parity-2: all 8 areas merged, first device test (branch)
+
+- **Merged** (backup `refs/backup/20261114/lab-parity-2-before-merges` = f6f2e98c): settings, gameactions, gameextras, contents, tools, ingame, theme, containers (each CI-green on its sub-branch). Merge fixes: duplicate `val lab` in ShortcutActionDialogs (game extras' one → `labPages`), SimpleOneMenu Logs tab conflict (kept the settings side: the tab is gone, Lab Settings links to the Lab Log Manager), duplicate internal Lab dialog helpers renamed per area (`LabAction*`, `LabTool*`, `LabSheetDialog`), SimpleClassicEditor link/tool lines combined. Plus root-27's Save Manager scroll fix (bcbb0940 → f6f2e98c).
+- **CI:** 7-area merge 8fc677b5 → 43576106412 green ×4; full 05036caa → 43577134770 running.
+- **Device:** 8fc677b5 pubg staged `/sdcard/Download/Bannerlator-lab-parity-2-8fc677b5-pubg.apk` (sha256 8b1f4341…, host = device, cert a40da80a), installing on the Pocket FIT for a first pass. Undo: `/sdcard/Download/Bannerlator-sound-startup-own-pack-cd44d9c2.apk`.
+
 ## 2026-11-14 03:05 EST — feat/lab-parity-2: Lab as a 1:1 equal of Classic (branch, in progress)
 
 - **Why:** user (after Lab Settings › Check for updates opened the Classic Settings page): "lab is supposed to be a 1:1 equal to classic to offer all classic has but all in lab ui style/theme". Audit of main 1a8728a2 (5 areas, code reading, top claims spot-checked): ~15 options missing from Lab, ~45 places where Lab opens a Classic page or pop-up, ~20 partial. User: "do it all on one new branch off main, then install and test to verify"; also remove AGENTS.md.

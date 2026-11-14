@@ -70,7 +70,11 @@ internal fun LabDialog(title: String, onDismiss: () -> Unit, wide: Boolean = fal
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
+            // A ✕ for touch next to the title (B, Back and a tap outside close it too).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = SimpleStrong, fontFamily = SoraFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp, bottom = 2.dp))
+                LabCloseButton(onDismiss)
+            }
             content()
         }
     }

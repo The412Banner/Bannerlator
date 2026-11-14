@@ -135,13 +135,9 @@ internal fun SimpleGlyph(label: String) {
 /** The one line of button hints at the bottom of each layout. */
 @Composable
 internal fun SimpleLegend(items: List<Pair<String, String>>, modifier: Modifier = Modifier) {
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        items.forEach { (glyph, label) ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph(glyph)
-                Text(label, color = SimpleMuted, fontSize = 12.sp, maxLines = 1)
-            }
-        }
+    // Each button hint can be tapped too (LabHint): portrait is mostly touch.
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        items.forEach { (glyph, label) -> LabHint(glyph, label) }
     }
 }
 

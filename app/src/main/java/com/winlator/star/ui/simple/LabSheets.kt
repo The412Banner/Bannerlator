@@ -67,6 +67,8 @@ internal fun LabOverlay(onDismiss: () -> Unit, content: @Composable () -> Unit) 
                         .windowInsetsPadding(WindowInsets.systemBars)
                         .padding(top = 10.dp, bottom = 8.dp),
                 ) {
+                    // A back arrow for touch, as on the Lab top line (the hints below can be tapped too).
+                    LabBackButton(Modifier.padding(start = 16.dp, bottom = 4.dp))
                     Box(Modifier.weight(1f).fillMaxWidth()) { content() }
                     val legend = deckActions.ownLegend.value
                     if (!legend.isNullOrEmpty()) SimpleLegend(legend, Modifier.padding(start = 40.dp, top = 6.dp))

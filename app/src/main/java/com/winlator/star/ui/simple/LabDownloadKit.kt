@@ -184,14 +184,14 @@ internal fun LabDownloadList(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                SimpleGlyph("A"); Spacer(Modifier.width(4.dp)); Text(L("Select"), color = SimpleMuted, fontSize = 12.sp)
+                LabHint("A", L("Select"))
                 if (focusable.any { it.actions.isNotEmpty() }) {
-                    Spacer(Modifier.width(14.dp))
-                    SimpleGlyph("X"); Spacer(Modifier.width(4.dp)); Text(L("Options"), color = SimpleMuted, fontSize = 12.sp)
+                    Spacer(Modifier.width(8.dp))
+                    LabHint("X", L("Options"))
                 }
                 if (!blockDismiss) {
-                    Spacer(Modifier.width(14.dp))
-                    SimpleGlyph("B"); Spacer(Modifier.width(4.dp)); Text(L("Close"), color = SimpleMuted, fontSize = 12.sp)
+                    Spacer(Modifier.width(8.dp))
+                    LabHint("B", L("Close"))
                 }
             }
         }

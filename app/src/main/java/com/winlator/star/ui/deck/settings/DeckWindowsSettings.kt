@@ -317,30 +317,43 @@ internal class DeckWindowsSection(
             systemPicker.launch("image/*")
         }
         if (wineSheet) {
-            ContentDownloadSheet(
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+            if (lab) com.winlator.star.ui.simple.LabContentDownloadSheet(
+                contentTypes = listOf(ContentProfile.ContentType.CONTENT_TYPE_WINE, ContentProfile.ContentType.CONTENT_TYPE_PROTON),
+                onDismiss = { wineSheet = false },
+                onContentChanged = { vm.refreshWineVersions() },
+                inUseKey = vm.selectedWineVersion,
+            ) else ContentDownloadSheet(
                 contentTypes = listOf(ContentProfile.ContentType.CONTENT_TYPE_WINE, ContentProfile.ContentType.CONTENT_TYPE_PROTON),
                 onDismiss = { wineSheet = false },
                 onContentChanged = { vm.refreshWineVersions() },
                 inUseKey = vm.selectedWineVersion,
             )
         }
-        if (confirmReset) {
+        if (confirmReset && com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+            com.winlator.star.ui.simple.SimpleConfirm(
+                title = L("Reset to app defaults?"),
+                body = resetDefaultsMessage(vm),
+                danger = true,
+                onDismiss = { confirmReset = false },
+            ) { resetDefaults() }
+        } else if (confirmReset) {
             OutlinedAlertDialog(
                 onDismissRequest = { confirmReset = false },
                 confirmButton = { TextButton(onClick = { resetDefaults() }) { Text(L("Reset")) } },
                 dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(L("Cancel")) } },
                 title = { Text(L("Reset to app defaults?")) },
-                text = {
-                    Text(
-                        L("The %1\$s defaults profile, ", if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC") +
-                            L("its \"Set as default\" picks and its default layer are forgotten now, and this page shows the app's own defaults. ") +
-                            L("Unsaved changes here are lost. Existing containers keep their settings."),
-                    )
-                },
+                text = { Text(resetDefaultsMessage(vm)) },
             )
         }
     }
 }
+
+/** What "Reset to app defaults" forgets, for its confirm (All containers). */
+internal fun resetDefaultsMessage(vm: ContainerDetailViewModel): String =
+    L("The %1\$s defaults profile, ", if (vm.defaultsArch == com.winlator.star.core.NewContainerDefaults.ARCH_X86_64) "x86-64" else "ARM64EC") +
+        L("its \"Set as default\" picks and its default layer are forgotten now, and this page shows the app's own defaults. ") +
+        L("Unsaved changes here are lost. Existing containers keep their settings.")
 
 /** One drive: its letter, its folder (typed or browsed) and Remove. A letter used twice is outlined red. */
 @Composable

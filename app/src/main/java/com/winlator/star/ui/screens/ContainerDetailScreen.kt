@@ -4859,59 +4859,23 @@ internal fun DxvkConfigDialog(
 
     LaunchedEffect(refreshKey) {
         withContext(Dispatchers.IO) {
-            val cm = ContentsManager(context)
-            cm.syncContents()
-            val versions = if (isVegas)
-                DXVKConfigDialog.loadVegasVersionList(context, cm)
-            else
-                DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
-            val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
-            val d7vk = DXVKConfigDialog.loadD7vkVersionList(context, cm)
-            val cfgsrc = DXVKConfigDialog.loadVegasConfigSourceList(context)
-            val stock = if (isVegas) DXVKConfigDialog.loadVegasStockSources(context, cm) else listOf()
-            val installed = if (isVegas)
-                cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                    ?.mapNotNull { it.verName }?.distinct().orEmpty()
-                else listOf()
+            val lists = loadVegasEditorLists(context, isVegas, isArm64EC)
             withContext(Dispatchers.Main) {
-                allDxvkVersions.value = versions
-                vkd3dVersions.value = vkd3d
-                d7vkVersions.value = d7vk
-                configSourceEntries.value = cfgsrc
-                stockSources.value = stock
-                installedVegasVersions.value = installed
-                                // Option B init: the stored dxvkConfigFile IS the live file. Restore by matching:
-                // parked stock file -> stock dropdown; sidecar of a known stock -> that stock
-                // baseline (the pointer moved when the first edit happened); anything else
-                // (custom path, incl. a legacy vegas/active.conf) -> custom dropdown, edited
-                // in place. No active.conf copy is ever created or implied.
-                val stored = config.get("dxvkConfigFile")
-                val stockMatch = stock.firstOrNull { it.file.absolutePath == stored }
-                val sDir = containerRootDir?.let { java.io.File(java.io.File(it, "vegas"), "configs") }
-                val sidecarMatch = if (stored.isNotEmpty() && sDir != null && sDir.isDirectory) {
-                    stock.firstOrNull { it.tag != null && java.io.File(sDir, it.tag + ".user.conf").absolutePath == stored }
-                } else null
-                val customBase = cfgsrc.filter { it != "None" }
-                customEntries.value = if (stored.isNotEmpty() && stored !in customBase) customBase + stored else customBase
-                when {
-                    stored.isEmpty() -> {
-                        useDefaults = true
-                    }
-                    stockMatch != null -> {
-                        selectedStock = stockMatch.displayLabel()
-                        selectedCustom = null
-                        useDefaults = false
-                    }
-                    sidecarMatch != null -> {
-                        selectedStock = sidecarMatch.displayLabel()
-                        selectedCustom = null
-                        useDefaults = false
-                    }
-                    else -> {
-                        selectedCustom = stored
-                        selectedStock = null
-                        useDefaults = false
-                    }
+                allDxvkVersions.value = lists.versions
+                vkd3dVersions.value = lists.vkd3d
+                d7vkVersions.value = lists.d7vk
+                configSourceEntries.value = lists.configSources
+                stockSources.value = lists.stock
+                installedVegasVersions.value = lists.installedVegas
+                // Option B init: the stored dxvkConfigFile IS the live file (see vegasInitialSource).
+                val pick = vegasInitialSource(config.get("dxvkConfigFile"), lists.stock, lists.configSources, containerRootDir)
+                customEntries.value = pick.customEntries
+                if (pick.useDefaults) {
+                    useDefaults = true
+                } else {
+                    selectedStock = pick.stock
+                    selectedCustom = pick.custom
+                    useDefaults = false
                 }
             }
         }
@@ -4925,12 +4889,7 @@ internal fun DxvkConfigDialog(
     // Exception: the Mali "Wrapper + compat + bcn" driver (relaxDxvkFilter) shows all DXVK versions
     // so testers can try the DXVK 1.10.3 adapter-accept workaround with VKD3D on (#137).
     val filteredDxvk = remember(selectedVkd3d, allDxvkVersions.value, relaxDxvkFilter) {
-        if (selectedVkd3d != "None" && !relaxDxvkFilter) {
-            allDxvkVersions.value.filter { v ->
-                val major = DXVKConfigDialog.tryGetMajor(v)
-                major == null || major >= 2
-            }
-        } else allDxvkVersions.value
+        vegasFilterDxvk(allDxvkVersions.value, selectedVkd3d, relaxDxvkFilter)
     }
 
     var selectedDxvk by remember(allDxvkVersions.value) {
@@ -4943,12 +4902,7 @@ internal fun DxvkConfigDialog(
     LaunchedEffect(Unit) {
         if (!isVegas) return@LaunchedEffect
         withContext(Dispatchers.IO) {
-            val cm = ContentsManager(context)
-            cm.syncContents()
-            val versions = DXVKConfigDialog.loadVegasVersionList(context, cm)
-            val stock = DXVKConfigDialog.loadVegasStockSources(context, cm)
-            val installed = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                ?.mapNotNull { it.verName }?.distinct().orEmpty()
+            val (versions, stock, installed) = loadVegasInstalled(context)
             withContext(Dispatchers.Main) {
                 allDxvkVersions.value = versions
                 stockSources.value = stock
@@ -4979,11 +4933,8 @@ internal fun DxvkConfigDialog(
     var asyncEnabled         by remember { mutableStateOf(config.get("async") == "1") }
     var asyncCacheEnabled    by remember { mutableStateOf(config.get("asyncCache") == "1") }
     // Texture filtering: labels index-aligned with DXVKConfigDialog.ANISOTROPY_VALUES / LOD_BIAS_VALUES.
-    val anisotropyLabels = remember { listOf("Game default", "2x", "4x", "8x", "16x") }
-    val lodBiasLabels = remember {
-        listOf("Game default", "Auto (match scaling mode)", "Sharper (-0.25)", "Sharper (-0.5)",
-               "Sharper (-0.75)", "Sharpest (-1.0)")
-    }
+    val anisotropyLabels = VEGAS_ANISOTROPY_LABELS
+    val lodBiasLabels = VEGAS_LOD_BIAS_LABELS
     var selectedAnisotropy by remember {
         val i = DXVKConfigDialog.ANISOTROPY_VALUES.indexOf(config.get("anisotropy"))
         mutableStateOf(anisotropyLabels[if (i >= 0) i else 0])
@@ -4997,32 +4948,17 @@ internal fun DxvkConfigDialog(
     textureHelpRes?.let { HelpDialog(it) { textureHelpRes = null } }
 
     // VEGAS knowledge layer: bundled asset or null (null -> unclassified fallback).
-    val vegasKnowledge = remember {
-        val k = DXVKConfigDialog.loadVegasKeyKnowledge(context)
-        // Autonomy: re-apply feed-discovered version tail persisted from prior sessions.
-        val saved = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
-            .getString("released_tail", null)?.split("|")?.filter { it.isNotBlank() }
-        if (!saved.isNullOrEmpty()) k.mergeReleasedTail(saved)
-        k
-    }
+    val vegasKnowledge = remember { DXVKConfigDialog.loadVegasKeyKnowledge(context).also { vegasApplyReleasedTail(context, it) } }
     // VEGAS key catalog (classifier ground truth, §6b): null -> classifier off, rows unverified.
     // Heal with live tail — tags seen via GitHub feed that are newer than bundled catalog (heals "catalog behind").
-    val vegasCatalog = remember {
-        val cat = DXVKConfigDialog.loadVegasKeyCatalog(context)
-        if (cat != null) {
-            val tail = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
-                .getString("catalog_tail", null)?.split("|")?.filter { it.isNotBlank() }
-            if (!tail.isNullOrEmpty()) cat.mergeTailTags(tail)
-        }
-        cat
-    }
+    val vegasCatalog = remember { DXVKConfigDialog.loadVegasKeyCatalog(context).also { vegasApplyCatalogTail(context, it) } }
     val activeStockTag = remember(selectedStock, stockSources.value) {
-        stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }?.tag
+        vegasStockFor(stockSources.value, selectedStock)?.tag
     }
     // Coverage rule (STOCK rows only): installed tag missing from catalog (or no tag
     // recorded) -> "catalog behind build". Tail-healed tags count as covered.
     val catalogBehind = remember(vegasCatalog, selectedStock, activeStockTag) {
-        vegasCatalog != null && selectedStock != null && (activeStockTag == null || !vegasCatalog.isCoveredOrTail(activeStockTag))
+        vegasCatalogBehind(vegasCatalog, selectedStock, activeStockTag)
     }
     var showCatalogDialog by remember { mutableStateOf(false) }
     var showKeyDocSheet by remember { mutableStateOf(false) }
@@ -5042,140 +4978,65 @@ internal fun DxvkConfigDialog(
     // becomes the live file (and the saved dxvkConfigFile pointer moves with it). Custom
     // selections are the live file from the start, edited in place. No active.conf.
     val stockPathForSelected = remember(selectedStock, stockSources.value) {
-        selectedStock?.let { s ->
-            stockSources.value.firstOrNull { it.verName == s || it.displayLabel() == s }?.file?.absolutePath
-        }
+        selectedStock?.let { s -> vegasStockFor(stockSources.value, s)?.file?.absolutePath }
     }
     // Sidecar lives inside the container so it survives WCP updates of the parked file.
     // Fix blue-button-not-staying: tag may be null when .provenance.json is missing (older installs).
     // Fall back to the stock verName (stripped) so the sidecar is always resolvable.
     val sidecarFallback = remember(selectedStock, stockSources.value) {
-        stockSources.value.firstOrNull { it.verName == selectedStock || it.displayLabel() == selectedStock }
-            ?.verName?.removePrefix("vegas-")?.substringBefore(" ·")
-            ?: selectedStock?.removePrefix("vegas-")?.substringBefore(" ·")
+        vegasSidecarFallback(stockSources.value, selectedStock)
     }
-    val sidecarBase = remember(activeStockTag, sidecarFallback) {
-        (activeStockTag?.takeIf { it.isNotBlank() } ?: sidecarFallback)?.replace(Regex("[^A-Za-z0-9._-]"), "_")
-    }
-    val sidecarPath = remember(containerRootDir, sidecarBase) {
-        if (sidecarBase == null) null
-        else {
-            val dir = if (containerRootDir != null)
-                java.io.File(java.io.File(containerRootDir, "vegas"), "configs")
-            else
-                java.io.File(context.filesDir, "vegas-defaults/configs")
-            java.io.File(dir, sidecarBase + ".user.conf").absolutePath
-        }
-    }
+    val sidecarBase = remember(activeStockTag, sidecarFallback) { vegasSidecarBase(activeStockTag, sidecarFallback) }
+    val sidecarPath = remember(containerRootDir, sidecarBase) { vegasSidecarPath(context, containerRootDir, sidecarBase) }
     // Probe both tag-based and verName-based sidecar names so an older tag-sidecar is still found
     val sidecarExists = remember(toggleVersion, sidecarPath, containerRootDir, sidecarFallback, activeStockTag) {
-        if (sidecarPath != null && java.io.File(sidecarPath).isFile) true
-        else if (containerRootDir != null && sidecarFallback != null) {
-            // legacy fallback: check the alternative naming
-            val altBase = sidecarFallback.replace(Regex("[^A-Za-z0-9._-]"), "_")
-            if (altBase != sidecarBase) java.io.File(java.io.File(java.io.File(containerRootDir, "vegas"), "configs"), altBase + ".user.conf").isFile
-            else false
-        } else false
+        vegasSidecarExists(sidecarPath, containerRootDir, sidecarFallback, sidecarBase)
     }
     // Resolve the actual existing sidecar file (prefer tag-based, fallback to verName-based)
     val resolvedSidecarPath = remember(sidecarPath, containerRootDir, sidecarFallback, toggleVersion) {
-        if (sidecarPath != null && java.io.File(sidecarPath).isFile) sidecarPath
-        else if (containerRootDir != null && sidecarFallback != null) {
-            val alt = java.io.File(java.io.File(java.io.File(containerRootDir, "vegas"), "configs"), sidecarFallback.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".user.conf").absolutePath
-            if (java.io.File(alt).isFile) alt else sidecarPath
-        } else sidecarPath
+        vegasResolvedSidecar(sidecarPath, containerRootDir, sidecarFallback)
     }
     val liveFile = remember(useDefaults, selectedStock, selectedCustom, stockPathForSelected, resolvedSidecarPath, sidecarExists) {
-        when {
-            useDefaults -> null
-            selectedStock != null && sidecarExists && resolvedSidecarPath != null -> java.io.File(resolvedSidecarPath!!)
-            selectedStock != null -> stockPathForSelected?.let { java.io.File(it) }
-            selectedCustom != null -> java.io.File(selectedCustom!!)
-            else -> null
-        }
+        vegasLiveFile(useDefaults, selectedStock, selectedCustom, stockPathForSelected, resolvedSidecarPath, sidecarExists)
     }
     // "" = USE DEFAULTS (no file).
     val livePath = liveFile?.absolutePath ?: ""
     // Option B backups: .bak-* copies beside the CURRENT live file, newest first.
-    val backupsList = remember(liveFile, toggleVersion) {
-        val dir = liveFile?.parentFile
-        val name = liveFile?.name
-        if (dir == null || name == null || !dir.isDirectory) emptyList()
-        else dir.listFiles { f -> f.isFile && f.name.startsWith(name + ".bak") }
-            ?.sortedByDescending { it.lastModified() } ?: emptyList()
-    }
+    val backupsList = remember(liveFile, toggleVersion) { vegasBackups(liveFile) }
     // Config-file snapshot, read ONCE per source pick or per write (never re-read on the fly):
     // empty text = USE DEFAULTS; missing = live file not found on disk.
-    val configSourceText = remember(useDefaults, liveFile, toggleVersion) {
-        if (useDefaults || liveFile == null) ""
-        else if (liveFile.isFile) runCatching { liveFile.readText() }.getOrDefault("")
-        else ""
-    }
+    val configSourceText = remember(useDefaults, liveFile, toggleVersion) { vegasReadLive(useDefaults, liveFile) }
     val configSourceMissing = remember(liveFile, useDefaults) {
         !useDefaults && liveFile != null && !liveFile.isFile
     }
     val configRows = remember(vegasKnowledge, configSourceText, selectedDxvk) {
-        if (vegasKnowledge != null) vegasKnowledge.editRows(configSourceText, selectedDxvk)
-        else VegasKeyKnowledge.editRowsUnclassified(configSourceText)
+        vegasRows(vegasKnowledge, configSourceText, selectedDxvk)
     }
 
     // §6c value editor ground truth: distinct enabled values per key across ALL installed
     // stock baseline files — the value-picker option pool. Boolean keys (only 0/1 values)
     // stay switch-driven. Nothing when no stock package is installed.
     val stockBaselineKeyValues = remember(stockSources.value, vegasKnowledge, selectedDxvk) {
-        val m = mutableMapOf<String, MutableSet<String>>()
-        for (src in stockSources.value) {
-            val f = src.file
-            if (!f.isFile) continue
-            val rows = (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), src.verName)
-                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
-            for (r in rows) if (r.enabled && r.value.isNotEmpty()) m.getOrPut(r.key) { linkedSetOf() }.add(r.value)
-        }
-        m.mapValues { it.value.toList() }
+        vegasStockKeyValues(stockSources.value, vegasKnowledge, selectedDxvk)
     }
     // The SELECTED baseline's rows: value-picker reset target + pending-row source.
     val baselineRowsForSelected = remember(activeStockTag, vegasKnowledge, stockSources.value, selectedDxvk) {
-        if (selectedStock == null) emptyList()
-        else {
-            val f = stockSources.value.firstOrNull { it.tag == activeStockTag }?.file
-            if (f == null || !f.isFile) emptyList()
-            else (vegasKnowledge?.editRows(runCatching { f.readText() }.getOrDefault(""), selectedDxvk)
-                ?: VegasKeyKnowledge.editRowsUnclassified(runCatching { f.readText() }.getOrDefault("")))
-        }
+        vegasBaselineRows(selectedStock, stockSources.value, activeStockTag, vegasKnowledge, selectedDxvk)
     }
     // Pending rows (stock editor only): baseline keys ABSENT from the active config —
     // switch OFF, "added on save" when enabled. Custom files are user-owned: never listed.
-    val pendingRows = remember(baselineRowsForSelected, configRows) {
-        val activeKeys = configRows.map { it.key }.toSet()
-        baselineRowsForSelected.filter { it.key !in activeKeys }
-    }
+    val pendingRows = remember(baselineRowsForSelected, configRows) { vegasPendingRows(baselineRowsForSelected, configRows) }
     // Keys whose active row differs from the selected baseline (value or comment state) —
     // "edited" mark + per-key reset in the value picker.
     val changedKeys = remember(configRows, baselineRowsForSelected, selectedStock) {
-        if (selectedStock == null) emptySet()
-        else {
-            val base = baselineRowsForSelected.associateBy { it.key }
-            configRows.filter { r ->
-                val b = base[r.key]
-                b != null && (b.value != r.value || b.enabled != r.enabled)
-            }.map { it.key }.toSet()
-        }
+        vegasChangedKeys(configRows, baselineRowsForSelected, selectedStock)
     }
 
-    fun isBooleanKey(key: String): Boolean =
-        stockBaselineKeyValues[key]?.isNotEmpty() == true && stockBaselineKeyValues[key]!!.all { it == "0" || it == "1" }
+    fun isBooleanKey(key: String): Boolean = vegasIsBooleanKey(stockBaselineKeyValues, key)
 
     // §tier: the vegas.forceTier value currently in the active config (3 = high, 2 = mid,
     // 1 = entry, 0 = auto, null = unset). Recomputed after every write (toggleVersion).
-    val activeForceTier = remember(configRows, toggleVersion) {
-        configRows.firstOrNull { it.key == "vegas.forceTier" }?.value?.toIntOrNull()
-    }
-
-    fun schemaName(s: VegasKeyCatalog.Schema?): String = when (s) {
-        VegasKeyCatalog.Schema.SAREK -> "Sarek (dxvk.vegas.*)"
-        VegasKeyCatalog.Schema.STAR -> "Star Engine (vegas.*)"
-        null -> "unknown"
-    }
+    val activeForceTier = remember(configRows, toggleVersion) { vegasActiveForceTier(configRows) }
 
     // Restore a .bak archive as the LIVE file: capture-once semantics — the backup is
     // CONSUMED (written into the live file, then deleted if it is the auto slot), so
@@ -5184,13 +5045,7 @@ internal fun DxvkConfigDialog(
     fun restoreBackup(backup: java.io.File) {
         val target = liveFile ?: return
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                if (!target.isFile) return@withContext false
-                val content = runCatching { backup.readText() }.getOrNull() ?: return@withContext false
-                if (!runCatching { target.writeText(content) }.isSuccess) return@withContext false
-                if (backup.name == target.name + ".bak") backup.delete()
-                true
-            }
+            val ok = withContext(Dispatchers.IO) { vegasRestoreBackup(target, backup) }
             if (ok) { stockEdited = true; toggleVersion++ }
             else Toast.makeText(activity, "Failed to restore backup", Toast.LENGTH_SHORT).show()
         }
@@ -5202,13 +5057,7 @@ internal fun DxvkConfigDialog(
     fun manualBackup() {
         val target = liveFile ?: return
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                if (!target.isFile) return@withContext false
-                var bak = java.io.File(target.absolutePath + ".bak-manual")
-                var n = 2
-                while (bak.isFile) { bak = java.io.File(target.absolutePath + ".bak-manual-" + n); n++ }
-                runCatching { java.nio.file.Files.copy(target.toPath(), bak.toPath()) }.isSuccess
-            }
+            val ok = withContext(Dispatchers.IO) { vegasManualBackup(target) }
             if (ok) toggleVersion++
             else Toast.makeText(activity, "Failed to create backup", Toast.LENGTH_SHORT).show()
         }
@@ -5230,18 +5079,9 @@ internal fun DxvkConfigDialog(
         showNotes = true
         if (notesLoading) return
         notesLoading = true
-        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+        HttpUtils.download(VEGAS_RELEASES_FEED) { body ->
             scope.launch {
-                val parsed = runCatching {
-                    val arr = JSONArray(body)
-                    (0 until arr.length()).mapNotNull { i ->
-                        val o = arr.optJSONObject(i) ?: return@mapNotNull null
-                        val tag = o.optString("tag_name", "").removePrefix("vegas-")
-                        val b = o.optString("body", "")
-                        tag to b
-                    }.firstOrNull { it.first == version }?.second
-                        ?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(8)
-                }.getOrNull()
+                val parsed = vegasParseReleaseNotes(body, version)
                 if (parsed != null && parsed.isNotEmpty()) {
                     notesCache = version to parsed
                     notesSource = "live"
@@ -5255,7 +5095,7 @@ internal fun DxvkConfigDialog(
     fun runLiveCheck() {
         if (liveChecking) return
         liveChecking = true
-        HttpUtils.download("https://api.github.com/repos/isygold/vegas-releases/releases") { body ->
+        HttpUtils.download(VEGAS_RELEASES_FEED) { body ->
             try {
                 scope.launch {
                     val catalogNewest = vegasCatalog?.newestTag()
@@ -5263,20 +5103,7 @@ internal fun DxvkConfigDialog(
                     val report = VegasLiveCheck.check(body, activeStockTag, catalogNewest, newestAt)
                     liveReport = report
                     // heal: any newer tags seen live become covered
-                    if (report.feedOk && report.newerTags.isNotEmpty()) {
-                        val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
-                        val cur = prefs.getString("catalog_tail", "")?.split('|')?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-                        var added = false
-                        for (t in report.newerTags) if (t.isNotBlank() && cur.add(t)) added = true
-                        // also ensure installed tag itself is considered seen (covers hash-renamed installs)
-                        if (report.installedTag != null && report.installedTag.isNotBlank() && cur.add(report.installedTag!!)) added = true
-                        // cap growth so the persisted tail stays bounded
-                        VegasKeyCatalog.capToMax(cur)
-                        if (added) {
-                            prefs.edit().putString("catalog_tail", cur.joinToString("|")).apply()
-                            vegasCatalog?.mergeTailTags(cur.toList())
-                        }
-                    }
+                    vegasHealCatalogTail(context, report, vegasCatalog)
                     liveChecking = false
                 }
             } catch (_: IllegalStateException) {
@@ -5311,40 +5138,15 @@ internal fun DxvkConfigDialog(
         // Use the resolved sidecar path (existing file) for final pointer; fall back to intended new sidecar
         val intendedSidecar = sidecarPath
         val effectiveSidecar = resolvedSidecarPath ?: intendedSidecar
+        val hadSidecar = sidecarExists
         scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                if (!target.isFile) return@withContext false
-                val text = runCatching { target.readText() }.getOrNull() ?: return@withContext false
-                val next = transform(text) ?: return@withContext false
-                // Capture-once backup: create the auto slot ONLY when it does not exist
-                // yet (first edit after a fresh selection/restore). Never .bak-2, -3…
-                // from repeat edits or new sessions — the slot persists until consumed
-                // by a restore. Manual "Backup now" copies use .bak-manual-N instead.
-                val autoBak = java.io.File(target.absolutePath + ".bak")
-                if (!autoBak.isFile) {
-                    runCatching { java.nio.file.Files.copy(target.toPath(), autoBak.toPath()) }
-                }
-                // Ensure the target's parent directory exists (fallback sidecar or custom path).
-                if (!target.parentFile.isDirectory) target.parentFile.mkdirs()
-                // Stock + pristine baseline: materialize the sidecar with the edited content.
-                // From then on the sidecar IS the live file (pointer saved on OK).
-                if (isStockPath && !sidecarExists && effectiveSidecar != null) {
-                    val s = java.io.File(effectiveSidecar!!)
-                    if (!s.parentFile.exists() && !s.parentFile.mkdirs()) return@withContext false
-                    if (!s.parentFile.isDirectory) return@withContext false
-                    runCatching { s.writeText(next) }.isSuccess
-                } else {
-                    runCatching { target.writeText(next) }.isSuccess
-                }
-            }
+            val ok = withContext(Dispatchers.IO) { vegasWriteLive(target, isStockPath, hadSidecar, effectiveSidecar, transform) }
             if (ok) {
                 if (isStockPath) stockEdited = true
                 toggleVersion++
                 // The game reads dxvkConfigFile at launch — point it at the file we just
                 // wrote NOW, not on OK. Dismissing the sheet must never orphan toggles.
-                val finalPath = if (isStockPath && !sidecarExists && effectiveSidecar != null) effectiveSidecar!!
-                                else target.absolutePath
-                onLivePointerChanged(finalPath)
+                onLivePointerChanged(vegasWrittenPath(target, isStockPath, hadSidecar, effectiveSidecar))
             }
             else Toast.makeText(activity, "Failed to update config file", Toast.LENGTH_SHORT).show()
         }
@@ -5358,14 +5160,11 @@ internal fun DxvkConfigDialog(
         val isStockPath = selectedStock != null
         // §6a.6 schema-aware editor: block BEFORE the write — a wrong-family key can never
         // be meaningfully applied to this build's schema. Stock rows only.
-        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+        if (vegasWrongSchema(isStockPath, activeStockTag, vegasCatalog, key)) {
             pendingSchemaBlock = key
             return
         }
-        commitConfigWrite(isStockPath) { text ->
-            VegasKeyKnowledge.toggleLine(text, key, enable)
-                ?: if (enable) VegasKeyKnowledge.setLine(text, key, value) else text
-        }
+        commitConfigWrite(isStockPath, vegasToggleTransform(key, value, enable))
     }
 
     // Value edit (non-boolean keys via the value picker): same pipeline; setLine preserves
@@ -5373,7 +5172,7 @@ internal fun DxvkConfigDialog(
     fun applyValue(key: String, value: String) {
         if (useDefaults || liveFile == null) return
         val isStockPath = selectedStock != null
-        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+        if (vegasWrongSchema(isStockPath, activeStockTag, vegasCatalog, key)) {
             pendingSchemaBlock = key
             return
         }
@@ -5389,7 +5188,7 @@ internal fun DxvkConfigDialog(
     fun applyAddKey(key: String, value: String) {
         if (useDefaults || liveFile == null) return
         val isStockPath = selectedStock != null
-        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+        if (vegasWrongSchema(isStockPath, activeStockTag, vegasCatalog, key)) {
             pendingSchemaBlock = key
             return
         }
@@ -5404,7 +5203,7 @@ internal fun DxvkConfigDialog(
     fun applyDeleteKey(key: String) {
         if (useDefaults || liveFile == null) return
         val isStockPath = selectedStock != null
-        if (isStockPath && activeStockTag != null && vegasCatalog != null && vegasCatalog.isWrongFamily(key, activeStockTag)) {
+        if (vegasWrongSchema(isStockPath, activeStockTag, vegasCatalog, key)) {
             pendingSchemaBlock = key
             return
         }
@@ -5425,12 +5224,7 @@ internal fun DxvkConfigDialog(
                         Toast.makeText(activity, "VEGAS version installed", Toast.LENGTH_SHORT).show()
                         scope.launch {
                             withContext(Dispatchers.IO) {
-                                val cm = ContentsManager(context)
-                                cm.syncContents()
-                                val newVersions = if (isVegas)
-                                    DXVKConfigDialog.loadVegasVersionList(context, cm)
-                                else
-                                    DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
+                                val newVersions = reloadVegasVersions(context, isVegas, isArm64EC)
                                 withContext(Dispatchers.Main) {
                                     allDxvkVersions.value = newVersions
                                 }
@@ -5479,22 +5273,9 @@ internal fun DxvkConfigDialog(
                                 scope.launch {
                                     try {
                                         withContext(Dispatchers.IO) {
-                                            val cm = ContentsManager(context)
-                                            cm.syncContents()
-                                            // Match the exact "vegas-<selected>" name OR any hash-suffixed
-                                            // variant ("vegas-2.4.1-cf04e7f" vs "-3137660" asset renames) —
-                                            // exact-equality silently no-oped for renamed installs.
-                                            val expectedName = "vegas-$selectedDxvk"
-                                            val profile = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
-                                                .firstOrNull {
-                                                    it.verName == expectedName ||
-                                                        it.verName.removePrefix("vegas-") == selectedDxvk ||
-                                                        it.verName == selectedDxvk
-                                                }
-                                            if (profile != null) {
-                                                cm.removeContent(profile)
-                                                cm.syncContents()
-                                                val newVersions = DXVKConfigDialog.loadVegasVersionList(context, cm)
+                                            // Matches "vegas-<selected>" or any hash-suffixed variant (see vegasDeleteBuild).
+                                            val newVersions = vegasDeleteBuild(context, selectedDxvk)
+                                            if (newVersions != null) {
                                                 withContext(Dispatchers.Main) {
                                                     allDxvkVersions.value = newVersions
                                                     if (selectedDxvk !in newVersions) {
@@ -5917,28 +5698,7 @@ internal fun DxvkConfigDialog(
                                     else true
                                 }
                             }
-                            fun levenshtein(a: String, b: String): Int {
-                                val dp = Array(a.length + 1) { IntArray(b.length + 1) }
-                                for (i in 0..a.length) dp[i][0] = i
-                                for (j in 0..b.length) dp[0][j] = j
-                                for (i in 1..a.length) for (j in 1..b.length) {
-                                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
-                                    dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
-                                }
-                                return dp[a.length][b.length]
-                            }
-                            fun typoFor(key: String): String? {
-                                if (vegasCatalog == null) return null
-                                val bucket = vegasCatalog.classify(key, activeStockTag)
-                                if (bucket != VegasKeyCatalog.Bucket.NOWHERE) return null
-                                var best: String? = null
-                                var bestDist = 3
-                                for (cand in vegasCatalog.allKeys()) {
-                                    val d = levenshtein(key, cand)
-                                    if (d < bestDist) { bestDist = d; best = cand }
-                                }
-                                return if (bestDist in 1..2) best else null
-                            }
+                            fun typoFor(key: String): String? = vegasTypoFor(vegasCatalog, key, activeStockTag)
                             // Gated keys are now *shown* as ineffective — no auto-off (per your "stop").
                             // They appear grey `needs 2.8.0+ · ineffective` with ○──, you decide to Add/Remove.
                             // No LaunchedEffect auto-mutation, Custom and Stock both stay as you left them.
@@ -5947,22 +5707,8 @@ internal fun DxvkConfigDialog(
                             val changedTextColor = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.40f)
                             visibleRows.forEach { row ->
                                 val gated = vegasKnowledge != null && vegasKnowledge.isGated(row.key, selectedDxvk)
-                                val baseBadge = vegasKnowledge?.badgeFor(row.key, selectedDxvk) ?: "unclassified"
-                                // Bucket vocabulary describes VEGAS stock configs; a custom (user-owned) file is
-                                // by definition not a VEGAS build — suffixes would read as warnings
-                                // about something the user did deliberately. Stock-only.
-                                // #1 fix: shorten chain so badge doesn't overflow on small screens
-                                val bucketPart = if (vegasCatalog != null && selectedStock != null)
-                                    when (vegasCatalog.classify(row.key, activeStockTag)) {
-                                        VegasKeyCatalog.Bucket.IN_BUILD -> ""
-                                        VegasKeyCatalog.Bucket.OTHER_BUILD -> if (catalogBehind) "" else " · other"
-                                        VegasKeyCatalog.Bucket.UPSTREAM -> " · upstream"
-                                        VegasKeyCatalog.Bucket.NOWHERE -> " · new"
-                                    }
-                                else ""
-                                // cap length so 90-key screens don't wrap badly; UNKNOWN already user-friendly
-                                val badgeRaw = baseBadge + bucketPart + if (catalogBehind) " · unverified" else ""
-                                val badge = if (badgeRaw.length > 48) badgeRaw.take(45) + "…" else badgeRaw
+                                // Bucket vocabulary describes VEGAS stock configs (stock-only; see vegasBadge).
+                                val badge = vegasBadge(vegasKnowledge, vegasCatalog, row.key, selectedDxvk, selectedStock, activeStockTag, catalogBehind)
                                 val changed = selectedStock != null && row.key in changedKeys
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Switch(
@@ -6385,23 +6131,10 @@ internal fun DxvkConfigDialog(
                     // §6a.6 schema block: the key belongs to the OTHER line's schema. Nothing
                     // is written — no decision row, no backup, just the explanation.
                     pendingSchemaBlock?.let { key ->
-                        val keyFam = vegasCatalog?.familyOf(key)
-                        val instFam = activeStockTag?.let { vegasCatalog?.schemaFamilyOf(it) }
-                        val prefix = when (keyFam) {
-                            VegasKeyCatalog.Schema.SAREK -> "dxvk.vegas."
-                            VegasKeyCatalog.Schema.STAR -> if (key == "dxvk.enableStarProfile") key else "vegas."
-                            null -> "?"
-                        }
                         AlertDialog(
                             onDismissRequest = { pendingSchemaBlock = null },
                             title = { Text("Key not applicable to this build's schema") },
-                            text = {
-                                Text(
-                                    "$key belongs to the ${schemaName(keyFam)} schema ($prefix…).\n\n" +
-                                    "This build (${activeStockTag ?: "unknown"}) uses the ${schemaName(instFam)} schema — " +
-                                    "the option cannot be applied and would be ignored."
-                                )
-                            },
+                            text = { Text(vegasSchemaBlockText(key, vegasCatalog, activeStockTag)) },
                             confirmButton = { DeckDialogBars(); TextButton(onClick = { pendingSchemaBlock = null }) { Text("Got it") } }
                         )
                     }
@@ -6460,19 +6193,10 @@ internal fun DxvkConfigDialog(
             DeckDialogBars()
             DeckDialogScaled {
                 TextButton(onClick = {
-                    val cfg = DXVKConfigDialog.parseConfig(initialConfig)
-                    cfg.put("version", selectedDxvk)
-                    cfg.put("framerate", StringUtils.parseNumber(selectedFramerate))
-                    cfg.put("async", if (asyncEnabled && dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) "1" else "0")
-                    cfg.put("asyncCache", if (asyncCacheEnabled && dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) "1" else "0")
-                    cfg.put("anisotropy", DXVKConfigDialog.ANISOTROPY_VALUES[anisotropyLabels.indexOf(selectedAnisotropy).coerceAtLeast(0)])
-                    cfg.put("lodBias", DXVKConfigDialog.LOD_BIAS_VALUES[lodBiasLabels.indexOf(selectedLodBias).coerceAtLeast(0)])
-                    cfg.put("vkd3dVersion", selectedVkd3d)
-                    cfg.put("vkd3dLevel", selectedFeatureLevel)
-                    cfg.put("ddrawrapper", StringUtils.parseIdentifier(selectedDdra))
-                    cfg.put("d7vkVersion", selectedD7vk)
-                    cfg.put("dxvkConfigFile", livePath)
-                    onConfirm(cfg.toString())
+                    onConfirm(vegasBuildConfig(
+                        initialConfig, selectedDxvk, selectedFramerate, asyncEnabled, asyncCacheEnabled, dxvkType,
+                        selectedAnisotropy, selectedLodBias, selectedVkd3d, selectedFeatureLevel, selectedDdra, selectedD7vk, livePath,
+                    ))
                 }) { Text(stringResource(android.R.string.ok)) }
             }
         },
@@ -6975,7 +6699,7 @@ private fun HudThreeStop(label: String, options: List<String>, selected: Int, on
 // Inline install helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-private fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boolean) -> Unit) {
+internal fun installContentFromUri(activity: Activity, uri: Uri, onResult: (Boolean) -> Unit) {
     val cm = ContentsManager(activity)
     Executors.newSingleThreadExecutor().execute {
         try {
@@ -7052,6 +6776,32 @@ private fun HudToggleRow(label: String, checked: Boolean, onCheckedChange: (Bool
 
 
 // ─── VEGAS stock config download sheet ──────────────────────────────────────────
+
+/**
+ * Autonomy: persists the release versions and tags seen in the stock-config feed [rows], so the classifier's known
+ * list grows by itself (no bundled-asset regeneration) and tags seen live stop showing as "unverified".
+ */
+internal fun recordVegasReleaseTails(context: Context, rows: List<VegasStockConfigFetcher.ReleaseConf>) {
+    val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
+    val existing = prefs.getString("released_tail", "")?.split('|')
+        ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    var added = false
+    for (rel in rows) {
+        val prefix = rel.tag.removePrefix("v").substringBefore('-')
+        for (c in rel.verNames + prefix) {
+            if (c.isNotBlank() && existing.add(c)) added = true
+        }
+    }
+    if (added) prefs.edit().putString("released_tail", existing.joinToString("|")).apply()
+    // Heal catalog tail too — tags seen live become "covered" so "unverified" doesn't stick forever
+    val catExisting = prefs.getString("catalog_tail", "")?.split('|')
+        ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    var catAdded = false
+    for (rel in rows) if (rel.tag.isNotBlank() && catExisting.add(rel.tag)) catAdded = true
+    VegasKeyCatalog.capToMax(catExisting)
+    if (catAdded) prefs.edit().putString("catalog_tail", catExisting.joinToString("|")).apply()
+}
+
 @Composable
 internal fun StockConfigDownloadSheet(
     onDismiss: () -> Unit
@@ -7068,26 +6818,7 @@ internal fun StockConfigDownloadSheet(
         loading = true
         rows = withContext(Dispatchers.IO) { VegasStockConfigFetcher.listReleaseConfigs() }
         loading = false
-        // Autonomy: persist any newly seen release versions so the classifier's
-        // known list grows by itself — no bundled-asset regeneration ever needed.
-        val prefs = context.getSharedPreferences("vegas_config_ui", Context.MODE_PRIVATE)
-        val existing = prefs.getString("released_tail", "")?.split('|')
-            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-        var added = false
-        for (rel in rows) {
-            val prefix = rel.tag.removePrefix("v").substringBefore('-')
-            for (c in rel.verNames + prefix) {
-                if (c.isNotBlank() && existing.add(c)) added = true
-            }
-        }
-        if (added) prefs.edit().putString("released_tail", existing.joinToString("|")).apply()
-        // Heal catalog tail too — tags seen live become "covered" so "unverified" doesn't stick forever
-        val catExisting = prefs.getString("catalog_tail", "")?.split('|')
-            ?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
-        var catAdded = false
-        for (rel in rows) if (rel.tag.isNotBlank() && catExisting.add(rel.tag)) catAdded = true
-        VegasKeyCatalog.capToMax(catExisting)
-        if (catAdded) prefs.edit().putString("catalog_tail", catExisting.joinToString("|")).apply()
+        recordVegasReleaseTails(context, rows)
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -7175,7 +6906,7 @@ internal fun StockConfigDownloadSheet(
 }
 
 // ─── VEGAS key definitions glossary ─────────────────────────────────────────────
-private val KEY_DEFINITIONS: Map<String, String> = mapOf(
+internal val KEY_DEFINITIONS: Map<String, String> = mapOf(
     // --- environment / DXVK core ---
     "DXVK_CONFIG_FILE" to "Native DXVK config-file path. Set automatically when a custom .conf is selected.",
     "DXVK_FILTER_DEVICE_NAME" to "Substring filter to force or avoid a GPU by name.",
@@ -7415,7 +7146,7 @@ private fun VGlossarySheet(
                         )
                     }
                     Spacer(Modifier.height(10.dp))
-                    val keys = if (vegasCatalog != null) vegasCatalog.allKeys() else KEY_DEFINITIONS.keys.toList()
+                    val keys = vegasReferenceKeys(vegasCatalog)
                     val grouped = keys.groupBy { key ->
                         if (vegasCatalog != null) vegasCatalog.classify(key, installedTag) else VegasKeyCatalog.Bucket.NOWHERE
                     }

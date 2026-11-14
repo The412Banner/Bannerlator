@@ -450,7 +450,7 @@ private fun isApplicable(targets: List<String>, isQualcomm: Boolean): Boolean {
 
 /** A tiny chip label ("Mali only" / "Adreno only") for an entry that doesn't apply to this GPU, or
  *  null when it applies. Uses the first non-Adreno target family so ["mali","exynos"] reads "Mali only". */
-private fun applicabilityChip(targets: List<String>, isQualcomm: Boolean): String? {
+internal fun applicabilityChip(targets: List<String>, isQualcomm: Boolean): String? {
     if (isApplicable(targets, isQualcomm)) return null
     return if (isQualcomm) {
         val fam = targets.firstOrNull { it != "adreno" } ?: "Mali"
@@ -461,7 +461,7 @@ private fun applicabilityChip(targets: List<String>, isQualcomm: Boolean): Strin
 }
 
 /** A short "inert on this GPU" note, or null when the entry applies (or targets "all"). */
-private fun applicabilityNote(targets: List<String>, isQualcomm: Boolean, gpuModel: String): String? {
+internal fun applicabilityNote(targets: List<String>, isQualcomm: Boolean, gpuModel: String): String? {
     if (isApplicable(targets, isQualcomm)) return null
     return if (isQualcomm)
         "${targets.joinToString("/")}-only — inert on this Adreno ($gpuModel)"
@@ -470,7 +470,7 @@ private fun applicabilityNote(targets: List<String>, isQualcomm: Boolean, gpuMod
 }
 
 /** Human-readable byte size, or null when unknown (0). */
-private fun formatSize(bytes: Long): String? {
+internal fun formatSize(bytes: Long): String? {
     if (bytes <= 0) return null
     val mb = bytes / (1024.0 * 1024.0)
     return if (mb >= 1.0) "%.1f MB".format(mb) else "%d KB".format((bytes / 1024).coerceAtLeast(1L))

@@ -53,12 +53,16 @@ internal fun rememberLabLinuxRuntime(active: Boolean, refresh: Int, onNote: (Lab
     var started by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
-    val drawable = remember { runCatching { LinuxDeviceSupport.drawable(context) }.getOrDefault(true) }
+    // The GPU check asks the driver: only once the tab is shown. Null = drawable (or not checked yet), else the GPU's name.
+    var undrawableGpu by remember { mutableStateOf<String?>(null) }
     val restricted = remember(refresh) { runCatching { ChildProcessRestrictions.active(context) }.getOrDefault(false) }
 
     LaunchedEffect(active) {
         if (!active || started) return@LaunchedEffect
         started = true
+        if (!runCatching { LinuxDeviceSupport.drawable(context) }.getOrDefault(true)) {
+            undrawableGpu = runCatching { LinuxDeviceSupport.gpuName(context) }.getOrDefault("this GPU")
+        }
         LinuxRuntimeUpdate.refreshInstalled(context)
         release = withContext(Dispatchers.IO) { runCatching { LinuxRuntimeInstaller.fetchRelease() }.getOrNull() }
         LinuxRuntimeUpdate.setAvailable(release)
@@ -154,7 +158,7 @@ internal fun rememberLabLinuxRuntime(active: Boolean, refresh: Int, onNote: (Lab
         L("This device cannot draw a Linux session"),
         L(
             "The runtime draws with Turnip, an Adreno driver, and this device reports %1\$s. A session on it comes up as sound over a black screen. You can still download the runtime, but nothing will render — Mali, Xclipse and PowerVR are not supported yet.",
-            runCatching { LinuxDeviceSupport.gpuName(context) }.getOrDefault("this GPU"),
+            undrawableGpu ?: "",
         ),
     )
     val restrictionsText = L("A Linux session is dozens of processes — gamescope, the Steam client, its web helper and the game — and Android is set to kill an app's extra child processes. When it does, the session ends with no error and nothing in the log. Turn on \"Disable child process restrictions\" in Developer options before the first launch.") +
@@ -177,7 +181,7 @@ internal fun rememberLabLinuxRuntime(active: Boolean, refresh: Int, onNote: (Lab
 
     return buildList {
         val group = L("Linux runtime")
-        if (!drawable) add(
+        if (undrawableGpu != null) add(
             MenuEntry(
                 "lx-gpu", gpuNote.title, gpuNote.text, icon = Icons.Filled.Warning, group = group,
                 onA = { onNote(gpuNote) },

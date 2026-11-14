@@ -36,6 +36,7 @@ import com.winlator.star.R
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentProfile
 import com.winlator.star.contents.ContentsManager
+import com.winlator.star.contents.DriverInstaller
 import com.winlator.star.contents.LinuxVulkanDriverManager
 import com.winlator.star.contents.WaylandGameDriverManager
 import com.winlator.star.store.download.ContentDownloadPhase
@@ -51,6 +52,24 @@ import com.winlator.star.util.InAppFilePicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/**
+ * True when [uri] is a zip with a libvulkan_freedreno*.so in it, as the Wayland and Linux driver lists take. Reads the
+ * zip: call off the main thread.
+ */
+private fun hasFreedrenoLib(context: android.content.Context, uri: Uri): Boolean = runCatching {
+    context.contentResolver.openInputStream(uri)?.use { input ->
+        java.util.zip.ZipInputStream(input).use { zis ->
+            var e = zis.nextEntry
+            while (e != null) {
+                val n = java.io.File(e.name).name
+                if (!e.isDirectory && n.startsWith("libvulkan_freedreno") && n.endsWith(".so")) return@runCatching true
+                e = zis.nextEntry
+            }
+        }
+    }
+    false
+}.getOrDefault(false)
 
 /** A source's type as Classic names it (catalogs list some in lower case, FEX under two names). */
 private fun typeName(t: String): String = when (t.lowercase()) {
@@ -99,10 +118,19 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
     // A running download's progress pop-up asked for from its row; file installs open theirs by themselves.
     var progressKey by remember { mutableStateOf<String?>(null) }
     var linuxShown by remember { mutableStateOf(startSection == "linux") }
+    // A driver zip AdrenoTools refused that has no "kind" in its meta.json but a Wayland / Linux library: which list.
+    var otherList by remember { mutableStateOf<Uri?>(null) }
 
     val adreno = remember { (context as? Activity)?.let { runCatching { AdrenotoolsManager(it) }.getOrNull() } }
     val wayland = remember { runCatching { WaylandGameDriverManager(context) }.getOrNull() }
     val linux = remember { runCatching { LinuxVulkanDriverManager(context) }.getOrNull() }
+    // Runs on the install's thread when a GPU driver from a file was not installed.
+    fun offerOtherList(type: String, name: String, uri: Uri, ok: Boolean) {
+        if (ok || !ContentsTypes.isDriver(type)) return
+        if (ContentDownloadRegistry.get(ContentsInstaller.keyFor(type, "file", name))?.replaceable == true) return
+        if (DriverInstaller.zipKind(context, uri).isNotEmpty() || !hasFreedrenoLib(context, uri)) return
+        (context as? Activity)?.runOnUiThread { otherList = uri }
+    }
     val cm = remember(tick) { runCatching { ContentsManager(context).apply { syncContents() } }.getOrNull() }
 
     // Install from a file, as in Classic: .wcp / .tzst go to the component pipeline, anything else is a GPU driver.
@@ -114,6 +142,7 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         ContentsInstaller.installFromFile(context, type, name, uri) { ok ->
             val msg = fileInstallMessage(type, name, ok)
             (context as? Activity)?.runOnUiThread { msg?.let { toast(context, it) }; vm.refreshStatus(); vm.refreshFolders(); tick++ }
+            offerOtherList(type, name, uri, ok)
         }
     }
     val fromFile = { picker.launch(InAppFilePicker.buildIntent(context, InAppFilePicker.WCP + InAppFilePicker.DRIVER, L("Select content or driver"))) }
@@ -122,8 +151,9 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
         val uri = result.data?.data ?: InAppFilePicker.pickedUri(result.data) ?: return@rememberLauncherForActivityResult
         val name = displayNameOf(context, uri)
-        ContentsInstaller.installFromFile(context, ContentsTypes.GPU_DRIVERS, name, uri) { _ ->
+        ContentsInstaller.installFromFile(context, ContentsTypes.GPU_DRIVERS, name, uri) { ok ->
             (context as? Activity)?.runOnUiThread { vm.refreshStatus(); tick++ }
+            offerOtherList(ContentsTypes.GPU_DRIVERS, name, uri, ok)
         }
     }
     // Classic's Import Wayland game driver / Import Linux runtime driver: straight into that list, so a zip whose
@@ -373,6 +403,7 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
                 ContentsInstaller.installFromFile(context, f.type, f.name, f.uri) { ok ->
                     val msg = fileInstallMessage(f.type, f.name, ok)
                     (context as? Activity)?.runOnUiThread { if (ok) vm.markInstalledFromSaved(f); msg?.let { toast(context, it) }; vm.refreshStatus(); tick++ }
+                    offerOtherList(f.type, f.name, f.uri, ok)
                 }
             }
             MenuEntry(
@@ -452,6 +483,18 @@ internal fun SimpleContentsPage(onNavigate: (String) -> Unit, onBack: () -> Unit
         ) { a -> driverAsk = false; a.run() }
     }
     note?.let { n -> LabHelpSheet(n) { note = null } }
+    otherList?.let { uri ->
+        SimpleActionSheet(
+            title = L("Not an AdrenoTools driver"),
+            actions = listOfNotNull(
+                if (wayland != null) MenuAction(L("Install as a Wayland game driver"), { importDriver(uri, linuxDriver = false) }) else null,
+                if (linux != null) MenuAction(L("Install as a Linux runtime driver"), { importDriver(uri, linuxDriver = true) }) else null,
+                MenuAction(L("Cancel"), {}),
+            ),
+            onDismiss = { otherList = null },
+            message = L("Its meta.json says no kind, and it carries a libvulkan_freedreno library. Install it into one of these lists?"),
+        ) { a -> otherList = null; a.run() }
+    }
     if (restoreAsk) {
         SimpleConfirm(L("Restore default repositories"), L("Hidden built-in repositories come back. Yours stay."), danger = false, onDismiss = { restoreAsk = false }) {
             restoreAsk = false

@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.ui.deck.LocalDeckActions
 import com.winlator.star.ui.deck.SoraFamily
-import com.winlator.star.ui.screens.LogManagerScreen
 import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.SIn
@@ -76,11 +74,11 @@ import kotlinx.coroutines.delay
 import kotlin.math.max
 
 // Lab's app Settings, laid out like the Classic Settings screen: every setting in one scrolling list, the categories as
-// section headings (landscape also lists them beside it to jump to). Logs is a tab of its own (the Log Manager).
-// The rows, their storage and the hand-offs are the settings editor's (AppSource, AppSettingsRegistry): each change
-// applies at once, as before.
+// section headings (landscape also lists them beside it to jump to). Logs & diagnostics is a section whose line opens
+// Lab's Log Manager page. The rows, their storage and the hand-offs are the settings editor's (AppSource,
+// AppSettingsRegistry.labDefs / labHandoffs): each change applies at once, as before.
 
-/** App-settings sections that get a tab of their own beside Settings and Logs, in this order. */
+/** App-settings sections that get a tab of their own beside Settings, in this order. */
 private val TAB_CATEGORIES = listOf("app.performance", "app.saves")
 
 private sealed interface OLine { val cat: SettingsCategory }
@@ -104,13 +102,11 @@ internal fun SimpleOneMenuSettings(
     fun applies(def: SettingDef) = source.shows(def) && env.world in def.worlds && def.visible(env, values)
     LaunchedEffect(env) { env.loadAsync() }
 
-    // Tabs: Settings (every other section), then the sections that have a tab of their own, then Logs.
+    // Tabs: Settings (every other section), then the sections that have a tab of their own.
     val tabCats = remember(categories) { TAB_CATEGORIES.mapNotNull { id -> categories.firstOrNull { it.id == id } } }
-    val tabCount = tabCats.size + 2
-    val logsTab = tabCount - 1
+    val tabCount = tabCats.size + 1
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabCat = tabCats.getOrNull(tab - 1)
-    val logsTarget = AppSettingsRegistry.TARGET_LOGS
     val lines: List<OLine> = buildList {
         val shown = when {
             tabCat != null -> listOf(tabCat)
@@ -118,8 +114,7 @@ internal fun SimpleOneMenuSettings(
         }
         for (c in shown) {
             val rows = defs.filter { it.category == c.id && applies(it) }
-            // The Log Manager is the Logs tab now, not a row.
-            val links = handoffs[c.id].orEmpty().filter { env.world in it.worlds && it.target != logsTarget }
+            val links = handoffs[c.id].orEmpty().filter { env.world in it.worlds }
             if (rows.isEmpty() && links.isEmpty()) continue
             add(OHead(c))
             rows.forEach { add(OSet(c, it)) }
@@ -194,7 +189,7 @@ internal fun SimpleOneMenuSettings(
         cats.getOrNull((i + d).coerceIn(0, cats.size - 1))?.let { jumpTo(it) }
     }
 
-    // L2/R2 switch Settings / Logs, through the shell as well (they then work from any focus).
+    // L2/R2 switch the tabs, through the shell as well (they then work from any focus).
     val deckActions = LocalDeckActions.current
     val tabNow by rememberUpdatedState(tab)
     DisposableEffect(deckActions, tabCount) {
@@ -206,10 +201,10 @@ internal fun SimpleOneMenuSettings(
     val cur = lines.getOrNull(rowNow)
     val curDef = (cur as? OSet)?.def
     val legend = buildList {
-        if (tab != logsTab) {
-            if (curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to L("Change"))
-            add("A" to L("Open"))
-        }
+        if (curDef != null && isStepped(curDef.control(env, values)) && source.editable(curDef)) add("◀▶" to L("Change"))
+        add("A" to L("Open"))
+        // A row's longer explanation (the "?" Classic has next to it).
+        if (curDef?.help != null) add("X" to L("Help"))
         add("L2 R2" to L("Tab"))
     }
     DisposableEffect(deckActions, legend) {
@@ -219,7 +214,7 @@ internal fun SimpleOneMenuSettings(
 
     val focus = remember { FocusRequester() }
     LaunchedEffect(tab, dialogOpen) {
-        if (dialogOpen || tab == logsTab) return@LaunchedEffect
+        if (dialogOpen) return@LaunchedEffect
         delay(60)
         runCatching { focus.requestFocus() }
     }
@@ -228,7 +223,6 @@ internal fun SimpleOneMenuSettings(
         val landscape = maxWidth > maxHeight && maxWidth >= 700.dp
         val onKey: (SIn) -> Boolean = onKey@{ a ->
             if (a == SIn.LT || a == SIn.RT) { tab = (tab + (if (a == SIn.LT) -1 else 1) + tabCount) % tabCount; return@onKey true }
-            if (tab == logsTab) return@onKey false
             when {
                 inSections -> when (a) {
                     SIn.UP -> stepSection(-1)
@@ -246,6 +240,7 @@ internal fun SimpleOneMenuSettings(
                         else if (a == SIn.LEFT && landscape && tab == 0) inSections = true
                     }
                     SIn.A -> cur?.let { activate(it) }
+                    SIn.X -> { if (curDef?.help != null) helpFor = curDef else return@onKey false }
                     SIn.SELECT -> { if (curDef != null && source.origin(curDef) == Origin.SET_HERE) source.reset(curDef) }
                     else -> return@onKey false
                 }
@@ -273,24 +268,16 @@ internal fun SimpleOneMenuSettings(
                     Spacer(Modifier.width(6.dp))
                     OneTab(L(c.label), c.icon, tab == i + 1) { tab = i + 1 }
                 }
-                Spacer(Modifier.width(6.dp))
-                OneTab(L("Logs"), Icons.Filled.Description, tab == logsTab) { tab = logsTab }
             }
             Spacer(Modifier.height(12.dp))
-            if (tab == logsTab) {
-                Box(Modifier.weight(1f).fillMaxWidth().simpleDepth(high = true).background(SimplePanelBrush, SimpleShape).border(1.dp, SimpleLine, SimpleShape)) {
-                    LogManagerScreen(onClose = { tab = 0 })
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // The section list only on the long Settings tab; the other tabs are one section each.
+                if (landscape && tab == 0) {
+                    SectionList(cats, catNow, active = inSections, modifier = Modifier.width(230.dp).fillMaxHeight()) { c -> inSections = false; jumpTo(c) }
                 }
-            } else {
-                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // The section list only on the long Settings tab; the other tabs are one section each.
-                    if (landscape && tab == 0) {
-                        SectionList(cats, catNow, active = inSections, modifier = Modifier.width(230.dp).fillMaxHeight()) { c -> inSections = false; jumpTo(c) }
-                    }
-                    OneList(lines, rowNow, active = !inSections, source = source, env = env, values = values, modifier = Modifier.weight(1f).fillMaxHeight()) { i ->
-                        inSections = false
-                        if (i == rowNow) lines.getOrNull(i)?.let { activate(it) } else row = i
-                    }
+                OneList(lines, rowNow, active = !inSections, source = source, env = env, values = values, modifier = Modifier.weight(1f).fillMaxHeight()) { i ->
+                    inSections = false
+                    if (i == rowNow) lines.getOrNull(i)?.let { activate(it) } else row = i
                 }
             }
         }

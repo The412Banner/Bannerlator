@@ -71,6 +71,7 @@ import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
 import com.winlator.star.ui.screens.rememberShortcutActions
 import com.winlator.star.ui.screens.rememberShortcutLauncher
+import com.winlator.star.ui.theme.AppThemeState
 import kotlinx.coroutines.delay
 
 /**
@@ -274,7 +275,9 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val signedIn = remember(resumeTick) { DeckStore.entries.associateWith { isSignedIn(context, it) } }
-    val entries = DeckStore.entries.map { st ->
+    // Appearance › Show game stores off: no stores listed (as the Deck's Stores tab).
+    val showStores by AppThemeState.showStores.collectAsState()
+    val entries = if (!showStores) emptyList() else DeckStore.entries.map { st ->
         val owned = shortcuts.count(st.owns)
         val (logo, brand, white) = storeLogo(st)
         MenuEntry(
@@ -292,7 +295,10 @@ internal fun LabStoresPage(onLaunchStore: (Screen) -> Unit, onBack: () -> Unit, 
     SimpleMenuPage(
         overline = L("Stores"),
         title = L("Your stores"),
-        sections = listOf(MenuSection("stores", L("Stores"), Icons.Filled.Storefront, entries)),
+        sections = listOf(MenuSection(
+            "stores", L("Stores"), Icons.Filled.Storefront, entries,
+            empty = L("Game stores are hidden. Turn on Show game stores in Settings › Appearance to list them here."),
+        )),
         onBack = onBack,
     )
 }

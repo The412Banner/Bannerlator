@@ -55,11 +55,10 @@ internal fun LabOverlay(onDismiss: () -> Unit, content: @Composable () -> Unit) 
             deckActions.subTabLabel.value = savedTabLabel
         }
     }
-    // Edge to edge with the shell's bars hidden too: a dialog window that fits the system bars leaves a strip at the top
-    // and bottom where the page underneath (its top line and button hints) shows through.
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        com.winlator.star.ui.DeckDialogBars()
-        LabFullScreenDialogWindow()
+    // Its own full-screen window: a Compose Dialog is never taller than the screen minus the bar areas (even with the bars
+    // hidden), so a strip of the page underneath, with its top line and button hints, showed above and below.
+    LabFullScreenWindow(onDismiss) {
+        com.winlator.star.sound.DialogSound()
         SimpleFlat {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 LabWallpaper()
@@ -163,32 +162,54 @@ internal fun LabSheetDialog(title: String, onDismiss: () -> Unit, doneLabel: Str
 }
 
 /**
- * Makes the dialog window this is called in cover the whole screen, under the status bar, navigation bar and camera hole,
- * and hides the bars the activity behind it hides: otherwise Android keeps the dialog clear of those areas and the page
- * underneath shows there (its top line at the top, its last row and button hints at the bottom).
+ * [content] in a window of its own that covers the whole screen (under the bars and the camera hole) and hides the bars
+ * the activity behind hides, with Back running [onDismiss] unless the content handles it. Composed as part of the
+ * caller's composition, so it keeps the caller's theme and composition locals.
  */
 @Composable
-internal fun LabFullScreenDialogWindow() {
+internal fun LabFullScreenWindow(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val view = androidx.compose.ui.platform.LocalView.current
-    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window ?: return
-    androidx.compose.runtime.DisposableEffect(window) {
-        window.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.also {
-                it.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    val parent = androidx.compose.runtime.rememberCompositionContext()
+    val latestContent = androidx.compose.runtime.rememberUpdatedState(content)
+    val latestDismiss = androidx.compose.runtime.rememberUpdatedState(onDismiss)
+    val dialog = remember(view) {
+        androidx.activity.ComponentDialog(view.context, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen).apply {
+            // Added first, so a BackHandler inside the content runs before it.
+            onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() { latestDismiss.value() }
+            })
+            val composeView = androidx.compose.ui.platform.ComposeView(context).apply {
+                setParentCompositionContext(parent)
+                setContent { latestContent.value() }
+            }
+            setContentView(composeView)
+            window?.let { w ->
+                w.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+                w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    w.attributes = w.attributes.also {
+                        it.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                }
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(w, false)
+                // The bars the activity behind keeps hidden stay hidden here too (a swipe in from the edge shows them for a moment).
+                val behind = generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
+                    .filterIsInstance<android.app.Activity>().firstOrNull()
+                val insets = behind?.window?.decorView?.let { androidx.core.view.ViewCompat.getRootWindowInsets(it) }
+                val controller = androidx.core.view.WindowCompat.getInsetsController(w, w.decorView)
+                controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                if (insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) == false) {
+                    controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                }
+                if (insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.navigationBars()) == false) {
+                    controller.hide(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
+                }
             }
         }
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        // The bars the activity behind keeps hidden stay hidden here too (a swipe in from the edge shows them for a moment).
-        val behind = (view.context as? android.app.Activity) ?: generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
-            .filterIsInstance<android.app.Activity>().firstOrNull()
-        val insets = behind?.window?.decorView?.let { androidx.core.view.ViewCompat.getRootWindowInsets(it) }
-        val statusHidden = insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars()) == false
-        val navHidden = insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.navigationBars()) == false
-        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (statusHidden) controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
-        if (navHidden) controller.hide(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
-        onDispose {}
+    }
+    DisposableEffect(dialog) {
+        dialog.show()
+        onDispose { dialog.dismiss() }
     }
 }

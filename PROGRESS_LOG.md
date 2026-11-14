@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 21:30 EST — Installing main 175aadd2 pubg on the Pocket FIT (main, installing)
+
+- **User:** "install it" (main build with the Xbox Nexus update + Lab auto-fit).
+- **Build:** main CI 43544349042 (push, headSha 175aadd2) GREEN 4/4 (finished 21:15:56 EST). Artifact Bannerlator-main-pubg (id 14093317655, expires 11-20 ~21:12 EST).
+- **APK checks:** com.tencent.ig vc106 3.1.9-pre2, cert a40da80a; libxodus_cli.so + libxodus_service.so contain `.xodus-credentials-` (Android credential lock fix); classes4.dex has labFitDensity. Staged /sdcard/Download/Bannerlator-main-175aadd2-pubg.apk sha256 3e3e9ef2…cb7e (host = device).
+- **Before:** FIT base.apk fee7abd9… (fix/lab-auto-fit 084fb2fe, 21:03:08 EST); BL process in background, no game/wine running, Discord in front. Undo = /sdcard/Download/Bannerlator-lab-auto-fit-084fb2fe.apk (hash = installed fee7abd9).
+- **Plan after install:** installed hash == staged, crash buffer; quick check: Xbox store library sync (xbox_diag.txt) + Lab Home/rail at density 345 portrait + landscape. No Xbox game launch (user's Xbox cloud saves are ON). Termux back after.
+- **Resume point:** if the session dies, compare installed base.apk sha256 to 3e3e9ef2…, `logcat -b crash -d`; restore `wm user-rotation free; wm fixed-to-user-rotation default` if a landscape check was in progress; density stays 345.
+
 ## 2026-11-13 21:10 EST — Pocket FIT reboot (main, resume point)
 
 - **User:** "save to memory I got to reboot device".

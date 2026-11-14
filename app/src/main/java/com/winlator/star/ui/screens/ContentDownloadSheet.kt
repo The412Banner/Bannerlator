@@ -816,9 +816,9 @@ internal data class CommunityGroup(val name: String, val profiles: List<ContentP
 
 /**
  * The community repositories' versions of [type] (the Contents screen's component sources that list it), bridged to
- * installable profiles. Blocking (network): call off the main thread.
+ * installable profiles. Network: call off the main thread.
  */
-internal fun fetchCommunityGroups(context: Context, type: ContentProfile.ContentType): List<CommunityGroup> {
+internal suspend fun fetchCommunityGroups(context: Context, type: ContentProfile.ContentType): List<CommunityGroup> {
     val typeStr = type.toString()
     val repo = RemoteSourceRepository(context)
     return repo.getAllSources()

@@ -103,6 +103,8 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
     val context = LocalContext.current
     // The XMB interface draws these popups with the XMB dialog kit (XmbDialogKit); every other style keeps the stock dialogs.
     val xmb = rememberXmbHome()
+    // Lab draws them with its own dialog kit (LabAddGames.kt).
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
     var settingsShortcut by actions::settingsShortcut
     var showMyAccount by actions::showMyAccount
     var showImportContainerPicker by remember { mutableStateOf(false) }
@@ -331,6 +333,25 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             )
             return@let
         }
+        if (lab) {
+            com.winlator.star.ui.simple.LabExePickerDialog(
+                target = target,
+                options = options,
+                onPick = { exe ->
+                    replaceScannedExe(target, exe)
+                    exePickerFor = null
+                },
+                onBrowse = {
+                    exeBrowseForPath = target.exe.absolutePath
+                    exePickerFor = null
+                    importExeBrowseLauncher.launch(
+                        InAppFilePicker.buildIntent(context, InAppFilePicker.SHORTCUT, "Select the game's .exe")
+                    )
+                },
+                onDismiss = { exePickerFor = null },
+            )
+            return@let
+        }
         OutlinedAlertDialog(
             // The platform default width truncates exe names and their subfolder paths, which are
             // the whole point of this list.
@@ -473,6 +494,29 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                 showImportContainerPicker = true
             },
         )
+    } else if (showImportMethodPicker && lab) {
+        com.winlator.star.ui.simple.LabImportMethodDialog(
+            onDismiss = { showImportMethodPicker = false },
+            onExe = {
+                showImportMethodPicker = false
+                pendingImportKind = ImportKind.EXE
+                showImportContainerPicker = true
+            },
+            onFolder = {
+                showImportMethodPicker = false
+                pendingImportKind = ImportKind.FOLDER
+                showImportContainerPicker = true
+            },
+            onAndroid = {
+                showImportMethodPicker = false
+                showAndroidPicker = true
+            },
+            onWindowsSteam = {
+                showImportMethodPicker = false
+                pendingImportKind = ImportKind.WINDOWS_STEAM
+                showImportContainerPicker = true
+            },
+        )
     } else if (showImportMethodPicker) {
         OutlinedAlertDialog(
             onDismissRequest = { showImportMethodPicker = false },
@@ -580,6 +624,18 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                 onConfirm = startSteamAdd,
                 onCancel = close,
             )
+        } else if (lab) {
+            com.winlator.star.ui.simple.LabWindowsSteamDialog(
+                title = WindowsSteamClient.SHORTCUT_NAME,
+                places = windowsSteamPlaces,
+                pick = windowsSteamPick,
+                onPick = { windowsSteamPick = it },
+                progress = windowsSteamProgress,
+                confirmText = if (picked?.hasClient == true) com.winlator.star.ui.simple.L("Add") else com.winlator.star.ui.simple.L("Download"),
+                confirmEnabled = picked != null && picked.fits,
+                onConfirm = startSteamAdd,
+                onCancel = close,
+            )
         } else
         OutlinedAlertDialog(
             onDismissRequest = { if (!running) close() },
@@ -679,6 +735,17 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                 pendingImportContainerIndex = -1
             },
         )
+    } else if (folderScanRunning && lab) {
+        com.winlator.star.ui.simple.LabScanProgressDialog(
+            root = folderScanRoot,
+            onCancel = {
+                // As the XMB card's Cancel: stop waiting for the scan and drop what it finds.
+                folderScanJob?.cancel()
+                folderScanJob = null
+                folderScanRunning = false
+                pendingImportContainerIndex = -1
+            },
+        )
     } else if (folderScanRunning) {
         OutlinedAlertDialog(
             onDismissRequest = {},
@@ -752,6 +819,39 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                         val key = candidate.exe.absolutePath
                         val open = key in scanRecsOpen
                         XmbScanComponents(
+                            count = recCount,
+                            open = open,
+                            onToggle = { scanRecsOpen = if (open) scanRecsOpen - key else scanRecsOpen + key },
+                        ) {
+                            RecommendedComponentsSection(container = scanContainer, exeFile = candidate.exe)
+                        }
+                    }
+                },
+            )
+        } else if (lab) {
+            com.winlator.star.ui.simple.LabFolderReviewDialog(
+                candidates = folderScanResults,
+                selected = folderScanSelected,
+                importing = folderImportRunning,
+                importProgress = folderImportProgress,
+                onToggle = { candidate ->
+                    val key = candidate.exe.absolutePath
+                    folderScanSelected = if (key in folderScanSelected) folderScanSelected - key else folderScanSelected + key
+                },
+                onChangeExe = { candidate -> exePickerFor = candidate },
+                onAdd = startFolderImport,
+                onCancel = {
+                    folderScanResults = emptyList()
+                    folderScanSelected = emptySet()
+                    pendingImportContainerIndex = -1
+                },
+                componentsFor = { candidate ->
+                    val recCount = scanRecCounts[candidate.exe.absolutePath] ?: 0
+                    val scanContainer = vm.containers().getOrNull(pendingImportContainerIndex)
+                    if (recCount > 0 && scanContainer != null) {
+                        val key = candidate.exe.absolutePath
+                        val open = key in scanRecsOpen
+                        com.winlator.star.ui.simple.LabScanComponents(
                             count = recCount,
                             open = open,
                             onToggle = { scanRecsOpen = if (open) scanRecsOpen - key else scanRecsOpen + key },
@@ -890,6 +990,29 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                 systemPickerChecked = if (pendingImportKind == ImportKind.EXE) importUseSystemPicker else null,
                 onSystemPickerChange = { importUseSystemPicker = it },
             )
+        } else if (lab) {
+            com.winlator.star.ui.simple.LabImportContainerDialog(
+                containers = containers,
+                subtitle = when (pendingImportKind) {
+                    ImportKind.EXE -> com.winlator.star.ui.simple.L("The game's .exe goes into this container")
+                    ImportKind.FOLDER -> com.winlator.star.ui.simple.L("The games found in the folder go into this container")
+                    ImportKind.WINDOWS_STEAM -> com.winlator.star.ui.simple.L("Steam for Windows goes into this container")
+                    null -> null
+                },
+                onPick = { index ->
+                    showImportContainerPicker = false
+                    pendingImportContainerIndex = index
+                    pendingImportKind?.let { launchImportPicker(it) }
+                    pendingImportKind = null
+                },
+                onDismiss = {
+                    showImportContainerPicker = false
+                    pendingImportKind = null
+                },
+                // The stock dialog's "Pick via system…" tick, for the .exe import (a folder never uses the system picker).
+                systemPickerChecked = if (pendingImportKind == ImportKind.EXE) importUseSystemPicker else null,
+                onSystemPickerChange = { importUseSystemPicker = it },
+            )
         } else
         OutlinedAlertDialog(
             onDismissRequest = {
@@ -992,7 +1115,7 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
             showRenameDialog = false
             Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
         }
-        if (xmb) {
+        if (xmb || lab) {
             // The search runs by itself when the dialog opens (see the stock dialog's note below).
             LaunchedEffect(renameDialogName) {
                 val query = confirmNameField.trim()
@@ -1002,70 +1125,86 @@ fun GameActionsHost(vm: ShortcutsViewModel, actions: ShortcutActions) {
                     steamSearching = false
                 }
             }
-            XmbConfirmGameDialog(
+            val onSearch: () -> Unit = {
+                val query = confirmNameField.trim()
+                if (query.isNotEmpty() && confirmContainer != null) {
+                    steamSearching = true
+                    steamSearchResults = emptyList()
+                    scope.launch(Dispatchers.IO) {
+                        val results = SteamStoreSearch.searchByName(query)
+                        withContext(Dispatchers.Main) {
+                            steamSearchResults = results
+                            steamSearching = false
+                        }
+                    }
+                }
+            }
+            val onPickResult: (SteamStoreSearch.SteamSuggestion) -> Unit = { hit ->
+                // Set name + record appId; edit-guard off so the async auto-rename won't clobber the user's explicit pick.
+                confirmNameField = hit.name
+                confirmNameEdited = true
+                confirmAppId = hit.appId
+                // Apply this appId's cover art to the current on-disk shortcut.
+                if (confirmContainer != null) {
+                    val base = renameDialogName
+                    scope.launch(Dispatchers.IO) {
+                        val bmp = applySteamCover(confirmContainer, base, hit.appId)
+                        if (bmp != null) withContext(Dispatchers.Main) {
+                            vm.reloadShortcut(
+                                File(confirmContainer.getDesktopDir(), "$base.desktop").path,
+                                bmp,
+                            )
+                        }
+                    }
+                }
+            }
+            // Recommended components: the redists this game bundles, one-tap installable into its container.
+            val components: @Composable () -> Unit = {
+                if (confirmContainer != null) {
+                    val importedExe = remember(confirmContainer, renameDialogName) {
+                        runCatching {
+                            val sc = Shortcut(
+                                confirmContainer,
+                                File(confirmContainer.getDesktopDir(), "$renameDialogName.desktop"),
+                            )
+                            WinePath.resolveAndroidPath(confirmContainer, sc.path)
+                        }.getOrNull()
+                    }
+                    if (importedExe != null) {
+                        RecommendedComponentsSection(
+                            container = confirmContainer,
+                            exeFile = importedExe,
+                            shortcutBaseName = renameDialogName,
+                        )
+                    }
+                }
+            }
+            if (lab) com.winlator.star.ui.simple.LabConfirmGameDialog(
                 name = confirmNameField,
                 onNameChange = { confirmNameField = it; confirmNameEdited = true },
                 onNameClear = { confirmNameField = ""; confirmNameEdited = true },
                 searching = steamSearching,
-                onSearch = {
-                    val query = confirmNameField.trim()
-                    if (query.isNotEmpty() && confirmContainer != null) {
-                        steamSearching = true
-                        steamSearchResults = emptyList()
-                        scope.launch(Dispatchers.IO) {
-                            val results = SteamStoreSearch.searchByName(query)
-                            withContext(Dispatchers.Main) {
-                                steamSearchResults = results
-                                steamSearching = false
-                            }
-                        }
-                    }
-                },
+                onSearch = onSearch,
                 results = steamSearchResults,
                 linkedAppId = linkedHit,
-                onPickResult = { hit ->
-                    // Set name + record appId; edit-guard off so the async auto-rename won't clobber the user's explicit pick.
-                    confirmNameField = hit.name
-                    confirmNameEdited = true
-                    confirmAppId = hit.appId
-                    // Apply this appId's cover art to the current on-disk shortcut.
-                    if (confirmContainer != null) {
-                        val base = renameDialogName
-                        scope.launch(Dispatchers.IO) {
-                            val bmp = applySteamCover(confirmContainer, base, hit.appId)
-                            if (bmp != null) withContext(Dispatchers.Main) {
-                                vm.reloadShortcut(
-                                    File(confirmContainer.getDesktopDir(), "$base.desktop").path,
-                                    bmp,
-                                )
-                            }
-                        }
-                    }
-                },
+                onPickResult = onPickResult,
                 onSave = confirmSave,
                 onSkip = confirmSkip,
                 onDismiss = { showRenameDialog = false },
-                // Recommended components: the redists this game bundles, one-tap installable into its container.
-                components = {
-                    if (confirmContainer != null) {
-                        val importedExe = remember(confirmContainer, renameDialogName) {
-                            runCatching {
-                                val sc = Shortcut(
-                                    confirmContainer,
-                                    File(confirmContainer.getDesktopDir(), "$renameDialogName.desktop"),
-                                )
-                                WinePath.resolveAndroidPath(confirmContainer, sc.path)
-                            }.getOrNull()
-                        }
-                        if (importedExe != null) {
-                            RecommendedComponentsSection(
-                                container = confirmContainer,
-                                exeFile = importedExe,
-                                shortcutBaseName = renameDialogName,
-                            )
-                        }
-                    }
-                },
+                components = components,
+            ) else XmbConfirmGameDialog(
+                name = confirmNameField,
+                onNameChange = { confirmNameField = it; confirmNameEdited = true },
+                onNameClear = { confirmNameField = ""; confirmNameEdited = true },
+                searching = steamSearching,
+                onSearch = onSearch,
+                results = steamSearchResults,
+                linkedAppId = linkedHit,
+                onPickResult = onPickResult,
+                onSave = confirmSave,
+                onSkip = confirmSkip,
+                onDismiss = { showRenameDialog = false },
+                components = components,
             )
         } else
         OutlinedAlertDialog(
@@ -1235,6 +1374,24 @@ private fun WindowsSteamUninstallDialog(offer: WindowsSteamClient.UninstallOffer
     val keep = { WindowsSteamClient.dismissUninstall(offer) }
     if (rememberXmbHome()) {
         XmbSteamUninstallDialog(
+            plan = plan,
+            running = running,
+            onUninstall = { p ->
+                val app = context.applicationContext
+                WindowsSteamClient.uninstallAsync(app, p) { error ->
+                    Toast.makeText(
+                        app,
+                        error ?: "Steam uninstalled (${SteamSdInstall.fmtBytes(p.bytes)} freed)",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onKeep = { keep() },
+        )
+        return
+    }
+    if (com.winlator.star.ui.theme.AppThemeState.simpleLook) {
+        com.winlator.star.ui.simple.LabSteamUninstallDialog(
             plan = plan,
             running = running,
             onUninstall = { p ->

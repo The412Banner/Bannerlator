@@ -952,8 +952,13 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     // Open the My-account sheet (Phase 2), the globe browser's person-icon entry point.
     val openMyAccount: () -> Unit = { showMyAccount = true }
 
+    // Lab draws the game menu's Remove, Clone, Copy to Drive C, Change executable, Move, save backup / restore and
+    // Properties itself (LabGameActions.kt), on the same state and steps; the Classic dialogs below are skipped there.
+    val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+    if (lab) com.winlator.star.ui.simple.LabShortcutActionDialogs(actions) { s, layout -> runCustomBackup(s, layout) }
+
     // Remove confirmation
-    confirmRemove?.let { s ->
+    if (!lab) confirmRemove?.let { s ->
         OutlinedAlertDialog(
             onDismissRequest = { confirmRemove = null },
             title = { Text("Remove shortcut?") },
@@ -975,7 +980,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // Clone-to-container dialog. The copy is MoveGameToContainer with keepCopy: no overwrite of a same-name
     // game, the cover and exe drive follow, and the copy gets its own home-screen id.
-    cloneTarget?.let { s ->
+    if (!lab) cloneTarget?.let { s ->
         val containers = vm.containers().filter { it.id != s.container.id }
         OutlinedAlertDialog(
             onDismissRequest = { cloneTarget = null },
@@ -1018,21 +1023,21 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // "Copy to Drive C…" — the shared confirm→copy→repoint flow, fed by the ⋮ menu item and the
     // editor's Storage row. Owns its own dialogs/progress; clears the target and refreshes on finish.
-    CopyToDriveCCoordinator(
+    if (!lab) CopyToDriveCCoordinator(
         target = copyToDriveCTarget,
         onFinished = { copyToDriveCTarget = null; vm.refresh() },
     )
 
     // "Change executable…" — pick a different .exe/.lnk in the game's folder and repoint the shortcut
     // at it (shared Exec-rewrite with copy-to-C). Fed by the ⋮ item and the editor's Executable row.
-    ChangeExecutableCoordinator(
+    if (!lab) ChangeExecutableCoordinator(
         target = changeExeTarget,
         onFinished = { changeExeTarget = null; vm.refresh() },
     )
 
     // "Container" — move this game to another container (or copy it there). Fed by the editor's Container
     // row and the Deck settings hand-off; clears the target and refreshes on finish.
-    MoveToContainerCoordinator(
+    if (!lab) MoveToContainerCoordinator(
         target = moveTarget,
         containers = { vm.containers() },
         // Copied saves can carry an emulator account id the target already has a different one of.
@@ -1042,7 +1047,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // Save Restore: a backup .zip has been picked — choose the TARGET container to restore it into,
     // then hand off to GameSaveBackup.restore (which unzips into that container and remaps the user).
-    restoreZipUri?.let { uri ->
+    if (!lab) restoreZipUri?.let { uri ->
         ContainerPickerDialog(
             gameName = restoreForName,
             containers = vm.containers(),
@@ -1063,7 +1068,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
         )
     }
 
-    EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
+    if (!lab) EmuAccountConflictDialog(conflicts = emuConflicts) { applied, _ ->
         emuConflicts = emptyList()
         if (applied > 0) {
             Toast.makeText(
@@ -1076,7 +1081,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // Save Backup: choose the archive layout before backing up (mirrors the Containers backup menu's
     // GameHub / Winlator-native choice), then run the scoped backup into the per-game folder.
-    backupFormatShortcut?.let { s ->
+    if (!lab) backupFormatShortcut?.let { s ->
         OutlinedAlertDialog(
             onDismissRequest = { backupFormatShortcut = null },
             title = { Text(stringResource(R.string.save_backup_format_title)) },
@@ -1160,7 +1165,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Shortcut properties dialog
-    propertiesShortcut?.let { s ->
+    if (!lab) propertiesShortcut?.let { s ->
         val playtimePrefs = context.getSharedPreferences("playtime_stats", Context.MODE_PRIVATE)
         val playtimeKey = "${s.name}_playtime"
         val playCountKey = "${s.name}_play_count"
@@ -10364,7 +10369,7 @@ private val AMAZON_ROOT_RE = Regex("""(^|[\\/])Amazon[\\/]""")
 internal enum class ImportKind { EXE, FOLDER, WINDOWS_STEAM }
 
 /** Shown when the game's container is the only one. */
-private const val NO_OTHER_CONTAINER = "There's no other container. Create one in Containers first."
+internal const val NO_OTHER_CONTAINER = "There's no other container. Create one in Containers first."
 
 /**
  * Shared coordinator for the editor's Container row and the Deck "Move to another container" hand-off.

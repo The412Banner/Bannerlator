@@ -198,6 +198,7 @@ internal class SettingDef(
         level: SettingLevel = this.level,
         label: String = this.label,
         hint: String? = this.hint,
+        disabled: (SettingsEnv, (String) -> String) -> String? = this.disabled,
     ): SettingDef = SettingDef(
         id = id, category = category, group = group, label = label, hint = hint, help = help, tech = tech, level = level,
         control = control, vm = vm, game = game, app = app, onDefaults = onDefaults, showInGame = showInGame,
@@ -206,7 +207,14 @@ internal class SettingDef(
 }
 
 /** A row that opens the classic editor (or another screen) for what the Deck editor does not edit itself. */
-internal class Handoff(val label: String, val hint: String, val target: String, val worlds: Set<World> = WINE_ONLY)
+internal class Handoff(
+    val label: String,
+    val hint: String,
+    val target: String,
+    val worlds: Set<World> = WINE_ONLY,
+    /** The current value the row is about (the .exe a game runs, where its files are), shown on Lab's row. */
+    val value: String? = null,
+)
 
 /**
  * Everything a setting may look at to decide its options and whether it applies. Built once per

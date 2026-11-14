@@ -286,6 +286,7 @@ private fun controllerItems(game: Boolean): List<CItem> = listOf(
     CRow("input.dinputVibration", L("DirectInput vibration")),
     CRow("input.bannerinXInput", L("Direct XInput (BANNERIN)")),
     CRow("input.bannerinXInputSwitching", L("Allow in-game switching")),
+    CRow("input.bannerinXInputOverGameDll", L("Use Direct XInput over the game's own XInput DLL")),
     CRow("input.stickPacing", L("Stick updates")),
     CRow("input.controllerIdentity", L("Controller identity")),
     CRow("input.disableXInput", L("Disable XInput")),
@@ -1208,7 +1209,7 @@ private fun LinesPanel(
                     is RSet -> ClassicSettingLine(l, source, env, values, game, focused = i == row, active = active, onHelp = { onHelp(l.def) }) { onTap(i) }
                     is RPage -> ClassicLinkLine(l.title, pageSummary(l, source, env, values), focused = i == row, active = active) { onTap(i) }
                     is RExtra -> ClassicLinkLine(l.title, null, focused = i == row, active = active) { onTap(i) }
-                    is RLink -> ClassicLinkLine(l.h.label, null, focused = i == row, active = active) { onTap(i) }
+                    is RLink -> ClassicLinkLine(l.h.label, l.h.value, focused = i == row, active = active) { onTap(i) }
                     is RInline -> Column(Modifier.fillMaxWidth()) { l.items.forEach { it.content() } }
                 }
             }

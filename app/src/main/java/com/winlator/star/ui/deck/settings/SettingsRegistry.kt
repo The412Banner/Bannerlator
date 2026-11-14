@@ -119,12 +119,18 @@ internal object SettingsRegistry {
         val m = linkedMapOf<String, List<Handoff>>()
         if (game) {
             val containerName = env.shortcut?.container?.name.orEmpty()
+            // Lab's rows show what the Classic editor's Executable, Storage and Container rows show: the .exe the game runs,
+            // where its files are and its container (the other looks show the hints only).
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
+            val exeInfo = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.parse(it) }.getOrNull() }
+            val exeName = if (!lab) null else exeInfo?.exeWin?.substringAfterLast('\\')?.substringAfterLast('/')?.ifEmpty { null } ?: T("Unknown")
+            val storage = if (!lab) null else env.shortcut?.let { runCatching { com.winlator.star.core.CopyGameToDriveC.storageLabel(it) }.getOrNull() }
             m["game"] = listOf(
                 Handoff(T("Name, cover art and details"), T("Cover art from your files, Steam or SteamGridDB, the Steam link, genres, year and description (Game Details)."), TARGET_DETAILS, ALL_WORLDS),
                 // The icon is picked on this page now (DeckIconSection); the file operations stay with the Games screen.
-                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY),
-                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY),
-                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY),
+                Handoff(T("Change the program to run"), T("Pick another .exe in the game's folder for this entry."), TARGET_CHANGE_EXE, WINE_ONLY, value = exeName),
+                Handoff(T("Copy the game to drive C"), T("Copy the game's folder into the container's drive C and run it from there."), TARGET_DRIVE_C, WINE_ONLY, value = storage),
+                Handoff(T("Move to another container"), "Now in \"$containerName\". Move this game to another container, or copy it there.", TARGET_MOVE_CONTAINER, WINE_ONLY, value = containerName.ifEmpty { null }?.takeIf { lab }),
             ) + listOfNotNull(
                 if (xmb) Handoff(T("Container settings"), "Open the settings of \"$containerName\", the container this game runs in.", TARGET_CONTAINER, WINE_ONLY) else null,
             )
@@ -1205,6 +1211,23 @@ internal object SettingsRegistry {
             control = { _, _ -> Control.Toggle },
             vm = vmBool({ it.bannerinXInputSwitching }, { vm, v -> vm.bannerinXInputSwitching = v }),
             game = key10(BannerinXInput.EXTRA_SWITCHING),
+        ),
+        // Lab only (Classic's game editor has it; the Deck and XMB editors are left as they are).
+        SettingDef(
+            id = "input.bannerinXInputOverGameDll", category = "input", group = T("Controllers"), level = ADVANCED,
+            label = T("Use Direct XInput over the game's own XInput DLL"),
+            hint = T("A game that ships its own XInput DLL gets Wine's for it unless this is on. Off by default."),
+            help = T("Some games ship their own XInput DLL next to the EXE (often Microsoft's xinput1_3.dll). Wine loads that copy before Bannerlator's, and Microsoft's needs a Windows-only driver, so the game would see no controller. So by default Bannerlator gives that DLL Wine's own XInput, as before Direct XInput, and says so once.\n\nOn: while the game runs, its copy is renamed (xinput1_3.dll becomes xinput1_3.dll.bannerin-disabled) so Direct XInput is used, and renamed back when the session ends, or at the next app start or launch if the session ended unexpectedly. Nothing is deleted or overwritten.\n\nA Prefer game-folder DLLs entry for the same DLL in the env vars wins over this.\n\nOff by default. For this game only."),
+            tech = com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME,
+            control = { _, _ -> Control.Toggle },
+            // As Classic stores it: "1" when on, the key removed when off.
+            game = GameBinding(
+                listOf(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME),
+                read = { e -> e.get(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME)?.takeIf { it.isNotEmpty() }?.let { if (it == "1") "1" else "0" } },
+                write = { e, v -> e.put(com.winlator.star.core.GameXInputDlls.EXTRA_OVER_GAME, if (v == "1") "1" else null) },
+                inherit = Inherit.BUILT_IN, inherited = { "0" },
+            ),
+            visible = { env, _ -> gameScope(env) && com.winlator.star.ui.theme.AppThemeState.simpleLook },
         ),
         SettingDef(
             id = "input.stickPacing", category = "input", group = T("Controllers"), level = ADVANCED,

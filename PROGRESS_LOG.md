@@ -1,5 +1,12 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 20:40 EST — fix/lab-auto-fit: Lab UI shrinks to fit at large display sizes (branch, CI pending, NOT device-tested)
+
+- **Why:** user screenshots 20:15 EST (Pocket FIT): at max Android display size the Lab rail ends at Contents (Controls/Tools/Saves unreachable, rail not scrollable) and the Home dashboard's bottom row is squashed; normal use = display density 374. Offered (1) scroll fallbacks or (2) auto-fit; user: "I'd prefer lab auto shrinks to fit".
+- **Measured:** wm density physical 440, override 374. Lab draws at outer density × 0.8 (DECK_UI_SCALE): landscape height 1080 px → 577 dp at 374 (rail just fits), 491 dp at 440 (rail already cut), ~378 dp at max (~572). Android's configuration height leaves out the bars (app bounds 1080×1808 portrait), but the Lab shell hides them → measure window metrics instead.
+- **Built (off main 17e2a5ac):** DeckTheme(fit = true) in DeckShell + DeckOnboarding; with simpleLook in landscape: density = min(normal, windowHeightPx / 576 dp), floor 60 % of normal (labFitDensity, labWindowPx). In-game DeckTheme uses, dialogs outside the shell and the Deck look unchanged.
+- **Next:** CI → stage → ASK before install (after the Xbox update test, same package) → check rail + Home at 374 (must look unchanged) and at max display size (all 8 rail entries + 4 bottom tiles visible).
+
 ## 2026-11-13 19:45 EST — MERGED fix/xbox-search → main aac40e1d (--no-ff), device-tested on the Pocket FIT
 
 - **User 19:40 EST: "yes test then merge if fixed".** Installed 5a08e99a on the FIT 19:41:11 EST (pm install -r Success; installed base.apk sha256 bd39b666…868e == staged; replaced main 6b38d097 0f979eca). Peers root-63/-6a/-15 acked before install.

@@ -130,6 +130,8 @@ class SteamSaveManagerActivity : ComponentActivity() {
     companion object {
         /** appId to scroll to / highlight when opened from a per-game menu (0 = no focus). */
         const val EXTRA_FOCUS_APP_ID = "focus_app_id"
+        /** Opened from Lab: the Lab-skinned Save Manager over the Lab wallpaper. */
+        const val EXTRA_LAB = "lab"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,9 +142,13 @@ class SteamSaveManagerActivity : ComponentActivity() {
         // requested orientation. The game's XServerDisplayActivity is deliberately NOT touched.
         com.winlator.star.core.AppOrientation.apply(this)
         val focusAppId = intent.getIntExtra(EXTRA_FOCUS_APP_ID, 0)
+        val lab = intent.getBooleanExtra(EXTRA_LAB, false)
         setContent {
             WinlatorTheme {
-                SaveManagerScreen(
+                if (lab) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    com.winlator.star.ui.simple.LabWallpaper()
+                    SaveManagerScreen(focusAppId = focusAppId, onBack = { finish() }, lab = true)
+                } else SaveManagerScreen(
                     focusAppId = focusAppId,
                     onBack = { finish() },
                 )

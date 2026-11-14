@@ -269,7 +269,9 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
                         // Game details can rename the game's files, so this page (holding the old path) closes
                         // and the sheet opens over the page under it (the shell's DeckGameActionsHost).
                         navController.popBackStack()
-                        GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.GAME_DETAILS, shortcut.file.path)
+                        // Lab: its own Game details page in its place (it follows a rename itself).
+                        if (AppThemeState.simpleLook) navController.navigate(com.winlator.star.ui.simple.LabRoutes.details(shortcut.file.path)) { launchSingleTop = true }
+                        else GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.GAME_DETAILS, shortcut.file.path)
                     }
                     // Same for a new .exe or a copy to drive C: both repoint the entry this page holds.
                     SettingsRegistry.TARGET_CHANGE_EXE -> {

@@ -236,7 +236,7 @@ internal fun DeckShell(
     val navController = rememberNavController()
     val route by navController.currentBackStackEntryAsState()
     val onHome = (route?.destination?.route ?: DeckRoutes.HOME) == DeckRoutes.HOME
-    DeckTheme {
+    DeckTheme(fit = true) {
         // XMB mode: every page but Home sits on the glow, so its own `colorScheme.background` fill goes clear; Home keeps the flat wash.
         XmbWashTheme(xmbHome, glow = !onHome) {
             XmbKeyboardHost(xmbHome) {

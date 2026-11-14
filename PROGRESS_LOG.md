@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 13:15 EST — main: device test of the Lab areas not tried yet (in progress)
+
+- **User:** "test the untried areas first, device is yours and finish it". FIT runs d03ed0da (= main c36fb172 code).
+- **Plan:** Lab light look, controller-only navigation, VEGAS editor, Turnip/VEGAS downloads, Add games, save backup/restore, community browse/apply (+ upload walked to the last step, not sent), EA setup + Steam pre-flight pop-ups via Need for Speed Heat (its .desktop backed up first: the launch request writes launchMode=RealSteam). Not reachable on this device: Ubisoft pop-up (no Ubisoft-published Steam/Epic game), Linux sessions (no Linux runtime installed).
+- **Resume:** restore Lab look + orientation Auto + rotation, NFS Heat .desktop from /sdcard/Download/lp2-test/NFSHeat.desktop.bak, remove test shortcut/configs/downloads, Termux to the front.
+
 ## 2026-11-14 12:50 EST — feat/lab-parity-2 MERGED into main (c36fb172)
 
 - **User:** "merge it" (after the 05:23 EST device test of d03ed0da).

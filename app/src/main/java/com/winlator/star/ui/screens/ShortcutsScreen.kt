@@ -760,8 +760,8 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     val installSheetOpen = installSheetFor != null || driverSheetFor != null
     val communityDialogsGated = installSheetOpen || configAction != null || detailFor != null
     // Lab: its own pages for the community configs, a game's logs and My account (LabCommunity.kt), instead of these dialogs.
-    val lab = com.winlator.star.ui.simple.LabNav.ready
-    if (lab) com.winlator.star.ui.simple.LabActionHandoffs(actions)
+    val labPages = com.winlator.star.ui.simple.LabNav.ready
+    if (labPages) com.winlator.star.ui.simple.LabActionHandoffs(actions)
 
     // Shared apply runner — used by both the catalog browser and the per-shortcut sheet. Dispatches by
     // pick kind: a specific uploaded file applies THAT file; a device-row fallback applies the
@@ -1082,7 +1082,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     // Three outcomes, and it matters that they read differently: per-game folders off (nothing is
     // filed per game, so we cannot show "this game's" logs at all), on but nothing captured yet, or
     // the viewer. Silently opening an empty viewer for the first two would look like a bug.
-    if (!lab) logsShortcut?.let { s ->
+    if (!labPages) logsShortcut?.let { s ->
         val entry = remember(s.name) { LogInventory.forGame(context, s.name) }
         val perGameOff = remember { !LogLocation.isPerGameEnabled(context) }
         if (entry != null) {
@@ -1218,7 +1218,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Community configs dialog (Phase 1 — match + suggest, read-only)
-    if (!communityDialogsGated && !lab) communityTarget?.let { s ->
+    if (!communityDialogsGated && !labPages) communityTarget?.let { s ->
         val dismiss = { communityTarget = null; communityResult = null }
         val communityDialogShape = RoundedCornerShape(28.dp)
         OutlinedAlertDialog(
@@ -1711,7 +1711,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Catalog browser (Part A) — full-catalog entry from the header button.
-    if (showCommunityBrowser && !communityDialogsGated && !lab) {
+    if (showCommunityBrowser && !communityDialogsGated && !labPages) {
         CommunityCatalogBrowser(
             vm = vm,
             onDismiss = { showCommunityBrowser = false },
@@ -1724,7 +1724,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
 
     // Phase 2 (optional accounts) — the My-account sheet. Its "My uploads" button dismisses this and opens
     // the existing My-uploads manager (the per-game dialog still opens My uploads directly, unchanged).
-    if (showMyAccount && !lab) {
+    if (showMyAccount && !labPages) {
         MyAccountDialog(
             vm = vm,
             onDismiss = { showMyAccount = false },
@@ -2103,7 +2103,7 @@ internal fun ShortcutActionDialogs(actions: ShortcutActions) {
     }
 
     // Game Details editor (Edit Game): name + Steam link/search + genres/description/year/metacritic.
-    if (!lab) gameDetailsShortcut?.let { s ->
+    if (!labPages) gameDetailsShortcut?.let { s ->
         GameDetailsSheet(
             shortcut = s,
             onDismiss = { gameDetailsShortcut = null },

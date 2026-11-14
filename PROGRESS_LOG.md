@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 21:40 EST — fix/lab-scroll-fallback: Lab rail + landscape Home scroll when they do not fit, compact rail (branch, CI pending)
+
+- **Why:** main 175aadd2 quick check on the FIT (21:28 EST): the landscape Lab rail has 9 entries (LAB_SECTIONS, LabKit.kt:67-77), the 9th (Settings) is clipped at density 345 and off screen at 374/540. User asked why there is no scroll for the Home dashboard and rail when someone changes UI scale or text; user: "go" on keep auto-fit + scroll fallbacks + compact rail.
+- **Cause of the tall rail:** the rail label Text sets fontSize 10.sp but no lineHeight → inherits AppTypography.bodyLarge (Material 3 default, lineHeight 24.sp). Measured item pitch 108 px = 62.6 dp at 345.
+- **Built (off main 471daaa8):** LabRail (LabFrame.kt): verticalScroll, label lineHeight 13.sp, rail padding 14→10 dp, current section brought into view (BringIntoViewRequester after one frame). Expected rail content ≈ 511 dp at font scale 1.0 (was ≈ 600), fits under the top line even at the 576 dp fit size. LabHome.kt landscape Column: verticalScroll like portrait. rowH (both orientations) × max(1, fontScale) so tile text has room with bigger text (fontScale = Android font size × app Font size, Theme.kt:72); unchanged at font scale ≤ 1 (the FIT runs 0.85).
+- **Not done:** auto-fit still caps a larger Interface size in the Lab (unchanged behaviour).
+- **Next:** CI (workflow_dispatch CI Build artifacts only) → stage → ASK → test on the FIT: landscape rail at 345/374/540 (all 9 visible), Home at 540 + Android font size max (scrolls, nothing unreachable), portrait unchanged. Merge only on user go.
+- **Resume point:** worktree /root/src/Bannerlator-wt/lab-scroll; FIT runs main 175aadd2 (3e3e9ef2).
+
 ## 2026-11-13 21:30 EST — Installing main 175aadd2 pubg on the Pocket FIT (main, INSTALLED + quick check; Lab rail bug found)
 
 - **User:** "install it" (main build with the Xbox Nexus update + Lab auto-fit).

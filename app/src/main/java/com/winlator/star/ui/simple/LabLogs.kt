@@ -134,7 +134,7 @@ internal fun LabLogManagerPanel(onClose: () -> Unit) {
         fun activate(e: MenuEntry?) {
             val f = e?.onA
             if (f != null) {
-                val was = e.toggle
+                val was = e?.toggle
                 f()
                 if (was != null) com.winlator.star.sound.toggleSound(!was)
             } else if (e != null && e.actions.isNotEmpty()) actionsFor = e

@@ -404,12 +404,12 @@ private fun LabFileManagerBody(
         }
         val legend = buildList {
             add("B" to L("Back"))
-            add("A" to if (pane.selectionMode) L("Tick") else L("Open"))
-            if (pick == null && (cur is LItem || (cur is LTile && cur.tile.menu != null))) add("X" to if (pane.selectionMode) L("Selection") else L("Options"))
+            add("A" to (if (pane.selectionMode) L("Tick") else L("Open")))
+            if (pick == null && (cur is LItem || (cur is LTile && cur.tile.menu != null))) add("X" to (if (pane.selectionMode) L("Selection") else L("Options")))
             add("Y" to L("Menu"))
             if (pick == null && pane.loc != FmLoc.Home) add("Select" to L("Tick"))
             if (pick?.dirsOnly == true && pane.currentDir != null) add("Start" to L("Choose this folder"))
-            else if (pick == null && ops.clipboard.isNotEmpty() && pane.currentDir != null) add("Start" to if (ops.clipCut) L("Move here") else L("Paste here"))
+            else if (pick == null && ops.clipboard.isNotEmpty() && pane.currentDir != null) add("Start" to (if (ops.clipCut) L("Move here") else L("Paste here")))
             if (dual) add("L2" to L("Pane"))
         }
         if (!standalone) DisposableEffect(deckActions, legend) {
@@ -487,20 +487,20 @@ private fun LabFileManagerBody(
 
             // ── Toolbar (touch; the controller has all of it in Y's menu) ──
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                LabToolButton(Icons.Filled.Home, L("Home"), pane.loc != FmLoc.Home) { pane.clearSelection(); pane.open(FmLoc.Home) }
-                LabToolButton(Icons.AutoMirrored.Filled.ArrowBack, L("Back"), pane.canGoBack) { pane.goBack() }
-                LabToolButton(Icons.Filled.ArrowUpward, L("Up"), pane.loc != FmLoc.Home) { pane.up() }
+                LabToolButton(Icons.Filled.Home, L("Home"), pane.loc != FmLoc.Home, small = narrow) { pane.clearSelection(); pane.open(FmLoc.Home) }
+                LabToolButton(Icons.AutoMirrored.Filled.ArrowBack, L("Back"), pane.canGoBack, small = narrow) { pane.goBack() }
+                LabToolButton(Icons.Filled.ArrowUpward, L("Up"), pane.loc != FmLoc.Home, small = narrow) { pane.up() }
                 if (!dual && !narrow) {
                     LabCrumbs(crumbsFor(pane, containers, imagefsDir, driveCPath), Modifier.weight(1f).padding(horizontal = 6.dp))
                 } else Spacer(Modifier.weight(1f))
-                LabToolButton(Icons.Filled.Search, L("Search"), pane.loc != FmLoc.Home) { searchFor = pane }
+                LabToolButton(Icons.Filled.Search, L("Search"), pane.loc != FmLoc.Home, small = narrow) { searchFor = pane }
                 LabToolButton(
                     when (pane.viewMode) { FmViewMode.LIST -> Icons.Filled.ViewAgenda; FmViewMode.COMPACT -> Icons.Filled.ViewList; FmViewMode.GRID -> Icons.Filled.GridView },
-                    L("View"), true,
+                    L("View"), true, small = narrow,
                 ) { viewMenu = true }
-                LabToolButton(Icons.Filled.Sort, L("Sort"), true) { sortOpen = true }
-                if (pick == null && dir != null) LabToolButton(Icons.Filled.Add, L("New"), true) { pageMenu = true }
-                LabToolButton(Icons.Filled.MoreHoriz, L("Menu"), true) { pageMenu = true }
+                LabToolButton(Icons.Filled.Sort, L("Sort"), true, small = narrow) { sortOpen = true }
+                if (pick == null && dir != null) LabToolButton(Icons.Filled.Add, L("New"), true, small = narrow) { pageMenu = true }
+                LabToolButton(Icons.Filled.MoreHoriz, L("Menu"), true, small = narrow) { pageMenu = true }
             }
             if (!dual && narrow) LabCrumbs(crumbsFor(pane, containers, imagefsDir, driveCPath), Modifier.fillMaxWidth().padding(top = 4.dp))
             Spacer(Modifier.height(8.dp))
@@ -1128,12 +1128,12 @@ private fun LabCrumbs(segments: List<Pair<String, () -> Unit>>, modifier: Modifi
 
 /** A toolbar button for touch (the controller reaches the same through Y's menu). */
 @Composable
-private fun LabToolButton(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun LabToolButton(icon: ImageVector, label: String, enabled: Boolean, small: Boolean = false, onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .padding(end = 6.dp)
-            .size(38.dp)
+            .padding(end = if (small) 4.dp else 6.dp)
+            .size(if (small) 34.dp else 38.dp)
             .background(SimpleCard, SimpleShape)
             .border(1.dp, SimpleLine, SimpleShape)
             .then(if (enabled) Modifier.simpleTap(onClick) else Modifier)

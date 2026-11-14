@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 00:45 EST — cutting 3.2.0 STABLE (user: "cut it when done and ready")
+
+- **Size run** CI 43560779400 GREEN (byte-exact rebuilds): pubg 3.1.8→3.2.0 93,071,397 B, 3.1.9-pre2→ 51,476,027 B, 3.1.9-pre1→ 59,463,667 B; standard 93,067,845 / 51,483,759 / 59,465,743 B; full APK 601,306,586 B (pubg). Notes line filled; local `scripts/release_notes.py 3.2.0` passes the stable check (exit 0, no TODO(notes)).
+- **RC not installed** (the user did not ask for an install): 3.2.0 is released without an RC device test, by the user's decision. XMB (#660) has never been run on a device.
+- **Cut:** backup `refs/backup/20261114/main-before-3.2.0` = main 01d10f5c, fast-forward main to release/3.2.0, release.yml on main (tag 3.2.0, title "Bannerlator 3.2.0", number 3.2.0, make_prerelease false). No pushes to main until the run ends.
+
 ## 2026-11-14 00:30 EST — 3.2.0 STABLE PREP (release/3.2.0, not published)
 
 - **User:** "prep 3.2.0 stable release" + "release should list all new work since last stable release, same as all previous stable releases". Nothing is tagged or published until the user says "cut it".

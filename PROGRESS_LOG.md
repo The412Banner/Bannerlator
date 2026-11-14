@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 04:45 EST — feat/lab-parity-2: the 3 small issues (branch, awaiting the user)
+
+- **User:** "fix the 3 small issues first".
+- **Box64EC version row had no download line:** e4cb86bc — `LabDownloads` knows `performance.box64ecVersion`; its "+ Download from source" opens the Lab Box64EC download list (`LabContentDownloadSheet`, same as Translator downloads). Device-proven 04:17 EST (list opens, "In use" right).
+- **Full-screen Lab pages showed the page underneath (its top line, last row and button hints) in a strip above and below:** dumpsys showed the Compose Dialog window at 1080×1764 centred on the 1920 screen — Compose 1.6.2's DialogLayout measures with `screenHeightDp` (screen minus bar areas) and re-sets the window size on every layout, so `setLayout(MATCH_PARENT)`, `decorFitsSystemWindows = false` and hiding the bars (a89536b8) changed nothing. d997b93f: `LabFullScreenWindow` = `androidx.activity.ComponentDialog` (DeviceDefault NoActionBar Fullscreen, transparent, no dim, cutout short edges, hides the bars the activity hides) with a `ComposeView` in the caller's composition; Back runs the page's own BackHandler first, then closes. Used by `LabOverlay` (glossary, audio fine-tune, VEGAS editor, editor wrapper manager). Device-proven 04:43 EST: glossary + audio page fill the screen, one row of hints, Back/B close without saving, d-pad focus moves; crash buffer empty.
+- **Back past the Lab file picker left the app:** reproduced step by step — picker → its Home → closes to Contents → Lab Home → leaves the app; Android's normal Back, Classic has no "press Back again" guard either. Not a bug, no change.
+- **CI:** e4cb86bc 43578791791, a89536b8 43579870047, d997b93f 43580930006 — all green ×4. FIT runs d997b93f (73761c0e). Not merged.
+
 ## 2026-11-14 04:00 EST — feat/lab-parity-2: full build installed + device-tested (branch, awaiting the user)
 
 - **Build:** 05036caa (all 8 areas + merge fixes), CI 43577134770 green ×4; `/sdcard/Download/Bannerlator-lab-parity-2-05036caa-pubg.apk` sha256 616995b4… (host = device, cert a40da80a), installed 03:56:19 EST.

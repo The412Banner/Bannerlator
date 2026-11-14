@@ -1,6 +1,5 @@
 package com.winlator.star.store.download
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.winlator.star.store.storeFocus
 import com.winlator.star.ui.deck.xmbSolidBackground
 
 /**
@@ -239,6 +239,7 @@ fun StoreActionButton(
     enabled: Boolean = true,
     destructive: Boolean = false,
 ) {
+    val shape = RoundedCornerShape(10.dp)
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -250,8 +251,12 @@ fun StoreActionButton(
         } else {
             ButtonDefaults.buttonColors()
         },
-        modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        // Filled: the outline takes the ink on the fill.
+        modifier = modifier.storeFocus(
+            shape, onClick,
+            tint = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+        ),
+        shape = shape,
     ) { Text(text, maxLines = 1) }
 }
 
@@ -289,10 +294,8 @@ fun StoreSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
-            // See-through like the page: a faint fill and a thin line, not a solid block over the art.
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
     ) {
         Text(

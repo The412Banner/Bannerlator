@@ -94,31 +94,31 @@ private val xmbLogoCache = ConcurrentHashMap<Int, ImageBitmap>()
 /** The longest side (px) a logo is decoded at: plenty for a card, well under the 960 px files. */
 private const val XMB_LOGO_EDGE = 512
 
-private fun decodeXmbLogo(resources: Resources, res: Int, maxEdge: Int): ImageBitmap? = xmbLogoCache[res] ?: run {
+private fun decodeXmbLogo(resources: Resources, res: Int): ImageBitmap? = xmbLogoCache[res] ?: run {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeResource(resources, res, bounds)
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxEdge) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= XMB_LOGO_EDGE) sample *= 2
     BitmapFactory.decodeResource(resources, res, BitmapFactory.Options().apply { inSampleSize = sample })
         ?.asImageBitmap()?.also { xmbLogoCache[res] = it }
 }
 
 /**
- * [res] decoded off the main thread at no more than [maxEdge] px on its long side. Null until it is ready, and ready at
+ * [res] decoded off the main thread at no more than [XMB_LOGO_EDGE] px on its long side. Null until it is ready, and ready at
  * once on every later visit.
  */
 @Composable
-internal fun rememberXmbLogo(@DrawableRes res: Int, maxEdge: Int = XMB_LOGO_EDGE): ImageBitmap? {
+internal fun rememberXmbLogo(@DrawableRes res: Int): ImageBitmap? {
     val resources = LocalContext.current.resources
     return produceState<ImageBitmap?>(xmbLogoCache[res], res) {
-        if (value == null) value = withContext(Dispatchers.IO) { decodeXmbLogo(resources, res, maxEdge) }
+        if (value == null) value = withContext(Dispatchers.IO) { decodeXmbLogo(resources, res) }
     }.value
 }
 
 /** Decodes [res] ahead of time so the XMB home's first frame finds its logos ready. */
 internal suspend fun warmXmbLogos(context: Context, res: List<Int>) {
     val resources = context.resources
-    withContext(Dispatchers.IO) { res.forEach { decodeXmbLogo(resources, it, XMB_LOGO_EDGE) } }
+    withContext(Dispatchers.IO) { res.forEach { decodeXmbLogo(resources, it) } }
 }
 
 /**

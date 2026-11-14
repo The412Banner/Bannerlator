@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -253,9 +254,11 @@ class EpicGameDetailActivity : ComponentActivity() {
                 if (e != null && (e.state == DownloadState.DOWNLOADING || e.state == DownloadState.PAUSED)) {
                     progressVisible = true
                     progressValue = e.pct
-                    // Epic is pct-only → live "$pct%" label (matches the DL card + notification, and
-                    // the local onProgress below, so a list-started/reopened DL reads identically).
-                    progressLabelText = "Downloading… ${e.pct}%"
+                    // Live "45%  ·  1.2 GB / 4.5 GB  ·  12 MB/s" label from the registry entry (matches the DL
+                    // card + notification, and the local onProgress below, so a list-started/reopened DL
+                    // reads identically). Bare "$pct%" until the first bytes are in.
+                    progressLabelText = epicProgressLabel(e.pct, e.installDone, e.installTotal, e.speedBps, e.etaSeconds,
+                        lead = if (e.state == DownloadState.PAUSED) "Paused" else "Downloading…")
                     progressLabelVisible = true
                     installBtnVisible = true
                     installBtnText = "Cancel"
@@ -351,6 +354,7 @@ class EpicGameDetailActivity : ComponentActivity() {
     private fun startInstallInternal(location: StoreInstallLocations.Location? = null) {
         val an = appName ?: return
         EpicCancelPolicy.clear(an)   // fresh download → default to keep-on-cancel until the dialog says otherwise
+        EpicDownloadControl.onFreshStart(applicationContext, an)   // supersedes any earlier pause of this game
         installBtnText = "Cancel"
             installBtnColor = 0xFFCC3333.toInt()
         progressVisible = true
@@ -372,8 +376,9 @@ class EpicGameDetailActivity : ComponentActivity() {
             id = an,
             name = title ?: an,
             cover = artCover,
-            supportsPause = false,
+            supportsPause = true,
             installTotal = prefs!!.getLong("epic_size_$an", 0L),
+            pause = { EpicDownloadControl.pause(an) },
             cancel = { cancelled.set(true) },
         )
 
@@ -403,6 +408,8 @@ class EpicGameDetailActivity : ComponentActivity() {
                 // Feature #2 — download required(base) + the container language's files only.
                 val installTags = EpicInstallTags.tagsForCurrentContainer(appCtx)
 
+                // Carries the manager's byte counter + speed into every registry tick and label.
+                val tracker = EpicProgressTracker(an)
                 val ok = EpicDownloadManager.install(
                     appCtx,
                     manifestJson,
@@ -410,20 +417,34 @@ class EpicGameDetailActivity : ComponentActivity() {
                     installDir.absolutePath,
                     installTags,
                     cancelled,
-                ) { _, pct ->
-                    // Freeze the card/label the moment the user hits Cancel; install() also polls
-                    // `cancelled` internally and returns false promptly.
-                    if (!cancelled.get()) {
-                        StoreDownloadHooks.tick(Store.EPIC, an, pct, installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
-                        if (!isDestroyed && !isFinishing) runOnUiThread {
-                            if (isDestroyed || isFinishing) return@runOnUiThread
-                            progressValue = pct
-                            progressLabelText = "Downloading\u2026 $pct%"
+                    object : EpicDownloadManager.ProgressCallback {
+                        override fun onBytes(bytesDone: Long, bytesTotal: Long, speedBps: Long, etaSeconds: Long) {
+                            tracker.onBytes(bytesDone, bytesTotal, speedBps, etaSeconds)
                         }
-                    }
-                }
+
+                        override fun onProgress(message: String?, pct: Int) {
+                            // Freeze the card/label the moment the user hits Cancel; install() also polls
+                            // `cancelled` internally and returns false promptly.
+                            if (!cancelled.get()) {
+                                val p = tracker.tick(pct)
+                                val label = tracker.label(p)
+                                if (!isDestroyed && !isFinishing) runOnUiThread {
+                                    if (isDestroyed || isFinishing) return@runOnUiThread
+                                    progressValue = p
+                                    progressLabelText = label
+                                }
+                            }
+                        }
+                    },
+                )
 
                 if (cancelled.get()) {
+                    // A pause (Download Manager) stops the transfer the same way: keep everything and park the row as PAUSED.
+                    if (EpicDownloadControl.consumePause(an)) {
+                        cancelDownload = null
+                        EpicDownloadControl.parkPaused(appCtx, an, installDir.absolutePath, title ?: an, artCover)
+                        return@launch
+                    }
                     // Delete the partial download if the user chose "Delete files" on any Cancel dialog.
                     // Never for an update or repair of an installed game: "Delete files" only drops a new download.
                     if (EpicCancelPolicy.consumeDeleteOnCancel(an) && !wasInstalled) {
@@ -694,9 +715,18 @@ class EpicGameDetailActivity : ComponentActivity() {
                 }
                 val damaged = result.corrupt + result.missing
                 runOnUiThread { verifyStatusText = "Repairing $damaged file(s)…" }
-                val ok = EpicDownloadManager.install(appCtx, manifestJson, token, dir, installTags) { _, pct ->
-                    if (!isDestroyed && !isFinishing) runOnUiThread { verifyStatusText = "Repairing… $pct%" }
-                }
+                val repairTracker = EpicProgressTracker(an)
+                val ok = EpicDownloadManager.install(appCtx, manifestJson, token, dir, installTags,
+                    object : EpicDownloadManager.ProgressCallback {
+                        override fun onBytes(bytesDone: Long, bytesTotal: Long, speedBps: Long, etaSeconds: Long) {
+                            repairTracker.onBytes(bytesDone, bytesTotal, speedBps, etaSeconds)
+                        }
+
+                        override fun onProgress(message: String?, pct: Int) {
+                            val label = repairTracker.label(repairTracker.percent(pct), lead = "Repairing…")
+                            if (!isDestroyed && !isFinishing) runOnUiThread { verifyStatusText = label }
+                        }
+                    })
                 if (ok) EpicInstallState.rememberVersion(appCtx, an, manifestJson)
                 runOnUiThread {
                     verifyEnabled = true
@@ -973,11 +1003,19 @@ private fun EpicGameDetailScreen(
     val tabs = if (hasMedia) listOf("Details", "DLC", "Cloud saves", "Media") else listOf("Details", "DLC", "Cloud saves")
     if (tab >= tabs.size) tab = 0
 
+    // The page's cover is Epic's landscape box art (`artSquare` in the library cache); [artCover] is the tall one.
+    val wideArt by produceState(emptyList<String>(), appName) {
+        value = withContext(Dispatchers.IO) {
+            listOfNotNull(EpicLibraryRepo.cached(context).firstOrNull { it.appName == appName }?.artSquare)
+        }
+    }
+
     StoreDetailScaffold(
         onBack = onBack,
         title = title,
         storeBadge = { StoreBadge(Store.EPIC) },
         downloadKey = "${Store.EPIC}:$appName",
+        cover = wideArt,
         hero = {
             if (artCover.isNotEmpty()) {
                 AsyncImage(

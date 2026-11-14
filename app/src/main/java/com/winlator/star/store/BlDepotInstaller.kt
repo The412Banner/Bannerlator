@@ -308,7 +308,9 @@ internal object BlDepotInstaller {
                 pause = { control.pause.run() }, cancel = { control.cancel.run() },
             ))
         } else {
-            DownloadRegistry.update(dmKey) { it.copy(state = DownloadState.DOWNLOADING) }
+            // An existing row (an installed game being updated, a resumed pause, a retry) has no handles of this run, or those of a dead
+            // one: wire it to the appId-keyed seam so the Download Manager can pause / cancel it.
+            DownloadRegistry.update(dmKey) { SteamDownloadControl.attach(it.copy(state = DownloadState.DOWNLOADING)) }
         }
         fun emitProgress(iDone: Long, iTotal: Long, dDone: Long, dTotal: Long, eta: Long = -1L, bps: Long = 0L) {
             repo.emit("DownloadProgress:$appId:$iDone:$iTotal:$dDone:$dTotal:$eta:$bps")

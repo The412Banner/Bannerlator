@@ -25,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -36,12 +38,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
@@ -69,10 +73,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.winlator.star.core.PeIconExtractor
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.LocalXmbHintInset
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.deck.xmbCardLine
-import com.winlator.star.ui.deck.xmbOnGlow
+import com.winlator.star.ui.deck.xmbFocusSound
+import com.winlator.star.ui.deck.xmbOnGlass
 import com.winlator.star.ui.screens.outlinedMenuCard
+import com.winlator.star.ui.screens.xmbMenuBack
+import com.winlator.star.ui.screens.xmbStop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -80,12 +88,18 @@ import java.io.File
 // ── Look ──
 
 /**
- * The file manager's backdrop: two soft glows of the theme colour over the background. On the XMB glow
- * pages the page already has its glow, so nothing is drawn there.
+ * True while the XMB mode's file picker draws the dense look: slimmer rows, smaller icons, text and crumbs, so many more rows
+ * fit on a landscape phone. Set by [FileManagerRoot] (`dense`); every other host leaves it false and looks as it always did.
+ */
+internal val LocalFmDense = compositionLocalOf { false }
+
+/**
+ * The file manager's backdrop: two soft glows of the theme colour over the background. On the XMB glass
+ * pages the page already has its glass, so nothing is drawn there.
  */
 @Composable
 internal fun Modifier.fmBackdrop(): Modifier {
-    if (xmbOnGlow()) return this
+    if (xmbOnGlass()) return this
     val cs = MaterialTheme.colorScheme
     val bg = cs.background
     val a = cs.primary
@@ -104,7 +118,7 @@ internal fun Modifier.fmBackdrop(): Modifier {
     }
 }
 
-/** A frosted card: glass on the XMB glow, else a see-through surface over the backdrop with a hairline. */
+/** A frosted card: glass on the XMB glass, else a see-through surface over the backdrop with a hairline. */
 @Composable
 internal fun Modifier.fmGlass(
     shape: Shape = RoundedCornerShape(14.dp),
@@ -138,7 +152,7 @@ internal class FmMenuEntry(
 @Composable
 internal fun FmMenu(expanded: Boolean, onDismiss: () -> Unit, entries: List<FmMenuEntry>) {
     val cs = MaterialTheme.colorScheme
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, modifier = Modifier.outlinedMenuCard()) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, modifier = Modifier.outlinedMenuCard().xmbMenuBack(onDismiss)) {
         entries.forEach { e ->
             DropdownMenuItem(
                 text = { Text(e.label, color = if (e.danger) cs.error else cs.onSurface) },
@@ -249,12 +263,14 @@ internal fun FmRow(
     var focused by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     val selected = item.key in pane.selected
-    Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = if (compact) 2.dp else 3.dp)) {
+    val dense = LocalFmDense.current
+    Box(Modifier.fillMaxWidth().padding(horizontal = if (dense) 8.dp else 10.dp, vertical = if (dense) 1.dp else if (compact) 2.dp else 3.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .fmGlass(RoundedCornerShape(if (compact) 10.dp else 14.dp), selected = selected, focused = focused)
+                .fmGlass(RoundedCornerShape(if (dense) 10.dp else if (compact) 10.dp else 14.dp), selected = selected, focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .fmItemKeys(
                     onMenu = menu?.let { { menuOpen = true } },
@@ -264,25 +280,25 @@ internal fun FmRow(
                     onClick = { if (pane.selectionMode) pane.toggleSelect(item) else onOpen() },
                     onLongClick = onLongPress?.let { lp -> { haptic.performHapticFeedback(HapticFeedbackType.LongPress); lp() } },
                 )
-                .padding(horizontal = 10.dp, vertical = if (compact) 4.dp else 8.dp),
+                .padding(horizontal = if (dense) 8.dp else 10.dp, vertical = if (dense) (if (compact) 3.dp else 5.dp) else if (compact) 4.dp else 8.dp),
         ) {
             if (pane.selectionMode) {
                 SelectionMark(selected)
                 Spacer(Modifier.width(10.dp))
             }
-            FmItemIcon(item, isArchive, if (compact) 28.dp else 40.dp)
-            Spacer(Modifier.width(12.dp))
+            FmItemIcon(item, isArchive, if (dense) (if (compact) 24.dp else 30.dp) else if (compact) 28.dp else 40.dp)
+            Spacer(Modifier.width(if (dense) 10.dp else 12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     item.name,
                     color = cs.onSurface,
-                    fontSize = if (compact) 13.sp else 14.sp,
+                    fontSize = if (dense) (if (compact) 12.sp else 13.sp) else if (compact) 13.sp else 14.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = if (compact) 1 else 2,
+                    maxLines = if (compact || dense) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (!compact) {
-                    Text(detailFor(item, pane), color = cs.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(detailFor(item, pane), color = cs.onSurfaceVariant, fontSize = if (dense) 10.sp else 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (subtitle != null) {
                         Text(subtitle, color = cs.onSurfaceVariant.copy(alpha = 0.8f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -291,12 +307,12 @@ internal fun FmRow(
             if (compact) {
                 Text(
                     if (item.isDir) fmDate(item.modified) else StringUtils.formatBytes(item.size),
-                    color = cs.onSurfaceVariant, fontSize = 11.sp, maxLines = 1,
+                    color = cs.onSurfaceVariant, fontSize = if (dense) 10.sp else 11.sp, maxLines = 1,
                 )
             }
             if (menu != null && !pane.selectionMode) {
                 Box {
-                    IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(if (dense) 30.dp else 36.dp)) {
                         Icon(Icons.Filled.MoreVert, "More", tint = cs.primary)
                     }
                     if (menuOpen) FmMenu(expanded = true, onDismiss = { menuOpen = false }, entries = menu())
@@ -321,12 +337,14 @@ internal fun FmTile(
     var focused by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     val selected = item.key in pane.selected
-    Box(Modifier.padding(4.dp)) {
+    val dense = LocalFmDense.current
+    Box(Modifier.padding(if (dense) 2.dp else 4.dp)) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .fmGlass(RoundedCornerShape(16.dp), selected = selected, focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .fmItemKeys(
                     onMenu = menu?.let { { menuOpen = true } },
@@ -340,21 +358,21 @@ internal fun FmTile(
                         if (pane.selectionMode) pane.toggleSelect(item) else if (menu != null) menuOpen = true else onLongPress?.invoke()
                     },
                 )
-                .padding(horizontal = 6.dp, vertical = 10.dp),
+                .padding(horizontal = if (dense) 4.dp else 6.dp, vertical = if (dense) 6.dp else 10.dp),
         ) {
             Box {
-                FmItemIcon(item, isArchive, 52.dp)
+                FmItemIcon(item, isArchive, if (dense) 36.dp else 52.dp)
                 if (pane.selectionMode) Box(Modifier.align(Alignment.TopEnd)) { SelectionMark(selected) }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(if (dense) 3.dp else 6.dp))
             Text(
-                item.name, color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                item.name, color = cs.onSurface, fontSize = if (dense) 11.sp else 12.sp, fontWeight = FontWeight.Medium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                modifier = Modifier.height(32.dp),
+                modifier = Modifier.height(if (dense) 28.dp else 32.dp),
             )
             Text(
                 if (item.isDir) fmDate(item.modified) else StringUtils.formatBytes(item.size),
-                color = cs.onSurfaceVariant, fontSize = 10.sp, maxLines = 1,
+                color = cs.onSurfaceVariant, fontSize = if (dense) 9.sp else 10.sp, maxLines = 1,
             )
         }
         if (menuOpen && menu != null) FmMenu(expanded = true, onDismiss = { menuOpen = false }, entries = menu())
@@ -366,17 +384,19 @@ internal fun FmTile(
 internal fun FmParentRow(compact: Boolean, onUp: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
+    val dense = LocalFmDense.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = if (compact) 2.dp else 3.dp)
-            .fmGlass(RoundedCornerShape(if (compact) 10.dp else 14.dp), focused = focused)
+            .padding(horizontal = if (dense) 8.dp else 10.dp, vertical = if (dense) 1.dp else if (compact) 2.dp else 3.dp)
+            .fmGlass(RoundedCornerShape(if (compact || dense) 10.dp else 14.dp), focused = focused)
+            .xmbFocusSound()
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onUp)
-            .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 12.dp),
+            .padding(horizontal = 12.dp, vertical = if (dense) 8.dp else if (compact) 6.dp else 12.dp),
     ) {
-        Text("..", color = cs.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text("..", color = cs.onSurface, fontSize = if (dense) 13.sp else 15.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -384,8 +404,9 @@ internal fun FmParentRow(compact: Boolean, onUp: () -> Unit) {
 
 /** Clickable path segments; the last one is where the pane is. */
 @Composable
-internal fun FmCrumbs(segments: List<Pair<String, () -> Unit>>, modifier: Modifier = Modifier) {
+internal fun FmCrumbs(segments: List<Pair<String, () -> Unit>>, modifier: Modifier = Modifier, vPad: Dp = 4.dp) {
     val cs = MaterialTheme.colorScheme
+    val dense = LocalFmDense.current
     val scroll = rememberScrollState()
     LaunchedEffect(segments.size, segments.lastOrNull()?.first) { scroll.scrollTo(scroll.maxValue) }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.horizontalScroll(scroll)) {
@@ -394,13 +415,13 @@ internal fun FmCrumbs(segments: List<Pair<String, () -> Unit>>, modifier: Modifi
             Text(
                 label,
                 color = if (last) cs.onSurface else cs.primary,
-                fontSize = 13.sp,
+                fontSize = if (dense) 12.sp else 13.sp,
                 fontWeight = if (last) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable(enabled = !last, onClick = go)
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(horizontal = 6.dp, vertical = vPad),
             )
             if (!last) Icon(Icons.Filled.ChevronRight, null, tint = cs.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
@@ -443,6 +464,46 @@ internal fun FmCapsule(
             } else {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape))
             }
+        }
+    }
+}
+
+/**
+ * The compact toolbar's clipboard, as floating buttons: a round paste button (the Containers tab's "+" look: 56 dp, accent fill)
+ * with a small clear button beside it. Meant for the bottom right of the page (the caller aligns it); it lifts itself above the
+ * shell's floating Back / Search hints ([LocalXmbHintInset]). It names nothing: the icon says paste or move, the description for
+ * accessibility too. [onPaste] null (no folder open, so nothing to paste into) leaves the button dimmed and inert. Both are D-pad
+ * stops (A presses), with the XMB highlight on them.
+ */
+@Composable
+internal fun FmPasteFab(cut: Boolean, onPaste: (() -> Unit)?, onClear: () -> Unit, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier.padding(20.dp).padding(bottom = LocalXmbHintInset.current),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(40.dp).xmbStop(CircleShape).fmGlass(CircleShape).clickable(onClick = onClear),
+        ) {
+            Icon(Icons.Filled.Close, "Clear the clipboard", tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(56.dp)
+                .alpha(if (onPaste != null) 1f else 0.5f)
+                .xmbStop(CircleShape)
+                .clip(CircleShape)
+                .background(cs.primary)
+                .clickable(enabled = onPaste != null, onClick = { onPaste?.invoke() }),
+        ) {
+            Icon(
+                if (cut) Icons.Filled.DriveFileMove else Icons.Filled.ContentPaste,
+                if (cut) "Move here" else "Paste here",
+                tint = cs.onPrimary,
+            )
         }
     }
 }

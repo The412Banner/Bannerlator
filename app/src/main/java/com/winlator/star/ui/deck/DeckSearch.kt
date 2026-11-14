@@ -33,12 +33,12 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -79,7 +79,7 @@ import com.winlator.star.ui.deck.settings.DeckSettingsRoutes
 import com.winlator.star.ui.screens.ShortcutsViewModel
 
 /** A place the search can jump to: a Deck route, a store, or the About dialog. */
-private data class SearchDestination(
+internal data class SearchDestination(
     val title: String,
     val path: String,
     val icon: ImageVector,
@@ -87,6 +87,8 @@ private data class SearchDestination(
     val route: String? = null,
     val store: Screen? = null,
     val about: Boolean = false,
+    /** The Tools tab to show when [route] is the Tools page (see [DeckToolsTabs]). */
+    val toolsTab: Int? = null,
 )
 
 /** Everything the search lists besides games. Keywords widen the match beyond the title. */
@@ -104,17 +106,17 @@ private val DESTINATIONS = listOf(
     SearchDestination("Tools", "Files, saves, logs", Icons.Filled.Build, "tools", route = DeckRoutes.TOOLS),
     SearchDestination("File Manager", "Tools › Files", Icons.Filled.FolderOpen, "files folders browse unpack archive 7z zip", route = Screen.FileManager.route),
     SearchDestination("Save Manager", "Tools › Saves", Icons.Filled.Save, "saves backup restore cloud sync", route = Screen.SaveManager.route),
-    SearchDestination("Wrappers", "Tools › Graphics wrappers", Icons.Filled.Layers, "wrapper vulkan graphics", route = Screen.Wrappers.route),
-    SearchDestination("Adrenotools", "Tools › GPU drivers", Icons.Filled.Memory, "gpu driver adreno turnip mesa", route = Screen.AdrenoTools.route),
-    SearchDestination("Settings", "App settings", Icons.Filled.Settings, "settings preferences performance network storage logs advanced", route = DeckSettingsRoutes.APP),
-    SearchDestination("Appearance", "Settings › Appearance", Icons.Filled.Palette, "appearance theme accent dark light interface style deck classic size font", route = Screen.Appearance.route),
-    SearchDestination("Logs", "Tools › Logs", Icons.Filled.Description, "logs log manager debug wine dxvk", route = DeckRoutes.TOOLS),
+    SearchDestination("Wrappers", "Components › Wrappers", Icons.Filled.Layers, "wrapper vulkan graphics", route = Screen.Wrappers.route),
+    SearchDestination("Adrenotools", "Components › Adrenotools", Icons.Filled.Memory, "gpu driver adreno turnip mesa", route = Screen.AdrenoTools.route),
+    SearchDestination("Settings", "App settings", Icons.Filled.Settings, "settings preferences appearance theme accent interface style font performance network storage backup advanced", route = DeckSettingsRoutes.APP),
+    SearchDestination("Logs", "Tools › Logs", Icons.Filled.Description, "logs log manager debug wine dxvk", route = DeckRoutes.TOOLS, toolsTab = DeckToolsTabs.LOGS),
     SearchDestination("About", "Version, updates and credits", Icons.Filled.Info, "about version update credits license", about = true),
 )
 
 /**
  * The Deck's search overlay (Y, or the magnifier in the top bar). Matches games by title and the
- * app's screens and tools by name and keywords; picking a game opens its game page.
+ * app's screens and tools by name and keywords; picking a game opens its game page. The XMB has its
+ * own popup, laid out for the controller and the landscape screen (XmbSearch.kt).
  */
 @Composable
 internal fun DeckSearchOverlay(
@@ -125,9 +127,20 @@ internal fun DeckSearchOverlay(
     onAbout: () -> Unit,
     vm: ShortcutsViewModel = viewModel(),
 ) {
-    // XMB mode: the panel is frosted glass over its own glow, so its text is the lifted colour the glow was tuned for, also over Home.
-    XmbPanelTheme { DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm) }
+    if (rememberXmbHome()) XmbSearchPopup(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm)
+    else DeckSearchPanel(onDismiss, onOpenGame, onOpenRoute, onLaunchStore, onAbout, vm)
 }
+
+/** The games the search lists for [q] (trimmed, lower case): the ones to continue with while it is empty, else the matches, titles that start with it first. */
+internal fun searchGames(q: String, shortcuts: List<Shortcut>, stats: Map<String, PlayStats>): List<Shortcut> =
+    if (q.isEmpty()) continuePlayingOrder(shortcuts, stats).take(6)
+    else shortcuts.filter { it.name.lowercase().contains(q) || storeLabelOf(it).lowercase().contains(q) }
+        .sortedWith(compareBy<Shortcut> { !it.name.lowercase().startsWith(q) }.thenBy { it.name.lowercase() })
+
+/** The screens and tools the search lists for [q] (trimmed, lower case): those whose title or keywords hold every word of it. */
+internal fun searchPlaces(q: String): List<SearchDestination> =
+    if (q.isEmpty()) emptyList()
+    else DESTINATIONS.filter { d -> q.split(' ').filter { it.isNotBlank() }.all { w -> d.title.lowercase().contains(w) || d.keywords.contains(w) } }
 
 @Composable
 private fun DeckSearchPanel(
@@ -144,15 +157,8 @@ private fun DeckSearchPanel(
     var query by rememberSaveable { mutableStateOf("") }
     val q = query.trim().lowercase()
     val stats = remember(shortcuts) { readPlayStats(context, shortcuts) }
-    val games = remember(q, shortcuts) {
-        if (q.isEmpty()) continuePlayingOrder(shortcuts, stats).take(6)
-        else shortcuts.filter { it.name.lowercase().contains(q) || storeLabelOf(it).lowercase().contains(q) }
-            .sortedWith(compareBy<Shortcut> { !it.name.lowercase().startsWith(q) }.thenBy { it.name.lowercase() })
-    }
-    val places = remember(q) {
-        if (q.isEmpty()) emptyList()
-        else DESTINATIONS.filter { d -> q.split(' ').filter { it.isNotBlank() }.all { w -> d.title.lowercase().contains(w) || d.keywords.contains(w) } }
-    }
+    val games = remember(q, shortcuts) { searchGames(q, shortcuts, stats) }
+    val places = remember(q) { searchPlaces(q) }
     val fieldRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -189,15 +195,17 @@ private fun DeckSearchPanel(
                             fontSize = if (compact) 20.sp else 24.sp,
                             modifier = Modifier.weight(1f),
                         )
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .deckFocusRing(deckShape(14.dp), scaleTo = 1f)
-                                .clip(deckShape(14.dp))
-                                .clickable(onClick = onDismiss)
-                                .size(44.dp),
-                        ) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close", tint = cs.onSurface)
+                        DeckInk { item, ink ->
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .deckFocusRingInk(RoundedCornerShape(14.dp), item, scaleTo = 1f)
+                                    .clip(deckShape(14.dp))
+                                    .clickable(onClick = onDismiss)
+                                    .size(44.dp),
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = ink.onSurface)
+                            }
                         }
                     }
                     OutlinedTextField(
@@ -255,28 +263,47 @@ private fun DeckSearchPanel(
     }
 }
 
-private fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
+internal fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit, onLaunchStore: (Screen) -> Unit, onAbout: () -> Unit) {
     when {
         d.about -> onAbout()
         d.store != null -> onLaunchStore(d.store)
-        d.route != null -> onOpenRoute(d.route)
+        d.route != null -> {
+            // The Simple style has no Tools tabs, so a pending tab request would only linger until the Deck style is back.
+            if (d.toolsTab != null && !com.winlator.star.ui.theme.AppThemeState.simpleLook) DeckToolsTabs.requested = d.toolsTab
+            onOpenRoute(d.route)
+        }
     }
 }
 
 @Composable
 private fun SearchResultRow(title: String, subtitle: String, icon: ImageVector, cover: Shortcut?, onClick: () -> Unit) {
+    val shape = deckShape(14.dp)
     val cs = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
-    val shape = deckShape(14.dp)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    SearchResultBody(
+        cs, title, subtitle, icon, cover, focused,
         modifier = Modifier
             .fillMaxWidth()
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
             .then(if (focused) Modifier.background(cs.primary.copy(alpha = 0.14f)).border(2.dp, cs.primary, shape) else Modifier)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clickable(onClick = onClick),
+    )
+}
+
+@Composable
+private fun SearchResultBody(
+    cs: ColorScheme,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    cover: Shortcut?,
+    focused: Boolean,
+    modifier: Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,

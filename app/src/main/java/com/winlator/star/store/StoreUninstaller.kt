@@ -21,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.ui.DeckDialogBars
 import com.winlator.star.ui.DeckDialogScaled
+import com.winlator.star.ui.LocalXmbHintInset
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -44,6 +45,21 @@ object StoreUninstaller {
      *   deleted (the result still counts as success: this game's own record and manifest are gone).
      */
     fun run(installDir: String?, mark: () -> Unit, keepFolder: (() -> Boolean)? = null, onResult: (Boolean) -> Unit) {
+        runReporting(installDir, mark, keepFolder) { ok, _ -> onResult(ok) }
+    }
+
+    /**
+     * Like [run], but [onResult] also learns whether the folder was KEPT (a library container, or one another game uses) rather than
+     * deleted, so a caller can tell "this game's files are gone" from "its folder still stands" (e.g. to leave shortcuts that point
+     * into a folder that is still there).
+     * @param onResult invoked on the MAIN thread with `(ok, kept)`; `ok` = dir fully removed, kept, or nothing to remove.
+     */
+    fun runReporting(
+        installDir: String?,
+        mark: () -> Unit,
+        keepFolder: (() -> Boolean)? = null,
+        onResult: (ok: Boolean, kept: Boolean) -> Unit,
+    ) {
         Thread {
             mark()
             val dir = installDir?.takeIf { it.isNotEmpty() }?.let { File(it) }
@@ -60,7 +76,7 @@ object StoreUninstaller {
             } else {
                 true
             }
-            Handler(Looper.getMainLooper()).post { onResult(ok) }
+            Handler(Looper.getMainLooper()).post { onResult(ok, keep) }
         }.start()
     }
 }
@@ -79,7 +95,7 @@ internal fun UninstallResultBar(message: String, onTimeout: () -> Unit) {
         onTimeout()
     }
     Box(
-        modifier = Modifier.fillMaxSize().padding(bottom = 80.dp),
+        modifier = Modifier.fillMaxSize().padding(bottom = maxOf(80.dp, LocalXmbHintInset.current + 16.dp)),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(

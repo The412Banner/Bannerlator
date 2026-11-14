@@ -84,6 +84,8 @@ import androidx.compose.ui.unit.sp
 import com.winlator.star.R
 import com.winlator.star.store.download.DownloadsButton
 import com.winlator.star.ui.deck.rememberScreenScale
+import com.winlator.star.ui.deck.rememberXmbRailState
+import com.winlator.star.ui.deck.xmbRailGroup
 import com.winlator.star.ui.deck.xmbCardFill
 import com.winlator.star.ui.theme.LocalAccentDim
 
@@ -398,7 +400,7 @@ fun SteamStorefrontHost(
             // The Steam activities are not edge-to-edge, so systemBars is usually zero — but the
             // display cutout is NOT, and in landscape on a handheld it eats the rail. Both, always —
             // except in XMB home, where StoreXmbScreen already frames the screen edge to edge.
-            .then(if (LocalStoreXmb.current) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
+            .then(if (xmb) Modifier else Modifier.systemBarsPadding().displayCutoutPadding()),
     ) {
         if (layout.wide) {
             Column(Modifier.fillMaxSize()) {

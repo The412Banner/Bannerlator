@@ -149,10 +149,19 @@ object StoreFolderImport {
         val manifest = EpicApiClient.getManifestApiJson(token, eg.namespace, eg.catalogItemId, eg.appName)
             ?: return StoreDownloadHooks.markFailed(Store.EPIC, game.id, "Failed to fetch manifest")
         val tags = EpicInstallTags.tagsForCurrentContainer(app)
-        val ok = EpicDownloadManager.install(app, manifest, token, folder.absolutePath, tags, cancelled) { _, pct ->
-            if (!cancelled.get()) StoreDownloadHooks.tick(Store.EPIC, game.id, pct,
-                installDone = EpicDownloadManager.progressDone, installTotal = EpicDownloadManager.progressTotal)
-        }
+        val tracker = EpicProgressTracker(game.id)
+        val ok = EpicDownloadManager.install(
+            app, manifest, token, folder.absolutePath, tags, cancelled,
+            object : EpicDownloadManager.ProgressCallback {
+                override fun onBytes(bytesDone: Long, bytesTotal: Long, speedBps: Long, etaSeconds: Long) {
+                    tracker.onBytes(bytesDone, bytesTotal, speedBps, etaSeconds)
+                }
+
+                override fun onProgress(message: String?, pct: Int) {
+                    if (!cancelled.get()) tracker.tick(pct)
+                }
+            },
+        )
         if (cancelled.get()) {
             EpicCancelPolicy.consumeDeleteOnCancel(game.id)   // the user's folder is never deleted
             return StoreDownloadHooks.markCancelled(Store.EPIC, game.id)

@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.winlator.star.core.StringUtils
+import com.winlator.star.ui.deck.xmbFocusSound
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -79,12 +80,13 @@ internal class FmHomeSection(val title: String, val tiles: List<FmHomeTile>)
 internal fun FmHome(sections: List<FmHomeSection>, onOpen: (File) -> Unit, refreshTick: Int, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val state = rememberLazyGridState()
+    val dense = LocalFmDense.current
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
+        columns = GridCells.Adaptive(minSize = if (dense) 120.dp else 150.dp),
         state = state,
-        contentPadding = PaddingValues(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(if (dense) 6.dp else 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (dense) 6.dp else 10.dp),
+        verticalArrangement = Arrangement.spacedBy(if (dense) 6.dp else 10.dp),
         modifier = modifier.fillMaxSize(),
     ) {
         sections.filter { it.tiles.isNotEmpty() }.forEach { section ->
@@ -92,9 +94,9 @@ internal fun FmHome(sections: List<FmHomeSection>, onOpen: (File) -> Unit, refre
                 Text(
                     section.title,
                     color = cs.onSurfaceVariant,
-                    fontSize = 13.sp,
+                    fontSize = if (dense) 12.sp else 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                    modifier = Modifier.padding(start = 4.dp, top = if (dense) 2.dp else 6.dp),
                 )
             }
             items(section.tiles, key = { section.title + ":" + it.dir.absolutePath + ":" + it.title }) { tile ->
@@ -124,29 +126,31 @@ private fun HomeTile(tile: FmHomeTile, refreshTick: Int, onOpen: (File) -> Unit)
         }
     }
     val tint = tile.tint ?: cs.primary
+    val dense = LocalFmDense.current
     Box {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 132.dp)
-                .fmGlass(RoundedCornerShape(18.dp), focused = focused)
+                .heightIn(min = if (dense) 88.dp else 132.dp)
+                .fmGlass(RoundedCornerShape(if (dense) 14.dp else 18.dp), focused = focused)
+                .xmbFocusSound()
                 .onFocusChanged { focused = it.isFocused }
                 .clickable { onOpen(tile.dir) }
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .padding(horizontal = 10.dp, vertical = if (dense) 7.dp else 12.dp),
         ) {
             Text(
-                tile.title, color = cs.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                tile.title, color = cs.onSurface, fontSize = if (dense) 13.sp else 15.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(if (dense) 5.dp else 10.dp))
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)),
+                modifier = Modifier.size(if (dense) 34.dp else 48.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)),
             ) {
-                Icon(tile.icon, null, tint = tint, modifier = Modifier.size(26.dp))
+                Icon(tile.icon, null, tint = tint, modifier = Modifier.size(if (dense) 20.dp else 26.dp))
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(if (dense) 5.dp else 10.dp))
             val u = usage
             val c = count
             val line = when {

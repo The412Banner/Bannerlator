@@ -8,19 +8,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.winlator.star.ui.deck.LocalXmbScale
+import com.winlator.star.ui.deck.XmbHighlightHost
 import com.winlator.star.ui.deck.XmbKeyboardWindow
+import com.winlator.star.ui.deck.rememberXmbHome
 import java.lang.ref.WeakReference
 
 // What a Classic screen needs to know when the Deck shell hosts it. Kept out of ui/deck so the
@@ -124,12 +130,35 @@ val LocalDeckDensity = staticCompositionLocalOf<Density?> { null }
 
 /**
  * Wraps a dialog's or sheet's content so it is drawn at the Deck style's size; does nothing in Classic. In the XMB mode it
- * also brings the XMB keyboard into the window, whose text input service does not come from the screen below.
+ * also brings the XMB keyboard into the window, whose text input service does not come from the screen below, and (unless
+ * [host] is false) gives the window its own highlight host: a dialog is a separate window with its own focus, so the one
+ * gliding outline of the screen below cannot draw in it. Items in the dialog ([deckFocusRing], [steamFocusRing],
+ * `xmbHighlight`) then register with that host. [host] false: a dialog that arranges its own host, or has nothing focusable.
+ *
+ * The host adds one Box around [content] in the XMB mode only; Classic and plain Deck compose exactly as before.
  */
 @Composable
-fun DeckDialogScaled(content: @Composable () -> Unit) {
-    val deck = LocalDeckDensity.current
+fun DeckDialogScaled(host: Boolean = true, content: @Composable () -> Unit) {
+    val xmb = LocalXmbScale.current
+    // Without a Deck density (a screen that is not in the Deck style) the XMB window still takes the XMB's own scale, and its dp.
+    val density = LocalDeckDensity.current ?: xmb?.density
+    val xmbHost = host && rememberXmbHome()
     XmbKeyboardWindow {
-        if (deck == null) content() else CompositionLocalProvider(LocalDensity provides deck, content = content)
+        // Inside the density, so the outline's 2 dp is drawn at the Deck scale like everything else in the window.
+        val body: @Composable () -> Unit = {
+            if (xmbHost) XmbHighlightHost(enabled = true) { content() } else content()
+        }
+        CompositionLocalProvider(
+            LocalDensity provides (density ?: LocalDensity.current),
+            LocalConfiguration provides (xmb?.configuration ?: LocalConfiguration.current),
+            content = body,
+        )
     }
 }
+
+/**
+ * How far up a floating button at the bottom of a page must sit to clear the floating "B Back" / "Y Search" hints (bottom
+ * right) while the XMB shell or an XMB store screen shows them, else 0. The shell sets it; a floating button adds it to its
+ * bottom padding so the hints never cover it. Everywhere else it stays 0.dp, so reading it is always safe.
+ */
+val LocalXmbHintInset = compositionLocalOf { 0.dp }

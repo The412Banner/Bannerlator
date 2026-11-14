@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +50,8 @@ import com.winlator.star.core.WaylandAdapterSettings
 import com.winlator.star.core.WaylandDriverProbe
 import com.winlator.star.core.WaylandGameDriver
 import com.winlator.star.core.StringUtils
-import com.winlator.star.ui.deck.deckFocusRing
+import com.winlator.star.ui.deck.DeckInk
+import com.winlator.star.ui.deck.deckFocusRingInk
 import com.winlator.star.ui.deck.settings.SettingLevel.ADVANCED
 import com.winlator.star.ui.deck.settings.SettingLevel.EXPERT
 import com.winlator.star.ui.screens.ContainerDetailViewModel
@@ -187,6 +187,8 @@ internal object GraphicsRows {
         note: (SettingsEnv, (String) -> String) -> String? = { _, _ -> null },
         /** For a key whose shown value depends on other keys of the string: decodes from the whole config instead. */
         decodeConfig: ((SettingsEnv, String?) -> String)? = null,
+        /** The kind of the row's "Get more" link (SettingDef.getMore). */
+        getMore: String? = null,
     ): SettingDef {
         fun valueIn(env: SettingsEnv, config: String?) = decodeConfig?.invoke(env, config) ?: decode(env, p.raw(config, key))
         fun changed(config: String, v: String): String = p.with(config, also(v, config) + (key to encode(v, p.raw(config, key))))
@@ -212,7 +214,7 @@ internal object GraphicsRows {
                     }
                 },
             ),
-            visible = visible, disabled = disabled, note = note,
+            visible = visible, disabled = disabled, note = note, getMore = getMore,
         )
     }
 
@@ -314,6 +316,7 @@ internal object GraphicsRows {
             // The async switches only exist for the builds that have them, as the classic OK writes them.
             also = { v, cfg -> asyncFor(v, cfg) },
             visible = { _, values -> plainDxvk(values) },
+            getMore = "dxvk",
         ),
         packedRow(
             DX_CFG, ID_VEGAS, "version", L("DXVK and VKD3D"), L("VEGAS version"), ADVANCED,
@@ -321,7 +324,12 @@ internal object GraphicsRows {
             control = { env, values -> versions(env.graphics.vegas, values(ID_VEGAS), env.graphics.loaded) },
             also = { v, cfg -> asyncFor(v, cfg) },
             visible = { _, values -> vegas(values) },
-            note = { env, values -> if (env.graphics.loaded && env.graphics.vegas.isEmpty()) L("No VEGAS build installed: download one below.") else null },
+            note = { env, values ->
+                if (!env.graphics.loaded || env.graphics.vegas.isNotEmpty()) null
+                else if (!com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value) L("No VEGAS build installed: download one below.")
+                else L("No VEGAS build installed: use Get more to download one.")
+            },
+            getMore = "vegas",
         ),
         packedRow(
             DX_CFG, ID_VKD3D, "vkd3dVersion", L("DXVK and VKD3D"), L("VKD3D version"), ADVANCED,
@@ -329,6 +337,7 @@ internal object GraphicsRows {
             control = { env, values -> versions(env.graphics.vkd3d, values(ID_VKD3D), env.graphics.loaded) },
             decode = { _, r -> r?.ifEmpty { null } ?: "None" },
             visible = { _, values -> dxvkLike(values) },
+            getMore = "vkd3d",
         ),
         packedRow(
             DX_CFG, "graphics.dx.async", "async", L("DXVK and VKD3D"), L("Async shaders"), ADVANCED,
@@ -395,6 +404,7 @@ internal object GraphicsRows {
             },
             decode = { _, r -> r?.ifEmpty { null } ?: DXVKConfigDialog.D7VK_BUNDLED },
             visible = { _, values -> dxvkLike(values) && values(ID_DDRAW) == "d7vk" },
+            getMore = "d7vk",
         ),
 
         // VEGAS config file: which one the game reads. Its keys are edited in the VEGAS config editor below the rows.
@@ -423,6 +433,7 @@ internal object GraphicsRows {
                 val p = values(ID_VEGAS_CONFIG)
                 if (p.isNotEmpty() && !File(p).isFile) "Not found: $p" else null
             },
+            getMore = "stock",
         ),
 
         // WineD3D (WineD3DConfigDialog)
@@ -1254,19 +1265,41 @@ internal class DeckGraphicsState(
         }
     }
 
+    /**
+     * A row's "Get more" (SettingDef.getMore, wired by the host through SettingsEnv.getMoreOpen): opens the download
+     * sheet of [kind] (dxvk, vkd3d, d7vk, vegas, stock, wrappers or turnip). False for any other kind.
+     */
+    fun openGetMore(kind: String): Boolean {
+        when (kind) {
+            "dxvk" -> sheet = ContentProfile.ContentType.CONTENT_TYPE_DXVK
+            "vkd3d" -> sheet = ContentProfile.ContentType.CONTENT_TYPE_VKD3D
+            "d7vk" -> sheet = ContentProfile.ContentType.CONTENT_TYPE_D7VK
+            "vegas" -> vegasSheet = true
+            "stock" -> stockSheet = true
+            "wrappers" -> wrappers = true
+            "turnip" -> turnipSheet = true
+            else -> return false
+        }
+        return true
+    }
+
     private fun bottomItems(): List<PageExtra> {
+        // The XMB editor reaches every download below from "Get more" on the version rows ([openGetMore]), so
+        // only the VEGAS config editor (a file editor, not a download) is listed; the plain Deck and the Lab style
+        // have no such links and keep the whole list.
+        val downloads = !com.winlator.star.ui.theme.AppThemeState.deckXmbHome.value
         val actions = buildList {
-            if (dxvkLike() && !vegas()) add(Action("dxvk", Icons.Filled.CloudDownload, L("Download DXVK versions"), L("Builds from the catalog. Installed ones appear under DXVK version.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_DXVK })
-            if (vegas()) add(Action("vegas", Icons.Filled.CloudDownload, L("Download VEGAS builds"), L("Releases of the VEGAS DXVK fork.")) { vegasSheet = true })
-            if (dxvkLike()) add(Action("vkd3d", Icons.Filled.CloudDownload, L("Download VKD3D versions"), L("DirectX 12 builds from the catalog.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_VKD3D })
-            if (dxvkLike() && value(GraphicsRows.ID_DDRAW) == "d7vk") add(Action("d7vk", Icons.Filled.CloudDownload, L("Download D7VK versions"), L("DirectDraw and Direct3D 7 on Vulkan.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_D7VK })
-            if (vegas()) add(Action("stock", Icons.Filled.CloudDownload, L("Download stock VEGAS configs"), L("The config files VEGAS releases ship. They appear under Config file.")) { stockSheet = true })
+            if (downloads && dxvkLike() && !vegas()) add(Action("dxvk", Icons.Filled.CloudDownload, L("Download DXVK versions"), L("Builds from the catalog. Installed ones appear under DXVK version.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_DXVK })
+            if (downloads && vegas()) add(Action("vegas", Icons.Filled.CloudDownload, L("Download VEGAS builds"), L("Releases of the VEGAS DXVK fork.")) { vegasSheet = true })
+            if (downloads && dxvkLike()) add(Action("vkd3d", Icons.Filled.CloudDownload, L("Download VKD3D versions"), L("DirectX 12 builds from the catalog.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_VKD3D })
+            if (downloads && dxvkLike() && value(GraphicsRows.ID_DDRAW) == "d7vk") add(Action("d7vk", Icons.Filled.CloudDownload, L("Download D7VK versions"), L("DirectDraw and Direct3D 7 on Vulkan.")) { sheet = ContentProfile.ContentType.CONTENT_TYPE_D7VK })
+            if (downloads && vegas()) add(Action("stock", Icons.Filled.CloudDownload, L("Download stock VEGAS configs"), L("The config files VEGAS releases ship. They appear under Config file.")) { stockSheet = true })
             if (vegas()) add(Action("vegasEditor", Icons.Filled.Description, L("Edit the VEGAS config file"), L("Performance tier, each key of the file, backups, and deleting or installing VEGAS builds.")) { vegasEditor = true })
-            if (x11()) add(Action("wrappers", Icons.Filled.Inventory2, L("Manage graphics wrappers"), L("Download, import or delete the wrappers listed under Graphics driver.")) { wrappers = true })
-            if (!env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) add(Action("turnip", Icons.Filled.CloudDownload, L("Download a Turnip driver"), L("Wayland needs an installed Turnip to put the game's frames on screen. New ones appear under Graphics driver.")) { turnipSheet = true })
+            if (downloads && x11()) add(Action("wrappers", Icons.Filled.Inventory2, L("Manage graphics wrappers"), L("Download, import or delete the wrappers listed under Graphics driver.")) { wrappers = true })
+            if (downloads && !env.isLinuxEntry && env.wayland(this@DeckGraphicsState::value)) add(Action("turnip", Icons.Filled.CloudDownload, L("Download a Turnip driver"), L("Wayland needs an installed Turnip to put the game's frames on screen. New ones appear under Graphics driver.")) { turnipSheet = true })
         }
         if (actions.isEmpty()) return emptyList()
-        return listOf(PageExtra("graphics-tools-label") { GroupLabel(L("Downloads and tools")) }) +
+        return listOf(PageExtra("graphics-tools-label") { GroupLabel(if (downloads) L("Downloads and tools") else L("Tools")) }) +
             actions.mapIndexed { i, a ->
                 PageExtra("graphics-tool:${a.key}") {
                     GroupCard(first = i == 0, last = i == actions.lastIndex, highlight = false) { ActionRow(a) }
@@ -1336,22 +1369,24 @@ private fun GraphicsProbes(state: DeckGraphicsState) {
 /** One action: the whole line is the focus target and A runs it. */
 @Composable
 private fun ActionRow(action: DeckGraphicsState.Action) {
-    val cs = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .deckFocusRing(deckShape(12.dp), scaleTo = 1f)
-            .clickable(onClick = action.onClick)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-    ) {
-        Icon(action.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(action.label, color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(action.hint, color = cs.onSurfaceVariant, fontSize = 13.5.sp, modifier = Modifier.padding(top = 2.dp))
+    DeckInk { item, cs ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .xmbRowInset()
+                .deckFocusRingInk(RoundedCornerShape(12.dp), item, scaleTo = 1f)
+                .clickable(onClick = action.onClick)
+                .padding(horizontal = xmbRowPad(18.dp), vertical = 14.dp),
+        ) {
+            Icon(action.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(action.label, color = cs.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(action.hint, color = cs.onSurfaceVariant, fontSize = 13.5.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
         }
-        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
     }
 }
 

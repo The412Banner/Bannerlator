@@ -23,7 +23,8 @@ import java.security.MessageDigest
  *
  * Packs live in `files/ui_sounds/<id>/` (the pack root: Steam-named sound files, optional pack.json)
  * with a `.bannerlator-pack` note (source, store id, name). The Steam Big Picture pack is our release
- * zip, checked by size and sha256; it is also the base every other pack falls back to.
+ * zip, checked by size and sha256; it is also the base every other pack falls back to (except the start-up
+ * sound, which only a pack's own file plays, see UiSoundBank.resolve).
  */
 object UiSoundPacks {
     private const val TAG = "UiSounds"

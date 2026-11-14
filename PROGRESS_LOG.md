@@ -1,5 +1,11 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 01:10 EST — 3.2.0 page: not-tried lines removed from the topics (main, release page edited in place)
+
+- **User:** "can you remove all the not tried on a device lines in each topic" → "just edit manually on the release description".
+- **Removed** from every What's New topic: 6 callout lines that only said not tried / not checked (Languages, XMB, File manager, Text editor, Unpack formats, Mali) and the not-tried sentence of 12 mixed lines (Lab, First-run setup, Windows Steam, Stores, Epic, Xbox — its original-Xbox limitation kept, Display, Controls, Sounds, Wayland/Mali, HUD, El_Espectro). Kept: the top "Not tried on a device in this release" callout and the Carried over list (not topics).
+- **Repo:** docs/releases/3.2.0.md on main c270d1d1. **Live:** the 3.2.0 description edited in place with `gh release edit` (same edits applied to the live text; equals a regenerated body except one trailing newline); 71,707 → 70,124 chars; still Latest, not prerelease; 0 not-tried lines left in the topics.
+
 ## 2026-11-14 00:55 EST — 3.2.0 STABLE RELEASED + verified (main, Latest)
 
 - **Release run** release.yml **43561235947** (workflow_dispatch on main, headSha de05bed1) SUCCESS 00:49:30 EST: notes, 4 builds, 4 patch jobs, release — all green.

@@ -401,23 +401,28 @@ private fun ReportDialog(entry: LogInventory.Entry, runDir: File, onDismiss: () 
                             return@launch
                         }
                         onDismiss()
-                        Toast.makeText(
-                            context, "Saved ${bundle.zip.name} to Downloads", Toast.LENGTH_LONG
-                        ).show()
-                        try {
-                            context.startActivity(
-                                Intent(Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(LogReport.issueUrl(title, description, bundle.facts)))
-                            )
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "No browser to open GitHub with.", Toast.LENGTH_SHORT).show()
-                        }
+                        openLogReportIssue(context, bundle, title, description)
                     }
                 }
             ) { Text(if (busy) "Working…" else "Continue on GitHub") }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Cancel") } }
     )
+}
+
+/** After the report zip is built: says where it went, then opens GitHub's new-issue form filled in (Classic and Lab). */
+internal fun openLogReportIssue(context: Context, bundle: LogReport.Bundle, title: String, description: String) {
+    Toast.makeText(
+        context, "Saved ${bundle.zip.name} to Downloads", Toast.LENGTH_LONG
+    ).show()
+    try {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW,
+                android.net.Uri.parse(LogReport.issueUrl(title, description, bundle.facts)))
+        )
+    } catch (e: Exception) {
+        Toast.makeText(context, "No browser to open GitHub with.", Toast.LENGTH_SHORT).show()
+    }
 }
 
 @Composable

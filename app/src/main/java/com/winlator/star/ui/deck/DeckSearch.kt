@@ -268,9 +268,17 @@ internal fun openDestination(d: SearchDestination, onOpenRoute: (String) -> Unit
         d.about -> onAbout()
         d.store != null -> onLaunchStore(d.store)
         d.route != null -> {
+            val lab = com.winlator.star.ui.theme.AppThemeState.simpleLook
             // The Simple style has no Tools tabs, so a pending tab request would only linger until the Deck style is back.
-            if (d.toolsTab != null && !com.winlator.star.ui.theme.AppThemeState.simpleLook) DeckToolsTabs.requested = d.toolsTab
-            onOpenRoute(d.route)
+            if (d.toolsTab != null && !lab) DeckToolsTabs.requested = d.toolsTab
+            onOpenRoute(
+                when {
+                    // Lab: Logs opens Lab's Log Manager and File Manager Lab's file manager, not the Tools list / Classic's screen.
+                    lab && d.toolsTab == DeckToolsTabs.LOGS -> com.winlator.star.ui.simple.SimpleRoutes.LOGS
+                    lab && d.route == Screen.FileManager.route -> com.winlator.star.ui.simple.SimpleRoutes.FILES
+                    else -> d.route
+                },
+            )
         }
     }
 }

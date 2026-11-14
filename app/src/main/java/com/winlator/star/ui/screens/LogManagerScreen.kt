@@ -781,7 +781,7 @@ private fun MenuRow(
 }
 
 /** The channels people actually turn on. The other 500 are behind the search field. */
-private val COMMON_WINE_CHANNELS = listOf(
+internal val COMMON_WINE_CHANNELS = listOf(
     "err", "warn", "fixme", "seh", "module", "loaddll", "process", "thread",
     "sync", "file", "reg", "heap", "ntdll", "d3d", "dxgi", "vulkan", "opengl", "relay"
 )
@@ -1294,7 +1294,7 @@ private fun OptionsHeader(open: Boolean, onToggle: () -> Unit) {
 /** The design's one non-theme colour: destructive actions read as red in both light and dark. */
 
 /** "12 min ago" / "yesterday" — a timestamp is not what anyone is looking for in this list. */
-private fun relativeTime(millis: Long): String {
+internal fun relativeTime(millis: Long): String {
     if (millis <= 0) return "—"
     val mins = (System.currentTimeMillis() - millis) / 60000
     return when {

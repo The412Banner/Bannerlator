@@ -279,7 +279,7 @@ internal fun SimpleOneMenuSettings(
             Spacer(Modifier.height(12.dp))
             if (tab == logsTab) {
                 Box(Modifier.weight(1f).fillMaxWidth().simpleDepth(high = true).background(SimplePanelBrush, SimpleShape).border(1.dp, SimpleLine, SimpleShape)) {
-                    LogManagerScreen(onClose = { tab = 0 })
+                    com.winlator.star.ui.simple.LabLogManagerPanel(onClose = { tab = 0 })
                 }
             } else {
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {

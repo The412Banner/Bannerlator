@@ -462,7 +462,7 @@ private fun SectionStrip(sections: List<MenuSection>, sec: MenuSection?, active:
 }
 
 @Composable
-private fun EntryPanel(
+internal fun EntryPanel(
     sec: MenuSection?,
     entries: List<MenuEntry>,
     row: Int,

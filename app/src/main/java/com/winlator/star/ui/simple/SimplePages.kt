@@ -175,7 +175,7 @@ private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, on
 
 // ───────────────────────────── Tools ─────────────────────────────
 
-/** Tools: the file manager, save backups, logs, wrappers and drivers, and the account, About and help. */
+/** Tools: the file manager, save backups, Winlator's saves, logs, wrappers and drivers, and the account, About and help. */
 @Composable
 internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, onMyAccount: () -> Unit, onAbout: () -> Unit) {
     val context = LocalContext.current
@@ -191,6 +191,7 @@ internal fun SimpleToolsPage(onNavigate: (String) -> Unit, onBack: () -> Unit, o
                 entries = listOf(
                     MenuEntry("files", L("File manager"), L("Internal storage, SD card and every container's drives"), icon = Icons.Filled.FolderOpen, onA = { onNavigate(SimpleRoutes.FILES) }),
                     MenuEntry("saves", L("Save Manager"), L("Back up, restore and sync game saves"), icon = Icons.Filled.Save, onA = { onNavigate(SimpleRoutes.SAVES) }),
+                    MenuEntry("winsaves", L("Winlator saves"), L("Save slots kept with a container"), icon = Icons.Filled.Inventory2, onA = { onNavigate(LabToolRoutes.WINLATOR_SAVES) }),
                     MenuEntry("logs", L("Game logs"), L("What each game printed while it ran"), icon = Icons.Filled.Description, onA = { onNavigate(SimpleRoutes.LOGS) }),
                     MenuEntry("wrappers", L("Wrappers"), L("Graphics wrappers"), icon = Icons.Filled.Layers, onA = { onNavigate(LabParityRoutes.WRAPPERS) }),
                     MenuEntry("drivers", L("GPU drivers"), L("Turnip and Qualcomm drivers"), icon = Icons.Filled.Memory, onA = { onNavigate(SimpleRoutes.contents("installed")) }),
@@ -238,9 +239,9 @@ internal fun NavGraphBuilder.simpleRoutes(
         LabGameDetailsPage(path = e.arguments?.getString("path").orEmpty(), tab = e.arguments?.getInt("tab") ?: 0, onNavigate = open, onBack = back)
     }
     composable(SimpleRoutes.TOOLS) { SimpleToolsPage(onNavigate = open, onBack = back, onMyAccount = onMyAccount, onAbout = onAbout) }
-    composable(SimpleRoutes.FILES) { FileManagerScreen() }
+    composable(SimpleRoutes.FILES) { LabFileManagerPage(onBack = back) }
     composable(SimpleRoutes.SAVES) { SaveManagerScreen(onBack = back, lab = AppThemeState.simpleLook) }
-    composable(SimpleRoutes.LOGS) { LogManagerScreen(onClose = back) }
+    composable(SimpleRoutes.LOGS) { LabLogManagerPage(onOpen = open, onBack = back) }
     composable(SimpleRoutes.CONTAINERS) { SimpleContainersPage(onNavigate = open, onBack = back) }
     composable(SimpleRoutes.COMPONENT_SOURCE, arguments = listOf(navArgument("i") { type = NavType.IntType; defaultValue = 0 })) { e ->
         SimpleComponentSourcePage(index = e.arguments?.getInt("i") ?: 0, onBack = back)

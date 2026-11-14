@@ -1,5 +1,19 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 19:28 EST — fix/xbox-search: Xbox store search finds console-first PC games (branch, CI green, staged, NOT device-tested)
+
+- **Why:** Discord #winlator-general screenshot (11-13): are the 25 original Xbox games now on PC (Xbox Wire 11-12) on BL's Xbox store? Checked live: all 25 pass BL's filter (Game + Windows.Desktop MSIXVC, `XboxCatalog.kt` product()) but the name search (apps.microsoft.com) found 1 of 25. User: "can you build it on top of latest merged work on main?"
+- **Built d3a2077a** on main bad851ab (branch fix/xbox-search, worktree /root/src/Bannerlator-wt/xbox-search): `XboxCatalog.search` asks xbox.com's search (POST emerald.xboxservices.com/xboxcomfd/search/games?locale=<lang>-<market>, headers x-ms-api-version 1.1 + MS-CV; up to 25 ids) on a daemon thread (15 s wait) at the same time as the old Store search; xbox.com ids first, then Store ids, distinct, max 60; if both fail the old error is thrown (UI already shows an empty list). `fetch` takes an optional POST body + headers. displaycatalog keeps request order (checked), so best matches stay on top.
+- **Pre-checks (host, same requests):** xbox.com search found 25/25 (position 1 or 2); "halo infinite" control fine; locales en-us/en-DE/ja-US/en-GB OK, zh-CN returns market results (none for "kotor"), a bad locale gives 400 → falls back to the Store search.
+- **Caveat (not fixed, not tested):** these 25 games' PC packages are 1.7–3.0 MB launchers; the game data and emulator come from Windows 11's Xbox app, so a download in BL will most likely not run.
+- **Open/Next:** ask the user before install → search "kotor", "conker", "halo" in the Xbox tab.
+- **Correction:** this entry's title first said 19:40 EST; the commits were at 19:28 EST.
+- **CI 43534485095 (headSha 5a08e99a, 19:29–19:36 EST): GREEN 4/4**, pubg BUILD SUCCESSFUL in 5m 24s, no Kotlin errors; skipped steps identical to main build 43530432107 (cache hits, Xbox backend restored from cache).
+- **Staged:** /sdcard/Download/Bannerlator-xbox-search-5a08e99a.apk sha256 bd39b666…868e (artifact = host = device), com.tencent.ig vc106 3.1.9-pre2, cert a40da80a (same as installed); classes4.dex has the xbox.com search URL. FIT currently runs main 6b38d097 (base.apk 0f979eca, 19:08:27); undo APK /sdcard/Download/Bannerlator-main-6b38d097-pubg.apk. NOT installed — asked the user.
+- **19:40 EST user: "yes test then merge if fixed"** → peers root-63/-6a/-54/-15 told (root-63, root-6a acked); installing 5a08e99a on the FIT, then Xbox store search test (kotor, conker, halo) + crash check; merge to main (backup ref first) if it passes. Resume point: FIT base.apk sha256 bd39b666 = test build, 0f979eca = still main; undo /sdcard/Download/Bannerlator-main-6b38d097-pubg.apk; bring Termux back after the UI test.
+- **User decision 19:36 EST:** start the Xbox backend + runtime update (Nexus backend 0.2.15 / runtime 20261102) only after this branch is device-tested and merged.
+- **Resume point:** branch fix/xbox-search head = this log commit; code d3a2077a. If cut: check `gh run list --workflow build-artifacts.yml --branch fix/xbox-search`.
+
 ## 2026-11-13 — MERGED fix/store-shortcut-cloud-rows → main bad851ab (--no-ff)
 
 - **19:23 EST, user: "merge to main".** main had moved 6b38d097 → 378d12d5 (2 PROGRESS_LOG-only commits by another session: main 6b38d097 on the Pocket FIT), so `--no-ff` merge **bad851ab** (parents 378d12d5 + 02cd4058; PROGRESS_LOG auto-merged, both entries kept). Backup `refs/backup/20261113/main-before-store-shortcut-cloud-rows` = 378d12d5. `git diff 8af32940 bad851ab -- . ':!PROGRESS_LOG.md'` empty → main code == device-tested 8af32940 (Elite, 19:10 EST). Main CI 43533810275 (push) started. Branches feat/store-download-location + fix/store-shortcut-cloud-rows kept (delete only on the user's word).

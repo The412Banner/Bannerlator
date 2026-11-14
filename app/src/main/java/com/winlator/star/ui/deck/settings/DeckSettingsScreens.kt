@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Layers
@@ -238,6 +239,16 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
 
     val shortcut = shortcutState.value
     val containerName = containerVm.container?.name ?: shortcut.container.name
+    // Lab: an Xbox entry not downloaded yet is locked as in the Classic editor (its settings apply to the installed copy):
+    // every row greyed out with the notice as its reason, nothing stored, no program, drive C or container moves, and
+    // the pages' own lists left out.
+    val xboxNotInstalled = remember(path) { com.winlator.star.store.xbox.XboxCloudShortcuts.isNotInstalled(loaded) }
+    val xboxLocked = AppThemeState.simpleLook && xboxNotInstalled
+    val lockedSource = remember(source, xboxLocked) { if (xboxLocked) ReadOnlySource(source) else null }
+    val lockedDefs = remember(xboxLocked) { if (xboxLocked) SettingsRegistry.defs.map { it.copyWith(disabled = { _, _ -> L(XBOX_NOT_INSTALLED) }) } else null }
+    val lockNotice: @Composable () -> Unit = {
+        Text(L(XBOX_NOT_INSTALLED), color = MaterialTheme.colorScheme.tertiary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+    }
     // Only a Wine game follows a Wine container: the Linux Steam client entry and Android games are
     // never linked to the container editor. The XMB has no chain: its Game tab links to the container instead.
     val chain = if (xmb || env.world != World.WINE) emptyList() else listOf(
@@ -254,10 +265,12 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
                 icon = Icons.Filled.SportsEsports,
                 chain = chain,
             ),
-            source = source,
+            source = lockedSource ?: source,
             categories = SettingsRegistry.categories,
-            defs = SettingsRegistry.defs,
-            handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env, xmb),
+            defs = lockedDefs ?: SettingsRegistry.defs,
+            handoffs = SettingsRegistry.handoffs(EditorScope.GAME, env, xmb).let { h ->
+                if (!xboxLocked) h else h.mapValues { (_, list) -> list.filter { it.target !in LOCKED_HANDOFFS } }
+            },
             onExit = { navController.popBackStack() },
             onHandoff = { h ->
                 when (h.target) {
@@ -289,7 +302,8 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
                 }
             },
             onChainLink = { link -> link.onClick?.invoke() },
-            extras = extras,
+            headerExtra = if (xboxLocked) lockNotice else null,
+            extras = if (xboxLocked) probesOnly(extras) else extras,
             layout = layout,
         )
     }
@@ -324,6 +338,31 @@ private fun DeckGameSettings(path: String, navController: NavHostController) {
             },
         )
     }
+}
+
+/** The Classic editor's notice for an Xbox entry not downloaded yet. */
+private const val XBOX_NOT_INSTALLED = "Not installed yet: these settings apply once the game is downloaded (launch options › Download)."
+
+/** What a locked game page leaves out: the moves that need the installed game. */
+private val LOCKED_HANDOFFS = setOf(SettingsRegistry.TARGET_CHANGE_EXE, SettingsRegistry.TARGET_DRIVE_C, SettingsRegistry.TARGET_MOVE_CONTAINER)
+
+/** A game's view that shows the stored values and changes nothing (the locked Xbox entry). */
+private class ReadOnlySource(private val inner: SettingsSource) : SettingsSource(inner.env) {
+    override fun shows(def: SettingDef) = inner.shows(def)
+    override fun editable(def: SettingDef) = inner.editable(def)
+    override fun value(def: SettingDef) = inner.value(def)
+    override fun set(def: SettingDef, value: String) = Unit
+    override fun origin(def: SettingDef) = inner.origin(def)
+    override fun baseline(def: SettingDef) = inner.baseline(def)
+    override fun reset(def: SettingDef) = Unit
+    override val dirty: Boolean get() = false
+    override fun save(onDone: (Boolean) -> Unit) = onDone(true)
+    override fun discard() = Unit
+}
+
+/** Only the invisible readers of the pages' extras (driver and wrapper lists, which the rows' values need); no lists or actions. */
+private fun probesOnly(extras: Map<String, CategoryExtra>): Map<String, CategoryExtra> = extras.mapValues { (_, e) ->
+    CategoryExtra(top = { e.top().filter { it.key == GRAPHICS_PROBES || it.key == "wrapper-detected-probe" } }, searchKey = e.searchKey, focusSearch = e.focusSearch, level = e.level)
 }
 
 // ── A container, or All containers ──────────────────────────────────────────────────────────────

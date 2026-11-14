@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -66,7 +66,6 @@ import com.winlator.star.ui.deck.storeLabelOf
 import com.winlator.star.ui.screens.ContainerDetailViewModel
 import com.winlator.star.ui.screens.GameMenuAction
 import com.winlator.star.ui.screens.GamesScreenRequests
-import com.winlator.star.ui.screens.OutlinedAlertDialog
 import com.winlator.star.ui.screens.ShortcutActionDialogs
 import com.winlator.star.ui.screens.ShortcutLaunchDialogs
 import com.winlator.star.ui.screens.ShortcutsViewModel
@@ -90,8 +89,8 @@ private val QUICK = listOf(
     listOf("input.controlsProfile") to L("Controls"),
 )
 
-/** One of the game page's tiles that opens something: its label, what it shows and how many lines that takes. */
-private class NavTile(val label: String, val value: String, val lines: Int, val onClick: () -> Unit)
+/** One of the game page's tiles that opens something: its label, what it shows and how many lines that takes. [blocked]: greyed out, it only says why. */
+private class NavTile(val label: String, val value: String, val lines: Int, val blocked: Boolean = false, val onClick: () -> Unit)
 
 /**
  * A game's Lab page: its cover, Play and the game menu, its main settings as tiles (A: the next value, X: every value;
@@ -187,6 +186,11 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     LaunchedEffect(shortcut.path) { exe = shortcut.path }
     // Moves, mods and the Container tile are Wine things, as in the Classic menu and editor.
     val wine = remember(shortcut.file.path) { isWineEntry(shortcut) }
+    // An Xbox entry not downloaded yet: its settings apply to the installed copy, so, as in the Classic editor, the tiles
+    // that change something (settings, Mods, the container, Properties) are greyed out and only say so.
+    val locked = remember(shortcut.file.path) { com.winlator.star.store.xbox.XboxCloudShortcuts.isNotInstalled(shortcut) }
+    val lockNotice = L("Not installed yet: these settings apply once the game is downloaded (launch options › Download).")
+    fun lockedToast() = Toast.makeText(context, lockNotice, Toast.LENGTH_SHORT).show()
     // The Classic editor's Mods state, read again when the page comes back or the game is renamed (not on every save).
     val modsFor = remember(shortcut.file.path, modsTick) { shortcut }
     val mods = if (wine) rememberGameModsSetting(modsFor) else null
@@ -210,6 +214,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         if (def.confirm?.invoke(v) != null) confirm = def to v else commit(def, v)
     }
     fun next(def: SettingDef, label: String) {
+        if (locked) { lockedToast(); return }
         def.disabled(env, values)?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); return }
         if (!source.editable(def)) { Toast.makeText(context, L("%1\$s is a container setting.", label), Toast.LENGTH_SHORT).show(); return }
         when (val c = def.control(env, values)) {
@@ -237,7 +242,8 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
             val origin = source.origin(def)
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = m.labPanel().labTile(onClick = { next(def, label) }, onMenu = { pickerFor = def to label }).padding(12.dp),
+                modifier = m.labPanel().labTile(onClick = { next(def, label) }, onMenu = { if (locked) lockedToast() else pickerFor = def to label })
+                    .then(if (locked) Modifier.alpha(0.45f) else Modifier).padding(12.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LabTileLabel(label)
@@ -259,6 +265,7 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                     LabButton(L("Play"), primary = true, icon = Icons.Filled.PlayArrow, requester = playFocus) { launcher.requestLaunch(shortcut) }
                     LabButton("", icon = Icons.Filled.MoreHoriz) { menuOpen = true }
                 }
+                if (locked) Text(lockNotice, color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp, maxLines = 3)
             }
         }
 
@@ -273,11 +280,11 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                 // Container (a move to another one), Mods, Lab's Game details (the details, the pictures and this game's
                 // background) and All settings.
                 val nav = listOfNotNull(
-                    if (wine) NavTile(L("Container"), shortcut.container.name, 1) {
+                    if (wine) NavTile(L("Container"), shortcut.container.name, 1, blocked = locked) {
                         leave()
                         GamesScreenRequests.pending = GamesScreenRequests.Request(GameMenuAction.MOVE_TO_CONTAINER, shortcut.file.path)
                     } else null,
-                    mods?.let { g -> NavTile(L("Mods"), g.enabledNames().ifEmpty { "—" }, 2) { modsOpen = true } },
+                    mods?.let { g -> NavTile(L("Mods"), g.enabledNames().ifEmpty { "—" }, 2, blocked = locked) { modsOpen = true } },
                     NavTile(L("Game details"), L("Details, artwork, background ›"), 2) { onNavigate(LabRoutes.details(shortcut.file.path)) },
                     NavTile(L("Everything else"), L("All settings ›"), 1) { onNavigate(DeckSettingsRoutes.game(shortcut.file.path)) },
                 )
@@ -286,7 +293,8 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                         row.forEach { t ->
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = t.onClick).padding(12.dp),
+                                modifier = Modifier.weight(1f).height(tileH).labPanel().labTile(onClick = { if (t.blocked) lockedToast() else t.onClick() })
+                                    .then(if (t.blocked) Modifier.alpha(0.45f) else Modifier).padding(12.dp),
                             ) {
                                 LabTileLabel(t.label)
                                 Text(t.value, color = SimpleStrong, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = t.lines, overflow = TextOverflow.Ellipsis)
@@ -295,10 +303,15 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
                         repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
-                // The saved FPS of its sessions (a chart), or its playtime until it has one.
+                // The saved FPS of its sessions (a chart), or its playtime until it has one. A opens Properties (times
+                // played, playtime and Reset), as the game menu's Properties does.
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val fps = remember(resumeTick) { com.winlator.star.ui.deck.readFpsStats(context, shortcut) }
-                    Column(Modifier.weight(1f).height(if (fps != null) 110.dp else tileH).labPanel().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(
+                        Modifier.weight(1f).height(if (fps != null) 110.dp else tileH).labPanel()
+                            .labTile(onClick = { if (locked) lockedToast() else actions.perform(GameMenuAction.PROPERTIES, shortcut) }).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         if (fps != null) {
                             LabTileLabel(if (fps.history.size == 1) L("FPS · last session") else L("FPS · last %1\$s sessions", fps.history.size))
                             Text(
@@ -385,13 +398,12 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
     confirm?.let { (def, v) ->
         val ask = def.confirm?.invoke(v)
         if (ask == null) { confirm = null; commit(def, v) }
-        else OutlinedAlertDialog(
-            onDismissRequest = { confirm = null },
-            confirmButton = { TextButton(onClick = { confirm = null; commit(def, v) }) { Text(ask.confirmLabel) } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text(L("Cancel")) } },
-            title = { Text(ask.title) },
-            text = { Text(ask.body) },
-        )
+        else SimpleActionSheet(
+            title = ask.title,
+            message = ask.body,
+            actions = listOf(MenuAction(ask.confirmLabel, { confirm = null; commit(def, v) }), MenuAction(L("Cancel"), { confirm = null })),
+            onDismiss = { confirm = null },
+        ) { it.run() }
     }
     if (menuOpen) {
         LabGameMenu(
@@ -405,6 +417,13 @@ internal fun LabGamePage(path: String, onNavigate: (String) -> Unit, onBack: () 
         )
     }
     ShortcutActionDialogs(actions)
+    // Properties' Reset: the playtime tile reads the stats again once it closes.
+    val propertiesOpen = actions.propertiesShortcut != null
+    var propertiesWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(propertiesOpen) {
+        if (propertiesWasOpen && !propertiesOpen) resumeTick++
+        propertiesWasOpen = propertiesOpen
+    }
     if (modsOpen && mods != null) {
         LabModsDialog(
             mods,

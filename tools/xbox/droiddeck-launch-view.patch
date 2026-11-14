@@ -1,5 +1,5 @@
 diff --git a/crates/xodus-cli/src/commands/run.rs b/crates/xodus-cli/src/commands/run.rs
-index 70667df..353769d 100644
+index 70667df..72a2c97 100644
 --- a/crates/xodus-cli/src/commands/run.rs
 +++ b/crates/xodus-cli/src/commands/run.rs
 @@ -410,6 +410,7 @@ fn launch_file_maps(
@@ -115,7 +115,7 @@ index 70667df..353769d 100644
 +        let exe = String::from("Game.exe");
 +        let dll = String::from("Bad.dll");
 +        let images = [(&exe, exe_image.as_raw_fd()), (&dll, dll_image.as_raw_fd())];
-+        let error = create_launch_chain_mirror(root.path(), &exe, &images).unwrap_err();
++        let error = create_launch_chain_mirror(root.path(), &exe, &images).err().expect("a non-PE library image is rejected");
 +        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
 +        assert_eq!(std::fs::read(root.path().join("Game.exe")).unwrap(), b"encrypted executable");
 +        assert_eq!(std::fs::read(root.path().join("Bad.dll")).unwrap(), b"encrypted library");

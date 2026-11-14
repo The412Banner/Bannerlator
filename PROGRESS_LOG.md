@@ -1,5 +1,14 @@
 # Star-Compose — Progress Log
 
+## 2026-11-14 00:30 EST — 3.2.0 STABLE PREP (release/3.2.0, not published)
+
+- **User:** "prep 3.2.0 stable release" + "release should list all new work since last stable release, same as all previous stable releases". Nothing is tagged or published until the user says "cut it".
+- **Branch** release/3.2.0 off main 01d10f5c (= PR #660 merge ef7ca394 + log). 07720098 = versionCode 106→107, versionName 3.2.0. 33c7f21e = docs/releases/3.2.0.md (316 lines: badges below the title, lead + 5 update highlights, "# What's New — everything since 3.1.8" = a "What changes when you update" list, Lab / XMB / Epic merged across pre1, pre2 and after, the pre1 + pre2 sections reused as written, new sections for everything after pre2, proof callouts per section, Carried over, Proton 9, Credits with a 3.2.0 paragraph) + README (version row 3.2.0 / 107, contents link + 3.2.0 section, credits: WFG qwertypower / WinNative, Nexus backend + runtime, MGamer404 #660, Wavewash #1953, MaxsTechReview Touch/Aim). Inventory of the 40 merges after 3.1.9-pre2 made from the log and commits (with proof levels); WFG written as 2× (3×/4× dropped 11-12); sounds off by default checked in code (UiSoundPacks PREF_ON false).
+- **Checks:** local `scripts/release_notes.py 3.2.0` passes the stable layout check except the update-size TODO(notes) (to fill from the size run); release body ~71 KB with the full merged list since 3.1.8. (Mistake: deleted the tracked release-body.md / short-notes.txt after the local run, restored with git checkout before any commit.)
+- **RC build** CI 43559829021 (release_number 3.2.0-rc, headSha 07720098) GREEN 4/4, 15 skipped = main. Staged /sdcard/Download/Bannerlator-3.2.0-rc-07720098-pubg.apk sha256 24bcb303…0a54 (host = device), com.tencent.ig vc107 3.2.0, cert a40da80a. FIT runs 2270be35 (cb72dcd0, no XMB update).
+- **Size run** CI 43560779400 on temp branch tmp/size-3.2.0 (one workflow file on main 01d10f5c; from 3.1.8 / 3.1.9-pre2 / 3.1.9-pre1, pubg + standard) running.
+- **Next:** fill the size line → commit; ASK before installing the RC; smoke test (XMB never device-tested; Lab, stores, a game launch with logcat); user "cut it" → tell peers, backup ref, FF main to the release branch, release.yml (tag 3.2.0, title "Bannerlator 3.2.0", number 3.2.0, make_prerelease false), headSha check, verify tag == main == built, Latest, 4 APKs + update.json, manifest update.json + update-pre.json vc107, patches; delete tmp/size-3.2.0 on the user's word.
+
 ## 2026-11-13 23:55 EST — MERGED PR #660 (Abu, XMB update) → main ef7ca394 (merge commit via GitHub), NOT device-tested
 
 - **User:** "I want to merge" → "create a merge commit then … idc about Claude co author on a pr from someone else" → "merge it then build main as artifacts only". Merged WITHOUT a device test (user's decision; recommended first).

@@ -489,7 +489,8 @@ private fun XmbDlCard(
             ) {
                 buttons.forEachIndexed { i, a ->
                     XmbDlButton(
-                        modifier = Modifier.weight(1f, fill = false),
+                        // The main button keeps its natural width, so the X it wears is never squeezed; the others share what is left.
+                        modifier = if (a == quick) Modifier else Modifier.weight(1f, fill = false),
                         action = a,
                         armed = armed == a,
                         focused = focused && inner == i,
@@ -556,6 +557,7 @@ private fun XmbDlButton(
                 stringResource(action.labelRes(armed)),
                 color = if (danger) XMB_DL_RED else Color.White,
                 fontSize = ss.sp(12f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
             if (showX) DeckGlyph("X", GlyphKind.X)
         }

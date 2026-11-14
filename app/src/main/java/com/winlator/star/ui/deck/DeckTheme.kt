@@ -122,17 +122,21 @@ internal fun deckShape(radius: androidx.compose.ui.unit.Dp): androidx.compose.fo
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
 
-/** Landscape height (dp) the Lab layout needs: the eight section-rail entries under the top line. */
-internal const val LAB_FIT_HEIGHT_DP = 576f
+/**
+ * The short side (dp) the Lab layout needs: in landscape the height for the eight section-rail entries under the top
+ * line, in portrait the width for the side-by-side Home tiles and the game card's chips.
+ */
+internal const val LAB_FIT_SHORT_SIDE_DP = 576f
 
 /**
- * The Lab style's density: in landscape it shrinks when a large Android display size (or interface size) leaves less
- * than [LAB_FIT_HEIGHT_DP] of height, so the rail and the Home dashboard fit; never below 60 % of [wanted].
- * Portrait pages scroll and keep [wanted].
+ * The Lab style's density: it shrinks when a large Android display size (or interface size) leaves the window's short
+ * side under [LAB_FIT_SHORT_SIDE_DP], in both orientations, so the rail, the Home dashboard and the cards fit; never
+ * below 60 % of [wanted].
  */
-internal fun labFitDensity(wanted: Float, widthPx: Float, heightPx: Float): Float =
-    if (widthPx <= heightPx || heightPx <= 0f) wanted
-    else minOf(wanted, heightPx / LAB_FIT_HEIGHT_DP).coerceAtLeast(wanted * 0.6f)
+internal fun labFitDensity(wanted: Float, widthPx: Float, heightPx: Float): Float {
+    val short = minOf(widthPx, heightPx)
+    return if (short <= 0f) wanted else minOf(wanted, short / LAB_FIT_SHORT_SIDE_DP).coerceAtLeast(wanted * 0.6f)
+}
 
 /**
  * The window's full size in pixels. The shell hides the system bars, so it draws over the whole window, which the

@@ -33,6 +33,7 @@ internal object LabDownloads {
     private const val D7VK = "graphics.dx.d7vkVersion"
     private const val COMPOSITOR = "graphics.compositorDriver"
     private const val WAYLAND_GAME = "graphics.wl.gameDriver"
+    private const val BOX64EC = "performance.box64ecVersion"
 
     /**
      * The Contents types (ContentsTypes names) [id]'s versions come from, or null when it has nothing to download.
@@ -45,7 +46,17 @@ internal object LabDownloads {
         D7VK -> listOf("D7VK")
         BOX64 -> listOf(if (env.arm64ec) "WOWBox64" else "Box64")
         FEX -> listOf("FEXCore")
+        BOX64EC -> if (env.arm64ec) listOf("Box64EC") else null
         GraphicsRows.ID_DRIVER_VERSION, COMPOSITOR, WAYLAND_GAME -> listOf(ContentsTypes.GPU_DRIVERS)
+        else -> null
+    }
+
+    /**
+     * The component type whose full Lab download list [id] opens instead of the repository picker: Box64EC comes from the
+     * component catalog (the same list as Translator downloads), which the repository picker doesn't offer.
+     */
+    fun catalogTypeFor(id: String): com.winlator.star.contents.ContentProfile.ContentType? = when (id) {
+        BOX64EC -> com.winlator.star.contents.ContentProfile.ContentType.CONTENT_TYPE_BOX64EC
         else -> null
     }
 
@@ -57,6 +68,7 @@ internal object LabDownloads {
             GraphicsRows.ID_DXVK, GraphicsRows.ID_VKD3D, D7VK -> env.graphics.reloadContents(env.arm64ec)
             BOX64 -> vm?.refreshBox64Versions()
             FEX -> vm?.refreshFEXCoreVersions()
+            BOX64EC -> vm?.refreshBox64ECVersions()
             GraphicsRows.ID_DRIVER_VERSION, COMPOSITOR, WAYLAND_GAME -> {
                 // As Deck after a Turnip install: only a container form looks for a usable compositor driver again.
                 if (env.scope != EditorScope.GAME) vm?.onCompositorDriversChanged()

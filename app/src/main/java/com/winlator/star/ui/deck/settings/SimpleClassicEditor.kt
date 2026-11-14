@@ -851,8 +851,7 @@ internal fun SimpleClassicEditor(
     }
     downloadFor?.let { def ->
         val types = LabDownloads.typesFor(def.id, env)
-        if (types == null) downloadFor = null
-        else LabDownloadPicker(types, onClose = {
+        val closeDownload: () -> Unit = {
             downloadFor = null
             downloadScope.launch {
                 // Back to the picker with the list read again; nothing is picked for the user.
@@ -864,7 +863,16 @@ internal fun SimpleClassicEditor(
                     runCatching { LabDownloads.refresh(def.id, env) }
                 }
             }
-        })
+        }
+        val catalogType = LabDownloads.catalogTypeFor(def.id)
+        if (types == null) downloadFor = null
+        else if (catalogType != null) com.winlator.star.ui.simple.LabContentDownloadSheet(
+            contentTypes = listOf(catalogType),
+            onDismiss = closeDownload,
+            onContentChanged = { downloadScope.launch { runCatching { LabDownloads.refresh(def.id, env) } } },
+            inUseKey = source.value(def).takeIf { it.isNotEmpty() },
+        )
+        else LabDownloadPicker(types, onClose = closeDownload)
     }
     customFor?.let { def ->
         val control = def.control(env, values) as? Control.Select

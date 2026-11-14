@@ -28,6 +28,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.winlator.star.ui.deck.LocalDeckActions
@@ -52,12 +55,18 @@ internal fun LabOverlay(onDismiss: () -> Unit, content: @Composable () -> Unit) 
             deckActions.subTabLabel.value = savedTabLabel
         }
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        com.winlator.star.sound.DialogSound()
+    // Edge to edge with the shell's bars hidden too: a dialog window that fits the system bars leaves a strip at the top
+    // and bottom where the page underneath (its top line and button hints) shows through.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        com.winlator.star.ui.DeckDialogBars()
         SimpleFlat {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 LabWallpaper()
-                Column(Modifier.fillMaxSize().padding(top = 10.dp, bottom = 8.dp)) {
+                Column(
+                    Modifier.fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.systemBars)
+                        .padding(top = 10.dp, bottom = 8.dp),
+                ) {
                     Box(Modifier.weight(1f).fillMaxWidth()) { content() }
                     val legend = deckActions.ownLegend.value
                     if (!legend.isNullOrEmpty()) SimpleLegend(legend, Modifier.padding(start = 40.dp, top = 6.dp))

@@ -1,5 +1,13 @@
 # Star-Compose — Progress Log
 
+## 2026-11-13 22:40 EST — feat/lab-yserver-controller-tab: Display server switch + container Controller tab (branch, CI pending)
+
+- **Why:** user 22:0x EST: "add a toggle in container settings advanced tab to toggle between x and yserver? also move controller settings to a controller tab like classic has?" + "same with game shortcut settings?" → plan given → "merge and build on separate branch".
+- **Before:** yserver only through BANNER_YSERVER typed into env vars (YServerComponent.requestedMode, game value wins). Lab container editor (SimpleClassicEditor containerLayout) had the controller rows inside Advanced; the Lab game editor already had a Controller tab, but Controls Profile sat in Advanced › System.
+- **Built (off main 5c3d84f2):** SettingsRegistry `display.server` (ID_DISPLAY_SERVER): segmented X server / yserver, container = vm.envVarsStr, game = own "envVars" (unset follows the container; picking the container's choice removes the key; X server over a yserver container writes BANNER_YSERVER=0); string-level edit keeps every other variable as typed; unchanged picks never rewrite (keeps =record); yserver greyed when YServerComponent.binary() is null. Placed at the top of Advanced in both Lab editors (Deck look: Display page, Screen group). Container editor: new Controller tab after Advanced (controllerItems + XR), Advanced leftovers = performance/visuals. Game editor: Controls Profile → top of its Controller tab.
+- **Checked on host:** env edit logic simulated (empty, other vars, escaped space, record, =0).
+- **Next:** CI → stage → ASK before install → test: container + game switch writes/reads (Environment tab shows the variable), game override + reset, Controller tabs, launch check that yserver really runs (logcat "yserver: hosted") only with the user's OK.
+
 ## 2026-11-13 22:25 EST — MERGED fix/lab-scroll-fallback → main 56af63a1 (--no-ff), device-tested on the Pocket FIT
 
 - **User:** "install when done and merge when tested accurately", then "merge and build on separate branch".

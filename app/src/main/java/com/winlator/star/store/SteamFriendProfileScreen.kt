@@ -30,7 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * In-app friend profile — replaces the old "View Steam profile" browser jump (the browser option now
@@ -338,9 +339,9 @@ private fun Chip(text: String) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(deckShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .border(1.dp, ProfileRowLine, RoundedCornerShape(6.dp))
+            .border(1.dp, ProfileRowLine, deckShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }
@@ -356,16 +357,16 @@ private fun StatusCard(friend: SteamFriendsStore.SteamFriend, modifier: Modifier
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .border(1.dp, ProfileRowLine, RoundedCornerShape(12.dp))
+            .border(1.dp, ProfileRowLine, deckShape(12.dp))
             .padding(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(deckShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
@@ -469,9 +470,9 @@ private fun AboutSection(summary: String?) {
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(deckShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .border(1.dp, ProfileRowLine, RoundedCornerShape(12.dp))
+                .border(1.dp, ProfileRowLine, deckShape(12.dp))
                 .padding(12.dp),
         )
     }
@@ -518,9 +519,9 @@ private fun OverviewGrid(profile: SteamFriendsStore.FriendProfile?) {
 private fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .border(1.dp, ProfileRowLine, RoundedCornerShape(12.dp))
+            .border(1.dp, ProfileRowLine, deckShape(12.dp))
             .padding(vertical = 11.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -560,9 +561,9 @@ private fun RecentGameCard(game: SteamFriendsStore.RecentGame) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(deckShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(1.dp, ProfileRowLine, RoundedCornerShape(8.dp)),
+                .border(1.dp, ProfileRowLine, deckShape(8.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -575,7 +576,7 @@ private fun RecentGameCard(game: SteamFriendsStore.RecentGame) {
                     model = game.coverUrl,
                     contentDescription = game.name,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxSize().clip(deckShape(8.dp)),
                 )
             }
         }
@@ -609,9 +610,9 @@ private fun ViewOnSteamRow(onViewOnSteam: () -> Unit) {
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(deckShape(12.dp))
             .clickable { onViewOnSteam() }
-            .border(1.dp, ProfileMenuOutline, RoundedCornerShape(12.dp))
+            .border(1.dp, ProfileMenuOutline, deckShape(12.dp))
             .padding(vertical = 12.dp),
     )
 }

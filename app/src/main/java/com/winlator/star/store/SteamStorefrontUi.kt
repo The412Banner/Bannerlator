@@ -25,12 +25,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -70,6 +70,7 @@ import com.winlator.star.ui.deck.xmbRevealRoom
 import com.winlator.star.ui.theme.StoreDiscountBg
 import com.winlator.star.ui.theme.StoreDiscountInk
 import com.winlator.star.ui.theme.StoreFreeGreen
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * Shared chrome for the Steam storefront's four tabs: the portrait↔landscape decision, the D-pad
@@ -145,7 +146,7 @@ fun rememberStorefrontLayout(): SteamStorefrontLayout {
  * gliding outline instead (see XmbHighlight.kt). Without a host, and everywhere outside XMB, it is the ring above.
  */
 @Composable
-fun Modifier.steamFocusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier {
+fun Modifier.steamFocusRing(shape: Shape = deckShape(10.dp)): Modifier {
     if (xmbHighlightHostOrNull() != null) return this.xmbHighlight(shape, wholeSubtree = true)
     var focused by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
@@ -190,7 +191,7 @@ fun StoreSectionHeader(title: String, sub: String? = null, modifier: Modifier = 
  */
 @Composable
 fun StoreFilterChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = deckShape(20.dp)
     val hl = rememberXmbHighlightItem()
     Box(
         modifier = modifier
@@ -253,7 +254,7 @@ fun StoreNotice(
             Spacer(Modifier.height(14.dp))
             OutlinedButton(
                 onClick = onAction,
-                modifier = Modifier.steamFocusRing(RoundedCornerShape(20.dp)),
+                modifier = Modifier.steamFocusRing(deckShape(20.dp)),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary,
@@ -515,7 +516,7 @@ fun StorePriceRow(item: SteamStoreCatalog.StoreItem, modifier: Modifier = Modifi
                     fontWeight = FontWeight.Bold,
                     color = StoreDiscountInk,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(deckShape(4.dp))
                         .background(StoreDiscountBg)
                         .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
@@ -572,7 +573,7 @@ fun StoreActionButton(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(7.dp)
+    val shape = deckShape(7.dp)
     val pad = if (compact) PaddingValues(horizontal = 8.dp, vertical = 2.dp)
     else PaddingValues(horizontal = 10.dp, vertical = 4.dp)
     val style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium

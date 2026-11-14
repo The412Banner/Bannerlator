@@ -33,7 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import com.winlator.star.ui.theme.LabButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,10 +41,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.winlator.star.ui.theme.LabOutlinedButton as OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.winlator.star.ui.theme.LabTextButton as TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -94,6 +94,7 @@ import com.winlator.star.ui.deck.xmbGlassBackground
 import com.winlator.star.ui.deck.xmbInner
 import com.winlator.star.ui.theme.LocalAccentDim
 import com.winlator.star.ui.theme.WinlatorTheme
+import com.winlator.star.ui.deck.deckShape
 
 /**
  * Phase 3 — the cross-store Download Manager screen. A thin Compose consumer of the
@@ -225,7 +226,7 @@ private fun Modifier.dmFocus(look: DmLook, shape: Shape): Modifier =
  */
 @Composable
 private fun Modifier.dmButton(look: DmLook, first: Boolean = false): Modifier =
-    dmFocus(look, RoundedCornerShape(8.dp)).xmbInner(first = first).height(look.buttonH)
+    dmFocus(look, deckShape(8.dp)).xmbInner(first = first).height(look.buttonH)
 
 /** XMB cards only (inside a group item): the controller's way to open the game's page, as a tap on the card does. */
 @Composable
@@ -233,7 +234,7 @@ private fun DetailsButton(entry: DownloadEntry, onOpen: (DownloadEntry) -> Unit,
     if (LocalXmbGroup.current == null) return
     OutlinedButton(
         onClick = { onOpen(entry) },
-        shape = RoundedCornerShape(8.dp),
+        shape = deckShape(8.dp),
         modifier = Modifier.dmButton(look, first = true),
         contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
     ) { Text(stringResource(R.string.xmb_store_details), style = MaterialTheme.typography.labelSmall) }
@@ -434,7 +435,7 @@ private fun XmbDownloadsBar(onBack: () -> Unit, onClear: () -> Unit, look: DmLoo
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onClear, modifier = Modifier.dmFocus(look, RoundedCornerShape(8.dp))) { Text("Clear ✓") }
+        TextButton(onClick = onClear, modifier = Modifier.dmFocus(look, deckShape(8.dp))) { Text("Clear ✓") }
     }
 }
 
@@ -463,8 +464,8 @@ private fun DownloadCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = look.cardPadH, vertical = look.cardPadV)
-            .dmFocus(look, RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
+            .dmFocus(look, deckShape(12.dp)),
+        shape = deckShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -496,7 +497,7 @@ private fun DownloadCardBody(
             entry = entry,
             modifier = Modifier
                 .size(width = look.coverW, height = look.coverH)
-                .clip(RoundedCornerShape(6.dp)),
+                .clip(deckShape(6.dp)),
         )
         Spacer(Modifier.width(look.gap))
 
@@ -539,13 +540,13 @@ private fun DownloadCardBody(
                         DetailsButton(entry, onClick, look)
                         Button(
                             onClick = { onLaunch(entry) },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = deckShape(8.dp),
                             modifier = Modifier.dmButton(look),
                             contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Launch", style = MaterialTheme.typography.labelSmall) }
                         OutlinedButton(
                             onClick = { onUninstall(entry) },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = deckShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error,
                             ),
@@ -568,7 +569,7 @@ private fun DownloadCardBody(
                         DetailsButton(entry, onClick, look)
                         OutlinedButton(
                             onClick = { onDismiss(entry) },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = deckShape(8.dp),
                             modifier = Modifier.dmButton(look),
                             contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
@@ -586,7 +587,7 @@ private fun DownloadCardBody(
                         DetailsButton(entry, onClick, look)
                         OutlinedButton(
                             onClick = { onDismiss(entry) },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = deckShape(8.dp),
                             modifier = Modifier.dmButton(look),
                             contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                         ) { Text("Dismiss", style = MaterialTheme.typography.labelSmall) }
@@ -624,21 +625,21 @@ private fun ActiveContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(8.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(MaterialTheme.colorScheme.surface),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(downloadFrac.coerceIn(0f, 1f))
-                .clip(RoundedCornerShape(4.dp))
+                .clip(deckShape(4.dp))
                 .background(LocalAccentDim.current),
         )
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(installFrac.coerceIn(0f, 1f))
-                .clip(RoundedCornerShape(4.dp))
+                .clip(deckShape(4.dp))
                 .background(MaterialTheme.colorScheme.primary),
         )
     }
@@ -665,7 +666,7 @@ private fun ActiveContent(
         DetailsButton(entry, onOpen, look)
         OutlinedButton(
             onClick = { onCancel(entry) },
-            shape = RoundedCornerShape(8.dp),
+            shape = deckShape(8.dp),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error,
             ),
@@ -676,7 +677,7 @@ private fun ActiveContent(
         if (entry.supportsPause) {
             Button(
                 onClick = { onPauseResume(entry) },
-                shape = RoundedCornerShape(8.dp),
+                shape = deckShape(8.dp),
                 colors = if (entry.state == DownloadState.PAUSED) {
                     ButtonDefaults.buttonColors()
                 } else {
@@ -725,8 +726,8 @@ private fun QueuedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = look.cardPadH, vertical = look.cardPadV)
-            .dmFocus(look, RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
+            .dmFocus(look, deckShape(12.dp)),
+        shape = deckShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -758,7 +759,7 @@ private fun QueuedCardBody(
             entry = entry,
             modifier = Modifier
                 .size(width = look.coverW, height = look.coverH)
-                .clip(RoundedCornerShape(6.dp)),
+                .clip(deckShape(6.dp)),
         )
         Spacer(Modifier.width(look.gap))
 
@@ -784,20 +785,20 @@ private fun QueuedCardBody(
                 if (canMoveUp) {
                     OutlinedButton(
                         onClick = { onMoveToTop(entry) },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = deckShape(8.dp),
                         modifier = Modifier.dmButton(look),
                         contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                     ) { Text("Start next", style = MaterialTheme.typography.labelSmall) }
                     OutlinedButton(
                         onClick = { onMoveUp(entry) },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = deckShape(8.dp),
                         modifier = Modifier.dmButton(look),
                         contentPadding = PaddingValues(horizontal = look.buttonPadH, vertical = 2.dp),
                     ) { Text("↑ Up", style = MaterialTheme.typography.labelSmall) }
                 }
                 OutlinedButton(
                     onClick = { onCancel(entry) },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = deckShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
@@ -849,7 +850,7 @@ private fun StoreBadge(store: Store) {
     val accent = StoreStyle.accent(store)
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(deckShape(4.dp))
             .background(accent.copy(alpha = 0.18f))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {

@@ -1,5 +1,6 @@
 package com.winlator.star.ui.deck.settings
 
+import com.winlator.star.xenvironment.components.YServerComponent
 import com.winlator.star.ui.simple.L
 import com.winlator.star.ui.simple.T
 import androidx.compose.material.icons.Icons
@@ -299,6 +300,35 @@ internal object SettingsRegistry {
         if (config.split(",").none { it.startsWith("dxvkConfigFile=") && it.length > "dxvkConfigFile=".length }) config
         else config.split(",").filter { !it.startsWith("dxvkConfigFile=") }.joinToString(",")
 
+    // ── Display server (X server / yserver) ────────────────────────────────────────────────────
+
+    /** The display server row (Advanced): the Java X server or yserver, stored as BANNER_YSERVER in the env string. */
+    const val ID_DISPLAY_SERVER = "display.server"
+    private const val DS_X = "x"
+    private const val DS_Y = "yserver"
+    private val YSERVER_TOKEN = Regex("""(^|\s+)BANNER_YSERVER=\S*""")
+
+    /** What [env] picks, as YServerComponent.requestedMode reads it (empty, 0 or off = X server); null when it does not say. */
+    private fun displayServerOf(env: String?): String? {
+        val m = YSERVER_TOKEN.findAll(env ?: return null).lastOrNull() ?: return null
+        val v = m.value.trim().substringAfter('=').trim()
+        return if (v.isEmpty() || v == "0" || v.equals("off", ignoreCase = true)) DS_X else DS_Y
+    }
+
+    /**
+     * [env] with BANNER_YSERVER set for [server]: 1 for yserver, 0 for the X server when [keepOff] (a game turning its
+     * container's yserver off), removed otherwise. The other variables stay exactly as they were.
+     */
+    private fun withDisplayServer(env: String?, server: String?, keepOff: Boolean): String {
+        val base = YSERVER_TOKEN.replace(env.orEmpty(), "").trimStart()
+        val add = when {
+            server == DS_Y -> "BANNER_YSERVER=1"
+            server == DS_X && keepOff -> "BANNER_YSERVER=0"
+            else -> null
+        }
+        return listOfNotNull(base.ifEmpty { null }, add).joinToString(" ")
+    }
+
     // ── Sync ────────────────────────────────────────────────────────────────────────────────────
 
     private fun syncReason(env: SettingsEnv, mode: String): String? {
@@ -567,6 +597,31 @@ internal object SettingsRegistry {
             },
             vm = vmString({ it.displayBackend }, { vm, v -> vm.onDisplayBackendChanged(v) }),
             game = key("displayBackend") { if (it == Container.DISPLAY_BACKEND_WAYLAND) it else Container.DISPLAY_BACKEND_X11 },
+        ),
+        SettingDef(
+            id = ID_DISPLAY_SERVER, category = "display", group = T("Screen"), level = ADVANCED,
+            label = T("Display server"), hint = T("yserver is a new X server, still in testing."), tech = "BANNER_YSERVER",
+            control = { env, _ ->
+                Control.Segmented(listOf(
+                    Opt(DS_X, T("X server")),
+                    Opt(DS_Y, "yserver", disabledReason = if (YServerComponent.binary(env.context) != null) null else T("yserver isn't in this build.")),
+                ))
+            },
+            vm = VmBinding(
+                get = { _, vm -> displayServerOf(vm.envVarsStr) ?: DS_X },
+                // Unchanged picks leave the env alone (it may say BANNER_YSERVER=record).
+                set = { _, vm, v -> if ((displayServerOf(vm.envVarsStr) ?: DS_X) != v) vm.envVarsStr = withDisplayServer(vm.envVarsStr, v, keepOff = false) },
+            ),
+            // A game's own env wins at launch; picking its container's choice follows the container again.
+            game = GameBinding(
+                keys = listOf("envVars"),
+                read = { e -> displayServerOf(e.get("envVars")) },
+                write = { e, v ->
+                    val inherited = displayServerOf(e.env.vm?.envVarsStr) ?: DS_X
+                    e.put("envVars", withDisplayServer(e.get("envVars"), v.takeIf { it != inherited }, keepOff = true).ifEmpty { null })
+                },
+                reset = { e -> e.get("envVars")?.let { own -> e.put("envVars", withDisplayServer(own, null, keepOff = false).ifEmpty { null }) } },
+            ),
         ),
         SettingDef(
             id = "display.renderScale", category = "display", group = T("Screen"), level = ADVANCED,

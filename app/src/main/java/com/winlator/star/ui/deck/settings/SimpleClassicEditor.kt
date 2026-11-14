@@ -198,7 +198,7 @@ private fun envTab(title: String): CTab = CTab(
     leftovers = setOf("expert"),
 )
 
-/** Classic's container editor: GENERAL · ENVIRONMENT · DRIVES · WIN COMPONENTS · ADVANCED (All containers has no drives). */
+/** Classic's container editor: GENERAL · ENVIRONMENT · DRIVES · WIN COMPONENTS · ADVANCED, plus CONTROLLER (All containers has no drives). */
 private fun containerLayout(): List<CTab> = listOf(
     CTab(
         L("General"), Icons.Filled.Settings,
@@ -248,6 +248,8 @@ private fun containerLayout(): List<CTab> = listOf(
     CTab(
         L("Advanced"), Icons.Filled.Memory,
         listOf(
+            CHead(L("Display server")),
+            CRow(SettingsRegistry.ID_DISPLAY_SERVER, L("Display server")),
             CHead("Box64EC"),
             CRow("performance.box64ecVersion", L("Box64EC Version")),
             CHead("Box64"),
@@ -258,17 +260,23 @@ private fun containerLayout(): List<CTab> = listOf(
             CRow("performance.fexPreset", L("FEXCore Preset")),
             CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
             CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
-        ) + controllerItems(game = false) + listOf(
             CHead(L("System")),
             CRow("performance.startupServices", L("Startup Selection")),
             CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
             CRow("performance.cpuAffinity", L("Processor Affinity")),
             CRow("performance.cpuAffinity32", L("Processor Affinity (32-bit apps)")),
+        ),
+        leftovers = setOf("performance", "visuals"),
+    ),
+    // Its own tab, as the game editor has it.
+    CTab(
+        L("Controller"), Icons.Filled.Gamepad,
+        listOf(CHead(L("Controls")), CRow("input.controlsProfile", L("Controls Profile"))) + controllerItems(game = false) + listOf(
             CHead("XR"),
             CRow("input.xr.primary", L("Primary controller")),
             CPage(L("Controller Mapping"), listOf(CMatch(pre("input.xr.map")))),
         ),
-        leftovers = setOf("input", "performance", "visuals"),
+        leftovers = setOf("input"),
     ),
 )
 
@@ -348,6 +356,8 @@ private fun gameLayout(): List<CTab> = listOf(
     CTab(
         L("Advanced"), Icons.Filled.Memory,
         listOf(
+            CHead(L("Display server")),
+            CRow(SettingsRegistry.ID_DISPLAY_SERVER, L("Display server")),
             CHead("Box64"),
             CRow("performance.box64Version", L("Version")),
             CRow("performance.box64Preset", L("Preset")),
@@ -359,7 +369,6 @@ private fun gameLayout(): List<CTab> = listOf(
             CRow("performance.forceSsbs", L("Force SSBS (CPU speed fix)")),
             CPage(L("Preset values"), listOf(CExtra("performance", L("Translator presets"), { it.startsWith("perf-preset") }))),
             CHead(L("System")),
-            CRow("input.controlsProfile", L("Controls Profile")),
             CRow("performance.startupServices", L("Startup Selection")),
             CPage(L("Custom Services"), listOf(CMatch(pre("performance.service.")))),
             CRow("performance.cpuAffinity", L("Processor Affinity")),
@@ -372,7 +381,11 @@ private fun gameLayout(): List<CTab> = listOf(
         ),
         leftovers = setOf("performance", "visuals"),
     ),
-    CTab(L("Controller"), Icons.Filled.Gamepad, controllerItems(game = true), leftovers = setOf("input")),
+    CTab(
+        L("Controller"), Icons.Filled.Gamepad,
+        listOf(CHead(L("Controls")), CRow("input.controlsProfile", L("Controls Profile"))) + controllerItems(game = true),
+        leftovers = setOf("input"),
+    ),
     CTab("TV", Icons.Filled.Tv, listOf(CMatch(pre("display.tv.")))),
 )
 

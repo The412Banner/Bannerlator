@@ -66,7 +66,7 @@ private fun TextStyle.body(weight: FontWeight) = copy(fontFamily = NunitoSansFam
  * direction it is given.
  */
 @Composable
-internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable () -> Unit) {
+internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), fit: Boolean = false, content: @Composable () -> Unit) {
     val base = MaterialTheme.typography
     val typography = Typography(
         displayLarge   = base.displayLarge.heading(FontWeight.ExtraBold),
@@ -93,8 +93,16 @@ internal fun DeckTheme(xmb: Boolean = rememberXmbHome(), content: @Composable ()
         extraLarge = deckShape(24.dp),
     )
     // The Deck style is drawn DECK_UI_SCALE smaller than the rest of the app (on top of the interface-size setting),
-    // so a phone or handheld at its stock display size has room for the console layout.
-    val density = deckDensity()
+    // so a phone or handheld at its stock display size has room for the console layout. Once only: a dialog's
+    // DeckTheme in a dialog of a Deck screen takes the screen's density, not the dialog window's raw one.
+    // [fit] (the app's own screens): the Lab style also shrinks to fit the screen, see labFitDensity.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val window = remember(configuration) { labWindowPx(context) }
+    val density = LocalDeckDensity.current ?: deckDensity().let { wanted ->
+        val drawn = if (fit && com.winlator.star.ui.theme.AppThemeState.simpleLook) labFitDensity(wanted.density, window.first, window.second) else wanted.density
+        Density(drawn, wanted.fontScale)
+    }
     CompositionLocalProvider(
         LocalDensity provides density,
         LocalDeckDensity provides density,
@@ -138,6 +146,36 @@ internal fun deckShape(radius: androidx.compose.ui.unit.Dp): androidx.compose.fo
 
 /** How much smaller the Deck style draws than the rest of the app. */
 internal const val DECK_UI_SCALE = 0.8f
+
+/**
+ * The short side (dp) the Lab layout needs: in landscape the height for the eight section-rail entries under the top
+ * line, in portrait the width for the side-by-side Home tiles and the game card's chips.
+ */
+internal const val LAB_FIT_SHORT_SIDE_DP = 576f
+
+/**
+ * The Lab style's density: it shrinks when a large Android display size (or interface size) leaves the window's short
+ * side under [LAB_FIT_SHORT_SIDE_DP], in both orientations, so the rail, the Home dashboard and the cards fit; never
+ * below 60 % of [wanted].
+ */
+internal fun labFitDensity(wanted: Float, widthPx: Float, heightPx: Float): Float {
+    val short = minOf(widthPx, heightPx)
+    return if (short <= 0f) wanted else minOf(wanted, short / LAB_FIT_SHORT_SIDE_DP).coerceAtLeast(wanted * 0.6f)
+}
+
+/**
+ * The window's full size in pixels. The shell hides the system bars, so it draws over the whole window, which the
+ * configuration's screen size (bars taken off) would understate.
+ */
+private fun labWindowPx(context: android.content.Context): Pair<Float, Float> {
+    val manager = context.getSystemService(android.view.WindowManager::class.java) ?: return 0f to 0f
+    return if (android.os.Build.VERSION.SDK_INT >= 30) {
+        manager.currentWindowMetrics.bounds.let { it.width().toFloat() to it.height().toFloat() }
+    } else {
+        @Suppress("DEPRECATION")
+        android.graphics.Point().also { manager.defaultDisplay.getRealSize(it) }.let { it.x.toFloat() to it.y.toFloat() }
+    }
+}
 
 // On an XMB glass page (see XmbBackdrop.kt) the three below turn to frosted glass: a slightly lighter translucent fill and a thin
 // light border over the charcoal base, and a veil of the base for the bars. A card also gets the sheen at its top (xmbSheen,

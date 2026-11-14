@@ -1,8 +1,8 @@
 diff --git a/crates/xodus-cli/src/commands/streaming.rs b/crates/xodus-cli/src/commands/streaming.rs
-index b528b14..314f346 100644
+index 66e4135..c9dd278 100644
 --- a/crates/xodus-cli/src/commands/streaming.rs
 +++ b/crates/xodus-cli/src/commands/streaming.rs
-@@ -158,6 +158,14 @@ pub async fn run(
+@@ -161,6 +161,14 @@ pub async fn run(
                  .find(|p| p.file_name.ends_with(".msixvc"))
              else {
                  eprintln!("No .msixvc file found");

@@ -12,7 +12,8 @@
  * path (Windows path) on the first line and one SCID per following line. Output: C:\windows\temp\bxsaveup.log.
  *
  * The runtime is reached through its exports (InitializeApiImplEx2, QueryApiImpl, UninitializeApiImpl) and the
- * IXUserImpl / IXGameSaveImpl vtables of Xodus Nexus' dlls/xgameruntime (xuser.idl, xgamesave.idl).
+ * IXUserImpl / IXGameSaveImpl vtables of the Nexus xgameruntime (include/xuser.idl, include/xgamesave.idl;
+ * slots re-checked against domsvoboda/nexus-xgameruntime 455b1ba9, the C++ runtime in runtime-11.0-20261102).
  */
 #include <windows.h>
 #include <stdarg.h>

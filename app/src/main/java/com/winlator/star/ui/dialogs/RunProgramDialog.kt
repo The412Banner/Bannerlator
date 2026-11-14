@@ -51,7 +51,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** A place the in-game "Run a program" browser starts from. */
-private data class RunPlace(val label: String, val dir: File, val icon: ImageVector)
+internal data class RunPlace(val label: String, val dir: File, val icon: ImageVector)
 
 /** Files Windows starts as programs; every other file opens with the program Windows has for its type. */
 private val PROGRAM_EXTENSIONS = setOf("exe", "bat", "cmd", "msi", "lnk", "com")
@@ -172,7 +172,7 @@ private fun RunRow(icon: ImageVector, title: String, onClick: () -> Unit) {
 }
 
 /** Internal storage and SD cards first, then the container's C: drive and the game's folder when known. */
-private fun runPlaces(context: Context, driveC: String?, gameDir: String?): List<RunPlace> {
+internal fun runPlaces(context: Context, driveC: String?, gameDir: String?): List<RunPlace> {
     val out = ArrayList<RunPlace>()
     @Suppress("DEPRECATION")
     out.add(RunPlace("Internal storage", Environment.getExternalStorageDirectory(), Icons.Filled.PhoneAndroid))
@@ -185,12 +185,12 @@ private fun runPlaces(context: Context, driveC: String?, gameDir: String?): List
 }
 
 /** Folders first, then files, each by name; hidden entries left out. */
-private fun listFolder(dir: File): List<File> {
+internal fun listFolder(dir: File): List<File> {
     val all = dir.listFiles()?.filter { !it.name.startsWith(".") } ?: return emptyList()
     val byName = compareBy<File> { it.name.lowercase() }
     return all.filter { it.isDirectory }.sortedWith(byName) + all.filter { !it.isDirectory }.sortedWith(byName)
 }
 
-private fun isProgram(f: File): Boolean = f.extension.lowercase() in PROGRAM_EXTENSIONS
+internal fun isProgram(f: File): Boolean = f.extension.lowercase() in PROGRAM_EXTENSIONS
 
-private fun samePath(a: File, b: File): Boolean = a.absolutePath.trimEnd('/') == b.absolutePath.trimEnd('/')
+internal fun samePath(a: File, b: File): Boolean = a.absolutePath.trimEnd('/') == b.absolutePath.trimEnd('/')
